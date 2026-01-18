@@ -1,0 +1,310 @@
+# Hook Configuration
+# Defines all hooks for build targets (Claude Code, OpenCode, Cursor, etc.)
+#
+# Structure:
+#   pre-tool: Runs BEFORE tool execution (can block)
+#   post-tool: Runs AFTER tool execution (informational)
+#   session: Lifecycle hooks (SessionStart, SessionEnd, PreCompact)
+
+hooks:
+  pre-tool:
+    # Foundations - Universal quality gates
+    - id: check-secrets
+      skill: foundations
+      script: hooks/pre-tool/foundations-check-secrets.sh
+      matcher: "Edit|Write"
+      blocking: true
+      timeout: 30000
+      description: Check for hardcoded secrets before writing
+
+    - id: validate-changelog
+      skill: foundations
+      script: hooks/pre-tool/foundations-validate-changelog.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 30000
+      description: Validate changelog format
+
+    - id: format-check
+      skill: foundations
+      script: hooks/pre-tool/foundations-format-check.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 60000
+      description: Check code formatting
+
+    - id: security-audit
+      skill: foundations
+      script: hooks/pre-tool/foundations-security-audit.sh
+      matcher: "Bash"
+      blocking: false
+      timeout: 600000
+      description: Run security audit on bash commands
+
+    # Orchestration - Commit and Linear integration
+    - id: validate-commit
+      skill: orchestration
+      script: hooks/pre-tool/orchestration-validate-commit.py
+      matcher: "Bash"
+      blocking: false
+      timeout: 30000
+      description: Validate commit messages follow conventions
+
+    - id: detect-linear-magic
+      skill: orchestration
+      script: hooks/pre-tool/orchestration-detect-linear-magic.py
+      matcher: "Bash"
+      blocking: false
+      timeout: 30000
+      description: Detect Linear magic words for auto-status updates
+
+    # Python - Type checking, linting, testing
+    - id: python-type-check
+      skill: python
+      script: hooks/pre-tool/python-type-check.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 60000
+      description: Run mypy type checking
+
+    - id: python-pytest-validation
+      skill: python
+      script: hooks/pre-tool/python-pytest-validation.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 120000
+      description: Validate pytest configuration
+
+    - id: python-type-check-progressive
+      skill: python
+      script: hooks/pre-tool/python-type-check-progressive.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 120000
+      description: Progressive type checking
+
+    - id: python-ruff-lint
+      skill: python
+      script: hooks/pre-tool/python-ruff-lint.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 30000
+      description: Run ruff linting
+
+    - id: python-pytest-execution
+      skill: python
+      script: hooks/pre-tool/python-pytest-execution.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 480000
+      description: Run pytest tests
+
+    - id: python-bandit-scan
+      skill: python
+      script: hooks/pre-tool/python-bandit-scan.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 60000
+      description: Run bandit security scan
+
+    # TypeScript - Type checking, bundle analysis
+    - id: typescript-tsc-check
+      skill: typescript
+      script: hooks/pre-tool/typescript-tsc-check.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 60000
+      description: Run TypeScript compiler check
+
+    - id: typescript-bundle-analysis
+      skill: typescript
+      script: hooks/pre-tool/typescript-bundle-analysis.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 60000
+      description: Analyze bundle size impact
+
+    # Rails - Migration safety, testing, security
+    - id: rails-migration-safety
+      skill: rails
+      script: hooks/pre-tool/rails-migration-safety.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 60000
+      description: Check migration safety
+
+    - id: rails-migration-safety-deep
+      skill: rails
+      script: hooks/pre-tool/rails-migration-safety-deep.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 300000
+      description: Deep migration safety analysis
+
+    - id: rails-test-execution
+      skill: rails
+      script: hooks/pre-tool/rails-test-execution.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 480000
+      description: Run Rails tests
+
+    - id: rails-brakeman-scan
+      skill: rails
+      script: hooks/pre-tool/rails-brakeman-scan.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 120000
+      description: Run Brakeman security scan
+
+    # Infrastructure - K8s, Docker, Terraform validation
+    - id: infra-validate-k8s
+      skill: infrastructure
+      script: hooks/pre-tool/infra-validate-k8s.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 60000
+      description: Validate Kubernetes manifests
+
+    - id: infra-dockerfile-lint
+      skill: infrastructure
+      script: hooks/pre-tool/infra-dockerfile-lint.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 30000
+      description: Lint Dockerfile
+
+    - id: infra-k8s-dry-run
+      skill: infrastructure
+      script: hooks/pre-tool/infra-k8s-dry-run-server.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 120000
+      description: Kubernetes dry-run validation
+
+    - id: infra-terraform-plan
+      skill: infrastructure
+      script: hooks/pre-tool/infra-terraform-plan-cost.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 300000
+      description: Terraform plan with cost estimation
+
+  post-tool:
+    # Python
+    - id: python-ruff-check
+      skill: python
+      script: hooks/post-tool/python-ruff-check.sh
+      matcher: "Edit|Write"
+      description: Run ruff after changes
+
+    # TypeScript
+    - id: typescript-eslint-check
+      skill: typescript
+      script: hooks/post-tool/typescript-eslint-check.sh
+      matcher: "Edit|Write"
+      description: Run ESLint after changes
+
+    # Rails
+    - id: rails-rubocop-check
+      skill: rails
+      script: hooks/post-tool/rails-rubocop-check.sh
+      matcher: "Edit|Write"
+      description: Run RuboCop after changes
+
+    # Design
+    - id: design-a11y-validation
+      skill: design
+      script: hooks/post-tool/design-a11y-validation.sh
+      matcher: "Edit|Write"
+      description: Validate accessibility after changes
+
+    - id: design-token-check
+      skill: design
+      script: hooks/post-tool/design-token-check.sh
+      matcher: "Edit|Write"
+      description: Check design token usage
+
+    - id: design-a11y-audit
+      skill: design
+      script: hooks/post-tool/design-a11y-audit.sh
+      matcher: "Edit|Write"
+      description: Full accessibility audit
+
+  session:
+    # Session lifecycle
+    - id: session-start
+      skill: orchestration
+      script: hooks/session/session-start.sh
+      event: SessionStart
+      description: Agent-aware session context and active sessions overview
+
+    - id: session-end
+      skill: orchestration
+      script: hooks/session/session-end.sh
+      event: SessionEnd
+      description: Agent-specific completion checklist and session hygiene reminder
+
+    - id: pre-compact-archive
+      skill: orchestration
+      script: hooks/session/pre-compact-archive.sh
+      event: PreCompact
+      timeout: 60000
+      description: Warn about recently modified sessions before context compaction
+
+# Plugin groupings for Claude Code build target
+# Maps skills to plugins with shared agents
+plugin-groups:
+  orchestration:
+    description: PM orchestration, session management, Linear workflow integration
+    agents: [pm]
+    skills: [orchestration]
+    commands: [start-session, resume-session, review-sessions, council-session]
+    hooks:
+      pre-tool: [validate-commit, detect-linear-magic]
+      session: [session-start, session-end, pre-compact-archive]
+
+  foundations:
+    description: Cross-language development fundamentals and quality gates
+    agents: [qa]
+    skills: [foundations]
+    hooks:
+      pre-tool: [check-secrets, validate-changelog, format-check, security-audit]
+
+  python:
+    description: Python 3.12+ development with FastAPI, async, and pytest
+    agents: [backend-dev]
+    skills: [python, foundations]
+    hooks:
+      pre-tool: [python-type-check, python-pytest-validation, python-type-check-progressive, python-ruff-lint, python-pytest-execution, python-bandit-scan]
+      post-tool: [python-ruff-check]
+
+  typescript:
+    description: TypeScript and React development with Next.js
+    agents: [frontend-dev]
+    skills: [typescript, design, foundations]
+    hooks:
+      pre-tool: [typescript-tsc-check, typescript-bundle-analysis]
+      post-tool: [typescript-eslint-check]
+
+  rails:
+    description: Rails 8+ development following The Rails Way
+    agents: [backend-dev]
+    skills: [rails, foundations]
+    hooks:
+      pre-tool: [rails-migration-safety, rails-migration-safety-deep, rails-test-execution, rails-brakeman-scan]
+      post-tool: [rails-rubocop-check]
+
+  infrastructure:
+    description: DevOps and infrastructure patterns
+    agents: [devops, dba]
+    skills: [infrastructure, foundations]
+    hooks:
+      pre-tool: [infra-validate-k8s, infra-dockerfile-lint, infra-k8s-dry-run, infra-terraform-plan]
+
+  design:
+    description: UI/UX design patterns and accessibility standards
+    agents: [design]
+    skills: [design, foundations]
+    hooks:
+      post-tool: [design-a11y-validation, design-token-check, design-a11y-audit]
