@@ -153,8 +153,10 @@ agent-skills/
 │   ├── agents/              # Thin routing agents (7 total)
 │   ├── commands/            # Portable commands
 │   ├── hooks/               # Pre/post tool hooks
-│   └── config/              # Build configuration
+│   └── config/              # Build configuration (hooks.yaml, targets.yaml)
 ├── build/                   # Build system
+│   ├── lib/                 # Shared utilities (sidecar.js)
+│   └── targets/             # Target-specific transformers
 ├── plugins/                 # Claude Code marketplace (at root, committed by CI)
 ├── .claude-plugin/          # Claude Code marketplace manifest (at root)
 ├── dist/                    # Other distributions (committed by CI)

@@ -64,9 +64,12 @@ agent-skills/
 │   │   ├── session/             # Session lifecycle hooks
 │   │   └── lib/                 # Shared utilities
 │   └── config/
-│       └── hooks.yaml           # Hook definitions for build
+│       ├── hooks.yaml           # Hook definitions for build
+│       └── targets.yaml         # Target definitions and defaults
 ├── build/                       # Build scripts
 │   ├── build.js                 # Main orchestrator
+│   ├── lib/                     # Shared utilities
+│   │   └── sidecar.js           # Sidecar loading and transforms
 │   └── targets/                 # Target-specific transformers
 │       ├── claude-code.js
 │       ├── opencode.js
@@ -107,9 +110,12 @@ npm run build:copilot
 
 The build system reads canonical content from `src/` and transforms it for each target:
 
-1. **Reads** `src/config/hooks.yaml` for hook definitions and plugin groups
-2. **Transforms** canonical structure into target-specific format
-3. **Outputs**:
+1. **Reads** configuration files:
+   - `src/config/hooks.yaml` for hook definitions and plugin groups
+   - `src/config/targets.yaml` for target defaults and sidecar configuration
+2. **Loads sidecars** (optional per-file overrides like `pm.opencode.yaml`)
+3. **Transforms** canonical structure into target-specific format
+4. **Outputs**:
    - Claude Code: `plugins/` and `.claude-plugin/` at repo root
    - Others: `dist/{target}/`
 
@@ -123,9 +129,68 @@ The build system reads canonical content from `src/` and transforms it for each 
 ### Adding a New Target
 
 1. Create `build/targets/{target}.js`
-2. Export `build({ config, rootDir, srcDir, distDir })` function
-3. Add to `TARGETS` in `build/build.js`
-4. Add npm script to `package.json`
+2. Export `build({ config, targetConfig, targetsConfig, rootDir, srcDir, distDir, targetName })` function
+3. Add target defaults to `src/config/targets.yaml`
+4. Add to `TARGETS` in `build/build.js`
+5. Add npm script to `package.json`
+
+### Sidecar Metadata System
+
+Sidecars provide target-specific overrides without modifying canonical source files.
+
+**How it works:**
+- Defaults defined in `src/config/targets.yaml`
+- Optional sidecar files override defaults per-file
+- Body content stays canonical across all targets
+
+**Sidecar naming:**
+- Agents: `{agent}.{target}.yaml` (e.g., `pm.opencode.yaml`)
+- Skills: `SKILL.{target}.yaml` (e.g., `SKILL.cursor.yaml`)
+
+**Example agent sidecar (`src/agents/pm.opencode.yaml`):**
+
+```yaml
+# Override frontmatter only - body stays canonical
+frontmatter:
+  name: PM                    # Override display name
+  mode: primary               # Set agent mode
+  tools:
+    remove: ["Task(*)"]       # Remove tools matching pattern
+    add: { Task: true }       # Add new tools
+```
+
+**Example skill sidecar (`src/skills/python/SKILL.cursor.yaml`):**
+
+```yaml
+# Cursor-specific metadata
+globs:
+  - "**/*.py"
+  - "**/pyproject.toml"
+```
+
+**Target defaults (`src/config/targets.yaml`):**
+
+```yaml
+targets:
+  opencode:
+    output: dist/opencode/
+    defaults:
+      agents:
+        frontmatter:
+          mode: subagent
+          tools:
+            transform: array-to-record
+            remove: ["Task(*)"]
+
+  cursor:
+    output: dist/cursor/
+    defaults:
+      skills:
+        globs: ["**/*"]
+        truncate:
+          max_chars: 1500
+          max_files: 5
+```
 
 ---
 
