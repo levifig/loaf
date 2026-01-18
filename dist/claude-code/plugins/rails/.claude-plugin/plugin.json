@@ -1,0 +1,59 @@
+{
+  "name": "rails",
+  "version": "1.0.0",
+  "description": "Rails 8+ development following The Rails Way",
+  "repository": "https://github.com/levifig/agent-skills",
+  "license": "MIT",
+  "agents": [
+    "./agents/backend-dev.md"
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-migration-safety.sh",
+            "timeout": 60000,
+            "description": "Check migration safety"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-migration-safety-deep.sh",
+            "timeout": 300000,
+            "description": "Deep migration safety analysis"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-test-execution.sh",
+            "timeout": 480000,
+            "description": "Run Rails tests"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-brakeman-scan.sh",
+            "timeout": 120000,
+            "description": "Run Brakeman security scan"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-rubocop-check.sh",
+            "description": "Run RuboCop after changes"
+          }
+        ]
+      }
+    ]
+  },
+  "skills": [
+    "./skills/rails/SKILL.md",
+    "./skills/foundations/SKILL.md"
+  ]
+}

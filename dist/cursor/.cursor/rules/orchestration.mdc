@@ -1,0 +1,1306 @@
+---
+description: orchestration development patterns and best practices
+globs:
+  - ".agents/**/*"
+  - "**/*.md"
+---
+
+---
+name: orchestration
+description: Use for PM orchestration and agent coordination. Covers agent delegation, council workflows, session management, Linear integration, and product planning.
+---
+
+# PM Orchestration
+
+Comprehensive patterns for PM-style orchestration: coordinating multi-agent work, managing sessions, running councils, delegating to specialized agents, and integrating with Linear.
+
+## Philosophy
+
+**PM is the orchestrator, not the implementer.**
+
+The PM agent:
+1. Creates issues and session files for tracking
+2. Breaks down work into delegable tasks
+3. Spawns specialized agents for implementation
+4. Coordinates outcomes and updates external systems
+5. Never implements code, tests, or documentation directly
+
+Every release should be complete, polished, and delightful - no MVPs or quick hacks.
+
+## Quick Reference
+
+| Task | Action |
+|------|--------|
+| Multi-step work | Create session file, spawn agents |
+| Complex decision | Convene council (5-7 agents, odd) |
+| Linear update | Checkboxes, no emoji, no local paths |
+| Feature planning | Now/Next/Later buckets, no dates |
+| Agent selection | Match domain expertise to task |
+
+## Topics
+
+| Topic | Reference | Key Content |
+|-------|-----------|-------------|
+| Agent Delegation | [reference/delegation.md](reference/delegation.md) | Agent capabilities, spawn patterns, decision tree |
+| Council Workflow | [reference/councils.md](reference/councils.md) | Composition, deliberation, synthesis, user approval |
+| Session Management | [reference/sessions.md](reference/sessions.md) | Lifecycle, file format, handoffs, validation |
+| Linear Integration | [reference/linear.md](reference/linear.md) | Update format, magic words, status conventions |
+| Product Planning | [reference/planning.md](reference/planning.md) | Roadmaps, feature specs, acceptance criteria |
+
+## Configuration
+
+This skill uses paths from `.agents/config.json`:
+
+```json
+{
+  "sessions": {
+    "directory": ".agents/sessions",
+    "councils_directory": ".agents/councils"
+  },
+  "linear": {
+    "workspace": "your-workspace-slug",
+    "project": { "id": "...", "name": "..." },
+    "default_team": "Platform"
+  }
+}
+```
+
+## Available Scripts
+
+| Script | Usage | Description |
+|--------|-------|-------------|
+| `new-session.sh` | `new-session.sh <description> [linear-issue]` | Generate session file |
+| `new-council.sh` | `new-council.sh <topic> <session> <agents...>` | Generate council file |
+| `validate-session.py` | `validate-session.py <file>` | Validate session format |
+| `validate-council.py` | `validate-council.py <file>` | Validate council format |
+| `validate-roadmap.py` | `validate-roadmap.py <file>` | Validate roadmap format |
+| `get-config.py` | `get-config.py [key.path]` | Read config values |
+| `suggest-team.py` | `suggest-team.py "task desc"` | Suggest Linear team |
+| `check-linear-format.py` | `check-linear-format.py <file>` | Validate Linear text |
+| `format-progress.sh` | `format-progress.sh "Done" -- "Todo"` | Format progress update |
+| `extract-magic-words.sh` | `extract-magic-words.sh HEAD~10..HEAD` | Extract Linear refs |
+
+## Three-Phase Workflow
+
+### BEFORE (Planning)
+- Create/check external issue (Linear, GitHub)
+- Create session file for internal coordination
+- Break down into tasks
+- Identify which agents to spawn
+- Get user approval before spawning
+
+### DURING (Execution)
+- Spawn specialized agents (never implement directly)
+- Track progress in session file
+- Post progress to external issue
+- Convene councils for uncertain decisions
+
+### AFTER (Completion)
+- Run code review (if significant changes)
+- Update external issue to Done
+- Ensure knowledge captured in permanent locations
+- Delete session file
+
+## When to Use PM Orchestration
+
+**Use for:**
+- Feature implementation
+- Non-trivial bug fixes
+- Refactoring
+- Infrastructure changes
+- Multi-agent coordination
+
+**Skip for:**
+- Typo fixes
+- Direct questions
+- Quick clarifications
+- Single-file trivial changes
+
+## Critical Rules
+
+### Sessions
+- Filename: `YYYYMMDD-HHMMSS-description.md`
+- Required fields: title, status, created, last_updated, current_task
+- Required sections: Context, Current State, Next Steps
+- Delete when complete (don't archive)
+
+### Councils
+- Always odd number: 5 or 7 agents
+- Councils advise, users decide
+- PM coordinates but doesn't vote
+- Spawn all agents in parallel
+- Document decision after user approval
+
+### Linear
+- Checkboxes only (`- [x]`), no emoji
+- Outcome-focused, self-contained
+- No local file references
+- Use issue ID only (Linear auto-expands)
+- Magic words in commit body, not subject
+
+### Planning
+- Now/Next/Later buckets, no version numbers
+- No dates or timeframes for estimates
+- Clear acceptance criteria (Given/When/Then)
+- Document edge cases
+
+
+## Quality Checks (Manual)
+
+Since Cursor doesn't support automated hooks, run these checks manually:
+
+### Before Committing
+- Validate commit messages follow conventions
+- Detect Linear magic words for auto-status updates
+
+### After Changes
+
+
+
+
+---
+
+# Council Workflow
+
+Councils are deliberation mechanisms for decisions with multiple valid approaches. They bring diverse perspectives to reach well-reasoned conclusions.
+
+## When to Convene a Council
+
+**Use councils for:**
+- User explicitly requests it
+- Multiple valid approaches with unclear winner
+- Significant architectural decisions
+- Technology selection with trade-offs
+- Cross-cutting concerns affecting multiple domains
+
+**Don't use councils for:**
+- Simple decisions with clear best practice
+- Routine implementation choices
+- Single-domain decisions (just ask that expert)
+- Time-sensitive decisions (councils add overhead)
+- Trivial matters (HTTP status codes, naming)
+
+## Core Principles
+
+1. **Councils are consultative, not executive** - They advise, user decides
+2. **Always odd number** - 5 or 7 agents to prevent ties
+3. **Domain-matched composition** - Select relevant experts
+4. **Parallel deliberation** - Spawn all agents simultaneously
+5. **User approval required** - NEVER proceed without explicit approval
+
+## Council Composition
+
+### Decision Type to Agents
+
+| Decision Type | 5-Agent Council | Extended (7) |
+|---------------|-----------------|--------------|
+| Database/Data | dba, backend-dev, devops, security, code-reviewer | + frontend-dev, docs |
+| API Design | backend-dev, frontend-dev, security, docs, code-reviewer | + dba, devops |
+| UI/UX | design, frontend-dev, product, backend-dev, code-reviewer | + testing-qa, docs |
+| Infrastructure | devops, backend-dev, security, dba, code-reviewer | + frontend-dev, docs |
+| Security | security, backend-dev, devops, dba, code-reviewer | + frontend-dev, docs |
+| Full Architecture | backend-dev, frontend-dev, dba, devops, security, code-reviewer, docs | N/A |
+| Feature Scope | product, design, backend-dev, frontend-dev, testing-qa | + security, code-reviewer |
+
+### Composition Rules
+
+- **5 or 7 agents** (always odd)
+- Primary domain expert must be included
+- Include `code-reviewer` for maintainability
+- Include `security` if security-relevant
+- PM coordinates but does NOT vote
+
+## Deliberation Process
+
+### Step 1: Define Decision Question
+
+**Good questions:**
+- "Should we use Redis, PostgreSQL, or JWT-only for session storage?"
+- "Which frontend framework: React, Vue, or Svelte?"
+
+**Poor questions:**
+- "How should we build this?" (too vague)
+- "Is this a good idea?" (not a choice)
+
+### Step 2: Compose Council
+
+Present to user for approval:
+
+```markdown
+## Proposed Council Composition
+
+**Decision**: Session storage strategy
+
+**Agents** (5):
+1. dba - Database implications
+2. backend-dev - Application integration
+3. devops - Operational complexity
+4. security - Session security
+5. code-reviewer - Long-term maintenance
+
+Do you approve this composition?
+```
+
+### Step 3: Spawn All Agents in Parallel
+
+**Critical**: Spawn ALL agents simultaneously for independent perspectives.
+
+Each agent receives:
+- Same decision question
+- Same options
+- Same context
+- Different perspective prompt
+
+```python
+Task(
+  subagent_type="dba",
+  prompt="""
+  Provide database perspective on session storage.
+
+  Options: Redis, PostgreSQL, JWT-only
+
+  Your Perspective: Data persistence, query patterns,
+  backup/recovery, consistency, operational complexity.
+
+  Council: .agents/councils/20251210-153000-session-storage.md
+  """
+)
+# Spawn other agents with their domain perspectives...
+```
+
+### Step 4: Collect Perspectives
+
+Document each agent's:
+- Recommended option
+- Rationale
+- Concerns about alternatives
+
+### Step 5: Synthesize Findings
+
+PM creates synthesis:
+
+```markdown
+## Synthesis
+
+### Consensus Points
+All agents agree: [common ground]
+
+### Key Disagreements
+[Where perspectives differ]
+
+### Trade-Off Analysis
+
+#### Option A
+**Pros**: ...
+**Cons**: ...
+**Best for**: ...
+
+#### Option B
+**Pros**: ...
+**Cons**: ...
+**Best for**: ...
+
+### Recommendation
+[PM's synthesis of agent perspectives]
+```
+
+### Step 6: Present to User
+
+```markdown
+## Options Evaluated
+
+1. **PostgreSQL** (Recommended)
+   - Pros: Operational simplicity, existing expertise
+   - Cons: Slower than Redis
+
+2. **Redis** (Valid Alternative)
+   - Pros: Faster, purpose-built
+   - Cons: Additional infrastructure
+
+## Your Decision
+Which option do you choose?
+```
+
+**WAIT** for explicit user decision.
+
+### Step 7: Record Decision
+
+Update council file with:
+- Chosen option
+- Who decided (user)
+- When decided
+- Rationale
+- Action items
+
+## Council File Format
+
+**Location**: `.agents/councils/YYYYMMDD-HHMMSS-<topic>.md`
+
+```yaml
+---
+council:
+  topic: "Session storage strategy"
+  timestamp: "2025-12-10T15:30:00Z"
+  status: approved              # approved | rejected | deferred
+  session: "20251210-140000-user-auth"  # REQUIRED
+  participants:
+    - dba
+    - backend-dev
+    - devops
+    - security
+    - code-reviewer             # Min 5, MUST be odd
+  decision: "postgresql"
+  linear_issue: "AUTH-45"       # Optional
+---
+
+# Council: Session Storage Strategy
+
+## Context
+[Why this council was convened]
+
+## Options Considered
+[Options with trade-offs]
+
+## Decision
+**Chosen**: PostgreSQL
+**Rationale**: [Why]
+
+## Implementation Notes
+[Follow-up actions]
+```
+
+## Council vs Implementation
+
+| Aspect | Council | Implementation |
+|--------|---------|----------------|
+| Purpose | Consultation | Build things |
+| Agent Action | Provide perspectives | Write code |
+| File Changes | None (read-only) | Modifications |
+| Spawning | All parallel | Sequential/parallel |
+| Outcome | Recommendation | Work completed |
+| User Role | Approves decision | Reviews results |
+
+After council concludes and user decides, PM spawns implementation agents to execute.
+
+## Anti-Patterns
+
+| Don't | Do Instead |
+|-------|------------|
+| Council for simple decisions | Single agent or PM judgment |
+| Wrong composition | Match agents to decision domain |
+| Even number of agents | Always 5 or 7 |
+| PM as council member | PM coordinates, doesn't vote |
+| Proceed without user approval | Wait for explicit decision |
+| Implement during council | Advise only, implement after |
+| Skip documentation | Record decision in council file |
+
+## Checklist
+
+**Before convening:**
+- [ ] Decision genuinely needs council
+- [ ] Decision question is clear
+- [ ] Composition planned (5-7, odd, relevant)
+- [ ] User approved composition
+
+**During deliberation:**
+- [ ] All agents spawned in parallel
+- [ ] Same context provided to all
+- [ ] Each agent focused on their domain
+- [ ] All perspectives collected
+
+**After deliberation:**
+- [ ] Synthesis created
+- [ ] Options presented to user
+- [ ] Explicit user decision obtained
+- [ ] Council file updated
+- [ ] Consider ADR if architectural
+- [ ] Implementation spawned (if applicable)
+
+
+---
+
+# Agent Delegation
+
+## Core Principle
+
+**PM is the orchestrator, not the implementer.** All code changes, documentation edits, and implementation work MUST be delegated to specialized agents.
+
+## What PM Does vs Delegates
+
+### PM Does Directly
+
+| Action | Tool |
+|--------|------|
+| Create/edit session files | Write |
+| Create/edit council files | Write |
+| Track tasks | TodoWrite/TodoRead |
+| Manage external issues | Linear, GitHub |
+| Read files for context | Read, Grep, Glob |
+| Ask clarifying questions | AskUserQuestion |
+
+### PM MUST Delegate
+
+- Any code in `backend/`, `frontend/`, `src/`, `tests/`
+- Documentation in `docs/`
+- Configuration files (`.yaml`, `.json`, `.toml`)
+- Infrastructure files (`Dockerfile`, `docker-compose.yml`)
+- Database migrations
+- Test files
+
+**NO EXCEPTIONS** - even "trivial" 1-line fixes go through specialized agents.
+
+## Agent Capability Matrix
+
+### Implementation Agents
+
+| Agent | Focus | Use For |
+|-------|-------|---------|
+| `backend-dev` | Python/FastAPI | REST endpoints, business logic, SQLAlchemy, async patterns |
+| `frontend-dev` | React/Next.js | UI components, state management, TypeScript, API integration |
+| `rails-dev` | Ruby on Rails | Controllers, models, views, Hotwire/Stimulus, ActiveRecord |
+| `dba` | Database | Schema design, migrations, indexes, query optimization |
+| `devops` | Infrastructure | Docker, Kubernetes, CI/CD, monitoring |
+
+### Quality Assurance Agents
+
+| Agent | Focus | Use For |
+|-------|-------|---------|
+| `testing-qa` | Tests | Unit tests, integration tests, fixtures, coverage |
+| `code-reviewer` | Quality | Code review, style, maintainability, refactoring |
+| `security` | Security | Audits, vulnerabilities, OWASP, secrets, threat modeling |
+
+### Documentation & Planning
+
+| Agent | Focus | Use For |
+|-------|-------|---------|
+| `docs` | Documentation | API docs, ADRs, READMEs, guides |
+| `product` | Planning | Requirements, roadmaps, feature specs, user stories |
+| `design` | UI/UX | Interface design, accessibility, design systems |
+
+## Delegation Decision Tree
+
+```
+What type of work is needed?
+
+|-- Code Implementation
+|   |-- Python/FastAPI/Backend --> backend-dev
+|   |-- React/Next.js/Frontend --> frontend-dev
+|   |-- Ruby on Rails --> rails-dev
+|   +-- Database Schema/Migrations --> dba
+
+|-- Infrastructure & Operations
+|   |-- Docker/K8s/CI/CD --> devops
+|   +-- Database Performance --> dba
+
+|-- Quality Assurance
+|   |-- Test Implementation --> testing-qa
+|   |-- Code Review --> code-reviewer
+|   +-- Security Audit --> security
+
+|-- Documentation & Design
+|   |-- Technical Documentation --> docs
+|   |-- UI/UX Design --> design
+|   +-- Product Requirements --> product
+
++-- Complex Decision?
+    +-- Council (5-7 agents, odd number)
+```
+
+## Spawn Patterns
+
+### Sequential (Dependencies)
+
+Use when output of one agent is input to another:
+
+```python
+# Step 1: Schema first
+Task(subagent_type="dba", prompt="Create users table...")
+
+# Wait for completion
+
+# Step 2: Implementation uses schema
+Task(subagent_type="backend-dev", prompt="Implement user service...")
+
+# Wait for completion
+
+# Step 3: Tests use implementation
+Task(subagent_type="testing-qa", prompt="Write user tests...")
+```
+
+**Common sequences:**
+- Schema -> Code -> Tests
+- Design -> Implementation -> Review
+- Implementation -> Tests -> Review -> Security
+
+### Parallel (Independent)
+
+Use when work is truly independent:
+
+```python
+# Both can run simultaneously
+Task(subagent_type="backend-dev", prompt="Implement API...")
+Task(subagent_type="frontend-dev", prompt="Build UI...")
+```
+
+**Requirements for parallel:**
+- No dependencies between tasks
+- Defined API contract (for API + UI)
+- Separate files/components
+
+### Spawning Best Practices
+
+1. **Be specific in prompts** - Include file paths, requirements, constraints
+2. **One concern per agent** - Don't ask backend-dev to also write tests
+3. **Include context** - Session file, issue ID, previous outcomes
+4. **Reference session** - `Session: .agents/sessions/YYYYMMDD-HHMMSS-name.md`
+
+### Example Task() Call
+
+```python
+Task(
+    subagent_type="backend-dev",
+    prompt="""
+    Implement POST /api/v1/users endpoint.
+
+    Requirements:
+    - Validate email format
+    - Hash password with bcrypt
+    - Return 201 with user object
+    - Handle duplicate email (409)
+
+    Files:
+    - src/api/users.py
+    - src/models/user.py
+
+    Session: .agents/sessions/20251210-143052-user-registration.md
+    Linear: BACK-123
+    """
+)
+```
+
+## Anti-Patterns
+
+| Anti-Pattern | Better Approach |
+|--------------|-----------------|
+| PM implementing code | PM orchestrates, always delegate |
+| Asking backend-dev for React | Spawn frontend-dev |
+| Single agent for database + backend + tests | Sequential: dba, backend-dev, testing-qa |
+| Parallel spawns with hidden dependencies | Make dependencies explicit, spawn sequentially |
+| Spawning without session context | Create session first, reference in prompts |
+| Council for simple decisions | Single agent or PM judgment |
+
+## Agent Access Hierarchy
+
+| Agent Type | External Issue Access | Reports To |
+|------------|----------------------|------------|
+| PM | Read/Write | User |
+| Implementation agents | None | PM (via session) |
+| Review agents | None | PM (via session) |
+| Product agent | Read-only | PM |
+
+**Key**: Only PM writes to external issue trackers. All other agents report through session files.
+
+
+---
+
+# Linear Integration
+
+Guidelines for writing Linear issue updates, comments, and commit messages with Linear integration.
+
+## Configuration
+
+This skill reads from `.agents/config.json`:
+
+```json
+{
+  "linear": {
+    "workspace": "your-workspace-slug",
+    "project": { "id": "...", "name": "..." },
+    "known_teams": [{ "name": "Backend", "id": "..." }],
+    "default_team": "Platform",
+    "team_keywords": {
+      "Security": ["security", "auth", "vulnerability"],
+      "Backend": ["api", "database", "service"]
+    }
+  }
+}
+```
+
+**Required**: Check that `linear.workspace` is configured before using Linear features. Ask user if missing.
+
+## Progress Update Format
+
+```markdown
+## Progress
+- [x] Completed item description
+- [x] Another completed item
+- [ ] Pending item description
+
+## Blockers
+None currently.
+```
+
+### Format Rules
+
+1. **Checkboxes only** - No emoji, no bullets without checkboxes
+2. **Outcome-focused** - "Added user endpoint" not "Wrote code for user endpoint"
+3. **Self-contained** - Reader shouldn't need local context
+4. **Succinct** - Brief descriptions, no verbose explanations
+
+### Common Mistakes
+
+| Wrong | Correct |
+|-------|---------|
+| `Working on API` | `- [ ] API implementation` |
+| `Done with schema` | `- [x] Schema updated` |
+| `Phase 1: Discovery` | `Discovery - COMPLETE` |
+| `Session file: .agents/sessions/...` | *(omit entirely)* |
+| `Council decision: ...` | *(omit entirely)* |
+| `Week 1 deliverables` | `Initial deliverables` |
+| `BACK-52 Port Itera TEM...` | `BACK-52` *(Linear auto-expands)* |
+| `/Users/name/Code/.../file.py` | `src/module/file.py` |
+
+## Issue Description Format
+
+```markdown
+## Summary
+Brief description of the work and its purpose.
+
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+- [ ] Criterion 3
+
+## Notes
+Any relevant context (keep brief).
+```
+
+**Rules:**
+- Concise and actionable
+- Clear goal or objective
+- No internal workflow references
+- No mentions of agents, councils, or sessions
+
+## Status Conventions
+
+| State | When to Use |
+|-------|-------------|
+| **Backlog** | Issue created, not started |
+| **In Progress** | Work actively started, developer assigned |
+| **In Review** | Implementation complete, PR created |
+| **Done** | Merged and verified |
+| **Blocked** | External dependency prevents progress |
+
+### Transition Criteria
+
+**Backlog -> In Progress:**
+- Work has actively started
+- Developer is assigned
+- Session file created (for non-trivial work)
+
+**In Progress -> In Review:**
+- Implementation is complete
+- Tests pass
+- PR created
+
+**In Review -> Done:**
+- Code review approved
+- CI passes
+- Merged to main branch
+
+## Magic Words (Git Integration)
+
+### Closing Keywords
+
+Auto-close issue when commit is merged:
+
+| Keyword | Use Case |
+|---------|----------|
+| `Closes BACK-XXX` | Features, tasks, enhancements |
+| `Fixes BACK-XXX` | Bug fixes only |
+| `Resolves BACK-XXX` | Alternative to Closes |
+
+### Non-Closing Keywords
+
+Link commit without closing:
+
+| Keyword | Use Case |
+|---------|----------|
+| `Refs BACK-XXX` | Reference only |
+| `Part of BACK-XXX` | Partial work |
+
+### Commit Message Format
+
+```
+feat: add new feature
+
+Brief description of the change.
+
+Closes BACK-123
+```
+
+**Rules:**
+- One closing keyword per issue
+- Use the right keyword (`Fixes` = bug, `Closes` = everything else)
+- Put keywords in commit body, not subject
+- Issue ID only (Linear auto-expands)
+
+### Multiple Issues
+
+```
+feat: implement authentication system
+
+Added login, logout, and session management.
+
+Closes BACK-123
+Refs BACK-124, BACK-125
+```
+
+## Branch Naming
+
+```
+TEAM-123-description
+```
+
+Examples:
+- `PLT-123-add-weather-fallback`
+- `BCK-456-fix-batch-processor`
+
+## Team Routing
+
+Teams are suggested contextually based on task description.
+
+### Flow
+
+1. **Analyze task** - Match keywords against `team_keywords` config
+2. **Suggest team** - Highest-scoring team becomes suggestion
+3. **Check if known** - If team hasn't been used, ask for confirmation
+4. **Auto-learn** - When user confirms, team is added to `known_teams`
+
+Use `scripts/suggest-team.py "task desc"` to get suggestions.
+
+## When to Create Issues
+
+| Action | Create Issue? |
+|--------|---------------|
+| Features, bugs, refactoring | Yes |
+| Infrastructure changes | Yes |
+| Multi-file changes | Yes |
+| Typo fixes | No |
+| Quick clarifications | No |
+| Single-line tweaks | No |
+| Uncertain | Ask user |
+
+## Blocker Format
+
+```markdown
+## Blockers
+
+### [Blocker Title]
+**Impact**: What's blocked by this
+**Needed**: What would unblock it
+**ETA**: If known, otherwise "TBD"
+```
+
+## Critical Rules
+
+### DO
+- Use Markdown checkboxes for progress lists
+- Keep updates succinct and outcome-focused
+- Make updates self-contained
+- Use issue ID only (Linear auto-expands titles)
+
+### DON'T
+- Use emoji in progress lists
+- Reference local files (sessions, councils, plans)
+- Use phase/stage/week terminology
+- Include absolute file paths
+- Duplicate issue titles after IDs
+
+
+---
+
+# Product Planning
+
+Guidelines for product specifications, roadmaps, and feature definition.
+
+## Core Principle
+
+**Insist on complete, polished releases - no MVPs or quick hacks.**
+
+Every release should be:
+- Complete (all planned functionality works)
+- Polished (good UX, no rough edges)
+- Delightful (exceeds expectations)
+
+## Roadmap: Now / Next / Later
+
+### Philosophy
+
+Roadmaps communicate direction, not dates. The Now/Next/Later framework provides clarity without false precision.
+
+```
++------------+------------+------------+
+|    NOW     |    NEXT    |   LATER    |
++------------+------------+------------+
+| Committed  | Planned    | Vision     |
+| Detailed   | Directional| Aspirational|
+| In Progress| Refined    | Exploratory |
++------------+------------+------------+
+```
+
+### Now (Active Development)
+
+**What belongs here:**
+- Work actively being built
+- Fully scoped and estimated
+- Assigned resources
+- Clear acceptance criteria
+
+**Level of detail:**
+- Specific features with user stories
+- Technical approach defined
+- Dependencies identified
+
+### Next (Planned)
+
+**What belongs here:**
+- Committed direction
+- Refined enough to estimate roughly
+- May have open questions
+- Subject to adjustment
+
+**Level of detail:**
+- High-level feature areas
+- Key outcomes, not implementation
+
+### Later (Vision)
+
+**What belongs here:**
+- Aspirational goals
+- Market opportunities
+- Strategic bets
+- Long-term vision
+
+**Level of detail:**
+- Themes and directions
+- Why it matters
+
+### What NOT to Include
+
+**No version numbers:**
+```markdown
+# Bad
+## v1.2.0 (Q1 2025)
+
+# Good
+## Now
+```
+
+**No date estimates:**
+```markdown
+# Bad
+- Feature A (2 weeks)
+
+# Good
+- Feature A
+```
+
+**No timeframes:**
+```markdown
+# Bad
+## Phase 1 (Weeks 1-4)
+
+# Good
+## Now
+```
+
+## Feature Specification
+
+### Minimum Requirements
+
+Every feature must have:
+
+1. **Clear problem statement** - What problem does this solve?
+2. **User persona** - Who benefits?
+3. **Acceptance criteria** - How do we know it's done?
+4. **Edge cases** - What could go wrong?
+
+### Feature Template
+
+```markdown
+# Feature: [Name]
+
+## Overview
+
+**Problem Statement**: What problem does this solve?
+**Target Users**: Who benefits from this feature?
+**Value Proposition**: Why is this valuable?
+
+## Requirements
+
+### Functional Requirements
+1. [Requirement 1]
+2. [Requirement 2]
+
+### Non-Functional Requirements
+- **Performance**: [Expectations]
+- **Security**: [Requirements]
+- **Accessibility**: [Considerations]
+
+## User Stories
+
+### Story 1: [Title]
+
+**As a** [user persona]
+**I want to** [action]
+**So that** [benefit]
+
+#### Acceptance Criteria
+- [ ] Given [context], when [action], then [outcome]
+- [ ] Given [context], when [action], then [outcome]
+
+## Edge Cases
+
+| Scenario | Expected Behavior |
+|----------|-------------------|
+| [Edge case 1] | [How system should respond] |
+| [Edge case 2] | [How system should respond] |
+
+## Out of Scope
+- [What this feature does NOT include]
+
+## Dependencies
+- [Dependency 1]
+
+## Open Questions
+- [ ] [Question needing resolution]
+```
+
+## Acceptance Criteria
+
+### Given-When-Then Format
+
+```markdown
+Given [precondition/context]
+When [action is performed]
+Then [expected outcome]
+```
+
+### Good vs Bad Criteria
+
+| Good | Bad |
+|------|-----|
+| Specific and testable | Vague or subjective |
+| Single behavior | Multiple behaviors |
+| Observable outcome | Internal implementation |
+| User-focused | Developer-focused |
+
+**Good example:**
+```markdown
+Given I am logged in as an operator,
+when I click the Export button,
+then a CSV download starts within 2 seconds
+```
+
+**Bad example:**
+```markdown
+- Export should be fast
+- Data should be correct
+```
+
+## Edge Case Categories
+
+### Input Edge Cases
+- Empty input
+- Maximum/minimum values
+- Invalid formats
+- Special characters
+
+### State Edge Cases
+- First-time user
+- Concurrent access
+- Partial completion
+- System under load
+
+### Environment Edge Cases
+- Network failure
+- Timeout
+- Service unavailable
+
+### Authorization Edge Cases
+- Expired session
+- Revoked access
+- Cross-tenant access attempt
+
+## Project Constraints
+
+Document in the file configured in `.agents/config.json` (default: `docs/CONSTRAINTS.md`):
+
+- **Processing model**: Batch vs real-time, latency expectations
+- **Deployment model**: Single/multi-tenant, cloud/on-prem
+- **Architecture boundaries**: State management, resource lifecycle
+- **Configuration model**: How behavior is customized
+- **User personas**: Access levels, primary use cases
+- **Licensing/compliance**: Requirements and audit needs
+
+## Critical Rules
+
+### Always
+- Define clear acceptance criteria
+- Consider all user personas
+- Document edge cases
+- Prioritize user value
+
+### Never
+- Ship incomplete features
+- Use dates for estimates
+- Over-engineer
+- Skip accessibility requirements
+
+## Roadmap Updates
+
+| Trigger | Action |
+|---------|--------|
+| Feature ships | Move from Now to "Completed" or remove |
+| Priorities change | Reorder items, move between buckets |
+| New opportunity | Add to appropriate bucket |
+| Scope change | Update descriptions |
+
+### Review Cadence
+- **Weekly**: Update Now bucket
+- **Monthly**: Review Next bucket
+- **Quarterly**: Revisit Later bucket
+
+## Validation Checklist
+
+### Roadmap
+- [ ] No version numbers in planning sections
+- [ ] No date/time estimates
+- [ ] Now items are specific and actionable
+- [ ] Next items have clear direction
+- [ ] Later items focus on outcomes
+
+### Feature Spec
+- [ ] Problem statement is clear
+- [ ] Target users identified
+- [ ] All user stories have acceptance criteria
+- [ ] Edge cases documented
+- [ ] Out of scope explicitly stated
+- [ ] Dependencies identified
+- [ ] Open questions captured
+
+
+---
+
+# Session Management
+
+Sessions are coordination artifacts for active work. They are ephemeral - deleted when work completes, not archived.
+
+## When to Use Sessions
+
+- Multi-step work requiring agent coordination
+- Handoffs between agents
+- Tracking progress during implementation
+- Context preservation across agent spawns
+
+## Session File Format
+
+### Location & Naming
+
+```
+.agents/sessions/YYYYMMDD-HHMMSS-<description>.md
+```
+
+**Generate timestamps:**
+```bash
+# Filename timestamp
+date -u +"%Y%m%d-%H%M%S"
+
+# ISO timestamp (for YAML)
+date -u +"%Y-%m-%dT%H:%M:%SZ"
+```
+
+**Good**: `20251204-143000-weather-fallback.md`
+**Bad**: `weather-fallback.md` (missing timestamp)
+**Bad**: `PLT-123-weather-fallback.md` (Linear ID in filename)
+
+### Required Frontmatter
+
+```yaml
+---
+session:
+  title: "Clear description of work"           # REQUIRED
+  status: in_progress                          # REQUIRED: in_progress|paused|completed
+  created: "2025-12-04T14:30:00Z"              # REQUIRED: ISO 8601
+  last_updated: "2025-12-04T14:30:00Z"         # REQUIRED: ISO 8601
+  linear_issue: "BACK-123"                     # Optional
+  linear_url: "https://linear.app/..."         # Optional
+
+orchestration:
+  current_task: "What's actively being worked" # REQUIRED
+  spawned_agents:
+    - agent: backend-dev
+      task: "Brief task description"
+      status: completed                        # pending|in_progress|completed
+      summary: "Outcome summary"
+---
+```
+
+### Required Sections
+
+Every session file MUST have:
+
+1. **`## Context`** - Background for anyone picking up this work
+2. **`## Current State`** - Where we are now (MUST be handoff-ready)
+3. **`## Next Steps`** - Immediate actions for continuation
+
+### Session Template
+
+```markdown
+# Session: [Title]
+
+## Context
+Background for anyone picking up this work.
+What problem are we solving? Why now?
+
+## Current State
+Where we are right now. What just happened.
+**This section should ALWAYS be handoff-ready.**
+
+## Execution Progress
+
+### Wave 1: [Name] (ACTIVE)
+- [ ] BACK-123 - Brief description
+- [x] BACK-124 - Brief description (completed)
+
+### Wave 2: [Name] (blocked by Wave 1)
+- [ ] BACK-125 - Brief description
+
+## Technical Context
+
+### Files to Update
+- `path/to/file.py` - What needs to change
+
+### Key Commands
+```bash
+pytest path/to/tests/ -v
+mypy path/to/code/
+```
+
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+
+## Decisions
+
+### Decision 1: [Title]
+**Decision**: What was decided
+**Rationale**: Why
+
+## Blockers
+- Current blocker (if any)
+
+---
+
+## Session Log
+
+### YYYY-MM-DD HH:MM - [Agent/Action]
+Brief description of what happened.
+```
+
+## Lifecycle States
+
+| State | Description |
+|-------|-------------|
+| `in_progress` | Work actively happening |
+| `paused` | Temporarily stopped |
+| `completed` | Ready for cleanup |
+
+## Updating During Work
+
+After each significant action:
+
+1. Update `Current State`
+2. Add to progress checklist
+3. Update `Files Modified` if applicable
+4. Add entry to `Session Log` with timestamp
+5. Update `Next Steps`
+
+## Handoff Protocol
+
+### Before Handing Off
+
+1. Update session file with completed work
+2. Update `Current State` with where you stopped
+3. Update `Next Steps` with immediate actions
+4. Include `Files Modified` for context
+
+### Session as Handoff Medium
+
+Each agent:
+1. Reads current state from session
+2. Performs assigned work
+3. Updates session with outcomes
+4. Sets up context for next agent
+
+## Completing a Session
+
+Sessions are **deleted, not archived** when complete.
+
+### Knowledge Extraction Checklist
+
+| Information Type | Where It Belongs |
+|------------------|------------------|
+| Work tracking | External issue (Linear, GitHub) |
+| Implementation details | Git commits/PRs |
+| Architectural decisions | ADRs (`docs/decisions/`) |
+| API contracts | API documentation |
+| Remaining work | External issue backlog |
+
+### Deletion Checklist
+
+- [ ] External issue updated with final status
+- [ ] Decisions captured as ADRs (if architectural)
+- [ ] Lessons learned added to relevant docs
+- [ ] Remaining work created as issues
+- [ ] No orphaned references to session file
+- [ ] Delete the session file
+
+## PM Start Protocol
+
+When starting a new orchestration context:
+
+1. Check for existing active sessions
+2. If found, ask user which to resume or start fresh
+3. If resuming, read session for context
+4. If starting fresh, create new session file
+
+## Hook Integration
+
+### SessionStart Hook
+- Lists active sessions
+- Provides agent-specific context
+- Suggests session review/resume
+
+### SessionEnd Hook
+- Displays completion checklist
+- Reminds about session file updates
+- Shows count of active sessions
+
+### PreCompact Hook
+- Identifies recently modified sessions
+- Warns about sessions with recent activity
+- Suggests state updates or memory snapshots
+
+## Anti-Patterns
+
+| Don't | Do Instead |
+|-------|------------|
+| Archive sessions indefinitely | Delete after capturing knowledge |
+| Use sessions as permanent records | Use proper documentation locations |
+| Reference stale sessions | Keep sessions current or delete |
+| Store decisions only in sessions | Create ADRs for important decisions |
+| Batch session updates | Update after each significant event |
+| Keep status as `in_progress` when paused | Update status when state changes |
+

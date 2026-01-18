@@ -1,0 +1,48 @@
+{
+  "name": "typescript",
+  "version": "1.0.0",
+  "description": "TypeScript and React development with Next.js",
+  "repository": "https://github.com/levifig/agent-skills",
+  "license": "MIT",
+  "agents": [
+    "./agents/frontend-dev.md"
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/typescript-tsc-check.sh",
+            "timeout": 60000,
+            "description": "Run TypeScript compiler check"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/typescript-bundle-analysis.sh",
+            "timeout": 60000,
+            "description": "Analyze bundle size impact"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/typescript-eslint-check.sh",
+            "description": "Run ESLint after changes"
+          }
+        ]
+      }
+    ]
+  },
+  "skills": [
+    "./skills/typescript/SKILL.md",
+    "./skills/design/SKILL.md",
+    "./skills/foundations/SKILL.md"
+  ]
+}

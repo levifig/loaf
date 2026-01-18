@@ -1,0 +1,51 @@
+{
+  "name": "foundations",
+  "version": "1.0.0",
+  "description": "Cross-language development fundamentals and quality gates",
+  "repository": "https://github.com/levifig/agent-skills",
+  "license": "MIT",
+  "agents": [
+    "./agents/qa.md"
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-check-secrets.sh",
+            "timeout": 30000,
+            "description": "Check for hardcoded secrets before writing"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-validate-changelog.sh",
+            "timeout": 30000,
+            "description": "Validate changelog format"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-format-check.sh",
+            "timeout": 60000,
+            "description": "Check code formatting"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-security-audit.sh",
+            "timeout": 600000,
+            "description": "Run security audit on bash commands"
+          }
+        ]
+      }
+    ]
+  },
+  "skills": [
+    "./skills/foundations/SKILL.md"
+  ]
+}
