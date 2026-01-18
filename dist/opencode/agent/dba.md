@@ -1,19 +1,24 @@
 ---
 name: dba
-description: Database administrator for schema design, migrations, SQL optimization, and database architecture. Use for table changes, indexes, and query optimization.
-skills: [foundations, infrastructure]
+description: >-
+  Database administrator for schema design, migrations, SQL optimization, and
+  database architecture. Use for table changes, indexes, and query optimization.
+skills:
+  - foundations
+  - infrastructure
 conditional-skills:
   - skill: python
-    when: "alembic.ini OR sqlalchemy in pyproject.toml"
+    when: alembic.ini OR sqlalchemy in pyproject.toml
   - skill: rails
-    when: "db/migrate/ OR ActiveRecord"
+    when: db/migrate/ OR ActiveRecord
 tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+mode: subagent
 ---
 
 # Database Administrator Agent

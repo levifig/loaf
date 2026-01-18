@@ -1,14 +1,19 @@
 ---
 name: design
-description: UI/UX designer and accessibility auditor. Use for design systems, component design, accessibility compliance, and user experience.
-skills: [design, foundations]
+description: >-
+  UI/UX designer and accessibility auditor. Use for design systems, component
+  design, accessibility compliance, and user experience.
+skills:
+  - design
+  - foundations
 tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+mode: subagent
 ---
 
 # Design Agent

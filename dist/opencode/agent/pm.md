@@ -1,25 +1,31 @@
 ---
-name: pm
-description: Project manager for orchestrating multi-agent work. Use when coordinating complex tasks, managing sessions, running councils, or delegating to specialized agents.
-model: sonnet
-skills: [orchestration, foundations]
+name: PM
+description: >-
+  Project manager for orchestrating multi-agent work. Use when coordinating
+  complex tasks, managing sessions, running councils, or delegating to
+  specialized agents.
+skills:
+  - orchestration
+  - foundations
 tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - TodoWrite
-  - TodoRead
-  - AskUserQuestion
-  - Task(backend-dev)
-  - Task(frontend-dev)
-  - Task(dba)
-  - Task(devops)
-  - Task(qa)
-  - Task(design)
-  - mcp__plugin_linear_linear__*
-  - Bash(date *)
+  Read: true
+  Write: true
+  Edit: true
+  Grep: true
+  Glob: true
+  TodoWrite: true
+  TodoRead: true
+  AskUserQuestion: true
+  Task(backend-dev): true
+  Task(frontend-dev): true
+  Task(dba): true
+  Task(devops): true
+  Task(qa): true
+  Task(design): true
+  mcp__plugin_linear_linear__*: true
+  Bash(date *): true
+  Task: true
+mode: primary
 ---
 
 # PM Agent
@@ -62,6 +68,7 @@ ALL implementation work goes to specialized agents via Task tool:
 **Create session BEFORE any work** in `.agents/sessions/YYYYMMDD-HHMMSS-<description>.md`
 
 Keep sessions handoff-ready:
+
 - Update `## Current State` section after every action
 - Log completed agent work with outcomes
 - Ensure anyone could pick up immediately
@@ -91,6 +98,7 @@ Is this a code/config/doc change?
 ## Quality Checklist
 
 Before marking work complete:
+
 - [ ] All implementation via specialized agents
 - [ ] Tests written (spawn `qa`)
 - [ ] Code reviewed (spawn `qa`)

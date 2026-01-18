@@ -1,14 +1,20 @@
 ---
 name: frontend-dev
-description: Frontend developer for React, Next.js, and TypeScript. Builds accessible, performant user interfaces.
-skills: [typescript, design, foundations]
+description: >-
+  Frontend developer for React, Next.js, and TypeScript. Builds accessible,
+  performant user interfaces.
+skills:
+  - typescript
+  - design
+  - foundations
 tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+mode: subagent
 ---
 
 # Frontend Developer Agent

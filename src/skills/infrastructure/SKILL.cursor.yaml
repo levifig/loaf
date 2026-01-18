@@ -1,0 +1,6 @@
+# Cursor-specific metadata for Infrastructure skill
+globs:
+  - "**/Dockerfile*"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/terraform/**/*"

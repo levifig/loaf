@@ -1,7 +1,6 @@
 ---
 name: pm
 description: Project manager for orchestrating multi-agent work. Use when coordinating complex tasks, managing sessions, running councils, or delegating to specialized agents.
-model: sonnet
 skills: [orchestration, foundations]
 tools:
   - Read
@@ -62,6 +61,7 @@ ALL implementation work goes to specialized agents via Task tool:
 **Create session BEFORE any work** in `.agents/sessions/YYYYMMDD-HHMMSS-<description>.md`
 
 Keep sessions handoff-ready:
+
 - Update `## Current State` section after every action
 - Log completed agent work with outcomes
 - Ensure anyone could pick up immediately
@@ -91,6 +91,7 @@ Is this a code/config/doc change?
 ## Quality Checklist
 
 Before marking work complete:
+
 - [ ] All implementation via specialized agents
 - [ ] Tests written (spawn `qa`)
 - [ ] Code reviewed (spawn `qa`)

@@ -1,0 +1,55 @@
+# Target Definitions and Defaults
+# Centralized configuration for multi-target builds
+#
+# Each target defines:
+#   - output: Where built files go (relative to repo root)
+#   - defaults: Default transforms applied to all files of that type
+#
+# Sidecars (e.g., pm.opencode.yaml) override these defaults per-file
+
+targets:
+  claude-code:
+    output: plugins/
+    # Claude Code uses canonical format - no transforms needed
+    defaults:
+      agents: {}
+      skills: {}
+
+  opencode:
+    output: dist/opencode/
+    defaults:
+      agents:
+        frontmatter:
+          # Default mode for all agents (pm overrides to 'primary' via sidecar)
+          mode: subagent
+          tools:
+            # Convert tools from array to record format
+            # ["Read", "Write"] -> { Read: true, Write: true }
+            transform: array-to-record
+            # Remove Task() tools by default (OpenCode uses @ mentions)
+            remove:
+              - "Task(*)"
+      skills: {}
+
+  cursor:
+    output: dist/cursor/
+    defaults:
+      agents: {}
+      skills:
+        # Cursor rules use .mdc format with globs
+        # Default globs if no sidecar specified
+        globs:
+          - "**/*"
+        # Truncate reference content to keep files manageable
+        truncate:
+          max_chars: 1500
+          max_files: 5
+
+  copilot:
+    output: dist/copilot/
+    defaults:
+      agents: {}
+      skills:
+        # Truncate skill content in combined instructions file
+        truncate:
+          max_chars: 1500

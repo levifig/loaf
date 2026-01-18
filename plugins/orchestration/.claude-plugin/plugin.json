@@ -14,13 +14,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/orchestration-validate-commit.py",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/orchestration-validate-commit.py",
             "timeout": 30000,
             "description": "Validate commit messages follow conventions"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/orchestration-detect-linear-magic.py",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/orchestration-detect-linear-magic.py",
             "timeout": 30000,
             "description": "Detect Linear magic words for auto-status updates"
           }
