@@ -1,0 +1,986 @@
+---
+description: python development patterns and best practices
+globs:
+  - "**/*.py"
+  - "**/pyproject.toml"
+  - "**/requirements*.txt"
+---
+
+---
+name: python
+description: Use for all Python 3.12+ development. Covers project setup, FastAPI, Pydantic, async patterns, type safety, pytest, database operations, data engineering, API clients, and production deployment.
+---
+
+# Python Development
+
+Comprehensive guide for modern Python 3.12+ development with FastAPI ecosystem.
+
+## When to Use This Skill
+
+- Starting or configuring Python projects
+- Building REST APIs with FastAPI
+- Defining data models with Pydantic
+- Implementing async/await patterns
+- Adding type hints and mypy configuration
+- Writing tests with pytest
+- Working with databases (SQLAlchemy 2.0)
+- Building data pipelines with Polars
+- Integrating external APIs
+- Deploying to production with Docker
+
+## Stack Overview
+
+| Layer | Default | Alternatives |
+|-------|---------|--------------|
+| Runtime | Python 3.12+ | - |
+| Package Manager | uv | rye, poetry |
+| Linter/Formatter | ruff | black + flake8 |
+| Type Checker | mypy | pyright |
+| Web Framework | FastAPI | Flask, Django |
+| Validation | Pydantic v2 | - |
+| ORM | SQLAlchemy 2.0 | - |
+| Data Processing | Polars | Pandas |
+| HTTP Client | httpx | aiohttp |
+| Testing | pytest | - |
+| Containerization | Docker | - |
+
+## Core Philosophy
+
+- **Explicit is better than implicit** — clear, obvious code
+- **Simple is better than complex** — avoid unnecessary abstractions
+- **Readability counts** — code is read more than written
+- **Async by default** — non-blocking I/O for web services
+- **Strict typing** — catch errors at development time
+- **12-factor methodology** — environment-based configuration
+
+## Quick Reference
+
+### Project Setup with uv
+
+```bash
+uv init my-project --python 3.12
+uv add fastapi uvicorn pydantic-settings
+uv add --dev pytest ruff mypy
+uv run pytest
+```
+
+### pyproject.toml Essentials
+
+```toml
+[project]
+name = "my-project"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+```
+
+### FastAPI Endpoint
+
+```python
+from fastapi import FastAPI, Depends, HTTPException, status
+from pydantic import BaseModel, EmailStr, Field
+
+app = FastAPI()
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    username: str = Field(..., min_length=3, max_length=50)
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    username: str
+    model_config = {"from_attributes": True}
+
+@app.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+    db_user = User(**user.model_dump())
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
+```
+
+### Pydantic Model with Validation
+
+```python
+from pydantic import BaseModel, Field, field_validator
+
+class UserRegistration(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if not any(c.isupper() for c in v):
+            raise ValueError("Must contain uppercase")
+        return v
+```
+
+### Async Database Query
+
+```python
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+async def get_user(session: AsyncSession, user_id: int) -> User | None:
+    result = await session.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+```
+
+### pytest Test
+
+```python
+@pytest.mark.asyncio
+async def test_create_user(client: AsyncClient):
+    response = await client.post("/users", json={"email": "test@example.com", "username": "test"})
+    assert response.status_code == 201
+    assert response.json()["email"] == "test@example.com"
+```
+
+## Topics
+
+| Topic | Use For |
+|-------|---------|
+| [Core](reference/core.md) | Project setup, pyproject.toml, modern Python features |
+| [FastAPI](reference/fastapi.md) | REST APIs, routing, dependency injection, middleware |
+| [Pydantic](reference/pydantic.md) | Data models, validation, settings management |
+| [Async](reference/async.md) | async/await, TaskGroup, context managers |
+| [Types](reference/types.md) | Type hints, mypy, Protocol, generics |
+| [Testing](reference/testing.md) | pytest, fixtures, mocking, async tests |
+| [Database](reference/database.md) | SQLAlchemy 2.0, Alembic migrations, transactions |
+| [Data](reference/data.md) | Polars, ETL pipelines, schema validation |
+| [API Clients](reference/api.md) | httpx, retries, rate limiting, error handling |
+| [Deployment](reference/deployment.md) | Docker, logging, OpenTelemetry, health checks |
+
+## Critical Rules
+
+### Always
+
+- Use type hints for all function signatures
+- Use async def for I/O operations
+- Use Pydantic for data validation
+- Use pathlib.Path for file operations
+- Handle exceptions explicitly
+- Run mypy in CI/CD
+
+### Never
+
+- Use mutable default arguments
+- Block the event loop with sync I/O
+- Import * from modules
+- Use bare except clauses
+- Skip validation on external input
+- Hardcode configuration values
+
+
+## Quality Checks (Manual)
+
+Since Cursor doesn't support automated hooks, run these checks manually:
+
+### Before Committing
+- Run mypy type checking
+- Validate pytest configuration
+- Progressive type checking
+- Run ruff linting
+- Run pytest tests
+- Run bandit security scan
+
+### After Changes
+- Run ruff after changes
+
+
+
+---
+
+# Python API Integration
+
+Building reliable API clients with httpx.
+
+## Basic HTTP Operations
+
+```python
+import httpx
+
+async def fetch_user(user_id: int) -> dict:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.example.com/users/{user_id}",
+            headers={"Authorization": "Bearer token"},
+            timeout=10.0
+        )
+        response.raise_for_status()
+        return response.json()
+```
+
+## API Client Pattern
+
+```python
+from httpx import AsyncClient
+from pydantic import BaseModel
+
+class APIClient:
+    def __init__(self, base_url: str, api_key: str, timeout: float = 30.0):
+        self.base_url = base_url
+        self.api_key = api_key
+        self.timeout = timeout
+        self._client: AsyncClient | None = None
+
+    async def __aenter__(self):
+        self._client = AsyncClient(
+            base_url=self.base_url,
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            timeout=self.timeout
+        )
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self._client:
+            await self._client.aclose()
+
+    async def get(self, endpoint: str, response_model: type[T]) -> T:
+        response = await self._client.get(endpoint)
+        response.raise_for_status()
+        return response_model(**response.json())
+
+# Usage
+async with APIClient(BASE_URL, API_KEY) as client:
+    user = await client.get("/users/1", User)
+```
+
+## Retry Logic
+
+```python
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import httpx
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
+)
+async def fetch_with_retry(url: str) -> dict:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, timeout=10.0)
+        response.raise_for_status()
+        return response.json()
+```
+
+## Rate Limiting
+
+```python
+import asyncio
+from datetime import datetime
+
+class RateLimiter:
+    def __init__(self, rate: int, per: float):
+        self.rate = rate
+        self.per = per
+        self.allowance = rate
+        self.last_check = datetime.now()
+
+    async def acquire(self):
+        current = datetime.now()
+        elapsed = (current - self.last_check).total_seconds()
+        self.allowance += elapsed * (self.rate / self.per)
+        self.last_check = current
+
+        if self.allowance < 1.0:
+            await asyncio.sleep((1.0 - self.allowance) * (self.per / self.rate))
+            self.allowance = 0.0
+        else:
+            self.allowance -= 1.0
+```
+
+## Error Handling
+
+```python
+from httpx import HTTPStatusError, TimeoutException
+
+class APIError(Exception):
+    pass
+
+class NotFoundError(APIError):
+    pass
+
+async def safe_api_call(func, default=None):
+    try:
+        return await func()
+    except HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise NotFoundError(f"Resource not found")
+        elif e.response.status_code == 429:
+            raise APIError("Rate limit exceeded")
+        raise APIError(f"HTTP error: {e.response.status_code}")
+    except TimeoutException:
+        if default is not None:
+            return default
+        raise APIError("Request timeout")
+```
+
+## Pagination
+
+```python
+from collections.abc import AsyncIterator
+
+async def paginate_cursor(client: APIClient, endpoint: str) -> AsyncIterator[dict]:
+    cursor = None
+    while True:
+        params = {"limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        response = await client.get(endpoint, params=params)
+        for item in response["data"]:
+            yield item
+        if not response.get("has_more"):
+            break
+        cursor = response["next_cursor"]
+```
+
+## Critical Rules
+
+### Always
+- Use async HTTP clients (httpx)
+- Implement retry logic
+- Validate responses with Pydantic
+- Handle rate limiting
+- Use context managers
+
+### Never
+- Use requests library (sync, blocking)
+- Ignore HTTP error status codes
+- Skip timeout configuration
+- Hardcode API credentials
+
+
+---
+
+# Python Async Patterns
+
+Modern asynchronous programming with asyncio and async/await.
+
+## Basic Async Patterns
+
+```python
+import asyncio
+import httpx
+
+async def fetch_data(url: str) -> dict:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        return response.json()
+
+async def main():
+    result = await fetch_data("https://api.example.com/data")
+    print(result)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Concurrent Operations
+
+```python
+# TaskGroup (Python 3.11+) - Structured concurrency
+async def fetch_multiple_urls(urls: list[str]) -> list[dict]:
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(fetch_data(url)) for url in urls]
+    return [task.result() for task in tasks]
+
+# Using gather
+async def fetch_with_gather(urls: list[str]) -> list[dict]:
+    results = await asyncio.gather(
+        *[fetch_data(url) for url in urls],
+        return_exceptions=True
+    )
+    return [r for r in results if not isinstance(r, Exception)]
+
+# With timeout
+async def fetch_with_timeout(url: str, timeout: float = 10.0) -> dict:
+    async with asyncio.timeout(timeout):
+        return await fetch_data(url)
+```
+
+## Async Context Managers
+
+```python
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
+class AsyncDatabase:
+    async def connect(self):
+        await asyncio.sleep(0.1)
+
+    async def disconnect(self):
+        await asyncio.sleep(0.1)
+
+    async def __aenter__(self):
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.disconnect()
+
+@asynccontextmanager
+async def get_session() -> AsyncIterator[AsyncSession]:
+    session = AsyncSession()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+```
+
+## Async Iterators
+
+```python
+from typing import AsyncIterator
+
+class AsyncDataStream:
+    def __init__(self, count: int):
+        self.count = count
+        self.current = 0
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self) -> int:
+        if self.current >= self.count:
+            raise StopAsyncIteration
+        await asyncio.sleep(0.1)
+        value = self.current
+        self.current += 1
+        return value
+
+# Usage
+async for item in AsyncDataStream(5):
+    print(item)
+
+# Async comprehension
+items = [item async for item in AsyncDataStream(5)]
+```
+
+## Sync/Async Bridge
+
+```python
+from functools import partial
+
+# Run sync code in thread pool
+async def run_sync_in_executor(func, *args):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, partial(func, *args))
+
+# Run async code from sync context
+def sync_wrapper():
+    return asyncio.run(async_function())
+```
+
+## Common Pitfalls
+
+```python
+# WRONG: Blocking the event loop
+async def bad():
+    import time
+    time.sleep(1)  # BLOCKS!
+
+# CORRECT: Use async sleep
+async def good():
+    await asyncio.sleep(1)
+
+# WRONG: Forgetting await
+result = fetch_data(url)  # Returns coroutine, doesn't execute!
+
+# CORRECT: Always await
+result = await fetch_data(url)
+```
+
+## Critical Rules
+
+### Always
+- Use async with for async context managers
+- Track created tasks or use TaskGroup
+- Handle exceptions in concurrent tasks
+- Type hint as Awaitable[T] or Coroutine
+
+### Never
+- Block the event loop with sync I/O
+- Forget to await coroutines
+- Use async for CPU-bound work
+- Create tasks without tracking references
+
+
+---
+
+# Python Core
+
+Foundation for modern Python 3.12+ development.
+
+## Python Stack
+
+| Component | Default | Alternative |
+|-----------|---------|-------------|
+| Runtime | Python 3.12+ | - |
+| Package Manager | uv | rye, poetry |
+| Linter/Formatter | ruff | black + flake8 |
+| Type Checker | mypy | pyright |
+| Testing | pytest | unittest |
+
+## Project Structure
+
+```
+my_project/
+├── src/
+│   └── my_project/
+│       ├── __init__.py
+│       ├── main.py
+│       ├── models/
+│       ├── services/
+│       └── utils/
+├── tests/
+│   ├── conftest.py
+│   └── test_*.py
+├── pyproject.toml
+└── uv.lock
+```
+
+## Dependency Management with uv
+
+```bash
+uv init my-project --python 3.12
+uv add fastapi uvicorn pydantic-settings
+uv add --dev pytest ruff mypy
+uv run python -m my_project
+uv sync
+```
+
+## pyproject.toml
+
+```toml
+[project]
+name = "my-project"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic-settings>=2.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.3.0",
+    "mypy>=1.8.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=src --cov-report=term-missing"
+```
+
+## Modern Python Features
+
+```python
+# Type aliases (PEP 695)
+type Point = tuple[float, float]
+type Vector = list[Point]
+
+# Pattern matching
+match command:
+    case ["quit"]:
+        return
+    case ["load", filename]:
+        load_file(filename)
+    case _:
+        print("Unknown command")
+
+# Exception groups
+try:
+    result = process_data()
+except* ValueError as eg:
+    for exc in eg.exceptions:
+        log_error(exc)
+```
+
+## Code Style
+
+```python
+# Imports - standard, third-party, local
+import os
+from pathlib import Path
+
+import httpx
+from fastapi import FastAPI
+
+from my_project.models import User
+
+# Constants
+MAX_RETRIES = 3
+API_BASE_URL = "https://api.example.com"
+
+# Classes (PascalCase)
+class UserRepository:
+    pass
+
+# Functions and variables (snake_case)
+def fetch_user_data(user_id: int) -> dict:
+    return {}
+```
+
+## Critical Rules
+
+### Always
+- Use type hints for all function signatures
+- Use pathlib.Path for file operations
+- Use f-strings for string formatting
+- Use context managers for resources
+
+### Never
+- Use mutable default arguments
+- Import * from modules
+- Use bare except clauses
+- Mix tabs and spaces
+
+
+---
+
+# Python Data Engineering
+
+Modern data processing with Polars and pipeline patterns.
+
+## Polars Basics
+
+```python
+import polars as pl
+
+# Lazy evaluation (scan_*)
+df = pl.scan_parquet("data/*.parquet")
+
+# DataFrame operations
+result = (
+    df
+    .filter(pl.col("status") == "active")
+    .select([
+        "user_id",
+        "email",
+        pl.col("created_at").cast(pl.Date).alias("date"),
+        (pl.col("amount") * 1.1).alias("amount_with_tax"),
+    ])
+    .group_by("date")
+    .agg([
+        pl.count().alias("count"),
+        pl.sum("amount_with_tax").alias("total_amount"),
+    ])
+    .sort("date", descending=True)
+    .collect()  # Execute lazy query
+)
+```
+
+## Data Transformations
+
+```python
+def transform_orders(df: pl.LazyFrame) -> pl.LazyFrame:
+    return (
+        df
+        .with_columns([
+            pl.col("order_date").str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S"),
+            (pl.col("quantity") * pl.col("unit_price")).alias("line_total"),
+        ])
+        .with_columns([
+            pl.col("discount").fill_null(0.0),
+        ])
+        .filter((pl.col("quantity") > 0) & (pl.col("unit_price") > 0))
+    )
+
+# Window functions
+df_with_rank = df.with_columns([
+    pl.col("amount").rank(descending=True).over("category").alias("rank_in_category"),
+    pl.col("amount").sum().over("category").alias("category_total"),
+])
+```
+
+## Schema Validation
+
+```python
+from pydantic import BaseModel, Field
+import polars as pl
+
+class OrderSchema(BaseModel):
+    order_id: int = Field(gt=0)
+    user_id: int = Field(gt=0)
+    amount: float = Field(gt=0)
+    status: str = Field(pattern="^(pending|completed|cancelled)$")
+
+# Define schema in Polars
+ORDER_SCHEMA = {
+    "order_id": pl.Int64,
+    "user_id": pl.Int64,
+    "amount": pl.Float64,
+    "status": pl.Utf8,
+}
+
+df = pl.scan_csv("orders.csv", schema=ORDER_SCHEMA)
+```
+
+## Streaming Processing
+
+```python
+from collections.abc import Iterator
+
+def process_in_batches(file_path: Path, batch_size: int = 10_000) -> Iterator[pl.DataFrame]:
+    reader = pl.read_csv_batched(file_path, batch_size=batch_size)
+    while True:
+        batch = reader.next_batches(1)
+        if not batch:
+            break
+        yield transform_batch(batch[0])
+
+# Lazy streaming to file
+result = (
+    pl.scan_parquet("large_dataset/*.parquet")
+    .filter(pl.col("year") == 2024)
+    .group_by("user_id")
+    .agg([pl.sum("amount").alias("total")])
+    .sink_parquet("output.parquet")
+)
+```
+
+## Time Series Operations
+
+```python
+timeseries = (
+    df
+    .sort("timestamp")
+    .group_by_dynamic("timestamp", every="1h")
+    .agg([
+        pl.count().alias("count"),
+        pl.mean("value").alias("avg_value"),
+    ])
+)
+
+# Rolling window
+rolling = df.with_columns([
+    pl.col("value").rolling_mean(window_size=7).alias("rolling_7d_avg"),
+])
+```
+
+## ETL Pipeline Pattern
+
+```python
+from typing import Protocol
+
+class DataSource(Protocol):
+    def read(self) -> pl.LazyFrame: ...
+
+class DataSink(Protocol):
+    def write(self, df: pl.DataFrame) -> None: ...
+
+class ETLPipeline:
+    def __init__(self, source: DataSource, sink: DataSink):
+        self.source = source
+        self.sink = sink
+        self.transformations = []
+
+    def add_transform(self, func):
+        self.transformations.append(func)
+        return self
+
+    def run(self):
+        df = self.source.read()
+        for transform in self.transformations:
+            df = transform(df)
+        self.sink.write(df.collect())
+
+# Usage
+pipeline = (
+    ETLPipeline(ParquetSource("input/"), ParquetSink("output/"))
+    .add_transform(clean_data)
+    .add_transform(enrich_data)
+)
+pipeline.run()
+```
+
+## Critical Rules
+
+### Always
+- Use lazy evaluation (scan_*) for large datasets
+- Define schemas explicitly
+- Use streaming for memory efficiency
+- Prefer Polars over Pandas for new projects
+
+### Never
+- Load entire dataset unnecessarily
+- Skip schema validation
+- Use iterrows() (use iter_rows())
+- Forget to collect() lazy frames
+
+
+---
+
+# Python Database Operations
+
+Async database operations with SQLAlchemy 2.0 and Alembic.
+
+## Model Definition
+
+```python
+from sqlalchemy import String, Integer, ForeignKey, DateTime
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from datetime import datetime
+
+class Base(DeclarativeBase):
+    pass
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    posts: Mapped[list["Post"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+class Post(Base):
+    __tablename__ = "posts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    user: Mapped["User"] = relationship(back_populates="posts")
+```
+
+## Database Connection
+
+```python
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+engine = create_async_engine(
+    "postgresql+asyncpg://user:pass@localhost/db",
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True
+)
+
+async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+async def get_db() -> AsyncSession:
+    async with async_session_maker() as session:
+        yield session
+```
+
+## CRUD Operations
+
+```python
+from sqlalchemy import select, delete
+
+class UserRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def create(self, **kwargs) -> User:
+        user = User(**kwargs)
+        self.session.add(user)
+        await self.session.flush()
+        await self.session.refresh(user)
+        return user
+
+    async def get_by_id(self, user_id: int) -> User | None:
+        result = await self.session.execute(select(User).where(User.id == user_id))
+        return result.scalar_one_or_none()
+
+    async def list(self, skip: int = 0, limit: int = 100) -> list[User]:
+        result = await self.session.execute(
+            select(User).where(User.is_active == True).offset(skip).limit(limit)
+        )
+        return result.scalars().all()
+
+    async def delete(self, user_id: int) -> bool:
+        result = await self.session.execute(delete(User).where(User.id == user_id))
+        return result.rowcount > 0
+```
+
+## Eager Loading
+
+```python
+from sqlalchemy.orm import selectinload
+
+async def get_users_with_posts(session: AsyncSession) -> list[User]:
+    result = await session.execute(
+        select(User).options(selectinload(User.posts)).where(User.is_active == True)
+    )
+    return result.scalars().unique().all()
+```
+
+## Transactions
+
+```python
+async def transfer_ownership(session: AsyncSession, post_id: int, new_owner_id: int):
+    async with session.begin():
+        post = await session.get(Post, post_id)
+        if not post:
+            raise ValueError("Post not found")
+        post.user_id = new_owner_id
+        # Commit happens automatically if no exception
+```
+
+## Alembic Migrations
+
+```python
+# Create migration
+# alembic revision --autogenerate -m "add users table"
+
+# Migration file
+from alembic import op
+import sqlalchemy as sa
+
+def upgrade() -> None:
+    op.create_table(
+        'users',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('email', sa.String(255), nullable=False),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('email')
+    )
+
+def downgrade() -> None:
+    op.drop_table('users')
+```
+
+## Critical Rules
+
+### Always
+- Use async session and queries
+- Close sessions properly
+- Use relationship() for foreign keys
+- Create indexes for query columns
+- Use migrations for schema changes
+
+### Never
+- Use sync SQLAlchemy in async apps
+- Forget to await database calls
+- Skip migrations for schema changes
+- Use string queries without parameters
+

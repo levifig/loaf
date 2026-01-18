@@ -4,38 +4,68 @@ Universal skills for AI coding assistants. One source, multiple targets: Claude 
 
 ## Installation
 
+### Claude Code
+
+Add the marketplace directly in Claude Code:
+
+```
+/plugin marketplace add github:levifig/agent-skills
+```
+
+Then browse and install plugins via `/plugin`.
+
+No local installation needed - Claude Code fetches from GitHub and handles caching automatically.
+
+### OpenCode, Cursor, Copilot
+
+Run the installer:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/levifig/agent-skills/main/install.sh | bash
 ```
 
 The installer will:
-1. Detect which AI tools you have installed
+1. Detect which tools you have installed
 2. Let you select which targets to install
-3. Build and install to each selected target
+3. Download pre-built distributions from GitHub
+4. Cache to `~/.local/share/agent-skills/`
+5. Install to each selected target's config location
+
+**What gets installed:**
+
+| Target | Installation Location |
+|--------|----------------------|
+| OpenCode | `~/.config/opencode/{skill,agent,command,plugin}/` |
+| Cursor | Instructions to copy `.cursor/rules/` to your project |
+| Copilot | Instructions to copy `.github/copilot-instructions.md` to your repo |
 
 ### Update
 
+Run the installer again:
+
 ```bash
-~/.local/share/agent-skills/install.sh --update
+curl -fsSL https://raw.githubusercontent.com/levifig/agent-skills/main/install.sh | bash
 ```
 
-### Manual Installation
+For Claude Code, updates happen automatically when you use `/plugin`.
 
-If you prefer manual installation:
+## How It Works
 
-**Claude Code:**
-```bash
-/plugin marketplace add ~/.local/share/agent-skills/dist/claude-code
-/plugin install orchestration@levifig   # PM coordination
-/plugin install foundations@levifig     # Quality gates
-/plugin install python@levifig          # Python projects
+```
+Source (skills/, agents/, hooks/)
+         │
+         ▼
+    npm run build
+         │
+         ▼
+   dist/ (committed by CI)
+         │
+         ├──► Claude Code: fetches dist/claude-code/ directly from GitHub
+         │
+         └──► Others: installer downloads dist/ to local cache, then installs
 ```
 
-**OpenCode:** Copy `dist/opencode/` contents to `~/.config/opencode/`
-
-**Cursor:** Copy `dist/cursor/.cursor/rules/` to your project
-
-**Copilot:** Copy `dist/copilot/.github/` to your repository
+GitHub Actions automatically builds and commits `dist/` on every push to main.
 
 ## Agents
 
@@ -73,18 +103,29 @@ npm run build        # Build all targets
 npm run build:claude-code  # Build specific target
 ```
 
+Running `./install.sh` from a local clone will:
+1. Build all targets in the local repo
+2. Sync `dist/` to `~/.local/share/agent-skills/`
+3. Install to selected targets
+
+This allows testing local changes before pushing.
+
 See [AGENTS.md](AGENTS.md) for the full maintenance guide.
 
-## Structure
+## Repository Structure
 
 ```
-skills/          # Domain knowledge
+skills/          # Domain knowledge (canonical source)
 agents/          # Thin routing agents (7 total)
 commands/        # Portable commands
 hooks/           # Pre/post tool hooks
 config/          # Build configuration
 build/           # Build system
-dist/            # Generated (gitignored)
+dist/            # Built distributions (committed by CI)
+  ├── claude-code/   # Claude Code marketplace plugins
+  ├── opencode/      # OpenCode skills, agents, plugins
+  ├── cursor/        # Cursor rules (.mdc files)
+  └── copilot/       # Copilot instructions
 ```
 
 ## License

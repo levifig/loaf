@@ -1,0 +1,71 @@
+{
+  "name": "python",
+  "version": "1.0.0",
+  "description": "Python 3.12+ development with FastAPI, async, and pytest",
+  "repository": "https://github.com/levifig/agent-skills",
+  "license": "MIT",
+  "agents": [
+    "./agents/backend-dev.md"
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-type-check.sh",
+            "timeout": 60000,
+            "description": "Run mypy type checking"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-pytest-validation.sh",
+            "timeout": 120000,
+            "description": "Validate pytest configuration"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-type-check-progressive.sh",
+            "timeout": 120000,
+            "description": "Progressive type checking"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-ruff-lint.sh",
+            "timeout": 30000,
+            "description": "Run ruff linting"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-pytest-execution.sh",
+            "timeout": 480000,
+            "description": "Run pytest tests"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-bandit-scan.sh",
+            "timeout": 60000,
+            "description": "Run bandit security scan"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-ruff-check.sh",
+            "description": "Run ruff after changes"
+          }
+        ]
+      }
+    ]
+  },
+  "skills": [
+    "./skills/python/SKILL.md",
+    "./skills/foundations/SKILL.md"
+  ]
+}

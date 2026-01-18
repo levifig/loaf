@@ -1,0 +1,873 @@
+---
+description: rails development patterns and best practices
+globs:
+  - "**/*.rb"
+  - "**/Gemfile"
+  - "app/**/*"
+  - "config/**/*"
+---
+
+---
+name: rails
+description: Use for all Rails 8+ development. Covers models, controllers, views, Hotwire, API development, background jobs, security, testing, performance, deployment, and styling.
+---
+
+# Rails 8+ Development
+
+Complete guide for building modern Rails applications following The Rails Way.
+
+## Rails 8 Stack
+
+| Component | Default | Alternative |
+|-----------|---------|-------------|
+| Database | SQLite (dev/prod) | PostgreSQL |
+| Background Jobs | Solid Queue | Sidekiq |
+| Caching | Solid Cache | Redis |
+| WebSockets | Solid Cable | Redis |
+| Assets | Propshaft + Import Maps | esbuild |
+| CSS | Tailwind (standalone) | Bootstrap |
+| Deployment | Kamal | Capistrano |
+
+## Core Philosophy
+
+- **Convention over configuration** - Follow Rails defaults
+- **Embrace the monolith** - Most apps don't need microservices
+- **Server-side rendering** - HTML over the wire via Hotwire
+- **No build step** - Import Maps + Propshaft, no Node.js
+- **Database-backed everything** - Solid Queue/Cache/Cable use your database
+- **Test with fixtures** - Minitest + fixtures, not RSpec + factories
+
+## Quick Reference
+
+```bash
+# New Rails 8 app
+rails new myapp --database=postgresql
+
+# Generators
+bin/rails g model User name:string email:string
+bin/rails g controller Posts index show
+bin/rails g authentication
+
+# Development
+bin/dev                    # Start with Procfile.dev
+bin/rails test             # Run tests
+bin/rails db:migrate       # Run migrations
+
+# Deployment (Kamal)
+kamal setup && kamal deploy
+```
+
+## Topics
+
+| Topic | Reference | Key Patterns |
+|-------|-----------|--------------|
+| Core | [core.md](reference/core.md) | Framework principles, file organization, generators |
+| Models | [models.md](reference/models.md) | Active Record, validations, associations, migrations |
+| Controllers | [controllers.md](reference/controllers.md) | RESTful actions, strong params, filters |
+| Views | [views.md](reference/views.md) | Templates, partials, layouts, helpers |
+| Hotwire | [hotwire.md](reference/hotwire.md) | Turbo Drive/Frames/Streams, Stimulus |
+| API | [api.md](reference/api.md) | JSON APIs, versioning, authentication |
+| Jobs | [jobs.md](reference/jobs.md) | Solid Queue, Active Job, recurring jobs |
+| Security | [security.md](reference/security.md) | Authentication, authorization, CSRF, XSS |
+| Testing | [testing.md](reference/testing.md) | Minitest, fixtures, system tests |
+| Performance | [performance.md](reference/performance.md) | N+1 prevention, caching, indexing |
+| Deployment | [deployment.md](reference/deployment.md) | Kamal, Docker, zero-downtime |
+| Styling | [styling.md](reference/styling.md) | Tailwind CSS, responsive design |
+| Services | [services.md](reference/services.md) | Service objects, result patterns |
+| Assets | [assets.md](reference/assets.md) | Propshaft, Import Maps |
+| Mobile | [mobile.md](reference/mobile.md) | Hotwire Native, Bridge Components |
+
+## Critical Rules
+
+### Always
+- Follow Rails naming conventions exactly
+- Use generators (`bin/rails g`) for scaffolding
+- Write tests first (TDD with Minitest)
+- Keep controllers thin (under 10 lines per action)
+- Return proper HTTP status codes
+- Use strong parameters for all user input
+- Index foreign keys in migrations
+
+### Never
+- Fight Rails conventions without excellent reason
+- Put business logic in controllers or views
+- Skip model validations
+- Use `render` after successful mutations (use `redirect_to`)
+- Store secrets in code (use `credentials:edit`)
+- Write custom CSS when Tailwind utilities exist
+
+## File Organization
+
+```
+app/
+├── controllers/     # HTTP request handling
+├── models/          # Business logic and data
+├── views/           # Templates and partials
+├── services/        # Complex operations (app/services/users/register.rb)
+├── jobs/            # Background processing
+├── javascript/      # Stimulus controllers
+│   └── controllers/
+└── assets/
+    └── stylesheets/ # Tailwind CSS
+```
+
+## Decision Guide
+
+| Need | Solution |
+|------|----------|
+| CRUD operations | RESTful controllers |
+| Dynamic updates | Turbo Frames/Streams |
+| Complex business logic | Service objects |
+| Background processing | Solid Queue jobs |
+| External API | API controller + token auth |
+| Mobile app | Hotwire Native |
+
+
+## Quality Checks (Manual)
+
+Since Cursor doesn't support automated hooks, run these checks manually:
+
+### Before Committing
+- Check migration safety
+- Deep migration safety analysis
+- Run Rails tests
+- Run Brakeman security scan
+
+### After Changes
+- Run RuboCop after changes
+
+
+
+---
+
+# Rails API
+
+Patterns for building robust, versioned JSON APIs.
+
+## Core Principles
+
+- Version from day one - use URL path versioning (`/api/v1`)
+- Keep responses consistent and predictable
+- Never break backward compatibility
+
+## Versioning Setup
+
+```ruby
+# config/routes.rb
+namespace :api do
+  namespace :v1 do
+    resources :posts, only: %i[index show create update destroy]
+  end
+end
+```
+
+## Base API Controller
+
+```ruby
+# app/controllers/api/v1/base_controller.rb
+module Api::V1
+  class BaseController < ActionController::API
+    include ActionController::HttpAuthentication::Token::ControllerMethods
+
+    before_action :authenticate_token!
+
+    rescue_from ActiveRecord::RecordNotFound, with: :not_found
+    rescue_from ActiveRecord::RecordInvalid, with: :unprocessable
+
+    private
+
+    def authenticate_token!
+      authenticate_or_request_with_http_token do |token, _options|
+        @current_user = User.find_by(api_token: token)
+      end
+    end
+
+    def current_user
+      @current_user
+    end
+
+    def not_found
+      render json: { error: "Not found" }, status: :not_found
+    end
+
+    def unprocessable(exception)
+      render json: { errors: exception.record.errors }, status: :unprocessable_entity
+    end
+  end
+end
+```
+
+## Resource Controller
+
+```ruby
+# app/controllers/api/v1/posts_controller.rb
+module Api::V1
+  class PostsController < BaseController
+    before_action :set_post, only: %i[show update destroy]
+
+    def index
+      @posts = Post.published.page(params[:page])
+      render json: {
+        data: @posts.as_json(only: %i[id title created_at]),
+        meta: { page: @posts.current_page, total_pages: @posts.total_pages }
+      }
+    end
+
+    def show
+      render json: { data: @post.as_json(only: %i[id title body]) }
+    end
+
+    def create
+      @post = current_user.posts.create!(post_params)
+      render json: { data: @post }, status: :created
+    end
+
+    def update
+      @post.update!(post_params)
+      render json: { data: @post }
+    end
+
+    def destroy
+      @post.destroy
+      head :no_content
+    end
+
+    private
+
+    def set_post
+      @post = Post.find(params[:id])
+    end
+
+    def post_params
+      params.require(:post).permit(:title, :body)
+    end
+  end
+end
+```
+
+## HTTP Status Codes
+
+| Action | Success | Failure |
+|--------|---------|---------|
+| GET | 200 OK | 404 Not Found |
+| POST | 201 Created | 422 Unprocessable |
+| PUT/PATCH | 200 OK | 422 Unprocessable |
+| DELETE | 204 No Content | 404 Not Found |
+
+## Token Authentication
+
+```ruby
+class User < ApplicationRecord
+  before_create { self.api_token = SecureRandom.hex(32) }
+end
+
+# Request header: Authorization: Token token="abc123..."
+```
+
+## Rate Limiting
+
+```ruby
+# config/initializers/rack_attack.rb
+class Rack::Attack
+  throttle("api/ip", limit: 100, period: 1.minute) do |req|
+    req.ip if req.path.start_with?("/api")
+  end
+end
+```
+
+## JSON Serialization Options
+
+```ruby
+# In model
+def as_api_json
+  as_json(only: %i[id title body], methods: [:author_name])
+end
+
+# With jbuilder (app/views/api/v1/posts/show.json.jbuilder)
+json.data do
+  json.extract! @post, :id, :title, :body
+  json.author @post.user.name
+end
+```
+
+## Pagination
+
+```ruby
+# Using kaminari or pagy
+def index
+  @posts = Post.page(params[:page]).per(25)
+  render json: {
+    data: @posts,
+    meta: {
+      current_page: @posts.current_page,
+      total_pages: @posts.total_pages,
+      total_count: @posts.total_count
+    }
+  }
+end
+```
+
+
+---
+
+# Rails Assets
+
+No build step. No Node.js. Ship JavaScript and CSS directly to browsers.
+
+## Core Philosophy
+
+- **No compilation** - Browsers handle ES modules natively
+- **No bundling** - HTTP/2 multiplexing makes it unnecessary
+- **No transpilation** - Modern JavaScript works everywhere
+
+## Propshaft vs Sprockets
+
+| Feature | Sprockets | Propshaft |
+|---------|-----------|-----------|
+| Compilation | Yes (Sass, CoffeeScript) | No |
+| Bundling | Yes | No |
+| Fingerprinting | Yes | Yes |
+| Complexity | High | Minimal |
+
+**Use Propshaft** (Rails 8 default). It just serves files with fingerprinted digests.
+
+## Import Maps
+
+### Configuration
+
+```ruby
+# config/importmap.rb
+pin "application"
+pin "@hotwired/turbo-rails", to: "turbo.min.js", preload: true
+pin "@hotwired/stimulus", to: "stimulus.min.js", preload: true
+pin_all_from "app/javascript/controllers", under: "controllers"
+```
+
+### Adding npm Packages (No Node.js)
+
+```bash
+bin/importmap pin lodash-es              # Pin from jsDelivr CDN
+bin/importmap pin lodash-es@4.17.21      # Pin specific version
+bin/importmap pin lodash-es --download   # Download locally (vendor)
+```
+
+```ruby
+# Or pin manually in config/importmap.rb
+pin "alpinejs", to: "https://cdn.jsdelivr.net/npm/alpinejs@3.14.0/dist/module.esm.js"
+pin "chart.js", to: "chart.js"  # vendored in vendor/javascript/
+```
+
+### Using Modules
+
+```javascript
+// app/javascript/application.js
+import "@hotwired/turbo-rails"
+import { Application } from "@hotwired/stimulus"
+import { eagerLoadControllersFrom } from "@hotwired/stimulus-loading"
+
+const application = Application.start()
+eagerLoadControllersFrom("controllers", application)
+```
+
+## File Organization
+
+```
+app/
+├── assets/
+│   └── stylesheets/
+│       ├── application.css
+│       └── application.tailwind.css
+├── javascript/
+│   ├── application.js
+│   └── controllers/
+│       ├── index.js
+│       └── hello_controller.js
+vendor/
+└── javascript/          # Vendored packages
+```
+
+## CSS with Tailwind
+
+Rails 8 includes Tailwind via standalone CLI (no Node.js).
+
+```bash
+bin/rails tailwindcss:install
+```
+
+```css
+/* app/assets/stylesheets/application.tailwind.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700;
+  }
+}
+```
+
+## Layout Integration
+
+```erb
+<%# app/views/layouts/application.html.erb %>
+<head>
+  <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+</head>
+```
+
+## Decision Guide
+
+| Scenario | Approach |
+|----------|----------|
+| Popular library | Pin from CDN |
+| Less common package | Download and vendor |
+| CSS framework | Tailwind standalone |
+| Need Sass | Add `dartsass-rails` gem |
+
+## Common Commands
+
+```bash
+bin/importmap pin <package>             # Add from CDN
+bin/importmap pin <package> --download  # Download locally
+bin/importmap unpin <package>           # Remove
+bin/importmap audit                     # Check for outdated
+```
+
+## Best Practices
+
+- Pin to specific versions in production
+- Preload only essential modules
+- Use `data-turbo-track: "reload"` for stylesheets
+- Never install Node.js for standard Rails apps
+- Let browsers handle ES modules
+
+
+---
+
+# Rails Controllers
+
+Patterns for HTTP request handling and response formatting.
+
+## Core Principles
+
+- Controllers handle HTTP only - no business logic
+- Keep actions under 10 lines
+- One controller per resource
+- Seven RESTful actions maximum
+
+## Controller Template
+
+```ruby
+class PostsController < ApplicationController
+  before_action :authenticate_user!
+  before_action :set_post, only: %i[show edit update destroy]
+
+  def index
+    @posts = Post.published.recent.page(params[:page])
+  end
+
+  def show; end
+
+  def new
+    @post = current_user.posts.build
+  end
+
+  def create
+    @post = current_user.posts.build(post_params)
+    if @post.save
+      redirect_to @post, notice: "Post created."
+    else
+      render :new, status: :unprocessable_entity
+    end
+  end
+
+  def edit; end
+
+  def update
+    if @post.update(post_params)
+      redirect_to @post, notice: "Post updated."
+    else
+      render :edit, status: :unprocessable_entity
+    end
+  end
+
+  def destroy
+    @post.destroy
+    redirect_to posts_path, notice: "Post deleted."
+  end
+
+  private
+
+  def set_post
+    @post = Post.find(params[:id])
+  end
+
+  def post_params
+    params.require(:post).permit(:title, :body, :published)
+  end
+end
+```
+
+## Strong Parameters
+
+```ruby
+# Simple params
+def user_params
+  params.require(:user).permit(:name, :email)
+end
+
+# Nested attributes
+def order_params
+  params.require(:order).permit(
+    :notes,
+    line_items_attributes: [:id, :product_id, :quantity, :_destroy]
+  )
+end
+```
+
+## Response Formats
+
+```ruby
+def create
+  @post = current_user.posts.build(post_params)
+
+  respond_to do |format|
+    if @post.save
+      format.html { redirect_to @post, notice: "Created." }
+      format.turbo_stream
+      format.json { render :show, status: :created }
+    else
+      format.html { render :new, status: :unprocessable_entity }
+      format.json { render json: @post.errors, status: :unprocessable_entity }
+    end
+  end
+end
+```
+
+## Error Handling
+
+```ruby
+class ApplicationController < ActionController::Base
+  rescue_from ActiveRecord::RecordNotFound, with: :not_found
+
+  private
+
+  def not_found
+    respond_to do |format|
+      format.html { render "errors/not_found", status: :not_found }
+      format.json { render json: { error: "Not found" }, status: :not_found }
+    end
+  end
+end
+```
+
+## Redirect vs Render
+
+| Situation | Use | Status |
+|-----------|-----|--------|
+| Successful mutation | `redirect_to` | 302/303 |
+| Validation failure | `render` | 422 |
+| Not found | `render` | 404 |
+
+```ruby
+redirect_to @post, notice: "Saved."                    # After successful mutation
+render :edit, status: :unprocessable_entity            # On validation failure
+flash.now[:alert] = "Error"; render :new, status: 422  # flash.now with render
+```
+
+## Filters
+
+```ruby
+class ApplicationController < ActionController::Base
+  before_action :authenticate_user!
+  before_action :set_locale
+
+  private
+
+  def set_locale
+    I18n.locale = params[:locale] || I18n.default_locale
+  end
+end
+
+class Admin::BaseController < ApplicationController
+  before_action :require_admin
+
+  private
+
+  def require_admin
+    redirect_to root_path unless current_user&.admin?
+  end
+end
+```
+
+
+---
+
+# Rails Core Principles
+
+Foundation for Rails development following The Rails Way.
+
+## Framework Principles
+
+### Database-First Design
+- Active Record at the center of everything
+- Database constraints enforce data integrity
+- Migrations document schema evolution
+- Indexes for query performance
+
+### RESTful by Default
+- Resources map directly to routes
+- Seven standard actions: `index`, `show`, `new`, `create`, `edit`, `update`, `destroy`
+- Nested resources when relationships exist
+- Custom actions only when truly necessary
+
+### Server-Side Rendering with Hotwire
+- HTML over the wire, not JSON APIs for web UIs
+- Turbo for navigation without full page reloads
+- Stimulus for JavaScript sprinkles
+- Progressive enhancement over SPAs
+
+## File Organization
+
+```
+app/
+├── controllers/     # HTTP request handling
+├── models/          # Business logic and data
+├── views/           # Templates and partials
+├── services/        # Complex multi-model operations
+├── jobs/            # Background processing
+├── mailers/         # Email sending
+├── helpers/         # View helpers
+└── javascript/
+    └── controllers/ # Stimulus controllers
+```
+
+## Generators
+
+```bash
+# Models
+bin/rails g model User name:string email:string:uniq
+bin/rails g model Post user:references title:string body:text
+
+# Controllers
+bin/rails g controller Posts index show new create
+
+# Scaffolds (full CRUD)
+bin/rails g scaffold Article title:string body:text
+
+# Authentication (Rails 8)
+bin/rails g authentication
+```
+
+## Rails 8 Defaults
+
+Rails 8 ships with sensible defaults that work without external dependencies:
+
+- **Solid Queue** - Database-backed job processing (no Redis)
+- **Solid Cache** - Database-backed caching
+- **Solid Cable** - Database-backed WebSockets
+- **Propshaft** - Simple asset pipeline (no compilation)
+- **Import Maps** - JavaScript without bundling
+- **Kamal** - Zero-downtime Docker deployments
+
+## Configuration
+
+```ruby
+# config/application.rb
+module MyApp
+  class Application < Rails::Application
+    config.load_defaults 8.0
+    config.time_zone = "UTC"
+    config.eager_load_paths << Rails.root.join("lib")
+  end
+end
+```
+
+## Environment-Specific Settings
+
+```ruby
+# config/environments/production.rb
+config.force_ssl = true
+config.log_level = :info
+config.active_record.dump_schema_after_migration = false
+```
+
+## Credentials
+
+```bash
+EDITOR="code --wait" bin/rails credentials:edit
+EDITOR="code --wait" bin/rails credentials:edit --environment production
+```
+
+```ruby
+# Access credentials
+Rails.application.credentials.stripe[:secret_key]
+Rails.application.credentials.dig(:aws, :access_key_id)
+```
+
+
+---
+
+# Rails Deployment with Kamal
+
+Production deployment using Kamal, Rails 8's default deployment tool.
+
+## Kamal Basics
+
+```bash
+gem install kamal && kamal init  # Install and setup
+kamal setup                       # First-time server setup
+kamal deploy                      # Deploy application
+kamal rollback                    # Revert to previous version
+```
+
+## Docker Configuration
+
+```dockerfile
+# Dockerfile (Rails 8 default - multi-stage build)
+FROM ruby:3.3-slim AS base
+WORKDIR /rails
+ENV RAILS_ENV="production" BUNDLE_WITHOUT="development:test"
+
+FROM base AS build
+RUN apt-get update -qq && apt-get install -y build-essential git libpq-dev
+COPY Gemfile Gemfile.lock ./
+RUN bundle install && bundle exec bootsnap precompile --gemfile app/ lib/
+COPY . .
+RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+
+FROM base
+RUN apt-get update -qq && apt-get install -y curl libpq-dev && rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/local/bundle /usr/local/bundle
+COPY --from=build /rails /rails
+RUN useradd rails --create-home && chown -R rails:rails db log storage tmp
+USER rails:rails
+EXPOSE 3000
+CMD ["./bin/rails", "server"]
+```
+
+## deploy.yml Setup
+
+```yaml
+# config/deploy.yml
+service: myapp
+image: username/myapp
+
+servers:
+  web:
+    hosts: [192.168.1.1]
+    labels:
+      traefik.http.routers.myapp.rule: Host(`myapp.com`)
+      traefik.http.routers.myapp.tls.certresolver: letsencrypt
+  job:
+    hosts: [192.168.1.2]
+    cmd: bundle exec solid_queue:start
+
+proxy:
+  ssl: true
+  host: myapp.com
+
+registry:
+  username: username
+  password: [KAMAL_REGISTRY_PASSWORD]
+
+env:
+  clear:
+    RAILS_LOG_TO_STDOUT: true
+  secret: [RAILS_MASTER_KEY, DATABASE_URL]
+
+volumes:
+  - "myapp_storage:/rails/storage"
+
+healthcheck:
+  path: /up
+  port: 3000
+```
+
+## Environment & Secrets
+
+```bash
+# .kamal/secrets (git-ignored)
+KAMAL_REGISTRY_PASSWORD=ghp_xxxxx
+RAILS_MASTER_KEY=xxxxx
+DATABASE_URL=postgres://user:pass@db.example.com/myapp_production
+
+# Push secrets to servers
+kamal env push
+```
+
+## Health Checks
+
+```ruby
+# Built-in: config/routes.rb
+get "up" => "rails/health#show", as: :rails_health_check
+
+# Custom check (optional)
+class HealthController < ApplicationController
+  skip_before_action :require_authentication
+
+  def show
+    render json: {
+      status: "ok",
+      db: ActiveRecord::Base.connection.active?,
+      queue: SolidQueue::Job.any?
+    }
+  end
+end
+```
+
+## Zero-Downtime Deployments
+
+Kamal handles rolling deployments. Keep migrations backwards-compatible:
+
+```ruby
+# Step 1: Add new column (deploy)
+class AddStatusToOrders < ActiveRecord::Migration[8.0]
+  def change
+    add_column :orders, :status, :string, default: "pending"
+  end
+end
+
+# Step 2: Remove old column in subsequent deploy
+class RemoveOldStatusFromOrders < ActiveRecord::Migration[8.0]
+  def change
+    remove_column :orders, :legacy_status
+  end
+end
+```
+
+## SSL/HTTPS Setup
+
+```yaml
+# config/deploy.yml - Traefik with Let's Encrypt
+proxy:
+  ssl: true
+  host: myapp.com
+
+traefik:
+  args:
+    certificatesResolvers.letsencrypt.acme.email: "admin@myapp.com"
+    certificatesResolvers.letsencrypt.acme.storage: "/letsencrypt/acme.json"
+```
+
+## Common Commands
+
+```bash
+kamal app exec 'bin/rails c'    # Rails console
+kamal app logs -f               # Follow logs
+kamal lock release              # Release stuck lock
+kamal audit                     # Check configuration
+```
+
+## Production Checklist
+
+- [ ] Docker builds locally: `docker build .`
+- [ ] `RAILS_MASTER_KEY` in `.kamal/secrets`
+- [ ] Database accessible from server
+- [ ] DNS pointing to server IP
+- [ ] SSH access configured
+- [ ] Health check returns 200
+- [ ] SSL certificate configured
+

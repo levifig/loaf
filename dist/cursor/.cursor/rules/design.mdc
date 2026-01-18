@@ -1,0 +1,982 @@
+---
+description: design development patterns and best practices
+globs:
+  - "**/*.css"
+  - "**/*.scss"
+  - "**/*.tsx"
+  - "**/tailwind.config.*"
+---
+
+---
+name: design
+description: |
+  Use for all design work. Covers design principles, tokens, color, typography,
+  spacing, responsive design, accessibility, motion, and design systems.
+---
+
+# Design Principles
+
+**Philosophy**: Design is problem-solving through systematic thinking, with accessibility and user needs at the center. Every design decision must be intentional, accessible, and meaningful.
+
+## Quick Reference
+
+| Topic | Key Principle | Reference |
+|-------|--------------|-----------|
+| Core | User-first, accessible by default, consistent, minimal | [reference/core.md](reference/core.md) |
+| Color | Function first, 4.5:1 contrast minimum, never color-only | [reference/color.md](reference/color.md) |
+| Typography | Legible, accessible, reinforce hierarchy | [reference/typography.md](reference/typography.md) |
+| Spacing | 8pt grid, consistent rhythm, logical properties | [reference/spacing.md](reference/spacing.md) |
+| Responsive | Mobile-first, content-out, fluid layouts | [reference/responsive.md](reference/responsive.md) |
+| Accessibility | WCAG 2.1 AA minimum, keyboard navigable, screen reader compatible | [reference/a11y.md](reference/a11y.md) |
+| Motion | Purposeful, natural, respect reduced motion | [reference/motion.md](reference/motion.md) |
+| Systems | Tokens, components, patterns, governance | [reference/systems.md](reference/systems.md) |
+
+## Core Principles
+
+### 1. User-First
+Every design decision must serve user needs and goals.
+- Understand user context: Who, what, why, when, where?
+- Validate assumptions with real users
+- Measure outcomes that matter to users
+
+### 2. Accessible by Default
+Accessibility is not a feature - it is a requirement.
+- WCAG 2.1 AA minimum, AAA as aspiration
+- Keyboard navigation for all functionality
+- 4.5:1 contrast for text, 3:1 for UI components
+- Never use color as the sole indicator
+
+### 3. Consistent
+Consistency reduces cognitive load and builds trust.
+- Design tokens as single source of truth
+- Component reuse over reinvention
+- Predictable naming conventions
+
+### 4. Minimal
+Every element must justify its existence.
+- Progressive disclosure
+- Clear visual hierarchy
+- Sufficient whitespace
+
+### 5. Delightful
+Good design feels effortless.
+- Smooth, purposeful interactions
+- Thoughtful details
+- Performance as a feature
+
+## Design Tokens
+
+Use semantic tokens, never hardcoded values.
+
+```typescript
+// Pattern: [category]-[property]-[variant?]-[state?]
+color-text-primary
+color-background-secondary
+spacing-component-padding-md
+```
+
+## Critical Rules
+
+1. **Never use pixel values directly** - Always use design tokens
+2. **Never use divs for buttons** - Use semantic HTML
+3. **Never skip alt text** - All images need descriptions
+4. **Never use color alone** - Combine with icons/text
+5. **Never ignore reduced motion** - Respect user preferences
+6. **Never animate layout properties** - Use transform/opacity only
+7. **Never skip focus indicators** - Minimum 3:1 contrast
+8. **Never exceed 75ch line length** - Optimal readability at 65ch
+
+## Quality Checklist
+
+Every design deliverable must meet:
+
+- [ ] WCAG 2.1 AA compliant
+- [ ] Keyboard navigable
+- [ ] Screen reader compatible
+- [ ] Color contrast verified (4.5:1 text, 3:1 UI)
+- [ ] Focus indicators visible (3:1 contrast)
+- [ ] Reduced motion respected
+- [ ] Uses design tokens exclusively
+- [ ] Touch targets minimum 44x44px
+- [ ] Mobile responsive
+- [ ] Documented in component library
+
+
+## Quality Checks (Manual)
+
+Since Cursor doesn't support automated hooks, run these checks manually:
+
+### Before Committing
+- Run TypeScript compiler check
+- Analyze bundle size impact
+
+### After Changes
+- Run ESLint after changes
+
+
+
+---
+
+# Accessibility (A11y)
+
+## POUR Principles
+
+### 1. Perceivable
+- All images have meaningful alt text
+- Decorative images use `alt=""` or `role="presentation"`
+- Video has captions, audio has transcripts
+- Color contrast meets standards
+
+### 2. Operable
+- All functionality keyboard accessible
+- No keyboard traps
+- Logical focus order
+- Skip links provided
+
+### 3. Understandable
+- Language declared with `lang` attribute
+- Consistent navigation
+- Clear error messages with suggestions
+
+### 4. Robust
+- Valid HTML
+- Proper ARIA when needed
+- Status messages use live regions
+
+## Contrast Requirements
+
+| Level | Normal Text | Large Text | UI Components |
+|-------|-------------|------------|---------------|
+| AA    | 4.5:1       | 3:1        | 3:1           |
+| AAA   | 7:1         | 4.5:1      | N/A           |
+
+## Semantic HTML
+
+```html
+<header>
+  <nav aria-label="Main navigation">
+    <ul>
+      <li><a href="/">Home</a></li>
+    </ul>
+  </nav>
+</header>
+<main>
+  <h1>Page Title</h1>
+  <section aria-labelledby="section-heading">
+    <h2 id="section-heading">Section</h2>
+  </section>
+</main>
+```
+
+## Focus Management
+
+```typescript
+function Modal({ isOpen, onClose, children }: ModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousFocus = document.activeElement as HTMLElement;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      previousFocus?.focus();
+    };
+  }, [isOpen, onClose]);
+
+  return (
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      {children}
+    </div>
+  );
+}
+```
+
+## Accessible Form Field
+
+```typescript
+function TextField({ label, id, error, required, description }: Props) {
+  const describedBy = [
+    description && `${id}-description`,
+    error && `${id}-error`,
+  ].filter(Boolean).join(" ");
+
+  return (
+    <div>
+      <label htmlFor={id}>
+        {label}
+        {required && <span aria-label="required"> *</span>}
+      </label>
+      {description && <p id={`${id}-description`}>{description}</p>}
+      <input
+        id={id}
+        aria-describedby={describedBy || undefined}
+        aria-invalid={error ? "true" : "false"}
+        aria-required={required}
+      />
+      {error && <p id={`${id}-error`} role="alert">{error}</p>}
+    </div>
+  );
+}
+```
+
+## Skip Link
+
+```html
+<a href="#main-content" className="skip-link">
+  Skip to main content
+</a>
+<main id="main-content">...</main>
+```
+
+```css
+.skip-link {
+  position: absolute;
+  left: -10000px;
+}
+
+.skip-link:focus {
+  position: static;
+}
+```
+
+## Live Regions
+
+```typescript
+function Toast({ message, type }: ToastProps) {
+  return (
+    <div
+      role="status"
+      aria-live={type === "error" ? "assertive" : "polite"}
+    >
+      {message}
+    </div>
+  );
+}
+```
+
+## Testing
+
+### Automated
+- axe DevTools
+- WAVE
+- Lighthouse accessibility audit
+
+### Manual
+- Tab through entire page
+- Screen reader: NVDA (Windows), VoiceOver (Mac)
+- Test at 200% zoom
+- Windows High Contrast Mode
+
+## Checklist
+
+- [ ] Semantic HTML used correctly
+- [ ] All interactive elements keyboard accessible
+- [ ] Focus visible with 3:1 contrast
+- [ ] Color contrast 4.5:1 for text
+- [ ] Images have alt text
+- [ ] Forms have labels and error messages
+- [ ] Dynamic content announced to screen readers
+- [ ] Works at 200% zoom
+- [ ] Respects `prefers-reduced-motion`
+
+
+---
+
+# Accessibility Review Checklist
+
+Comprehensive accessibility review checklist aligned with WCAG 2.1 AA.
+
+## Quick Accessibility Check
+
+For every UI change:
+
+- [ ] Color contrast meets 4.5:1 ratio
+- [ ] Interactive elements keyboard accessible
+- [ ] Images have alt text
+- [ ] Focus indicator visible
+
+## WCAG 2.1 AA Checklist
+
+### 1. Perceivable
+
+#### 1.1 Text Alternatives
+
+- [ ] **Images**: Alt text describes content or purpose
+- [ ] **Decorative images**: Empty alt (`alt=""`)
+- [ ] **Complex images**: Long description available
+- [ ] **Icons**: Accessible name via aria-label or text
+
+```tsx
+// Informative image
+<img src="chart.png" alt="Sales grew 25% in Q4 2023" />
+
+// Decorative image
+<img src="decoration.png" alt="" role="presentation" />
+
+// Icon button
+<button aria-label="Close dialog">
+  <CloseIcon aria-hidden="true" />
+</button>
+```
+
+#### 1.2 Time-based Media
+
+- [ ] **Video**: Captions provided
+- [ ] **Audio**: Transcript available
+- [ ] **Auto-play**: Can be paused or stopped
+
+#### 1.3 Adaptable
+
+- [ ] **Semantic HTML**: Proper elements (button, nav, main)
+- [ ] **Heading hierarchy**: h1 > h2 > h3 (no skipping)
+- [ ] **Lists**: ul/ol for list content
+- [ ] **Tables**: Headers marked with th, scope defined
+- [ ] **Landmarks**: main, nav, aside, footer present
+
+```tsx
+// Semantic structure
+<main>
+  <h1>Page Title</h1>
+  <nav aria-label="Main navigation">...</nav>
+  <article>
+    <h2>Section Title</h2>
+    <p>Content...</p>
+  </article>
+</main>
+```
+
+#### 1.4 Distinguishable
+
+- [ ] **Color contrast**: 4.5:1 for normal text, 3:1 for large text
+- [ ] **Color not sole indicator**: Icons, text, or patterns supplement
+- [ ] **Resize**: Content usable at 200% zoom
+- [ ] **Text spacing**: Works with 1.5 line height, 2x letter spacing
+- [ ] **Content on hover/focus**: Dismissible, hoverable, persistent
+
+### 2. Operable
+
+#### 2.1 Keyboard Accessible
+
+- [ ] **All functions keyboard accessible**
+- [ ] **No keyboard traps**: Can navigate away
+- [ ] **Focus order logical**: Tab order follows visual order
+- [ ] **Focus visible**: Clear focus indicator
+
+```tsx
+// Custom focus styles
+<button className="focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+  Click me
+</button>
+
+// Focus management for modals
+<dialog ref={dialogRef} onOpen={() => dialogRef.current?.focus()}>
+  <button autoFocus>First focusable element</button>
+</dialog>
+```
+
+#### 2.2 Enough Time
+
+- [ ] **Adjustable timing**: Can extend time limits
+- [ ] **Pause/stop**: Moving content can be paused
+- [ ] **No timing**: Essential functions don't time out
+
+#### 2.3 Seizures and Physical Reactions
+
+- [ ] **No flashing**: Content doesn't flash > 3 times/second
+- [ ] **Animation reducible**: Respects prefers-reduced-motion
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+#### 2.4 Navigable
+
+- [ ] **Skip link**: Skip to main content
+- [ ] **Page titled**: Descriptive title
+- [ ] **Focus order**: Meaningful sequence
+- [ ] **Link purpose**: Clear from text or context
+
+```tsx
+// Skip link
+<a href="#main" className="skip-link">Skip to main content</a>
+
+// Link with clear purpose
+<a href="/report.pdf">Download 2023 Annual Report (PDF, 2MB)</a>
+```
+
+#### 2.5 Input Modalities
+
+- [ ] **Pointer gestures**: Single pointer alternative available
+- [ ] **Touch targets**: 44x44 CSS pixels minimum
+- [ ] **Motion actuation**: Can disable or has alternative
+
+### 3. Understandable
+
+#### 3.1 Readable
+
+- [ ] **Language defined**: html lang attribute set
+- [ ] **Language of parts**: lang attribute for foreign text
+
+```html
+<html lang="en">
+  <body>
+    <p>Welcome to our site. <span lang="es">Bienvenidos</span></p>
+  </body>
+</html>
+```
+
+#### 3.2 Predictable
+
+- [ ] **On focus**: No unexpected changes
+- [ ] **On input**: No unexpected context changes
+- [ ] **Consistent navigation**: Same order across pages
+- [ ] **Consistent identification**: Same function = same name
+
+#### 3.3 Input Assistance
+
+- [ ] **Error identification**: Errors clearly described
+- [ ] **Labels**: Form inputs have visible labels
+- [ ] **Error suggestions**: Help text for fixing errors
+- [ ] **Error prevention**: Confirmation for important actions
+
+```tsx
+<div>
+  <label htmlFor="email">Email Address</label>
+  <input
+    id="email"
+    type="email"
+    aria-invalid={hasError}
+    aria-describedby={hasError ? "email-error" : "email-hint"}
+  />
+  <span id="email-hint" className="hint">We'll never share your email.</span>
+  {hasError && (
+    <span id="email-error" role="alert" className="error">
+      Please enter a valid email address, like name@example.com
+    </span>
+  )}
+</div>
+```
+
+### 4. Robust
+
+#### 4.1 Compatible
+
+- [ ] **Valid HTML**: No parsing errors
+- [ ] **Name, role, value**: Custom widgets have ARIA
+- [ ] **Status messages**: aria-live for dynamic updates
+
+```tsx
+// Custom toggle with ARIA
+<button
+  role="switch"
+  aria-checked={isOn}
+  onClick={() => setIsOn(!isOn)}
+>
+  Dark mode
+</button>
+
+// Status message
+<div aria-live="polite" aria-atomic="true">
+  {message && <p>{message}</p>}
+</div>
+```
+
+## Testing Tools
+
+| Tool | Use |
+|------|-----|
+| axe DevTools | Automated testing |
+| WAVE | Visual feedback |
+| Lighthouse | General audit |
+| VoiceOver/NVDA | Screen reader testing |
+| Keyboard only | Tab through interface |
+
+## Common Issues
+
+### Forms
+
+- Missing labels
+- Error not announced
+- Required not indicated
+- Autocomplete missing
+
+### Navigation
+
+- No skip link
+- Focus not visible
+- Tab order illogical
+- Keyboard traps
+
+### Content
+
+- Missing alt text
+- Color-only feedback
+- Low contrast
+- Content hidden from AT
+
+### Interactive Elements
+
+- Non-focusable buttons (div, span)
+- Missing ARIA on custom widgets
+- Auto-play without controls
+- Timeout without warning
+
+## Testing Workflow
+
+1. **Automated scan** - axe DevTools
+2. **Keyboard navigation** - Tab through everything
+3. **Screen reader** - Test with VoiceOver or NVDA
+4. **Zoom** - Test at 200% zoom
+5. **Color** - Check contrast, disable color
+
+---
+
+*Reference: [WCAG 2.1](https://www.w3.org/WAI/WCAG21/quickref/), [a11y project](https://www.a11yproject.com/checklist/)*
+
+
+---
+
+# Color
+
+## Color Palette Structure
+
+### Full Spectrum (50-900)
+
+```typescript
+export const colors = {
+  gray: {
+    50: "#f9fafb", 100: "#f3f4f6", 200: "#e5e7eb",
+    300: "#d1d5db", 400: "#9ca3af", 500: "#6b7280",
+    600: "#4b5563", 700: "#374151", 800: "#1f2937",
+    900: "#111827",
+  },
+  blue: {
+    50: "#eff6ff", 100: "#dbeafe", 200: "#bfdbfe",
+    300: "#93c5fd", 400: "#60a5fa", 500: "#3b82f6",
+    600: "#2563eb", 700: "#1d4ed8", 800: "#1e40af",
+    900: "#1e3a8a",
+  },
+};
+```
+
+### Semantic Colors
+
+```typescript
+export const semanticColors = {
+  brand: { primary: colors.blue[600], hover: colors.blue[700] },
+  text: {
+    primary: colors.gray[900],    // Body text
+    secondary: colors.gray[600],  // Supporting text
+    inverse: colors.gray[50],     // On dark backgrounds
+  },
+  status: {
+    success: colors.green[600],
+    warning: colors.yellow[600],
+    danger: colors.red[600],
+    info: colors.blue[600],
+  },
+};
+```
+
+## Contrast Requirements
+
+| Level | Normal Text | Large Text | UI Components |
+|-------|-------------|------------|---------------|
+| AA    | 4.5:1       | 3:1        | 3:1           |
+| AAA   | 7:1         | 4.5:1      | N/A           |
+
+- **Normal text**: < 18pt or < 14pt bold
+- **Large text**: >= 18pt or >= 14pt bold
+
+## Dark Mode
+
+```typescript
+export const darkMode = {
+  background: {
+    primary: "#0a0a0a",    // True dark
+    secondary: "#1a1a1a",  // Elevated surfaces
+    tertiary: "#2a2a2a",   // More elevated
+  },
+  text: {
+    primary: "#f5f5f5",    // 15:1 on dark bg
+    secondary: "#a3a3a3",  // 7:1 on dark bg
+  },
+};
+```
+
+### Implementation
+
+```css
+:root {
+  --color-bg-primary: #ffffff;
+  --color-text-primary: #1a1a1a;
+}
+
+[data-theme="dark"] {
+  --color-bg-primary: #0a0a0a;
+  --color-text-primary: #f5f5f5;
+}
+```
+
+## Color Blindness
+
+Design for ~8% of men and ~0.5% of women with color vision deficiency.
+
+### Safe Combinations
+
+```typescript
+export const colorBlindSafe = {
+  success: { color: "#0d9488", icon: "check" },  // Teal
+  warning: { color: "#f59e0b", icon: "warning" }, // Amber
+  danger: { color: "#dc2626", icon: "x" },        // Red
+};
+```
+
+### Never Use Color Alone
+
+```typescript
+// Bad
+<span className="text-red-600">Error</span>
+
+// Good
+<span className="text-red-600">
+  <XCircleIcon aria-hidden="true" />
+  <span>Error: Invalid email</span>
+</span>
+```
+
+## Color Utilities
+
+```typescript
+function getContrast(color1: string, color2: string): number {
+  const lum1 = getLuminance(...hexToRgb(color1));
+  const lum2 = getLuminance(...hexToRgb(color2));
+  const lighter = Math.max(lum1, lum2);
+  const darker = Math.min(lum1, lum2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+```
+
+## Checklist
+
+- [ ] Text meets 4.5:1 contrast (AA)
+- [ ] Large text meets 3:1 contrast
+- [ ] Interactive elements meet 3:1 contrast
+- [ ] Focus indicators meet 3:1 contrast
+- [ ] Color is not sole indicator of meaning
+- [ ] Works in light and dark modes
+- [ ] Distinguishable by colorblind users
+- [ ] All colors from design tokens
+
+
+---
+
+# Core Design Principles
+
+## Design Process
+
+### 1. Discover
+- User research: interviews, surveys, analytics
+- Competitive analysis
+- Constraints: technical, business, timeline
+- Success metrics definition
+
+### 2. Define
+- Clear problem statement
+- User stories: who needs what and why
+- Acceptance criteria
+- Edge cases identification
+
+### 3. Explore
+- Sketches: low-fidelity, fast iteration
+- Wireframes: structure without style
+- Prototypes: interactive, testable
+- Design reviews: feedback early
+
+### 4. Validate
+- Usability testing
+- Accessibility testing
+- Performance testing
+- A/B testing when appropriate
+
+### 5. Implement
+- Design handoff with clear specs
+- Component development
+- Code review for design/engineering alignment
+- QA: visual, functional, accessibility
+
+### 6. Iterate
+- Monitor metrics
+- Gather feedback
+- Identify improvements
+- Plan next iteration
+
+## Token Architecture
+
+```typescript
+// Core tokens (primitive values)
+export const primitives = {
+  color: {
+    blue: { 50: "#eff6ff", /* ... */ 900: "#1e3a8a" },
+    gray: { /* ... */ },
+  },
+  spacing: {
+    0: "0",
+    1: "0.25rem",  // 4px
+    2: "0.5rem",   // 8px
+    4: "1rem",     // 16px
+    6: "1.5rem",   // 24px
+    8: "2rem",     // 32px
+  },
+};
+
+// Semantic tokens (meaningful aliases)
+export const tokens = {
+  color: {
+    brand: { primary: primitives.color.blue[600] },
+    text: { primary: primitives.color.gray[900] },
+    background: { primary: primitives.color.gray[50] },
+  },
+};
+```
+
+## Token Categories
+
+1. **Color**: brand, text, background, border, status
+2. **Spacing**: padding, margin, gap (4px base)
+3. **Typography**: font size, weight, line height, letter spacing
+4. **Shadow**: elevation levels
+5. **Border**: width, radius, style
+6. **Timing**: animation duration
+7. **Easing**: animation timing functions
+8. **Z-index**: semantic layer names
+
+## Common Antipatterns
+
+```typescript
+// Using pixel values directly
+<div style={{ padding: "16px" }}>  // Bad
+<div style={{ padding: tokens.spacing[4] }}>  // Good
+
+// Button-like divs
+<div onClick={handleClick}>Click me</div>  // Bad
+<button onClick={handleClick}>Click me</button>  // Good
+
+// Missing alt text
+<img src="chart.png" />  // Bad
+<img src="chart.png" alt="Sales up 45% in Q4" />  // Good
+
+// Color-only communication
+<span className="text-red">Error</span>  // Bad
+<span className="error"><AlertIcon /> Error: Invalid</span>  // Good
+```
+
+## Tool Stack
+
+### Design
+- Figma: primary design tool
+- Contrast checkers: WebAIM, Stark
+- Color palette generators: Coolors, ColorBox
+
+### Development
+- Design tokens: Style Dictionary
+- Component library: React, TypeScript
+- CSS: Tailwind with custom tokens
+- Storybook: component documentation
+
+### Testing
+- Accessibility: axe DevTools, WAVE, Lighthouse
+- Screen readers: NVDA, VoiceOver
+- Performance: WebPageTest, Lighthouse
+
+
+---
+
+# Motion
+
+## Principles
+
+1. **Purposeful**: Every animation serves feedback, guidance, or continuity
+2. **Natural**: Use realistic easing, not linear motion
+3. **Efficient**: Fast and non-intrusive
+
+## Timing
+
+```typescript
+export const motion = {
+  duration: {
+    fast: "150ms",    // Hover, focus
+    base: "300ms",    // Standard transitions
+    slow: "500ms",    // Complex animations
+  },
+};
+```
+
+## Easing Functions
+
+```typescript
+export const easing = {
+  easeIn: "cubic-bezier(0.4, 0, 1, 1)",      // Slow start
+  easeOut: "cubic-bezier(0, 0, 0.2, 1)",     // Fast start (entrances)
+  easeInOut: "cubic-bezier(0.4, 0, 0.2, 1)", // Symmetrical
+  bounce: "cubic-bezier(0.68, -0.55, 0.265, 1.55)", // Use sparingly
+};
+```
+
+### Usage Patterns
+
+- **Entrances**: ease-out (fast start, slow end)
+- **Exits**: ease-in (slow start, fast end)
+- **Emphasis**: ease-in-out (symmetrical)
+
+## Performance
+
+```css
+/* GPU-accelerated (fast) */
+.performant {
+  transition: transform 300ms ease-out,
+              opacity 300ms ease-out;
+}
+
+/* Avoid (triggers layout) */
+.slow {
+  transition: width 300ms ease-out;  /* Bad */
+}
+```
+
+## Common Patterns
+
+### Fade In
+
+```css
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 300ms ease-out;
+}
+```
+
+### Slide In
+
+```css
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+```
+
+### Button Interaction
+
+```css
+.button {
+  transition: transform 150ms ease-out,
+              box-shadow 150ms ease-out;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.button:active {
+  transform: translateY(0);
+}
+```
+
+## Loading States
+
+### Skeleton
+
+```css
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.skeleton {
+  background-color: #e5e7eb;
+  animation: pulse 2s ease-in-out infinite;
+}
+```
+
+### Spinner
+
+```css
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+```
+
+## Reduced Motion
+
+**Critical**: Always respect `prefers-reduced-motion`.
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .animated {
+    transition: none;
+    animation: none;
+  }
+
+  /* Keep essential feedback */
+  .animated.essential {
+    transition: opacity 150ms ease-out;
+  }
+}
+```
+
+### JavaScript Detection
+
+```typescript
+function useReducedMotion(): boolean {
+  const [prefersReduced, setPrefersReduced] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReduced(mediaQuery.matches);
+
+    const handler = () => setPrefersReduced(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
+  return prefersReduced;
+}
+```
+
+## Checklist
+
+- [ ] Animation serves a clear purpose
+- [ ] Duration appropriate for element size
+- [ ] Easing feels natural
+- [ ] Only animates transform/opacity
+- [ ] Respects `prefers-reduced-motion`
+- [ ] No flashing (> 3 times per second)
+- [ ] Performance acceptable on low-end devices
+

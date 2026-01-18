@@ -1,0 +1,38 @@
+{
+  "name": "design",
+  "version": "1.0.0",
+  "description": "UI/UX design patterns and accessibility standards",
+  "repository": "https://github.com/levifig/agent-skills",
+  "license": "MIT",
+  "agents": [
+    "./agents/design.md"
+  ],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/design-a11y-validation.sh",
+            "description": "Validate accessibility after changes"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/design-token-check.sh",
+            "description": "Check design token usage"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/design-a11y-audit.sh",
+            "description": "Full accessibility audit"
+          }
+        ]
+      }
+    ]
+  },
+  "skills": [
+    "./skills/design/SKILL.md",
+    "./skills/foundations/SKILL.md"
+  ]
+}
