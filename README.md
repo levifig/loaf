@@ -2,30 +2,40 @@
 
 Universal skills for AI coding assistants. One source, multiple targets: Claude Code, OpenCode, Cursor, Copilot.
 
-## Quick Start
-
-```bash
-npm install
-npm run build
-```
-
 ## Installation
 
-### Claude Code
+```bash
+curl -fsSL https://raw.githubusercontent.com/levifig/agent-skills/main/install.sh | bash
+```
+
+The installer will:
+1. Detect which AI tools you have installed
+2. Let you select which targets to install
+3. Build and install to each selected target
+
+### Update
 
 ```bash
-/plugin marketplace add levifig/agent-skills
+~/.local/share/agent-skills/install.sh --update
+```
+
+### Manual Installation
+
+If you prefer manual installation:
+
+**Claude Code:**
+```bash
+/plugin marketplace add ~/.local/share/agent-skills/dist/claude-code
 /plugin install orchestration@levifig   # PM coordination
 /plugin install foundations@levifig     # Quality gates
 /plugin install python@levifig          # Python projects
 ```
 
-### Other Tools
+**OpenCode:** Copy `dist/opencode/` contents to `~/.config/opencode/`
 
-Copy from `dist/`:
-- **OpenCode**: `dist/opencode/` → your config directory
-- **Cursor**: `dist/cursor/.cursor/` → project root
-- **Copilot**: `dist/copilot/.github/` → repository
+**Cursor:** Copy `dist/cursor/.cursor/rules/` to your project
+
+**Copilot:** Copy `dist/copilot/.github/` to your repository
 
 ## Agents
 
@@ -51,6 +61,20 @@ Copy from `dist/`:
 | `infrastructure` | Docker, K8s, Terraform |
 | `design` | Accessibility, design systems |
 
+## Development
+
+For contributors working on the skills themselves:
+
+```bash
+git clone https://github.com/levifig/agent-skills.git
+cd agent-skills
+npm install
+npm run build        # Build all targets
+npm run build:claude-code  # Build specific target
+```
+
+See [AGENTS.md](AGENTS.md) for the full maintenance guide.
+
 ## Structure
 
 ```
@@ -62,17 +86,6 @@ config/          # Build configuration
 build/           # Build system
 dist/            # Generated (gitignored)
 ```
-
-## Adding Content
-
-**New skill:**
-1. Create `skills/{name}/SKILL.md`
-2. Add references in `skills/{name}/reference/`
-3. Register in `config/hooks.yaml`
-
-**New agent:**
-1. Create `agents/{name}.md` with frontmatter
-2. Add to plugin group in `config/hooks.yaml`
 
 ## License
 
