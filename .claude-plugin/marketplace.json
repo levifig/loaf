@@ -1,0 +1,83 @@
+{
+  "name": "levifig-agent-skills",
+  "owner": {
+    "name": "Levi Figueira",
+    "email": "me@levifig.com"
+  },
+  "metadata": {
+    "description": "Universal agent skills for AI coding assistants. PM orchestration, code foundations, and language-specific plugins.",
+    "version": "2.0.0"
+  },
+  "plugins": [
+    {
+      "name": "orchestration",
+      "description": "PM orchestration, session management, Linear workflow integration",
+      "source": "./dist/claude-code/plugins/orchestration",
+      "version": "2.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/levifig/agent-skills",
+      "keywords": ["pm", "orchestration", "linear", "sessions"],
+      "category": "workflow"
+    },
+    {
+      "name": "foundations",
+      "description": "Cross-language quality gates: code style, documentation, security, commits",
+      "source": "./dist/claude-code/plugins/foundations",
+      "version": "2.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/levifig/agent-skills",
+      "keywords": ["code-style", "documentation", "security", "quality"],
+      "category": "development"
+    },
+    {
+      "name": "python",
+      "description": "Python 3.12+ with FastAPI, Pydantic, pytest, and strict typing",
+      "source": "./dist/claude-code/plugins/python",
+      "version": "2.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/levifig/agent-skills",
+      "keywords": ["python", "fastapi", "pydantic", "pytest"],
+      "category": "development"
+    },
+    {
+      "name": "typescript",
+      "description": "TypeScript and React with Next.js, type safety, and accessibility",
+      "source": "./dist/claude-code/plugins/typescript",
+      "version": "2.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/levifig/agent-skills",
+      "keywords": ["typescript", "react", "nextjs", "frontend"],
+      "category": "development"
+    },
+    {
+      "name": "rails",
+      "description": "Rails 8+ following The Rails Way with Hotwire and Minitest",
+      "source": "./dist/claude-code/plugins/rails",
+      "version": "2.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/levifig/agent-skills",
+      "keywords": ["rails", "ruby", "hotwire", "minitest"],
+      "category": "development"
+    },
+    {
+      "name": "infrastructure",
+      "description": "DevOps patterns for Docker, Kubernetes, Terraform, and CI/CD",
+      "source": "./dist/claude-code/plugins/infrastructure",
+      "version": "2.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/levifig/agent-skills",
+      "keywords": ["docker", "kubernetes", "terraform", "devops"],
+      "category": "infrastructure"
+    },
+    {
+      "name": "design",
+      "description": "UI/UX design patterns with WCAG 2.1 AA+ accessibility",
+      "source": "./dist/claude-code/plugins/design",
+      "version": "2.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/levifig/agent-skills",
+      "keywords": ["design", "ui", "ux", "accessibility"],
+      "category": "design"
+    }
+  ]
+}
