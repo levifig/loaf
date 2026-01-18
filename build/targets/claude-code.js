@@ -33,8 +33,19 @@ const REPOSITORY = "https://github.com/levifig/agent-skills";
 
 /**
  * Build Claude Code distribution to repo root
+ *
+ * Note: Claude Code uses canonical format from source files.
+ * Future: May use sidecars for plugin metadata or conditional transforms.
  */
-export async function build({ config, rootDir, srcDir, distDir }) {
+export async function build({
+  config,
+  targetConfig,
+  targetsConfig,
+  rootDir,
+  srcDir,
+  distDir,
+  targetName,
+}) {
   // distDir is the repo root for claude-code target
   const pluginsDir = join(distDir, "plugins");
   const marketplaceDir = join(distDir, ".claude-plugin");
@@ -162,7 +173,7 @@ function createPluginJson(pluginName, pluginConfig, config, pluginDir) {
         matcher,
         hooks: hookList.map((h) => ({
           type: "command",
-          command: `bash \${CLAUDE_PLUGIN_ROOT}/${getHookPath(h)}`,
+          command: getHookCommand(h),
           ...(h.timeout && { timeout: h.timeout }),
           ...(h.description && { description: h.description }),
         })),
@@ -182,7 +193,7 @@ function createPluginJson(pluginName, pluginConfig, config, pluginDir) {
         matcher,
         hooks: hookList.map((h) => ({
           type: "command",
-          command: `bash \${CLAUDE_PLUGIN_ROOT}/${getHookPath(h)}`,
+          command: getHookCommand(h),
           ...(h.description && { description: h.description }),
         })),
       })
@@ -204,7 +215,7 @@ function createPluginJson(pluginName, pluginConfig, config, pluginDir) {
         hooks: [
           {
             type: "command",
-            command: `bash \${CLAUDE_PLUGIN_ROOT}/${getHookPath(hook)}`,
+            command: getHookCommand(hook),
             ...(hook.description && { description: hook.description }),
             ...(hook.timeout && { timeout: hook.timeout }),
           },
@@ -246,6 +257,24 @@ function getHookPath(hook) {
   const parts = hook.script.split("/");
   const filename = parts[parts.length - 1];
   return `hooks/${filename}`;
+}
+
+/**
+ * Get the command to run a hook script with the appropriate interpreter
+ */
+function getHookCommand(hook) {
+  const hookPath = getHookPath(hook);
+  const filename = hookPath.split("/").pop();
+
+  // Determine interpreter based on file extension
+  if (filename.endsWith(".py")) {
+    return `python3 \${CLAUDE_PLUGIN_ROOT}/${hookPath}`;
+  } else if (filename.endsWith(".sh")) {
+    return `bash \${CLAUDE_PLUGIN_ROOT}/${hookPath}`;
+  } else {
+    // Default to bash for unknown extensions
+    return `bash \${CLAUDE_PLUGIN_ROOT}/${hookPath}`;
+  }
 }
 
 /**

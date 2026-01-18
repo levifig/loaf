@@ -6,6 +6,9 @@
  * └── .github/
  *     └── copilot-instructions.md
  *
+ * Uses sidecar metadata for truncation settings.
+ * See src/config/targets.yaml for defaults.
+ *
  * Note: Copilot doesn't support hooks, so we include manual check instructions.
  */
 
@@ -17,22 +20,35 @@ import {
   readdirSync,
 } from "fs";
 import { join } from "path";
+import { loadSkillSidecar, getTargetDefaults } from "../lib/sidecar.js";
+
+const TARGET_NAME = "copilot";
 
 /**
  * Build Copilot distribution
  */
-export async function build({ config, rootDir, srcDir, distDir }) {
+export async function build({
+  config,
+  targetConfig,
+  targetsConfig,
+  rootDir,
+  srcDir,
+  distDir,
+}) {
   const githubDir = join(distDir, ".github");
   mkdirSync(githubDir, { recursive: true });
 
+  // Get skill defaults for this target
+  const skillDefaults = getTargetDefaults(targetsConfig, TARGET_NAME, "skills");
+
   // Generate combined instructions file
-  generateInstructions(config, srcDir, githubDir);
+  generateInstructions(config, srcDir, githubDir, skillDefaults);
 }
 
 /**
  * Generate copilot-instructions.md
  */
-function generateInstructions(config, srcDir, githubDir) {
+function generateInstructions(config, srcDir, githubDir, skillDefaults) {
   let content = `# Copilot Instructions
 
 This file provides context and guidelines for GitHub Copilot to generate better code suggestions.
@@ -47,7 +63,7 @@ This project uses the following technologies and patterns. Please follow these g
   content += generateAgentSection(srcDir);
 
   // Add skill summaries
-  content += generateSkillsSection(srcDir);
+  content += generateSkillsSection(srcDir, skillDefaults);
 
   // Add quality checks (manual since no hooks)
   content += generateQualitySection(config);
@@ -95,7 +111,7 @@ When working on different parts of the codebase, consider these specialized pers
 /**
  * Generate skills section
  */
-function generateSkillsSection(srcDir) {
+function generateSkillsSection(srcDir, defaults) {
   const skillsDir = join(srcDir, "skills");
   if (!existsSync(skillsDir)) {
     return "";
@@ -110,15 +126,24 @@ function generateSkillsSection(srcDir) {
     .map((d) => d.name);
 
   for (const skill of skills) {
-    const skillMdPath = join(skillsDir, skill, "SKILL.md");
+    const skillDir = join(skillsDir, skill);
+    const skillMdPath = join(skillDir, "SKILL.md");
     if (!existsSync(skillMdPath)) {
       continue;
     }
 
+    // Load sidecar config merged with defaults
+    const sidecarConfig = loadSkillSidecar(skillDir, TARGET_NAME, defaults);
+    const truncateConfig = sidecarConfig.truncate || { max_chars: 1500 };
+
     const skillContent = readFileSync(skillMdPath, "utf-8");
 
-    // Extract key sections (first 2000 chars to keep file manageable)
-    const truncatedContent = extractKeyContent(skillContent, skill);
+    // Extract key sections with truncation from config
+    const truncatedContent = extractKeyContent(
+      skillContent,
+      skill,
+      truncateConfig.max_chars
+    );
     section += `### ${capitalize(skill)}\n\n${truncatedContent}\n\n`;
   }
 
@@ -177,7 +202,7 @@ Since Copilot doesn't support automated hooks, ensure you run these checks:
 /**
  * Extract key content from skill file
  */
-function extractKeyContent(content, skill) {
+function extractKeyContent(content, skill, maxChars) {
   // Remove frontmatter
   const withoutFrontmatter = content.replace(/^---\n[\s\S]*?\n---\n/, "");
 
@@ -185,7 +210,6 @@ function extractKeyContent(content, skill) {
   const lines = withoutFrontmatter.split("\n");
   const extracted = [];
   let charCount = 0;
-  const maxChars = 1500;
 
   for (const line of lines) {
     if (charCount > maxChars) {

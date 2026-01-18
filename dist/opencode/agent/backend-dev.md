@@ -1,21 +1,25 @@
 ---
 name: backend-dev
-description: Backend services developer. Detects stack and loads appropriate skill (Python, Rails, or TypeScript backend).
-skills: [foundations]
+description: >-
+  Backend services developer. Detects stack and loads appropriate skill (Python,
+  Rails, or TypeScript backend).
+skills:
+  - foundations
 conditional-skills:
   - skill: python
-    when: "pyproject.toml OR requirements.txt OR *.py in src/"
+    when: pyproject.toml OR requirements.txt OR *.py in src/
   - skill: rails
-    when: "Gemfile OR config/routes.rb OR app/models/"
+    when: Gemfile OR config/routes.rb OR app/models/
   - skill: typescript
-    when: "package.json with express|nest|hono|fastify"
+    when: package.json with express|nest|hono|fastify
 tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+mode: subagent
 ---
 
 # Backend Developer Agent

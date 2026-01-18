@@ -1,0 +1,14 @@
+# OpenCode-specific overrides for PM agent
+# PM is the primary orchestrator in OpenCode (mode: primary vs subagent default)
+# OpenCode uses @ mentions for subagents instead of Task() tools
+
+frontmatter:
+  name: PM
+  mode: primary
+  tools:
+    # Remove Task() tools - OpenCode uses @ mentions for subagent delegation
+    remove:
+      - "Task(*)"
+    # Add OpenCode's Task permission (for general background tasks, not subagents)
+    add:
+      Task: true

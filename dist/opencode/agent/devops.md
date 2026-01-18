@@ -1,14 +1,19 @@
 ---
 name: devops
-description: DevOps engineer for Docker, Kubernetes, CI/CD, and infrastructure. Use for containerization, deployment pipelines, and infrastructure changes.
-skills: [infrastructure, foundations]
+description: >-
+  DevOps engineer for Docker, Kubernetes, CI/CD, and infrastructure. Use for
+  containerization, deployment pipelines, and infrastructure changes.
+skills:
+  - infrastructure
+  - foundations
 tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+mode: subagent
 ---
 
 # DevOps Engineer Agent

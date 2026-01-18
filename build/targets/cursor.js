@@ -10,18 +10,40 @@
  *         ├── rails.mdc
  *         └── ...
  *
+ * Uses sidecar metadata for globs and truncation settings.
+ * See src/config/targets.yaml for defaults, skills can override via SKILL.cursor.yaml.
+ *
  * Note: Cursor doesn't support hooks, so we include manual check instructions.
  */
 
-import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from "fs";
+import {
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+} from "fs";
 import { join } from "path";
+import { loadSkillSidecar, getTargetDefaults } from "../lib/sidecar.js";
+
+const TARGET_NAME = "cursor";
 
 /**
  * Build Cursor distribution
  */
-export async function build({ config, rootDir, srcDir, distDir }) {
+export async function build({
+  config,
+  targetConfig,
+  targetsConfig,
+  rootDir,
+  srcDir,
+  distDir,
+}) {
   const rulesDir = join(distDir, ".cursor", "rules");
   mkdirSync(rulesDir, { recursive: true });
+
+  // Get skill defaults for this target
+  const skillDefaults = getTargetDefaults(targetsConfig, TARGET_NAME, "skills");
 
   // Generate a rule file for each skill
   const skillsDir = join(srcDir, "skills");
@@ -31,7 +53,7 @@ export async function build({ config, rootDir, srcDir, distDir }) {
       .map((d) => d.name);
 
     for (const skill of skills) {
-      generateSkillRule(skill, srcDir, rulesDir, config);
+      generateSkillRule(skill, srcDir, rulesDir, config, skillDefaults);
     }
   }
 
@@ -42,7 +64,7 @@ export async function build({ config, rootDir, srcDir, distDir }) {
 /**
  * Generate .mdc rule file for a skill
  */
-function generateSkillRule(skillName, srcDir, rulesDir, config) {
+function generateSkillRule(skillName, srcDir, rulesDir, config, defaults) {
   const skillDir = join(srcDir, "skills", skillName);
   const skillMdPath = join(skillDir, "SKILL.md");
 
@@ -51,6 +73,13 @@ function generateSkillRule(skillName, srcDir, rulesDir, config) {
   }
 
   const skillContent = readFileSync(skillMdPath, "utf-8");
+
+  // Load sidecar config merged with defaults
+  const sidecarConfig = loadSkillSidecar(skillDir, TARGET_NAME, defaults);
+
+  // Get globs from sidecar or defaults
+  const globs = sidecarConfig.globs || ["**/*"];
+  const truncateConfig = sidecarConfig.truncate || { max_chars: 1500, max_files: 5 };
 
   // Find associated hooks for manual check instructions
   const pluginGroup = Object.entries(config["plugin-groups"]).find(
@@ -90,13 +119,13 @@ ${postHookIds
     }
   }
 
-  // Read reference files
+  // Read reference files with truncation from config
   const referenceDir = join(skillDir, "reference");
   let referenceContent = "";
   if (existsSync(referenceDir)) {
     const refFiles = readdirSync(referenceDir)
       .filter((f) => f.endsWith(".md"))
-      .slice(0, 5); // Limit to avoid too large files
+      .slice(0, truncateConfig.max_files);
 
     for (const refFile of refFiles) {
       const refPath = join(referenceDir, refFile);
@@ -105,11 +134,14 @@ ${postHookIds
     }
   }
 
+  // Format globs for YAML
+  const globsYaml = globs.map((g) => `  - "${g}"`).join("\n");
+
   // Build MDC content
   const mdcContent = `---
 description: ${skillName} development patterns and best practices
 globs:
-${getGlobsForSkill(skillName)}
+${globsYaml}
 ---
 
 ${skillContent}
@@ -161,36 +193,4 @@ These are the specialized agents and their responsibilities:
   }
 
   writeFileSync(join(rulesDir, "agents.mdc"), content);
-}
-
-/**
- * Get glob patterns for a skill
- */
-function getGlobsForSkill(skillName) {
-  const globs = {
-    python: `  - "**/*.py"
-  - "**/pyproject.toml"
-  - "**/requirements*.txt"`,
-    typescript: `  - "**/*.ts"
-  - "**/*.tsx"
-  - "**/tsconfig*.json"
-  - "**/package.json"`,
-    rails: `  - "**/*.rb"
-  - "**/Gemfile"
-  - "app/**/*"
-  - "config/**/*"`,
-    infrastructure: `  - "**/Dockerfile*"
-  - "**/*.yaml"
-  - "**/*.yml"
-  - "**/terraform/**/*"`,
-    design: `  - "**/*.css"
-  - "**/*.scss"
-  - "**/*.tsx"
-  - "**/tailwind.config.*"`,
-    foundations: `  - "**/*"`,
-    orchestration: `  - ".agents/**/*"
-  - "**/*.md"`,
-  };
-
-  return globs[skillName] || `  - "**/*"`;
 }

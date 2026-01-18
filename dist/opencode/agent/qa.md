@@ -1,21 +1,25 @@
 ---
 name: qa
-description: Quality assurance engineer for testing, code review, and security audits. Use for unit tests, integration tests, code review, and security checks.
-skills: [foundations]
+description: >-
+  Quality assurance engineer for testing, code review, and security audits. Use
+  for unit tests, integration tests, code review, and security checks.
+skills:
+  - foundations
 conditional-skills:
   - skill: python
-    when: "pytest.ini OR pyproject.toml with pytest"
+    when: pytest.ini OR pyproject.toml with pytest
   - skill: rails
-    when: "test/ directory with *_test.rb"
+    when: test/ directory with *_test.rb
   - skill: typescript
-    when: "vitest.config.* OR jest.config.*"
+    when: vitest.config.* OR jest.config.*
 tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Glob
-  - Grep
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+mode: subagent
 ---
 
 # Quality Assurance Agent
