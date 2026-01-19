@@ -142,6 +142,17 @@ detect_tools() {
         fi
     fi
 
+    # Codex
+    if command -v codex &> /dev/null || [[ -d "${HOME}/.codex" ]]; then
+        TOOL_KEYS+=("codex")
+        TOOL_NAMES+=("Codex")
+        if [[ -d "${HOME}/.codex/skills" ]]; then
+            TOOL_INSTALLED+=("yes")
+        else
+            TOOL_INSTALLED+=("no")
+        fi
+    fi
+
     # Copilot - always available
     TOOL_KEYS+=("copilot")
     TOOL_NAMES+=("GitHub Copilot")
@@ -149,7 +160,7 @@ detect_tools() {
 }
 
 check_existing_installation() {
-    [[ -d "${INSTALL_DIR}" ]] && [[ -f "${INSTALL_DIR}/.version" || -d "${INSTALL_DIR}/opencode" ]]
+    [[ -d "${INSTALL_DIR}" ]] && [[ -f "${INSTALL_DIR}/.version" || -d "${INSTALL_DIR}/opencode" || -d "${INSTALL_DIR}/cursor" || -d "${INSTALL_DIR}/copilot" || -d "${INSTALL_DIR}/codex" ]]
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -300,7 +311,7 @@ clone_or_update() {
             spinner "Cloning repository" git clone --depth 1 "${REPO_URL}" "${temp_dir}"
         fi
 
-        # Copy only dist/ to cache (for OpenCode, Cursor, Copilot)
+        # Copy only dist/ to cache (for OpenCode, Cursor, Copilot, Codex)
         rm -rf "${INSTALL_DIR}"
         mkdir -p "${INSTALL_DIR}"
         cp -r "${temp_dir}/dist/"* "${INSTALL_DIR}/"
@@ -363,6 +374,21 @@ install_cursor() {
     print_success "Cursor rules ready"
     print_info "Copy to your project:"
     print_info "  cp -r ${dist}/.cursor/rules <project>/.cursor/"
+}
+
+install_codex() {
+    local dist="${INSTALL_DIR}/codex/.codex/skills"
+    local config="${HOME}/.codex/skills"
+
+    mkdir -p "${config}"
+
+    if command -v rsync &> /dev/null; then
+        rsync -a --delete "${dist}/" "${config}/"
+    else
+        cp -r "${dist}/"* "${config}/" 2>/dev/null || true
+    fi
+
+    print_success "Codex skills installed to ${config}"
 }
 
 install_copilot() {
@@ -480,6 +506,17 @@ main() {
     print_step "3" "Other targets"
 
     if [[ -n "$specific_target" ]]; then
+        local valid_target=false
+        for target in "${TOOL_KEYS[@]}"; do
+            if [[ "$target" == "$specific_target" ]]; then
+                valid_target=true
+                break
+            fi
+        done
+        if [[ "$valid_target" == false ]]; then
+            print_error "Unknown target: ${specific_target}"
+            exit 1
+        fi
         SELECTED_TARGETS=("$specific_target")
         print_info "Target: $specific_target"
         echo ""
@@ -492,10 +529,15 @@ main() {
     fi
 
     # Check for existing installation
-    if check_existing_installation && [[ "$force_fresh" != true ]]; then
-        if ! prompt_update; then
+    if check_existing_installation; then
+        if [[ "$force_fresh" == true ]]; then
             print_info "Removing existing installation..."
             rm -rf "${INSTALL_DIR}"
+        else
+            if ! prompt_update; then
+                print_info "Keeping existing installation."
+                return 0
+            fi
         fi
         echo ""
     fi
@@ -517,6 +559,7 @@ main() {
             case $target in
                 opencode) install_opencode ;;
                 cursor) install_cursor ;;
+                codex) install_codex ;;
                 copilot) install_copilot ;;
             esac
         done

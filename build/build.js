@@ -7,12 +7,13 @@
  * - OpenCode: dist/opencode/ with flat skill/, agent/, command/, plugin/
  * - Cursor: dist/cursor/.cursor/rules/*.mdc
  * - Copilot: dist/copilot/.github/copilot-instructions.md
+ * - Codex: dist/codex/.codex/skills/ (skills only)
  *
  * Usage:
  *   node build/build.js [target]
  *
  * Targets:
- *   all (default), claude-code, opencode, cursor, copilot
+ *   all (default), claude-code, opencode, cursor, copilot, codex
  */
 
 import { readFileSync, existsSync } from "fs";
@@ -49,6 +50,7 @@ const TARGETS = {
   opencode: () => import("./targets/opencode.js"),
   cursor: () => import("./targets/cursor.js"),
   copilot: () => import("./targets/copilot.js"),
+  codex: () => import("./targets/codex.js"),
 };
 
 async function build(targetName, hooksConfig, targetsConfig) {

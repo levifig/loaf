@@ -1,6 +1,6 @@
 # Universal Agent Skills
 
-Universal skills for AI coding assistants. One source, multiple targets: Claude Code, OpenCode, Cursor, Copilot.
+Universal skills for AI coding assistants. One source, multiple targets: Claude Code, OpenCode, Cursor, Copilot, and Codex.
 
 ## Installation
 
@@ -16,7 +16,7 @@ Then browse and install plugins via `/plugin`.
 
 No local installation needed - Claude Code fetches from GitHub and handles caching automatically.
 
-### OpenCode, Cursor, Copilot
+### OpenCode, Cursor, Copilot, Codex
 
 Run the installer:
 
@@ -38,6 +38,7 @@ The installer will:
 | OpenCode | `~/.config/opencode/{skill,agent,command,plugin}/` |
 | Cursor | Instructions to copy `.cursor/rules/` to your project |
 | Copilot | Instructions to copy `.github/copilot-instructions.md` to your repo |
+| Codex | `~/.codex/skills` |
 
 ### Update
 
@@ -59,7 +60,7 @@ Source (src/skills/, src/agents/, src/hooks/)
          │
          ▼
    Claude Code: plugins/, .claude-plugin/ (at repo root)
-   Others: dist/ (for OpenCode, Cursor, Copilot)
+   Others: dist/ (for OpenCode, Cursor, Copilot, Codex)
          │
          ├──► Claude Code: fetches plugins/ directly from GitHub
          │
@@ -132,7 +133,7 @@ After `npm run build`:
   ```
   /plugin marketplace add /path/to/agent-skills
   ```
-- **OpenCode/Cursor/Copilot**: Copy from `dist/` to target locations
+- **OpenCode/Cursor/Copilot/Codex**: Copy from `dist/` to target locations
 
 ### Workflow
 
@@ -162,7 +163,8 @@ agent-skills/
 ├── dist/                    # Other distributions (committed by CI)
 │   ├── opencode/            # OpenCode skills, agents, plugins
 │   ├── cursor/              # Cursor rules (.mdc files)
-│   └── copilot/             # Copilot instructions
+│   ├── copilot/             # Copilot instructions
+│   └── codex/               # Codex skills (.codex/skills)
 ├── AGENTS.md                # Universal agent instructions
 ├── CLAUDE.md -> AGENTS.md   # Symlink for Claude Code
 └── install.sh               # Installer for non-Claude Code targets

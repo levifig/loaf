@@ -129,7 +129,7 @@ After each significant action:
 1. Update `Current State`
 2. Add to progress checklist
 3. Update `Files Modified` if applicable
-4. Add entry to `Session Log` with timestamp
+4. Add entry to `Session Log` with timestamp (`YYYY-MM-DD HH:MM`)
 5. Update `Next Steps`
 
 ## Handoff Protocol
