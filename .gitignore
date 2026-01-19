@@ -16,6 +16,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# Local agent sessions
+.agents/
+
 # Environment files
 .env
 .env.local
