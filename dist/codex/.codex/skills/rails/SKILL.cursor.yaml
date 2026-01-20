@@ -1,0 +1,6 @@
+# Cursor-specific metadata for Rails skill
+globs:
+  - "**/*.rb"
+  - "**/Gemfile"
+  - "app/**/*"
+  - "config/**/*"

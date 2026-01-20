@@ -1,0 +1,5 @@
+# Cursor-specific metadata for Python skill
+globs:
+  - "**/*.py"
+  - "**/pyproject.toml"
+  - "**/requirements*.txt"
