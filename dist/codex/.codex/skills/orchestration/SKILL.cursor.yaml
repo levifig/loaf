@@ -1,0 +1,4 @@
+# Cursor-specific metadata for Orchestration skill
+globs:
+  - ".agents/**/*"
+  - "**/*.md"
