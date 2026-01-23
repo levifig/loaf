@@ -1,6 +1,8 @@
-# Universal Agent Skills
+# Agentic PM (APM) - Universal Agent Skills
 
-Universal skills for AI coding assistants. One source, multiple targets: Claude Code, OpenCode, Cursor, Copilot, and Codex.
+Universal skills for AI coding assistants. One source, multiple targets: Claude Code, OpenCode, and Agent Skills (Codex, Cursor, Copilot, Gemini).
+
+**Version:** 1.5.0
 
 ## Installation
 
@@ -12,11 +14,11 @@ Add the marketplace directly in Claude Code:
 /plugin marketplace add levifig/agent-skills
 ```
 
-Then browse and install plugins via `/plugin`.
+Then browse and install the `apm` plugin via `/plugin`.
 
 No local installation needed - Claude Code fetches from GitHub and handles caching automatically.
 
-### OpenCode, Codex, Cursor, Copilot
+### OpenCode, Agent Skills (Codex, Cursor, Copilot, Gemini)
 
 Run the installer:
 
@@ -79,7 +81,7 @@ GitHub Actions automatically builds and commits `plugins/` and `dist/` on every 
 **Implementation agents** (write code):
 | Agent | Use For |
 |-------|---------|
-| `backend-dev` | Python, Rails, Go, or TypeScript services |
+| `backend-dev` | Python, Ruby/Rails, Go, or TypeScript services |
 | `frontend-dev` | React, Next.js, UI components |
 | `devops` | Docker, Kubernetes, CI/CD |
 
@@ -95,16 +97,39 @@ GitHub Actions automatically builds and commits `plugins/` and `dist/` on every 
 
 | Skill | Coverage |
 |-------|----------|
-| `orchestration` | Sessions, councils, Linear integration |
+| `orchestration` | Sessions, councils, Linear integration, Shape Up methodology |
 | `foundations` | Code style, docs, security, commits |
 | `python` | FastAPI, Pydantic, pytest, async |
-| `typescript` | React, Next.js, type safety |
-| `rails` | Rails 8, Hotwire, Minitest |
+| `typescript` | TypeScript/JavaScript (.ts/.tsx/.js/.jsx), React, Next.js, type safety |
+| `ruby` | Ruby idioms, Rails 8, Hotwire, Minitest, gem dev, CLI tools, DHH/37signals philosophy |
 | `go` | Go services, concurrency, testing |
 | `database` | Schema design, migrations, query optimization |
 | `infrastructure` | Docker, K8s, Terraform |
 | `design` | Accessibility, design systems |
 | `power-systems` | Grid design, power electronics, renewable integration |
+
+## Plugin Scoping
+
+Commands and agents are scoped to avoid conflicts:
+
+```bash
+/apm:start-session          # Start a work session
+/apm:council-session        # Run a council deliberation
+Task(apm:backend-dev)       # Spawn backend developer agent
+```
+
+## Integrations
+
+**MCP Servers** (external tool integrations):
+- **Serena** - Code intelligence and semantic search
+- **Sequential Thinking** - Structured reasoning and problem decomposition
+- **Linear** - Issue tracking and project management
+
+**LSP Servers** (language intelligence):
+- **gopls** - Go language server
+- **pyright** - Python type checking and completion
+- **typescript-language-server** - TypeScript/JavaScript
+- **solargraph** - Ruby language server
 
 ## Development
 
