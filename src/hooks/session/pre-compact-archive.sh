@@ -1,9 +1,10 @@
 #!/bin/bash
-# Hook: Pre-compact session preservation reminder (INFORMATIONAL)
-# PreCompact hook - warns about recent session activity before context compaction
+# Hook: Pre-compact context preservation with agent archival
+# PreCompact hook - identifies sessions requiring preservation and provides
+# instructions for spawning context-archiver agent
 #
 # Triggers before conversation context is compacted
-# Identifies sessions modified recently that may need preservation
+# Outputs structured instructions for Claude to spawn context-archiver
 
 # Use CLAUDE_PROJECT_DIR if available, otherwise current directory
 SESSIONS_DIR="${CLAUDE_PROJECT_DIR:-.}/.agents/sessions"
@@ -16,31 +17,66 @@ if [ ! -d "$SESSIONS_DIR" ]; then
   exit 0
 fi
 
-echo "# Pre-Compact Session Check"
-echo ""
-
 # Find recently modified sessions
 RECENT_SESSIONS=$(find "$SESSIONS_DIR" -maxdepth 1 -name "*.md" -type f -mmin -${RECENT_THRESHOLD} 2>/dev/null)
 
-if [ -n "$RECENT_SESSIONS" ]; then
-  echo "**Warning**: Sessions modified in the last ${RECENT_THRESHOLD} minutes:"
-  echo ""
+# Count all active sessions (not in archive)
+SESSION_COUNT=$(find "$SESSIONS_DIR" -maxdepth 1 -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
 
-  echo "$RECENT_SESSIONS" | while read -r session; do
+# Build session list for agent prompt
+SESSION_LIST=""
+if [ -n "$RECENT_SESSIONS" ]; then
+  while read -r session; do
+    [ -z "$session" ] && continue
     FILENAME=$(basename "$session")
     TITLE=$(grep -E "^\s+title:" "$session" 2>/dev/null | head -1 | sed 's/.*title:\s*"\?\([^"]*\)"\?/\1/')
     STATUS=$(grep -E "^\s+status:" "$session" 2>/dev/null | head -1 | sed 's/.*status:\s*"\?\([^"]*\)"\?/\1/')
+    LINEAR=$(grep -E "^\s+linear_issue:" "$session" 2>/dev/null | head -1 | sed 's/.*linear_issue:\s*"\?\([^"]*\)"\?/\1/')
 
-    echo "- **$FILENAME**"
-    [ -n "$TITLE" ] && echo "  - Title: $TITLE"
-    [ -n "$STATUS" ] && echo "  - Status: $STATUS"
-    echo ""
-  done
+    SESSION_LIST="${SESSION_LIST}- **${FILENAME}**"
+    [ -n "$TITLE" ] && SESSION_LIST="${SESSION_LIST} - ${TITLE}"
+    [ -n "$LINEAR" ] && SESSION_LIST="${SESSION_LIST} (${LINEAR})"
+    SESSION_LIST="${SESSION_LIST}\n"
+  done <<< "$RECENT_SESSIONS"
+fi
 
-  echo "**Recommendations**:"
-  echo "- Ensure \`## Current State\` reflects latest progress"
-  echo "- Update session status if work phase changed"
-  echo "- Consider memory snapshots for complex decisions"
+# Output based on whether we have active sessions
+if [ -n "$RECENT_SESSIONS" ]; then
+  echo "# CRITICAL: Context Preservation Required"
+  echo ""
+  echo "**Action Required**: Before compaction proceeds, spawn the context-archiver agent"
+  echo "to preserve current work state for seamless resumption."
+  echo ""
+  echo "## Sessions Requiring Archive"
+  echo ""
+  echo -e "$SESSION_LIST"
+  echo ""
+  echo "## Spawn Command"
+  echo ""
+  echo "Use the Task tool to spawn the context-archiver agent:"
+  echo ""
+  echo '```'
+  echo 'Task(apt:context-archiver, "Preserve session state before compaction.'
+  echo ''
+  echo 'Sessions to archive:'
+  echo -e "$SESSION_LIST"
+  echo ''
+  echo 'Current work context:'
+  echo '- What task/issue is being worked on: [fill in]'
+  echo '- Last completed action: [fill in]'
+  echo '- Immediate next step planned: [fill in]'
+  echo '- Key decisions made: [fill in or None]'
+  echo '- Current blockers: [fill in or None]'
+  echo '")'
+  echo '```'
+  echo ""
+  echo "**Include in prompt**:"
+  echo "- What task/issue was being worked on"
+  echo "- Last completed action"
+  echo "- Immediate next step that was planned"
+  echo "- Any key decisions or blockers"
+  echo ""
+  echo "---"
   echo ""
 fi
 
@@ -58,19 +94,23 @@ if [ -d "$COUNCILS_DIR" ]; then
     done
 
     echo ""
-    echo "**Tip**: Ensure council decisions are captured and user-approved."
+    echo "**Tip**: Ensure council decisions are captured in session before compaction."
     echo ""
   fi
 fi
 
-# Count all active sessions
-SESSION_COUNT=$(find "$SESSIONS_DIR" -maxdepth 1 -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
-
+# Summary
 if [ "$SESSION_COUNT" -gt 0 ]; then
   echo "---"
   echo ""
   echo "**Total Active Sessions**: $SESSION_COUNT"
-  echo "**Reminder**: Sessions with significant decisions should be memorialized before deletion."
+  if [ -n "$RECENT_SESSIONS" ]; then
+    echo ""
+    echo "**Reminder**: The context-archiver agent will generate a Resumption Prompt section"
+    echo "in each session file. After compaction, read the session file to continue seamlessly."
+  else
+    echo "**Reminder**: Sessions with significant decisions should be memorialized before deletion."
+  fi
 fi
 
 exit 0
