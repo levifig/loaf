@@ -1,6 +1,8 @@
-# Universal Agent Skills
+# Agentic PM (APM) - Universal Agent Skills
 
 Universal skills for AI coding assistants. Skills contain knowledge, agents route to skills.
+
+**Version:** 1.5.0
 
 ## Philosophy
 
@@ -10,6 +12,8 @@ Universal skills for AI coding assistants. Skills contain knowledge, agents rout
 - **Agents**: Thin routing layers that detect context and load appropriate skills
 - **Hooks**: Automated quality gates that run before/after tool execution
 - **Commands**: Portable workflows that work across tools
+- **MCP Servers**: External integrations (Serena, Sequential Thinking, Linear)
+- **LSP Servers**: Language intelligence (gopls, pyright, typescript-language-server, solargraph)
 
 ---
 
@@ -48,11 +52,11 @@ The PM agent delegates research to Explore/Plan agents, then delegates implement
 
 | Skill | Domain | Key Topics |
 |-------|--------|------------|
-| `orchestration` | PM Workflow | Sessions, councils, Linear integration |
+| `orchestration` | PM Workflow | Sessions, councils, Linear integration, Shape Up methodology |
 | `foundations` | Quality | Code style, docs, security, commits |
 | `python` | Backend | FastAPI, Pydantic, pytest, async |
-| `typescript` | Full-stack | React, Next.js, type safety, testing |
-| `ruby` | Backend | Ruby idioms, Rails 8, Hotwire, Minitest, gem dev |
+| `typescript` | Full-stack | TypeScript/JavaScript, React, Next.js, type safety, testing |
+| `ruby` | Backend | Ruby idioms, Rails 8, Hotwire, Minitest, gem dev, CLI tools, DHH/37signals philosophy |
 | `go` | Backend | Go services, concurrency, testing |
 | `database` | Data | Schema design, migrations, query optimization |
 | `infrastructure` | DevOps | Docker, Kubernetes, Terraform |
@@ -60,6 +64,26 @@ The PM agent delegates research to Explore/Plan agents, then delegates implement
 | `power-systems` | Energy | Grid design, power electronics, renewable integration |
 
 Skills are guidelines, not tasks. They provide domain knowledge that agents reference when doing work.
+
+---
+
+## Plugin Scoping
+
+Commands and agents use scoped naming to avoid conflicts:
+
+```bash
+# Commands are scoped to the plugin
+/apm:start-session
+/apm:council-session
+/apm:review-sessions
+
+# Agents are scoped when spawning tasks
+Task(apm:backend-dev)
+Task(apm:frontend-dev)
+Task(apm:dba)
+```
+
+This allows multiple plugins to coexist without name collisions.
 
 ---
 
@@ -626,6 +650,7 @@ Use for:
 - Managing work sessions and handoffs
 - Running council deliberations
 - Coordinating Linear issues
+- Applying Shape Up methodology (appetite over estimates, shaping, circuit breakers, hill charts)
 
 **Never implements directly** - delegates research to Explore/Plan agents, then delegates implementation to implementation agents.
 
@@ -743,6 +768,31 @@ See `orchestration` skill for detailed council patterns.
 
 ---
 
+## Integrations
+
+### MCP Servers
+
+The plugin integrates with Model Context Protocol (MCP) servers for external tool access:
+
+| Server | Purpose |
+|--------|---------|
+| **Serena** | Code intelligence, semantic search, symbol navigation |
+| **Sequential Thinking** | Structured reasoning, problem decomposition |
+| **Linear** | Issue tracking, project management, sprint planning |
+
+### LSP Servers
+
+Language Server Protocol integration provides intelligent code assistance:
+
+| Server | Languages |
+|--------|-----------|
+| **gopls** | Go |
+| **pyright** | Python (type checking, completion) |
+| **typescript-language-server** | TypeScript, JavaScript |
+| **solargraph** | Ruby |
+
+---
+
 ## Quality Checklist
 
 Before committing changes to this repository:
@@ -786,9 +836,9 @@ No installation needed. Add the marketplace directly:
 /plugin marketplace add levifig/agent-skills
 ```
 
-Then browse and install plugins via `/plugin`. Updates are automatic.
+Then browse and install the `apm` plugin via `/plugin`. Updates are automatic.
 
-### OpenCode, Codex, Cursor, Copilot
+### OpenCode, Agent Skills (Codex, Cursor, Copilot, Gemini)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/levifig/agent-skills/main/install.sh | bash
