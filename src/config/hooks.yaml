@@ -250,7 +250,7 @@ hooks:
       script: hooks/session/pre-compact-archive.sh
       event: PreCompact
       timeout: 60000
-      description: Warn about recently modified sessions before context compaction
+      description: Identify active sessions and prompt for context-archiver agent to preserve state
 
 # Legacy plugin groupings (kept for documentation purposes)
 # NOTE: Claude Code build now creates a single unified "apt" plugin

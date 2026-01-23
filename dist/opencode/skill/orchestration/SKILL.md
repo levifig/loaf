@@ -34,6 +34,7 @@ Every release should be complete, polished, and delightful - no MVPs or quick ha
 | Feature planning | Define appetite, shape before building |
 | Agent selection | Match domain expertise to task |
 | Stuck on task | Check circuit breaker, consider reshaping |
+| Pre-compaction | Spawn context-archiver to preserve state |
 
 ## Topics
 
@@ -125,6 +126,18 @@ This skill uses paths from `.agents/config.json`:
 - Archive fields: `archived_at`, `archived_by` (required when archived)
 - Required sections: Context, Current State, Next Steps
 - Archive when complete (set status, `archived_at`, `archived_by`, move to `.agents/sessions/archive/`, update `.agents/` links)
+
+### Context Preservation (PreCompact)
+- PreCompact hook identifies sessions modified in last 60 minutes
+- Spawn `context-archiver` agent when prompted by hook
+- Agent generates `## Resumption Prompt` section for seamless continuation
+- After compaction, read session's Resumption Prompt to pick up where you left off
+
+### Transcript Archival (Post-Compaction)
+- Claude Code provides transcript path after `/compact` or `/clear`
+- Copy transcript to `.agents/transcripts/` (create directory if needed)
+- Add filename to session's `transcripts:` array in frontmatter
+- Preserves full audit trail for context recovery
 
 ### Councils
 - Always odd number: 5 or 7 agents

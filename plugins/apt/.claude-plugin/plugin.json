@@ -6,6 +6,7 @@
   "license": "MIT",
   "agents": [
     "./agents/backend-dev.md",
+    "./agents/context-archiver.md",
     "./agents/dba.md",
     "./agents/design.md",
     "./agents/devops.md",
@@ -242,7 +243,7 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact-archive.sh",
-            "description": "Warn about recently modified sessions before context compaction",
+            "description": "Identify active sessions and prompt for context-archiver agent to preserve state",
             "timeout": 60000
           }
         ]

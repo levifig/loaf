@@ -2,8 +2,6 @@
 
 Your personal agentic product team for AI coding assistants. Skills contain knowledge, agents route to skills.
 
-**Version:** 1.7.0
-
 ## Philosophy
 
 **Skills contain knowledge. Agents route to skills.**
