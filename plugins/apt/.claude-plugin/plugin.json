@@ -1,7 +1,7 @@
 {
-  "name": "apm",
-  "version": "1.5.0",
-  "description": "Agentic PM - Universal agent skills for AI coding assistants",
+  "name": "apt",
+  "version": "1.6.0",
+  "description": "APT - Your Personal Agentic Product Team",
   "repository": "https://github.com/levifig/agent-skills",
   "license": "MIT",
   "agents": [

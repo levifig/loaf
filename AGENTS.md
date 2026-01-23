@@ -1,8 +1,8 @@
-# Agentic PM (APM) - Universal Agent Skills
+# APT - Agentic Product Team
 
-Universal skills for AI coding assistants. Skills contain knowledge, agents route to skills.
+Your personal agentic product team for AI coding assistants. Skills contain knowledge, agents route to skills.
 
-**Version:** 1.5.0
+**Version:** 1.6.0
 
 ## Philosophy
 
@@ -73,14 +73,14 @@ Commands and agents use scoped naming to avoid conflicts:
 
 ```bash
 # Commands are scoped to the plugin
-/apm:start-session
-/apm:council-session
-/apm:review-sessions
+/apt:start-session
+/apt:council-session
+/apt:review-sessions
 
 # Agents are scoped when spawning tasks
-Task(apm:backend-dev)
-Task(apm:frontend-dev)
-Task(apm:dba)
+Task(apt:backend-dev)
+Task(apt:frontend-dev)
+Task(apt:dba)
 ```
 
 This allows multiple plugins to coexist without name collisions.
@@ -836,7 +836,7 @@ No installation needed. Add the marketplace directly:
 /plugin marketplace add levifig/agent-skills
 ```
 
-Then browse and install the `apm` plugin via `/plugin`. Updates are automatic.
+Then browse and install the `apt` plugin via `/plugin`. Updates are automatic.
 
 ### OpenCode, Agent Skills (Codex, Cursor, Copilot, Gemini)
 

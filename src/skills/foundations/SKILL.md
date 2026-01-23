@@ -36,6 +36,7 @@ Engineering foundations for consistent, secure, and well-documented code.
 | Commits | `reference/commits.md` | Commit messages, branches, PRs, Linear integration |
 | Documentation | `reference/documentation.md` | ADRs, API docs, changelogs |
 | Security | `reference/security.md` | Threat modeling, secrets, compliance |
+| Permissions | `reference/permissions.md` | Tool allowlists, sandbox config, agent permissions |
 
 ## Available Scripts
 

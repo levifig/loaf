@@ -253,14 +253,14 @@ hooks:
       description: Warn about recently modified sessions before context compaction
 
 # Legacy plugin groupings (kept for documentation purposes)
-# NOTE: Claude Code build now creates a single unified "apm" plugin
+# NOTE: Claude Code build now creates a single unified "apt" plugin
 # containing ALL agents, commands, skills, and hooks from src/
 #
 # The groupings below document logical relationships but are NOT used
 # by the build system. All hooks defined above are included in the
 # unified plugin automatically.
 #
-# Scoping in Claude Code: /apm:start-session, Task(apm:backend-dev)
+# Scoping in Claude Code: /apt:start-session, Task(apt:backend-dev)
 plugin-groups:
   # Orchestration - PM workflows and session management
   orchestration:

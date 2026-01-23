@@ -44,6 +44,8 @@ Every release should be complete, polished, and delightful - no MVPs or quick ha
 | Agent Delegation | [reference/delegation.md](reference/delegation.md) | Agent capabilities, spawn patterns, decision tree |
 | Council Workflow | [reference/councils.md](reference/councils.md) | Composition, deliberation, synthesis, user approval |
 | Session Management | [reference/sessions.md](reference/sessions.md) | Lifecycle, file format, handoffs, validation |
+| Session Resume | [reference/session-resume.md](reference/session-resume.md) | CLI flags, checkpoints, context recovery |
+| Context Management | [reference/context-management.md](reference/context-management.md) | /clear, /compact, 2-correction rule, subagents |
 | Linear Integration | [reference/linear.md](reference/linear.md) | Update format, magic words, status conventions |
 | Product Planning | [reference/planning.md](reference/planning.md) | Shape Up methodology, appetite, roadmaps, specs |
 
