@@ -1,63 +1,18 @@
-# Target Definitions and Defaults
-# Centralized configuration for multi-target builds
-#
-# Each target defines:
-#   - output: Where built files go (relative to repo root)
-#   - defaults: Default transforms applied to all files of that type
-#
-# Sidecars (e.g., pm.opencode.yaml) override these defaults per-file
+# Target Definitions
+# Each target defines where built files go (relative to repo root)
 
 targets:
   claude-code:
     output: plugins/
-    # Claude Code uses canonical format - no transforms needed
-    defaults:
-      agents: {}
-      skills: {}
+    # Full plugins with agents, skills, hooks, commands
+    # Skills use SKILL.md frontmatter + .claude-code.yaml extensions
 
   opencode:
     output: dist/opencode/
-    defaults:
-      agents:
-        frontmatter:
-          # Default mode for all agents (pm overrides to 'primary' via sidecar)
-          mode: subagent
-          tools:
-            # Convert tools from array to record format
-            # ["Read", "Write"] -> { Read: true, Write: true }
-            transform: array-to-record
-            # Remove Task() tools by default (OpenCode uses @ mentions)
-            remove:
-              - "Task(*)"
-            # Ensure subagents can read delegated tasks
-            add:
-              TodoRead: true
-      skills: {}
+    # Agents and skills with OpenCode-specific frontmatter
 
-  cursor:
-    output: dist/cursor/
-    defaults:
-      agents: {}
-      skills:
-        # Cursor rules use .mdc format with globs
-        # Default globs if no sidecar specified
-        globs:
-          - "**/*"
-        # Truncate reference content to keep files manageable
-        truncate:
-          max_chars: 1500
-          max_files: 5
-
-  copilot:
-    output: dist/copilot/
-    defaults:
-      agents: {}
-      skills:
-        # Truncate skill content in combined instructions file
-        truncate:
-          max_chars: 1500
-
-  codex:
-    output: dist/codex/
-    defaults:
-      skills: {}
+  agentskills:
+    output: dist/agentskills/
+    # Agent Skills format (name + description)
+    # Shared by: Codex, Cursor, Copilot, Gemini
+    # Skills copied directly from src/skills/ (frontmatter in SKILL.md)

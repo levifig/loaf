@@ -1,6 +1,11 @@
 ---
 name: infrastructure
-description: Use for infrastructure and DevOps work. Covers Docker, Kubernetes, GitOps, CI/CD pipelines, and troubleshooting.
+description: >-
+  Use for DevOps and infrastructure work. Covers Docker multi-stage builds,
+  Kubernetes manifests and Helm charts, GitOps with ArgoCD/Flux, GitHub Actions
+  CI/CD pipelines, and container security. Activate when working with
+  Dockerfile, k8s manifests, helm charts, CI workflows, or deployment
+  configuration.
 ---
 
 # Infrastructure

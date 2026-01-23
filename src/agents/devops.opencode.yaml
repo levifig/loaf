@@ -1,2 +1,11 @@
-frontmatter:
-  name: DevOps
+name: DevOps
+description: DevOps engineer for Docker, Kubernetes, CI/CD, and infrastructure. Use for containerization, deployment pipelines, and infrastructure changes.
+mode: subagent
+tools:
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+  TodoRead: true

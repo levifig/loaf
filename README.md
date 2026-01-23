@@ -16,7 +16,7 @@ Then browse and install plugins via `/plugin`.
 
 No local installation needed - Claude Code fetches from GitHub and handles caching automatically.
 
-### OpenCode, Cursor, Copilot, Codex
+### OpenCode, Codex, Cursor, Copilot
 
 Run the installer:
 
@@ -36,9 +36,9 @@ The installer will:
 | Target | Installation Location |
 |--------|----------------------|
 | OpenCode | `~/.config/opencode/{skill,agent,command,plugin}/` |
-| Cursor | Instructions to copy `.cursor/rules/` to your project |
-| Copilot | Instructions to copy `.github/copilot-instructions.md` to your repo |
-| Codex | `~/.codex/skills` |
+| Codex | `~/.codex/skills/` |
+| Cursor | Project `.cursor/rules/` |
+| Copilot | Repo `.github/copilot-instructions.md` |
 
 ### Update
 
@@ -60,7 +60,7 @@ Source (src/skills/, src/agents/, src/hooks/)
          │
          ▼
    Claude Code: plugins/, .claude-plugin/ (at repo root)
-   Others: dist/ (for OpenCode, Cursor, Copilot, Codex)
+   Others: dist/ (for OpenCode, Agent Skills)
          │
          ├──► Claude Code: fetches plugins/ directly from GitHub
          │
@@ -71,15 +71,25 @@ GitHub Actions automatically builds and commits `plugins/` and `dist/` on every 
 
 ## Agents
 
+**Orchestrator:**
 | Agent | Use For |
 |-------|---------|
 | `pm` | Orchestrating work, managing sessions, delegating |
-| `backend-dev` | Python, Rails, or TypeScript services |
+
+**Implementation agents** (write code):
+| Agent | Use For |
+|-------|---------|
+| `backend-dev` | Python, Rails, Go, or TypeScript services |
 | `frontend-dev` | React, Next.js, UI components |
-| `dba` | Schema design, migrations, queries |
 | `devops` | Docker, Kubernetes, CI/CD |
+
+**Advisory agents** (provide expertise in councils, delegate implementation):
+| Agent | Use For |
+|-------|---------|
+| `dba` | Schema design, migrations, queries |
 | `qa` | Testing, code review, security |
 | `design` | UI/UX, accessibility |
+| `power-systems` | Grid design, power electronics, renewable integration |
 
 ## Skills
 
@@ -90,8 +100,11 @@ GitHub Actions automatically builds and commits `plugins/` and `dist/` on every 
 | `python` | FastAPI, Pydantic, pytest, async |
 | `typescript` | React, Next.js, type safety |
 | `rails` | Rails 8, Hotwire, Minitest |
+| `go` | Go services, concurrency, testing |
+| `database` | Schema design, migrations, query optimization |
 | `infrastructure` | Docker, K8s, Terraform |
 | `design` | Accessibility, design systems |
+| `power-systems` | Grid design, power electronics, renewable integration |
 
 ## Development
 
@@ -107,7 +120,9 @@ npm install
 
 ```bash
 npm run build              # Build all targets
-npm run build:claude-code  # Build specific target
+npm run build:claude-code  # Claude Code plugins
+npm run build:opencode     # OpenCode format
+npm run build:agentskills  # Generic format (Codex, Cursor, Copilot, Gemini)
 ```
 
 ### Testing Your Changes
@@ -133,7 +148,7 @@ After `npm run build`:
   ```
   /plugin marketplace add /path/to/agent-skills
   ```
-- **OpenCode/Cursor/Copilot/Codex**: Copy from `dist/` to target locations
+- **OpenCode/Codex/Cursor/Copilot**: Copy from `dist/` to target locations
 
 ### Workflow
 
@@ -162,9 +177,7 @@ agent-skills/
 ├── .claude-plugin/          # Claude Code marketplace manifest (at root)
 ├── dist/                    # Other distributions (committed by CI)
 │   ├── opencode/            # OpenCode skills, agents, plugins
-│   ├── cursor/              # Cursor rules (.mdc files)
-│   ├── copilot/             # Copilot instructions
-│   └── codex/               # Codex skills (.codex/skills)
+│   └── agentskills/         # Generic format (Codex, Cursor, Copilot, Gemini)
 ├── AGENTS.md                # Universal agent instructions
 ├── CLAUDE.md -> AGENTS.md   # Symlink for Claude Code
 └── install.sh               # Installer for non-Claude Code targets

@@ -1,6 +1,11 @@
 ---
 name: rails
-description: Use for all Rails 8+ development. Covers models, controllers, views, Hotwire, API development, background jobs, security, testing, performance, deployment, and styling.
+description: >-
+  Use for all Rails 8+ development. Covers models with Active Record,
+  controllers, views, Hotwire (Turbo/Stimulus), API-only mode, Solid Queue
+  background jobs, authentication, Minitest testing, Kamal deployment, and
+  Tailwind styling. Activate when working with Gemfile, .rb files, or Rails
+  directory structure (app/models, app/controllers).
 ---
 
 # Rails 8+ Development

@@ -1,0 +1,5 @@
+# Claude Code extensions for TypeScript skill
+# Base name/description in SKILL.md
+
+agent: backend-dev
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep

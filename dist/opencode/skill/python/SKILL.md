@@ -1,6 +1,11 @@
 ---
 name: python
-description: Use for all Python 3.12+ development. Covers project setup, FastAPI, Pydantic, async patterns, type safety, pytest, database operations, data engineering, API clients, and production deployment.
+description: >-
+  Use for all Python 3.12+ development. Covers project setup with uv, FastAPI
+  web services, Pydantic validation, async/await patterns, type hints with mypy,
+  pytest testing, SQLAlchemy database operations, Polars data processing, httpx
+  API clients, and Docker deployment. Activate when working with .py files,
+  pyproject.toml, or Python frameworks.
 ---
 
 # Python Development
@@ -38,11 +43,11 @@ Comprehensive guide for modern Python 3.12+ development with FastAPI ecosystem.
 
 ## Core Philosophy
 
-- **Explicit is better than implicit** — clear, obvious code
-- **Simple is better than complex** — avoid unnecessary abstractions
-- **Readability counts** — code is read more than written
+Follows [foundations principles](../foundations/SKILL.md). Python-specific emphasis:
+
 - **Async by default** — non-blocking I/O for web services
-- **Strict typing** — catch errors at development time
+- **Strict typing** — catch errors at development time with mypy
+- **Pydantic everywhere** — validate at trust boundaries
 - **12-factor methodology** — environment-based configuration
 
 ## Quick Reference
@@ -157,18 +162,14 @@ async def test_create_user(client: AsyncClient):
 
 ### Always
 
-- Use type hints for all function signatures
-- Use async def for I/O operations
-- Use Pydantic for data validation
-- Use pathlib.Path for file operations
-- Handle exceptions explicitly
-- Run mypy in CI/CD
+- Use `async def` for I/O-bound operations
+- Use Pydantic models for external input validation
+- Use `pathlib.Path` for file operations
+- Run mypy in CI/CD pipeline
 
 ### Never
 
-- Use mutable default arguments
-- Block the event loop with sync I/O
-- Import * from modules
-- Use bare except clauses
+- Block the event loop with sync I/O in async code
+- Use mutable default arguments (`def foo(items=[])`)
 - Skip validation on external input
-- Hardcode configuration values
+- Hardcode configuration values (use pydantic-settings)

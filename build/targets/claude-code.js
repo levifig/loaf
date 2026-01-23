@@ -1,21 +1,24 @@
 /**
  * Claude Code Build Target
  *
- * Generates plugin marketplace structure at repo root:
+ * Generates a single unified plugin at repo root:
  * agent-skills/
  * ├── .claude-plugin/
  * │   └── marketplace.json
  * └── plugins/
- *     ├── orchestration/
- *     │   ├── .claude-plugin/plugin.json
- *     │   ├── agents/
- *     │   ├── skills/
- *     │   ├── commands/
- *     │   └── hooks/
- *     └── ...
+ *     └── apm/
+ *         ├── .claude-plugin/plugin.json
+ *         ├── agents/
+ *         ├── skills/
+ *         ├── commands/
+ *         └── hooks/
  *
  * This allows Claude Code to use:
  *   /plugin marketplace add levifig/agent-skills
+ *
+ * Scoping: /apm:start-session, Task(apm:backend-dev)
+ *
+ * Reads frontmatter from sidecars (e.g., pm.claude-code.yaml, SKILL.claude-code.yaml)
  */
 
 import {
@@ -24,18 +27,77 @@ import {
   writeFileSync,
   readFileSync,
   existsSync,
+  readdirSync,
   rmSync,
 } from "fs";
+import matter from "gray-matter";
 import { join } from "path";
+import {
+  loadAgentSidecar,
+  loadSkillFrontmatter,
+  loadSkillExtensions,
+  mergeSkillFrontmatter,
+} from "../lib/sidecar.js";
 
-const VERSION = "1.0.0";
+const VERSION = "1.5.0";
 const REPOSITORY = "https://github.com/levifig/agent-skills";
+const TARGET_NAME = "claude-code";
+const PLUGIN_NAME = "apm";
+const PLUGIN_DESCRIPTION =
+  "Agentic PM - Universal agent skills for AI coding assistants";
+
+// LSP Servers for code intelligence
+const LSP_SERVERS = {
+  go: {
+    command: "gopls",
+    args: ["serve"],
+    extensionToLanguage: { ".go": "go" },
+  },
+  python: {
+    command: "pyright-langserver",
+    args: ["--stdio"],
+    extensionToLanguage: { ".py": "python", ".pyi": "python" },
+  },
+  typescript: {
+    command: "typescript-language-server",
+    args: ["--stdio"],
+    extensionToLanguage: {
+      ".ts": "typescript",
+      ".tsx": "typescriptreact",
+      ".js": "javascript",
+      ".jsx": "javascriptreact",
+    },
+  },
+  ruby: {
+    command: "solargraph",
+    args: ["stdio"],
+    extensionToLanguage: { ".rb": "ruby", ".rake": "ruby", ".gemspec": "ruby" },
+  },
+};
+
+// MCP Servers bundled with the plugin
+const MCP_SERVERS = {
+  "sequential-thinking": {
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+  },
+  linear: {
+    command: "npx",
+    args: ["-y", "mcp-remote", "https://mcp.linear.app/mcp"],
+  },
+  serena: {
+    command: "uvx",
+    args: [
+      "--from",
+      "git+https://github.com/oraios/serena",
+      "serena",
+      "start-mcp-server",
+    ],
+  },
+};
 
 /**
  * Build Claude Code distribution to repo root
- *
- * Note: Claude Code uses canonical format from source files.
- * Future: May use sidecars for plugin metadata or conditional transforms.
  */
 export async function build({
   config,
@@ -62,22 +124,17 @@ export async function build({
   mkdirSync(pluginsDir, { recursive: true });
   mkdirSync(marketplaceDir, { recursive: true });
 
-  // Create marketplace.json
-  createMarketplace(config, marketplaceDir);
+  // Create marketplace.json with single plugin
+  createMarketplace(marketplaceDir);
 
-  // Build each plugin group
-  const pluginGroups = config["plugin-groups"];
-  for (const [pluginName, pluginConfig] of Object.entries(pluginGroups)) {
-    buildPlugin(pluginName, pluginConfig, config, srcDir, pluginsDir);
-  }
+  // Build the single unified plugin
+  buildUnifiedPlugin(config, srcDir, pluginsDir);
 }
 
 /**
  * Create marketplace.json for plugin discovery
  */
-function createMarketplace(config, marketplaceDir) {
-  const pluginGroups = config["plugin-groups"];
-
+function createMarketplace(marketplaceDir) {
   const marketplace = {
     name: "levifig-agent-skills",
     owner: {
@@ -85,18 +142,19 @@ function createMarketplace(config, marketplaceDir) {
       email: "me@levifig.com",
     },
     metadata: {
-      description:
-        "Universal agent skills for AI coding assistants. PM orchestration, code foundations, and language-specific plugins.",
+      description: PLUGIN_DESCRIPTION,
       version: VERSION,
     },
-    plugins: Object.entries(pluginGroups).map(([name, cfg]) => ({
-      name,
-      description: cfg.description,
-      source: `./plugins/${name}`,
-      version: VERSION,
-      license: "MIT",
-      repository: REPOSITORY,
-    })),
+    plugins: [
+      {
+        name: PLUGIN_NAME,
+        description: PLUGIN_DESCRIPTION,
+        source: `./plugins/${PLUGIN_NAME}`,
+        version: VERSION,
+        license: "MIT",
+        repository: REPOSITORY,
+      },
+    ],
   };
 
   writeFileSync(
@@ -106,68 +164,110 @@ function createMarketplace(config, marketplaceDir) {
 }
 
 /**
- * Build a single plugin
+ * Build the single unified plugin with all agents, commands, skills, and hooks
  */
-function buildPlugin(pluginName, pluginConfig, config, srcDir, pluginsDir) {
-  const pluginDir = join(pluginsDir, pluginName);
+function buildUnifiedPlugin(config, srcDir, pluginsDir) {
+  const pluginDir = join(pluginsDir, PLUGIN_NAME);
   mkdirSync(pluginDir, { recursive: true });
 
-  // Create plugin.json
-  createPluginJson(pluginName, pluginConfig, config, pluginDir);
+  // Discover all agents, commands, and skills from src/
+  const allAgents = discoverAgents(srcDir);
+  const allCommands = discoverCommands(srcDir);
+  const allSkills = discoverSkills(srcDir);
 
-  // Copy agents
-  copyAgents(pluginConfig.agents, srcDir, pluginDir);
+  // Create plugin.json with all hooks
+  createPluginJson(config, pluginDir, allAgents, allCommands, allSkills);
 
-  // Copy skills
-  copySkills(pluginConfig.skills, srcDir, pluginDir);
+  // Copy all agents
+  copyAgents(allAgents, srcDir, pluginDir);
 
-  // Copy commands (only for orchestration)
-  if (pluginConfig.commands) {
-    copyCommands(pluginConfig.commands, srcDir, pluginDir);
+  // Copy all skills
+  copySkills(allSkills, srcDir, pluginDir);
+
+  // Copy all commands
+  copyCommands(allCommands, srcDir, pluginDir);
+
+  // Copy all hooks
+  copyAllHooks(config, srcDir, pluginDir);
+
+  // Create .lsp.json for language server configurations
+  writeFileSync(
+    join(pluginDir, ".lsp.json"),
+    JSON.stringify(LSP_SERVERS, null, 2)
+  );
+
+  // Copy SETUP.md with installation instructions
+  const setupSrc = join(srcDir, "SETUP.md");
+  if (existsSync(setupSrc)) {
+    cpSync(setupSrc, join(pluginDir, "SETUP.md"));
   }
-
-  // Copy hooks
-  copyHooks(pluginConfig.hooks, config, srcDir, pluginDir);
 }
 
 /**
- * Create plugin.json with hook configuration
+ * Discover all agent files in src/agents/
  */
-function createPluginJson(pluginName, pluginConfig, config, pluginDir) {
+function discoverAgents(srcDir) {
+  const agentsDir = join(srcDir, "agents");
+  if (!existsSync(agentsDir)) return [];
+
+  return readdirSync(agentsDir)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.replace(".md", ""));
+}
+
+/**
+ * Discover all command files in src/commands/
+ */
+function discoverCommands(srcDir) {
+  const commandsDir = join(srcDir, "commands");
+  if (!existsSync(commandsDir)) return [];
+
+  return readdirSync(commandsDir)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.replace(".md", ""));
+}
+
+/**
+ * Discover all skill directories in src/skills/
+ */
+function discoverSkills(srcDir) {
+  const skillsDir = join(srcDir, "skills");
+  if (!existsSync(skillsDir)) return [];
+
+  return readdirSync(skillsDir).filter((f) => {
+    const skillPath = join(skillsDir, f);
+    return (
+      existsSync(join(skillPath, "SKILL.md")) ||
+      existsSync(join(skillPath, "reference"))
+    );
+  });
+}
+
+/**
+ * Create plugin.json with all hook configurations and MCP servers
+ */
+function createPluginJson(config, pluginDir, agents, commands, skills) {
   const pluginJson = {
-    name: pluginName,
+    name: PLUGIN_NAME,
     version: VERSION,
-    description: pluginConfig.description,
+    description: PLUGIN_DESCRIPTION,
     repository: REPOSITORY,
     license: "MIT",
-    agents: pluginConfig.agents.map((a) => `./agents/${a}.md`),
+    agents: agents.map((a) => `./agents/${a}.md`),
+    commands: commands.map((c) => `./commands/${c}.md`),
+    skills: skills.map((s) => `./skills/${s}/SKILL.md`),
     hooks: {},
+    mcpServers: MCP_SERVERS,
   };
 
-  // Add commands if present
-  if (pluginConfig.commands) {
-    pluginJson.commands = pluginConfig.commands.map(
-      (c) => `./commands/${c}.md`
-    );
-  }
-
-  // Add skills if present
-  if (pluginConfig.skills) {
-    pluginJson.skills = pluginConfig.skills.map(
-      (s) => `./skills/${s}/SKILL.md`
-    );
-  }
-
-  // Build hooks configuration
-  const hooks = pluginConfig.hooks || {};
+  // Collect all hooks from config
+  const allPreToolHooks = config.hooks["pre-tool"] || [];
+  const allPostToolHooks = config.hooks["post-tool"] || [];
+  const allSessionHooks = config.hooks.session || [];
 
   // Pre-tool hooks
-  if (hooks["pre-tool"]) {
-    const preToolHooks = hooks["pre-tool"]
-      .map((hookId) => config.hooks["pre-tool"].find((h) => h.id === hookId))
-      .filter(Boolean);
-
-    const preToolByMatcher = groupByMatcher(preToolHooks);
+  if (allPreToolHooks.length > 0) {
+    const preToolByMatcher = groupByMatcher(allPreToolHooks);
     pluginJson.hooks.PreToolUse = Object.entries(preToolByMatcher).map(
       ([matcher, hookList]) => ({
         matcher,
@@ -182,12 +282,8 @@ function createPluginJson(pluginName, pluginConfig, config, pluginDir) {
   }
 
   // Post-tool hooks
-  if (hooks["post-tool"]) {
-    const postToolHooks = hooks["post-tool"]
-      .map((hookId) => config.hooks["post-tool"].find((h) => h.id === hookId))
-      .filter(Boolean);
-
-    const postToolByMatcher = groupByMatcher(postToolHooks);
+  if (allPostToolHooks.length > 0) {
+    const postToolByMatcher = groupByMatcher(allPostToolHooks);
     pluginJson.hooks.PostToolUse = Object.entries(postToolByMatcher).map(
       ([matcher, hookList]) => ({
         matcher,
@@ -201,12 +297,8 @@ function createPluginJson(pluginName, pluginConfig, config, pluginDir) {
   }
 
   // Session hooks
-  if (hooks.session) {
-    const sessionHooks = hooks.session
-      .map((hookId) => config.hooks.session.find((h) => h.id === hookId))
-      .filter(Boolean);
-
-    for (const hook of sessionHooks) {
+  if (allSessionHooks.length > 0) {
+    for (const hook of allSessionHooks) {
       const eventName = hook.event; // SessionStart, SessionEnd, PreCompact
       if (!pluginJson.hooks[eventName]) {
         pluginJson.hooks[eventName] = [];
@@ -278,33 +370,82 @@ function getHookCommand(hook) {
 }
 
 /**
- * Copy agent files
+ * Copy agent files with frontmatter from sidecars
  */
 function copyAgents(agents, srcDir, pluginDir) {
   const agentsDir = join(pluginDir, "agents");
   mkdirSync(agentsDir, { recursive: true });
 
   for (const agent of agents) {
-    const src = join(srcDir, "agents", `${agent}.md`);
-    const dest = join(agentsDir, `${agent}.md`);
-    if (existsSync(src)) {
-      cpSync(src, dest);
+    const srcPath = join(srcDir, "agents", `${agent}.md`);
+    const destPath = join(agentsDir, `${agent}.md`);
+
+    if (!existsSync(srcPath)) {
+      continue;
     }
+
+    // Load frontmatter from sidecar
+    const frontmatter = loadAgentSidecar(srcPath, TARGET_NAME);
+
+    // Read body from source (strip existing frontmatter if any)
+    const content = readFileSync(srcPath, "utf-8");
+    const { content: body } = matter(content);
+
+    // Write with sidecar frontmatter
+    const transformed = matter.stringify(body, frontmatter);
+    writeFileSync(destPath, transformed);
   }
 }
 
 /**
- * Copy skill directories
+ * Copy skill directories with frontmatter from SKILL.md + optional extensions
  */
 function copySkills(skills, srcDir, pluginDir) {
   const skillsDir = join(pluginDir, "skills");
   mkdirSync(skillsDir, { recursive: true });
 
   for (const skill of skills) {
-    const src = join(srcDir, "skills", skill);
-    const dest = join(skillsDir, skill);
-    if (existsSync(src)) {
-      cpSync(src, dest, { recursive: true });
+    const skillSrc = join(srcDir, "skills", skill);
+    const skillDest = join(skillsDir, skill);
+
+    if (!existsSync(skillSrc)) {
+      continue;
+    }
+
+    mkdirSync(skillDest, { recursive: true });
+
+    // Load base frontmatter from SKILL.md
+    const baseFrontmatter = loadSkillFrontmatter(skillSrc);
+
+    // Load optional Claude Code extensions from sidecar
+    const extensions = loadSkillExtensions(skillSrc);
+
+    // Merge base with extensions
+    const frontmatter = mergeSkillFrontmatter(baseFrontmatter, extensions);
+
+    // Read SKILL.md body
+    const skillMdPath = join(skillSrc, "SKILL.md");
+    if (existsSync(skillMdPath)) {
+      const content = readFileSync(skillMdPath, "utf-8");
+      const { content: body } = matter(content);
+
+      // Write with merged frontmatter
+      const transformed = matter.stringify(body, frontmatter);
+      writeFileSync(join(skillDest, "SKILL.md"), transformed);
+    }
+
+    // Copy reference directory
+    const refSrc = join(skillSrc, "reference");
+    const refDest = join(skillDest, "reference");
+    if (existsSync(refSrc)) {
+      cpSync(refSrc, refDest, { recursive: true });
+    }
+
+    // Copy scripts directory
+    const scriptsSrc = join(skillSrc, "scripts");
+    const scriptsDest = join(skillDest, "scripts");
+    if (existsSync(scriptsSrc)) {
+      cpSync(scriptsSrc, scriptsDest, { recursive: true });
     }
   }
 }
@@ -326,11 +467,9 @@ function copyCommands(commands, srcDir, pluginDir) {
 }
 
 /**
- * Copy hook scripts
+ * Copy all hook scripts from all categories
  */
-function copyHooks(hooks, config, srcDir, pluginDir) {
-  if (!hooks) return;
-
+function copyAllHooks(config, srcDir, pluginDir) {
   const hooksDir = join(pluginDir, "hooks");
   mkdirSync(hooksDir, { recursive: true });
 
@@ -341,16 +480,27 @@ function copyHooks(hooks, config, srcDir, pluginDir) {
     cpSync(libSrc, libDest, { recursive: true });
   }
 
-  // Collect all hook IDs
-  const hookIds = [
-    ...(hooks["pre-tool"] || []),
-    ...(hooks["post-tool"] || []),
-    ...(hooks.session || []),
-  ];
+  // Collect all hook IDs from all categories
+  const allHookIds = new Set();
+
+  // Pre-tool hooks
+  for (const hook of config.hooks["pre-tool"] || []) {
+    allHookIds.add(hook.id);
+  }
+
+  // Post-tool hooks
+  for (const hook of config.hooks["post-tool"] || []) {
+    allHookIds.add(hook.id);
+  }
+
+  // Session hooks
+  for (const hook of config.hooks.session || []) {
+    allHookIds.add(hook.id);
+  }
 
   // Find and copy each hook script
-  for (const hookId of hookIds) {
-    // Find hook definition
+  for (const hookId of allHookIds) {
+    // Find hook definition in any category
     const hookDef =
       config.hooks["pre-tool"]?.find((h) => h.id === hookId) ||
       config.hooks["post-tool"]?.find((h) => h.id === hookId) ||
@@ -364,6 +514,17 @@ function copyHooks(hooks, config, srcDir, pluginDir) {
       if (existsSync(src)) {
         cpSync(src, dest);
       }
+    }
+  }
+
+  // Copy subagent hooks
+  const subagentHooksSrc = join(srcDir, "hooks", "subagent");
+  if (existsSync(subagentHooksSrc)) {
+    const files = readdirSync(subagentHooksSrc);
+    for (const file of files) {
+      const src = join(subagentHooksSrc, file);
+      const dest = join(hooksDir, file);
+      cpSync(src, dest);
     }
   }
 }

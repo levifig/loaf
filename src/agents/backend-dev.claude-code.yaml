@@ -1,0 +1,20 @@
+name: backend-dev
+description: >-
+  Backend services developer with full-stack language capabilities. Use for Python,
+  Rails, Go, TypeScript backend development, and power systems engineering work.
+skills:
+  - foundations
+  - python
+  - ruby
+  - go
+  - typescript
+  - database
+  - infrastructure
+  - power-systems
+tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Glob
+  - Grep

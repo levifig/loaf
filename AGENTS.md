@@ -15,15 +15,34 @@ Universal skills for AI coding assistants. Skills contain knowledge, agents rout
 
 ## Available Agents
 
+### Implementation Agents
+
+These agents write code and make direct changes to the codebase:
+
+| Agent | Role | When to Use |
+|-------|------|-------------|
+| `backend-dev` | Backend Services | Python, Ruby/Rails, Go, or TypeScript backend development |
+| `frontend-dev` | Frontend Development | React, Next.js, UI components |
+| `devops` | Infrastructure | Docker, Kubernetes, CI/CD, deployment |
+
+### Advisory/Council Agents
+
+These agents provide domain expertise in councils and delegate implementation to implementation agents:
+
+| Agent | Role | When to Use |
+|-------|------|-------------|
+| `dba` | Database Administration | Schema design, migrations, query optimization |
+| `qa` | Quality Assurance | Testing, code review, security audits |
+| `design` | UI/UX Design | Design systems, accessibility, visual patterns |
+| `power-systems` | Energy Systems | Grid design, power electronics, renewable integration |
+
+### Orchestrator
+
 | Agent | Role | When to Use |
 |-------|------|-------------|
 | `pm` | Orchestrator | Coordinating multi-agent work, session management |
-| `backend-dev` | Backend Services | Python, Rails, or TypeScript backend development |
-| `frontend-dev` | Frontend Development | React, Next.js, UI components |
-| `dba` | Database Administration | Schema design, migrations, query optimization |
-| `devops` | Infrastructure | Docker, Kubernetes, CI/CD, deployment |
-| `qa` | Quality Assurance | Testing, code review, security audits |
-| `design` | UI/UX Design | Design systems, accessibility, visual patterns |
+
+The PM agent delegates research to Explore/Plan agents, then delegates implementation to implementation agents. Advisory agents participate in councils and delegate their implementation needs to the appropriate implementation agent.
 
 ## Available Skills
 
@@ -33,9 +52,14 @@ Universal skills for AI coding assistants. Skills contain knowledge, agents rout
 | `foundations` | Quality | Code style, docs, security, commits |
 | `python` | Backend | FastAPI, Pydantic, pytest, async |
 | `typescript` | Full-stack | React, Next.js, type safety, testing |
-| `rails` | Backend | Rails 8, Hotwire, Minitest |
+| `ruby` | Backend | Ruby idioms, Rails 8, Hotwire, Minitest, gem dev |
+| `go` | Backend | Go services, concurrency, testing |
+| `database` | Data | Schema design, migrations, query optimization |
 | `infrastructure` | DevOps | Docker, Kubernetes, Terraform |
 | `design` | UI/UX | Accessibility, design tokens, responsive |
+| `power-systems` | Energy | Grid design, power electronics, renewable integration |
+
+Skills are guidelines, not tasks. They provide domain knowledge that agents reference when doing work.
 
 ---
 
@@ -73,17 +97,15 @@ agent-skills/
 │   └── targets/                 # Target-specific transformers
 │       ├── claude-code.js
 │       ├── opencode.js
-│       ├── cursor.js
-│       └── copilot.js
+│       └── agentskills.js
 ├── .github/workflows/
 │   └── build.yml                # CI: builds and commits outputs
 ├── install.sh                   # Curl-pipeable installer
 ├── plugins/                     # Claude Code marketplace (at root, committed by CI)
 ├── .claude-plugin/              # Claude Code marketplace manifest (at root)
 └── dist/                        # Other distributions (committed by CI)
-    ├── opencode/                # Skills, agents, plugins
-    ├── cursor/                  # .cursor/rules/*.mdc
-    └── copilot/                 # .github/copilot-instructions.md
+    ├── opencode/                # OpenCode skills, agents, plugins
+    └── agentskills/             # Generic format (Codex, Cursor, Copilot, Gemini)
 ```
 
 ---
@@ -102,8 +124,7 @@ npm run build
 # Build specific target
 npm run build:claude-code
 npm run build:opencode
-npm run build:cursor
-npm run build:copilot
+npm run build:agentskills
 ```
 
 ### How Build Works
@@ -123,8 +144,9 @@ The build system reads canonical content from `src/` and transforms it for each 
 |--------|-----------------|--------------|
 | Claude Code | `plugins/` at root | Full (PreToolUse, PostToolUse, Session*) |
 | OpenCode | `dist/opencode/` | Full (tool.execute.*, session.*) |
-| Cursor | `dist/cursor/` | None (instructions fallback) |
-| Copilot | `dist/copilot/` | None (instructions fallback) |
+| Agent Skills | `dist/agentskills/` | None (instructions only) |
+
+The `agentskills` target produces a generic format shared by Codex, Cursor, Copilot, Gemini, and other tools that support simple skills/instructions.
 
 ### Adding a New Target
 
@@ -145,7 +167,7 @@ Sidecars provide target-specific overrides without modifying canonical source fi
 
 **Sidecar naming:**
 - Agents: `{agent}.{target}.yaml` (e.g., `pm.opencode.yaml`)
-- Skills: `SKILL.{target}.yaml` (e.g., `SKILL.cursor.yaml`)
+- Skills: `SKILL.{target}.yaml` (e.g., `SKILL.agentskills.yaml`)
 
 **Example agent sidecar (`src/agents/pm.opencode.yaml`):**
 
@@ -159,10 +181,10 @@ frontmatter:
     add: { Task: true }       # Add new tools
 ```
 
-**Example skill sidecar (`src/skills/python/SKILL.cursor.yaml`):**
+**Example skill sidecar (`src/skills/python/SKILL.agentskills.yaml`):**
 
 ```yaml
-# Cursor-specific metadata
+# Agent Skills-specific metadata (used by Codex, Cursor, Copilot, Gemini)
 globs:
   - "**/*.py"
   - "**/pyproject.toml"
@@ -172,6 +194,9 @@ globs:
 
 ```yaml
 targets:
+  claude-code:
+    output: plugins/
+
   opencode:
     output: dist/opencode/
     defaults:
@@ -182,14 +207,9 @@ targets:
             transform: array-to-record
             remove: ["Task(*)"]
 
-  cursor:
-    output: dist/cursor/
-    defaults:
-      skills:
-        globs: ["**/*"]
-        truncate:
-          max_chars: 1500
-          max_files: 5
+  agentskills:
+    output: dist/agentskills/
+    # Generic format shared by Codex, Cursor, Copilot, Gemini
 ```
 
 ---
@@ -206,7 +226,7 @@ Source (src/skills/, src/agents/, src/hooks/)
          │
          ├──► Claude Code: plugins/, .claude-plugin/ at repo root
          │
-         └──► Others: dist/ (for OpenCode, Cursor, Copilot)
+         └──► Others: dist/ (for OpenCode, Agent Skills)
          │
          ▼
    Committed by CI
@@ -235,15 +255,16 @@ This ensures outputs in the repo are always up-to-date with source changes.
 - Claude Code handles its own caching and updates
 - Updates happen automatically when users interact with `/plugin`
 
-#### OpenCode, Cursor, Copilot
+#### OpenCode, Agent Skills (Codex, Cursor, Copilot, Gemini)
 
 - **Requires local cache**
 - Installer downloads pre-built `dist/` from GitHub
 - Caches to `~/.local/share/agent-skills/` (only dist contents, not full repo)
 - Installs to target-specific locations:
   - OpenCode: `~/.config/opencode/{skill,agent,command,plugin}/`
-  - Cursor: Instructions to copy to project `.cursor/rules/`
-  - Copilot: Instructions to copy to repo `.github/`
+  - Codex: `~/.codex/skills/`
+  - Cursor: Project `.cursor/rules/`
+  - Copilot: Repo `.github/copilot-instructions.md`
 
 ### Installer Behavior
 
@@ -283,8 +304,7 @@ The local cache at `~/.local/share/agent-skills/` contains only built distributi
 ~/.local/share/agent-skills/
 ├── .version              # Git commit hash for update detection
 ├── opencode/
-├── cursor/
-└── copilot/
+└── agentskills/
 ```
 
 No source code, no `node_modules` - just the pre-built output.
@@ -607,19 +627,24 @@ Use for:
 - Running council deliberations
 - Coordinating Linear issues
 
-**Never implements directly** - always delegates to specialized agents.
+**Never implements directly** - delegates research to Explore/Plan agents, then delegates implementation to implementation agents.
 
-### Backend Developer
+### Implementation Agents
+
+These agents write code and make direct changes:
+
+#### Backend Developer
 
 Auto-detects stack and loads appropriate skill:
 
 | Signal | Stack |
 |--------|-------|
 | `pyproject.toml`, `*.py` | Python |
-| `Gemfile`, `app/models/` | Rails |
+| `Gemfile`, `app/models/` | Ruby |
 | `package.json` with backend deps | TypeScript |
+| `go.mod`, `*.go` | Go |
 
-### Frontend Developer
+#### Frontend Developer
 
 For all React and Next.js work:
 - Server and Client Components
@@ -627,15 +652,7 @@ For all React and Next.js work:
 - Accessibility compliance
 - Responsive design
 
-### Database Administrator
-
-For database-focused work:
-- Schema design and normalization
-- Migration safety (reversible, backward-compatible)
-- Query optimization with EXPLAIN ANALYZE
-- Index strategy
-
-### DevOps Engineer
+#### DevOps Engineer
 
 For infrastructure work:
 - Docker multi-stage builds
@@ -643,21 +660,49 @@ For infrastructure work:
 - CI/CD pipelines
 - GitOps patterns
 
-### Quality Assurance
+### Advisory/Council Agents
 
-For quality gates:
+These agents provide expertise in councils and delegate implementation to implementation agents:
+
+#### Database Administrator
+
+Provides expertise on:
+- Schema design and normalization
+- Migration safety (reversible, backward-compatible)
+- Query optimization with EXPLAIN ANALYZE
+- Index strategy
+
+Has SQL safety validation hooks. Delegates implementation to `backend-dev`.
+
+#### Quality Assurance
+
+Provides expertise on:
 - Unit and integration testing
 - Code review (architecture, security, style)
 - Security audits (OWASP Top 10)
 - Documentation review
 
-### Design
+Delegates implementation to `backend-dev` or `frontend-dev`.
 
-For UI/UX work:
+#### Design
+
+Provides expertise on:
 - Accessibility audits (WCAG 2.1 AA)
 - Design token systems
 - Component patterns
 - Responsive layouts
+
+Delegates implementation to `frontend-dev`.
+
+#### Power Systems
+
+Provides expertise on:
+- Grid design and power flow
+- Power electronics and converters
+- Renewable energy integration
+- Protection and control systems
+
+Delegates implementation to `backend-dev`.
 
 ---
 
@@ -680,12 +725,21 @@ For decisions requiring multiple perspectives:
 
 ```
 1. PM identifies decision requiring council
-2. PM spawns 5-7 relevant agents in parallel
-3. Each agent provides perspective
-4. PM synthesizes and presents recommendation
-5. User approves direction
-6. PM records decision and delegates implementation
+2. PM composes council (5-7 agents, always odd)
+3. PM spawns all agents in parallel
+4. Each agent provides individual report (recommendation, pros, cons, suggestions)
+5. PM presents individual perspectives, then synthesizes
+6. PM presents options and waits for user decision
+7. PM records decision and delegates implementation
 ```
+
+**Council composition rules:**
+- Any agent can participate (implementation and advisory agents)
+- Ad-hoc specialist personas can be created when domain expertise is needed
+- PM coordinates but does NOT vote
+- Always 5 or 7 agents (odd number to prevent ties)
+
+See `orchestration` skill for detailed council patterns.
 
 ---
 
@@ -734,7 +788,7 @@ No installation needed. Add the marketplace directly:
 
 Then browse and install plugins via `/plugin`. Updates are automatic.
 
-### OpenCode, Cursor, Copilot
+### OpenCode, Codex, Cursor, Copilot
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/levifig/agent-skills/main/install.sh | bash

@@ -1,0 +1,5 @@
+# Claude Code extensions for Orchestration skill
+# Base name/description in SKILL.md
+
+agent: pm
+allowed-tools: Read, Write, Edit, Glob, Grep, TodoWrite, TodoRead

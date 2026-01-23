@@ -17,8 +17,7 @@
  * └── plugin/
  *     └── hooks.js
  *
- * Uses sidecar metadata for target-specific transforms.
- * See src/config/targets.yaml for defaults, agents can override via pm.opencode.yaml etc.
+ * Reads frontmatter from sidecars (e.g., pm.opencode.yaml, SKILL.opencode.yaml)
  */
 
 import {
@@ -31,11 +30,7 @@ import {
 } from "fs";
 import matter from "gray-matter";
 import { join } from "path";
-import {
-  loadSidecar,
-  applyFrontmatterTransforms,
-  getTargetDefaults,
-} from "../lib/sidecar.js";
+import { loadAgentSidecar, loadSkillFrontmatter } from "../lib/sidecar.js";
 
 const TARGET_NAME = "opencode";
 
@@ -53,14 +48,11 @@ export async function build({
   // Clean and create dist directory
   mkdirSync(distDir, { recursive: true });
 
-  // Get agent defaults for this target
-  const agentDefaults = getTargetDefaults(targetsConfig, TARGET_NAME, "agents");
-
-  // Copy skills
+  // Copy skills with frontmatter from sidecars
   copySkills(srcDir, distDir);
 
-  // Copy and transform agents
-  copyAgents(srcDir, distDir, agentDefaults);
+  // Copy and transform agents with frontmatter from sidecars
+  copyAgents(srcDir, distDir);
 
   // Copy commands
   copyCommands(srcDir, distDir);
@@ -70,25 +62,61 @@ export async function build({
 }
 
 /**
- * Copy all skills
+ * Copy all skills with frontmatter from sidecars
  */
 function copySkills(srcDir, distDir) {
   const src = join(srcDir, "skills");
   const dest = join(distDir, "skill");
 
-  if (existsSync(src)) {
-    cpSync(src, dest, { recursive: true });
+  if (!existsSync(src)) {
+    return;
+  }
+
+  mkdirSync(dest, { recursive: true });
+
+  const skills = readdirSync(src, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+
+  for (const skill of skills) {
+    const skillSrc = join(src, skill);
+    const skillDest = join(dest, skill);
+    mkdirSync(skillDest, { recursive: true });
+
+    // Load frontmatter from SKILL.md (standard format works for OpenCode)
+    const frontmatter = loadSkillFrontmatter(skillSrc);
+
+    // Read SKILL.md body (strip existing frontmatter if any)
+    const skillMdPath = join(skillSrc, "SKILL.md");
+    if (existsSync(skillMdPath)) {
+      const content = readFileSync(skillMdPath, "utf-8");
+      const { content: body } = matter(content);
+
+      // Write SKILL.md with frontmatter
+      const transformed = matter.stringify(body, frontmatter);
+      writeFileSync(join(skillDest, "SKILL.md"), transformed);
+    }
+
+    // Copy reference directory
+    const refSrc = join(skillSrc, "reference");
+    const refDest = join(skillDest, "reference");
+    if (existsSync(refSrc)) {
+      cpSync(refSrc, refDest, { recursive: true });
+    }
+
+    // Copy scripts directory
+    const scriptsSrc = join(skillSrc, "scripts");
+    const scriptsDest = join(skillDest, "scripts");
+    if (existsSync(scriptsSrc)) {
+      cpSync(scriptsSrc, scriptsDest, { recursive: true });
+    }
   }
 }
 
 /**
- * Copy and transform all agents
- *
- * Transforms are driven by:
- * 1. Defaults from targets.yaml (mode: subagent, tools transform)
- * 2. Sidecars like pm.opencode.yaml (override defaults)
+ * Copy and transform all agents with frontmatter from sidecars
  */
-function copyAgents(srcDir, distDir, defaults) {
+function copyAgents(srcDir, distDir) {
   const src = join(srcDir, "agents");
   const dest = join(distDir, "agent");
 
@@ -104,20 +132,15 @@ function copyAgents(srcDir, distDir, defaults) {
     const srcPath = join(src, file);
     const destPath = join(dest, file);
 
+    // Read source body (strip existing frontmatter if any)
     const content = readFileSync(srcPath, "utf-8");
-    const { data: frontmatter, content: body } = matter(content);
+    const { content: body } = matter(content);
 
-    // Load sidecar config merged with defaults
-    const sidecarConfig = loadSidecar(srcPath, TARGET_NAME, defaults);
+    // Load frontmatter from sidecar
+    const frontmatter = loadAgentSidecar(srcPath, TARGET_NAME);
 
-    // Apply transforms from sidecar/defaults
-    const transformedFrontmatter = applyFrontmatterTransforms(
-      frontmatter,
-      sidecarConfig
-    );
-
-    // Reconstruct the file with transformed frontmatter
-    const transformed = matter.stringify(body, transformedFrontmatter);
+    // Reconstruct the file with sidecar frontmatter
+    const transformed = matter.stringify(body, frontmatter);
     writeFileSync(destPath, transformed);
   }
 }

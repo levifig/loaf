@@ -1,6 +1,6 @@
 # Product Planning
 
-Guidelines for product specifications, roadmaps, and feature definition.
+Guidelines for product specifications, roadmaps, and feature definition. Inspired by Shape Up (Ryan Singer/37signals).
 
 ## Core Principle
 
@@ -12,6 +12,157 @@ Every release should be:
 - Complete (all planned functionality works)
 - Polished (good UX, no rough edges)
 - Delightful (exceeds expectations)
+
+## Shape Up Methodology
+
+Adapted from [Shape Up](https://basecamp.com/shapeup) for AI agent orchestration.
+
+### Appetite Over Estimates
+
+**Don't estimate how long work will take. Decide how much time it's worth.**
+
+```markdown
+# Bad (estimate-driven)
+"How long will this feature take?"
+→ "About 2 weeks"
+→ Scope creeps → Takes 4 weeks
+
+# Good (appetite-driven)
+"We're willing to invest 2 days on this."
+→ Shape to fit the appetite
+→ Cut scope if needed, not time
+```
+
+**Appetite levels:**
+| Appetite | Size | Suitable For |
+|----------|------|--------------|
+| Small | 1-2 days | Bug fixes, minor enhancements |
+| Medium | 3-5 days | Feature additions, refactors |
+| Large | 1-2 weeks | Major features (rare) |
+
+If work can't be shaped to fit the appetite, it's not ready - needs more shaping or should be broken down.
+
+### Shaping Before Building
+
+**Shape = define boundaries, not tasks.**
+
+PM shapes before delegating to implementation agents:
+
+1. **Problem**: What are we solving? (not "build feature X")
+2. **Appetite**: How much is it worth?
+3. **Solution sketch**: Rough direction, not detailed design
+4. **Rabbit holes**: What to avoid (explicitly list pitfalls)
+5. **No-gos**: What's out of scope (be specific)
+
+```markdown
+## Shaped Task: Improve Export Performance
+
+**Problem**: CSV exports timeout on large datasets (>10k rows)
+**Appetite**: 1 day (small batch)
+**Solution sketch**: Stream to temp file, return async download link
+**Rabbit holes**:
+- Don't rewrite the export format
+- Don't add progress indicators (future scope)
+**No-gos**:
+- Excel format support
+- Scheduled exports
+```
+
+### Fixed Time, Variable Scope
+
+**Time is fixed. Scope flexes.**
+
+When running out of appetite:
+1. **Cut scope** - Remove nice-to-haves, keep must-haves
+2. **Simplify** - Reduce complexity, accept rougher edges
+3. **Document what's left** - Create follow-up issues for cut scope
+
+Never extend time. If it doesn't fit, the shaping was wrong.
+
+### Circuit Breakers
+
+**Know when to stop.**
+
+Set explicit checkpoints for re-evaluation:
+
+```markdown
+## Circuit Breaker Points
+
+After 50% of appetite spent:
+- [ ] Is the core approach working?
+- [ ] Are we still solving the right problem?
+- [ ] Should we stop and reshape?
+
+If two "no" answers → STOP, reassess with user
+```
+
+Circuit breakers prevent sunk cost fallacy. Stopping early to reshape is not failure.
+
+### Hill Charts
+
+**Track progress visually: uphill (figuring out) → downhill (executing).**
+
+```
+          Figuring out ← → Executing
+                    ___
+                   /   \
+        Unknown   /     \   Known
+        territory/       \  territory
+               /         \
+              /           \
+    --------'             '--------
+    Start                     Done
+```
+
+**In session files:**
+
+```markdown
+## Progress
+
+| Task | Hill Position | Notes |
+|------|---------------|-------|
+| API design | ⬆️ 70% (still exploring) | Auth approach unclear |
+| Data model | ⬇️ 30% (executing) | Schema finalized |
+| UI components | ⬇️ 80% (nearly done) | Just styling left |
+```
+
+When a task is "stuck uphill" for too long, it signals shaping problems.
+
+### Betting Table
+
+**Fresh prioritization, not backlog grooming.**
+
+Each cycle, review what to bet on:
+
+```markdown
+## Betting Table
+
+**Shaped and ready:**
+1. Export performance fix (1 day appetite) ✅ Bet
+2. Dashboard redesign (1 week appetite) ✅ Bet
+3. API v2 migration (2 week appetite) ❌ Too big, re-shape
+
+**Not ready (needs shaping):**
+- "Improve search" - too vague
+- "Mobile support" - no solution sketch
+
+**Deliberately not betting:**
+- Low-impact requests (say no, don't queue)
+```
+
+**No backlogs.** If something isn't worth betting on now, let it go. Good ideas resurface.
+
+### Cool-Down
+
+**Build in slack.**
+
+After completing a cycle:
+- Fix small bugs
+- Address tech debt
+- Explore new ideas
+- **Rest**
+
+Don't immediately start the next big thing. Sustainable pace produces better work.
 
 ## Roadmap: Now / Next / Later
 

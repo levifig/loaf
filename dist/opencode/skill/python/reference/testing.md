@@ -1,6 +1,6 @@
 # Python Testing with pytest
 
-Comprehensive testing patterns using pytest.
+Follows [foundations testing principles](../../foundations/reference/code-style.md#test-patterns).
 
 ## Test Organization
 
@@ -137,17 +137,15 @@ addopts = "--cov=src --cov-report=term-missing --cov-fail-under=80 -v"
 markers = ["unit", "integration", "slow"]
 ```
 
-## Critical Rules
+## pytest-specific Rules
 
 ### Always
-- Use descriptive test names (test_when_then)
-- Follow AAA pattern (Arrange-Act-Assert)
-- Use fixtures for setup/teardown
-- Mock external dependencies
-- Test edge cases
+- Name tests: `test_<unit>_<scenario>` or `test_<unit>_<scenario>_<result>`
+- Use `@pytest.fixture` for setup/teardown
+- Use `conftest.py` for shared fixtures across modules
+- Use `@pytest.mark.asyncio` for async test functions
+- Use `@pytest.mark.parametrize` for input variations
 
 ### Never
-- Test implementation details
-- Write tests that depend on order
-- Use sleep() in tests
-- Ignore test failures
+- Use `time.sleep()` — use `pytest-asyncio` or mock time
+- Skip `await` in async fixtures (causes silent failures)

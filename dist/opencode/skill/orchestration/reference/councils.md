@@ -25,6 +25,8 @@ Councils are deliberation mechanisms for decisions with multiple valid approache
 3. **Domain-matched composition** - Select relevant experts
 4. **Parallel deliberation** - Spawn all agents simultaneously
 5. **User approval required** - NEVER proceed without explicit approval
+6. **Any agent can participate** - All agents (implementation and advisory) can join councils
+7. **Ad-hoc specialists allowed** - Create specialist personas when domain expertise is needed
 
 ## Council Composition
 
@@ -47,6 +49,32 @@ Councils are deliberation mechanisms for decisions with multiple valid approache
 - Include domain devs for code review (backend-dev/frontend-dev)
 - Include `security` if security-relevant
 - PM coordinates but does NOT vote
+- Any agent type can participate (implementation agents like backend-dev bring valuable perspectives)
+
+### Ad-Hoc Specialist Personas
+
+When a council needs expertise not covered by existing agents, PM can create a specialist persona:
+
+```markdown
+## Proposed Council Composition
+
+**Decision**: Real-time data pipeline architecture
+
+**Agents** (5):
+1. backend-dev - Application integration
+2. dba - Data storage patterns
+3. devops - Infrastructure and scaling
+4. **[Ad-hoc] Streaming Specialist** - Kafka/event-driven expertise
+5. qa - Testing distributed systems
+
+**Ad-hoc Specialist Prompt**:
+> You are a streaming data specialist with deep expertise in Apache Kafka,
+> event-driven architectures, and real-time data pipelines. Evaluate options
+> from the perspective of throughput, latency, ordering guarantees, and
+> operational complexity.
+```
+
+Ad-hoc specialists are spawned as general-purpose agents with a specialized prompt.
 
 ## Deliberation Process
 
@@ -106,62 +134,149 @@ Task(
 # Spawn other agents with their domain perspectives...
 ```
 
-### Step 4: Collect Perspectives
+### Step 4: Collect Individual Reports
 
-Document each agent's:
-- Recommended option
-- Rationale
-- Concerns about alternatives
+Each agent provides a structured report with:
+- **Recommendation**: Their preferred option
+- **Pros**: Benefits from their domain perspective
+- **Cons**: Drawbacks and risks they see
+- **Suggestions**: Implementation considerations if this option is chosen
 
-### Step 5: Synthesize Findings
+### Step 5: Present Individual Perspectives
 
-PM creates synthesis:
+Display each agent's report separately so the user sees each perspective clearly:
 
 ```markdown
-## Synthesis
+## Individual Agent Reports
+
+---
+
+### 🗄️ DBA Perspective
+
+**Recommendation**: PostgreSQL
+
+**Pros**:
+- Native session table with existing infrastructure
+- ACID compliance for session integrity
+- Familiar query patterns for the team
+
+**Cons**:
+- Higher latency than in-memory stores
+- Connection pool pressure under high load
+
+**Suggestions**:
+- Use connection pooling (PgBouncer)
+- Consider partitioning by session date
+- Index on session_id and expires_at
+
+---
+
+### 🔧 Backend-Dev Perspective
+
+**Recommendation**: Redis
+
+**Pros**:
+- Sub-millisecond response times
+- Built-in TTL for session expiry
+- Pub/sub for session invalidation
+
+**Cons**:
+- Additional infrastructure to maintain
+- Data persistence requires configuration
+
+**Suggestions**:
+- Use Redis Cluster for HA
+- Configure AOF persistence
+- Implement graceful fallback to DB
+
+---
+
+### 🛡️ Security Perspective
+
+**Recommendation**: PostgreSQL
+
+**Pros**:
+- Audit logging built-in
+- Row-level security possible
+- Encryption at rest standard
+
+**Cons**:
+- Session fixation requires careful handling either way
+
+**Suggestions**:
+- Rotate session IDs on privilege change
+- Implement absolute timeout regardless of storage
+- Log session creation/destruction
+
+---
+
+[Continue for all council members...]
+```
+
+### Step 6: Synthesize Final Report
+
+After individual reports, PM creates a combined synthesis:
+
+```markdown
+## Council Synthesis
 
 ### Consensus Points
-All agents agree: [common ground]
+- All agents agree session security requires ID rotation on auth changes
+- All agents recommend connection pooling regardless of storage choice
+- Performance is acceptable with either option for current scale
 
 ### Key Disagreements
-[Where perspectives differ]
+- **DBA & Security** favor PostgreSQL for operational simplicity
+- **Backend-Dev & DevOps** favor Redis for performance headroom
 
-### Trade-Off Analysis
+### Trade-Off Summary
 
-#### Option A
-**Pros**: ...
-**Cons**: ...
-**Best for**: ...
+| Aspect | PostgreSQL | Redis |
+|--------|------------|-------|
+| Latency | ~5-10ms | <1ms |
+| Ops Complexity | Lower (existing) | Higher (new infra) |
+| Persistence | Native | Requires config |
+| Scaling | Vertical + read replicas | Horizontal (cluster) |
 
-#### Option B
-**Pros**: ...
-**Cons**: ...
-**Best for**: ...
+### PM Recommendation
+Based on council input: **PostgreSQL** for initial implementation.
 
-### Recommendation
-[PM's synthesis of agent perspectives]
+**Rationale**: Operational simplicity wins at current scale. The team has existing
+PostgreSQL expertise, and latency difference is negligible for session lookups.
+Redis can be introduced later if performance becomes a bottleneck.
 ```
 
-### Step 6: Present to User
+### Step 7: Present Next Steps and Wait for Decision
+
+After the synthesis, prompt the user with concrete next steps:
 
 ```markdown
-## Options Evaluated
+## Your Decision Required
 
-1. **PostgreSQL** (Recommended)
-   - Pros: Operational simplicity, existing expertise
-   - Cons: Slower than Redis
+Based on the council deliberation, here are your options:
 
-2. **Redis** (Valid Alternative)
-   - Pros: Faster, purpose-built
-   - Cons: Additional infrastructure
+1. **Accept recommendation (PostgreSQL)**
+   → Backend-dev implements session table with connection pooling
 
-## Your Decision
-Which option do you choose?
+2. **Choose alternative (Redis)**
+   → DevOps provisions Redis cluster, backend-dev implements client
+
+3. **Hybrid approach**
+   → PostgreSQL for persistence, Redis for hot cache
+   → Higher complexity but best of both worlds
+
+4. **Request more information**
+   → Specify what additional analysis would help
+
+5. **Defer decision**
+   → Document current state, revisit when [condition]
+
+**Which option do you choose?**
 ```
 
-**WAIT** for explicit user decision.
+**CRITICAL**: Wait for explicit user response. Do not proceed until user makes a choice.
 
-### Step 7: Record Decision
+### Step 8: Record Decision
 
 Update council file with:
 - Chosen option

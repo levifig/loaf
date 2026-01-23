@@ -124,9 +124,9 @@ hooks:
       timeout: 60000
       description: Analyze bundle size impact
 
-    # Rails - Migration safety, testing, security
+    # Ruby/Rails - Migration safety, testing, security
     - id: rails-migration-safety
-      skill: rails
+      skill: ruby
       script: hooks/pre-tool/rails-migration-safety.sh
       matcher: "Edit|Write"
       blocking: false
@@ -134,7 +134,7 @@ hooks:
       description: Check migration safety
 
     - id: rails-migration-safety-deep
-      skill: rails
+      skill: ruby
       script: hooks/pre-tool/rails-migration-safety-deep.sh
       matcher: "Edit|Write"
       blocking: false
@@ -142,7 +142,7 @@ hooks:
       description: Deep migration safety analysis
 
     - id: rails-test-execution
-      skill: rails
+      skill: ruby
       script: hooks/pre-tool/rails-test-execution.sh
       matcher: "Edit|Write"
       blocking: false
@@ -150,7 +150,7 @@ hooks:
       description: Run Rails tests
 
     - id: rails-brakeman-scan
-      skill: rails
+      skill: ruby
       script: hooks/pre-tool/rails-brakeman-scan.sh
       matcher: "Edit|Write"
       blocking: false
@@ -205,9 +205,9 @@ hooks:
       matcher: "Edit|Write"
       description: Run ESLint after changes
 
-    # Rails
+    # Ruby/Rails
     - id: rails-rubocop-check
-      skill: rails
+      skill: ruby
       script: hooks/post-tool/rails-rubocop-check.sh
       matcher: "Edit|Write"
       description: Run RuboCop after changes
@@ -252,30 +252,40 @@ hooks:
       timeout: 60000
       description: Warn about recently modified sessions before context compaction
 
-# Plugin groupings for Claude Code build target
-# Maps skills to plugins with shared agents
+# Legacy plugin groupings (kept for documentation purposes)
+# NOTE: Claude Code build now creates a single unified "apm" plugin
+# containing ALL agents, commands, skills, and hooks from src/
+#
+# The groupings below document logical relationships but are NOT used
+# by the build system. All hooks defined above are included in the
+# unified plugin automatically.
+#
+# Scoping in Claude Code: /apm:start-session, Task(apm:backend-dev)
 plugin-groups:
+  # Orchestration - PM workflows and session management
   orchestration:
     description: PM orchestration, session management, Linear workflow integration
     agents: [pm]
     skills: [orchestration]
     commands: [start-session, resume-session, review-sessions, council-session]
-    hooks:
+    related-hooks:
       pre-tool: [validate-commit, detect-linear-magic]
       session: [session-start, session-end, pre-compact-archive]
 
+  # Quality - Cross-language fundamentals
   foundations:
     description: Cross-language development fundamentals and quality gates
     agents: [qa]
     skills: [foundations]
-    hooks:
+    related-hooks:
       pre-tool: [check-secrets, validate-changelog, format-check, security-audit]
 
+  # Language-specific groups
   python:
     description: Python 3.12+ development with FastAPI, async, and pytest
     agents: [backend-dev]
     skills: [python, foundations]
-    hooks:
+    related-hooks:
       pre-tool: [python-type-check, python-pytest-validation, python-type-check-progressive, python-ruff-lint, python-pytest-execution, python-bandit-scan]
       post-tool: [python-ruff-check]
 
@@ -283,28 +293,46 @@ plugin-groups:
     description: TypeScript and React development with Next.js
     agents: [frontend-dev]
     skills: [typescript, design, foundations]
-    hooks:
+    related-hooks:
       pre-tool: [typescript-tsc-check, typescript-bundle-analysis]
       post-tool: [typescript-eslint-check]
 
-  rails:
-    description: Rails 8+ development following The Rails Way
+  ruby:
+    description: Ruby development following the DHH/37signals way (includes Rails)
     agents: [backend-dev]
-    skills: [rails, foundations]
-    hooks:
+    skills: [ruby, foundations]
+    related-hooks:
       pre-tool: [rails-migration-safety, rails-migration-safety-deep, rails-test-execution, rails-brakeman-scan]
       post-tool: [rails-rubocop-check]
 
+  go:
+    description: Go development following Effective Go principles
+    agents: [backend-dev]
+    skills: [go, foundations]
+
+  # Infrastructure and operations
   infrastructure:
     description: DevOps and infrastructure patterns
     agents: [devops, dba]
     skills: [infrastructure, foundations]
-    hooks:
+    related-hooks:
       pre-tool: [infra-validate-k8s, infra-dockerfile-lint, infra-k8s-dry-run, infra-terraform-plan]
 
+  database:
+    description: Database design, migrations, query optimization, and indexing patterns
+    agents: [dba]
+    skills: [database, foundations]
+
+  # Design and UI/UX
   design:
     description: UI/UX design patterns and accessibility standards
     agents: [design]
     skills: [design, foundations]
-    hooks:
+    related-hooks:
       post-tool: [design-a11y-validation, design-token-check, design-a11y-audit]
+
+  # Domain-specific
+  power-systems:
+    description: Power systems engineering for thermal modeling, conductor physics, and grid calculations
+    agents: [power-systems]
+    skills: [power-systems, python, foundations]

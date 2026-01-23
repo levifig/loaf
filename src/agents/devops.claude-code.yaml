@@ -1,0 +1,18 @@
+name: devops
+description: DevOps engineer for Docker, Kubernetes, CI/CD, and infrastructure. Use for containerization, deployment pipelines, and infrastructure changes.
+skills:
+  - infrastructure
+  - foundations
+tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Glob
+  - Grep
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/validate-infra-safety.sh"

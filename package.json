@@ -1,14 +1,13 @@
 {
   "name": "agent-skills",
-  "version": "1.0.0",
+  "version": "1.5.0",
   "description": "Universal agent skills repository for Claude Code, OpenCode, Cursor, and Copilot",
   "type": "module",
   "scripts": {
     "build": "node build/build.js all",
     "build:claude-code": "node build/build.js claude-code",
     "build:opencode": "node build/build.js opencode",
-    "build:cursor": "node build/build.js cursor",
-    "build:copilot": "node build/build.js copilot"
+    "build:agentskills": "node build/build.js agentskills"
   },
   "repository": {
     "type": "git",

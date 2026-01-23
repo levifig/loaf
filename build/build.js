@@ -5,15 +5,13 @@
  * Generates tool-specific distributions from canonical structure:
  * - Claude Code: plugins/{name}/ at repo root (for marketplace)
  * - OpenCode: dist/opencode/ with flat skill/, agent/, command/, plugin/
- * - Cursor: dist/cursor/.cursor/rules/*.mdc
- * - Copilot: dist/copilot/.github/copilot-instructions.md
- * - Codex: dist/codex/.codex/skills/ (skills only)
+ * - Agent Skills: dist/agentskills/skills/ (shared by Codex, Cursor, Copilot, Gemini)
  *
  * Usage:
  *   node build/build.js [target]
  *
  * Targets:
- *   all (default), claude-code, opencode, cursor, copilot, codex
+ *   all (default), claude-code, opencode, agentskills
  */
 
 import { readFileSync, existsSync } from "fs";
@@ -48,9 +46,7 @@ function loadTargetsConfig() {
 const TARGETS = {
   "claude-code": () => import("./targets/claude-code.js"),
   opencode: () => import("./targets/opencode.js"),
-  cursor: () => import("./targets/cursor.js"),
-  copilot: () => import("./targets/copilot.js"),
-  codex: () => import("./targets/codex.js"),
+  agentskills: () => import("./targets/agentskills.js"),
 };
 
 async function build(targetName, hooksConfig, targetsConfig) {

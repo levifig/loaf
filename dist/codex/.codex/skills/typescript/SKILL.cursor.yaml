@@ -1,6 +1,0 @@
-# Cursor-specific metadata for TypeScript skill
-globs:
-  - "**/*.ts"
-  - "**/*.tsx"
-  - "**/tsconfig*.json"
-  - "**/package.json"

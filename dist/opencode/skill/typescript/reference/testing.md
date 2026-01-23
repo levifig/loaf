@@ -1,6 +1,6 @@
 # Testing TypeScript Applications
 
-Comprehensive testing with Vitest, React Testing Library, and Playwright.
+Follows [foundations testing principles](../../foundations/reference/code-style.md#test-patterns). This reference covers TypeScript-specific tooling with Vitest, React Testing Library, and Playwright.
 
 ## Testing Stack
 
@@ -261,16 +261,18 @@ describe("Button accessibility", () => {
 
 ## Critical Rules
 
-### Always
-- Test user behavior, not implementation
-- Mock external dependencies
-- Test loading and error states
-- Run tests in CI
-- Maintain test coverage
+Follows [foundations testing principles](../../foundations/reference/code-style.md#test-patterns).
+
+### Vitest/RTL-specific
+- Use `userEvent` over `fireEvent` for realistic interactions
+- Use `screen` queries for accessibility-first testing
+- Use MSW for API mocking (not `fetch` stubs)
+- Wrap React Query hooks with `QueryClientProvider` in tests
+- Use `waitFor` for async assertions
+- Clean up with `afterEach(() => cleanup())`
 
 ### Never
-- Test implementation details
-- Skip edge cases
-- Use arbitrary timeouts
-- Leave tests flaky
-- Test third-party code
+- Use arbitrary `setTimeout` waits (use `waitFor` instead)
+- Query by implementation details (`data-testid` is last resort)
+- Leave flaky tests in CI
+- Mock React internals

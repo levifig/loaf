@@ -1,0 +1,11 @@
+name: Power Systems
+description: Power systems engineer for electrical grid modeling, thermal calculations, and conductor physics. Spawn for CIGRE/IEEE implementations and domain-specific algorithms.
+mode: subagent
+tools:
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+  TodoRead: true

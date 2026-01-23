@@ -1,0 +1,4 @@
+# Claude Code extensions for Foundations skill
+# Base name/description in SKILL.md
+
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep

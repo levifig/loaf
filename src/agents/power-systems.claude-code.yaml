@@ -1,0 +1,14 @@
+name: power-systems
+description: Power systems engineer for electrical grid modeling, thermal calculations, and conductor physics. Spawn for CIGRE/IEEE implementations and domain-specific algorithms.
+model: sonnet
+skills:
+  - power-systems
+  - python
+  - foundations
+tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Glob
+  - Grep

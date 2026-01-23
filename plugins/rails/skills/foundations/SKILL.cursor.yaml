@@ -1,4 +1,0 @@
-# Cursor-specific metadata for Foundations skill
-# Foundations applies to all files
-globs:
-  - "**/*"
