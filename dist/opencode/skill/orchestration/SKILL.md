@@ -1,6 +1,10 @@
 ---
 name: orchestration
-description: Use for PM orchestration and agent coordination. Covers agent delegation, council workflows, session management, Linear integration, and product planning.
+description: >-
+  Use for PM-style agent coordination. Covers agent delegation patterns, council
+  deliberation workflows, session file management, Linear issue integration, and
+  product planning. Activate when coordinating multi-agent work, running
+  councils for decisions, managing work sessions, or integrating with Linear.
 ---
 
 # PM Orchestration
@@ -27,8 +31,9 @@ Every release should be complete, polished, and delightful - no MVPs or quick ha
 | Multi-step work | Create session file, spawn agents |
 | Complex decision | Convene council (5-7 agents, odd) |
 | Linear update | Checkboxes, no emoji, no local paths |
-| Feature planning | Now/Next/Later buckets, no dates |
+| Feature planning | Define appetite, shape before building |
 | Agent selection | Match domain expertise to task |
+| Stuck on task | Check circuit breaker, consider reshaping |
 
 ## Topics
 
@@ -38,7 +43,7 @@ Every release should be complete, polished, and delightful - no MVPs or quick ha
 | Council Workflow | [reference/councils.md](reference/councils.md) | Composition, deliberation, synthesis, user approval |
 | Session Management | [reference/sessions.md](reference/sessions.md) | Lifecycle, file format, handoffs, validation |
 | Linear Integration | [reference/linear.md](reference/linear.md) | Update format, magic words, status conventions |
-| Product Planning | [reference/planning.md](reference/planning.md) | Roadmaps, feature specs, acceptance criteria |
+| Product Planning | [reference/planning.md](reference/planning.md) | Shape Up methodology, appetite, roadmaps, specs |
 
 ## Configuration
 
@@ -133,8 +138,10 @@ This skill uses paths from `.agents/config.json`:
 - Use issue ID only (Linear auto-expands)
 - Magic words in commit body, not subject
 
-### Planning
+### Planning (Shape Up)
+- Appetite over estimates (decide time, flex scope)
+- Shape before building (boundaries, not tasks)
+- Circuit breakers at 50% to reassess
 - Now/Next/Later buckets, no version numbers
-- No dates or timeframes for estimates
 - Clear acceptance criteria (Given/When/Then)
-- Document edge cases
+- No backlogs - bet or let go

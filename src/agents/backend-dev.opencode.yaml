@@ -1,2 +1,13 @@
-frontmatter:
-  name: Backend Dev
+name: Backend Dev
+description: >-
+  Backend services developer with full-stack language capabilities. Use for Python,
+  Rails, Go, TypeScript backend development, and power systems engineering work.
+mode: subagent
+tools:
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+  TodoRead: true

@@ -1,2 +1,11 @@
-frontmatter:
-  name: QA
+name: QA
+description: Quality assurance engineer for testing and security audits. Use for unit tests, integration tests, and security checks.
+mode: subagent
+tools:
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+  TodoRead: true

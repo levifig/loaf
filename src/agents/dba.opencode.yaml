@@ -1,2 +1,11 @@
-frontmatter:
-  name: DBA
+name: DBA
+description: Database administrator for schema design, migrations, SQL optimization, and database architecture. Use for table changes, indexes, and query optimization.
+mode: subagent
+tools:
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+  TodoRead: true

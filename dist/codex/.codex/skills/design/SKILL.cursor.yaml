@@ -1,6 +1,0 @@
-# Cursor-specific metadata for Design skill
-globs:
-  - "**/*.css"
-  - "**/*.scss"
-  - "**/*.tsx"
-  - "**/tailwind.config.*"

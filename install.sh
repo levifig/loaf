@@ -131,36 +131,45 @@ detect_tools() {
         fi
     fi
 
-    # Cursor
+    # Cursor (uses standard skills format)
     if [[ -d "${HOME}/.cursor" ]] || [[ -d "/Applications/Cursor.app" ]]; then
         TOOL_KEYS+=("cursor")
         TOOL_NAMES+=("Cursor")
-        if [[ -f "${HOME}/.cursor/rules/python.mdc" ]]; then
+        if [[ -L "${HOME}/.cursor/skills/python" ]]; then
             TOOL_INSTALLED+=("yes")
         else
             TOOL_INSTALLED+=("no")
         fi
     fi
 
-    # Codex
+    # Codex (uses standard skills format)
     if command -v codex &> /dev/null || [[ -d "${HOME}/.codex" ]]; then
         TOOL_KEYS+=("codex")
         TOOL_NAMES+=("Codex")
-        if [[ -d "${HOME}/.codex/skills" ]]; then
+        if [[ -L "${HOME}/.codex/skills/python" ]]; then
             TOOL_INSTALLED+=("yes")
         else
             TOOL_INSTALLED+=("no")
         fi
     fi
 
-    # Copilot - always available
+    # Copilot (uses standard skills format)
     TOOL_KEYS+=("copilot")
     TOOL_NAMES+=("GitHub Copilot")
+    if [[ -L "${HOME}/.copilot/skills/python" ]]; then
+        TOOL_INSTALLED+=("yes")
+    else
+        TOOL_INSTALLED+=("no")
+    fi
+
+    # Gemini Code Assist - always available (project-based)
+    TOOL_KEYS+=("gemini")
+    TOOL_NAMES+=("Gemini Code Assist")
     TOOL_INSTALLED+=("no")
 }
 
 check_existing_installation() {
-    [[ -d "${INSTALL_DIR}" ]] && [[ -f "${INSTALL_DIR}/.version" || -d "${INSTALL_DIR}/opencode" || -d "${INSTALL_DIR}/cursor" || -d "${INSTALL_DIR}/copilot" || -d "${INSTALL_DIR}/codex" ]]
+    [[ -d "${INSTALL_DIR}" ]] && [[ -f "${INSTALL_DIR}/.version" || -d "${INSTALL_DIR}/opencode" || -d "${INSTALL_DIR}/standard" || -d "${INSTALL_DIR}/copilot" || -d "${INSTALL_DIR}/gemini" ]]
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -369,33 +378,56 @@ install_opencode() {
     print_success "OpenCode installed to ${config}"
 }
 
+# Helper: symlink individual skills from standard to target directory
+symlink_standard_skills() {
+    local target_dir="$1"
+    local source_dir="${INSTALL_DIR}/standard/skills"
+
+    mkdir -p "${target_dir}"
+
+    # Create symlink for each skill
+    for skill in "${source_dir}"/*/; do
+        local skill_name
+        skill_name=$(basename "${skill}")
+        local target_link="${target_dir}/${skill_name}"
+
+        # Remove existing symlink or directory
+        if [[ -L "${target_link}" ]] || [[ -d "${target_link}" ]]; then
+            rm -rf "${target_link}"
+        fi
+
+        ln -s "${skill}" "${target_link}"
+    done
+}
+
 install_cursor() {
-    local dist="${INSTALL_DIR}/cursor"
-    print_success "Cursor rules ready"
-    print_info "Copy to your project:"
-    print_info "  cp -r ${dist}/.cursor/rules <project>/.cursor/"
+    local config="${HOME}/.cursor/skills"
+    symlink_standard_skills "${config}"
+    print_success "Cursor skills symlinked to ${config}"
 }
 
 install_codex() {
-    local dist="${INSTALL_DIR}/codex/.codex/skills"
     local config="${HOME}/.codex/skills"
-
-    mkdir -p "${config}"
-
-    if command -v rsync &> /dev/null; then
-        rsync -a --delete "${dist}/" "${config}/"
-    else
-        cp -r "${dist}/"* "${config}/" 2>/dev/null || true
-    fi
-
-    print_success "Codex skills installed to ${config}"
+    symlink_standard_skills "${config}"
+    print_success "Codex skills symlinked to ${config}"
 }
 
 install_copilot() {
-    local dist="${INSTALL_DIR}/copilot"
-    print_success "Copilot instructions ready"
-    print_info "Copy to your repository:"
-    print_info "  cp ${dist}/.github/copilot-instructions.md <repo>/.github/"
+    local config="${HOME}/.copilot/skills"
+    symlink_standard_skills "${config}"
+    print_success "Copilot skills symlinked to ${config}"
+}
+
+install_gemini() {
+    local dist="${INSTALL_DIR}/standard/skills"
+    print_success "Gemini skills ready (uses standard format)"
+    print_info "In your project directory, symlink each skill:"
+    echo ""
+    echo -e "    ${WHITE}mkdir -p .gemini/skills${RESET}"
+    echo -e "    ${WHITE}for skill in ${dist}/*/; do${RESET}"
+    echo -e "    ${WHITE}  ln -s \"\$skill\" .gemini/skills/\$(basename \"\$skill\")${RESET}"
+    echo -e "    ${WHITE}done${RESET}"
+    echo ""
 }
 
 prompt_update() {
@@ -561,6 +593,7 @@ main() {
                 cursor) install_cursor ;;
                 codex) install_codex ;;
                 copilot) install_copilot ;;
+                gemini) install_gemini ;;
             esac
         done
     fi

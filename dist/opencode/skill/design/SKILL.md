@@ -1,8 +1,11 @@
 ---
 name: design
-description: |
-  Use for all design work. Covers design principles, tokens, color, typography,
-  spacing, responsive design, accessibility, motion, and design systems.
+description: >-
+  Use for UI/UX design and accessibility work. Covers design principles, color
+  theory with WCAG contrast requirements, typography scales, 8pt spacing grid,
+  responsive breakpoints, WCAG 2.1 accessibility compliance, motion design, and
+  design system governance. Activate when working on user interfaces, design
+  tokens, or accessibility audits.
 ---
 
 # Design Principles

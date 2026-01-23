@@ -1,6 +1,6 @@
 # Python Core
 
-Foundation for modern Python 3.12+ development.
+Foundation for modern Python 3.12+ development. Follows [foundations code style](../../foundations/reference/code-style.md).
 
 ## Python Stack
 
@@ -101,8 +101,9 @@ except* ValueError as eg:
 
 ## Code Style
 
+Import organization (standard → third-party → local):
+
 ```python
-# Imports - standard, third-party, local
 import os
 from pathlib import Path
 
@@ -110,30 +111,17 @@ import httpx
 from fastapi import FastAPI
 
 from my_project.models import User
-
-# Constants
-MAX_RETRIES = 3
-API_BASE_URL = "https://api.example.com"
-
-# Classes (PascalCase)
-class UserRepository:
-    pass
-
-# Functions and variables (snake_case)
-def fetch_user_data(user_id: int) -> dict:
-    return {}
 ```
 
-## Critical Rules
+## Python-specific Rules
 
 ### Always
-- Use type hints for all function signatures
-- Use pathlib.Path for file operations
+- Use `pathlib.Path` for file operations (not `os.path`)
 - Use f-strings for string formatting
-- Use context managers for resources
+- Use context managers (`with`) for resources
+- Use `|` for type unions: `str | None` (not `Optional[str]`)
 
 ### Never
-- Use mutable default arguments
-- Import * from modules
-- Use bare except clauses
+- Use mutable default arguments (`def foo(items=[])`)
+- Use `from module import *`
 - Mix tabs and spaces

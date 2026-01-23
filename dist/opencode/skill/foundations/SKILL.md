@@ -1,6 +1,11 @@
 ---
 name: foundations
-description: Use for code quality and engineering standards. Covers code style, commit conventions, documentation standards, and security patterns.
+description: >-
+  Use for code quality and engineering standards. Covers code style conventions,
+  conventional commit messages, documentation standards (ADRs, API docs,
+  changelogs), and security patterns (input validation, secrets management,
+  OWASP). Activate for code review, commit preparation, documentation writing,
+  or security considerations.
 ---
 
 # Code Standards

@@ -1,6 +1,12 @@
 ---
 name: typescript
-description: Use for all TypeScript and React development. Covers project setup, React patterns, Next.js, state management, forms, API integration, testing, styling, performance, accessibility, mobile development, and ESM patterns.
+description: >-
+  TypeScript and JavaScript development with React ecosystem. Covers project
+  setup, React 18+ components, Next.js 14+ App Router, modern ESM patterns,
+  Zustand/React Query state management, React Hook Form with Zod validation,
+  Tailwind CSS styling, Vitest/Playwright testing, and accessibility. Activate
+  when working with .ts/.tsx/.js/.jsx files, package.json, or React/Next.js
+  projects.
 ---
 
 # TypeScript Development

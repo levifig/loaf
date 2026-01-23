@@ -1,6 +1,6 @@
 # TypeScript Core
 
-Foundation for modern TypeScript development with strict type safety.
+Foundation for modern TypeScript development with strict type safety. Follows [foundations code style](../../foundations/reference/code-style.md).
 
 ## TypeScript Stack
 

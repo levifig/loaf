@@ -1,0 +1,24 @@
+name: dba
+description: Database administrator for schema design, migrations, SQL optimization, and database architecture. Use for table changes, indexes, and query optimization.
+skills:
+  - database
+  - foundations
+  - infrastructure
+conditional-skills:
+  - skill: python
+    when: "alembic.ini OR sqlalchemy in pyproject.toml"
+  - skill: ruby
+    when: "db/migrate/ OR ActiveRecord"
+tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Glob
+  - Grep
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/validate-sql-safety.sh"
