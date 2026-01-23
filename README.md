@@ -1,8 +1,8 @@
-# Agentic PM (APM) - Universal Agent Skills
+# APT - Agentic Product Team
 
-Universal skills for AI coding assistants. One source, multiple targets: Claude Code, OpenCode, and Agent Skills (Codex, Cursor, Copilot, Gemini).
+Your personal agentic product team for AI coding assistants. One source, multiple targets: Claude Code, OpenCode, and Agent Skills (Codex, Cursor, Copilot, Gemini).
 
-**Version:** 1.5.0
+**Version:** 1.6.0
 
 ## Installation
 
@@ -14,7 +14,7 @@ Add the marketplace directly in Claude Code:
 /plugin marketplace add levifig/agent-skills
 ```
 
-Then browse and install the `apm` plugin via `/plugin`.
+Then browse and install the `apt` plugin via `/plugin`.
 
 No local installation needed - Claude Code fetches from GitHub and handles caching automatically.
 
@@ -113,9 +113,9 @@ GitHub Actions automatically builds and commits `plugins/` and `dist/` on every 
 Commands and agents are scoped to avoid conflicts:
 
 ```bash
-/apm:start-session          # Start a work session
-/apm:council-session        # Run a council deliberation
-Task(apm:backend-dev)       # Spawn backend developer agent
+/apt:start-session          # Start a work session
+/apt:council-session        # Run a council deliberation
+Task(apt:backend-dev)       # Spawn backend developer agent
 ```
 
 ## Integrations

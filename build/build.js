@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build System for Universal Agent Skills
+ * Build System for APT - Agentic Product Team
  *
  * Generates tool-specific distributions from canonical structure:
  * - Claude Code: plugins/{name}/ at repo root (for marketplace)
@@ -82,7 +82,7 @@ async function main() {
   const args = process.argv.slice(2);
   const target = args[0] || "all";
 
-  console.log("🚀 Universal Agent Skills Build System");
+  console.log("🚀 APT Build System");
   console.log(`   Root: ${ROOT_DIR}`);
   console.log(`   Source: ${SRC_DIR}`);
   console.log(`   Config: ${CONFIG_DIR}`);

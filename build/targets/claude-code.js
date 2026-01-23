@@ -6,7 +6,7 @@
  * ├── .claude-plugin/
  * │   └── marketplace.json
  * └── plugins/
- *     └── apm/
+ *     └── apt/
  *         ├── .claude-plugin/plugin.json
  *         ├── agents/
  *         ├── skills/
@@ -16,7 +16,7 @@
  * This allows Claude Code to use:
  *   /plugin marketplace add levifig/agent-skills
  *
- * Scoping: /apm:start-session, Task(apm:backend-dev)
+ * Scoping: /apt:start-session, Task(apt:backend-dev)
  *
  * Reads frontmatter from sidecars (e.g., pm.claude-code.yaml, SKILL.claude-code.yaml)
  */
@@ -39,12 +39,11 @@ import {
   mergeSkillFrontmatter,
 } from "../lib/sidecar.js";
 
-const VERSION = "1.5.0";
+const VERSION = "1.6.0";
 const REPOSITORY = "https://github.com/levifig/agent-skills";
 const TARGET_NAME = "claude-code";
-const PLUGIN_NAME = "apm";
-const PLUGIN_DESCRIPTION =
-  "Agentic PM - Universal agent skills for AI coding assistants";
+const PLUGIN_NAME = "apt";
+const PLUGIN_DESCRIPTION = "APT - Your Personal Agentic Product Team";
 
 // LSP Servers for code intelligence
 const LSP_SERVERS = {

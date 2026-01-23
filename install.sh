@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Universal Agent Skills Installer
+# APT - Agentic Product Team Installer
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/levifig/agent-skills/main/install.sh | bash
@@ -35,10 +35,10 @@ ORANGE='\033[38;5;208m'
 print_header() {
     clear
     echo ""
-    echo -e "   \033[38;5;93m▄▀█\033[0m \033[38;5;99m█▀▀\033[0m \033[38;5;105m█▀▀\033[0m \033[38;5;141m█▄░█\033[0m \033[38;5;147m▀█▀\033[0m   \033[38;5;183m█▀\033[0m \033[38;5;189m█▄▀\033[0m \033[38;5;195m█\033[0m \033[38;5;231m█░░\033[0m \033[38;5;231m█░░\033[0m \033[38;5;231m█▀\033[0m"
-    echo -e "   \033[38;5;93m█▀█\033[0m \033[38;5;99m█▄█\033[0m \033[38;5;105m██▄\033[0m \033[38;5;141m█░▀█\033[0m \033[38;5;147m░█░\033[0m   \033[38;5;183m▄█\033[0m \033[38;5;189m█░█\033[0m \033[38;5;195m█\033[0m \033[38;5;231m█▄▄\033[0m \033[38;5;231m█▄▄\033[0m \033[38;5;231m▄█\033[0m"
+    echo -e "   \033[38;5;93m▄▀█\033[0m \033[38;5;99m█▀█\033[0m \033[38;5;105m▀█▀\033[0m"
+    echo -e "   \033[38;5;93m█▀█\033[0m \033[38;5;99m█▀▀\033[0m \033[38;5;105m░█░\033[0m"
     echo ""
-    echo -e "   ${GRAY}Universal skills for AI coding assistants${RESET}  ${GRAY}v${VERSION}${RESET}"
+    echo -e "   ${GRAY}Agentic Product Team${RESET}  ${GRAY}v${VERSION}${RESET}"
     echo ""
     echo -e "${GRAY}   ──────────────────────────────────────────────────${RESET}"
     echo ""

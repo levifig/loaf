@@ -300,6 +300,82 @@ Before spawning any implementation agents, **think deeply** about:
 
 ---
 
+## Plan Mode Integration
+
+For complex tasks, use **Plan Mode** to explore before implementing:
+
+### When to Use Plan Mode
+
+- Task requires exploring unfamiliar codebase areas
+- Multiple valid implementation approaches exist
+- Dependencies between tasks need mapping
+- User should approve approach before work begins
+
+### Phase 1: Explore (Plan Mode)
+
+```
+1. Use Task(Explore) or Task(Plan) to investigate codebase
+2. Map existing patterns and conventions
+3. Identify integration points
+4. Document findings in session file
+```
+
+### Phase 2: Plan (Plan Mode)
+
+```
+1. Present implementation options to user
+2. Get approval on approach
+3. Document decision in session file
+4. Exit Plan Mode when ready to implement
+```
+
+### Phase 3: Implement
+
+```
+1. Spawn implementation agents
+2. Reference plan from session file
+3. Execute in approved direction
+```
+
+### Skip Planning When
+
+- Task is straightforward (single file, clear change)
+- User has provided explicit detailed instructions
+- Pattern is well-established in codebase
+
+---
+
+## Context Management
+
+Keep context clean throughout the session:
+
+### Session Length Awareness
+
+| Session Length | Action |
+|----------------|--------|
+| Short (< 10 exchanges) | No management needed |
+| Medium (10-30 exchanges) | Consider `/compact` |
+| Long (30+ exchanges) | Use subagents, update session file |
+
+### The 2-Correction Rule
+
+If you make the same mistake twice after being corrected, context may be polluted.
+
+**Action:** Update session file, use `/clear`, then `/resume-session`.
+
+### Use Subagents for Exploration
+
+```
+# Instead of reading many files directly:
+Task(Explore, "Find how authentication is implemented")
+
+# Keeps main context focused on coordination
+```
+
+See `orchestration` skill `reference/context-management.md` for detailed patterns.
+
+---
+
 ## Then Execute
 
 Follow your three-phase workflow (BEFORE → DURING → AFTER):

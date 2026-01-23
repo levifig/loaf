@@ -482,6 +482,41 @@ After user decision:
 
 ---
 
+## Context Management
+
+Councils spawn multiple agents, which can expand context quickly.
+
+### Keep Main Context Lean
+
+```
+# Council agents run in parallel with isolated context
+# Main conversation only receives their summaries
+# This is why parallel spawning is important
+```
+
+### After Council Completes
+
+If the council was lengthy or complex:
+
+1. Update session file with decision
+2. Consider `/compact` if main context is large
+3. For very long sessions, consider `/clear` + `/resume-session`
+
+### Session File as Anchor
+
+The council file and session file persist across context resets:
+
+```
+Council decision survives /clear
+→ Read from .agents/councils/[file].md
+→ Reference in session file
+→ Continue implementation with clean context
+```
+
+See `orchestration` skill `reference/context-management.md` for detailed patterns.
+
+---
+
 ## Remember
 
 - **Always odd number** of agents (5 or 7)
@@ -490,5 +525,6 @@ After user decision:
 - **PM coordinates, doesn't vote** (synthesis only, not a council member)
 - **Councils advise, users decide** (never proceed without approval)
 - **Document everything** (council file, session file, ADR if architectural)
+- **Context awareness** - councils add to context, manage accordingly
 
 Reference `council-workflow` skill for detailed guidance.

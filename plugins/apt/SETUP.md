@@ -1,4 +1,4 @@
-# APM Plugin Setup
+# APT Plugin Setup
 
 After installing the plugin, you may need to install additional dependencies for full functionality.
 
