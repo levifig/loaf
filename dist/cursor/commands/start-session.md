@@ -6,6 +6,36 @@ You are the PM agent. Start by understanding the task:
 
 ---
 
+## Input Detection
+
+Parse `$ARGUMENTS` to determine the session type:
+
+| Input Pattern | Type | Action |
+|---------------|------|--------|
+| `TASK-XXX` | Local task | Load from `.agents/tasks/active/` |
+| `SPEC-XXX` | Spec (no task) | Warn: suggest `/tasks` first |
+| `PLT-123`, `PROJ-123` | Linear issue | Fetch from Linear |
+| Description text | Ad-hoc | Create session, ask about Linear |
+
+### Task-Coupled Sessions
+
+When starting from a task (`TASK-XXX` or Linear issue):
+
+1. **Fetch task details** (local file or Linear API)
+2. **Load parent spec** if task has `spec:` field
+3. **Load linked requirement** if spec has `requirement:` field
+4. **Build traceability chain** in session frontmatter
+
+### Ad-hoc Sessions
+
+When no task exists:
+
+1. **Inform user:** "No parent task found. Proceeding as ad-hoc session."
+2. **Ask:** "Should I create a Linear issue or local task for tracking?"
+3. If yes, create and link; if no, proceed without
+
+---
+
 ## CRITICAL: Strict Delegation Model
 
 **You are the ORCHESTRATOR, not the implementer.**
@@ -126,21 +156,84 @@ session:
   linear_issue: "PLT-XXX"           # If applicable
   linear_url: "https://linear.app/{{your-workspace}}/issue/PLT-XXX"
   branch: "username/plt-xxx-feature"    # Working branch for this session
+  task: "TASK-001"                      # Local task ID (if applicable)
+  spec: "SPEC-001"                      # Parent spec (if applicable)
+
+# Traceability chain (populated when task-coupled)
+traceability:
+  requirement: "2.1 User Authentication"  # From spec's requirement field
+  architecture:
+    - "Session Management"                # Relevant ARCHITECTURE.md sections
+  decisions:
+    - "ADR-001"                           # Related ADRs
 
 plans: []  # List of plan files in .agents/plans/ used by this session
+transcripts: []  # Archived conversation transcripts (.jsonl files)
 
 orchestration:
   current_task: "Initial planning"
   spawned_agents: []
 ```
 
-### Step 4: Verify Creation
+### Step 4: Create Plan File
 
-Confirm the session file exists and contains valid frontmatter before proceeding.
+**Location:** `.agents/plans/`
+**Filename:** Same timestamp as session: `YYYYMMDD-HHMMSS-<description>.md`
 
-**DO NOT PROCEED WITHOUT A SESSION FILE.**
+Use this Shape Up-inspired template:
 
-### Step 5: Suggest Session Rename
+```markdown
+---
+session: YYYYMMDD-HHMMSS-<description>.md
+created: "YYYY-MM-DDTHH:MM:SSZ"
+status: drafting
+appetite: ""
+---
+
+# Plan: <description>
+
+## Appetite
+
+*Time budget for this work (e.g., "2 hours", "1 day"). Fixed time, variable scope.*
+
+## Problem
+
+*What problem are we solving? Why does it matter?*
+
+## Solution Shape
+
+*High-level approach, not a detailed spec. What's the general shape of the solution?*
+
+## Rabbit Holes
+
+*What NOT to do. Scope boundaries. Things that seem related but should be avoided.*
+
+## No-Gos
+
+*Explicit exclusions. Features or approaches we're deliberately not doing.*
+
+## Circuit Breaker
+
+At 50% of appetite spent: Re-evaluate if we're on track. If not, consider:
+- Simplifying scope
+- Taking a different approach
+- Stopping early and documenting learnings
+```
+
+**Update session frontmatter** to link the plan:
+
+```yaml
+plans:
+  - YYYYMMDD-HHMMSS-<description>.md
+```
+
+### Step 5: Verify Creation
+
+Confirm both session file AND plan file exist with valid frontmatter before proceeding.
+
+**DO NOT PROCEED WITHOUT A SESSION FILE AND PLAN FILE.**
+
+### Step 6: Suggest Session Rename
 
 After creating the session file, suggest renaming the Claude Code session for easy identification:
 
@@ -207,7 +300,7 @@ Is this a code/config/doc change?
 
 ## Startup Checklist
 
-**After creating session file:**
+**After creating session AND plan files:**
 
 1. [ ] Parse the input — is this a Linear issue ID (e.g., PLT-123, PLAT-123) or a description?
 2. [ ] If Linear ID:
@@ -217,10 +310,13 @@ Is this a code/config/doc change?
 3. [ ] If description: ask user if a Linear issue should be created
 4. [ ] **Create dedicated branch for this work** (see Branch Management below)
 5. [ ] **Suggest team** based on task context (see Team Routing below)
-6. [ ] Populate session `## Context` section with background
-7. [ ] Break down the work using TodoWrite
-8. [ ] **Identify which specialized agents will be needed** (use mapping table)
-9. [ ] Update session `## Next Steps` with planned agent spawns
+6. [ ] **Fill in plan file sections** (Appetite, Problem, Solution Shape, Rabbit Holes)
+7. [ ] Populate session `## Context` section with background
+8. [ ] Break down the work using TodoWrite
+9. [ ] **Identify which specialized agents will be needed** (use mapping table)
+10. [ ] **Consider architecture diagrams** (see Diagram Consideration below)
+11. [ ] Update session `## Next Steps` with planned agent spawns
+12. [ ] **Get user approval on plan** before spawning implementation agents
 
 ---
 
@@ -293,6 +389,48 @@ Suggest Security, confirm if new to project
 ```
 
 Use Linear MCP's `list_teams` to get all workspace teams for validation.
+
+---
+
+## Diagram Consideration
+
+For multi-file or multi-service changes, consider adding architecture diagrams to the session file.
+
+### When to Create Diagrams
+
+| Scenario | Diagram Type |
+|----------|--------------|
+| Changes span 3+ services | Component diagram (interaction points) |
+| Data flow modifications | Sequence diagram (trace data path) |
+| Schema/model changes | ERD (table relationships) |
+| New API endpoints | Sequence diagram (request/response) |
+| State machine logic | State diagram (transitions) |
+
+### Quick Check
+
+Ask yourself:
+1. Will this work touch multiple services or layers?
+2. Is there a data flow that needs to be understood?
+3. Would a visual help communicate the approach?
+
+If yes to any, add an `## Architecture Diagrams` section to the session file.
+
+### Diagram Template
+
+```markdown
+## Architecture Diagrams
+
+### [Descriptive Name]
+
+```mermaid
+[Use flowchart, sequenceDiagram, erDiagram, or stateDiagram-v2]
+```
+
+**Purpose**: Why this diagram clarifies the work
+**Files involved**: `path/to/file1.py`, `path/to/file2.py`
+```
+
+See `foundations` skill `reference/diagrams.md` for Mermaid syntax and best practices.
 
 ---
 
@@ -471,7 +609,9 @@ Follow your three-phase workflow (BEFORE → DURING → AFTER):
 
 ### AFTER (Completion)
 
-1. Spawn `backend-dev`/`frontend-dev` for code review (if significant changes)
+1. **Code review pass** (REQUIRED for significant changes):
+   - Run `pr-review-toolkit:code-reviewer` on all modified files
+   - Address any critical issues before proceeding
 2. Spawn `qa` for final testing and security review
 3. Update Linear issue status to Done
 4. Complete session file with outcomes
@@ -514,5 +654,76 @@ Follow your three-phase workflow (BEFORE → DURING → AFTER):
 Format: `[YYYY-MM-DD HH:MM UTC]`
 
 Generate with: `date -u +"%Y-%m-%d %H:%M UTC"`
+
+---
+
+## Transcript Archival
+
+After `/compact` or `/clear`, archive conversation transcripts for future reference.
+
+### Process
+
+1. **Get transcript path** from Claude Code output after compaction
+2. **Create transcripts directory** if needed:
+   ```bash
+   mkdir -p .agents/transcripts
+   ```
+3. **Copy transcript** with descriptive name:
+   ```bash
+   cp /path/to/transcript.jsonl .agents/transcripts/YYYYMMDD-HHMMSS-description.jsonl
+   ```
+4. **Update session frontmatter**:
+   ```yaml
+   transcripts:
+     - 20260123-143500-pre-compact.jsonl
+   ```
+
+### When to Archive
+
+| Event | Action |
+|-------|--------|
+| Before `/compact` | Archive current transcript |
+| Before `/clear` | Archive current transcript |
+| Session end | Archive final transcript |
+
+### Benefits
+
+- **Audit trail** - Full history of decisions and work
+- **Knowledge extraction** - Mining past sessions for patterns
+- **Debugging** - Understanding how errors occurred
+- **Training** - Learning from past sessions
+
+---
+
+## Task Completion
+
+When a task-coupled session completes:
+
+1. **Update task status** (local file or Linear)
+2. **Check spec progress:**
+   - List all tasks for the spec
+   - If all done → mark spec as `complete`
+   - If tasks remain → spec stays `implementing`
+3. **Archive session** (standard process)
+
+### Spec Completion Check
+
+```bash
+# For local tasks
+grep -l "spec: SPEC-001" .agents/tasks/active/*.md | wc -l
+# If 0, all tasks done
+
+# For Linear
+# Check all issues with spec label
+```
+
+---
+
+## Related Skills
+
+- **orchestration/product-development** - Full workflow hierarchy
+- **orchestration/specs** - Spec format and lifecycle
+- **orchestration/local-tasks** - Local task management
+- **orchestration/sessions** - Session lifecycle details
 ---
 version: 1.11.0
