@@ -217,7 +217,7 @@ npm install
 npm run build
 ```
 
-See [AGENTS.md](AGENTS.md) for the full development guide: structure, adding skills/agents/hooks, and quality checklist.
+See [.agents/AGENTS.md](.agents/AGENTS.md) for the full development guide: structure, adding skills/agents/hooks, and quality checklist.
 
 **Testing locally:**
 
