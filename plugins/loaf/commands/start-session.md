@@ -18,6 +18,36 @@ You are the PM agent. Start by understanding the task:
 
 ---
 
+## Input Detection
+
+Parse `$ARGUMENTS` to determine the session type:
+
+| Input Pattern | Type | Action |
+|---------------|------|--------|
+| `TASK-XXX` | Local task | Load from `.agents/tasks/active/` |
+| `SPEC-XXX` | Spec (no task) | Warn: suggest `/tasks` first |
+| `PLT-123`, `PROJ-123` | Linear issue | Fetch from Linear |
+| Description text | Ad-hoc | Create session, ask about Linear |
+
+### Task-Coupled Sessions
+
+When starting from a task (`TASK-XXX` or Linear issue):
+
+1. **Fetch task details** (local file or Linear API)
+2. **Load parent spec** if task has `spec:` field
+3. **Load linked requirement** if spec has `requirement:` field
+4. **Build traceability chain** in session frontmatter
+
+### Ad-hoc Sessions
+
+When no task exists:
+
+1. **Inform user:** "No parent task found. Proceeding as ad-hoc session."
+2. **Ask:** "Should I create a Linear issue or local task for tracking?"
+3. If yes, create and link; if no, proceed without
+
+---
+
 ## CRITICAL: Strict Delegation Model
 
 **You are the ORCHESTRATOR, not the implementer.**
@@ -138,8 +168,19 @@ session:
   linear_issue: "PLT-XXX"           # If applicable
   linear_url: "https://linear.app/{{your-workspace}}/issue/PLT-XXX"
   branch: "username/plt-xxx-feature"    # Working branch for this session
+  task: "TASK-001"                      # Local task ID (if applicable)
+  spec: "SPEC-001"                      # Parent spec (if applicable)
+
+# Traceability chain (populated when task-coupled)
+traceability:
+  requirement: "2.1 User Authentication"  # From spec's requirement field
+  architecture:
+    - "Session Management"                # Relevant ARCHITECTURE.md sections
+  decisions:
+    - "ADR-001"                           # Related ADRs
 
 plans: []  # List of plan files in .agents/plans/ used by this session
+transcripts: []  # Archived conversation transcripts (.jsonl files)
 
 orchestration:
   current_task: "Initial planning"
@@ -625,3 +666,74 @@ Follow your three-phase workflow (BEFORE → DURING → AFTER):
 Format: `[YYYY-MM-DD HH:MM UTC]`
 
 Generate with: `date -u +"%Y-%m-%d %H:%M UTC"`
+
+---
+
+## Transcript Archival
+
+After `/compact` or `/clear`, archive conversation transcripts for future reference.
+
+### Process
+
+1. **Get transcript path** from Claude Code output after compaction
+2. **Create transcripts directory** if needed:
+   ```bash
+   mkdir -p .agents/transcripts
+   ```
+3. **Copy transcript** with descriptive name:
+   ```bash
+   cp /path/to/transcript.jsonl .agents/transcripts/YYYYMMDD-HHMMSS-description.jsonl
+   ```
+4. **Update session frontmatter**:
+   ```yaml
+   transcripts:
+     - 20260123-143500-pre-compact.jsonl
+   ```
+
+### When to Archive
+
+| Event | Action |
+|-------|--------|
+| Before `/compact` | Archive current transcript |
+| Before `/clear` | Archive current transcript |
+| Session end | Archive final transcript |
+
+### Benefits
+
+- **Audit trail** - Full history of decisions and work
+- **Knowledge extraction** - Mining past sessions for patterns
+- **Debugging** - Understanding how errors occurred
+- **Training** - Learning from past sessions
+
+---
+
+## Task Completion
+
+When a task-coupled session completes:
+
+1. **Update task status** (local file or Linear)
+2. **Check spec progress:**
+   - List all tasks for the spec
+   - If all done → mark spec as `complete`
+   - If tasks remain → spec stays `implementing`
+3. **Archive session** (standard process)
+
+### Spec Completion Check
+
+```bash
+# For local tasks
+grep -l "spec: SPEC-001" .agents/tasks/active/*.md | wc -l
+# If 0, all tasks done
+
+# For Linear
+# Check all issues with spec label
+```
+
+---
+
+## Related Skills
+
+- **orchestration/product-development** - Full workflow hierarchy
+- **orchestration/specs** - Spec format and lifecycle
+- **orchestration/local-tasks** - Local task management
+- **orchestration/sessions** - Session lifecycle details

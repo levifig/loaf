@@ -274,11 +274,18 @@ plugin-groups:
   orchestration:
     description: PM orchestration, session management, Linear workflow integration
     agents: [pm]
-    skills: [orchestration]
-    commands: [start-session, resume-session, review-sessions, council-session, reference-session]
+    skills: [orchestration, research]
+    commands: [start-session, resume-session, review-sessions, council-session, reference-session, research, architecture, prd, specs, tasks]
     related-hooks:
       pre-tool: [validate-commit, detect-linear-magic]
       session: [session-start, session-end, pre-compact-archive]
+
+  # Research - Project reflection and brainstorming
+  research:
+    description: Project state assessment, topic exploration, brainstorming, vision evolution
+    agents: []
+    skills: [research]
+    commands: [research]
 
   # Quality - Cross-language fundamentals
   foundations:

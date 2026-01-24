@@ -17,11 +17,16 @@
     "./agents/qa.md"
   ],
   "commands": [
+    "./commands/architecture.md",
     "./commands/council-session.md",
+    "./commands/prd.md",
     "./commands/reference-session.md",
+    "./commands/research.md",
     "./commands/resume-session.md",
     "./commands/review-sessions.md",
-    "./commands/start-session.md"
+    "./commands/specs.md",
+    "./commands/start-session.md",
+    "./commands/tasks.md"
   ],
   "skills": [
     "./skills/database/SKILL.md",
@@ -33,6 +38,7 @@
     "./skills/orchestration/SKILL.md",
     "./skills/power-systems/SKILL.md",
     "./skills/python/SKILL.md",
+    "./skills/research/SKILL.md",
     "./skills/ruby/SKILL.md",
     "./skills/typescript/SKILL.md"
   ],
