@@ -1,6 +1,6 @@
 ---
 description: Create feature specifications from requirements
-version: 1.11.1
+version: 1.11.2
 ---
 
 # Specs Command

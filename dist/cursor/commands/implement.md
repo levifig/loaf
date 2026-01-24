@@ -746,4 +746,4 @@ grep -l "spec: SPEC-001" .agents/tasks/*.md | wc -l
 - **orchestration/local-tasks** - Task file format including `session:` field
 - **orchestration/sessions** - Session lifecycle details
 ---
-version: 1.11.1
+version: 1.11.2

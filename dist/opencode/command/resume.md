@@ -1,6 +1,6 @@
 ---
 description: Resume an existing session file and sync with Linear
-version: 1.11.1
+version: 1.11.2
 ---
 
 # Resume Session

@@ -204,12 +204,14 @@ date -u +"%Y-%m-%dT%H:%M:%SZ"  # For frontmatter
 
 ### Session Filename
 
-Format: `YYYYMMDD-HHMMSS-orchestration-{identifier}.md`
+Format: `YYYYMMDD-HHMMSS-{description}.md`
+
+Use the spec or task title (kebab-case), not the ID. Session type goes in frontmatter, not filename.
 
 Examples:
-- `20260124-030000-orchestration-spec-002.md`
-- `20260124-030000-orchestration-task-009-012.md`
-- `20260124-030000-orchestration-task-009-011-015.md`
+- `20260124-030000-invisible-sessions-task-board.md` (from spec title)
+- `20260124-030000-task-board-and-hooks.md` (from task range description)
+- `20260124-030000-auth-feature-tasks.md` (from task list description)
 
 ### Session Structure
 

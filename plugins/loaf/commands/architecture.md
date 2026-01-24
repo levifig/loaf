@@ -1,6 +1,6 @@
 ---
 description: Make technical decisions and create Architecture Decision Records
-version: 1.11.1
+version: 1.11.2
 ---
 
 # Architecture Command
