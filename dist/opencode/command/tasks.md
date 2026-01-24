@@ -1,6 +1,6 @@
 ---
 description: Break specs into atomic work items (Linear or local)
-version: 1.11.0
+version: 1.11.1
 ---
 
 # Tasks Command
@@ -238,7 +238,7 @@ status: implementing
 
 **Spec status:** implementing
 
-**Next:** Use `{{IMPLEMENT_CMD}} TASK-001` to begin work, or `{{ORCHESTRATE_CMD}} SPEC-001` to run all tasks.
+**Next:** Use `/implement TASK-001` to begin work, or `/orchestrate SPEC-001` to run all tasks.
 ```
 
 ---

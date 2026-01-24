@@ -41,6 +41,45 @@ import {
 } from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
 
+/**
+ * Substitute command placeholders with Claude Code scoped commands
+ *
+ * Placeholders:
+ * - {{IMPLEMENT_CMD}} -> /loaf:implement
+ * - {{RESUME_CMD}} -> /loaf:resume
+ * - {{ORCHESTRATE_CMD}} -> /loaf:orchestrate
+ */
+function substituteCommands(content) {
+  return content
+    .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/loaf:implement")
+    .replace(/\{\{RESUME_CMD\}\}/g, "/loaf:resume")
+    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/loaf:orchestrate");
+}
+
+/**
+ * Copy references directory with command substitution for markdown files
+ */
+function copyReferencesWithSubstitution(srcDir, destDir) {
+  mkdirSync(destDir, { recursive: true });
+
+  const entries = readdirSync(srcDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = join(srcDir, entry.name);
+    const destPath = join(destDir, entry.name);
+
+    if (entry.isDirectory()) {
+      copyReferencesWithSubstitution(srcPath, destPath);
+    } else if (entry.name.endsWith(".md")) {
+      // Apply substitution to markdown files
+      const content = readFileSync(srcPath, "utf-8");
+      writeFileSync(destPath, substituteCommands(content));
+    } else {
+      // Copy non-markdown files as-is
+      cpSync(srcPath, destPath);
+    }
+  }
+}
+
 // Version is loaded dynamically from package.json at build time
 let VERSION = "0.0.0";
 const REPOSITORY = "https://github.com/levifig/loaf";
@@ -434,16 +473,16 @@ function copySkills(skills, srcDir, pluginDir) {
       const content = readFileSync(skillMdPath, "utf-8");
       const { content: body } = matter(content);
 
-      // Write with merged frontmatter
-      const transformed = matter.stringify(body, frontmatter);
+      // Write with merged frontmatter and command substitution
+      const transformed = substituteCommands(matter.stringify(body, frontmatter));
       writeFileSync(join(skillDest, "SKILL.md"), transformed);
     }
 
-    // Copy references directory
+    // Copy references directory with command substitution
     const refSrc = join(skillSrc, "references");
     const refDest = join(skillDest, "references");
     if (existsSync(refSrc)) {
-      cpSync(refSrc, refDest, { recursive: true });
+      copyReferencesWithSubstitution(refSrc, refDest);
     }
 
     // Copy scripts directory
@@ -487,8 +526,8 @@ function copyCommands(commands, srcDir, pluginDir) {
       version: VERSION,
     };
 
-    // Write with merged frontmatter
-    const transformed = matter.stringify(body, mergedFrontmatter);
+    // Write with merged frontmatter and command substitution
+    const transformed = substituteCommands(matter.stringify(body, mergedFrontmatter));
     writeFileSync(destPath, transformed);
   }
 }

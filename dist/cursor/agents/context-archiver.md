@@ -191,4 +191,4 @@ Before completing:
 - [ ] Memory name follows convention: `session-<slug>-decisions.md`
 
 ---
-version: 1.11.0
+version: 1.11.1

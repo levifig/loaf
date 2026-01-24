@@ -1,6 +1,6 @@
 ---
 description: Discover product requirements and update REQUIREMENTS.md
-version: 1.11.0
+version: 1.11.1
 ---
 
 # PRD Command

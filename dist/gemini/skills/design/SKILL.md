@@ -6,7 +6,7 @@ description: >-
   responsive breakpoints, WCAG 2.1 accessibility compliance, motion design, and
   design system governance. Activate when working on user interfaces, design
   tokens, or accessibility audits.
-version: 1.11.0
+version: 1.11.1
 ---
 
 # Design Principles

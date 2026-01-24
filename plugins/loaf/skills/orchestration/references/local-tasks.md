@@ -26,7 +26,7 @@ task_management:
 
 | Operation | Linear | Local |
 |-----------|--------|-------|
-| Create task | Create issue | Write `.agents/tasks/active/TASK-*.md` |
+| Create task | Create issue | Write `.agents/tasks/TASK-*.md` |
 | Fetch task | Get issue | Read task file |
 | Update status | Update issue | Edit frontmatter |
 | List tasks | List issues | Glob task files |
@@ -76,7 +76,7 @@ Reference ADR-001 for session storage decisions.
 <!-- Updated by session as work progresses -->
 ```
 
-**Location:** `.agents/tasks/active/TASK-001-oauth-provider.md`
+**Location:** `.agents/tasks/TASK-001-oauth-provider.md`
 
 ## Task Lifecycle
 
@@ -174,7 +174,7 @@ mv .agents/tasks/TASK-001-*.md .agents/tasks/archive/$(date +%Y-%m)/
 
 ## Session Integration
 
-When `{{IMPLEMENT_CMD}} TASK-001`:
+When `/loaf:implement TASK-001`:
 
 1. Read task file for context
 2. Read linked spec for full picture
@@ -247,7 +247,7 @@ traceability:
 ### All Active Tasks
 
 ```bash
-for f in .agents/tasks/active/TASK-*.md; do
+for f in .agents/tasks/TASK-*.md; do
   id=$(grep '^id:' "$f" | cut -d: -f2 | tr -d ' ')
   title=$(grep '^title:' "$f" | cut -d: -f2-)
   status=$(grep '^status:' "$f" | cut -d: -f2 | tr -d ' ')
@@ -258,7 +258,7 @@ done
 ### Tasks for a Spec
 
 ```bash
-grep -l "spec: SPEC-001" .agents/tasks/active/*.md
+grep -l "spec: SPEC-001" .agents/tasks/*.md
 ```
 
 ## Work Log Updates

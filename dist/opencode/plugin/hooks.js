@@ -87,6 +87,7 @@ const postToolHooks = {
     { id: 'design-a11y-validation', script: 'post-tool/design-a11y-validation.sh', timeout: 60000 },
     { id: 'design-token-check', script: 'post-tool/design-token-check.sh', timeout: 60000 },
     { id: 'design-a11y-audit', script: 'post-tool/design-a11y-audit.sh', timeout: 60000 },
+    { id: 'generate-task-board', script: 'post-tool/orchestration-generate-task-board.sh', timeout: 60000 },
   ],
 };
 
