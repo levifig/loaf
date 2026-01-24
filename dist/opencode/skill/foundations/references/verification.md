@@ -1,5 +1,18 @@
 # Verification Before Completion
 
+## Contents
+- Philosophy
+- Quick Reference
+- Verification Checklist
+- The Verification Command
+- Verification Levels
+- Critical Rules
+- Verification Patterns
+- Integration with Loaf Workflow
+- Red Flags
+- Verification Output Format
+- Related Skills
+
 Evidence before assertions. Always.
 
 ## Philosophy

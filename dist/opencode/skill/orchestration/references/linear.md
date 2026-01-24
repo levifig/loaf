@@ -2,6 +2,19 @@
 
 Guidelines for writing Linear issue updates, comments, and commit messages with Linear integration.
 
+## Contents
+
+- Configuration
+- Progress Update Format
+- Issue Description Format
+- Status Conventions
+- Magic Words (Git Integration)
+- Branch Naming
+- Team Routing
+- When to Create Issues
+- Blocker Format
+- Critical Rules
+
 ## Configuration
 
 This skill reads from `.agents/config.json`:

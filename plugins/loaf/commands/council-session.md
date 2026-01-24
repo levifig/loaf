@@ -1,6 +1,7 @@
 ---
 description: Start a council deliberation session with specialized agents
-version: 1.14.0
+argument-hint: '[decision topic]'
+version: 1.15.0
 ---
 
 # Council Deliberation Session

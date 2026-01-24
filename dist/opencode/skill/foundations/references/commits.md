@@ -1,5 +1,14 @@
 # Commit Conventions
 
+## Contents
+- Commit Message Format
+- Commit Body
+- Linear Integration
+- Branch Naming
+- Pull Request Format
+- Critical Rules
+- Semantic Versioning
+
 Git commit, branch, and pull request standards.
 
 ## Commit Message Format

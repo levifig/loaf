@@ -2,6 +2,18 @@
 
 Councils are deliberation mechanisms for decisions with multiple valid approaches. They bring diverse perspectives to reach well-reasoned conclusions.
 
+## Contents
+
+- When to Convene a Council
+- Core Principles
+- Council Composition
+- Deliberation Process
+- Council File Format
+- Council vs Implementation
+- Archiving Guidance
+- Anti-Patterns
+- Checklist
+
 ## When to Convene a Council
 
 **Use councils for:**

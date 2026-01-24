@@ -2,6 +2,20 @@
 
 Delegate specialized work to specialized agents.
 
+## Contents
+
+- Philosophy
+- Quick Reference
+- When to Use Subagents
+- Delegation Pattern
+- Task Definition Template
+- Critical Rules
+- Coordination Patterns
+- Integration Checklist
+- Troubleshooting
+- Integration with Loaf Workflow
+- Related Skills
+
 ## Philosophy
 
 **Right agent for the job.** Backend work goes to backend agents. Frontend to frontend. Database to DBA. Specialization enables depth without requiring breadth.

@@ -1,5 +1,14 @@
 # Documentation Standards
 
+## Contents
+- Core Principle
+- Document Hierarchy
+- Document Separation
+- Architecture Decision Records (ADRs)
+- API Documentation
+- Micro-Changelog
+- Critical Rules
+
 Guidelines for technical documentation, ADRs, and API docs.
 
 ## Core Principle

@@ -2,6 +2,23 @@
 
 Break specs into atomic tasks using local files when Linear isn't available.
 
+## Contents
+
+- Task Abstraction Layer
+- Local Task Format
+- Task Lifecycle
+- Creating Tasks from Specs
+- Directory Structure
+- Task ID Generation
+- Archiving Tasks
+- Session Integration
+- Task Sizing
+- Priority Levels
+- Listing Tasks
+- Work Log Updates
+- Verification
+- Local vs Linear Comparison
+
 ## Task Abstraction Layer
 
 Tasks work identically whether backed by Linear or local files.

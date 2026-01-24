@@ -1,5 +1,15 @@
 # Agent Delegation
 
+## Contents
+
+- Core Principle
+- What PM Does vs Delegates
+- Agent Capability Matrix
+- Delegation Decision Tree
+- Spawn Patterns
+- Anti-Patterns
+- Agent Access Hierarchy
+
 ## Core Principle
 
 **PM is the orchestrator, not the implementer.** All code changes, documentation edits, and implementation work MUST be delegated to specialized agents.

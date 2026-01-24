@@ -1,5 +1,13 @@
 # Hypothesis Tracking
 
+## Contents
+- Multi-Hypothesis Workflow
+- Session Template
+- Example Investigation
+- Hypothesis Status Definitions
+- Common Hypothesis Categories
+- Tips for Effective Hypothesis Tracking
+
 Systematic workflow for generating, testing, and tracking multiple debugging hypotheses.
 
 ## Multi-Hypothesis Workflow

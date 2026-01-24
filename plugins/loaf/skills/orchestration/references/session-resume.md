@@ -2,6 +2,19 @@
 
 Patterns for resuming work across Claude Code sessions using CLI flags and session files.
 
+## Contents
+
+- CLI Resume Flags
+- Resume Methods
+- When to Use Each Method
+- Session File as Resume Checkpoint
+- Checkpoint Pattern
+- Naming Sessions Descriptively
+- Context Recovery Strategies
+- Handling Stale Sessions
+- Multi-Session Coordination
+- Best Practices
+
 ## CLI Resume Flags
 
 Claude Code provides built-in session continuation:

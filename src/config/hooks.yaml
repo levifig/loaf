@@ -68,7 +68,7 @@ hooks:
 
     # Python - Type checking, linting, testing
     - id: python-type-check
-      skill: python
+      skill: python-development
       script: hooks/pre-tool/python-type-check.sh
       matcher: "Edit|Write"
       blocking: false
@@ -76,7 +76,7 @@ hooks:
       description: Run mypy type checking
 
     - id: python-pytest-validation
-      skill: python
+      skill: python-development
       script: hooks/pre-tool/python-pytest-validation.sh
       matcher: "Edit|Write"
       blocking: false
@@ -84,7 +84,7 @@ hooks:
       description: Validate pytest configuration
 
     - id: python-type-check-progressive
-      skill: python
+      skill: python-development
       script: hooks/pre-tool/python-type-check-progressive.sh
       matcher: "Edit|Write"
       blocking: false
@@ -92,7 +92,7 @@ hooks:
       description: Progressive type checking
 
     - id: python-ruff-lint
-      skill: python
+      skill: python-development
       script: hooks/pre-tool/python-ruff-lint.sh
       matcher: "Edit|Write"
       blocking: false
@@ -100,7 +100,7 @@ hooks:
       description: Run ruff linting
 
     - id: python-pytest-execution
-      skill: python
+      skill: python-development
       script: hooks/pre-tool/python-pytest-execution.sh
       matcher: "Edit|Write"
       blocking: false
@@ -108,7 +108,7 @@ hooks:
       description: Run pytest tests
 
     - id: python-bandit-scan
-      skill: python
+      skill: python-development
       script: hooks/pre-tool/python-bandit-scan.sh
       matcher: "Edit|Write"
       blocking: false
@@ -117,7 +117,7 @@ hooks:
 
     # TypeScript - Type checking, bundle analysis
     - id: typescript-tsc-check
-      skill: typescript
+      skill: typescript-development
       script: hooks/pre-tool/typescript-tsc-check.sh
       matcher: "Edit|Write"
       blocking: false
@@ -125,7 +125,7 @@ hooks:
       description: Run TypeScript compiler check
 
     - id: typescript-bundle-analysis
-      skill: typescript
+      skill: typescript-development
       script: hooks/pre-tool/typescript-bundle-analysis.sh
       matcher: "Edit|Write"
       blocking: false
@@ -134,7 +134,7 @@ hooks:
 
     # Ruby/Rails - Migration safety, testing, security
     - id: rails-migration-safety
-      skill: ruby
+      skill: ruby-development
       script: hooks/pre-tool/rails-migration-safety.sh
       matcher: "Edit|Write"
       blocking: false
@@ -142,7 +142,7 @@ hooks:
       description: Check migration safety
 
     - id: rails-migration-safety-deep
-      skill: ruby
+      skill: ruby-development
       script: hooks/pre-tool/rails-migration-safety-deep.sh
       matcher: "Edit|Write"
       blocking: false
@@ -150,7 +150,7 @@ hooks:
       description: Deep migration safety analysis
 
     - id: rails-test-execution
-      skill: ruby
+      skill: ruby-development
       script: hooks/pre-tool/rails-test-execution.sh
       matcher: "Edit|Write"
       blocking: false
@@ -158,7 +158,7 @@ hooks:
       description: Run Rails tests
 
     - id: rails-brakeman-scan
-      skill: ruby
+      skill: ruby-development
       script: hooks/pre-tool/rails-brakeman-scan.sh
       matcher: "Edit|Write"
       blocking: false
@@ -167,7 +167,7 @@ hooks:
 
     # Infrastructure - K8s, Docker, Terraform validation
     - id: infra-validate-k8s
-      skill: infrastructure
+      skill: infrastructure-management
       script: hooks/pre-tool/infra-validate-k8s.sh
       matcher: "Edit|Write"
       blocking: false
@@ -175,7 +175,7 @@ hooks:
       description: Validate Kubernetes manifests
 
     - id: infra-dockerfile-lint
-      skill: infrastructure
+      skill: infrastructure-management
       script: hooks/pre-tool/infra-dockerfile-lint.sh
       matcher: "Edit|Write"
       blocking: false
@@ -183,7 +183,7 @@ hooks:
       description: Lint Dockerfile
 
     - id: infra-k8s-dry-run
-      skill: infrastructure
+      skill: infrastructure-management
       script: hooks/pre-tool/infra-k8s-dry-run-server.sh
       matcher: "Edit|Write"
       blocking: false
@@ -191,7 +191,7 @@ hooks:
       description: Kubernetes dry-run validation
 
     - id: infra-terraform-plan
-      skill: infrastructure
+      skill: infrastructure-management
       script: hooks/pre-tool/infra-terraform-plan-cost.sh
       matcher: "Edit|Write"
       blocking: false
@@ -201,40 +201,40 @@ hooks:
   post-tool:
     # Python
     - id: python-ruff-check
-      skill: python
+      skill: python-development
       script: hooks/post-tool/python-ruff-check.sh
       matcher: "Edit|Write"
       description: Run ruff after changes
 
     # TypeScript
     - id: typescript-eslint-check
-      skill: typescript
+      skill: typescript-development
       script: hooks/post-tool/typescript-eslint-check.sh
       matcher: "Edit|Write"
       description: Run ESLint after changes
 
     # Ruby/Rails
     - id: rails-rubocop-check
-      skill: ruby
+      skill: ruby-development
       script: hooks/post-tool/rails-rubocop-check.sh
       matcher: "Edit|Write"
       description: Run RuboCop after changes
 
     # Design
     - id: design-a11y-validation
-      skill: design
+      skill: interface-design
       script: hooks/post-tool/design-a11y-validation.sh
       matcher: "Edit|Write"
       description: Validate accessibility after changes
 
     - id: design-token-check
-      skill: design
+      skill: interface-design
       script: hooks/post-tool/design-token-check.sh
       matcher: "Edit|Write"
       description: Check design token usage
 
     - id: design-a11y-audit
-      skill: design
+      skill: interface-design
       script: hooks/post-tool/design-a11y-audit.sh
       matcher: "Edit|Write"
       description: Full accessibility audit
@@ -328,7 +328,7 @@ plugin-groups:
   python:
     description: Python 3.12+ development with FastAPI, async, and pytest
     agents: [backend-dev]
-    skills: [python, foundations]
+    skills: [python-development, foundations]
     related-hooks:
       pre-tool: [python-type-check, python-pytest-validation, python-type-check-progressive, python-ruff-lint, python-pytest-execution, python-bandit-scan]
       post-tool: [python-ruff-check]
@@ -336,7 +336,7 @@ plugin-groups:
   typescript:
     description: TypeScript and React development with Next.js
     agents: [frontend-dev]
-    skills: [typescript, design, foundations]
+    skills: [typescript-development, interface-design, foundations]
     related-hooks:
       pre-tool: [typescript-tsc-check, typescript-bundle-analysis]
       post-tool: [typescript-eslint-check]
@@ -344,7 +344,7 @@ plugin-groups:
   ruby:
     description: Ruby development following the DHH/37signals way (includes Rails)
     agents: [backend-dev]
-    skills: [ruby, foundations]
+    skills: [ruby-development, foundations]
     related-hooks:
       pre-tool: [rails-migration-safety, rails-migration-safety-deep, rails-test-execution, rails-brakeman-scan]
       post-tool: [rails-rubocop-check]
@@ -352,26 +352,26 @@ plugin-groups:
   go:
     description: Go development following Effective Go principles
     agents: [backend-dev]
-    skills: [go, foundations]
+    skills: [go-development, foundations]
 
   # Infrastructure and operations
   infrastructure:
     description: DevOps and infrastructure patterns
     agents: [devops, dba]
-    skills: [infrastructure, foundations]
+    skills: [infrastructure-management, foundations]
     related-hooks:
       pre-tool: [infra-validate-k8s, infra-dockerfile-lint, infra-k8s-dry-run, infra-terraform-plan]
 
   database:
     description: Database design, migrations, query optimization, and indexing patterns
     agents: [dba]
-    skills: [database, foundations]
+    skills: [database-design, foundations]
 
   # Design and UI/UX
   design:
     description: UI/UX design patterns and accessibility standards
     agents: [design]
-    skills: [design, foundations]
+    skills: [interface-design, foundations]
     related-hooks:
       post-tool: [design-a11y-validation, design-token-check, design-a11y-audit]
 
@@ -379,4 +379,4 @@ plugin-groups:
   power-systems:
     description: Power systems engineering for thermal modeling, conductor physics, and grid calculations
     agents: [power-systems]
-    skills: [power-systems, python, foundations]
+    skills: [power-systems-modeling, python-development, foundations]

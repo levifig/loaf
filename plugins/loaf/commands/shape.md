@@ -1,6 +1,7 @@
 ---
 description: Shape ideas into well-defined specs through rigorous evaluation
-version: 1.14.0
+argument-hint: '[idea or requirement]'
+version: 1.15.0
 ---
 
 # Shape Command

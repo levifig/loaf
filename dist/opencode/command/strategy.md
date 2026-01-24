@@ -1,6 +1,6 @@
 ---
 description: Discover and maintain strategic context in STRATEGY.md
-version: 1.14.0
+version: 1.15.0
 ---
 
 # Strategy Command

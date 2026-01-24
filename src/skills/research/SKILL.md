@@ -1,9 +1,10 @@
 ---
 name: research
 description: >-
-  Use for project reflection, brainstorming, and vision evolution. Covers assessing project state,
-  exploring problem spaces, generating ideas, and evolving strategic direction. Activate when
-  stepping back to think, researching topics, or updating VISION.md.
+  Conducts project assessment, brainstorming, and vision evolution. Covers assessing project state,
+  exploring problem spaces, generating ideas, and evolving strategic direction. Use when stepping
+  back to understand the big picture, or when the user asks "what's the current state?" or "help
+  me think through this problem."
 ---
 
 # Research

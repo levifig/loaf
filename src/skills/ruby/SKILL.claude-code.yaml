@@ -1,5 +1,0 @@
-# Claude Code extensions for Ruby skill
-# Base name/description in SKILL.md
-
-agent: backend-dev
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep

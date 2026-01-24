@@ -1,5 +1,12 @@
 # Architecture Diagrams
 
+## Contents
+- When to Create Diagrams
+- Mermaid Syntax Quick Reference
+- Storage Patterns
+- Best Practices
+- Anti-Patterns
+
 Guidelines for creating Mermaid diagrams to visualize system architecture and data flows.
 
 ## When to Create Diagrams

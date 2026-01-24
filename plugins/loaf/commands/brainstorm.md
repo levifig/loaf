@@ -1,6 +1,7 @@
 ---
 description: Deep thinking on ideas or problem spaces
-version: 1.14.0
+argument-hint: '[idea or problem]'
+version: 1.15.0
 ---
 
 # Brainstorm Command

@@ -2,6 +2,19 @@
 
 A Research → Vision → Architecture → Requirements → Specs → Tasks → Session workflow for structured product development.
 
+## Contents
+
+- Core Insight
+- The Hierarchy
+- Commands Overview
+- Document Formats
+- Configuration
+- Workflow Examples
+- Feedback Loops
+- Transcript Archival
+- Flexibility Preserved
+- Critical Files
+
 ## Core Insight
 
 **Separate permanent project knowledge from ephemeral orchestration.**

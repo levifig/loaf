@@ -2,6 +2,21 @@
 
 Patterns for managing context efficiently across sessions and agent spawns.
 
+## Contents
+
+- Overview
+- Context Commands
+- When to Clear Context
+- The 2-Correction Rule
+- Context Compaction
+- Session Files as Context Anchors
+- Subagents for Context Isolation
+- Context Budget Guidelines
+- Preventing Context Bloat
+- PM Session Context Patterns
+- Warning Signs
+- Best Practices
+
 ## Overview
 
 Context is finite. Long conversations accumulate irrelevant information that degrades performance. Active context management keeps conversations focused and effective.

@@ -2,6 +2,16 @@
 
 Background agents handle low-priority, long-running, or non-interactive work that can run independently while the user continues with other tasks.
 
+## Contents
+
+- When to Use Background Agents
+- Spawning Background Agents
+- Background Agent Tracking
+- Result Retrieval
+- Workflow Example
+- Anti-Patterns
+- Integration Points
+
 ## When to Use Background Agents
 
 | Appropriate | Not Appropriate |
