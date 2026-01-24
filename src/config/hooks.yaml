@@ -282,18 +282,39 @@ plugin-groups:
     description: PM orchestration, session management, Linear workflow integration
     agents: [pm]
     skills: [orchestration, research]
-    commands: [implement, resume, orchestrate, review-sessions, council-session, reference-session, research, architecture, prd, specs, tasks]
+    commands: [implement, resume, orchestrate, review-sessions, council-session, reference-session, research, architecture, idea, shape, strategy, breakdown, reflect, brainstorm]
     related-hooks:
       pre-tool: [validate-commit, detect-linear-magic]
       post-tool: [generate-task-board]
       session: [session-start, session-end, pre-compact-archive]
 
-  # Research - Project reflection and brainstorming
+  # Research - Project understanding and investigation
   research:
-    description: Project state assessment, topic exploration, brainstorming, vision evolution
+    description: Project state assessment, topic investigation
     agents: []
     skills: [research]
     commands: [research]
+
+  # Ideation - Capture and explore ideas
+  ideation:
+    description: Quick idea capture, deep brainstorming, and problem exploration
+    agents: []
+    skills: []
+    commands: [idea, brainstorm]
+
+  # Shaping - Define and bound work
+  shaping:
+    description: Shape ideas into specs, discover strategy, decompose into tasks
+    agents: []
+    skills: [orchestration]
+    commands: [shape, strategy, breakdown]
+
+  # Learning - Reflect and evolve
+  learning:
+    description: Integrate learnings from shipped work into strategic documents
+    agents: []
+    skills: []
+    commands: [reflect]
 
   # Quality - Cross-language fundamentals
   foundations:
