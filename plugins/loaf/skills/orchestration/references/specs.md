@@ -2,6 +2,19 @@
 
 Break VISION + ARCHITECTURE + REQUIREMENTS into specific, implementable specs.
 
+## Contents
+
+- Philosophy
+- Spec Format
+- Spec Lifecycle
+- Creating Specs
+- Appetite Levels
+- Splitting Large Specs
+- Archiving Specs
+- Spec vs Plan
+- Validation Checklist
+- Example: Good vs Bad Specs
+
 ## Philosophy
 
 **Specs are shaped solutions, not detailed designs.**

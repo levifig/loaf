@@ -1,5 +1,13 @@
 # Code Review Checklist
 
+## Contents
+- Quick Review (< 5 minutes)
+- Standard Review (5-15 minutes)
+- Deep Review (15-30 minutes)
+- Review Response Templates
+- Common Issues to Flag
+- Review Mindset
+
 Comprehensive code review checklist for backend/frontend dev reviewers to ensure code quality, maintainability, and correctness.
 
 ## Quick Review (< 5 minutes)

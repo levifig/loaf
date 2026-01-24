@@ -1,10 +1,10 @@
 ---
 name: orchestration
 description: >-
-  Use for PM-style agent coordination. Covers agent delegation patterns, council deliberation
-  workflows, session file management, Linear issue integration, and product planning. Activate
-  when coordinating multi-agent work, running councils for decisions, managing work sessions,
-  or integrating with Linear.
+  Coordinates multi-agent work with PM-style patterns. Covers agent delegation, council deliberation
+  workflows, session file management, Linear issue integration, and product planning. Use when
+  managing complex tasks across agents, running decision councils, or when the user asks "how do
+  I break down this work?" or "which agent should handle this?"
 ---
 
 # PM Orchestration
@@ -43,21 +43,21 @@ Every release should be complete, polished, and delightful - no MVPs or quick ha
 
 ## Topics
 
-| Topic | Reference | Key Content |
-|-------|-----------|-------------|
-| Product Development | [references/product-development.md](references/product-development.md) | Full workflow: Research → Vision → Architecture → Requirements → Specs → Tasks |
-| Specifications | [references/specs.md](references/specs.md) | Spec format, lifecycle, shaping, test conditions |
-| Local Tasks | [references/local-tasks.md](references/local-tasks.md) | Task format, abstraction layer, Linear/local backend |
-| Agent Delegation | [references/delegation.md](references/delegation.md) | Agent capabilities, spawn patterns, decision tree |
-| Parallel Agents | [references/parallel-agents.md](references/parallel-agents.md) | Dispatch independent work concurrently |
-| Subagent Development | [references/subagent-development.md](references/subagent-development.md) | Delegate to specialized agents |
-| Background Agents | [references/background-agents.md](references/background-agents.md) | Non-interactive work, spawn with run_in_background |
-| Council Workflow | [references/councils.md](references/councils.md) | Composition, deliberation, synthesis, user approval |
-| Session Management | [references/sessions.md](references/sessions.md) | Lifecycle, file format, handoffs, validation |
-| Session Resume | [references/session-resume.md](references/session-resume.md) | CLI flags, checkpoints, context recovery |
-| Context Management | [references/context-management.md](references/context-management.md) | /clear, /compact, 2-correction rule, subagents |
-| Linear Integration | [references/linear.md](references/linear.md) | Update format, magic words, status conventions |
-| Product Planning | [references/planning.md](references/planning.md) | Shape Up methodology, appetite, roadmaps, specs |
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Product Development | [references/product-development.md](references/product-development.md) | Following Research → Vision → Architecture → Specs workflow |
+| Specifications | [references/specs.md](references/specs.md) | Creating specs, shaping work, defining test conditions |
+| Local Tasks | [references/local-tasks.md](references/local-tasks.md) | Managing tasks locally or with Linear backend |
+| Agent Delegation | [references/delegation.md](references/delegation.md) | Choosing agents, spawning subagents, decision trees |
+| Parallel Agents | [references/parallel-agents.md](references/parallel-agents.md) | Dispatching independent work concurrently |
+| Subagent Development | [references/subagent-development.md](references/subagent-development.md) | Delegating to specialized agents |
+| Background Agents | [references/background-agents.md](references/background-agents.md) | Running non-interactive work in background |
+| Council Workflow | [references/councils.md](references/councils.md) | Convening councils for complex decisions |
+| Session Management | [references/sessions.md](references/sessions.md) | Creating sessions, handoffs, validation |
+| Session Resume | [references/session-resume.md](references/session-resume.md) | Resuming sessions, checkpoints, context recovery |
+| Context Management | [references/context-management.md](references/context-management.md) | Using /clear, /compact, managing context limits |
+| Linear Integration | [references/linear.md](references/linear.md) | Updating Linear issues, magic words, status conventions |
+| Product Planning | [references/planning.md](references/planning.md) | Shape Up methodology, setting appetite, roadmaps |
 
 ## Configuration
 

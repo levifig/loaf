@@ -1,6 +1,7 @@
 ---
 description: Understand project state or investigate specific topics
-version: 1.14.0
+argument-hint: '[topic]'
+version: 1.15.0
 ---
 
 # Research Command

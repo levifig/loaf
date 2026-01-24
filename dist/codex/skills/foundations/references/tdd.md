@@ -1,5 +1,16 @@
 # Test-Driven Development
 
+## Contents
+- Philosophy
+- Quick Reference
+- The Cycle
+- Critical Rules
+- Test Structure
+- When TDD Feels Hard
+- TDD for Bug Fixes
+- Integration with Loaf Workflow
+- Related Skills
+
 Write the test first. Then make it pass. Then make it clean.
 
 ## Philosophy

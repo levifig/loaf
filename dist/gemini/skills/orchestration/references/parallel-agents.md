@@ -2,6 +2,18 @@
 
 Run independent work concurrently for faster completion.
 
+## Contents
+
+- Philosophy
+- Quick Reference
+- When to Parallelize
+- Dispatch Pattern
+- Critical Rules
+- Integration with Loaf Workflow
+- Conflict Resolution
+- Example: Parallel Feature Implementation
+- Related Skills
+
 ## Philosophy
 
 **Independence is the prerequisite.** Parallel work only makes sense when tasks don't depend on each other. Shared state or sequential dependencies mean sequential execution.

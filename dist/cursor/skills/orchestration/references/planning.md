@@ -2,6 +2,20 @@
 
 Guidelines for product specifications, roadmaps, and feature definition. Inspired by Shape Up (Ryan Singer/37signals).
 
+## Contents
+
+- Core Principle
+- Shape Up Methodology
+- Roadmap: Now / Next / Later
+- Feature Specification
+- Acceptance Criteria
+- Edge Case Categories
+- Project Constraints
+- Critical Rules
+- Roadmap Updates
+- Validation Checklist
+- Plan File Storage
+
 ## Core Principle
 
 **Insist on complete, polished releases - no MVPs or quick hacks.**

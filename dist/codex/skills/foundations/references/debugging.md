@@ -1,5 +1,14 @@
 # Systematic Debugging
 
+## Contents
+- Philosophy
+- Quick Reference
+- Debugging Workflow
+- Critical Rules
+- Investigation Log Format
+- Cross-Language Techniques
+- Related References
+
 Hypothesis-driven investigation for efficient and traceable bug diagnosis.
 
 ## Philosophy

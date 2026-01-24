@@ -2,6 +2,19 @@
 
 Patterns for importing decisions and context from past sessions into current work without duplicating full context.
 
+## Contents
+
+- When to Reference Past Sessions
+- What to Import
+- Session Frontmatter for Tracking
+- Decision Memory Format
+- Workflow
+- Serena MCP Integration
+- Anti-Patterns
+- When Decisions Conflict
+- Best Practices
+- Example Session Log Entry
+
 ## When to Reference Past Sessions
 
 ### Good Reasons to Reference

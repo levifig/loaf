@@ -1,0 +1,6 @@
+# Claude Code extensions for Infrastructure skill
+# Base name/description in SKILL.md
+
+user-invocable: false
+agent: devops
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep

@@ -1,11 +1,12 @@
 ---
 name: foundations
 description: >-
-  Use for code quality and engineering standards. Covers code style conventions,
-  conventional commit messages, documentation standards (ADRs, API docs,
-  changelogs), and security patterns (input validation, secrets management,
-  OWASP). Activate for code review, commit preparation, documentation writing,
-  or security considerations.
+  Establishes code quality and engineering standards. Covers code style
+  conventions, conventional commit messages, documentation standards (ADRs, API
+  docs, changelogs), and security patterns (input validation, secrets
+  management, OWASP). Use when reviewing code, preparing commits, writing
+  documentation, or when the user asks "how should I format this commit?" or
+  "what's the security best practice for X?"
 ---
 
 # Code Standards
@@ -31,20 +32,20 @@ Engineering foundations for consistent, secure, and well-documented code.
 
 ## Topics
 
-| Topic | Reference | Use For |
-|-------|-----------|---------|
-| Code Style | `references/code-style.md` | Python/TypeScript conventions, naming, patterns |
-| Commits | `references/commits.md` | Commit messages, branches, PRs, Linear integration |
-| Diagrams | `references/diagrams.md` | Mermaid syntax, when to diagram, storage patterns |
-| Documentation | `references/documentation.md` | ADRs, API docs, changelogs |
-| Security | `references/security.md` | Threat modeling, secrets, compliance |
-| Debugging | `references/debugging.md` | Hypothesis-driven systematic debugging methodology |
-| Hypothesis Tracking | `references/hypothesis-tracking.md` | Multi-hypothesis workflow, investigation logs |
-| Test Debugging | `references/test-debugging.md` | Flaky tests, isolation, state pollution |
-| TDD | `references/tdd.md` | Test-driven development, red/green/refactor cycle |
-| Verification | `references/verification.md` | Evidence before assertions, verify before claiming done |
-| Code Review | `references/code-review.md` | Request and receive reviews with technical rigor |
-| Permissions | `references/permissions.md` | Tool allowlists, sandbox config, agent permissions |
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Code Style | `references/code-style.md` | Writing Python/TypeScript code, naming variables |
+| Commits | `references/commits.md` | Writing commit messages, creating PRs, branching |
+| Diagrams | `references/diagrams.md` | Creating Mermaid diagrams, visualizing architecture |
+| Documentation | `references/documentation.md` | Writing ADRs, API docs, changelogs |
+| Security | `references/security.md` | Threat modeling, managing secrets, compliance checks |
+| Debugging | `references/debugging.md` | Systematically debugging issues with hypotheses |
+| Hypothesis Tracking | `references/hypothesis-tracking.md` | Managing multiple hypotheses during investigation |
+| Test Debugging | `references/test-debugging.md` | Fixing flaky tests, isolation issues, state pollution |
+| TDD | `references/tdd.md` | Writing tests first, red/green/refactor cycle |
+| Verification | `references/verification.md` | Verifying work before claiming done |
+| Code Review | `references/code-review.md` | Requesting or receiving code reviews |
+| Permissions | `references/permissions.md` | Configuring tool allowlists, sandbox, agent permissions |
 
 ## Available Scripts
 

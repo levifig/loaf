@@ -1,5 +1,17 @@
 # Permissions Configuration
 
+## Contents
+- Overview
+- Permission Commands
+- Recommended Allowlists
+- Agent-Specific Recommendations
+- Sandbox Configuration
+- Permission Patterns
+- Security Considerations
+- MCP Tool Permissions
+- Troubleshooting
+- Best Practices
+
 Permission patterns for autonomous operation and interactive workflows.
 
 ## Overview

@@ -1,6 +1,7 @@
 ---
 description: Quick capture of ideas into atomic nuggets
-version: 1.14.0
+argument-hint: '[idea description]'
+version: 1.15.0
 ---
 
 # Idea Command

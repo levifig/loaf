@@ -2,6 +2,19 @@
 
 Sessions are coordination artifacts for active work. They are archived (set status, `archived_at`, `archived_by`, move to `.agents/sessions/archive/`) when work completes to preserve an audit trail.
 
+## Contents
+
+- When to Use Sessions
+- Session Types
+- Session File Format
+- Lifecycle States
+- Updating During Work
+- Handoff Protocol
+- Completing a Session
+- PM Start Protocol
+- Hook Integration
+- Anti-Patterns
+
 ## When to Use Sessions
 
 - Multi-step work requiring agent coordination

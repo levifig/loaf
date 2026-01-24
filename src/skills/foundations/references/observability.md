@@ -1,5 +1,14 @@
 # Observability
 
+## Contents
+- Philosophy
+- Logging
+- Metrics
+- Distributed Tracing
+- Health Endpoints
+- Alerting Principles
+- Implementation
+
 Universal observability principles for production systems. For language-specific tooling, see language skills.
 
 ## Philosophy

@@ -1,6 +1,7 @@
 ---
 description: Integrate learnings from shipped work into strategic documents
-version: 1.14.0
+argument-hint: '[session-file]'
+version: 1.15.0
 ---
 
 # Reflect Command

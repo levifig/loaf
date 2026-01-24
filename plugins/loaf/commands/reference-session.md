@@ -1,6 +1,7 @@
 ---
 description: Import decisions from past sessions without full context duplication
-version: 1.14.0
+argument-hint: '[session-file]'
+version: 1.15.0
 ---
 
 # Reference Session
