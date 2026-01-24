@@ -1,7 +1,7 @@
 ---
 description: Start an orchestrated implementation session for a task or Linear issue
 argument-hint: '[task-id or description]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Implement
@@ -221,7 +221,7 @@ session:
   created: "YYYY-MM-DDTHH:MM:SSZ"
   last_updated: "YYYY-MM-DDTHH:MM:SSZ"
   archived_at: "YYYY-MM-DDTHH:MM:SSZ"   # Required when archived
-  archived_by: "agent-pm"               # Optional; fill when archived (enforced by /review-sessions)
+  archived_by: "agent-pm"               # Optional; fill when archived (enforced by /loaf:review-sessions)
   linear_issue: "PLT-XXX"           # If applicable
   linear_url: "https://linear.app/{{your-workspace}}/issue/PLT-XXX"
   branch: "username/plt-xxx-feature"    # Working branch for this session
@@ -634,7 +634,7 @@ Keep context clean throughout the session:
 
 If you make the same mistake twice after being corrected, context may be polluted.
 
-**Action:** Update session file, use `/clear`, then `/resume`.
+**Action:** Update session file, use `/clear`, then `/loaf:resume`.
 
 ### Use Subagents for Exploration
 

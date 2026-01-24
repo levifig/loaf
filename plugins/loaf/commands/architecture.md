@@ -1,7 +1,7 @@
 ---
 description: Make technical decisions and create Architecture Decision Records
 argument-hint: '[topic or decision]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Architecture Command

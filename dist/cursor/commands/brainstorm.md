@@ -292,4 +292,4 @@ Brainstorming can produce:
 - `/research` — Fact-finding (complements brainstorming)
 - `/strategy` — Strategic context (grounds brainstorming)
 ---
-version: 1.15.0
+version: 1.16.0

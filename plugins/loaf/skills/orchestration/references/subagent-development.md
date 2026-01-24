@@ -210,9 +210,9 @@ After subagent completes:
 
 | Command | Subagent Role |
 |---------|---------------|
-| `/breakdown` | Tasks become subagent assignments |
-| `/implement` | May dispatch subagents for specialized work |
-| `/orchestrate` | Automatically coordinates subagent work |
+| `/loaf:breakdown` | Tasks become subagent assignments |
+| `/loaf:implement` | May dispatch subagents for specialized work |
+| `/loaf:orchestrate` | Automatically coordinates subagent work |
 
 ## Related Skills
 

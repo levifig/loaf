@@ -42,24 +42,47 @@ import {
 import { getVersion } from "../lib/version.js";
 
 /**
- * Substitute command placeholders with Claude Code scoped commands
+ * Substitute command references with Claude Code scoped commands
  *
- * Placeholders:
- * - {{IMPLEMENT_CMD}} -> /loaf:implement
- * - {{RESUME_CMD}} -> /loaf:resume
- * - {{ORCHESTRATE_CMD}} -> /loaf:orchestrate
+ * Handles:
+ * - Explicit placeholders: {{IMPLEMENT_CMD}} -> /loaf:implement (legacy)
+ * - Generic slash commands: /breakdown -> /loaf:breakdown
+ *   (only for known Loaf commands, preserves non-Loaf commands like /help)
+ *
+ * @param {string} content - The content to transform
+ * @param {string[]} knownCommands - List of Loaf command names (without slash)
  */
-function substituteCommands(content) {
-  return content
+function substituteCommands(content, knownCommands = []) {
+  // First handle legacy placeholders for backward compatibility
+  let result = content
     .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/loaf:implement")
     .replace(/\{\{RESUME_CMD\}\}/g, "/loaf:resume")
     .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/loaf:orchestrate");
+
+  // Then auto-scope known commands: /command -> /loaf:command
+  // Only transform if not already scoped (no colon after slash)
+  for (const cmd of knownCommands) {
+    // Match /command but not /loaf:command or /other:command
+    // Lookbehind ensures we're not after another word:
+    // Lookahead ensures word boundary (space, ), ], comma, end, backtick)
+    const pattern = new RegExp(
+      `(?<!/\\w+:)\\/${cmd}(?=\\s|\\)|\\]|,|$|\`)`,
+      "g"
+    );
+    result = result.replace(pattern, `/loaf:${cmd}`);
+  }
+
+  return result;
 }
 
 /**
  * Copy references directory with command substitution for markdown files
+ *
+ * @param {string} srcDir - Source directory
+ * @param {string} destDir - Destination directory
+ * @param {string[]} knownCommands - List of Loaf command names for scoping
  */
-function copyReferencesWithSubstitution(srcDir, destDir) {
+function copyReferencesWithSubstitution(srcDir, destDir, knownCommands) {
   mkdirSync(destDir, { recursive: true });
 
   const entries = readdirSync(srcDir, { withFileTypes: true });
@@ -68,11 +91,11 @@ function copyReferencesWithSubstitution(srcDir, destDir) {
     const destPath = join(destDir, entry.name);
 
     if (entry.isDirectory()) {
-      copyReferencesWithSubstitution(srcPath, destPath);
+      copyReferencesWithSubstitution(srcPath, destPath, knownCommands);
     } else if (entry.name.endsWith(".md")) {
       // Apply substitution to markdown files
       const content = readFileSync(srcPath, "utf-8");
-      writeFileSync(destPath, substituteCommands(content));
+      writeFileSync(destPath, substituteCommands(content, knownCommands));
     } else {
       // Copy non-markdown files as-is
       cpSync(srcPath, destPath);
@@ -225,11 +248,11 @@ function buildUnifiedPlugin(config, srcDir, pluginsDir) {
   // Copy all agents
   copyAgents(allAgents, srcDir, pluginDir);
 
-  // Copy all skills
-  copySkills(allSkills, srcDir, pluginDir);
+  // Copy all skills (with command scoping)
+  copySkills(allSkills, srcDir, pluginDir, allCommands);
 
-  // Copy all commands
-  copyCommands(allCommands, srcDir, pluginDir);
+  // Copy all commands (with command scoping)
+  copyCommands(allCommands, srcDir, pluginDir, allCommands);
 
   // Copy all hooks
   copyAllHooks(config, srcDir, pluginDir);
@@ -443,8 +466,13 @@ function copyAgents(agents, srcDir, pluginDir) {
 
 /**
  * Copy skill directories with frontmatter from SKILL.md + optional extensions
+ *
+ * @param {string[]} skills - List of skill names
+ * @param {string} srcDir - Source directory
+ * @param {string} pluginDir - Plugin output directory
+ * @param {string[]} knownCommands - List of Loaf command names for scoping
  */
-function copySkills(skills, srcDir, pluginDir) {
+function copySkills(skills, srcDir, pluginDir, knownCommands) {
   const skillsDir = join(pluginDir, "skills");
   mkdirSync(skillsDir, { recursive: true });
 
@@ -474,7 +502,10 @@ function copySkills(skills, srcDir, pluginDir) {
       const { content: body } = matter(content);
 
       // Write with merged frontmatter and command substitution
-      const transformed = substituteCommands(matter.stringify(body, frontmatter));
+      const transformed = substituteCommands(
+        matter.stringify(body, frontmatter),
+        knownCommands
+      );
       writeFileSync(join(skillDest, "SKILL.md"), transformed);
     }
 
@@ -482,7 +513,7 @@ function copySkills(skills, srcDir, pluginDir) {
     const refSrc = join(skillSrc, "references");
     const refDest = join(skillDest, "references");
     if (existsSync(refSrc)) {
-      copyReferencesWithSubstitution(refSrc, refDest);
+      copyReferencesWithSubstitution(refSrc, refDest, knownCommands);
     }
 
     // Copy scripts directory
@@ -499,8 +530,13 @@ function copySkills(skills, srcDir, pluginDir) {
  *
  * Sidecar files: {command}.claude-code.yaml
  * Version is injected from package.json at build time
+ *
+ * @param {string[]} commands - List of command names
+ * @param {string} srcDir - Source directory
+ * @param {string} pluginDir - Plugin output directory
+ * @param {string[]} knownCommands - List of Loaf command names for scoping
  */
-function copyCommands(commands, srcDir, pluginDir) {
+function copyCommands(commands, srcDir, pluginDir, knownCommands) {
   const commandsDir = join(pluginDir, "commands");
   mkdirSync(commandsDir, { recursive: true });
 
@@ -527,7 +563,10 @@ function copyCommands(commands, srcDir, pluginDir) {
     };
 
     // Write with merged frontmatter and command substitution
-    const transformed = substituteCommands(matter.stringify(body, mergedFrontmatter));
+    const transformed = substituteCommands(
+      matter.stringify(body, mergedFrontmatter),
+      knownCommands
+    );
     writeFileSync(destPath, transformed);
   }
 }

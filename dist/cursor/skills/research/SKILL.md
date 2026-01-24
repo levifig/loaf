@@ -6,7 +6,7 @@ description: >-
   evolving strategic direction. Use when stepping back to understand the big
   picture, or when the user asks "what's the current state?" or "help me think
   through this problem."
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Research

@@ -7,7 +7,7 @@ hooks:
           command: >-
             bash
             ${CLAUDE_PLUGIN_ROOT}/hooks/sessions/validate-session-created.sh
-version: 1.15.0
+version: 1.16.0
 ---
 
 Review ALL agent artifacts in `.agents/` and provide hygiene recommendations.
@@ -126,7 +126,7 @@ report:
   session_reference: ".agents/sessions/YYYYMMDD-HHMMSS-title.md"
   processed_at: "YYYY-MM-DDTHH:MM:SSZ"
   archived_at: "YYYY-MM-DDTHH:MM:SSZ"
-  archived_by: "agent-pm"  # Optional; fill when archived (enforced by /review-sessions)
+  archived_by: "agent-pm"  # Optional; fill when archived (enforced by /loaf:review-sessions)
 ---
 ```
 

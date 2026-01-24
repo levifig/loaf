@@ -1,6 +1,6 @@
 ---
 description: Shape ideas into well-defined specs through rigorous evaluation
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Shape Command

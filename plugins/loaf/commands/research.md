@@ -1,7 +1,7 @@
 ---
 description: Understand project state or investigate specific topics
 argument-hint: '[topic]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Research Command
@@ -16,14 +16,14 @@ Investigate to understand — gather facts, assess state, answer questions.
 
 Research is about **understanding**, not generating.
 
-Use `/research` when you need to:
+Use `/loaf:research` when you need to:
 - Catch up on project state
 - Investigate a technical question
 - Understand how something works
 - Gather facts before deciding
 
-For **generating** options or **exploring** ideas, use `/brainstorm`.
-For **updating strategy** based on learnings, use `/reflect`.
+For **generating** options or **exploring** ideas, use `/loaf:brainstorm`.
+For **updating strategy** based on learnings, use `/loaf:reflect`.
 
 ---
 
@@ -147,7 +147,7 @@ Parse input to determine mode:
 2. [Finding 2]
 
 ### Project Context
-[How this relates to our existing decisions/architecture]
+[How this relates to our existing decisions/loaf:architecture]
 
 ### Sources
 - [Source 1] — [confidence]
@@ -166,12 +166,12 @@ Parse input to determine mode:
 
 | Need | Command |
 |------|---------|
-| Understand current state | `/research` |
-| Investigate a factual question | `/research` |
-| Generate ideas or options | `/brainstorm` |
-| Explore a problem space | `/brainstorm` |
-| Update strategy from learnings | `/reflect` |
-| Make technical decisions | `/architecture` |
+| Understand current state | `/loaf:research` |
+| Investigate a factual question | `/loaf:research` |
+| Generate ideas or options | `/loaf:brainstorm` |
+| Explore a problem space | `/loaf:brainstorm` |
+| Update strategy from learnings | `/loaf:reflect` |
+| Make technical decisions | `/loaf:architecture` |
 
 ---
 
@@ -232,7 +232,7 @@ Research produces **findings**, not decisions.
 
 ## Related Commands
 
-- `/brainstorm` — When you need to generate options or explore creatively
-- `/reflect` — When you need to update strategy based on learnings
-- `/architecture` — When you need to make technical decisions
-- `/strategy` — When you need to discover strategic context
+- `/loaf:brainstorm` — When you need to generate options or explore creatively
+- `/loaf:reflect` — When you need to update strategy based on learnings
+- `/loaf:architecture` — When you need to make technical decisions
+- `/loaf:strategy` — When you need to discover strategic context

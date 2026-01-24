@@ -1,7 +1,7 @@
 ---
 description: Resume an existing session file and sync with Linear
 argument-hint: '[session-file]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Resume Session

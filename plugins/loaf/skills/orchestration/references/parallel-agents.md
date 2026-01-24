@@ -117,9 +117,9 @@ When streams complete:
 
 | Command | Parallel Opportunity |
 |---------|---------------------|
-| `/breakdown` | Identify parallelizable tasks during decomposition |
-| `/implement` | Single task, usually sequential |
-| `/orchestrate` | Automatically parallelizes independent tasks |
+| `/loaf:breakdown` | Identify parallelizable tasks during decomposition |
+| `/loaf:implement` | Single task, usually sequential |
+| `/loaf:orchestrate` | Automatically parallelizes independent tasks |
 
 ## Conflict Resolution
 

@@ -1,7 +1,7 @@
 ---
 description: Integrate learnings from shipped work into strategic documents
 argument-hint: '[session-file]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Reflect Command
@@ -16,7 +16,7 @@ Update VISION, STRATEGY, and ARCHITECTURE based on proven implementation.
 
 Strategy evolves through **shipping**, not theorizing.
 
-After completing work, `/reflect` extracts learnings and proposes updates to strategic documents. This keeps strategy grounded in reality.
+After completing work, `/loaf:reflect` extracts learnings and proposes updates to strategic documents. This keeps strategy grounded in reality.
 
 **Key principle:** Don't update strategy during planning or shaping. Update it after implementation proves (or disproves) your assumptions.
 
@@ -328,7 +328,7 @@ When reflection surfaces a decision worth documenting:
 2. If updating existing decision → supersede old ADR
 3. If new decision → create new ADR
 
-See `/architecture` for ADR format.
+See `/loaf:architecture` for ADR format.
 
 ---
 
@@ -357,7 +357,7 @@ See `/architecture` for ADR format.
 
 ## Related Commands
 
-- `/shape` — Notes strategic tensions for later reflection
-- `/strategy` — Deep discovery (before reflection validates)
-- `/architecture` — Technical decisions (creates ADRs)
-- `/research` — Investigation that may inform reflection
+- `/loaf:shape` — Notes strategic tensions for later reflection
+- `/loaf:strategy` — Deep discovery (before reflection validates)
+- `/loaf:architecture` — Technical decisions (creates ADRs)
+- `/loaf:research` — Investigation that may inform reflection

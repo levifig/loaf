@@ -1,7 +1,7 @@
 ---
 description: Deep thinking on ideas or problem spaces
 argument-hint: '[idea or problem]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Brainstorm Command
@@ -16,7 +16,7 @@ Think deeply about an existing idea or explore a new problem space.
 
 Brainstorming is **generative thinking** — expanding possibilities before narrowing.
 
-Unlike `/idea` (quick capture) or `/shape` (rigorous bounding), brainstorming is exploratory:
+Unlike `/loaf:idea` (quick capture) or `/loaf:shape` (rigorous bounding), brainstorming is exploratory:
 - Process an existing idea to deepen understanding
 - Explore a problem space without a specific solution
 - Generate options before committing to an approach
@@ -109,8 +109,8 @@ Explore multiple approaches:
 [Which direction seems most promising and why]
 
 ### Next Steps
-- [ ] Ready to shape → `/shape {idea}`
-- [ ] Needs more research → `/research {topic}`
+- [ ] Ready to shape → `/loaf:shape {idea}`
+- [ ] Needs more research → `/loaf:research {topic}`
 - [ ] Park for later → Keep in ideas/
 - [ ] Discard → Archive idea
 ```
@@ -118,7 +118,7 @@ Explore multiple approaches:
 #### Step 6: Update Idea File
 
 If user wants to proceed:
-- Update idea status to `shaping` if moving to `/shape`
+- Update idea status to `shaping` if moving to `/loaf:shape`
 - Add brainstorm notes to idea file
 - Or archive if decided not to pursue
 
@@ -188,9 +188,9 @@ Filter and prioritize:
 [Which direction to pursue]
 
 ### Next Steps
-- [ ] Capture as idea → `/idea {summary}`
-- [ ] Shape directly → `/shape {topic}`
-- [ ] Research first → `/research {topic}`
+- [ ] Capture as idea → `/loaf:idea {summary}`
+- [ ] Shape directly → `/loaf:shape {topic}`
+- [ ] Research first → `/loaf:research {topic}`
 - [ ] Park → Note in session, revisit later
 ```
 
@@ -283,17 +283,17 @@ Brainstorming can produce:
 
 | Situation | Command |
 |-----------|---------|
-| Have a nugget, want to capture quickly | `/idea` |
-| Have an idea, want to think deeply | `/brainstorm` |
-| Have a problem, want to explore | `/brainstorm` |
-| Ready to bound and define | `/shape` |
-| Need facts or understanding | `/research` |
+| Have a nugget, want to capture quickly | `/loaf:idea` |
+| Have an idea, want to think deeply | `/loaf:brainstorm` |
+| Have a problem, want to explore | `/loaf:brainstorm` |
+| Ready to bound and define | `/loaf:shape` |
+| Need facts or understanding | `/loaf:research` |
 
 ---
 
 ## Related Commands
 
-- `/idea` — Quick capture (may precede brainstorming)
-- `/shape` — Rigorous bounding (often follows brainstorming)
-- `/research` — Fact-finding (complements brainstorming)
-- `/strategy` — Strategic context (grounds brainstorming)
+- `/loaf:idea` — Quick capture (may precede brainstorming)
+- `/loaf:shape` — Rigorous bounding (often follows brainstorming)
+- `/loaf:research` — Fact-finding (complements brainstorming)
+- `/loaf:strategy` — Strategic context (grounds brainstorming)

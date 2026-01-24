@@ -1,7 +1,7 @@
 ---
 description: Quick capture of ideas into atomic nuggets
 argument-hint: '[idea description]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Idea Command
@@ -16,7 +16,7 @@ Capture ideas quickly with minimal friction.
 
 Ideas are raw nuggets — unprocessed, unshaped, but worth remembering.
 
-The goal is **speed of capture**, not thoroughness. Ideas get shaped later via `/shape`.
+The goal is **speed of capture**, not thoroughness. Ideas get shaped later via `/loaf:shape`.
 
 ---
 
@@ -32,7 +32,7 @@ If empty or unclear, ask **at most 2-3 questions**:
 2. What problem does it solve or opportunity does it create?
 3. Any immediate constraints or context?
 
-**Keep it brief.** Don't interview extensively — that's for `/shape`.
+**Keep it brief.** Don't interview extensively — that's for `/loaf:shape`.
 
 ### Step 2: Generate Idea File
 
@@ -63,7 +63,7 @@ tags: []
 
 ---
 
-*Captured via /idea — shape with /shape when ready*
+*Captured via /loaf:idea — shape with /loaf:shape when ready*
 ```
 
 ### Step 3: Infer Metadata
@@ -89,7 +89,7 @@ From the conversation, infer:
    ```
    Captured: .agents/ideas/{filename}.md
 
-   When ready to develop this, use `/shape {filename}` or `/brainstorm {filename}`.
+   When ready to develop this, use `/loaf:shape {filename}` or `/loaf:brainstorm {filename}`.
    ```
 
 ---
@@ -103,7 +103,7 @@ raw → shaping → shaped (becomes SPEC) → archived
 | Status | Meaning |
 |--------|---------|
 | `raw` | Just captured, unprocessed |
-| `shaping` | Currently being developed via /shape or /brainstorm |
+| `shaping` | Currently being developed via /loaf:shape or /loaf:brainstorm |
 | `shaped` | Converted to SPEC, idea file archived |
 | `archived` | Decided not to pursue, kept for reference |
 
@@ -128,7 +128,7 @@ raw → shaping → shaped (becomes SPEC) → archived
 2. **2-3 questions max** — Don't turn this into an interview
 3. **Infer, don't ask** — Metadata should be automatic
 4. **One idea per file** — Keep them atomic
-5. **No shaping here** — That's what `/shape` is for
+5. **No shaping here** — That's what `/loaf:shape` is for
 
 ---
 
@@ -137,19 +137,19 @@ raw → shaping → shaped (becomes SPEC) → archived
 ### Quick capture with arguments
 
 ```
-User: /idea Add keyboard shortcuts for common actions
+User: /loaf:idea Add keyboard shortcuts for common actions
 
 Agent: [Creates file immediately]
 
 Captured: .agents/ideas/20260124-keyboard-shortcuts.md
 
-When ready to develop this, use `/shape 20260124-keyboard-shortcuts` or `/brainstorm 20260124-keyboard-shortcuts`.
+When ready to develop this, use `/loaf:shape 20260124-keyboard-shortcuts` or `/loaf:brainstorm 20260124-keyboard-shortcuts`.
 ```
 
 ### Capture with brief interview
 
 ```
-User: /idea
+User: /loaf:idea
 
 Agent: What's the core idea?
 
@@ -168,6 +168,6 @@ Captured: .agents/ideas/20260124-batch-idea-processing.md
 
 ## Related Commands
 
-- `/shape` — Develop an idea into a SPEC
-- `/brainstorm` — Deep thinking on an idea or problem space
-- `/research` — Investigate before capturing
+- `/loaf:shape` — Develop an idea into a SPEC
+- `/loaf:brainstorm` — Deep thinking on an idea or problem space
+- `/loaf:research` — Investigate before capturing
