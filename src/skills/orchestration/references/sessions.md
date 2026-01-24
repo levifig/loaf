@@ -67,9 +67,20 @@ date -u +"%Y%m%d-%H%M%S"
 date -u +"%Y-%m-%dT%H:%M:%SZ"
 ```
 
+### Naming Guidelines
+
+- **Don't include IDs in slugs** - Use descriptive names
+  - Bad: `20260124-143000-spec-002.md`
+  - Good: `20260124-143000-invisible-sessions-task-board.md`
+- **Don't prefix with session type** - Type is in frontmatter
+  - Bad: `20260124-143000-orchestration-auth-feature.md`
+  - Good: `20260124-143000-auth-feature.md`
+- IDs (TASK-XXX, SPEC-XXX) belong in frontmatter fields, not filenames
+
 **Good**: `20251204-143000-weather-fallback.md`
 **Bad**: `weather-fallback.md` (missing timestamp)
 **Bad**: `PLT-123-weather-fallback.md` (Linear ID in filename)
+**Bad**: `SPEC-002-invisible-sessions.md` (ID in filename)
 
 ### Required Frontmatter
 

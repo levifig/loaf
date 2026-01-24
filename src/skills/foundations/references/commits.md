@@ -169,6 +169,15 @@ Refs BACK-124
 - Add agent attribution
 - Mix unrelated changes
 - Commit secrets or sensitive data
+- Put SPEC or TASK IDs in commit subject (use human-readable names)
+
+### ID References
+
+- **IDs belong in footer, not subject line**
+  - Bad: `feat: implement SPEC-002 invisible sessions`
+  - Good: `feat: implement invisible sessions and task board`
+- Use descriptive names that are understandable without looking up IDs
+- Linear issue IDs go in footer only (e.g., `Closes BACK-123`)
 
 ## Semantic Versioning
 

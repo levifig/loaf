@@ -1,6 +1,6 @@
 ---
 description: Break specs into atomic work items (Linear or local)
-version: 1.11.1
+version: 1.11.2
 ---
 
 # Tasks Command
