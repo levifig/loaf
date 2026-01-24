@@ -88,11 +88,11 @@ spec:
 
 | Topic | Reference File | Description |
 |-------|----------------|-------------|
-| Docker | `reference/docker.md` | Multi-stage builds, layers, security, health checks |
-| Kubernetes | `reference/kubernetes.md` | Deployments, services, probes, resources, secrets |
-| GitOps | `reference/gitops.md` | ArgoCD, Kustomize, sync policies, rollout strategies |
-| CI/CD | `reference/ci-cd.md` | GitHub Actions workflows, caching, secrets, matrix builds |
-| Troubleshooting | `reference/troubleshooting.md` | CI failures, version conflicts, cache issues |
+| Docker | `references/docker.md` | Multi-stage builds, layers, security, health checks |
+| Kubernetes | `references/kubernetes.md` | Deployments, services, probes, resources, secrets |
+| GitOps | `references/gitops.md` | ArgoCD, Kustomize, sync policies, rollout strategies |
+| CI/CD | `references/ci-cd.md` | GitHub Actions workflows, caching, secrets, matrix builds |
+| Troubleshooting | `references/troubleshooting.md` | CI failures, version conflicts, cache issues |
 
 ## Available Scripts
 

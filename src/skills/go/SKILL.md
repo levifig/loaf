@@ -35,11 +35,11 @@ Go values **simplicity over cleverness**. The language deliberately omits featur
 
 | File | Coverage |
 |------|----------|
-| `reference/core.md` | Stack, project structure, naming, formatting, data types |
-| `reference/concurrency.md` | Goroutines, channels, sync primitives, patterns |
-| `reference/errors.md` | Error handling, custom errors, panic/recover |
-| `reference/testing.md` | Table-driven tests, benchmarks, examples |
-| `reference/idioms.md` | Guard clauses, defer, embedding, receivers |
+| `references/core.md` | Stack, project structure, naming, formatting, data types |
+| `references/concurrency.md` | Goroutines, channels, sync primitives, patterns |
+| `references/errors.md` | Error handling, custom errors, panic/recover |
+| `references/testing.md` | Table-driven tests, benchmarks, examples |
+| `references/idioms.md` | Guard clauses, defer, embedding, receivers |
 
 ## Quick Reference
 

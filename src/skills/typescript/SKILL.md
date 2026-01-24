@@ -166,17 +166,17 @@ type ButtonProps = VariantProps<typeof button>;
 
 | Topic | Use For |
 |-------|---------|
-| [Core](reference/core.md) | Project setup, tsconfig, modern TS features, type utilities |
-| [React](reference/react.md) | Components, hooks, Context API, performance patterns |
-| [Next.js](reference/nextjs.md) | App Router, Server/Client Components, Server Actions, routing |
-| [Types](reference/types.md) | Advanced types, generics, conditional types, type guards |
-| [State](reference/state.md) | Zustand, React Query, Context + Reducer, URL state |
-| [Forms](reference/forms.md) | React Hook Form, Zod validation, Server Actions integration |
-| [API](reference/api.md) | Fetch wrappers, React Query, tRPC, GraphQL, WebSockets |
-| [Testing](reference/testing.md) | Vitest, React Testing Library, MSW, Playwright E2E |
-| [Styling](reference/styling.md) | Tailwind CSS, CVA variants, dark mode, responsive design |
-| [Performance](reference/performance.md) | Bundle analysis, code splitting, memoization, Web Vitals |
-| [Accessibility](reference/a11y.md) | WCAG compliance, ARIA, keyboard navigation, screen readers |
+| [Core](references/core.md) | Project setup, tsconfig, modern TS features, type utilities |
+| [React](references/react.md) | Components, hooks, Context API, performance patterns |
+| [Next.js](references/nextjs.md) | App Router, Server/Client Components, Server Actions, routing |
+| [Types](references/types.md) | Advanced types, generics, conditional types, type guards |
+| [State](references/state.md) | Zustand, React Query, Context + Reducer, URL state |
+| [Forms](references/forms.md) | React Hook Form, Zod validation, Server Actions integration |
+| [API](references/api.md) | Fetch wrappers, React Query, tRPC, GraphQL, WebSockets |
+| [Testing](references/testing.md) | Vitest, React Testing Library, MSW, Playwright E2E |
+| [Styling](references/styling.md) | Tailwind CSS, CVA variants, dark mode, responsive design |
+| [Performance](references/performance.md) | Bundle analysis, code splitting, memoization, Web Vitals |
+| [Accessibility](references/a11y.md) | WCAG compliance, ARIA, keyboard navigation, screen readers |
 | [Mobile](references/mobile.md) | React Native, Expo, navigation, platform-specific code |
 | [ESM](references/esm.md) | ESM patterns, JSDoc types, JS vs TS decision guide |
 | [Debugging](references/debugging.md) | Console methods, DevTools, source maps, async debugging |
