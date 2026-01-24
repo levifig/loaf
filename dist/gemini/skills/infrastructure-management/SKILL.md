@@ -6,7 +6,7 @@ description: >-
   container security. Use when containerizing apps, setting up deployments, or
   when the user asks "how do I deploy to Kubernetes?" or "what's the best CI/CD
   setup?"
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Infrastructure

@@ -311,7 +311,7 @@ council:
   timestamp: "2025-12-10T15:30:00Z"
   status: approved              # approved | rejected | deferred | archived
   archived_at: "2025-12-10T18:00:00Z"   # Required when archived
-  archived_by: "agent-pm"               # Optional; fill when archived (enforced by /review-sessions)
+  archived_by: "agent-pm"               # Optional; fill when archived (enforced by /loaf:review-sessions)
   session: "20251210-140000-user-auth"  # REQUIRED
   participants:
     - dba

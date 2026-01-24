@@ -7,7 +7,7 @@ description: >-
   management, OWASP). Use when reviewing code, preparing commits, writing
   documentation, or when the user asks "how should I format this commit?" or
   "what's the security best practice for X?"
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Code Standards

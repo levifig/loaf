@@ -7,7 +7,7 @@ description: >-
   normalization tradeoffs. Use when designing tables, writing migrations, or
   when the user asks "what primary key should I use?" or "how do I optimize this
   query?"
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Database Skill

@@ -165,9 +165,9 @@ Don't perform agreement. If you disagree:
 
 | Command | Code Review Role |
 |---------|-----------------|
-| `/implement` | Self-review before marking complete |
-| `/breakdown` | Review task scope and approach |
-| `/reflect` | Note review feedback patterns |
+| `/loaf:implement` | Self-review before marking complete |
+| `/loaf:breakdown` | Review task scope and approach |
+| `/loaf:reflect` | Note review feedback patterns |
 
 ## Review as Learning
 

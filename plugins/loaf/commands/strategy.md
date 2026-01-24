@@ -1,7 +1,7 @@
 ---
 description: Discover and maintain strategic context in STRATEGY.md
 argument-hint: '[topic]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Strategy Command
@@ -259,7 +259,7 @@ After approval:
    - [Section 1]
    - [Section 2]
 
-   This context will inform future /shape sessions.
+   This context will inform future /loaf:shape sessions.
    ```
 
 ---
@@ -312,17 +312,17 @@ Minimum viable STRATEGY.md:
 
 | Situation | Command |
 |-----------|---------|
-| Understanding users and market | `/strategy` |
-| Quick idea capture | `/idea` |
-| Developing an idea into spec | `/shape` |
-| Updating strategy after shipping | `/reflect` |
-| Technical decisions | `/architecture` |
+| Understanding users and market | `/loaf:strategy` |
+| Quick idea capture | `/loaf:idea` |
+| Developing an idea into spec | `/loaf:shape` |
+| Updating strategy after shipping | `/loaf:reflect` |
+| Technical decisions | `/loaf:architecture` |
 
 ---
 
 ## Related Commands
 
-- `/shape` — Uses STRATEGY.md for context during shaping
-- `/reflect` — Updates STRATEGY.md based on shipping learnings
-- `/research` — Investigation that may inform strategy
-- `/brainstorm` — Deep thinking that may surface strategy insights
+- `/loaf:shape` — Uses STRATEGY.md for context during shaping
+- `/loaf:reflect` — Updates STRATEGY.md based on shipping learnings
+- `/loaf:research` — Investigation that may inform strategy
+- `/loaf:brainstorm` — Deep thinking that may surface strategy insights

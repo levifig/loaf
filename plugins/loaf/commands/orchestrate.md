@@ -1,7 +1,7 @@
 ---
 description: Orchestrate unattended execution of specs or task groups
 argument-hint: '[spec-file]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Orchestrate

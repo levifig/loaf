@@ -6,7 +6,7 @@ description: >-
   integration, and product planning. Use when managing complex tasks across
   agents, running decision councils, or when the user asks "how do I break down
   this work?" or "which agent should handle this?"
-version: 1.15.0
+version: 1.16.0
 ---
 
 # PM Orchestration

@@ -6,7 +6,7 @@ description: >-
   handling, table-driven tests, and common idioms (guard clauses, defer,
   embedding). Use when writing Go services, CLIs, or libraries, or when the user
   asks "how do I handle errors in Go?" or "what's the Go way to do X?"
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Go Skill

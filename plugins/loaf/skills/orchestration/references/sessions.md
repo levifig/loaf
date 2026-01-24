@@ -37,9 +37,9 @@ Users work with tasks; sessions are an implementation detail.
 ### Explicit Sessions
 
 For non-task work, sessions are still created explicitly:
-- Research sessions (`/research`)
-- Architecture decisions (`/architecture`)
-- Council deliberations (`/council-session`)
+- Research sessions (`/loaf:research`)
+- Architecture decisions (`/loaf:architecture`)
+- Council deliberations (`/loaf:council-session`)
 
 These sessions may not have a linked task but still follow standard session format.
 
@@ -107,7 +107,7 @@ session:
   last_archived: "2025-12-04T16:00:00Z"        # Set by context-archiver before compaction
   archive_reason: "pre-compact"                # Why archived (pre-compact, manual, etc.)
   archived_at: "2025-12-04T18:10:00Z"          # Required when archived
-  archived_by: "agent-pm"                      # Optional; fill when archived (enforced by /review-sessions)
+  archived_by: "agent-pm"                      # Optional; fill when archived (enforced by /loaf:review-sessions)
   task: TASK-001                               # If implementation work (links to .agents/tasks/)
   linear_issue: "BACK-123"                     # Optional
   linear_url: "https://linear.app/..."         # Optional
@@ -138,7 +138,7 @@ background_agents:                             # Background work running indepen
 
 ### Cross-Session References
 
-Track decisions imported from past sessions via `/reference-session`:
+Track decisions imported from past sessions via `/loaf:reference-session`:
 
 ```yaml
 session:
@@ -366,7 +366,7 @@ Sessions are **archived, not deleted** when complete to preserve audit trail (se
 - [ ] Linked reports moved to `.agents/reports/archive/` after session archived + conclusions captured
 - [ ] Update `.agents/` references to archived paths (no `.agents` links outside `.agents/`)
 - [ ] Archive indefinitely (no deletion policy)
-- [ ] Use `/review-sessions` for auto-move + link updates after confirmation
+- [ ] Use `/loaf:review-sessions` for auto-move + link updates after confirmation
 
 ## PM Start Protocol
 
@@ -382,7 +382,7 @@ When starting a new orchestration context:
 ### SessionStart Hook
 - Lists active sessions
 - Provides agent-specific context
-- Suggests session review/resume
+- Suggests session review/loaf:resume
 
 ### SessionEnd Hook
 - Displays completion checklist

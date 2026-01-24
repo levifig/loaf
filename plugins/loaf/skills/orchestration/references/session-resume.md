@@ -23,7 +23,7 @@ Claude Code provides built-in session continuation:
 |------|---------|
 | `--continue` | Continue the most recent conversation |
 | `--resume <id>` | Resume a specific conversation by ID |
-| `/resume` | In-session command to list and resume |
+| `/loaf:resume` | In-session command to list and resume |
 
 ## Resume Methods
 

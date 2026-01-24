@@ -1,7 +1,7 @@
 ---
 description: Decompose specs into atomic work items (Linear or local)
 argument-hint: '[spec-file or topic]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Breakdown Command
@@ -239,7 +239,7 @@ status: implementing
 
 **Spec status:** implementing
 
-**Next:** Use `/implement TASK-001` to begin work, or `/orchestrate SPEC-001` to run all tasks.
+**Next:** Use `/loaf:implement TASK-001` to begin work, or `/loaf:orchestrate SPEC-001` to run all tasks.
 ```
 
 ---
@@ -377,6 +377,6 @@ TASK-006: E2E integration (QA)
 
 ## Related Commands
 
-- `/shape` — Create specs that get broken down
-- `/implement` — Start session for a task
-- `/orchestrate` — Run multiple tasks
+- `/loaf:shape` — Create specs that get broken down
+- `/loaf:implement` — Start session for a task
+- `/loaf:orchestrate` — Run multiple tasks

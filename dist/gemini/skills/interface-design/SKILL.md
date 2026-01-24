@@ -7,7 +7,7 @@ description: >-
   motion design, and design system governance. Use when designing interfaces,
   choosing colors, or when the user asks "is this accessible?" or "what spacing
   should I use?"
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Design Principles

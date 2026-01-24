@@ -114,7 +114,7 @@ def test_user_can_update_email():
 
 | Symptom | Likely Cause | Solution |
 |---------|--------------|----------|
-| Can't write test first | Don't understand requirements | Clarify with `/brainstorm` or `/shape` |
+| Can't write test first | Don't understand requirements | Clarify with `/loaf:brainstorm` or `/loaf:shape` |
 | Test is too complex | Testing too much at once | Break into smaller behaviors |
 | Implementation explodes | Test scope too large | Smaller test, smaller implementation |
 | Refactor breaks tests | Tests coupled to implementation | Test behavior, not structure |
@@ -134,10 +134,10 @@ This ensures:
 
 | Phase | TDD Role |
 |-------|----------|
-| `/shape` | Test conditions become TDD test cases |
-| `/breakdown` | Each task should have clear test targets |
-| `/implement` | Follow TDD cycle for each task |
-| `/reflect` | Note TDD friction points for improvement |
+| `/loaf:shape` | Test conditions become TDD test cases |
+| `/loaf:breakdown` | Each task should have clear test targets |
+| `/loaf:implement` | Follow TDD cycle for each task |
+| `/loaf:reflect` | Note TDD friction points for improvement |
 
 ## Related Skills
 

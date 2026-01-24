@@ -138,7 +138,7 @@ When sessions are archived, decisions are extracted to Serena memory:
 3. If present, run `extract-decisions.py`
 4. Write output to Serena memory via MCP
 
-### At Reference Time (/reference-session)
+### At Reference Time (/loaf:reference-session)
 
 1. Search Serena memories for matching sessions
 2. Read selected decision memory

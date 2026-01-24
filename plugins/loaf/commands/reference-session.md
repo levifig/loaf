@@ -1,7 +1,7 @@
 ---
 description: Import decisions from past sessions without full context duplication
 argument-hint: '[session-file]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Reference Session
@@ -19,16 +19,16 @@ Parse `$ARGUMENTS` for:
 - **Content type** (optional): `decisions`, `context`, or `all` (default: `decisions`)
 
 ```
-/reference-session auth              # Search for "auth" sessions, import decisions
-/reference-session auth decisions    # Explicit: import decisions only
-/reference-session auth context      # Import full context summary
-/reference-session PLT-123           # Search by Linear issue
+/loaf:reference-session auth              # Search for "auth" sessions, import decisions
+/loaf:reference-session auth decisions    # Explicit: import decisions only
+/loaf:reference-session auth context      # Import full context summary
+/loaf:reference-session PLT-123           # Search by Linear issue
 ```
 
 If no arguments provided, list recent decision memories:
 
 ```
-/reference-session                   # List available session decisions
+/loaf:reference-session                   # List available session decisions
 ```
 
 ---
@@ -220,7 +220,7 @@ No sessions found matching "auth-v3"
 Try:
 - Different search terms
 - Check .agents/sessions/archive/ directly
-- List all: /reference-session
+- List all: /loaf:reference-session
 ```
 
 ### Memory not found

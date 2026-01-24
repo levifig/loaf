@@ -49,7 +49,7 @@ docs/                               # Permanent project knowledge
 ```
 RESEARCH → VISION → ARCHITECTURE → REQUIREMENTS → SPECS → TASKS → SESSION
     │         │          │              │           │        │        │
-/research  (manual)  /architecture    /prd       /specs   /tasks  /implement
+/loaf:research  (manual)  /loaf:architecture    /prd       /specs   /tasks  /loaf:implement
     │                    │              │           │        │
     └─► evolves ─────────┴──────────────┴───────────┴────────┘
         VISION                                      (feedback loops)
@@ -67,12 +67,12 @@ RESEARCH → VISION → ARCHITECTURE → REQUIREMENTS → SPECS → TASKS → SE
 
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
-| `/research` | Topic or "project state" | Insights, brainstorm | Zoom out, evolve VISION |
-| `/architecture` | Decision question | ARCHITECTURE.md + ADR | Technical decisions |
+| `/loaf:research` | Topic or "project state" | Insights, brainstorm | Zoom out, evolve VISION |
+| `/loaf:architecture` | Decision question | ARCHITECTURE.md + ADR | Technical decisions |
 | `/prd` | Feature area | REQUIREMENTS.md section | Product/business rules |
 | `/specs` | Requirement reference | SPEC-001-*.md | Feature specifications |
 | `/tasks` | Spec reference | TASK-* files/issues | Atomic work items |
-| `/implement` | TASK-ID | Session file | Execute a task |
+| `/loaf:implement` | TASK-ID | Session file | Execute a task |
 
 ## Document Formats
 
@@ -167,11 +167,11 @@ docs:
 
 ```bash
 # 1. Zoom out, check project state
-/research "project state"
+/loaf:research "project state"
 # → Lessons learned, ideas for auth improvement
 
 # 2. Make architecture decision
-/architecture "OAuth vs custom auth"
+/loaf:architecture "OAuth vs custom auth"
 # → Interview → ADR-001-auth-approach.md
 
 # 3. Capture requirements
@@ -187,7 +187,7 @@ docs:
 # → TASK-001, TASK-002, TASK-003
 
 # 6. Work on tasks
-/implement TASK-001
+/loaf:implement TASK-001
 # → Session → Implementation → Done
 ```
 
@@ -195,7 +195,7 @@ docs:
 
 ```bash
 # Create task directly (bug report, small fix)
-/implement TASK-099
+/loaf:implement TASK-099
 # PM: "No parent spec. Proceed?"
 # User: "Yes, small fix"
 # → Session → Fix → Done

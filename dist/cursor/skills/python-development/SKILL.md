@@ -7,7 +7,7 @@ description: >-
   clients, and Docker deployment. Use when building Python APIs, writing async
   code, or when the user asks "how do I validate data?" or "what's the best way
   to structure a Python project?"
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Python Development

@@ -1,7 +1,7 @@
 ---
 description: Shape ideas into well-defined specs through rigorous evaluation
 argument-hint: '[idea or requirement]'
-version: 1.15.0
+version: 1.16.0
 ---
 
 # Shape Command
@@ -28,7 +28,7 @@ Shaping evaluates ideas against strategic context (VISION, STRATEGY, ARCHITECTUR
 
 ## CRITICAL: Interview Extensively
 
-Unlike `/idea` (quick capture), shaping requires **deep understanding**.
+Unlike `/loaf:idea` (quick capture), shaping requires **deep understanding**.
 
 Ask questions the user hasn't thought about:
 - Edge cases and failure modes
@@ -75,7 +75,7 @@ Before diving into details, assess alignment:
 
 **If misaligned:** Surface the tension. Options:
 - Adjust the idea to fit strategy
-- Note that strategy may need evolution (for `/reflect` later)
+- Note that strategy may need evolution (for `/loaf:reflect` later)
 - Decide not to proceed
 
 ### Step 4: Interview for Shaping
@@ -242,8 +242,8 @@ After approval:
    Created: docs/specs/SPEC-001-keyboard-shortcuts.md
 
    Next steps:
-   - Use `/breakdown SPEC-001` to create atomic work items
-   - Or `/implement SPEC-001` to start a session directly
+   - Use `/loaf:breakdown SPEC-001` to create atomic work items
+   - Or `/loaf:implement SPEC-001` to start a session directly
    ```
 
 ---
@@ -292,7 +292,7 @@ When shaping reveals misalignment with strategic docs:
 1. Note the tension in the spec's "Strategic Alignment" section
 2. Document what might need to change
 3. Proceed with shaping (or pause if tension is blocking)
-4. Use `/reflect` after implementation to evolve strategy
+4. Use `/loaf:reflect` after implementation to evolve strategy
 
 This keeps shaping focused and strategy changes deliberate.
 
@@ -307,7 +307,7 @@ This keeps shaping focused and strategy changes deliberate.
 5. **Clear test conditions** — Observable outcomes
 6. **Circuit breaker** — Plan for running out of time
 7. **Get approval** — Don't create without confirmation
-8. **Note tensions, don't fix** — Strategy evolves via /reflect
+8. **Note tensions, don't fix** — Strategy evolves via /loaf:reflect
 
 ---
 
@@ -320,15 +320,15 @@ This keeps shaping focused and strategy changes deliberate.
 | Missing no-gos | Explicitly forbid bad approaches |
 | Vague test conditions | Make observable and verifiable |
 | Too ambitious | Split or increase appetite |
-| Trying to fix strategy | Note tension, use /reflect later |
+| Trying to fix strategy | Note tension, use /loaf:reflect later |
 | Skipping strategic context | Always read VISION/STRATEGY/ARCHITECTURE |
 
 ---
 
 ## Related Commands
 
-- `/idea` — Quick capture (feeds into /shape)
-- `/brainstorm` — Deep thinking before shaping
-- `/breakdown` — Decompose spec into work items
-- `/implement` — Start implementation session
-- `/reflect` — Update strategy after shipping
+- `/loaf:idea` — Quick capture (feeds into /loaf:shape)
+- `/loaf:brainstorm` — Deep thinking before shaping
+- `/loaf:breakdown` — Decompose spec into work items
+- `/loaf:implement` — Start implementation session
+- `/loaf:reflect` — Update strategy after shipping
