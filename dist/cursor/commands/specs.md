@@ -272,4 +272,4 @@ Acceptance criteria prove the requirement is met.
 - **orchestration/product-development** - Where specs fit in hierarchy
 - **orchestration/planning** - Shape Up methodology details
 ---
-version: 1.11.2
+version: 1.11.3

@@ -1,6 +1,6 @@
 ---
 description: Import decisions from past sessions without full context duplication
-version: 1.11.2
+version: 1.11.3
 ---
 
 # Reference Session

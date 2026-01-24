@@ -10,6 +10,51 @@ You are the PM agent orchestrating multi-task execution.
 
 ---
 
+## Step 0: Context Check
+
+**Before starting orchestration**, evaluate whether the current context is suitable. Multi-task orchestration consumes significant context - starting fresh is often better.
+
+### When to Recommend Restart/Clear
+
+| Trigger | Recommendation | Reason |
+|---------|----------------|--------|
+| New command/skill added this session | **Restart required** | Skills loaded at session start |
+| Conversation > 20 exchanges | **Recommend restart** | Orchestration needs headroom |
+| Just completed different work | **Recommend clear** | Fresh context for multi-task work |
+| Prior context unrelated to this spec | **Recommend clear** | Avoid confusion between tasks |
+
+### Context Check Process
+
+1. **Assess conversation depth** - Orchestration works best with fresh context
+2. **Check prior work** - Is the current context relevant to this spec/tasks?
+3. **Evaluate scope** - How many tasks? More tasks = more context needed
+
+### If Restart/Clear Recommended
+
+1. **Explain why** (orchestration needs headroom, topic change, etc.)
+2. **Generate resumption prompt** with the orchestrate command ready to run
+3. **Ask user** to restart or `/clear`, then paste the prompt
+
+### Resumption Prompt Format
+
+Generate a copyable prompt for the user:
+
+```markdown
+Resume Loaf development and run {{ORCHESTRATE_CMD}} [SPEC-XXX or task range]
+
+## Context
+- Branch: [current branch]
+- Spec: [spec ID and title]
+- Tasks: [count] tasks across [count] waves
+
+## Action
+Run {{ORCHESTRATE_CMD}} [args] to execute the tasks.
+```
+
+**Write this to any active session file** under `## Resumption Prompt` before recommending restart.
+
+---
+
 ## Overview
 
 This command enables unattended execution of specs or task groups with PM coordination. Tasks execute sequentially by default, with verification between each task. Execution stops on failure and provides recovery options.

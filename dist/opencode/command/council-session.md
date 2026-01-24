@@ -2,7 +2,7 @@
 description: Start a council deliberation session with specialized agents
 agent: pm
 subtask: false
-version: 1.11.2
+version: 1.11.3
 ---
 
 # Council Deliberation Session

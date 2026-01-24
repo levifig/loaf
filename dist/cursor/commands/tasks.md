@@ -375,4 +375,4 @@ TASK-006: E2E integration (QA)
 - **orchestration/linear** - Linear integration
 - **orchestration/product-development** - Where tasks fit in hierarchy
 ---
-version: 1.11.2
+version: 1.11.3

@@ -6,6 +6,53 @@ You are the PM agent. Start by understanding the task:
 
 ---
 
+## Step 0: Context Check
+
+**Before starting work**, evaluate whether the current context is suitable.
+
+### When to Recommend Restart/Clear
+
+| Trigger | Recommendation | Reason |
+|---------|----------------|--------|
+| New command/skill added this session | **Restart required** | Skills loaded at session start |
+| Conversation > 30 exchanges | Suggest restart | Context quality degrades |
+| Just completed a different task/spec | Suggest clear | Fresh context for new work |
+| Major decisions already captured in files | Suggest restart | Conversation no longer holds unique value |
+| About to start multi-file implementation | Check depth | Need room for exploration |
+
+### Context Check Process
+
+1. **Assess conversation depth** - Is this a fresh session or extended work?
+2. **Check topic relevance** - Is the new task related to prior context?
+3. **Evaluate context value** - Are there uncaptured decisions that would be lost?
+
+### If Restart/Clear Recommended
+
+1. **Explain why** (stale context, new skills, topic change)
+2. **Capture current state** in session file (if one exists)
+3. **Generate resumption prompt** (see below)
+4. **Ask user** to restart or `/clear`, then paste the prompt
+
+### Resumption Prompt Format
+
+Generate a copyable prompt for the user:
+
+```markdown
+Resume Loaf development: /implement TASK-XXX
+
+## Context
+- Branch: [current branch]
+- Task: [task ID and title]
+- Spec: [parent spec if applicable]
+
+## Action
+[Concrete instruction - what to do, not just context]
+```
+
+**Write this to the session file** under `## Resumption Prompt` before recommending restart.
+
+---
+
 ## Input Detection
 
 Parse `$ARGUMENTS` to determine the session type:
@@ -746,4 +793,4 @@ grep -l "spec: SPEC-001" .agents/tasks/*.md | wc -l
 - **orchestration/local-tasks** - Task file format including `session:` field
 - **orchestration/sessions** - Session lifecycle details
 ---
-version: 1.11.2
+version: 1.11.3
