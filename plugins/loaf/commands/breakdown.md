@@ -1,6 +1,11 @@
-# Tasks Command
+---
+description: Decompose specs into atomic work items (Linear or local)
+version: 1.11.3
+---
 
-Break specifications into atomic, implementable tasks.
+# Breakdown Command
+
+Decompose specifications into atomic, implementable tasks.
 
 **Input:** $ARGUMENTS
 
@@ -369,10 +374,8 @@ TASK-006: E2E integration (QA)
 
 ---
 
-## Related Skills
+## Related Commands
 
-- **orchestration/local-tasks** - Local task format and management
-- **orchestration/linear** - Linear integration
-- **orchestration/product-development** - Where tasks fit in hierarchy
----
-version: 1.11.3
+- `/shape` — Create specs that get broken down
+- `/implement` — Start session for a task
+- `/orchestrate` — Run multiple tasks

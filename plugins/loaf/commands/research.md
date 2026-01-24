@@ -1,81 +1,120 @@
 ---
-description: 'Zoom out, brainstorm, assess project state, or evolve VISION'
+description: Understand project state or investigate specific topics
 version: 1.11.3
 ---
 
 # Research Command
 
-Step back from implementation to understand, explore, or brainstorm.
+Investigate to understand — gather facts, assess state, answer questions.
 
 **Input:** $ARGUMENTS
 
 ---
 
+## Purpose
+
+Research is about **understanding**, not generating.
+
+Use `/research` when you need to:
+- Catch up on project state
+- Investigate a technical question
+- Understand how something works
+- Gather facts before deciding
+
+For **generating** options or **exploring** ideas, use `/brainstorm`.
+For **updating strategy** based on learnings, use `/reflect`.
+
+---
+
 ## Mode Detection
 
-Parse the input to determine research mode:
+Parse input to determine mode:
 
 | Input Pattern | Mode | Action |
 |---------------|------|--------|
 | "project state" / "catch me up" / empty | State Assessment | Review docs, sessions, recent work |
-| Topic description | Topic Exploration | Structured inquiry |
-| "brainstorm" / "ideas for" | Brainstorming | Generate and refine options |
-| "evolve vision" / "update vision" | Vision Evolution | Propose VISION changes |
+| Topic or question | Topic Investigation | Structured inquiry |
 
 ---
 
-## CRITICAL: Interview First
+## Mode 1: State Assessment
 
-**Before any research, interview the user to understand:**
-
-1. What specifically are you trying to understand?
-2. What context do you already have?
-3. What constraints should guide this research?
-4. What decision will this inform?
-
-Use `AskUserQuestion` to gather this context.
-
----
-
-## Mode 1: Project State Assessment
-
-**Trigger:** Empty input, "project state", "catch me up"
+**Trigger:** Empty input, "project state", "catch me up", "where are we"
 
 ### Steps
 
 1. **Read project documents:**
-   - `docs/VISION.md` (if exists)
-   - `docs/ARCHITECTURE.md` (if exists)
-   - `docs/REQUIREMENTS.md` (if exists)
+   - `docs/VISION.md` — Current direction
+   - `docs/STRATEGY.md` — Personas, market, problem space
+   - `docs/ARCHITECTURE.md` — Technical constraints
 
-2. **Check recent sessions:**
-   - List `.agents/sessions/*.md`
-   - Read recent sessions for lessons learned
-   - Note any unresolved issues or blockers
+2. **Check ideas and specs:**
+   - `.agents/ideas/*.md` — Pending ideas
+   - `docs/specs/SPEC-*.md` — Active specifications
 
-3. **Review recent commits:**
+3. **Review recent sessions:**
+   - `.agents/sessions/*.md` — Implementation history
+   - Note lessons learned, open questions
+
+4. **Check recent commits:**
    ```bash
    git log --oneline -20
    ```
 
-4. **Synthesize findings:**
-   - Current position
-   - Recent progress
-   - Lessons learned
-   - Open questions
-   - Recommendations
+5. **Synthesize findings:**
 
-5. **Present to user** with actionable next steps
+```markdown
+## Project State Assessment
+
+**Date:** [timestamp]
+
+### Current Position
+[Where the project is now]
+
+### Strategic Context
+- **Vision:** [Brief summary]
+- **Key personas:** [Who we're building for]
+- **Current focus:** [Active specs/work]
+
+### Recent Progress
+- [Accomplishment 1]
+- [Accomplishment 2]
+
+### In Flight
+| Spec/Task | Status | Notes |
+|-----------|--------|-------|
+| SPEC-001 | implementing | [progress] |
+| SPEC-002 | approved | [next up] |
+
+### Ideas Pipeline
+- [Idea 1] — raw
+- [Idea 2] — raw
+
+### Lessons Learned (Recent)
+- [Insight from sessions]
+
+### Open Questions
+- [Unresolved question]
+
+### Recommendations
+1. [Suggested next step]
+2. [Suggested next step]
+```
 
 ---
 
-## Mode 2: Topic Exploration
+## Mode 2: Topic Investigation
 
 **Trigger:** Specific topic or question
 
 ### Steps
 
-1. **Interview** to understand the question deeply
+1. **Clarify the question:**
+
+   Use `AskUserQuestion` to understand:
+   - What specifically are you trying to understand?
+   - What context do you already have?
+   - What decision will this inform?
 
 2. **Check project context first:**
    - Existing decisions in `docs/decisions/ADR-*.md`
@@ -84,126 +123,15 @@ Use `AskUserQuestion` to gather this context.
 
 3. **Apply confidence hierarchy:**
    ```
-   Project context > Context7 > Official docs > Community > Web
+   Project context > Official docs > Authoritative sources > Community > General web
    ```
 
 4. **For library/framework questions:**
-   - Use Context7 MCP to get authoritative documentation
-   - Cross-reference with official sources
+   - Use Context7 MCP if available
+   - Cross-reference with official documentation
+   - Check for version-specific information
 
 5. **Synthesize findings:**
-   - Summary with confidence level
-   - Options with tradeoffs
-   - Recommendation with rationale
-   - Sources cited
-
-6. **Present options** - Don't make the decision for the user
-
----
-
-## Mode 3: Brainstorming
-
-**Trigger:** "brainstorm", "ideas for", creative exploration
-
-### Steps
-
-1. **Interview to establish bounds:**
-   - What's the ideal outcome?
-   - What constraints exist?
-   - What's been tried/rejected?
-
-2. **Generate diverse options:**
-   - Conventional approaches
-   - Unconventional approaches
-   - What if we had 10x resources?
-   - What if we had 1/10 resources?
-   - Contrarian view
-
-3. **Filter through constraints:**
-   - Technical feasibility
-   - Time/resource budget
-   - Alignment with VISION
-
-4. **Refine promising directions:**
-   - Shape the top 2-3 options
-   - Identify risks and mitigations
-
-5. **Present curated options** with pros/cons for decision
-
----
-
-## Mode 4: Vision Evolution
-
-**Trigger:** "evolve vision", "update vision", evidence of needed change
-
-### Steps
-
-1. **Gather evidence:**
-   - What changed since last VISION update?
-   - Session learnings that contradict VISION
-   - External factors (market, technology, team)
-
-2. **Read current VISION.md**
-
-3. **Draft change proposal:**
-   ```markdown
-   ## VISION.md Change Proposal
-
-   **Evidence:** [What prompted this]
-
-   ### Current State
-   [Quote relevant section]
-
-   ### Proposed Change
-   [New text]
-
-   ### Rationale
-   [Why this is warranted]
-
-   ### Impact
-   - [Downstream effects]
-   ```
-
-4. **Present proposal to user**
-
-5. **WAIT FOR EXPLICIT APPROVAL**
-   - Do NOT edit VISION.md without approval
-   - User must explicitly confirm changes
-
-6. **If approved:** Edit VISION.md with approved changes
-
----
-
-## Output Format
-
-### State Assessment
-
-```markdown
-## Project State Assessment
-
-**Date:** [Generated timestamp]
-
-### Current Position
-[Summary]
-
-### Recent Progress
-- [Accomplishment 1]
-- [Accomplishment 2]
-
-### Lessons Learned
-- [Insight 1]
-- [Insight 2]
-
-### Open Questions
-- [Question 1]
-- [Question 2]
-
-### Recommendations
-1. [Next step]
-2. [Next step]
-```
-
-### Research Findings
 
 ```markdown
 ## Research: [Topic]
@@ -211,41 +139,58 @@ Use `AskUserQuestion` to gather this context.
 **Question:** [What we're investigating]
 
 ### Summary
-[Answer with confidence level]
+[Answer with confidence level: High/Medium/Low]
 
-### Options
+### Key Findings
+1. [Finding 1]
+2. [Finding 2]
 
-#### Option A: [Name]
-- **Pros:** ...
-- **Cons:** ...
-
-#### Option B: [Name]
-- **Pros:** ...
-- **Cons:** ...
-
-### Recommendation
-[Which option and why]
+### Project Context
+[How this relates to our existing decisions/architecture]
 
 ### Sources
-- [Source with confidence]
+- [Source 1] — [confidence]
+- [Source 2] — [confidence]
+
+### Implications
+- [What this means for our work]
+
+### Open Questions
+- [What's still unclear]
 ```
 
 ---
 
-## Guardrails
+## Research vs Other Commands
 
-1. **Always interview first** - Don't assume you understand the question
-2. **Check project context** - Respect existing decisions
-3. **Present options** - Don't make decisions for the user
-4. **Cite sources** - With confidence levels
-5. **Never edit VISION without approval** - Proposals only
-6. **Time-bound research** - Don't go down rabbit holes indefinitely
+| Need | Command |
+|------|---------|
+| Understand current state | `/research` |
+| Investigate a factual question | `/research` |
+| Generate ideas or options | `/brainstorm` |
+| Explore a problem space | `/brainstorm` |
+| Update strategy from learnings | `/reflect` |
+| Make technical decisions | `/architecture` |
+
+---
+
+## Confidence Levels
+
+Rate findings by confidence:
+
+| Level | Meaning |
+|-------|---------|
+| **High** | Official docs, verified in project context, or tested |
+| **Medium** | Authoritative source, consistent with multiple references |
+| **Low** | Community source, single reference, or inference |
+
+Always cite sources with confidence levels.
 
 ---
 
 ## Context7 Usage
 
-For library/framework questions, use Context7:
+For library/framework questions, use Context7 if available:
 
 ```
 1. mcp__plugin_context7_context7__resolve-library-id
@@ -255,11 +200,38 @@ For library/framework questions, use Context7:
    - Query specific documentation
 ```
 
-This provides authoritative, up-to-date documentation.
+This provides authoritative, version-specific documentation.
 
 ---
 
-## Related Skills
+## Guardrails
 
-- **research** - Full methodology for research modes
-- **orchestration/product-development** - Where research fits in workflow
+1. **Clarify before diving** — Understand what's actually being asked
+2. **Check project context** — Respect existing decisions
+3. **Cite sources** — With confidence levels
+4. **Present findings** — Don't make decisions for the user
+5. **Stay investigative** — This is about understanding, not generating
+
+---
+
+## Output Expectations
+
+Research produces **findings**, not decisions.
+
+**Good output:**
+- "Based on X, Y, and Z, the options are A and B"
+- "The documentation says X with high confidence"
+- "Our ADR-003 already decided Y"
+
+**Bad output:**
+- "Let's do X" (that's a decision, not research)
+- "I think we should..." (presents options, not conclusions)
+
+---
+
+## Related Commands
+
+- `/brainstorm` — When you need to generate options or explore creatively
+- `/reflect` — When you need to update strategy based on learnings
+- `/architecture` — When you need to make technical decisions
+- `/strategy` — When you need to discover strategic context
