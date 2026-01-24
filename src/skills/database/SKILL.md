@@ -23,10 +23,10 @@ Domain knowledge for database administration and development. Covers schema desi
 
 | File | Use When |
 |------|----------|
-| [schema-design.md](reference/schema-design.md) | Creating tables, choosing keys, audit patterns |
-| [migrations.md](reference/migrations.md) | Writing safe, reversible migrations |
-| [query-optimization.md](reference/query-optimization.md) | Debugging slow queries, N+1 detection |
-| [indexing.md](reference/indexing.md) | Choosing index types, composite index order |
+| [schema-design.md](references/schema-design.md) | Creating tables, choosing keys, audit patterns |
+| [migrations.md](references/migrations.md) | Writing safe, reversible migrations |
+| [query-optimization.md](references/query-optimization.md) | Debugging slow queries, N+1 detection |
+| [indexing.md](references/indexing.md) | Choosing index types, composite index order |
 
 ## Quick Reference
 

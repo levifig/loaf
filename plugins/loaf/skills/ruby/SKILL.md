@@ -156,18 +156,18 @@ kamal setup && kamal deploy
 
 | Topic | Reference | Key Patterns |
 |-------|-----------|--------------|
-| Core | [core.md](reference/core.md) | Ruby idioms, Rails principles, file organization |
-| Models | [models.md](reference/models.md) | Active Record, validations, associations, migrations |
-| Controllers | [controllers.md](reference/controllers.md) | RESTful actions, strong params, filters |
-| Views | [views.md](reference/views.md) | Templates, partials, layouts, helpers |
-| Hotwire | [hotwire.md](reference/hotwire.md) | Turbo Drive/Frames/Streams, Stimulus |
-| API | [api.md](reference/api.md) | JSON APIs, versioning, authentication |
-| Jobs | [jobs.md](reference/jobs.md) | Solid Queue, Active Job, recurring jobs |
-| Security | [security.md](reference/security.md) | Authentication, authorization, CSRF, XSS |
-| Testing | [testing.md](reference/testing.md) | Minitest, fixtures, system tests |
-| Performance | [performance.md](reference/performance.md) | N+1 prevention, caching, indexing |
-| Deployment | [deployment.md](reference/deployment.md) | Kamal, Docker, zero-downtime |
-| Styling | [styling.md](reference/styling.md) | Tailwind CSS, responsive design |
+| Core | [core.md](references/core.md) | Ruby idioms, Rails principles, file organization |
+| Models | [models.md](references/models.md) | Active Record, validations, associations, migrations |
+| Controllers | [controllers.md](references/controllers.md) | RESTful actions, strong params, filters |
+| Views | [views.md](references/views.md) | Templates, partials, layouts, helpers |
+| Hotwire | [hotwire.md](references/hotwire.md) | Turbo Drive/Frames/Streams, Stimulus |
+| API | [api.md](references/api.md) | JSON APIs, versioning, authentication |
+| Jobs | [jobs.md](references/jobs.md) | Solid Queue, Active Job, recurring jobs |
+| Security | [security.md](references/security.md) | Authentication, authorization, CSRF, XSS |
+| Testing | [testing.md](references/testing.md) | Minitest, fixtures, system tests |
+| Performance | [performance.md](references/performance.md) | N+1 prevention, caching, indexing |
+| Deployment | [deployment.md](references/deployment.md) | Kamal, Docker, zero-downtime |
+| Styling | [styling.md](references/styling.md) | Tailwind CSS, responsive design |
 | Services | [services.md](references/services.md) | Service objects, result patterns |
 | Assets | [assets.md](references/assets.md) | Propshaft, Import Maps |
 | Mobile | [mobile.md](references/mobile.md) | Hotwire Native, Bridge Components |

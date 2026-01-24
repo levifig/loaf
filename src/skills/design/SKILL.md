@@ -15,14 +15,15 @@ description: >-
 
 | Topic | Key Principle | Reference |
 |-------|--------------|-----------|
-| Core | User-first, accessible by default, consistent, minimal | [reference/core.md](reference/core.md) |
-| Color | Function first, 4.5:1 contrast minimum, never color-only | [reference/color.md](reference/color.md) |
-| Typography | Legible, accessible, reinforce hierarchy | [reference/typography.md](reference/typography.md) |
-| Spacing | 8pt grid, consistent rhythm, logical properties | [reference/spacing.md](reference/spacing.md) |
-| Responsive | Mobile-first, content-out, fluid layouts | [reference/responsive.md](reference/responsive.md) |
-| Accessibility | WCAG 2.1 AA minimum, keyboard navigable, screen reader compatible | [reference/a11y.md](reference/a11y.md) |
-| Motion | Purposeful, natural, respect reduced motion | [reference/motion.md](reference/motion.md) |
-| Systems | Tokens, components, patterns, governance | [reference/systems.md](reference/systems.md) |
+| Core | User-first, accessible by default, consistent, minimal | [references/core.md](references/core.md) |
+| Color | Function first, 4.5:1 contrast minimum, never color-only | [references/color.md](references/color.md) |
+| Typography | Legible, accessible, reinforce hierarchy | [references/typography.md](references/typography.md) |
+| Spacing | 8pt grid, consistent rhythm, logical properties | [references/spacing.md](references/spacing.md) |
+| Responsive | Mobile-first, content-out, fluid layouts | [references/responsive.md](references/responsive.md) |
+| Accessibility | WCAG 2.1 AA minimum, keyboard navigable, screen reader compatible | [references/a11y.md](references/a11y.md) |
+| Accessibility Review | WCAG 2.1 AA checklist, testing tools, common issues | [references/accessibility-review.md](references/accessibility-review.md) |
+| Motion | Purposeful, natural, respect reduced motion | [references/motion.md](references/motion.md) |
+| Systems | Tokens, components, patterns, governance | [references/systems.md](references/systems.md) |
 
 ## Core Principles
 

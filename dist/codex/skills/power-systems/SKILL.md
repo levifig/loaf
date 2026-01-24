@@ -7,7 +7,7 @@ description: >-
   standards compliance (CIGRE, IEEE, IEC). Activate when working with
   transmission line calculations, thermal modeling, or conductor physics
   validation.
-version: 1.13.2
+version: 1.14.0
 ---
 
 # Power Systems Reference
@@ -30,10 +30,10 @@ Domain knowledge for overhead transmission line physics, thermal ratings, and me
 
 | File | Content |
 |------|---------|
-| `reference/thermal-models.md` | CIGRE TB 601, IEEE 738 thermal rating implementations |
-| `reference/conductor-limits.md` | Physical validation bounds and parameter constraints |
-| `reference/electrical-properties.md` | Resistance, sag, catenary formulas and calculations |
-| `reference/standards-reference.md` | Industry standards summary (CIGRE, IEEE, IEC, EN) |
+| `references/thermal-models.md` | CIGRE TB 601, IEEE 738 thermal rating implementations |
+| `references/conductor-limits.md` | Physical validation bounds and parameter constraints |
+| `references/electrical-properties.md` | Resistance, sag, catenary formulas and calculations |
+| `references/standards-reference.md` | Industry standards summary (CIGRE, IEEE, IEC, EN) |
 
 ## Available Scripts
 
@@ -119,4 +119,4 @@ def test_thermal_model():
 ## Related Skills
 
 - `database-patterns` — For persisting physics results
-- [foundations/code-style](../foundations/reference/code-style.md) — For Python conventions in physics code
+- [foundations/code-style](../foundations/references/code-style.md) — For Python conventions in physics code

@@ -1,6 +1,6 @@
 ---
 description: Deep thinking on ideas or problem spaces
-version: 1.13.2
+version: 1.14.0
 ---
 
 # Brainstorm Command
