@@ -6,6 +6,7 @@
   "license": "MIT",
   "agents": [
     "./agents/backend-dev.md",
+    "./agents/background-runner.md",
     "./agents/context-archiver.md",
     "./agents/dba.md",
     "./agents/design.md",
@@ -16,13 +17,20 @@
     "./agents/qa.md"
   ],
   "commands": [
+    "./commands/architecture.md",
     "./commands/council-session.md",
+    "./commands/prd.md",
+    "./commands/reference-session.md",
+    "./commands/research.md",
     "./commands/resume-session.md",
     "./commands/review-sessions.md",
-    "./commands/start-session.md"
+    "./commands/specs.md",
+    "./commands/start-session.md",
+    "./commands/tasks.md"
   ],
   "skills": [
     "./skills/database/SKILL.md",
+    "./skills/debugging/SKILL.md",
     "./skills/design/SKILL.md",
     "./skills/foundations/SKILL.md",
     "./skills/go/SKILL.md",
@@ -30,6 +38,7 @@
     "./skills/orchestration/SKILL.md",
     "./skills/power-systems/SKILL.md",
     "./skills/python/SKILL.md",
+    "./skills/research/SKILL.md",
     "./skills/ruby/SKILL.md",
     "./skills/typescript/SKILL.md"
   ],
@@ -55,6 +64,12 @@
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-format-check.sh",
             "timeout": 60000,
             "description": "Check code formatting"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-tdd-advisory.sh",
+            "timeout": 5000,
+            "description": "Advisory warning when editing implementation without tests"
           },
           {
             "type": "command",
