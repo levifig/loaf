@@ -1,6 +1,6 @@
 ---
 description: Start an orchestrated implementation session for a task or Linear issue
-version: 1.11.0
+version: 1.11.1
 ---
 
 # Implement
@@ -17,19 +17,26 @@ Parse `$ARGUMENTS` to determine the session type:
 
 | Input Pattern | Type | Action |
 |---------------|------|--------|
-| `TASK-XXX` | Local task | Load from `.agents/tasks/active/` |
+| `TASK-XXX` | Local task | Load from `.agents/tasks/`, auto-create session |
 | `SPEC-XXX` | Spec (no task) | Warn: suggest `/tasks` first |
 | `PLT-123`, `PROJ-123` | Linear issue | Fetch from Linear |
 | Description text | Ad-hoc | Create session, ask about Linear |
 
-### Task-Coupled Sessions
+### Task-Coupled Sessions (Invisible)
 
-When starting from a task (`TASK-XXX` or Linear issue):
+When starting from a task (`TASK-XXX`):
 
-1. **Fetch task details** (local file or Linear API)
-2. **Load parent spec** if task has `spec:` field
-3. **Load linked requirement** if spec has `requirement:` field
-4. **Build traceability chain** in session frontmatter
+1. **Load task details** from `.agents/tasks/TASK-XXX-*.md`
+2. **Auto-generate session filename:** `YYYYMMDD-HHMMSS-task-XXX.md`
+3. **Create session file** (standard format, no user prompts)
+4. **Update task frontmatter** with `session:` field:
+   ```yaml
+   session: 20260124-143000-task-001.md
+   ```
+5. **Load parent spec** if task has `spec:` field
+6. **Build traceability chain** in session frontmatter
+
+**No user interaction required for session naming.** Users think in tasks, not sessions.
 
 ### Ad-hoc Sessions
 
@@ -141,7 +148,16 @@ date -u +"%Y-%m-%dT%H:%M:%SZ"  # For frontmatter
 ### Step 2: Create Session File
 
 **Location:** `.agents/sessions/`
-**Filename:** `YYYYMMDD-HHMMSS-<description>.md`
+
+### Session Filename
+
+**For task-coupled sessions (TASK-XXX):**
+- Format: `YYYYMMDD-HHMMSS-task-XXX.md`
+- Generated automatically, no user input
+
+**For ad-hoc sessions:**
+- Format: `YYYYMMDD-HHMMSS-<description>.md`
+- `<description>` is kebab-case, derived from user input or Linear issue
 
 - Use the timestamp from Step 1
 - `<description>` is kebab-case, human-readable (e.g., `powerflow-optimization`)
@@ -307,21 +323,25 @@ Is this a code/config/doc change?
 
 **After creating session AND plan files:**
 
-1. [ ] Parse the input — is this a Linear issue ID (e.g., PLT-123, PLAT-123) or a description?
-2. [ ] If Linear ID:
+1. [ ] Parse the input — is this a task (TASK-XXX), Linear issue ID (e.g., PLT-123, PLAT-123), or a description?
+2. [ ] If TASK-XXX:
+   - Load task file from `.agents/tasks/TASK-XXX-*.md`
+   - Update task frontmatter with `session:` field pointing to session file
+   - Load parent spec if task has `spec:` field
+3. [ ] If Linear ID:
    - Fetch the issue details using `get_issue` (include branch name)
    - Update session frontmatter with `linear_issue` and `linear_url`
    - **Move Linear issue to "In Progress" immediately**
-3. [ ] If description: ask user if a Linear issue should be created
-4. [ ] **Create dedicated branch for this work** (see Branch Management below)
-5. [ ] **Suggest team** based on task context (see Team Routing below)
-6. [ ] **Fill in plan file sections** (Appetite, Problem, Solution Shape, Rabbit Holes)
-7. [ ] Populate session `## Context` section with background
-8. [ ] Break down the work using TodoWrite
-9. [ ] **Identify which specialized agents will be needed** (use mapping table)
-10. [ ] **Consider architecture diagrams** (see Diagram Consideration below)
-11. [ ] Update session `## Next Steps` with planned agent spawns
-12. [ ] **Get user approval on plan** before spawning implementation agents
+4. [ ] If description: ask user if a Linear issue should be created
+5. [ ] **Create dedicated branch for this work** (see Branch Management below)
+6. [ ] **Suggest team** based on task context (see Team Routing below)
+7. [ ] **Fill in plan file sections** (Appetite, Problem, Solution Shape, Rabbit Holes)
+8. [ ] Populate session `## Context` section with background
+9. [ ] Break down the work using TodoWrite
+10. [ ] **Identify which specialized agents will be needed** (use mapping table)
+11. [ ] **Consider architecture diagrams** (see Diagram Consideration below)
+12. [ ] Update session `## Next Steps` with planned agent spawns
+13. [ ] **Get user approval on plan** before spawning implementation agents
 
 ---
 
@@ -715,7 +735,7 @@ When a task-coupled session completes:
 
 ```bash
 # For local tasks
-grep -l "spec: SPEC-001" .agents/tasks/active/*.md | wc -l
+grep -l "spec: SPEC-001" .agents/tasks/*.md | wc -l
 # If 0, all tasks done
 
 # For Linear
@@ -728,5 +748,5 @@ grep -l "spec: SPEC-001" .agents/tasks/active/*.md | wc -l
 
 - **orchestration/product-development** - Full workflow hierarchy
 - **orchestration/specs** - Spec format and lifecycle
-- **orchestration/local-tasks** - Local task management
+- **orchestration/local-tasks** - Task file format including `session:` field
 - **orchestration/sessions** - Session lifecycle details

@@ -233,7 +233,7 @@ status: implementing
 
 **Spec status:** implementing
 
-**Next:** Use `{{IMPLEMENT_CMD}} TASK-001` to begin work, or `{{ORCHESTRATE_CMD}} SPEC-001` to run all tasks.
+**Next:** Use `/implement TASK-001` to begin work, or `/orchestrate SPEC-001` to run all tasks.
 ```
 
 ---
@@ -375,4 +375,4 @@ TASK-006: E2E integration (QA)
 - **orchestration/linear** - Linear integration
 - **orchestration/product-development** - Where tasks fit in hierarchy
 ---
-version: 1.11.0
+version: 1.11.1

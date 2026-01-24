@@ -9,6 +9,27 @@ Sessions are coordination artifacts for active work. They are archived (set stat
 - Tracking progress during implementation
 - Context preservation across agent spawns
 
+## Session Types
+
+### Implementation Sessions (Invisible)
+
+When implementing tasks via `/implement TASK-XXX`:
+- Session created automatically with filename `YYYYMMDD-HHMMSS-task-XXX.md`
+- Task file updated with `session:` field linking to session
+- No user interaction needed for session naming
+- Resume via `/resume TASK-XXX`
+
+Users work with tasks; sessions are an implementation detail.
+
+### Explicit Sessions
+
+For non-task work, sessions are still created explicitly:
+- Research sessions (`/research`)
+- Architecture decisions (`/architecture`)
+- Council deliberations (`/council-session`)
+
+These sessions may not have a linked task but still follow standard session format.
+
 ## Session File Format
 
 **Link policy**: Documents outside `.agents/` must not reference `.agents/` files. Keep `.agents/` links contained within `.agents/` artifacts, and update them when files move to `.agents/<type>/archive/`.

@@ -259,4 +259,4 @@ This provides authoritative, up-to-date documentation.
 - **research** - Full methodology for research modes
 - **orchestration/product-development** - Where research fits in workflow
 ---
-version: 1.11.0
+version: 1.11.1

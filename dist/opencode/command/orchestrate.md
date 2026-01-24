@@ -1,6 +1,6 @@
 ---
 description: Orchestrate unattended execution of specs or task groups
-version: 1.11.0
+version: 1.11.1
 ---
 
 # Orchestrate
@@ -444,17 +444,17 @@ orchestration:
 
 1. **Fix and continue:** Resolve the issue manually, then run:
    ```
-   {{ORCHESTRATE_CMD}} --continue
+   /orchestrate --continue
    ```
 
 2. **Skip this task:** Mark as skipped and proceed:
    ```
-   {{ORCHESTRATE_CMD}} --skip TASK-012
+   /orchestrate --skip TASK-012
    ```
 
 3. **Abort orchestration:** Cancel remaining work:
    ```
-   {{ORCHESTRATE_CMD}} --abort
+   /orchestrate --abort
    ```
 
 ### Session File

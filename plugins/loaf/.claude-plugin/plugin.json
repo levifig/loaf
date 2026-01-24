@@ -1,6 +1,6 @@
 {
   "name": "loaf",
-  "version": "1.11.0",
+  "version": "1.11.1",
   "description": "Loaf - Levi's Opinionated Agentic Framework",
   "repository": "https://github.com/levifig/loaf",
   "license": "MIT",
@@ -227,6 +227,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/design-a11y-audit.sh",
             "description": "Full accessibility audit"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/orchestration-generate-task-board.sh",
+            "description": "Regenerate TASKS.md when task files change"
           }
         ]
       }

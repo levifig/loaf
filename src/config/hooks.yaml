@@ -239,6 +239,13 @@ hooks:
       matcher: "Edit|Write"
       description: Full accessibility audit
 
+    # Orchestration - Task board generation
+    - id: generate-task-board
+      skill: orchestration
+      script: hooks/post-tool/orchestration-generate-task-board.sh
+      matcher: "Edit|Write"
+      description: Regenerate TASKS.md when task files change
+
   session:
     # Session lifecycle
     - id: session-start
@@ -275,9 +282,10 @@ plugin-groups:
     description: PM orchestration, session management, Linear workflow integration
     agents: [pm]
     skills: [orchestration, research]
-    commands: [implement, resume, review-sessions, council-session, reference-session, research, architecture, prd, specs, tasks]
+    commands: [implement, resume, orchestrate, review-sessions, council-session, reference-session, research, architecture, prd, specs, tasks]
     related-hooks:
       pre-tool: [validate-commit, detect-linear-magic]
+      post-tool: [generate-task-board]
       session: [session-start, session-end, pre-compact-archive]
 
   # Research - Project reflection and brainstorming

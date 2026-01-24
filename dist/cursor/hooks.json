@@ -148,6 +148,11 @@
         "command": "bash $HOME/.cursor/hooks/post-tool/design-a11y-audit.sh",
         "timeout": 30,
         "matcher": "Edit|Write"
+      },
+      {
+        "command": "bash $HOME/.cursor/hooks/post-tool/orchestration-generate-task-board.sh",
+        "timeout": 30,
+        "matcher": "Edit|Write"
       }
     ],
     "sessionStart": [
