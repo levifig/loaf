@@ -4,7 +4,7 @@ description: >-
   Test-driven development workflow. Use when implementing new features or fixing
   bugs. Write failing tests first, implement minimally to pass, then refactor.
   Ensures code is testable by design and prevents untested code from shipping.
-version: 1.12.0
+version: 1.13.0
 ---
 
 # Test-Driven Development

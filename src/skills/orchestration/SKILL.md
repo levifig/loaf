@@ -45,17 +45,19 @@ Every release should be complete, polished, and delightful - no MVPs or quick ha
 
 | Topic | Reference | Key Content |
 |-------|-----------|-------------|
-| Product Development | [reference/product-development.md](reference/product-development.md) | Full workflow: Research → Vision → Architecture → Requirements → Specs → Tasks |
-| Specifications | [reference/specs.md](reference/specs.md) | Spec format, lifecycle, shaping, test conditions |
-| Local Tasks | [reference/local-tasks.md](reference/local-tasks.md) | Task format, abstraction layer, Linear/local backend |
-| Agent Delegation | [reference/delegation.md](reference/delegation.md) | Agent capabilities, spawn patterns, decision tree |
-| Background Agents | [reference/background-agents.md](reference/background-agents.md) | Non-interactive work, spawn with run_in_background |
-| Council Workflow | [reference/councils.md](reference/councils.md) | Composition, deliberation, synthesis, user approval |
-| Session Management | [reference/sessions.md](reference/sessions.md) | Lifecycle, file format, handoffs, validation |
-| Session Resume | [reference/session-resume.md](reference/session-resume.md) | CLI flags, checkpoints, context recovery |
-| Context Management | [reference/context-management.md](reference/context-management.md) | /clear, /compact, 2-correction rule, subagents |
-| Linear Integration | [reference/linear.md](reference/linear.md) | Update format, magic words, status conventions |
-| Product Planning | [reference/planning.md](reference/planning.md) | Shape Up methodology, appetite, roadmaps, specs |
+| Product Development | [references/product-development.md](references/product-development.md) | Full workflow: Research → Vision → Architecture → Requirements → Specs → Tasks |
+| Specifications | [references/specs.md](references/specs.md) | Spec format, lifecycle, shaping, test conditions |
+| Local Tasks | [references/local-tasks.md](references/local-tasks.md) | Task format, abstraction layer, Linear/local backend |
+| Agent Delegation | [references/delegation.md](references/delegation.md) | Agent capabilities, spawn patterns, decision tree |
+| Parallel Agents | [references/parallel-agents.md](references/parallel-agents.md) | Dispatch independent work concurrently |
+| Subagent Development | [references/subagent-development.md](references/subagent-development.md) | Delegate to specialized agents |
+| Background Agents | [references/background-agents.md](references/background-agents.md) | Non-interactive work, spawn with run_in_background |
+| Council Workflow | [references/councils.md](references/councils.md) | Composition, deliberation, synthesis, user approval |
+| Session Management | [references/sessions.md](references/sessions.md) | Lifecycle, file format, handoffs, validation |
+| Session Resume | [references/session-resume.md](references/session-resume.md) | CLI flags, checkpoints, context recovery |
+| Context Management | [references/context-management.md](references/context-management.md) | /clear, /compact, 2-correction rule, subagents |
+| Linear Integration | [references/linear.md](references/linear.md) | Update format, magic words, status conventions |
+| Product Planning | [references/planning.md](references/planning.md) | Shape Up methodology, appetite, roadmaps, specs |
 
 ## Configuration
 

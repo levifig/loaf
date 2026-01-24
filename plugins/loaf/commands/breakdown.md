@@ -1,6 +1,6 @@
 ---
 description: Decompose specs into atomic work items (Linear or local)
-version: 1.12.0
+version: 1.13.0
 ---
 
 # Breakdown Command
