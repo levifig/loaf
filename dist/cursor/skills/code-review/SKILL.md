@@ -5,7 +5,7 @@ description: >-
   review or when receiving feedback on your code. Covers creating reviewable
   PRs, giving constructive feedback, and responding to review comments with
   technical rigor rather than performative agreement.
-version: 1.12.0
+version: 1.13.0
 ---
 
 # Code Review

@@ -4,7 +4,7 @@ description: >-
   Verify work before claiming completion. Use before committing, creating PRs,
   or marking tasks done. Ensures claims of success are backed by evidence.
   Prevents false confidence and "it works on my machine" problems.
-version: 1.12.0
+version: 1.13.0
 ---
 
 # Verification Before Completion

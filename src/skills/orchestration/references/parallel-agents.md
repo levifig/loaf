@@ -1,11 +1,3 @@
----
-name: parallel-agents
-description: >-
-  Dispatch multiple agents to work in parallel on independent tasks. Use when
-  facing multiple tasks that don't share state or have sequential dependencies.
-  Maximizes throughput by running concurrent work streams.
----
-
 # Parallel Agent Dispatch
 
 Run independent work concurrently for faster completion.

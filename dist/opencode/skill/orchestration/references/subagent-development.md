@@ -1,12 +1,3 @@
----
-name: subagent-development
-description: >-
-  Execute implementation work using specialized subagents. Use when implementing
-  plans with multiple independent tasks in the current session. Delegates work
-  to specialized agents (backend-dev, frontend-dev, dba, etc.) while maintaining
-  coordination and integration.
----
-
 # Subagent-Driven Development
 
 Delegate specialized work to specialized agents.
