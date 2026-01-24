@@ -167,4 +167,4 @@ Same as `/implement`:
 - Update session file continuously (handoff must ALWAYS be current)
 - When in doubt, ask the user
 ---
-version: 1.11.2
+version: 1.11.3

@@ -1,6 +1,6 @@
 ---
 description: 'Zoom out, brainstorm, assess project state, or evolve VISION'
-version: 1.11.2
+version: 1.11.3
 ---
 
 # Research Command

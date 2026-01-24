@@ -6,7 +6,7 @@ description: >-
   pytest testing, SQLAlchemy database operations, Polars data processing, httpx
   API clients, and Docker deployment. Activate when working with .py files,
   pyproject.toml, or Python frameworks.
-version: 1.11.2
+version: 1.11.3
 ---
 
 # Python Development
