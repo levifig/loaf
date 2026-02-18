@@ -8,7 +8,7 @@ description: >-
   this work?" or "which agent should handle this?" Produces session files,
   council records, task breakdowns, and progress updates. Not for standalone
   research, brainstorming, or vision work (use research).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # PM Orchestration

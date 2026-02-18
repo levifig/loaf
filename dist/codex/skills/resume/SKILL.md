@@ -7,7 +7,7 @@ description: >-
   "resume that session" or "pick up where we left off." Produces updated session
   state with current context. Not for referencing past decisions (use
   reference-session) or starting new work (use implement).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Resume Session

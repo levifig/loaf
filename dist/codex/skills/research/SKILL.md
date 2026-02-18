@@ -8,7 +8,7 @@ description: >-
   or "help me think through this problem." Produces state assessments, research
   findings with ranked options, or vision change proposals. Not for multi-agent
   coordination, session management, or task delegation (use orchestration).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Research

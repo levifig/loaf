@@ -9,7 +9,7 @@ description: >-
   coordination, session management, or task delegation (use orchestration).
 agent: PM
 subtask: false
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Research

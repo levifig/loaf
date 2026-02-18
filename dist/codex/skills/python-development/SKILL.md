@@ -8,7 +8,7 @@ description: >-
   code, or when the user asks "how do I validate data?" or "what's the best way
   to structure a Python project?" Not for schema design decisions or migration
   strategies (use database-design).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Python Development

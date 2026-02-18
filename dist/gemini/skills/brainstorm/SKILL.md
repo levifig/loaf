@@ -7,7 +7,7 @@ description: >-
   asks "help me think through this" or "what are the options for...?" Produces
   structured idea explorations with trade-offs. Not for quick idea capture (use
   idea) or strategic direction (use strategy).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Brainstorm

@@ -7,7 +7,7 @@ description: >-
   user asks "I have an idea" or "note this down." Produces structured idea
   files. Not for deep exploration (use brainstorm) or turning ideas into specs
   (use shape).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Idea

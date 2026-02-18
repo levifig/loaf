@@ -5,7 +5,7 @@ description: >-
   Ruby idioms, Hotwire, Solid Queue, Minitest, gem development, and CLI tools.
   Use when building Rails apps, writing background jobs, or when the user asks
   "how do I add Hotwire?" or "what's the Rails convention for X?"
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Ruby Development

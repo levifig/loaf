@@ -8,7 +8,7 @@ description: >-
   strategic direction." Produces strategy document updates with evidence. Not
   for post-implementation reflection (use reflect) or quick idea capture (use
   idea).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Strategy

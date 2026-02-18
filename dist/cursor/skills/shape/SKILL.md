@@ -8,7 +8,7 @@ description: >-
   for this." Produces Shape Up-style specs with clear boundaries. Not for
   capturing raw ideas (use idea) or decomposing specs into tasks (use
   breakdown).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Shape

@@ -8,7 +8,7 @@ description: >-
   opinion" or "I need multiple perspectives on this." Produces council files
   with agent perspectives, synthesis, and recorded decisions. Not for
   single-agent work or implementation (use implement).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Council Deliberation Session

@@ -8,7 +8,7 @@ description: >-
   when the user asks "what primary key should I use?" or "how do I optimize this
   query?" Not for ORM-level code patterns (use language skill) or infrastructure
   provisioning (use infrastructure-management).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Database Skill

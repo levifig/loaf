@@ -8,7 +8,7 @@ description: >-
   this spec." Produces task lists with dependencies, priorities, and
   verification commands. Not for creating specs (use shape) or executing tasks
   (use implement).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Breakdown

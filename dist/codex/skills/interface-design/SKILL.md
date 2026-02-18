@@ -8,7 +8,7 @@ description: >-
   choosing colors, or when the user asks "is this accessible?" or "what spacing
   should I use?" Not for React/Next.js implementation details (use
   typescript-development).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Design Principles

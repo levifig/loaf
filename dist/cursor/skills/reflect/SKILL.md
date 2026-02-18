@@ -8,7 +8,7 @@ description: >-
   "update strategy based on this." Produces evidence-based update proposals for
   strategic documents. Not for pre-implementation planning (use shape) or active
   strategy discovery (use strategy).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Reflect

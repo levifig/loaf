@@ -7,7 +7,7 @@ description: >-
   when the user asks "how do I deploy to Kubernetes?" or "what's the best CI/CD
   setup?" Not for application code, database schemas, or CI pipeline logic in
   app repos.
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Infrastructure
