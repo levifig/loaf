@@ -212,7 +212,7 @@ After subagent completes:
 |---------|---------------|
 | `/breakdown` | Tasks become subagent assignments |
 | `/implement` | May dispatch subagents for specialized work |
-| `/orchestrate` | Automatically coordinates subagent work |
+| `/implement` | Automatically coordinates single-task and multi-task subagent work |
 
 ## Related Skills
 

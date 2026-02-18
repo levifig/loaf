@@ -1,11 +1,32 @@
 ---
-description: Import decisions from past sessions without full context duplication
-version: 1.16.0
+description: >-
+  Imports decisions and context from past sessions without full context
+  duplication. Covers extracting key decisions, outcomes, and architectural
+  insights from completed sessions. Use when starting new work that relates to
+  previous sessions, or when the user asks "reference that earlier session" or
+  "what did we decide before?" Produces concise decision summaries from
+  historical sessions. Not for resuming active sessions (use resume) or
+  reviewing session hygiene (use review-sessions).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
 # Reference Session
 
-Import context from past sessions into current work. This command helps maintain continuity across sessions without duplicating full context.
+Import context from past sessions into current work. This skill helps maintain continuity across sessions without duplicating full context.
+
+## Contents
+- Step 1: Parse Arguments
+- Step 2: Search for Matching Sessions
+- Step 3: Display Matches
+- Step 4: Read Decision Memory
+- Step 5: Import into Current Session
+- Step 6: Report Import
+- No Active Session
+- Content Types
+- Anti-Patterns
+- Error Handling
 
 **Input:** $ARGUMENTS
 

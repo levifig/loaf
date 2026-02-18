@@ -10,7 +10,6 @@
  *         ├── .claude-plugin/plugin.json
  *         ├── agents/
  *         ├── skills/
- *         ├── commands/
  *         └── hooks/
  *
  * This allows Claude Code to use:
@@ -37,9 +36,9 @@ import {
   loadSkillFrontmatter,
   loadSkillExtensions,
   mergeSkillFrontmatter,
-  loadCommandSidecar,
 } from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
+import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
 
 /**
  * Substitute command references with Claude Code scoped commands
@@ -57,7 +56,7 @@ function substituteCommands(content, knownCommands = []) {
   let result = content
     .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/loaf:implement")
     .replace(/\{\{RESUME_CMD\}\}/g, "/loaf:resume")
-    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/loaf:orchestrate");
+    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/loaf:implement");
 
   // Then auto-scope known commands: /command -> /loaf:command
   // Only transform if not already scoped (no colon after slash)
@@ -76,13 +75,14 @@ function substituteCommands(content, knownCommands = []) {
 }
 
 /**
- * Copy references directory with command substitution for markdown files
+ * Copy references directory with command and agent name substitution for markdown files
  *
  * @param {string} srcDir - Source directory
  * @param {string} destDir - Destination directory
  * @param {string[]} knownCommands - List of Loaf command names for scoping
+ * @param {Object.<string, string>} agentMap - Agent slug to display name map
  */
-function copyReferencesWithSubstitution(srcDir, destDir, knownCommands) {
+function copyReferencesWithSubstitution(srcDir, destDir, knownCommands, agentMap) {
   mkdirSync(destDir, { recursive: true });
 
   const entries = readdirSync(srcDir, { withFileTypes: true });
@@ -91,11 +91,14 @@ function copyReferencesWithSubstitution(srcDir, destDir, knownCommands) {
     const destPath = join(destDir, entry.name);
 
     if (entry.isDirectory()) {
-      copyReferencesWithSubstitution(srcPath, destPath, knownCommands);
+      copyReferencesWithSubstitution(srcPath, destPath, knownCommands, agentMap);
     } else if (entry.name.endsWith(".md")) {
-      // Apply substitution to markdown files
+      // Apply substitutions to markdown files
       const content = readFileSync(srcPath, "utf-8");
-      writeFileSync(destPath, substituteCommands(content, knownCommands));
+      writeFileSync(destPath, substituteAgentNames(
+        substituteCommands(content, knownCommands),
+        agentMap
+      ));
     } else {
       // Copy non-markdown files as-is
       cpSync(srcPath, destPath);
@@ -237,24 +240,29 @@ function buildUnifiedPlugin(config, srcDir, pluginsDir) {
   const pluginDir = join(pluginsDir, PLUGIN_NAME);
   mkdirSync(pluginDir, { recursive: true });
 
-  // Discover all agents, commands, and skills from src/
+  // Discover all agents and skills from src/
   const allAgents = discoverAgents(srcDir);
-  const allCommands = discoverCommands(srcDir);
   const allSkills = discoverSkills(srcDir);
 
+  // Derive knownCommands from user-invocable skills (those whose sidecar does NOT set user-invocable: false)
+  const knownCommands = allSkills.filter(skill => {
+    const extensions = loadSkillExtensions(join(srcDir, "skills", skill));
+    return extensions["user-invocable"] !== false;
+  });
+
+  // Build agent name map from sidecars
+  const agentMap = buildAgentMap(srcDir, TARGET_NAME);
+
   // Create plugin.json with all hooks
-  createPluginJson(config, pluginDir, allAgents, allCommands, allSkills);
+  createPluginJson(config, pluginDir, allAgents, allSkills);
 
   // Copy all agents
-  copyAgents(allAgents, srcDir, pluginDir);
+  copyAgents(allAgents, srcDir, pluginDir, agentMap);
 
-  // Copy all skills (with command scoping)
-  copySkills(allSkills, srcDir, pluginDir, allCommands);
+  // Copy all skills (with command scoping and agent name substitution)
+  copySkills(allSkills, srcDir, pluginDir, knownCommands, agentMap);
 
-  // Copy all commands (with command scoping)
-  copyCommands(allCommands, srcDir, pluginDir, allCommands);
-
-  // Copy all hooks
+  // Copy all hooks (as-is, no agent name substitution — hooks compare against runtime $AGENT_TYPE slugs)
   copyAllHooks(config, srcDir, pluginDir);
 
   // Create .lsp.json for language server configurations
@@ -283,18 +291,6 @@ function discoverAgents(srcDir) {
 }
 
 /**
- * Discover all command files in src/commands/
- */
-function discoverCommands(srcDir) {
-  const commandsDir = join(srcDir, "commands");
-  if (!existsSync(commandsDir)) return [];
-
-  return readdirSync(commandsDir)
-    .filter((f) => f.endsWith(".md"))
-    .map((f) => f.replace(".md", ""));
-}
-
-/**
  * Discover all skill directories in src/skills/
  */
 function discoverSkills(srcDir) {
@@ -313,7 +309,7 @@ function discoverSkills(srcDir) {
 /**
  * Create plugin.json with all hook configurations and MCP servers
  */
-function createPluginJson(config, pluginDir, agents, commands, skills) {
+function createPluginJson(config, pluginDir, agents, skills) {
   const pluginJson = {
     name: PLUGIN_NAME,
     version: VERSION,
@@ -321,7 +317,6 @@ function createPluginJson(config, pluginDir, agents, commands, skills) {
     repository: REPOSITORY,
     license: "MIT",
     agents: agents.map((a) => `./agents/${a}.md`),
-    commands: commands.map((c) => `./commands/${c}.md`),
     skills: skills.map((s) => `./skills/${s}/SKILL.md`),
     hooks: {},
     mcpServers: MCP_SERVERS,
@@ -438,8 +433,13 @@ function getHookCommand(hook) {
 
 /**
  * Copy agent files with frontmatter from sidecars
+ *
+ * @param {string[]} agents - List of agent names
+ * @param {string} srcDir - Source directory
+ * @param {string} pluginDir - Plugin output directory
+ * @param {Object.<string, string>} agentMap - Agent slug to display name map
  */
-function copyAgents(agents, srcDir, pluginDir) {
+function copyAgents(agents, srcDir, pluginDir, agentMap) {
   const agentsDir = join(pluginDir, "agents");
   mkdirSync(agentsDir, { recursive: true });
 
@@ -458,8 +458,11 @@ function copyAgents(agents, srcDir, pluginDir) {
     const content = readFileSync(srcPath, "utf-8");
     const { content: body } = matter(content);
 
-    // Write with sidecar frontmatter
-    const transformed = matter.stringify(body, frontmatter);
+    // Write with sidecar frontmatter and agent name substitution
+    const transformed = substituteAgentNames(
+      matter.stringify(body, frontmatter),
+      agentMap
+    );
     writeFileSync(destPath, transformed);
   }
 }
@@ -471,8 +474,9 @@ function copyAgents(agents, srcDir, pluginDir) {
  * @param {string} srcDir - Source directory
  * @param {string} pluginDir - Plugin output directory
  * @param {string[]} knownCommands - List of Loaf command names for scoping
+ * @param {Object.<string, string>} agentMap - Agent slug to display name map
  */
-function copySkills(skills, srcDir, pluginDir, knownCommands) {
+function copySkills(skills, srcDir, pluginDir, knownCommands, agentMap) {
   const skillsDir = join(pluginDir, "skills");
   mkdirSync(skillsDir, { recursive: true });
 
@@ -501,19 +505,19 @@ function copySkills(skills, srcDir, pluginDir, knownCommands) {
       const content = readFileSync(skillMdPath, "utf-8");
       const { content: body } = matter(content);
 
-      // Write with merged frontmatter and command substitution
-      const transformed = substituteCommands(
-        matter.stringify(body, frontmatter),
-        knownCommands
+      // Write with merged frontmatter, command and agent name substitution
+      const transformed = substituteAgentNames(
+        substituteCommands(matter.stringify(body, frontmatter), knownCommands),
+        agentMap
       );
       writeFileSync(join(skillDest, "SKILL.md"), transformed);
     }
 
-    // Copy references directory with command substitution
+    // Copy references directory with command and agent name substitution
     const refSrc = join(skillSrc, "references");
     const refDest = join(skillDest, "references");
     if (existsSync(refSrc)) {
-      copyReferencesWithSubstitution(refSrc, refDest, knownCommands);
+      copyReferencesWithSubstitution(refSrc, refDest, knownCommands, agentMap);
     }
 
     // Copy scripts directory
@@ -526,59 +530,20 @@ function copySkills(skills, srcDir, pluginDir, knownCommands) {
 }
 
 /**
- * Copy command files with optional sidecar frontmatter and version
+ * Copy all hook scripts from all categories (as-is, no agent name substitution)
  *
- * Sidecar files: {command}.claude-code.yaml
- * Version is injected from package.json at build time
+ * Hooks compare against runtime $AGENT_TYPE which uses kebab-case slugs.
+ * Substituting display names would break shell case patterns.
  *
- * @param {string[]} commands - List of command names
+ * @param {Object} config - Hooks configuration
  * @param {string} srcDir - Source directory
  * @param {string} pluginDir - Plugin output directory
- * @param {string[]} knownCommands - List of Loaf command names for scoping
- */
-function copyCommands(commands, srcDir, pluginDir, knownCommands) {
-  const commandsDir = join(pluginDir, "commands");
-  mkdirSync(commandsDir, { recursive: true });
-
-  for (const command of commands) {
-    const srcPath = join(srcDir, "commands", `${command}.md`);
-    const destPath = join(commandsDir, `${command}.md`);
-
-    if (!existsSync(srcPath)) {
-      continue;
-    }
-
-    // Read source content
-    const content = readFileSync(srcPath, "utf-8");
-    const { content: body, data: frontmatter } = matter(content);
-
-    // Load optional sidecar for Claude Code-specific frontmatter
-    const sidecar = loadCommandSidecar(srcPath, TARGET_NAME);
-
-    // Merge: source frontmatter < sidecar overrides < version
-    const mergedFrontmatter = {
-      ...frontmatter,
-      ...sidecar,
-      version: VERSION,
-    };
-
-    // Write with merged frontmatter and command substitution
-    const transformed = substituteCommands(
-      matter.stringify(body, mergedFrontmatter),
-      knownCommands
-    );
-    writeFileSync(destPath, transformed);
-  }
-}
-
-/**
- * Copy all hook scripts from all categories
  */
 function copyAllHooks(config, srcDir, pluginDir) {
   const hooksDir = join(pluginDir, "hooks");
   mkdirSync(hooksDir, { recursive: true });
 
-  // Copy lib directory
+  // Copy lib directory as-is
   const libSrc = join(srcDir, "hooks", "lib");
   const libDest = join(hooksDir, "lib");
   if (existsSync(libSrc)) {
@@ -622,7 +587,7 @@ function copyAllHooks(config, srcDir, pluginDir) {
     }
   }
 
-  // Copy subagent hooks
+  // Copy subagent hooks as-is
   const subagentHooksSrc = join(srcDir, "hooks", "subagent");
   if (existsSync(subagentHooksSrc)) {
     const files = readdirSync(subagentHooksSrc);
@@ -633,3 +598,4 @@ function copyAllHooks(config, srcDir, pluginDir) {
     }
   }
 }
+

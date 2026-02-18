@@ -5,9 +5,10 @@ description: >-
   builds, Helm charts, ArgoCD/Flux deployment, GitHub Actions workflows, and
   container security. Use when containerizing apps, setting up deployments, or
   when the user asks "how do I deploy to Kubernetes?" or "what's the best CI/CD
-  setup?"
+  setup?" Not for application code, database schemas, or CI pipeline logic in
+  app repos.
 user-invocable: false
-agent: devops
+agent: 'devops'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---
 

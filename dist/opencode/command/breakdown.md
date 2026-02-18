@@ -1,11 +1,34 @@
 ---
-description: Decompose specs into atomic work items (Linear or local)
-version: 1.16.0
+description: >-
+  Decomposes specifications into atomic, implementable work items for Linear or
+  local task management. Covers task boundary identification, dependency
+  mapping, priority assignment, and right-sizing validation. Use when breaking
+  specs into tasks, or when the user asks "break this down" or "create tasks for
+  this spec." Produces task lists with dependencies, priorities, and
+  verification commands. Not for creating specs (use shape) or executing tasks
+  (use implement).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
-# Breakdown Command
+# Breakdown
 
 Decompose specifications into atomic, implementable tasks.
+
+## Contents
+- Purpose
+- Task Breakdown Philosophy: Separation of Concerns
+- Task Backend Detection
+- Process
+- Task ID Generation
+- Task Sizing Guide
+- Priority Levels
+- Verification Commands
+- Done Conditions
+- Guardrails
+- Common Patterns
+- Related Skills
 
 **Input:** $ARGUMENTS
 
@@ -38,10 +61,10 @@ See `orchestration/local-tasks` reference for task format and abstraction layer.
 ### The Right Size Test
 
 Ask these questions:
-1. Can a single specialized agent complete this? → If no, split by agent type
-2. Does it touch multiple unrelated concerns? → If yes, split by concern
-3. Will the agent need to hold too much context? → If yes, split into phases
-4. Am I splitting just to have more tasks? → If yes, merge back
+1. Can a single specialized agent complete this? -> If no, split by agent type
+2. Does it touch multiple unrelated concerns? -> If yes, split by concern
+3. Will the agent need to hold too much context? -> If yes, split into phases
+4. Am I splitting just to have more tasks? -> If yes, merge back
 
 ### Anti-Patterns
 
@@ -170,7 +193,7 @@ See SPEC-001 for full context.
 
 **Task dependencies:**
 ```
-TASK-001 → TASK-002 (sequential)
+TASK-001 -> TASK-002 (sequential)
 TASK-003 (can run in parallel)
 ```
 
@@ -238,7 +261,7 @@ status: implementing
 
 **Spec status:** implementing
 
-**Next:** Use `/implement TASK-001` to begin work, or `/orchestrate SPEC-001` to run all tasks.
+**Next:** Use `/implement TASK-001` for one task, or `/implement SPEC-001` to run all tasks.
 ```
 
 ---
@@ -374,8 +397,8 @@ TASK-006: E2E integration (QA)
 
 ---
 
-## Related Commands
+## Related Skills
 
-- `/shape` — Create specs that get broken down
-- `/implement` — Start session for a task
-- `/orchestrate` — Run multiple tasks
+- **shape** -- Create specs that get broken down
+- **implement** -- Start session for a task
+- **implement** -- Run one task or orchestrate multiple tasks

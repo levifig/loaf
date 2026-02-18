@@ -60,6 +60,8 @@ MCP servers are automatically started when needed. Prerequisites:
 # Requires Node.js 18+
 # No additional installation - runs via npx
 # You'll be prompted to authenticate with Linear on first use
+# Endpoint: https://mcp.linear.app/mcp (SSE deprecated)
+# New tools: initiatives, initiative updates, project milestones, project updates, project labels
 ```
 
 ### Serena

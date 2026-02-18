@@ -42,7 +42,7 @@ Use the Task tool with `run_in_background: true`:
 
 ```python
 Task(
-    subagent_type="background-runner",
+    subagent_type="{{AGENT:background-runner}}",
     prompt="""
     Run full security audit on backend codebase.
 
@@ -63,7 +63,7 @@ Task(
 Background agents are configured via the `is_background: true` YAML property. When spawning:
 
 ```
-@background-runner Run security audit on backend codebase.
+@{{AGENT:background-runner}} Run security audit on backend codebase.
 Write report to .agents/reports/
 ```
 
@@ -74,12 +74,12 @@ Track background agents in session frontmatter:
 ```yaml
 background_agents:
   - id: "bg-20260123-143000-security-scan"
-    agent: background-runner
+    agent: {{AGENT:background-runner}}
     task: "Full security audit of backend"
     status: running  # running | completed | failed
     result_location: null
   - id: "bg-20260123-144500-coverage"
-    agent: background-runner
+    agent: {{AGENT:background-runner}}
     task: "Test coverage analysis"
     status: completed
     result_location: ".agents/reports/20260123-144500-coverage-report.md"
@@ -138,7 +138,7 @@ During auth feature implementation, PM identifies need for security audit but it
 
 ```python
 Task(
-    subagent_type="background-runner",
+    subagent_type="{{AGENT:background-runner}}",
     prompt="""
     Run comprehensive security audit on auth implementation.
 
@@ -166,7 +166,7 @@ Task(
 ```yaml
 background_agents:
   - id: "bg-20260123-143000-auth-security"
-    agent: background-runner
+    agent: {{AGENT:background-runner}}
     task: "Auth security audit"
     status: running
     result_location: null
@@ -185,7 +185,7 @@ SessionStart hook detects completed background work:
 
 The following background agents have completed:
 
-- **bg-20260123-143000-auth-security** (background-runner)
+- **bg-20260123-143000-auth-security** ({{AGENT:background-runner}})
   - Task: Auth security audit
   - Result: .agents/reports/20260123-143000-auth-security.md
 
@@ -215,7 +215,7 @@ Checks session frontmatter for `background_agents` with `status: completed`. Ale
 
 ### PreCompact Hook
 
-Includes background agent state in preservation. Context-archiver captures:
+Includes background agent state in preservation. {{AGENT:context-archiver}} captures:
 - Active background agent list
 - Current status of each
 - Result locations for completed agents
@@ -233,12 +233,12 @@ session:
 
 background_agents:
   - id: "bg-20260123-143000-security"
-    agent: background-runner
+    agent: {{AGENT:background-runner}}
     task: "Security audit"
     status: completed
     result_location: ".agents/reports/20260123-143000-security.md"
   - id: "bg-20260123-150000-coverage"
-    agent: background-runner
+    agent: {{AGENT:background-runner}}
     task: "Coverage analysis"
     status: running
     result_location: null

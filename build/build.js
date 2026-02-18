@@ -2,10 +2,10 @@
 /**
  * Build System for Loaf - Levi's Opinionated Agentic Framework
  *
- * Generates tool-specific distributions from canonical structure:
+ * Generates tool-specific distributions from canonical source:
  * - Claude Code: plugins/{name}/ at repo root (for marketplace)
- * - OpenCode: dist/opencode/ with flat skill/, agent/, command/, plugin/
- * - Cursor: dist/cursor/ with skills/, agents/, commands/, hooks/
+ * - OpenCode: dist/opencode/ with flat skill/, agent/, command/ (generated from skills), plugin/
+ * - Cursor: dist/cursor/ with skills/, agents/, hooks/
  * - Codex: dist/codex/skills/
  * - Gemini: dist/gemini/skills/
  *

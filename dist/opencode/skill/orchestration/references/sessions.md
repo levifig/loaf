@@ -124,7 +124,7 @@ plans: []  # List of plan files in .agents/plans/ used by this session
 orchestration:
   current_task: "What's actively being worked" # REQUIRED
   spawned_agents:
-    - agent: backend-dev
+    - agent: Backend Dev
       task: "Brief task description"
       status: completed                        # pending|in_progress|completed
       summary: "Outcome summary"
@@ -402,7 +402,7 @@ When starting a new orchestration context:
 ### PreCompact Hook
 - Identifies recently modified sessions (last 60 minutes)
 - Outputs instructions for spawning context-archiver agent
-- Context-archiver updates sessions with:
+- context-archiver updates sessions with:
   - Current state (concrete, handoff-ready)
   - `## Resumption Prompt` section for post-compaction continuation
   - Session log entry with timestamp

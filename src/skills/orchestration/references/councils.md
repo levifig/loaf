@@ -48,22 +48,22 @@ Councils are deliberation mechanisms for decisions with multiple valid approache
 
 | Decision Type | 5-Agent Council | Extended (7) |
 |---------------|-----------------|--------------|
-| Database/Data | dba, backend-dev, devops, security, qa | + frontend-dev, docs |
-| API Design | backend-dev, frontend-dev, security, docs, qa | + dba, devops |
-| UI/UX | design, frontend-dev, product, backend-dev, qa | + docs |
-| Infrastructure | devops, backend-dev, security, dba, qa | + frontend-dev, docs |
-| Security | security, backend-dev, devops, dba, qa | + frontend-dev, docs |
-| Full Architecture | backend-dev, frontend-dev, dba, devops, security, qa, docs | N/A |
-| Feature Scope | product, design, backend-dev, frontend-dev, qa | + security |
+| Database/Data | {{AGENT:dba}}, {{AGENT:backend-dev}}, {{AGENT:devops}}, security, {{AGENT:qa}} | + {{AGENT:frontend-dev}}, docs |
+| API Design | {{AGENT:backend-dev}}, {{AGENT:frontend-dev}}, security, docs, {{AGENT:qa}} | + {{AGENT:dba}}, {{AGENT:devops}} |
+| UI/UX | {{AGENT:design}}, {{AGENT:frontend-dev}}, product, {{AGENT:backend-dev}}, {{AGENT:qa}} | + docs |
+| Infrastructure | {{AGENT:devops}}, {{AGENT:backend-dev}}, security, {{AGENT:dba}}, {{AGENT:qa}} | + {{AGENT:frontend-dev}}, docs |
+| Security | security, {{AGENT:backend-dev}}, {{AGENT:devops}}, {{AGENT:dba}}, {{AGENT:qa}} | + {{AGENT:frontend-dev}}, docs |
+| Full Architecture | {{AGENT:backend-dev}}, {{AGENT:frontend-dev}}, {{AGENT:dba}}, {{AGENT:devops}}, security, {{AGENT:qa}}, docs | N/A |
+| Feature Scope | product, {{AGENT:design}}, {{AGENT:backend-dev}}, {{AGENT:frontend-dev}}, {{AGENT:qa}} | + security |
 
 ### Composition Rules
 
 - **5 or 7 agents** (always odd)
 - Primary domain expert must be included
-- Include domain devs for code review (backend-dev/frontend-dev)
+- Include domain devs for code review ({{AGENT:backend-dev}}/{{AGENT:frontend-dev}})
 - Include `security` if security-relevant
 - PM coordinates but does NOT vote
-- Any agent type can participate (implementation agents like backend-dev bring valuable perspectives)
+- Any agent type can participate (implementation agents like {{AGENT:backend-dev}} bring valuable perspectives)
 
 ### Ad-Hoc Specialist Personas
 
@@ -75,11 +75,11 @@ When a council needs expertise not covered by existing agents, PM can create a s
 **Decision**: Real-time data pipeline architecture
 
 **Agents** (5):
-1. backend-dev - Application integration
-2. dba - Data storage patterns
-3. devops - Infrastructure and scaling
+1. {{AGENT:backend-dev}} - Application integration
+2. {{AGENT:dba}} - Data storage patterns
+3. {{AGENT:devops}} - Infrastructure and scaling
 4. **[Ad-hoc] Streaming Specialist** - Kafka/event-driven expertise
-5. qa - Testing distributed systems
+5. {{AGENT:qa}} - Testing distributed systems
 
 **Ad-hoc Specialist Prompt**:
 > You are a streaming data specialist with deep expertise in Apache Kafka,
@@ -114,11 +114,11 @@ Present to user for approval:
 **Decision**: Session storage strategy
 
 **Agents** (5):
-1. dba - Database implications
-2. backend-dev - Application integration
-3. devops - Operational complexity
+1. {{AGENT:dba}} - Database implications
+2. {{AGENT:backend-dev}} - Application integration
+3. {{AGENT:devops}} - Operational complexity
 4. security - Session security
-5. backend-dev (or frontend-dev) - Long-term maintainability (domain review)
+5. {{AGENT:backend-dev}} (or {{AGENT:frontend-dev}}) - Long-term maintainability (domain review)
 
 Do you approve this composition?
 ```
@@ -136,7 +136,7 @@ Each agent receives:
 
 ```python
 Task(
-  subagent_type="dba",
+  subagent_type="{{AGENT:dba}}",
   prompt="""
   Provide database perspective on session storage.
 
@@ -274,10 +274,10 @@ After the synthesis, prompt the user with concrete next steps:
 Based on the council deliberation, here are your options:
 
 1. **Accept recommendation (PostgreSQL)**
-   → Backend-dev implements session table with connection pooling
+   → {{AGENT:backend-dev}} implements session table with connection pooling
 
 2. **Choose alternative (Redis)**
-   → DevOps provisions Redis cluster, backend-dev implements client
+   → {{AGENT:devops}} provisions Redis cluster, {{AGENT:backend-dev}} implements client
 
 3. **Hybrid approach**
    → PostgreSQL for persistence, Redis for hot cache
@@ -320,11 +320,11 @@ council:
   archived_at: "2025-12-10T18:00:00Z"   # Required when archived
   session: "20251210-140000-user-auth"  # REQUIRED
   participants:
-    - dba
-    - backend-dev
-    - devops
+    - {{AGENT:dba}}
+    - {{AGENT:backend-dev}}
+    - {{AGENT:devops}}
     - security
-    - backend-dev               # Min 5, MUST be odd
+    - {{AGENT:backend-dev}}               # Min 5, MUST be odd
   decision: "postgresql"
   linear_issue: "AUTH-45"       # Optional
 ---

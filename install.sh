@@ -12,6 +12,8 @@ set -euo pipefail
 REPO_URL="https://github.com/levifig/loaf.git"
 INSTALL_DIR="${HOME}/.local/share/loaf"
 VERSION="1.0.0"
+LOAF_DEBUG="${LOAF_DEBUG:-0}"
+LOAF_MARKER_FILE=".loaf-version"
 
 # Colors (256-color)
 BOLD='\033[1m'
@@ -68,6 +70,12 @@ print_info() {
     echo -e "    ${GRAY}$1${RESET}"
 }
 
+debug_log() {
+    if [[ "${LOAF_DEBUG}" == "1" ]]; then
+        print_info "debug: $1"
+    fi
+}
+
 print_warn() {
     echo -e "  ${YELLOW}⚡${RESET} $1"
 }
@@ -91,6 +99,7 @@ spinner() {
 declare -a TOOL_KEYS=()
 declare -a TOOL_NAMES=()
 declare -a TOOL_INSTALLED=()
+DETECTION_PATH="${PATH}"
 
 # Config directory resolution
 declare -A TOOL_CONFIG_DIRS=()
@@ -113,16 +122,79 @@ detect_dev_mode() {
     fi
 }
 
+is_macos() {
+    [[ "$(uname -s)" == "Darwin" ]]
+}
+
+normalize_detection_path() {
+    local candidate_paths=()
+    local helper_path=""
+    local helper_output=""
+
+    candidate_paths+=("${PATH}")
+
+    if is_macos && [[ -x "/usr/libexec/path_helper" ]]; then
+        helper_output="$(/usr/libexec/path_helper -s 2>/dev/null || true)"
+        if [[ "${helper_output}" =~ PATH=\"([^\"]*)\" ]]; then
+            helper_path="${BASH_REMATCH[1]}"
+        fi
+    fi
+
+    if [[ -n "${helper_path}" ]]; then
+        candidate_paths+=("${helper_path}")
+    fi
+
+    if is_macos; then
+        candidate_paths+=("/opt/homebrew/bin" "/usr/local/bin" "${HOME}/.local/bin")
+        if command -v npm &> /dev/null; then
+            local npm_prefix=""
+            npm_prefix="$(npm config get prefix 2>/dev/null || true)"
+            if [[ -n "${npm_prefix}" ]]; then
+                candidate_paths+=("${npm_prefix}/bin")
+            fi
+        fi
+    fi
+
+    local normalized=""
+    local seen=":"
+    local path_entry=""
+    local path_list=""
+    local -a path_parts=()
+    for path_list in "${candidate_paths[@]}"; do
+        IFS=':' read -r -a path_parts <<< "${path_list}"
+        for path_entry in "${path_parts[@]}"; do
+            if [[ -n "${path_entry}" && "${seen}" != *":${path_entry}:"* ]]; then
+                normalized+="${path_entry}:"
+                seen+="${path_entry}:"
+            fi
+        done
+    done
+
+    echo "${normalized%:}"
+}
+
+has_cmd() {
+    local cmd="$1"
+    PATH="${DETECTION_PATH}" command -v "${cmd}" >/dev/null 2>&1
+}
+
 detect_tools() {
     TOOL_KEYS=()
     TOOL_NAMES=()
     TOOL_INSTALLED=()
     TOOL_CONFIG_DIRS=()
 
+    DETECTION_PATH="${PATH}"
+    if is_macos; then
+        DETECTION_PATH="$(normalize_detection_path)"
+    fi
+    debug_log "Detection PATH: ${DETECTION_PATH}"
+
     # Claude Code - detected separately (just needs marketplace add)
     HAS_CLAUDE_CODE=false
-    if command -v claude &> /dev/null; then
+    if has_cmd "claude"; then
         HAS_CLAUDE_CODE=true
+        debug_log "Claude Code detected via cli"
     fi
 
     # OpenCode (always uses XDG)
@@ -131,7 +203,7 @@ detect_tools() {
         TOOL_KEYS+=("opencode")
         TOOL_NAMES+=("OpenCode")
         TOOL_CONFIG_DIRS[opencode]="${opencode_config}"
-        if [[ -d "${opencode_config}/skill/python" ]]; then
+        if is_loaf_installed "${opencode_config}" "skill"; then
             TOOL_INSTALLED+=("yes")
         else
             TOOL_INSTALLED+=("no")
@@ -140,39 +212,65 @@ detect_tools() {
 
     # Cursor (uses ~/.cursor/)
     local cursor_config="${HOME}/.cursor"
-    if command -v cursor &> /dev/null || [[ -d "${cursor_config}" ]]; then
+    local cursor_reason=""
+    if has_cmd "cursor"; then
+        cursor_reason="cli"
+    elif [[ -d "/Applications/Cursor.app" || -d "${HOME}/Applications/Cursor.app" ]]; then
+        cursor_reason="app"
+    elif [[ -d "${cursor_config}" ]]; then
+        cursor_reason="config"
+    fi
+    if [[ -n "${cursor_reason}" ]]; then
         TOOL_KEYS+=("cursor")
         TOOL_NAMES+=("Cursor")
         TOOL_CONFIG_DIRS[cursor]="${cursor_config}"
-        if [[ -L "${cursor_config}/skills/python" ]] || [[ -d "${cursor_config}/skills/python" ]]; then
+        if is_loaf_installed "${cursor_config}" "skills"; then
             TOOL_INSTALLED+=("yes")
         else
             TOOL_INSTALLED+=("no")
         fi
+        debug_log "Cursor detected via ${cursor_reason}"
     fi
 
     # Codex (uses $CODEX_HOME or ~/.codex/)
     local codex_config="${CODEX_HOME:-${HOME}/.codex}"
-    if command -v codex &> /dev/null || [[ -d "${codex_config}" ]] || [[ -d "${HOME}/.codex" ]]; then
+    codex_config="${codex_config%/}"
+    local codex_reason=""
+    if has_cmd "codex"; then
+        codex_reason="cli"
+    elif [[ -d "${codex_config}" || -d "${HOME}/.codex" ]]; then
+        codex_reason="config"
+    fi
+    if [[ -n "${codex_reason}" ]]; then
         TOOL_KEYS+=("codex")
         TOOL_NAMES+=("Codex")
         TOOL_CONFIG_DIRS[codex]="${codex_config}"
-        if [[ -L "${codex_config}/skills/python" ]]; then
+        if is_loaf_installed "${codex_config}" "skills"; then
             TOOL_INSTALLED+=("yes")
         else
             TOOL_INSTALLED+=("no")
         fi
+        debug_log "Codex detected via ${codex_reason}"
     fi
 
     # Gemini (uses ~/.gemini/ - no XDG support yet)
     local gemini_config="${HOME}/.gemini"
-    TOOL_KEYS+=("gemini")
-    TOOL_NAMES+=("Gemini")
-    TOOL_CONFIG_DIRS[gemini]="${gemini_config}"
-    if [[ -L "${gemini_config}/skills/python" ]]; then
-        TOOL_INSTALLED+=("yes")
-    else
-        TOOL_INSTALLED+=("no")
+    local gemini_reason=""
+    if has_cmd "gemini"; then
+        gemini_reason="cli"
+    elif [[ -d "${gemini_config}" ]]; then
+        gemini_reason="config"
+    fi
+    if [[ -n "${gemini_reason}" ]]; then
+        TOOL_KEYS+=("gemini")
+        TOOL_NAMES+=("Gemini")
+        TOOL_CONFIG_DIRS[gemini]="${gemini_config}"
+        if is_loaf_installed "${gemini_config}" "skills"; then
+            TOOL_INSTALLED+=("yes")
+        else
+            TOOL_INSTALLED+=("no")
+        fi
+        debug_log "Gemini detected via ${gemini_reason}"
     fi
 }
 
@@ -386,6 +484,33 @@ copy_items() {
     fi
 }
 
+is_loaf_installed() {
+    local config_dir="$1"
+    local skills_dir_name="$2"
+    local marker_path="${config_dir}/${LOAF_MARKER_FILE}"
+
+    if [[ -f "${marker_path}" ]]; then
+        return 0
+    fi
+
+    local skills_dir="${config_dir}/${skills_dir_name}"
+    local skill_name=""
+    for skill_name in foundations python-development python; do
+        if [[ -e "${skills_dir}/${skill_name}" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+write_loaf_marker() {
+    local config_dir="$1"
+
+    mkdir -p "${config_dir}"
+    printf "%s\n" "${VERSION}" > "${config_dir}/${LOAF_MARKER_FILE}"
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Tool-specific Installers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -408,6 +533,7 @@ install_opencode() {
         cp -r "${dist}/plugin/"* "${config}/plugin/" 2>/dev/null || true
     fi
 
+    write_loaf_marker "${config}"
     print_success "OpenCode installed to ${config}"
 }
 
@@ -415,14 +541,14 @@ install_cursor() {
     local cache="${INSTALL_DIR}/cursor"
     local config="${TOOL_CONFIG_DIRS[cursor]}"
 
+    # Remove stale commands from previous Loaf installs
+    if [[ -d "${config}/commands" ]]; then
+        rm -rf "${config}/commands"
+    fi
+
     # Skills
     if [[ -d "${cache}/skills" ]]; then
         copy_items "${cache}/skills" "${config}/skills"
-    fi
-
-    # Commands
-    if [[ -d "${cache}/commands" ]]; then
-        copy_items "${cache}/commands" "${config}/commands"
     fi
 
     # Agents (subagents)
@@ -441,6 +567,7 @@ install_cursor() {
         copy_items "${cache}/hooks" "${config}/hooks"
     fi
 
+    write_loaf_marker "${config}"
     print_success "Cursor installed to ${config}"
 }
 
@@ -453,6 +580,7 @@ install_codex() {
         copy_items "${cache}/skills" "${config}/skills"
     fi
 
+    write_loaf_marker "${config}"
     print_success "Codex installed to ${config}/skills"
 }
 
@@ -466,6 +594,7 @@ install_gemini() {
         copy_items "${cache}/skills" "${config}/skills"
     fi
 
+    write_loaf_marker "${config}"
     print_success "Gemini installed to ${config}/skills"
 }
 
@@ -527,6 +656,7 @@ main() {
             --target) specific_target="$2"; shift 2 ;;
             --all) install_all=true; shift ;;
             --upgrade) upgrade_mode=true; shift ;;
+            --debug) LOAF_DEBUG=1; shift ;;
             --help|-h)
                 echo "Usage: install.sh [options]"
                 echo ""
@@ -565,6 +695,15 @@ main() {
     # Step 2: Detect tools
     print_step "2" "Detecting AI tools"
     detect_tools
+    if [[ ${#TOOL_NAMES[@]} -gt 0 ]]; then
+        for ((i = 0; i < ${#TOOL_NAMES[@]}; i++)); do
+            local status=""
+            if [[ "${TOOL_INSTALLED[$i]}" == "yes" ]]; then
+                status=" ${YELLOW}(installed)${RESET}"
+            fi
+            print_success "${TOOL_NAMES[$i]} detected${status}"
+        done
+    fi
     echo ""
 
     # Show Claude Code instructions (dev vs production)

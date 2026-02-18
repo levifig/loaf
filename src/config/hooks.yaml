@@ -277,20 +277,19 @@ hooks:
 
 # Legacy plugin groupings (kept for documentation purposes)
 # NOTE: Claude Code build now creates a single unified "loaf" plugin
-# containing ALL agents, commands, skills, and hooks from src/
+# containing ALL agents and skills from src/
 #
 # The groupings below document logical relationships but are NOT used
 # by the build system. All hooks defined above are included in the
 # unified plugin automatically.
 #
-# Scoping in Claude Code: /loaf:start-session, Task(loaf:backend-dev)
+# Scoping in Claude Code: /loaf:implement, Task(loaf:backend-dev)
 plugin-groups:
   # Orchestration - PM workflows and session management
   orchestration:
     description: PM orchestration, session management, Linear workflow integration
     agents: [pm]
-    skills: [orchestration, research]
-    commands: [implement, resume, orchestrate, review-sessions, council-session, reference-session, research, architecture, idea, shape, strategy, breakdown, reflect, brainstorm]
+    skills: [orchestration, research, implement, resume, review-sessions, council-session, reference-session, architecture, idea, shape, strategy, breakdown, reflect, brainstorm]
     related-hooks:
       pre-tool: [validate-commit, detect-linear-magic]
       post-tool: [generate-task-board]
@@ -301,28 +300,24 @@ plugin-groups:
     description: Project state assessment, topic investigation
     agents: []
     skills: [research]
-    commands: [research]
 
   # Ideation - Capture and explore ideas
   ideation:
     description: Quick idea capture, deep brainstorming, and problem exploration
     agents: []
-    skills: []
-    commands: [idea, brainstorm]
+    skills: [idea, brainstorm]
 
   # Shaping - Define and bound work
   shaping:
     description: Shape ideas into specs, discover strategy, decompose into tasks
     agents: []
-    skills: [orchestration]
-    commands: [shape, strategy, breakdown]
+    skills: [orchestration, shape, strategy, breakdown]
 
   # Learning - Reflect and evolve
   learning:
     description: Integrate learnings from shipped work into strategic documents
     agents: []
-    skills: []
-    commands: [reflect]
+    skills: [reflect]
 
   # Quality - Cross-language fundamentals and coding discipline
   foundations:

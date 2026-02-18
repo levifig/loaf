@@ -1,11 +1,34 @@
 ---
-description: Integrate learnings from shipped work into strategic documents
-version: 1.16.0
+description: >-
+  Integrates learnings from shipped work into strategic documents (VISION,
+  STRATEGY, ARCHITECTURE). Covers evidence gathering from completed specs and
+  sessions, insight extraction, and document update proposals. Use after
+  completing significant work, or when the user asks "what did we learn?" or
+  "update strategy based on this." Produces evidence-based update proposals for
+  strategic documents. Not for pre-implementation planning (use shape) or active
+  strategy discovery (use strategy).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
-# Reflect Command
+# Reflect
 
 Update VISION, STRATEGY, and ARCHITECTURE based on proven implementation.
+
+## Contents
+- Purpose
+- When to Reflect
+- Process
+- Reflection Patterns
+- What to Look For
+- VISION.md Updates
+- STRATEGY.md Updates
+- ARCHITECTURE.md Updates
+- ADR Creation
+- Guardrails
+- Anti-Patterns
+- Related Skills
 
 **Input:** $ARGUMENTS
 
@@ -164,7 +187,7 @@ After approval:
    - Created ADR-005-session-management.md
 
    Archived:
-   - SPEC-001-user-auth.md → docs/specs/archive/
+   - SPEC-001-user-auth.md -> docs/specs/archive/
    ```
 
 ---
@@ -324,8 +347,8 @@ Technical learnings. Triggers:
 When reflection surfaces a decision worth documenting:
 
 1. Check if ADR already exists
-2. If updating existing decision → supersede old ADR
-3. If new decision → create new ADR
+2. If updating existing decision -> supersede old ADR
+3. If new decision -> create new ADR
 
 See `/architecture` for ADR format.
 
@@ -333,12 +356,12 @@ See `/architecture` for ADR format.
 
 ## Guardrails
 
-1. **Evidence-based** — Proposals need supporting evidence
-2. **Post-implementation** — Reflect after shipping, not before
-3. **Get approval** — Don't update strategic docs without confirmation
-4. **Consolidate** — Don't create micro-updates; batch related learnings
-5. **Link back** — Reference the specs/sessions that informed the update
-6. **Archive completed work** — Move done specs to archive
+1. **Evidence-based** -- Proposals need supporting evidence
+2. **Post-implementation** -- Reflect after shipping, not before
+3. **Get approval** -- Don't update strategic docs without confirmation
+4. **Consolidate** -- Don't create micro-updates; batch related learnings
+5. **Link back** -- Reference the specs/sessions that informed the update
+6. **Archive completed work** -- Move done specs to archive
 
 ---
 
@@ -354,9 +377,9 @@ See `/architecture` for ADR format.
 
 ---
 
-## Related Commands
+## Related Skills
 
-- `/shape` — Notes strategic tensions for later reflection
-- `/strategy` — Deep discovery (before reflection validates)
-- `/architecture` — Technical decisions (creates ADRs)
-- `/research` — Investigation that may inform reflection
+- **shape** -- Notes strategic tensions for later reflection
+- **strategy** -- Deep discovery (before reflection validates)
+- **architecture** -- Technical decisions (creates ADRs)
+- **research** -- Investigation that may inform reflection

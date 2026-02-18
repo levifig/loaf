@@ -5,8 +5,10 @@ description: >-
   council deliberation workflows, session file management, Linear issue
   integration, and product planning. Use when managing complex tasks across
   agents, running decision councils, or when the user asks "how do I break down
-  this work?" or "which agent should handle this?"
-agent: pm
+  this work?" or "which agent should handle this?" Produces session files,
+  council records, task breakdowns, and progress updates. Not for standalone
+  research, brainstorming, or vision work (use research).
+agent: 'pm'
 allowed-tools: 'Read, Write, Edit, Glob, Grep, TodoWrite, TodoRead'
 ---
 
@@ -80,6 +82,20 @@ This skill uses paths from `.agents/config.json`:
 }
 ```
 
+## Artifact Locations
+
+All agent-produced artifacts go under `.agents/` with consistent naming and frontmatter.
+
+| Artifact | Location | Archive | Naming |
+|----------|----------|---------|--------|
+| Sessions | `.agents/sessions/` | `.agents/sessions/archive/` | `YYYYMMDD-HHMMSS-description.md` |
+| Councils | `.agents/councils/` | `.agents/councils/archive/` | `YYYYMMDD-HHMMSS-topic.md` |
+| Transcripts | `.agents/transcripts/` | N/A | Copied from tool output |
+| Reports | `.agents/reports/` | N/A | `YYYYMMDD-HHMMSS-subject.md` |
+| Tasks | `.agents/tasks/` | N/A | Per task manager conventions |
+
+**Rule:** Agents write artifacts to disk, PM reasons over artifacts, users retrieve from disk. Treat `.agents/` as the standard handoff boundary.
+
 ## Available Scripts
 
 | Script | Usage | Description |
@@ -140,6 +156,38 @@ This skill uses paths from `.agents/config.json`:
 - Archive fields: `archived_at`, `archived_by` (required when archived)
 - Required sections: Context, Current State, Next Steps
 - Archive when complete (set status, `archived_at`, `archived_by`, move to `.agents/sessions/archive/`, update `.agents/` links)
+
+#### Quick Session Template
+
+```yaml
+---
+title: "Brief description"
+status: active
+created: "YYYY-MM-DDTHH:MM:SSZ"
+last_updated: "YYYY-MM-DDTHH:MM:SSZ"
+current_task: "What's being worked on now"
+linear_issue: "PROJ-123"       # Optional
+transcripts: []                 # Populated post-compaction
+---
+
+# Session: Brief Description
+
+## Context
+Why this session exists and what it aims to accomplish.
+
+## Current State
+Always handoff-ready summary of where things stand.
+
+## Key Decisions
+- Chose X over Y because Z
+
+## Next Steps
+- [ ] Immediate action items
+
+## Resumption Prompt
+<!-- Pre-write this section at session start for compaction resilience -->
+Read this session file. Current state: [summary]. Next: [action].
+```
 
 ### Context Preservation (PreCompact)
 - PreCompact hook identifies sessions modified in last 60 minutes

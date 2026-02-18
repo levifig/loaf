@@ -1,11 +1,32 @@
 ---
-description: Make technical decisions and create Architecture Decision Records
-version: 1.16.0
+description: >-
+  Facilitates technical decision-making and creates Architecture Decision
+  Records (ADRs). Covers evaluating technical approaches, documenting decisions,
+  and maintaining decision history. Use when making significant technical
+  decisions, or when the user asks "should we use X or Y?" or "document this
+  architecture decision." Produces ADRs in docs/decisions/. Not for
+  project-level strategy (use strategy) or multi-agent deliberation (use
+  council-session).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
-# Architecture Command
+# Architecture
 
 Interview about technical decisions, update ARCHITECTURE.md, create ADRs.
+
+## Contents
+- Purpose
+- CRITICAL: Interview First
+- Process
+- ADR Format
+- ADR Numbering
+- ARCHITECTURE.md Updates
+- Decision Types
+- Guardrails
+- Council Trigger Conditions
+- Related Skills
 
 **Input:** $ARGUMENTS
 

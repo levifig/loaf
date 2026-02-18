@@ -212,7 +212,7 @@ After subagent completes:
 |---------|---------------|
 | `/loaf:breakdown` | Tasks become subagent assignments |
 | `/loaf:implement` | May dispatch subagents for specialized work |
-| `/loaf:orchestrate` | Automatically coordinates subagent work |
+| `/loaf:implement` | Automatically coordinates single-task and multi-task subagent work |
 
 ## Related Skills
 

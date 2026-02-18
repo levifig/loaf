@@ -1,0 +1,2 @@
+# Claude Code skill configuration
+argument-hint: "[TASK-XXX | SPEC-XXX | TASK-XXX..YYY | TASK-XXX,YYY | description]"

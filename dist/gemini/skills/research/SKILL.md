@@ -1,17 +1,37 @@
 ---
 name: research
 description: >-
-  Conducts project assessment, brainstorming, and vision evolution. Covers
-  assessing project state, exploring problem spaces, generating ideas, and
-  evolving strategic direction. Use when stepping back to understand the big
-  picture, or when the user asks "what's the current state?" or "help me think
-  through this problem."
-version: 1.16.0
+  Conducts project assessment, topic investigation, brainstorming, and vision
+  evolution. Covers assessing project state, exploring problem spaces,
+  generating ideas, and evolving strategic direction. Use when stepping back to
+  understand the big picture, or when the user asks "what's the current state?"
+  or "help me think through this problem." Produces state assessments, research
+  findings with ranked options, or vision change proposals. Not for multi-agent
+  coordination, session management, or task delegation (use orchestration).
+version: 1.16.1
 ---
 
 # Research
 
-Patterns for zooming out, brainstorming, and evolving project direction.
+Patterns for zooming out, investigating topics, and evolving project direction.
+
+## Contents
+- Philosophy
+- Quick Reference
+- Input Parsing and Mode Detection
+- Research Workflow
+- Research Modes
+- Confidence Hierarchy
+- Interview Patterns
+- Output Formats
+- Integration with Workflow
+- When to Research
+- When NOT to Research
+- Critical Rules
+- Scripts
+- Related Skills
+
+**Input:** $ARGUMENTS
 
 ## Philosophy
 
@@ -36,6 +56,72 @@ Research is NOT about:
 | Explore a topic | Structured inquiry with confidence hierarchy |
 | Generate ideas | Brainstorm with interview and synthesis |
 | Evolve VISION | Propose changes with evidence |
+
+## Input Parsing and Mode Detection
+
+Parse `$ARGUMENTS` to determine mode:
+
+| Input Pattern | Mode | Action |
+|---------------|------|--------|
+| "project state" / "catch me up" / empty | State Assessment | Review docs, sessions, recent work |
+| Topic or question | Topic Investigation | Structured inquiry |
+| "let's brainstorm" / "ideas for X" | Brainstorming | Interview and synthesis |
+| "should we change direction?" / "update VISION" | Vision Evolution | Evidence-based proposal |
+
+## Research Workflow
+
+### State Assessment
+
+**Trigger:** Empty input, "project state", "catch me up", "where are we"
+
+#### Steps
+
+1. **Read project documents:**
+   - `docs/VISION.md` -- Current direction
+   - `docs/STRATEGY.md` -- Personas, market, problem space
+   - `docs/ARCHITECTURE.md` -- Technical constraints
+
+2. **Check ideas and specs:**
+   - `.agents/ideas/*.md` -- Pending ideas
+   - `docs/specs/SPEC-*.md` -- Active specifications
+
+3. **Review recent sessions:**
+   - `.agents/sessions/*.md` -- Implementation history
+   - Note lessons learned, open questions
+
+4. **Check recent commits:**
+   ```bash
+   git log --oneline -20
+   ```
+
+5. **Synthesize findings** (see Output Formats below)
+
+### Topic Investigation
+
+**Trigger:** Specific topic or question
+
+#### Steps
+
+1. **Clarify the question:**
+
+   Use `AskUserQuestion` to understand:
+   - What specifically are you trying to understand?
+   - What context do you already have?
+   - What decision will this inform?
+
+2. **Check project context first:**
+   - Existing decisions in `docs/decisions/ADR-*.md`
+   - Relevant sections in ARCHITECTURE.md
+   - Previous session discussions
+
+3. **Apply confidence hierarchy** (see section below)
+
+4. **For library/framework questions:**
+   - Use Context7 MCP if available
+   - Cross-reference with official documentation
+   - Check for version-specific information
+
+5. **Synthesize findings** (see Output Formats below)
 
 ## Research Modes
 
@@ -117,6 +203,18 @@ When researching, prioritize sources in this order:
 
 **Rule:** Always check project context first. External research should supplement, not replace, understanding of existing decisions.
 
+### Confidence Levels
+
+Rate findings by confidence:
+
+| Level | Meaning |
+|-------|---------|
+| **High** | Official docs, verified in project context, or tested |
+| **Medium** | Authoritative source, consistent with multiple references |
+| **Low** | Community source, single reference, or inference |
+
+Always cite sources with confidence levels.
+
 ## Interview Patterns
 
 ### Before Any Research
@@ -162,10 +260,25 @@ Ask clarifying questions:
 ### Current Position
 - [Summary of where the project stands]
 
+### Strategic Context
+- **Vision:** [Brief summary]
+- **Key personas:** [Who we're building for]
+- **Current focus:** [Active specs/work]
+
 ### Recent Progress
 - [Key accomplishments from recent sessions]
 
-### Lessons Learned
+### In Flight
+| Spec/Task | Status | Notes |
+|-----------|--------|-------|
+| SPEC-001 | implementing | [progress] |
+| SPEC-002 | approved | [next up] |
+
+### Ideas Pipeline
+- [Idea 1] -- raw
+- [Idea 2] -- raw
+
+### Lessons Learned (Recent)
 - [Insights from implementation feedback]
 
 ### Open Questions
@@ -186,6 +299,13 @@ Ask clarifying questions:
 ### Summary
 [One-paragraph answer with confidence level]
 
+### Key Findings
+1. [Finding 1]
+2. [Finding 2]
+
+### Project Context
+[How this relates to our existing decisions/architecture]
+
 ### Options Considered
 
 #### Option A: [Name]
@@ -204,6 +324,12 @@ Ask clarifying questions:
 ### Sources
 - [Source 1 with confidence level]
 - [Source 2 with confidence level]
+
+### Implications
+- [What this means for our work]
+
+### Open Questions
+- [What's still unclear]
 ```
 
 ### Vision Change Proposal
@@ -232,14 +358,39 @@ Ask clarifying questions:
 This proposal requires user approval before implementation.
 ```
 
+## Research vs Other Skills
+
+| Need | Skill |
+|------|-------|
+| Understand current state | `/research` |
+| Investigate a factual question | `/research` |
+| Generate ideas or options | `/brainstorm` |
+| Explore a problem space | `/brainstorm` |
+| Update strategy from learnings | `/reflect` |
+| Make technical decisions | `/architecture` |
+
+## Context7 Usage
+
+For library/framework questions, use Context7 if available:
+
+```
+1. mcp__plugin_context7_context7__resolve-library-id
+   - Find the library ID
+
+2. mcp__plugin_context7_context7__query-docs
+   - Query specific documentation
+```
+
+This provides authoritative, version-specific documentation.
+
 ## Integration with Workflow
 
 Research fits at the top of the product development hierarchy:
 
 ```
-RESEARCH → VISION → ARCHITECTURE → REQUIREMENTS → SPECS → TASKS
-    │         │
-    └─────────┘
+RESEARCH -> VISION -> ARCHITECTURE -> REQUIREMENTS -> SPECS -> TASKS
+    |         |
+    +---------+
     evolves
 ```
 
@@ -278,6 +429,19 @@ RESEARCH → VISION → ARCHITECTURE → REQUIREMENTS → SPECS → TASKS
 - Present research as implementation plan
 - Skip the interview step
 
+## Output Expectations
+
+Research produces **findings**, not decisions.
+
+**Good output:**
+- "Based on X, Y, and Z, the options are A and B"
+- "The documentation says X with high confidence"
+- "Our ADR-003 already decided Y"
+
+**Bad output:**
+- "Let's do X" (that's a decision, not research)
+- "I think we should..." (presents options, not conclusions)
+
 ## Scripts
 
 | Script | Usage | Description |
@@ -289,3 +453,7 @@ RESEARCH → VISION → ARCHITECTURE → REQUIREMENTS → SPECS → TASKS
 
 - **orchestration** - For acting on research findings
 - **foundations** - For documentation standards
+- **brainstorm** - For generative exploration
+- **reflect** - For updating strategy post-shipping
+- **architecture** - For making technical decisions
+- **strategy** - For discovering strategic context

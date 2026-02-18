@@ -57,14 +57,14 @@ Add this section for post-compaction continuation:
 ```markdown
 ## Resumption Prompt
 
-> **Context**: Working on PLT-123 (auth endpoints). Backend-dev completed
+> **Context**: Working on PLT-123 (auth endpoints). {{AGENT:backend-dev}} completed
 > login/logout endpoints. Tests passing.
 >
 > **Last Action**: Reviewed test coverage, identified missing edge case for
 > token expiration.
 >
 > **Immediate Next**: Add token expiration test to `tests/auth/test_login.py`,
-> then spawn frontend-dev for UI components.
+> then spawn {{AGENT:frontend-dev}} for UI components.
 >
 > **Key Files**: `src/auth/endpoints.py`, `tests/auth/test_login.py`
 >

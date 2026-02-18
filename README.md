@@ -29,8 +29,8 @@ Loaf's commands form a three-phase workflow that mirrors how good software gets 
 ┌─────────────────────────────────────────────────────────────┐
 │                    PHASE 2: BUILD                           │
 │                                                             │
-│   /breakdown  →  /implement  or  /orchestrate               │
-│   (decompose)    (single task)    (multiple tasks)          │
+│   /breakdown  →  /implement                                 │
+│   (decompose)    (single task or multi-task orchestration)  │
 │                                                             │
 │   Optional: /council-session for complex decisions          │
 └─────────────────────────────────────────────────────────────┘
@@ -61,8 +61,7 @@ Decompose specs into atomic tasks and execute with specialized agents.
 | Command | Purpose |
 |---------|---------|
 | `/breakdown` | Split spec into agent-sized atomic tasks |
-| `/implement` | Start orchestrated session for a single task |
-| `/orchestrate` | Execute multiple tasks with dependency tracking |
+| `/implement` | Start single-task work or multi-task orchestration with dependency tracking |
 | `/council-session` | Convene agents for multi-perspective decisions |
 | `/resume` | Continue after context loss or new conversation |
 
@@ -145,11 +144,13 @@ Loaf is built once and deployed to multiple AI coding tools:
 *Claude Code only.*
 
 **MCP Servers:**
+
 - **Serena** - Code intelligence and semantic search
 - **Sequential Thinking** - Structured reasoning
 - **Linear** - Issue tracking and project management
 
 **LSP Servers:**
+
 - **gopls**, **pyright**, **typescript-language-server**, **solargraph**
 
 ## Installation
@@ -210,9 +211,10 @@ npm install
 npm run build
 ```
 
-See [CLAUDE.md](CLAUDE.md) for development guidelines.
+See [AGENTS.md](.agents/AGENTS.md) for development guidelines.
 
 **Testing locally:**
+
 - Claude Code: `/plugin marketplace add /path/to/loaf`
 - Others: `./install.sh` (detects dev mode, builds first)
 

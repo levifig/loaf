@@ -6,6 +6,7 @@ description: >-
   state management, React Hook Form with Zod validation, Tailwind CSS styling,
   Vitest/Playwright testing, and accessibility. Use when building React components, setting up
   Next.js, or when the user asks "how do I manage state?" or "what's the TypeScript way to do X?"
+  Not for design system philosophy or accessibility auditing (use interface-design).
 ---
 
 # TypeScript Development

@@ -1,13 +1,35 @@
 ---
-description: Start a council deliberation session with specialized agents
-agent: pm
+description: >-
+  Convenes multi-agent council deliberations for complex decisions requiring
+  diverse perspectives. Covers agent composition selection, parallel perspective
+  gathering, synthesis, and decision recording. Use when a decision needs input
+  from 5-7 specialized agents, or when the user asks "let's get a council
+  opinion" or "I need multiple perspectives on this." Produces council files
+  with agent perspectives, synthesis, and recorded decisions. Not for
+  single-agent work or implementation (use implement).
+agent: PM
 subtask: false
-version: 1.16.0
+version: 1.16.1
 ---
 
 # Council Deliberation Session
 
 You are the PM agent convening a council of specialized agents for multi-perspective deliberation.
+
+## Contents
+- Step 1: Parse Decision Topic
+- Step 2: Determine Council Composition
+- Step 3: Create Council File
+- Step 4: Spawn Council Agents in Parallel
+- Step 5: Collect and Synthesize
+- Step 6: Present to User
+- Step 7: Record Decision
+- Step 8: Consider ADR
+- Step 9: Implement Decision (if applicable)
+- Edge Cases
+- Quality Checklist
+- Context Management
+- Remember
 
 **Input**: `$ARGUMENTS` (the decision topic or question)
 
@@ -32,17 +54,17 @@ Based on the decision topic, select **5-7 agents** (MUST be odd number).
 
 Reference `council-workflow` skill, `reference/council-composition.md` for guidance.
 
-### Decision Type → Composition Table
+### Decision Type -> Composition Table
 
 | Decision Type | Suggested 5-Agent Council | Extend to 7 (if needed) |
 |--------------|---------------------------|------------------------|
-| **Database/Schema** | dba, backend-dev, devops, security, qa | + frontend-dev, docs |
-| **API Design** | backend-dev, frontend-dev, security, docs, qa | + dba, devops |
-| **UI/UX** | design, frontend-dev, product, backend-dev, qa | + docs |
-| **Infrastructure** | devops, backend-dev, security, dba, qa | + frontend-dev, docs |
-| **Security** | security, backend-dev, devops, dba, qa | + frontend-dev, docs |
-| **Full Architecture** | backend-dev, frontend-dev, dba, devops, security, qa, docs | (already 7) |
-| **Feature Scope** | product, design, backend-dev, frontend-dev, qa | + security |
+| **Database/Schema** | DBA, Backend Dev, DevOps, security, QA | + Frontend Dev, docs |
+| **API Design** | Backend Dev, Frontend Dev, security, docs, QA | + DBA, DevOps |
+| **UI/UX** | Design, Frontend Dev, product, Backend Dev, QA | + docs |
+| **Infrastructure** | DevOps, Backend Dev, security, DBA, QA | + Frontend Dev, docs |
+| **Security** | security, Backend Dev, DevOps, DBA, QA | + Frontend Dev, docs |
+| **Full Architecture** | Backend Dev, Frontend Dev, DBA, DevOps, security, QA, docs | (already 7) |
+| **Feature Scope** | product, Design, Backend Dev, Frontend Dev, QA | + security |
 
 ### Present to User for Approval
 
@@ -195,17 +217,17 @@ Task(
 
 | Agent | Domain | Analysis Factors |
 |-------|--------|------------------|
-| **dba** | Database | Data persistence, query patterns, backup/recovery, consistency, scalability |
-| **backend-dev (implementation)** | Application | Integration complexity, library support, dev velocity, testing, maintainability |
-| **frontend-dev (implementation)** | Frontend | Client experience, API consumption, state management, UI integration |
-| **devops** | Operations | Deployment complexity, monitoring, HA, DR, infrastructure cost, scalability |
+| **DBA** | Database | Data persistence, query patterns, backup/recovery, consistency, scalability |
+| **Backend Dev (implementation)** | Application | Integration complexity, library support, dev velocity, testing, maintainability |
+| **Frontend Dev (implementation)** | Frontend | Client experience, API consumption, state management, UI integration |
+| **DevOps** | Operations | Deployment complexity, monitoring, HA, DR, infrastructure cost, scalability |
 | **security** | Security | Attack surface, data exposure, compliance, encryption, revocation |
-| **backend-dev (review)** | Backend review | Code complexity, technical debt, backend maintainability, migration paths |
-| **frontend-dev (review)** | Frontend review | UI complexity, frontend maintainability, migration paths |
-| **qa** | Testing | Test complexity, test data, coverage, flakiness, CI integration |
+| **Backend Dev (review)** | Backend review | Code complexity, technical debt, backend maintainability, migration paths |
+| **Frontend Dev (review)** | Frontend review | UI complexity, frontend maintainability, migration paths |
+| **QA** | Testing | Test complexity, test data, coverage, flakiness, CI integration |
 | **docs** | Documentation | Documentation burden, learning curve, API docs, examples |
 | **product** | Product | User value, prioritization, MVP scope, rollout strategy |
-| **design** | Design | UX implications, visual consistency, accessibility, interaction patterns |
+| **Design** | Design | UX implications, visual consistency, accessibility, interaction patterns |
 
 Spawn ALL agents before proceeding to Step 5.
 
@@ -258,9 +280,9 @@ After collecting all perspectives, synthesize:
 
 #### Option 1: [Name]
 **Pros**:
-- ✅ [Strength] (emphasized by [agents])
+- [Strength] (emphasized by [agents])
 **Cons**:
-- ❌ [Weakness] (flagged by [agents])
+- [Weakness] (flagged by [agents])
 **Best for**: [Use case]
 
 #### Option 2: [Name]
@@ -295,15 +317,15 @@ Council deliberated on [topic]. [Consensus status]
 
 ## Options Evaluated
 
-1. ✅ **[Option X]** (Recommended/Valid)
+1. **[Option X]** (Recommended/Valid)
    - Pros: [Key strengths]
    - Cons: [Key weaknesses]
 
-2. ⚠️ **[Option Y]** (Alternative/Not Recommended)
+2. **[Option Y]** (Alternative/Not Recommended)
    - Pros: [Key strengths]
    - Cons: [Key weaknesses]
 
-3. ❌ **[Option Z]** (Rejected)
+3. **[Option Z]** (Rejected)
    - Why rejected: [Reason]
 
 ## Trade-Offs
@@ -414,8 +436,8 @@ If decision requires implementation, spawn appropriate agents:
 
 Based on council decision, next steps:
 
-1. [Task 1] → Spawn [agent] to [action]
-2. [Task 2] → Spawn [agent] to [action]
+1. [Task 1] -> Spawn [agent] to [action]
+2. [Task 2] -> Spawn [agent] to [action]
 
 Shall I proceed with spawning agents for implementation?
 ```
@@ -550,9 +572,9 @@ The council file and session file persist across context resets:
 
 ```
 Council decision survives /clear
-→ Read from .agents/councils/[file].md
-→ Reference in session file
-→ Continue implementation with clean context
+-> Read from .agents/councils/[file].md
+-> Reference in session file
+-> Continue implementation with clean context
 ```
 
 See `orchestration` skill `reference/context-management.md` for detailed patterns.

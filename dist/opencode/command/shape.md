@@ -1,11 +1,31 @@
 ---
-description: Shape ideas into well-defined specs through rigorous evaluation
-version: 1.16.0
+description: >-
+  Shapes ideas into well-defined specifications through rigorous evaluation and
+  scope bounding. Covers problem definition, solution shaping, appetite setting,
+  and spec writing with test conditions. Use when turning ideas into
+  implementable specs, or when the user asks "shape this idea" or "write a spec
+  for this." Produces Shape Up-style specs with clear boundaries. Not for
+  capturing raw ideas (use idea) or decomposing specs into tasks (use
+  breakdown).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
-# Shape Command
+# Shape
 
 Develop ideas into bounded, buildable specifications.
+
+## Contents
+- Purpose
+- CRITICAL: Interview Extensively
+- Process
+- Splitting Large Specs
+- Spec Lifecycle
+- Strategic Tensions
+- Guardrails
+- Common Mistakes
+- Related Skills
 
 **Input:** $ARGUMENTS
 
@@ -54,10 +74,10 @@ Use `AskUserQuestion` throughout.
 
 Read in order:
 
-1. **VISION.md** — Does this align with where we're going?
-2. **STRATEGY.md** — Does this serve our personas? Fit our positioning?
-3. **ARCHITECTURE.md** — What technical constraints apply?
-4. **Existing specs** — Avoid duplication, identify dependencies
+1. **VISION.md** -- Does this align with where we're going?
+2. **STRATEGY.md** -- Does this serve our personas? Fit our positioning?
+3. **ARCHITECTURE.md** -- What technical constraints apply?
+4. **Existing specs** -- Avoid duplication, identify dependencies
 
 If shaping from an idea file, read it first.
 
@@ -79,7 +99,7 @@ Before diving into details, assess alignment:
 
 ### Step 4: Interview for Shaping
 
-Shape Up methodology — define boundaries, not tasks.
+Shape Up methodology -- define boundaries, not tasks.
 
 | Question | Purpose |
 |----------|---------|
@@ -132,7 +152,7 @@ appetite: "[time budget]"
 
 ## Solution Direction
 
-[High-level approach — direction, not blueprint. Enough for an implementer to make good decisions, not so much that it's prescriptive.]
+[High-level approach -- direction, not blueprint. Enough for an implementer to make good decisions, not so much that it's prescriptive.]
 
 ## Scope
 
@@ -253,7 +273,7 @@ When a spec is too big for its appetite:
 
 ```
 SPEC-001-user-auth.md (large, 2 weeks)
-        ↓ split into
+        | split into
 SPEC-001a-oauth-integration.md (medium, 3 days)
 SPEC-001b-session-management.md (small, 2 days)
 SPEC-001c-login-ui.md (medium, 3 days)
@@ -269,7 +289,7 @@ Each sub-spec:
 ## Spec Lifecycle
 
 ```
-drafting → approved → implementing → complete → archived
+drafting -> approved -> implementing -> complete -> archived
 ```
 
 | Status | Meaning |
@@ -299,14 +319,14 @@ This keeps shaping focused and strategy changes deliberate.
 
 ## Guardrails
 
-1. **Interview extensively** — This is not quick capture
-2. **Evaluate strategic fit** — Don't shape in a vacuum
-3. **Respect appetite** — Fixed time, variable scope
-4. **Document rabbit holes** — Prevent scope creep
-5. **Clear test conditions** — Observable outcomes
-6. **Circuit breaker** — Plan for running out of time
-7. **Get approval** — Don't create without confirmation
-8. **Note tensions, don't fix** — Strategy evolves via /reflect
+1. **Interview extensively** -- This is not quick capture
+2. **Evaluate strategic fit** -- Don't shape in a vacuum
+3. **Respect appetite** -- Fixed time, variable scope
+4. **Document rabbit holes** -- Prevent scope creep
+5. **Clear test conditions** -- Observable outcomes
+6. **Circuit breaker** -- Plan for running out of time
+7. **Get approval** -- Don't create without confirmation
+8. **Note tensions, don't fix** -- Strategy evolves via /reflect
 
 ---
 
@@ -324,10 +344,10 @@ This keeps shaping focused and strategy changes deliberate.
 
 ---
 
-## Related Commands
+## Related Skills
 
-- `/idea` — Quick capture (feeds into /shape)
-- `/brainstorm` — Deep thinking before shaping
-- `/breakdown` — Decompose spec into work items
-- `/implement` — Start implementation session
-- `/reflect` — Update strategy after shipping
+- **idea** -- Quick capture (feeds into /shape)
+- **brainstorm** -- Deep thinking before shaping
+- **breakdown** -- Decompose spec into work items
+- **implement** -- Start implementation session
+- **reflect** -- Update strategy after shipping

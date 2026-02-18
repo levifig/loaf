@@ -1,11 +1,29 @@
 ---
-description: Deep thinking on ideas or problem spaces
-version: 1.16.0
+description: >-
+  Conducts deep, structured brainstorming on ideas or problem spaces. Covers
+  divergent thinking, problem decomposition, and creative exploration. Use when
+  exploring possibilities before committing to a direction, or when the user
+  asks "help me think through this" or "what are the options for...?" Produces
+  structured idea explorations with trade-offs. Not for quick idea capture (use
+  idea) or strategic direction (use strategy).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
-# Brainstorm Command
+# Brainstorm
 
 Think deeply about an existing idea or explore a new problem space.
+
+## Contents
+- Purpose
+- Mode Detection
+- Process
+- Brainstorming Techniques
+- Output Artifacts
+- Guardrails
+- When to Use This vs Other Skills
+- Related Skills
 
 **Input:** $ARGUMENTS
 
@@ -13,7 +31,7 @@ Think deeply about an existing idea or explore a new problem space.
 
 ## Purpose
 
-Brainstorming is **generative thinking** — expanding possibilities before narrowing.
+Brainstorming is **generative thinking** -- expanding possibilities before narrowing.
 
 Unlike `/idea` (quick capture) or `/shape` (rigorous bounding), brainstorming is exploratory:
 - Process an existing idea to deepen understanding
@@ -33,9 +51,9 @@ Parse input to determine mode:
 | Empty | Open Brainstorm | "What should we be thinking about?" |
 
 Examples:
-- `20260124-keyboard-shortcuts` → Process this idea
-- `how should we handle offline mode?` → Explore this problem
-- (empty) → Open exploration
+- `20260124-keyboard-shortcuts` -> Process this idea
+- `how should we handle offline mode?` -> Explore this problem
+- (empty) -> Open exploration
 
 ---
 
@@ -51,10 +69,10 @@ Load from `.agents/ideas/{filename}.md`
 
 #### Step 2: Gather Context
 
-- Read VISION.md — Where does this fit?
-- Read STRATEGY.md — Who benefits?
-- Read ARCHITECTURE.md — What constraints apply?
-- Check related ideas — Any connections?
+- Read VISION.md -- Where does this fit?
+- Read STRATEGY.md -- Who benefits?
+- Read ARCHITECTURE.md -- What constraints apply?
+- Check related ideas -- Any connections?
 
 #### Step 3: Deep Exploration
 
@@ -73,10 +91,10 @@ Ask expansive questions:
 
 Explore multiple approaches:
 
-1. **Conventional approach** — How would most solve this?
-2. **Minimal approach** — Smallest thing that provides value
-3. **Ambitious approach** — If resources were unlimited
-4. **Contrarian approach** — What if the opposite were true?
+1. **Conventional approach** -- How would most solve this?
+2. **Minimal approach** -- Smallest thing that provides value
+3. **Ambitious approach** -- If resources were unlimited
+4. **Contrarian approach** -- What if the opposite were true?
 
 #### Step 5: Refine and Document
 
@@ -108,10 +126,10 @@ Explore multiple approaches:
 [Which direction seems most promising and why]
 
 ### Next Steps
-- [ ] Ready to shape → `/shape {idea}`
-- [ ] Needs more research → `/research {topic}`
-- [ ] Park for later → Keep in ideas/
-- [ ] Discard → Archive idea
+- [ ] Ready to shape -> `/shape {idea}`
+- [ ] Needs more research -> `/research {topic}`
+- [ ] Park for later -> Keep in ideas/
+- [ ] Discard -> Archive idea
 ```
 
 #### Step 6: Update Idea File
@@ -138,9 +156,9 @@ Interview to clarify:
 
 #### Step 2: Gather Context
 
-- Read STRATEGY.md — Is this in our problem space?
-- Read VISION.md — Does solving this advance our direction?
-- Check existing ideas — Related thinking?
+- Read STRATEGY.md -- Is this in our problem space?
+- Read VISION.md -- Does solving this advance our direction?
+- Check existing ideas -- Related thinking?
 
 #### Step 3: Divergent Thinking
 
@@ -187,17 +205,17 @@ Filter and prioritize:
 [Which direction to pursue]
 
 ### Next Steps
-- [ ] Capture as idea → `/idea {summary}`
-- [ ] Shape directly → `/shape {topic}`
-- [ ] Research first → `/research {topic}`
-- [ ] Park → Note in session, revisit later
+- [ ] Capture as idea -> `/idea {summary}`
+- [ ] Shape directly -> `/shape {topic}`
+- [ ] Research first -> `/research {topic}`
+- [ ] Park -> Note in session, revisit later
 ```
 
 ---
 
 ### Mode: Open Brainstorm
 
-When input is empty — "What should we be thinking about?"
+When input is empty -- "What should we be thinking about?"
 
 #### Step 1: Assess Current State
 
@@ -220,8 +238,8 @@ Present options:
 ## Open Brainstorm
 
 ### Existing Ideas Worth Exploring
-1. [idea-1] — Last touched [date]
-2. [idea-2] — Related to recent work
+1. [idea-1] -- Last touched [date]
+2. [idea-2] -- Related to recent work
 
 ### Emerging Opportunities
 1. [Opportunity based on recent sessions]
@@ -270,18 +288,18 @@ Brainstorming can produce:
 
 ## Guardrails
 
-1. **Diverge before converging** — Generate options before judging
-2. **Stay exploratory** — Don't prematurely commit
-3. **Document the thinking** — Even discarded options are valuable
-4. **Connect to strategy** — Ground exploration in context
-5. **Know when to stop** — Brainstorming can be endless; set boundaries
+1. **Diverge before converging** -- Generate options before judging
+2. **Stay exploratory** -- Don't prematurely commit
+3. **Document the thinking** -- Even discarded options are valuable
+4. **Connect to strategy** -- Ground exploration in context
+5. **Know when to stop** -- Brainstorming can be endless; set boundaries
 
 ---
 
-## When to Use This vs Other Commands
+## When to Use This vs Other Skills
 
-| Situation | Command |
-|-----------|---------|
+| Situation | Skill |
+|-----------|-------|
 | Have a nugget, want to capture quickly | `/idea` |
 | Have an idea, want to think deeply | `/brainstorm` |
 | Have a problem, want to explore | `/brainstorm` |
@@ -290,9 +308,9 @@ Brainstorming can produce:
 
 ---
 
-## Related Commands
+## Related Skills
 
-- `/idea` — Quick capture (may precede brainstorming)
-- `/shape` — Rigorous bounding (often follows brainstorming)
-- `/research` — Fact-finding (complements brainstorming)
-- `/strategy` — Strategic context (grounds brainstorming)
+- **idea** -- Quick capture (may precede brainstorming)
+- **shape** -- Rigorous bounding (often follows brainstorming)
+- **research** -- Fact-finding (complements brainstorming)
+- **strategy** -- Strategic context (grounds brainstorming)
