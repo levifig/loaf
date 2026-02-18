@@ -188,7 +188,7 @@ If no active session exists, display the decisions without updating any file:
 [Display decision content]
 
 **Note**: No active session to update. Start a session first with
-`/start-session` to track this reference.
+`/resume` to track this reference.
 ```
 
 ---

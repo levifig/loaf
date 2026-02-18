@@ -123,7 +123,7 @@ Session files provide persistent context that survives `/clear`:
 ```
 1. Update session file with current state
 2. /clear to reset context
-3. /resume-session to reload from session file
+3. /loaf:resume to reload from session file
 4. Continue with clean context
 ```
 

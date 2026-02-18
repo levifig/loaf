@@ -17,7 +17,7 @@ fi
 
 if [ "$SESSION_COUNT" -gt 0 ]; then
   CONTEXT="Active Sessions: $SESSION_COUNT session file(s) in .agents/sessions/. "
-  CONTEXT+="Use /review-sessions to see them or /resume-session to continue one."
+  CONTEXT+="Use /review-sessions to see them or /resume to continue one."
 fi
 
 # Output valid JSON for Cursor

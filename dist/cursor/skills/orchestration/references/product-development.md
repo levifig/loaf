@@ -49,7 +49,7 @@ docs/                               # Permanent project knowledge
 ```
 RESEARCH → VISION → ARCHITECTURE → REQUIREMENTS → SPECS → TASKS → SESSION
     │         │          │              │           │        │        │
-/research  (manual)  /architecture    /prd       /specs   /tasks  /implement
+/research  (manual)  /architecture    /shape              /breakdown  /implement
     │                    │              │           │        │
     └─► evolves ─────────┴──────────────┴───────────┴────────┘
         VISION                                      (feedback loops)
@@ -69,9 +69,8 @@ RESEARCH → VISION → ARCHITECTURE → REQUIREMENTS → SPECS → TASKS → SE
 |---------|-------|--------|---------|
 | `/research` | Topic or "project state" | Insights, brainstorm | Zoom out, evolve VISION |
 | `/architecture` | Decision question | ARCHITECTURE.md + ADR | Technical decisions |
-| `/prd` | Feature area | REQUIREMENTS.md section | Product/business rules |
-| `/specs` | Requirement reference | SPEC-001-*.md | Feature specifications |
-| `/tasks` | Spec reference | TASK-* files/issues | Atomic work items |
+| `/shape` | Feature area or requirement | Spec in .agents/specs/ | Implementation-ready specification with boundaries |
+| `/breakdown` | Spec | Tasks in .agents/tasks/ | Atomic work items for agents |
 | `/implement` | TASK-ID | Session file | Execute a task |
 
 ## Document Formats
@@ -175,15 +174,15 @@ docs:
 # → Interview → ADR-001-auth-approach.md
 
 # 3. Capture requirements
-/prd "user authentication"
+/shape "user authentication"
 # → Interview → REQUIREMENTS.md section 2.1
 
 # 4. Create specification
-/specs "2.1 User Authentication"
+/shape "2.1 User Authentication"
 # → Interview → SPEC-001-user-auth.md
 
 # 5. Generate tasks
-/tasks SPEC-001
+/breakdown SPEC-001
 # → TASK-001, TASK-002, TASK-003
 
 # 6. Work on tasks

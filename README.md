@@ -133,9 +133,9 @@ Loaf is built once and deployed to multiple AI coding tools:
 
 | Target | Features | Status |
 |--------|----------|--------|
-| Claude Code | Full (agents, skills, commands, hooks, MCP, LSP) | Primary |
+| Claude Code | Full (agents, skills, hooks, MCP, LSP) | Primary |
 | OpenCode | Full (agents, skills, commands, hooks) | Full support |
-| Cursor | Full (agents, skills, commands, hooks) | Full support |
+| Cursor | Agents, skills, hooks | Full support |
 | Codex | Skills only | Partial |
 | Gemini | Skills only | Partial |
 

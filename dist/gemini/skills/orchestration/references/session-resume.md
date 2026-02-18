@@ -44,7 +44,7 @@ claude --resume abc123
 ```bash
 # Start new conversation, resume from session file
 claude
-> /resume-session 20250123-143000-feature-auth
+> /resume 20250123-143000-feature-auth
 ```
 
 **Best for:** Fresh context but task continuity from session file.

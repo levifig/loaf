@@ -237,7 +237,7 @@ npm run build:claude-code  # Claude Code only
 | Target | Output | Notes |
 |--------|--------|-------|
 | claude-code | `plugins/loaf/` | Merges sidecars into output |
-| opencode | `dist/opencode/` | Skills and agents only |
+| opencode | `dist/opencode/` | Skills, agents, and commands (from skills) |
 | cursor | `dist/cursor/` | Skills and agents only |
 | codex | `dist/codex/` | Skills and agents only |
 | gemini | `dist/gemini/` | Skills and agents only |

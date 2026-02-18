@@ -526,7 +526,7 @@ If the council was lengthy or complex:
 
 1. Update session file with decision
 2. Consider `/compact` if main context is large
-3. For very long sessions, consider `/clear` + `/resume-session`
+3. For very long sessions, consider `/clear` + `/resume`
 
 ### Save Implementation Plans
 
