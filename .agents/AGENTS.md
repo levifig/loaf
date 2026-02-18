@@ -14,12 +14,13 @@ npm install && npm run build
 
 ```
 src/
-├── skills/{name}/SKILL.md      # Domain knowledge + references/
+├── skills/{name}/SKILL.md      # Domain knowledge + references/ + templates/
+├── templates/                  # Shared templates (distributed at build time)
 ├── agents/{name}.md            # Thin routers (frontmatter: model, skills, tools)
 ├── hooks/{pre,post}-tool/      # Hook scripts
 └── config/
     ├── hooks.yaml              # Hook definitions, plugin-groups
-    └── targets.yaml            # Target defaults, sidecars
+    └── targets.yaml            # Target defaults, sidecars, shared-templates
 build/targets/{target}.js       # Target transformers
 ```
 
@@ -132,14 +133,30 @@ Only these fields belong in `SKILL.md`:
      proposals. Not for multi-agent coordination (use orchestration).
    ```
 
-### Template Embedding
+### Templates
 
-Frequently-used templates belong in SKILL.md as quick references. Detailed templates go in reference files (loaded on demand). Templates reduce model improvisation and increase output consistency.
+Artifact format templates (session files, specs, ADRs, task files) live in `templates/` directories. SKILL.md references them with links instead of embedding inline.
 
-**Pattern:**
-- Add a "Quick Template" subsection in SKILL.md for the 1-2 most common output formats
-- Keep full templates and variations in `references/` files
-- Templates should include required fields and structure, not optional embellishments
+**Skill-specific templates:** `src/skills/{name}/templates/` — templates unique to one skill.
+
+**Shared templates:** `src/templates/` — distributed to multiple skills at build time via `shared-templates` config in `targets.yaml`.
+
+```yaml
+# targets.yaml
+shared-templates:
+  session.md: [implement, resume, orchestration, reference-session, review-sessions]
+  plan.md: [implement, council-session]
+  adr.md: [architecture, reflect]
+```
+
+**Reference pattern in SKILL.md:**
+```markdown
+Create session file following [templates/session.md](templates/session.md).
+```
+
+**Templates vs references:**
+- `templates/` — structural artifacts (frontmatter schema, section headings, required fields)
+- `references/` — knowledge documents (conventions, patterns, decision records)
 
 ### Sidecar Files
 
@@ -170,10 +187,12 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 skill-name/
 ├── SKILL.md              # Overview + navigation (< 500 lines)
 ├── SKILL.claude-code.yaml # Claude-specific overrides
-└── references/
-    ├── topic-a.md        # Detailed reference (loaded on demand)
-    ├── topic-b.md
-    └── topic-c.md
+├── references/           # Knowledge docs (loaded on demand)
+│   ├── topic-a.md
+│   └── topic-b.md
+└── templates/            # Artifact format templates (loaded on demand)
+    ├── artifact-a.md
+    └── artifact-b.md
 ```
 
 #### Reference Table Pattern
@@ -282,7 +301,8 @@ Configure target-specific behavior and sidecars.
 | Make reference skills user-invocable | Set `user-invocable: false` in sidecar |
 | Skip negative routing for confusable skills | Add "Not for..." in description |
 | Leave success criteria undefined for workflow skills | Add "Produces..." in description |
-| Put all templates in references only | Embed quick templates in SKILL.md |
+| Embed artifact templates inline in SKILL.md | Extract to `templates/` and link |
+| Restate general knowledge models already have | Document only decisions and constraints |
 
 ## Version Management
 

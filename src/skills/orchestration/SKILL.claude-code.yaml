@@ -1,5 +1,6 @@
 # Claude Code extensions for Orchestration skill
 # Base name/description in SKILL.md
 
+user-invocable: false
 agent: "{{AGENT:pm}}"
 allowed-tools: Read, Write, Edit, Glob, Grep, TodoWrite, TodoRead

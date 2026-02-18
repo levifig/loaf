@@ -1,106 +1,48 @@
 # Go Concurrency Reference
 
 ## Contents
-- Philosophy
-- Goroutines
-- Channels
-- Patterns
-- sync Package
+- Project Conventions
+- Channel Types
+- Preferred Patterns
+- sync Package Usage
 - Always/Never
 
-Goroutines, channels, and synchronization primitives.
+Goroutine, channel, and synchronization conventions.
 
-## Philosophy
+## Project Conventions
 
-> "Do not communicate by sharing memory; share memory by communicating."
+| Decision | Convention |
+|----------|-----------|
+| Coordination | Channels for communication; `sync.Mutex` for simple shared state |
+| Cancellation | Always use `context.Context` |
+| Goroutine lifecycle | Document ownership; never fire-and-forget |
+| Buffered channels | Use when producer/consumer rates differ; unbuffered for synchronization |
 
-Channels are first-class citizens for coordinating goroutines.
-
-## Goroutines
-
-Lightweight threads managed by Go runtime. Thousands are cheap.
-
-```go
-go doWork()
-go func() { /* work */ }()
-```
-
-**Key points:** Share address space (data races possible), coordinate via channels, main exiting kills all.
-
-## Channels
-
-### Unbuffered vs Buffered
+## Channel Types
 
 | Type | Declaration | Blocking |
 |------|-------------|----------|
 | Unbuffered | `make(chan int)` | Send blocks until receive |
 | Buffered | `make(chan int, 10)` | Send blocks when full |
 
-### Operations and Direction
+Use directional parameters: `chan<-` (send-only), `<-chan` (receive-only).
 
-```go
-ch <- v           // send
-v := <-ch         // receive
-close(ch)         // close (sender only)
+## Preferred Patterns
 
-func send(ch chan<- int)  // send-only parameter
-func recv(ch <-chan int)  // receive-only parameter
-```
+| Pattern | Use When |
+|---------|----------|
+| Worker pool | Fixed concurrency over a job queue |
+| Semaphore (`chan struct{}`) | Limiting concurrent access to a resource |
+| Select with context | Timeout and cancellation in concurrent operations |
+| WaitGroup | Waiting for a known set of goroutines to finish |
 
-## Patterns
-
-### Worker Pool
-
-```go
-for w := 1; w <= numWorkers; w++ {
-    go worker(jobs, results)
-}
-```
-
-### Semaphore
-
-```go
-sem := make(chan struct{}, maxConcurrent)
-sem <- struct{}{}       // acquire
-defer func() { <-sem }() // release
-```
-
-### Timeout with Select
-
-```go
-select {
-case result := <-ch:
-    return result, nil
-case <-time.After(timeout):
-    return nil, errors.New("timeout")
-case <-ctx.Done():
-    return nil, ctx.Err()
-}
-```
-
-## sync Package
-
-For when channels aren't the right tool:
+## sync Package Usage
 
 | Type | Use Case |
 |------|----------|
-| `sync.Mutex` | Protect shared state |
-| `sync.WaitGroup` | Wait for goroutines |
-| `sync.Once` | One-time init |
-
-### WaitGroup
-
-```go
-var wg sync.WaitGroup
-for _, item := range items {
-    wg.Add(1)
-    go func(i Item) {
-        defer wg.Done()
-        process(i)
-    }(item)
-}
-wg.Wait()
-```
+| `sync.Mutex` | Protect shared state (prefer over channels for simple counters) |
+| `sync.WaitGroup` | Wait for goroutines to complete |
+| `sync.Once` | One-time initialization |
 
 ## Always/Never
 

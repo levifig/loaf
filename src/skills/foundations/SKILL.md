@@ -14,22 +14,13 @@ description: >-
 
 Engineering foundations for consistent, secure, and well-documented code.
 
-## Philosophy
-
-**Code speaks first.** Well-structured code with clear names needs fewer comments. When comments are necessary, they explain WHY, not WHAT. Documentation lives close to code but separate from implementation details.
-
-**Commits tell a story.** Each commit represents one coherent change. Messages use imperative mood and focus on intent. The git log should read like a narrative of the project's evolution.
-
-**Security by default.** Every input is untrusted. Every error is generic to users. Every secret is externalized. Defense in depth, not security theater.
-
-## Quick Reference
-
-| Standard | Key Rule | Example |
-|----------|----------|---------|
-| **Code Style** | Type hints required, structured logging | `async def fetch(id: UUID) -> Result` |
-| **Commits** | `<type>: <description>`, imperative mood | `feat: add thermal rating API` |
-| **Documentation** | Document after shipping, not before | API docs reflect implemented endpoints only |
-| **Security** | Validate all inputs at trust boundaries | Pydantic models at API layer |
+## Contents
+- Topics
+- Available Scripts
+- Critical Rules
+- Naming Conventions
+- Commit Types
+- Test Patterns
 
 ## Topics
 
@@ -102,54 +93,12 @@ Engineering foundations for consistent, secure, and well-documented code.
 | `chore` | Maintenance, deps | None |
 | `perf` | Performance improvements | Patch bump |
 
-### Quick Commit Template
-
-```
-<type>(<scope>): <imperative description>
-
-<optional body: explain WHY, not WHAT>
-
-<optional footer: Closes PROJ-123, BREAKING CHANGE: ...>
-```
-
-### Quick ADR Template
-
-```markdown
-# ADR-NNN: Decision Title
-
-**Date:** YYYY-MM-DD
-**Status:** Proposed | Accepted | Deprecated | Superseded
-
-## Context
-What forces are at play and what problem needs solving.
-
-## Decision
-What was decided and why.
-
-## Consequences
-What follows from this decision (positive and negative).
-```
-
 ## Test Patterns
 
-Follow AAA (Arrange-Act-Assert) and scenario-based fixture naming:
+Scenario-based fixture naming:
 
 - `*_perfect` - Complete, valid data (happy path)
 - `*_degraded` - Partial data, quality issues
 - `*_chaos` - Edge cases, malformed data
 
 Coverage target: 70% minimum across all components.
-
-## Security Mindset
-
-For every feature, ask:
-
-1. How could this be exploited?
-2. What happens if input is malicious?
-3. What if authenticated but not authorized?
-4. What if the system is partially compromised?
-
-## Related Skills
-
-- `infrastructure-patterns` - Container security, deployment hardening
-- `database-patterns` - SQL injection prevention, connection security

@@ -13,6 +13,16 @@ description: >-
 
 Comprehensive patterns for PM-style orchestration: coordinating multi-agent work, managing sessions, running councils, delegating to specialized agents, and integrating with Linear.
 
+## Contents
+- Philosophy
+- Quick Reference
+- Topics
+- Configuration
+- Artifact Locations
+- Available Scripts
+- Three-Phase Workflow
+- Critical Rules
+
 ## Philosophy
 
 **PM is the orchestrator, not the implementer.**
@@ -24,7 +34,7 @@ The PM agent:
 4. Coordinates outcomes and updates external systems
 5. Never implements code, tests, or documentation directly
 
-Every release should be complete, polished, and delightful - no MVPs or quick hacks.
+Every release should be complete, polished, and delightful.
 
 ## Quick Reference
 
@@ -38,16 +48,13 @@ Every release should be complete, polished, and delightful - no MVPs or quick ha
 | Stuck on task | Check circuit breaker, consider reshaping |
 | Pre-compaction | Spawn context-archiver to preserve state |
 | Low-priority work | Spawn background-runner with run_in_background |
-| New feature workflow | Research → Architecture → Shape → Breakdown → Implement |
-| Create specification | Use `/shape` with requirement reference |
-| Break down spec | Use `/breakdown` to generate atomic work items |
-| Task-coupled session | Use `/implement TASK-XXX` for traceability |
+| New feature workflow | Research -> Architecture -> Shape -> Breakdown -> Implement |
 
 ## Topics
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
-| Product Development | [references/product-development.md](references/product-development.md) | Following Research → Vision → Architecture → Specs workflow |
+| Product Development | [references/product-development.md](references/product-development.md) | Following Research -> Vision -> Architecture -> Specs workflow |
 | Specifications | [references/specs.md](references/specs.md) | Creating specs, shaping work, defining test conditions |
 | Local Tasks | [references/local-tasks.md](references/local-tasks.md) | Managing tasks locally or with Linear backend |
 | Agent Delegation | [references/delegation.md](references/delegation.md) | Choosing agents, spawning subagents, decision trees |
@@ -81,8 +88,6 @@ This skill uses paths from `.agents/config.json`:
 
 ## Artifact Locations
 
-All agent-produced artifacts go under `.agents/` with consistent naming and frontmatter.
-
 | Artifact | Location | Archive | Naming |
 |----------|----------|---------|--------|
 | Sessions | `.agents/sessions/` | `.agents/sessions/archive/` | `YYYYMMDD-HHMMSS-description.md` |
@@ -91,7 +96,7 @@ All agent-produced artifacts go under `.agents/` with consistent naming and fron
 | Reports | `.agents/reports/` | N/A | `YYYYMMDD-HHMMSS-subject.md` |
 | Tasks | `.agents/tasks/` | N/A | Per task manager conventions |
 
-**Rule:** Agents write artifacts to disk, PM reasons over artifacts, users retrieve from disk. Treat `.agents/` as the standard handoff boundary.
+**Rule:** Agents write artifacts to disk, PM reasons over artifacts, users retrieve from disk.
 
 ## Available Scripts
 
@@ -112,110 +117,42 @@ All agent-produced artifacts go under `.agents/` with consistent naming and fron
 
 ### BEFORE (Planning)
 - Create/check external issue (Linear, GitHub)
-- Create session file for internal coordination
-- Break down into tasks
-- Identify which agents to spawn
-- Get user approval before spawning
+- Create session file following [session template](templates/session.md)
+- Break down into tasks, identify agents, get user approval
 
 ### DURING (Execution)
 - Spawn specialized agents (never implement directly)
-- Track progress in session file
-- Post progress to external issue
+- Track progress in session file and external issue
 - Convene councils for uncertain decisions
 
 ### AFTER (Completion)
-- Run code review with backend/frontend devs (if significant changes)
-- Run QA testing and security checks
+- Code review + QA testing
 - Update external issue to Done
 - Ensure knowledge captured in permanent locations
-- Archive session file (set status, `archived_at`, `archived_by`, move to `.agents/sessions/archive/`, update `.agents/` links)
-
-## When to Use PM Orchestration
-
-**Use for:**
-- Feature implementation
-- Non-trivial bug fixes
-- Refactoring
-- Infrastructure changes
-- Multi-agent coordination
-
-**Skip for:**
-- Typo fixes
-- Direct questions
-- Quick clarifications
-- Single-file trivial changes
+- Archive session (status + `archived_at` + `archived_by` + move + update links)
 
 ## Critical Rules
 
 ### Sessions
-- Filename: `YYYYMMDD-HHMMSS-description.md`
-- Required fields: title, status, created, last_updated, current_task
-- Archive fields: `archived_at`, `archived_by` (required when archived)
+- Create following [session template](templates/session.md)
 - Required sections: Context, Current State, Next Steps
-- Archive when complete (set status, `archived_at`, `archived_by`, move to `.agents/sessions/archive/`, update `.agents/` links)
-
-#### Quick Session Template
-
-```yaml
----
-title: "Brief description"
-status: active
-created: "YYYY-MM-DDTHH:MM:SSZ"
-last_updated: "YYYY-MM-DDTHH:MM:SSZ"
-current_task: "What's being worked on now"
-linear_issue: "PROJ-123"       # Optional
-transcripts: []                 # Populated post-compaction
----
-
-# Session: Brief Description
-
-## Context
-Why this session exists and what it aims to accomplish.
-
-## Current State
-Always handoff-ready summary of where things stand.
-
-## Key Decisions
-- Chose X over Y because Z
-
-## Next Steps
-- [ ] Immediate action items
-
-## Resumption Prompt
-<!-- Pre-write this section at session start for compaction resilience -->
-Read this session file. Current state: [summary]. Next: [action].
-```
-
-### Context Preservation (PreCompact)
-- PreCompact hook identifies sessions modified in last 60 minutes
-- Spawn `context-archiver` agent when prompted by hook
-- Agent generates `## Resumption Prompt` section for seamless continuation
-- After compaction, read session's Resumption Prompt to pick up where you left off
-
-### Transcript Archival (Post-Compaction)
-- Claude Code provides transcript path after `/compact` or `/clear`
-- Copy transcript to `.agents/transcripts/` (create directory if needed)
-- Add filename to session's `transcripts:` array in frontmatter
-- Preserves full audit trail for context recovery
+- Archive when complete (status + `archived_at` + `archived_by` + move)
+- PreCompact hook: spawn context-archiver for Resumption Prompt
+- Post-compaction: copy transcript to `.agents/transcripts/`, add to session's `transcripts:` array
 
 ### Councils
 - Always odd number: 5 or 7 agents
 - Councils advise, users decide
 - PM coordinates but doesn't vote
 - Spawn all agents in parallel
-- Document decision after user approval
 
 ### Linear
 - Checkboxes only (`- [x]`), no emoji
-- Outcome-focused, self-contained
-- No local file references
-- Use issue ID only (Linear auto-expands)
+- Outcome-focused, self-contained, no local file references
 - Magic words in commit body, not subject
 
 ### Planning (Shape Up)
 - Appetite over estimates (decide time, flex scope)
 - Shape before building (boundaries, not tasks)
 - Circuit breakers at 50% to reassess
-- Now/Next/Later buckets, no version numbers
-- Clear acceptance criteria (Given/When/Then)
-- No backlogs - bet or let go
+- No backlogs -- bet or let go

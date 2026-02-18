@@ -29,6 +29,7 @@ import { parse as parseYaml } from "yaml";
 import { loadSkillFrontmatter } from "../lib/sidecar.js";
 import { getVersion, injectVersion } from "../lib/version.js";
 import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
+import { copySharedTemplates } from "../lib/shared-templates.js";
 
 /**
  * Substitute command placeholders with Gemini unscoped commands
@@ -77,7 +78,7 @@ let AGENT_MAP = {};
 /**
  * Build Gemini distribution
  */
-export async function build({ rootDir, srcDir, distDir }) {
+export async function build({ rootDir, srcDir, distDir, targetsConfig }) {
   const version = getVersion(rootDir);
 
   // Build agent name map from sidecars
@@ -92,13 +93,13 @@ export async function build({ rootDir, srcDir, distDir }) {
   mkdirSync(skillsDir, { recursive: true });
 
   // Copy all skills with version injection
-  copySkills(srcDir, skillsDir, version);
+  copySkills(srcDir, skillsDir, version, targetsConfig);
 }
 
 /**
  * Copy all skills with version injection and Gemini-specific frontmatter
  */
-function copySkills(srcDir, destDir, version) {
+function copySkills(srcDir, destDir, version, targetsConfig) {
   const src = join(srcDir, "skills");
 
   if (!existsSync(src)) {
@@ -153,6 +154,18 @@ function copySkills(srcDir, destDir, version) {
     if (existsSync(scriptsSrc)) {
       cpSync(scriptsSrc, scriptsDest, { recursive: true });
     }
+
+    // Copy templates directory with substitution
+    const templatesSrc = join(skillSrc, "templates");
+    const templatesDest = join(skillDest, "templates");
+    if (existsSync(templatesSrc)) {
+      copyReferencesWithSubstitution(templatesSrc, templatesDest);
+    }
+
+    // Copy shared templates for this skill (won't overwrite skill-specific ones)
+    copySharedTemplates(skill, skillDest, srcDir, targetsConfig, (content) =>
+      substituteAgentNames(substituteCommands(content), AGENT_MAP)
+    );
   }
 }
 

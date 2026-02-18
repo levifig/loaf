@@ -38,6 +38,7 @@ import { parse as parseYaml } from "yaml";
 import { loadSkillFrontmatter } from "../lib/sidecar.js";
 import { getVersion, injectVersion } from "../lib/version.js";
 import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
+import { copySharedTemplates } from "../lib/shared-templates.js";
 
 /**
  * Substitute command placeholders with Cursor unscoped commands
@@ -130,7 +131,7 @@ export async function build({
   }
 
   // Copy all skills with version injection
-  copySkills(srcDir, skillsDir, version);
+  copySkills(srcDir, skillsDir, version, targetsConfig);
 
   // Copy and transform agents with Cursor-compatible frontmatter
   copyAgents(srcDir, agentsDir, targetConfig, version);
@@ -145,7 +146,7 @@ export async function build({
 /**
  * Copy all skills with version injection
  */
-function copySkills(srcDir, destDir, version) {
+function copySkills(srcDir, destDir, version, targetsConfig) {
   const src = join(srcDir, "skills");
 
   if (!existsSync(src)) {
@@ -196,6 +197,18 @@ function copySkills(srcDir, destDir, version) {
     if (existsSync(scriptsSrc)) {
       cpSync(scriptsSrc, scriptsDest, { recursive: true });
     }
+
+    // Copy templates directory with substitution
+    const templatesSrc = join(skillSrc, "templates");
+    const templatesDest = join(skillDest, "templates");
+    if (existsSync(templatesSrc)) {
+      copyReferencesWithSubstitution(templatesSrc, templatesDest);
+    }
+
+    // Copy shared templates for this skill (won't overwrite skill-specific ones)
+    copySharedTemplates(skill, skillDest, srcDir, targetsConfig, (content) =>
+      substituteAgentNames(substituteCommands(content), AGENT_MAP)
+    );
 
     // Copy assets directory (Cursor-specific)
     const assetsSrc = join(skillSrc, "assets");

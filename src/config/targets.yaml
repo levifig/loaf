@@ -1,6 +1,13 @@
 # Target Definitions
 # Each target defines where built files go (relative to repo root)
 
+# Shared templates distributed from src/templates/ to skill output templates/ dirs
+# Format: template-filename: [list of skill names that receive it]
+shared-templates:
+  session.md: [implement, resume, orchestration, reference-session, review-sessions]
+  plan.md: [implement, council-session]
+  adr.md: [architecture, reflect]
+
 targets:
   claude-code:
     output: plugins/
@@ -13,7 +20,7 @@ targets:
 
   cursor:
     output: dist/cursor/
-    # Full Cursor support: skills, commands, agents, hooks
+    # Full Cursor support: agents, skills, hooks
     # Skills use SKILL.md frontmatter + .cursor.yaml extensions
     # Agents use Cursor-compatible frontmatter (name, description, model, is_background)
     # Commands keep version in frontmatter only

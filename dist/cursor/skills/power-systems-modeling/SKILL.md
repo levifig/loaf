@@ -15,16 +15,6 @@ Follows [foundations principles](../foundations/SKILL.md).
 
 Domain knowledge for overhead transmission line physics, thermal ratings, and mechanical analysis.
 
-## When to Use This Skill
-
-- Implementing thermal models or conductor temperature calculations
-- Working with catenary physics (sag, tension, clearance)
-- Validating electrical properties (resistance, reactance, impedance)
-- Referencing industry standards (CIGRE, IEEE, IEC)
-- Applying physical bounds validation
-- Reviewing or writing physics algorithms
-- Implementing conductor property calculations
-
 ## Key Reference Files
 
 | File | Content |
@@ -42,18 +32,11 @@ Domain knowledge for overhead transmission line physics, thermal ratings, and me
 | `scripts/convert-units.py` | `convert-units.py 25 C K` | Convert between units (temp, length, power, speed) |
 | `scripts/check-standard-refs.sh` | `check-standard-refs.sh <dir>` | Check for proper CIGRE/IEEE citations in code |
 
-## Quick Reference
+## Default Standard
 
-### Default Standard
+**CIGRE TB 601** is the default thermal rating standard. Document any deviations in code comments. IEEE 738 differs in treatment of low wind speeds.
 
-**CIGRE TB 601** is the default thermal rating standard. Document any deviations in code comments:
-
-```python
-# Note: Using CIGRE 601 natural convection formula (Section 4.2.3)
-# IEEE 738 differs in treatment of low wind speeds
-```
-
-### Physical Bounds (Quick Check)
+## Physical Bounds
 
 | Parameter | Valid Range |
 |-----------|-------------|
@@ -62,40 +45,15 @@ Domain knowledge for overhead transmission line physics, thermal ratings, and me
 | Wind speed | 0 to 50 m/s |
 | Solar radiation | 0 to 1400 W/m² |
 
-### Unit Conventions
+Always validate physical parameters at function boundaries. Raise `ValueError` for out-of-range values.
+
+## Unit Conventions
 
 - **Internal**: SI units, temperatures in Kelvin
 - **Display**: Celsius for temperatures
 - **Document**: Always include units in variable names or docstrings
 
-## Code Patterns
-
-### Parameter Validation
-
-Always validate physical parameters at function boundaries:
-
-```python
-def calculate_conductor_temperature(
-    current_a: float,
-    ambient_temp_c: float,
-    wind_speed_mps: float,
-) -> float:
-    """Calculate steady-state conductor temperature.
-
-    Args:
-        current_a: Line current in Amperes (0 to rated × 2)
-        ambient_temp_c: Ambient temperature in Celsius (-50 to 60)
-        wind_speed_mps: Wind speed in m/s (0 to 50)
-
-    Raises:
-        ValueError: If parameters outside physical bounds
-    """
-    if not -50 <= ambient_temp_c <= 60:
-        raise ValueError(f"Ambient temperature {ambient_temp_c}°C outside valid range [-50, 60]")
-    # ... implementation
-```
-
-### Standard Citations
+## Standard Citations
 
 Always cite standard section numbers in code comments:
 
@@ -104,16 +62,9 @@ Always cite standard section numbers in code comments:
 # Formula: P_n = pi * D * lambda * Nu * (T_s - T_a)
 ```
 
-### Testing Patterns
+## Testing Tolerances
 
-Use `pytest.approx()` with appropriate tolerances:
-
-```python
-def test_thermal_model():
-    result = calculate_ampacity(...)
-    # Thermal calculations: 1e-3 tolerance (0.1% accuracy)
-    assert result == pytest.approx(expected, rel=1e-3)
-```
+Thermal calculations: use `pytest.approx()` with `rel=1e-3` (0.1% accuracy).
 
 ## Related Skills
 
