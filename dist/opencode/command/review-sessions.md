@@ -75,7 +75,7 @@ For EACH council file in `.agents/councils/` and archive:
 
 ## 4. Reports Review
 
-For EACH file in `.agents/reports/` and archive. Report frontmatter following [report template](templates/report.md).
+For EACH file in `.agents/reports/` and archive. Report frontmatter following [report template](../skill/review-sessions/templates/report.md).
 
 Archive prerequisites: processed, linked session archived, session captures conclusions, `archived_at` + `archived_by` set.
 

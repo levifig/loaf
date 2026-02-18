@@ -73,7 +73,7 @@ Define boundaries, not tasks:
 
 ### Step 5: Draft the Spec
 
-Create spec following [spec template](templates/spec.md).
+Create spec following [spec template](../skill/shape/templates/spec.md).
 
 ### Step 6: Generate Spec ID
 

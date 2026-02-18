@@ -33,7 +33,7 @@ If `$ARGUMENTS` contains the idea, capture directly. If empty/unclear, ask **at 
 
 ### Step 2: Generate Idea File
 
-Create file in `.agents/ideas/` following [idea template](templates/idea.md).
+Create file in `.agents/ideas/` following [idea template](../skill/idea/templates/idea.md).
 
 **Filename:** `{YYYYMMDD}-{slug}.md`
 

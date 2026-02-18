@@ -51,7 +51,7 @@ Present composition to user with rationale per agent. **Wait for explicit approv
 
 ## Step 3: Create Council File
 
-Generate timestamps, then create council file following [council template](templates/council.md).
+Generate timestamps, then create council file following [council template](../skill/council-session/templates/council.md).
 
 ---
 

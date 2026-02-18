@@ -70,7 +70,7 @@ Show each option with pros, cons, and "fits when" context. Include recommendatio
 
 After user decides:
 1. Update ARCHITECTURE.md with new decision and ADR reference
-2. Create ADR following [ADR template](templates/adr.md)
+2. Create ADR following [ADR template](../skill/architecture/templates/adr.md)
 
 ### ADR Numbering
 

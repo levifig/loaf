@@ -110,8 +110,8 @@ Use the **Task tool** with appropriate `subagent_type`:
 **MANDATORY: Create session AND plan file BEFORE any other work.**
 
 1. Generate timestamps: `date -u +"%Y%m%d-%H%M%S"` and `date -u +"%Y-%m-%dT%H:%M:%SZ"`
-2. Create session file following [session template](templates/session.md)
-3. Create plan file following [plan template](templates/plan.md)
+2. Create session file following [session template](../skill/implement/templates/session.md)
+3. Create plan file following [plan template](../skill/implement/templates/plan.md)
 4. Update session frontmatter to link the plan
 5. Verify both files exist with valid frontmatter
 6. Suggest renaming Claude Code session: `/rename {descriptive-name}`
@@ -153,7 +153,7 @@ After creating session AND plan files:
 2. [ ] If TASK-XXX: load task, update with `session:` field, load parent spec
 3. [ ] If Linear ID: fetch issue, update session, move to "In Progress"
 4. [ ] If description: ask about creating Linear issue
-5. [ ] Create dedicated branch (see [session-management.md](references/session-management.md))
+5. [ ] Create dedicated branch (see [session-management.md](../skill/implement/references/session-management.md))
 6. [ ] Suggest team based on task context
 7. [ ] Fill in plan file sections
 8. [ ] Populate session Context section
@@ -191,8 +191,8 @@ After creating session AND plan files:
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
-| Batch Orchestration | [batch-orchestration.md](references/batch-orchestration.md) | Running specs, task ranges, or task lists with dependency waves |
-| Session Management | [session-management.md](references/session-management.md) | Branch management, team routing, diagrams, plan mode, Linear sync, handoff, archival |
+| Batch Orchestration | [batch-orchestration.md](../skill/implement/references/batch-orchestration.md) | Running specs, task ranges, or task lists with dependency waves |
+| Session Management | [session-management.md](../skill/implement/references/session-management.md) | Branch management, team routing, diagrams, plan mode, Linear sync, handoff, archival |
 
 ---
 

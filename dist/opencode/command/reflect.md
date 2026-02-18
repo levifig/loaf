@@ -75,7 +75,7 @@ Map learnings to documents:
 
 ### Step 5: Draft Proposals
 
-For each document needing updates, create proposals following [update-proposal template](templates/update-proposal.md).
+For each document needing updates, create proposals following [update-proposal template](../skill/reflect/templates/update-proposal.md).
 
 ### Step 6: Present and Await Approval
 

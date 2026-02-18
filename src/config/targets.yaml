@@ -2,6 +2,8 @@
 # Each target defines where built files go (relative to repo root)
 
 # Shared templates distributed from src/templates/ to skill output templates/ dirs
+# at build time. Source skills reference these as templates/<file> — the links
+# resolve in build output but not in raw source (by design: source is build-input).
 # Format: template-filename: [list of skill names that receive it]
 shared-templates:
   session.md: [implement, resume, orchestration, reference-session, review-sessions]
@@ -11,7 +13,7 @@ shared-templates:
 targets:
   claude-code:
     output: plugins/
-    # Full plugins with agents, skills, hooks, commands
+    # Full plugins with agents, skills, hooks
     # Skills use SKILL.md frontmatter + .claude-code.yaml extensions
 
   opencode:
@@ -23,7 +25,6 @@ targets:
     # Full Cursor support: agents, skills, hooks
     # Skills use SKILL.md frontmatter + .cursor.yaml extensions
     # Agents use Cursor-compatible frontmatter (name, description, model, is_background)
-    # Commands keep version in frontmatter only
     defaults:
       agents:
         frontmatter:
