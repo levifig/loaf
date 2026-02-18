@@ -8,7 +8,7 @@ description: >-
   architecture decision." Produces ADRs in docs/decisions/. Not for
   project-level strategy (use strategy) or multi-agent deliberation (use
   council-session).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Architecture

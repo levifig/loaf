@@ -9,7 +9,7 @@ description: >-
   reviewing session hygiene (use review-sessions).
 agent: PM
 subtask: false
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Reference Session

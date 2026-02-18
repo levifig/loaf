@@ -8,7 +8,7 @@ description: >-
   "start working on TASK-XXX." Produces session files, plan files, and
   coordinates specialized agent work. Not for shaping specs (use shape) or
   breaking down work (use breakdown).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Implement

@@ -8,7 +8,7 @@ description: >-
   idea) or strategic direction (use strategy).
 agent: PM
 subtask: false
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Brainstorm

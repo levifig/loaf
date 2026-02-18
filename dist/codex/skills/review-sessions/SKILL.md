@@ -8,7 +8,7 @@ description: >-
   "clean up agent artifacts." Produces hygiene reports with actionable
   recommendations. Not for resuming sessions (use resume) or starting new work
   (use implement).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Review Sessions

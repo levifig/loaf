@@ -8,7 +8,7 @@ description: >-
   "what did we decide before?" Produces concise decision summaries from
   historical sessions. Not for resuming active sessions (use resume) or
   reviewing session hygiene (use review-sessions).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Reference Session

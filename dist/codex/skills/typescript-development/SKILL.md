@@ -9,7 +9,7 @@ description: >-
   the user asks "how do I manage state?" or "what's the TypeScript way to do X?"
   Not for design system philosophy or accessibility auditing (use
   interface-design).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # TypeScript Development

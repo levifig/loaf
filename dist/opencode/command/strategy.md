@@ -9,7 +9,7 @@ description: >-
   idea).
 agent: PM
 subtask: false
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Strategy

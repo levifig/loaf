@@ -9,7 +9,7 @@ description: >-
   "what's the security best practice for X?" Produces validated commits,
   formatted documentation, and security-reviewed code. Not for language-specific
   patterns, framework APIs, or deployment (use language skills).
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Code Standards

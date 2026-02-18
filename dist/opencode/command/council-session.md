@@ -9,7 +9,7 @@ description: >-
   single-agent work or implementation (use implement).
 agent: PM
 subtask: false
-version: 1.16.1
+version: 1.17.0
 ---
 
 # Council Deliberation Session
