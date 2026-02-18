@@ -61,7 +61,7 @@ Strategy discovery requires **extensive interviewing**. Use `AskUserQuestion` fr
 
 ### Step 3: Draft Updates
 
-Create additions/updates to STRATEGY.md following the [strategy template](templates/strategy.md).
+Create additions/updates to STRATEGY.md following the [strategy template](../skill/strategy/templates/strategy.md).
 
 ### Step 4: Present for Approval
 

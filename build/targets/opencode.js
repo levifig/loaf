@@ -277,9 +277,15 @@ function generateCommandsFromSkills(srcDir, distDir) {
       mergedFrontmatter.agent = substituteAgentNames(mergedFrontmatter.agent, AGENT_MAP);
     }
 
+    // Rewrite relative links: command files live in command/ but templates and
+    // references live under skill/{name}/, so remap paths accordingly
+    const relinked = body
+      .replace(/\]\(templates\//g, `](../skill/${skill}/templates/`)
+      .replace(/\]\(references\//g, `](../skill/${skill}/references/`);
+
     // Write command file with merged frontmatter, command and agent name substitution
     const transformed = substituteAgentNames(
-      substituteCommands(matter.stringify(body, mergedFrontmatter)),
+      substituteCommands(matter.stringify(relinked, mergedFrontmatter)),
       AGENT_MAP
     );
     writeFileSync(join(commandsDest, `${skill}.md`), transformed);

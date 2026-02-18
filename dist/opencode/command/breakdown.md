@@ -89,7 +89,7 @@ Ask about highest priority parts, required ordering, preferred implementation se
 
 ### Step 5: Draft Task List
 
-Create tasks following [task template](templates/task.md). Each task needs: clear title, priority, file hints, verification command, observable done condition.
+Create tasks following [task template](../skill/breakdown/templates/task.md). Each task needs: clear title, priority, file hints, verification command, observable done condition.
 
 ### Step 6: Present for Approval
 

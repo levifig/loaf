@@ -58,7 +58,7 @@ Always check project context first. Rate findings: **High** (official/verified),
 2. Check ideas (`.agents/ideas/`) and specs (`docs/specs/`)
 3. Review recent sessions (`.agents/sessions/`)
 4. Check recent commits: `git log --oneline -20`
-5. Synthesize following [state-assessment template](templates/state-assessment.md)
+5. Synthesize following [state-assessment template](../skill/research/templates/state-assessment.md)
 
 ### Topic Investigation
 
@@ -67,7 +67,7 @@ Always check project context first. Rate findings: **High** (official/verified),
 1. **Interview** with AskUserQuestion: what are you trying to understand? What context do you have? What decision will this inform?
 2. Check project context first (ADRs, ARCHITECTURE, sessions)
 3. Apply confidence hierarchy for external sources
-4. Synthesize following [findings template](templates/findings.md)
+4. Synthesize following [findings template](../skill/research/templates/findings.md)
 
 ### Brainstorming
 
@@ -92,8 +92,8 @@ Always check project context first. Rate findings: **High** (official/verified),
 
 | Mode | Template |
 |------|----------|
-| State Assessment | [state-assessment.md](templates/state-assessment.md) |
-| Topic Investigation | [findings.md](templates/findings.md) |
+| State Assessment | [state-assessment.md](../skill/research/templates/state-assessment.md) |
+| Topic Investigation | [findings.md](../skill/research/templates/findings.md) |
 
 ## Critical Rules
 
