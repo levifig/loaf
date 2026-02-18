@@ -37,7 +37,7 @@ For `SPEC-XXX`, `TASK-XXX..YYY`, and `TASK-XXX,YYY,ZZZ`:
 1. Locate active orchestration session in `.agents/sessions/` with `type: orchestration`.
 2. If `--continue`: resume from `orchestration.current_wave` and `orchestration.current_task`.
 3. If `--skip TASK-XXX`: mark that task `skipped`, append reason in session log, continue same wave.
-4. If `--abort`: set session/loaf:orchestration status to `aborted`, record timestamp, print summary, stop.
+4. If `--abort`: set session/orchestration status to `aborted`, record timestamp, print summary, stop.
 5. If no active blocked orchestration exists, report that and ask for fresh selection input.
 
 ## Batch Execution Model
@@ -51,7 +51,7 @@ When input resolves to multiple tasks, run a wave-based loop:
    - For each task: set `in_progress` -> spawn agent -> run task verification -> mark `completed`/`failed`
 3. If any task fails verification, stop immediately and mark session `blocked`.
 4. Mark wave `completed` only when all tasks in wave are completed or skipped.
-5. Continue until all waves complete, then set session/loaf:orchestration status to `completed`.
+5. Continue until all waves complete, then set session/orchestration status to `completed`.
 
 ## Blocked-State Recovery
 

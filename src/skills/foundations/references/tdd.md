@@ -1,29 +1,15 @@
 # Test-Driven Development
 
 ## Contents
-- Philosophy
-- Quick Reference
-- The Cycle
+- TDD Cycle
 - Critical Rules
-- Test Structure
 - When TDD Feels Hard
 - TDD for Bug Fixes
 - Integration with Loaf Workflow
-- Related Skills
 
-Write the test first. Then make it pass. Then make it clean.
+Project TDD conventions and workflow.
 
-## Philosophy
-
-**Tests are specifications.** A test describes what the code should do before the code exists. Writing the test first forces clarity about requirements.
-
-**Red → Green → Refactor.** The rhythm is non-negotiable. See it fail (proves test works), make it pass (minimal implementation), clean it up (refactor with confidence).
-
-**Small cycles, fast feedback.** Each cycle should be minutes, not hours. If you're writing lots of code before running tests, the cycle is too big.
-
-**Tests enable refactoring.** Without tests, refactoring is gambling. With tests, you can restructure code confidently knowing behavior is preserved.
-
-## Quick Reference
+## TDD Cycle
 
 | Phase | Goal | Duration |
 |-------|------|----------|
@@ -31,84 +17,17 @@ Write the test first. Then make it pass. Then make it clean.
 | **Green** | Minimal code to pass | 5-15 min |
 | **Refactor** | Clean up, no new behavior | 5-10 min |
 
-## The Cycle
+**Red:** Pick ONE behavior, write the test BEFORE implementation, run it, verify it fails for the RIGHT reason (missing behavior, not syntax error).
 
-### 1. Red: Write a Failing Test
+**Green:** Write MINIMUM code to pass. Don't optimize, don't handle untested edge cases. "Fake it till you make it" is valid.
 
-```
-- Pick ONE specific behavior to test
-- Write the test BEFORE any implementation
-- Run test → verify it FAILS
-- Failure should be for the RIGHT reason (missing behavior, not syntax error)
-```
-
-**Good test names describe behavior:**
-- `test_user_cannot_login_with_wrong_password`
-- `test_empty_cart_shows_zero_total`
-- `test_expired_token_returns_401`
-
-### 2. Green: Make It Pass
-
-```
-- Write the MINIMUM code to make the test pass
-- Don't optimize, don't handle edge cases yet
-- "Fake it till you make it" is valid (hardcode if needed)
-- Run test → verify it PASSES
-```
-
-**Resist the urge to:**
-- Add features not required by the test
-- Optimize prematurely
-- Handle edge cases not yet tested
-- Refactor while making it pass
-
-### 3. Refactor: Clean It Up
-
-```
-- Tests pass → safe to restructure
-- Remove duplication
-- Improve names
-- Extract methods/functions
-- Run tests after EACH change
-```
-
-**Only refactor when green.** If tests fail during refactor, you've changed behavior.
+**Refactor:** Only when green. Remove duplication, improve names, extract methods. Run tests after EACH change.
 
 ## Critical Rules
 
-### Always
+**Always:** Write test before implementation, watch it fail, write minimal code to pass, refactor only when green, keep cycles under 30 minutes, one behavior per test.
 
-- Write the test BEFORE the implementation
-- Run the test and watch it fail
-- Write minimal code to pass
-- Refactor only when green
-- Keep cycles short (under 30 minutes total)
-- One behavior per test
-
-### Never
-
-- Write implementation before test
-- Skip the "red" phase
-- Add features during "green" phase
-- Refactor while tests are failing
-- Write multiple tests before any implementation
-- Test implementation details (test behavior, not how)
-
-## Test Structure
-
-Use Arrange-Act-Assert (AAA):
-
-```python
-def test_user_can_update_email():
-    # Arrange: Set up preconditions
-    user = create_user(email="old@example.com")
-
-    # Act: Perform the action
-    user.update_email("new@example.com")
-
-    # Assert: Verify the outcome
-    assert user.email == "new@example.com"
-```
+**Never:** Write implementation before test, skip the red phase, add features during green phase, refactor while tests fail, write multiple tests before any implementation, test implementation details (test behavior, not how).
 
 ## When TDD Feels Hard
 
@@ -125,10 +44,7 @@ def test_user_can_update_email():
 2. **Fix the bug** (test passes)
 3. **Refactor if needed**
 
-This ensures:
-- Bug is understood (test documents it)
-- Bug is actually fixed (test proves it)
-- Bug won't regress (test prevents it)
+This ensures the bug is understood, actually fixed, and won't regress.
 
 ## Integration with Loaf Workflow
 
@@ -138,9 +54,3 @@ This ensures:
 | `/breakdown` | Each task should have clear test targets |
 | `/implement` | Follow TDD cycle for each task |
 | `/reflect` | Note TDD friction points for improvement |
-
-## Related Skills
-
-- `debugging` - When tests fail unexpectedly
-- `foundations` - Test patterns, assertions, fixtures
-- Language skills (`python`, `typescript`, `ruby`) - Language-specific testing tools

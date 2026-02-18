@@ -14,16 +14,6 @@ argument-hint: '[idea or problem]'
 
 Think deeply about an existing idea or explore a new problem space.
 
-## Contents
-- Purpose
-- Mode Detection
-- Process
-- Brainstorming Techniques
-- Output Artifacts
-- Guardrails
-- When to Use This vs Other Skills
-- Related Skills
-
 **Input:** $ARGUMENTS
 
 ---
@@ -32,278 +22,54 @@ Think deeply about an existing idea or explore a new problem space.
 
 Brainstorming is **generative thinking** -- expanding possibilities before narrowing.
 
-Unlike `/loaf:idea` (quick capture) or `/loaf:shape` (rigorous bounding), brainstorming is exploratory:
-- Process an existing idea to deepen understanding
-- Explore a problem space without a specific solution
-- Generate options before committing to an approach
+Unlike `/loaf:idea` (quick capture) or `/loaf:shape` (rigorous bounding), brainstorming is exploratory: process an existing idea, explore a problem space, or generate options before committing.
 
 ---
 
 ## Mode Detection
 
-Parse input to determine mode:
-
-| Input Pattern | Mode | Action |
-|---------------|------|--------|
-| Idea file reference | Idea Processing | Deep dive on captured idea |
-| Problem/question | Problem Exploration | Explore problem space |
-| Empty | Open Brainstorm | "What should we be thinking about?" |
-
-Examples:
-- `20260124-keyboard-shortcuts` -> Process this idea
-- `how should we handle offline mode?` -> Explore this problem
-- (empty) -> Open exploration
+| Input Pattern | Mode |
+|---------------|------|
+| Idea file reference | Idea Processing (deep dive on captured idea) |
+| Problem/question | Problem Exploration |
+| Empty | Open Brainstorm ("What should we be thinking about?") |
 
 ---
 
 ## Process
 
-### Mode: Idea Processing
-
-When given an existing idea file.
-
-#### Step 1: Read the Idea
-
-Load from `.agents/ideas/{filename}.md`
-
-#### Step 2: Gather Context
-
-- Read VISION.md -- Where does this fit?
-- Read STRATEGY.md -- Who benefits?
-- Read ARCHITECTURE.md -- What constraints apply?
-- Check related ideas -- Any connections?
-
-#### Step 3: Deep Exploration
-
-Ask expansive questions:
-
-| Category | Questions |
-|----------|-----------|
-| **User value** | Who benefits most? What's the ideal outcome for them? |
-| **Problem depth** | Why does this matter? What's the cost of not doing it? |
-| **Alternatives** | What else could solve this? What if we did the opposite? |
-| **Risks** | What could go wrong? What are we assuming? |
-| **Dependencies** | What needs to exist first? What does this enable? |
-| **Scope** | What's the minimal version? What's the maximal version? |
-
-#### Step 4: Generate Options
-
-Explore multiple approaches:
-
-1. **Conventional approach** -- How would most solve this?
-2. **Minimal approach** -- Smallest thing that provides value
-3. **Ambitious approach** -- If resources were unlimited
-4. **Contrarian approach** -- What if the opposite were true?
-
-#### Step 5: Refine and Document
-
-```markdown
-## Brainstorm: [Idea Title]
-
-### Core Insight
-[One sentence capturing the essential value]
-
-### Explored Directions
-
-#### Direction A: [Name]
-- **Approach:** ...
-- **Pros:** ...
-- **Cons:** ...
-- **Would work if:** ...
-
-#### Direction B: [Name]
-- **Approach:** ...
-- **Pros:** ...
-- **Cons:** ...
-- **Would work if:** ...
-
-### Open Questions
-- [Question surfaced during exploration]
-- [Question surfaced during exploration]
-
-### Recommendation
-[Which direction seems most promising and why]
-
-### Next Steps
-- [ ] Ready to shape -> `/loaf:shape {idea}`
-- [ ] Needs more research -> `/loaf:research {topic}`
-- [ ] Park for later -> Keep in ideas/
-- [ ] Discard -> Archive idea
-```
-
-#### Step 6: Update Idea File
-
-If user wants to proceed:
-- Update idea status to `shaping` if moving to `/loaf:shape`
-- Add brainstorm notes to idea file
-- Or archive if decided not to pursue
-
----
-
-### Mode: Problem Exploration
-
-When given a problem or question without a specific idea.
-
-#### Step 1: Understand the Problem
-
-Interview to clarify:
-- What problem are we trying to solve?
-- Who experiences this problem?
-- What's the impact of not solving it?
-- What have we tried before?
-- What constraints exist?
-
-#### Step 2: Gather Context
-
-- Read STRATEGY.md -- Is this in our problem space?
-- Read VISION.md -- Does solving this advance our direction?
-- Check existing ideas -- Related thinking?
-
-#### Step 3: Divergent Thinking
-
-Generate possibilities without judgment:
-
-| Technique | Prompt |
-|-----------|--------|
-| **First principles** | If we started from scratch, what would we build? |
-| **Inversion** | What would make this problem worse? (Avoid those) |
-| **Analogy** | How do others solve similar problems? |
-| **Extreme constraints** | What if we had 1 day? 1 year? $100? $1M? |
-| **Persona lens** | How would [persona] want this solved? |
-
-#### Step 4: Convergent Thinking
-
-Filter and prioritize:
-- Which options align with our strategy?
-- Which are feasible given constraints?
-- Which provide the most value?
-
-#### Step 5: Document Exploration
-
-```markdown
-## Brainstorm: [Problem]
-
-### Problem Statement
-[Clear articulation of the problem]
-
-### Who's Affected
-[Personas or user types]
-
-### Options Explored
-
-#### Option 1: [Name]
-...
-
-#### Option 2: [Name]
-...
-
-### Analysis
-[Comparison, trade-offs]
-
-### Recommendation
-[Which direction to pursue]
-
-### Next Steps
-- [ ] Capture as idea -> `/loaf:idea {summary}`
-- [ ] Shape directly -> `/loaf:shape {topic}`
-- [ ] Research first -> `/loaf:research {topic}`
-- [ ] Park -> Note in session, revisit later
-```
-
----
-
-### Mode: Open Brainstorm
-
-When input is empty -- "What should we be thinking about?"
-
-#### Step 1: Assess Current State
-
-- List ideas in `.agents/ideas/`
-- Check recent sessions for open threads
-- Review VISION.md for gaps
-
-#### Step 2: Surface Opportunities
-
-Ask:
-- What's blocking progress?
-- What opportunities are we not pursuing?
-- What assumptions haven't we tested?
-- What would 10x our impact?
-
-#### Step 3: Prioritize Exploration
-
-Present options:
-```markdown
-## Open Brainstorm
-
-### Existing Ideas Worth Exploring
-1. [idea-1] -- Last touched [date]
-2. [idea-2] -- Related to recent work
-
-### Emerging Opportunities
-1. [Opportunity based on recent sessions]
-2. [Gap identified in strategy]
-
-### What should we explore?
-```
-
----
-
-## Brainstorming Techniques
-
-### For Expanding Options
-
-| Technique | Description |
-|-----------|-------------|
-| **Yes, and...** | Build on each idea without criticism |
-| **What if...** | Remove constraints temporarily |
-| **Worst idea** | Generate intentionally bad ideas, then invert |
-| **Random input** | Introduce unrelated concept, find connections |
-
-### For Filtering Options
-
-| Technique | Description |
-|-----------|-------------|
-| **Dot voting** | Which resonate most? |
-| **2x2 matrix** | Plot on impact vs effort |
-| **Must/Should/Could** | Categorize by importance |
-| **Kill criteria** | What would eliminate an option? |
-
----
-
-## Output Artifacts
-
-Brainstorming can produce:
-
-| Artifact | When |
-|----------|------|
-| Updated idea file | Processing an existing idea |
-| New idea file | Problem exploration surfaces a nugget |
-| Research question | Need more information |
-| Direct to shaping | Direction is clear enough |
-| Session notes | Exploratory, nothing concrete yet |
+### Idea Processing
+
+1. Read idea from `.agents/ideas/{filename}.md`
+2. Gather context: VISION.md, STRATEGY.md, ARCHITECTURE.md, related ideas
+3. **Deep exploration**: ask about user value, problem depth, alternatives, risks, dependencies, scope (minimal vs maximal)
+4. Generate options: conventional, minimal, ambitious, contrarian approaches
+5. Document with core insight, explored directions (approach/pros/cons), open questions, recommendation, next steps
+6. Update idea file status if proceeding
+
+### Problem Exploration
+
+1. **Interview**: problem definition, who's affected, impact, prior attempts, constraints
+2. Gather strategic context
+3. **Diverge**: first principles, inversion, analogy, extreme constraints, persona lens
+4. **Converge**: filter by strategy alignment, feasibility, value
+5. Document with problem statement, options, analysis, recommendation, next steps
+
+### Open Brainstorm
+
+1. Assess: list ideas in `.agents/ideas/`, check recent sessions, review VISION for gaps
+2. Surface opportunities: what's blocking? What's not being pursued? Untested assumptions?
+3. Present options for exploration
 
 ---
 
 ## Guardrails
 
-1. **Diverge before converging** -- Generate options before judging
-2. **Stay exploratory** -- Don't prematurely commit
-3. **Document the thinking** -- Even discarded options are valuable
-4. **Connect to strategy** -- Ground exploration in context
-5. **Know when to stop** -- Brainstorming can be endless; set boundaries
-
----
-
-## When to Use This vs Other Skills
-
-| Situation | Skill |
-|-----------|-------|
-| Have a nugget, want to capture quickly | `/loaf:idea` |
-| Have an idea, want to think deeply | `/loaf:brainstorm` |
-| Have a problem, want to explore | `/loaf:brainstorm` |
-| Ready to bound and define | `/loaf:shape` |
-| Need facts or understanding | `/loaf:research` |
+1. **Diverge before converging** -- generate options before judging
+2. **Stay exploratory** -- don't prematurely commit
+3. **Document the thinking** -- even discarded options are valuable
+4. **Connect to strategy** -- ground exploration in context
+5. **Know when to stop** -- set boundaries on exploration
 
 ---
 

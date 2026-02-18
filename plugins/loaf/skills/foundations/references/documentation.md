@@ -3,19 +3,16 @@
 ## Contents
 - Core Principle
 - Document Hierarchy
-- Document Separation
-- Architecture Decision Records (ADRs)
+- Architecture Decision Records
 - API Documentation
 - Micro-Changelog
 - Critical Rules
 
-Guidelines for technical documentation, ADRs, and API docs.
+Project documentation conventions, ADR format, and API doc rules.
 
 ## Core Principle
 
-**Document after shipping, not before.**
-
-API documentation reflects ONLY what is implemented and released. Future features belong in Linear issues, not docs.
+**Document after shipping, not before.** API documentation reflects ONLY what is implemented and released. Future features belong in Linear issues, not docs.
 
 ## Document Hierarchy
 
@@ -33,8 +30,6 @@ docs/
     └── ADR001-*.md
 ```
 
-## Document Separation
-
 | Document | Purpose | Updates When |
 |----------|---------|--------------|
 | **PRD.md** | Product vision (timeless) | Vision changes |
@@ -42,26 +37,13 @@ docs/
 | **IMPLEMENTATION.md** | Current status | Features ship |
 | **API docs** | Implemented endpoints | Features ship |
 
-## Architecture Decision Records (ADRs)
+## Architecture Decision Records
 
-### When to Write
+**When to write:** Technology choices, architectural patterns, integration approaches, security decisions. **Skip for:** library version updates, bug fixes, performance tweaks, style changes.
 
-| Write ADR | Skip ADR |
-|-----------|----------|
-| Technology choices | Library version updates |
-| Architectural patterns | Bug fixes |
-| Integration approaches | Performance tweaks |
-| Security decisions | Code style changes |
+**File naming:** `docs/decisions/ADRXXX-short-descriptive-title.md`
 
-### File Naming
-
-```
-docs/decisions/ADRXXX-short-descriptive-title.md
-```
-
-Example: `ADR001-postgresql-only-no-redis.md`
-
-### Template
+### ADR Template
 
 ```markdown
 # ADR-XXX: Title
@@ -71,15 +53,12 @@ Example: `ADR001-postgresql-only-no-redis.md`
 **Status**: Proposed | Accepted | Deprecated | Superseded
 
 ## Context
-
-[Describe the situation and problem. What constraints exist?]
+[Situation, problem, constraints]
 
 ## Decision
-
-[State the decision clearly. Use "We will..." not "It was decided..."]
+[Use "We will..." not "It was decided..."]
 
 ## Consequences
-
 ### Positive
 - [Benefit 1]
 
@@ -87,46 +66,22 @@ Example: `ADR001-postgresql-only-no-redis.md`
 - [Drawback 1]
 
 ## Alternatives Considered
-
 ### Alternative 1: [Name]
 [Brief description and why rejected]
 ```
 
-### Status Lifecycle
-
-```
-Proposed -> Accepted -> (Deprecated | Superseded)
-```
+**Status lifecycle:** `Proposed -> Accepted -> (Deprecated | Superseded)`
 
 ## API Documentation
 
-### The Implemented-Only Rule
+**The implemented-only rule:** `Feature Request -> Implementation -> Tests Pass -> Release -> Update API Docs`
 
-```
-Feature Request -> Implementation -> Tests Pass -> Release -> Update API Docs
-                                                                     ^
-                                                               Only here!
-```
-
-### OpenAPI Spec
-
-```yaml
-openapi: 3.1.0
-info:
-  title: Project API
-  version: 1.2.0  # Matches actual release version
-  description: |
-    **Last Updated**: 2025-11-14
-```
-
-### Deprecation
-
+Deprecation markers in OpenAPI:
 ```yaml
 paths:
   /api/v1/legacy-endpoint:
     get:
       deprecated: true
-      summary: Legacy endpoint (use /api/v2/new-endpoint)
       description: |
         **Deprecated since**: v1.5.0
         **Removal planned**: v2.0.0
@@ -134,70 +89,21 @@ paths:
 
 ## Micro-Changelog
 
-Track changes within individual documents.
-
-### Placement
-
-Always at the **bottom** of the document:
+Track changes at the **bottom** of individual documents:
 
 ```markdown
-# Document Title
-
-[Content...]
-
 ---
 
 ## Changelog
 
 - 2025-11-14 - Added section on agent instructions
 - 2025-11-12 - Updated architecture overview
-- 2025-11-10 - Initial document creation
 ```
 
-### Format Rules
-
-- **Date format**: `YYYY-MM-DD`
-- **Order**: Reverse chronological (newest first)
-- **Entry format**: `- YYYY-MM-DD - Short description`
-- **Single line**: Per entry
-
-### What to Log
-
-| DO Log | DON'T Log |
-|--------|-----------|
-| Section additions | Typo fixes |
-| Significant updates | Formatting changes |
-| Restructuring | Link updates |
-| Corrections | Minor wording |
-| Deprecations | |
-
-### Header Pairing
-
-```markdown
-# Architecture Overview
-
-**Last Updated**: 2025-11-14
-
-[Content...]
-
----
-
-## Changelog
-- 2025-11-14 - ...
-```
+**Format:** `- YYYY-MM-DD - Short description`, reverse chronological. Log section additions, significant updates, restructuring, corrections. Skip typos and formatting.
 
 ## Critical Rules
 
-### Always
+**Always:** Last Updated timestamp (YYYY-MM-DD), micro-changelog at bottom, reference files not inline code, keep docs minimal.
 
-- Include Last Updated timestamp (YYYY-MM-DD)
-- Add micro-changelog at document bottom
-- Reference files, not inline code
-- Keep docs minimal - delete cruft
-
-### Never
-
-- Document APIs before they ship
-- Include session/council file references (no `.agents/` links outside `.agents/` artifacts)
-- Use lengthy code samples in docs
-- Add planning details to docs (use Linear)
+**Never:** Document APIs before they ship, include `.agents/` links outside `.agents/` artifacts, use lengthy code samples, add planning details to docs.

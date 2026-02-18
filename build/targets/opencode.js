@@ -35,6 +35,7 @@ import { loadAgentSidecar, loadSkillFrontmatter } from "../lib/sidecar.js";
 import { parse as parseYaml } from "yaml";
 import { getVersion } from "../lib/version.js";
 import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
+import { copySharedTemplates } from "../lib/shared-templates.js";
 
 /**
  * Substitute command placeholders with OpenCode unscoped commands
@@ -107,7 +108,7 @@ export async function build({
   mkdirSync(distDir, { recursive: true });
 
   // Copy skills with frontmatter from sidecars
-  copySkills(srcDir, distDir);
+  copySkills(srcDir, distDir, targetsConfig);
 
   // Copy and transform agents with frontmatter from sidecars
   copyAgents(srcDir, distDir);
@@ -122,7 +123,7 @@ export async function build({
 /**
  * Copy all skills with frontmatter from sidecars
  */
-function copySkills(srcDir, distDir) {
+function copySkills(srcDir, distDir, targetsConfig) {
   const src = join(srcDir, "skills");
   const dest = join(distDir, "skill");
 
@@ -171,6 +172,18 @@ function copySkills(srcDir, distDir) {
     if (existsSync(scriptsSrc)) {
       cpSync(scriptsSrc, scriptsDest, { recursive: true });
     }
+
+    // Copy templates directory with substitution
+    const templatesSrc = join(skillSrc, "templates");
+    const templatesDest = join(skillDest, "templates");
+    if (existsSync(templatesSrc)) {
+      copyReferencesWithSubstitution(templatesSrc, templatesDest);
+    }
+
+    // Copy shared templates for this skill (won't overwrite skill-specific ones)
+    copySharedTemplates(skill, skillDest, srcDir, targetsConfig, (content) =>
+      substituteAgentNames(substituteCommands(content), AGENT_MAP)
+    );
   }
 }
 

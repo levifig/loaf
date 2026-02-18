@@ -23,69 +23,6 @@ Infrastructure patterns for containerization, orchestration, CI/CD pipelines, an
 | CI/CD | GitHub Actions, GitLab CI |
 | Registries | GHCR, ECR, GCR, DockerHub |
 
-## Philosophy
-
-1. **Infrastructure as Code** - All configuration in version control
-2. **GitOps** - Git as the single source of truth for deployments
-3. **Security by Default** - Non-root, minimal images, no secrets in code
-4. **Observability** - Health checks, probes, structured logging
-5. **Reproducibility** - Pinned versions, lockfiles, deterministic builds
-
-## Quick Reference
-
-### Docker Essentials
-
-```dockerfile
-# Multi-stage build with non-root user
-FROM python:3.12-slim AS builder
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-
-FROM python:3.12-slim
-RUN useradd --uid 1000 --create-home appuser
-COPY --from=builder /install /usr/local
-COPY --chown=appuser:appuser . .
-USER appuser
-HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost:8000/health || exit 1
-ENTRYPOINT ["python", "-m", "app"]
-```
-
-### Kubernetes Pod Spec
-
-```yaml
-spec:
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 1000
-  containers:
-    - name: app
-      image: app:v1.0.0  # Never :latest
-      resources:
-        requests: {memory: "256Mi", cpu: "100m"}
-        limits: {memory: "512Mi", cpu: "500m"}
-      securityContext:
-        allowPrivilegeEscalation: false
-        readOnlyRootFilesystem: true
-      livenessProbe:
-        httpGet: {path: /health, port: 8000}
-        initialDelaySeconds: 10
-      readinessProbe:
-        httpGet: {path: /ready, port: 8000}
-        initialDelaySeconds: 5
-```
-
-### GitHub Actions Cache
-
-```yaml
-- uses: actions/cache@v4
-  with:
-    path: ~/.cache/pip
-    key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-    restore-keys: |
-      ${{ runner.os }}-pip-
-```
-
 ## Topics
 
 | Topic | Reference File | Use When |
@@ -141,20 +78,4 @@ CI Failed
     +-- Check runner resources (memory, timeout)
     +-- Check external service access
     +-- Check CI-specific config
-```
-
-## Quick Diagnostics
-
-```bash
-# Check local vs CI Python version
-python --version
-
-# Check installed package versions
-pip freeze | grep -E "(pytest|mypy|black|ruff)"
-
-# Check Node/npm versions
-node --version && npm --version
-
-# Compare lockfile changes
-git diff origin/main -- package-lock.json requirements*.txt
 ```

@@ -1,25 +1,23 @@
 # GitOps Patterns
 
 ## Contents
-- Core Principles
+- Project GitOps Stack
 - Repository Structure
-- ArgoCD Application
-- Kustomize Overlay
-- Helm with ArgoCD
 - Deployment Strategies
 - Sync Policies
-- Best Practices
-- GitOps Workflow
 - Checklist
 
-GitOps workflows with ArgoCD, Kustomize, and deployment strategies.
+GitOps conventions with ArgoCD and Kustomize.
 
-## Core Principles
+## Project GitOps Stack
 
-1. **Declarative** - System described declaratively in Git
-2. **Versioned** - Git as single source of truth
-3. **Automated** - Approved changes applied automatically
-4. **Auditable** - All changes traceable through commits
+| Component | Tool | Notes |
+|-----------|------|-------|
+| GitOps controller | ArgoCD | Declarative, self-healing |
+| Templating | Kustomize (primary), Helm (third-party charts) | Kustomize for app overlays, Helm for vendor charts |
+| Progressive delivery | Argo Rollouts | Blue/green and canary strategies |
+| Secrets | sealed-secrets or external-secrets | Never plain-text in Git |
+| Multi-cluster | ApplicationSets | Template-driven per-cluster |
 
 ## Repository Structure
 
@@ -34,120 +32,31 @@ gitops-repo/
 +-- infrastructure/          # Shared components
 ```
 
-## ArgoCD Application
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: my-app
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/org/repo.git
-    targetRevision: main
-    path: apps/overlays/prod
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: my-app
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-```
-
-## Kustomize Overlay
-
-```yaml
-# apps/overlays/prod/kustomization.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: my-app-prod
-resources:
-  - ../../base
-images:
-  - name: my-app
-    newTag: v1.2.3
-replicas:
-  - name: my-app
-    count: 3
-```
-
-## Helm with ArgoCD
-
-```yaml
-spec:
-  source:
-    repoURL: https://charts.example.com
-    chart: my-chart
-    targetRevision: 2.1.0
-    helm:
-      valueFiles:
-        - values-prod.yaml
-```
+Environments are Kustomize overlays, not separate branches.
 
 ## Deployment Strategies
 
-### Blue/Green
+| Strategy | Use Case | Config |
+|----------|----------|--------|
+| Blue/Green | Full cutover with preview validation | `autoPromotionEnabled: false` |
+| Canary | Gradual rollout with metrics gates | Step weights: 10% -> 50% -> 100% |
+| Rolling Update | Default K8s, no Argo Rollouts needed | `maxUnavailable: 25%` |
 
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
-spec:
-  strategy:
-    blueGreen:
-      activeService: my-app-active
-      previewService: my-app-preview
-      autoPromotionEnabled: false
-```
-
-### Canary
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
-spec:
-  strategy:
-    canary:
-      steps:
-        - setWeight: 10
-        - pause: {duration: 5m}
-        - setWeight: 50
-        - analysis:
-            templates:
-              - templateName: success-rate
-        - setWeight: 100
-```
+Key conventions:
+- Use sync waves (`argocd.argoproj.io/sync-wave`) for dependency ordering
+- Use resource hooks (`argocd.argoproj.io/hook: PreSync`) for migrations
+- Canary analysis templates gate promotion on success-rate metrics
 
 ## Sync Policies
 
 | Policy | Use Case |
 |--------|----------|
 | `prune: true` | Remove resources not in Git |
-| `selfHeal: true` | Revert manual changes |
+| `selfHeal: true` | Revert manual cluster changes |
 | `ApplyOutOfSyncOnly=true` | Sync only changed resources |
+| `CreateNamespace=true` | Auto-create target namespace |
 
-## Best Practices
-
-- Use **sealed-secrets** or **external-secrets** for sensitive data
-- Use **ApplicationSets** for multi-cluster deployments
-- Set **sync waves** for dependency ordering (`argocd.argoproj.io/sync-wave: "1"`)
-- Configure **resource hooks** for migrations (`argocd.argoproj.io/hook: PreSync`)
-
-## GitOps Workflow
-
-```
-Code Change --> PR --> Review --> Merge to main
-                                      |
-                                      v
-ArgoCD detects change --> Sync --> Kubernetes
-                                      |
-                                      v
-                              Health checks pass
-```
+Default: automated sync with prune + selfHeal enabled.
 
 ## Checklist
 

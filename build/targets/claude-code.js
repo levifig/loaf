@@ -39,6 +39,7 @@ import {
 } from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
 import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
+import { copySharedTemplates } from "../lib/shared-templates.js";
 
 /**
  * Substitute command references with Claude Code scoped commands
@@ -198,7 +199,7 @@ export async function build({
   createMarketplace(marketplaceDir);
 
   // Build the single unified plugin
-  buildUnifiedPlugin(config, srcDir, pluginsDir);
+  buildUnifiedPlugin(config, srcDir, pluginsDir, targetsConfig);
 }
 
 /**
@@ -236,7 +237,7 @@ function createMarketplace(marketplaceDir) {
 /**
  * Build the single unified plugin with all agents, skills, and hooks
  */
-function buildUnifiedPlugin(config, srcDir, pluginsDir) {
+function buildUnifiedPlugin(config, srcDir, pluginsDir, targetsConfig) {
   const pluginDir = join(pluginsDir, PLUGIN_NAME);
   mkdirSync(pluginDir, { recursive: true });
 
@@ -260,7 +261,7 @@ function buildUnifiedPlugin(config, srcDir, pluginsDir) {
   copyAgents(allAgents, srcDir, pluginDir, agentMap);
 
   // Copy all skills (with command scoping and agent name substitution)
-  copySkills(allSkills, srcDir, pluginDir, knownCommands, agentMap);
+  copySkills(allSkills, srcDir, pluginDir, knownCommands, agentMap, targetsConfig);
 
   // Copy all hooks (as-is, no agent name substitution — hooks compare against runtime $AGENT_TYPE slugs)
   copyAllHooks(config, srcDir, pluginDir);
@@ -476,7 +477,7 @@ function copyAgents(agents, srcDir, pluginDir, agentMap) {
  * @param {string[]} knownCommands - List of Loaf command names for scoping
  * @param {Object.<string, string>} agentMap - Agent slug to display name map
  */
-function copySkills(skills, srcDir, pluginDir, knownCommands, agentMap) {
+function copySkills(skills, srcDir, pluginDir, knownCommands, agentMap, targetsConfig) {
   const skillsDir = join(pluginDir, "skills");
   mkdirSync(skillsDir, { recursive: true });
 
@@ -526,6 +527,18 @@ function copySkills(skills, srcDir, pluginDir, knownCommands, agentMap) {
     if (existsSync(scriptsSrc)) {
       cpSync(scriptsSrc, scriptsDest, { recursive: true });
     }
+
+    // Copy templates directory with substitution
+    const templatesSrc = join(skillSrc, "templates");
+    const templatesDest = join(skillDest, "templates");
+    if (existsSync(templatesSrc)) {
+      copyReferencesWithSubstitution(templatesSrc, templatesDest, knownCommands, agentMap);
+    }
+
+    // Copy shared templates for this skill (won't overwrite skill-specific ones)
+    copySharedTemplates(skill, skillDest, srcDir, targetsConfig, (content) =>
+      substituteAgentNames(substituteCommands(content, knownCommands), agentMap)
+    );
   }
 }
 

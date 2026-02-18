@@ -1,96 +1,17 @@
 # Go Idioms Reference
 
-## Contents
-- Guard Clauses
-- Comma-Ok Idiom
-- Blank Identifier
-- Defer
-- Interface Satisfaction Check
-- Embedding
-- Method Receivers
-- Functional Options
-- Always/Never
+Project conventions for idiomatic Go patterns.
 
-Common patterns and conventions that make Go code idiomatic.
+## Key Idioms
 
-## Guard Clauses
-
-Return early, keep the happy path unindented:
-
-```go
-func process(data []byte) error {
-    if len(data) == 0 {
-        return errors.New("empty data")
-    }
-    // main logic at base indentation
-    return nil
-}
-```
-
-**Omit else after return** - if the `if` returns, there's no need for `else`.
-
-## Comma-Ok Idiom
-
-Safely check optional second return value:
-
-```go
-s, ok := val.(string)   // type assertion
-v, ok := m[key]         // map access
-v, ok := <-ch           // channel receive (ok=false if closed)
-```
-
-## Blank Identifier
-
-Discard values intentionally:
-
-```go
-_, err := io.Copy(dst, src)         // ignore byte count
-for _, v := range slice { }         // ignore index
-import _ "image/png"                // import for side effects
-var _ Interface = (*Type)(nil)      // compile-time interface check
-```
-
-## Defer
-
-Execute cleanup when function returns:
-
-```go
-f, err := os.Open(name)
-if err != nil { return err }
-defer f.Close()
-```
-
-**Key behaviors:** LIFO order, arguments evaluated at defer time, runs on panic.
-
-## Interface Satisfaction Check
-
-Compile-time verification:
-
-```go
-var _ io.Reader = (*MyReader)(nil)
-```
-
-Fails to compile if type doesn't satisfy interface.
-
-## Embedding
-
-### Struct Embedding
-
-```go
-type Reader struct {
-    *bufio.Reader  // methods promoted
-    count int
-}
-```
-
-### Interface Embedding
-
-```go
-type ReadWriter interface {
-    io.Reader
-    io.Writer
-}
-```
+| Idiom | Convention |
+|-------|-----------|
+| Guard clauses | Return early; keep happy path unindented; omit `else` after `return` |
+| Comma-ok | Always use for type assertions, map access, channel receive |
+| Defer | Defer cleanup immediately after acquiring resource; LIFO order |
+| Interface checks | Compile-time: `var _ Interface = (*Type)(nil)` |
+| Embedding | Composition only, never as inheritance |
+| Functional options | `type Option func(*Config)` for flexible constructors |
 
 ## Method Receivers
 
@@ -100,21 +21,7 @@ type ReadWriter interface {
 | Large struct | Small type |
 | Any method needs pointer | Maps, channels |
 
-**Consistency:** If any method needs pointer, use pointer for all.
-
-## Functional Options
-
-Flexible configuration:
-
-```go
-type Option func(*Client)
-
-func WithTimeout(d time.Duration) Option {
-    return func(c *Client) { c.timeout = d }
-}
-
-client := NewClient("localhost", WithTimeout(5*time.Second))
-```
+**Consistency:** If any method needs a pointer receiver, use pointer for all methods on that type.
 
 ## Always/Never
 

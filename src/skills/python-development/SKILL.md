@@ -11,20 +11,7 @@ description: >-
 
 # Python Development
 
-Comprehensive guide for modern Python 3.12+ development with FastAPI ecosystem.
-
-## When to Use This Skill
-
-- Starting or configuring Python projects
-- Building REST APIs with FastAPI
-- Defining data models with Pydantic
-- Implementing async/await patterns
-- Adding type hints and mypy configuration
-- Writing tests with pytest
-- Working with databases (SQLAlchemy 2.0)
-- Building data pipelines with Polars
-- Integrating external APIs
-- Deploying to production with Docker
+Modern Python 3.12+ development with FastAPI ecosystem.
 
 ## Stack Overview
 
@@ -33,7 +20,7 @@ Comprehensive guide for modern Python 3.12+ development with FastAPI ecosystem.
 | Runtime | Python 3.12+ | - |
 | Package Manager | uv | rye, poetry |
 | Linter/Formatter | ruff | black + flake8 |
-| Type Checker | mypy | pyright |
+| Type Checker | mypy (strict) | pyright |
 | Web Framework | FastAPI | Flask, Django |
 | Validation | Pydantic v2 | - |
 | ORM | SQLAlchemy 2.0 | - |
@@ -41,108 +28,6 @@ Comprehensive guide for modern Python 3.12+ development with FastAPI ecosystem.
 | HTTP Client | httpx | aiohttp |
 | Testing | pytest | - |
 | Containerization | Docker | - |
-
-## Core Philosophy
-
-Follows [foundations principles](../foundations/SKILL.md). Python-specific emphasis:
-
-- **Async by default** — non-blocking I/O for web services
-- **Strict typing** — catch errors at development time with mypy
-- **Pydantic everywhere** — validate at trust boundaries
-- **12-factor methodology** — environment-based configuration
-
-## Quick Reference
-
-### Project Setup with uv
-
-```bash
-uv init my-project --python 3.12
-uv add fastapi uvicorn pydantic-settings
-uv add --dev pytest ruff mypy
-uv run pytest
-```
-
-### pyproject.toml Essentials
-
-```toml
-[project]
-name = "my-project"
-version = "0.1.0"
-requires-python = ">=3.12"
-
-[tool.ruff]
-target-version = "py312"
-select = ["E", "F", "I", "N", "W", "UP"]
-
-[tool.mypy]
-python_version = "3.12"
-strict = true
-```
-
-### FastAPI Endpoint
-
-```python
-from fastapi import FastAPI, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr, Field
-
-app = FastAPI()
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    username: str = Field(..., min_length=3, max_length=50)
-
-class UserResponse(BaseModel):
-    id: int
-    email: EmailStr
-    username: str
-    model_config = {"from_attributes": True}
-
-@app.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    db_user = User(**user.model_dump())
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-    return db_user
-```
-
-### Pydantic Model with Validation
-
-```python
-from pydantic import BaseModel, Field, field_validator
-
-class UserRegistration(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=8)
-
-    @field_validator("password")
-    @classmethod
-    def password_strength(cls, v: str) -> str:
-        if not any(c.isupper() for c in v):
-            raise ValueError("Must contain uppercase")
-        return v
-```
-
-### Async Database Query
-
-```python
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-async def get_user(session: AsyncSession, user_id: int) -> User | None:
-    result = await session.execute(select(User).where(User.id == user_id))
-    return result.scalar_one_or_none()
-```
-
-### pytest Test
-
-```python
-@pytest.mark.asyncio
-async def test_create_user(client: AsyncClient):
-    response = await client.post("/users", json={"email": "test@example.com", "username": "test"})
-    assert response.status_code == 201
-    assert response.json()["email"] == "test@example.com"
-```
 
 ## Topics
 

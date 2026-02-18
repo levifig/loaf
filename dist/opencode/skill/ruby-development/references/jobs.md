@@ -1,65 +1,6 @@
 # Background Jobs with Solid Queue
 
-Database-backed background processing for Rails 8+.
-
-## Contents
-- Core Philosophy
-- Configuration
-- Job Structure
-- Queue Priorities
-- Error Handling
-- Concurrency Controls
-- Recurring Jobs
-- Scheduling
-- Testing Jobs
-- Best Practices
-
-## Core Philosophy
-
-- **Database-backed** - No Redis dependency, uses FOR UPDATE SKIP LOCKED
-- **Active Job interface** - Standard Rails API, queue-agnostic
-- **Idempotent jobs** - Safe to retry, safe to run multiple times
-- **Simple arguments** - Pass IDs, not objects
-
-## Configuration
-
-```yaml
-# config/solid_queue.yml
-default: &default
-  dispatchers:
-    - polling_interval: 1
-      batch_size: 500
-  workers:
-    - queues: [critical]
-      threads: 3
-      polling_interval: 0.1
-    - queues: [default, mailers]
-      threads: 5
-      polling_interval: 1
-    - queues: [low]
-      threads: 2
-      polling_interval: 5
-```
-
-## Job Structure
-
-```ruby
-# app/jobs/process_order_job.rb
-class ProcessOrderJob < ApplicationJob
-  queue_as :default
-  limits_concurrency to: 1, key: ->(order_id) { order_id }
-
-  retry_on ActiveRecord::Deadlocked, wait: 5.seconds, attempts: 3
-  discard_on ActiveJob::DeserializationError
-
-  def perform(order_id)
-    order = Order.find(order_id)
-    return if order.processed?  # Idempotency check
-
-    Orders::Process.new(order).call
-  end
-end
-```
+Database-backed background processing for Rails 8+. No Redis dependency.
 
 ## Queue Priorities
 
@@ -70,34 +11,13 @@ end
 | `mailers` | Email delivery | 1s |
 | `low` | Reports, cleanup | 5s |
 
-## Error Handling
+## Conventions
 
-```ruby
-class WebhookJob < ApplicationJob
-  retry_on Net::OpenTimeout, wait: :polynomially_longer, attempts: 5
-  retry_on Faraday::ConnectionFailed, wait: 30.seconds, attempts: 3
-  discard_on ActiveRecord::RecordNotFound
-
-  def perform(webhook_id)
-    Webhooks::Deliver.new(Webhook.find(webhook_id)).call
-  rescue Webhooks::PermanentFailure => e
-    Rails.error.report(e)  # Log but don't retry
-  end
-end
-```
-
-## Concurrency Controls
-
-```ruby
-class ImportJob < ApplicationJob
-  # Only one import per user at a time
-  limits_concurrency to: 1, key: ->(user_id, _file) { user_id }
-
-  def perform(user_id, file_path)
-    Users::Import.new(User.find(user_id), file_path).call
-  end
-end
-```
+- **Idempotent jobs**: Check state before acting (`return if order.processed?`)
+- **Pass IDs, not objects**: `perform(order_id)` not `perform(order)`
+- **Retry per error type**: `retry_on Net::OpenTimeout, wait: :polynomially_longer, attempts: 5`
+- **Discard on permanent failures**: `discard_on ActiveRecord::RecordNotFound`
+- **Concurrency limits**: `limits_concurrency to: 1, key: ->(user_id) { user_id }`
 
 ## Recurring Jobs
 
@@ -112,41 +32,6 @@ production:
     schedule: every 15 minutes
 ```
 
-## Scheduling
+## Testing
 
-```ruby
-# Immediate
-ProcessOrderJob.perform_later(order.id)
-
-# Delayed
-ReminderJob.set(wait: 24.hours).perform_later(user.id)
-
-# Specific time
-ReportJob.set(wait_until: Date.tomorrow.noon).perform_later
-```
-
-## Testing Jobs
-
-```ruby
-class ProcessOrderJobTest < ActiveSupport::TestCase
-  test "processes valid order" do
-    order = orders(:pending)
-    ProcessOrderJob.perform_now(order.id)
-    assert order.reload.processed?
-  end
-
-  test "is idempotent" do
-    order = orders(:pending)
-    2.times { ProcessOrderJob.perform_now(order.id) }
-    assert_equal 1, order.processing_count
-  end
-end
-```
-
-## Best Practices
-
-- Design jobs to be idempotent (check state before acting)
-- Pass IDs, not ActiveRecord objects
-- Set retry strategies per error type
-- Use concurrency limits for resource-constrained operations
-- Never store sensitive data in job arguments
+Test with `perform_now` (synchronous). Verify idempotency by calling twice.
