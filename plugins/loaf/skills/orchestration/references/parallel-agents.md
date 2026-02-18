@@ -119,7 +119,7 @@ When streams complete:
 |---------|---------------------|
 | `/loaf:breakdown` | Identify parallelizable tasks during decomposition |
 | `/loaf:implement` | Single task, usually sequential |
-| `/loaf:orchestrate` | Automatically parallelizes independent tasks |
+| `/loaf:implement` | Runs dependency-wave orchestration, including parallel-safe tasks |
 
 ## Conflict Resolution
 

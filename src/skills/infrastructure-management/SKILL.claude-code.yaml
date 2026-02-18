@@ -2,5 +2,5 @@
 # Base name/description in SKILL.md
 
 user-invocable: false
-agent: devops
+agent: "{{AGENT:devops}}"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep

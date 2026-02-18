@@ -1,13 +1,31 @@
 ---
-description: Review agent artifacts and manage lifecycle
-agent: pm
+description: >-
+  Reviews agent artifacts in .agents/ and provides hygiene recommendations for
+  session lifecycle management. Covers session status auditing, stale session
+  detection, archival recommendations, and artifact cleanup. Use when
+  maintaining session health, or when the user asks "review my sessions" or
+  "clean up agent artifacts." Produces hygiene reports with actionable
+  recommendations. Not for resuming sessions (use resume) or starting new work
+  (use implement).
+agent: PM
 subtask: false
-version: 1.16.0
+version: 1.16.1
 ---
+
+# Review Sessions
 
 Review ALL agent artifacts in `.agents/` and provide hygiene recommendations.
 
-**CRITICAL: This command must review EVERY file, not samples or averages.**
+## Contents
+- Sessions Review (COMPREHENSIVE)
+- Session Archival Process (Deliberative)
+- Councils Review
+- Reports Review
+- Summary Table
+- CHANGELOG Integration Check
+- Where Knowledge Belongs
+
+**CRITICAL: This skill must review EVERY file, not samples or averages.**
 **Never reference `.agents/` files in output docs outside `.agents/`.**
 **After user confirmation, auto-move archived artifacts and update `.agents/` links (no manual steps).**
 **Archived artifacts are retained indefinitely.**
@@ -23,37 +41,37 @@ For EACH session file in `.agents/sessions/` and `.agents/sessions/archive/`:
 ### A. Read and Summarize
 
 - Session title and status
-- Linear issue ID (if any) → Query Linear for current status
+- Linear issue ID (if any) -> Query Linear for current status
 - Created date and last updated
 - Current state from frontmatter/content
 - Council/report summaries present?
 
 ### B. Check for Issues
 
-- [ ] References missing files? (reports, handoffs, debt) → **Stale**
-- [ ] Linear issue is closed? → **Ready for archive (status + move)**
-- [ ] Status is "completed" (not archived yet)? → **Ready for archive (status + move)**
-- [ ] File already in archive but status not `archived`? → **Fix status**
-- [ ] Archived session missing `archived_at` or `archived_by`? → **Add archive metadata**
-- [ ] >7 days since last update with no activity? → **Review for staleness**
-- [ ] Council file exists but no session summary? → **Update before archive**
-- [ ] Reports linked but unprocessed? → **Update before archive (status + move)**
-- [ ] Reports processed but not summarized? → **Update before archive (status + move)**
-- [ ] Reports archived without `archived_at` or `archived_by`? → **Add timestamp + actor + update frontmatter**
-- [ ] Archived items missing `archived_by`? → **Add actor**
-- [ ] Archived items missing link updates? → **Update `.agents/` references**
+- [ ] References missing files? (reports, handoffs, debt) -> **Stale**
+- [ ] Linear issue is closed? -> **Ready for archive (status + move)**
+- [ ] Status is "completed" (not archived yet)? -> **Ready for archive (status + move)**
+- [ ] File already in archive but status not `archived`? -> **Fix status**
+- [ ] Archived session missing `archived_at` or `archived_by`? -> **Add archive metadata**
+- [ ] >7 days since last update with no activity? -> **Review for staleness**
+- [ ] Council file exists but no session summary? -> **Update before archive**
+- [ ] Reports linked but unprocessed? -> **Update before archive (status + move)**
+- [ ] Reports processed but not summarized? -> **Update before archive (status + move)**
+- [ ] Reports archived without `archived_at` or `archived_by`? -> **Add timestamp + actor + update frontmatter**
+- [ ] Archived items missing `archived_by`? -> **Add actor**
+- [ ] Archived items missing link updates? -> **Update `.agents/` references**
 
 ### C. Check for Extraction Needs
 
-- [ ] Contains `lessons_learned`? → Extract to relevant docs
-- [ ] Contains `decisions` not in ADRs? → Suggest ADR creation
-- [ ] Contains `remaining_work` or `next_steps`? → Check if tracked in Linear
-- [ ] Contains `issues_discovered`? → Check if tracked in Linear
-- [ ] Contains `technical_debt`? → Check if tracked in Linear
-- [ ] Council outcomes missing? → Summarize in session before archive
-- [ ] Reports processed without summary? → Add conclusions/action points to session
-- [ ] Session archived but council/report summaries missing? → Reopen, update, re-archive
-- [ ] Archived files missing link updates inside `.agents/`? → **Update `.agents/` references to archived paths**
+- [ ] Contains `lessons_learned`? -> Extract to relevant docs
+- [ ] Contains `decisions` not in ADRs? -> Suggest ADR creation
+- [ ] Contains `remaining_work` or `next_steps`? -> Check if tracked in Linear
+- [ ] Contains `issues_discovered`? -> Check if tracked in Linear
+- [ ] Contains `technical_debt`? -> Check if tracked in Linear
+- [ ] Council outcomes missing? -> Summarize in session before archive
+- [ ] Reports processed without summary? -> Add conclusions/action points to session
+- [ ] Session archived but council/report summaries missing? -> Reopen, update, re-archive
+- [ ] Archived files missing link updates inside `.agents/`? -> **Update `.agents/` references to archived paths**
 
 ### D. Present to User (Per Session)
 
@@ -86,21 +104,21 @@ For each session, show:
 For EACH council file in `.agents/councils/` and `.agents/councils/archive/`:
 
 - Topic and date
-- Linked session (if any) → Does session still exist?
-- Decision outcome → Is it captured in an ADR?
-- Session summary → Is the council outcome summarized in the linked session?
-- Cleanup status → Archive (set status, `archived_at`, `archived_by`, move to `.agents/councils/archive/`) only after session summary exists
-- Archived council while session missing summary → **Move back until summary captured**
+- Linked session (if any) -> Does session still exist?
+- Decision outcome -> Is it captured in an ADR?
+- Session summary -> Is the council outcome summarized in the linked session?
+- Cleanup status -> Archive (set status, `archived_at`, `archived_by`, move to `.agents/councils/archive/`) only after session summary exists
+- Archived council while session missing summary -> **Move back until summary captured**
 - Require `archived_by` to be filled when archiving
 - After user confirmation, auto-move archived councils and update `.agents/` references (update links inside `.agents/` only; no manual steps)
 Flag if:
-- No linked session → **Orphaned**
-- Session missing outcome summary → **Update session before archive**
-- >14 days old → **Review for staleness**
-- Decision should be an ADR → **Suggest creation**
-- Council marked completed but no session summary → **Block archive**
-- Archived council but status not `archived` → **Fix status**
-- Archived council missing `archived_at` or `archived_by` → **Add archive metadata**
+- No linked session -> **Orphaned**
+- Session missing outcome summary -> **Update session before archive**
+- >14 days old -> **Review for staleness**
+- Decision should be an ADR -> **Suggest creation**
+- Council marked completed but no session summary -> **Block archive**
+- Archived council but status not `archived` -> **Fix status**
+- Archived council missing `archived_at` or `archived_by` -> **Add archive metadata**
 
 ## 4. Reports Review
 
@@ -115,10 +133,10 @@ For EACH file in `.agents/reports/` and `.agents/reports/archive/`:
   - Report frontmatter includes `archived_at` and `archived_by`
   - `archived_by` is always filled when archiving (required)
 - If unprocessed, prompt to add frontmatter and summarize findings in the session
-- Archived report but status not `archived` → **Fix status**
-- Archived report missing `archived_at` or `archived_by` → **Add archive metadata**
-- Archived report while linked session not archived → **Move back until session archived**
-- Archived report but session missing conclusions/action points → **Move back until updated**
+- Archived report but status not `archived` -> **Fix status**
+- Archived report missing `archived_at` or `archived_by` -> **Add archive metadata**
+- Archived report while linked session not archived -> **Move back until session archived**
+- Archived report but session missing conclusions/action points -> **Move back until updated**
 - After user confirmation, auto-move archived reports and update `.agents/` references (update links inside `.agents/` only; no manual steps)
 
 ### Report Frontmatter Template
@@ -141,20 +159,20 @@ Present comprehensive summary:
 
 ```
 SESSIONS (N total):
-  ✓ Ready for archive (status + move): N (list titles)
-  ⚠ Need extraction: N (list specific items)
-  ○ Keep active: N
+  Ready for archive (status + move): N (list titles)
+  Need extraction: N (list specific items)
+  Keep active: N
 
 COUNCILS (N total):
-  ✓ Clean: N
-  ⚠ Orphaned/stale: N
-  ⚠ Missing session summary: N
-  ⚠ Pending archive: N
+  Clean: N
+  Orphaned/stale: N
+  Missing session summary: N
+  Pending archive: N
 
 REPORTS (N total):
-  ✓ Processed and archived (status + move): N
-  ⚠ Missing frontmatter: N
-  ⚠ Awaiting session summary: N
+  Processed and archived (status + move): N
+  Missing frontmatter: N
+  Awaiting session summary: N
 ```
 
 **Retention**: archived indefinitely (no deletion policy).
@@ -173,9 +191,9 @@ For each session with completed or near-complete work:
 
 ```
 CHANGELOG DRAFTS:
-  ✓ Integrated: N sessions
-  ⚠ Pending: N sessions (list titles)
-  ○ No draft needed: N sessions
+  Integrated: N sessions
+  Pending: N sessions (list titles)
+  No draft needed: N sessions
 ```
 
 ### C. Pending Draft Actions
@@ -187,7 +205,7 @@ Session: [session-title]
 Linear: [PLT-XXX]
 Draft status: Not integrated
 
-→ Run /update-changelog to integrate
+-> Run /update-changelog to integrate
 ```
 
 For completed sessions without drafts:
@@ -197,7 +215,7 @@ Session: [session-title]
 Linear: [PLT-XXX]
 Has user-facing changes: [Yes/No]
 
-→ Spawn Product agent to create draft? [Y/n]
+-> Spawn Product agent to create draft? [Y/n]
 ```
 
 ### D. Auto-Suggest
@@ -205,13 +223,11 @@ Has user-facing changes: [Yes/No]
 If any sessions have pending CHANGELOG drafts, display:
 
 ```
-─────────────────────────────────────────
 CHANGELOG ACTION NEEDED
 
 [N] session(s) have CHANGELOG drafts ready for integration.
 
 Run /update-changelog to integrate pending entries.
-─────────────────────────────────────────
 ```
 
 ---

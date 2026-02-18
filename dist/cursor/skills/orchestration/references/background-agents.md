@@ -215,7 +215,7 @@ Checks session frontmatter for `background_agents` with `status: completed`. Ale
 
 ### PreCompact Hook
 
-Includes background agent state in preservation. Context-archiver captures:
+Includes background agent state in preservation. context-archiver captures:
 - Active background agent list
 - Current status of each
 - Result locations for completed agents

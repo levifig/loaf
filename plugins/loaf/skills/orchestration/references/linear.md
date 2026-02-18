@@ -36,6 +36,8 @@ This skill reads from `.agents/config.json`:
 
 **Required**: Check that `linear.workspace` is configured before using Linear features. Ask user if missing.
 
+Linear MCP uses `https://mcp.linear.app/mcp` (SSE deprecated) and includes tools for initiatives, initiative updates, project milestones, project updates, and project labels.
+
 ## Progress Update Format
 
 ```markdown

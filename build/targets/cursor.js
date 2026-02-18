@@ -9,9 +9,6 @@
  * │   │   ├── references/
  * │   │   └── scripts/
  * │   └── ...
- * ├── commands/
- * │   ├── start-session.md     # version-only frontmatter
- * │   └── ...
  * ├── agents/
  * │   ├── pm.md                # version + Cursor subagent fields
  * │   ├── backend-dev.md
@@ -23,7 +20,7 @@
  * │   └── lib/
  * └── hooks.json               # Cursor hook config
  *
- * Cursor supports: skills, commands (as rules), agents (subagents), hooks
+ * Cursor supports: skills, agents (subagents), hooks
  */
 
 import {
@@ -40,6 +37,7 @@ import { join, dirname, basename } from "path";
 import { parse as parseYaml } from "yaml";
 import { loadSkillFrontmatter } from "../lib/sidecar.js";
 import { getVersion, injectVersion } from "../lib/version.js";
+import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
 
 /**
  * Substitute command placeholders with Cursor unscoped commands
@@ -47,13 +45,13 @@ import { getVersion, injectVersion } from "../lib/version.js";
  * Placeholders:
  * - {{IMPLEMENT_CMD}} -> /implement
  * - {{RESUME_CMD}} -> /resume
- * - {{ORCHESTRATE_CMD}} -> /orchestrate
+ * - {{ORCHESTRATE_CMD}} -> /implement
  */
 function substituteCommands(content) {
   return content
     .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/implement")
     .replace(/\{\{RESUME_CMD\}\}/g, "/resume")
-    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/orchestrate");
+    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/implement");
 }
 
 /**
@@ -70,9 +68,9 @@ function copyReferencesWithSubstitution(srcDir, destDir) {
     if (entry.isDirectory()) {
       copyReferencesWithSubstitution(srcPath, destPath);
     } else if (entry.name.endsWith(".md")) {
-      // Apply substitution to markdown files
+      // Apply substitutions to markdown files
       const content = readFileSync(srcPath, "utf-8");
-      writeFileSync(destPath, substituteCommands(content));
+      writeFileSync(destPath, substituteAgentNames(substituteCommands(content), AGENT_MAP));
     } else {
       // Copy non-markdown files as-is
       cpSync(srcPath, destPath);
@@ -81,6 +79,9 @@ function copyReferencesWithSubstitution(srcDir, destDir) {
 }
 
 const TARGET_NAME = "cursor";
+
+// Agent name map is loaded dynamically from sidecars at build time
+let AGENT_MAP = {};
 
 // Default frontmatter for agents
 const DEFAULT_AGENT_FRONTMATTER = {
@@ -107,13 +108,21 @@ export async function build({
 }) {
   const version = getVersion(rootDir);
 
+  // Build agent name map from sidecars
+  AGENT_MAP = buildAgentMap(srcDir, TARGET_NAME);
+
   const skillsDir = join(distDir, "skills");
   const agentsDir = join(distDir, "agents");
-  const commandsDir = join(distDir, "commands");
   const hooksDir = join(distDir, "hooks");
 
+  // Remove stale commands directory from previous builds
+  const staleCommandsDir = join(distDir, "commands");
+  if (existsSync(staleCommandsDir)) {
+    rmSync(staleCommandsDir, { recursive: true });
+  }
+
   // Clean existing directories
-  for (const dir of [skillsDir, agentsDir, commandsDir, hooksDir]) {
+  for (const dir of [skillsDir, agentsDir, hooksDir]) {
     if (existsSync(dir)) {
       rmSync(dir, { recursive: true });
     }
@@ -125,9 +134,6 @@ export async function build({
 
   // Copy and transform agents with Cursor-compatible frontmatter
   copyAgents(srcDir, agentsDir, targetConfig, version);
-
-  // Copy commands with version-only frontmatter
-  copyCommands(srcDir, commandsDir, version);
 
   // Copy hooks directory structure
   copyHooks(srcDir, hooksDir);
@@ -169,8 +175,11 @@ function copySkills(srcDir, destDir, version) {
       const content = readFileSync(skillMdPath, "utf-8");
       const { content: body } = matter(content);
 
-      // Write SKILL.md with merged frontmatter + version and command substitution
-      const transformed = substituteCommands(matter.stringify(body, frontmatter));
+      // Write SKILL.md with merged frontmatter + version, command and agent name substitution
+      const transformed = substituteAgentNames(
+        substituteCommands(matter.stringify(body, frontmatter)),
+        AGENT_MAP
+      );
       writeFileSync(join(skillDest, "SKILL.md"), transformed);
     }
 
@@ -251,9 +260,12 @@ function copyAgents(srcDir, destDir, targetConfig, version) {
       ...sidecarFrontmatter,
     };
 
-    // Reconstruct the file with Cursor-compatible frontmatter and version footer
+    // Reconstruct the file with Cursor-compatible frontmatter, version footer, and agent name substitution
     const bodyWithFooter = body.trim() + `\n\n---\nversion: ${version}\n`;
-    const transformed = matter.stringify(bodyWithFooter, frontmatter);
+    const transformed = substituteAgentNames(
+      matter.stringify(bodyWithFooter, frontmatter),
+      AGENT_MAP
+    );
     writeFileSync(destPath, transformed);
   }
 }
@@ -272,35 +284,6 @@ function loadCursorAgentSidecar(sourcePath) {
 
   const content = readFileSync(sidecarPath, "utf-8");
   return parseYaml(content) || {};
-}
-
-/**
- * Copy all commands with version in footer
- *
- * Cursor doesn't use command frontmatter, so we put version in footer.
- */
-function copyCommands(srcDir, destDir, version) {
-  const src = join(srcDir, "commands");
-
-  if (!existsSync(src)) {
-    return;
-  }
-
-  const files = readdirSync(src).filter((f) => f.endsWith(".md"));
-
-  for (const file of files) {
-    const srcPath = join(src, file);
-    const destPath = join(destDir, file);
-
-    // Read source content (strip existing frontmatter)
-    const content = readFileSync(srcPath, "utf-8");
-    const { content: body } = matter(content);
-
-    // Write body with version footer (no frontmatter) and command substitution
-    const versionFooter = `\n---\nversion: ${version}\n`;
-    const transformed = substituteCommands(body.trim() + versionFooter);
-    writeFileSync(destPath, transformed);
-  }
 }
 
 /**
@@ -328,7 +311,7 @@ function copyHooks(srcDir, destDir) {
     }
   }
 
-  // Also copy any top-level hook files
+  // Also copy any top-level hook files as-is
   const entries = readdirSync(hooksSrc, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.isFile()) {
@@ -368,7 +351,7 @@ function copyHookFiles(srcDir, destDir) {
         const destName = entry.name.replace(".cursor.sh", ".sh");
         cpSync(join(srcDir, entry.name), join(destDir, destName));
       } else if (!cursorOverrides.has(entry.name)) {
-        // Copy regular file only if no Cursor override exists
+        // Copy regular file as-is only if no Cursor override exists
         cpSync(join(srcDir, entry.name), join(destDir, entry.name));
       }
       // Skip files that have Cursor overrides

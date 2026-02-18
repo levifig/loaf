@@ -4,6 +4,7 @@ Patterns for managing context efficiently across sessions and agent spawns.
 
 ## Contents
 
+- Design for Compaction
 - Overview
 - Context Commands
 - When to Clear Context
@@ -16,6 +17,29 @@ Patterns for managing context efficiently across sessions and agent spawns.
 - PM Session Context Patterns
 - Warning Signs
 - Best Practices
+
+## Design for Compaction
+
+Compaction is a normal part of long workflows, not an emergency measure. Any workflow expected to exceed 15-20 exchanges should be designed with compaction in mind from the start.
+
+### Compaction-First Principles
+
+1. **Session files are the recovery point** - Write the session file as if compaction could happen at any moment. Keep "Current State" always handoff-ready.
+2. **Pre-write the Resumption Prompt** - Add the `## Resumption Prompt` section to the session file at creation time, not as a last resort. Update it as work progresses.
+3. **Decisions go to disk, not context** - Record key decisions in the session file immediately. Context may be compressed; files persist.
+4. **Subagents absorb exploration** - Investigation and exploration should happen in subagents. Only the summary returns to the main context.
+
+### Pattern: Compaction-Resilient Session
+
+```
+1. Create session file with Resumption Prompt section (even if empty)
+2. After each significant decision, update session file
+3. After each subagent completes, record outcome in session
+4. If compaction occurs: read session, continue from Resumption Prompt
+5. If /clear needed: same recovery path via /resume
+```
+
+This makes compaction invisible to workflow continuity. Whether context is compressed automatically or cleared manually, the session file provides the same recovery path.
 
 ## Overview
 
@@ -123,7 +147,7 @@ Task(Explore, "How does authentication work in this codebase?")
 |-----------|----------|
 | Quick file lookup | Direct Read tool |
 | Multi-file exploration | Task(Explore) |
-| Implementation work | Task(backend-dev) |
+| Implementation work | Task({{AGENT:backend-dev}}) |
 | Complex investigation | Task(Plan) then implement |
 
 ## Context Budget Guidelines

@@ -28,6 +28,7 @@ import { join } from "path";
 import { parse as parseYaml } from "yaml";
 import { loadSkillFrontmatter } from "../lib/sidecar.js";
 import { getVersion, injectVersion } from "../lib/version.js";
+import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
 
 /**
  * Substitute command placeholders with Codex unscoped commands
@@ -35,13 +36,13 @@ import { getVersion, injectVersion } from "../lib/version.js";
  * Placeholders:
  * - {{IMPLEMENT_CMD}} -> /implement
  * - {{RESUME_CMD}} -> /resume
- * - {{ORCHESTRATE_CMD}} -> /orchestrate
+ * - {{ORCHESTRATE_CMD}} -> /implement
  */
 function substituteCommands(content) {
   return content
     .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/implement")
     .replace(/\{\{RESUME_CMD\}\}/g, "/resume")
-    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/orchestrate");
+    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/implement");
 }
 
 /**
@@ -58,9 +59,9 @@ function copyReferencesWithSubstitution(srcDir, destDir) {
     if (entry.isDirectory()) {
       copyReferencesWithSubstitution(srcPath, destPath);
     } else if (entry.name.endsWith(".md")) {
-      // Apply substitution to markdown files
+      // Apply substitutions to markdown files
       const content = readFileSync(srcPath, "utf-8");
-      writeFileSync(destPath, substituteCommands(content));
+      writeFileSync(destPath, substituteAgentNames(substituteCommands(content), AGENT_MAP));
     } else {
       // Copy non-markdown files as-is
       cpSync(srcPath, destPath);
@@ -70,11 +71,17 @@ function copyReferencesWithSubstitution(srcDir, destDir) {
 
 const TARGET_NAME = "codex";
 
+// Agent name map is loaded dynamically from sidecars at build time
+let AGENT_MAP = {};
+
 /**
  * Build Codex distribution
  */
 export async function build({ rootDir, srcDir, distDir }) {
   const version = getVersion(rootDir);
+
+  // Build agent name map from sidecars
+  AGENT_MAP = buildAgentMap(srcDir, TARGET_NAME);
 
   const skillsDir = join(distDir, "skills");
 
@@ -125,8 +132,11 @@ function copySkills(srcDir, destDir, version) {
       const content = readFileSync(skillMdPath, "utf-8");
       const { content: body } = matter(content);
 
-      // Write SKILL.md with merged frontmatter + version and command substitution
-      const transformed = substituteCommands(matter.stringify(body, frontmatter));
+      // Write SKILL.md with merged frontmatter + version, command and agent name substitution
+      const transformed = substituteAgentNames(
+        substituteCommands(matter.stringify(body, frontmatter)),
+        AGENT_MAP
+      );
       writeFileSync(join(skillDest, "SKILL.md"), transformed);
     }
 

@@ -63,7 +63,7 @@ Add this section for post-compaction continuation:
 ```markdown
 ## Resumption Prompt
 
-> **Context**: Working on PLT-123 (auth endpoints). Backend-dev completed
+> **Context**: Working on PLT-123 (auth endpoints). backend-dev completed
 > login/logout endpoints. Tests passing.
 >
 > **Last Action**: Reviewed test coverage, identified missing edge case for
@@ -191,4 +191,4 @@ Before completing:
 - [ ] Memory name follows convention: `session-<slug>-decisions.md`
 
 ---
-version: 1.16.0
+version: 1.16.1

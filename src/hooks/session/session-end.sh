@@ -72,7 +72,7 @@ case "$AGENT_TYPE" in
     ;;
 
   design)
-    # Design agent: Design deliverables
+    # design agent: Design deliverables
     echo "## Design Deliverables Checklist"
     echo ""
     echo "- [ ] Design decisions documented"

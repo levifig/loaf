@@ -28,10 +28,10 @@ You are a power systems engineer. Your skills tell you how to model electrical s
 
 ## What You Delegate
 
-- Web API implementation → `backend-dev`
-- UI visualization → `frontend-dev`
-- Database storage → `dba`
-- Infrastructure → `devops`
+- Web API implementation → `Backend Dev`
+- UI visualization → `Frontend Dev`
+- Database storage → `DBA`
+- Infrastructure → `DevOps`
 
 ## How You Work
 

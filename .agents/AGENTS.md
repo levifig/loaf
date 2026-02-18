@@ -16,7 +16,6 @@ npm install && npm run build
 src/
 ├── skills/{name}/SKILL.md      # Domain knowledge + references/
 ├── agents/{name}.md            # Thin routers (frontmatter: model, skills, tools)
-├── commands/{name}.md          # Portable workflows
 ├── hooks/{pre,post}-tool/      # Hook scripts
 └── config/
     ├── hooks.yaml              # Hook definitions, plugin-groups
@@ -32,7 +31,6 @@ build/targets/{target}.js       # Target transformers
 |-----------|----------|----------|
 | Skills | `src/skills/{name}/` | `SKILL.md` |
 | Agents | `src/agents/{name}.md` | - |
-| Commands | `src/commands/{name}.md` | - |
 | Hooks | `src/hooks/{pre,post}-tool/` | - |
 | Config | `src/config/` | `hooks.yaml`, `targets.yaml` |
 
@@ -118,6 +116,31 @@ Only these fields belong in `SKILL.md`:
 
 3. **Be specific** - Claude uses this to choose from 100+ skills
 
+4. **Include negative routing** for disambiguation between confusable skills:
+   ```yaml
+   description: >-
+     Covers Python 3.12+ development... Not for schema design
+     decisions (use database-design) or deployment infrastructure
+     (use infrastructure-management).
+   ```
+
+5. **Add success criteria** for workflow skills (what the skill produces):
+   ```yaml
+   description: >-
+     Conducts project assessment... Produces state assessments,
+     research findings with ranked options, or vision change
+     proposals. Not for multi-agent coordination (use orchestration).
+   ```
+
+### Template Embedding
+
+Frequently-used templates belong in SKILL.md as quick references. Detailed templates go in reference files (loaded on demand). Templates reduce model improvisation and increase output consistency.
+
+**Pattern:**
+- Add a "Quick Template" subsection in SKILL.md for the 1-2 most common output formats
+- Keep full templates and variations in `references/` files
+- Templates should include required fields and structure, not optional embellishments
+
 ### Sidecar Files
 
 Claude Code-specific fields go in `SKILL.claude-code.yaml`:
@@ -200,39 +223,6 @@ Brief intro paragraph.
 Reference skills provide background knowledge Claude loads automatically.
 Users shouldn't invoke `/python-development` directly.
 
-## Command Development
-
-### Structure
-
-```yaml
----
-description: Brief description of what the command does
----
-
-# Command Name
-
-Instructions for Claude...
-
-**Input:** $ARGUMENTS
-```
-
-### Sidecar for Commands
-
-Claude-specific fields in `{command}.claude-code.yaml`:
-
-```yaml
-# Claude Code command configuration
-argument-hint: "[topic or description]"
-```
-
-### Argument Hints
-
-| Command | Hint |
-|---------|------|
-| `/implement` | `[task-id or description]` |
-| `/research` | `[topic]` |
-| `/resume` | `[session-file]` |
-
 ## Build System
 
 ### Commands
@@ -247,16 +237,16 @@ npm run build:claude-code  # Claude Code only
 | Target | Output | Notes |
 |--------|--------|-------|
 | claude-code | `plugins/loaf/` | Merges sidecars into output |
-| opencode | `dist/opencode/` | Standard fields only |
-| cursor | `dist/cursor/` | Standard fields only |
-| codex | `dist/codex/` | Standard fields only |
-| gemini | `dist/gemini/` | Standard fields only |
+| opencode | `dist/opencode/` | Skills and agents only |
+| cursor | `dist/cursor/` | Skills and agents only |
+| codex | `dist/codex/` | Skills and agents only |
+| gemini | `dist/gemini/` | Skills and agents only |
 
 ### Before Committing
 
 - [ ] `npm run build` succeeds
 - [ ] Frontmatter has required fields
-- [ ] New skills/commands registered in `hooks.yaml`
+- [ ] New skills registered in `hooks.yaml`
 - [ ] Sidecar file for Claude-specific fields
 - [ ] Reference files >100 lines have TOC
 - [ ] No Windows-style paths
@@ -290,6 +280,9 @@ Configure target-specific behavior and sidecars.
 | Nest references deeply | Link all references from SKILL.md |
 | Start descriptions with "Use for..." | Start with action verb: "Covers...", "Establishes..." |
 | Make reference skills user-invocable | Set `user-invocable: false` in sidecar |
+| Skip negative routing for confusable skills | Add "Not for..." in description |
+| Leave success criteria undefined for workflow skills | Add "Produces..." in description |
+| Put all templates in references only | Embed quick templates in SKILL.md |
 
 ## Version Management
 

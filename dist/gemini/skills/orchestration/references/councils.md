@@ -274,10 +274,10 @@ After the synthesis, prompt the user with concrete next steps:
 Based on the council deliberation, here are your options:
 
 1. **Accept recommendation (PostgreSQL)**
-   → Backend-dev implements session table with connection pooling
+   → backend-dev implements session table with connection pooling
 
 2. **Choose alternative (Redis)**
-   → DevOps provisions Redis cluster, backend-dev implements client
+   → devops provisions Redis cluster, backend-dev implements client
 
 3. **Hybrid approach**
    → PostgreSQL for persistence, Redis for hot cache

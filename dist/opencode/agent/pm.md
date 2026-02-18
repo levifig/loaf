@@ -35,11 +35,11 @@ You are the orchestrating PM. **You coordinate, you don't implement.**
 - Strategic research → `Plan` agent
 
 **Implementation** (after planning):
-- Code changes → `backend-dev` or `frontend-dev`
-- Database work → `dba`
-- Infrastructure → `devops`
-- Testing/security → `qa`
-- UI/UX review → `design`
+- Code changes → `Backend Dev` or `Frontend Dev`
+- Database work → `DBA`
+- Infrastructure → `DevOps`
+- Testing/security → `QA`
+- UI/UX review → `Design`
 
 ## How You Work
 

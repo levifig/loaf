@@ -225,6 +225,8 @@ When granting permissions:
 # Safe for PM coordination
 list_issues, get_issue, list_comments
 create_comment, update_issue
+list_initiatives, list_initiative_updates
+list_project_milestones, list_project_updates, list_project_labels
 ```
 
 ### Serena MCP
@@ -255,6 +257,35 @@ search_for_pattern, read_file
 2. Ensure network isolation is complete
 3. Verify filesystem restrictions
 
+## Network Access Posture
+
+Combining skills with network access creates a risk path for data exfiltration. Skills can instruct agents to fetch or send data over the network, and broad network permissions amplify this risk.
+
+### Default Posture
+
+- **No network tools unless explicitly required** - Don't include `WebFetch`, `Bash(curl *)`, or `Bash(wget *)` in default agent allowlists
+- **Scope to specific domains** - When network access is needed, use `Bash(curl https://api.example.com/*)` not `Bash(curl *)`
+- **Never combine broad network + broad file read** in the same agent session without explicit approval
+- **Prefer MCP tools for external APIs** - MCP servers handle auth at the transport layer, keeping credentials out of prompts
+
+### Authenticated API Calls
+
+When agents need to call authenticated APIs:
+
+```
+# Good: environment variable reference (agent never sees the secret)
+Bash(curl -H "Authorization: Bearer $API_TOKEN" https://api.example.com/*)
+
+# Bad: literal credential in prompt
+"Use API key sk-abc123 to call the API"
+```
+
+**Rules:**
+- Store credentials in environment variables or MCP server configuration
+- Agent prompts should reference `$ENV_VAR` patterns, never literal secrets
+- Use MCP tools (Linear, Serena, etc.) which handle auth internally
+- Log which external calls agents make for audit purposes
+
 ## Best Practices
 
 1. **Start restrictive** - add permissions as needed
@@ -262,3 +293,4 @@ search_for_pattern, read_file
 3. **Scope narrowly** - use specific patterns over broad wildcards
 4. **Review regularly** - audit permissions at session boundaries
 5. **Separate concerns** - different permission sets for different roles
+6. **Isolate network access** - grant only to agents that need it, scope to specific domains

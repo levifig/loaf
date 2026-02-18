@@ -48,22 +48,22 @@ Councils are deliberation mechanisms for decisions with multiple valid approache
 
 | Decision Type | 5-Agent Council | Extended (7) |
 |---------------|-----------------|--------------|
-| Database/Data | dba, backend-dev, devops, security, qa | + frontend-dev, docs |
-| API Design | backend-dev, frontend-dev, security, docs, qa | + dba, devops |
-| UI/UX | design, frontend-dev, product, backend-dev, qa | + docs |
-| Infrastructure | devops, backend-dev, security, dba, qa | + frontend-dev, docs |
-| Security | security, backend-dev, devops, dba, qa | + frontend-dev, docs |
-| Full Architecture | backend-dev, frontend-dev, dba, devops, security, qa, docs | N/A |
-| Feature Scope | product, design, backend-dev, frontend-dev, qa | + security |
+| Database/Data | DBA, Backend Dev, DevOps, security, QA | + Frontend Dev, docs |
+| API Design | Backend Dev, Frontend Dev, security, docs, QA | + DBA, DevOps |
+| UI/UX | Design, Frontend Dev, product, Backend Dev, QA | + docs |
+| Infrastructure | DevOps, Backend Dev, security, DBA, QA | + Frontend Dev, docs |
+| Security | security, Backend Dev, DevOps, DBA, QA | + Frontend Dev, docs |
+| Full Architecture | Backend Dev, Frontend Dev, DBA, DevOps, security, QA, docs | N/A |
+| Feature Scope | product, Design, Backend Dev, Frontend Dev, QA | + security |
 
 ### Composition Rules
 
 - **5 or 7 agents** (always odd)
 - Primary domain expert must be included
-- Include domain devs for code review (backend-dev/frontend-dev)
+- Include domain devs for code review (Backend Dev/Frontend Dev)
 - Include `security` if security-relevant
 - PM coordinates but does NOT vote
-- Any agent type can participate (implementation agents like backend-dev bring valuable perspectives)
+- Any agent type can participate (implementation agents like Backend Dev bring valuable perspectives)
 
 ### Ad-Hoc Specialist Personas
 
@@ -75,11 +75,11 @@ When a council needs expertise not covered by existing agents, PM can create a s
 **Decision**: Real-time data pipeline architecture
 
 **Agents** (5):
-1. backend-dev - Application integration
-2. dba - Data storage patterns
-3. devops - Infrastructure and scaling
+1. Backend Dev - Application integration
+2. DBA - Data storage patterns
+3. DevOps - Infrastructure and scaling
 4. **[Ad-hoc] Streaming Specialist** - Kafka/event-driven expertise
-5. qa - Testing distributed systems
+5. QA - Testing distributed systems
 
 **Ad-hoc Specialist Prompt**:
 > You are a streaming data specialist with deep expertise in Apache Kafka,
@@ -114,11 +114,11 @@ Present to user for approval:
 **Decision**: Session storage strategy
 
 **Agents** (5):
-1. dba - Database implications
-2. backend-dev - Application integration
-3. devops - Operational complexity
+1. DBA - Database implications
+2. Backend Dev - Application integration
+3. DevOps - Operational complexity
 4. security - Session security
-5. backend-dev (or frontend-dev) - Long-term maintainability (domain review)
+5. Backend Dev (or Frontend Dev) - Long-term maintainability (domain review)
 
 Do you approve this composition?
 ```
@@ -136,7 +136,7 @@ Each agent receives:
 
 ```python
 Task(
-  subagent_type="dba",
+  subagent_type="DBA",
   prompt="""
   Provide database perspective on session storage.
 
@@ -274,10 +274,10 @@ After the synthesis, prompt the user with concrete next steps:
 Based on the council deliberation, here are your options:
 
 1. **Accept recommendation (PostgreSQL)**
-   → Backend-dev implements session table with connection pooling
+   → Backend Dev implements session table with connection pooling
 
 2. **Choose alternative (Redis)**
-   → DevOps provisions Redis cluster, backend-dev implements client
+   → DevOps provisions Redis cluster, Backend Dev implements client
 
 3. **Hybrid approach**
    → PostgreSQL for persistence, Redis for hot cache
@@ -320,11 +320,11 @@ council:
   archived_at: "2025-12-10T18:00:00Z"   # Required when archived
   session: "20251210-140000-user-auth"  # REQUIRED
   participants:
-    - dba
-    - backend-dev
-    - devops
+    - DBA
+    - Backend Dev
+    - DevOps
     - security
-    - backend-dev               # Min 5, MUST be odd
+    - Backend Dev               # Min 5, MUST be odd
   decision: "postgresql"
   linear_issue: "AUTH-45"       # Optional
 ---

@@ -6,7 +6,9 @@ description: >-
   docs, changelogs), and security patterns (input validation, secrets
   management, OWASP). Use when reviewing code, preparing commits, writing
   documentation, or when the user asks "how should I format this commit?" or
-  "what's the security best practice for X?"
+  "what's the security best practice for X?" Produces validated commits,
+  formatted documentation, and security-reviewed code. Not for language-specific
+  patterns, framework APIs, or deployment (use language skills).
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---
@@ -102,6 +104,34 @@ Engineering foundations for consistent, secure, and well-documented code.
 | `test` | Test additions/updates | None |
 | `chore` | Maintenance, deps | None |
 | `perf` | Performance improvements | Patch bump |
+
+### Quick Commit Template
+
+```
+<type>(<scope>): <imperative description>
+
+<optional body: explain WHY, not WHAT>
+
+<optional footer: Closes PROJ-123, BREAKING CHANGE: ...>
+```
+
+### Quick ADR Template
+
+```markdown
+# ADR-NNN: Decision Title
+
+**Date:** YYYY-MM-DD
+**Status:** Proposed | Accepted | Deprecated | Superseded
+
+## Context
+What forces are at play and what problem needs solving.
+
+## Decision
+What was decided and why.
+
+## Consequences
+What follows from this decision (positive and negative).
+```
 
 ## Test Patterns
 

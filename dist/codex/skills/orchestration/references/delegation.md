@@ -147,6 +147,29 @@ Task(subagent_type="frontend-dev", prompt="Build UI...")
 2. **One concern per agent** - Don't ask backend-dev to also write tests
 3. **Include context** - Session file, issue ID, previous outcomes
 4. **Reference session** - `Session: .agents/sessions/YYYYMMDD-HHMMSS-name.md`
+5. **Include skill hints** - Name the skills that should guide the agent's work
+
+### Skill Hints
+
+When delegating, explicitly name the skills that should guide the agent's work. This creates deterministic contracts instead of leaving skill selection to the model's discretion.
+
+```python
+# Explicit: agent knows which patterns to follow
+prompt="... Follow python-development skill for FastAPI conventions.
+        Follow database-design skill for schema decisions."
+
+# Implicit: agent may or may not pick the right skill
+prompt="... Build the API endpoint."
+```
+
+**When to include skill hints:**
+- The task spans multiple skill domains (e.g., backend code + database schema)
+- You want a specific skill's conventions followed (e.g., "follow ruby-development, not python-development")
+- The agent has access to multiple language skills and the choice matters
+
+**When to skip:**
+- Single-domain tasks where the agent only has one relevant skill
+- The task description already clearly implies the domain
 
 ### Example Task() Call
 
@@ -161,6 +184,9 @@ Task(
     - Hash password with bcrypt
     - Return 201 with user object
     - Handle duplicate email (409)
+
+    Follow python-development skill for FastAPI conventions.
+    Follow foundations skill for commit and security patterns.
 
     Files:
     - src/api/users.py

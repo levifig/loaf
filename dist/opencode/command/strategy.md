@@ -1,11 +1,30 @@
 ---
-description: Discover and maintain strategic context in STRATEGY.md
-version: 1.16.0
+description: >-
+  Discovers and maintains strategic context in STRATEGY.md through structured
+  investigation. Covers persona refinement, market landscape analysis, problem
+  space mapping, and strategic positioning. Use when establishing or evolving
+  project strategy, or when the user asks "what's our strategy?" or "update the
+  strategic direction." Produces strategy document updates with evidence. Not
+  for post-implementation reflection (use reflect) or quick idea capture (use
+  idea).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
-# Strategy Command
+# Strategy
 
 Deep discovery for personas, market landscape, and problem space.
+
+## Contents
+- Purpose
+- Mode Detection
+- CRITICAL: Interview Deeply
+- Process
+- Creating STRATEGY.md from Scratch
+- Guardrails
+- When to Use This vs Other Skills
+- Related Skills
 
 **Input:** $ARGUMENTS
 
@@ -13,11 +32,11 @@ Deep discovery for personas, market landscape, and problem space.
 
 ## Purpose
 
-STRATEGY.md captures the **landscape** — who we're building for, what we understand about the problem space, and how we're positioned.
+STRATEGY.md captures the **landscape** -- who we're building for, what we understand about the problem space, and how we're positioned.
 
 This is distinct from:
-- **VISION.md** — Where we're going (north star)
-- **ARCHITECTURE.md** — How we build (technical constraints)
+- **VISION.md** -- Where we're going (north star)
+- **ARCHITECTURE.md** -- How we build (technical constraints)
 
 Strategy informs shaping by providing context about users and market.
 
@@ -54,9 +73,9 @@ Use `AskUserQuestion` frequently. Ask non-obvious questions:
 
 ### Step 1: Gather Context
 
-1. **Read VISION.md** — Strategy must align with vision
-2. **Read existing STRATEGY.md** — Don't duplicate, extend
-3. **Check recent sessions** — Implementation learnings inform strategy
+1. **Read VISION.md** -- Strategy must align with vision
+2. **Read existing STRATEGY.md** -- Don't duplicate, extend
+3. **Check recent sessions** -- Implementation learnings inform strategy
 
 ### Step 2: Mode-Specific Discovery
 
@@ -298,19 +317,19 @@ Minimum viable STRATEGY.md:
 
 ## Guardrails
 
-1. **Interview deeply** — Strategy is domain knowledge extraction
-2. **Align with VISION** — Strategy serves the north star
-3. **Define anti-personas** — Who we're NOT building for is as important
-4. **Adjacent problems** — Document what's out of scope
-5. **Get approval** — Don't update without confirmation
-6. **Keep it current** — Outdated strategy is worse than none
+1. **Interview deeply** -- Strategy is domain knowledge extraction
+2. **Align with VISION** -- Strategy serves the north star
+3. **Define anti-personas** -- Who we're NOT building for is as important
+4. **Adjacent problems** -- Document what's out of scope
+5. **Get approval** -- Don't update without confirmation
+6. **Keep it current** -- Outdated strategy is worse than none
 
 ---
 
-## When to Use This vs Other Commands
+## When to Use This vs Other Skills
 
-| Situation | Command |
-|-----------|---------|
+| Situation | Skill |
+|-----------|-------|
 | Understanding users and market | `/strategy` |
 | Quick idea capture | `/idea` |
 | Developing an idea into spec | `/shape` |
@@ -319,9 +338,9 @@ Minimum viable STRATEGY.md:
 
 ---
 
-## Related Commands
+## Related Skills
 
-- `/shape` — Uses STRATEGY.md for context during shaping
-- `/reflect` — Updates STRATEGY.md based on shipping learnings
-- `/research` — Investigation that may inform strategy
-- `/brainstorm` — Deep thinking that may surface strategy insights
+- **shape** -- Uses STRATEGY.md for context during shaping
+- **reflect** -- Updates STRATEGY.md based on shipping learnings
+- **research** -- Investigation that may inform strategy
+- **brainstorm** -- Deep thinking that may surface strategy insights

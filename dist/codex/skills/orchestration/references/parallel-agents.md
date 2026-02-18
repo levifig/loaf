@@ -119,7 +119,7 @@ When streams complete:
 |---------|---------------------|
 | `/breakdown` | Identify parallelizable tasks during decomposition |
 | `/implement` | Single task, usually sequential |
-| `/orchestrate` | Automatically parallelizes independent tasks |
+| `/implement` | Runs dependency-wave orchestration, including parallel-safe tasks |
 
 ## Conflict Resolution
 

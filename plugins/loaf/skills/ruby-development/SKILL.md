@@ -6,7 +6,7 @@ description: >-
   Use when building Rails apps, writing background jobs, or when the user asks
   "how do I add Hotwire?" or "what's the Rails convention for X?"
 user-invocable: false
-agent: backend-dev
+agent: 'backend-dev'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---
 

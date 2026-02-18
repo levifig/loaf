@@ -30,11 +30,11 @@ Delegate specialized work to specialized agents.
 
 | Agent | Specialization | Use For |
 |-------|----------------|---------|
-| `backend-dev` | Server-side logic | APIs, services, business logic |
-| `frontend-dev` | Client-side UI | Components, state, styling |
-| `dba` | Database | Schema, migrations, queries |
-| `qa` | Testing | Test suites, quality checks |
-| `devops` | Infrastructure | CI/CD, deployment, config |
+| `Backend Dev` | Server-side logic | APIs, services, business logic |
+| `Frontend Dev` | Client-side UI | Components, state, styling |
+| `DBA` | Database | Schema, migrations, queries |
+| `QA` | Testing | Test suites, quality checks |
+| `DevOps` | Infrastructure | CI/CD, deployment, config |
 
 ## When to Use Subagents
 
@@ -68,7 +68,7 @@ Match task to specialization:
 
 ```markdown
 Task: Add user validation endpoint
-Agent: backend-dev
+Agent: Backend Dev
 Why: Server-side API work
 ```
 
@@ -84,7 +84,7 @@ Include:
 
 ```
 [Task tool invocation]
-- Subagent type: backend-dev
+- Subagent type: Backend Dev
 - Task: [Clear description]
 - Context: [Relevant details]
 ```
@@ -102,7 +102,7 @@ When subagent completes:
 ```markdown
 ## Subagent Task
 
-**Agent:** [backend-dev | frontend-dev | dba | qa | devops]
+**Agent:** [Backend Dev | Frontend Dev | DBA | QA | DevOps]
 
 **Objective:**
 [One sentence: what to accomplish]
@@ -155,7 +155,7 @@ When subagent completes:
 When Task B needs Task A's output:
 
 ```
-1. Dispatch Task A (backend-dev)
+1. Dispatch Task A (Backend Dev)
 2. Wait for completion
 3. Verify Task A output
 4. Dispatch Task B with Task A's output as context
@@ -166,8 +166,8 @@ When Task B needs Task A's output:
 When tasks are independent:
 
 ```
-1. Dispatch Task A (backend-dev)
-2. Dispatch Task B (frontend-dev) [parallel]
+1. Dispatch Task A (Backend Dev)
+2. Dispatch Task B (Frontend Dev) [parallel]
 3. Wait for both
 4. Integrate results
 ```
@@ -212,7 +212,7 @@ After subagent completes:
 |---------|---------------|
 | `/breakdown` | Tasks become subagent assignments |
 | `/implement` | May dispatch subagents for specialized work |
-| `/orchestrate` | Automatically coordinates subagent work |
+| `/implement` | Automatically coordinates single-task and multi-task subagent work |
 
 ## Related Skills
 

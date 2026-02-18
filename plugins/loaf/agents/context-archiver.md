@@ -73,7 +73,7 @@ Add this section for post-compaction continuation:
 ```markdown
 ## Resumption Prompt
 
-> **Context**: Working on PLT-123 (auth endpoints). Backend-dev completed
+> **Context**: Working on PLT-123 (auth endpoints). backend-dev completed
 > login/logout endpoints. Tests passing.
 >
 > **Last Action**: Reviewed test coverage, identified missing edge case for

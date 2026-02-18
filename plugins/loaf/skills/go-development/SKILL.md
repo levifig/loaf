@@ -7,7 +7,7 @@ description: >-
   embedding). Use when writing Go services, CLIs, or libraries, or when the user
   asks "how do I handle errors in Go?" or "what's the Go way to do X?"
 user-invocable: false
-agent: backend-dev
+agent: 'backend-dev'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---
 

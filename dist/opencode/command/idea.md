@@ -1,11 +1,28 @@
 ---
-description: Quick capture of ideas into atomic nuggets
-version: 1.16.0
+description: >-
+  Captures ideas quickly into atomic, well-structured nuggets for later
+  evaluation. Covers rapid idea documentation with context, potential value, and
+  next steps. Use when capturing a new idea without deep analysis, or when the
+  user asks "I have an idea" or "note this down." Produces structured idea
+  files. Not for deep exploration (use brainstorm) or turning ideas into specs
+  (use shape).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
-# Idea Command
+# Idea
 
 Capture ideas quickly with minimal friction.
+
+## Contents
+- Purpose
+- Process
+- Idea Lifecycle
+- Directory Structure
+- Guardrails
+- Examples
+- Related Skills
 
 **Input:** $ARGUMENTS
 
@@ -13,7 +30,7 @@ Capture ideas quickly with minimal friction.
 
 ## Purpose
 
-Ideas are raw nuggets — unprocessed, unshaped, but worth remembering.
+Ideas are raw nuggets -- unprocessed, unshaped, but worth remembering.
 
 The goal is **speed of capture**, not thoroughness. Ideas get shaped later via `/shape`.
 
@@ -31,7 +48,7 @@ If empty or unclear, ask **at most 2-3 questions**:
 2. What problem does it solve or opportunity does it create?
 3. Any immediate constraints or context?
 
-**Keep it brief.** Don't interview extensively — that's for `/shape`.
+**Keep it brief.** Don't interview extensively -- that's for `/shape`.
 
 ### Step 2: Generate Idea File
 
@@ -54,7 +71,7 @@ tags: []
 
 ## Problem/Opportunity
 
-[What this addresses — keep brief]
+[What this addresses -- keep brief]
 
 ## Initial Context
 
@@ -62,7 +79,7 @@ tags: []
 
 ---
 
-*Captured via /idea — shape with /shape when ready*
+*Captured via /idea -- shape with /shape when ready*
 ```
 
 ### Step 3: Infer Metadata
@@ -96,7 +113,7 @@ From the conversation, infer:
 ## Idea Lifecycle
 
 ```
-raw → shaping → shaped (becomes SPEC) → archived
+raw -> shaping -> shaped (becomes SPEC) -> archived
 ```
 
 | Status | Meaning |
@@ -112,22 +129,22 @@ raw → shaping → shaped (becomes SPEC) → archived
 
 ```
 .agents/
-└── ideas/
-    ├── 20260124-idea-command.md
-    ├── 20260124-shape-workflow.md
-    └── archive/
-        └── 20260115-rejected-approach.md
+  ideas/
+    20260124-idea-command.md
+    20260124-shape-workflow.md
+    archive/
+      20260115-rejected-approach.md
 ```
 
 ---
 
 ## Guardrails
 
-1. **Speed over completeness** — Capture quickly, shape later
-2. **2-3 questions max** — Don't turn this into an interview
-3. **Infer, don't ask** — Metadata should be automatic
-4. **One idea per file** — Keep them atomic
-5. **No shaping here** — That's what `/shape` is for
+1. **Speed over completeness** -- Capture quickly, shape later
+2. **2-3 questions max** -- Don't turn this into an interview
+3. **Infer, don't ask** -- Metadata should be automatic
+4. **One idea per file** -- Keep them atomic
+5. **No shaping here** -- That's what `/shape` is for
 
 ---
 
@@ -165,8 +182,8 @@ Captured: .agents/ideas/20260124-batch-idea-processing.md
 
 ---
 
-## Related Commands
+## Related Skills
 
-- `/shape` — Develop an idea into a SPEC
-- `/brainstorm` — Deep thinking on an idea or problem space
-- `/research` — Investigate before capturing
+- **shape** -- Develop an idea into a SPEC
+- **brainstorm** -- Deep thinking on an idea or problem space
+- **research** -- Investigate before capturing

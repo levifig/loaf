@@ -7,7 +7,9 @@ description: >-
   validation, Tailwind CSS styling, Vitest/Playwright testing, and
   accessibility. Use when building React components, setting up Next.js, or when
   the user asks "how do I manage state?" or "what's the TypeScript way to do X?"
-version: 1.16.0
+  Not for design system philosophy or accessibility auditing (use
+  interface-design).
+version: 1.16.1
 ---
 
 # TypeScript Development

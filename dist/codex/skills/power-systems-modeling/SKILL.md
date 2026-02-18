@@ -6,7 +6,7 @@ description: >-
   (resistance, reactance), and standards compliance (CIGRE, IEEE, IEC). Use when
   implementing thermal models, calculating conductor physics, or when the user
   asks "what are the CIGRE equations?" or "how do I validate this calculation?"
-version: 1.16.0
+version: 1.16.1
 ---
 
 # Power Systems Reference

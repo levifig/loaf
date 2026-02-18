@@ -1,11 +1,33 @@
 ---
-description: Start an orchestrated implementation session for a task or Linear issue
-version: 1.16.0
+description: >-
+  Orchestrates implementation sessions for tasks, specs, or task sets through
+  strict agent delegation. Covers session creation, plan management, agent
+  spawning, batch execution with dependency waves, and Linear integration. Use
+  when starting implementation work, or when the user asks "implement this" or
+  "start working on TASK-XXX." Produces session files, plan files, and
+  coordinates specialized agent work. Not for shaping specs (use shape) or
+  breaking down work (use breakdown).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
 # Implement
 
 You are the PM agent. Start by understanding the task:
+
+## Contents
+- Step 0: Context Check
+- Input Detection
+- CRITICAL: Strict Delegation Model
+- Agent Spawning (REQUIRED)
+- MANDATORY: Session File Creation
+- Session Guardrails
+- Decision Tree: Spawn Agent or Ask User?
+- Startup Checklist
+- Context Management
+- Then Execute
+- Topics
 
 **Input:** $ARGUMENTS
 
@@ -43,20 +65,18 @@ You are the PM agent. Start by understanding the task:
 Generate a copyable prompt for the user:
 
 ```markdown
-Resume Loaf development: /implement TASK-XXX
+Resume Loaf development: /implement [TASK-XXX | SPEC-XXX | TASK-XXX..YYY | TASK-XXX,YYY]
 
 ## Context
 - Branch: [current branch]
-- Task: [task ID and title]
-- Spec: [parent spec if applicable]
+- Selection: [task/spec/range/list being run]
+- Mode: [single-task or batch orchestration]
 
 ## Action
 [Concrete instruction - what to do, not just context]
 ```
 
 **Write this to the session file** under `## Resumption Prompt` before recommending restart.
-
----
 
 ## Input Detection
 
@@ -65,7 +85,9 @@ Parse `$ARGUMENTS` to determine the session type:
 | Input Pattern | Type | Action |
 |---------------|------|--------|
 | `TASK-XXX` | Local task | Load from `.agents/tasks/`, auto-create session |
-| `SPEC-XXX` | Spec (no task) | Warn: suggest `/tasks` first |
+| `SPEC-XXX` | Spec orchestration | Resolve all tasks for the spec, build dependency waves |
+| `TASK-XXX..YYY` | Task range orchestration | Expand range, validate each task, build dependency waves |
+| `TASK-XXX,YYY,ZZZ` | Task list orchestration | Parse explicit list, validate each task, build dependency waves |
 | `PLT-123`, `PROJ-123` | Linear issue | Fetch from Linear |
 | Description text | Ad-hoc | Create session, ask about Linear |
 
@@ -123,8 +145,6 @@ This includes:
 
 **NO EXCEPTIONS.** Even "trivial" 1-line fixes go through specialized agents.
 
----
-
 ## Agent Spawning (REQUIRED)
 
 ### How to Spawn Agents
@@ -133,7 +153,7 @@ Use the **Task tool** with the appropriate `subagent_type`:
 
 ```
 Task(
-  subagent_type="backend-dev",
+  subagent_type="Backend Dev",
   description="Implement user authentication endpoint",
   prompt="Create a POST /auth/login endpoint that validates credentials against the database. Requirements: ..."
 )
@@ -143,21 +163,21 @@ Task(
 
 | Work Type | `subagent_type` | Use For |
 |-----------|-----------------|---------|
-| Python/FastAPI/services | `backend-dev` | API endpoints, models, services, pipelines |
-| Rails/Ruby services | `backend-dev` | Rails apps, Ruby services, background jobs |
-| Next.js/React/Tailwind | `frontend-dev` | UI components, pages, styling |
-| Schema/migrations/SQL | `dba` | Database changes, query optimization |
-| Docker/K8s/CI/CD | `devops` | Infrastructure, deployment, CI pipelines |
-| Tests/security | `qa` | Test implementation, security audit |
-| Code review (backend) | `backend-dev` | Backend code review for maintainability |
-| Code review (frontend) | `frontend-dev` | Frontend code review for maintainability |
-| UI/UX design | `design` | Visual design, accessibility, user experience |
+| Python/FastAPI/services | `Backend Dev` | API endpoints, models, services, pipelines |
+| Rails/Ruby services | `Backend Dev` | Rails apps, Ruby services, background jobs |
+| Next.js/React/Tailwind | `Frontend Dev` | UI components, pages, styling |
+| Schema/migrations/SQL | `DBA` | Database changes, query optimization |
+| Docker/K8s/CI/CD | `DevOps` | Infrastructure, deployment, CI pipelines |
+| Tests/security | `QA` | Test implementation, security audit |
+| Code review (backend) | `Backend Dev` | Backend code review for maintainability |
+| Code review (frontend) | `Frontend Dev` | Frontend code review for maintainability |
+| UI/UX design | `Design` | Visual design, accessibility, user experience |
 | Git operations | Implementing agent | Whoever made the changes commits them |
 
 ### Spawning Best Practices
 
 1. **Be specific in prompts**: Include file paths, requirements, constraints
-2. **One concern per agent**: Don't ask backend-dev to also write tests (spawn `qa`)
+2. **One concern per agent**: Don't ask Backend Dev to also write tests (spawn `QA`)
 3. **Include context**: Reference the session file, Linear issue, relevant docs
 4. **Parallel when possible**: Spawn independent agents simultaneously
 5. **Sequential when dependent**: Wait for agent A's output before spawning agent B
@@ -166,15 +186,15 @@ Task(
 
 ```
 # 1. Database changes first (other work depends on schema)
-Task(subagent_type="dba", prompt="Add user_sessions table with columns...")
+Task(subagent_type="DBA", prompt="Add user_sessions table with columns...")
 
 # 2. After DBA completes, spawn backend and tests in parallel
-Task(subagent_type="backend-dev", prompt="Implement session management service...")
-Task(subagent_type="qa", prompt="Write tests for session management...")
+Task(subagent_type="Backend Dev", prompt="Implement session management service...")
+Task(subagent_type="QA", prompt="Write tests for session management...")
 
 # 3. After implementation, review
-Task(subagent_type="backend-dev", prompt="Review the backend session management implementation...")
-Task(subagent_type="frontend-dev", prompt="Review any frontend session management UI...")
+Task(subagent_type="Backend Dev", prompt="Review the backend session management implementation...")
+Task(subagent_type="Frontend Dev", prompt="Review any frontend session management UI...")
 ```
 
 ---
@@ -220,7 +240,7 @@ session:
   created: "YYYY-MM-DDTHH:MM:SSZ"
   last_updated: "YYYY-MM-DDTHH:MM:SSZ"
   archived_at: "YYYY-MM-DDTHH:MM:SSZ"   # Required when archived
-  archived_by: "agent-pm"               # Optional; fill when archived (enforced by /review-sessions)
+  archived_by: "agent-PM"               # Optional; fill when archived (enforced by /review-sessions)
   linear_issue: "PLT-XXX"           # If applicable
   linear_url: "https://linear.app/{{your-workspace}}/issue/PLT-XXX"
   branch: "username/plt-xxx-feature"    # Working branch for this session
@@ -318,23 +338,23 @@ For example: /rename auth-jwt-implementation
 
 ## Session Guardrails
 
-1. **Strict delegation** — ALL implementation via Task tool (see Agent Spawning above)
-2. **Keep this session lean** — focus on planning, coordination, and oversight
+1. **Strict delegation** -- ALL implementation via Task tool (see Agent Spawning above)
+2. **Keep this session lean** -- focus on planning, coordination, and oversight
 3. **When uncertain**, convene a council of specialized agents per your instructions, then present:
     - The vote results
     - Pros and cons of each option
     - Your recommendation
     - **Wait for user approval before proceeding**
 4. **Ensure quality**:
-    - All work must include appropriate tests (spawn `qa`)
-    - Route backend reviews to `backend-dev` and frontend reviews to `frontend-dev`
+    - All work must include appropriate tests (spawn `QA`)
+    - Route backend reviews to `Backend Dev` and frontend reviews to `Frontend Dev`
     - Document changes in relevant files
     - Update Linear with progress
 5. **Update session file continuously** (handoff must ALWAYS be current):
     - Log agent spawns in `orchestration.spawned_agents` with task and status
     - Update `current_task` as work progresses between agents
     - Keep `last_updated` timestamp current after each significant action
-    - Maintain `## Current State` as handoff-ready — anyone should be able to pick up immediately
+    - Maintain `## Current State` as handoff-ready -- anyone should be able to pick up immediately
     - After each subagent completes: update session with outcomes before spawning next
 6. **Clean up after yourself**:
     - No ephemeral files left behind
@@ -344,17 +364,15 @@ For example: /rename auth-jwt-implementation
     - Update `.agents/` references to archived paths (no `.agents` links outside `.agents/`)
 7. **When in doubt, ask the user**
 
----
-
 ## Decision Tree: Spawn Agent or Ask User?
 
 ```
 Is this a code/config/doc change?
-├── YES → Spawn appropriate agent (see mapping table)
-└── NO → Is this a planning/coordination decision?
-    ├── YES with clear path → Proceed, update session
-    ├── YES but ambiguous → Ask user for clarification
-    └── NO → Ask user what they want
++-- YES -> Spawn appropriate agent (see mapping table)
++-- NO -> Is this a planning/coordination decision?
+    +-- YES with clear path -> Proceed, update session
+    +-- YES but ambiguous -> Ask user for clarification
+    +-- NO -> Ask user what they want
 ```
 
 **When multiple valid approaches exist:**
@@ -370,7 +388,7 @@ Is this a code/config/doc change?
 
 **After creating session AND plan files:**
 
-1. [ ] Parse the input — is this a task (TASK-XXX), Linear issue ID (e.g., PLT-123, PLAT-123), or a description?
+1. [ ] Parse the input -- is this a task (TASK-XXX), Linear issue ID (e.g., PLT-123, PLAT-123), or a description?
 2. [ ] If TASK-XXX:
    - Load task file from `.agents/tasks/TASK-XXX-*.md`
    - Update task frontmatter with `session:` field pointing to session file
@@ -380,240 +398,15 @@ Is this a code/config/doc change?
    - Update session frontmatter with `linear_issue` and `linear_url`
    - **Move Linear issue to "In Progress" immediately**
 4. [ ] If description: ask user if a Linear issue should be created
-5. [ ] **Create dedicated branch for this work** (see Branch Management below)
-6. [ ] **Suggest team** based on task context (see Team Routing below)
+5. [ ] **Create dedicated branch for this work** (see [session-management.md](references/session-management.md))
+6. [ ] **Suggest team** based on task context (see [session-management.md](references/session-management.md))
 7. [ ] **Fill in plan file sections** (Appetite, Problem, Solution Shape, Rabbit Holes)
 8. [ ] Populate session `## Context` section with background
 9. [ ] Break down the work using TodoWrite
 10. [ ] **Identify which specialized agents will be needed** (use mapping table)
-11. [ ] **Consider architecture diagrams** (see Diagram Consideration below)
+11. [ ] **Consider architecture diagrams** (see [session-management.md](references/session-management.md))
 12. [ ] Update session `## Next Steps` with planned agent spawns
 13. [ ] **Get user approval on plan** before spawning implementation agents
-
----
-
-## Branch Management
-
-**All new development work should happen on a dedicated branch.**
-
-### Getting Branch Name
-
-1. **If Linear issue exists**: Use the `branchName` field from `get_issue` response
-   - Linear auto-generates branch names like `username/plt-123-issue-title`
-   - These are pre-formatted and consistent with team conventions
-
-2. **If no Linear issue**: Create branch name from session description
-   - Format: `feature/<session-description>` or `fix/<session-description>`
-   - Use kebab-case, keep it concise
-
-### Branch Workflow
-
-```bash
-# 1. Check current branch status
-git status
-
-# 2. Create and checkout the branch (use Linear's branchName if available)
-git checkout -b <branch-name>
-
-# 3. Confirm branch creation
-git branch --show-current
-```
-
-### Record in Session
-
-Add branch info to session frontmatter:
-
-```yaml
-session:
-  title: "..."
-  branch: "username/plt-123-issue-title"  # Track the working branch
-  linear_issue: "PLT-123"
-```
-
-**Important:** All implementation agents will work on this branch. The branch should be ready for PR when work completes.
-
----
-
-## Team Routing
-
-When creating Linear issues, suggest the appropriate team:
-
-1. **Analyze task description** for keywords (see `linear-workflow` Skill)
-2. **Check known_teams** in `.agents/config.json`
-3. **If team is new to project**, ask user for confirmation:
-   > "This task seems best suited for the **Security** team (matched: 'auth', 'vulnerability').
-   > Security hasn't been used in this project yet. Add this team?"
-4. **If user confirms**, add team to `known_teams` in config
-5. **Create issue** with suggested team
-
-### Team Suggestion Example
-
-```
-Task: "Fix authentication bypass vulnerability in API"
-         ↓
-Keywords matched: "authentication", "vulnerability", "API"
-         ↓
-Top suggestions:
-  1. Security (score: 2) — "authentication", "vulnerability"
-  2. Backend (score: 1) — "API"
-         ↓
-Suggest Security, confirm if new to project
-```
-
-Use Linear MCP's `list_teams` to get all workspace teams for validation.
-
----
-
-## Diagram Consideration
-
-For multi-file or multi-service changes, consider adding architecture diagrams to the session file.
-
-### When to Create Diagrams
-
-| Scenario | Diagram Type |
-|----------|--------------|
-| Changes span 3+ services | Component diagram (interaction points) |
-| Data flow modifications | Sequence diagram (trace data path) |
-| Schema/model changes | ERD (table relationships) |
-| New API endpoints | Sequence diagram (request/response) |
-| State machine logic | State diagram (transitions) |
-
-### Quick Check
-
-Ask yourself:
-1. Will this work touch multiple services or layers?
-2. Is there a data flow that needs to be understood?
-3. Would a visual help communicate the approach?
-
-If yes to any, add an `## Architecture Diagrams` section to the session file.
-
-### Diagram Template
-
-```markdown
-## Architecture Diagrams
-
-### [Descriptive Name]
-
-```mermaid
-[Use flowchart, sequenceDiagram, erDiagram, or stateDiagram-v2]
-```
-
-**Purpose**: Why this diagram clarifies the work
-**Files involved**: `path/to/file1.py`, `path/to/file2.py`
-```
-
-See `foundations` skill `reference/diagrams.md` for Mermaid syntax and best practices.
-
----
-
-## Ultrathink First
-
-Before spawning any implementation agents, **think deeply** about:
-
-- What is the full scope of this work?
-- What are the dependencies between tasks?
-- Which agents should handle which parts? (use mapping table)
-- What is the correct spawn order? (dependencies first)
-- What clarifying questions do you have?
-
-**Ask the user any clarifying questions before spawning agents.**
-
----
-
-## Plan Mode Integration
-
-For complex tasks, use **Plan Mode** to explore before implementing:
-
-### When to Use Plan Mode
-
-- Task requires exploring unfamiliar codebase areas
-- Multiple valid implementation approaches exist
-- Dependencies between tasks need mapping
-- User should approve approach before work begins
-
-### Phase 1: Explore (Plan Mode)
-
-```
-1. Use Task(Explore) or Task(Plan) to investigate codebase
-2. Map existing patterns and conventions
-3. Identify integration points
-4. Document findings in session file
-```
-
-### Phase 2: Plan and Store
-
-When the Plan agent returns a plan:
-
-1. **Generate plan filename:**
-
-   ```bash
-   date -u +"%Y%m%d-%H%M%S"  # e.g., 20250123-143500
-   ```
-
-   Format: `YYYYMMDD-HHMMSS-{plan-slug}.md`
-
-2. **Save plan to `.agents/plans/`:**
-
-   ```
-   .agents/plans/20250123-143500-auth-api-design.md
-   ```
-
-3. **Plan file format:**
-
-   ```markdown
-   ---
-   session: 20250123-140000-feature-auth
-   created: 2025-01-23T14:35:00Z
-   status: pending  # pending | approved | superseded
-   ---
-
-   # Auth API Design Plan
-
-   ## Overview
-   [Plan content from Plan agent]
-
-   ## Implementation Steps
-   1. ...
-   2. ...
-   ```
-
-4. **Update session file with plan reference:**
-
-   ```yaml
-   plans:
-     - 20250123-143500-auth-api-design.md
-   ```
-
-5. **Present plan to user for approval**
-
-### Phase 3: Approval and Implementation
-
-```
-1. On user approval, update plan status to "approved"
-2. Spawn implementation agents
-3. Reference plan file in agent prompts
-4. Execute in approved direction
-```
-
-### Multiple Plans Per Session
-
-Complex work may require multiple plans:
-
-```yaml
-# In session frontmatter
-plans:
-  - 20250123-143500-auth-api-design.md      # approved
-  - 20250123-150000-auth-frontend.md        # approved
-  - 20250123-153000-auth-testing.md         # pending
-```
-
-Each plan is a checkpoint that can be referenced, revised, or superseded.
-
-### Skip Planning When
-
-- Task is straightforward (single file, clear change)
-- User has provided explicit detailed instructions
-- Pattern is well-established in codebase
 
 ---
 
@@ -646,15 +439,13 @@ Task(Explore, "Find how authentication is implemented")
 
 See `orchestration` skill `reference/context-management.md` for detailed patterns.
 
----
-
 ## Then Execute
 
-Follow your three-phase workflow (BEFORE → DURING → AFTER):
+Follow your three-phase workflow (BEFORE -> DURING -> AFTER):
 
 ### BEFORE (Planning)
 
-1. Create session file ✓
+1. Create session file
 2. Break down work into agent-sized tasks
 3. Identify spawn order (respect dependencies)
 4. Get user approval on plan
@@ -666,16 +457,16 @@ Follow your three-phase workflow (BEFORE → DURING → AFTER):
 
    ```yaml
    spawned_agents:
-     - type: backend-dev
-       task: "Implement authentication endpoint"
-       status: completed
-       outcome: "Created /auth/login and /auth/logout endpoints"
-     - type: qa
-       task: "Write authentication tests"
-       status: in_progress
+      - type: Backend Dev
+        task: "Implement authentication endpoint"
+        status: completed
+        outcome: "Created /auth/login and /auth/logout endpoints"
+      - type: QA
+        task: "Write authentication tests"
+        status: in_progress
    ```
 
-3. Update Linear with progress (following style rules — no emoji, no file paths)
+3. Update Linear with progress (following style rules -- no emoji, no file paths)
 4. Keep session `## Current State` always handoff-ready
 5. After each agent completes: update session, then spawn next
 
@@ -684,110 +475,19 @@ Follow your three-phase workflow (BEFORE → DURING → AFTER):
 1. **Code review pass** (REQUIRED for significant changes):
    - Run `pr-review-toolkit:code-reviewer` on all modified files
    - Address any critical issues before proceeding
-2. Spawn `qa` for final testing and security review
+2. Spawn `QA` for final testing and security review
 3. Update Linear issue status to Done
 4. Complete session file with outcomes
 5. Archive session file (set status to `archived`, set `archived_at` and `archived_by`, move to `.agents/sessions/archive/` after ensuring knowledge captured elsewhere and council/report summaries are captured, update `.agents/` references)
 
 ---
 
-## Linear Status Management
+## Topics
 
-**Keep Linear status synchronized with actual work state:**
-
-| Work State | Linear Status |
-|------------|---------------|
-| Session started | In Progress |
-| Blocked/waiting for user | In Progress (add blocker comment) |
-| Work completed | Done (or In Review if PR pending) |
-
----
-
-## Handoff State Requirements
-
-**The session file must ALWAYS be handoff-ready.** After every significant action:
-
-1. Update `## Current State` to reflect what just happened
-2. Update `orchestration.current_task` in frontmatter
-3. Log completed agent work with outcomes
-4. Ensure anyone could pick up the work immediately
-
----
-
-## Timestamps for User Context
-
-**Print the current date and timestamp when:**
-
-- Waiting for user input or decision
-- Completing a phase of work
-- Encountering a blocker
-- Session ends or pauses
-
-Format: `[YYYY-MM-DD HH:MM UTC]`
-
-Generate with: `date -u +"%Y-%m-%d %H:%M UTC"`
-
----
-
-## Transcript Archival
-
-After `/compact` or `/clear`, archive conversation transcripts for future reference.
-
-### Process
-
-1. **Get transcript path** from Claude Code output after compaction
-2. **Create transcripts directory** if needed:
-   ```bash
-   mkdir -p .agents/transcripts
-   ```
-3. **Copy transcript** with descriptive name:
-   ```bash
-   cp /path/to/transcript.jsonl .agents/transcripts/YYYYMMDD-HHMMSS-description.jsonl
-   ```
-4. **Update session frontmatter**:
-   ```yaml
-   transcripts:
-     - 20260123-143500-pre-compact.jsonl
-   ```
-
-### When to Archive
-
-| Event | Action |
-|-------|--------|
-| Before `/compact` | Archive current transcript |
-| Before `/clear` | Archive current transcript |
-| Session end | Archive final transcript |
-
-### Benefits
-
-- **Audit trail** - Full history of decisions and work
-- **Knowledge extraction** - Mining past sessions for patterns
-- **Debugging** - Understanding how errors occurred
-- **Training** - Learning from past sessions
-
----
-
-## Task Completion
-
-When a task-coupled session completes:
-
-1. **Update task status** (local file or Linear)
-2. **Check spec progress:**
-   - List all tasks for the spec
-   - If all done → mark spec as `complete`
-   - If tasks remain → spec stays `implementing`
-3. **Archive session** (standard process)
-
-### Spec Completion Check
-
-```bash
-# For local tasks
-grep -l "spec: SPEC-001" .agents/tasks/*.md | wc -l
-# If 0, all tasks done
-
-# For Linear
-# Check all issues with spec label
-```
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Batch Orchestration | [batch-orchestration.md](references/batch-orchestration.md) | Running specs, task ranges, or task lists with dependency waves |
+| Session Management | [session-management.md](references/session-management.md) | Branch management, team routing, diagrams, plan mode, Linear sync, handoff, archival |
 
 ---
 

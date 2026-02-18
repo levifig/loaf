@@ -6,7 +6,8 @@ description: >-
   testing, SQLAlchemy database operations, Polars data processing, httpx API
   clients, and Docker deployment. Use when building Python APIs, writing async
   code, or when the user asks "how do I validate data?" or "what's the best way
-  to structure a Python project?"
+  to structure a Python project?" Not for schema design decisions or migration
+  strategies (use database-design).
 ---
 
 # Python Development

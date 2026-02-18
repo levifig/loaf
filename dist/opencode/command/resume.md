@@ -1,11 +1,28 @@
 ---
-description: Resume an existing session file and sync with Linear
-version: 1.16.0
+description: >-
+  Resumes existing session files and synchronizes state with Linear. Covers
+  session state restoration, Linear status sync, and context rebuilding from
+  session artifacts. Use when continuing interrupted work, or when the user asks
+  "resume that session" or "pick up where we left off." Produces updated session
+  state with current context. Not for referencing past decisions (use
+  reference-session) or starting new work (use implement).
+agent: PM
+subtask: false
+version: 1.16.1
 ---
 
 # Resume Session
 
 You are the PM agent resuming an existing session.
+
+## Contents
+- Step 1: Parse Input and Locate Session
+- Step 2: Read Session File
+- Step 3: Sync with Linear (if applicable)
+- Step 4: Display Session Context
+- Step 5: Update Session Timestamps
+- Step 6: Continue as PM Orchestrator
+- Guardrails
 
 **Input:** $ARGUMENTS
 
@@ -156,10 +173,10 @@ Update the session file:
 
 You are now the PM orchestrator for this session. Follow the standard PM workflow:
 
-1. **Strict delegation** — ALL implementation via Task tool
-2. **Keep session updated** — after every significant action
-3. **Sync Linear** — update issue status as work progresses
-4. **When uncertain** — ask the user or convene a council
+1. **Strict delegation** -- ALL implementation via Task tool
+2. **Keep session updated** -- after every significant action
+3. **Sync Linear** -- update issue status as work progresses
+4. **When uncertain** -- ask the user or convene a council
 
 ---
 
