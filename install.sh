@@ -104,6 +104,15 @@ DETECTION_PATH="${PATH}"
 # Config directory resolution
 declare -A TOOL_CONFIG_DIRS=()
 
+# Default config directories for all supported targets
+# Used when --target overrides auto-detection
+declare -A DEFAULT_CONFIG_DIRS=(
+    [opencode]="${XDG_CONFIG_HOME:-${HOME}/.config}/opencode"
+    [cursor]="${HOME}/.cursor"
+    [codex]="${CODEX_HOME:-${HOME}/.codex}"
+    [gemini]="${HOME}/.gemini"
+)
+
 # Check if running from a local development repo
 IS_DEV_MODE=false
 LOCAL_REPO_PATH=""
@@ -586,8 +595,8 @@ install_codex() {
 
 install_gemini() {
     local cache="${INSTALL_DIR}/gemini"
-    # Gemini doesn't support XDG yet - always use ~/.gemini/
-    local config="${HOME}/.gemini"
+    # Gemini doesn't support XDG yet - default to ~/.gemini/
+    local config="${TOOL_CONFIG_DIRS[gemini]:-${HOME}/.gemini}"
 
     # Skills only
     if [[ -d "${cache}/skills" ]]; then
@@ -719,17 +728,19 @@ main() {
     print_step "3" "Other targets"
 
     if [[ -n "$specific_target" ]]; then
-        local valid_target=false
-        for target in "${TOOL_KEYS[@]}"; do
-            if [[ "$target" == "$specific_target" ]]; then
-                valid_target=true
-                break
-            fi
-        done
-        if [[ "$valid_target" == false ]]; then
+        # Validate against all known targets, not just detected ones
+        if [[ -z "${DEFAULT_CONFIG_DIRS[$specific_target]+x}" ]]; then
             print_error "Unknown target: ${specific_target}"
+            print_info "Valid targets: ${!DEFAULT_CONFIG_DIRS[*]}"
             exit 1
         fi
+
+        # Ensure config dir is set (may not be if tool wasn't auto-detected)
+        if [[ -z "${TOOL_CONFIG_DIRS[$specific_target]+x}" ]]; then
+            TOOL_CONFIG_DIRS[$specific_target]="${DEFAULT_CONFIG_DIRS[$specific_target]}"
+            print_warn "${specific_target} was not auto-detected; installing to ${DEFAULT_CONFIG_DIRS[$specific_target]}"
+        fi
+
         SELECTED_TARGETS=("$specific_target")
         print_info "Target: $specific_target"
         echo ""
