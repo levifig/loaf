@@ -114,13 +114,13 @@ case "$AGENT_TYPE" in
         echo ""
       done
 
-      echo "**Tip**: Review with \`/review-sessions\` or resume with \`/resume-session\`"
+      echo "**Tip**: Review with \`/review-sessions\` or resume with \`/resume\`"
       echo ""
       echo "Remember to create a session file before starting new work."
     else
       echo "No active sessions found."
       echo ""
-      echo "**Reminder**: Create a session file with \`/start-session\` before coordinating work."
+      echo "**Reminder**: Create a session file with \`/implement\` before coordinating work."
     fi
     ;;
 

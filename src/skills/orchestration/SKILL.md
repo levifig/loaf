@@ -38,9 +38,9 @@ Every release should be complete, polished, and delightful - no MVPs or quick ha
 | Stuck on task | Check circuit breaker, consider reshaping |
 | Pre-compaction | Spawn context-archiver to preserve state |
 | Low-priority work | Spawn background-runner with run_in_background |
-| New feature workflow | Research → Architecture → PRD → Specs → Tasks |
-| Create specification | Use `/specs` with requirement reference |
-| Break down spec | Use `/tasks` to generate atomic work items |
+| New feature workflow | Research → Architecture → Shape → Breakdown → Implement |
+| Create specification | Use `/shape` with requirement reference |
+| Break down spec | Use `/breakdown` to generate atomic work items |
 | Task-coupled session | Use `/implement TASK-XXX` for traceability |
 
 ## Topics

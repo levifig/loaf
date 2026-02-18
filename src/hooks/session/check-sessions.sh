@@ -32,7 +32,7 @@ if [ -d "$SESSIONS_DIR" ]; then
       echo ""
     done
 
-    echo "Consider reviewing with \`/review-sessions\` or resuming with \`/resume-session\`"
+    echo "Consider reviewing with \`/review-sessions\` or resuming with \`/resume\`"
   fi
 fi
 

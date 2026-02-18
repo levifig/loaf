@@ -15,7 +15,7 @@
  * This allows Claude Code to use:
  *   /plugin marketplace add levifig/loaf
  *
- * Scoping: /loaf:start-session, Task(loaf:backend-dev)
+ * Scoping: /loaf:implement, Task(loaf:backend-dev)
  *
  * Reads frontmatter from sidecars (e.g., pm.claude-code.yaml, SKILL.claude-code.yaml)
  */
@@ -234,7 +234,7 @@ function createMarketplace(marketplaceDir) {
 }
 
 /**
- * Build the single unified plugin with all agents, commands, skills, and hooks
+ * Build the single unified plugin with all agents, skills, and hooks
  */
 function buildUnifiedPlugin(config, srcDir, pluginsDir) {
   const pluginDir = join(pluginsDir, PLUGIN_NAME);
