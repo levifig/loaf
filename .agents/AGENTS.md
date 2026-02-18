@@ -43,6 +43,8 @@ build/targets/{target}.js       # Target transformers
 
 **Add hook:** Create script in `src/hooks/{pre,post}-tool/`, register in `hooks.yaml`
 
+**Add template:** Create in `src/skills/{name}/templates/` (skill-specific) or `src/templates/` + register in `shared-templates` in `targets.yaml`
+
 **Add target:** Create `build/targets/{target}.js`, add to `targets.yaml` and `build.js`
 
 ## Skill Development
@@ -257,7 +259,7 @@ npm run build:claude-code  # Claude Code only
 |--------|--------|-------|
 | claude-code | `plugins/loaf/` | Merges sidecars into output |
 | opencode | `dist/opencode/` | Skills, agents, and commands (from skills) |
-| cursor | `dist/cursor/` | Skills and agents only |
+| cursor | `dist/cursor/` | Skills, agents, and hooks |
 | codex | `dist/codex/` | Skills and agents only |
 | gemini | `dist/gemini/` | Skills and agents only |
 
@@ -268,6 +270,7 @@ npm run build:claude-code  # Claude Code only
 - [ ] New skills registered in `hooks.yaml`
 - [ ] Sidecar file for Claude-specific fields
 - [ ] Reference files >100 lines have TOC
+- [ ] Template links resolve (no broken `templates/` paths)
 - [ ] No Windows-style paths
 
 ## Configuration
