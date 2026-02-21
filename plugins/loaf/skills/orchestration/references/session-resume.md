@@ -23,7 +23,7 @@ Claude Code provides built-in session continuation:
 |------|---------|
 | `--continue` | Continue the most recent conversation |
 | `--resume <id>` | Resume a specific conversation by ID |
-| `/loaf:resume` | In-session command to list and resume |
+| `/resume` | In-session command to list and resume |
 
 ## Resume Methods
 
@@ -44,7 +44,7 @@ claude --resume abc123
 ```bash
 # Start new conversation, resume from session file
 claude
-> /loaf:resume 20250123-143000-feature-auth
+> /resume 20250123-143000-feature-auth
 ```
 
 **Best for:** Fresh context but task continuity from session file.

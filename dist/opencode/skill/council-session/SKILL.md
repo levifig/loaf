@@ -1,13 +1,9 @@
 ---
 name: council-session
 description: >-
-  Convenes multi-agent council deliberations for complex decisions requiring
-  diverse perspectives. Covers agent composition selection, parallel perspective
-  gathering, synthesis, and decision recording. Use when a decision needs input
-  from 5-7 specialized agents, or when the user asks "let's get a council
-  opinion" or "I need multiple perspectives on this." Produces council files
-  with agent perspectives, synthesis, and recorded decisions. Not for
-  single-agent work or implementation (use implement).
+  Convenes multi-agent council deliberations for decisions requiring diverse
+  perspectives. Use when the user asks "get a council opinion" or "I need
+  multiple perspectives."
 ---
 
 # Council Deliberation Session

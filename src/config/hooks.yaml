@@ -289,7 +289,7 @@ plugin-groups:
   orchestration:
     description: PM orchestration, session management, Linear workflow integration
     agents: [pm]
-    skills: [orchestration, research, implement, resume, review-sessions, council-session, reference-session, architecture, idea, shape, strategy, breakdown, reflect, brainstorm]
+    skills: [orchestration, research, implement, resume-session, review-sessions, council-session, reference-session, architecture, idea, shape, strategy, breakdown, reflect, brainstorm]
     related-hooks:
       pre-tool: [validate-commit, detect-linear-magic]
       post-tool: [generate-task-board]

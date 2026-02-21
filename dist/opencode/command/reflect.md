@@ -1,15 +1,10 @@
 ---
 description: >-
-  Integrates learnings from shipped work into strategic documents (VISION,
-  STRATEGY, ARCHITECTURE). Covers evidence gathering from completed specs and
-  sessions, insight extraction, and document update proposals. Use after
-  completing significant work, or when the user asks "what did we learn?" or
-  "update strategy based on this." Produces evidence-based update proposals for
-  strategic documents. Not for pre-implementation planning (use shape) or active
-  strategy discovery (use strategy).
+  Integrates learnings from shipped work into strategic documents. Use after
+  completing significant work or when the user asks "what did we learn?"
 agent: PM
 subtask: false
-version: 1.17.0
+version: 1.17.2
 ---
 
 # Reflect

@@ -1,14 +1,8 @@
 ---
 name: foundations
 description: >-
-  Establishes code quality and engineering standards. Covers code style
-  conventions, conventional commit messages, documentation standards (ADRs, API
-  docs, changelogs), and security patterns (input validation, secrets
-  management, OWASP). Use when reviewing code, preparing commits, writing
-  documentation, or when the user asks "how should I format this commit?" or
-  "what's the security best practice for X?" Produces validated commits,
-  formatted documentation, and security-reviewed code. Not for language-specific
-  patterns, framework APIs, or deployment (use language skills).
+  Establishes code quality, commit conventions, documentation standards, and
+  security patterns.
 ---
 
 # Code Standards

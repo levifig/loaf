@@ -1,12 +1,6 @@
 ---
 name: infrastructure-management
-description: >-
-  Covers Docker, Kubernetes, GitOps, and CI/CD pipelines. Includes multi-stage
-  builds, Helm charts, ArgoCD/Flux deployment, GitHub Actions workflows, and
-  container security. Use when containerizing apps, setting up deployments, or
-  when the user asks "how do I deploy to Kubernetes?" or "what's the best CI/CD
-  setup?" Not for application code, database schemas, or CI pipeline logic in
-  app repos.
+description: 'Covers Docker, Kubernetes, GitOps, CI/CD pipelines, and container security.'
 user-invocable: false
 agent: 'devops'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'

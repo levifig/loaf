@@ -1,46 +1,9 @@
 {
   "name": "loaf",
-  "version": "1.17.0",
+  "version": "1.17.2",
   "description": "Loaf - Levi's Opinionated Agentic Framework",
   "repository": "https://github.com/levifig/loaf",
   "license": "MIT",
-  "agents": [
-    "./agents/backend-dev.md",
-    "./agents/background-runner.md",
-    "./agents/context-archiver.md",
-    "./agents/dba.md",
-    "./agents/design.md",
-    "./agents/devops.md",
-    "./agents/frontend-dev.md",
-    "./agents/pm.md",
-    "./agents/power-systems.md",
-    "./agents/qa.md"
-  ],
-  "skills": [
-    "./skills/architecture/SKILL.md",
-    "./skills/brainstorm/SKILL.md",
-    "./skills/breakdown/SKILL.md",
-    "./skills/council-session/SKILL.md",
-    "./skills/database-design/SKILL.md",
-    "./skills/foundations/SKILL.md",
-    "./skills/go-development/SKILL.md",
-    "./skills/idea/SKILL.md",
-    "./skills/implement/SKILL.md",
-    "./skills/infrastructure-management/SKILL.md",
-    "./skills/interface-design/SKILL.md",
-    "./skills/orchestration/SKILL.md",
-    "./skills/power-systems-modeling/SKILL.md",
-    "./skills/python-development/SKILL.md",
-    "./skills/reference-session/SKILL.md",
-    "./skills/reflect/SKILL.md",
-    "./skills/research/SKILL.md",
-    "./skills/resume/SKILL.md",
-    "./skills/review-sessions/SKILL.md",
-    "./skills/ruby-development/SKILL.md",
-    "./skills/shape/SKILL.md",
-    "./skills/strategy/SKILL.md",
-    "./skills/typescript-development/SKILL.md"
-  ],
   "hooks": {
     "PreToolUse": [
       {

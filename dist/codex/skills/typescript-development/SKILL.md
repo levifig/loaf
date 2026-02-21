@@ -1,15 +1,9 @@
 ---
 name: typescript-development
 description: >-
-  Covers TypeScript 5+ and JavaScript development with React ecosystem. Includes
-  project setup, React 18+ components, Next.js 14+ App Router, modern ESM
-  patterns, Zustand/React Query state management, React Hook Form with Zod
-  validation, Tailwind CSS styling, Vitest/Playwright testing, and
-  accessibility. Use when building React components, setting up Next.js, or when
-  the user asks "how do I manage state?" or "what's the TypeScript way to do X?"
-  Not for design system philosophy or accessibility auditing (use
-  interface-design).
-version: 1.17.0
+  Covers TypeScript 5+, React 18+, Next.js 14+ App Router, Zustand, Tailwind
+  CSS, and Vitest testing.
+version: 1.17.2
 ---
 
 # TypeScript Development

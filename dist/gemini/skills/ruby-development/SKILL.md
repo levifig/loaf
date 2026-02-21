@@ -1,11 +1,9 @@
 ---
 name: ruby-development
 description: >-
-  Covers Ruby and Rails 8+ development following the DHH/37signals way. Includes
-  Ruby idioms, Hotwire, Solid Queue, Minitest, gem development, and CLI tools.
-  Use when building Rails apps, writing background jobs, or when the user asks
-  "how do I add Hotwire?" or "what's the Rails convention for X?"
-version: 1.17.0
+  Covers Ruby and Rails 8+ development: Hotwire, Solid Queue, Minitest, and
+  Rails conventions.
+version: 1.17.2
 ---
 
 # Ruby Development

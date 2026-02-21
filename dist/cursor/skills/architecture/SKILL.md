@@ -1,14 +1,10 @@
 ---
 name: architecture
 description: >-
-  Facilitates technical decision-making and creates Architecture Decision
-  Records (ADRs). Covers evaluating technical approaches, documenting decisions,
-  and maintaining decision history. Use when making significant technical
-  decisions, or when the user asks "should we use X or Y?" or "document this
-  architecture decision." Produces ADRs in docs/decisions/. Not for
-  project-level strategy (use strategy) or multi-agent deliberation (use
-  council-session).
-version: 1.17.0
+  Creates Architecture Decision Records (ADRs) through structured evaluation.
+  Use when making technical decisions or when the user asks "should we use X or
+  Y?"
+version: 1.17.2
 ---
 
 # Architecture

@@ -36,7 +36,7 @@ Compaction is a normal part of long workflows, not an emergency measure. Any wor
 2. After each significant decision, update session file
 3. After each subagent completes, record outcome in session
 4. If compaction occurs: read session, continue from Resumption Prompt
-5. If /clear needed: same recovery path via /loaf:resume
+5. If /clear needed: same recovery path via /resume
 ```
 
 This makes compaction invisible to workflow continuity. Whether context is compressed automatically or cleared manually, the session file provides the same recovery path.
@@ -123,7 +123,7 @@ Session files provide persistent context that survives `/clear`:
 ```
 1. Update session file with current state
 2. /clear to reset context
-3. /loaf:resume to reload from session file
+3. /resume to reload from session file
 4. Continue with clean context
 ```
 

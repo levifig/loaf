@@ -6,7 +6,7 @@
 # resolve in build output but not in raw source (by design: source is build-input).
 # Format: template-filename: [list of skill names that receive it]
 shared-templates:
-  session.md: [implement, resume, orchestration, reference-session, review-sessions]
+  session.md: [implement, resume-session, orchestration, reference-session, review-sessions]
   plan.md: [implement, council-session]
   adr.md: [architecture, reflect]
 

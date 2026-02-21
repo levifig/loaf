@@ -1,14 +1,11 @@
 ---
 description: >-
-  Conducts deep, structured brainstorming on ideas or problem spaces. Covers
-  divergent thinking, problem decomposition, and creative exploration. Use when
-  exploring possibilities before committing to a direction, or when the user
-  asks "help me think through this" or "what are the options for...?" Produces
-  structured idea explorations with trade-offs. Not for quick idea capture (use
-  idea) or strategic direction (use strategy).
+  Conducts deep, structured brainstorming with divergent thinking and trade-off
+  analysis. Use when the user asks "help me think through this" or "what are the
+  options?"
 agent: PM
 subtask: false
-version: 1.17.0
+version: 1.17.2
 ---
 
 # Brainstorm
