@@ -1,12 +1,9 @@
 ---
 name: go-development
 description: >-
-  Covers idiomatic Go development with patterns from Effective Go. Includes
-  project structure, goroutines and channels for concurrency, explicit error
-  handling, table-driven tests, and common idioms (guard clauses, defer,
-  embedding). Use when writing Go services, CLIs, or libraries, or when the user
-  asks "how do I handle errors in Go?" or "what's the Go way to do X?"
-version: 1.17.0
+  Covers idiomatic Go development: project structure, concurrency, error
+  handling, and testing.
+version: 1.17.2
 ---
 
 # Go Skill

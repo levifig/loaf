@@ -1,15 +1,10 @@
 ---
 description: >-
-  Shapes ideas into well-defined specifications through rigorous evaluation and
-  scope bounding. Covers problem definition, solution shaping, appetite setting,
-  and spec writing with test conditions. Use when turning ideas into
-  implementable specs, or when the user asks "shape this idea" or "write a spec
-  for this." Produces Shape Up-style specs with clear boundaries. Not for
-  capturing raw ideas (use idea) or decomposing specs into tasks (use
-  breakdown).
+  Shapes ideas into implementable specs with scope boundaries and test
+  conditions. Use when the user asks "shape this idea" or "write a spec."
 agent: PM
 subtask: false
-version: 1.17.0
+version: 1.17.2
 ---
 
 # Shape

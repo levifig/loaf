@@ -1,13 +1,8 @@
 ---
 name: database-design
 description: >-
-  Covers schema design, optimization, and database administration. Includes
-  primary key selection (UUID/ULID/serial), safe migrations, query optimization
-  with EXPLAIN ANALYZE, indexing strategies (B-tree, partial, composite), and
-  normalization tradeoffs. Use when designing tables, writing migrations, or
-  when the user asks "what primary key should I use?" or "how do I optimize this
-  query?" Not for ORM-level code patterns (use language skill) or infrastructure
-  provisioning (use infrastructure-management).
+  Covers schema design, migrations, query optimization, indexing strategies, and
+  normalization tradeoffs.
 ---
 
 # Database Skill

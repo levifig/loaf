@@ -1,13 +1,10 @@
 ---
-name: resume
 description: >-
-  Resumes existing session files and synchronizes state with Linear. Covers
-  session state restoration, Linear status sync, and context rebuilding from
-  session artifacts. Use when continuing interrupted work, or when the user asks
-  "resume that session" or "pick up where we left off." Produces updated session
-  state with current context. Not for referencing past decisions (use
-  reference-session) or starting new work (use implement).
-version: 1.17.0
+  Resumes existing session files and syncs state with Linear. Use when the user
+  asks "resume that session" or "pick up where we left off."
+agent: PM
+subtask: false
+version: 1.17.2
 ---
 
 # Resume Session

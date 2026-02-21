@@ -1,13 +1,8 @@
 ---
 name: breakdown
 description: >-
-  Decomposes specifications into atomic, implementable work items for Linear or
-  local task management. Covers task boundary identification, dependency
-  mapping, priority assignment, and right-sizing validation. Use when breaking
-  specs into tasks, or when the user asks "break this down" or "create tasks for
-  this spec." Produces task lists with dependencies, priorities, and
-  verification commands. Not for creating specs (use shape) or executing tasks
-  (use implement).
+  Decomposes specs into atomic tasks with dependencies and priorities. Use when
+  the user asks "break this down" or "create tasks for this spec."
 ---
 
 # Breakdown

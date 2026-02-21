@@ -31,7 +31,7 @@ When implementing tasks via `/loaf:implement TASK-XXX`:
 - Session created automatically with filename `YYYYMMDD-HHMMSS-task-XXX.md`
 - Task file updated with `session:` field linking to session
 - No user interaction needed for session naming
-- Resume via `/loaf:resume TASK-XXX`
+- Resume via `/loaf:resume-session TASK-XXX`
 
 Users work with tasks; sessions are an implementation detail.
 
@@ -392,7 +392,7 @@ When starting a new orchestration context:
 ### SessionStart Hook
 - Lists active sessions
 - Provides agent-specific context
-- Suggests session review/loaf:resume
+- Suggests session review/resume
 
 ### SessionEnd Hook
 - Displays completion checklist

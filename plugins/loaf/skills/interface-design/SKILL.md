@@ -1,13 +1,8 @@
 ---
 name: interface-design
 description: >-
-  Covers UI/UX design, accessibility, and design systems. Includes design
-  principles, color theory with WCAG contrast requirements, typography scales,
-  8pt spacing grid, responsive breakpoints, WCAG 2.1 accessibility compliance,
-  motion design, and design system governance. Use when designing interfaces,
-  choosing colors, or when the user asks "is this accessible?" or "what spacing
-  should I use?" Not for React/Next.js implementation details (use
-  typescript-development).
+  Covers UI/UX design, accessibility (WCAG 2.1), design systems, and responsive
+  patterns.
 user-invocable: false
 agent: 'frontend-dev'
 allowed-tools: 'Read, Write, Edit, Glob, Grep'

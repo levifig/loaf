@@ -56,7 +56,7 @@ function substituteCommands(content, knownCommands = []) {
   // First handle legacy placeholders for backward compatibility
   let result = content
     .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/loaf:implement")
-    .replace(/\{\{RESUME_CMD\}\}/g, "/loaf:resume")
+    .replace(/\{\{RESUME_CMD\}\}/g, "/loaf:resume-session")
     .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/loaf:implement");
 
   // Then auto-scope known commands: /command -> /loaf:command
@@ -317,8 +317,6 @@ function createPluginJson(config, pluginDir, agents, skills) {
     description: PLUGIN_DESCRIPTION,
     repository: REPOSITORY,
     license: "MIT",
-    agents: agents.map((a) => `./agents/${a}.md`),
-    skills: skills.map((s) => `./skills/${s}/SKILL.md`),
     hooks: {},
     mcpServers: MCP_SERVERS,
   };

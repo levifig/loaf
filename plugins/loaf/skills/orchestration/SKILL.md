@@ -1,13 +1,8 @@
 ---
 name: orchestration
 description: >-
-  Coordinates multi-agent work with PM-style patterns. Covers agent delegation,
-  council deliberation workflows, session file management, Linear issue
-  integration, and product planning. Use when managing complex tasks across
-  agents, running decision councils, or when the user asks "how do I break down
-  this work?" or "which agent should handle this?" Produces session files,
-  council records, task breakdowns, and progress updates. Not for standalone
-  research, brainstorming, or vision work (use research).
+  Coordinates multi-agent work: agent delegation, session management, Linear
+  integration, and council workflows.
 user-invocable: false
 agent: 'pm'
 allowed-tools: 'Read, Write, Edit, Glob, Grep, TodoWrite, TodoRead'

@@ -1,13 +1,8 @@
 ---
 name: strategy
 description: >-
-  Discovers and maintains strategic context in STRATEGY.md through structured
-  investigation. Covers persona refinement, market landscape analysis, problem
-  space mapping, and strategic positioning. Use when establishing or evolving
-  project strategy, or when the user asks "what's our strategy?" or "update the
-  strategic direction." Produces strategy document updates with evidence. Not
-  for post-implementation reflection (use reflect) or quick idea capture (use
-  idea).
+  Discovers and maintains strategic context in STRATEGY.md. Use when the user
+  asks "what's our strategy?" or "update the strategic direction."
 ---
 
 # Strategy

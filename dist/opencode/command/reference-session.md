@@ -1,15 +1,10 @@
 ---
 description: >-
-  Imports decisions and context from past sessions without full context
-  duplication. Covers extracting key decisions, outcomes, and architectural
-  insights from completed sessions. Use when starting new work that relates to
-  previous sessions, or when the user asks "reference that earlier session" or
-  "what did we decide before?" Produces concise decision summaries from
-  historical sessions. Not for resuming active sessions (use resume) or
-  reviewing session hygiene (use review-sessions).
+  Imports decisions and context from past sessions. Use when the user asks
+  "reference that earlier session" or "what did we decide before?"
 agent: PM
 subtask: false
-version: 1.17.0
+version: 1.17.2
 ---
 
 # Reference Session
@@ -79,6 +74,6 @@ Confirm what was imported: source session, content type, decision count, summary
 
 ## Related Skills
 
-- **resume** -- Resume active sessions (not reference past ones)
+- **resume-session** -- Resume active sessions (not reference past ones)
 - **review-sessions** -- Session hygiene and cleanup
 - **implement** -- Start new work that may reference past sessions

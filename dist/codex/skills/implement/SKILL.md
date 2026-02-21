@@ -1,14 +1,10 @@
 ---
 name: implement
 description: >-
-  Orchestrates implementation sessions for tasks, specs, or task sets through
-  strict agent delegation. Covers session creation, plan management, agent
-  spawning, batch execution with dependency waves, and Linear integration. Use
-  when starting implementation work, or when the user asks "implement this" or
-  "start working on TASK-XXX." Produces session files, plan files, and
-  coordinates specialized agent work. Not for shaping specs (use shape) or
-  breaking down work (use breakdown).
-version: 1.17.0
+  Orchestrates implementation sessions through agent delegation and batch
+  execution. Use when the user asks "implement this" or "start working on
+  TASK-XXX."
+version: 1.17.2
 ---
 
 # Implement

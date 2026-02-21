@@ -1,14 +1,9 @@
 ---
 name: research
 description: >-
-  Conducts project assessment, topic investigation, brainstorming, and vision
-  evolution. Covers assessing project state, exploring problem spaces,
-  generating ideas, and evolving strategic direction. Use when stepping back to
-  understand the big picture, or when the user asks "what's the current state?"
-  or "help me think through this problem." Produces state assessments, research
-  findings with ranked options, or vision change proposals. Not for multi-agent
-  coordination, session management, or task delegation (use orchestration).
-version: 1.17.0
+  Conducts project assessment and topic investigation. Use when stepping back to
+  understand the big picture or when the user asks "what's the current state?"
+version: 1.17.2
 ---
 
 # Research

@@ -1,12 +1,9 @@
 ---
 name: power-systems-modeling
 description: >-
-  Covers thermal rating models (CIGRE TB 601, IEEE 738), conductor temperature
-  limits, catenary physics (sag, tension, clearance), electrical properties
-  (resistance, reactance), and standards compliance (CIGRE, IEEE, IEC). Use when
-  implementing thermal models, calculating conductor physics, or when the user
-  asks "what are the CIGRE equations?" or "how do I validate this calculation?"
-version: 1.17.0
+  Covers thermal rating models (CIGRE TB 601, IEEE 738), conductor physics, and
+  electrical properties.
+version: 1.17.2
 ---
 
 # Power Systems Reference

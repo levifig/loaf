@@ -1,14 +1,10 @@
 ---
 description: >-
-  Captures ideas quickly into atomic, well-structured nuggets for later
-  evaluation. Covers rapid idea documentation with context, potential value, and
-  next steps. Use when capturing a new idea without deep analysis, or when the
-  user asks "I have an idea" or "note this down." Produces structured idea
-  files. Not for deep exploration (use brainstorm) or turning ideas into specs
-  (use shape).
+  Captures ideas into structured nuggets for later evaluation. Use when the user
+  says "I have an idea" or "note this down."
 agent: PM
 subtask: false
-version: 1.17.0
+version: 1.17.2
 ---
 
 # Idea

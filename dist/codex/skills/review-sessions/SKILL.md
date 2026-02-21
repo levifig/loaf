@@ -1,14 +1,10 @@
 ---
 name: review-sessions
 description: >-
-  Reviews agent artifacts in .agents/ and provides hygiene recommendations for
-  session lifecycle management. Covers session status auditing, stale session
-  detection, archival recommendations, and artifact cleanup. Use when
-  maintaining session health, or when the user asks "review my sessions" or
-  "clean up agent artifacts." Produces hygiene reports with actionable
-  recommendations. Not for resuming sessions (use resume) or starting new work
-  (use implement).
-version: 1.17.0
+  Reviews agent artifacts in .agents/ and provides session hygiene
+  recommendations. Use when the user asks "review my sessions" or "clean up
+  artifacts."
+version: 1.17.2
 ---
 
 # Review Sessions
