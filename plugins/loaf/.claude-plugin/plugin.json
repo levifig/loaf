@@ -1,6 +1,6 @@
 {
   "name": "loaf",
-  "version": "1.17.2",
+  "version": "1.17.3",
   "description": "Loaf - Levi's Opinionated Agentic Framework",
   "repository": "https://github.com/levifig/loaf",
   "license": "MIT",
@@ -247,11 +247,10 @@
       ]
     },
     "linear": {
-      "command": "npx",
+      "command": "bash",
       "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcp.linear.app/mcp"
+        "-lc",
+        "if [ -n \"${LINEAR_API_KEY:-}\" ]; then exec npx -y mcp-remote https://mcp.linear.app/mcp --header \"Authorization: Bearer ${LINEAR_API_KEY}\"; else exec npx -y mcp-remote https://mcp.linear.app/mcp; fi"
       ]
     },
     "serena": {

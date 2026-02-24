@@ -59,7 +59,9 @@ MCP servers are automatically started when needed. Prerequisites:
 ```bash
 # Requires Node.js 18+
 # No additional installation - runs via npx
-# You'll be prompted to authenticate with Linear on first use
+# Auth preference: if LINEAR_API_KEY is set, it is used first
+# Fallback: if LINEAR_API_KEY is not set, OAuth is used
+# You'll be prompted to authenticate with Linear on first use when API key auth is not active
 # Endpoint: https://mcp.linear.app/mcp (SSE deprecated)
 # New tools: initiatives, initiative updates, project milestones, project updates, project labels
 ```
@@ -111,7 +113,19 @@ uv --version
 
 ### Linear authentication
 
-Linear uses OAuth. On first use:
+Linear auth selection happens at runtime when the MCP server starts:
+
+- If `LINEAR_API_KEY` is present in the Claude process environment, Loaf uses API key auth.
+- If `LINEAR_API_KEY` is missing, Loaf falls back to OAuth.
+
+OAuth flow on first use:
+
 1. A browser window will open
 2. Authorize the connection
 3. Return to Claude Code
+
+To switch OAuth accounts, clear cached MCP OAuth state and reconnect:
+
+```bash
+rm -rf ~/.mcp-auth
+```

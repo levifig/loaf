@@ -150,8 +150,11 @@ const MCP_SERVERS = {
     args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
   },
   linear: {
-    command: "npx",
-    args: ["-y", "mcp-remote", "https://mcp.linear.app/mcp"],
+    command: "bash",
+    args: [
+      "-lc",
+      "if [ -n \"${LINEAR_API_KEY:-}\" ]; then exec npx -y mcp-remote https://mcp.linear.app/mcp --header \"Authorization: Bearer ${LINEAR_API_KEY}\"; else exec npx -y mcp-remote https://mcp.linear.app/mcp; fi",
+    ],
   },
   serena: {
     command: "uvx",
