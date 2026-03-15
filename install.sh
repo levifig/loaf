@@ -9,11 +9,11 @@
 # For local development:
 #   ./install.sh
 #
-# This script bootstraps Loaf by:
-# 1. Cloning the repo (or using local clone)
-# 2. Installing npm dependencies
-# 3. Building the CLI
-# 4. Running `loaf install --to all`
+# Flags are passed through to `loaf install`:
+#   ./install.sh --to cursor        # Install to specific target
+#   ./install.sh --to all           # Install to all detected targets
+#   ./install.sh --upgrade          # Update already-installed targets
+#   ./install.sh                    # Interactive selection (default)
 #
 set -euo pipefail
 
@@ -27,7 +27,6 @@ GREEN='\033[38;5;82m'
 YELLOW='\033[38;5;220m'
 GRAY='\033[38;5;245m'
 RED='\033[38;5;196m'
-ORANGE='\033[38;5;208m'
 
 print_header() {
     echo ""
@@ -89,6 +88,9 @@ check_requirements() {
 # ─────────────────────────────────────────────────────────────────────────────
 
 main() {
+    # Capture all args to pass through to loaf install
+    local install_args=("$@")
+
     print_header
 
     # Step 1: Requirements
@@ -100,11 +102,9 @@ main() {
     repo_dir="$(detect_dev_mode)" || true
 
     if [[ -n "${repo_dir}" ]]; then
-        # Dev mode: use local clone
         ok "Development mode: ${repo_dir}"
         echo ""
     else
-        # Remote: clone to install dir
         if [[ -d "${INSTALL_DIR}" ]]; then
             info "Updating existing installation..."
             git -C "${INSTALL_DIR}" pull --ff-only 2>/dev/null || {
@@ -124,10 +124,9 @@ main() {
     # Step 3: Build
     cd "${repo_dir}"
 
-    if [[ ! -d "node_modules" ]]; then
-        info "Installing dependencies..."
-        npm install --silent 2>/dev/null
-    fi
+    # Always install deps to catch lockfile changes after git pull
+    info "Installing dependencies..."
+    npm install --silent 2>/dev/null
 
     info "Building CLI..."
     npx tsup --silent 2>/dev/null
@@ -138,9 +137,12 @@ main() {
     ok "All targets built"
     echo ""
 
-    # Step 4: Install to detected tools
-    info "Installing to detected tools..."
-    node dist-cli/index.js install --to all
+    # Step 4: Install to detected tools (pass through any flags)
+    if [[ ${#install_args[@]} -gt 0 ]]; then
+        node dist-cli/index.js install "${install_args[@]}"
+    else
+        node dist-cli/index.js install --to all
+    fi
     echo ""
 
     # Claude Code instructions
