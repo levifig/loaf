@@ -1,20 +1,20 @@
 /**
  * OpenCode Build Target
  *
- * Generates flat OpenCode structure:
+ * Generates flat OpenCode structure (plural dirs per OpenCode config):
  * dist/opencode/
- * ├── skill/
+ * ├── skills/
  * │   ├── python/
  * │   ├── typescript/
  * │   └── ...
- * ├── agent/
+ * ├── agents/
  * │   ├── pm.md
  * │   ├── backend-dev.md
  * │   └── ...
- * ├── command/
+ * ├── commands/
  * │   ├── start-session.md
  * │   └── ...
- * └── plugin/
+ * └── plugins/
  *     └── hooks.js
  *
  * Reads frontmatter from sidecars (e.g., pm.opencode.yaml, SKILL.opencode.yaml)
@@ -125,7 +125,7 @@ export async function build({
  */
 function copySkills(srcDir, distDir, targetsConfig) {
   const src = join(srcDir, "skills");
-  const dest = join(distDir, "skill");
+  const dest = join(distDir, "skills");
 
   if (!existsSync(src)) {
     return;
@@ -192,7 +192,7 @@ function copySkills(srcDir, distDir, targetsConfig) {
  */
 function copyAgents(srcDir, distDir) {
   const src = join(srcDir, "agents");
-  const dest = join(distDir, "agent");
+  const dest = join(distDir, "agents");
 
   if (!existsSync(src)) {
     return;
@@ -225,13 +225,13 @@ function copyAgents(srcDir, distDir) {
 /**
  * Generate OpenCode commands from skills that have SKILL.opencode.yaml
  *
- * Skills with an OpenCode sidecar emit command files to dist/opencode/command/.
+ * Skills with an OpenCode sidecar emit command files to dist/opencode/commands/.
  * Routing metadata (agent, subtask, model) comes from the sidecar.
  * Body content and description come from SKILL.md.
  */
 function generateCommandsFromSkills(srcDir, distDir) {
   const skillsSrc = join(srcDir, "skills");
-  const commandsDest = join(distDir, "command");
+  const commandsDest = join(distDir, "commands");
 
   if (!existsSync(skillsSrc)) {
     return;
@@ -277,11 +277,11 @@ function generateCommandsFromSkills(srcDir, distDir) {
       mergedFrontmatter.agent = substituteAgentNames(mergedFrontmatter.agent, AGENT_MAP);
     }
 
-    // Rewrite relative links: command files live in command/ but templates and
-    // references live under skill/{name}/, so remap paths accordingly
+    // Rewrite relative links: command files live in commands/ but templates and
+    // references live under skills/{name}/, so remap paths accordingly
     const relinked = body
-      .replace(/\]\(templates\//g, `](../skill/${skill}/templates/`)
-      .replace(/\]\(references\//g, `](../skill/${skill}/references/`);
+      .replace(/\]\(templates\//g, `](../skills/${skill}/templates/`)
+      .replace(/\]\(references\//g, `](../skills/${skill}/references/`);
 
     // Write command file with merged frontmatter, command and agent name substitution
     const transformed = substituteAgentNames(
@@ -302,7 +302,7 @@ function generateCommandsFromSkills(srcDir, distDir) {
  * - session.end
  */
 function generateHooks(config, srcDir, distDir) {
-  const pluginDir = join(distDir, "plugin");
+  const pluginDir = join(distDir, "plugins");
   mkdirSync(pluginDir, { recursive: true });
 
   // Copy hooks lib and scripts as-is (hooks compare against runtime $AGENT_TYPE slugs)

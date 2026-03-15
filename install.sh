@@ -212,7 +212,7 @@ detect_tools() {
         TOOL_KEYS+=("opencode")
         TOOL_NAMES+=("OpenCode")
         TOOL_CONFIG_DIRS[opencode]="${opencode_config}"
-        if is_loaf_installed "${opencode_config}" "skill"; then
+        if is_loaf_installed "${opencode_config}" "skills"; then
             TOOL_INSTALLED+=("yes")
         else
             TOOL_INSTALLED+=("no")
@@ -527,19 +527,21 @@ write_loaf_marker() {
 install_opencode() {
     local dist="${INSTALL_DIR}/opencode"
     local config="${TOOL_CONFIG_DIRS[opencode]}"
+    local opencode_dirs=(skills agents commands plugins)
+    local dir=""
 
-    mkdir -p "${config}"/{skill,agent,command,plugin}
+    for dir in "${opencode_dirs[@]}"; do
+        mkdir -p "${config}/${dir}"
+    done
 
     if command -v rsync &> /dev/null; then
-        rsync -a --delete "${dist}/skill/" "${config}/skill/"
-        rsync -a --delete "${dist}/agent/" "${config}/agent/"
-        rsync -a --delete "${dist}/command/" "${config}/command/"
-        rsync -a --delete "${dist}/plugin/" "${config}/plugin/"
+        for dir in "${opencode_dirs[@]}"; do
+            rsync -a --delete "${dist}/${dir}/" "${config}/${dir}/"
+        done
     else
-        cp -r "${dist}/skill/"* "${config}/skill/" 2>/dev/null || true
-        cp -r "${dist}/agent/"* "${config}/agent/" 2>/dev/null || true
-        cp -r "${dist}/command/"* "${config}/command/" 2>/dev/null || true
-        cp -r "${dist}/plugin/"* "${config}/plugin/" 2>/dev/null || true
+        for dir in "${opencode_dirs[@]}"; do
+            cp -r "${dist}/${dir}/"* "${config}/${dir}/" 2>/dev/null || true
+        done
     fi
 
     write_loaf_marker "${config}"

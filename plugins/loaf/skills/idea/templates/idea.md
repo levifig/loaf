@@ -7,6 +7,7 @@
 captured: YYYY-MM-DDTHH:MM:SSZ
 status: raw
 tags: []
+origin:              # Optional: brainstorm document this spark came from
 ---
 
 # [Idea Title]

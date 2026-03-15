@@ -2,7 +2,8 @@
 name: shape
 description: >-
   Shapes ideas into implementable specs with scope boundaries and test conditions. Use when
-  the user asks "shape this idea" or "write a spec."
+  the user asks "shape this idea" or "write a spec." Also activate when an explored idea
+  has accumulated enough constraints and scope definition to bound into a spec.
 ---
 
 # Shape

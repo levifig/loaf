@@ -3,7 +3,10 @@ name: brainstorm
 description: >-
   Conducts deep, structured brainstorming with divergent thinking and trade-off
   analysis. Use when the user asks "help me think through this" or "what are the
-  options?"
+  options?" Also activate when the user is thinking out loud, exploring
+  tradeoffs, or comparing approaches without committing. Produces brainstorm
+  documents with sparks (speculative byproducts) that can later be promoted to
+  ideas via /idea.
 argument-hint: '[idea or problem]'
 ---
 
@@ -57,6 +60,31 @@ Unlike `/loaf:idea` (quick capture) or `/loaf:shape` (rigorous bounding), brains
 1. Assess: list ideas in `.agents/ideas/`, check recent sessions, review VISION for gaps
 2. Surface opportunities: what's blocking? What's not being pursued? Untested assumptions?
 3. Present options for exploration
+
+### Capture Sparks (All Modes)
+
+After the main brainstorm concludes, identify **sparks** -- speculative ideas that emerged but aren't part of the main direction. These are byproducts of exploration, not the conclusion.
+
+Add a `## Sparks` section at the end of the brainstorm document:
+
+```markdown
+## Sparks
+
+- **Title** -- one-line description
+- **Title** -- one-line description
+```
+
+Sparks are:
+- **Lightweight** -- one bullet, one line each. Don't expand or analyze.
+- **Byproducts** -- they emerged during brainstorming, not the main output
+- **Worth remembering** -- interesting enough to not lose, not ready for `/loaf:shape`
+
+Spark lifecycle:
+- Unprocessed (default) -- sitting in the brainstorm document
+- `*(promoted)*` -- processed into an idea via `/loaf:idea`
+- `~~Strikethrough~~ *(abandoned)*` -- decided not to pursue
+
+Brainstorm documents are **archived, never deleted** -- they hold exploration context, reasoning, and unprocessed sparks. A brainstorm doc remains active while it has unprocessed sparks.
 
 ---
 

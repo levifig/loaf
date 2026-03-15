@@ -3,7 +3,7 @@ name: reference-session
 description: >-
   Imports decisions and context from past sessions. Use when the user asks
   "reference that earlier session" or "what did we decide before?"
-version: 1.17.2
+version: 1.17.4
 ---
 
 # Reference Session

@@ -3,7 +3,7 @@ name: research
 description: >-
   Conducts project assessment and topic investigation. Use when stepping back to
   understand the big picture or when the user asks "what's the current state?"
-version: 1.17.2
+version: 1.17.4
 ---
 
 # Research
