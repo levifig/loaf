@@ -7,8 +7,8 @@ var __export = (target, all) => {
 
 // cli/index.ts
 import { Command } from "commander";
-import { readFileSync as readFileSync14 } from "fs";
-import { join as join15, dirname as dirname6 } from "path";
+import { readFileSync as readFileSync15 } from "fs";
+import { join as join17, dirname as dirname7 } from "path";
 import { fileURLToPath as fileURLToPath4 } from "url";
 
 // cli/commands/build.ts
@@ -1610,15 +1610,493 @@ ${gray2("Valid targets:")} ${VALID_TARGETS.join(", ")}, all`
   });
 }
 
+// cli/commands/init.ts
+import {
+  existsSync as existsSync15,
+  mkdirSync as mkdirSync9,
+  writeFileSync as writeFileSync9,
+  symlinkSync,
+  lstatSync,
+  realpathSync
+} from "fs";
+import { join as join16, relative, dirname as dirname6 } from "path";
+import { createInterface as createInterface2 } from "readline";
+
+// cli/lib/detect/project.ts
+import { existsSync as existsSync14, readFileSync as readFileSync14 } from "fs";
+import { join as join15 } from "path";
+function safeReadFile(path) {
+  try {
+    return readFileSync14(path, "utf-8");
+  } catch {
+    return "";
+  }
+}
+function hasLanguage(languages, name) {
+  return languages.some((l) => l.name === name);
+}
+function hasJsFamily(languages) {
+  return hasLanguage(languages, "TypeScript") || hasLanguage(languages, "JavaScript");
+}
+function detectLanguages(cwd) {
+  const languages = [];
+  if (existsSync14(join15(cwd, "tsconfig.json"))) {
+    languages.push({ name: "TypeScript", confidence: "high", indicator: "tsconfig.json" });
+  } else if (existsSync14(join15(cwd, "package.json"))) {
+    const content = safeReadFile(join15(cwd, "package.json"));
+    if (content.includes('"typescript"') || content.includes('"ts-node"')) {
+      languages.push({ name: "TypeScript", confidence: "medium", indicator: "package.json (typescript in deps)" });
+    }
+  }
+  if (!hasLanguage(languages, "TypeScript")) {
+    if (existsSync14(join15(cwd, "package.json"))) {
+      languages.push({ name: "JavaScript", confidence: "high", indicator: "package.json" });
+    }
+  }
+  if (existsSync14(join15(cwd, "pyproject.toml"))) {
+    languages.push({ name: "Python", confidence: "high", indicator: "pyproject.toml" });
+  } else if (existsSync14(join15(cwd, "setup.py"))) {
+    languages.push({ name: "Python", confidence: "high", indicator: "setup.py" });
+  } else if (existsSync14(join15(cwd, "requirements.txt"))) {
+    languages.push({ name: "Python", confidence: "medium", indicator: "requirements.txt" });
+  } else if (existsSync14(join15(cwd, "uv.lock"))) {
+    languages.push({ name: "Python", confidence: "medium", indicator: "uv.lock" });
+  } else if (existsSync14(join15(cwd, "Pipfile"))) {
+    languages.push({ name: "Python", confidence: "medium", indicator: "Pipfile" });
+  }
+  if (existsSync14(join15(cwd, "Gemfile"))) {
+    languages.push({ name: "Ruby", confidence: "high", indicator: "Gemfile" });
+  } else if (existsSync14(join15(cwd, ".ruby-version"))) {
+    languages.push({ name: "Ruby", confidence: "medium", indicator: ".ruby-version" });
+  } else if (existsSync14(join15(cwd, ".ruby-gemset"))) {
+    languages.push({ name: "Ruby", confidence: "medium", indicator: ".ruby-gemset" });
+  }
+  if (existsSync14(join15(cwd, "go.mod"))) {
+    languages.push({ name: "Go", confidence: "high", indicator: "go.mod" });
+  }
+  if (existsSync14(join15(cwd, "Cargo.toml"))) {
+    languages.push({ name: "Rust", confidence: "high", indicator: "Cargo.toml" });
+  }
+  return languages;
+}
+function detectFrameworks(cwd, languages) {
+  const frameworks = [];
+  if (hasJsFamily(languages)) {
+    const lang = hasLanguage(languages, "TypeScript") ? "TypeScript" : "JavaScript";
+    const nextConfigs = ["next.config.js", "next.config.mjs", "next.config.ts"];
+    const nextIndicator = nextConfigs.find((f) => existsSync14(join15(cwd, f)));
+    if (nextIndicator) {
+      frameworks.push({ name: "Next.js", language: lang, indicator: nextIndicator });
+    }
+    if (!nextIndicator && existsSync14(join15(cwd, "package.json"))) {
+      const content = safeReadFile(join15(cwd, "package.json"));
+      if (content.includes('"react"')) {
+        frameworks.push({ name: "React", language: lang, indicator: "package.json (react in deps)" });
+      }
+    }
+  }
+  if (hasLanguage(languages, "Python")) {
+    const pyprojectContent = safeReadFile(join15(cwd, "pyproject.toml"));
+    const requirementsContent = safeReadFile(join15(cwd, "requirements.txt"));
+    const pyDeps = pyprojectContent + "\n" + requirementsContent;
+    if (pyDeps.includes("fastapi")) {
+      frameworks.push({ name: "FastAPI", language: "Python", indicator: "fastapi in deps" });
+    }
+    if (existsSync14(join15(cwd, "manage.py")) || pyDeps.includes("django")) {
+      const indicator = existsSync14(join15(cwd, "manage.py")) ? "manage.py" : "django in deps";
+      frameworks.push({ name: "Django", language: "Python", indicator });
+    }
+    if (pyDeps.includes("flask")) {
+      frameworks.push({ name: "Flask", language: "Python", indicator: "flask in deps" });
+    }
+  }
+  if (hasLanguage(languages, "Ruby")) {
+    if (existsSync14(join15(cwd, "config", "routes.rb")) || existsSync14(join15(cwd, "bin", "rails"))) {
+      const indicator = existsSync14(join15(cwd, "config", "routes.rb")) ? "config/routes.rb" : "bin/rails";
+      frameworks.push({ name: "Rails", language: "Ruby", indicator });
+    }
+  }
+  return frameworks;
+}
+function detectExistingStructure(cwd) {
+  const docFiles = [
+    "docs/VISION.md",
+    "docs/STRATEGY.md",
+    "docs/ARCHITECTURE.md",
+    "README.md"
+  ];
+  const existingDocs = docFiles.filter((f) => existsSync14(join15(cwd, f)));
+  return {
+    hasAgentsDir: existsSync14(join15(cwd, ".agents")),
+    hasAgentsMd: existsSync14(join15(cwd, ".agents", "AGENTS.md")),
+    hasDocsDir: existsSync14(join15(cwd, "docs")),
+    hasChangelog: existsSync14(join15(cwd, "CHANGELOG.md")),
+    hasClaudeDir: existsSync14(join15(cwd, ".claude")),
+    hasLoafJson: existsSync14(join15(cwd, ".agents", "loaf.json")),
+    existingDocs
+  };
+}
+function detectProject(cwd) {
+  const languages = detectLanguages(cwd);
+  const frameworks = detectFrameworks(cwd, languages);
+  const existing = detectExistingStructure(cwd);
+  return { languages, frameworks, existing };
+}
+
+// cli/commands/init.ts
+var yellow2 = (s) => `\x1B[33m${s}\x1B[0m`;
+function withinProject(cwd, fullPath) {
+  let check = fullPath;
+  while (!existsSync15(check) && check !== cwd) {
+    check = dirname6(check);
+  }
+  try {
+    const realCheck = realpathSync(check);
+    const realCwd = realpathSync(cwd);
+    return realCheck === realCwd || realCheck.startsWith(realCwd + "/");
+  } catch {
+    return false;
+  }
+}
+var bold3 = (s) => `\x1B[1m${s}\x1B[0m`;
+var green3 = (s) => `\x1B[32m${s}\x1B[0m`;
+var gray3 = (s) => `\x1B[90m${s}\x1B[0m`;
+var cyan2 = (s) => `\x1B[36m${s}\x1B[0m`;
+var SKILL_MAP = {
+  TypeScript: ["typescript-development"],
+  Python: ["python-development"],
+  Ruby: ["ruby-development"],
+  Go: ["go-development"],
+  "Next.js": ["typescript-development", "interface-design"],
+  React: ["typescript-development", "interface-design"],
+  FastAPI: ["python-development", "database-design"],
+  Django: ["python-development", "database-design"],
+  Rails: ["ruby-development", "database-design"],
+  Flask: ["python-development"]
+};
+var SCAFFOLD_DIRS = [
+  ".agents",
+  ".agents/sessions",
+  ".agents/ideas",
+  ".agents/specs",
+  ".agents/tasks",
+  "docs",
+  "docs/knowledge",
+  "docs/decisions"
+];
+var SCAFFOLD_FILES = [
+  [
+    ".agents/AGENTS.md",
+    () => `# Project Instructions
+
+> Agent instructions for this project. Customize per your needs.
+
+## Quick Start
+
+<!-- Add build/run commands here -->
+
+## Project Structure
+
+<!-- Describe your project layout -->
+
+## Development Practices
+
+<!-- Add coding conventions, testing approach, etc. -->
+
+## Key Decisions
+
+<!-- Link to ADRs in docs/decisions/ -->
+`
+  ],
+  [
+    ".agents/loaf.json",
+    () => JSON.stringify(
+      {
+        version: "1.0.0",
+        initialized: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      null,
+      2
+    ) + "\n"
+  ],
+  [
+    "docs/VISION.md",
+    () => `# Vision
+
+## Purpose
+<!-- Why does this project exist? What problem does it solve? -->
+
+## Target Users
+<!-- Who is this for? -->
+
+## Success Criteria
+<!-- How do you know when you've succeeded? -->
+
+## Non-Goals
+<!-- What is explicitly out of scope? -->
+`
+  ],
+  [
+    "docs/STRATEGY.md",
+    () => `# Strategy
+
+## Current Focus
+<!-- What are you working on right now and why? -->
+
+## Priorities
+<!-- Ordered list of what matters most -->
+
+## Constraints
+<!-- Budget, timeline, team size, technical limitations -->
+
+## Open Questions
+<!-- Unresolved strategic decisions -->
+`
+  ],
+  [
+    "docs/ARCHITECTURE.md",
+    () => `# Architecture
+
+## Overview
+<!-- High-level system description -->
+
+## Components
+<!-- Key components and their responsibilities -->
+
+## Data Flow
+<!-- How data moves through the system -->
+
+## Technology Choices
+<!-- Key technology decisions and rationale -->
+
+## Deployment
+<!-- How the system is deployed -->
+`
+  ],
+  [
+    "CHANGELOG.md",
+    () => `# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/).
+
+## [Unreleased]
+`
+  ]
+];
+function askYesNo2(question) {
+  if (!process.stdin.isTTY) {
+    return Promise.resolve(false);
+  }
+  const rl = createInterface2({
+    input: process.stdin,
+    output: process.stdout
+  });
+  return new Promise((resolve) => {
+    rl.on("close", () => resolve(false));
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase().startsWith("y"));
+    });
+  });
+}
+function printDetected(info) {
+  console.log(`  ${bold3("Detected:")}`);
+  if (info.languages.length === 0 && info.frameworks.length === 0) {
+    console.log(`    ${gray3("No languages or frameworks detected")}`);
+  } else {
+    for (const lang of info.languages) {
+      console.log(`    ${green3("\u2713")} ${lang.name} ${gray3(`(${lang.indicator})`)}`);
+    }
+    for (const fw of info.frameworks) {
+      console.log(`    ${green3("\u2713")} ${fw.name} ${gray3(`(${fw.indicator})`)}`);
+    }
+  }
+  console.log();
+  console.log(`  ${bold3("Existing:")}`);
+  const checks = [
+    [info.existing.hasAgentsDir, ".agents/ directory"],
+    [info.existing.hasAgentsMd, ".agents/AGENTS.md"],
+    [info.existing.hasDocsDir, "docs/ directory"],
+    [info.existing.hasChangelog, "CHANGELOG.md"],
+    [info.existing.hasClaudeDir, ".claude/ directory"],
+    [info.existing.hasLoafJson, ".agents/loaf.json"]
+  ];
+  for (const [exists, label] of checks) {
+    if (exists) {
+      console.log(`    ${green3("\u2713")} ${label}`);
+    } else {
+      console.log(`    ${gray3("\u2717")} ${label}`);
+    }
+  }
+}
+function scaffoldDirs(cwd) {
+  const created = [];
+  const skipped = [];
+  for (const dir of SCAFFOLD_DIRS) {
+    const fullPath = join16(cwd, dir);
+    if (!existsSync15(fullPath)) {
+      if (!withinProject(cwd, fullPath)) {
+        skipped.push(dir + "/");
+        continue;
+      }
+      mkdirSync9(fullPath, { recursive: true });
+      created.push(dir + "/");
+    }
+  }
+  return { created, skipped };
+}
+function scaffoldFiles(cwd) {
+  const created = [];
+  const skipped = [];
+  for (const [relPath, contentFn] of SCAFFOLD_FILES) {
+    const fullPath = join16(cwd, relPath);
+    if (!existsSync15(fullPath)) {
+      if (!withinProject(cwd, fullPath)) {
+        skipped.push(relPath);
+        continue;
+      }
+      const parentDir = dirname6(fullPath);
+      if (!existsSync15(parentDir)) {
+        mkdirSync9(parentDir, { recursive: true });
+      }
+      writeFileSync9(fullPath, contentFn(), "utf-8");
+      created.push(relPath);
+    }
+  }
+  return { created, skipped };
+}
+function getRecommendedSkills(info) {
+  const skills = /* @__PURE__ */ new Set(["foundations"]);
+  for (const lang of info.languages) {
+    const mapped = SKILL_MAP[lang.name];
+    if (mapped) {
+      for (const s of mapped) skills.add(s);
+    }
+  }
+  for (const fw of info.frameworks) {
+    const mapped = SKILL_MAP[fw.name];
+    if (mapped) {
+      for (const s of mapped) skills.add(s);
+    }
+  }
+  return Array.from(skills);
+}
+function fileOrSymlinkExists(path) {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function registerInitCommand(program2) {
+  program2.command("init").description("Initialize a project with Loaf structure").option("--no-symlinks", "Skip symlink creation prompts").action(async (options) => {
+    const cwd = process.cwd();
+    console.log(`
+${bold3("loaf init")}
+`);
+    process.stdout.write(`  ${cyan2("scanning")} project...
+
+`);
+    const info = detectProject(cwd);
+    printDetected(info);
+    console.log();
+    const dirs = scaffoldDirs(cwd);
+    const files = scaffoldFiles(cwd);
+    const allSkipped = [...dirs.skipped, ...files.skipped];
+    if (dirs.created.length > 0 || files.created.length > 0) {
+      console.log(`  ${bold3("Creating:")}`);
+      for (const dir of dirs.created) {
+        console.log(`    ${green3("+")} ${dir}`);
+      }
+      for (const file of files.created) {
+        console.log(`    ${green3("+")} ${file}`);
+      }
+      console.log();
+    } else {
+      console.log(`  ${gray3("Nothing to create \u2014 all files exist")}
+`);
+    }
+    if (allSkipped.length > 0) {
+      console.log(`  ${yellow2("Skipped")} (symlink points outside project):`);
+      for (const s of allSkipped) {
+        console.log(`    ${yellow2("!")} ${s}`);
+      }
+      console.log();
+    }
+    if (options.symlinks) {
+      const agentsMdPath = join16(cwd, ".agents", "AGENTS.md");
+      if (existsSync15(agentsMdPath)) {
+        console.log(`  ${bold3("Symlinks:")}`);
+        const claudeSymlink = join16(cwd, ".claude", "CLAUDE.md");
+        if (!fileOrSymlinkExists(claudeSymlink)) {
+          const yes = await askYesNo2(
+            `    Create .claude/CLAUDE.md \u2192 .agents/AGENTS.md? [y/N] `
+          );
+          if (yes) {
+            const claudeDir = join16(cwd, ".claude");
+            if (!existsSync15(claudeDir)) {
+              mkdirSync9(claudeDir, { recursive: true });
+            }
+            const relTarget = relative(claudeDir, agentsMdPath);
+            symlinkSync(relTarget, claudeSymlink);
+            console.log(`    ${green3("\u2713")} Created .claude/CLAUDE.md`);
+          }
+        }
+        const rootSymlink = join16(cwd, "AGENTS.md");
+        if (!fileOrSymlinkExists(rootSymlink)) {
+          const yes = await askYesNo2(
+            `    Create ./AGENTS.md \u2192 .agents/AGENTS.md? [y/N] `
+          );
+          if (yes) {
+            const relTarget = relative(cwd, agentsMdPath);
+            symlinkSync(relTarget, rootSymlink);
+            console.log(`    ${green3("\u2713")} Created ./AGENTS.md`);
+          }
+        }
+        console.log();
+      }
+    }
+    const skills = getRecommendedSkills(info);
+    if (skills.length > 0) {
+      console.log(`  ${bold3("Recommended skills:")}`);
+      const stackParts = [];
+      for (const lang of info.languages) {
+        if (SKILL_MAP[lang.name]) stackParts.push(lang.name);
+      }
+      for (const fw of info.frameworks) {
+        if (SKILL_MAP[fw.name]) stackParts.push(fw.name);
+      }
+      const nonFoundation = skills.filter((s) => s !== "foundations");
+      if (nonFoundation.length > 0) {
+        const stackLabel = stackParts.length > 0 ? gray3(`(for ${stackParts.join(" + ")})`) : "";
+        console.log(
+          `    \u2022 ${nonFoundation.join(", ")}  ${stackLabel}`
+        );
+      }
+      console.log(`    \u2022 foundations  ${gray3("(always)")}`);
+      console.log();
+    }
+    console.log(`  ${green3("\u2713")} Project initialized
+`);
+    console.log(`  ${bold3("Next steps:")}`);
+    console.log(`    1. Edit .agents/AGENTS.md with your project details`);
+    console.log(`    2. Run ${cyan2("loaf install")} to set up your AI tools`);
+    console.log();
+  });
+}
+
 // cli/index.ts
-var __dirname3 = dirname6(fileURLToPath4(import.meta.url));
+var __dirname3 = dirname7(fileURLToPath4(import.meta.url));
 function getVersion3() {
   for (const candidate of [
-    join15(__dirname3, "..", "package.json"),
-    join15(__dirname3, "..", "..", "package.json")
+    join17(__dirname3, "..", "package.json"),
+    join17(__dirname3, "..", "..", "package.json")
   ]) {
     try {
-      const pkg = JSON.parse(readFileSync14(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync15(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -1630,6 +2108,7 @@ var program = new Command();
 program.name("loaf").description("Loaf \u2014 Levi's Opinionated Agentic Framework").version(getVersion3(), "-v, --version");
 registerBuildCommand(program);
 registerInstallCommand(program);
+registerInitCommand(program);
 if (process.argv.length <= 2) {
   program.outputHelp();
   process.exit(0);
