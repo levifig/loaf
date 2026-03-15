@@ -155,6 +155,11 @@
         "matcher": "Edit|Write"
       },
       {
+        "command": "bash $HOME/.cursor/hooks/post-tool/foundations-changelog-reminder.sh",
+        "timeout": 30,
+        "matcher": "Bash"
+      },
+      {
         "command": "bash $HOME/.cursor/hooks/post-tool/orchestration-generate-task-board.sh",
         "timeout": 30,
         "matcher": "Edit|Write"

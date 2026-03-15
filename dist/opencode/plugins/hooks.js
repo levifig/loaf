@@ -76,6 +76,9 @@ const postToolHooks = {
     { id: 'design-a11y-audit', script: 'post-tool/design-a11y-audit.sh', timeout: 60000 },
     { id: 'generate-task-board', script: 'post-tool/orchestration-generate-task-board.sh', timeout: 60000 },
   ],
+  'Bash': [
+    { id: 'changelog-reminder', script: 'post-tool/foundations-changelog-reminder.sh', timeout: 60000 },
+  ],
 };
 
 const sessionHooks = {
