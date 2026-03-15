@@ -4,6 +4,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { registerBuildCommand } from "./commands/build.js";
 import { registerInstallCommand } from "./commands/install.js";
+import { registerInitCommand } from "./commands/init.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -32,6 +33,7 @@ program
 
 registerBuildCommand(program);
 registerInstallCommand(program);
+registerInitCommand(program);
 
 // Show help when no subcommand is given (exit 0, not error)
 if (process.argv.length <= 2) {
