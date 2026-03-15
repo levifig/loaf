@@ -7,21 +7,36 @@ See [README.md](../README.md) for what Loaf is and how to install it.
 ## Quick Start
 
 ```bash
-npm install && npm run build
+npm install && npm run build   # Build CLI + all targets
+loaf build                     # After initial build, use the CLI directly
+loaf install --to all          # Install to detected tools
 ```
 
 ## Project Structure
 
 ```
-src/
+cli/                            # CLI tool (TypeScript, bundled by tsup)
+├── index.ts                    # Entry point (Commander.js)
+├── commands/
+│   ├── build.ts                # loaf build
+│   └── install.ts              # loaf install
+└── lib/
+    ├── build/                  # Build system
+    │   ├── types.ts            # Shared types
+    │   ├── targets/            # Target transformers (claude-code, opencode, cursor, codex, gemini)
+    │   └── lib/                # Build utilities (version, sidecar, substitutions, etc.)
+    ├── detect/                 # Tool detection
+    └── install/                # Installation logic
+
+content/                        # Distributable content
 ├── skills/{name}/SKILL.md      # Domain knowledge + references/ + templates/
 ├── templates/                  # Shared templates (distributed at build time)
 ├── agents/{name}.md            # Thin routers (frontmatter: model, skills, tools)
-├── hooks/{pre,post}-tool/      # Hook scripts
-└── config/
-    ├── hooks.yaml              # Hook definitions, plugin-groups
-    └── targets.yaml            # Target defaults, sidecars, shared-templates
-build/targets/{target}.js       # Target transformers
+└── hooks/{pre,post}-tool/      # Hook scripts
+
+config/                         # Build configuration
+├── hooks.yaml                  # Hook definitions, plugin-groups
+└── targets.yaml                # Target defaults, sidecars, shared-templates
 ```
 
 **Output:** `plugins/` (Claude Code), `dist/{target}/` (others)
@@ -30,22 +45,23 @@ build/targets/{target}.js       # Target transformers
 
 | Component | Location | Key File |
 |-----------|----------|----------|
-| Skills | `src/skills/{name}/` | `SKILL.md` |
-| Agents | `src/agents/{name}.md` | - |
-| Hooks | `src/hooks/{pre,post}-tool/` | - |
-| Config | `src/config/` | `hooks.yaml`, `targets.yaml` |
+| Skills | `content/skills/{name}/` | `SKILL.md` |
+| Agents | `content/agents/{name}.md` | - |
+| Hooks | `content/hooks/{pre,post}-tool/` | - |
+| Config | `config/` | `hooks.yaml`, `targets.yaml` |
+| CLI | `cli/` | `index.ts` |
 
 ## Common Tasks
 
-**Add skill:** Create `src/skills/{name}/SKILL.md`, add to `plugin-groups` in `hooks.yaml`
+**Add skill:** Create `content/skills/{name}/SKILL.md`, add to `plugin-groups` in `hooks.yaml`
 
-**Add agent:** Create `src/agents/{name}.md`, add to `plugin-groups` in `hooks.yaml`
+**Add agent:** Create `content/agents/{name}.md`, add to `plugin-groups` in `hooks.yaml`
 
-**Add hook:** Create script in `src/hooks/{pre,post}-tool/`, register in `hooks.yaml`
+**Add hook:** Create script in `content/hooks/{pre,post}-tool/`, register in `hooks.yaml`
 
-**Add template:** Create in `src/skills/{name}/templates/` (skill-specific) or `src/templates/` + register in `shared-templates` in `targets.yaml`
+**Add template:** Create in `content/skills/{name}/templates/` (skill-specific) or `content/templates/` + register in `shared-templates` in `targets.yaml`
 
-**Add target:** Create `build/targets/{target}.js`, add to `targets.yaml` and `build.js`
+**Add target:** Create `cli/lib/build/targets/{target}.ts`, register in `cli/commands/build.ts`
 
 ## Skill Development
 
@@ -139,9 +155,9 @@ Only these fields belong in `SKILL.md`:
 
 Artifact format templates (session files, specs, ADRs, task files) live in `templates/` directories. SKILL.md references them with links instead of embedding inline.
 
-**Skill-specific templates:** `src/skills/{name}/templates/` — templates unique to one skill.
+**Skill-specific templates:** `content/skills/{name}/templates/` — templates unique to one skill.
 
-**Shared templates:** `src/templates/` — distributed to multiple skills at build time via `shared-templates` config in `targets.yaml`.
+**Shared templates:** `content/templates/` — distributed to multiple skills at build time via `shared-templates` config in `targets.yaml`.
 
 ```yaml
 # targets.yaml
@@ -249,8 +265,21 @@ Users shouldn't invoke `/python-development` directly.
 ### Commands
 
 ```bash
-npm run build          # Build all targets
-npm run build:claude-code  # Claude Code only
+loaf build                     # Build all targets
+loaf build --target claude-code  # Specific target
+loaf install --to all          # Install to all detected tools
+loaf install --to cursor       # Install to specific tool
+loaf install --upgrade         # Update already-installed targets
+```
+
+### Development
+
+```bash
+npm install                    # Install dependencies
+npm run build:cli              # Build CLI only (tsup)
+npm run build                  # Build CLI + all content targets
+npm run typecheck              # Type check (tsc --noEmit)
+npm link                       # Make `loaf` available globally
 ```
 
 ### Targets
@@ -260,12 +289,13 @@ npm run build:claude-code  # Claude Code only
 | claude-code | `plugins/loaf/` | Merges sidecars into output |
 | opencode | `dist/opencode/` | Skills, agents, and commands (from skills) |
 | cursor | `dist/cursor/` | Skills, agents, and hooks |
-| codex | `dist/codex/` | Skills and agents only |
-| gemini | `dist/gemini/` | Skills and agents only |
+| codex | `dist/codex/` | Skills only |
+| gemini | `dist/gemini/` | Skills only |
 
 ### Before Committing
 
-- [ ] `npm run build` succeeds
+- [ ] `loaf build` succeeds
+- [ ] `npm run typecheck` passes
 - [ ] Frontmatter has required fields
 - [ ] New skills registered in `hooks.yaml`
 - [ ] Sidecar file for Claude-specific fields
