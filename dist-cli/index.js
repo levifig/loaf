@@ -7,9 +7,9 @@ var __export = (target, all) => {
 
 // cli/index.ts
 import { Command } from "commander";
-import { readFileSync as readFileSync12 } from "fs";
-import { join as join12, dirname as dirname4 } from "path";
-import { fileURLToPath as fileURLToPath2 } from "url";
+import { readFileSync as readFileSync13 } from "fs";
+import { join as join15, dirname as dirname5 } from "path";
+import { fileURLToPath as fileURLToPath3 } from "url";
 
 // cli/commands/build.ts
 import { existsSync as existsSync10, readFileSync as readFileSync11 } from "fs";
@@ -1230,15 +1230,378 @@ ${gray("Valid targets:")} ${TARGET_NAMES.join(", ")}`
   });
 }
 
-// cli/index.ts
+// cli/commands/install.ts
+import { existsSync as existsSync13, readFileSync as readFileSync12 } from "fs";
+import { join as join14, dirname as dirname4 } from "path";
+import { fileURLToPath as fileURLToPath2 } from "url";
+import { createInterface } from "readline";
+
+// cli/lib/detect/tools.ts
+import { existsSync as existsSync11 } from "fs";
+import { join as join12 } from "path";
+import { execFileSync } from "child_process";
+import { platform } from "os";
+var HOME = process.env.HOME || process.env.USERPROFILE || "";
+var XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME || join12(HOME, ".config");
+var LOAF_MARKER_FILE = ".loaf-version";
+function hasCmd(cmd) {
+  try {
+    execFileSync("which", [cmd], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function isMacOS() {
+  return platform() === "darwin";
+}
+function isLoafInstalled(configDir) {
+  if (existsSync11(join12(configDir, LOAF_MARKER_FILE))) {
+    return true;
+  }
+  const skillsDir = join12(configDir, "skills");
+  for (const skill of ["foundations", "python-development", "python"]) {
+    if (existsSync11(join12(skillsDir, skill))) {
+      return true;
+    }
+  }
+  return false;
+}
+function detectClaudeCode() {
+  return hasCmd("claude");
+}
+function detectTools() {
+  const tools = [];
+  const opencodeConfig = join12(XDG_CONFIG_HOME, "opencode");
+  if (existsSync11(opencodeConfig)) {
+    tools.push({
+      key: "opencode",
+      name: "OpenCode",
+      configDir: opencodeConfig,
+      installed: isLoafInstalled(opencodeConfig),
+      detectedVia: "config"
+    });
+  }
+  const cursorConfig = join12(HOME, ".cursor");
+  let cursorDetected = false;
+  let cursorVia = "";
+  if (hasCmd("cursor")) {
+    cursorDetected = true;
+    cursorVia = "cli";
+  } else if (isMacOS() && (existsSync11("/Applications/Cursor.app") || existsSync11(join12(HOME, "Applications/Cursor.app")))) {
+    cursorDetected = true;
+    cursorVia = "app";
+  } else if (existsSync11(cursorConfig)) {
+    cursorDetected = true;
+    cursorVia = "config";
+  }
+  if (cursorDetected) {
+    tools.push({
+      key: "cursor",
+      name: "Cursor",
+      configDir: cursorConfig,
+      installed: isLoafInstalled(cursorConfig),
+      detectedVia: cursorVia
+    });
+  }
+  const codexConfig = (process.env.CODEX_HOME || join12(HOME, ".codex")).replace(
+    /\/$/,
+    ""
+  );
+  let codexDetected = false;
+  let codexVia = "";
+  if (hasCmd("codex")) {
+    codexDetected = true;
+    codexVia = "cli";
+  } else if (existsSync11(codexConfig) || existsSync11(join12(HOME, ".codex"))) {
+    codexDetected = true;
+    codexVia = "config";
+  }
+  if (codexDetected) {
+    tools.push({
+      key: "codex",
+      name: "Codex",
+      configDir: codexConfig,
+      installed: isLoafInstalled(codexConfig),
+      detectedVia: codexVia
+    });
+  }
+  const geminiConfig = join12(HOME, ".gemini");
+  let geminiDetected = false;
+  let geminiVia = "";
+  if (hasCmd("gemini")) {
+    geminiDetected = true;
+    geminiVia = "cli";
+  } else if (existsSync11(geminiConfig)) {
+    geminiDetected = true;
+    geminiVia = "config";
+  }
+  if (geminiDetected) {
+    tools.push({
+      key: "gemini",
+      name: "Gemini",
+      configDir: geminiConfig,
+      installed: isLoafInstalled(geminiConfig),
+      detectedVia: geminiVia
+    });
+  }
+  return tools;
+}
+var DEFAULT_CONFIG_DIRS = {
+  opencode: join12(XDG_CONFIG_HOME, "opencode"),
+  cursor: join12(HOME, ".cursor"),
+  codex: process.env.CODEX_HOME || join12(HOME, ".codex"),
+  gemini: join12(HOME, ".gemini")
+};
+function isDevMode(rootDir) {
+  return existsSync11(join12(rootDir, ".git")) && existsSync11(join12(rootDir, "package.json")) && existsSync11(join12(rootDir, "content", "skills"));
+}
+
+// cli/lib/install/installer.ts
+import {
+  mkdirSync as mkdirSync8,
+  cpSync as cpSync7,
+  writeFileSync as writeFileSync8,
+  rmSync as rmSync6,
+  existsSync as existsSync12,
+  readdirSync as readdirSync8
+} from "fs";
+import { join as join13 } from "path";
+import { execFileSync as execFileSync2 } from "child_process";
+var LOAF_MARKER_FILE2 = ".loaf-version";
+var VERSION2 = "2.0.0";
+function hasRsync() {
+  try {
+    execFileSync2("which", ["rsync"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function syncDir(src, dest) {
+  mkdirSync8(dest, { recursive: true });
+  if (hasRsync()) {
+    execFileSync2("rsync", ["-a", "--delete", `${src}/`, `${dest}/`], {
+      stdio: "inherit"
+    });
+  } else {
+    const entries = readdirSync8(dest);
+    for (const entry of entries) {
+      rmSync6(join13(dest, entry), { recursive: true, force: true });
+    }
+    cpSync7(src, dest, { recursive: true });
+  }
+}
+function writeMarker(configDir) {
+  mkdirSync8(configDir, { recursive: true });
+  writeFileSync8(join13(configDir, LOAF_MARKER_FILE2), `${VERSION2}
+`);
+}
+function installOpencode(distDir, configDir) {
+  const dirs = ["skills", "agents", "commands", "plugins"];
+  for (const dir of dirs) {
+    const src = join13(distDir, dir);
+    const dest = join13(configDir, dir);
+    if (existsSync12(src)) {
+      syncDir(src, dest);
+    }
+  }
+  writeMarker(configDir);
+}
+function installCursor(distDir, configDir) {
+  const staleCommands = join13(configDir, "commands");
+  if (existsSync12(staleCommands)) {
+    rmSync6(staleCommands, { recursive: true });
+  }
+  const skillsSrc = join13(distDir, "skills");
+  if (existsSync12(skillsSrc)) {
+    syncDir(skillsSrc, join13(configDir, "skills"));
+  }
+  const agentsSrc = join13(distDir, "agents");
+  if (existsSync12(agentsSrc)) {
+    syncDir(agentsSrc, join13(configDir, "agents"));
+  }
+  const hooksSrc = join13(distDir, "hooks.json");
+  if (existsSync12(hooksSrc)) {
+    mkdirSync8(configDir, { recursive: true });
+    cpSync7(hooksSrc, join13(configDir, "hooks.json"));
+  }
+  const hooksDir = join13(distDir, "hooks");
+  if (existsSync12(hooksDir)) {
+    syncDir(hooksDir, join13(configDir, "hooks"));
+  }
+  writeMarker(configDir);
+}
+function installCodex(distDir, configDir) {
+  const skillsSrc = join13(distDir, "skills");
+  if (existsSync12(skillsSrc)) {
+    syncDir(skillsSrc, join13(configDir, "skills"));
+  }
+  writeMarker(configDir);
+}
+function installGemini(distDir, configDir) {
+  const skillsSrc = join13(distDir, "skills");
+  if (existsSync12(skillsSrc)) {
+    syncDir(skillsSrc, join13(configDir, "skills"));
+  }
+  writeMarker(configDir);
+}
+var INSTALLERS = {
+  opencode: installOpencode,
+  cursor: installCursor,
+  codex: installCodex,
+  gemini: installGemini
+};
+
+// cli/commands/install.ts
 var __dirname2 = dirname4(fileURLToPath2(import.meta.url));
+var bold2 = (s) => `\x1B[1m${s}\x1B[0m`;
+var green2 = (s) => `\x1B[32m${s}\x1B[0m`;
+var red2 = (s) => `\x1B[31m${s}\x1B[0m`;
+var yellow = (s) => `\x1B[33m${s}\x1B[0m`;
+var gray2 = (s) => `\x1B[90m${s}\x1B[0m`;
+var white = (s) => `\x1B[97m${s}\x1B[0m`;
+function findRootDir2() {
+  let dir = __dirname2;
+  for (let i = 0; i < 10; i++) {
+    const pkgPath = join14(dir, "package.json");
+    try {
+      const pkg = JSON.parse(readFileSync12(pkgPath, "utf-8"));
+      if (pkg.name === "loaf") return dir;
+    } catch {
+    }
+    const parent = dirname4(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error("Could not find loaf root directory");
+}
+function askYesNo(question) {
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase().startsWith("y"));
+    });
+  });
+}
+var VALID_TARGETS = Object.keys(DEFAULT_CONFIG_DIRS);
+function registerInstallCommand(program2) {
+  program2.command("install").description("Install Loaf to detected AI tool configurations").option("--to <target>", 'Target to install to (or "all")').option("--upgrade", "Update only already-installed targets").action(async (options) => {
+    const rootDir = findRootDir2();
+    const distDir = join14(rootDir, "dist");
+    const devMode = isDevMode(rootDir);
+    console.log(`
+${bold2("loaf install")}
+`);
+    const hasClaudeCode = detectClaudeCode();
+    const tools = detectTools();
+    if (hasClaudeCode) {
+      console.log(`  ${green2("\u2713")} Claude Code detected`);
+      if (devMode) {
+        console.log(
+          `    ${gray2("Test locally:")} ${white(`/plugin marketplace add ${rootDir}`)}`
+        );
+      } else {
+        console.log(
+          `    ${gray2("Install via:")} ${white("/plugin marketplace add levifig/loaf")}`
+        );
+      }
+      console.log();
+    }
+    for (const tool of tools) {
+      const status = tool.installed ? ` ${yellow("(installed)")}` : "";
+      console.log(`  ${green2("\u2713")} ${tool.name} detected${status}`);
+    }
+    if (tools.length === 0 && !hasClaudeCode) {
+      console.log(`  ${gray2("No AI tools detected")}`);
+      console.log();
+      return;
+    }
+    console.log();
+    let selectedTargets;
+    if (options.to === "all") {
+      selectedTargets = tools.map((t) => t.key);
+    } else if (options.to) {
+      if (!VALID_TARGETS.includes(options.to) && options.to !== "all") {
+        console.error(
+          `${red2("error:")} Unknown target ${bold2(options.to)}
+${gray2("Valid targets:")} ${VALID_TARGETS.join(", ")}, all`
+        );
+        process.exit(1);
+      }
+      const tool = tools.find((t) => t.key === options.to);
+      selectedTargets = [options.to];
+      if (!tool) {
+        console.log(
+          `  ${yellow("\u26A1")} ${options.to} was not auto-detected; installing to ${DEFAULT_CONFIG_DIRS[options.to]}`
+        );
+      }
+    } else if (options.upgrade) {
+      selectedTargets = tools.filter((t) => t.installed).map((t) => t.key);
+      if (selectedTargets.length === 0) {
+        console.log(`  ${gray2("No installed targets to upgrade")}`);
+        console.log();
+        return;
+      }
+      console.log(`  ${gray2("Upgrading:")} ${selectedTargets.join(", ")}`);
+    } else {
+      selectedTargets = [];
+      for (const tool of tools) {
+        const status = tool.installed ? ` ${yellow("(installed)")}` : "";
+        const yes = await askYesNo(
+          `  Install to ${bold2(tool.name)}${status}? [y/N] `
+        );
+        if (yes) {
+          selectedTargets.push(tool.key);
+        }
+      }
+    }
+    if (selectedTargets.length === 0) {
+      console.log(`  ${gray2("No targets selected")}`);
+      console.log();
+      return;
+    }
+    console.log();
+    for (const target of selectedTargets) {
+      const tool = tools.find((t) => t.key === target);
+      const configDir = tool?.configDir || DEFAULT_CONFIG_DIRS[target];
+      const targetDistDir = join14(distDir, target);
+      if (!existsSync13(targetDistDir)) {
+        console.log(
+          `  ${red2("\u2717")} ${target} \u2014 no build output found. Run ${bold2("loaf build")} first.`
+        );
+        continue;
+      }
+      const installer = INSTALLERS[target];
+      if (!installer) {
+        console.log(`  ${red2("\u2717")} ${target} \u2014 no installer available`);
+        continue;
+      }
+      try {
+        installer(targetDistDir, configDir);
+        console.log(`  ${green2("\u2713")} ${target} installed to ${gray2(configDir)}`);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.log(`  ${red2("\u2717")} ${target} \u2014 ${msg}`);
+      }
+    }
+    console.log();
+  });
+}
+
+// cli/index.ts
+var __dirname3 = dirname5(fileURLToPath3(import.meta.url));
 function getVersion2() {
   for (const candidate of [
-    join12(__dirname2, "..", "package.json"),
-    join12(__dirname2, "..", "..", "package.json")
+    join15(__dirname3, "..", "package.json"),
+    join15(__dirname3, "..", "..", "package.json")
   ]) {
     try {
-      const pkg = JSON.parse(readFileSync12(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync13(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -1249,6 +1612,7 @@ function getVersion2() {
 var program = new Command();
 program.name("loaf").description("Loaf \u2014 Levi's Opinionated Agentic Framework").version(getVersion2(), "-v, --version");
 registerBuildCommand(program);
+registerInstallCommand(program);
 if (process.argv.length <= 2) {
   program.outputHelp();
   process.exit(0);
