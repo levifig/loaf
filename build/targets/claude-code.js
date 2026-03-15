@@ -151,10 +151,7 @@ const MCP_SERVERS = {
   },
   linear: {
     command: "bash",
-    args: [
-      "-lc",
-      "if [ -n \"${LINEAR_API_KEY:-}\" ]; then exec npx -y mcp-remote https://mcp.linear.app/mcp --header \"Authorization: Bearer ${LINEAR_API_KEY}\"; else exec npx -y mcp-remote https://mcp.linear.app/mcp; fi",
-    ],
+    args: ["${CLAUDE_PLUGIN_ROOT}/hooks/linear-mcp.sh"],
   },
   serena: {
     command: "uvx",
@@ -599,6 +596,12 @@ function copyAllHooks(config, srcDir, pluginDir) {
         cpSync(src, dest);
       }
     }
+  }
+
+  // Copy Linear MCP wrapper (not in hooks config; avoids ${KEY#op://} in manifest for validator)
+  const linearMcpSrc = join(srcDir, "hooks", "linear-mcp.sh");
+  if (existsSync(linearMcpSrc)) {
+    cpSync(linearMcpSrc, join(hooksDir, "linear-mcp.sh"));
   }
 
   // Copy subagent hooks as-is

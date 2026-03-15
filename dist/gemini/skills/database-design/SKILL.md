@@ -3,7 +3,7 @@ name: database-design
 description: >-
   Covers schema design, migrations, query optimization, indexing strategies, and
   normalization tradeoffs.
-version: 1.17.2
+version: 1.17.4
 ---
 
 # Database Skill

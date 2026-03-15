@@ -2,7 +2,9 @@
 name: idea
 description: >-
   Captures ideas into structured nuggets for later evaluation. Use when the user says
-  "I have an idea" or "note this down."
+  "I have an idea" or "note this down." Also activate when a specific actionable concept
+  crystallizes during conversation. Without arguments, scans brainstorm documents for
+  unprocessed sparks to promote.
 ---
 
 # Idea
@@ -23,7 +25,15 @@ Ideas are raw nuggets -- unprocessed, unshaped, but worth remembering. The goal 
 
 ### Step 1: Parse Input
 
-If `$ARGUMENTS` contains the idea, capture directly. If empty/unclear, ask **at most 2-3 questions**: core idea, problem/opportunity, immediate constraints.
+If `$ARGUMENTS` contains the idea, capture directly.
+
+If `$ARGUMENTS` is empty, **scan for sparks** in brainstorm documents:
+1. Search `.agents/drafts/brainstorm-*.md` for `## Sparks` sections
+2. List unprocessed sparks (not marked as promoted or abandoned)
+3. Present the list and let the user pick one to promote
+4. When promoting: create idea file with `origin:` field, mark spark as `*(promoted)*` in source document
+
+If no sparks found and no arguments, ask **at most 2-3 questions**: core idea, problem/opportunity, immediate constraints.
 
 ### Step 2: Generate Idea File
 
@@ -67,5 +77,5 @@ raw -> shaping -> shaped (becomes SPEC) -> archived
 ## Related Skills
 
 - **shape** -- Develop an idea into a SPEC
-- **brainstorm** -- Deep thinking on an idea or problem space
+- **brainstorm** -- Deep thinking on an idea or problem space (sparks from brainstorms can be promoted to ideas)
 - **research** -- Investigate before capturing

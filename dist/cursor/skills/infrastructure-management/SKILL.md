@@ -1,7 +1,7 @@
 ---
 name: infrastructure-management
 description: 'Covers Docker, Kubernetes, GitOps, CI/CD pipelines, and container security.'
-version: 1.17.2
+version: 1.17.4
 ---
 
 # Infrastructure

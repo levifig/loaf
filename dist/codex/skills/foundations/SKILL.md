@@ -3,7 +3,7 @@ name: foundations
 description: >-
   Establishes code quality, commit conventions, documentation standards, and
   security patterns.
-version: 1.17.2
+version: 1.17.4
 ---
 
 # Code Standards
