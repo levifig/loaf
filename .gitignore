@@ -6,11 +6,18 @@ node_modules/
 # plugins/ - tracked (for Claude Code marketplace)
 # .claude-plugin/ - tracked (for Claude Code marketplace)
 
+# CLI build output
+dist-cli/
+
 # Root-level build outputs (deprecated - use dist/)
 /skills/
 /agents/
 /commands/
 /hooks.json
+
+# Temporary backups
+dist-backup/
+plugins-backup/
 
 # OS files
 .DS_Store
