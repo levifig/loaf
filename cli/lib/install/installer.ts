@@ -13,11 +13,29 @@ import {
   existsSync,
   readdirSync,
 } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
+import { readFileSync } from "fs";
 import { execFileSync } from "child_process";
+import { fileURLToPath } from "url";
 
 const LOAF_MARKER_FILE = ".loaf-version";
-const VERSION = "2.0.0";
+
+function getVersion(): string {
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  for (const candidate of [
+    join(__dirname, "..", "package.json"),
+    join(__dirname, "..", "..", "package.json"),
+    join(__dirname, "..", "..", "..", "package.json"),
+  ]) {
+    try {
+      const pkg = JSON.parse(readFileSync(candidate, "utf-8"));
+      if (pkg.name === "loaf") return pkg.version;
+    } catch {
+      continue;
+    }
+  }
+  return "0.0.0";
+}
 
 function hasRsync(): boolean {
   try {
@@ -47,7 +65,7 @@ function syncDir(src: string, dest: string): void {
 
 function writeMarker(configDir: string): void {
   mkdirSync(configDir, { recursive: true });
-  writeFileSync(join(configDir, LOAF_MARKER_FILE), `${VERSION}\n`);
+  writeFileSync(join(configDir, LOAF_MARKER_FILE), `${getVersion()}\n`);
 }
 
 export function installOpencode(distDir: string, configDir: string): void {

@@ -7,9 +7,9 @@ var __export = (target, all) => {
 
 // cli/index.ts
 import { Command } from "commander";
-import { readFileSync as readFileSync13 } from "fs";
-import { join as join15, dirname as dirname5 } from "path";
-import { fileURLToPath as fileURLToPath3 } from "url";
+import { readFileSync as readFileSync14 } from "fs";
+import { join as join15, dirname as dirname6 } from "path";
+import { fileURLToPath as fileURLToPath4 } from "url";
 
 // cli/commands/build.ts
 import { existsSync as existsSync10, readFileSync as readFileSync11 } from "fs";
@@ -1231,9 +1231,9 @@ ${gray("Valid targets:")} ${TARGET_NAMES.join(", ")}`
 }
 
 // cli/commands/install.ts
-import { existsSync as existsSync13, readFileSync as readFileSync12 } from "fs";
-import { join as join14, dirname as dirname4 } from "path";
-import { fileURLToPath as fileURLToPath2 } from "url";
+import { existsSync as existsSync13, readFileSync as readFileSync13 } from "fs";
+import { join as join14, dirname as dirname5 } from "path";
+import { fileURLToPath as fileURLToPath3 } from "url";
 import { createInterface } from "readline";
 
 // cli/lib/detect/tools.ts
@@ -1366,10 +1366,27 @@ import {
   existsSync as existsSync12,
   readdirSync as readdirSync8
 } from "fs";
-import { join as join13 } from "path";
+import { join as join13, dirname as dirname4 } from "path";
+import { readFileSync as readFileSync12 } from "fs";
 import { execFileSync as execFileSync2 } from "child_process";
+import { fileURLToPath as fileURLToPath2 } from "url";
 var LOAF_MARKER_FILE2 = ".loaf-version";
-var VERSION2 = "2.0.0";
+function getVersion2() {
+  const __dirname4 = dirname4(fileURLToPath2(import.meta.url));
+  for (const candidate of [
+    join13(__dirname4, "..", "package.json"),
+    join13(__dirname4, "..", "..", "package.json"),
+    join13(__dirname4, "..", "..", "..", "package.json")
+  ]) {
+    try {
+      const pkg = JSON.parse(readFileSync12(candidate, "utf-8"));
+      if (pkg.name === "loaf") return pkg.version;
+    } catch {
+      continue;
+    }
+  }
+  return "0.0.0";
+}
 function hasRsync() {
   try {
     execFileSync2("which", ["rsync"], { stdio: "ignore" });
@@ -1394,7 +1411,7 @@ function syncDir(src, dest) {
 }
 function writeMarker(configDir) {
   mkdirSync8(configDir, { recursive: true });
-  writeFileSync8(join13(configDir, LOAF_MARKER_FILE2), `${VERSION2}
+  writeFileSync8(join13(configDir, LOAF_MARKER_FILE2), `${getVersion2()}
 `);
 }
 function installOpencode(distDir, configDir) {
@@ -1454,7 +1471,7 @@ var INSTALLERS = {
 };
 
 // cli/commands/install.ts
-var __dirname2 = dirname4(fileURLToPath2(import.meta.url));
+var __dirname2 = dirname5(fileURLToPath3(import.meta.url));
 var bold2 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green2 = (s) => `\x1B[32m${s}\x1B[0m`;
 var red2 = (s) => `\x1B[31m${s}\x1B[0m`;
@@ -1466,11 +1483,11 @@ function findRootDir2() {
   for (let i = 0; i < 10; i++) {
     const pkgPath = join14(dir, "package.json");
     try {
-      const pkg = JSON.parse(readFileSync12(pkgPath, "utf-8"));
+      const pkg = JSON.parse(readFileSync13(pkgPath, "utf-8"));
       if (pkg.name === "loaf") return dir;
     } catch {
     }
-    const parent = dirname4(dir);
+    const parent = dirname5(dir);
     if (parent === dir) break;
     dir = parent;
   }
@@ -1594,14 +1611,14 @@ ${gray2("Valid targets:")} ${VALID_TARGETS.join(", ")}, all`
 }
 
 // cli/index.ts
-var __dirname3 = dirname5(fileURLToPath3(import.meta.url));
-function getVersion2() {
+var __dirname3 = dirname6(fileURLToPath4(import.meta.url));
+function getVersion3() {
   for (const candidate of [
     join15(__dirname3, "..", "package.json"),
     join15(__dirname3, "..", "..", "package.json")
   ]) {
     try {
-      const pkg = JSON.parse(readFileSync13(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync14(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -1610,7 +1627,7 @@ function getVersion2() {
   return "0.0.0";
 }
 var program = new Command();
-program.name("loaf").description("Loaf \u2014 Levi's Opinionated Agentic Framework").version(getVersion2(), "-v, --version");
+program.name("loaf").description("Loaf \u2014 Levi's Opinionated Agentic Framework").version(getVersion3(), "-v, --version");
 registerBuildCommand(program);
 registerInstallCommand(program);
 if (process.argv.length <= 2) {
