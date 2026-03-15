@@ -4,7 +4,7 @@ description: >-
   the user asks "break this down" or "create tasks for this spec."
 agent: PM
 subtask: false
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Breakdown

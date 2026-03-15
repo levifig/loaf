@@ -1,15 +1,28 @@
 {
   "name": "loaf",
-  "version": "1.17.4",
+  "version": "2.0.0",
   "description": "Loaf - Levi's Opinionated Agentic Framework for Claude Code, OpenCode, Cursor, Codex, and Gemini",
   "type": "module",
+  "bin": {
+    "loaf": "dist-cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist-cli/index.js"
+    }
+  },
+  "files": [
+    "dist-cli/",
+    "content/",
+    "config/",
+    "build/"
+  ],
   "scripts": {
-    "build": "node build/build.js all",
-    "build:claude-code": "node build/build.js claude-code",
-    "build:opencode": "node build/build.js opencode",
-    "build:cursor": "node build/build.js cursor",
-    "build:codex": "node build/build.js codex",
-    "build:gemini": "node build/build.js gemini"
+    "build:cli": "tsup",
+    "build:content": "node dist-cli/index.js build",
+    "build": "tsup && node dist-cli/index.js build",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -17,8 +30,18 @@
   },
   "author": "Levi Figueira",
   "license": "MIT",
+  "keywords": ["ai", "agent", "skills", "cli", "claude", "cursor", "codex", "gemini"],
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
+    "commander": "^14.0.3",
     "gray-matter": "^4.0.3",
     "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   }
 }

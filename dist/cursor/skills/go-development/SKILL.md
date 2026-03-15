@@ -3,7 +3,7 @@ name: go-development
 description: >-
   Covers idiomatic Go development: project structure, concurrency, error
   handling, and testing.
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Go Skill

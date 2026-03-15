@@ -4,7 +4,7 @@ description: >-
   Orchestrates implementation sessions through agent delegation and batch
   execution. Use when the user asks "implement this" or "start working on
   TASK-XXX."
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Implement

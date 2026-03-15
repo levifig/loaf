@@ -3,7 +3,7 @@ name: typescript-development
 description: >-
   Covers TypeScript 5+, React 18+, Next.js 14+ App Router, Zustand, Tailwind
   CSS, and Vitest testing.
-version: 1.17.4
+version: 2.0.0
 ---
 
 # TypeScript Development

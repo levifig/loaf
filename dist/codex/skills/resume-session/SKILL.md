@@ -3,7 +3,7 @@ name: resume-session
 description: >-
   Resumes existing session files and syncs state with Linear. Use when the user
   asks "resume that session" or "pick up where we left off."
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Resume Session

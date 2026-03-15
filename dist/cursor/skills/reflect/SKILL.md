@@ -3,7 +3,7 @@ name: reflect
 description: >-
   Integrates learnings from shipped work into strategic documents. Use after
   completing significant work or when the user asks "what did we learn?"
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Reflect

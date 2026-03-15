@@ -3,7 +3,7 @@ name: ruby-development
 description: >-
   Covers Ruby and Rails 8+ development: Hotwire, Solid Queue, Minitest, and
   Rails conventions.
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Ruby Development
