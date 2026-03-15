@@ -4,7 +4,7 @@ description: >-
   asks "what's our strategy?" or "update the strategic direction."
 agent: PM
 subtask: false
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Strategy

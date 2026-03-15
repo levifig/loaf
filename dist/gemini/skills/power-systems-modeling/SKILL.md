@@ -3,7 +3,7 @@ name: power-systems-modeling
 description: >-
   Covers thermal rating models (CIGRE TB 601, IEEE 738), conductor physics, and
   electrical properties.
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Power Systems Reference

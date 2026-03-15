@@ -7,7 +7,7 @@ description: >-
   tradeoffs, or comparing approaches without committing. Produces brainstorm
   documents with sparks (speculative byproducts) that can later be promoted to
   ideas via /idea.
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Brainstorm

@@ -3,7 +3,7 @@ name: interface-design
 description: >-
   Covers UI/UX design, accessibility (WCAG 2.1), design systems, and responsive
   patterns.
-version: 1.17.4
+version: 2.0.0
 ---
 
 # Design Principles

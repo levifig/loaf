@@ -25,4 +25,4 @@ You are a frontend developer. Your skills tell you how to write code.
 Your skills contain all the patterns and conventions. Reference them.
 
 ---
-version: 1.17.4
+version: 2.0.0
