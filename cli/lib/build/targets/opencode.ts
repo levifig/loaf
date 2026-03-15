@@ -4,20 +4,10 @@
  * Generates flat OpenCode structure (plural dirs per OpenCode config):
  * dist/opencode/
  * ├── skills/
- * │   ├── python/
- * │   ├── typescript/
- * │   └── ...
  * ├── agents/
- * │   ├── pm.md
- * │   ├── backend-dev.md
- * │   └── ...
- * ├── commands/
- * │   ├── start-session.md
- * │   └── ...
+ * ├── commands/    (generated from skills with OpenCode sidecars)
  * └── plugins/
  *     └── hooks.js
- *
- * Reads frontmatter from sidecars (e.g., pm.opencode.yaml, SKILL.opencode.yaml)
  */
 
 import {
@@ -31,105 +21,56 @@ import {
 } from "fs";
 import matter from "gray-matter";
 import { join } from "path";
-import { loadAgentSidecar, loadSkillFrontmatter } from "../lib/sidecar.js";
 import { parse as parseYaml } from "yaml";
+import { loadAgentSidecar, loadSkillFrontmatter } from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
 import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
 import { copySharedTemplates } from "../lib/shared-templates.js";
+import { copyDirWithTransform } from "../lib/copy-utils.js";
+import type { BuildContext, HooksConfig, HookDefinition } from "../types.js";
 
-/**
- * Substitute command placeholders with OpenCode unscoped commands
- *
- * Placeholders:
- * - {{IMPLEMENT_CMD}} -> /implement
- * - {{RESUME_CMD}} -> /resume
- * - {{ORCHESTRATE_CMD}} -> /implement
- */
-function substituteCommands(content) {
+const TARGET_NAME = "opencode";
+
+function substituteCommands(content: string): string {
   return content
     .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/implement")
     .replace(/\{\{RESUME_CMD\}\}/g, "/resume")
     .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/implement");
 }
 
-/**
- * Copy references directory with command substitution for markdown files
- */
-function copyReferencesWithSubstitution(srcDir, destDir) {
-  mkdirSync(destDir, { recursive: true });
-
-  const entries = readdirSync(srcDir, { withFileTypes: true });
-  for (const entry of entries) {
-    const srcPath = join(srcDir, entry.name);
-    const destPath = join(destDir, entry.name);
-
-    if (entry.isDirectory()) {
-      copyReferencesWithSubstitution(srcPath, destPath);
-    } else if (entry.name.endsWith(".md")) {
-      // Apply substitutions to markdown files
-      const content = readFileSync(srcPath, "utf-8");
-      writeFileSync(destPath, substituteAgentNames(substituteCommands(content), AGENT_MAP));
-    } else {
-      // Copy non-markdown files as-is
-      cpSync(srcPath, destPath);
-    }
-  }
-}
-
-const TARGET_NAME = "opencode";
-
-// Version is loaded dynamically from package.json at build time
-let VERSION = "0.0.0";
-
-// Agent name map is loaded dynamically from sidecars at build time
-let AGENT_MAP = {};
-
-/**
- * Build OpenCode distribution
- */
 export async function build({
   config,
-  targetConfig,
   targetsConfig,
   rootDir,
   srcDir,
   distDir,
-}) {
-  // Load version from package.json at build time
-  VERSION = getVersion(rootDir);
+}: BuildContext): Promise<void> {
+  const version = getVersion(rootDir);
+  const agentMap = buildAgentMap(srcDir, TARGET_NAME);
+  const transformMd = (content: string) =>
+    substituteAgentNames(substituteCommands(content), agentMap);
 
-  // Build agent name map from sidecars
-  AGENT_MAP = buildAgentMap(srcDir, TARGET_NAME);
-
-  // Clean and create dist directory
   if (existsSync(distDir)) {
     rmSync(distDir, { recursive: true });
   }
   mkdirSync(distDir, { recursive: true });
 
-  // Copy skills with frontmatter from sidecars
-  copySkills(srcDir, distDir, targetsConfig);
-
-  // Copy and transform agents with frontmatter from sidecars
-  copyAgents(srcDir, distDir);
-
-  // Generate commands from skills with OpenCode sidecars
-  generateCommandsFromSkills(srcDir, distDir);
-
-  // Generate hooks.js
-  generateHooks(config, srcDir, distDir);
+  copySkills(srcDir, distDir, targetsConfig, transformMd);
+  copyAgents(srcDir, distDir, agentMap);
+  generateCommandsFromSkills(srcDir, distDir, version, agentMap);
+  generateHooks(config as HooksConfig, srcDir, distDir);
 }
 
-/**
- * Copy all skills with frontmatter from sidecars
- */
-function copySkills(srcDir, distDir, targetsConfig) {
+function copySkills(
+  srcDir: string,
+  distDir: string,
+  targetsConfig: BuildContext["targetsConfig"],
+  transformMd: (content: string) => string,
+): void {
   const src = join(srcDir, "skills");
   const dest = join(distDir, "skills");
 
-  if (!existsSync(src)) {
-    return;
-  }
+  if (!existsSync(src)) return;
 
   mkdirSync(dest, { recursive: true });
 
@@ -142,61 +83,43 @@ function copySkills(srcDir, distDir, targetsConfig) {
     const skillDest = join(dest, skill);
     mkdirSync(skillDest, { recursive: true });
 
-    // Load frontmatter from SKILL.md (standard format works for OpenCode)
     const frontmatter = loadSkillFrontmatter(skillSrc);
 
-    // Read SKILL.md body (strip existing frontmatter if any)
     const skillMdPath = join(skillSrc, "SKILL.md");
     if (existsSync(skillMdPath)) {
       const content = readFileSync(skillMdPath, "utf-8");
       const { content: body } = matter(content);
-
-      // Write SKILL.md with frontmatter, command and agent name substitution
-      const transformed = substituteAgentNames(
-        substituteCommands(matter.stringify(body, frontmatter)),
-        AGENT_MAP
+      writeFileSync(
+        join(skillDest, "SKILL.md"),
+        transformMd(matter.stringify(body, frontmatter)),
       );
-      writeFileSync(join(skillDest, "SKILL.md"), transformed);
     }
 
-    // Copy references directory with command substitution
-    const refSrc = join(skillSrc, "references");
-    const refDest = join(skillDest, "references");
-    if (existsSync(refSrc)) {
-      copyReferencesWithSubstitution(refSrc, refDest);
+    for (const subdir of ["references", "templates"]) {
+      const subSrc = join(skillSrc, subdir);
+      if (existsSync(subSrc)) {
+        copyDirWithTransform(subSrc, join(skillDest, subdir), transformMd);
+      }
     }
 
-    // Copy scripts directory
     const scriptsSrc = join(skillSrc, "scripts");
-    const scriptsDest = join(skillDest, "scripts");
     if (existsSync(scriptsSrc)) {
-      cpSync(scriptsSrc, scriptsDest, { recursive: true });
+      cpSync(scriptsSrc, join(skillDest, "scripts"), { recursive: true });
     }
 
-    // Copy templates directory with substitution
-    const templatesSrc = join(skillSrc, "templates");
-    const templatesDest = join(skillDest, "templates");
-    if (existsSync(templatesSrc)) {
-      copyReferencesWithSubstitution(templatesSrc, templatesDest);
-    }
-
-    // Copy shared templates for this skill (won't overwrite skill-specific ones)
-    copySharedTemplates(skill, skillDest, srcDir, targetsConfig, (content) =>
-      substituteAgentNames(substituteCommands(content), AGENT_MAP)
-    );
+    copySharedTemplates(skill, skillDest, srcDir, targetsConfig, transformMd);
   }
 }
 
-/**
- * Copy and transform all agents with frontmatter from sidecars
- */
-function copyAgents(srcDir, distDir) {
+function copyAgents(
+  srcDir: string,
+  distDir: string,
+  agentMap: Record<string, string>,
+): void {
   const src = join(srcDir, "agents");
   const dest = join(distDir, "agents");
 
-  if (!existsSync(src)) {
-    return;
-  }
+  if (!existsSync(src)) return;
 
   mkdirSync(dest, { recursive: true });
 
@@ -206,36 +129,28 @@ function copyAgents(srcDir, distDir) {
     const srcPath = join(src, file);
     const destPath = join(dest, file);
 
-    // Read source body (strip existing frontmatter if any)
     const content = readFileSync(srcPath, "utf-8");
     const { content: body } = matter(content);
-
-    // Load frontmatter from sidecar
     const frontmatter = loadAgentSidecar(srcPath, TARGET_NAME);
 
-    // Reconstruct the file with sidecar frontmatter and agent name substitution
     const transformed = substituteAgentNames(
       matter.stringify(body, frontmatter),
-      AGENT_MAP
+      agentMap,
     );
     writeFileSync(destPath, transformed);
   }
 }
 
-/**
- * Generate OpenCode commands from skills that have SKILL.opencode.yaml
- *
- * Skills with an OpenCode sidecar emit command files to dist/opencode/commands/.
- * Routing metadata (agent, subtask, model) comes from the sidecar.
- * Body content and description come from SKILL.md.
- */
-function generateCommandsFromSkills(srcDir, distDir) {
+function generateCommandsFromSkills(
+  srcDir: string,
+  distDir: string,
+  version: string,
+  agentMap: Record<string, string>,
+): void {
   const skillsSrc = join(srcDir, "skills");
   const commandsDest = join(distDir, "commands");
 
-  if (!existsSync(skillsSrc)) {
-    return;
-  }
+  if (!existsSync(skillsSrc)) return;
 
   mkdirSync(commandsDest, { recursive: true });
 
@@ -247,113 +162,85 @@ function generateCommandsFromSkills(srcDir, distDir) {
     const skillDir = join(skillsSrc, skill);
     const sidecarPath = join(skillDir, "SKILL.opencode.yaml");
 
-    // Only generate commands for skills with OpenCode sidecar
-    if (!existsSync(sidecarPath)) {
-      continue;
-    }
+    if (!existsSync(sidecarPath)) continue;
 
     const skillMdPath = join(skillDir, "SKILL.md");
-    if (!existsSync(skillMdPath)) {
-      continue;
-    }
+    if (!existsSync(skillMdPath)) continue;
 
-    // Load SKILL.md frontmatter and body
     const content = readFileSync(skillMdPath, "utf-8");
     const { content: body, data: skillFrontmatter } = matter(content);
 
-    // Load OpenCode sidecar for routing metadata
     const sidecarContent = readFileSync(sidecarPath, "utf-8");
-    const sidecar = parseYaml(sidecarContent) || {};
+    const sidecar = (parseYaml(sidecarContent) as Record<string, unknown>) || {};
 
-    // Merge: skill description + sidecar routing + version
-    const mergedFrontmatter = {
-      description: skillFrontmatter.description || "",
+    const mergedFrontmatter: Record<string, unknown> = {
+      description: (skillFrontmatter as Record<string, unknown>).description || "",
       ...sidecar,
-      version: VERSION,
+      version,
     };
 
-    // Resolve agent name placeholders in frontmatter agent field
     if (mergedFrontmatter.agent && typeof mergedFrontmatter.agent === "string") {
-      mergedFrontmatter.agent = substituteAgentNames(mergedFrontmatter.agent, AGENT_MAP);
+      mergedFrontmatter.agent = substituteAgentNames(mergedFrontmatter.agent, agentMap);
     }
 
-    // Rewrite relative links: command files live in commands/ but templates and
-    // references live under skills/{name}/, so remap paths accordingly
+    // Rewrite relative links for command files
     const relinked = body
       .replace(/\]\(templates\//g, `](../skills/${skill}/templates/`)
       .replace(/\]\(references\//g, `](../skills/${skill}/references/`);
 
-    // Write command file with merged frontmatter, command and agent name substitution
     const transformed = substituteAgentNames(
       substituteCommands(matter.stringify(relinked, mergedFrontmatter)),
-      AGENT_MAP
+      agentMap,
     );
     writeFileSync(join(commandsDest, `${skill}.md`), transformed);
   }
 }
 
-/**
- * Generate OpenCode hooks.js
- *
- * OpenCode hook format:
- * - tool.execute.pre.<matcher>
- * - tool.execute.post.<matcher>
- * - session.start
- * - session.end
- */
-function generateHooks(config, srcDir, distDir) {
+function getScriptFilename(scriptPath: string): string {
+  const parts = scriptPath.split("/");
+  return parts.slice(-2).join("/");
+}
+
+function generateHooks(
+  config: HooksConfig,
+  srcDir: string,
+  distDir: string,
+): void {
   const pluginDir = join(distDir, "plugins");
   mkdirSync(pluginDir, { recursive: true });
 
-  // Copy hooks lib and scripts as-is (hooks compare against runtime $AGENT_TYPE slugs)
   const hooksSrc = join(srcDir, "hooks");
   const hooksDest = join(pluginDir, "hooks");
   if (existsSync(hooksSrc)) {
     cpSync(hooksSrc, hooksDest, { recursive: true });
   }
 
-  // Generate hooks.js
   const hooksJs = generateHooksJs(config);
   writeFileSync(join(pluginDir, "hooks.js"), hooksJs);
 }
 
-/**
- * Generate hooks.js content
- *
- * OpenCode plugin format: export default async function that returns hooks object
- * Hook names: tool.execute.before, tool.execute.after, event
- * Hook signature: (input, output) => Promise<void>
- */
-function generateHooksJs(config) {
+function generateHooksJs(config: HooksConfig): string {
   const preToolHooks = config.hooks["pre-tool"] || [];
   const postToolHooks = config.hooks["post-tool"] || [];
   const sessionHooks = config.hooks.session || [];
 
-  // Group pre-tool by matcher
-  const preToolByMatcher = {};
+  const preToolByMatcher: Record<string, HookDefinition[]> = {};
   for (const hook of preToolHooks) {
     const matcher = hook.matcher || "Edit|Write";
-    if (!preToolByMatcher[matcher]) {
-      preToolByMatcher[matcher] = [];
-    }
+    if (!preToolByMatcher[matcher]) preToolByMatcher[matcher] = [];
     preToolByMatcher[matcher].push(hook);
   }
 
-  // Group post-tool by matcher
-  const postToolByMatcher = {};
+  const postToolByMatcher: Record<string, HookDefinition[]> = {};
   for (const hook of postToolHooks) {
     const matcher = hook.matcher || "Edit|Write";
-    if (!postToolByMatcher[matcher]) {
-      postToolByMatcher[matcher] = [];
-    }
+    if (!postToolByMatcher[matcher]) postToolByMatcher[matcher] = [];
     postToolByMatcher[matcher].push(hook);
   }
 
   return `/**
  * OpenCode Plugin - Agent Skills Hooks
  * Auto-generated by loaf build system
- *
- * This plugin provides quality gates and automation hooks.
  */
 
 import { execFileSync } from 'child_process';
@@ -363,9 +250,6 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HOOKS_DIR = join(__dirname, 'hooks');
 
-/**
- * Execute a hook script safely
- */
 function runHook(script, toolName, toolInput, timeout = 60000) {
   try {
     const scriptPath = join(HOOKS_DIR, script);
@@ -386,58 +270,37 @@ function runHook(script, toolName, toolInput, timeout = 60000) {
   }
 }
 
-/**
- * Check if tool matches pattern
- */
 function matchesTool(toolName, pattern) {
   const patterns = pattern.split('|');
   return patterns.includes(toolName);
 }
 
-/**
- * Pre-tool hooks by matcher
- */
 const preToolHooks = {
 ${Object.entries(preToolByMatcher)
   .map(
     ([matcher, hooks]) => `  '${matcher}': [
 ${hooks.map((h) => `    { id: '${h.id}', script: '${getScriptFilename(h.script)}', timeout: ${h.timeout || 60000} },`).join("\n")}
-  ],`
+  ],`,
   )
   .join("\n")}
 };
 
-/**
- * Post-tool hooks by matcher
- */
 const postToolHooks = {
 ${Object.entries(postToolByMatcher)
   .map(
     ([matcher, hooks]) => `  '${matcher}': [
 ${hooks.map((h) => `    { id: '${h.id}', script: '${getScriptFilename(h.script)}', timeout: ${h.timeout || 60000} },`).join("\n")}
-  ],`
+  ],`,
   )
   .join("\n")}
 };
 
-/**
- * Session hooks
- */
 const sessionHooks = {
-${sessionHooks.map((h) => `  '${h.event.toLowerCase()}': { id: '${h.id}', script: '${getScriptFilename(h.script)}', timeout: ${h.timeout || 60000} },`).join("\n")}
+${sessionHooks.map((h) => `  '${(h.event || "").toLowerCase()}': { id: '${h.id}', script: '${getScriptFilename(h.script)}', timeout: ${h.timeout || 60000} },`).join("\n")}
 };
 
-/**
- * OpenCode Plugin Entry Point
- *
- * Receives context: { client, $, directory, project, worktree }
- * Returns hooks object
- */
 export default async function AgentSkillsPlugin({ client, $ }) {
   return {
-    /**
-     * Called before tool execution
-     */
     'tool.execute.before': async (input, output) => {
       const toolName = input?.tool?.name;
       if (!toolName) return;
@@ -454,9 +317,6 @@ export default async function AgentSkillsPlugin({ client, $ }) {
       }
     },
 
-    /**
-     * Called after tool execution
-     */
     'tool.execute.after': async (input, output) => {
       const toolName = input?.tool?.name;
       if (!toolName) return;
@@ -473,9 +333,6 @@ export default async function AgentSkillsPlugin({ client, $ }) {
       }
     },
 
-    /**
-     * Called on session events
-     */
     'event': async ({ event }) => {
       if (event.type === 'session.created' && sessionHooks.sessionstart) {
         runHook(sessionHooks.sessionstart.script, 'session', {}, sessionHooks.sessionstart.timeout);
@@ -487,13 +344,4 @@ export default async function AgentSkillsPlugin({ client, $ }) {
   };
 }
 `;
-}
-
-/**
- * Get script filename from path
- */
-function getScriptFilename(scriptPath) {
-  const parts = scriptPath.split("/");
-  // Keep the subdirectory structure: pre-tool/script.sh, post-tool/script.sh
-  return parts.slice(-2).join("/");
 }

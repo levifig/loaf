@@ -3,6 +3,14 @@ import { existsSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { parse as parseYaml } from "yaml";
+import type { TargetModule, BuildContext, HooksConfig, TargetsConfig } from "../lib/build/types.js";
+
+// Import target modules directly (bundled by tsup)
+import * as claudeCodeTarget from "../lib/build/targets/claude-code.js";
+import * as opencodeTarget from "../lib/build/targets/opencode.js";
+import * as cursorTarget from "../lib/build/targets/cursor.js";
+import * as codexTarget from "../lib/build/targets/codex.js";
+import * as geminiTarget from "../lib/build/targets/gemini.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -14,19 +22,14 @@ const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const gray = (s: string) => `\x1b[90m${s}\x1b[0m`;
 const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 
-interface TargetModule {
-  build(ctx: BuildContext): Promise<void>;
-}
-
-interface BuildContext {
-  config: Record<string, unknown>;
-  targetConfig: Record<string, unknown>;
-  targetsConfig: Record<string, unknown>;
-  rootDir: string;
-  srcDir: string;
-  distDir: string;
-  targetName: string;
-}
+// Target modules map (statically imported for tsup bundling)
+const TARGETS: Record<string, TargetModule> = {
+  "claude-code": claudeCodeTarget,
+  opencode: opencodeTarget,
+  cursor: cursorTarget,
+  codex: codexTarget,
+  gemini: geminiTarget,
+};
 
 function findRootDir(): string {
   // Walk up from __dirname to find package.json with name "loaf"
@@ -46,47 +49,39 @@ function findRootDir(): string {
   throw new Error("Could not find loaf root directory (no package.json with name 'loaf')");
 }
 
-function loadYamlConfig(path: string): Record<string, unknown> {
-  if (!existsSync(path)) return {};
-  return parseYaml(readFileSync(path, "utf-8")) as Record<string, unknown>;
+function loadYamlConfig<T>(path: string): T {
+  if (!existsSync(path)) return {} as T;
+  return parseYaml(readFileSync(path, "utf-8")) as T;
 }
 
 // Available target names — order determines build order
-const TARGET_NAMES = ["claude-code", "opencode", "cursor", "codex", "gemini"];
-
-async function loadTarget(targetName: string, rootDir: string): Promise<TargetModule> {
-  // Import from the JS build system (still vanilla JS at this stage)
-  const targetPath = join(rootDir, "build", "targets", `${targetName}.js`);
-  if (!existsSync(targetPath)) {
-    throw new Error(`Target module not found: ${targetPath}`);
-  }
-  return import(targetPath) as Promise<TargetModule>;
-}
+const TARGET_NAMES = Object.keys(TARGETS);
 
 async function buildTarget(
   targetName: string,
   rootDir: string,
-  srcDir: string,
+  contentDir: string,
   distDir: string,
-  hooksConfig: Record<string, unknown>,
-  targetsConfig: Record<string, unknown>,
+  hooksConfig: HooksConfig,
+  targetsConfig: TargetsConfig,
 ): Promise<void> {
-  const targetModule = await loadTarget(targetName, rootDir);
+  const targetModule = TARGETS[targetName];
+  if (!targetModule) {
+    throw new Error(`Unknown target: ${targetName}`);
+  }
 
   // Claude Code outputs to repo root, others to dist/
   const outputDir =
     targetName === "claude-code" ? rootDir : join(distDir, targetName);
 
-  const targetConfig =
-    (targetsConfig as { targets?: Record<string, Record<string, unknown>> })
-      .targets?.[targetName] || {};
+  const targetConfig = targetsConfig.targets?.[targetName] || {};
 
   await targetModule.build({
     config: hooksConfig,
     targetConfig,
     targetsConfig,
     rootDir,
-    srcDir,
+    srcDir: contentDir,
     distDir: outputDir,
     targetName,
   });
@@ -122,8 +117,8 @@ export function registerBuildCommand(program: Command): void {
         process.exit(1);
       }
 
-      const hooksConfig = loadYamlConfig(hooksConfigPath);
-      const targetsConfig = loadYamlConfig(join(configDir, "targets.yaml"));
+      const hooksConfig = loadYamlConfig<HooksConfig>(hooksConfigPath);
+      const targetsConfig = loadYamlConfig<TargetsConfig>(join(configDir, "targets.yaml"));
 
       const targets = options.target ? [options.target] : TARGET_NAMES;
 

@@ -1,37 +1,27 @@
 /**
  * Shared Template Distribution
  *
- * Copies shared templates from src/templates/ into skill output directories
+ * Copies shared templates from content/templates/ into skill output directories
  * based on the shared-templates config in targets.yaml.
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
+import type { TargetsConfig } from "../types.js";
 
 /**
- * Copy shared templates from src/templates/ to a skill's output templates/ directory
+ * Copy shared templates to a skill's output templates/ directory.
  *
- * Shared templates are defined in targets.yaml under shared-templates:
- *   template-file: [skill1, skill2, ...]
- *
- * If a skill is listed for a template, that template is copied to the skill's
- * output templates/ directory (creating it if needed). Skill-specific templates
- * in the skill's own templates/ directory take precedence — shared templates
+ * Skill-specific templates take precedence — shared templates
  * will not overwrite existing files.
- *
- * @param {string} skillName - The skill name (e.g., "implement")
- * @param {string} skillDest - The skill's output directory
- * @param {string} srcDir - The src/ directory (parent of templates/)
- * @param {Object} targetsConfig - Full targets.yaml config
- * @param {Function} [transformFn] - Optional content transform for markdown files
  */
 export function copySharedTemplates(
-  skillName,
-  skillDest,
-  srcDir,
-  targetsConfig,
-  transformFn
-) {
+  skillName: string,
+  skillDest: string,
+  srcDir: string,
+  targetsConfig: TargetsConfig,
+  transformFn?: (content: string) => string,
+): void {
   const sharedTemplates = targetsConfig?.["shared-templates"] || {};
 
   for (const [templateFile, skills] of Object.entries(sharedTemplates)) {
