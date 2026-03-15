@@ -247,6 +247,13 @@ hooks:
       matcher: "Edit|Write"
       description: Full accessibility audit
 
+    # Foundations - Changelog reminder
+    - id: changelog-reminder
+      skill: foundations
+      script: hooks/post-tool/foundations-changelog-reminder.sh
+      matcher: "Bash"
+      description: Remind about changelog updates after git commit
+
     # Orchestration - Task board generation
     - id: generate-task-board
       skill: orchestration
