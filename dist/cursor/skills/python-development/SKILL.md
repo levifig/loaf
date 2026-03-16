@@ -3,7 +3,7 @@ name: python-development
 description: >-
   Covers Python 3.12+ with FastAPI, Pydantic, async patterns, pytest,
   SQLAlchemy, and uv toolchain.
-version: 2.0.0
+version: 2.0.0-dev.0
 ---
 
 # Python Development

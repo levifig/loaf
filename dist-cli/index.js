@@ -7,8 +7,8 @@ var __export = (target, all) => {
 
 // cli/index.ts
 import { Command } from "commander";
-import { readFileSync as readFileSync15 } from "fs";
-import { join as join17, dirname as dirname7 } from "path";
+import { readFileSync as readFileSync17 } from "fs";
+import { join as join19, dirname as dirname7 } from "path";
 import { fileURLToPath as fileURLToPath4 } from "url";
 
 // cli/commands/build.ts
@@ -1894,8 +1894,15 @@ function askYesNo2(question) {
     output: process.stdout
   });
   return new Promise((resolve) => {
-    rl.on("close", () => resolve(false));
+    let resolved = false;
+    rl.on("close", () => {
+      if (!resolved) {
+        resolved = true;
+        resolve(false);
+      }
+    });
     rl.question(question, (answer) => {
+      resolved = true;
       rl.close();
       resolve(answer.trim().toLowerCase().startsWith("y"));
     });
@@ -2088,15 +2095,775 @@ ${bold3("loaf init")}
   });
 }
 
+// cli/commands/release.ts
+import { execFileSync as execFileSync4 } from "child_process";
+import {
+  existsSync as existsSync17,
+  readFileSync as readFileSync16,
+  writeFileSync as writeFileSync10,
+  readdirSync as readdirSync9,
+  mkdtempSync,
+  unlinkSync
+} from "fs";
+import { join as join18 } from "path";
+import { tmpdir } from "os";
+import { createInterface as createInterface3 } from "readline";
+
+// cli/lib/release/commits.ts
+import { execFileSync as execFileSync3 } from "child_process";
+var CONVENTIONAL_RE = /^(\w+)(\(.+?\))?(!)?:\s*(.+)$/;
+var SECTION_MAP = {
+  feat: "Added",
+  fix: "Fixed",
+  refactor: "Changed",
+  perf: "Changed",
+  docs: null,
+  chore: null,
+  ci: null,
+  test: null,
+  build: null,
+  style: null
+};
+var BREAKING_BODY_RE = /^BREAKING[ -]CHANGE:/m;
+function getLastTag(cwd) {
+  try {
+    const tag = execFileSync3("git", ["describe", "--tags", "--abbrev=0"], {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+    return tag || null;
+  } catch {
+    return null;
+  }
+}
+function getCommitsSince(cwd, tag) {
+  const format = "%h%x00%s%x00%B%x00";
+  const args = tag ? ["log", `${tag}..HEAD`, `--format=${format}`] : ["log", `--format=${format}`];
+  let output;
+  try {
+    output = execFileSync3("git", args, {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 10 * 1024 * 1024
+    });
+  } catch {
+    return [];
+  }
+  if (!output.trim()) {
+    return [];
+  }
+  const chunks = output.split("\0\n").filter((c) => c.trim());
+  const commits = [];
+  for (const chunk of chunks) {
+    const parts = chunk.split("\0");
+    if (parts.length < 2) continue;
+    const hash = parts[0].trim();
+    const subject = parts[1].trim();
+    const body = (parts[2] || "").trim();
+    if (!hash || !subject) continue;
+    commits.push(parseCommit(hash, subject, body));
+  }
+  return commits;
+}
+function parseCommit(hash, subject, body) {
+  const match = subject.match(CONVENTIONAL_RE);
+  if (!match) {
+    return {
+      hash,
+      type: "",
+      message: subject,
+      breaking: BREAKING_BODY_RE.test(body),
+      section: BREAKING_BODY_RE.test(body) ? "Breaking Changes" : "Other",
+      raw: subject
+    };
+  }
+  const type = match[1];
+  const bangIndicator = !!match[3];
+  const message = match[4];
+  const breakingFromBody = BREAKING_BODY_RE.test(body);
+  const breaking = bangIndicator || breakingFromBody;
+  let section;
+  if (breaking) {
+    section = "Breaking Changes";
+  } else if (type in SECTION_MAP) {
+    section = SECTION_MAP[type];
+  } else {
+    section = "Other";
+  }
+  return {
+    hash,
+    type,
+    message,
+    breaking,
+    section,
+    raw: subject
+  };
+}
+function suggestBump(commits) {
+  if (commits.some((c) => c.breaking)) {
+    return "major";
+  }
+  if (commits.some((c) => c.section === "Added")) {
+    return "minor";
+  }
+  return "patch";
+}
+
+// cli/lib/release/version.ts
+import { existsSync as existsSync16, readFileSync as readFileSync15 } from "fs";
+import { join as join17, relative as relative2 } from "path";
+function parseSemVer(version) {
+  const hyphenIndex = version.indexOf("-");
+  const core = hyphenIndex === -1 ? version : version.slice(0, hyphenIndex);
+  const prerelease = hyphenIndex === -1 ? void 0 : version.slice(hyphenIndex + 1);
+  const parts = core.split(".");
+  if (parts.length !== 3) return null;
+  const [major, minor, patch] = parts.map(Number);
+  if ([major, minor, patch].some((n) => !Number.isInteger(n) || n < 0)) {
+    return null;
+  }
+  if (prerelease !== void 0 && prerelease.length === 0) return null;
+  return { major, minor, patch, ...prerelease ? { prerelease } : {} };
+}
+function formatSemVer(ver) {
+  const core = `${ver.major}.${ver.minor}.${ver.patch}`;
+  return ver.prerelease ? `${core}-${ver.prerelease}` : core;
+}
+function bumpVersion(current, bump) {
+  const ver = parseSemVer(current);
+  if (!ver) return null;
+  switch (bump) {
+    case "major":
+      return formatSemVer({ major: ver.major + 1, minor: 0, patch: 0 });
+    case "minor":
+      return formatSemVer({
+        major: ver.major,
+        minor: ver.minor + 1,
+        patch: 0
+      });
+    case "patch":
+      return formatSemVer({
+        major: ver.major,
+        minor: ver.minor,
+        patch: ver.patch + 1
+      });
+    case "prerelease": {
+      if (!ver.prerelease) return null;
+      const dotIndex = ver.prerelease.lastIndexOf(".");
+      if (dotIndex === -1) {
+        return formatSemVer({ ...ver, prerelease: `${ver.prerelease}.1` });
+      }
+      const label = ver.prerelease.slice(0, dotIndex);
+      const numStr = ver.prerelease.slice(dotIndex + 1);
+      const num = Number(numStr);
+      if (!Number.isInteger(num) || num < 0) {
+        return formatSemVer({ ...ver, prerelease: `${ver.prerelease}.1` });
+      }
+      return formatSemVer({ ...ver, prerelease: `${label}.${num + 1}` });
+    }
+    case "release": {
+      if (!ver.prerelease) return null;
+      return formatSemVer({
+        major: ver.major,
+        minor: ver.minor,
+        patch: ver.patch
+      });
+    }
+  }
+}
+function readTomlVersion(content, sectionName) {
+  const lines = content.split("\n");
+  const sectionPattern = new RegExp(`^\\[${escapeRegex(sectionName)}\\]`);
+  let inSection = false;
+  for (const line of lines) {
+    if (sectionPattern.test(line.trim())) {
+      inSection = true;
+      continue;
+    }
+    if (inSection) {
+      if (/^\[/.test(line.trim())) break;
+      const match = line.match(/^version\s*=\s*"([^"]+)"/);
+      if (match) return match[1];
+    }
+  }
+  return null;
+}
+function replaceTomlVersion(content, sectionName, newVersion) {
+  const lines = content.split("\n");
+  const sectionPattern = new RegExp(`^\\[${escapeRegex(sectionName)}\\]`);
+  let inSection = false;
+  let replaced = false;
+  const result = lines.map((line) => {
+    if (sectionPattern.test(line.trim())) {
+      inSection = true;
+      return line;
+    }
+    if (inSection && !replaced) {
+      if (/^\[/.test(line.trim())) {
+        inSection = false;
+        return line;
+      }
+      if (/^version\s*=\s*"[^"]+"/.test(line)) {
+        replaced = true;
+        return line.replace(
+          /^(version\s*=\s*)"[^"]+"/,
+          `$1"${newVersion}"`
+        );
+      }
+    }
+    return line;
+  });
+  return result.join("\n");
+}
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+var CANDIDATES = [
+  {
+    relativePath: "package.json",
+    format: "json",
+    source: { type: "json" }
+  },
+  {
+    relativePath: "pyproject.toml",
+    format: "toml-regex",
+    source: { type: "toml", section: "project" }
+  },
+  {
+    relativePath: "Cargo.toml",
+    format: "toml-regex",
+    source: { type: "toml", section: "package" }
+  },
+  {
+    relativePath: ".agents/loaf.json",
+    format: "json",
+    source: { type: "json" }
+  }
+];
+function detectVersionFiles(cwd) {
+  const ecosystemFiles = [];
+  let loafFile = null;
+  for (const candidate of CANDIDATES) {
+    const absolutePath = join17(cwd, candidate.relativePath);
+    if (!existsSync16(absolutePath)) continue;
+    try {
+      const content = readFileSync15(absolutePath, "utf-8");
+      let version;
+      if (candidate.source.type === "json") {
+        const parsed = JSON.parse(content);
+        version = parsed.version;
+      } else {
+        const result = readTomlVersion(content, candidate.source.section);
+        if (result) version = result;
+      }
+      if (!version) continue;
+      const file = {
+        path: absolutePath,
+        relativePath: relative2(cwd, absolutePath),
+        format: candidate.format,
+        currentVersion: version
+      };
+      if (candidate.relativePath === ".agents/loaf.json") {
+        loafFile = file;
+      } else {
+        ecosystemFiles.push(file);
+      }
+    } catch {
+      continue;
+    }
+  }
+  if (ecosystemFiles.length === 0 && loafFile) {
+    return [loafFile];
+  }
+  return ecosystemFiles;
+}
+function prepareVersionUpdates(files, newVersion) {
+  const updates = [];
+  for (const file of files) {
+    try {
+      const content = readFileSync15(file.path, "utf-8");
+      let updated;
+      if (file.format === "json") {
+        const parsed = JSON.parse(content);
+        parsed.version = newVersion;
+        updated = JSON.stringify(parsed, null, 2) + "\n";
+      } else {
+        const section = tomlSectionForPath(file.relativePath);
+        if (!section) continue;
+        updated = replaceTomlVersion(content, section, newVersion);
+      }
+      updates.push([file.path, updated]);
+    } catch {
+      continue;
+    }
+  }
+  return updates;
+}
+function tomlSectionForPath(relativePath) {
+  const normalized = relativePath.replace(/\\/g, "/");
+  if (normalized === "pyproject.toml") return "project";
+  if (normalized === "Cargo.toml") return "package";
+  return null;
+}
+
+// cli/lib/release/changelog.ts
+var SECTION_ORDER = [
+  "Breaking Changes",
+  "Added",
+  "Changed",
+  "Fixed",
+  "Other"
+];
+var UNRELEASED_RE = /^## \[unreleased\]/i;
+function groupBySection(commits) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const commit of commits) {
+    if (commit.section === null) continue;
+    const existing = groups.get(commit.section);
+    if (existing) {
+      existing.push(commit);
+    } else {
+      groups.set(commit.section, [commit]);
+    }
+  }
+  return groups;
+}
+function capitalize(str) {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+function formatEntry(commit) {
+  return `- ${capitalize(commit.message)} (${commit.hash})`;
+}
+function generateChangelogSection(version, date, commits) {
+  const groups = groupBySection(commits);
+  const lines = [];
+  lines.push(`## [${version}] - ${date}`);
+  for (const section of SECTION_ORDER) {
+    const sectionCommits = groups.get(section);
+    if (!sectionCommits || sectionCommits.length === 0) continue;
+    lines.push("");
+    lines.push(`### ${section}`);
+    for (const commit of sectionCommits) {
+      lines.push(formatEntry(commit));
+    }
+  }
+  return lines.join("\n");
+}
+function insertIntoChangelog(existingContent, newSection) {
+  const lines = existingContent.split("\n");
+  let unreleasedIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (UNRELEASED_RE.test(lines[i].trim())) {
+      unreleasedIndex = i;
+      break;
+    }
+  }
+  if (unreleasedIndex === -1) return null;
+  let nextReleaseIndex = -1;
+  for (let i = unreleasedIndex + 1; i < lines.length; i++) {
+    if (/^## \[/.test(lines[i].trim())) {
+      nextReleaseIndex = i;
+      break;
+    }
+  }
+  const before = lines.slice(0, unreleasedIndex + 1);
+  const after = nextReleaseIndex === -1 ? [] : lines.slice(nextReleaseIndex);
+  const result = [
+    ...before,
+    "",
+    newSection,
+    "",
+    ...after
+  ];
+  return result.join("\n");
+}
+function createChangelog(releaseSection) {
+  const lines = [
+    "# Changelog",
+    "",
+    "All notable changes to this project will be documented in this file.",
+    "",
+    "The format is based on [Keep a Changelog](https://keepachangelog.com/).",
+    "",
+    "## [Unreleased]",
+    "",
+    releaseSection,
+    ""
+  ];
+  return lines.join("\n");
+}
+
+// cli/commands/release.ts
+var bold4 = (s) => `\x1B[1m${s}\x1B[0m`;
+var green4 = (s) => `\x1B[32m${s}\x1B[0m`;
+var red3 = (s) => `\x1B[31m${s}\x1B[0m`;
+var yellow3 = (s) => `\x1B[33m${s}\x1B[0m`;
+var gray4 = (s) => `\x1B[90m${s}\x1B[0m`;
+var cyan3 = (s) => `\x1B[36m${s}\x1B[0m`;
+function askYesNo3(question) {
+  if (!process.stdin.isTTY) {
+    return Promise.resolve(false);
+  }
+  const rl = createInterface3({
+    input: process.stdin,
+    output: process.stdout
+  });
+  return new Promise((resolve) => {
+    let resolved = false;
+    rl.on("close", () => {
+      if (!resolved) {
+        resolved = true;
+        resolve(false);
+      }
+    });
+    rl.question(question, (answer) => {
+      resolved = true;
+      rl.close();
+      resolve(answer.trim().toLowerCase().startsWith("y"));
+    });
+  });
+}
+async function askChoice(question, options, defaultChoice) {
+  if (!process.stdin.isTTY) {
+    return defaultChoice;
+  }
+  const rl = createInterface3({
+    input: process.stdin,
+    output: process.stdout
+  });
+  return new Promise((resolve) => {
+    let resolved = false;
+    rl.on("close", () => {
+      if (!resolved) {
+        resolved = true;
+        resolve(defaultChoice);
+      }
+    });
+    rl.question(question, (answer) => {
+      resolved = true;
+      rl.close();
+      const num = parseInt(answer.trim(), 10);
+      if (num >= 1 && num <= options.length) {
+        resolve(options[num - 1]);
+      } else {
+        resolve(defaultChoice);
+      }
+    });
+  });
+}
+function isGitRepo(cwd) {
+  try {
+    execFileSync4("git", ["rev-parse", "--is-inside-work-tree"], {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function isGhAvailable() {
+  try {
+    execFileSync4("which", ["gh"], {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function scanIncompleteTasks(cwd) {
+  const tasksDir = join18(cwd, ".agents", "tasks");
+  if (!existsSync17(tasksDir)) return [];
+  const incomplete = [];
+  try {
+    const files = readdirSync9(tasksDir).filter((f) => f.endsWith(".md"));
+    for (const file of files) {
+      try {
+        const content = readFileSync16(join18(tasksDir, file), "utf-8");
+        const lines = content.split("\n").slice(0, 20);
+        for (const line of lines) {
+          const match = line.match(/^status:\s*(.+)/);
+          if (match) {
+            const status = match[1].trim();
+            if (status !== "complete" && status !== "archived") {
+              incomplete.push({ filename: file, status });
+            }
+            break;
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+  } catch {
+  }
+  return incomplete;
+}
+function getEditor() {
+  return process.env.VISUAL || process.env.EDITOR || null;
+}
+function registerReleaseCommand(program2) {
+  program2.command("release").description("Create a new release with changelog, version bump, and tag").option("--dry-run", "Preview release without making changes").action(async (options) => {
+    const cwd = process.cwd();
+    console.log(`
+${bold4("loaf release")}
+`);
+    if (!isGitRepo(cwd)) {
+      console.error(`  ${red3("error:")} Not a git repository`);
+      process.exit(1);
+    }
+    process.stdout.write(`  ${cyan3("Analyzing")}...
+
+`);
+    const lastTag = getLastTag(cwd);
+    const commits = getCommitsSince(cwd, lastTag);
+    console.log(`  Last tag: ${lastTag ? bold4(lastTag) : gray4("(none)")}`);
+    console.log(`  Commits since tag: ${bold4(String(commits.length))}`);
+    console.log();
+    if (commits.length === 0) {
+      console.log(`  ${gray4("No unreleased changes found.")}
+`);
+      process.exit(0);
+    }
+    for (const commit of commits) {
+      if (commit.section === null) {
+        console.log(`  ${gray4(`${commit.raw} (${commit.hash})`)}  ${gray4("[filtered]")}`);
+      } else {
+        console.log(`  ${green4(`${commit.raw} (${commit.hash})`)}`);
+      }
+    }
+    console.log();
+    const versionFiles = detectVersionFiles(cwd);
+    if (versionFiles.length === 0) {
+      console.error(`  ${red3("error:")} No version files found`);
+      process.exit(1);
+    }
+    const incompleteTasks = scanIncompleteTasks(cwd);
+    const commitBump = suggestBump(commits);
+    const currentVersion = versionFiles[0].currentVersion;
+    const parsed = parseSemVer(currentVersion);
+    const isPrerelease = parsed !== null && parsed.prerelease !== void 0;
+    let bump;
+    let newVersion;
+    if (isPrerelease) {
+      console.log(`  ${bold4("Current pre-release:")} ${currentVersion}`);
+      console.log();
+      console.log(`  ${bold4("Bump options:")}`);
+      console.log(`    ${cyan3("1.")} prerelease \u2192 ${bumpVersion(currentVersion, "prerelease")}`);
+      console.log(`    ${cyan3("2.")} release    \u2192 ${bumpVersion(currentVersion, "release")}`);
+      console.log(`    ${cyan3("3.")} ${commitBump.padEnd(10)} \u2192 ${bumpVersion(currentVersion, commitBump)} ${gray4("(based on commits)")}`);
+      console.log();
+      const choice = await askChoice(
+        `  Bump type [1/2/3]: `,
+        ["prerelease", "release", commitBump],
+        "prerelease"
+      );
+      bump = choice;
+      newVersion = bumpVersion(currentVersion, bump);
+    } else {
+      bump = commitBump;
+      newVersion = bumpVersion(currentVersion, bump);
+    }
+    if (!newVersion) {
+      console.error(`  ${red3("error:")} Could not compute new version from "${currentVersion}"`);
+      process.exit(1);
+    }
+    const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    let changelogSection = generateChangelogSection(newVersion, today, commits);
+    const editor = getEditor();
+    if (editor && process.stdin.isTTY) {
+      try {
+        const tmpDir = mkdtempSync(join18(tmpdir(), "loaf-release-"));
+        const tmpFile = join18(tmpDir, "CHANGELOG_SECTION.md");
+        writeFileSync10(tmpFile, changelogSection, "utf-8");
+        execFileSync4(editor, [tmpFile], { stdio: "inherit" });
+        changelogSection = readFileSync16(tmpFile, "utf-8");
+        unlinkSync(tmpFile);
+        console.log(`  ${green4("Edited changelog accepted.")}`);
+        console.log();
+      } catch {
+        console.log(`  ${yellow3("Editor failed \u2014 using generated changelog.")}`);
+        console.log();
+      }
+    } else {
+      console.log(`  ${bold4("Generated changelog:")}
+`);
+      for (const line of changelogSection.split("\n")) {
+        console.log(`  ${line}`);
+      }
+      console.log();
+      console.log(`  ${gray4("(Set $EDITOR to edit before confirming)")}`);
+      console.log();
+    }
+    const tagName = `v${newVersion}`;
+    const ghAvailable = isGhAvailable();
+    console.log(`  ${bold4("Version files:")}`);
+    for (const file of versionFiles) {
+      console.log(`    \u2022 ${file.relativePath} (${file.currentVersion} \u2192 ${newVersion})`);
+    }
+    console.log();
+    if (incompleteTasks.length > 0) {
+      console.log(`  ${bold4("Incomplete tasks:")} ${incompleteTasks.length}`);
+      for (const task of incompleteTasks) {
+        console.log(`    ${yellow3("\u26A0")} ${task.filename} (status: ${task.status})`);
+      }
+      console.log();
+    }
+    const bumpReasons = {
+      major: "breaking changes detected",
+      minor: "new features detected",
+      patch: "bug fixes only",
+      prerelease: "development milestone",
+      release: "stable release"
+    };
+    console.log(`  Suggested bump: ${bold4(bump)} (${bumpReasons[bump]})`);
+    console.log(`  New version: ${bold4(newVersion)}`);
+    console.log();
+    console.log(`  ${bold4("Actions:")}`);
+    let actionNum = 1;
+    console.log(`    ${actionNum++}. Update version in ${versionFiles.length} file(s)`);
+    console.log(`    ${actionNum++}. Update CHANGELOG.md`);
+    console.log(`    ${actionNum++}. Run loaf build`);
+    console.log(`    ${actionNum++}. Commit release artifacts`);
+    console.log(`    ${actionNum++}. Create git tag ${tagName}`);
+    if (ghAvailable) {
+      console.log(`    ${actionNum++}. Create GitHub release draft (gh available)`);
+    } else {
+      console.log(`    ${gray4(`${actionNum++}. Create GitHub release draft (gh not available \u2014 skipped)`)}`);
+    }
+    console.log();
+    if (options.dryRun) {
+      console.log(`  ${cyan3("--dry-run:")} No changes made.
+`);
+      process.exit(0);
+    }
+    const confirmed = await askYesNo3(`  Proceed with release ${bold4(tagName)}? [y/N] `);
+    if (!confirmed) {
+      console.log(`
+  ${gray4("Release cancelled.")}
+`);
+      process.exit(0);
+    }
+    console.log();
+    console.log(`  ${bold4("Executing:")}`);
+    try {
+      const updates = prepareVersionUpdates(versionFiles, newVersion);
+      for (const [filePath, content] of updates) {
+        writeFileSync10(filePath, content, "utf-8");
+        const relPath = versionFiles.find((f) => f.path === filePath)?.relativePath ?? filePath;
+        const oldVer = versionFiles.find((f) => f.path === filePath)?.currentVersion ?? "?";
+        console.log(`    ${green4("\u2713")} Updated ${relPath} (${oldVer} \u2192 ${newVersion})`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`    ${red3("\u2717")} Failed to update version files: ${message}`);
+      process.exit(1);
+    }
+    try {
+      const changelogPath = join18(cwd, "CHANGELOG.md");
+      let changelogContent;
+      if (existsSync17(changelogPath)) {
+        const existing = readFileSync16(changelogPath, "utf-8");
+        const inserted = insertIntoChangelog(existing, changelogSection);
+        if (inserted) {
+          changelogContent = inserted;
+        } else {
+          changelogContent = existing + "\n" + changelogSection + "\n";
+        }
+      } else {
+        changelogContent = createChangelog(changelogSection);
+      }
+      writeFileSync10(changelogPath, changelogContent, "utf-8");
+      console.log(`    ${green4("\u2713")} Updated CHANGELOG.md`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`    ${red3("\u2717")} Failed to update CHANGELOG.md: ${message}`);
+      process.exit(1);
+    }
+    try {
+      execFileSync4(process.execPath, [process.argv[1], "build"], {
+        cwd,
+        stdio: "inherit"
+      });
+      console.log(`    ${green4("\u2713")} Built all targets`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`    ${red3("\u2717")} Build failed: ${message}`);
+      process.exit(1);
+    }
+    try {
+      execFileSync4("git", ["add", "-A"], {
+        cwd,
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      execFileSync4(
+        "git",
+        ["commit", "-m", `release: ${tagName}`],
+        { cwd, stdio: ["ignore", "pipe", "ignore"] }
+      );
+      console.log(`    ${green4("\u2713")} Committed release artifacts`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`    ${red3("\u2717")} Failed to commit release: ${message}`);
+      process.exit(1);
+    }
+    try {
+      execFileSync4("git", ["tag", "-a", tagName, "-m", `Release ${newVersion}`], {
+        cwd,
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      console.log(`    ${green4("\u2713")} Created tag ${tagName}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`    ${red3("\u2717")} Failed to create tag: ${message}`);
+      process.exit(1);
+    }
+    if (ghAvailable) {
+      try {
+        execFileSync4(
+          "gh",
+          [
+            "release",
+            "create",
+            tagName,
+            "--draft",
+            "--title",
+            `v${newVersion}`,
+            "--notes",
+            changelogSection
+          ],
+          { cwd, stdio: "inherit" }
+        );
+        console.log(`    ${green4("\u2713")} Created GitHub release draft`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`    ${red3("\u2717")} Failed to create GitHub release: ${message}`);
+        process.exit(1);
+      }
+    } else {
+      console.log(`    ${gray4("-")} GitHub release skipped (gh not available)`);
+    }
+    console.log();
+    console.log(`  ${green4("\u2713")} Release ${bold4(tagName)} complete
+`);
+  });
+}
+
 // cli/index.ts
 var __dirname3 = dirname7(fileURLToPath4(import.meta.url));
 function getVersion3() {
   for (const candidate of [
-    join17(__dirname3, "..", "package.json"),
-    join17(__dirname3, "..", "..", "package.json")
+    join19(__dirname3, "..", "package.json"),
+    join19(__dirname3, "..", "..", "package.json")
   ]) {
     try {
-      const pkg = JSON.parse(readFileSync15(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync17(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -2109,6 +2876,7 @@ program.name("loaf").description("Loaf \u2014 Levi's Opinionated Agentic Framewo
 registerBuildCommand(program);
 registerInstallCommand(program);
 registerInitCommand(program);
+registerReleaseCommand(program);
 if (process.argv.length <= 2) {
   program.outputHelp();
   process.exit(0);

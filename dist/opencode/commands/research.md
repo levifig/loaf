@@ -4,7 +4,7 @@ description: >-
   understand the big picture or when the user asks "what's the current state?"
 agent: PM
 subtask: false
-version: 2.0.0
+version: 2.0.0-dev.0
 ---
 
 # Research

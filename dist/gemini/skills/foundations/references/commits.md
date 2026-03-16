@@ -191,7 +191,7 @@ Refs BACK-124
 ## Semantic Versioning
 
 ```
-MAJOR.MINOR.PATCH
+MAJOR.MINOR.PATCH[-PRERELEASE]
 
 1.0.0 -> 1.0.1 (patch: bug fixes)
 1.0.1 -> 1.1.0 (minor: new features)
@@ -203,3 +203,29 @@ Breaking changes use `feat!:` or `fix!:` and include:
 ```
 BREAKING CHANGE: Description of breaking change.
 ```
+
+### Pre-Release Versions
+
+When developing toward a major version, use pre-release suffixes to mark development milestones:
+
+```
+2.0.0-dev.0  →  dev.1  →  dev.2  →  ...  →  2.0.0
+     ↑              ↑          ↑                 ↑
+  start dev    milestone  milestone        stable release
+```
+
+| Suffix | Meaning | When to use |
+|--------|---------|-------------|
+| `-dev.N` | Development milestone | Active development toward a target version |
+| `-alpha.N` | Alpha pre-release | Feature-complete but untested broadly |
+| `-beta.N` | Beta pre-release | Testing with wider audience |
+| `-rc.N` | Release candidate | Final validation before stable |
+
+**Convention:**
+- Set the target version with `-dev.0` when starting a major effort (e.g. `2.0.0-dev.0`)
+- Bump the dev counter (`-dev.N` → `-dev.N+1`) when a meaningful batch of work ships — a spec completing, a group of related features landing
+- Don't bump for every commit — that's what git history is for
+- Strip the suffix (`-dev.N` → `2.0.0`) when all planned work is complete
+- `loaf release` handles all bump types: `prerelease`, `release`, `major`, `minor`, `patch`
+
+**Not required** — projects using simple `MAJOR.MINOR.PATCH` versioning can ignore pre-release suffixes entirely. This convention is for projects with multi-milestone development cycles.
