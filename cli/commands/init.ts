@@ -184,8 +184,15 @@ function askYesNo(question: string): Promise<boolean> {
   });
 
   return new Promise((resolve) => {
-    rl.on("close", () => resolve(false));
+    let resolved = false;
+    rl.on("close", () => {
+      if (!resolved) {
+        resolved = true;
+        resolve(false);
+      }
+    });
     rl.question(question, (answer) => {
+      resolved = true;
       rl.close();
       resolve(answer.trim().toLowerCase().startsWith("y"));
     });

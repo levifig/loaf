@@ -4,7 +4,7 @@ description: >-
   Reviews agent artifacts in .agents/ and provides session hygiene
   recommendations. Use when the user asks "review my sessions" or "clean up
   artifacts."
-version: 2.0.0
+version: 2.0.0-dev.0
 ---
 
 # Review Sessions

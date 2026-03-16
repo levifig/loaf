@@ -3,7 +3,7 @@ name: strategy
 description: >-
   Discovers and maintains strategic context in STRATEGY.md. Use when the user
   asks "what's our strategy?" or "update the strategic direction."
-version: 2.0.0
+version: 2.0.0-dev.0
 ---
 
 # Strategy
