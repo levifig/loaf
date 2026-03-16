@@ -6,6 +6,8 @@ import { registerBuildCommand } from "./commands/build.js";
 import { registerInstallCommand } from "./commands/install.js";
 import { registerInitCommand } from "./commands/init.js";
 import { registerReleaseCommand } from "./commands/release.js";
+import { registerTaskCommand } from "./commands/task.js";
+import { registerSpecCommand } from "./commands/spec.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +38,8 @@ registerBuildCommand(program);
 registerInstallCommand(program);
 registerInitCommand(program);
 registerReleaseCommand(program);
+registerTaskCommand(program);
+registerSpecCommand(program);
 
 // Show help when no subcommand is given (exit 0, not error)
 if (process.argv.length <= 2) {
