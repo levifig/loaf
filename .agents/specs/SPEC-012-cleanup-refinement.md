@@ -62,7 +62,13 @@ The command:
 5. Performs the chosen action (move, delete, update status)
 6. Suggests `/crystallize` for sessions with extractable learnings
 
-### Part 3: Skill Update
+### Part 3: Spec Completion Lifecycle
+
+Add `completed_at` timestamp to spec frontmatter schema. When all tasks for a spec are marked done (or the spec is manually marked complete), record when it happened. This prevents losing provenance when specs are archived.
+
+Also: when a spec is marked complete on a feature branch, suggest creating a PR. The implement skill's "AFTER" flow should include branch → PR as a standard step.
+
+### Part 4: Skill Update
 
 Update the `/cleanup` skill to reference the CLI command and the differentiated rules. The skill becomes guidance for agents on when/how to invoke `loaf cleanup`, while the CLI does the actual work.
 
@@ -77,6 +83,9 @@ Update the `/cleanup` skill to reference the CLI command and the differentiated 
 - Suggest `/crystallize` for sessions with extractable learnings
 - Update `/cleanup` skill to reference CLI
 - Register command in `cli/index.ts`
+- Add `completed_at` timestamp to spec frontmatter schema
+- Suggest PR creation when spec completes on a feature branch
+- Update implement skill "AFTER" flow to include branch → PR step
 
 ### Out of Scope
 - Automatic cleanup (always interactive or dry-run)
