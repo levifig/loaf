@@ -180,7 +180,8 @@ After creating session AND plan files:
 1. Code review pass (spawn `pr-review-toolkit:code-reviewer`)
 2. Spawn `QA` for final testing
 3. Update Linear to Done; mark local task complete: `loaf task update TASK-XXX --status done`
-4. Complete session, archive (status + `archived_at` + `archived_by` + move)
+4. If on a feature branch: push and create PR (`gh pr create`). Follow PR format and squash merge conventions in [commits reference](../foundations/references/commits.md).
+5. Complete session, archive (status + `archived_at` + `archived_by` + move)
 
 ---
 
