@@ -3,7 +3,7 @@ id: SPEC-007
 title: loaf init — project bootstrapping
 source: direct
 created: '2026-01-24T22:47:04.000Z'
-status: implementing
+status: complete
 appetite: Medium (3-5 days)
 ---
 

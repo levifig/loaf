@@ -642,7 +642,7 @@
     },
     "SPEC-006": {
       "title": "loaf release — version management workflow",
-      "status": "approved",
+      "status": "complete",
       "appetite": "Medium (3-5 days)",
       "requirement": null,
       "source": "direct",
@@ -651,7 +651,7 @@
     },
     "SPEC-007": {
       "title": "loaf init — project bootstrapping",
-      "status": "implementing",
+      "status": "complete",
       "appetite": "Medium (3-5 days)",
       "requirement": null,
       "source": "direct",
@@ -678,12 +678,30 @@
     },
     "SPEC-010": {
       "title": "Task & Spec Management CLI",
-      "status": "approved",
+      "status": "complete",
       "appetite": "Large (1-2 weeks)",
       "requirement": null,
       "source": "direct",
       "created": "2026-03-14T19:48:00.000Z",
       "file": "SPEC-010-task-management-cli.md"
+    },
+    "SPEC-011": {
+      "title": "Knowledge Lifecycle — doc relocation + /crystallize",
+      "status": "drafting",
+      "appetite": "Medium (3-5 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-03-16T23:50:30.000Z",
+      "file": "SPEC-011-knowledge-lifecycle.md"
+    },
+    "SPEC-012": {
+      "title": "Cleanup Refinement — differentiated processes + CLI",
+      "status": "drafting",
+      "appetite": "Medium (3-5 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-03-16T23:50:30.000Z",
+      "file": "SPEC-012-cleanup-refinement.md"
     },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",

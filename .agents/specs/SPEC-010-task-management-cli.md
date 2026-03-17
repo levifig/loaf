@@ -3,7 +3,7 @@ id: SPEC-010
 title: Task & Spec Management CLI
 source: direct
 created: '2026-03-14T19:48:00.000Z'
-status: approved
+status: complete
 appetite: Large (1-2 weeks)
 ---
 

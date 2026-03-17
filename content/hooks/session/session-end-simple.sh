@@ -20,7 +20,7 @@ if [ -d "$SESSIONS_DIR" ]; then
     echo "- [ ] Update session status if work is complete"
     echo "- [ ] Ensure \`## Current State\` is handoff-ready"
     echo "- [ ] Sync Linear issue status with actual progress"
-    echo "- [ ] Archive/delete completed sessions via \`/review-sessions\`"
+    echo "- [ ] Archive/delete completed sessions via \`/cleanup\`"
     echo ""
     echo "**Tip**: Session files persist across conversations. Keep them current!"
   fi

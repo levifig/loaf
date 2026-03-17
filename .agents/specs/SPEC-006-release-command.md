@@ -3,7 +3,7 @@ id: SPEC-006
 title: loaf release — version management workflow
 source: direct
 created: '2026-01-24T22:25:35.000Z'
-status: approved
+status: complete
 appetite: Medium (3-5 days)
 ---
 

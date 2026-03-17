@@ -75,5 +75,5 @@ Confirm what was imported: source session, content type, decision count, summary
 ## Related Skills
 
 - **resume-session** -- Resume active sessions (not reference past ones)
-- **review-sessions** -- Session hygiene and cleanup
+- **cleanup** -- Session hygiene and cleanup
 - **implement** -- Start new work that may reference past sessions
