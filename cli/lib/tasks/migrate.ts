@@ -21,11 +21,27 @@ const gray = (s: string) => `\x1b[90m${s}\x1b[0m`;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Collect .md files matching a prefix from a directory.
- * Searches one level of subdirectories (e.g., archive/YYYY-MM/) to support
- * date-based archive layouts.
+ * Collect .md files matching a prefix from a directory (non-recursive).
+ * Only returns files directly in the given directory.
  */
 function collectFiles(dir: string, prefix: string): string[] {
+  if (!existsSync(dir)) return [];
+
+  try {
+    return readdirSync(dir)
+      .filter((f) => f.startsWith(prefix) && f.endsWith(".md"))
+      .map((f) => join(dir, f));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Collect .md files matching a prefix from a directory and one level of
+ * subdirectories (e.g., archive/YYYY-MM/). Used for archive dirs that
+ * may have date-based subdirectory layouts.
+ */
+function collectFilesDeep(dir: string, prefix: string): string[] {
   if (!existsSync(dir)) return [];
 
   const results: string[] = [];
@@ -37,7 +53,6 @@ function collectFiles(dir: string, prefix: string): string[] {
       if (entry.isFile() && entry.name.startsWith(prefix) && entry.name.endsWith(".md")) {
         results.push(join(dir, entry.name));
       } else if (entry.isDirectory()) {
-        // Scan one level of subdirectories (e.g., YYYY-MM/)
         try {
           const subEntries = readdirSync(join(dir, entry.name));
           for (const sub of subEntries) {
@@ -90,7 +105,7 @@ export function buildIndexFromFiles(agentsDir: string): TaskIndex {
   // ── Collect task files ──────────────────────────────────────────────────
 
   const activeTaskFiles = collectFiles(tasksDir, "TASK-");
-  const archivedTaskFiles = collectFiles(tasksArchiveDir, "TASK-");
+  const archivedTaskFiles = collectFilesDeep(tasksArchiveDir, "TASK-");
 
   for (const filePath of activeTaskFiles) {
     const content = readFileSync(filePath, "utf-8");
@@ -118,7 +133,7 @@ export function buildIndexFromFiles(agentsDir: string): TaskIndex {
   // ── Collect spec files ──────────────────────────────────────────────────
 
   const activeSpecFiles = collectFiles(specsDir, "SPEC-");
-  const archivedSpecFiles = collectFiles(specsArchiveDir, "SPEC-");
+  const archivedSpecFiles = collectFilesDeep(specsArchiveDir, "SPEC-");
 
   for (const filePath of activeSpecFiles) {
     const content = readFileSync(filePath, "utf-8");
@@ -359,8 +374,8 @@ export function findOrphans(
 
   // ── Check task files ────────────────────────────────────────────────────
 
-  const checkTaskFiles = (dir: string, baseDir: string) => {
-    const files = collectFiles(dir, "TASK-");
+  const checkTaskFiles = (dir: string, baseDir: string, deep: boolean) => {
+    const files = deep ? collectFilesDeep(dir, "TASK-") : collectFiles(dir, "TASK-");
     for (const filePath of files) {
       const content = readFileSync(filePath, "utf-8");
       const result = parseTaskFile(filePath, content);
@@ -372,13 +387,13 @@ export function findOrphans(
     }
   };
 
-  checkTaskFiles(tasksDir, tasksDir);
-  checkTaskFiles(tasksArchiveDir, tasksDir);
+  checkTaskFiles(tasksDir, tasksDir, false);
+  checkTaskFiles(tasksArchiveDir, tasksDir, true);
 
   // ── Check spec files ────────────────────────────────────────────────────
 
-  const checkSpecFiles = (dir: string, baseDir: string) => {
-    const files = collectFiles(dir, "SPEC-");
+  const checkSpecFiles = (dir: string, baseDir: string, deep: boolean) => {
+    const files = deep ? collectFilesDeep(dir, "SPEC-") : collectFiles(dir, "SPEC-");
     for (const filePath of files) {
       const content = readFileSync(filePath, "utf-8");
       const result = parseSpecFile(filePath, content);
@@ -390,8 +405,8 @@ export function findOrphans(
     }
   };
 
-  checkSpecFiles(specsDir, specsDir);
-  checkSpecFiles(specsArchiveDir, specsDir);
+  checkSpecFiles(specsDir, specsDir, false);
+  checkSpecFiles(specsArchiveDir, specsDir, true);
 
   return { tasks: orphanTasks, specs: orphanSpecs };
 }

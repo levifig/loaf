@@ -619,9 +619,14 @@ export function registerTaskCommand(program: Command): void {
 
       // ── Apply --spec ──────────────────────────────────────────────────
       if (options.spec !== undefined) {
+        if (options.spec !== "none" && !index.specs[options.spec]) {
+          console.error(`  ${red("error:")} Unknown spec "${options.spec}". Use \`loaf spec list\` to see valid IDs.`);
+          process.exit(1);
+        }
         const oldSpec = entry.spec || "(none)";
-        entry.spec = options.spec;
-        changes.push({ field: "Spec", from: oldSpec, to: options.spec });
+        const newSpec = options.spec === "none" ? null : options.spec;
+        entry.spec = newSpec;
+        changes.push({ field: "Spec", from: oldSpec, to: newSpec || "(none)" });
       }
 
       // ── Update timestamp and persist ──────────────────────────────────

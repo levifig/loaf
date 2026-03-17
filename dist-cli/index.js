@@ -3037,6 +3037,14 @@ var yellow5 = (s) => `\x1B[33m${s}\x1B[0m`;
 var gray5 = (s) => `\x1B[90m${s}\x1B[0m`;
 function collectFiles(dir, prefix) {
   if (!existsSync18(dir)) return [];
+  try {
+    return readdirSync10(dir).filter((f) => f.startsWith(prefix) && f.endsWith(".md")).map((f) => join19(dir, f));
+  } catch {
+    return [];
+  }
+}
+function collectFilesDeep(dir, prefix) {
+  if (!existsSync18(dir)) return [];
   const results = [];
   try {
     const entries = readdirSync10(dir, { withFileTypes: true });
@@ -3072,7 +3080,7 @@ function buildIndexFromFiles(agentsDir) {
   const specs = {};
   let maxTaskNum = 0;
   const activeTaskFiles = collectFiles(tasksDir, "TASK-");
-  const archivedTaskFiles = collectFiles(tasksArchiveDir, "TASK-");
+  const archivedTaskFiles = collectFilesDeep(tasksArchiveDir, "TASK-");
   for (const filePath of activeTaskFiles) {
     const content = readFileSync17(filePath, "utf-8");
     const result = parseTaskFile(filePath, content);
@@ -3092,7 +3100,7 @@ function buildIndexFromFiles(agentsDir) {
     }
   }
   const activeSpecFiles = collectFiles(specsDir, "SPEC-");
-  const archivedSpecFiles = collectFiles(specsArchiveDir, "SPEC-");
+  const archivedSpecFiles = collectFilesDeep(specsArchiveDir, "SPEC-");
   for (const filePath of activeSpecFiles) {
     const content = readFileSync17(filePath, "utf-8");
     const result = parseSpecFile(filePath, content);
@@ -3219,8 +3227,8 @@ function findOrphans(agentsDir, index) {
   const orphanSpecs = [];
   const knownTaskIds = new Set(Object.keys(index.tasks));
   const knownSpecIds = new Set(Object.keys(index.specs));
-  const checkTaskFiles = (dir, baseDir) => {
-    const files = collectFiles(dir, "TASK-");
+  const checkTaskFiles = (dir, baseDir, deep) => {
+    const files = deep ? collectFilesDeep(dir, "TASK-") : collectFiles(dir, "TASK-");
     for (const filePath of files) {
       const content = readFileSync17(filePath, "utf-8");
       const result = parseTaskFile(filePath, content);
@@ -3230,10 +3238,10 @@ function findOrphans(agentsDir, index) {
       }
     }
   };
-  checkTaskFiles(tasksDir, tasksDir);
-  checkTaskFiles(tasksArchiveDir, tasksDir);
-  const checkSpecFiles = (dir, baseDir) => {
-    const files = collectFiles(dir, "SPEC-");
+  checkTaskFiles(tasksDir, tasksDir, false);
+  checkTaskFiles(tasksArchiveDir, tasksDir, true);
+  const checkSpecFiles = (dir, baseDir, deep) => {
+    const files = deep ? collectFilesDeep(dir, "SPEC-") : collectFiles(dir, "SPEC-");
     for (const filePath of files) {
       const content = readFileSync17(filePath, "utf-8");
       const result = parseSpecFile(filePath, content);
@@ -3243,8 +3251,8 @@ function findOrphans(agentsDir, index) {
       }
     }
   };
-  checkSpecFiles(specsDir, specsDir);
-  checkSpecFiles(specsArchiveDir, specsDir);
+  checkSpecFiles(specsDir, specsDir, false);
+  checkSpecFiles(specsArchiveDir, specsDir, true);
   return { tasks: orphanTasks, specs: orphanSpecs };
 }
 
@@ -3673,9 +3681,14 @@ function registerTaskCommand(program2) {
       changes.push({ field: "Session", from: oldSession, to: newSession || "(none)" });
     }
     if (options.spec !== void 0) {
+      if (options.spec !== "none" && !index.specs[options.spec]) {
+        console.error(`  ${red4("error:")} Unknown spec "${options.spec}". Use \`loaf spec list\` to see valid IDs.`);
+        process.exit(1);
+      }
       const oldSpec = entry.spec || "(none)";
-      entry.spec = options.spec;
-      changes.push({ field: "Spec", from: oldSpec, to: options.spec });
+      const newSpec = options.spec === "none" ? null : options.spec;
+      entry.spec = newSpec;
+      changes.push({ field: "Spec", from: oldSpec, to: newSpec || "(none)" });
     }
     entry.updated = (/* @__PURE__ */ new Date()).toISOString();
     const indexPath = join21(agentsDir, "TASKS.json");

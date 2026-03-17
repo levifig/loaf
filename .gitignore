@@ -29,11 +29,12 @@ Thumbs.db
 *.swp
 *.swo
 
-# Local agent work (tracked: AGENTS.md, TASKS.json, specs/)
+# Local agent work (tracked: AGENTS.md, TASKS.json, specs/, tasks/)
 .agents/*
 !.agents/AGENTS.md
 !.agents/TASKS.json
 !.agents/specs/
+!.agents/tasks/
 
 # Environment files
 .env
