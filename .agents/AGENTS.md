@@ -296,6 +296,7 @@ npm link                       # Make `loaf` available globally
 
 - [ ] `loaf build` succeeds
 - [ ] `npm run typecheck` passes
+- [ ] `npm run test` passes
 - [ ] Frontmatter has required fields
 - [ ] New skills registered in `hooks.yaml`
 - [ ] Sidecar file for Claude-specific fields
