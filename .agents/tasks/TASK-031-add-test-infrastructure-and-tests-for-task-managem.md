@@ -1,11 +1,11 @@
 ---
 id: TASK-031
 title: Add test infrastructure and tests for task management CLI
-status: todo
+status: done
 priority: P1
-spec: SPEC-010
 created: '2026-03-17T00:59:13.998Z'
-updated: '2026-03-17T00:59:13.998Z'
+updated: '2026-03-17T10:15:30.958Z'
+completed_at: '2026-03-17T10:15:30.957Z'
 ---
 
 # TASK-031: Add test infrastructure and tests for task management CLI

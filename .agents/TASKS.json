@@ -624,7 +624,7 @@
       "title": "Add test infrastructure and tests for task management CLI",
       "slug": "add-test-infrastructure-and-tests-for-task-managem",
       "spec": null,
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -632,8 +632,8 @@
       "done": null,
       "session": null,
       "created": "2026-03-17T00:59:13.998Z",
-      "updated": "2026-03-17T00:59:13.998Z",
-      "completed_at": null,
+      "updated": "2026-03-17T10:15:30.958Z",
+      "completed_at": "2026-03-17T10:15:30.957Z",
       "file": "TASK-031-add-test-infrastructure-and-tests-for-task-managem.md"
     },
     "TASK-032": {
