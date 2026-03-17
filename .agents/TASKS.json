@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 31,
+  "next_id": 33,
   "tasks": {
     "TASK-019": {
       "title": "Enhance /resume for intelligent project resumption",
@@ -619,6 +619,38 @@
       "updated": "2026-03-16T16:27:15.467Z",
       "completed_at": "2026-03-16T16:27:15.467Z",
       "file": "archive/TASK-027-output-improvements-cleanup.md"
+    },
+    "TASK-031": {
+      "title": "Add test infrastructure and tests for task management CLI",
+      "slug": "add-test-infrastructure-and-tests-for-task-managem",
+      "spec": null,
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-17T00:59:13.998Z",
+      "updated": "2026-03-17T00:59:13.998Z",
+      "completed_at": null,
+      "file": "TASK-031-add-test-infrastructure-and-tests-for-task-managem.md"
+    },
+    "TASK-032": {
+      "title": "Add --active flag to loaf task list to hide done tasks",
+      "slug": "add-active-flag-to-loaf-task-list-to-hide-done-tas",
+      "spec": null,
+      "status": "todo",
+      "priority": "P3",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-17T01:02:05.067Z",
+      "updated": "2026-03-17T01:02:05.067Z",
+      "completed_at": null,
+      "file": "TASK-032-add-active-flag-to-loaf-task-list-to-hide-done-tas.md"
     }
   },
   "specs": {
