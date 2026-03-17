@@ -13,6 +13,7 @@ import { findAgentsDir, getOrBuildIndex } from "../lib/tasks/resolve.js";
 import { buildIndexFromFiles, saveIndex, syncFrontmatterFromIndex, findOrphans } from "../lib/tasks/migrate.js";
 import type { TaskIndex, TaskEntry, TaskStatus, TaskPriority, SpecStatus } from "../lib/tasks/types.js";
 import { TASK_STATUSES, TASK_PRIORITIES } from "../lib/tasks/types.js";
+import { generateSlug } from "../lib/tasks/slug.js";
 
 // ANSI color helpers (matching project conventions)
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
@@ -99,17 +100,6 @@ function countSpecs(index: TaskIndex): { total: number; byStatus: Record<SpecSta
   };
 }
 
-/**
- * Generate a URL-safe slug from a task title.
- */
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[`'"]/g, "")           // Remove quotes/backticks
-    .replace(/[^a-z0-9]+/g, "-")     // Replace non-alphanumeric with hyphens
-    .replace(/^-+|-+$/g, "")         // Trim leading/trailing hyphens
-    .slice(0, 50);                    // Max length
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Command

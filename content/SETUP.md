@@ -50,14 +50,14 @@ MCP servers are automatically started when needed. Prerequisites:
 ### Sequential Thinking
 
 ```bash
-# Requires Node.js 18+
+# Requires Node.js 22+
 # No additional installation - runs via npx
 ```
 
 ### Linear
 
 ```bash
-# Requires Node.js 18+
+# Requires Node.js 22+
 # No additional installation - runs via npx
 # Auth preference: if LINEAR_API_KEY is set, it is used first (supports 1Password refs op:// when op CLI is available)
 # Fallback: if LINEAR_API_KEY is not set, OAuth is used
@@ -107,7 +107,7 @@ uv --version
 
 ### MCP server fails to start
 
-1. Check Node.js version: `node --version` (need 18+)
+1. Check Node.js version: `node --version` (need 22+)
 2. Check Python/uv for Serena: `uv --version`
 3. Try running the server manually to see errors
 

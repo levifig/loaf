@@ -65,7 +65,7 @@ detect_dev_mode() {
 check_requirements() {
     local missing=()
     command -v git &>/dev/null  || missing+=("git")
-    command -v node &>/dev/null || missing+=("node (18+)")
+    command -v node &>/dev/null || missing+=("node (22+)")
     command -v npm &>/dev/null  || missing+=("npm")
 
     if [[ ${#missing[@]} -gt 0 ]]; then
@@ -75,8 +75,8 @@ check_requirements() {
 
     local node_version
     node_version=$(node -v | sed 's/v//' | cut -d. -f1)
-    if [[ "$node_version" -lt 18 ]]; then
-        err "Node.js 18+ required (found: $(node -v))"
+    if [[ "$node_version" -lt 22 ]]; then
+        err "Node.js 22+ required (found: $(node -v))"
         exit 1
     fi
 
