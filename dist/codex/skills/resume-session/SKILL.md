@@ -20,7 +20,7 @@ Parse `$ARGUMENTS`:
 
 | Input | Action |
 |-------|--------|
-| `TASK-XXX` | Find task file `.agents/tasks/TASK-XXX-*.md`, extract `session:` field |
+| `TASK-XXX` | Read `.agents/TASKS.json` to find task metadata, extract `session` field to locate the associated session file |
 | Session filename | Look in `.agents/sessions/` (append `.md` if needed) |
 
 If not found, list available sessions/tasks with usage examples.

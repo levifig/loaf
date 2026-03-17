@@ -114,41 +114,41 @@ Closes BACK-123
 
 ### Types
 
-- `feature/` - New features
-- `bugfix/` - Bug fixes
+- `feat/` - New features (e.g., `feat/spec-010-task-management-cli`)
+- `fix/` - Bug fixes
 - `hotfix/` - Critical production fixes
 - `release/` - Release preparation
+- `chore/` - Maintenance, refactoring
 
 ### Rules
 
 - Lowercase with hyphens (kebab-case)
 - Short but descriptive (max 50 chars)
-- Include task ID when applicable
+- Include spec or task slug when applicable (e.g., `feat/spec-010-task-management-cli`)
 
 ## Pull Request Format
 
 ### Title
 
-Same format as commit messages:
+Same format as commit messages (GitHub appends `(#N)` automatically on squash merge):
 
 ```
-feat: add thermal rating calculation (#123)
+feat: add thermal rating calculation
 ```
 
-### Description Template
+### Description
+
+Focus on **review context** — what changed, why, and how to test. Do not include squash merge commit text in the PR body.
 
 ```markdown
 ## Summary
 
 Brief description of what this PR adds/changes and why.
 
-## Changes
+- Bullet points covering key changes
+- Focus on what a reviewer needs to know
 
-- Added thermal rating calculation endpoint
-- Implemented CIGRE TB 601 heat balance model
-- Added unit tests for thermal model
-
-## Testing
+## Test plan
 
 - [ ] Unit tests added/updated
 - [ ] Integration tests pass
@@ -159,6 +159,14 @@ Brief description of what this PR adds/changes and why.
 Closes BACK-123
 Refs BACK-124
 ```
+
+### Merge Strategy
+
+- **Prefer squash merge** unless explicitly told otherwise
+- GitHub defaults the merge title to `PR title (#N)` — this is the desired format
+- **Write a clean extended description** for the squash merge commit — a concise summary of the branch's work (2-4 lines)
+- **Never use the automatic squash description** that dumps all individual commit messages — it's noisy and unhelpful in git history
+- Don't push or merge without explicit request
 
 ## Critical Rules
 

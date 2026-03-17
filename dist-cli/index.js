@@ -7,8 +7,8 @@ var __export = (target, all) => {
 
 // cli/index.ts
 import { Command } from "commander";
-import { readFileSync as readFileSync17 } from "fs";
-import { join as join19, dirname as dirname7 } from "path";
+import { readFileSync as readFileSync19 } from "fs";
+import { join as join23, dirname as dirname8 } from "path";
 import { fileURLToPath as fileURLToPath4 } from "url";
 
 // cli/commands/build.ts
@@ -2855,15 +2855,1073 @@ ${bold4("loaf release")}
   });
 }
 
+// cli/commands/task.ts
+import { existsSync as existsSync20, mkdirSync as mkdirSync10, readFileSync as readFileSync18, writeFileSync as writeFileSync12 } from "fs";
+import { join as join21 } from "path";
+import matter9 from "gray-matter";
+
+// cli/lib/tasks/resolve.ts
+import { existsSync as existsSync19 } from "fs";
+import { join as join20, dirname as dirname7 } from "path";
+
+// cli/lib/tasks/migrate.ts
+import { existsSync as existsSync18, readFileSync as readFileSync17, writeFileSync as writeFileSync11, readdirSync as readdirSync10 } from "fs";
+import { join as join19, basename as basename5, relative as relative3 } from "path";
+import matter8 from "gray-matter";
+
+// cli/lib/tasks/parser.ts
+import { basename as basename4 } from "path";
+import matter7 from "gray-matter";
+
+// cli/lib/tasks/types.ts
+var TASK_STATUSES = [
+  "todo",
+  "in_progress",
+  "blocked",
+  "review",
+  "done"
+];
+var SPEC_STATUSES = [
+  "drafting",
+  "approved",
+  "implementing",
+  "complete"
+];
+var TASK_PRIORITIES = ["P0", "P1", "P2", "P3"];
+
+// cli/lib/tasks/parser.ts
+var yellow4 = (s) => `\x1B[33m${s}\x1B[0m`;
+var TASK_STATUS_ALIASES = {
+  "complete": "done",
+  "completed": "done",
+  "archived": "done",
+  "in-progress": "in_progress",
+  "in progress": "in_progress",
+  "wip": "in_progress",
+  "pending": "todo",
+  "waiting": "blocked"
+};
+var SPEC_STATUS_ALIASES = {
+  "draft": "drafting",
+  "done": "complete",
+  "completed": "complete",
+  "archived": "complete",
+  "implemented": "complete",
+  "in-progress": "implementing",
+  "in_progress": "implementing"
+};
+function normalizeTaskStatus(raw) {
+  if (!raw) return "todo";
+  const lower = raw.trim().toLowerCase();
+  if (TASK_STATUSES.includes(lower)) {
+    return lower;
+  }
+  return TASK_STATUS_ALIASES[lower] ?? "todo";
+}
+function normalizeTaskPriority(raw) {
+  if (!raw) return "P2";
+  const upper = raw.trim().toUpperCase();
+  if (TASK_PRIORITIES.includes(upper)) {
+    return upper;
+  }
+  return "P2";
+}
+function normalizeSpecStatus(raw) {
+  if (!raw) return "drafting";
+  const lower = raw.trim().toLowerCase();
+  if (SPEC_STATUSES.includes(lower)) {
+    return lower;
+  }
+  return SPEC_STATUS_ALIASES[lower] ?? "drafting";
+}
+function normalizeDate(value) {
+  if (!value) return (/* @__PURE__ */ new Date()).toISOString();
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.includes("T")) {
+      return trimmed;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return `${trimmed}T00:00:00Z`;
+    }
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+function parseTaskFilename(filePath) {
+  const name = basename4(filePath, ".md");
+  const match = name.match(/^(TASK-\d+)(?:-(.+))?$/);
+  if (!match) {
+    return { id: null, slug: name };
+  }
+  return {
+    id: match[1],
+    slug: match[2] ?? ""
+  };
+}
+function parseSpecFilename(filePath) {
+  const name = basename4(filePath, ".md");
+  const match = name.match(/^(SPEC-\d+)/);
+  return { id: match ? match[1] : null };
+}
+function parseTaskFile(filePath, content) {
+  try {
+    const { data } = matter7(content);
+    const fm = data;
+    const { id: filenameId, slug } = parseTaskFilename(filePath);
+    const id = fm.id || filenameId;
+    if (!id) {
+      console.error(`  ${yellow4("warn:")} Could not determine task ID for ${basename4(filePath)}`);
+      return null;
+    }
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const status = normalizeTaskStatus(fm.status);
+    const entry = {
+      title: fm.title || basename4(filePath, ".md"),
+      slug,
+      spec: fm.spec || null,
+      status,
+      priority: normalizeTaskPriority(fm.priority),
+      depends_on: Array.isArray(fm.depends_on) ? fm.depends_on : [],
+      files: Array.isArray(fm.files) ? fm.files : [],
+      verify: fm.verify || null,
+      done: fm.done || null,
+      session: fm.session || null,
+      created: normalizeDate(fm.created),
+      updated: normalizeDate(fm.updated ?? fm.created),
+      completed_at: status === "done" ? fm.completed_at ? normalizeDate(fm.completed_at) : normalizeDate(fm.updated ?? fm.created ?? now) : null,
+      file: basename4(filePath)
+    };
+    return { id, entry };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`  ${yellow4("warn:")} Failed to parse ${basename4(filePath)}: ${message}`);
+    return null;
+  }
+}
+function parseSpecFile(filePath, content) {
+  try {
+    const { data } = matter7(content);
+    const fm = data;
+    const { id: filenameId } = parseSpecFilename(filePath);
+    const id = fm.id || filenameId;
+    if (!id) {
+      console.error(`  ${yellow4("warn:")} Could not determine spec ID for ${basename4(filePath)}`);
+      return null;
+    }
+    const entry = {
+      title: fm.title || basename4(filePath, ".md"),
+      status: normalizeSpecStatus(fm.status),
+      appetite: fm.appetite || null,
+      requirement: fm.requirement || null,
+      source: fm.source || null,
+      created: normalizeDate(fm.created),
+      file: basename4(filePath)
+    };
+    return { id, entry };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`  ${yellow4("warn:")} Failed to parse ${basename4(filePath)}: ${message}`);
+    return null;
+  }
+}
+
+// cli/lib/tasks/migrate.ts
+var yellow5 = (s) => `\x1B[33m${s}\x1B[0m`;
+var gray5 = (s) => `\x1B[90m${s}\x1B[0m`;
+function collectFiles(dir, prefix) {
+  if (!existsSync18(dir)) return [];
+  try {
+    return readdirSync10(dir).filter((f) => f.startsWith(prefix) && f.endsWith(".md")).map((f) => join19(dir, f));
+  } catch {
+    return [];
+  }
+}
+function collectFilesDeep(dir, prefix) {
+  if (!existsSync18(dir)) return [];
+  const results = [];
+  try {
+    const entries = readdirSync10(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.startsWith(prefix) && entry.name.endsWith(".md")) {
+        results.push(join19(dir, entry.name));
+      } else if (entry.isDirectory()) {
+        try {
+          const subEntries = readdirSync10(join19(dir, entry.name));
+          for (const sub of subEntries) {
+            if (sub.startsWith(prefix) && sub.endsWith(".md")) {
+              results.push(join19(dir, entry.name, sub));
+            }
+          }
+        } catch {
+        }
+      }
+    }
+  } catch {
+  }
+  return results;
+}
+function extractNumber(id) {
+  const match = id.match(/\d+$/);
+  return match ? parseInt(match[0], 10) : 0;
+}
+function buildIndexFromFiles(agentsDir) {
+  const tasksDir = join19(agentsDir, "tasks");
+  const specsDir = join19(agentsDir, "specs");
+  const tasksArchiveDir = join19(tasksDir, "archive");
+  const specsArchiveDir = join19(specsDir, "archive");
+  const tasks = {};
+  const specs = {};
+  let maxTaskNum = 0;
+  const activeTaskFiles = collectFiles(tasksDir, "TASK-");
+  const archivedTaskFiles = collectFilesDeep(tasksArchiveDir, "TASK-");
+  for (const filePath of activeTaskFiles) {
+    const content = readFileSync17(filePath, "utf-8");
+    const result = parseTaskFile(filePath, content);
+    if (result) {
+      result.entry.file = basename5(filePath);
+      tasks[result.id] = result.entry;
+      maxTaskNum = Math.max(maxTaskNum, extractNumber(result.id));
+    }
+  }
+  for (const filePath of archivedTaskFiles) {
+    const content = readFileSync17(filePath, "utf-8");
+    const result = parseTaskFile(filePath, content);
+    if (result) {
+      result.entry.file = relative3(tasksDir, filePath);
+      tasks[result.id] = result.entry;
+      maxTaskNum = Math.max(maxTaskNum, extractNumber(result.id));
+    }
+  }
+  const activeSpecFiles = collectFiles(specsDir, "SPEC-");
+  const archivedSpecFiles = collectFilesDeep(specsArchiveDir, "SPEC-");
+  for (const filePath of activeSpecFiles) {
+    const content = readFileSync17(filePath, "utf-8");
+    const result = parseSpecFile(filePath, content);
+    if (result) {
+      result.entry.file = basename5(filePath);
+      specs[result.id] = result.entry;
+    }
+  }
+  for (const filePath of archivedSpecFiles) {
+    const content = readFileSync17(filePath, "utf-8");
+    const result = parseSpecFile(filePath, content);
+    if (result) {
+      result.entry.file = relative3(specsDir, filePath);
+      specs[result.id] = result.entry;
+    }
+  }
+  return {
+    version: 1,
+    next_id: maxTaskNum + 1,
+    tasks,
+    specs
+  };
+}
+function loadIndex(indexPath) {
+  if (!existsSync18(indexPath)) return null;
+  try {
+    const content = readFileSync17(indexPath, "utf-8");
+    const parsed = JSON.parse(content);
+    if (typeof parsed.version !== "number" || typeof parsed.next_id !== "number" || typeof parsed.tasks !== "object" || typeof parsed.specs !== "object") {
+      console.error(`  ${yellow5("warn:")} TASKS.json has invalid shape, ignoring`);
+      return null;
+    }
+    return parsed;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`  ${yellow5("warn:")} Failed to read TASKS.json: ${message}`);
+    return null;
+  }
+}
+function saveIndex(indexPath, index) {
+  const content = JSON.stringify(index, null, 2) + "\n";
+  writeFileSync11(indexPath, content, "utf-8");
+}
+function taskEntryToFrontmatter(id, entry) {
+  const fm = {
+    id,
+    title: entry.title
+  };
+  if (entry.spec) fm.spec = entry.spec;
+  fm.status = entry.status;
+  fm.priority = entry.priority;
+  if (entry.created) fm.created = entry.created;
+  if (entry.updated) fm.updated = entry.updated;
+  if (entry.depends_on.length > 0) fm.depends_on = entry.depends_on;
+  if (entry.files.length > 0) fm.files = entry.files;
+  if (entry.verify) fm.verify = entry.verify;
+  if (entry.done) fm.done = entry.done;
+  if (entry.session) fm.session = entry.session;
+  if (entry.completed_at) fm.completed_at = entry.completed_at;
+  return fm;
+}
+function specEntryToFrontmatter(id, entry) {
+  const fm = {
+    id,
+    title: entry.title
+  };
+  if (entry.source) fm.source = entry.source;
+  if (entry.created) fm.created = entry.created;
+  fm.status = entry.status;
+  if (entry.appetite) fm.appetite = entry.appetite;
+  if (entry.requirement) fm.requirement = entry.requirement;
+  return fm;
+}
+function frontmatterEquals(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+function resolveFilePath(agentsDir, subdir, relFile) {
+  return join19(agentsDir, subdir, relFile);
+}
+function syncFrontmatterFromIndex(agentsDir, index) {
+  for (const [id, entry] of Object.entries(index.tasks)) {
+    const filePath = resolveFilePath(agentsDir, "tasks", entry.file);
+    if (!existsSync18(filePath)) {
+      console.error(`  ${gray5("skip:")} ${entry.file} not found on disk`);
+      continue;
+    }
+    try {
+      const raw = readFileSync17(filePath, "utf-8");
+      const { data: existingFm, content: body } = matter8(raw);
+      const newFm = taskEntryToFrontmatter(id, entry);
+      if (frontmatterEquals(existingFm, newFm)) continue;
+      const updated = matter8.stringify(body, newFm);
+      writeFileSync11(filePath, updated, "utf-8");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  ${yellow5("warn:")} Failed to sync ${entry.file}: ${message}`);
+    }
+  }
+  for (const [id, entry] of Object.entries(index.specs)) {
+    const filePath = resolveFilePath(agentsDir, "specs", entry.file);
+    if (!existsSync18(filePath)) {
+      console.error(`  ${gray5("skip:")} ${entry.file} not found on disk`);
+      continue;
+    }
+    try {
+      const raw = readFileSync17(filePath, "utf-8");
+      const { data: existingFm, content: body } = matter8(raw);
+      const newFm = specEntryToFrontmatter(id, entry);
+      if (frontmatterEquals(existingFm, newFm)) continue;
+      const updated = matter8.stringify(body, newFm);
+      writeFileSync11(filePath, updated, "utf-8");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  ${yellow5("warn:")} Failed to sync ${entry.file}: ${message}`);
+    }
+  }
+}
+function findOrphans(agentsDir, index) {
+  const tasksDir = join19(agentsDir, "tasks");
+  const specsDir = join19(agentsDir, "specs");
+  const tasksArchiveDir = join19(tasksDir, "archive");
+  const specsArchiveDir = join19(specsDir, "archive");
+  const orphanTasks = [];
+  const orphanSpecs = [];
+  const knownTaskIds = new Set(Object.keys(index.tasks));
+  const knownSpecIds = new Set(Object.keys(index.specs));
+  const checkTaskFiles = (dir, baseDir, deep) => {
+    const files = deep ? collectFilesDeep(dir, "TASK-") : collectFiles(dir, "TASK-");
+    for (const filePath of files) {
+      const content = readFileSync17(filePath, "utf-8");
+      const result = parseTaskFile(filePath, content);
+      if (result && !knownTaskIds.has(result.id)) {
+        result.entry.file = relative3(baseDir, filePath);
+        orphanTasks.push(result);
+      }
+    }
+  };
+  checkTaskFiles(tasksDir, tasksDir, false);
+  checkTaskFiles(tasksArchiveDir, tasksDir, true);
+  const checkSpecFiles = (dir, baseDir, deep) => {
+    const files = deep ? collectFilesDeep(dir, "SPEC-") : collectFiles(dir, "SPEC-");
+    for (const filePath of files) {
+      const content = readFileSync17(filePath, "utf-8");
+      const result = parseSpecFile(filePath, content);
+      if (result && !knownSpecIds.has(result.id)) {
+        result.entry.file = relative3(baseDir, filePath);
+        orphanSpecs.push(result);
+      }
+    }
+  };
+  checkSpecFiles(specsDir, specsDir, false);
+  checkSpecFiles(specsArchiveDir, specsDir, true);
+  return { tasks: orphanTasks, specs: orphanSpecs };
+}
+
+// cli/lib/tasks/resolve.ts
+function findAgentsDir(startDir = process.cwd()) {
+  let current = startDir;
+  while (true) {
+    const candidate = join20(current, ".agents");
+    if (existsSync19(candidate)) {
+      return candidate;
+    }
+    const parent = dirname7(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
+  }
+}
+function getOrBuildIndex(agentsDir) {
+  const indexPath = join20(agentsDir, "TASKS.json");
+  if (existsSync19(indexPath)) {
+    const index2 = loadIndex(indexPath);
+    if (index2) return index2;
+  }
+  const index = buildIndexFromFiles(agentsDir);
+  saveIndex(indexPath, index);
+  return index;
+}
+
+// cli/commands/task.ts
+var bold5 = (s) => `\x1B[1m${s}\x1B[0m`;
+var green5 = (s) => `\x1B[32m${s}\x1B[0m`;
+var red4 = (s) => `\x1B[31m${s}\x1B[0m`;
+var yellow6 = (s) => `\x1B[33m${s}\x1B[0m`;
+var gray6 = (s) => `\x1B[90m${s}\x1B[0m`;
+var cyan4 = (s) => `\x1B[36m${s}\x1B[0m`;
+var STATUS_DISPLAY_ORDER = [
+  "in_progress",
+  "blocked",
+  "todo",
+  "review",
+  "done"
+];
+var STATUS_LABELS = {
+  in_progress: "In Progress",
+  blocked: "Blocked",
+  todo: "Todo",
+  review: "Review",
+  done: "Done"
+};
+var STATUS_COLORS = {
+  in_progress: yellow6,
+  blocked: red4,
+  todo: cyan4,
+  review: gray6,
+  done: green5
+};
+var PRIORITY_COLORS = {
+  P0: red4,
+  P1: yellow6,
+  P2: cyan4,
+  P3: gray6
+};
+function sortTasks(tasks) {
+  return tasks.sort((a, b) => {
+    const pA = TASK_PRIORITIES.indexOf(a[1].priority);
+    const pB = TASK_PRIORITIES.indexOf(b[1].priority);
+    if (pA !== pB) return pA - pB;
+    const dateA = a[1].updated || a[1].created || "";
+    const dateB = b[1].updated || b[1].created || "";
+    return dateB.localeCompare(dateA);
+  });
+}
+function countSpecs(index) {
+  const byStatus = {
+    drafting: 0,
+    approved: 0,
+    implementing: 0,
+    complete: 0
+  };
+  for (const spec of Object.values(index.specs)) {
+    byStatus[spec.status]++;
+  }
+  return {
+    total: Object.keys(index.specs).length,
+    byStatus
+  };
+}
+function generateSlug(title) {
+  return title.toLowerCase().replace(/[`'"]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
+}
+function registerTaskCommand(program2) {
+  const task = program2.command("task").description("Manage project tasks");
+  task.command("list").description("Show task board grouped by status").option("--json", "Output raw JSON").action(async (options) => {
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      console.error(`  ${red4("error:")} Could not find .agents/ directory`);
+      process.exit(1);
+    }
+    const index = getOrBuildIndex(agentsDir);
+    if (options.json) {
+      const indexPath = join21(agentsDir, "TASKS.json");
+      if (existsSync20(indexPath)) {
+        process.stdout.write(readFileSync18(indexPath, "utf-8"));
+      } else {
+        process.stdout.write(JSON.stringify(index, null, 2) + "\n");
+      }
+      return;
+    }
+    const taskEntries = Object.entries(index.tasks);
+    if (taskEntries.length === 0) {
+      console.log(`
+  ${gray6("No tasks found.")}
+`);
+      return;
+    }
+    console.log(`
+  ${bold5("loaf task list")}
+`);
+    const grouped = {
+      in_progress: [],
+      blocked: [],
+      todo: [],
+      review: [],
+      done: []
+    };
+    for (const [id, entry] of taskEntries) {
+      const status = entry.status;
+      if (grouped[status]) {
+        grouped[status].push([id, entry]);
+      } else {
+        grouped.todo.push([id, entry]);
+      }
+    }
+    const specIds = /* @__PURE__ */ new Set();
+    for (const status of STATUS_DISPLAY_ORDER) {
+      const tasks = sortTasks(grouped[status]);
+      const colorFn = STATUS_COLORS[status];
+      const label = STATUS_LABELS[status];
+      console.log(`  ${bold5(colorFn(`${label} (${tasks.length})`))}`);
+      if (tasks.length === 0) {
+      } else {
+        for (const [id, entry] of tasks) {
+          const priorityColor = PRIORITY_COLORS[entry.priority] || gray6;
+          const specRef = entry.spec ? gray6(entry.spec) : "";
+          if (entry.spec) specIds.add(entry.spec);
+          const idCol = bold5(id.padEnd(10));
+          const prioCol = priorityColor(entry.priority.padEnd(4));
+          const titleCol = entry.title;
+          console.log(`    ${idCol}${prioCol}${titleCol}  ${specRef}`);
+        }
+      }
+      console.log();
+    }
+    const totalTasks = taskEntries.length;
+    const totalSpecs = specIds.size;
+    console.log(`  Total: ${bold5(String(totalTasks))} tasks across ${bold5(String(totalSpecs))} specs
+`);
+  });
+  task.command("show").description("Display a single task's details").argument("<id>", "Task ID (e.g., TASK-019)").option("--json", "Output task entry as JSON").action(async (id, options) => {
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      console.error(`  ${red4("error:")} Could not find .agents/ directory`);
+      process.exit(1);
+    }
+    const index = getOrBuildIndex(agentsDir);
+    const entry = index.tasks[id];
+    if (!entry) {
+      console.error(`  ${red4("error:")} ${id} not found in index`);
+      process.exit(1);
+    }
+    if (options.json) {
+      process.stdout.write(JSON.stringify({ id, ...entry }, null, 2) + "\n");
+      return;
+    }
+    console.log(`
+  ${bold5("loaf task show")} ${id}
+`);
+    const priorityColor = PRIORITY_COLORS[entry.priority] || gray6;
+    const statusColor = STATUS_COLORS[entry.status] || gray6;
+    console.log(`  ${bold5(`${id}: ${entry.title}`)}`);
+    console.log();
+    const metaParts = [
+      `Status: ${statusColor(entry.status)}`,
+      `Priority: ${priorityColor(entry.priority)}`
+    ];
+    if (entry.spec) metaParts.push(`Spec: ${entry.spec}`);
+    console.log(`  ${metaParts.join(gray6(" \xB7 "))}`);
+    const dateParts = [];
+    if (entry.created) dateParts.push(`Created: ${entry.created.slice(0, 10)}`);
+    if (entry.updated) dateParts.push(`Updated: ${entry.updated.slice(0, 10)}`);
+    if (dateParts.length > 0) {
+      console.log(`  ${dateParts.join(gray6(" \xB7 "))}`);
+    }
+    if (entry.depends_on.length > 0) {
+      console.log(`  Depends on: ${entry.depends_on.join(", ")}`);
+    }
+    console.log(`  File: .agents/tasks/${entry.file}`);
+    const filePath = join21(agentsDir, "tasks", entry.file);
+    if (!existsSync20(filePath)) {
+      console.log();
+      console.log(`  ${gray6("(no detail file)")}`);
+      console.log();
+      return;
+    }
+    try {
+      const raw = readFileSync18(filePath, "utf-8");
+      const { content: body } = matter9(raw);
+      const trimmedBody = body.replace(/^\n+/, "").replace(/\n+$/, "");
+      if (trimmedBody.length > 0) {
+        console.log();
+        console.log(`  ${"\u2500".repeat(60)}`);
+        console.log();
+        const lines = trimmedBody.split("\n");
+        for (const line of lines) {
+          console.log(`  ${line}`);
+        }
+      }
+      console.log();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  ${yellow6("warn:")} Failed to read ${entry.file}: ${message}`);
+      console.log();
+    }
+  });
+  task.command("status").description("Show task summary counts").action(async () => {
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      console.error(`  ${red4("error:")} Could not find .agents/ directory`);
+      process.exit(1);
+    }
+    const index = getOrBuildIndex(agentsDir);
+    console.log(`
+  ${bold5("loaf task status")}
+`);
+    const taskCounts = {
+      in_progress: 0,
+      blocked: 0,
+      todo: 0,
+      review: 0,
+      done: 0
+    };
+    for (const entry of Object.values(index.tasks)) {
+      if (taskCounts[entry.status] !== void 0) {
+        taskCounts[entry.status]++;
+      }
+    }
+    const totalTasks = Object.keys(index.tasks).length;
+    const taskParts = STATUS_DISPLAY_ORDER.map((status) => {
+      const count = taskCounts[status];
+      const colorFn = STATUS_COLORS[status];
+      return `${colorFn(String(count))} ${status}`;
+    });
+    console.log(`  Tasks:  ${taskParts.join(gray6(" \xB7 "))}  ${gray6(`(${totalTasks} total)`)}`);
+    const specInfo = countSpecs(index);
+    const specStatusOrder = ["drafting", "approved", "implementing", "complete"];
+    const specStatusColors = {
+      drafting: yellow6,
+      approved: cyan4,
+      implementing: yellow6,
+      complete: green5
+    };
+    const specParts = specStatusOrder.map((status) => {
+      const count = specInfo.byStatus[status];
+      const colorFn = specStatusColors[status];
+      return `${colorFn(String(count))} ${status}`;
+    });
+    console.log(`  Specs:  ${specParts.join(gray6(" \xB7 "))}  ${gray6(`(${specInfo.total} total)`)}`);
+    console.log();
+  });
+  task.command("create").description("Create a new task").requiredOption("--title <title>", "Task title").option("--spec <id>", "Associated spec ID (e.g., SPEC-010)").option("--priority <level>", "Priority level (P0/P1/P2/P3)", "P2").option("--depends-on <ids>", "Comma-separated task IDs").action(async (options) => {
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      console.error(`  ${red4("error:")} Could not find .agents/ directory`);
+      process.exit(1);
+    }
+    const index = getOrBuildIndex(agentsDir);
+    const indexPath = join21(agentsDir, "TASKS.json");
+    const priority = options.priority;
+    if (!TASK_PRIORITIES.includes(priority)) {
+      console.error(`  ${red4("error:")} Invalid priority "${options.priority}". Must be one of: ${TASK_PRIORITIES.join(", ")}`);
+      process.exit(1);
+    }
+    const spec = options.spec || null;
+    if (spec && !index.specs[spec]) {
+      console.error(`  ${red4("error:")} Spec "${spec}" not found in index`);
+      process.exit(1);
+    }
+    const dependsOn = [];
+    if (options.dependsOn) {
+      for (const depId of options.dependsOn.split(",").map((s) => s.trim())) {
+        if (!index.tasks[depId]) {
+          console.error(`  ${red4("error:")} Dependency "${depId}" not found in index`);
+          process.exit(1);
+        }
+        dependsOn.push(depId);
+      }
+    }
+    const nextId = index.next_id;
+    const taskId = `TASK-${String(nextId).padStart(3, "0")}`;
+    const slug = generateSlug(options.title);
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const fileName = `${taskId}-${slug}.md`;
+    const entry = {
+      title: options.title,
+      slug,
+      spec,
+      status: "todo",
+      priority,
+      depends_on: dependsOn,
+      files: [],
+      verify: null,
+      done: null,
+      session: null,
+      created: now,
+      updated: now,
+      completed_at: null,
+      file: fileName
+    };
+    index.tasks[taskId] = entry;
+    index.next_id = nextId + 1;
+    saveIndex(indexPath, index);
+    const tasksDir = join21(agentsDir, "tasks");
+    if (!existsSync20(tasksDir)) {
+      mkdirSync10(tasksDir, { recursive: true });
+    }
+    const frontmatterData = {
+      id: taskId,
+      title: options.title,
+      status: "todo",
+      priority,
+      created: now,
+      updated: now
+    };
+    if (spec) frontmatterData.spec = spec;
+    if (dependsOn.length > 0) frontmatterData.depends_on = dependsOn;
+    const body = `
+# ${taskId}: ${options.title}
+
+## Description
+
+<!-- Describe the task here -->
+
+## Acceptance Criteria
+
+- [ ]
+
+## Verification
+
+\`\`\`bash
+# Add verification command
+\`\`\`
+`;
+    const mdContent = matter9.stringify(body, frontmatterData);
+    writeFileSync12(join21(tasksDir, fileName), mdContent, "utf-8");
+    console.log(`
+  ${bold5("loaf task create")}
+`);
+    console.log(`  ${green5("\u2713")} Created ${bold5(taskId)}: ${options.title}`);
+    console.log(`    File: .agents/tasks/${fileName}`);
+    const details = [];
+    if (spec) details.push(`Spec: ${spec}`);
+    details.push(`Priority: ${priority}`);
+    if (dependsOn.length > 0) details.push(`Depends on: ${dependsOn.join(", ")}`);
+    console.log(`    ${details.join(gray6(" \xB7 "))}`);
+    console.log();
+  });
+  task.command("update").description("Update a task's metadata").argument("<id>", "Task ID to update (e.g., TASK-031)").option("--status <status>", "New status: todo, in_progress, blocked, review, done").option("--priority <level>", "New priority: P0, P1, P2, P3").option("--depends-on <ids>", "Replace depends_on (comma-separated task IDs)").option("--session <file>", 'Set or clear session reference (use "none" to clear)').option("--spec <id>", "Set or change associated spec").action(async (id, options) => {
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      console.error(`  ${red4("error:")} Could not find .agents/ directory`);
+      process.exit(1);
+    }
+    if (options.status === void 0 && options.priority === void 0 && options.dependsOn === void 0 && options.session === void 0 && options.spec === void 0) {
+      console.error(`  ${red4("error:")} No updates specified. Use --status, --priority, --depends-on, --session, or --spec`);
+      process.exit(1);
+    }
+    const index = getOrBuildIndex(agentsDir);
+    const entry = index.tasks[id];
+    if (!entry) {
+      console.error(`  ${red4("error:")} ${id} not found in index`);
+      process.exit(1);
+    }
+    const changes = [];
+    if (options.status !== void 0) {
+      if (!TASK_STATUSES.includes(options.status)) {
+        console.error(`  ${red4("error:")} Invalid status "${options.status}". Valid: ${TASK_STATUSES.join(", ")}`);
+        process.exit(1);
+      }
+      const oldStatus = entry.status;
+      const newStatus = options.status;
+      if (newStatus === "done" && oldStatus !== "done") {
+        entry.completed_at = (/* @__PURE__ */ new Date()).toISOString();
+      } else if (newStatus !== "done" && oldStatus === "done") {
+        entry.completed_at = null;
+      }
+      entry.status = newStatus;
+      changes.push({ field: "Status", from: oldStatus, to: newStatus });
+    }
+    if (options.priority !== void 0) {
+      if (!TASK_PRIORITIES.includes(options.priority)) {
+        console.error(`  ${red4("error:")} Invalid priority "${options.priority}". Valid: ${TASK_PRIORITIES.join(", ")}`);
+        process.exit(1);
+      }
+      const oldPriority = entry.priority;
+      const newPriority = options.priority;
+      entry.priority = newPriority;
+      changes.push({ field: "Priority", from: oldPriority, to: newPriority });
+    }
+    if (options.dependsOn !== void 0) {
+      const newDeps = options.dependsOn.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+      for (const depId of newDeps) {
+        if (!index.tasks[depId]) {
+          console.error(`  ${red4("error:")} Unknown task ID "${depId}" in --depends-on`);
+          process.exit(1);
+        }
+      }
+      const oldDeps = entry.depends_on.length > 0 ? entry.depends_on.join(", ") : "(none)";
+      entry.depends_on = newDeps;
+      changes.push({ field: "Depends on", from: oldDeps, to: newDeps.length > 0 ? newDeps.join(", ") : "(none)" });
+    }
+    if (options.session !== void 0) {
+      const oldSession = entry.session || "(none)";
+      const newSession = options.session === "none" ? null : options.session;
+      entry.session = newSession;
+      changes.push({ field: "Session", from: oldSession, to: newSession || "(none)" });
+    }
+    if (options.spec !== void 0) {
+      if (options.spec !== "none" && !index.specs[options.spec]) {
+        console.error(`  ${red4("error:")} Unknown spec "${options.spec}". Use \`loaf spec list\` to see valid IDs.`);
+        process.exit(1);
+      }
+      const oldSpec = entry.spec || "(none)";
+      const newSpec = options.spec === "none" ? null : options.spec;
+      entry.spec = newSpec;
+      changes.push({ field: "Spec", from: oldSpec, to: newSpec || "(none)" });
+    }
+    entry.updated = (/* @__PURE__ */ new Date()).toISOString();
+    const indexPath = join21(agentsDir, "TASKS.json");
+    saveIndex(indexPath, index);
+    syncFrontmatterFromIndex(agentsDir, index);
+    console.log(`
+  ${bold5("loaf task update")}
+`);
+    console.log(`  ${green5("\u2713")} Updated ${bold5(id)}: ${entry.title}`);
+    for (const change of changes) {
+      if (change.from === change.to) {
+        console.log(`    ${change.field}: ${change.from} ${gray6("(unchanged)")}`);
+      } else {
+        console.log(`    ${change.field}: ${change.from} \u2192 ${change.to}`);
+      }
+    }
+    const providedFields = new Set(changes.map((c) => c.field));
+    if (!providedFields.has("Status")) {
+      console.log(`    Status: ${entry.status} ${gray6("(unchanged)")}`);
+    }
+    if (!providedFields.has("Priority")) {
+      console.log(`    Priority: ${entry.priority} ${gray6("(unchanged)")}`);
+    }
+    console.log();
+  });
+  task.command("sync").description("Rebuild TASKS.json from .md files, or import orphans").option("--import", "Import orphan .md files not in the index").action(async (options) => {
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      console.error(`  ${red4("error:")} Could not find .agents/ directory`);
+      process.exit(1);
+    }
+    const indexPath = join21(agentsDir, "TASKS.json");
+    console.log(`
+  ${bold5("loaf task sync")}
+`);
+    if (options.import) {
+      const index = getOrBuildIndex(agentsDir);
+      const orphans = findOrphans(agentsDir, index);
+      const totalOrphans = orphans.tasks.length + orphans.specs.length;
+      if (totalOrphans === 0) {
+        console.log(`  No orphan files found.`);
+        console.log();
+        return;
+      }
+      console.log(`  Found ${totalOrphans} orphan file(s):`);
+      for (const orphan of orphans.tasks) {
+        console.log(`    ${green5("+")} ${orphan.entry.file}`);
+      }
+      for (const orphan of orphans.specs) {
+        console.log(`    ${green5("+")} ${orphan.entry.file}`);
+      }
+      let maxTaskNum = index.next_id - 1;
+      for (const orphan of orphans.tasks) {
+        index.tasks[orphan.id] = orphan.entry;
+        const num = extractOrphanNumber(orphan.id);
+        if (num > maxTaskNum) maxTaskNum = num;
+      }
+      for (const orphan of orphans.specs) {
+        index.specs[orphan.id] = orphan.entry;
+      }
+      if (maxTaskNum >= index.next_id) {
+        index.next_id = maxTaskNum + 1;
+      }
+      saveIndex(indexPath, index);
+      const importedParts = [];
+      if (orphans.tasks.length > 0) importedParts.push(`${orphans.tasks.length} task(s)`);
+      if (orphans.specs.length > 0) importedParts.push(`${orphans.specs.length} spec(s)`);
+      console.log();
+      console.log(`  ${green5("\u2713")} Imported ${importedParts.join(" and ")} into TASKS.json`);
+      console.log();
+    } else {
+      const index = buildIndexFromFiles(agentsDir);
+      saveIndex(indexPath, index);
+      const statusCounts = {};
+      for (const entry of Object.values(index.tasks)) {
+        statusCounts[entry.status] = (statusCounts[entry.status] || 0) + 1;
+      }
+      const totalTasks = Object.keys(index.tasks).length;
+      const totalSpecs = Object.keys(index.specs).length;
+      const countParts = STATUS_DISPLAY_ORDER.map((s) => {
+        const count = statusCounts[s] || 0;
+        return `${count} ${s}`;
+      });
+      console.log(`  ${green5("\u2713")} Rebuilt TASKS.json from .md files`);
+      console.log(`    Tasks: ${totalTasks} (${countParts.join(", ")})`);
+      console.log(`    Specs: ${totalSpecs}`);
+      console.log();
+    }
+  });
+}
+function extractOrphanNumber(id) {
+  const match = id.match(/\d+$/);
+  return match ? parseInt(match[0], 10) : 0;
+}
+
+// cli/commands/spec.ts
+import { existsSync as existsSync21 } from "fs";
+import { join as join22 } from "path";
+var bold6 = (s) => `\x1B[1m${s}\x1B[0m`;
+var green6 = (s) => `\x1B[32m${s}\x1B[0m`;
+var red5 = (s) => `\x1B[31m${s}\x1B[0m`;
+var yellow7 = (s) => `\x1B[33m${s}\x1B[0m`;
+var cyan5 = (s) => `\x1B[36m${s}\x1B[0m`;
+var gray7 = (s) => `\x1B[90m${s}\x1B[0m`;
+var STATUS_ORDER = [
+  "implementing",
+  "approved",
+  "drafting",
+  "complete"
+];
+var STATUS_COLORS2 = {
+  implementing: yellow7,
+  approved: cyan5,
+  drafting: gray7,
+  complete: green6
+};
+var STATUS_LABELS2 = {
+  implementing: "Implementing",
+  approved: "Approved",
+  drafting: "Drafting",
+  complete: "Complete"
+};
+function resolveIndex(agentsDir) {
+  const indexPath = join22(agentsDir, "TASKS.json");
+  if (existsSync21(indexPath)) {
+    const index2 = loadIndex(indexPath);
+    if (index2) return index2;
+    console.error(`  ${red5("error:")} TASKS.json exists but is invalid`);
+    process.exit(1);
+  }
+  const index = buildIndexFromFiles(agentsDir);
+  saveIndex(indexPath, index);
+  return index;
+}
+function computeTaskCounts(index) {
+  const counts = {};
+  for (const [, task] of Object.entries(index.tasks)) {
+    if (!task.spec) continue;
+    if (!counts[task.spec]) {
+      counts[task.spec] = { todo: 0, in_progress: 0, done: 0 };
+    }
+    const c = counts[task.spec];
+    if (task.status === "done") {
+      c.done++;
+    } else if (task.status === "in_progress") {
+      c.in_progress++;
+    } else {
+      c.todo++;
+    }
+  }
+  return counts;
+}
+function formatTaskCounts(counts) {
+  if (!counts || counts.todo === 0 && counts.in_progress === 0 && counts.done === 0) {
+    return gray7("(none)");
+  }
+  const parts = [
+    counts.todo > 0 ? yellow7(String(counts.todo)) : gray7("0"),
+    " todo \xB7 ",
+    counts.in_progress > 0 ? cyan5(String(counts.in_progress)) : gray7("0"),
+    " in_progress \xB7 ",
+    counts.done > 0 ? green6(String(counts.done)) : gray7("0"),
+    " done"
+  ];
+  return parts.join("");
+}
+function registerSpecCommand(program2) {
+  const spec = program2.command("spec").description("Manage project specs");
+  spec.command("list").description("Show specs with status and task counts").option("--json", "Output raw JSON").action(async (options) => {
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      console.error(`  ${red5("error:")} No .agents/ directory found`);
+      process.exit(1);
+    }
+    const index = resolveIndex(agentsDir);
+    if (options.json) {
+      console.log(JSON.stringify(index.specs, null, 2));
+      return;
+    }
+    console.log(`
+${bold6("  loaf spec list")}
+`);
+    const specEntries = Object.entries(index.specs);
+    if (specEntries.length === 0) {
+      console.log(`  ${gray7("No specs found.")}
+`);
+      return;
+    }
+    const taskCounts = computeTaskCounts(index);
+    const grouped = {
+      implementing: [],
+      approved: [],
+      drafting: [],
+      complete: []
+    };
+    for (const [id, entry] of specEntries) {
+      const status = entry.status;
+      if (grouped[status]) {
+        grouped[status].push([id, entry]);
+      } else {
+        grouped.drafting.push([id, entry]);
+      }
+    }
+    for (const status of STATUS_ORDER) {
+      grouped[status].sort((a, b) => a[0].localeCompare(b[0]));
+    }
+    for (const status of STATUS_ORDER) {
+      const entries = grouped[status];
+      if (entries.length === 0) continue;
+      const colorFn = STATUS_COLORS2[status];
+      const label = STATUS_LABELS2[status];
+      console.log(`  ${bold6(colorFn(`${label} (${entries.length})`))}`);
+      for (const [id, entry] of entries) {
+        const appetite = entry.appetite ? gray7(entry.appetite) : gray7("TBD");
+        console.log(`    ${bold6(id)}  ${entry.title}  ${appetite}`);
+        console.log(`              Tasks: ${formatTaskCounts(taskCounts[id])}`);
+      }
+      console.log();
+    }
+    console.log(`  Total: ${bold6(String(specEntries.length))} specs
+`);
+  });
+}
+
 // cli/index.ts
-var __dirname3 = dirname7(fileURLToPath4(import.meta.url));
+var __dirname3 = dirname8(fileURLToPath4(import.meta.url));
 function getVersion3() {
   for (const candidate of [
-    join19(__dirname3, "..", "package.json"),
-    join19(__dirname3, "..", "..", "package.json")
+    join23(__dirname3, "..", "package.json"),
+    join23(__dirname3, "..", "..", "package.json")
   ]) {
     try {
-      const pkg = JSON.parse(readFileSync17(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync19(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -2877,6 +3935,8 @@ registerBuildCommand(program);
 registerInstallCommand(program);
 registerInitCommand(program);
 registerReleaseCommand(program);
+registerTaskCommand(program);
+registerSpecCommand(program);
 if (process.argv.length <= 2) {
   program.outputHelp();
   process.exit(0);

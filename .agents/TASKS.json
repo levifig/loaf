@@ -1,0 +1,766 @@
+{
+  "version": 1,
+  "next_id": 33,
+  "tasks": {
+    "TASK-019": {
+      "title": "Enhance /resume for intelligent project resumption",
+      "slug": "intelligent-resume",
+      "spec": "SPEC-002",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "src/commands/resume.md"
+      ],
+      "verify": "grep -l 'review.*sessions\\|propose.*plan' src/commands/resume.md",
+      "done": "/resume with no args reviews project state and proposes action plan",
+      "session": null,
+      "created": "2026-01-24T03:20:00.000Z",
+      "updated": "2026-01-24T03:20:00.000Z",
+      "completed_at": null,
+      "file": "TASK-019-intelligent-resume.md"
+    },
+    "TASK-020": {
+      "title": "Richer version output for loaf and skill-level version detection",
+      "slug": "version-command",
+      "spec": null,
+      "status": "todo",
+      "priority": "P3",
+      "depends_on": [],
+      "files": [
+        "cli/commands/version.ts"
+      ],
+      "verify": "loaf version && loaf --version",
+      "done": "`loaf version` shows rich version info; stale session detection still works via skill frontmatter",
+      "session": null,
+      "created": "2026-01-24T15:50:00.000Z",
+      "updated": "2026-03-15T00:00:00.000Z",
+      "completed_at": null,
+      "file": "TASK-020-version-command.md"
+    },
+    "TASK-028": {
+      "title": "`loaf init` — scaffolding + templates",
+      "slug": "init-scaffolding",
+      "spec": "SPEC-007",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "cli/commands/init.ts",
+        "cli/index.ts"
+      ],
+      "verify": "loaf init (in a temp directory) && ls -la .agents/ docs/ CHANGELOG.md",
+      "done": "`loaf init` creates full directory structure, templates, symlinks (with prompt), and loaf.json",
+      "session": null,
+      "created": "2026-03-16T16:27:15.460Z",
+      "updated": "2026-03-17T00:16:46.232Z",
+      "completed_at": "2026-03-17T00:16:46.232Z",
+      "file": "TASK-028-init-scaffolding.md"
+    },
+    "TASK-029": {
+      "title": "`loaf init` — project detection + skill recommendations",
+      "slug": "init-project-detection",
+      "spec": "SPEC-007",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-028"
+      ],
+      "files": [
+        "cli/lib/detect/project.ts",
+        "cli/commands/init.ts"
+      ],
+      "verify": "loaf init (in a Python project) shows Python skill recommendations",
+      "done": "`loaf init` detects languages/frameworks and recommends relevant Loaf skills",
+      "session": null,
+      "created": "2026-03-16T16:27:15.461Z",
+      "updated": "2026-03-17T00:16:46.290Z",
+      "completed_at": "2026-03-17T00:16:46.290Z",
+      "file": "TASK-029-init-project-detection.md"
+    },
+    "TASK-030": {
+      "title": "`loaf init` — brownfield support + idempotency polish",
+      "slug": "init-brownfield-idempotency",
+      "spec": "SPEC-007",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-028"
+      ],
+      "files": [
+        "cli/commands/init.ts"
+      ],
+      "verify": "loaf init && loaf init (second run shows all-green, creates nothing)",
+      "done": "Re-running `loaf init` shows status with checkmarks, reports brownfield patterns, suggests consolidation",
+      "session": null,
+      "created": "2026-03-16T16:27:15.461Z",
+      "updated": "2026-03-17T00:16:46.349Z",
+      "completed_at": "2026-03-17T00:16:46.349Z",
+      "file": "TASK-030-init-brownfield-idempotency.md"
+    },
+    "TASK-001": {
+      "title": "Create verification reference",
+      "slug": "verification-reference",
+      "spec": "SPEC-001",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "src/skills/foundations/references/verification.md",
+        "src/skills/foundations/SKILL.md"
+      ],
+      "verify": "npm run build",
+      "done": "Verification reference exists and is referenced by foundations skill",
+      "session": null,
+      "created": "2026-03-16T16:27:15.461Z",
+      "updated": "2026-03-16T16:27:15.461Z",
+      "completed_at": "2026-03-16T16:27:15.461Z",
+      "file": "archive/TASK-001-verification-reference.md"
+    },
+    "TASK-002": {
+      "title": "Create finishing-work reference",
+      "slug": "finishing-work-reference",
+      "spec": "SPEC-001",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "src/skills/orchestration/references/finishing-work.md",
+        "src/skills/orchestration/SKILL.md"
+      ],
+      "verify": "npm run build",
+      "done": "Finishing work reference exists and is referenced by orchestration skill",
+      "session": null,
+      "created": "2026-03-16T16:27:15.461Z",
+      "updated": "2026-03-17T00:16:40.658Z",
+      "completed_at": "2026-03-17T00:16:40.658Z",
+      "file": "archive/TASK-002-finishing-work-reference.md"
+    },
+    "TASK-003": {
+      "title": "Create auto-fix-rules reference",
+      "slug": "auto-fix-rules-reference",
+      "spec": "SPEC-001",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [
+        "src/skills/orchestration/references/auto-fix-rules.md",
+        "src/skills/orchestration/SKILL.md"
+      ],
+      "verify": "npm run build",
+      "done": "Auto-fix rules reference exists and is referenced by orchestration skill",
+      "session": null,
+      "created": "2026-03-16T16:27:15.462Z",
+      "updated": "2026-03-17T00:16:40.719Z",
+      "completed_at": "2026-03-17T00:16:40.718Z",
+      "file": "archive/TASK-003-auto-fix-rules-reference.md"
+    },
+    "TASK-004": {
+      "title": "Create executing-plans reference",
+      "slug": "executing-plans-reference",
+      "spec": "SPEC-001",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [
+        "src/skills/orchestration/references/executing-plans.md",
+        "src/skills/orchestration/SKILL.md"
+      ],
+      "verify": "npm run build",
+      "done": "Executing plans reference exists and is referenced by orchestration skill",
+      "session": null,
+      "created": "2026-03-16T16:27:15.462Z",
+      "updated": "2026-03-17T00:16:40.773Z",
+      "completed_at": "2026-03-17T00:16:40.773Z",
+      "file": "archive/TASK-004-executing-plans-reference.md"
+    },
+    "TASK-005": {
+      "title": "Integrate patterns into start-session command",
+      "slug": "integrate-patterns-start-session",
+      "spec": "SPEC-001",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-001",
+        "TASK-002"
+      ],
+      "files": [
+        "src/commands/start-session.md"
+      ],
+      "verify": "npm run build",
+      "done": "Start session references new patterns, works without superpowers installed",
+      "session": null,
+      "created": "2026-03-16T16:27:15.462Z",
+      "updated": "2026-03-17T00:16:40.826Z",
+      "completed_at": "2026-03-17T00:16:40.826Z",
+      "file": "archive/TASK-005-integrate-patterns-start-session.md"
+    },
+    "TASK-006": {
+      "title": "Lean commands refactor",
+      "slug": "lean-commands-refactor",
+      "spec": "SPEC-001",
+      "status": "done",
+      "priority": "P3",
+      "depends_on": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-003",
+        "TASK-004",
+        "TASK-005"
+      ],
+      "files": [
+        "src/commands/start-session.md",
+        "src/commands/council-session.md"
+      ],
+      "verify": "npm run build && \\\nwc -l src/commands/start-session.md && \\\nwc -l src/commands/council-session.md\n",
+      "done": "start-session.md ≤200 lines, council-session.md ≤200 lines, no functionality lost",
+      "session": null,
+      "created": "2026-03-16T16:27:15.463Z",
+      "updated": "2026-03-17T00:16:40.877Z",
+      "completed_at": "2026-03-17T00:16:40.877Z",
+      "file": "archive/TASK-006-lean-commands-refactor.md"
+    },
+    "TASK-007": {
+      "title": "Create goal-backward verification reference",
+      "slug": "goal-verification-reference",
+      "spec": "SPEC-001",
+      "status": "done",
+      "priority": "P3",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "files": [
+        "src/skills/foundations/references/goal-verification.md",
+        "src/skills/foundations/SKILL.md"
+      ],
+      "verify": "npm run build",
+      "done": "Goal verification reference exists",
+      "session": null,
+      "created": "2026-03-16T16:27:15.463Z",
+      "updated": "2026-03-17T00:16:40.930Z",
+      "completed_at": "2026-03-17T00:16:40.930Z",
+      "file": "archive/TASK-007-goal-verification-reference.md"
+    },
+    "TASK-008": {
+      "title": "Create persistent debug sessions reference",
+      "slug": "persistent-debug-sessions",
+      "spec": "SPEC-001",
+      "status": "done",
+      "priority": "P3",
+      "depends_on": [],
+      "files": [
+        "src/skills/debugging/references/persistent-sessions.md",
+        "src/skills/debugging/SKILL.md"
+      ],
+      "verify": "npm run build",
+      "done": "Persistent sessions reference exists",
+      "session": null,
+      "created": "2026-03-16T16:27:15.463Z",
+      "updated": "2026-03-17T00:16:40.982Z",
+      "completed_at": "2026-03-17T00:16:40.982Z",
+      "file": "archive/TASK-008-persistent-debug-sessions.md"
+    },
+    "TASK-009": {
+      "title": "Create task board generation script",
+      "slug": "task-board-generation-script",
+      "spec": "SPEC-002",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "scripts/generate-task-board.sh"
+      ],
+      "verify": "./scripts/generate-task-board.sh && cat .agents/TASKS.md",
+      "done": "TASKS.md generated with correct format, links work in preview",
+      "session": "20260124-151610-orchestration-spec-002.md",
+      "created": "2026-01-24T02:45:00.000Z",
+      "updated": "2026-01-24T02:45:00.000Z",
+      "completed_at": "2026-01-24T02:45:00.000Z",
+      "file": "archive/TASK-009-task-board-generation-script.md"
+    },
+    "TASK-010": {
+      "title": "Add task board generation hook",
+      "slug": "task-board-hook",
+      "spec": "SPEC-002",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-009"
+      ],
+      "files": [
+        "src/config/hooks.yaml"
+      ],
+      "verify": "Edit a task file, confirm TASKS.md regenerates",
+      "done": "Hook triggers on task file changes",
+      "session": "20260124-151610-orchestration-spec-002.md",
+      "created": "2026-01-24T02:45:00.000Z",
+      "updated": "2026-01-24T02:45:00.000Z",
+      "completed_at": "2026-01-24T02:45:00.000Z",
+      "file": "archive/TASK-010-task-board-hook.md"
+    },
+    "TASK-011": {
+      "title": "Add build-time command substitution",
+      "slug": "build-time-command-substitution",
+      "spec": "SPEC-002",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "build/targets/claude-code.js",
+        "build/targets/cursor.js",
+        "build/targets/opencode.js",
+        "build/build.js"
+      ],
+      "verify": "npm run build && grep -r 'loaf:implement' plugins/ && grep -r '/implement' dist/cursor/",
+      "done": "Claude Code output has /loaf:implement, Cursor/OpenCode has /implement",
+      "session": "20260124-151610-orchestration-spec-002.md",
+      "created": "2026-01-24T02:45:00.000Z",
+      "updated": "2026-01-24T02:45:00.000Z",
+      "completed_at": "2026-01-24T02:45:00.000Z",
+      "file": "archive/TASK-011-build-time-command-substitution.md"
+    },
+    "TASK-012": {
+      "title": "Update implement command for invisible sessions",
+      "slug": "implement-invisible-sessions",
+      "spec": "SPEC-002",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [
+        "src/commands/implement.md"
+      ],
+      "verify": "Run /loaf:implement TASK-XXX, confirm session created and task updated",
+      "done": "Session auto-created, task session: field populated, no user interaction needed",
+      "session": "20260124-151610-orchestration-spec-002.md",
+      "created": "2026-01-24T02:45:00.000Z",
+      "updated": "2026-01-24T02:45:00.000Z",
+      "completed_at": "2026-01-24T02:45:00.000Z",
+      "file": "archive/TASK-012-implement-invisible-sessions.md"
+    },
+    "TASK-013": {
+      "title": "Update resume command for task arguments",
+      "slug": "resume-task-arguments",
+      "spec": "SPEC-002",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-012"
+      ],
+      "files": [
+        "src/commands/resume.md"
+      ],
+      "verify": "/loaf:resume TASK-XXX loads correct session",
+      "done": "Resume works with task ID, still works with session filename",
+      "session": "20260124-151610-orchestration-spec-002.md",
+      "created": "2026-01-24T02:45:00.000Z",
+      "updated": "2026-01-24T02:45:00.000Z",
+      "completed_at": "2026-01-24T02:45:00.000Z",
+      "file": "archive/TASK-013-resume-task-arguments.md"
+    },
+    "TASK-014": {
+      "title": "Update documentation for new workflow",
+      "slug": "update-workflow-documentation",
+      "spec": "SPEC-002",
+      "status": "done",
+      "priority": "P3",
+      "depends_on": [
+        "TASK-012",
+        "TASK-013"
+      ],
+      "files": [
+        "src/skills/orchestration/references/local-tasks.md",
+        "src/skills/orchestration/references/sessions.md"
+      ],
+      "verify": "Read updated docs, confirm accuracy",
+      "done": "local-tasks.md and sessions.md reflect new structure",
+      "session": "20260124-151610-orchestration-spec-002.md",
+      "created": "2026-01-24T02:45:00.000Z",
+      "updated": "2026-01-24T02:45:00.000Z",
+      "completed_at": "2026-01-24T02:45:00.000Z",
+      "file": "archive/TASK-014-update-workflow-documentation.md"
+    },
+    "TASK-015": {
+      "title": "Migrate existing tasks to new structure",
+      "slug": "migrate-tasks-to-new-structure",
+      "spec": "SPEC-002",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        ".agents/tasks/"
+      ],
+      "verify": "ls .agents/tasks/ shows task files, .agents/tasks/active/ removed",
+      "done": "Tasks in root, active/ directory gone, TASKS.md generated",
+      "session": "20260124-151610-orchestration-spec-002.md",
+      "created": "2026-01-24T02:45:00.000Z",
+      "updated": "2026-01-24T02:45:00.000Z",
+      "completed_at": "2026-01-24T02:45:00.000Z",
+      "file": "archive/TASK-015-migrate-tasks-to-new-structure.md"
+    },
+    "TASK-016": {
+      "title": "Create orchestrate command",
+      "slug": "create-orchestrate-command",
+      "spec": "SPEC-003",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "src/commands/orchestrate.md",
+        "src/config/hooks.yaml"
+      ],
+      "verify": "npm run build && grep -l orchestrate plugins/loaf/commands/",
+      "done": "Orchestrate command exists, builds successfully, registered in hooks",
+      "session": "20260124-025127-orchestrate-command.md",
+      "created": "2026-01-24T03:30:00.000Z",
+      "updated": "2026-01-24T02:56:10.000Z",
+      "completed_at": "2026-01-24T02:56:10.000Z",
+      "file": "archive/TASK-016-create-orchestrate-command.md"
+    },
+    "TASK-017": {
+      "title": "Document orchestration session type",
+      "slug": "document-orchestration-sessions",
+      "spec": "SPEC-003",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-016"
+      ],
+      "files": [
+        "src/skills/orchestration/SKILL.md",
+        "src/skills/orchestration/references/sessions.md"
+      ],
+      "verify": "grep -l 'orchestration' src/skills/orchestration/references/sessions.md",
+      "done": "Orchestration session type documented, SKILL.md topic table updated",
+      "session": null,
+      "created": "2026-01-24T03:30:00.000Z",
+      "updated": "2026-01-24T03:30:00.000Z",
+      "completed_at": null,
+      "file": "archive/TASK-017-document-orchestration-sessions.md"
+    },
+    "TASK-018": {
+      "title": "Add context-awareness to orchestrate and implement commands",
+      "slug": "context-awareness-orchestration",
+      "spec": "SPEC-003",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "src/commands/orchestrate.md",
+        "src/commands/implement.md"
+      ],
+      "verify": "grep -l 'context' src/commands/orchestrate.md src/commands/implement.md",
+      "done": "Commands check context health before starting work and suggest PreCompact/resume if low",
+      "session": null,
+      "created": "2026-01-24T03:10:00.000Z",
+      "updated": "2026-01-24T03:10:00.000Z",
+      "completed_at": "2026-01-24T03:10:00.000Z",
+      "file": "archive/TASK-018-context-awareness-orchestration.md"
+    },
+    "TASK-021": {
+      "title": "CLI project scaffolding",
+      "slug": "cli-project-scaffolding",
+      "spec": "SPEC-008",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "cli/index.ts",
+        "package.json",
+        "tsconfig.json",
+        "tsup.config.ts"
+      ],
+      "verify": "npm link && loaf --help && loaf --version",
+      "done": "`loaf` command is globally available via npm link, shows help and version",
+      "session": null,
+      "created": "2026-03-16T16:27:15.466Z",
+      "updated": "2026-03-16T16:27:15.466Z",
+      "completed_at": "2026-03-16T16:27:15.466Z",
+      "file": "archive/TASK-021-cli-project-scaffolding.md"
+    },
+    "TASK-022": {
+      "title": "Source reorganization",
+      "slug": "source-reorganization",
+      "spec": "SPEC-008",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "content/skills/",
+        "content/agents/",
+        "content/hooks/",
+        "content/templates/",
+        "config/hooks.yaml",
+        "config/targets.yaml",
+        "cli/lib/build/"
+      ],
+      "verify": "ls content/skills content/agents content/hooks content/templates config/",
+      "done": "Content lives in content/, config in config/, build logic copied to cli/lib/build/",
+      "session": null,
+      "created": "2026-03-16T16:27:15.466Z",
+      "updated": "2026-03-16T16:27:15.466Z",
+      "completed_at": "2026-03-16T16:27:15.466Z",
+      "file": "archive/TASK-022-source-reorganization.md"
+    },
+    "TASK-023": {
+      "title": "`loaf build` command (JS wrapper)",
+      "slug": "loaf-build-command",
+      "spec": "SPEC-008",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-021",
+        "TASK-022"
+      ],
+      "files": [
+        "cli/commands/build.ts",
+        "cli/lib/build/build.js",
+        "package.json"
+      ],
+      "verify": "loaf build && diff -r dist/ dist-backup/",
+      "done": "`loaf build` and `loaf build --target <name>` produce identical output to previous npm run build",
+      "session": null,
+      "created": "2026-03-16T16:27:15.466Z",
+      "updated": "2026-03-16T16:27:15.466Z",
+      "completed_at": "2026-03-16T16:27:15.466Z",
+      "file": "archive/TASK-023-loaf-build-command.md"
+    },
+    "TASK-024": {
+      "title": "Convert build core to TypeScript",
+      "slug": "convert-build-core-typescript",
+      "spec": "SPEC-008",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-023"
+      ],
+      "files": [
+        "cli/lib/build/orchestrator.ts",
+        "cli/lib/build/lib/version.ts",
+        "cli/lib/build/lib/substitutions.ts",
+        "cli/lib/build/lib/sidecar.ts",
+        "cli/lib/build/lib/shared-templates.ts"
+      ],
+      "verify": "tsc --noEmit && loaf build && diff -r dist/ dist-backup/",
+      "done": "Build orchestrator and utilities are TypeScript. `loaf build` output unchanged.",
+      "session": null,
+      "created": "2026-03-16T16:27:15.466Z",
+      "updated": "2026-03-16T16:27:15.466Z",
+      "completed_at": "2026-03-16T16:27:15.466Z",
+      "file": "archive/TASK-024-convert-build-core-typescript.md"
+    },
+    "TASK-025": {
+      "title": "Convert target transformers to TypeScript",
+      "slug": "convert-target-transformers-typescript",
+      "spec": "SPEC-008",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-024"
+      ],
+      "files": [
+        "cli/lib/build/targets/claude-code.ts",
+        "cli/lib/build/targets/opencode.ts",
+        "cli/lib/build/targets/cursor.ts",
+        "cli/lib/build/targets/codex.ts",
+        "cli/lib/build/targets/gemini.ts"
+      ],
+      "verify": "tsc --noEmit && loaf build && diff -r dist/ dist-backup/",
+      "done": "All 5 target transformers are TypeScript. Build output unchanged. Old build/ directory removed.",
+      "session": null,
+      "created": "2026-03-16T16:27:15.466Z",
+      "updated": "2026-03-16T16:27:15.466Z",
+      "completed_at": "2026-03-16T16:27:15.466Z",
+      "file": "archive/TASK-025-convert-target-transformers-typescript.md"
+    },
+    "TASK-026": {
+      "title": "`loaf install` command + tool detection",
+      "slug": "loaf-install-command",
+      "spec": "SPEC-008",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-021"
+      ],
+      "files": [
+        "cli/lib/detect/tools.ts",
+        "cli/lib/install/installer.ts",
+        "cli/commands/install.ts",
+        "install.sh"
+      ],
+      "verify": "loaf install --to cursor && loaf install --upgrade",
+      "done": "`loaf install` replaces install.sh for all target installations. install.sh is a thin bootstrap.",
+      "session": null,
+      "created": "2026-03-16T16:27:15.466Z",
+      "updated": "2026-03-16T16:27:15.466Z",
+      "completed_at": "2026-03-16T16:27:15.466Z",
+      "file": "archive/TASK-026-loaf-install-command.md"
+    },
+    "TASK-027": {
+      "title": "Output improvements + final cleanup",
+      "slug": "output-improvements-cleanup",
+      "spec": "SPEC-008",
+      "status": "done",
+      "priority": "P3",
+      "depends_on": [
+        "TASK-025",
+        "TASK-026"
+      ],
+      "files": [
+        "cli/lib/build/targets/",
+        "dist/",
+        "CLAUDE.md",
+        ".claude/CLAUDE.md",
+        ".agents/ARCHITECTURE.md"
+      ],
+      "verify": "loaf build && loaf install --to all && loaf --help",
+      "done": "dist/ is cleaner, old directories removed, all documentation updated, all spec test conditions pass",
+      "session": null,
+      "created": "2026-03-16T16:27:15.467Z",
+      "updated": "2026-03-16T16:27:15.467Z",
+      "completed_at": "2026-03-16T16:27:15.467Z",
+      "file": "archive/TASK-027-output-improvements-cleanup.md"
+    },
+    "TASK-031": {
+      "title": "Add test infrastructure and tests for task management CLI",
+      "slug": "add-test-infrastructure-and-tests-for-task-managem",
+      "spec": null,
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-17T00:59:13.998Z",
+      "updated": "2026-03-17T00:59:13.998Z",
+      "completed_at": null,
+      "file": "TASK-031-add-test-infrastructure-and-tests-for-task-managem.md"
+    },
+    "TASK-032": {
+      "title": "Add --active flag to loaf task list to hide done tasks",
+      "slug": "add-active-flag-to-loaf-task-list-to-hide-done-tas",
+      "spec": null,
+      "status": "todo",
+      "priority": "P3",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-17T01:02:05.067Z",
+      "updated": "2026-03-17T01:02:05.067Z",
+      "completed_at": null,
+      "file": "TASK-032-add-active-flag-to-loaf-task-list-to-hide-done-tas.md"
+    }
+  },
+  "specs": {
+    "SPEC-009": {
+      "title": "Knowledge Management",
+      "status": "drafting",
+      "appetite": "TBD",
+      "requirement": "Loaf should manage project knowledge with staleness detection",
+      "source": null,
+      "created": "2026-03-14T19:48:00.000Z",
+      "file": "SPEC-009-knowledge-management.md"
+    },
+    "SPEC-011": {
+      "title": "Knowledge Lifecycle — doc relocation + /crystallize",
+      "status": "drafting",
+      "appetite": "Medium (3-5 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-03-16T23:50:30.000Z",
+      "file": "SPEC-011-knowledge-lifecycle.md"
+    },
+    "SPEC-012": {
+      "title": "Cleanup Refinement — differentiated processes + CLI",
+      "status": "drafting",
+      "appetite": "Medium (3-5 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-03-16T23:50:30.000Z",
+      "file": "SPEC-012-cleanup-refinement.md"
+    },
+    "SPEC-001": {
+      "title": "Loaf Self-Sufficiency",
+      "status": "complete",
+      "appetite": "3-4 sessions",
+      "requirement": "Loaf should be independent of superpowers plugin",
+      "source": null,
+      "created": "2026-01-24T00:51:55.000Z",
+      "file": "archive/SPEC-001-loaf-self-sufficiency.md"
+    },
+    "SPEC-002": {
+      "title": "Invisible Sessions and Task Board",
+      "status": "complete",
+      "appetite": "2-3 sessions",
+      "requirement": "Simplify user workflow by making sessions invisible and adding a generated task board",
+      "source": null,
+      "created": "2026-01-24T02:30:00.000Z",
+      "file": "archive/SPEC-002-invisible-sessions-task-board.md"
+    },
+    "SPEC-003": {
+      "title": "Orchestrated Multi-Task Execution",
+      "status": "complete",
+      "appetite": "2-3 sessions",
+      "requirement": "Enable unattended execution of specs or task groups with PM coordination",
+      "source": null,
+      "created": "2026-01-24T03:00:00.000Z",
+      "file": "archive/SPEC-003-orchestrated-execution.md"
+    },
+    "SPEC-004": {
+      "title": "Frictionless Task Handoff",
+      "status": "complete",
+      "appetite": "2-3 sessions",
+      "requirement": "Eliminate copy/paste friction when switching sessions by making task files self-contained handoff artifacts",
+      "source": null,
+      "created": "2026-01-24T16:00:00.000Z",
+      "file": "archive/SPEC-004-frictionless-task-handoff.md"
+    },
+    "SPEC-005": {
+      "title": "Changelog reminder hook after git commits",
+      "status": "complete",
+      "appetite": "Small (1-2 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-01-24T22:25:35.000Z",
+      "file": "archive/SPEC-005-changelog-reminder-hook.md"
+    },
+    "SPEC-006": {
+      "title": "loaf release — version management workflow",
+      "status": "complete",
+      "appetite": "Medium (3-5 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-01-24T22:25:35.000Z",
+      "file": "archive/SPEC-006-release-command.md"
+    },
+    "SPEC-007": {
+      "title": "loaf init — project bootstrapping",
+      "status": "complete",
+      "appetite": "Medium (3-5 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-01-24T22:47:04.000Z",
+      "file": "archive/SPEC-007-init-command.md"
+    },
+    "SPEC-008": {
+      "title": "Loaf CLI",
+      "status": "complete",
+      "appetite": "Large (2-3 weeks)",
+      "requirement": "Loaf should be a proper CLI tool with clean content/tooling separation",
+      "source": null,
+      "created": "2026-03-14T19:48:00.000Z",
+      "file": "archive/SPEC-008-loaf-cli.md"
+    },
+    "SPEC-010": {
+      "title": "Task & Spec Management CLI",
+      "status": "complete",
+      "appetite": "Large (1-2 weeks)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-03-14T19:48:00.000Z",
+      "file": "archive/SPEC-010-task-management-cli.md"
+    }
+  }
+}
