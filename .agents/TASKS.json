@@ -42,7 +42,7 @@
       "title": "`loaf init` — scaffolding + templates",
       "slug": "init-scaffolding",
       "spec": "SPEC-007",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [
@@ -53,15 +53,15 @@
       "done": "`loaf init` creates full directory structure, templates, symlinks (with prompt), and loaf.json",
       "session": null,
       "created": "2026-03-16T16:27:15.460Z",
-      "updated": "2026-03-16T16:27:15.460Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:46.232Z",
+      "completed_at": "2026-03-17T00:16:46.232Z",
       "file": "TASK-028-init-scaffolding.md"
     },
     "TASK-029": {
       "title": "`loaf init` — project detection + skill recommendations",
       "slug": "init-project-detection",
       "spec": "SPEC-007",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-028"
@@ -74,15 +74,15 @@
       "done": "`loaf init` detects languages/frameworks and recommends relevant Loaf skills",
       "session": null,
       "created": "2026-03-16T16:27:15.461Z",
-      "updated": "2026-03-16T16:27:15.461Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:46.290Z",
+      "completed_at": "2026-03-17T00:16:46.290Z",
       "file": "TASK-029-init-project-detection.md"
     },
     "TASK-030": {
       "title": "`loaf init` — brownfield support + idempotency polish",
       "slug": "init-brownfield-idempotency",
       "spec": "SPEC-007",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-028"
@@ -94,8 +94,8 @@
       "done": "Re-running `loaf init` shows status with checkmarks, reports brownfield patterns, suggests consolidation",
       "session": null,
       "created": "2026-03-16T16:27:15.461Z",
-      "updated": "2026-03-16T16:27:15.461Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:46.349Z",
+      "completed_at": "2026-03-17T00:16:46.349Z",
       "file": "TASK-030-init-brownfield-idempotency.md"
     },
     "TASK-001": {
@@ -121,7 +121,7 @@
       "title": "Create finishing-work reference",
       "slug": "finishing-work-reference",
       "spec": "SPEC-001",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [
@@ -132,15 +132,15 @@
       "done": "Finishing work reference exists and is referenced by orchestration skill",
       "session": null,
       "created": "2026-03-16T16:27:15.461Z",
-      "updated": "2026-03-16T16:27:15.461Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:40.658Z",
+      "completed_at": "2026-03-17T00:16:40.658Z",
       "file": "archive/TASK-002-finishing-work-reference.md"
     },
     "TASK-003": {
       "title": "Create auto-fix-rules reference",
       "slug": "auto-fix-rules-reference",
       "spec": "SPEC-001",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [
@@ -151,15 +151,15 @@
       "done": "Auto-fix rules reference exists and is referenced by orchestration skill",
       "session": null,
       "created": "2026-03-16T16:27:15.462Z",
-      "updated": "2026-03-16T16:27:15.462Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:40.719Z",
+      "completed_at": "2026-03-17T00:16:40.718Z",
       "file": "archive/TASK-003-auto-fix-rules-reference.md"
     },
     "TASK-004": {
       "title": "Create executing-plans reference",
       "slug": "executing-plans-reference",
       "spec": "SPEC-001",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [
@@ -170,15 +170,15 @@
       "done": "Executing plans reference exists and is referenced by orchestration skill",
       "session": null,
       "created": "2026-03-16T16:27:15.462Z",
-      "updated": "2026-03-16T16:27:15.462Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:40.773Z",
+      "completed_at": "2026-03-17T00:16:40.773Z",
       "file": "archive/TASK-004-executing-plans-reference.md"
     },
     "TASK-005": {
       "title": "Integrate patterns into start-session command",
       "slug": "integrate-patterns-start-session",
       "spec": "SPEC-001",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-001",
@@ -191,15 +191,15 @@
       "done": "Start session references new patterns, works without superpowers installed",
       "session": null,
       "created": "2026-03-16T16:27:15.462Z",
-      "updated": "2026-03-16T16:27:15.462Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:40.826Z",
+      "completed_at": "2026-03-17T00:16:40.826Z",
       "file": "archive/TASK-005-integrate-patterns-start-session.md"
     },
     "TASK-006": {
       "title": "Lean commands refactor",
       "slug": "lean-commands-refactor",
       "spec": "SPEC-001",
-      "status": "todo",
+      "status": "done",
       "priority": "P3",
       "depends_on": [
         "TASK-001",
@@ -216,15 +216,15 @@
       "done": "start-session.md ≤200 lines, council-session.md ≤200 lines, no functionality lost",
       "session": null,
       "created": "2026-03-16T16:27:15.463Z",
-      "updated": "2026-03-16T16:27:15.463Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:40.877Z",
+      "completed_at": "2026-03-17T00:16:40.877Z",
       "file": "archive/TASK-006-lean-commands-refactor.md"
     },
     "TASK-007": {
       "title": "Create goal-backward verification reference",
       "slug": "goal-verification-reference",
       "spec": "SPEC-001",
-      "status": "todo",
+      "status": "done",
       "priority": "P3",
       "depends_on": [
         "TASK-001"
@@ -237,15 +237,15 @@
       "done": "Goal verification reference exists",
       "session": null,
       "created": "2026-03-16T16:27:15.463Z",
-      "updated": "2026-03-16T16:27:15.463Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:40.930Z",
+      "completed_at": "2026-03-17T00:16:40.930Z",
       "file": "archive/TASK-007-goal-verification-reference.md"
     },
     "TASK-008": {
       "title": "Create persistent debug sessions reference",
       "slug": "persistent-debug-sessions",
       "spec": "SPEC-001",
-      "status": "todo",
+      "status": "done",
       "priority": "P3",
       "depends_on": [],
       "files": [
@@ -256,8 +256,8 @@
       "done": "Persistent sessions reference exists",
       "session": null,
       "created": "2026-03-16T16:27:15.463Z",
-      "updated": "2026-03-16T16:27:15.463Z",
-      "completed_at": null,
+      "updated": "2026-03-17T00:16:40.982Z",
+      "completed_at": "2026-03-17T00:16:40.982Z",
       "file": "archive/TASK-008-persistent-debug-sessions.md"
     },
     "TASK-009": {
@@ -622,51 +622,6 @@
     }
   },
   "specs": {
-    "SPEC-002": {
-      "title": "Invisible Sessions and Task Board",
-      "status": "complete",
-      "appetite": "2-3 sessions",
-      "requirement": "Simplify user workflow by making sessions invisible and adding a generated task board",
-      "source": null,
-      "created": "2026-01-24T02:30:00.000Z",
-      "file": "SPEC-002-invisible-sessions-task-board.md"
-    },
-    "SPEC-005": {
-      "title": "Changelog reminder hook after git commits",
-      "status": "complete",
-      "appetite": "Small (1-2 days)",
-      "requirement": null,
-      "source": "direct",
-      "created": "2026-01-24T22:25:35.000Z",
-      "file": "SPEC-005-changelog-reminder-hook.md"
-    },
-    "SPEC-006": {
-      "title": "loaf release — version management workflow",
-      "status": "complete",
-      "appetite": "Medium (3-5 days)",
-      "requirement": null,
-      "source": "direct",
-      "created": "2026-01-24T22:25:35.000Z",
-      "file": "SPEC-006-release-command.md"
-    },
-    "SPEC-007": {
-      "title": "loaf init — project bootstrapping",
-      "status": "complete",
-      "appetite": "Medium (3-5 days)",
-      "requirement": null,
-      "source": "direct",
-      "created": "2026-01-24T22:47:04.000Z",
-      "file": "SPEC-007-init-command.md"
-    },
-    "SPEC-008": {
-      "title": "Loaf CLI",
-      "status": "complete",
-      "appetite": "Large (2-3 weeks)",
-      "requirement": "Loaf should be a proper CLI tool with clean content/tooling separation",
-      "source": null,
-      "created": "2026-03-14T19:48:00.000Z",
-      "file": "SPEC-008-loaf-cli.md"
-    },
     "SPEC-009": {
       "title": "Knowledge Management",
       "status": "drafting",
@@ -675,15 +630,6 @@
       "source": null,
       "created": "2026-03-14T19:48:00.000Z",
       "file": "SPEC-009-knowledge-management.md"
-    },
-    "SPEC-010": {
-      "title": "Task & Spec Management CLI",
-      "status": "complete",
-      "appetite": "Large (1-2 weeks)",
-      "requirement": null,
-      "source": "direct",
-      "created": "2026-03-14T19:48:00.000Z",
-      "file": "SPEC-010-task-management-cli.md"
     },
     "SPEC-011": {
       "title": "Knowledge Lifecycle — doc relocation + /crystallize",
@@ -712,6 +658,15 @@
       "created": "2026-01-24T00:51:55.000Z",
       "file": "archive/SPEC-001-loaf-self-sufficiency.md"
     },
+    "SPEC-002": {
+      "title": "Invisible Sessions and Task Board",
+      "status": "complete",
+      "appetite": "2-3 sessions",
+      "requirement": "Simplify user workflow by making sessions invisible and adding a generated task board",
+      "source": null,
+      "created": "2026-01-24T02:30:00.000Z",
+      "file": "archive/SPEC-002-invisible-sessions-task-board.md"
+    },
     "SPEC-003": {
       "title": "Orchestrated Multi-Task Execution",
       "status": "complete",
@@ -729,6 +684,51 @@
       "source": null,
       "created": "2026-01-24T16:00:00.000Z",
       "file": "archive/SPEC-004-frictionless-task-handoff.md"
+    },
+    "SPEC-005": {
+      "title": "Changelog reminder hook after git commits",
+      "status": "complete",
+      "appetite": "Small (1-2 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-01-24T22:25:35.000Z",
+      "file": "archive/SPEC-005-changelog-reminder-hook.md"
+    },
+    "SPEC-006": {
+      "title": "loaf release — version management workflow",
+      "status": "complete",
+      "appetite": "Medium (3-5 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-01-24T22:25:35.000Z",
+      "file": "archive/SPEC-006-release-command.md"
+    },
+    "SPEC-007": {
+      "title": "loaf init — project bootstrapping",
+      "status": "complete",
+      "appetite": "Medium (3-5 days)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-01-24T22:47:04.000Z",
+      "file": "archive/SPEC-007-init-command.md"
+    },
+    "SPEC-008": {
+      "title": "Loaf CLI",
+      "status": "complete",
+      "appetite": "Large (2-3 weeks)",
+      "requirement": "Loaf should be a proper CLI tool with clean content/tooling separation",
+      "source": null,
+      "created": "2026-03-14T19:48:00.000Z",
+      "file": "archive/SPEC-008-loaf-cli.md"
+    },
+    "SPEC-010": {
+      "title": "Task & Spec Management CLI",
+      "status": "complete",
+      "appetite": "Large (1-2 weeks)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-03-14T19:48:00.000Z",
+      "file": "archive/SPEC-010-task-management-cli.md"
     }
   }
 }
