@@ -22,6 +22,7 @@
     "build:content": "node dist-cli/index.js build",
     "build": "tsup && node dist-cli/index.js build",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "prepublishOnly": "npm run build"
   },
   "repository": {
@@ -30,18 +31,28 @@
   },
   "author": "Levi Figueira",
   "license": "MIT",
-  "keywords": ["ai", "agent", "skills", "cli", "claude", "cursor", "codex", "gemini"],
+  "keywords": [
+    "ai",
+    "agent",
+    "skills",
+    "cli",
+    "claude",
+    "cursor",
+    "codex",
+    "gemini"
+  ],
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "commander": "^14.0.3",
     "gray-matter": "^4.0.3",
-    "yaml": "^2.3.4"
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }

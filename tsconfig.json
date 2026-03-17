@@ -16,5 +16,5 @@
     "types": ["node"]
   },
   "include": ["cli/**/*.ts"],
-  "exclude": ["node_modules", "dist", "dist-cli", "dist-backup"]
+  "exclude": ["node_modules", "dist", "dist-cli", "dist-backup", "cli/**/*.test.ts"]
 }

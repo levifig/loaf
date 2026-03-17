@@ -4,7 +4,7 @@
 
 | Component | Default | Alternative |
 |-----------|---------|-------------|
-| Runtime | Node.js 20+ | Bun, Deno |
+| Runtime | Node.js 22+ | Bun, Deno |
 | Package Manager | pnpm | npm, yarn |
 | Bundler | Vite | webpack, esbuild |
 | Linter | ESLint | Biome |

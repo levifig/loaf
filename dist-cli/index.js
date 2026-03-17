@@ -3282,6 +3282,11 @@ function getOrBuildIndex(agentsDir) {
   return index;
 }
 
+// cli/lib/tasks/slug.ts
+function generateSlug(title) {
+  return title.toLowerCase().replace(/[`'"]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
+}
+
 // cli/commands/task.ts
 var bold5 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green5 = (s) => `\x1B[32m${s}\x1B[0m`;
@@ -3340,9 +3345,6 @@ function countSpecs(index) {
     total: Object.keys(index.specs).length,
     byStatus
   };
-}
-function generateSlug(title) {
-  return title.toLowerCase().replace(/[`'"]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
 }
 function registerTaskCommand(program2) {
   const task = program2.command("task").description("Manage project tasks");

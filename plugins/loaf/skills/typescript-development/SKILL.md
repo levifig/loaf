@@ -17,7 +17,7 @@ Modern TypeScript development with React ecosystem.
 | Layer | Default | Alternatives |
 |-------|---------|--------------|
 | Language | TypeScript 5+ | JavaScript (ESM) |
-| Runtime | Node.js 20+ | Bun, Deno |
+| Runtime | Node.js 22+ | Bun, Deno |
 | Framework | Next.js 14+ | Vite, Remix |
 | UI Library | React 18+ | - |
 | State (Client) | Zustand | Context + Reducer |
