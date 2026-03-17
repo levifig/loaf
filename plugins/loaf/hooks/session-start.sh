@@ -114,7 +114,7 @@ case "$AGENT_TYPE" in
         echo ""
       done
 
-      echo "**Tip**: Review with \`/review-sessions\` or resume with \`/resume\`"
+      echo "**Tip**: Review with \`/cleanup\` or resume with \`/resume\`"
       echo ""
       echo "Remember to create a session file before starting new work."
     else

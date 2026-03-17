@@ -47,7 +47,7 @@ Parse `$ARGUMENTS` to determine session type:
 
 | Input Pattern | Type | Action |
 |---------------|------|--------|
-| `TASK-XXX` | Local task | Load from `.agents/tasks/`, auto-create session |
+| `TASK-XXX` | Local task | Load from TASKS.json via CLI, auto-create session |
 | `SPEC-XXX` | Spec orchestration | Resolve all tasks, build dependency waves |
 | `TASK-XXX..YYY` | Task range | Expand range, build dependency waves |
 | `TASK-XXX,YYY,ZZZ` | Task list | Parse list, build dependency waves |
@@ -58,9 +58,9 @@ Parse `$ARGUMENTS` to determine session type:
 
 When starting from `TASK-XXX`:
 
-1. Load task from `.agents/tasks/TASK-XXX-*.md`
+1. Load task metadata from TASKS.json via `loaf task show TASK-XXX --json` or read `.agents/TASKS.json` directly
 2. Auto-generate session: `YYYYMMDD-HHMMSS-task-XXX.md`
-3. Create session file, update task frontmatter with `session:` field
+3. Create session file, update task with session reference: `loaf task update TASK-XXX --session <session-file>`
 4. Load parent spec if task has `spec:` field
 
 **No user interaction required for session naming.**
@@ -146,7 +146,7 @@ When multiple valid approaches exist: spawn council (5-7 agents, odd), present r
 After creating session AND plan files:
 
 1. [ ] Parse input (task, Linear ID, or description)
-2. [ ] If TASK-XXX: load task, update with `session:` field, load parent spec
+2. [ ] If TASK-XXX: load task via `loaf task show TASK-XXX`, update with `loaf task update TASK-XXX --session <session-file>`, load parent spec
 3. [ ] If Linear ID: fetch issue, update session, move to "In Progress"
 4. [ ] If description: ask about creating Linear issue
 5. [ ] Create dedicated branch (see [session-management.md](../skills/implement/references/session-management.md))
@@ -164,9 +164,10 @@ After creating session AND plan files:
 
 ### BEFORE (Planning)
 1. Create session + plan files
-2. Break down work into agent-sized tasks
-3. Identify spawn order (respect dependencies)
-4. Get user approval
+2. Set task status: `loaf task update TASK-XXX --status in_progress`
+3. Break down work into agent-sized tasks
+4. Identify spawn order (respect dependencies)
+5. Get user approval
 
 ### DURING (Execution)
 1. Spawn specialized agents via Task tool
@@ -178,8 +179,9 @@ After creating session AND plan files:
 ### AFTER (Completion)
 1. Code review pass (spawn `pr-review-toolkit:code-reviewer`)
 2. Spawn `QA` for final testing
-3. Update Linear to Done
-4. Complete session, archive (status + `archived_at` + `archived_by` + move)
+3. Update Linear to Done; mark local task complete: `loaf task update TASK-XXX --status done`
+4. If on a feature branch: push and create PR (`gh pr create`). Follow PR format and squash merge conventions in [commits reference](../foundations/references/commits.md).
+5. Complete session, archive (status + `archived_at` + `archived_by` + move)
 
 ---
 

@@ -92,7 +92,7 @@ Show tasks with priorities, dependencies, and dependency graph. **Do NOT create 
 
 **Linear backend:** Create issues with title, description, labels, priority.
 
-**Local backend:** Create files in `.agents/tasks/TASK-{id}-{slug}.md`.
+**Local backend:** Use `loaf task create --spec SPEC-XXX --title "Task title" --priority P1` for each task. The CLI creates the TASKS.json entry and .md skeleton file. Then edit the .md body content (description, acceptance criteria) directly.
 
 ### Step 8: Update Spec and Announce
 
