@@ -3287,13 +3287,7 @@ function generateSlug(title) {
   return title.toLowerCase().replace(/[`'"]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
 }
 
-// cli/commands/task.ts
-var bold5 = (s) => `\x1B[1m${s}\x1B[0m`;
-var green5 = (s) => `\x1B[32m${s}\x1B[0m`;
-var red4 = (s) => `\x1B[31m${s}\x1B[0m`;
-var yellow6 = (s) => `\x1B[33m${s}\x1B[0m`;
-var gray6 = (s) => `\x1B[90m${s}\x1B[0m`;
-var cyan4 = (s) => `\x1B[36m${s}\x1B[0m`;
+// cli/lib/tasks/task-display.ts
 var STATUS_DISPLAY_ORDER = [
   "in_progress",
   "blocked",
@@ -3308,6 +3302,48 @@ var STATUS_LABELS = {
   review: "Review",
   done: "Done"
 };
+function getDisplayStatuses(active) {
+  return active ? STATUS_DISPLAY_ORDER.filter((s) => s !== "done") : STATUS_DISPLAY_ORDER;
+}
+function sortTasks(tasks) {
+  return tasks.sort((a, b) => {
+    const pA = TASK_PRIORITIES.indexOf(a[1].priority);
+    const pB = TASK_PRIORITIES.indexOf(b[1].priority);
+    if (pA !== pB) return pA - pB;
+    const dateA = a[1].updated || a[1].created || "";
+    const dateB = b[1].updated || b[1].created || "";
+    return dateB.localeCompare(dateA);
+  });
+}
+function countActiveTasks(taskEntries) {
+  return taskEntries.filter(([, e]) => e.status !== "done").length;
+}
+function groupTasksByStatus(taskEntries) {
+  const grouped = {
+    in_progress: [],
+    blocked: [],
+    todo: [],
+    review: [],
+    done: []
+  };
+  for (const [id, entry] of taskEntries) {
+    const status = entry.status;
+    if (grouped[status]) {
+      grouped[status].push([id, entry]);
+    } else {
+      grouped.todo.push([id, entry]);
+    }
+  }
+  return grouped;
+}
+
+// cli/commands/task.ts
+var bold5 = (s) => `\x1B[1m${s}\x1B[0m`;
+var green5 = (s) => `\x1B[32m${s}\x1B[0m`;
+var red4 = (s) => `\x1B[31m${s}\x1B[0m`;
+var yellow6 = (s) => `\x1B[33m${s}\x1B[0m`;
+var gray6 = (s) => `\x1B[90m${s}\x1B[0m`;
+var cyan4 = (s) => `\x1B[36m${s}\x1B[0m`;
 var STATUS_COLORS = {
   in_progress: yellow6,
   blocked: red4,
@@ -3321,16 +3357,6 @@ var PRIORITY_COLORS = {
   P2: cyan4,
   P3: gray6
 };
-function sortTasks(tasks) {
-  return tasks.sort((a, b) => {
-    const pA = TASK_PRIORITIES.indexOf(a[1].priority);
-    const pB = TASK_PRIORITIES.indexOf(b[1].priority);
-    if (pA !== pB) return pA - pB;
-    const dateA = a[1].updated || a[1].created || "";
-    const dateB = b[1].updated || b[1].created || "";
-    return dateB.localeCompare(dateA);
-  });
-}
 function countSpecs(index) {
   const byStatus = {
     drafting: 0,
@@ -3348,7 +3374,7 @@ function countSpecs(index) {
 }
 function registerTaskCommand(program2) {
   const task = program2.command("task").description("Manage project tasks");
-  task.command("list").description("Show task board grouped by status").option("--json", "Output raw JSON").action(async (options) => {
+  task.command("list").description("Show task board grouped by status").option("--json", "Output raw JSON").option("--active", "Hide completed tasks").action(async (options) => {
     const agentsDir = findAgentsDir();
     if (!agentsDir) {
       console.error(`  ${red4("error:")} Could not find .agents/ directory`);
@@ -3374,23 +3400,10 @@ function registerTaskCommand(program2) {
     console.log(`
   ${bold5("loaf task list")}
 `);
-    const grouped = {
-      in_progress: [],
-      blocked: [],
-      todo: [],
-      review: [],
-      done: []
-    };
-    for (const [id, entry] of taskEntries) {
-      const status = entry.status;
-      if (grouped[status]) {
-        grouped[status].push([id, entry]);
-      } else {
-        grouped.todo.push([id, entry]);
-      }
-    }
+    const grouped = groupTasksByStatus(taskEntries);
     const specIds = /* @__PURE__ */ new Set();
-    for (const status of STATUS_DISPLAY_ORDER) {
+    const displayStatuses = getDisplayStatuses(!!options.active);
+    for (const status of displayStatuses) {
       const tasks = sortTasks(grouped[status]);
       const colorFn = STATUS_COLORS[status];
       const label = STATUS_LABELS[status];
@@ -3409,10 +3422,16 @@ function registerTaskCommand(program2) {
       }
       console.log();
     }
-    const totalTasks = taskEntries.length;
-    const totalSpecs = specIds.size;
-    console.log(`  Total: ${bold5(String(totalTasks))} tasks across ${bold5(String(totalSpecs))} specs
+    if (options.active) {
+      const activeCount = countActiveTasks(taskEntries);
+      console.log(`  Total: ${bold5(String(activeCount))} active tasks across ${bold5(String(specIds.size))} specs
 `);
+    } else {
+      const totalTasks = taskEntries.length;
+      const totalSpecs = specIds.size;
+      console.log(`  Total: ${bold5(String(totalTasks))} tasks across ${bold5(String(totalSpecs))} specs
+`);
+    }
   });
   task.command("show").description("Display a single task's details").argument("<id>", "Task ID (e.g., TASK-019)").option("--json", "Output task entry as JSON").action(async (id, options) => {
     const agentsDir = findAgentsDir();

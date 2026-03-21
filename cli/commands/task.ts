@@ -14,6 +14,14 @@ import { buildIndexFromFiles, saveIndex, syncFrontmatterFromIndex, findOrphans }
 import type { TaskIndex, TaskEntry, TaskStatus, TaskPriority, SpecStatus } from "../lib/tasks/types.js";
 import { TASK_STATUSES, TASK_PRIORITIES } from "../lib/tasks/types.js";
 import { generateSlug } from "../lib/tasks/slug.js";
+import {
+  STATUS_DISPLAY_ORDER,
+  STATUS_LABELS,
+  getDisplayStatuses,
+  sortTasks,
+  countActiveTasks,
+  groupTasksByStatus,
+} from "../lib/tasks/task-display.js";
 
 // ANSI color helpers (matching project conventions)
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
@@ -27,23 +35,6 @@ const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Display order for task statuses */
-const STATUS_DISPLAY_ORDER: TaskStatus[] = [
-  "in_progress",
-  "blocked",
-  "todo",
-  "review",
-  "done",
-];
-
-/** Human-readable labels for task statuses */
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  in_progress: "In Progress",
-  blocked: "Blocked",
-  todo: "Todo",
-  review: "Review",
-  done: "Done",
-};
 
 /** Color functions for status headers */
 const STATUS_COLORS: Record<TaskStatus, (s: string) => string> = {
@@ -62,22 +53,6 @@ const PRIORITY_COLORS: Record<TaskPriority, (s: string) => string> = {
   P3: gray,
 };
 
-/**
- * Sort tasks by priority (P0 first), then by updated date (newest first).
- */
-function sortTasks(tasks: Array<[string, TaskEntry]>): Array<[string, TaskEntry]> {
-  return tasks.sort((a, b) => {
-    // Priority: lower index = higher priority
-    const pA = TASK_PRIORITIES.indexOf(a[1].priority);
-    const pB = TASK_PRIORITIES.indexOf(b[1].priority);
-    if (pA !== pB) return pA - pB;
-
-    // Updated date: newest first
-    const dateA = a[1].updated || a[1].created || "";
-    const dateB = b[1].updated || b[1].created || "";
-    return dateB.localeCompare(dateA);
-  });
-}
 
 /**
  * Count unique spec IDs referenced by tasks.
@@ -116,7 +91,8 @@ export function registerTaskCommand(program: Command): void {
     .command("list")
     .description("Show task board grouped by status")
     .option("--json", "Output raw JSON")
-    .action(async (options: { json?: boolean }) => {
+    .option("--active", "Hide completed tasks")
+    .action(async (options: { json?: boolean; active?: boolean }) => {
       const agentsDir = findAgentsDir();
       if (!agentsDir) {
         console.error(`  ${red("error:")} Could not find .agents/ directory`);
@@ -146,29 +122,16 @@ export function registerTaskCommand(program: Command): void {
       console.log(`\n  ${bold("loaf task list")}\n`);
 
       // Group tasks by status
-      const grouped: Record<TaskStatus, Array<[string, TaskEntry]>> = {
-        in_progress: [],
-        blocked: [],
-        todo: [],
-        review: [],
-        done: [],
-      };
-
-      for (const [id, entry] of taskEntries) {
-        const status = entry.status;
-        if (grouped[status]) {
-          grouped[status].push([id, entry]);
-        } else {
-          // Unknown status — put in todo
-          grouped.todo.push([id, entry]);
-        }
-      }
+      const grouped = groupTasksByStatus(taskEntries);
 
       // Collect unique spec IDs for the footer
       const specIds = new Set<string>();
 
+      // Filter statuses when --active is set
+      const displayStatuses = getDisplayStatuses(!!options.active);
+
       // Display each status group
-      for (const status of STATUS_DISPLAY_ORDER) {
+      for (const status of displayStatuses) {
         const tasks = sortTasks(grouped[status]);
         const colorFn = STATUS_COLORS[status];
         const label = STATUS_LABELS[status];
@@ -197,9 +160,14 @@ export function registerTaskCommand(program: Command): void {
       }
 
       // Footer
-      const totalTasks = taskEntries.length;
-      const totalSpecs = specIds.size;
-      console.log(`  Total: ${bold(String(totalTasks))} tasks across ${bold(String(totalSpecs))} specs\n`);
+      if (options.active) {
+        const activeCount = countActiveTasks(taskEntries);
+        console.log(`  Total: ${bold(String(activeCount))} active tasks across ${bold(String(specIds.size))} specs\n`);
+      } else {
+        const totalTasks = taskEntries.length;
+        const totalSpecs = specIds.size;
+        console.log(`  Total: ${bold(String(totalTasks))} tasks across ${bold(String(totalSpecs))} specs\n`);
+      }
     });
 
   // ── loaf task show ─────────────────────────────────────────────────────

@@ -640,15 +640,15 @@
       "title": "Add --active flag to loaf task list to hide done tasks",
       "slug": "add-active-flag-to-loaf-task-list-to-hide-done-tas",
       "spec": null,
-      "status": "todo",
+      "status": "in_progress",
       "priority": "P3",
       "depends_on": [],
       "files": [],
       "verify": null,
       "done": null,
-      "session": null,
+      "session": "20260317-154954-task-032.md",
       "created": "2026-03-17T01:02:05.067Z",
-      "updated": "2026-03-17T01:02:05.067Z",
+      "updated": "2026-03-17T15:50:33.414Z",
       "completed_at": null,
       "file": "TASK-032-add-active-flag-to-loaf-task-list-to-hide-done-tas.md"
     }
