@@ -101,13 +101,24 @@ export function registerTaskCommand(program: Command): void {
 
       const index = getOrBuildIndex(agentsDir);
 
-      // --json: dump raw TASKS.json and exit
+      // --json: output as JSON and exit
       if (options.json) {
-        const indexPath = join(agentsDir, "TASKS.json");
-        if (existsSync(indexPath)) {
-          process.stdout.write(readFileSync(indexPath, "utf-8"));
+        if (options.active) {
+          // Filter out done tasks when --active is set
+          const filtered = { ...index, tasks: {} as Record<string, TaskEntry> };
+          for (const [id, entry] of Object.entries(index.tasks)) {
+            if (entry.status !== "done") {
+              filtered.tasks[id] = entry;
+            }
+          }
+          process.stdout.write(JSON.stringify(filtered, null, 2) + "\n");
         } else {
-          process.stdout.write(JSON.stringify(index, null, 2) + "\n");
+          const indexPath = join(agentsDir, "TASKS.json");
+          if (existsSync(indexPath)) {
+            process.stdout.write(readFileSync(indexPath, "utf-8"));
+          } else {
+            process.stdout.write(JSON.stringify(index, null, 2) + "\n");
+          }
         }
         return;
       }
