@@ -198,6 +198,6 @@ describe("loadKnowledgeFiles", () => {
     const invalid = files.find((f) => f.relativePath.includes("invalid-status"));
 
     expect(deprecated?.frontmatter.implementation_status).toBe("deprecated");
-    expect(invalid?.frontmatter.implementation_status).toBeUndefined();
+    expect(invalid?.frontmatter.implementation_status).toBe("banana");
   });
 });

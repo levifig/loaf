@@ -130,19 +130,11 @@ function normalizeDate(value: unknown): string {
 }
 
 /**
- * Normalize implementation_status to a valid value or undefined.
+ * Normalize implementation_status, preserving invalid values for validation.
  */
 function normalizeImplementationStatus(
   value: unknown,
-): KnowledgeFrontmatter["implementation_status"] {
+): string | undefined {
   if (typeof value !== "string") return undefined;
-
-  const valid = ["in-progress", "stable", "deprecated"];
-  const lower = value.trim().toLowerCase();
-
-  if (valid.includes(lower)) {
-    return lower as KnowledgeFrontmatter["implementation_status"];
-  }
-
-  return undefined;
+  return value.trim().toLowerCase();
 }

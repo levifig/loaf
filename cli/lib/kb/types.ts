@@ -36,8 +36,8 @@ export interface KnowledgeFrontmatter {
   consumers?: string[];
   /** Cross-references to other knowledge files */
   depends_on?: string[];
-  /** Lifecycle status */
-  implementation_status?: ImplementationStatus;
+  /** Lifecycle status (raw value — may be invalid; validator checks) */
+  implementation_status?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

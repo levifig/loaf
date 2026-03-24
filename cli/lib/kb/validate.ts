@@ -20,7 +20,7 @@ import type {
   ValidationResult,
   ValidationIssue,
 } from "./types.js";
-import { IMPLEMENTATION_STATUSES } from "./types.js";
+import { IMPLEMENTATION_STATUSES, type ImplementationStatus } from "./types.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
@@ -173,7 +173,7 @@ function validateLoadedFile(gitRoot: string, file: KnowledgeFile): ValidationRes
 
   // Check implementation_status is recognized
   if (fm.implementation_status !== undefined) {
-    if (!IMPLEMENTATION_STATUSES.includes(fm.implementation_status)) {
+    if (!IMPLEMENTATION_STATUSES.includes(fm.implementation_status as ImplementationStatus)) {
       warnings.push({
         field: "implementation_status",
         message: `Unrecognized value: "${fm.implementation_status}"`,

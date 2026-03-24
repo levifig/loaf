@@ -45,6 +45,18 @@ export function checkStaleness(
 
   const lastReviewed = file.frontmatter.last_reviewed;
 
+  // Invalid or missing last_reviewed — treat as stale (can't determine freshness)
+  if (!lastReviewed || isNaN(new Date(lastReviewed).getTime())) {
+    return {
+      file,
+      isStale: true,
+      hasCoverage: true,
+      commitCount: 0,
+      lastCommitAuthor: undefined,
+      lastCommitDate: undefined,
+    };
+  }
+
   try {
     const output = execFileSync(
       "git",
