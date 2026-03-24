@@ -549,8 +549,9 @@ export function registerKbCommand(program: Command): void {
     .command("import")
     .description("Import external project knowledge via QMD collection")
     .argument("<name>", "Name of the external project's knowledge collection")
+    .option("--path <path>", "Path to the external project's knowledge directory")
     .option("--json", "Output results as JSON")
-    .action(async (name: string, options: { json?: boolean }) => {
+    .action(async (name: string, options: { json?: boolean; path?: string }) => {
       // ── Require QMD ────────────────────────────────────────────────────
       if (!isQmdAvailable()) {
         if (options.json) {
@@ -600,7 +601,8 @@ export function registerKbCommand(program: Command): void {
       // ── Register QMD collection (skip if already exists) ─────────────
       if (!collectionExists) {
         try {
-          registerCollection(collectionName, name);
+          const collectionPath = options.path ?? name;
+          registerCollection(collectionName, collectionPath);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           if (options.json) {
