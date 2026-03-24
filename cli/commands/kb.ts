@@ -6,14 +6,15 @@
  */
 
 import { Command } from "commander";
-import { readFileSync, writeFileSync } from "fs";
-import { join, relative, isAbsolute } from "path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { join, basename, relative, isAbsolute } from "path";
 import matter from "gray-matter";
 
 import { findGitRoot, loadKbConfig } from "../lib/kb/resolve.js";
 import { loadKnowledgeFiles } from "../lib/kb/loader.js";
 import { validateLoadedFiles, findSkippedFiles } from "../lib/kb/validate.js";
 import { checkAllStaleness, checkStaleness, findCoveringFiles } from "../lib/kb/staleness.js";
+import { isQmdAvailable, registerCollection, listCollections } from "../lib/kb/qmd.js";
 import type { StalenessResult, ValidationResult } from "../lib/kb/types.js";
 
 // ANSI color helpers (matching project conventions)
@@ -382,6 +383,163 @@ export function registerKbCommand(program: Command): void {
 
       console.log(`\n  ${green("\u2713")} Updated last_reviewed for ${bold(relPath)}`);
       console.log(`    last_reviewed: ${today}`);
+      console.log();
+    });
+
+  // ── loaf kb init ──────────────────────────────────────────────────────
+
+  kb
+    .command("init")
+    .description("Initialize knowledge base directories and QMD collections")
+    .option("--json", "Output results as JSON")
+    .action(async (options: { json?: boolean }) => {
+      let gitRoot: string;
+      try {
+        gitRoot = findGitRoot();
+      } catch {
+        if (!options.json) {
+          console.error(`  ${red("error:")} Not inside a git repository`);
+        }
+        process.exit(1);
+      }
+
+      const repoName = basename(gitRoot);
+      const actions: Array<{ action: string; target: string; status: "created" | "exists" }> = [];
+
+      // ── Create directories ──────────────────────────────────────────────
+
+      const dirs = ["docs/knowledge", "docs/decisions"];
+
+      for (const dir of dirs) {
+        const fullPath = join(gitRoot, dir);
+        if (existsSync(fullPath)) {
+          actions.push({ action: "directory", target: dir, status: "exists" });
+        } else {
+          mkdirSync(fullPath, { recursive: true });
+          actions.push({ action: "directory", target: dir, status: "created" });
+        }
+      }
+
+      // ── Create/update .agents/loaf.json ─────────────────────────────────
+
+      const configPath = join(gitRoot, ".agents", "loaf.json");
+      let configStatus: "created" | "exists" | "updated" = "exists";
+
+      if (!existsSync(configPath)) {
+        // Ensure .agents/ exists
+        const agentsDir = join(gitRoot, ".agents");
+        if (!existsSync(agentsDir)) {
+          mkdirSync(agentsDir, { recursive: true });
+        }
+
+        const config = {
+          knowledge: {
+            local: ["docs/knowledge", "docs/decisions"],
+            staleness_threshold_days: 30,
+            imports: [],
+          },
+        };
+        writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+        configStatus = "created";
+      } else {
+        // Read existing, add knowledge section if missing
+        try {
+          const raw = readFileSync(configPath, "utf-8");
+          const parsed = JSON.parse(raw);
+
+          if (!parsed.knowledge) {
+            parsed.knowledge = {
+              local: ["docs/knowledge", "docs/decisions"],
+              staleness_threshold_days: 30,
+              imports: [],
+            };
+            writeFileSync(configPath, JSON.stringify(parsed, null, 2) + "\n", "utf-8");
+            configStatus = "updated";
+          }
+        } catch {
+          // If JSON is malformed, leave it alone
+          configStatus = "exists";
+        }
+      }
+
+      actions.push({
+        action: "config",
+        target: ".agents/loaf.json",
+        status: configStatus === "updated" ? "created" : configStatus,
+      });
+
+      // ── QMD integration ─────────────────────────────────────────────────
+
+      const qmdAvailable = isQmdAvailable();
+      const qmdActions: Array<{ collection: string; path: string; status: "registered" | "exists" }> = [];
+
+      if (qmdAvailable) {
+        const existing = listCollections();
+
+        const collections = [
+          { name: `${repoName}-knowledge`, path: join(gitRoot, "docs/knowledge") },
+          { name: `${repoName}-decisions`, path: join(gitRoot, "docs/decisions") },
+        ];
+
+        for (const col of collections) {
+          if (existing.includes(col.name)) {
+            qmdActions.push({ collection: col.name, path: col.path, status: "exists" });
+          } else {
+            registerCollection(col.name, col.path);
+            qmdActions.push({ collection: col.name, path: col.path, status: "registered" });
+          }
+        }
+      }
+
+      // ── Output ────────────────────────────────────────────────────────
+
+      if (options.json) {
+        const output: Record<string, unknown> = {
+          directories: actions.filter((a) => a.action === "directory"),
+          config: { path: ".agents/loaf.json", status: configStatus },
+          qmd: {
+            available: qmdAvailable,
+            collections: qmdActions,
+          },
+        };
+        process.stdout.write(JSON.stringify(output, null, 2) + "\n");
+        return;
+      }
+
+      // Human-readable output
+      console.log(`\n  ${bold("loaf kb init")}\n`);
+
+      for (const a of actions) {
+        if (a.status === "created") {
+          console.log(`  ${green("+")} Created ${a.target}`);
+        } else {
+          console.log(`  ${gray("-")} Already exists: ${a.target}`);
+        }
+      }
+
+      if (configStatus === "updated") {
+        console.log(`  ${green("+")} Added knowledge section to .agents/loaf.json`);
+      }
+
+      console.log();
+
+      if (qmdAvailable) {
+        console.log(`  ${bold("QMD")}`);
+        for (const qa of qmdActions) {
+          if (qa.status === "registered") {
+            console.log(`  ${green("+")} Registered collection: ${cyan(qa.collection)}`);
+          } else {
+            console.log(`  ${gray("-")} Collection exists: ${cyan(qa.collection)}`);
+          }
+        }
+      } else {
+        console.log(`  ${bold("QMD")}`);
+        console.log(`  ${yellow("info:")} QMD not found. Install QMD for knowledge retrieval:`);
+        console.log(`        ${cyan("https://github.com/tobi/qmd")}`);
+      }
+
+      console.log();
+      console.log(`  ${green("\u2713")} Knowledge base initialized`);
       console.log();
     });
 }
