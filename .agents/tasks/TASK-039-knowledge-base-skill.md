@@ -2,8 +2,7 @@
 id: TASK-039
 title: knowledge-base skill
 spec: SPEC-009
-status: in_progress
-session: 20260324-194808-task-033.md
+status: todo
 priority: P2
 created: '2026-03-24T19:29:16Z'
 depends_on: []
