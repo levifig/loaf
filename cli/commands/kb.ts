@@ -593,32 +593,25 @@ export function registerKbCommand(program: Command): void {
         process.exit(0);
       }
 
-      // QMD collection already registered?
+      // QMD collection already registered? Skip registration but still persist to config
       const existing = listCollections();
-      if (existing.includes(collectionName)) {
-        if (options.json) {
-          process.stdout.write(
-            JSON.stringify({ name, collection: collectionName, status: "already_imported" }, null, 2) + "\n",
-          );
-        } else {
-          console.log(`  Already imported: ${bold(name)}`);
-        }
-        process.exit(0);
-      }
+      const collectionExists = existing.includes(collectionName);
 
-      // ── Register QMD collection ────────────────────────────────────────
-      try {
-        registerCollection(collectionName, ".");
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (options.json) {
-          process.stdout.write(
-            JSON.stringify({ error: `Failed to register collection: ${message}` }, null, 2) + "\n",
-          );
-        } else {
-          console.error(`  ${red("error:")} Failed to register QMD collection: ${message}`);
+      // ── Register QMD collection (skip if already exists) ─────────────
+      if (!collectionExists) {
+        try {
+          registerCollection(collectionName, name);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (options.json) {
+            process.stdout.write(
+              JSON.stringify({ error: `Failed to register collection: ${message}` }, null, 2) + "\n",
+            );
+          } else {
+            console.error(`  ${red("error:")} Failed to register QMD collection: ${message}`);
+          }
+          process.exit(1);
         }
-        process.exit(1);
       }
 
       // ── Update .agents/loaf.json ───────────────────────────────────────

@@ -10,7 +10,7 @@
 
 import { execFileSync } from "child_process";
 import { existsSync, readdirSync, readFileSync } from "fs";
-import { join, relative } from "path";
+import { dirname, join, relative } from "path";
 import matter from "gray-matter";
 
 import type {
@@ -157,11 +157,12 @@ function validateLoadedFile(gitRoot: string, file: KnowledgeFile): ValidationRes
     }
   }
 
-  // Check depends_on references exist
+  // Check depends_on references exist (resolve from git root or file's directory)
   if (fm.depends_on) {
     for (const dep of fm.depends_on) {
-      const absPath = join(gitRoot, dep);
-      if (!existsSync(absPath)) {
+      const fromRoot = join(gitRoot, dep);
+      const fromFileDir = join(dirname(file.path), dep);
+      if (!existsSync(fromRoot) && !existsSync(fromFileDir)) {
         warnings.push({
           field: "depends_on",
           message: `Referenced file does not exist: "${dep}"`,

@@ -196,9 +196,9 @@ describe("checkStaleness", () => {
         "--since=2026-03-01",
         "--format=%H%n%an%n%aI",
         "--",
-        "cli/**/*.ts",
-        "config/**/*.yaml",
-        "docs/**",
+        ":(glob)cli/**/*.ts",
+        ":(glob)config/**/*.yaml",
+        ":(glob)docs/**",
       ],
       expect.objectContaining({
         cwd: FAKE_GIT_ROOT,

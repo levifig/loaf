@@ -53,7 +53,7 @@ export function checkStaleness(
         `--since=${lastReviewed}`,
         "--format=%H%n%an%n%aI",
         "--",
-        ...covers,
+        ...covers.map((g) => `:(glob)${g}`),
       ],
       {
         cwd: gitRoot,

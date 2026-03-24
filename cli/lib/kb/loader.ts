@@ -96,9 +96,10 @@ export function loadKnowledgeFiles(
 /**
  * Normalize a date value to an ISO 8601 date string.
  * Handles Date objects (gray-matter auto-parsing), ISO strings, bare dates.
+ * Preserves invalid/missing values as-is so downstream validation can flag them.
  */
 function normalizeDate(value: unknown): string {
-  if (!value) return new Date().toISOString().slice(0, 10);
+  if (!value) return "";
 
   if (value instanceof Date) {
     return value.toISOString().slice(0, 10);
@@ -124,7 +125,8 @@ function normalizeDate(value: unknown): string {
     }
   }
 
-  return new Date().toISOString().slice(0, 10);
+  // Preserve the raw value so validate can report it
+  return String(value);
 }
 
 /**
