@@ -76,17 +76,24 @@ Extract: test conditions, scope, implementation notes, appetite.
 
 Break down by concern (DBA, Backend, Frontend, QA, DevOps). One concern per task. Explicit dependencies for sequential tasks.
 
-### Step 4: Interview for Priorities
+### Step 4: Decide Priorities and Granularity
 
-Ask about highest priority parts, required ordering, preferred implementation sequence.
+Own the granularity and priority decisions. Apply the Right Size Test, assign priorities
+based on dependencies and circuit breaker alignment, and do a self-review pass. Do not
+defer these decisions to the user — they trust agent judgment here.
+
+If genuinely uncertain (e.g., two equally valid orderings with different trade-offs),
+ask. Otherwise, decide and move on.
 
 ### Step 5: Draft Task List
 
 Create tasks following [task template](templates/task.md). Each task needs: clear title, priority, file hints, verification command, observable done condition.
 
-### Step 6: Present for Approval
+### Step 6: Present and Create
 
-Show tasks with priorities, dependencies, and dependency graph. **Do NOT create tasks without explicit approval.** User may adjust priorities, combine/split, add tasks, or change dependencies.
+Show the dependency graph and task summary for awareness, then create the tasks.
+Present it as "here's what I'm creating" not "which option do you prefer?" The user
+can still adjust after creation, but the default is to proceed.
 
 ### Step 7: Create Tasks
 
@@ -117,7 +124,7 @@ Set spec status to `implementing`. Announce created tasks with next steps.
 2. **Clear verification** -- how to prove it works
 3. **Observable done condition** -- not subjective
 4. **File hints** -- help session know where to look
-5. **Get approval** -- don't create without confirmation
+5. **Own the decisions** -- decide granularity and priorities, don't defer
 6. **Update spec status** -- mark as implementing
 
 ---

@@ -199,6 +199,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/orchestration-generate-task-board.sh",
             "description": "Regenerate TASKS.md when task files change"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-staleness-nudge.sh",
+            "description": "Alert when editing files covered by stale knowledge"
           }
         ]
       },
@@ -222,6 +227,15 @@
             "description": "Agent-aware session context and active sessions overview"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-session-start.sh",
+            "description": "Surface stale knowledge count at session start"
+          }
+        ]
       }
     ],
     "SessionEnd": [
@@ -231,6 +245,15 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh",
             "description": "Agent-specific completion checklist and session hygiene reminder"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-session-end.sh",
+            "description": "Prompt for knowledge consolidation if stale files were flagged"
           }
         ]
       }
