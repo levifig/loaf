@@ -542,4 +542,125 @@ export function registerKbCommand(program: Command): void {
       console.log(`  ${green("\u2713")} Knowledge base initialized`);
       console.log();
     });
+
+  // ── loaf kb import ────────────────────────────────────────────────────
+
+  kb
+    .command("import")
+    .description("Import external project knowledge via QMD collection")
+    .argument("<name>", "Name of the external project's knowledge collection")
+    .option("--json", "Output results as JSON")
+    .action(async (name: string, options: { json?: boolean }) => {
+      // ── Require QMD ────────────────────────────────────────────────────
+      if (!isQmdAvailable()) {
+        if (options.json) {
+          process.stdout.write(
+            JSON.stringify({ error: "QMD is required for importing external knowledge" }, null, 2) + "\n",
+          );
+        } else {
+          console.error(
+            `  ${red("error:")} QMD is required for importing external knowledge. Install QMD: ${cyan("https://github.com/tobi/qmd")}`,
+          );
+        }
+        process.exit(1);
+      }
+
+      // ── Resolve git root ───────────────────────────────────────────────
+      let gitRoot: string;
+      try {
+        gitRoot = findGitRoot();
+      } catch {
+        if (!options.json) {
+          console.error(`  ${red("error:")} Not inside a git repository`);
+        }
+        process.exit(1);
+      }
+
+      const config = loadKbConfig(gitRoot);
+      const collectionName = `${name}-knowledge`;
+
+      // ── Check for duplicates ───────────────────────────────────────────
+
+      // Already in config?
+      if (config.imports.some((i) => i.name === name)) {
+        if (options.json) {
+          process.stdout.write(
+            JSON.stringify({ name, collection: collectionName, status: "already_imported" }, null, 2) + "\n",
+          );
+        } else {
+          console.log(`  Already imported: ${bold(name)}`);
+        }
+        process.exit(0);
+      }
+
+      // QMD collection already registered?
+      const existing = listCollections();
+      if (existing.includes(collectionName)) {
+        if (options.json) {
+          process.stdout.write(
+            JSON.stringify({ name, collection: collectionName, status: "already_imported" }, null, 2) + "\n",
+          );
+        } else {
+          console.log(`  Already imported: ${bold(name)}`);
+        }
+        process.exit(0);
+      }
+
+      // ── Register QMD collection ────────────────────────────────────────
+      try {
+        registerCollection(collectionName, ".");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (options.json) {
+          process.stdout.write(
+            JSON.stringify({ error: `Failed to register collection: ${message}` }, null, 2) + "\n",
+          );
+        } else {
+          console.error(`  ${red("error:")} Failed to register QMD collection: ${message}`);
+        }
+        process.exit(1);
+      }
+
+      // ── Update .agents/loaf.json ───────────────────────────────────────
+      const configPath = join(gitRoot, ".agents", "loaf.json");
+      let parsed: Record<string, unknown> = {};
+
+      if (existsSync(configPath)) {
+        try {
+          const raw = readFileSync(configPath, "utf-8");
+          parsed = JSON.parse(raw);
+        } catch {
+          // If JSON is malformed, start fresh but preserve whatever was there
+          parsed = {};
+        }
+      } else {
+        // Ensure .agents/ exists
+        const agentsDir = join(gitRoot, ".agents");
+        if (!existsSync(agentsDir)) {
+          mkdirSync(agentsDir, { recursive: true });
+        }
+      }
+
+      // Ensure knowledge.imports exists
+      if (!parsed.knowledge || typeof parsed.knowledge !== "object") {
+        parsed.knowledge = { local: ["docs/knowledge", "docs/decisions"], staleness_threshold_days: 30, imports: [] };
+      }
+      const kb = parsed.knowledge as Record<string, unknown>;
+      if (!Array.isArray(kb.imports)) {
+        kb.imports = [];
+      }
+
+      (kb.imports as Array<{ name: string }>).push({ name });
+      writeFileSync(configPath, JSON.stringify(parsed, null, 2) + "\n", "utf-8");
+
+      // ── Output ─────────────────────────────────────────────────────────
+      if (options.json) {
+        process.stdout.write(
+          JSON.stringify({ name, collection: collectionName, status: "imported" }, null, 2) + "\n",
+        );
+        return;
+      }
+
+      console.log(`  Imported: ${bold(name)}`);
+    });
 }

@@ -2,7 +2,8 @@
 id: TASK-038
 title: KB import command (stretch goal)
 spec: SPEC-009
-status: todo
+status: in_progress
+session: 20260324-194808-task-033.md
 priority: P3
 created: '2026-03-24T19:29:16Z'
 depends_on: [TASK-037]
