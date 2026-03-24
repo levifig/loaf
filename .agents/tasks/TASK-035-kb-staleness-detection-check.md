@@ -2,8 +2,7 @@
 id: TASK-035
 title: KB staleness detection + check command
 spec: SPEC-009
-status: in_progress
-session: 20260324-194808-task-033.md
+status: todo
 priority: P1
 created: '2026-03-24T19:29:16Z'
 depends_on: [TASK-033]
