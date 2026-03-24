@@ -83,6 +83,8 @@ export interface KbConfig {
 export interface StalenessResult {
   file: KnowledgeFile;
   isStale: boolean;
+  /** Whether the file has a `covers:` field (false = can't determine staleness) */
+  hasCoverage: boolean;
   commitCount: number;
   lastCommitAuthor?: string;
   lastCommitDate?: string;

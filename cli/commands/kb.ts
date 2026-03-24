@@ -1,7 +1,8 @@
 /**
  * loaf kb command
  *
- * Subcommands for knowledge base validation, status overview, and review tracking.
+ * Subcommands for knowledge base validation, status overview, staleness
+ * checking, and review tracking.
  */
 
 import { Command } from "commander";
@@ -12,7 +13,8 @@ import matter from "gray-matter";
 import { findGitRoot, loadKbConfig } from "../lib/kb/resolve.js";
 import { loadKnowledgeFiles } from "../lib/kb/loader.js";
 import { validateLoadedFiles, findSkippedFiles } from "../lib/kb/validate.js";
-import type { ValidationResult } from "../lib/kb/types.js";
+import { checkAllStaleness, checkStaleness, findCoveringFiles } from "../lib/kb/staleness.js";
+import type { StalenessResult, ValidationResult } from "../lib/kb/types.js";
 
 // ANSI color helpers (matching project conventions)
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
@@ -133,6 +135,10 @@ export function registerKbCommand(program: Command): void {
       const filesWithCovers = files.filter((f) => f.frontmatter.covers && f.frontmatter.covers.length > 0).length;
       const filesWithoutCovers = totalFiles - filesWithCovers;
 
+      // Staleness check
+      const stalenessResults = checkAllStaleness(gitRoot, files, config);
+      const staleCount = stalenessResults.filter((r) => r.isStale).length;
+
       // Average review age
       const now = new Date();
       let totalAgeDays = 0;
@@ -164,6 +170,7 @@ export function registerKbCommand(program: Command): void {
           total_files: totalFiles,
           files_with_covers: filesWithCovers,
           files_without_covers: filesWithoutCovers,
+          stale: staleCount,
           avg_review_age_days: avgReviewAgeDays,
           directories: dirCounts,
         };
@@ -176,6 +183,7 @@ export function registerKbCommand(program: Command): void {
 
       console.log(`  Files:    ${bold(String(totalFiles))}`);
       console.log(`  Covers:   ${green(String(filesWithCovers))} with ${gray(String(filesWithoutCovers))} without`);
+      console.log(`  Stale:    ${staleCount > 0 ? red(String(staleCount)) : green("0")}`);
       console.log(`  Avg age:  ${bold(String(avgReviewAgeDays))} days since last review`);
       console.log();
 
@@ -186,6 +194,140 @@ export function registerKbCommand(program: Command): void {
         console.log(`    ${cyan(dir)}: ${count} files`);
       }
 
+      console.log();
+    });
+
+  // ── loaf kb check ──────────────────────────────────────────────────────
+
+  kb
+    .command("check")
+    .description("Check knowledge file staleness against git history")
+    .option("--file <path>", "Reverse lookup: find knowledge files covering this path")
+    .option("--json", "Output results as JSON")
+    .action(async (options: { file?: string; json?: boolean }) => {
+      let gitRoot: string;
+      try {
+        gitRoot = findGitRoot();
+      } catch {
+        if (!options.json) {
+          console.error(`  ${red("error:")} Not inside a git repository`);
+        }
+        process.exit(1);
+      }
+
+      const config = loadKbConfig(gitRoot);
+      const files = loadKnowledgeFiles(gitRoot, config);
+
+      // ── Reverse lookup mode: --file <path> ──────────────────────────────
+      if (options.file) {
+        // Normalize to a relative path from git root
+        const filePath = isAbsolute(options.file)
+          ? relative(gitRoot, options.file)
+          : options.file;
+
+        const coveringFiles = findCoveringFiles(files, filePath);
+
+        // Get staleness for each covering file
+        const results: StalenessResult[] = coveringFiles.map((f) =>
+          checkStaleness(gitRoot, f, config),
+        );
+
+        if (options.json) {
+          const jsonOutput = results.map((r) => ({
+            file: r.file.relativePath,
+            isStale: r.isStale,
+            commitCount: r.commitCount,
+            lastCommitAuthor: r.lastCommitAuthor,
+            lastCommitDate: r.lastCommitDate,
+            lastReviewed: r.file.frontmatter.last_reviewed,
+          }));
+          process.stdout.write(JSON.stringify(jsonOutput, null, 2) + "\n");
+          return;
+        }
+
+        console.log(`\n  ${bold("loaf kb check")} --file ${filePath}\n`);
+
+        if (results.length === 0) {
+          console.log(`  ${gray("No knowledge files cover this path")}`);
+          console.log();
+          return;
+        }
+
+        for (const result of results) {
+          const statusLabel = result.isStale
+            ? red("stale")
+            : green("fresh");
+          console.log(`  ${statusLabel}  ${result.file.relativePath}`);
+          console.log(`    last_reviewed: ${result.file.frontmatter.last_reviewed}`);
+          if (result.isStale) {
+            console.log(`    ${result.commitCount} commit${result.commitCount === 1 ? "" : "s"} since review`);
+            if (result.lastCommitAuthor) {
+              console.log(`    last by: ${result.lastCommitAuthor} (${result.lastCommitDate})`);
+            }
+          }
+        }
+
+        console.log();
+        return;
+      }
+
+      // ── Default mode: check all files ───────────────────────────────────
+      const results = checkAllStaleness(gitRoot, files, config);
+
+      if (options.json) {
+        const jsonOutput = results.map((r) => ({
+          file: r.file.relativePath,
+          isStale: r.isStale,
+          hasCoverage: r.hasCoverage,
+          commitCount: r.commitCount,
+          lastCommitAuthor: r.lastCommitAuthor,
+          lastCommitDate: r.lastCommitDate,
+          lastReviewed: r.file.frontmatter.last_reviewed,
+        }));
+        process.stdout.write(JSON.stringify(jsonOutput, null, 2) + "\n");
+        return;
+      }
+
+      console.log(`\n  ${bold("loaf kb check")}\n`);
+
+      // Group results
+      const stale = results.filter((r) => r.isStale);
+      const fresh = results.filter((r) => !r.isStale && r.hasCoverage);
+      const noCoverage = results.filter((r) => !r.hasCoverage);
+
+      // Stale files
+      if (stale.length > 0) {
+        console.log(`  ${red(bold("Stale"))}`);
+        for (const result of stale) {
+          console.log(`    ${red("\u2717")} ${result.file.relativePath}`);
+          console.log(`      ${result.commitCount} commit${result.commitCount === 1 ? "" : "s"} since ${result.file.frontmatter.last_reviewed}`);
+          if (result.lastCommitAuthor) {
+            console.log(`      last by: ${result.lastCommitAuthor} (${result.lastCommitDate})`);
+          }
+        }
+        console.log();
+      }
+
+      // Fresh files
+      if (fresh.length > 0) {
+        console.log(`  ${green(bold("Fresh"))}`);
+        for (const result of fresh) {
+          console.log(`    ${green("\u2713")} ${result.file.relativePath}  ${gray("reviewed " + result.file.frontmatter.last_reviewed)}`);
+        }
+        console.log();
+      }
+
+      // No coverage files
+      if (noCoverage.length > 0) {
+        console.log(`  ${gray(bold("No coverage"))}`);
+        for (const result of noCoverage) {
+          console.log(`    ${gray("-")} ${gray(result.file.relativePath)}`);
+        }
+        console.log();
+      }
+
+      // Summary
+      console.log(`  ${red(String(stale.length))} stale, ${green(String(fresh.length))} fresh, ${gray(String(noCoverage.length))} without coverage`);
       console.log();
     });
 
