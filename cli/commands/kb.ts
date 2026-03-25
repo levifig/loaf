@@ -607,29 +607,7 @@ export function registerKbCommand(program: Command): void {
         process.exit(0);
       }
 
-      // QMD collection already registered? Skip registration but still persist to config
-      const existing = listCollections();
-      const collectionExists = existing.includes(collectionName);
-
-      // ── Register QMD collection (skip if already exists) ─────────────
-      if (!collectionExists) {
-        try {
-          const collectionPath = options.path ?? name;
-          registerCollection(collectionName, collectionPath);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          if (options.json) {
-            process.stdout.write(
-              JSON.stringify({ error: `Failed to register collection: ${message}` }, null, 2) + "\n",
-            );
-          } else {
-            console.error(`  ${red("error:")} Failed to register QMD collection: ${message}`);
-          }
-          process.exit(1);
-        }
-      }
-
-      // ── Update .agents/loaf.json ───────────────────────────────────────
+      // ── Validate .agents/loaf.json before any side effects ──────────
       const configPath = join(gitRoot, ".agents", "loaf.json");
       let parsed: Record<string, unknown> = {};
 
@@ -652,6 +630,27 @@ export function registerKbCommand(program: Command): void {
         const agentsDir = join(gitRoot, ".agents");
         if (!existsSync(agentsDir)) {
           mkdirSync(agentsDir, { recursive: true });
+        }
+      }
+
+      // ── Register QMD collection (skip if already exists) ─────────────
+      const existing = listCollections();
+      const collectionExists = existing.includes(collectionName);
+
+      if (!collectionExists) {
+        try {
+          const collectionPath = options.path ?? name;
+          registerCollection(collectionName, collectionPath);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (options.json) {
+            process.stdout.write(
+              JSON.stringify({ error: `Failed to register collection: ${message}` }, null, 2) + "\n",
+            );
+          } else {
+            console.error(`  ${red("error:")} Failed to register QMD collection: ${message}`);
+          }
+          process.exit(1);
         }
       }
 

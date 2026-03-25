@@ -156,11 +156,15 @@ function validateLoadedFile(gitRoot: string, file: KnowledgeFile): ValidationRes
     if (!dateMatch) {
       errors.push({ field: "last_reviewed", message: `Invalid date format (expected YYYY-MM-DD): "${dateStr}"` });
     } else {
-      // Round-trip check: reject impossible dates like 2026-02-30
+      // Round-trip check: reject impossible dates like 2026-02-30 or 2026-13-01
       const parsed = new Date(dateStr + "T00:00:00Z");
-      const roundTrip = parsed.toISOString().slice(0, 10);
-      if (roundTrip !== dateStr) {
+      if (isNaN(parsed.getTime())) {
         errors.push({ field: "last_reviewed", message: `Invalid calendar date: "${dateStr}"` });
+      } else {
+        const roundTrip = parsed.toISOString().slice(0, 10);
+        if (roundTrip !== dateStr) {
+          errors.push({ field: "last_reviewed", message: `Invalid calendar date: "${dateStr}"` });
+        }
       }
     }
   }
