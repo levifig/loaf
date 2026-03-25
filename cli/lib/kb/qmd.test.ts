@@ -59,7 +59,7 @@ describe("registerCollection", () => {
 
     expect(mockExecFileSync).toHaveBeenCalledWith(
       "qmd",
-      ["collection", "add", "my-knowledge", "/path/to/docs"],
+      ["collection", "add", "/path/to/docs", "--name", "my-knowledge"],
       { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] },
     );
   });

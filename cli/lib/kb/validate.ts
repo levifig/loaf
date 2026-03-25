@@ -84,8 +84,8 @@ export function findSkippedFiles(
         // Check for missing/empty topics
         const hasTopics = Array.isArray(data.topics) && data.topics.length > 0;
 
-        // Check for missing/invalid last_reviewed
-        const hasLastReviewed = data.last_reviewed !== undefined && data.last_reviewed !== null;
+        // Check for missing/empty last_reviewed
+        const hasLastReviewed = data.last_reviewed !== undefined && data.last_reviewed !== null && data.last_reviewed !== "";
 
         // If the loader would have accepted this file, skip it — it's validated elsewhere
         if (hasTopics && hasLastReviewed) continue;
@@ -118,8 +118,18 @@ export function findSkippedFiles(
           errors,
           warnings: [],
         });
-      } catch {
-        // Can't parse — skip silently (loader already warns)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        results.push({
+          file: {
+            path: absPath,
+            relativePath: relPath,
+            frontmatter: { topics: [], last_reviewed: "" },
+            content: "",
+          },
+          errors: [{ field: "frontmatter", message: `Failed to parse: ${message}` }],
+          warnings: [],
+        });
       }
     }
   }

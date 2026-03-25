@@ -27,7 +27,7 @@ export function isQmdAvailable(): boolean {
  */
 export function registerCollection(name: string, path: string): void {
   try {
-    execFileSync("qmd", ["collection", "add", name, path], {
+    execFileSync("qmd", ["collection", "add", path, "--name", name], {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });
