@@ -75,6 +75,7 @@ const postToolHooks = {
     { id: 'design-token-check', script: 'post-tool/design-token-check.sh', timeout: 60000 },
     { id: 'design-a11y-audit', script: 'post-tool/design-a11y-audit.sh', timeout: 60000 },
     { id: 'generate-task-board', script: 'post-tool/orchestration-generate-task-board.sh', timeout: 60000 },
+    { id: 'kb-staleness-nudge', script: 'post-tool/kb-staleness-nudge.sh', timeout: 60000 },
   ],
   'Bash': [
     { id: 'changelog-reminder', script: 'post-tool/foundations-changelog-reminder.sh', timeout: 60000 },
@@ -85,6 +86,8 @@ const sessionHooks = {
   'sessionstart': { id: 'session-start', script: 'session/session-start.sh', timeout: 60000 },
   'sessionend': { id: 'session-end', script: 'session/session-end.sh', timeout: 60000 },
   'precompact': { id: 'pre-compact-archive', script: 'session/pre-compact-archive.sh', timeout: 60000 },
+  'sessionstart': { id: 'kb-session-start', script: 'session/kb-session-start.sh', timeout: 60000 },
+  'sessionend': { id: 'kb-session-end', script: 'session/kb-session-end.sh', timeout: 60000 },
 };
 
 export default async function AgentSkillsPlugin({ client, $ }) {

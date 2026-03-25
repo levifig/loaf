@@ -610,7 +610,7 @@
         "dist/",
         "CLAUDE.md",
         ".claude/CLAUDE.md",
-        ".agents/ARCHITECTURE.md"
+        "docs/ARCHITECTURE.md"
       ],
       "verify": "loaf build && loaf install --to all && loaf --help",
       "done": "dist/ is cleaner, old directories removed, all documentation updated, all spec test conditions pass",

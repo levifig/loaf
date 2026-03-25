@@ -62,7 +62,9 @@ Always check project context first. Rate findings: **High** (official/verified),
 1. **Interview** with AskUserQuestion: what are you trying to understand? What context do you have? What decision will this inform?
 2. Check project context first (ADRs, ARCHITECTURE, sessions)
 3. Apply confidence hierarchy for external sources
-4. Synthesize following [findings template](../skills/research/templates/findings.md)
+4. Create findings document following [findings template](../skills/research/templates/findings.md)
+
+**Output file:** `.agents/drafts/{YYYYMMDD}-{HHMMSS}-research-{slug}.md`
 
 ### Brainstorming
 

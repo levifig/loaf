@@ -163,17 +163,30 @@
         "command": "bash $HOME/.cursor/hooks/post-tool/orchestration-generate-task-board.sh",
         "timeout": 30,
         "matcher": "Edit|Write"
+      },
+      {
+        "command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh",
+        "timeout": 30,
+        "matcher": "Edit|Write"
       }
     ],
     "sessionStart": [
       {
         "command": "bash $HOME/.cursor/hooks/session/session-start.sh",
         "timeout": 60
+      },
+      {
+        "command": "bash $HOME/.cursor/hooks/session/kb-session-start.sh",
+        "timeout": 60
       }
     ],
     "sessionEnd": [
       {
         "command": "bash $HOME/.cursor/hooks/session/session-end.sh",
+        "timeout": 60
+      },
+      {
+        "command": "bash $HOME/.cursor/hooks/session/kb-session-end.sh",
         "timeout": 60
       }
     ],
