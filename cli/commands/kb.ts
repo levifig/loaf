@@ -638,8 +638,14 @@ export function registerKbCommand(program: Command): void {
           const raw = readFileSync(configPath, "utf-8");
           parsed = JSON.parse(raw);
         } catch {
-          // If JSON is malformed, start fresh but preserve whatever was there
-          parsed = {};
+          if (options.json) {
+            process.stdout.write(
+              JSON.stringify({ error: "Cannot parse .agents/loaf.json — fix or remove it before importing" }, null, 2) + "\n",
+            );
+          } else {
+            console.error(`  ${red("error:")} Cannot parse .agents/loaf.json — fix or remove it before importing`);
+          }
+          process.exit(1);
         }
       } else {
         // Ensure .agents/ exists

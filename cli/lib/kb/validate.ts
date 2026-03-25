@@ -149,11 +149,19 @@ function validateLoadedFile(gitRoot: string, file: KnowledgeFile): ValidationRes
   const errors: ValidationIssue[] = [];
   const fm = file.frontmatter;
 
-  // Check last_reviewed date is valid
+  // Check last_reviewed date is valid (strict YYYY-MM-DD with round-trip check)
   if (fm.last_reviewed) {
-    const parsed = new Date(fm.last_reviewed);
-    if (isNaN(parsed.getTime())) {
-      errors.push({ field: "last_reviewed", message: `Invalid date format: "${fm.last_reviewed}"` });
+    const dateStr = fm.last_reviewed;
+    const dateMatch = /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+    if (!dateMatch) {
+      errors.push({ field: "last_reviewed", message: `Invalid date format (expected YYYY-MM-DD): "${dateStr}"` });
+    } else {
+      // Round-trip check: reject impossible dates like 2026-02-30
+      const parsed = new Date(dateStr + "T00:00:00Z");
+      const roundTrip = parsed.toISOString().slice(0, 10);
+      if (roundTrip !== dateStr) {
+        errors.push({ field: "last_reviewed", message: `Invalid calendar date: "${dateStr}"` });
+      }
     }
   }
 
