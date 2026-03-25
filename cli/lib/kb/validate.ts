@@ -94,7 +94,9 @@ export function findSkippedFiles(
 
         if (!data.topics) {
           errors.push({ field: "topics", message: "Missing required field" });
-        } else if (Array.isArray(data.topics) && data.topics.length === 0) {
+        } else if (!Array.isArray(data.topics)) {
+          errors.push({ field: "topics", message: `Must be an array, got ${typeof data.topics}: "${data.topics}"` });
+        } else if (data.topics.length === 0) {
           errors.push({ field: "topics", message: "Must contain at least one topic" });
         }
 

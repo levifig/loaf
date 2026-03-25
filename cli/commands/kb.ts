@@ -367,6 +367,19 @@ export function registerKbCommand(program: Command): void {
 
       const { data, content } = matter(raw);
 
+      // Guard: only operate on files with knowledge frontmatter
+      if (!data || !Array.isArray(data.topics)) {
+        if (options.json) {
+          process.stdout.write(
+            JSON.stringify({ error: `Not a knowledge file (missing topics field): ${relPath}` }, null, 2) + "\n",
+          );
+        } else {
+          console.error(`  ${red("error:")} Not a knowledge file (missing topics field): ${relPath}`);
+        }
+        process.exit(1);
+        return;
+      }
+
       // Update last_reviewed to today
       const today = new Date().toISOString().slice(0, 10);
       data.last_reviewed = today;
