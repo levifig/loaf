@@ -5,15 +5,15 @@
     "email": "me@levifig.com"
   },
   "metadata": {
-    "description": "Loaf - Levi's Opinionated Agentic Framework",
-    "version": "2.0.0-dev.0"
+    "description": "Loaf - An Opinionated Agentic Framework",
+    "version": "2.0.0-dev.1"
   },
   "plugins": [
     {
       "name": "loaf",
-      "description": "Loaf - Levi's Opinionated Agentic Framework",
+      "description": "Loaf - An Opinionated Agentic Framework",
       "source": "./plugins/loaf",
-      "version": "2.0.0-dev.0",
+      "version": "2.0.0-dev.1",
       "license": "MIT",
       "repository": "https://github.com/levifig/loaf"
     }

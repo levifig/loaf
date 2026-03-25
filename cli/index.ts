@@ -14,10 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function getVersion(): string {
   // Walk up to find package.json (works from both source and bundled output)
-  for (const candidate of [
-    join(__dirname, "..", "package.json"),
-    join(__dirname, "..", "..", "package.json"),
-  ]) {
+  for (const candidate of [join(__dirname, "..", "package.json"), join(__dirname, "..", "..", "package.json")]) {
     try {
       const pkg = JSON.parse(readFileSync(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
@@ -30,10 +27,7 @@ function getVersion(): string {
 
 const program = new Command();
 
-program
-  .name("loaf")
-  .description("Loaf — Levi's Opinionated Agentic Framework")
-  .version(getVersion(), "-v, --version");
+program.name("loaf").description("Loaf — An Opinionated Agentic Framework").version(getVersion(), "-v, --version");
 
 registerBuildCommand(program);
 registerInstallCommand(program);

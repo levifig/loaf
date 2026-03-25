@@ -4,7 +4,7 @@ description: >-
   Convenes multi-agent council deliberations for decisions requiring diverse
   perspectives. Use when the user asks "get a council opinion" or "I need
   multiple perspectives."
-version: 2.0.0-dev.0
+version: 2.0.0-dev.1
 ---
 
 # Council Deliberation Session

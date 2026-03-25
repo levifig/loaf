@@ -61,17 +61,19 @@ while IFS= read -r line; do
     current_stale=""
   fi
 
-  # On closing brace, check if we have a stale file to report
+  # On closing brace, process the parsed entry
   if echo "$line" | grep -q '}'; then
-    if [ -n "$current_stale" ] && [ -n "$current_file" ]; then
-      # Check if already nudged this session
+    if [ -n "$current_file" ]; then
+      # Always track covered edits (for SessionEnd consolidation prompt)
       if [ -f "$nudge_file" ] && grep -qF "$current_file" "$nudge_file"; then
-        # Already nudged, skip
+        # Already tracked, skip
         :
       else
-        # Record as nudged
         echo "$current_file" >> "$nudge_file"
-        echo "Knowledge file \`$current_file\` covers this code and may be stale. Consider reviewing with \`loaf kb review $current_file\`."
+        # Only nudge in-session when stale
+        if [ -n "$current_stale" ]; then
+          echo "Knowledge file \`$current_file\` covers this code and may be stale. Consider reviewing with \`loaf kb review $current_file\`."
+        fi
       fi
     fi
     current_file=""

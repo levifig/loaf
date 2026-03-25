@@ -7,8 +7,8 @@ var __export = (target, all) => {
 
 // cli/index.ts
 import { Command } from "commander";
-import { readFileSync as readFileSync19 } from "fs";
-import { join as join23, dirname as dirname8 } from "path";
+import { readFileSync as readFileSync23 } from "fs";
+import { join as join27, dirname as dirname9 } from "path";
 import { fileURLToPath as fileURLToPath4 } from "url";
 
 // cli/commands/build.ts
@@ -22,15 +22,7 @@ var claude_code_exports = {};
 __export(claude_code_exports, {
   build: () => build
 });
-import {
-  mkdirSync as mkdirSync3,
-  cpSync as cpSync2,
-  writeFileSync as writeFileSync3,
-  readFileSync as readFileSync6,
-  existsSync as existsSync5,
-  readdirSync as readdirSync3,
-  rmSync
-} from "fs";
+import { mkdirSync as mkdirSync3, cpSync as cpSync2, writeFileSync as writeFileSync3, readFileSync as readFileSync6, existsSync as existsSync5, readdirSync as readdirSync3, rmSync } from "fs";
 import matter2 from "gray-matter";
 import { join as join6 } from "path";
 
@@ -213,7 +205,7 @@ function discoverAgents(srcDir) {
 // cli/lib/build/targets/claude-code.ts
 var TARGET_NAME = "claude-code";
 var PLUGIN_NAME = "loaf";
-var PLUGIN_DESCRIPTION = "Loaf - Levi's Opinionated Agentic Framework";
+var PLUGIN_DESCRIPTION = "Loaf - An Opinionated Agentic Framework";
 var REPOSITORY = "https://github.com/levifig/loaf";
 var LSP_SERVERS = {
   go: {
@@ -253,33 +245,19 @@ var MCP_SERVERS = {
   },
   serena: {
     command: "uvx",
-    args: [
-      "--from",
-      "git+https://github.com/oraios/serena",
-      "serena",
-      "start-mcp-server"
-    ]
+    args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
   }
 };
 function substituteCommands(content, knownCommands = []) {
   let result = content.replace(/\{\{IMPLEMENT_CMD\}\}/g, "/loaf:implement").replace(/\{\{RESUME_CMD\}\}/g, "/loaf:resume-session").replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/loaf:implement");
   for (const cmd of knownCommands) {
-    const pattern = new RegExp(
-      `(?<!/\\w+:)\\/${cmd}(?=\\s|\\)|\\]|,|$|\`)`,
-      "g"
-    );
+    const pattern = new RegExp(`(?<!/\\w+:)\\/${cmd}(?=\\s|\\)|\\]|,|$|\`)`, "g");
     result = result.replace(pattern, `/loaf:${cmd}`);
   }
   return result;
 }
 var VERSION = "0.0.0";
-async function build({
-  config,
-  targetsConfig,
-  rootDir,
-  srcDir,
-  distDir
-}) {
+async function build({ config, targetsConfig, rootDir, srcDir, distDir }) {
   VERSION = getVersion(rootDir);
   const pluginsDir = join6(distDir, "plugins");
   const marketplaceDir = join6(distDir, ".claude-plugin");
@@ -306,10 +284,7 @@ function createMarketplace(marketplaceDir) {
       }
     ]
   };
-  writeFileSync3(
-    join6(marketplaceDir, "marketplace.json"),
-    JSON.stringify(marketplace, null, 2)
-  );
+  writeFileSync3(join6(marketplaceDir, "marketplace.json"), JSON.stringify(marketplace, null, 2));
 }
 function buildUnifiedPlugin(config, srcDir, pluginsDir, targetsConfig) {
   const pluginDir = join6(pluginsDir, PLUGIN_NAME);
@@ -325,10 +300,7 @@ function buildUnifiedPlugin(config, srcDir, pluginsDir, targetsConfig) {
   copyAgents(allAgents, srcDir, pluginDir, agentMap);
   copySkills(allSkills, srcDir, pluginDir, knownCommands, agentMap, targetsConfig);
   copyAllHooks(config, srcDir, pluginDir);
-  writeFileSync3(
-    join6(pluginDir, ".lsp.json"),
-    JSON.stringify(LSP_SERVERS, null, 2)
-  );
+  writeFileSync3(join6(pluginDir, ".lsp.json"), JSON.stringify(LSP_SERVERS, null, 2));
   const setupSrc = join6(srcDir, "SETUP.md");
   if (existsSync5(setupSrc)) {
     cpSync2(setupSrc, join6(pluginDir, "SETUP.md"));
@@ -372,30 +344,26 @@ function createPluginJson(config, pluginDir) {
   const allSessionHooks = config.hooks.session || [];
   if (allPreToolHooks.length > 0) {
     const preToolByMatcher = groupByMatcher(allPreToolHooks);
-    hooks.PreToolUse = Object.entries(preToolByMatcher).map(
-      ([matcher, hookList]) => ({
-        matcher,
-        hooks: hookList.map((h) => ({
-          type: "command",
-          command: getHookCommand(h),
-          ...h.timeout && { timeout: h.timeout },
-          ...h.description && { description: h.description }
-        }))
-      })
-    );
+    hooks.PreToolUse = Object.entries(preToolByMatcher).map(([matcher, hookList]) => ({
+      matcher,
+      hooks: hookList.map((h) => ({
+        type: "command",
+        command: getHookCommand(h),
+        ...h.timeout && { timeout: h.timeout },
+        ...h.description && { description: h.description }
+      }))
+    }));
   }
   if (allPostToolHooks.length > 0) {
     const postToolByMatcher = groupByMatcher(allPostToolHooks);
-    hooks.PostToolUse = Object.entries(postToolByMatcher).map(
-      ([matcher, hookList]) => ({
-        matcher,
-        hooks: hookList.map((h) => ({
-          type: "command",
-          command: getHookCommand(h),
-          ...h.description && { description: h.description }
-        }))
-      })
-    );
+    hooks.PostToolUse = Object.entries(postToolByMatcher).map(([matcher, hookList]) => ({
+      matcher,
+      hooks: hookList.map((h) => ({
+        type: "command",
+        command: getHookCommand(h),
+        ...h.description && { description: h.description }
+      }))
+    }));
   }
   if (allSessionHooks.length > 0) {
     for (const hook of allSessionHooks) {
@@ -415,10 +383,7 @@ function createPluginJson(config, pluginDir) {
   }
   const pluginJsonDir = join6(pluginDir, ".claude-plugin");
   mkdirSync3(pluginJsonDir, { recursive: true });
-  writeFileSync3(
-    join6(pluginJsonDir, "plugin.json"),
-    JSON.stringify(pluginJson, null, 2)
-  );
+  writeFileSync3(join6(pluginJsonDir, "plugin.json"), JSON.stringify(pluginJson, null, 2));
 }
 function copyAgents(agents, srcDir, pluginDir, agentMap) {
   const agentsDir = join6(pluginDir, "agents");
@@ -430,20 +395,14 @@ function copyAgents(agents, srcDir, pluginDir, agentMap) {
     const frontmatter = loadAgentSidecar(srcPath, TARGET_NAME);
     const content = readFileSync6(srcPath, "utf-8");
     const { content: body } = matter2(content);
-    const transformed = substituteAgentNames(
-      matter2.stringify(body, frontmatter),
-      agentMap
-    );
+    const transformed = substituteAgentNames(matter2.stringify(body, frontmatter), agentMap);
     writeFileSync3(destPath, transformed);
   }
 }
 function copySkills(skills, srcDir, pluginDir, knownCommands, agentMap, targetsConfig) {
   const skillsDir = join6(pluginDir, "skills");
   mkdirSync3(skillsDir, { recursive: true });
-  const transformMd = (content) => substituteAgentNames(
-    substituteCommands(content, knownCommands),
-    agentMap
-  );
+  const transformMd = (content) => substituteAgentNames(substituteCommands(content, knownCommands), agentMap);
   for (const skill of skills) {
     const skillSrc = join6(srcDir, "skills", skill);
     const skillDest = join6(skillsDir, skill);
@@ -456,10 +415,7 @@ function copySkills(skills, srcDir, pluginDir, knownCommands, agentMap, targetsC
     if (existsSync5(skillMdPath)) {
       const content = readFileSync6(skillMdPath, "utf-8");
       const { content: body } = matter2(content);
-      writeFileSync3(
-        join6(skillDest, "SKILL.md"),
-        transformMd(matter2.stringify(body, frontmatter))
-      );
+      writeFileSync3(join6(skillDest, "SKILL.md"), transformMd(matter2.stringify(body, frontmatter)));
     }
     for (const subdir of ["references", "templates"]) {
       const subSrc = join6(skillSrc, subdir);
@@ -3382,11 +3338,21 @@ function registerTaskCommand(program2) {
     }
     const index = getOrBuildIndex(agentsDir);
     if (options.json) {
-      const indexPath = join21(agentsDir, "TASKS.json");
-      if (existsSync20(indexPath)) {
-        process.stdout.write(readFileSync18(indexPath, "utf-8"));
+      if (options.active) {
+        const filtered = { ...index, tasks: {} };
+        for (const [id, entry] of Object.entries(index.tasks)) {
+          if (entry.status !== "done") {
+            filtered.tasks[id] = entry;
+          }
+        }
+        process.stdout.write(JSON.stringify(filtered, null, 2) + "\n");
       } else {
-        process.stdout.write(JSON.stringify(index, null, 2) + "\n");
+        const indexPath = join21(agentsDir, "TASKS.json");
+        if (existsSync20(indexPath)) {
+          process.stdout.write(readFileSync18(indexPath, "utf-8"));
+        } else {
+          process.stdout.write(JSON.stringify(index, null, 2) + "\n");
+        }
       }
       return;
     }
@@ -3934,15 +3900,910 @@ ${bold6("  loaf spec list")}
   });
 }
 
-// cli/index.ts
-var __dirname3 = dirname8(fileURLToPath4(import.meta.url));
-function getVersion3() {
-  for (const candidate of [
-    join23(__dirname3, "..", "package.json"),
-    join23(__dirname3, "..", "..", "package.json")
-  ]) {
+// cli/commands/kb.ts
+import { existsSync as existsSync25, mkdirSync as mkdirSync11, readFileSync as readFileSync22, writeFileSync as writeFileSync13 } from "fs";
+import { join as join26, basename as basename6, relative as relative6, isAbsolute } from "path";
+import matter12 from "gray-matter";
+
+// cli/lib/kb/resolve.ts
+import { execFileSync as execFileSync5 } from "child_process";
+import { existsSync as existsSync22, readFileSync as readFileSync19 } from "fs";
+import { join as join23 } from "path";
+var DEFAULT_KB_CONFIG = {
+  local: ["docs/knowledge", "docs/decisions"],
+  staleness_threshold_days: 30,
+  imports: []
+};
+function findGitRoot() {
+  try {
+    const result = execFileSync5("git", ["rev-parse", "--show-toplevel"], {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    return result.trim();
+  } catch {
+    throw new Error("Not inside a git repository");
+  }
+}
+function loadKbConfig(gitRoot) {
+  const configPath = join23(gitRoot, ".agents", "loaf.json");
+  if (!existsSync22(configPath)) {
+    return { ...DEFAULT_KB_CONFIG, local: [...DEFAULT_KB_CONFIG.local], imports: [...DEFAULT_KB_CONFIG.imports] };
+  }
+  try {
+    const raw = readFileSync19(configPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || !parsed.knowledge) {
+      return { ...DEFAULT_KB_CONFIG, local: [...DEFAULT_KB_CONFIG.local], imports: [...DEFAULT_KB_CONFIG.imports] };
+    }
+    const kb = parsed.knowledge;
+    return {
+      local: Array.isArray(kb.local) ? kb.local : DEFAULT_KB_CONFIG.local,
+      staleness_threshold_days: typeof kb.staleness_threshold_days === "number" ? kb.staleness_threshold_days : DEFAULT_KB_CONFIG.staleness_threshold_days,
+      imports: Array.isArray(kb.imports) ? kb.imports : DEFAULT_KB_CONFIG.imports
+    };
+  } catch {
+    return { ...DEFAULT_KB_CONFIG, local: [...DEFAULT_KB_CONFIG.local], imports: [...DEFAULT_KB_CONFIG.imports] };
+  }
+}
+
+// cli/lib/kb/loader.ts
+import { existsSync as existsSync23, readdirSync as readdirSync11, readFileSync as readFileSync20 } from "fs";
+import { join as join24, relative as relative4 } from "path";
+import matter10 from "gray-matter";
+var yellow8 = (s) => `\x1B[33m${s}\x1B[0m`;
+function loadKnowledgeFiles(gitRoot, config) {
+  const files = [];
+  for (const dir of config.local) {
+    const absDir = join24(gitRoot, dir);
+    if (!existsSync23(absDir)) {
+      console.warn(`  ${yellow8("warn:")} KB directory not found: ${dir}`);
+      continue;
+    }
+    let entries;
     try {
-      const pkg = JSON.parse(readFileSync19(candidate, "utf-8"));
+      entries = readdirSync11(absDir);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`  ${yellow8("warn:")} Failed to read directory ${dir}: ${message}`);
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.endsWith(".md")) continue;
+      const absPath = join24(absDir, entry);
+      const relPath = relative4(gitRoot, absPath);
+      try {
+        const raw = readFileSync20(absPath, "utf-8");
+        const { data, content } = matter10(raw);
+        if (!data || typeof data !== "object") continue;
+        if (!Array.isArray(data.topics) || data.topics.length === 0) continue;
+        const frontmatter = {
+          topics: data.topics,
+          last_reviewed: normalizeDate2(data.last_reviewed),
+          covers: Array.isArray(data.covers) ? data.covers : void 0,
+          consumers: Array.isArray(data.consumers) ? data.consumers : void 0,
+          depends_on: Array.isArray(data.depends_on) ? data.depends_on : void 0,
+          implementation_status: normalizeImplementationStatus(data.implementation_status)
+        };
+        files.push({
+          path: absPath,
+          relativePath: relPath,
+          frontmatter,
+          content
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`  ${yellow8("warn:")} Failed to parse ${relPath}: ${message}`);
+      }
+    }
+  }
+  return files;
+}
+function normalizeDate2(value) {
+  if (!value) return "";
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+    if (trimmed.includes("T")) {
+      return trimmed.slice(0, 10);
+    }
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+  }
+  return String(value);
+}
+function normalizeImplementationStatus(value) {
+  if (typeof value !== "string") return void 0;
+  return value.trim().toLowerCase();
+}
+
+// cli/lib/kb/validate.ts
+import { execFileSync as execFileSync6 } from "child_process";
+import { existsSync as existsSync24, readdirSync as readdirSync12, readFileSync as readFileSync21 } from "fs";
+import { dirname as dirname8, join as join25, relative as relative5 } from "path";
+import matter11 from "gray-matter";
+
+// cli/lib/kb/types.ts
+var IMPLEMENTATION_STATUSES = [
+  "in-progress",
+  "stable",
+  "deprecated"
+];
+
+// cli/lib/kb/validate.ts
+function validateLoadedFiles(gitRoot, files) {
+  return files.map((file) => validateLoadedFile(gitRoot, file));
+}
+function findSkippedFiles(gitRoot, config) {
+  const results = [];
+  for (const dir of config.local) {
+    const absDir = join25(gitRoot, dir);
+    if (!existsSync24(absDir)) continue;
+    let entries;
+    try {
+      entries = readdirSync12(absDir);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.endsWith(".md")) continue;
+      const absPath = join25(absDir, entry);
+      const relPath = relative5(gitRoot, absPath);
+      try {
+        const raw = readFileSync21(absPath, "utf-8");
+        const { data, content } = matter11(raw);
+        if (!data || typeof data !== "object" || Object.keys(data).length === 0) {
+          continue;
+        }
+        const hasTopics = Array.isArray(data.topics) && data.topics.length > 0;
+        const hasLastReviewed = data.last_reviewed !== void 0 && data.last_reviewed !== null && data.last_reviewed !== "";
+        if (hasTopics && hasLastReviewed) continue;
+        const errors = [];
+        if (!data.topics) {
+          errors.push({ field: "topics", message: "Missing required field" });
+        } else if (!Array.isArray(data.topics)) {
+          errors.push({ field: "topics", message: `Must be an array, got ${typeof data.topics}: "${data.topics}"` });
+        } else if (data.topics.length === 0) {
+          errors.push({ field: "topics", message: "Must contain at least one topic" });
+        }
+        if (!hasLastReviewed) {
+          errors.push({ field: "last_reviewed", message: "Missing required field" });
+        }
+        const frontmatter = {
+          topics: Array.isArray(data.topics) ? data.topics : [],
+          last_reviewed: typeof data.last_reviewed === "string" ? data.last_reviewed : "",
+          covers: Array.isArray(data.covers) ? data.covers : void 0,
+          depends_on: Array.isArray(data.depends_on) ? data.depends_on : void 0,
+          implementation_status: void 0
+        };
+        results.push({
+          file: { path: absPath, relativePath: relPath, frontmatter, content },
+          errors,
+          warnings: []
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        results.push({
+          file: {
+            path: absPath,
+            relativePath: relPath,
+            frontmatter: { topics: [], last_reviewed: "" },
+            content: ""
+          },
+          errors: [{ field: "frontmatter", message: `Failed to parse: ${message}` }],
+          warnings: []
+        });
+      }
+    }
+  }
+  return results;
+}
+function validateLoadedFile(gitRoot, file) {
+  const warnings = [];
+  const errors = [];
+  const fm = file.frontmatter;
+  if (fm.last_reviewed) {
+    const dateStr = fm.last_reviewed;
+    const dateMatch = /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+    if (!dateMatch) {
+      errors.push({ field: "last_reviewed", message: `Invalid date format (expected YYYY-MM-DD): "${dateStr}"` });
+    } else {
+      const parsed = /* @__PURE__ */ new Date(dateStr + "T00:00:00Z");
+      if (isNaN(parsed.getTime())) {
+        errors.push({ field: "last_reviewed", message: `Invalid calendar date: "${dateStr}"` });
+      } else {
+        const roundTrip = parsed.toISOString().slice(0, 10);
+        if (roundTrip !== dateStr) {
+          errors.push({ field: "last_reviewed", message: `Invalid calendar date: "${dateStr}"` });
+        }
+      }
+    }
+  }
+  if (fm.covers) {
+    for (const glob of fm.covers) {
+      if (!globMatchesTrackedFiles(gitRoot, glob)) {
+        warnings.push({
+          field: "covers",
+          message: `Glob pattern matches no tracked files: "${glob}"`
+        });
+      }
+    }
+  }
+  if (fm.depends_on) {
+    for (const dep of fm.depends_on) {
+      const fromRoot = join25(gitRoot, dep);
+      const fromFileDir = join25(dirname8(file.path), dep);
+      if (!existsSync24(fromRoot) && !existsSync24(fromFileDir)) {
+        warnings.push({
+          field: "depends_on",
+          message: `Referenced file does not exist: "${dep}"`
+        });
+      }
+    }
+  }
+  if (fm.implementation_status !== void 0) {
+    if (!IMPLEMENTATION_STATUSES.includes(fm.implementation_status)) {
+      warnings.push({
+        field: "implementation_status",
+        message: `Unrecognized value: "${fm.implementation_status}"`
+      });
+    }
+  }
+  return { file, errors, warnings };
+}
+function globMatchesTrackedFiles(gitRoot, glob) {
+  try {
+    const result = execFileSync6("git", ["ls-files", "--", glob], {
+      cwd: gitRoot,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    return result.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// cli/lib/kb/staleness.ts
+import { execFileSync as execFileSync7 } from "child_process";
+import picomatch from "picomatch";
+function checkStaleness(gitRoot, file, _config) {
+  const covers = file.frontmatter.covers;
+  if (!covers || covers.length === 0) {
+    return {
+      file,
+      isStale: false,
+      hasCoverage: false,
+      commitCount: 0
+    };
+  }
+  const lastReviewed = file.frontmatter.last_reviewed;
+  const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(lastReviewed) && (() => {
+    const d = /* @__PURE__ */ new Date(lastReviewed + "T00:00:00Z");
+    return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === lastReviewed;
+  })();
+  if (!lastReviewed || !isValidDate) {
+    return {
+      file,
+      isStale: true,
+      hasCoverage: true,
+      commitCount: 0,
+      lastCommitAuthor: void 0,
+      lastCommitDate: void 0
+    };
+  }
+  try {
+    const output = execFileSync7(
+      "git",
+      [
+        "log",
+        `--since=${lastReviewed}`,
+        "--format=%H%n%an%n%aI",
+        "--",
+        ...covers.map((g) => `:(glob)${g}`)
+      ],
+      {
+        cwd: gitRoot,
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"]
+      }
+    );
+    const parsed = parseGitLogOutput(output);
+    if (parsed.commitCount === 0) {
+      return {
+        file,
+        isStale: false,
+        hasCoverage: true,
+        commitCount: 0
+      };
+    }
+    return {
+      file,
+      isStale: true,
+      hasCoverage: true,
+      commitCount: parsed.commitCount,
+      lastCommitAuthor: parsed.lastAuthor,
+      lastCommitDate: parsed.lastDate
+    };
+  } catch {
+    return {
+      file,
+      isStale: false,
+      hasCoverage: true,
+      commitCount: 0
+    };
+  }
+}
+function checkAllStaleness(gitRoot, files, config) {
+  return files.map((file) => checkStaleness(gitRoot, file, config));
+}
+function findCoveringFiles(files, filePath) {
+  return files.filter((file) => {
+    const covers = file.frontmatter.covers;
+    if (!covers || covers.length === 0) return false;
+    return covers.some((pattern) => {
+      const matcher = picomatch(pattern);
+      return matcher(filePath);
+    });
+  });
+}
+function parseGitLogOutput(output) {
+  const trimmed = output.trim();
+  if (trimmed.length === 0) {
+    return { commitCount: 0 };
+  }
+  const lines = trimmed.split("\n");
+  const commitCount = Math.floor(lines.length / 3);
+  if (commitCount === 0) {
+    return { commitCount: 0 };
+  }
+  const lastAuthor = lines[1];
+  const lastDate = lines[2];
+  return {
+    commitCount,
+    lastAuthor,
+    lastDate
+  };
+}
+
+// cli/lib/kb/qmd.ts
+import { execFileSync as execFileSync8 } from "child_process";
+function isQmdAvailable() {
+  try {
+    execFileSync8("which", ["qmd"], { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function registerCollection(name, path) {
+  try {
+    execFileSync8("qmd", ["collection", "add", path, "--name", name], {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to register QMD collection "${name}": ${message}`);
+  }
+}
+function listCollections() {
+  try {
+    const output = execFileSync8("qmd", ["collection", "list"], {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+    return output.trim().split("\n").filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+// cli/commands/kb.ts
+var bold7 = (s) => `\x1B[1m${s}\x1B[0m`;
+var green7 = (s) => `\x1B[32m${s}\x1B[0m`;
+var red6 = (s) => `\x1B[31m${s}\x1B[0m`;
+var yellow9 = (s) => `\x1B[33m${s}\x1B[0m`;
+var cyan6 = (s) => `\x1B[36m${s}\x1B[0m`;
+var gray8 = (s) => `\x1B[90m${s}\x1B[0m`;
+function registerKbCommand(program2) {
+  const kb = program2.command("kb").description("Knowledge base management");
+  kb.command("validate").description("Validate knowledge file frontmatter").option("--json", "Output results as JSON").action(async (options) => {
+    let gitRoot;
+    try {
+      gitRoot = findGitRoot();
+    } catch {
+      if (!options.json) {
+        console.error(`  ${red6("error:")} Not inside a git repository`);
+      }
+      process.exit(1);
+    }
+    const config = loadKbConfig(gitRoot);
+    const loadedFiles = loadKnowledgeFiles(gitRoot, config);
+    const loadedResults = validateLoadedFiles(gitRoot, loadedFiles);
+    const skippedResults = findSkippedFiles(gitRoot, config);
+    const allResults = [...loadedResults, ...skippedResults];
+    if (options.json) {
+      const jsonOutput = allResults.map((r) => ({
+        file: r.file.relativePath,
+        errors: r.errors,
+        warnings: r.warnings
+      }));
+      process.stdout.write(JSON.stringify(jsonOutput, null, 2) + "\n");
+      const hasErrors = allResults.some((r) => r.errors.length > 0);
+      if (hasErrors) process.exit(1);
+      return;
+    }
+    console.log(`
+  ${bold7("loaf kb validate")}
+`);
+    let totalErrors = 0;
+    let totalWarnings = 0;
+    for (const result of allResults) {
+      const hasIssues = result.errors.length > 0 || result.warnings.length > 0;
+      if (!hasIssues) {
+        console.log(`  ${green7("\u2713")} ${result.file.relativePath}`);
+      } else {
+        console.log(`  ${result.file.relativePath}`);
+        for (const error of result.errors) {
+          console.log(`    ${red6("error:")} ${error.field} \u2014 ${error.message}`);
+          totalErrors++;
+        }
+        for (const warning of result.warnings) {
+          console.log(`    ${yellow9("warn:")} ${warning.field} \u2014 ${warning.message}`);
+          totalWarnings++;
+        }
+      }
+    }
+    console.log();
+    console.log(`  ${bold7(String(allResults.length))} files, ${red6(String(totalErrors))} errors, ${yellow9(String(totalWarnings))} warnings`);
+    console.log();
+    if (totalErrors > 0) {
+      process.exit(1);
+    }
+  });
+  kb.command("status").description("Show knowledge base overview").option("--json", "Output status as JSON").action(async (options) => {
+    let gitRoot;
+    try {
+      gitRoot = findGitRoot();
+    } catch {
+      if (!options.json) {
+        console.error(`  ${red6("error:")} Not inside a git repository`);
+      }
+      process.exit(1);
+    }
+    const config = loadKbConfig(gitRoot);
+    const files = loadKnowledgeFiles(gitRoot, config);
+    const totalFiles = files.length;
+    const filesWithCovers = files.filter((f) => f.frontmatter.covers && f.frontmatter.covers.length > 0).length;
+    const filesWithoutCovers = totalFiles - filesWithCovers;
+    const stalenessResults = checkAllStaleness(gitRoot, files, config);
+    const staleCount = stalenessResults.filter((r) => r.isStale).length;
+    const now = /* @__PURE__ */ new Date();
+    let totalAgeDays = 0;
+    let reviewedCount = 0;
+    for (const file of files) {
+      const reviewed = new Date(file.frontmatter.last_reviewed);
+      if (!isNaN(reviewed.getTime())) {
+        const ageDays = Math.floor((now.getTime() - reviewed.getTime()) / (1e3 * 60 * 60 * 24));
+        totalAgeDays += ageDays;
+        reviewedCount++;
+      }
+    }
+    const avgReviewAgeDays = reviewedCount > 0 ? Math.round(totalAgeDays / reviewedCount) : 0;
+    const dirCounts = {};
+    for (const file of files) {
+      const parts = file.relativePath.split("/");
+      const dir = parts.length > 1 ? parts.slice(0, -1).join("/") : ".";
+      dirCounts[dir] = (dirCounts[dir] || 0) + 1;
+    }
+    if (options.json) {
+      const summary = {
+        total_files: totalFiles,
+        files_with_covers: filesWithCovers,
+        files_without_covers: filesWithoutCovers,
+        stale: staleCount,
+        avg_review_age_days: avgReviewAgeDays,
+        directories: dirCounts
+      };
+      process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
+      return;
+    }
+    console.log(`
+  ${bold7("loaf kb status")}
+`);
+    console.log(`  Files:    ${bold7(String(totalFiles))}`);
+    console.log(`  Covers:   ${green7(String(filesWithCovers))} with ${gray8(String(filesWithoutCovers))} without`);
+    console.log(`  Stale:    ${staleCount > 0 ? red6(String(staleCount)) : green7("0")}`);
+    console.log(`  Avg age:  ${bold7(String(avgReviewAgeDays))} days since last review`);
+    console.log();
+    console.log(`  ${bold7("Directories")}`);
+    const sortedDirs = Object.entries(dirCounts).sort(([a], [b]) => a.localeCompare(b));
+    for (const [dir, count] of sortedDirs) {
+      console.log(`    ${cyan6(dir)}: ${count} files`);
+    }
+    console.log();
+  });
+  kb.command("check").description("Check knowledge file staleness against git history").option("--file <path>", "Reverse lookup: find knowledge files covering this path").option("--json", "Output results as JSON").action(async (options) => {
+    let gitRoot;
+    try {
+      gitRoot = findGitRoot();
+    } catch {
+      if (!options.json) {
+        console.error(`  ${red6("error:")} Not inside a git repository`);
+      }
+      process.exit(1);
+    }
+    const config = loadKbConfig(gitRoot);
+    const files = loadKnowledgeFiles(gitRoot, config);
+    if (options.file) {
+      const filePath = isAbsolute(options.file) ? relative6(gitRoot, options.file) : options.file;
+      const coveringFiles = findCoveringFiles(files, filePath);
+      const results2 = coveringFiles.map(
+        (f) => checkStaleness(gitRoot, f, config)
+      );
+      if (options.json) {
+        const jsonOutput = results2.map((r) => ({
+          file: r.file.relativePath,
+          isStale: r.isStale,
+          commitCount: r.commitCount,
+          lastCommitAuthor: r.lastCommitAuthor,
+          lastCommitDate: r.lastCommitDate,
+          lastReviewed: r.file.frontmatter.last_reviewed
+        }));
+        process.stdout.write(JSON.stringify(jsonOutput, null, 2) + "\n");
+        return;
+      }
+      console.log(`
+  ${bold7("loaf kb check")} --file ${filePath}
+`);
+      if (results2.length === 0) {
+        console.log(`  ${gray8("No knowledge files cover this path")}`);
+        console.log();
+        return;
+      }
+      for (const result of results2) {
+        const statusLabel = result.isStale ? red6("stale") : green7("fresh");
+        console.log(`  ${statusLabel}  ${result.file.relativePath}`);
+        console.log(`    last_reviewed: ${result.file.frontmatter.last_reviewed}`);
+        if (result.isStale) {
+          console.log(`    ${result.commitCount} commit${result.commitCount === 1 ? "" : "s"} since review`);
+          if (result.lastCommitAuthor) {
+            console.log(`    last by: ${result.lastCommitAuthor} (${result.lastCommitDate})`);
+          }
+        }
+      }
+      console.log();
+      return;
+    }
+    const results = checkAllStaleness(gitRoot, files, config);
+    if (options.json) {
+      const jsonOutput = results.map((r) => ({
+        file: r.file.relativePath,
+        isStale: r.isStale,
+        hasCoverage: r.hasCoverage,
+        commitCount: r.commitCount,
+        lastCommitAuthor: r.lastCommitAuthor,
+        lastCommitDate: r.lastCommitDate,
+        lastReviewed: r.file.frontmatter.last_reviewed
+      }));
+      process.stdout.write(JSON.stringify(jsonOutput, null, 2) + "\n");
+      return;
+    }
+    console.log(`
+  ${bold7("loaf kb check")}
+`);
+    const stale = results.filter((r) => r.isStale);
+    const fresh = results.filter((r) => !r.isStale && r.hasCoverage);
+    const noCoverage = results.filter((r) => !r.hasCoverage);
+    if (stale.length > 0) {
+      console.log(`  ${red6(bold7("Stale"))}`);
+      for (const result of stale) {
+        console.log(`    ${red6("\u2717")} ${result.file.relativePath}`);
+        console.log(`      ${result.commitCount} commit${result.commitCount === 1 ? "" : "s"} since ${result.file.frontmatter.last_reviewed}`);
+        if (result.lastCommitAuthor) {
+          console.log(`      last by: ${result.lastCommitAuthor} (${result.lastCommitDate})`);
+        }
+      }
+      console.log();
+    }
+    if (fresh.length > 0) {
+      console.log(`  ${green7(bold7("Fresh"))}`);
+      for (const result of fresh) {
+        console.log(`    ${green7("\u2713")} ${result.file.relativePath}  ${gray8("reviewed " + result.file.frontmatter.last_reviewed)}`);
+      }
+      console.log();
+    }
+    if (noCoverage.length > 0) {
+      console.log(`  ${gray8(bold7("No coverage"))}`);
+      for (const result of noCoverage) {
+        console.log(`    ${gray8("-")} ${gray8(result.file.relativePath)}`);
+      }
+      console.log();
+    }
+    console.log(`  ${red6(String(stale.length))} stale, ${green7(String(fresh.length))} fresh, ${gray8(String(noCoverage.length))} without coverage`);
+    console.log();
+  });
+  kb.command("review").description("Mark a knowledge file as reviewed today").argument("<file>", "File path (relative to git root or absolute)").option("--json", "Output updated frontmatter as JSON").action(async (filePath, options) => {
+    let gitRoot;
+    try {
+      gitRoot = findGitRoot();
+    } catch {
+      if (!options.json) {
+        console.error(`  ${red6("error:")} Not inside a git repository`);
+      }
+      process.exit(1);
+    }
+    const absPath = isAbsolute(filePath) ? filePath : join26(gitRoot, filePath);
+    const relPath = relative6(gitRoot, absPath);
+    let raw;
+    try {
+      raw = readFileSync22(absPath, "utf-8");
+    } catch {
+      if (!options.json) {
+        console.error(`  ${red6("error:")} File not found: ${relPath}`);
+      }
+      process.exit(1);
+      return;
+    }
+    const { data, content } = matter12(raw);
+    if (!data || !Array.isArray(data.topics)) {
+      if (options.json) {
+        process.stdout.write(
+          JSON.stringify({ error: `Not a knowledge file (missing topics field): ${relPath}` }, null, 2) + "\n"
+        );
+      } else {
+        console.error(`  ${red6("error:")} Not a knowledge file (missing topics field): ${relPath}`);
+      }
+      process.exit(1);
+      return;
+    }
+    const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    data.last_reviewed = today;
+    const updated = matter12.stringify(content, data);
+    writeFileSync13(absPath, updated, "utf-8");
+    if (options.json) {
+      process.stdout.write(JSON.stringify(data, null, 2) + "\n");
+      return;
+    }
+    console.log(`
+  ${green7("\u2713")} Updated last_reviewed for ${bold7(relPath)}`);
+    console.log(`    last_reviewed: ${today}`);
+    console.log();
+  });
+  kb.command("init").description("Initialize knowledge base directories and QMD collections").option("--json", "Output results as JSON").action(async (options) => {
+    let gitRoot;
+    try {
+      gitRoot = findGitRoot();
+    } catch {
+      if (!options.json) {
+        console.error(`  ${red6("error:")} Not inside a git repository`);
+      }
+      process.exit(1);
+    }
+    const repoName = basename6(gitRoot);
+    const actions = [];
+    const dirs = ["docs/knowledge", "docs/decisions"];
+    for (const dir of dirs) {
+      const fullPath = join26(gitRoot, dir);
+      if (existsSync25(fullPath)) {
+        actions.push({ action: "directory", target: dir, status: "exists" });
+      } else {
+        mkdirSync11(fullPath, { recursive: true });
+        actions.push({ action: "directory", target: dir, status: "created" });
+      }
+    }
+    const configPath = join26(gitRoot, ".agents", "loaf.json");
+    let configStatus = "exists";
+    if (!existsSync25(configPath)) {
+      const agentsDir = join26(gitRoot, ".agents");
+      if (!existsSync25(agentsDir)) {
+        mkdirSync11(agentsDir, { recursive: true });
+      }
+      const config = {
+        knowledge: {
+          local: ["docs/knowledge", "docs/decisions"],
+          staleness_threshold_days: 30,
+          imports: []
+        }
+      };
+      writeFileSync13(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+      configStatus = "created";
+    } else {
+      try {
+        const raw = readFileSync22(configPath, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          configStatus = "exists";
+        } else if (!parsed.knowledge || typeof parsed.knowledge !== "object" || Array.isArray(parsed.knowledge)) {
+          parsed.knowledge = {
+            local: ["docs/knowledge", "docs/decisions"],
+            staleness_threshold_days: 30,
+            imports: []
+          };
+          writeFileSync13(configPath, JSON.stringify(parsed, null, 2) + "\n", "utf-8");
+          configStatus = "updated";
+        }
+      } catch {
+        configStatus = "exists";
+      }
+    }
+    actions.push({
+      action: "config",
+      target: ".agents/loaf.json",
+      status: configStatus === "updated" ? "created" : configStatus
+    });
+    const qmdAvailable = isQmdAvailable();
+    const qmdActions = [];
+    if (qmdAvailable) {
+      const existing = listCollections();
+      const collections = [
+        { name: `${repoName}-knowledge`, path: join26(gitRoot, "docs/knowledge") },
+        { name: `${repoName}-decisions`, path: join26(gitRoot, "docs/decisions") }
+      ];
+      for (const col of collections) {
+        if (existing.includes(col.name)) {
+          qmdActions.push({ collection: col.name, path: col.path, status: "exists" });
+        } else {
+          registerCollection(col.name, col.path);
+          qmdActions.push({ collection: col.name, path: col.path, status: "registered" });
+        }
+      }
+    }
+    if (options.json) {
+      const output = {
+        directories: actions.filter((a) => a.action === "directory"),
+        config: { path: ".agents/loaf.json", status: configStatus },
+        qmd: {
+          available: qmdAvailable,
+          collections: qmdActions
+        }
+      };
+      process.stdout.write(JSON.stringify(output, null, 2) + "\n");
+      return;
+    }
+    console.log(`
+  ${bold7("loaf kb init")}
+`);
+    for (const a of actions) {
+      if (a.status === "created") {
+        console.log(`  ${green7("+")} Created ${a.target}`);
+      } else {
+        console.log(`  ${gray8("-")} Already exists: ${a.target}`);
+      }
+    }
+    if (configStatus === "updated") {
+      console.log(`  ${green7("+")} Added knowledge section to .agents/loaf.json`);
+    }
+    console.log();
+    if (qmdAvailable) {
+      console.log(`  ${bold7("QMD")}`);
+      for (const qa of qmdActions) {
+        if (qa.status === "registered") {
+          console.log(`  ${green7("+")} Registered collection: ${cyan6(qa.collection)}`);
+        } else {
+          console.log(`  ${gray8("-")} Collection exists: ${cyan6(qa.collection)}`);
+        }
+      }
+    } else {
+      console.log(`  ${bold7("QMD")}`);
+      console.log(`  ${yellow9("info:")} QMD not found. Install QMD for knowledge retrieval:`);
+      console.log(`        ${cyan6("https://github.com/tobi/qmd")}`);
+    }
+    console.log();
+    console.log(`  ${green7("\u2713")} Knowledge base initialized`);
+    console.log();
+  });
+  kb.command("import").description("Import external project knowledge via QMD collection").argument("<name>", "Name of the external project's knowledge collection").option("--path <path>", "Path to the external project's knowledge directory").option("--json", "Output results as JSON").action(async (name, options) => {
+    if (!isQmdAvailable()) {
+      if (options.json) {
+        process.stdout.write(
+          JSON.stringify({ error: "QMD is required for importing external knowledge" }, null, 2) + "\n"
+        );
+      } else {
+        console.error(
+          `  ${red6("error:")} QMD is required for importing external knowledge. Install QMD: ${cyan6("https://github.com/tobi/qmd")}`
+        );
+      }
+      process.exit(1);
+    }
+    let gitRoot;
+    try {
+      gitRoot = findGitRoot();
+    } catch {
+      if (!options.json) {
+        console.error(`  ${red6("error:")} Not inside a git repository`);
+      }
+      process.exit(1);
+    }
+    const config = loadKbConfig(gitRoot);
+    const collectionName = `${name}-knowledge`;
+    if (config.imports.some((i) => i.name === name)) {
+      if (options.json) {
+        process.stdout.write(
+          JSON.stringify({ name, collection: collectionName, status: "already_imported" }, null, 2) + "\n"
+        );
+      } else {
+        console.log(`  Already imported: ${bold7(name)}`);
+      }
+      process.exit(0);
+    }
+    const configPath = join26(gitRoot, ".agents", "loaf.json");
+    let parsed = {};
+    if (existsSync25(configPath)) {
+      try {
+        const raw = readFileSync22(configPath, "utf-8");
+        const result = JSON.parse(raw);
+        if (!result || typeof result !== "object" || Array.isArray(result)) {
+          throw new Error("Expected a JSON object");
+        }
+        parsed = result;
+      } catch {
+        if (options.json) {
+          process.stdout.write(
+            JSON.stringify({ error: "Cannot parse .agents/loaf.json \u2014 fix or remove it before importing" }, null, 2) + "\n"
+          );
+        } else {
+          console.error(`  ${red6("error:")} Cannot parse .agents/loaf.json \u2014 fix or remove it before importing`);
+        }
+        process.exit(1);
+      }
+    } else {
+      const agentsDir = join26(gitRoot, ".agents");
+      if (!existsSync25(agentsDir)) {
+        mkdirSync11(agentsDir, { recursive: true });
+      }
+    }
+    const existing = listCollections();
+    const collectionExists = existing.includes(collectionName);
+    if (!collectionExists) {
+      try {
+        const collectionPath = options.path ?? name;
+        registerCollection(collectionName, collectionPath);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (options.json) {
+          process.stdout.write(
+            JSON.stringify({ error: `Failed to register collection: ${message}` }, null, 2) + "\n"
+          );
+        } else {
+          console.error(`  ${red6("error:")} Failed to register QMD collection: ${message}`);
+        }
+        process.exit(1);
+      }
+    }
+    if (!parsed.knowledge || typeof parsed.knowledge !== "object" || Array.isArray(parsed.knowledge)) {
+      parsed.knowledge = { local: ["docs/knowledge", "docs/decisions"], staleness_threshold_days: 30, imports: [] };
+    }
+    const kb2 = parsed.knowledge;
+    if (!Array.isArray(kb2.imports)) {
+      kb2.imports = [];
+    }
+    kb2.imports.push({ name });
+    writeFileSync13(configPath, JSON.stringify(parsed, null, 2) + "\n", "utf-8");
+    if (options.json) {
+      process.stdout.write(
+        JSON.stringify({ name, collection: collectionName, status: "imported" }, null, 2) + "\n"
+      );
+      return;
+    }
+    console.log(`  Imported: ${bold7(name)}`);
+  });
+}
+
+// cli/index.ts
+var __dirname3 = dirname9(fileURLToPath4(import.meta.url));
+function getVersion3() {
+  for (const candidate of [join27(__dirname3, "..", "package.json"), join27(__dirname3, "..", "..", "package.json")]) {
+    try {
+      const pkg = JSON.parse(readFileSync23(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -3951,13 +4812,14 @@ function getVersion3() {
   return "0.0.0";
 }
 var program = new Command();
-program.name("loaf").description("Loaf \u2014 Levi's Opinionated Agentic Framework").version(getVersion3(), "-v, --version");
+program.name("loaf").description("Loaf \u2014 An Opinionated Agentic Framework").version(getVersion3(), "-v, --version");
 registerBuildCommand(program);
 registerInstallCommand(program);
 registerInitCommand(program);
 registerReleaseCommand(program);
 registerTaskCommand(program);
 registerSpecCommand(program);
+registerKbCommand(program);
 if (process.argv.length <= 2) {
   program.outputHelp();
   process.exit(0);
