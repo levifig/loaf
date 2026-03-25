@@ -1,25 +1,7 @@
 {
   "version": 1,
-  "next_id": 33,
+  "next_id": 40,
   "tasks": {
-    "TASK-019": {
-      "title": "Enhance /resume for intelligent project resumption",
-      "slug": "intelligent-resume",
-      "spec": "SPEC-002",
-      "status": "todo",
-      "priority": "P1",
-      "depends_on": [],
-      "files": [
-        "src/commands/resume.md"
-      ],
-      "verify": "grep -l 'review.*sessions\\|propose.*plan' src/commands/resume.md",
-      "done": "/resume with no args reviews project state and proposes action plan",
-      "session": null,
-      "created": "2026-01-24T03:20:00.000Z",
-      "updated": "2026-01-24T03:20:00.000Z",
-      "completed_at": null,
-      "file": "TASK-019-intelligent-resume.md"
-    },
     "TASK-020": {
       "title": "Richer version output for loaf and skill-level version detection",
       "slug": "version-command",
@@ -37,66 +19,6 @@
       "updated": "2026-03-15T00:00:00.000Z",
       "completed_at": null,
       "file": "TASK-020-version-command.md"
-    },
-    "TASK-028": {
-      "title": "`loaf init` — scaffolding + templates",
-      "slug": "init-scaffolding",
-      "spec": "SPEC-007",
-      "status": "done",
-      "priority": "P1",
-      "depends_on": [],
-      "files": [
-        "cli/commands/init.ts",
-        "cli/index.ts"
-      ],
-      "verify": "loaf init (in a temp directory) && ls -la .agents/ docs/ CHANGELOG.md",
-      "done": "`loaf init` creates full directory structure, templates, symlinks (with prompt), and loaf.json",
-      "session": null,
-      "created": "2026-03-16T16:27:15.460Z",
-      "updated": "2026-03-17T00:16:46.232Z",
-      "completed_at": "2026-03-17T00:16:46.232Z",
-      "file": "TASK-028-init-scaffolding.md"
-    },
-    "TASK-029": {
-      "title": "`loaf init` — project detection + skill recommendations",
-      "slug": "init-project-detection",
-      "spec": "SPEC-007",
-      "status": "done",
-      "priority": "P2",
-      "depends_on": [
-        "TASK-028"
-      ],
-      "files": [
-        "cli/lib/detect/project.ts",
-        "cli/commands/init.ts"
-      ],
-      "verify": "loaf init (in a Python project) shows Python skill recommendations",
-      "done": "`loaf init` detects languages/frameworks and recommends relevant Loaf skills",
-      "session": null,
-      "created": "2026-03-16T16:27:15.461Z",
-      "updated": "2026-03-17T00:16:46.290Z",
-      "completed_at": "2026-03-17T00:16:46.290Z",
-      "file": "TASK-029-init-project-detection.md"
-    },
-    "TASK-030": {
-      "title": "`loaf init` — brownfield support + idempotency polish",
-      "slug": "init-brownfield-idempotency",
-      "spec": "SPEC-007",
-      "status": "done",
-      "priority": "P2",
-      "depends_on": [
-        "TASK-028"
-      ],
-      "files": [
-        "cli/commands/init.ts"
-      ],
-      "verify": "loaf init && loaf init (second run shows all-green, creates nothing)",
-      "done": "Re-running `loaf init` shows status with checkmarks, reports brownfield patterns, suggests consolidation",
-      "session": null,
-      "created": "2026-03-16T16:27:15.461Z",
-      "updated": "2026-03-17T00:16:46.349Z",
-      "completed_at": "2026-03-17T00:16:46.349Z",
-      "file": "TASK-030-init-brownfield-idempotency.md"
     },
     "TASK-001": {
       "title": "Create verification reference",
@@ -420,7 +342,7 @@
       "title": "Document orchestration session type",
       "slug": "document-orchestration-sessions",
       "spec": "SPEC-003",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-016"
@@ -434,7 +356,7 @@
       "session": null,
       "created": "2026-01-24T03:30:00.000Z",
       "updated": "2026-01-24T03:30:00.000Z",
-      "completed_at": null,
+      "completed_at": "2026-01-24T03:30:00.000Z",
       "file": "archive/TASK-017-document-orchestration-sessions.md"
     },
     "TASK-018": {
@@ -455,6 +377,24 @@
       "updated": "2026-01-24T03:10:00.000Z",
       "completed_at": "2026-01-24T03:10:00.000Z",
       "file": "archive/TASK-018-context-awareness-orchestration.md"
+    },
+    "TASK-019": {
+      "title": "Enhance /resume for intelligent project resumption",
+      "slug": "intelligent-resume",
+      "spec": "SPEC-002",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "src/commands/resume.md"
+      ],
+      "verify": "grep -l 'review.*sessions\\|propose.*plan' src/commands/resume.md",
+      "done": "/resume with no args reviews project state and proposes action plan",
+      "session": null,
+      "created": "2026-01-24T03:20:00.000Z",
+      "updated": "2026-01-24T03:20:00.000Z",
+      "completed_at": "2026-01-24T03:20:00.000Z",
+      "file": "archive/TASK-019-intelligent-resume.md"
     },
     "TASK-021": {
       "title": "CLI project scaffolding",
@@ -610,7 +550,7 @@
         "dist/",
         "CLAUDE.md",
         ".claude/CLAUDE.md",
-        "docs/ARCHITECTURE.md"
+        ".agents/ARCHITECTURE.md"
       ],
       "verify": "loaf build && loaf install --to all && loaf --help",
       "done": "dist/ is cleaner, old directories removed, all documentation updated, all spec test conditions pass",
@@ -619,6 +559,66 @@
       "updated": "2026-03-16T16:27:15.467Z",
       "completed_at": "2026-03-16T16:27:15.467Z",
       "file": "archive/TASK-027-output-improvements-cleanup.md"
+    },
+    "TASK-028": {
+      "title": "`loaf init` — scaffolding + templates",
+      "slug": "init-scaffolding",
+      "spec": "SPEC-007",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "cli/commands/init.ts",
+        "cli/index.ts"
+      ],
+      "verify": "loaf init (in a temp directory) && ls -la .agents/ docs/ CHANGELOG.md",
+      "done": "`loaf init` creates full directory structure, templates, symlinks (with prompt), and loaf.json",
+      "session": null,
+      "created": "2026-03-16T16:27:15.460Z",
+      "updated": "2026-03-17T00:16:46.232Z",
+      "completed_at": "2026-03-17T00:16:46.232Z",
+      "file": "archive/TASK-028-init-scaffolding.md"
+    },
+    "TASK-029": {
+      "title": "`loaf init` — project detection + skill recommendations",
+      "slug": "init-project-detection",
+      "spec": "SPEC-007",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-028"
+      ],
+      "files": [
+        "cli/lib/detect/project.ts",
+        "cli/commands/init.ts"
+      ],
+      "verify": "loaf init (in a Python project) shows Python skill recommendations",
+      "done": "`loaf init` detects languages/frameworks and recommends relevant Loaf skills",
+      "session": null,
+      "created": "2026-03-16T16:27:15.461Z",
+      "updated": "2026-03-17T00:16:46.290Z",
+      "completed_at": "2026-03-17T00:16:46.290Z",
+      "file": "archive/TASK-029-init-project-detection.md"
+    },
+    "TASK-030": {
+      "title": "`loaf init` — brownfield support + idempotency polish",
+      "slug": "init-brownfield-idempotency",
+      "spec": "SPEC-007",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-028"
+      ],
+      "files": [
+        "cli/commands/init.ts"
+      ],
+      "verify": "loaf init && loaf init (second run shows all-green, creates nothing)",
+      "done": "Re-running `loaf init` shows status with checkmarks, reports brownfield patterns, suggests consolidation",
+      "session": null,
+      "created": "2026-03-16T16:27:15.461Z",
+      "updated": "2026-03-17T00:16:46.349Z",
+      "completed_at": "2026-03-17T00:16:46.349Z",
+      "file": "archive/TASK-030-init-brownfield-idempotency.md"
     },
     "TASK-031": {
       "title": "Add test infrastructure and tests for task management CLI",
@@ -634,7 +634,7 @@
       "created": "2026-03-17T00:59:13.998Z",
       "updated": "2026-03-17T10:15:30.958Z",
       "completed_at": "2026-03-17T10:15:30.957Z",
-      "file": "TASK-031-add-test-infrastructure-and-tests-for-task-managem.md"
+      "file": "archive/TASK-031-add-test-infrastructure-and-tests-for-task-managem.md"
     },
     "TASK-032": {
       "title": "Add --active flag to loaf task list to hide done tasks",
@@ -650,16 +650,169 @@
       "created": "2026-03-17T01:02:05.067Z",
       "updated": "2026-03-21T23:04:25.362Z",
       "completed_at": "2026-03-21T23:04:25.361Z",
-      "file": "TASK-032-add-active-flag-to-loaf-task-list-to-hide-done-tas.md"
+      "file": "archive/TASK-032-add-active-flag-to-loaf-task-list-to-hide-done-tas.md"
+    },
+    "TASK-033": {
+      "title": "KB core library — types, loader, resolve, config",
+      "slug": "kb-core-library",
+      "spec": "SPEC-009",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "cli/lib/kb/types.ts",
+        "cli/lib/kb/loader.ts",
+        "cli/lib/kb/resolve.ts",
+        "cli/commands/kb.ts",
+        "cli/index.ts",
+        ".agents/loaf.json",
+        "package.json"
+      ],
+      "verify": "npm run typecheck && npm run test",
+      "done": "loader.ts can scan docs/knowledge/ and docs/decisions/, parse frontmatter via gray-matter, and return typed KnowledgeFile objects. resolve.ts finds git root and loads loaf.json config. picomatch is a direct dependency. registerKbCommand() is registered in index.ts (even if subcommands are stubs).",
+      "session": null,
+      "created": "2026-03-24T19:29:16Z",
+      "updated": "2026-03-24T19:29:16Z",
+      "completed_at": "2026-03-24T19:29:16Z",
+      "file": "archive/TASK-033-kb-core-library.md"
+    },
+    "TASK-034": {
+      "title": "KB validate, status, and review commands",
+      "slug": "kb-validate-status-review-commands",
+      "spec": "SPEC-009",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-033"
+      ],
+      "files": [
+        "cli/lib/kb/validate.ts",
+        "cli/commands/kb.ts"
+      ],
+      "verify": "npm run typecheck && npm run test",
+      "done": "loaf kb validate reports missing topics/last_reviewed, invalid dates, and unmatched covers: globs. loaf kb status shows total file count and average review age. loaf kb review updates last_reviewed. All support --json.",
+      "session": null,
+      "created": "2026-03-24T19:29:16Z",
+      "updated": "2026-03-24T19:29:16Z",
+      "completed_at": "2026-03-24T19:29:16Z",
+      "file": "archive/TASK-034-kb-validate-status-review-commands.md"
+    },
+    "TASK-035": {
+      "title": "KB staleness detection + check command",
+      "slug": "kb-staleness-detection-check",
+      "spec": "SPEC-009",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-033"
+      ],
+      "files": [
+        "cli/lib/kb/staleness.ts",
+        "cli/commands/kb.ts"
+      ],
+      "verify": "npm run typecheck && npm run test",
+      "done": "loaf kb check reports which knowledge files are stale (covered paths modified after last_reviewed via git log). loaf kb check --file <path> lists which knowledge files cover that path. loaf kb status now includes stale count.",
+      "session": null,
+      "created": "2026-03-24T19:29:16Z",
+      "updated": "2026-03-24T19:29:16Z",
+      "completed_at": "2026-03-24T19:29:16Z",
+      "file": "archive/TASK-035-kb-staleness-detection-check.md"
+    },
+    "TASK-036": {
+      "title": "KB lifecycle hooks (SessionStart, PostToolUse, SessionEnd)",
+      "slug": "kb-lifecycle-hooks",
+      "spec": "SPEC-009",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-035"
+      ],
+      "files": [
+        "content/hooks/session/kb-session-start.sh",
+        "content/hooks/post-tool/kb-staleness-nudge.sh",
+        "content/hooks/session/kb-session-end.sh",
+        "config/hooks.yaml"
+      ],
+      "verify": "loaf build && npm run typecheck",
+      "done": "SessionStart hook surfaces stale knowledge count. PostToolUse hook nudges once per session when editing covered-file paths. SessionEnd hook prompts for knowledge consolidation if covered files were edited. All hooks registered in hooks.yaml.",
+      "session": null,
+      "created": "2026-03-24T19:29:16Z",
+      "updated": "2026-03-24T19:29:16Z",
+      "completed_at": "2026-03-24T19:29:16Z",
+      "file": "archive/TASK-036-kb-lifecycle-hooks.md"
+    },
+    "TASK-037": {
+      "title": "QMD soft integration + kb init command",
+      "slug": "qmd-integration-kb-init",
+      "spec": "SPEC-009",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-033"
+      ],
+      "files": [
+        "cli/lib/kb/qmd.ts",
+        "cli/commands/kb.ts"
+      ],
+      "verify": "npm run typecheck && npm run test",
+      "done": "loaf kb init creates docs/knowledge/ and docs/decisions/ idempotently. If QMD is installed, registers collections. If not, skips gracefully with a message. qmd.ts exports isQmdAvailable() and collection management functions.",
+      "session": null,
+      "created": "2026-03-24T19:29:16Z",
+      "updated": "2026-03-24T19:29:16Z",
+      "completed_at": "2026-03-24T19:29:16Z",
+      "file": "archive/TASK-037-qmd-integration-kb-init.md"
+    },
+    "TASK-038": {
+      "title": "KB import command (stretch goal)",
+      "slug": "kb-import-command",
+      "spec": "SPEC-009",
+      "status": "done",
+      "priority": "P3",
+      "depends_on": [
+        "TASK-037"
+      ],
+      "files": [
+        "cli/commands/kb.ts",
+        ".agents/loaf.json"
+      ],
+      "verify": "npm run typecheck && npm run test",
+      "done": "loaf kb import <name> registers an external QMD collection and updates loaf.json imports array. Errors helpfully if QMD not installed.",
+      "session": null,
+      "created": "2026-03-24T19:29:16Z",
+      "updated": "2026-03-24T19:29:16Z",
+      "completed_at": "2026-03-24T19:29:16Z",
+      "file": "archive/TASK-038-kb-import-command.md"
+    },
+    "TASK-039": {
+      "title": "knowledge-base skill",
+      "slug": "knowledge-base-skill",
+      "spec": "SPEC-009",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [
+        "content/skills/knowledge-base/SKILL.md",
+        "content/skills/knowledge-base/SKILL.claude-code.yaml",
+        "content/skills/knowledge-base/references/frontmatter-schema.md",
+        "content/skills/knowledge-base/templates/knowledge-file.md",
+        "config/hooks.yaml"
+      ],
+      "verify": "loaf build",
+      "done": "knowledge-base skill exists with SKILL.md, sidecar, frontmatter reference, and knowledge file template. Registered in plugin-groups in hooks.yaml. loaf build includes it in output.",
+      "session": null,
+      "created": "2026-03-24T19:29:16Z",
+      "updated": "2026-03-24T19:29:16Z",
+      "completed_at": "2026-03-24T19:29:16Z",
+      "file": "archive/TASK-039-knowledge-base-skill.md"
     }
   },
   "specs": {
     "SPEC-009": {
       "title": "Knowledge Management",
-      "status": "drafting",
-      "appetite": "TBD",
-      "requirement": "Loaf should manage project knowledge with staleness detection",
-      "source": null,
+      "status": "complete",
+      "appetite": "3 weeks (big batch)",
+      "requirement": null,
+      "source": ".agents/drafts/brainstorm-loaf-cli-knowledge-harness.md",
       "created": "2026-03-14T19:48:00.000Z",
       "file": "SPEC-009-knowledge-management.md"
     },
@@ -680,6 +833,24 @@
       "source": "direct",
       "created": "2026-03-16T23:50:30.000Z",
       "file": "SPEC-012-cleanup-refinement.md"
+    },
+    "SPEC-013": {
+      "title": "/bootstrap — Interactive project bootstrapping skill",
+      "status": "approved",
+      "appetite": "Large (4+ sessions)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-03-22T01:28:01.000Z",
+      "file": "SPEC-013-bootstrap-skill.md"
+    },
+    "SPEC-014": {
+      "title": "Skill Activation Redesign — foundations decomposition + agent elimination",
+      "status": "drafting",
+      "appetite": "Large (4+ sessions)",
+      "requirement": null,
+      "source": "brainstorm",
+      "created": "2026-03-24T23:30:00.000Z",
+      "file": "SPEC-014-skill-activation-redesign.md"
     },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",

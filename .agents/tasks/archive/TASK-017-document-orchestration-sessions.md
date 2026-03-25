@@ -2,7 +2,7 @@
 id: TASK-017
 title: "Document orchestration session type"
 spec: SPEC-003
-status: todo
+status: done
 priority: P2
 created: 2026-01-24T03:30:00Z
 updated: 2026-01-24T03:30:00Z
