@@ -460,7 +460,10 @@ export function registerKbCommand(program: Command): void {
           const raw = readFileSync(configPath, "utf-8");
           const parsed = JSON.parse(raw);
 
-          if (!parsed.knowledge) {
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            // Malformed — leave it alone
+            configStatus = "exists";
+          } else if (!parsed.knowledge || typeof parsed.knowledge !== "object" || Array.isArray(parsed.knowledge)) {
             parsed.knowledge = {
               local: ["docs/knowledge", "docs/decisions"],
               staleness_threshold_days: 30,
@@ -659,7 +662,7 @@ export function registerKbCommand(program: Command): void {
       }
 
       // Ensure knowledge.imports exists
-      if (!parsed.knowledge || typeof parsed.knowledge !== "object") {
+      if (!parsed.knowledge || typeof parsed.knowledge !== "object" || Array.isArray(parsed.knowledge)) {
         parsed.knowledge = { local: ["docs/knowledge", "docs/decisions"], staleness_threshold_days: 30, imports: [] };
       }
       const kb = parsed.knowledge as Record<string, unknown>;
