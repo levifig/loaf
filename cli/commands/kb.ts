@@ -614,7 +614,11 @@ export function registerKbCommand(program: Command): void {
       if (existsSync(configPath)) {
         try {
           const raw = readFileSync(configPath, "utf-8");
-          parsed = JSON.parse(raw);
+          const result = JSON.parse(raw);
+          if (!result || typeof result !== "object" || Array.isArray(result)) {
+            throw new Error("Expected a JSON object");
+          }
+          parsed = result;
         } catch {
           if (options.json) {
             process.stdout.write(

@@ -46,7 +46,13 @@ export function checkStaleness(
   const lastReviewed = file.frontmatter.last_reviewed;
 
   // Invalid or missing last_reviewed — treat as stale (can't determine freshness)
-  if (!lastReviewed || isNaN(new Date(lastReviewed).getTime())) {
+  // Strict YYYY-MM-DD check with round-trip, consistent with validate.ts
+  const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(lastReviewed) &&
+    (() => {
+      const d = new Date(lastReviewed + "T00:00:00Z");
+      return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === lastReviewed;
+    })();
+  if (!lastReviewed || !isValidDate) {
     return {
       file,
       isStale: true,
