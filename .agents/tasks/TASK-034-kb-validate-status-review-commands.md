@@ -2,7 +2,7 @@
 id: TASK-034
 title: KB validate, status, and review commands
 spec: SPEC-009
-status: todo
+status: done
 priority: P1
 created: '2026-03-24T19:29:16Z'
 depends_on: [TASK-033]
