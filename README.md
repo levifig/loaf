@@ -2,7 +2,7 @@
 
 > "Why have just a slice when you can get the whole loaf?"
 
-Loaf is an opinionated agentic framework (*Levi's Opinionated Agentic Framework*) that transforms how you work with AI coding assistants. Instead of ad-hoc prompting, Loaf provides a **complete pipeline from idea to implementation to learning**—with full traceability at every step.
+Loaf is an opinionated agentic framework (*An Opinionated Agentic Framework*) that transforms how you work with AI coding assistants. Instead of ad-hoc prompting, Loaf provides a **complete pipeline from idea to implementation to learning**—with full traceability at every step.
 
 ## Philosophy
 

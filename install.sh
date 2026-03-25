@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Loaf - Levi's Opinionated Agentic Framework
+# Loaf - An Opinionated Agentic Framework
 # Bootstrap Installer
 #
 # For remote install:
@@ -33,7 +33,7 @@ print_header() {
     echo -e "   \033[38;5;208m█░░\033[0m \033[38;5;214m█▀█\033[0m \033[38;5;220m▄▀█\033[0m \033[38;5;226m█▀▀\033[0m"
     echo -e "   \033[38;5;208m█▄▄\033[0m \033[38;5;214m█▄█\033[0m \033[38;5;220m█▀█\033[0m \033[38;5;226m█▀░\033[0m"
     echo ""
-    echo -e "   ${GRAY}Levi's Opinionated Agentic Framework${RESET}"
+    echo -e "   ${GRAY}An Opinionated Agentic Framework${RESET}"
     echo ""
 }
 

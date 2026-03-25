@@ -1,6 +1,6 @@
 # Loaf Development Guidelines
 
-Guidelines for maintaining and extending Loaf - Levi's Opinionated Agentic Framework.
+Guidelines for maintaining and extending Loaf - An Opinionated Agentic Framework.
 
 See [README.md](../README.md) for what Loaf is and how to install it.
 

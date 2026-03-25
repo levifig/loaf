@@ -12,23 +12,10 @@
  * Scoping: /loaf:implement, Task(loaf:backend-dev)
  */
 
-import {
-  mkdirSync,
-  cpSync,
-  writeFileSync,
-  readFileSync,
-  existsSync,
-  readdirSync,
-  rmSync,
-} from "fs";
+import { mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync } from "fs";
 import matter from "gray-matter";
 import { join } from "path";
-import {
-  loadAgentSidecar,
-  loadSkillFrontmatter,
-  loadSkillExtensions,
-  mergeSkillFrontmatter,
-} from "../lib/sidecar.js";
+import { loadAgentSidecar, loadSkillFrontmatter, loadSkillExtensions, mergeSkillFrontmatter } from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
 import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
 import { copySharedTemplates } from "../lib/shared-templates.js";
@@ -37,7 +24,7 @@ import type { BuildContext, HooksConfig, HookDefinition } from "../types.js";
 
 const TARGET_NAME = "claude-code";
 const PLUGIN_NAME = "loaf";
-const PLUGIN_DESCRIPTION = "Loaf - Levi's Opinionated Agentic Framework";
+const PLUGIN_DESCRIPTION = "Loaf - An Opinionated Agentic Framework";
 const REPOSITORY = "https://github.com/levifig/loaf";
 
 const LSP_SERVERS: Record<string, unknown> = {
@@ -79,12 +66,7 @@ const MCP_SERVERS: Record<string, unknown> = {
   },
   serena: {
     command: "uvx",
-    args: [
-      "--from",
-      "git+https://github.com/oraios/serena",
-      "serena",
-      "start-mcp-server",
-    ],
+    args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"],
   },
 };
 
@@ -99,10 +81,7 @@ function substituteCommands(content: string, knownCommands: string[] = []): stri
     .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/loaf:implement");
 
   for (const cmd of knownCommands) {
-    const pattern = new RegExp(
-      `(?<!/\\w+:)\\/${cmd}(?=\\s|\\)|\\]|,|$|\`)`,
-      "g",
-    );
+    const pattern = new RegExp(`(?<!/\\w+:)\\/${cmd}(?=\\s|\\)|\\]|,|$|\`)`, "g");
     result = result.replace(pattern, `/loaf:${cmd}`);
   }
 
@@ -111,13 +90,7 @@ function substituteCommands(content: string, knownCommands: string[] = []): stri
 
 let VERSION = "0.0.0";
 
-export async function build({
-  config,
-  targetsConfig,
-  rootDir,
-  srcDir,
-  distDir,
-}: BuildContext): Promise<void> {
+export async function build({ config, targetsConfig, rootDir, srcDir, distDir }: BuildContext): Promise<void> {
   VERSION = getVersion(rootDir);
 
   // distDir is the repo root for claude-code target
@@ -151,18 +124,10 @@ function createMarketplace(marketplaceDir: string): void {
     ],
   };
 
-  writeFileSync(
-    join(marketplaceDir, "marketplace.json"),
-    JSON.stringify(marketplace, null, 2),
-  );
+  writeFileSync(join(marketplaceDir, "marketplace.json"), JSON.stringify(marketplace, null, 2));
 }
 
-function buildUnifiedPlugin(
-  config: HooksConfig,
-  srcDir: string,
-  pluginsDir: string,
-  targetsConfig: BuildContext["targetsConfig"],
-): void {
+function buildUnifiedPlugin(config: HooksConfig, srcDir: string, pluginsDir: string, targetsConfig: BuildContext["targetsConfig"]): void {
   const pluginDir = join(pluginsDir, PLUGIN_NAME);
   mkdirSync(pluginDir, { recursive: true });
 
@@ -181,10 +146,7 @@ function buildUnifiedPlugin(
   copySkills(allSkills, srcDir, pluginDir, knownCommands, agentMap, targetsConfig);
   copyAllHooks(config, srcDir, pluginDir);
 
-  writeFileSync(
-    join(pluginDir, ".lsp.json"),
-    JSON.stringify(LSP_SERVERS, null, 2),
-  );
+  writeFileSync(join(pluginDir, ".lsp.json"), JSON.stringify(LSP_SERVERS, null, 2));
 
   const setupSrc = join(srcDir, "SETUP.md");
   if (existsSync(setupSrc)) {
@@ -236,31 +198,27 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
 
   if (allPreToolHooks.length > 0) {
     const preToolByMatcher = groupByMatcher(allPreToolHooks);
-    hooks.PreToolUse = Object.entries(preToolByMatcher).map(
-      ([matcher, hookList]) => ({
-        matcher,
-        hooks: hookList.map((h) => ({
-          type: "command",
-          command: getHookCommand(h),
-          ...(h.timeout && { timeout: h.timeout }),
-          ...(h.description && { description: h.description }),
-        })),
-      }),
-    );
+    hooks.PreToolUse = Object.entries(preToolByMatcher).map(([matcher, hookList]) => ({
+      matcher,
+      hooks: hookList.map((h) => ({
+        type: "command",
+        command: getHookCommand(h),
+        ...(h.timeout && { timeout: h.timeout }),
+        ...(h.description && { description: h.description }),
+      })),
+    }));
   }
 
   if (allPostToolHooks.length > 0) {
     const postToolByMatcher = groupByMatcher(allPostToolHooks);
-    hooks.PostToolUse = Object.entries(postToolByMatcher).map(
-      ([matcher, hookList]) => ({
-        matcher,
-        hooks: hookList.map((h) => ({
-          type: "command",
-          command: getHookCommand(h),
-          ...(h.description && { description: h.description }),
-        })),
-      }),
-    );
+    hooks.PostToolUse = Object.entries(postToolByMatcher).map(([matcher, hookList]) => ({
+      matcher,
+      hooks: hookList.map((h) => ({
+        type: "command",
+        command: getHookCommand(h),
+        ...(h.description && { description: h.description }),
+      })),
+    }));
   }
 
   if (allSessionHooks.length > 0) {
@@ -282,18 +240,10 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
 
   const pluginJsonDir = join(pluginDir, ".claude-plugin");
   mkdirSync(pluginJsonDir, { recursive: true });
-  writeFileSync(
-    join(pluginJsonDir, "plugin.json"),
-    JSON.stringify(pluginJson, null, 2),
-  );
+  writeFileSync(join(pluginJsonDir, "plugin.json"), JSON.stringify(pluginJson, null, 2));
 }
 
-function copyAgents(
-  agents: string[],
-  srcDir: string,
-  pluginDir: string,
-  agentMap: Record<string, string>,
-): void {
+function copyAgents(agents: string[], srcDir: string, pluginDir: string, agentMap: Record<string, string>): void {
   const agentsDir = join(pluginDir, "agents");
   mkdirSync(agentsDir, { recursive: true });
 
@@ -307,30 +257,16 @@ function copyAgents(
     const content = readFileSync(srcPath, "utf-8");
     const { content: body } = matter(content);
 
-    const transformed = substituteAgentNames(
-      matter.stringify(body, frontmatter),
-      agentMap,
-    );
+    const transformed = substituteAgentNames(matter.stringify(body, frontmatter), agentMap);
     writeFileSync(destPath, transformed);
   }
 }
 
-function copySkills(
-  skills: string[],
-  srcDir: string,
-  pluginDir: string,
-  knownCommands: string[],
-  agentMap: Record<string, string>,
-  targetsConfig: BuildContext["targetsConfig"],
-): void {
+function copySkills(skills: string[], srcDir: string, pluginDir: string, knownCommands: string[], agentMap: Record<string, string>, targetsConfig: BuildContext["targetsConfig"]): void {
   const skillsDir = join(pluginDir, "skills");
   mkdirSync(skillsDir, { recursive: true });
 
-  const transformMd = (content: string) =>
-    substituteAgentNames(
-      substituteCommands(content, knownCommands),
-      agentMap,
-    );
+  const transformMd = (content: string) => substituteAgentNames(substituteCommands(content, knownCommands), agentMap);
 
   for (const skill of skills) {
     const skillSrc = join(srcDir, "skills", skill);
@@ -348,10 +284,7 @@ function copySkills(
     if (existsSync(skillMdPath)) {
       const content = readFileSync(skillMdPath, "utf-8");
       const { content: body } = matter(content);
-      writeFileSync(
-        join(skillDest, "SKILL.md"),
-        transformMd(matter.stringify(body, frontmatter)),
-      );
+      writeFileSync(join(skillDest, "SKILL.md"), transformMd(matter.stringify(body, frontmatter)));
     }
 
     for (const subdir of ["references", "templates"]) {
@@ -370,11 +303,7 @@ function copySkills(
   }
 }
 
-function copyAllHooks(
-  config: HooksConfig,
-  srcDir: string,
-  pluginDir: string,
-): void {
+function copyAllHooks(config: HooksConfig, srcDir: string, pluginDir: string): void {
   const hooksDir = join(pluginDir, "hooks");
   mkdirSync(hooksDir, { recursive: true });
 
@@ -392,10 +321,7 @@ function copyAllHooks(
 
   // Find and copy each hook script
   for (const hookId of allHookIds) {
-    const hookDef =
-      config.hooks["pre-tool"]?.find((h) => h.id === hookId) ||
-      config.hooks["post-tool"]?.find((h) => h.id === hookId) ||
-      config.hooks.session?.find((h) => h.id === hookId);
+    const hookDef = config.hooks["pre-tool"]?.find((h) => h.id === hookId) || config.hooks["post-tool"]?.find((h) => h.id === hookId) || config.hooks.session?.find((h) => h.id === hookId);
 
     if (hookDef) {
       const parts = hookDef.script.split("/");
