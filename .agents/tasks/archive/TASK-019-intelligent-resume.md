@@ -2,7 +2,7 @@
 id: TASK-019
 title: "Enhance /resume for intelligent project resumption"
 spec: SPEC-002
-status: obsolete
+status: done
 priority: P1
 created: 2026-01-24T03:20:00Z
 updated: 2026-01-24T03:20:00Z
