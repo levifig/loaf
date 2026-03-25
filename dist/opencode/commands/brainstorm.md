@@ -45,8 +45,10 @@ Unlike `/idea` (quick capture) or `/shape` (rigorous bounding), brainstorming is
 2. Gather context: VISION.md, STRATEGY.md, ARCHITECTURE.md, related ideas
 3. **Deep exploration**: ask about user value, problem depth, alternatives, risks, dependencies, scope (minimal vs maximal)
 4. Generate options: conventional, minimal, ambitious, contrarian approaches
-5. Document with core insight, explored directions (approach/pros/cons), open questions, recommendation, next steps
+5. Create brainstorm document following [brainstorm template](../skills/brainstorm/templates/brainstorm.md)
 6. Update idea file status if proceeding
+
+**Output file:** `.agents/drafts/{YYYYMMDD}-{HHMMSS}-brainstorm-{slug}.md`
 
 ### Problem Exploration
 
@@ -54,7 +56,9 @@ Unlike `/idea` (quick capture) or `/shape` (rigorous bounding), brainstorming is
 2. Gather strategic context
 3. **Diverge**: first principles, inversion, analogy, extreme constraints, persona lens
 4. **Converge**: filter by strategy alignment, feasibility, value
-5. Document with problem statement, options, analysis, recommendation, next steps
+5. Create brainstorm document following [brainstorm template](../skills/brainstorm/templates/brainstorm.md)
+
+**Output file:** `.agents/drafts/{YYYYMMDD}-{HHMMSS}-brainstorm-{slug}.md`
 
 ### Open Brainstorm
 

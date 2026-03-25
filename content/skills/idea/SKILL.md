@@ -28,7 +28,7 @@ Ideas are raw nuggets -- unprocessed, unshaped, but worth remembering. The goal 
 If `$ARGUMENTS` contains the idea, capture directly.
 
 If `$ARGUMENTS` is empty, **scan for sparks** in brainstorm documents:
-1. Search `.agents/drafts/brainstorm-*.md` for `## Sparks` sections
+1. Search `.agents/drafts/*brainstorm*.md` for `## Sparks` sections
 2. List unprocessed sparks (not marked as promoted or abandoned)
 3. Present the list and let the user pick one to promote
 4. When promoting: create idea file with `origin:` field, mark spark as `*(promoted)*` in source document
@@ -39,7 +39,7 @@ If no sparks found and no arguments, ask **at most 2-3 questions**: core idea, p
 
 Create file in `.agents/ideas/` following [idea template](templates/idea.md).
 
-**Filename:** `{YYYYMMDD}-{slug}.md`
+**Filename:** `{YYYYMMDD}-{HHMMSS}-{slug}.md`
 
 ### Step 3: Create and Announce
 

@@ -261,6 +261,13 @@ hooks:
       matcher: "Edit|Write"
       description: Regenerate TASKS.md when task files change
 
+    # Knowledge Base - Staleness nudge
+    - id: kb-staleness-nudge
+      skill: knowledge-base
+      script: hooks/post-tool/kb-staleness-nudge.sh
+      matcher: "Edit|Write"
+      description: Alert when editing files covered by stale knowledge
+
   session:
     # Session lifecycle
     - id: session-start
@@ -281,6 +288,19 @@ hooks:
       event: PreCompact
       timeout: 60000
       description: Identify active sessions and prompt for context-archiver agent to preserve state
+
+    # Knowledge Base - Session lifecycle
+    - id: kb-session-start
+      skill: knowledge-base
+      script: hooks/session/kb-session-start.sh
+      event: SessionStart
+      description: Surface stale knowledge count at session start
+
+    - id: kb-session-end
+      skill: knowledge-base
+      script: hooks/session/kb-session-end.sh
+      event: SessionEnd
+      description: Prompt for knowledge consolidation if stale files were flagged
 
 # Legacy plugin groupings (kept for documentation purposes)
 # NOTE: Claude Code build now creates a single unified "loaf" plugin
@@ -384,6 +404,15 @@ plugin-groups:
     skills: [interface-design, foundations]
     related-hooks:
       post-tool: [design-a11y-validation, design-token-check, design-a11y-audit]
+
+  # Knowledge Base
+  knowledge-base:
+    description: Knowledge base lifecycle hooks for staleness tracking and review nudges
+    agents: []
+    skills: [knowledge-base]
+    related-hooks:
+      post-tool: [kb-staleness-nudge]
+      session: [kb-session-start, kb-session-end]
 
   # Domain-specific
   power-systems:
