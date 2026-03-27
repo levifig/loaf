@@ -35,15 +35,15 @@ Complete these steps on the current branch (main) after merging.
    - `archived_by: "agent-pm"`
    - Move file to `.agents/sessions/archive/`
 
-8. **Commit housekeeping:**
-   ```
-   git add -A && git commit -m "chore: bump to X.Y.Z, close TASK-XXX session"
-   ```
-
-9. **Archive completed tasks and specs:**
+8. **Archive completed tasks and specs:**
    ```
    loaf task archive --spec SPEC-XXX
    loaf spec archive SPEC-XXX
+   ```
+
+9. **Commit housekeeping:**
+   ```
+   git add -A && git commit -m "chore: bump to X.Y.Z, close TASK-XXX session"
    ```
 
 10. **Delete merged feature branch:**
