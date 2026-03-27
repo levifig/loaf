@@ -7,9 +7,9 @@ var __export = (target, all) => {
 
 // cli/index.ts
 import { Command } from "commander";
-import { readFileSync as readFileSync23 } from "fs";
-import { join as join27, dirname as dirname9 } from "path";
-import { fileURLToPath as fileURLToPath4 } from "url";
+import { readFileSync as readFileSync24 } from "fs";
+import { join as join28, dirname as dirname10 } from "path";
+import { fileURLToPath as fileURLToPath5 } from "url";
 
 // cli/commands/build.ts
 import { existsSync as existsSync10, readFileSync as readFileSync11 } from "fs";
@@ -1328,11 +1328,11 @@ import { execFileSync as execFileSync2 } from "child_process";
 import { fileURLToPath as fileURLToPath2 } from "url";
 var LOAF_MARKER_FILE2 = ".loaf-version";
 function getVersion2() {
-  const __dirname4 = dirname4(fileURLToPath2(import.meta.url));
+  const __dirname5 = dirname4(fileURLToPath2(import.meta.url));
   for (const candidate of [
-    join13(__dirname4, "..", "package.json"),
-    join13(__dirname4, "..", "..", "package.json"),
-    join13(__dirname4, "..", "..", "..", "package.json")
+    join13(__dirname5, "..", "package.json"),
+    join13(__dirname5, "..", "..", "package.json"),
+    join13(__dirname5, "..", "..", "..", "package.json")
   ]) {
     try {
       const pkg = JSON.parse(readFileSync12(candidate, "utf-8"));
@@ -1454,10 +1454,10 @@ function askYesNo(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     rl.question(question, (answer) => {
       rl.close();
-      resolve(answer.trim().toLowerCase().startsWith("y"));
+      resolve2(answer.trim().toLowerCase().startsWith("y"));
     });
   });
 }
@@ -1849,18 +1849,18 @@ function askYesNo2(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     let resolved = false;
     rl.on("close", () => {
       if (!resolved) {
         resolved = true;
-        resolve(false);
+        resolve2(false);
       }
     });
     rl.question(question, (answer) => {
       resolved = true;
       rl.close();
-      resolve(answer.trim().toLowerCase().startsWith("y"));
+      resolve2(answer.trim().toLowerCase().startsWith("y"));
     });
   });
 }
@@ -2467,18 +2467,18 @@ function askYesNo3(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     let resolved = false;
     rl.on("close", () => {
       if (!resolved) {
         resolved = true;
-        resolve(false);
+        resolve2(false);
       }
     });
     rl.question(question, (answer) => {
       resolved = true;
       rl.close();
-      resolve(answer.trim().toLowerCase().startsWith("y"));
+      resolve2(answer.trim().toLowerCase().startsWith("y"));
     });
   });
 }
@@ -2490,12 +2490,12 @@ async function askChoice(question, options, defaultChoice) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     let resolved = false;
     rl.on("close", () => {
       if (!resolved) {
         resolved = true;
-        resolve(defaultChoice);
+        resolve2(defaultChoice);
       }
     });
     rl.question(question, (answer) => {
@@ -2503,9 +2503,9 @@ async function askChoice(question, options, defaultChoice) {
       rl.close();
       const num = parseInt(answer.trim(), 10);
       if (num >= 1 && num <= options.length) {
-        resolve(options[num - 1]);
+        resolve2(options[num - 1]);
       } else {
-        resolve(defaultChoice);
+        resolve2(defaultChoice);
       }
     });
   });
@@ -4798,12 +4798,415 @@ function registerKbCommand(program2) {
   });
 }
 
-// cli/index.ts
+// cli/commands/setup.ts
+import {
+  existsSync as existsSync26,
+  mkdirSync as mkdirSync12,
+  readFileSync as readFileSync23,
+  realpathSync as realpathSync2,
+  statSync,
+  writeFileSync as writeFileSync14
+} from "fs";
+import { join as join27, dirname as dirname9, resolve } from "path";
+import { fileURLToPath as fileURLToPath4 } from "url";
+import { parse as parseYaml5 } from "yaml";
 var __dirname3 = dirname9(fileURLToPath4(import.meta.url));
-function getVersion3() {
-  for (const candidate of [join27(__dirname3, "..", "package.json"), join27(__dirname3, "..", "..", "package.json")]) {
+var bold8 = (s) => `\x1B[1m${s}\x1B[0m`;
+var green8 = (s) => `\x1B[32m${s}\x1B[0m`;
+var red7 = (s) => `\x1B[31m${s}\x1B[0m`;
+var yellow10 = (s) => `\x1B[33m${s}\x1B[0m`;
+var gray9 = (s) => `\x1B[90m${s}\x1B[0m`;
+var cyan7 = (s) => `\x1B[36m${s}\x1B[0m`;
+var white2 = (s) => `\x1B[97m${s}\x1B[0m`;
+function findRootDir3() {
+  let dir = __dirname3;
+  for (let i = 0; i < 10; i++) {
+    const pkgPath = join27(dir, "package.json");
     try {
-      const pkg = JSON.parse(readFileSync23(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync23(pkgPath, "utf-8"));
+      if (pkg.name === "loaf") return dir;
+    } catch {
+    }
+    const parent = dirname9(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error(
+    "Could not find loaf root directory (no package.json with name 'loaf')"
+  );
+}
+function withinProject2(cwd, fullPath) {
+  let check = fullPath;
+  while (!existsSync26(check) && check !== cwd) {
+    const parent = dirname9(check);
+    if (parent === check) break;
+    check = parent;
+  }
+  try {
+    const realCheck = realpathSync2(check);
+    const realCwd = realpathSync2(cwd);
+    return realCheck === realCwd || realCheck.startsWith(realCwd + "/");
+  } catch {
+    return false;
+  }
+}
+var SCAFFOLD_DIRS2 = [
+  ".agents",
+  ".agents/sessions",
+  ".agents/ideas",
+  ".agents/specs",
+  ".agents/tasks",
+  "docs",
+  "docs/knowledge",
+  "docs/decisions"
+];
+var SCAFFOLD_FILES2 = [
+  [
+    ".agents/AGENTS.md",
+    () => `# Project Instructions
+
+> Agent instructions for this project. Customize per your needs.
+
+## Quick Start
+
+<!-- Add build/run commands here -->
+
+## Project Structure
+
+<!-- Describe your project layout -->
+
+## Development Practices
+
+<!-- Add coding conventions, testing approach, etc. -->
+
+## Key Decisions
+
+<!-- Link to ADRs in docs/decisions/ -->
+`
+  ],
+  [
+    ".agents/loaf.json",
+    () => JSON.stringify(
+      {
+        version: "1.0.0",
+        initialized: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      null,
+      2
+    ) + "\n"
+  ],
+  [
+    "docs/VISION.md",
+    () => `# Vision
+
+## Purpose
+<!-- Why does this project exist? What problem does it solve? -->
+
+## Target Users
+<!-- Who is this for? -->
+
+## Success Criteria
+<!-- How do you know when you've succeeded? -->
+
+## Non-Goals
+<!-- What is explicitly out of scope? -->
+`
+  ],
+  [
+    "docs/STRATEGY.md",
+    () => `# Strategy
+
+## Current Focus
+<!-- What are you working on right now and why? -->
+
+## Priorities
+<!-- Ordered list of what matters most -->
+
+## Constraints
+<!-- Budget, timeline, team size, technical limitations -->
+
+## Open Questions
+<!-- Unresolved strategic decisions -->
+`
+  ],
+  [
+    "docs/ARCHITECTURE.md",
+    () => `# Architecture
+
+## Overview
+<!-- High-level system description -->
+
+## Components
+<!-- Key components and their responsibilities -->
+
+## Data Flow
+<!-- How data moves through the system -->
+
+## Technology Choices
+<!-- Key technology decisions and rationale -->
+
+## Deployment
+<!-- How the system is deployed -->
+`
+  ],
+  [
+    "CHANGELOG.md",
+    () => `# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/).
+
+## [Unreleased]
+`
+  ]
+];
+function scaffoldDirs2(cwd) {
+  const created = [];
+  const skipped = [];
+  for (const dir of SCAFFOLD_DIRS2) {
+    const fullPath = join27(cwd, dir);
+    if (!existsSync26(fullPath)) {
+      if (!withinProject2(cwd, fullPath)) {
+        skipped.push(dir + "/");
+        continue;
+      }
+      mkdirSync12(fullPath, { recursive: true });
+      created.push(dir + "/");
+    }
+  }
+  return { created, skipped };
+}
+function scaffoldFiles2(cwd) {
+  const created = [];
+  const skipped = [];
+  for (const [relPath, contentFn] of SCAFFOLD_FILES2) {
+    const fullPath = join27(cwd, relPath);
+    if (!existsSync26(fullPath)) {
+      if (!withinProject2(cwd, fullPath)) {
+        skipped.push(relPath);
+        continue;
+      }
+      const parentDir = dirname9(fullPath);
+      if (!existsSync26(parentDir)) {
+        mkdirSync12(parentDir, { recursive: true });
+      }
+      writeFileSync14(fullPath, contentFn(), "utf-8");
+      created.push(relPath);
+    }
+  }
+  return { created, skipped };
+}
+var TARGETS2 = {
+  "claude-code": claude_code_exports,
+  opencode: opencode_exports,
+  cursor: cursor_exports,
+  codex: codex_exports,
+  gemini: gemini_exports
+};
+var TARGET_NAMES2 = Object.keys(TARGETS2);
+function loadYamlConfig2(path) {
+  if (!existsSync26(path)) return {};
+  return parseYaml5(readFileSync23(path, "utf-8"));
+}
+async function buildTarget2(targetName, rootDir, contentDir, distDir, hooksConfig, targetsConfig) {
+  const targetModule = TARGETS2[targetName];
+  if (!targetModule) {
+    throw new Error(`Unknown target: ${targetName}`);
+  }
+  const outputDir = targetName === "claude-code" ? rootDir : join27(distDir, targetName);
+  const targetConfig = targetsConfig.targets?.[targetName] || {};
+  await targetModule.build({
+    config: hooksConfig,
+    targetConfig,
+    targetsConfig,
+    rootDir,
+    srcDir: contentDir,
+    distDir: outputDir,
+    targetName
+  });
+}
+function runInstall(rootDir) {
+  const distDir = join27(rootDir, "dist");
+  const devMode = isDevMode(rootDir);
+  const hasClaudeCode = detectClaudeCode();
+  const tools = detectTools();
+  const installed = [];
+  const failed = [];
+  if (hasClaudeCode) {
+    if (devMode) {
+      console.log(
+        `  ${green8("\u2713")} Claude Code detected ${gray9("(test via")} ${white2(`/plugin marketplace add ${rootDir}`)}${gray9(")")}`
+      );
+    } else {
+      console.log(
+        `  ${green8("\u2713")} Claude Code detected ${gray9("(install via")} ${white2("/plugin marketplace add levifig/loaf")}${gray9(")")}`
+      );
+    }
+  }
+  const selectedTargets = tools.map((t) => t.key);
+  for (const target of selectedTargets) {
+    const tool = tools.find((t) => t.key === target);
+    const configDir = tool?.configDir || DEFAULT_CONFIG_DIRS[target];
+    const targetDistDir = join27(distDir, target);
+    if (!existsSync26(targetDistDir)) {
+      console.log(
+        `  ${red7("\u2717")} ${target} \u2014 no build output found`
+      );
+      failed.push(target);
+      continue;
+    }
+    const installer = INSTALLERS[target];
+    if (!installer) {
+      console.log(`  ${red7("\u2717")} ${target} \u2014 no installer available`);
+      failed.push(target);
+      continue;
+    }
+    try {
+      installer(targetDistDir, configDir);
+      console.log(
+        `  ${green8("\u2713")} ${target} installed to ${gray9(configDir)}`
+      );
+      installed.push(target);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.log(`  ${red7("\u2717")} ${target} \u2014 ${msg}`);
+      failed.push(target);
+    }
+  }
+  return { installed, failed, claudeCodeDetected: hasClaudeCode };
+}
+function registerSetupCommand(program2) {
+  program2.command("setup").description(
+    "One-step bootstrap: init + build + install"
+  ).argument("[path]", "Directory to set up (created if it does not exist)").action(async (pathArg) => {
+    console.log(`
+${bold8("loaf setup")}
+`);
+    if (pathArg) {
+      const targetDir = resolve(pathArg);
+      if (existsSync26(targetDir)) {
+        const stat = statSync(targetDir);
+        if (!stat.isDirectory()) {
+          console.error(
+            `  ${red7("error:")} Path exists but is not a directory: ${targetDir}`
+          );
+          process.exit(1);
+        }
+        console.log(
+          `  ${gray9("\xB7")} ${gray9(targetDir)} already exists`
+        );
+      } else {
+        mkdirSync12(targetDir, { recursive: true });
+        console.log(
+          `  ${green8("\u2713")} Created ${gray9(targetDir)}`
+        );
+      }
+      process.chdir(targetDir);
+      console.log();
+    }
+    const cwd = process.cwd();
+    console.log(`  ${cyan7("init")} Scaffolding project structure...`);
+    const dirs = scaffoldDirs2(cwd);
+    const files = scaffoldFiles2(cwd);
+    const allSkipped = [...dirs.skipped, ...files.skipped];
+    if (dirs.created.length > 0 || files.created.length > 0) {
+      for (const dir of dirs.created) {
+        console.log(`    ${green8("+")} ${dir}`);
+      }
+      for (const file of files.created) {
+        console.log(`    ${green8("+")} ${file}`);
+      }
+    } else if (allSkipped.length === 0) {
+      console.log(`    ${gray9("Nothing to create \u2014 all files exist")}`);
+    }
+    if (allSkipped.length > 0) {
+      console.log(`    ${yellow10("Skipped")} (paths resolve outside project root):`);
+      for (const path of allSkipped) {
+        console.log(`      ${yellow10("!")} ${path}`);
+      }
+    }
+    console.log();
+    console.log(`  ${cyan7("build")} Compiling skills and agents...`);
+    let rootDir;
+    try {
+      rootDir = findRootDir3();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`
+  ${red7("error:")} ${msg}`);
+      process.exit(1);
+    }
+    const contentDir = join27(rootDir, "content");
+    const configDir = join27(rootDir, "config");
+    const distDir = join27(rootDir, "dist");
+    const hooksConfigPath = join27(configDir, "hooks.yaml");
+    if (!existsSync26(hooksConfigPath)) {
+      console.error(
+        `
+  ${red7("error:")} Hooks config not found: ${hooksConfigPath}`
+      );
+      process.exit(1);
+    }
+    const hooksConfig = loadYamlConfig2(hooksConfigPath);
+    const targetsConfig = loadYamlConfig2(
+      join27(configDir, "targets.yaml")
+    );
+    let buildFailed = false;
+    for (const targetName of TARGET_NAMES2) {
+      const targetStart = Date.now();
+      try {
+        await buildTarget2(
+          targetName,
+          rootDir,
+          contentDir,
+          distDir,
+          hooksConfig,
+          targetsConfig
+        );
+        const elapsed = ((Date.now() - targetStart) / 1e3).toFixed(2);
+        console.log(
+          `    ${green8("\u2713")} ${targetName} ${gray9(`(${elapsed}s)`)}`
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.log(`    ${red7("\u2717")} ${targetName}`);
+        console.error(`      ${red7(message)}`);
+        buildFailed = true;
+      }
+    }
+    if (buildFailed) {
+      console.error(`
+  ${red7("Build failed. Stopping setup.")}`);
+      process.exit(1);
+    }
+    console.log();
+    console.log(`  ${cyan7("install")} Distributing to detected tools...`);
+    const installResult = runInstall(rootDir);
+    if (installResult.failed.length > 0) {
+      console.error(
+        `
+  ${red7("Install failed for:")} ${installResult.failed.join(", ")}`
+      );
+      process.exit(1);
+    }
+    if (installResult.installed.length === 0 && !installResult.claudeCodeDetected) {
+      console.log(`    ${gray9("No AI tools detected")}`);
+    }
+    console.log();
+    console.log(
+      `  ${green8("\u2713")} Setup complete. Run ${bold8("/bootstrap")} in Claude Code to set up your project.`
+    );
+    console.log();
+  });
+}
+
+// cli/index.ts
+var __dirname4 = dirname10(fileURLToPath5(import.meta.url));
+function getVersion3() {
+  for (const candidate of [join28(__dirname4, "..", "package.json"), join28(__dirname4, "..", "..", "package.json")]) {
+    try {
+      const pkg = JSON.parse(readFileSync24(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -4820,6 +5223,7 @@ registerReleaseCommand(program);
 registerTaskCommand(program);
 registerSpecCommand(program);
 registerKbCommand(program);
+registerSetupCommand(program);
 if (process.argv.length <= 2) {
   program.outputHelp();
   process.exit(0);

@@ -1,11 +1,13 @@
 ---
 id: TASK-036
-title: KB lifecycle hooks (SessionStart, PostToolUse, SessionEnd)
+title: 'KB lifecycle hooks (SessionStart, PostToolUse, SessionEnd)'
 spec: SPEC-009
 status: done
 priority: P2
 created: '2026-03-24T19:29:16Z'
-depends_on: [TASK-035]
+updated: '2026-03-24T19:29:16Z'
+depends_on:
+  - TASK-035
 files:
   - content/hooks/session/kb-session-start.sh
   - content/hooks/post-tool/kb-staleness-nudge.sh
@@ -17,6 +19,7 @@ done: >-
   per session when editing covered-file paths. SessionEnd hook prompts for
   knowledge consolidation if covered files were edited. All hooks registered in
   hooks.yaml.
+completed_at: '2026-03-24T19:29:16Z'
 ---
 
 # TASK-036: KB lifecycle hooks

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 40,
+  "next_id": 45,
   "tasks": {
     "TASK-020": {
       "title": "Richer version output for loaf and skill-level version detection",
@@ -804,6 +804,92 @@
       "updated": "2026-03-24T19:29:16Z",
       "completed_at": "2026-03-24T19:29:16Z",
       "file": "archive/TASK-039-knowledge-base-skill.md"
+    },
+    "TASK-040": {
+      "title": "loaf setup CLI command",
+      "slug": "loaf-setup-cli-command",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:43.495Z",
+      "updated": "2026-03-27T11:02:15.585Z",
+      "completed_at": "2026-03-27T11:02:15.584Z",
+      "file": "TASK-040-loaf-setup-cli-command.md"
+    },
+    "TASK-041": {
+      "title": "Bootstrap skill — Core SKILL.md (detection, brief, interview, doc population)",
+      "slug": "bootstrap-skill-core-skill-md-detection-brief-inte",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:45.942Z",
+      "updated": "2026-03-27T11:02:16.932Z",
+      "completed_at": "2026-03-27T11:02:16.931Z",
+      "file": "TASK-041-bootstrap-skill-core-skill-md-detection-brief-inte.md"
+    },
+    "TASK-042": {
+      "title": "Bootstrap skill — Completeness (session, symlinks, KB, cross-harness, next steps)",
+      "slug": "bootstrap-skill-completeness-session-symlinks-kb-c",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-041"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:47.066Z",
+      "updated": "2026-03-27T11:04:13.212Z",
+      "completed_at": "2026-03-27T11:04:13.211Z",
+      "file": "TASK-042-bootstrap-skill-completeness-session-symlinks-kb-c.md"
+    },
+    "TASK-043": {
+      "title": "Bootstrap document templates",
+      "slug": "bootstrap-document-templates",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:48.199Z",
+      "updated": "2026-03-27T11:02:18.218Z",
+      "completed_at": "2026-03-27T11:02:18.217Z",
+      "file": "TASK-043-bootstrap-document-templates.md"
+    },
+    "TASK-044": {
+      "title": "Build integration + end-to-end verification",
+      "slug": "build-integration-end-to-end-verification",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-040",
+        "TASK-041",
+        "TASK-042"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:49.324Z",
+      "updated": "2026-03-27T11:06:31.452Z",
+      "completed_at": "2026-03-27T11:06:31.451Z",
+      "file": "TASK-044-build-integration-end-to-end-verification.md"
     }
   },
   "specs": {
