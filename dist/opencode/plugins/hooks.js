@@ -61,6 +61,8 @@ const preToolHooks = {
   'Bash': [
     { id: 'security-audit', script: 'pre-tool/foundations-security-audit.sh', timeout: 600000 },
     { id: 'validate-push', script: 'pre-tool/foundations-validate-push.sh', timeout: 60000 },
+    { id: 'workflow-pre-pr', script: 'pre-tool/workflow-pre-pr.sh', timeout: 5000 },
+    { id: 'workflow-pre-push', script: 'pre-tool/workflow-pre-push.sh', timeout: 5000 },
     { id: 'validate-commit', script: 'pre-tool/orchestration-validate-commit.py', timeout: 30000 },
     { id: 'detect-linear-magic', script: 'pre-tool/orchestration-detect-linear-magic.py', timeout: 30000 },
   ],
@@ -79,6 +81,7 @@ const postToolHooks = {
   ],
   'Bash': [
     { id: 'changelog-reminder', script: 'post-tool/foundations-changelog-reminder.sh', timeout: 60000 },
+    { id: 'workflow-post-merge', script: 'post-tool/workflow-post-merge.sh', timeout: 60000 },
   ],
 };
 

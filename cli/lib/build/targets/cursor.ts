@@ -186,7 +186,7 @@ function copyHooks(srcDir: string, destDir: string): void {
   const hooksSrc = join(srcDir, "hooks");
   if (!existsSync(hooksSrc)) return;
 
-  const subdirs = ["pre-tool", "post-tool", "session", "lib"];
+  const subdirs = ["pre-tool", "post-tool", "session", "lib", "instructions"];
 
   for (const subdir of subdirs) {
     const subSrc = join(hooksSrc, subdir);

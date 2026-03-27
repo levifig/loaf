@@ -57,6 +57,22 @@ hooks:
       timeout: 60000
       description: Validates version bump, CHANGELOG, and build before git push
 
+    - id: workflow-pre-pr
+      skill: foundations
+      script: hooks/pre-tool/workflow-pre-pr.sh
+      matcher: "Bash"
+      blocking: true
+      timeout: 5000
+      description: "Enforce PR format and CHANGELOG entry before gh pr create"
+
+    - id: workflow-pre-push
+      skill: foundations
+      script: hooks/pre-tool/workflow-pre-push.sh
+      matcher: "Bash"
+      blocking: false
+      timeout: 5000
+      description: Advisory push reminders (branch naming, uncommitted files, force-push safety)
+
     # Orchestration - Commit and Linear integration
     - id: validate-commit
       skill: orchestration
@@ -268,6 +284,13 @@ hooks:
       matcher: "Edit|Write"
       description: Alert when editing files covered by stale knowledge
 
+    # Workflow - Post-merge housekeeping
+    - id: workflow-post-merge
+      skill: foundations
+      script: hooks/post-tool/workflow-post-merge.sh
+      matcher: "Bash"
+      description: Inject housekeeping checklist after successful gh pr merge
+
   session:
     # Session lifecycle
     - id: session-start
@@ -358,7 +381,8 @@ plugin-groups:
     agents: [qa]
     skills: [foundations]
     related-hooks:
-      pre-tool: [check-secrets, validate-changelog, format-check, security-audit, tdd-advisory, validate-push]
+      pre-tool: [check-secrets, validate-changelog, format-check, security-audit, tdd-advisory, validate-push, workflow-pre-pr, workflow-pre-push]
+      post-tool: [workflow-post-merge]
 
   # Language-specific groups
   python:
