@@ -3,7 +3,7 @@ name: breakdown
 description: >-
   Decomposes specs into atomic tasks with dependencies and priorities. Use when
   the user asks "break this down" or "create tasks for this spec."
-version: 2.0.0-dev.3
+version: 2.0.0-dev.4
 ---
 
 # Breakdown
