@@ -10,7 +10,7 @@ import { join } from "path";
 import matter from "gray-matter";
 
 import { findAgentsDir, getOrBuildIndex } from "../lib/tasks/resolve.js";
-import { buildIndexFromFiles, saveIndex, syncFrontmatterFromIndex, findOrphans } from "../lib/tasks/migrate.js";
+import { buildIndexFromFiles, saveIndex, syncFrontmatterFromIndex, findOrphans, archiveTasks } from "../lib/tasks/migrate.js";
 import type { TaskIndex, TaskEntry, TaskStatus, TaskPriority, SpecStatus } from "../lib/tasks/types.js";
 import { TASK_STATUSES, TASK_PRIORITIES } from "../lib/tasks/types.js";
 import { generateSlug } from "../lib/tasks/slug.js";
@@ -630,13 +630,94 @@ export function registerTaskCommand(program: Command): void {
       console.log();
     });
 
+  // ── loaf task archive ───────────────────────────────────────────────────
+
+  task
+    .command("archive")
+    .description("Move completed tasks to archive and update TASKS.json")
+    .argument("[ids...]", "Task IDs to archive (e.g., TASK-040 TASK-041)")
+    .option("--spec <id>", "Archive all done tasks for a spec")
+    .action(async (ids: string[], options: { spec?: string }) => {
+      const agentsDir = findAgentsDir();
+      if (!agentsDir) {
+        console.error(`  ${red("error:")} Could not find .agents/ directory`);
+        process.exit(1);
+      }
+
+      const index = getOrBuildIndex(agentsDir);
+      const indexPath = join(agentsDir, "TASKS.json");
+
+      // ── Resolve target task IDs ─────────────────────────────────────────
+
+      let targetIds: string[] = [];
+
+      if (options.spec) {
+        if (!index.specs[options.spec]) {
+          console.error(`  ${red("error:")} Spec "${options.spec}" not found in index`);
+          process.exit(1);
+        }
+
+        targetIds = Object.entries(index.tasks)
+          .filter(([, entry]) => entry.spec === options.spec && entry.status === "done")
+          .map(([id]) => id);
+
+        if (targetIds.length === 0) {
+          console.log(`\n  ${gray("No completed tasks found for")} ${options.spec}\n`);
+          return;
+        }
+      } else if (ids.length > 0) {
+        targetIds = ids;
+      } else {
+        console.error(`  ${red("error:")} Provide task IDs or use --spec <id>`);
+        process.exit(1);
+      }
+
+      // ── Archive ──────────────────────────────────────────────────────────
+
+      console.log(`\n  ${bold("loaf task archive")}\n`);
+
+      const results = archiveTasks(agentsDir, index, targetIds);
+
+      let archived = 0;
+      let skipped = 0;
+
+      for (const r of results) {
+        if (r.status === "archived") {
+          const entry = index.tasks[r.id];
+          console.log(`  ${green("✓")} ${bold(r.id)}: ${entry.title}`);
+          archived++;
+        } else {
+          const icon = r.reason === "already archived" ? gray("⊘") : yellow("⊘");
+          console.log(`  ${icon} ${bold(r.id)}: ${r.reason}`);
+          skipped++;
+        }
+      }
+
+      // ── Persist ─────────────────────────────────────────────────────────
+
+      if (archived > 0) {
+        saveIndex(indexPath, index);
+        syncFrontmatterFromIndex(agentsDir, index);
+      }
+
+      console.log();
+      if (archived > 0) {
+        console.log(`  Archived ${bold(String(archived))} task(s)`);
+      }
+      if (skipped > 0) {
+        console.log(`  Skipped ${bold(String(skipped))} task(s)`);
+      }
+      console.log();
+    });
+
   // ── loaf task sync ──────────────────────────────────────────────────────
 
   task
     .command("sync")
-    .description("Rebuild TASKS.json from .md files, or import orphans")
+    .description("Sync between TASKS.json and .md files")
     .option("--import", "Import orphan .md files not in the index")
-    .action(async (options: { import?: boolean }) => {
+    .option("--push", "Push TASKS.json metadata into .md frontmatter")
+    .action(async (options: { import?: boolean; push?: boolean }) => {
       const agentsDir = findAgentsDir();
       if (!agentsDir) {
         console.error(`  ${red("error:")} Could not find .agents/ directory`);
@@ -647,7 +728,17 @@ export function registerTaskCommand(program: Command): void {
 
       console.log(`\n  ${bold("loaf task sync")}\n`);
 
-      if (options.import) {
+      if (options.push) {
+        const index = getOrBuildIndex(agentsDir);
+        syncFrontmatterFromIndex(agentsDir, index);
+
+        const totalTasks = Object.keys(index.tasks).length;
+        const totalSpecs = Object.keys(index.specs).length;
+
+        console.log(`  ${green("\u2713")} Pushed TASKS.json metadata to .md frontmatter`);
+        console.log(`    Tasks: ${totalTasks}, Specs: ${totalSpecs}`);
+        console.log();
+      } else if (options.import) {
         // ── Import mode: find orphans and merge ──────────────────────────
 
         const index = getOrBuildIndex(agentsDir);

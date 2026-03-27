@@ -40,7 +40,13 @@ Complete these steps on the current branch (main) after merging.
    git add -A && git commit -m "chore: bump to X.Y.Z, close TASK-XXX session"
    ```
 
-9. **Delete merged feature branch:**
+9. **Archive completed tasks and specs:**
    ```
-   git branch -d feat/xxx
+   loaf task archive --spec SPEC-XXX
+   loaf spec archive SPEC-XXX
    ```
+
+10. **Delete merged feature branch:**
+    ```
+    git branch -d feat/xxx
+    ```

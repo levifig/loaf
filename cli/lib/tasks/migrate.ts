@@ -6,7 +6,7 @@
  * detecting orphaned files.
  */
 
-import { existsSync, readFileSync, writeFileSync, readdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, readdirSync } from "fs";
 import { join, basename, relative } from "path";
 import matter from "gray-matter";
 import { parseTaskFile, parseSpecFile } from "./parser.js";
@@ -409,4 +409,84 @@ export function findOrphans(
   checkSpecFiles(specsArchiveDir, specsDir, true);
 
   return { tasks: orphanTasks, specs: orphanSpecs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Archive Operations
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ArchiveResult {
+  id: string;
+  status: "archived" | "skipped";
+  reason?: string;
+}
+
+/**
+ * Move completed items to archive/ and update their index entries.
+ * Does NOT call saveIndex — caller must persist after reviewing results.
+ */
+function archiveItems(
+  baseDir: string,
+  entries: Record<string, { file: string; status: string }>,
+  ids: string[],
+  requiredStatus: string,
+): ArchiveResult[] {
+  const archiveDir = join(baseDir, "archive");
+  const results: ArchiveResult[] = [];
+
+  for (const id of ids) {
+    const entry = entries[id];
+
+    if (!entry) {
+      results.push({ id, status: "skipped", reason: "not found in index" });
+      continue;
+    }
+
+    if (entry.status !== requiredStatus) {
+      results.push({ id, status: "skipped", reason: `status is ${entry.status}, must be ${requiredStatus}` });
+      continue;
+    }
+
+    if (entry.file.startsWith("archive/")) {
+      results.push({ id, status: "skipped", reason: "already archived" });
+      continue;
+    }
+
+    const srcPath = join(baseDir, entry.file);
+    if (!existsSync(srcPath)) {
+      results.push({ id, status: "skipped", reason: `file not found at ${entry.file}` });
+      continue;
+    }
+
+    mkdirSync(archiveDir, { recursive: true });
+
+    const destPath = join(archiveDir, entry.file);
+    if (existsSync(destPath)) {
+      results.push({ id, status: "skipped", reason: `archive/${entry.file} already exists` });
+      continue;
+    }
+
+    renameSync(srcPath, destPath);
+    entry.file = `archive/${entry.file}`;
+
+    results.push({ id, status: "archived" });
+  }
+
+  return results;
+}
+
+export function archiveTasks(
+  agentsDir: string,
+  index: TaskIndex,
+  taskIds: string[],
+): ArchiveResult[] {
+  return archiveItems(join(agentsDir, "tasks"), index.tasks, taskIds, "done");
+}
+
+export function archiveSpecs(
+  agentsDir: string,
+  index: TaskIndex,
+  specIds: string[],
+): ArchiveResult[] {
+  return archiveItems(join(agentsDir, "specs"), index.specs, specIds, "complete");
 }

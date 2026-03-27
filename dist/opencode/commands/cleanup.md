@@ -16,6 +16,7 @@ Review ALL agent artifacts in `.agents/` and provide hygiene recommendations.
 
 ## Contents
 - Sessions
+- Tasks
 - Specs
 - Plans
 - Drafts
@@ -59,7 +60,32 @@ Recommendation: **Extract & Archive** / **Archive** / **Keep**
 
 ---
 
-## 2. Specs
+## 2. Tasks
+
+For EACH task in `.agents/tasks/` (not archive):
+
+### Check for Issues
+- [ ] Status `done` but not in archive/? → **Ready for archive**
+- [ ] Status `done` but TASKS.json `file` field missing `archive/` prefix? → **Index drift**
+- [ ] File exists on disk but not in TASKS.json? → **Orphan — run `loaf task sync --import`**
+- [ ] TASKS.json entry exists but file not found on disk? → **Stale reference**
+- [ ] Frontmatter disagrees with TASKS.json? → **Drift — run `loaf task sync`**
+
+### Archival
+
+Use the CLI to archive tasks — do NOT use raw `mv`:
+```bash
+loaf task archive TASK-040 TASK-041 TASK-042    # specific tasks
+loaf task archive --spec SPEC-013               # all done tasks for a spec
+```
+
+### Present Per Task
+ID, title, status, spec, age since completion.
+Recommendation: **Archive** / **Keep**
+
+---
+
+## 3. Specs
 
 For EACH spec file in `.agents/specs/` and `.agents/specs/archive/`:
 
@@ -71,13 +97,20 @@ For EACH spec file in `.agents/specs/` and `.agents/specs/archive/`:
 - [ ] References tasks or sessions that don't exist? → **Stale references**
 - [ ] Frontmatter missing required fields (id, title, status)? → **Fix metadata**
 
+### Archival
+
+Use the CLI to archive specs — do NOT use raw `mv`:
+```bash
+loaf spec archive SPEC-009 SPEC-013
+```
+
 ### Present Per Spec
 ID, title, status, appetite, task count (from TASKS.json if available).
 Recommendation: **Archive** / **Keep** / **Flag for review**
 
 ---
 
-## 3. Plans
+## 4. Plans
 
 For EACH plan file in `.agents/plans/`:
 
@@ -95,7 +128,7 @@ Recommendation: **Delete** / **Keep**
 
 ---
 
-## 4. Drafts
+## 5. Drafts
 
 For EACH file in `.agents/drafts/`:
 
@@ -113,7 +146,7 @@ Recommendation: **Delete** / **Keep** / **Extract & Delete**
 
 ---
 
-## 5. Councils
+## 6. Councils
 
 For EACH council file in `.agents/councils/` and archive:
 - Topic, date, linked session, decision outcome
@@ -122,7 +155,7 @@ For EACH council file in `.agents/councils/` and archive:
 
 ---
 
-## 6. Reports
+## 7. Reports
 
 For EACH file in `.agents/reports/` and archive.
 Report frontmatter follows [report template](../skills/cleanup/templates/report.md).
@@ -131,13 +164,19 @@ Archive prerequisites: processed, linked session archived, `archived_at` + `arch
 
 ---
 
-## 7. Summary Table
+## 8. Summary Table
 
 ```
 SESSIONS (N total):
   Ready for archive: N (list)
   Need extraction:   N (list)
   Keep active:       N
+
+TASKS (N total):
+  Done (archive):     N (list)
+  Orphans:            N
+  Index drift:        N
+  Active:             N
 
 SPECS (N total):
   Complete (archive): N (list)
@@ -158,21 +197,24 @@ REPORTS (N total): ...
 
 ---
 
-## 8. Archival Process
+## 9. Archival Process
 
 **Never auto-archive or auto-delete.** For each flagged artifact:
 1. Show checklist with specific items to extract or verify
 2. Ask user: "Archive" / "Delete" / "Keep"
 3. If extracting, perform extractions first
 4. For sessions: set status `archived`, `archived_at`, `archived_by`, move to archive/
-5. For specs: move to archive/, update TASKS.json if tracked
-6. For plans: delete (not archive — ephemeral)
-7. For drafts: delete or archive based on user preference
-8. Auto-update `.agents/` references after moves
+5. For tasks: use `loaf task archive TASK-XXX` (moves file + updates TASKS.json)
+6. For specs: use `loaf spec archive SPEC-XXX` (moves file + updates TASKS.json)
+7. For plans: delete (not archive — ephemeral)
+8. For drafts: delete or archive based on user preference
+9. Auto-update `.agents/` references after moves
+
+**Final reconciliation:** After all archival is complete, run `loaf task sync` to ensure TASKS.json matches the filesystem. This catches any drift from manual file moves.
 
 ---
 
-## 9. Where Knowledge Belongs
+## 10. Where Knowledge Belongs
 
 | Information Type | Destination |
 |------------------|-------------|
