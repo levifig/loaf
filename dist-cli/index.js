@@ -7,9 +7,9 @@ var __export = (target, all) => {
 
 // cli/index.ts
 import { Command } from "commander";
-import { readFileSync as readFileSync24 } from "fs";
-import { join as join28, dirname as dirname10 } from "path";
-import { fileURLToPath as fileURLToPath5 } from "url";
+import { readFileSync as readFileSync25 } from "fs";
+import { join as join29, dirname as dirname11 } from "path";
+import { fileURLToPath as fileURLToPath6 } from "url";
 
 // cli/commands/build.ts
 import { existsSync as existsSync10, readFileSync as readFileSync11 } from "fs";
@@ -1332,11 +1332,11 @@ import { execFileSync as execFileSync2 } from "child_process";
 import { fileURLToPath as fileURLToPath2 } from "url";
 var LOAF_MARKER_FILE2 = ".loaf-version";
 function getVersion2() {
-  const __dirname5 = dirname4(fileURLToPath2(import.meta.url));
+  const __dirname6 = dirname4(fileURLToPath2(import.meta.url));
   for (const candidate of [
-    join13(__dirname5, "..", "package.json"),
-    join13(__dirname5, "..", "..", "package.json"),
-    join13(__dirname5, "..", "..", "..", "package.json")
+    join13(__dirname6, "..", "package.json"),
+    join13(__dirname6, "..", "..", "package.json"),
+    join13(__dirname6, "..", "..", "..", "package.json")
   ]) {
     try {
       const pkg = JSON.parse(readFileSync12(candidate, "utf-8"));
@@ -5205,12 +5205,109 @@ ${bold8("loaf setup")}
   });
 }
 
-// cli/index.ts
+// cli/commands/version.ts
+import { existsSync as existsSync27, readFileSync as readFileSync24, readdirSync as readdirSync13 } from "fs";
+import { join as join28, dirname as dirname10 } from "path";
+import { fileURLToPath as fileURLToPath5 } from "url";
+import { parse as parseYaml6 } from "yaml";
 var __dirname4 = dirname10(fileURLToPath5(import.meta.url));
-function getVersion3() {
-  for (const candidate of [join28(__dirname4, "..", "package.json"), join28(__dirname4, "..", "..", "package.json")]) {
+var bold9 = (s) => `\x1B[1m${s}\x1B[0m`;
+var gray10 = (s) => `\x1B[90m${s}\x1B[0m`;
+var TARGET_OUTPUTS = {
+  "claude-code": "plugins/loaf/",
+  cursor: "dist/cursor/",
+  opencode: "dist/opencode/",
+  codex: "dist/codex/",
+  gemini: "dist/gemini/"
+};
+function findRootDir4() {
+  let dir = __dirname4;
+  for (let i = 0; i < 10; i++) {
+    const pkgPath = join28(dir, "package.json");
     try {
-      const pkg = JSON.parse(readFileSync24(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync24(pkgPath, "utf-8"));
+      if (pkg.name === "loaf") return dir;
+    } catch {
+    }
+    const parent = dirname10(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error("Could not find loaf root directory");
+}
+function getVersion3(rootDir) {
+  try {
+    const pkg = JSON.parse(readFileSync24(join28(rootDir, "package.json"), "utf-8"));
+    return pkg.version || "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+function countSkills(rootDir) {
+  const skillsDir = join28(rootDir, "content", "skills");
+  if (!existsSync27(skillsDir)) return 0;
+  return readdirSync13(skillsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).length;
+}
+function countAgents(rootDir) {
+  const agentsDir = join28(rootDir, "content", "agents");
+  if (!existsSync27(agentsDir)) return 0;
+  return readdirSync13(agentsDir).filter((name) => name.endsWith(".md")).length;
+}
+function countHooks(rootDir) {
+  const hooksPath = join28(rootDir, "config", "hooks.yaml");
+  if (!existsSync27(hooksPath)) return 0;
+  try {
+    const config = parseYaml6(readFileSync24(hooksPath, "utf-8"));
+    const hooks = config?.hooks;
+    if (!hooks) return 0;
+    return (hooks["pre-tool"]?.length ?? 0) + (hooks["post-tool"]?.length ?? 0) + (hooks.session?.length ?? 0);
+  } catch {
+    return 0;
+  }
+}
+function getBuiltTargets(rootDir) {
+  const built = [];
+  for (const [name, relPath] of Object.entries(TARGET_OUTPUTS)) {
+    if (existsSync27(join28(rootDir, relPath))) {
+      built.push({ name, path: relPath });
+    }
+  }
+  return built;
+}
+function registerVersionCommand(program2) {
+  program2.command("version").description("Show version info and project statistics").action(() => {
+    const rootDir = findRootDir4();
+    const version = getVersion3(rootDir);
+    console.log(`
+${bold9("loaf")} ${version}`);
+    console.log(`${gray10("node")} ${process.version}`);
+    const targets = getBuiltTargets(rootDir);
+    if (targets.length > 0) {
+      console.log(`
+${bold9("Targets:")}`);
+      const maxName = Math.max(...targets.map((t) => t.name.length));
+      for (const target of targets) {
+        console.log(`  ${target.name.padEnd(maxName + 2)}${gray10(target.path)}`);
+      }
+    }
+    const skills = countSkills(rootDir);
+    const agents = countAgents(rootDir);
+    const hooks = countHooks(rootDir);
+    console.log(`
+${bold9("Content:")}`);
+    console.log(`  Skills:  ${skills}`);
+    console.log(`  Agents:  ${agents}`);
+    console.log(`  Hooks:   ${hooks}`);
+    console.log();
+  });
+}
+
+// cli/index.ts
+var __dirname5 = dirname11(fileURLToPath6(import.meta.url));
+function getVersion4() {
+  for (const candidate of [join29(__dirname5, "..", "package.json"), join29(__dirname5, "..", "..", "package.json")]) {
+    try {
+      const pkg = JSON.parse(readFileSync25(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -5219,7 +5316,7 @@ function getVersion3() {
   return "0.0.0";
 }
 var program = new Command();
-program.name("loaf").description("Loaf \u2014 An Opinionated Agentic Framework").version(getVersion3(), "-v, --version");
+program.name("loaf").description("Loaf \u2014 An Opinionated Agentic Framework").version(getVersion4(), "-v, --version");
 registerBuildCommand(program);
 registerInstallCommand(program);
 registerInitCommand(program);
@@ -5228,6 +5325,7 @@ registerTaskCommand(program);
 registerSpecCommand(program);
 registerKbCommand(program);
 registerSetupCommand(program);
+registerVersionCommand(program);
 if (process.argv.length <= 2) {
   program.outputHelp();
   process.exit(0);
