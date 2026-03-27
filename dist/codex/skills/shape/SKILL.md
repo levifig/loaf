@@ -5,7 +5,7 @@ description: >-
   conditions. Use when the user asks "shape this idea" or "write a spec." Also
   activate when an explored idea has accumulated enough constraints and scope
   definition to bound into a spec.
-version: 2.0.0-dev.4
+version: 2.0.0-dev.3
 ---
 
 # Shape
