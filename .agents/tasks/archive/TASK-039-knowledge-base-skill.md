@@ -5,7 +5,7 @@ spec: SPEC-009
 status: done
 priority: P2
 created: '2026-03-24T19:29:16Z'
-depends_on: []
+updated: '2026-03-24T19:29:16Z'
 files:
   - content/skills/knowledge-base/SKILL.md
   - content/skills/knowledge-base/SKILL.claude-code.yaml
@@ -14,9 +14,10 @@ files:
   - config/hooks.yaml
 verify: loaf build
 done: >-
-  knowledge-base skill exists with SKILL.md, sidecar, frontmatter reference,
-  and knowledge file template. Registered in plugin-groups in hooks.yaml.
-  loaf build includes it in output.
+  knowledge-base skill exists with SKILL.md, sidecar, frontmatter reference, and
+  knowledge file template. Registered in plugin-groups in hooks.yaml. loaf build
+  includes it in output.
+completed_at: '2026-03-24T19:29:16Z'
 ---
 
 # TASK-039: knowledge-base skill

@@ -5,14 +5,17 @@ spec: SPEC-009
 status: done
 priority: P3
 created: '2026-03-24T19:29:16Z'
-depends_on: [TASK-037]
+updated: '2026-03-24T19:29:16Z'
+depends_on:
+  - TASK-037
 files:
   - cli/commands/kb.ts
   - .agents/loaf.json
 verify: npm run typecheck && npm run test
 done: >-
-  loaf kb import <name> registers an external QMD collection and updates loaf.json
-  imports array. Errors helpfully if QMD not installed.
+  loaf kb import <name> registers an external QMD collection and updates
+  loaf.json imports array. Errors helpfully if QMD not installed.
+completed_at: '2026-03-24T19:29:16Z'
 ---
 
 # TASK-038: KB import command (stretch goal)

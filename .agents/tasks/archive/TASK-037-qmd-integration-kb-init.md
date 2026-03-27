@@ -5,15 +5,18 @@ spec: SPEC-009
 status: done
 priority: P2
 created: '2026-03-24T19:29:16Z'
-depends_on: [TASK-033]
+updated: '2026-03-24T19:29:16Z'
+depends_on:
+  - TASK-033
 files:
   - cli/lib/kb/qmd.ts
   - cli/commands/kb.ts
 verify: npm run typecheck && npm run test
 done: >-
-  loaf kb init creates docs/knowledge/ and docs/decisions/ idempotently. If QMD is
-  installed, registers collections. If not, skips gracefully with a message.
+  loaf kb init creates docs/knowledge/ and docs/decisions/ idempotently. If QMD
+  is installed, registers collections. If not, skips gracefully with a message.
   qmd.ts exports isQmdAvailable() and collection management functions.
+completed_at: '2026-03-24T19:29:16Z'
 ---
 
 # TASK-037: QMD soft integration + kb init command

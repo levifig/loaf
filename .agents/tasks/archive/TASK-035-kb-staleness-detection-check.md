@@ -5,7 +5,9 @@ spec: SPEC-009
 status: done
 priority: P1
 created: '2026-03-24T19:29:16Z'
-depends_on: [TASK-033]
+updated: '2026-03-24T19:29:16Z'
+depends_on:
+  - TASK-033
 files:
   - cli/lib/kb/staleness.ts
   - cli/commands/kb.ts
@@ -14,6 +16,7 @@ done: >-
   loaf kb check reports which knowledge files are stale (covered paths modified
   after last_reviewed via git log). loaf kb check --file <path> lists which
   knowledge files cover that path. loaf kb status now includes stale count.
+completed_at: '2026-03-24T19:29:16Z'
 ---
 
 # TASK-035: KB staleness detection + check command

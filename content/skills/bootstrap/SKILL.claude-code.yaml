@@ -1,0 +1,6 @@
+# Claude Code extensions for Bootstrap skill
+# Base name/description in SKILL.md
+
+user-invocable: true
+argument-hint: "[brief or path]"
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
