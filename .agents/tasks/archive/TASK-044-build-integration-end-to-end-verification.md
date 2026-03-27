@@ -19,7 +19,7 @@ completed_at: '2026-03-27T11:06:31.451Z'
 
 Final integration task: register the bootstrap skill in Loaf's build system and verify end-to-end.
 
-**Files:** `config/hooks.yaml`, `config/targets.yaml`, `.agents/specs/SPEC-013-bootstrap-skill.md`
+**Files:** `config/hooks.yaml`, `config/targets.yaml`
 
 **Steps:**
 1. Register bootstrap skill in `hooks.yaml` plugin-groups (add to appropriate group or create one)

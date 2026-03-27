@@ -95,7 +95,7 @@ When context-awareness (TASK-018) recommends restart, it writes this section to 
 
 ```
 /resume TASK-016
-  → Read .agents/tasks/TASK-016-*.md
+  → Look up TASK-016 in TASKS.json
   → Find session: field
   → Load that session
   → Continue work
