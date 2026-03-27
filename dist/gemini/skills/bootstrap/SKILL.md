@@ -139,6 +139,8 @@ When `$ARGUMENTS` is empty and no `docs/BRIEF.md` exists:
 
 ### Brief Frontmatter Schema
 
+Follow [templates/brief.md](templates/brief.md) for the full brief template. Frontmatter:
+
 ```yaml
 ---
 source: file | text | folder | interview
