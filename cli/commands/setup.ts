@@ -10,6 +10,8 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
+  statSync,
   writeFileSync,
 } from "fs";
 import { join, dirname, resolve } from "path";
@@ -214,8 +216,14 @@ function scaffoldFiles(cwd: string): ScaffoldResult {
   const created: string[] = [];
   const skipped: string[] = [];
 
+  const realCwd = realpathSync(cwd);
   for (const [relPath, contentFn] of SCAFFOLD_FILES) {
     const fullPath = join(cwd, relPath);
+    const realFullPath = realpathSync(dirname(fullPath));
+    if (!realFullPath.startsWith(realCwd)) {
+      skipped.push(relPath);
+      continue;
+    }
     if (!existsSync(fullPath)) {
       const parentDir = dirname(fullPath);
       if (!existsSync(parentDir)) {
@@ -365,14 +373,21 @@ export function registerSetupCommand(program: Command): void {
       // Step 1: Create directory if path argument provided
       if (pathArg) {
         const targetDir = resolve(pathArg);
-        if (!existsSync(targetDir)) {
+        if (existsSync(targetDir)) {
+          const stat = statSync(targetDir);
+          if (!stat.isDirectory()) {
+            console.error(
+              `  ${red("✗")} Path exists but is not a directory: ${targetDir}`,
+            );
+            process.exit(1);
+          }
+          console.log(
+            `  ${gray("·")} ${gray(targetDir)} already exists`,
+          );
+        } else {
           mkdirSync(targetDir, { recursive: true });
           console.log(
             `  ${green("✓")} Created ${gray(targetDir)}`,
-          );
-        } else {
-          console.log(
-            `  ${gray("·")} ${gray(targetDir)} already exists`,
           );
         }
 

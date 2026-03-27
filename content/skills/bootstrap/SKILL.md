@@ -306,7 +306,7 @@ After all documents are reviewed and approved:
 Check if `loaf kb init` CLI command is available:
 
 ```bash
-npx loaf kb init --help 2>/dev/null
+loaf kb init --help 2>/dev/null
 ```
 
 - **If available:** Run `loaf kb init` to scaffold the knowledge base
