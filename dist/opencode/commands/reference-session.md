@@ -4,7 +4,7 @@ description: >-
   "reference that earlier session" or "what did we decide before?"
 agent: PM
 subtask: false
-version: 2.0.0-dev.1
+version: 2.0.0-dev.2
 ---
 
 # Reference Session
