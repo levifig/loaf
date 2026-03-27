@@ -137,8 +137,17 @@ For EACH file in `.agents/drafts/`:
 
 Drafts include brainstorms, research documents, and exploratory notes. They feed into specs and decisions but are not themselves durable artifacts.
 
+### Extract Sparks Before Deletion
+
+**CRITICAL: Before deleting any brainstorm draft, check for a `## Sparks` section.** For each spark that is not already marked `*(promoted)*` or `*(discarded)*`:
+- Present the spark text
+- Note whether it was incorporated into any spec, task, or shipped feature
+- Suggest: **Promote** (creates idea file via `/idea`) or **Discard**
+
+Only delete the draft after the user has reviewed all unincorporated sparks. Promoted sparks get marked `*(promoted)*` in the source document; discarded ones get marked `*(discarded)*`.
+
 ### Present Per Draft
-Filename, age, related specs (if any), size.
+Filename, age, related specs (if any), size, unincorporated sparks (count).
 Recommendation: **Delete** / **Keep** / **Extract & Delete**
 
 ---
