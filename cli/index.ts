@@ -10,6 +10,7 @@ import { registerTaskCommand } from "./commands/task.js";
 import { registerSpecCommand } from "./commands/spec.js";
 import { registerKbCommand } from "./commands/kb.js";
 import { registerSetupCommand } from "./commands/setup.js";
+import { registerVersionCommand } from "./commands/version.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -38,6 +39,7 @@ registerTaskCommand(program);
 registerSpecCommand(program);
 registerKbCommand(program);
 registerSetupCommand(program);
+registerVersionCommand(program);
 
 // Show help when no subcommand is given (exit 0, not error)
 if (process.argv.length <= 2) {

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `loaf version` subcommand showing version, Node.js, built targets, and content stats (TASK-020)
+
 ## [2.0.0-dev.3] - 2026-03-27
 
 ### Added

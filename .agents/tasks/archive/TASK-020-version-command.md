@@ -1,16 +1,17 @@
 ---
 id: TASK-020
 title: Richer version output for loaf and skill-level version detection
-status: todo
+status: done
 priority: P3
 created: '2026-01-24T15:50:00.000Z'
-updated: '2026-03-15T00:00:00.000Z'
+updated: '2026-03-27T18:16:58.589Z'
 files:
   - cli/commands/version.ts
 verify: loaf version && loaf --version
 done: >-
   `loaf version` shows rich version info; stale session detection still works
   via skill frontmatter
+completed_at: '2026-03-27T18:16:58.588Z'
 ---
 
 # TASK-020: Version command — richer output

@@ -2,24 +2,6 @@
   "version": 1,
   "next_id": 50,
   "tasks": {
-    "TASK-020": {
-      "title": "Richer version output for loaf and skill-level version detection",
-      "slug": "version-command",
-      "spec": null,
-      "status": "todo",
-      "priority": "P3",
-      "depends_on": [],
-      "files": [
-        "cli/commands/version.ts"
-      ],
-      "verify": "loaf version && loaf --version",
-      "done": "`loaf version` shows rich version info; stale session detection still works via skill frontmatter",
-      "session": null,
-      "created": "2026-01-24T15:50:00.000Z",
-      "updated": "2026-03-15T00:00:00.000Z",
-      "completed_at": null,
-      "file": "TASK-020-version-command.md"
-    },
     "TASK-040": {
       "title": "loaf setup CLI command",
       "slug": "loaf-setup-cli-command",
@@ -481,6 +463,24 @@
       "updated": "2026-01-24T03:20:00.000Z",
       "completed_at": "2026-01-24T03:20:00.000Z",
       "file": "archive/TASK-019-intelligent-resume.md"
+    },
+    "TASK-020": {
+      "title": "Richer version output for loaf and skill-level version detection",
+      "slug": "version-command",
+      "spec": null,
+      "status": "done",
+      "priority": "P3",
+      "depends_on": [],
+      "files": [
+        "cli/commands/version.ts"
+      ],
+      "verify": "loaf version && loaf --version",
+      "done": "`loaf version` shows rich version info; stale session detection still works via skill frontmatter",
+      "session": null,
+      "created": "2026-01-24T15:50:00.000Z",
+      "updated": "2026-03-27T18:16:58.589Z",
+      "completed_at": "2026-03-27T18:16:58.588Z",
+      "file": "archive/TASK-020-version-command.md"
     },
     "TASK-021": {
       "title": "CLI project scaffolding",
