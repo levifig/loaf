@@ -32,17 +32,9 @@ Thumbs.db
 # Claude Code ephemeral plans
 .claude/plans/
 
-# Local agent work (tracked: project artifacts, not ephemeral state)
-.agents/*
-!.agents/AGENTS.md
-!.agents/TASKS.json
-!.agents/specs/
-!.agents/tasks/
-!.agents/sessions/
-!.agents/ideas/
-!.agents/drafts/
-!.agents/councils/
-!.agents/reports/
+# Agent work — track everything except ephemeral state
+.agents/plans/
+.agents/transcripts/
 
 # Environment files
 .env

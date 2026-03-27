@@ -1,0 +1,7 @@
+{
+  "knowledge": {
+    "local": ["docs/knowledge", "docs/decisions"],
+    "staleness_threshold_days": 30,
+    "imports": []
+  }
+}
