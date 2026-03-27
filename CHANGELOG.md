@@ -7,8 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.4] - 2026-03-27
+
 ### Added
+- `loaf task archive` command — move completed tasks to archive and update TASKS.json atomically
+- `loaf spec archive` command — same for completed specs
+- `loaf task sync --push` — push JSON metadata to .md frontmatter (reverse sync)
+- Tasks section in `/cleanup` skill with drift detection and CLI-based archival
+- Archive step in post-merge housekeeping hook
+- SPEC-016 draft: Council Advisory Redesign
 - `loaf version` subcommand showing version, Node.js, built targets, and content stats (TASK-020)
+
+### Changed
+- Post-merge hook split into pre-merge checklist (changelog, version, build) and post-merge housekeeping (archival, cleanup)
+- `/cleanup` archival process now uses CLI commands instead of raw `mv`
+- Skills and references replaced `.agents/` path references with CLI commands and IDs
+- `council-session` skill changed to model-invoked (not user-invocable)
 
 ## [2.0.0-dev.3] - 2026-03-27
 

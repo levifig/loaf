@@ -2,9 +2,13 @@
 name: council-session
 description: >-
   Convenes multi-agent council deliberations for decisions requiring diverse
-  perspectives. Use when the user asks "get a council opinion" or "I need
-  multiple perspectives."
-argument-hint: '[decision topic]'
+  perspectives. Use when the user asks "call a council", "gather specialists",
+  "get a council opinion", "I need multiple perspectives", "check with
+  specialists", "what do the experts think", or wants a structured debate
+  between domain-specific viewpoints. Not for single-perspective research (use
+  research) or architectural decisions that don't need multi-agent deliberation
+  (use architecture).
+user-invocable: false
 ---
 
 # Council Deliberation Session

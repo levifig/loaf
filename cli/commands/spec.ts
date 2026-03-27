@@ -10,7 +10,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 
 import { findAgentsDir } from "../lib/tasks/resolve.js";
-import { loadIndex, buildIndexFromFiles, saveIndex } from "../lib/tasks/migrate.js";
+import { loadIndex, buildIndexFromFiles, saveIndex, syncFrontmatterFromIndex, archiveSpecs } from "../lib/tasks/migrate.js";
 import type { TaskIndex, SpecStatus } from "../lib/tasks/types.js";
 
 // ANSI color helpers
@@ -206,5 +206,54 @@ export function registerSpecCommand(program: Command): void {
       }
 
       console.log(`  Total: ${bold(String(specEntries.length))} specs\n`);
+    });
+
+  // loaf spec archive
+  spec
+    .command("archive")
+    .description("Move completed specs to archive and update TASKS.json")
+    .argument("<ids...>", "Spec IDs to archive (e.g., SPEC-009 SPEC-013)")
+    .action(async (ids: string[]) => {
+      const agentsDir = findAgentsDir();
+      if (!agentsDir) {
+        console.error(`  ${red("error:")} No .agents/ directory found`);
+        process.exit(1);
+      }
+
+      const index = resolveIndex(agentsDir);
+      const indexPath = join(agentsDir, "TASKS.json");
+
+      console.log(`\n${bold("  loaf spec archive")}\n`);
+
+      const results = archiveSpecs(agentsDir, index, ids);
+
+      let archived = 0;
+      let skipped = 0;
+
+      for (const r of results) {
+        if (r.status === "archived") {
+          const entry = index.specs[r.id];
+          console.log(`  ${green("✓")} ${bold(r.id)}: ${entry.title}`);
+          archived++;
+        } else {
+          const icon = r.reason === "already archived" ? gray("⊘") : yellow("⊘");
+          console.log(`  ${icon} ${bold(r.id)}: ${r.reason}`);
+          skipped++;
+        }
+      }
+
+      if (archived > 0) {
+        saveIndex(indexPath, index);
+        syncFrontmatterFromIndex(agentsDir, index);
+      }
+
+      console.log();
+      if (archived > 0) {
+        console.log(`  Archived ${bold(String(archived))} spec(s)`);
+      }
+      if (skipped > 0) {
+        console.log(`  Skipped ${bold(String(skipped))} spec(s)`);
+      }
+      console.log();
     });
 }

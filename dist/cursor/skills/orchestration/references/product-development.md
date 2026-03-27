@@ -242,6 +242,6 @@ This preserves full context for debugging, knowledge extraction, and audit trail
 | `docs/ARCHITECTURE.md` | Technical design |
 | `docs/REQUIREMENTS.md` | Product rules |
 | `docs/decisions/ADR-*.md` | Architecture decisions |
-| `.agents/specs/SPEC-*.md` | Feature specifications |
-| `.agents/tasks/active/TASK-*.md` | Local tasks |
+| `loaf spec list` | Feature specifications |
+| `loaf task list` | Local tasks |
 | `.agents/loaf.yaml` | Project configuration |

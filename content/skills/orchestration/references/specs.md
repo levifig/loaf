@@ -86,7 +86,7 @@ appetite: "1 week"
 At 50% appetite: if OAuth integration is problematic, simplify to single provider (Google only).
 ```
 
-**Location:** `.agents/specs/SPEC-001-feature-name.md`
+**Create with:** `loaf spec create` or manually in `.agents/specs/`
 
 ## Spec Lifecycle
 
@@ -164,11 +164,10 @@ Each sub-spec:
 When all tasks for a spec are complete:
 
 1. Update status to `complete`
-2. Add completion date to frontmatter
-3. Move to `.agents/specs/archive/`
+2. Archive with the CLI:
 
 ```bash
-mv .agents/specs/SPEC-001-user-auth.md .agents/specs/archive/
+loaf spec archive SPEC-001
 ```
 
 ## Spec vs Plan
