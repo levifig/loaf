@@ -6,7 +6,7 @@ description: >-
   completed work, and ensures extracted knowledge is preserved. Use when the
   user asks "clean up", "review sessions", "review artifacts", or "tidy up
   .agents/."
-version: 2.0.0-dev.2
+version: 2.0.0-dev.3
 ---
 
 # Cleanup

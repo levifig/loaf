@@ -462,6 +462,10 @@ function copyAllHooks(config, srcDir, pluginDir) {
       cpSync2(join6(subagentHooksSrc, file), join6(hooksDir, file));
     }
   }
+  const instructionsSrc = join6(srcDir, "hooks", "instructions");
+  if (existsSync5(instructionsSrc)) {
+    cpSync2(instructionsSrc, join6(hooksDir, "instructions"), { recursive: true });
+  }
 }
 
 // cli/lib/build/targets/opencode.ts
@@ -851,7 +855,7 @@ version: ${version}
 function copyHooks(srcDir, destDir) {
   const hooksSrc = join8(srcDir, "hooks");
   if (!existsSync7(hooksSrc)) return;
-  const subdirs = ["pre-tool", "post-tool", "session", "lib"];
+  const subdirs = ["pre-tool", "post-tool", "session", "lib", "instructions"];
   for (const subdir of subdirs) {
     const subSrc = join8(hooksSrc, subdir);
     const subDest = join8(destDir, subdir);

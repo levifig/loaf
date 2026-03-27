@@ -4,7 +4,7 @@ description: >-
   asks "resume that session" or "pick up where we left off."
 agent: PM
 subtask: false
-version: 2.0.0-dev.2
+version: 2.0.0-dev.3
 ---
 
 # Resume Session

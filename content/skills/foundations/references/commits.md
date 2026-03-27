@@ -7,6 +7,7 @@
 - Branch Naming
 - Pull Request Format
 - Critical Rules
+- Workflow Enforcement Hooks
 - Semantic Versioning
 
 Git commit, branch, and pull request standards.
@@ -205,6 +206,18 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 1.0.1 -> 1.1.0 (minor: new features)
 1.1.0 -> 2.0.0 (major: breaking changes)
 ```
+
+## Workflow Enforcement Hooks
+
+Three hooks automatically enforce the conventions documented in this file:
+
+| Hook | Phase | Behavior |
+|------|-------|----------|
+| `workflow-pre-pr` | Pre-tool (Bash) | Blocks `gh pr create` unless CHANGELOG has [Unreleased] entries. Emits PR format reminders. |
+| `workflow-pre-push` | Pre-tool (Bash) | Advisory reminders on `git push`: branch naming, uncommitted files, force-push safety. Non-blocking. |
+| `workflow-post-merge` | Post-tool (Bash) | Injects housekeeping checklist after successful `gh pr merge`: branch cleanup, task status, session archival. |
+
+These hooks read instruction templates from `hooks/instructions/` and run automatically when the corresponding git/gh commands are invoked.
 
 Breaking changes use `feat!:` or `fix!:` and include:
 

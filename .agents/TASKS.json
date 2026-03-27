@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 45,
+  "next_id": 50,
   "tasks": {
     "TASK-020": {
       "title": "Richer version output for loaf and skill-level version detection",
@@ -19,6 +19,92 @@
       "updated": "2026-03-15T00:00:00.000Z",
       "completed_at": null,
       "file": "TASK-020-version-command.md"
+    },
+    "TASK-040": {
+      "title": "loaf setup CLI command",
+      "slug": "loaf-setup-cli-command",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:43.495Z",
+      "updated": "2026-03-27T11:02:15.585Z",
+      "completed_at": "2026-03-27T11:02:15.584Z",
+      "file": "TASK-040-loaf-setup-cli-command.md"
+    },
+    "TASK-041": {
+      "title": "Bootstrap skill — Core SKILL.md (detection, brief, interview, doc population)",
+      "slug": "bootstrap-skill-core-skill-md-detection-brief-inte",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:45.942Z",
+      "updated": "2026-03-27T11:02:16.932Z",
+      "completed_at": "2026-03-27T11:02:16.931Z",
+      "file": "TASK-041-bootstrap-skill-core-skill-md-detection-brief-inte.md"
+    },
+    "TASK-042": {
+      "title": "Bootstrap skill — Completeness (session, symlinks, KB, cross-harness, next steps)",
+      "slug": "bootstrap-skill-completeness-session-symlinks-kb-c",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-041"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:47.066Z",
+      "updated": "2026-03-27T11:04:13.212Z",
+      "completed_at": "2026-03-27T11:04:13.211Z",
+      "file": "TASK-042-bootstrap-skill-completeness-session-symlinks-kb-c.md"
+    },
+    "TASK-043": {
+      "title": "Bootstrap document templates",
+      "slug": "bootstrap-document-templates",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:48.199Z",
+      "updated": "2026-03-27T11:02:18.218Z",
+      "completed_at": "2026-03-27T11:02:18.217Z",
+      "file": "TASK-043-bootstrap-document-templates.md"
+    },
+    "TASK-044": {
+      "title": "Build integration + end-to-end verification",
+      "slug": "build-integration-end-to-end-verification",
+      "spec": "SPEC-013",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-040",
+        "TASK-041",
+        "TASK-042"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T02:59:49.324Z",
+      "updated": "2026-03-27T11:06:31.452Z",
+      "completed_at": "2026-03-27T11:06:31.451Z",
+      "file": "TASK-044-build-integration-end-to-end-verification.md"
     },
     "TASK-001": {
       "title": "Create verification reference",
@@ -805,10 +891,10 @@
       "completed_at": "2026-03-24T19:29:16Z",
       "file": "archive/TASK-039-knowledge-base-skill.md"
     },
-    "TASK-040": {
-      "title": "loaf setup CLI command",
-      "slug": "loaf-setup-cli-command",
-      "spec": "SPEC-013",
+    "TASK-045": {
+      "title": "Hook library — parse_command and parse_exit_code",
+      "slug": "hook-library-parse-command-and-parse-exit-code",
+      "spec": "SPEC-015",
       "status": "done",
       "priority": "P1",
       "depends_on": [],
@@ -816,80 +902,83 @@
       "verify": null,
       "done": null,
       "session": null,
-      "created": "2026-03-27T02:59:43.495Z",
-      "updated": "2026-03-27T11:02:15.585Z",
-      "completed_at": "2026-03-27T11:02:15.584Z",
-      "file": "TASK-040-loaf-setup-cli-command.md"
+      "created": "2026-03-27T16:27:22.010Z",
+      "updated": "2026-03-27T16:34:48.647Z",
+      "completed_at": "2026-03-27T16:34:48.646Z",
+      "file": "archive/TASK-045-hook-library-parse-command-and-parse-exit-code.md"
     },
-    "TASK-041": {
-      "title": "Bootstrap skill — Core SKILL.md (detection, brief, interview, doc population)",
-      "slug": "bootstrap-skill-core-skill-md-detection-brief-inte",
-      "spec": "SPEC-013",
+    "TASK-046": {
+      "title": "Pre-PR workflow hook + CHANGELOG.md seed",
+      "slug": "pre-pr-workflow-hook-changelog-md-seed",
+      "spec": "SPEC-015",
       "status": "done",
       "priority": "P1",
-      "depends_on": [],
-      "files": [],
-      "verify": null,
-      "done": null,
-      "session": null,
-      "created": "2026-03-27T02:59:45.942Z",
-      "updated": "2026-03-27T11:02:16.932Z",
-      "completed_at": "2026-03-27T11:02:16.931Z",
-      "file": "TASK-041-bootstrap-skill-core-skill-md-detection-brief-inte.md"
-    },
-    "TASK-042": {
-      "title": "Bootstrap skill — Completeness (session, symlinks, KB, cross-harness, next steps)",
-      "slug": "bootstrap-skill-completeness-session-symlinks-kb-c",
-      "spec": "SPEC-013",
-      "status": "done",
-      "priority": "P2",
       "depends_on": [
-        "TASK-041"
+        "TASK-045"
       ],
       "files": [],
       "verify": null,
       "done": null,
       "session": null,
-      "created": "2026-03-27T02:59:47.066Z",
-      "updated": "2026-03-27T11:04:13.212Z",
-      "completed_at": "2026-03-27T11:04:13.211Z",
-      "file": "TASK-042-bootstrap-skill-completeness-session-symlinks-kb-c.md"
+      "created": "2026-03-27T16:27:29.567Z",
+      "updated": "2026-03-27T16:40:23.792Z",
+      "completed_at": "2026-03-27T16:40:23.792Z",
+      "file": "archive/TASK-046-pre-pr-workflow-hook-changelog-md-seed.md"
     },
-    "TASK-043": {
-      "title": "Bootstrap document templates",
-      "slug": "bootstrap-document-templates",
-      "spec": "SPEC-013",
+    "TASK-047": {
+      "title": "Post-merge workflow hook + housekeeping checklist",
+      "slug": "post-merge-workflow-hook-housekeeping-checklist",
+      "spec": "SPEC-015",
       "status": "done",
-      "priority": "P2",
-      "depends_on": [],
-      "files": [],
-      "verify": null,
-      "done": null,
-      "session": null,
-      "created": "2026-03-27T02:59:48.199Z",
-      "updated": "2026-03-27T11:02:18.218Z",
-      "completed_at": "2026-03-27T11:02:18.217Z",
-      "file": "TASK-043-bootstrap-document-templates.md"
-    },
-    "TASK-044": {
-      "title": "Build integration + end-to-end verification",
-      "slug": "build-integration-end-to-end-verification",
-      "spec": "SPEC-013",
-      "status": "done",
-      "priority": "P2",
+      "priority": "P1",
       "depends_on": [
-        "TASK-040",
-        "TASK-041",
-        "TASK-042"
+        "TASK-045"
       ],
       "files": [],
       "verify": null,
       "done": null,
       "session": null,
-      "created": "2026-03-27T02:59:49.324Z",
-      "updated": "2026-03-27T11:06:31.452Z",
-      "completed_at": "2026-03-27T11:06:31.451Z",
-      "file": "TASK-044-build-integration-end-to-end-verification.md"
+      "created": "2026-03-27T16:27:33.339Z",
+      "updated": "2026-03-27T16:40:24.232Z",
+      "completed_at": "2026-03-27T16:40:24.232Z",
+      "file": "archive/TASK-047-post-merge-workflow-hook-housekeeping-checklist.md"
+    },
+    "TASK-048": {
+      "title": "Pre-push workflow hook + branch safety",
+      "slug": "pre-push-workflow-hook-branch-safety",
+      "spec": "SPEC-015",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-045"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T16:27:36.312Z",
+      "updated": "2026-03-27T16:40:24.673Z",
+      "completed_at": "2026-03-27T16:40:24.672Z",
+      "file": "archive/TASK-048-pre-push-workflow-hook-branch-safety.md"
+    },
+    "TASK-049": {
+      "title": "Hook registration, build integration + docs",
+      "slug": "hook-registration-build-integration-docs",
+      "spec": "SPEC-015",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-046",
+        "TASK-047"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T16:27:43.289Z",
+      "updated": "2026-03-27T16:45:24.486Z",
+      "completed_at": "2026-03-27T16:45:24.485Z",
+      "file": "archive/TASK-049-hook-registration-build-integration-docs.md"
     }
   },
   "specs": {
@@ -922,7 +1011,7 @@
     },
     "SPEC-013": {
       "title": "/bootstrap — Interactive project bootstrapping skill",
-      "status": "approved",
+      "status": "complete",
       "appetite": "Large (4+ sessions)",
       "requirement": null,
       "source": "direct",
@@ -937,6 +1026,15 @@
       "source": "brainstorm",
       "created": "2026-03-24T23:30:00.000Z",
       "file": "SPEC-014-skill-activation-redesign.md"
+    },
+    "SPEC-015": {
+      "title": "Workflow enforcement hooks + CHANGELOG management",
+      "status": "complete",
+      "appetite": "Medium (3-4 sessions)",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-03-27T13:32:06.000Z",
+      "file": "SPEC-015-workflow-hooks-changelog.md"
     },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",

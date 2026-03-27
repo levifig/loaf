@@ -4,7 +4,7 @@ description: >-
   Creates Architecture Decision Records (ADRs) through structured evaluation.
   Use when making technical decisions or when the user asks "should we use X or
   Y?"
-version: 2.0.0-dev.2
+version: 2.0.0-dev.3
 ---
 
 # Architecture
