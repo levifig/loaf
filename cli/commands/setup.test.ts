@@ -15,15 +15,19 @@ import {
   mkdirSync,
   rmSync,
   readFileSync,
+  realpathSync,
+  statSync,
+  symlinkSync,
   writeFileSync,
 } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TEST_ROOT = join(process.cwd(), ".test-setup-command");
+const OUTSIDE_ROOT = join(process.cwd(), ".test-setup-command-outside");
 
 // Scaffold constants (mirrored from setup.ts — kept in sync manually)
 const EXPECTED_DIRS = [
@@ -55,22 +59,55 @@ const EXPECTED_FILES = [
  * Minimal scaffold that mirrors what setup.ts does in the init phase.
  * We test the logic, not the imports.
  */
-function scaffoldDirs(cwd: string): { created: string[] } {
+function withinProject(cwd: string, fullPath: string): boolean {
+  let check = fullPath;
+  while (!existsSync(check) && check !== cwd) {
+    const parent = dirname(check);
+    if (parent === check) break;
+    check = parent;
+  }
+  try {
+    const realCheck = realpathSync(check);
+    const realCwd = realpathSync(cwd);
+    return realCheck === realCwd || realCheck.startsWith(realCwd + "/");
+  } catch {
+    return false;
+  }
+}
+
+function ensureTargetDir(targetDir: string): "created" | "exists" | "invalid" {
+  if (!existsSync(targetDir)) {
+    mkdirSync(targetDir, { recursive: true });
+    return "created";
+  }
+  if (!statSync(targetDir).isDirectory()) {
+    return "invalid";
+  }
+  return "exists";
+}
+
+function scaffoldDirs(cwd: string): { created: string[]; skipped: string[] } {
   const created: string[] = [];
+  const skipped: string[] = [];
   for (const dir of EXPECTED_DIRS) {
     const fullPath = join(cwd, dir);
     if (!existsSync(fullPath)) {
+      if (!withinProject(cwd, fullPath)) {
+        skipped.push(dir + "/");
+        continue;
+      }
       mkdirSync(fullPath, { recursive: true });
       created.push(dir + "/");
     }
   }
-  return { created };
+  return { created, skipped };
 }
 
 function scaffoldFiles(
   cwd: string,
-): { created: string[] } {
+): { created: string[]; skipped: string[] } {
   const created: string[] = [];
+  const skipped: string[] = [];
   const fileContents: Array<[string, () => string]> = [
     [".agents/AGENTS.md", () => "# Project Instructions\n"],
     [
@@ -91,7 +128,11 @@ function scaffoldFiles(
   for (const [relPath, contentFn] of fileContents) {
     const fullPath = join(cwd, relPath);
     if (!existsSync(fullPath)) {
-      const parentDir = join(fullPath, "..");
+      if (!withinProject(cwd, fullPath)) {
+        skipped.push(relPath);
+        continue;
+      }
+      const parentDir = dirname(fullPath);
       if (!existsSync(parentDir)) {
         mkdirSync(parentDir, { recursive: true });
       }
@@ -99,7 +140,7 @@ function scaffoldFiles(
       created.push(relPath);
     }
   }
-  return { created };
+  return { created, skipped };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,11 +149,13 @@ function scaffoldFiles(
 
 beforeEach(() => {
   rmSync(TEST_ROOT, { recursive: true, force: true });
+  rmSync(OUTSIDE_ROOT, { recursive: true, force: true });
   mkdirSync(TEST_ROOT, { recursive: true });
 });
 
 afterEach(() => {
   rmSync(TEST_ROOT, { recursive: true, force: true });
+  rmSync(OUTSIDE_ROOT, { recursive: true, force: true });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -124,8 +167,9 @@ describe("setup: directory creation", () => {
     const targetDir = join(TEST_ROOT, "my-project");
     expect(existsSync(targetDir)).toBe(false);
 
-    mkdirSync(targetDir, { recursive: true });
+    const result = ensureTargetDir(targetDir);
 
+    expect(result).toBe("created");
     expect(existsSync(targetDir)).toBe(true);
   });
 
@@ -133,8 +177,9 @@ describe("setup: directory creation", () => {
     const targetDir = join(TEST_ROOT, "deep", "nested", "project");
     expect(existsSync(targetDir)).toBe(false);
 
-    mkdirSync(targetDir, { recursive: true });
+    const result = ensureTargetDir(targetDir);
 
+    expect(result).toBe("created");
     expect(existsSync(targetDir)).toBe(true);
   });
 
@@ -142,10 +187,19 @@ describe("setup: directory creation", () => {
     const targetDir = join(TEST_ROOT, "existing-project");
     mkdirSync(targetDir, { recursive: true });
 
-    // Should not throw
-    mkdirSync(targetDir, { recursive: true });
+    const result = ensureTargetDir(targetDir);
 
+    expect(result).toBe("exists");
     expect(existsSync(targetDir)).toBe(true);
+  });
+
+  it("rejects an existing file path", () => {
+    const targetPath = join(TEST_ROOT, "not-a-directory");
+    writeFileSync(targetPath, "x", "utf-8");
+
+    const result = ensureTargetDir(targetPath);
+
+    expect(result).toBe("invalid");
   });
 });
 
@@ -158,6 +212,7 @@ describe("setup: init scaffolding", () => {
     }
 
     expect(result.created.length).toBe(EXPECTED_DIRS.length);
+    expect(result.skipped.length).toBe(0);
   });
 
   it("creates all expected files", () => {
@@ -170,6 +225,7 @@ describe("setup: init scaffolding", () => {
     }
 
     expect(result.created.length).toBe(EXPECTED_FILES.length);
+    expect(result.skipped.length).toBe(0);
   });
 
   it("creates loaf.json with valid JSON", () => {
@@ -200,6 +256,32 @@ describe("setup: init scaffolding", () => {
       "utf-8",
     );
     expect(content).toContain("# Project Instructions");
+  });
+
+  it("skips scaffold writes that resolve outside the project root", () => {
+    // Start from a normal scaffold, then replace docs/ with an external symlink.
+    scaffoldDirs(TEST_ROOT);
+    rmSync(join(TEST_ROOT, "docs"), { recursive: true, force: true });
+
+    const outsideDocs = join(OUTSIDE_ROOT, "docs");
+    mkdirSync(outsideDocs, { recursive: true });
+    symlinkSync(outsideDocs, join(TEST_ROOT, "docs"));
+
+    const dirResult = scaffoldDirs(TEST_ROOT);
+    const fileResult = scaffoldFiles(TEST_ROOT);
+
+    expect(dirResult.skipped).toEqual(
+      expect.arrayContaining(["docs/knowledge/", "docs/decisions/"]),
+    );
+    expect(fileResult.skipped).toEqual(
+      expect.arrayContaining([
+        "docs/VISION.md",
+        "docs/STRATEGY.md",
+        "docs/ARCHITECTURE.md",
+      ]),
+    );
+    expect(existsSync(join(outsideDocs, "VISION.md"))).toBe(false);
+    expect(existsSync(join(outsideDocs, "knowledge"))).toBe(false);
   });
 });
 

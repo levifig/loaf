@@ -47,6 +47,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
+const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const gray = (s: string) => `\x1b[90m${s}\x1b[0m`;
 const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 const white = (s: string) => `\x1b[97m${s}\x1b[0m`;
@@ -72,6 +73,24 @@ function findRootDir(): string {
   throw new Error(
     "Could not find loaf root directory (no package.json with name 'loaf')",
   );
+}
+
+/** Resolve a path and verify it stays within the project root. */
+function withinProject(cwd: string, fullPath: string): boolean {
+  // Resolve symlinks in the longest existing ancestor.
+  let check = fullPath;
+  while (!existsSync(check) && check !== cwd) {
+    const parent = dirname(check);
+    if (parent === check) break;
+    check = parent;
+  }
+  try {
+    const realCheck = realpathSync(check);
+    const realCwd = realpathSync(cwd);
+    return realCheck === realCwd || realCheck.startsWith(realCwd + "/");
+  } catch {
+    return false;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -204,6 +223,10 @@ function scaffoldDirs(cwd: string): ScaffoldResult {
   for (const dir of SCAFFOLD_DIRS) {
     const fullPath = join(cwd, dir);
     if (!existsSync(fullPath)) {
+      if (!withinProject(cwd, fullPath)) {
+        skipped.push(dir + "/");
+        continue;
+      }
       mkdirSync(fullPath, { recursive: true });
       created.push(dir + "/");
     }
@@ -216,15 +239,13 @@ function scaffoldFiles(cwd: string): ScaffoldResult {
   const created: string[] = [];
   const skipped: string[] = [];
 
-  const realCwd = realpathSync(cwd);
   for (const [relPath, contentFn] of SCAFFOLD_FILES) {
     const fullPath = join(cwd, relPath);
-    const realFullPath = realpathSync(dirname(fullPath));
-    if (!realFullPath.startsWith(realCwd)) {
-      skipped.push(relPath);
-      continue;
-    }
     if (!existsSync(fullPath)) {
+      if (!withinProject(cwd, fullPath)) {
+        skipped.push(relPath);
+        continue;
+      }
       const parentDir = dirname(fullPath);
       if (!existsSync(parentDir)) {
         mkdirSync(parentDir, { recursive: true });
@@ -377,7 +398,7 @@ export function registerSetupCommand(program: Command): void {
           const stat = statSync(targetDir);
           if (!stat.isDirectory()) {
             console.error(
-              `  ${red("✗")} Path exists but is not a directory: ${targetDir}`,
+              `  ${red("error:")} Path exists but is not a directory: ${targetDir}`,
             );
             process.exit(1);
           }
@@ -402,6 +423,7 @@ export function registerSetupCommand(program: Command): void {
 
       const dirs = scaffoldDirs(cwd);
       const files = scaffoldFiles(cwd);
+      const allSkipped = [...dirs.skipped, ...files.skipped];
 
       if (dirs.created.length > 0 || files.created.length > 0) {
         for (const dir of dirs.created) {
@@ -410,8 +432,14 @@ export function registerSetupCommand(program: Command): void {
         for (const file of files.created) {
           console.log(`    ${green("+")} ${file}`);
         }
-      } else {
+      } else if (allSkipped.length === 0) {
         console.log(`    ${gray("Nothing to create — all files exist")}`);
+      }
+      if (allSkipped.length > 0) {
+        console.log(`    ${yellow("Skipped")} (paths resolve outside project root):`);
+        for (const path of allSkipped) {
+          console.log(`      ${yellow("!")} ${path}`);
+        }
       }
       console.log();
 
