@@ -60,8 +60,50 @@ parse_parameters() {
     fi
 }
 
+parse_command() {
+    # Extract tool_input.command from hook JSON input
+    # Args: $1 - JSON string
+    # Returns: Command string or empty string
+
+    local json="$1"
+
+    if command -v jq >/dev/null 2>&1; then
+        echo "${json}" | jq -r '.tool_input.command // empty' 2>/dev/null || echo ""
+    else
+        # Fallback: extract "command" value from tool_input object
+        echo "${json}" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"\([^"]*\)".*/\1/' || echo ""
+    fi
+}
+
+parse_exit_code() {
+    # Extract exit code from PostToolUse hook JSON input
+    # Args: $1 - JSON string
+    # Returns: Exit code (integer string) or empty string
+    #
+    # PostToolUse JSON includes tool_result with execution outcome.
+    # Tries tool_result.exit_code first, then tool_result.returncode as fallback.
+
+    local json="$1"
+
+    if command -v jq >/dev/null 2>&1; then
+        echo "${json}" | jq -r '.tool_result.exit_code // .tool_result.returncode // empty' 2>/dev/null || echo ""
+    else
+        # Fallback: try exit_code first, then returncode
+        local code
+        code=$(echo "${json}" | grep -o '"exit_code"[[:space:]]*:[[:space:]]*[0-9]*' | grep -o '[0-9]*$' || true)
+        if [[ -n "$code" ]]; then
+            echo "$code"
+        else
+            code=$(echo "${json}" | grep -o '"returncode"[[:space:]]*:[[:space:]]*[0-9]*' | grep -o '[0-9]*$' || true)
+            echo "${code:-}"
+        fi
+    fi
+}
+
 # Export functions
 export -f parse_file_path
 export -f parse_tool_name
 export -f parse_agent_type
 export -f parse_parameters
+export -f parse_command
+export -f parse_exit_code

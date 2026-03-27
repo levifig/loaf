@@ -1,12 +1,10 @@
 ---
 id: SPEC-015
-title: "Workflow enforcement hooks + CHANGELOG management"
+title: Workflow enforcement hooks + CHANGELOG management
 source: direct
-created: 2026-03-27T13:32:06Z
-status: approved
-appetite: "Medium (3-4 sessions)"
-depends_on: []
-soft_dependencies: []
+created: '2026-03-27T13:32:06.000Z'
+status: done
+appetite: Medium (3-4 sessions)
 ---
 
 # SPEC-015: Workflow enforcement hooks + CHANGELOG management

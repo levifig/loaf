@@ -346,4 +346,10 @@ function copyAllHooks(config: HooksConfig, srcDir: string, pluginDir: string): v
       cpSync(join(subagentHooksSrc, file), join(hooksDir, file));
     }
   }
+
+  // Copy instructions directory (used by workflow hooks for inline output)
+  const instructionsSrc = join(srcDir, "hooks", "instructions");
+  if (existsSync(instructionsSrc)) {
+    cpSync(instructionsSrc, join(hooksDir, "instructions"), { recursive: true });
+  }
 }

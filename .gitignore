@@ -29,6 +29,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# Claude Code ephemeral plans
+.claude/plans/
+
 # Local agent work (tracked: AGENTS.md, TASKS.json, specs/, tasks/)
 .agents/*
 !.agents/AGENTS.md

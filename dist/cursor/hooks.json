@@ -33,6 +33,16 @@
         "matcher": "Bash"
       },
       {
+        "command": "bash $HOME/.cursor/hooks/pre-tool/workflow-pre-pr.sh",
+        "timeout": 5,
+        "matcher": "Bash"
+      },
+      {
+        "command": "bash $HOME/.cursor/hooks/pre-tool/workflow-pre-push.sh",
+        "timeout": 5,
+        "matcher": "Bash"
+      },
+      {
         "command": "python3 $HOME/.cursor/hooks/pre-tool/orchestration-validate-commit.py",
         "timeout": 30,
         "matcher": "Bash"
@@ -168,6 +178,11 @@
         "command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh",
         "timeout": 30,
         "matcher": "Edit|Write"
+      },
+      {
+        "command": "bash $HOME/.cursor/hooks/post-tool/workflow-post-merge.sh",
+        "timeout": 30,
+        "matcher": "Bash"
       }
     ],
     "sessionStart": [
