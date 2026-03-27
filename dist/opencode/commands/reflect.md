@@ -4,7 +4,7 @@ description: >-
   completing significant work or when the user asks "what did we learn?"
 agent: PM
 subtask: false
-version: 2.0.0-dev.2
+version: 2.0.0-dev.3
 ---
 
 # Reflect

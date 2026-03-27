@@ -905,7 +905,7 @@
       "created": "2026-03-27T16:27:22.010Z",
       "updated": "2026-03-27T16:34:48.647Z",
       "completed_at": "2026-03-27T16:34:48.646Z",
-      "file": "TASK-045-hook-library-parse-command-and-parse-exit-code.md"
+      "file": "archive/TASK-045-hook-library-parse-command-and-parse-exit-code.md"
     },
     "TASK-046": {
       "title": "Pre-PR workflow hook + CHANGELOG.md seed",
@@ -923,7 +923,7 @@
       "created": "2026-03-27T16:27:29.567Z",
       "updated": "2026-03-27T16:40:23.792Z",
       "completed_at": "2026-03-27T16:40:23.792Z",
-      "file": "TASK-046-pre-pr-workflow-hook-changelog-md-seed.md"
+      "file": "archive/TASK-046-pre-pr-workflow-hook-changelog-md-seed.md"
     },
     "TASK-047": {
       "title": "Post-merge workflow hook + housekeeping checklist",
@@ -941,7 +941,7 @@
       "created": "2026-03-27T16:27:33.339Z",
       "updated": "2026-03-27T16:40:24.232Z",
       "completed_at": "2026-03-27T16:40:24.232Z",
-      "file": "TASK-047-post-merge-workflow-hook-housekeeping-checklist.md"
+      "file": "archive/TASK-047-post-merge-workflow-hook-housekeeping-checklist.md"
     },
     "TASK-048": {
       "title": "Pre-push workflow hook + branch safety",
@@ -959,7 +959,7 @@
       "created": "2026-03-27T16:27:36.312Z",
       "updated": "2026-03-27T16:40:24.673Z",
       "completed_at": "2026-03-27T16:40:24.672Z",
-      "file": "TASK-048-pre-push-workflow-hook-branch-safety.md"
+      "file": "archive/TASK-048-pre-push-workflow-hook-branch-safety.md"
     },
     "TASK-049": {
       "title": "Hook registration, build integration + docs",
@@ -978,7 +978,7 @@
       "created": "2026-03-27T16:27:43.289Z",
       "updated": "2026-03-27T16:45:24.486Z",
       "completed_at": "2026-03-27T16:45:24.485Z",
-      "file": "TASK-049-hook-registration-build-integration-docs.md"
+      "file": "archive/TASK-049-hook-registration-build-integration-docs.md"
     }
   },
   "specs": {
@@ -1029,7 +1029,7 @@
     },
     "SPEC-015": {
       "title": "Workflow enforcement hooks + CHANGELOG management",
-      "status": "approved",
+      "status": "complete",
       "appetite": "Medium (3-4 sessions)",
       "requirement": null,
       "source": "direct",
