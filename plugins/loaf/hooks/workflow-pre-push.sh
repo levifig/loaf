@@ -32,13 +32,17 @@ case "$COMMAND" in
   *) exit 0 ;;
 esac
 
-# Detect force-push flags and target branch
+# Detect force-push flags
 FORCE_PUSH=false
-[[ "$COMMAND" == *"--force"* || "$COMMAND" == *"-f "* || "$COMMAND" == *" -f" ]] && FORCE_PUSH=true
+[[ "$COMMAND" == *"--force"* || "$COMMAND" == *"--force-with-lease"* || "$COMMAND" == *"-f "* || "$COMMAND" == *" -f" ]] && FORCE_PUSH=true
 
-# Determine target branch: check command args first, fall back to current branch
+# Determine target branch — check bare arg, refspec (:main), or fall back to current
 TARGET_BRANCH=""
-if [[ "$COMMAND" =~ git\ push\ .*\ (main|master)($|\ ) ]]; then
+if [[ "$COMMAND" =~ :(main|master)($|\ ) ]]; then
+  # Refspec push: HEAD:main, branch:master, etc.
+  TARGET_BRANCH="${BASH_REMATCH[1]}"
+elif [[ "$COMMAND" =~ git\ push\ [^-][^\ ]*\ (main|master)($|\ ) ]]; then
+  # Bare arg: git push origin main
   TARGET_BRANCH="${BASH_REMATCH[1]}"
 fi
 if [[ -z "$TARGET_BRANCH" ]]; then
