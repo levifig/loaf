@@ -322,6 +322,12 @@ plugin-groups:
       post-tool: [generate-task-board]
       session: [session-start, session-end, pre-compact-archive]
 
+  # Bootstrap - First-contact project setup
+  bootstrap:
+    description: Interactive project bootstrapping with state detection and document population
+    agents: []
+    skills: [bootstrap]
+
   # Research - Project understanding and investigation
   research:
     description: Project state assessment, topic investigation
