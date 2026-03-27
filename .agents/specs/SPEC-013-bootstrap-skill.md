@@ -3,7 +3,7 @@ id: SPEC-013
 title: /bootstrap — Interactive project bootstrapping skill
 source: direct
 created: '2026-03-22T01:28:01.000Z'
-status: approved
+status: done
 appetite: Large (4+ sessions)
 ---
 

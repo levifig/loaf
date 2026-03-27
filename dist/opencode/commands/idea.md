@@ -6,7 +6,7 @@ description: >-
   brainstorm documents for unprocessed sparks to promote.
 agent: PM
 subtask: false
-version: 2.0.0-dev.1
+version: 2.0.0-dev.2
 ---
 
 # Idea
