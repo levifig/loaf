@@ -16,8 +16,12 @@ else
   INSTRUCTIONS="${SCRIPT_DIR}/instructions"
 fi
 
-# Read hook input from stdin
-HOOK_INPUT=$(cat)
+# Read hook input — Claude Code: stdin JSON; OpenCode: TOOL_NAME + TOOL_INPUT env vars
+if [[ -n "${TOOL_INPUT:-}" ]]; then
+  HOOK_INPUT="{\"tool_name\":\"${TOOL_NAME:-}\",\"tool_input\":${TOOL_INPUT}}"
+else
+  HOOK_INPUT=$(cat)
+fi
 COMMAND=$(parse_command "${HOOK_INPUT}")
 
 # Only match gh pr merge commands
@@ -26,9 +30,9 @@ case "$COMMAND" in
   *) exit 0 ;;
 esac
 
-# Only inject on confirmed success -- if exit code is missing or non-zero, skip
+# Skip on confirmed failure — unknown exit code (OpenCode, empty) still shows checklist
 EXIT_CODE=$(parse_exit_code "${HOOK_INPUT}")
-[[ -z "$EXIT_CODE" || "$EXIT_CODE" != "0" ]] && exit 0
+[[ -n "$EXIT_CODE" && "$EXIT_CODE" != "0" ]] && exit 0
 
 # Output the housekeeping checklist
 cat "${INSTRUCTIONS}/post-merge.md"

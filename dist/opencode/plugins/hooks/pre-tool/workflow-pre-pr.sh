@@ -12,7 +12,12 @@ else
   INSTRUCTIONS="${SCRIPT_DIR}/instructions"
 fi
 
-INPUT=$(cat)
+# Read hook input — Claude Code: stdin JSON; OpenCode: TOOL_NAME + TOOL_INPUT env vars
+if [[ -n "${TOOL_INPUT:-}" ]]; then
+  INPUT="{\"tool_name\":\"${TOOL_NAME:-}\",\"tool_input\":${TOOL_INPUT}}"
+else
+  INPUT=$(cat)
+fi
 COMMAND=$(parse_command "$INPUT")
 
 # Only match gh pr create
@@ -21,9 +26,9 @@ case "$COMMAND" in
   *) exit 0 ;;
 esac
 
-# Check if CHANGELOG.md has [Unreleased] entries
+# Check if CHANGELOG.md has actual entries (list items) under [Unreleased]
 if [[ -f "CHANGELOG.md" ]] && \
-   sed -n '/^## \[Unreleased\]/,/^## \[/p' CHANGELOG.md | grep -q "^### "; then
+   sed -n '/^## \[Unreleased\]/,/^## \[/p' CHANGELOG.md | grep -q "^- "; then
   # Entries exist — pass through with format reminder
   cat "$INSTRUCTIONS/pre-pr-format.md"
   exit 0

@@ -18,8 +18,12 @@ else
   INSTRUCTIONS="${SCRIPT_DIR}/instructions"
 fi
 
-# Read hook input from stdin
-INPUT=$(cat)
+# Read hook input — Claude Code: stdin JSON; OpenCode: TOOL_NAME + TOOL_INPUT env vars
+if [[ -n "${TOOL_INPUT:-}" ]]; then
+  INPUT="{\"tool_name\":\"${TOOL_NAME:-}\",\"tool_input\":${TOOL_INPUT}}"
+else
+  INPUT=$(cat)
+fi
 COMMAND=$(parse_command "$INPUT")
 
 # Only match git push
