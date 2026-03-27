@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Workflow enforcement hooks: pre-PR (conditional blocker), post-merge (housekeeping checklist), pre-push (branch safety) (SPEC-015)
+- Project-level CHANGELOG.md in Keep a Changelog format with retroactive entries
+- Hook library functions `parse_command` and `parse_exit_code` in json-parser.sh
+
 ## [2.0.0-dev.2] - 2026-03-27
 
 ### Added

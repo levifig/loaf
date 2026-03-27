@@ -35,7 +35,7 @@ Engineering foundations for consistent, secure, and well-documented code.
 | Verification | `references/verification.md` | Verifying work before claiming done |
 | Code Review | `references/code-review.md` | Requesting or receiving code reviews |
 | Permissions | `references/permissions.md` | Configuring tool allowlists, sandbox, agent permissions |
-| Workflow Hooks | `references/commits.md#workflow-enforcement-hooks` | Understanding pre-PR, pre-push, and post-merge enforcement hooks |
+| Workflow Hooks | [commits.md](references/commits.md) | Understanding pre-PR, pre-push, and post-merge enforcement hooks |
 
 ## Available Scripts
 
