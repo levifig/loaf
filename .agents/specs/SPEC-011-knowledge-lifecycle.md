@@ -1,112 +1,128 @@
 ---
 id: SPEC-011
-title: "Knowledge Lifecycle — doc relocation + /crystallize"
+title: "Enhance /reflect with workflow-integrated suggestions"
 source: direct
 created: 2026-03-16T23:50:30Z
-status: drafting
-appetite: "Medium (3-5 days)"
+status: approved
+appetite: "Small (1 session)"
+depends_on: []
+soft_dependencies: []
 ---
 
-# SPEC-011: Knowledge Lifecycle
+# SPEC-011: Enhance /reflect with workflow-integrated suggestions
 
 ## Problem Statement
 
-Loaf sessions generate architectural decisions, strategic insights, and vision refinements — but nothing systematically pushes those learnings back into the durable project documents. VISION.md, STRATEGY.md, and ARCHITECTURE.md sit in `.agents/` (gitignored, agent-internal) when they're actually core project documentation that belongs alongside `docs/knowledge/` and `docs/decisions/`. And when a session completes, the learnings stay trapped in ephemeral session files unless someone manually extracts them.
+`/reflect` exists and works — it reads sessions, identifies learnings, proposes diffs to strategic docs, and waits for human approval. But nobody remembers to run it. Session learnings stay trapped in ephemeral session files because there's no nudge at the right moment.
+
+The skill itself is solid. The gap is discoverability: nothing suggests running `/reflect` when a session contains extractable decisions or insights.
 
 ## Strategic Alignment
 
-- **Vision:** Directly supports the "living knowledge base" pillar. Sessions are where knowledge is created; crystallization is how it flows into durable docs.
-- **Personas:** Framework user gets discoverable project docs in `docs/`. Agents get a systematic way to update strategic context.
-- **Architecture:** Follows ADR-006 (agents create, humans curate) — `/crystallize` proposes changes, humans approve.
+- **Vision:** Directly supports the "living knowledge base" pillar. `/reflect` is how knowledge flows from sessions into durable docs — but only if it gets invoked.
+- **Architecture:** Follows ADR-006 (agents create, humans curate) — workflows suggest, humans decide.
 
 ## Solution Direction
 
-### Part 1: Doc Relocation
+### Suggestion placement: inside deliberate workflows
 
-Move strategic documents from `.agents/` to `docs/` root:
-- `.agents/VISION.md` → `docs/VISION.md`
-- `.agents/STRATEGY.md` → `docs/STRATEGY.md`
-- `.agents/ARCHITECTURE.md` → `docs/ARCHITECTURE.md`
+**Not** at SessionStart/SessionEnd — those fire on every session, including quick chats and one-off questions. A `/reflect` suggestion there would be jarring and ignored.
 
-Update all references across skills, hooks, session templates, and AGENTS.md. These are project docs, not agent artifacts — they should be version-controlled and visible.
+Instead, embed suggestions inside workflow skills where the user is already in a process mindset and reflection is natural:
 
-### Part 2: `/crystallize` Skill
+#### 1. After `/implement` completes a spec
 
-A new skill that reads the current session's learnings and proposes targeted updates to strategic docs.
+When `/implement` finishes its AFTER phase (post-merge housekeeping), check if the session has extractable learnings. If so, suggest `/reflect` as a final step before closing out.
 
-**Trigger model:** Manual invocation (`/crystallize`) + suggested by `/cleanup` and session-end hooks when unextracted learnings are detected. Never auto-runs.
+This is the highest-value placement — learnings are freshest right after shipping.
 
-**Flow:**
-1. Read current session file (or specified session)
-2. Identify extractable insights: key decisions, architectural changes, vision shifts, strategy updates, new patterns
-3. Read current VISION.md, ARCHITECTURE.md, STRATEGY.md
-4. Propose diffs to each doc — show what would change and why
-5. Human reviews and approves/rejects each proposed change
-6. Apply approved changes
+#### 2. After `/shape` produces a spec
 
-**What gets crystallized:**
-- Architectural decisions not captured in ADRs → suggest ADR or update ARCHITECTURE.md
-- Vision shifts (new capabilities, changed direction) → propose VISION.md updates
-- Strategy changes (phase transitions, priority shifts) → propose STRATEGY.md updates
-- New patterns or conventions → suggest docs/knowledge/ additions
+Shaping often surfaces strategic shifts, architectural constraints, or vision changes worth capturing. After the spec is written, check if the shaping session produced key decisions and suggest `/reflect`.
 
-**What does NOT get crystallized:**
-- Implementation details (those live in git commits)
-- Task tracking (that's TASKS.json / Linear)
-- Session-specific context (stays in session file)
+#### 3. During `/cleanup` session review
+
+When cleanup reviews sessions for archival, flag sessions with unextracted learnings as "Extract & Archive" and suggest running `/reflect` before archiving.
+
+### Detection signals
+
+Simple checks — any of these trigger the suggestion:
+
+- Session frontmatter has non-empty `decisions` list
+- Session body contains `## Key Decisions` with content (not just the heading)
+- Session body contains `## Lessons Learned` or `lessons_learned` in frontmatter
+- Session is linked to a completed spec
+
+### Suggestion format
+
+A brief, non-blocking note at the end of the workflow output:
+
+```
+This session produced key decisions. Consider running /reflect to update strategic docs.
+```
+
+No gates, no blocking, no extra prompts. The user can act on it or ignore it.
+
+### Reflect skill hardening
+
+Review the existing `/reflect` SKILL.md for gaps:
+- Ensure it handles the case where strategic docs don't exist yet
+- Verify doc paths reference `docs/` not `.agents/`
+- Update any stale references in the skill's templates
 
 ## Scope
 
 ### In Scope
-- Move VISION.md, STRATEGY.md, ARCHITECTURE.md to `docs/`
-- Update all references in skills, hooks, templates, AGENTS.md
-- Create `/crystallize` skill with diff-proposal flow
-- Add "suggest crystallize" logic to cleanup skill and session-end hook
-- Skill sidecar for Claude Code configuration
+- Add conditional `/reflect` suggestion to `/implement` AFTER phase
+- Add conditional `/reflect` suggestion to `/shape` completion
+- Add "extract before archive" flag to `/cleanup` session review
+- Review and fix any stale paths in `/reflect` SKILL.md
+- Build verification
 
 ### Out of Scope
-- Auto-running crystallize (always manual + suggested)
-- Creating a CLI command for crystallize (skill-only for now)
-- Modifying the docs/knowledge/ or docs/decisions/ systems
-- Knowledge staleness detection (that's SPEC-009)
+- Rewriting `/reflect` (it works — we're adding nudges, not rebuilding)
+- Hook-based suggestions (SessionStart/SessionEnd — too jarring)
+- Auto-running `/reflect` (always suggested, never automatic)
+- CLI command for reflect
+- Creating a new `/crystallize` skill (reflect covers this)
 
 ### Rabbit Holes
-- Building a smart diff engine — just show proposed text changes, don't build a merge tool
-- Trying to auto-detect ALL learnings — focus on explicit signals (decisions, key outcomes)
-- Over-engineering the suggestion trigger — a simple "session has unextracted decisions" check is enough
+- Over-engineering detection heuristics — simple string/frontmatter checks are enough
+- Adding a "did you reflect?" gate to archival or merging — the suggestion is sufficient
+- Trying to parse YAML frontmatter robustly inside skill markdown — grep patterns are fine
 
 ### No-Gos
 - Don't auto-write to strategic docs without human approval
-- Don't move docs/knowledge/ or docs/decisions/ (they're already in the right place)
-- Don't duplicate information that belongs in ADRs
+- Don't block workflow completion on reflect
+- Don't suggest reflect on every session — only when detection signals are present
 
 ## Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Crystallize proposals are too noisy/low-quality | Medium | Low | Start conservative — only propose for explicit decisions and outcomes, not every session detail |
-| Doc relocation breaks skill references | Low | Medium | Grep for all references, update systematically, verify with full build |
-| Users skip crystallize | Medium | Low | Suggestion prompts in cleanup and session-end; the skill is optional by design |
+| Detection heuristics produce false positives | Medium | Low | Advisory only — worst case is a skipped suggestion |
+| Users still skip reflect despite suggestions | Medium | Low | Acceptable — opt-in by design. The nudge is the improvement. |
+| Adding suggestions to skills makes their output noisier | Low | Low | One conditional line, only when signals are present |
 
 ## Open Questions
 
-- [x] Doc location → `docs/` root
-- [x] Crystallize output → proposed diffs for human review
-- [x] Trigger model → manual + suggested (never auto)
+- [x] New skill or enhance existing? → Enhance `/reflect` (no new skill)
+- [x] Where to suggest? → Inside workflows (implement, shape, cleanup), not session hooks
+- [x] Blocking or advisory? → Advisory only
 
 ## Test Conditions
 
-- [ ] `docs/VISION.md`, `docs/STRATEGY.md`, `docs/ARCHITECTURE.md` exist and are tracked in git
-- [ ] No remaining references to `.agents/VISION.md` etc. in skills or hooks
-- [ ] `loaf build` succeeds with relocated docs
-- [ ] `/crystallize` reads a session and proposes specific changes to strategic docs
-- [ ] Proposed changes are presented as diffs (old → new) for human review
-- [ ] Approved changes are written to the correct doc files
-- [ ] `/cleanup` suggests running `/crystallize` when sessions have extractable learnings
-- [ ] Session-end hook suggests `/crystallize` when session contains key decisions
+- [ ] `/implement` suggests `/reflect` after completing a spec when session has key decisions
+- [ ] `/implement` stays silent when session has no extractable learnings
+- [ ] `/shape` suggests `/reflect` after producing a spec when decisions were made
+- [ ] `/shape` stays silent when no decisions to extract
+- [ ] `/cleanup` flags sessions with learnings as "Extract & Archive"
+- [ ] `/cleanup` doesn't flag sessions without learnings
+- [ ] `/reflect` SKILL.md references `docs/` paths (not `.agents/`)
+- [ ] `loaf build` succeeds
 
 ## Circuit Breaker
 
-At 50%: Drop the session-end hook suggestion. Ship doc relocation + crystallize skill. Cleanup suggestion can be a fast-follow.
+At 50%: Ship `/implement` suggestion only (highest value). Skip shape and cleanup.
 
-At 75%: Drop the cleanup integration. Ship doc relocation + standalone `/crystallize` skill.
+At 75%: Add `/shape` suggestion. Skip cleanup integration.
