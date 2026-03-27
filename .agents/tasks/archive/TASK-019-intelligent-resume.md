@@ -1,15 +1,16 @@
 ---
 id: TASK-019
-title: "Enhance /resume for intelligent project resumption"
+title: Enhance /resume for intelligent project resumption
 spec: SPEC-002
 status: done
 priority: P1
-created: 2026-01-24T03:20:00Z
-updated: 2026-01-24T03:20:00Z
+created: '2026-01-24T03:20:00.000Z'
+updated: '2026-01-24T03:20:00.000Z'
 files:
   - src/commands/resume.md
-verify: "grep -l 'review.*sessions\\|propose.*plan' src/commands/resume.md"
-done: "/resume with no args reviews project state and proposes action plan"
+verify: grep -l 'review.*sessions\|propose.*plan' src/commands/resume.md
+done: /resume with no args reviews project state and proposes action plan
+completed_at: '2026-01-24T03:20:00.000Z'
 ---
 
 # TASK-019: Enhance /resume for intelligent project resumption

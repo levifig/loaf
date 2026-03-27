@@ -1,11 +1,11 @@
 ---
 id: TASK-033
-title: KB core library — types, loader, resolve, config
+title: 'KB core library — types, loader, resolve, config'
 spec: SPEC-009
 status: done
 priority: P1
 created: '2026-03-24T19:29:16Z'
-depends_on: []
+updated: '2026-03-24T19:29:16Z'
 files:
   - cli/lib/kb/types.ts
   - cli/lib/kb/loader.ts
@@ -18,8 +18,9 @@ verify: npm run typecheck && npm run test
 done: >-
   loader.ts can scan docs/knowledge/ and docs/decisions/, parse frontmatter via
   gray-matter, and return typed KnowledgeFile objects. resolve.ts finds git root
-  and loads loaf.json config. picomatch is a direct dependency. registerKbCommand()
-  is registered in index.ts (even if subcommands are stubs).
+  and loads loaf.json config. picomatch is a direct dependency.
+  registerKbCommand() is registered in index.ts (even if subcommands are stubs).
+completed_at: '2026-03-24T19:29:16Z'
 ---
 
 # TASK-033: KB core library — types, loader, resolve, config

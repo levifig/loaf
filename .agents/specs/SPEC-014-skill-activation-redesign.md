@@ -1,12 +1,10 @@
 ---
 id: SPEC-014
-title: "Skill Activation Redesign — foundations decomposition + agent elimination"
+title: Skill Activation Redesign — foundations decomposition + agent elimination
 source: brainstorm
-created: 2026-03-24T23:30:00Z
+created: '2026-03-24T23:30:00.000Z'
 status: drafting
-appetite: "Large (4+ sessions)"
-depends_on: []
-soft_dependencies: []
+appetite: Large (4+ sessions)
 ---
 
 # SPEC-014: Skill Activation Redesign

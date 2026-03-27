@@ -1,18 +1,19 @@
 ---
 id: TASK-017
-title: "Document orchestration session type"
+title: Document orchestration session type
 spec: SPEC-003
 status: done
 priority: P2
-created: 2026-01-24T03:30:00Z
-updated: 2026-01-24T03:30:00Z
+created: '2026-01-24T03:30:00.000Z'
+updated: '2026-01-24T03:30:00.000Z'
 depends_on:
   - TASK-016
 files:
   - src/skills/orchestration/SKILL.md
   - src/skills/orchestration/references/sessions.md
-verify: "grep -l 'orchestration' src/skills/orchestration/references/sessions.md"
-done: "Orchestration session type documented, SKILL.md topic table updated"
+verify: grep -l 'orchestration' src/skills/orchestration/references/sessions.md
+done: 'Orchestration session type documented, SKILL.md topic table updated'
+completed_at: '2026-01-24T03:30:00.000Z'
 ---
 
 # TASK-017: Document orchestration session type

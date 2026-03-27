@@ -1,11 +1,13 @@
 ---
 id: TASK-034
-title: KB validate, status, and review commands
+title: 'KB validate, status, and review commands'
 spec: SPEC-009
 status: done
 priority: P1
 created: '2026-03-24T19:29:16Z'
-depends_on: [TASK-033]
+updated: '2026-03-24T19:29:16Z'
+depends_on:
+  - TASK-033
 files:
   - cli/lib/kb/validate.ts
   - cli/commands/kb.ts
@@ -14,6 +16,7 @@ done: >-
   loaf kb validate reports missing topics/last_reviewed, invalid dates, and
   unmatched covers: globs. loaf kb status shows total file count and average
   review age. loaf kb review updates last_reviewed. All support --json.
+completed_at: '2026-03-24T19:29:16Z'
 ---
 
 # TASK-034: KB validate, status, and review commands
