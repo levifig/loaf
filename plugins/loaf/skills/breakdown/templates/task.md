@@ -1,6 +1,6 @@
 # Task Template
 
-**Location:** `.agents/tasks/TASK-{id}-{slug}.md`
+**Create with:** `loaf task create --title "..." --spec SPEC-XXX`
 
 ```yaml
 ---
