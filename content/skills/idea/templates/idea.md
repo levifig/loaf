@@ -10,8 +10,8 @@ title: "[Idea Title]"
 captured: YYYY-MM-DDTHH:MM:SSZ
 status: raw
 tags: []
-related: []            # Optional: spec IDs, file paths, or other idea files
-origin:                # Optional: brainstorm document this spark came from
+related: []            # Optional: spec IDs, idea filenames, or other references
+origin:                # Optional: draft filename this spark came from (e.g. drafts/YYYYMMDD-brainstorm-slug.md)
 ---
 
 # [Idea Title]
