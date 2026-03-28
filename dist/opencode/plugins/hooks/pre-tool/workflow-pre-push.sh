@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Hook: Pre-Push Advisory (INFORMATIONAL)
+# Hook: Pre-Push Gate (BLOCKING)
 # PreToolUse hook - reads JSON from stdin per Claude Code hooks API
 #
-# Triggers on git push commands
-# Shows branch naming and safety reminders (non-blocking)
+# Blocks git push commands until user explicitly approves
 
 set -euo pipefail
 
@@ -26,11 +25,10 @@ else
 fi
 COMMAND=$(parse_command "$INPUT")
 
-# Only match git push
-case "$COMMAND" in
-  *"git push"*) ;;
-  *) exit 0 ;;
-esac
+# Match git push as a command, not as substring in arguments (e.g. commit messages)
+if ! echo "$COMMAND" | grep -qE '(^|[;&|]\s*)git\s+push'; then
+  exit 0
+fi
 
 # Detect force-push flags
 FORCE_PUSH=false
