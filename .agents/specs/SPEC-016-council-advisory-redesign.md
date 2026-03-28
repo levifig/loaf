@@ -63,14 +63,14 @@ Each specialist produces:
 
 | Field | Description |
 |-------|-------------|
-| **Binary take** | ✅ or ❌ — forced commitment, no hedging |
+| **Take** | Adapts to question type: ✅/❌ for yes/no decisions, ranked pick for multi-option comparisons (e.g., "1st: X, 2nd: Y, avoid: Z"), position statement for open-ended questions. Always a forced commitment, no hedging. |
 | **Confidence** | High / Medium / Low with brief justification |
 | **Position** | Their recommended approach (1-2 sentences) |
 | **Pros/Cons** | Per option under consideration |
 | **Nuances** | Edge cases, hidden trade-offs, things others might miss |
 | **Suggestions** | Alternative approaches or modifications |
 
-Binary take + confidence are complementary: "My take is ❌ but I'm only Medium confident because..." is more useful than either alone.
+Take + confidence are complementary: "My take is ❌ but I'm only Medium confident because..." or "1st: Postgres, 2nd: CockroachDB — High confidence" is more useful than either alone.
 
 Output density is **adaptive** — concise (~200 words) for straightforward topics, detailed (~500 words) for complex ones. Claude judges based on question complexity.
 
@@ -146,7 +146,7 @@ Persist every council to `.agents/councils/` for future reference. Archive via `
 - [ ] Product/UX specialist included when question touches UX or product direction
 - [ ] Product/UX specialist omitted when question is purely technical — coordinator states this judgment
 - [ ] User can override the product/UX seat decision
-- [ ] Each specialist provides a binary take (✅ or ❌) alongside confidence
+- [ ] Each specialist provides a take (✅/❌, ranked pick, or position) alongside confidence
 - [ ] All specialists receive VISION.md + STRATEGY.md + ARCHITECTURE.md context
 
 ## Circuit Breaker
