@@ -2,8 +2,8 @@
 id: SPEC-011
 title: "Enhance /reflect with workflow-integrated suggestions"
 source: direct
-created: 2026-03-16T23:50:30Z
-status: approved
+created: '2026-03-16T23:50:30.000Z'
+status: complete
 appetite: "Small (1 session)"
 depends_on: []
 soft_dependencies: []
