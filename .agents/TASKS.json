@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 50,
+  "next_id": 53,
   "tasks": {
     "TASK-001": {
       "title": "Create verification reference",
@@ -979,6 +979,58 @@
       "updated": "2026-03-27T16:45:24.486Z",
       "completed_at": "2026-03-27T16:45:24.485Z",
       "file": "archive/TASK-049-hook-registration-build-integration-docs.md"
+    },
+    "TASK-050": {
+      "title": "Fix stale paths in /reflect SKILL.md",
+      "slug": "fix-stale-paths-in-reflect-skill-md",
+      "spec": "SPEC-011",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T23:19:02.500Z",
+      "updated": "2026-03-27T23:26:22.598Z",
+      "completed_at": "2026-03-27T23:26:22.597Z",
+      "file": "TASK-050-fix-stale-paths-in-reflect-skill-md.md"
+    },
+    "TASK-051": {
+      "title": "Add /reflect suggestion to /implement AFTER phase",
+      "slug": "add-reflect-suggestion-to-implement-after-phase",
+      "spec": "SPEC-011",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-050"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T23:19:05.410Z",
+      "updated": "2026-03-27T23:26:23.114Z",
+      "completed_at": "2026-03-27T23:26:23.114Z",
+      "file": "TASK-051-add-reflect-suggestion-to-implement-after-phase.md"
+    },
+    "TASK-052": {
+      "title": "Add /reflect suggestions to /shape and /cleanup",
+      "slug": "add-reflect-suggestions-to-shape-and-cleanup",
+      "spec": "SPEC-011",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-050"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-27T23:19:09.457Z",
+      "updated": "2026-03-27T23:26:23.582Z",
+      "completed_at": "2026-03-27T23:26:23.581Z",
+      "file": "TASK-052-add-reflect-suggestions-to-shape-and-cleanup.md"
     }
   },
   "specs": {

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Advisory `/reflect` suggestion in `/implement` AFTER phase when session has extractable learnings (SPEC-011)
+- Post-implementation reflection flag in `/shape` Step 9 for sessions with strategic tensions (SPEC-011)
+- `/reflect` recommendation in `/cleanup` extraction checks before archiving decision-rich sessions (SPEC-011)
+
+### Fixed
+- Stale `docs/specs/` paths in `/reflect`, `/shape`, and spec template — now `.agents/specs/`
+
 ## [2.0.0-dev.4] - 2026-03-27
 
 ### Added

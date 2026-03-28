@@ -56,7 +56,7 @@ Read in order: VISION.md, STRATEGY.md, ARCHITECTURE.md, existing specs.
 | Does this advance our vision? | VISION.md |
 | Does this serve our target personas? | STRATEGY.md |
 | Does this fit our technical constraints? | ARCHITECTURE.md |
-| Does this conflict with existing work? | docs/specs/ |
+| Does this conflict with existing work? | .agents/specs/ |
 
 If misaligned: surface the tension, adjust idea, or note for `/loaf:reflect` later.
 
@@ -74,7 +74,7 @@ Create spec following [spec template](templates/spec.md).
 ### Step 6: Generate Spec ID
 
 ```bash
-ls docs/specs/SPEC-*.md docs/specs/archive/SPEC-*.md 2>/dev/null | \
+ls .agents/specs/SPEC-*.md .agents/specs/archive/SPEC-*.md 2>/dev/null | \
   grep -oE 'SPEC-[0-9]+' | sort -t- -k2 -n | tail -1 | awk -F- '{print $2 + 1}'
 ```
 
@@ -86,7 +86,11 @@ Present full spec. **Do NOT create spec file without explicit approval.** User m
 
 ### Step 8: Create Spec File
 
-After approval: create `docs/specs/SPEC-{id}-{slug}.md`, update idea file status if applicable.
+After approval: create `.agents/specs/SPEC-{id}-{slug}.md`, update idea file status if applicable.
+
+### Step 9: Flag for Post-Implementation Reflection
+
+If shaping surfaced strategic tensions (noted in the spec's "Strategic Alignment" section per the Strategic Tensions guidelines below), remind the user: *"This spec has strategic tensions. After implementation ships, run `/loaf:reflect` to update strategic docs."* Don't suggest running `/loaf:reflect` now — strategy updates come from shipped work, not planning.
 
 ---
 
