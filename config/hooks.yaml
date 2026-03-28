@@ -69,9 +69,9 @@ hooks:
       skill: foundations
       script: hooks/pre-tool/workflow-pre-push.sh
       matcher: "Bash"
-      blocking: false
+      blocking: true
       timeout: 5000
-      description: Advisory push reminders (branch naming, uncommitted files, force-push safety)
+      description: Block git push without explicit user approval
 
     # Orchestration - Commit and Linear integration
     - id: validate-commit
