@@ -1035,13 +1035,13 @@
   },
   "specs": {
     "SPEC-011": {
-      "title": "Knowledge Lifecycle — doc relocation + /crystallize",
-      "status": "drafting",
-      "appetite": "Medium (3-5 days)",
+      "title": "Enhance /reflect with workflow-integrated suggestions",
+      "status": "complete",
+      "appetite": "Small (1 session)",
       "requirement": null,
       "source": "direct",
       "created": "2026-03-16T23:50:30.000Z",
-      "file": "SPEC-011-knowledge-lifecycle.md"
+      "file": "archive/SPEC-011-knowledge-lifecycle.md"
     },
     "SPEC-012": {
       "title": "Cleanup Refinement — differentiated processes + CLI",

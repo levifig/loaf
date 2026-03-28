@@ -86,7 +86,7 @@ They ship together because agent elimination depends on skills being granular en
 
 ## Sparks
 
-- **Council sessions without agents** — if agents are gone, council deliberation needs a new model: skill-composed perspectives? Structured prompting? Multi-pass with different system prompt overlays?
-- **Skill activation analytics** — instrument which skills actually trigger on which prompts, to measure whether description improvements help. Build into `loaf build` or a test harness.
-- **Plugin-group simplification** — with agents gone, plugin-groups become purely about skill bundling. Simplify the config model.
-- **Skill presets** — named bundles of skills that activate together, lighter than agents. "Python web dev" = python-development + database-design + infrastructure-management + foundations.
+- **Council sessions without agents** — if agents are gone, council deliberation needs a new model: skill-composed perspectives? Structured prompting? Multi-pass with different system prompt overlays? *(discarded — covered by SPEC-016)*
+- **Skill activation analytics** — instrument which skills actually trigger on which prompts, to measure whether description improvements help. Build into `loaf build` or a test harness. *(promoted)*
+- **Plugin-group simplification** — with agents gone, plugin-groups become purely about skill bundling. Simplify the config model. *(discarded — handled within SPEC-014)*
+- **Skill presets** — named bundles of skills that activate together, lighter than agents. "Python web dev" = python-development + database-design + infrastructure-management + foundations. *(discarded — description-based activation should suffice)*
