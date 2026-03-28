@@ -89,7 +89,7 @@ After approval: create `.agents/specs/SPEC-{id}-{slug}.md`, update idea file sta
 
 ### Step 9: Flag for Post-Implementation Reflection
 
-If the shaping session surfaced strategic tensions or key decisions (`## Key Decisions` has content, `traceability.decisions` has entries), note in the spec's "Strategic Alignment" section that `/reflect` should be run after implementation ships. Don't suggest running `/reflect` now — strategy updates come from shipped work, not planning.
+If shaping surfaced strategic tensions (noted in the spec's "Strategic Alignment" section per the Strategic Tensions guidelines below), remind the user: *"This spec has strategic tensions. After implementation ships, run `/reflect` to update strategic docs."* Don't suggest running `/reflect` now — strategy updates come from shipped work, not planning.
 
 ---
 
