@@ -184,6 +184,10 @@ After creating session AND plan files:
 5. `loaf task update TASK-XXX --status done`
 6. Update session file (status: complete, `archived_at`, `archived_by`)
 7. Commit housekeeping to main: `chore: close TASK-XXX session`
+8. **Suggest reflection:** Check the session file for extractable learnings before closing out:
+   - `## Key Decisions` has content (not `*(none yet)*` or empty)
+   - `traceability.decisions` has entries (ADRs were recorded)
+   If any signal is present, suggest: *"This session produced key decisions. Consider running `/reflect` to update strategic docs."* If none are present, stay silent.
 
 ---
 

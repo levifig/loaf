@@ -51,12 +51,13 @@ For EACH session file in `.agents/sessions/` and `.agents/sessions/archive/`:
 ### C. Check for Extraction Needs
 - [ ] Contains `lessons_learned`? → Extract to relevant docs
 - [ ] Contains unrecorded `decisions`? → Suggest ADR creation
+- [ ] `## Key Decisions` has content or `traceability.decisions` has entries? → Suggest running `/reflect` before archiving
 - [ ] Contains `remaining_work`/`next_steps`/`technical_debt`? → Check if tracked
 - [ ] CHANGELOG draft present but not integrated? → Flag for integration
 
 ### D. Present Per Session
 Summary (2-3 lines), issues found, extraction recommendations.
-Recommendation: **Extract & Archive** / **Archive** / **Keep**
+Recommendation: **Extract & Archive** (suggest `/reflect` first) / **Archive** / **Keep**
 
 ---
 
