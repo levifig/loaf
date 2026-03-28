@@ -1,6 +1,6 @@
 # Spec Template
 
-**Location:** `docs/specs/SPEC-{id}-{slug}.md`
+**Location:** `.agents/specs/SPEC-{id}-{slug}.md`
 
 ```yaml
 ---
