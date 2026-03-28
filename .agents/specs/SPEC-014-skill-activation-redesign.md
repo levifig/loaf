@@ -1,17 +1,17 @@
 ---
 id: SPEC-014
-title: Skill Activation Redesign — foundations decomposition + agent elimination
+title: "Harness Redesign — functional profiles, skill activation, build cleanup"
 source: brainstorm
 created: '2026-03-24T23:30:00.000Z'
 status: drafting
 appetite: Large (4+ sessions)
 ---
 
-# SPEC-014: Skill Activation Redesign
+# SPEC-014: Harness Redesign — Functional Profiles, Skill Activation, Build Cleanup
 
 ## Problem Statement
 
-Loaf's knowledge activation has two structural problems:
+Loaf's knowledge activation has two structural problems (a third — TDD discipline — is addressed downstream in SPEC-017):
 
 1. **The foundations skill is too broad to trigger precisely.** Its description ("Establishes code quality, commit conventions, documentation standards, and security patterns") covers 17 reference files spanning git workflow, debugging, security, code review, and documentation. When the context is "merge this PR," the skill's description doesn't match — and the squash merge conventions in `commits.md` don't load. Concrete incident: 2026-03-24, squash merge conventions missed during PR merge.
 
@@ -47,42 +47,146 @@ Each new skill gets:
 - `references/` directory with moved files
 - Relevant hooks reassigned via `skill:` field in `config/hooks.yaml`
 
-### Track B: Agent Elimination
+### Track B: Agent Convergence to Functional Profiles
 
-Remove all 8 role-based agents. Keep 2 system agents (background-runner, context-archiver). Don't create replacement agents — built-in agents (Explore, Plan, general-purpose) cover isolation needs.
+Converge 8 role-based agents into **3 functional profiles** defined by tool access boundaries, not domain identity. Keep 2 system agents unchanged. The main session becomes the coordinator — core orchestration principles are always active via SOUL.md, detailed procedures load on demand via skills.
+
+**Research context:** AmpCode, Cursor, GitHub Copilot, and Claude Code's own built-in agents all use functional boundaries (tool access, context isolation), not role-based identity. Nobody in the industry ships role-based agents. See Deep Agents (LangChain) for the eval-driven quality loop that complements this model.
+
+**The profile model — Tolkien-themed, race-aligned:**
+
+Each profile maps to a Middle-earth race. The race carries meaning: it tells you the tool boundary, the naming style, and the perspective the profile brings.
+
+| Role | Race | Concept | Tool Access | Name Style |
+|---|---|---|---|---|
+| **Warden** | Wizard | Coordinator — persistent AI partner, orchestrates, advises, delegates | Full | One persistent name (Warden's true name, defined in SOUL.md) |
+| **Smith** | Dwarf | Implementer — forges code, tests, config, docs into existence | Full write | Dwarvish: hard, short — Borin, Náin, Dwalin |
+| **Sentinel** | Elf | Reviewer — watches, guards, verifies. Sees what others miss. | Read-only | Elvish: flowing, musical — Galathir, Celindor, Ithren |
+| **Ranger** | Human | Researcher — scouts far, gathers intelligence, reports back | Read + Web (no Write, no Bash) | Mannish: Anglo-Saxon — Aldric, Haleth, Beren |
+| **Background runner** | — | Async non-blocking tasks | Read + Edit | System agent, haiku (unchanged) |
+| **Context archiver** | — | Session preservation pre-compaction | Read + Edit + Serena | System agent, haiku (unchanged) |
+
+Skills use concept names only ("spawn an implementer"). Profile definitions contain both lore and concept names in their content ("Smith (Implementer)"). SOUL.md maps lore to concept. This keeps skills lore-agnostic.
+
+Smiths have specialities via skills — a Smith spawned with `python-development` + `database-design` becomes a backend engineer. A Smith spawned with `infrastructure-management` becomes a devops engineer. Same profile, different forge.
+
+**The Warden — SOUL.md:**
+
+The Warden is the coordinator's persistent identity — a Wizard who guides the fellowship but walks not in their stead. Defined in a new `SOUL.md` file:
+- Warden persona and behavioral principles (delegation, session management, quality gates)
+- References the fellowship by lore + concept name (but doesn't define profiles — those live in `content/agents/implementer.md`, `reviewer.md`, `researcher.md`)
+- Council conventions (composition rules, who sits at the table)
+- Loaded at SessionStart (hook) and referenced from AGENTS.md (cross-compatibility)
+
+SOUL.md replaces the "~20 lines of orchestration principles in CLAUDE.md" concept. AGENTS.md references SOUL.md. The SessionStart hook ensures SOUL.md is always loaded.
+
+**The Council:**
+
+A Council convenes like the Council of Elrond — the races bring their perspectives to the table. No special title needed; they're Smiths and Rangers called to deliberate:
+
+| Member | Race | Perspective | When present |
+|---|---|---|---|
+| **Smiths** | Dwarf | "Can we build this? What are the trade-offs?" | Always (technical) |
+| **Rangers** | Human | "What do users need? Does this serve the vision?" | Default for non-technical questions (SPEC-016 product/UX seat) |
+| **The Warden** | Wizard | Orchestrates, presents, doesn't vote | Always |
+
+Sentinels (Reviewers) do NOT sit on councils — they come after, not during. Rangers serve dual roles: as researchers they scout; at the council they advocate for users. "Smiths only" = purely technical. "Smiths and Rangers" = product + technical. The Warden always orchestrates.
+
+**Profiles vs spawned identity:**
+
+A **profile** is a reusable capability shell — it defines only: tool boundary, behavioral contract, and reporting shape. A **spawned instance** receives its identity at runtime: name, concrete purpose, owned scope, and task-specific skill context.
+
+Example: `Task(name: "Borin — auth API implementation", subagent_type: "implementer", prompt: "Implement the auth module. [loads: python-development, database-design]")`. The profile (`implementer`) gives tool access. The prompt gives purpose, scope, and skill context. The Dwarvish name is display-level lore — the system sees `implementer`.
+
+This distinction is critical: **the implementer profile is NOT "backend-dev renamed."** It's a tool access shell. A spawned implementer becomes a backend developer, a DBA, a devops engineer, or a test author depending entirely on the prompt and skills loaded at spawn time. Skill context lives entirely in the spawn prompt — profiles have no default skill preloads.
+
+**Why 3 profiles, not 8 agents or 0 agents:**
+- Each profile has a **mechanically enforceable tool boundary** that makes its output trustworthy for a specific purpose
+- **Sentinel** (Reviewer/Elf) is read-only — it *cannot* modify what it's reviewing, so its audits are independent
+- **Ranger** (Researcher/Human) can read codebase + search web but *cannot* write or execute anything — purely observational. Output flows to the Warden as a structured report.
+- **Smith** (Implementer/Dwarf) covers all "write" work regardless of domain — skills provide domain knowledge, not the profile
+- A separate "test writer" profile was considered and rejected: same tool access as implementer, and the behavioral constraint ("only write test files") is prompt-level either way
+- The coordinator doesn't need a profile — it's the main session with orchestration skills loaded
 
 **What happens to each agent:**
 
 | Agent | Action | Rationale |
 |---|---|---|
-| pm | **Remove** | Orchestration skill becomes always-on. Task management is CLI. |
-| backend-dev | **Remove** | Language skills activate by context. |
-| frontend-dev | **Remove** | Language skills activate by context. |
-| qa | **Remove** | Testing discipline is in foundations. |
-| dba | **Remove** | database-design skill activates by context. |
-| design | **Remove** | interface-design skill activates by context. |
-| devops | **Remove** | infrastructure-management skill activates by context. |
-| power-systems | **Remove** | power-systems-modeling skill activates by context. |
+| pm | **Remove → Warden** (Wizard) | Main session IS the Warden. SOUL.md defines identity. |
+| backend-dev | **Remove → Smith** (Dwarf) | Domain knowledge via language/framework skills. |
+| frontend-dev | **Remove → Smith** (Dwarf) | Domain knowledge via language/framework skills. |
+| qa | **Remove → Sentinel** (Elf) | Testing discipline in skills. Read-only audit. |
+| dba | **Remove → Smith** (Dwarf) | database-design skill activates by context. |
+| design | **Remove → Sentinel** (Elf) | interface-design skill activates by context. Read-only review. |
+| devops | **Remove → Smith** (Dwarf) | infrastructure-management skill activates by context. |
+| power-systems | **Remove → Smith** (Dwarf) | power-systems-modeling skill activates by context. |
 | background-runner | **Keep** | Real procedural system prompt for async execution. |
 | context-archiver | **Keep** | Real procedural system prompt for session preservation. |
 
+**Instance naming — purpose first, lore second:**
+
+Each spawned instance gets a name combining functional purpose with a Middle-earth-style name matching its race. Names are generated on the fly by the Warden (original names in the linguistic style, not canonical characters), not reused within a session. The naming style signals the profile at a glance:
+
+```
+Implementer: Task(name: "Borin — auth API implementation", subagent_type: "implementer", ...)
+Implementer: Task(name: "Náin — schema migration", subagent_type: "implementer", ...)
+Reviewer:    Task(name: "Galathir — audit auth module", subagent_type: "reviewer", ...)
+Researcher:  Task(name: "Aldric — survey auth libraries", subagent_type: "researcher", ...)
+```
+
+The `subagent_type` is always the concept name. The Dwarvish/Elvish/Mannish instance name is display-level lore — the naming style signals the profile at a glance, but the system uses concept names.
+
 **Agent reference updates in skills:**
 
-Workflow skills that currently reference `{{AGENT:backend-dev}}` etc. will be updated to use natural-language subagent instructions. The current `{{AGENT:slug}}` substitution is purely cosmetic — it replaces with plain-text agent names at build time, not special syntax. Post-build, all targets see plain English.
+Workflow skills that currently reference `{{AGENT:backend-dev}}` etc. will be updated to reference profile-based spawning. The `{{AGENT:slug}}` substitution pattern is removed. Skills use **concept names only**: `Spawn an implementer for this task` or `Spawn a reviewer to audit this change`. Claude Code maps these to the Agent tool with `subagent_type: "implementer"` etc.
 
-After this change, skills use direct language: "Spawn a subagent for this implementation task with [relevant skills] preloaded." Claude Code interprets this via its Agent tool. Other targets either support subagents natively (Cursor) or don't (Codex, Gemini — the skill works inline in the main conversation). No build-time translation is needed because the instruction is the same everywhere — the harness decides how to execute it.
+The lore layer (Smith, Sentinel, Ranger) is applied by SOUL.md and the profile definitions — not by skills. This keeps skills lore-agnostic: if the theme changes, skills don't need updating.
 
-The `{{AGENT:...}}` substitution pattern and agent sidecar files (`.claude-code.yaml`, `.cursor.yaml`, `.opencode.yaml` per agent) are removed entirely.
+**Warden enforcement via SOUL.md:**
+
+SOUL.md defines the Warden's persistent identity and orchestration principles. AGENTS.md references SOUL.md (ensuring cross-compatibility). Example content:
+
+```markdown
+# Arandil — The Warden
+
+You are Arandil, the Warden — a Wizard who guides the fellowship
+but walks not in their stead. You orchestrate, advise, and delegate.
+
+## The Fellowship — Profiles
+- **Smith** (Implementer/Dwarf) — full write. Forges code, tests, config, docs.
+  Speciality via skills at spawn time. Dwarvish instance names.
+- **Sentinel** (Reviewer/Elf) — read-only. Watches, guards, verifies.
+  Elvish instance names.
+- **Ranger** (Researcher/Human) — read + web. Scouts far, reports back.
+  Mannish instance names.
+
+## Principles
+- Delegate forging to Smiths — don't write production code directly
+- Delegate verification to Sentinels
+- Delegate scouting to Rangers
+- Sessions are mandatory for implementation work
+- Tasks are tracked via `loaf task` CLI
+
+## Council
+Convene Smiths + Rangers for deliberation. Rangers advocate for users,
+informed by their scouting. Sentinels come after, not during.
+Smiths only for purely technical questions. The Warden orchestrates,
+never votes.
+```
+
+Detailed procedures stay in skills (loaded on demand).
+
+**Self-healing SessionStart hook:**
+
+A SessionStart hook validates that SOUL.md is referenced and loadable. If present, it passes silently. If missing, the hook injects the Warden identity from a canonical template (`content/templates/soul.md`) and warns the user. This ensures every session has the Warden identity regardless of file state.
 
 **Council session redesign:**
 
-The council-session skill currently spawns role agents for "diverse perspectives." After agent elimination, it will dynamically construct ephemeral pseudo-agents based on the discussion topic:
+Handled separately in SPEC-016, which uses the racial composition model (Smiths + Rangers, Warden as coordinator, adaptive takes, strategic context always provided).
 
-1. Analyze the topic and determine relevant perspectives (not roles — perspectives)
-2. Construct per-perspective agent definitions with focused system prompts and relevant skills preloaded
-3. Spawn each as a subagent, collect perspectives, synthesize
+### Track B2: TDD Flow and Spec-as-Eval
 
-This produces better deliberation because perspectives are topic-specific ("security implications of this auth change") rather than generic role-play ("QA agent reviews").
+Extracted to **SPEC-017** (TDD Harness). SPEC-014 establishes the profile model; SPEC-017 defines how those profiles are orchestrated in a TDD cycle, including the test-writing pattern, reviewer audit protocol, eval accumulation, and spec template evolution to binary Rs.
 
 ### Track C: Description Audit
 
@@ -110,16 +214,23 @@ description: >-
 
 **Build system:**
 - Remove `{{AGENT:...}}` substitution pattern from `cli/lib/build/lib/substitutions.ts` (`buildAgentMap()`, `substituteAgentNames()`)
-- Remove agent discovery (`discoverAgents()`) from target transformers — or scope it to system agents only
-- Remove agent sidecar files (`content/agents/*.{target}.yaml` for all 8 role agents)
+- Replace agent discovery (`discoverAgents()`) with profile-aware discovery — system agents (background-runner, context-archiver) + profile definitions (implementer, reviewer, researcher)
+- Remove 8 role-agent files from `content/agents/`; add `implementer.md`, `reviewer.md`, `researcher.md`
+- Profile definitions specify only: tool access boundary and behavioral contract. Skill context and naming are provided at spawn time by the coordinator, not baked into the profile.
 - Keep system agent processing for background-runner and context-archiver (Claude Code only)
 - Clean up agent-specific types in `cli/lib/build/types.ts`
-- Remove agent output generation from claude-code.ts, cursor.ts, opencode.ts
+- Update agent output generation in claude-code.ts, cursor.ts, opencode.ts for profiles
 
 **Config cleanup:**
 - Remove `plugin-groups` from `config/hooks.yaml` entirely — they are legacy dead code (the build system ignores them, confirmed in code comments: "Legacy plugin groupings kept for documentation purposes"). Skill discovery is via filesystem scan; hook assignment is via each hook's `skill:` field.
 - Update hook `skill:` fields to reference new skill names where appropriate (e.g., `check-secrets` → `skill: security-compliance`)
 - Remove `agent:` field from all skill sidecar files (`.claude-code.yaml`)
+
+**SOUL.md + AGENTS.md update:**
+- Create `SOUL.md` defining Arandil (the Warden), referencing fellowship profiles by lore + concept name, and orchestration principles
+- Update `.agents/AGENTS.md` to reference SOUL.md
+- Create `content/templates/soul.md` as canonical source for build distribution
+- Add SessionStart hook that validates SOUL.md is loadable; injects from template if missing
 
 ## Scope
 
@@ -127,27 +238,32 @@ description: >-
 
 - Split foundations into 4-5 focused skills (new SKILL.md, sidecars, moved references)
 - Slim down foundations to code quality core
-- Delete 8 role-agent files from `content/agents/`
-- Update all workflow skills that reference `{{AGENT:...}}` patterns
-- Redesign council-session skill for dynamic perspective-based pseudo-agents
-- Make orchestration skill universally active (not gated behind PM agent)
+- Replace 8 role-agent files with `content/agents/implementer.md`, `reviewer.md`, `researcher.md`
+- Update all workflow skills that reference `{{AGENT:...}}` patterns to use profile-based spawning
+- Core orchestration principles always active via SOUL.md; detailed skill loads on demand (no PM agent gate)
+- Create SOUL.md with Warden identity, fellowship profiles, and council conventions; reference from AGENTS.md
+- TDD flow and spec template evolution handled in SPEC-017
 - Audit and rewrite descriptions for all ~24 skills
 - Remove `plugin-groups` section from `config/hooks.yaml` (legacy dead code)
 - Update hook `skill:` fields to reference new skill names
 - Remove `agent:` field from all skill sidecars
-- Remove agent-processing code from build target transformers
+- Update build system for profile-aware agent discovery
 - Remove `{{AGENT:...}}` substitution pattern and `buildAgentMap()`/`substituteAgentNames()`
-- Remove agent sidecar files for role agents
-- Update `docs/ARCHITECTURE.md` to reflect new model
-- Update `.claude/CLAUDE.md` / `.agents/AGENTS.md` if they reference agents
+- Remove role-agent sidecar files
+- Update `docs/ARCHITECTURE.md` to reflect profiles model
+- Update `.agents/AGENTS.md` to reference SOUL.md
+- Create canonical `content/templates/soul.md` template
+- Add self-healing SessionStart hook (validates + backfills SOUL.md)
 
 ### Out of Scope
 
-- Creating new persistent custom agents to replace role agents
+- Council redesign (handled in SPEC-016)
 - Rewriting reference file content (only reorganization)
 - Changes to the CLI tool itself (commands, types, etc.)
-- Skill evaluation framework or activation analytics (brainstorm spark)
+- Skill evaluation framework or activation analytics (separate idea)
 - Changes to system agents (background-runner, context-archiver)
+- Middle-earth name catalog (generated on the fly by the Warden in racial style, no static list needed)
+- Agent Teams / peer-to-peer communication (future, additive to this model)
 - Cross-harness testing beyond build output verification (manual testing on Cursor, Codex, etc.)
 
 ### Rabbit Holes
@@ -159,26 +275,30 @@ description: >-
 
 ### No-Gos
 
-- Don't create persistent custom agents to replace role agents — the whole point is eliminating the routing layer
-- Don't embed domain knowledge in agent system prompts — skills are the knowledge layer
+- Don't create role-based agents to replace role agents — profiles are functional, defined by tool access, not domain identity
+- Don't embed domain knowledge in profile definitions — skills are the knowledge layer
 - Don't break cross-harness build output — all targets must still build cleanly
 - Don't change skill content beyond descriptions and organization — reference material stays intact
+- Don't make the coordinator a separate spawned agent — main session IS the coordinator
 
 ## Dependencies
 
 | Dependency | Type | Status | Notes |
 |---|---|---|---|
-| None | — | — | This spec has no hard dependencies. It touches content, config, and build code but doesn't require new CLI features or external systems. |
+| None | Hard | — | No hard dependencies. Touches content, config, and build code but doesn't require new CLI features or external systems. |
+| SPEC-017 | Soft (downstream) | Drafting | TDD harness builds on top of SPEC-014's profile model. Ship SPEC-014 first. |
+| SPEC-016 | Soft (downstream) | Drafting | Council redesign aligns with profile model but can ship independently. |
 
 ## Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | Skill descriptions don't trigger as precisely as expected | Medium | Medium | Test with real prompts before and after. Iterate descriptions based on observed activation. |
-| Council session redesign is more complex than expected | Medium | Low | Circuit breaker: ship with council flagged as "needs manual perspective specification" |
+| Behavioral constraints ignored (implementer writes production code when told to write tests) | Medium | Low | Advisory only — addressed in SPEC-017's TDD orchestration pattern. Reviewer catches violations. |
 | Build system cleanup breaks a target | Low | High | Run `loaf build` for all targets after every change. Diff output against pre-change baseline. |
 | Some workflow skills depend on agent behavior we haven't identified | Low | Medium | Grep for all `{{AGENT:` patterns and `agent:` sidecar fields. Map every reference before removing. |
-| Orchestration skill is too noisy when always-active | Low | Medium | Review orchestration description — ensure it activates on task/session management contexts, not every conversation. |
+| Orchestration principles in SOUL.md add too much weight to system prompt | Low | Medium | Keep to ~20 lines. Principles only, not procedures. |
+| Parallel implementers conflict on shared files | Low | Medium | Coordinator scopes each implementer to independent concerns. Code review catches conflicts. |
 
 ## Resolved Questions
 
@@ -188,31 +308,47 @@ description: >-
 
 ## Open Questions
 
-- [ ] Should the foundations `scripts/` directory (check-commit-msg.sh, check-secrets.sh, etc.) be redistributed to new skills, or kept centrally? Scripts are referenced from hooks, not from SKILL.md.
-- [ ] The `implement` skill currently delegates to agents for parallel execution. Without role agents, should it use built-in `general-purpose` for isolation, or construct ephemeral agents with skills preloaded? (Leaning toward natural-language spawning — let Claude decide based on context.)
-- [ ] Should `orchestration` gain a `disable-model-invocation: false` + `user-invocable: false` combo to ensure it's always available to Claude but never manually invoked? Currently it's a workflow skill (`user-invocable: true`).
+- [x] Should the foundations `scripts/` directory (check-commit-msg.sh, check-secrets.sh, etc.) be redistributed to new skills, or kept centrally? → Keep centrally. Scripts are referenced by hooks via `skill:` field, not by SKILL.md. Moving them adds complexity without benefit. The `skill:` field on each hook points to the correct new skill for attribution.
+- [x] The `implement` skill currently delegates to agents for parallel execution. Without role agents, should it use built-in `general-purpose` for isolation, or construct ephemeral agents with skills preloaded? → Use profile-based spawning: `subagent_type: "implementer"` or `"reviewer"`. Claude Code's Agent tool handles the rest.
+- [x] Should `orchestration` gain a `disable-model-invocation: false` + `user-invocable: false` combo? → Yes. Orchestration becomes a reference skill — always available to the model (detailed procedures for SOUL.md principles), never in the user's `/` menu. Users interact through `/implement`.
+- [x] How should profile definitions be structured? → As agent `.md` files with frontmatter (same format as today). Slimmer: tool boundary + behavioral contract only. No skill lists, no domain knowledge.
+- [x] What defines the orchestration principles? → SOUL.md — the Warden's persistent identity file. Referenced from AGENTS.md, validated by SessionStart hook. See Track B for example content.
 
 ## Test Conditions
 
-- [ ] `loaf build` succeeds for all 5 targets (claude-code, cursor, opencode, codex, gemini) with no agent-related output except system agents
-- [ ] `npm run typecheck` passes
-- [ ] `npm run test` passes
-- [ ] No `{{AGENT:` patterns remain in any built output
-- [ ] Each new skill from the foundations split has: SKILL.md with description, sidecar, references/ directory, registration in hooks.yaml
-- [ ] Foundations skill's reference table no longer includes moved references
-- [ ] All 8 role-agent files are deleted from `content/agents/`
-- [ ] Workflow skills (implement, orchestration, council-session) work without role agents — spawning general-purpose or ephemeral agents for isolation
-- [ ] Council-session skill can construct perspective-based pseudo-agents dynamically
-- [ ] Orchestration skill loads universally (not gated behind PM agent)
-- [ ] Every skill (reference and workflow) has an audited description with action verb opener and user-intent phrases
-- [ ] `docs/ARCHITECTURE.md` reflects the skills-first model
-- [ ] A prompt like "merge this PR" in a Loaf project activates the git-workflow skill (not just foundations)
-- [ ] A prompt like "debug this flaky test" activates the debugging skill
+Binary requirements — each passes (✅) or fails (❌), no partial credit.
+
+### Build integrity
+- [ ] R0: `loaf build` succeeds for all 5 targets; agent-capable targets emit profiles; skill-only targets unchanged
+- [ ] R1: `npm run typecheck` and `npm run test` pass
+- [ ] R2: Zero `{{AGENT:` patterns in any built output
+
+### Foundations decomposition
+- [ ] R3: Each new skill (git-workflow, debugging, security-compliance, documentation-standards) has SKILL.md + sidecar + references/
+- [ ] R4: Slimmed foundations no longer references moved files
+- [ ] R5: A prompt "merge this PR" activates git-workflow (not just foundations)
+- [ ] R6: A prompt "debug this flaky test" activates debugging (not just foundations)
+
+### Profile model
+- [ ] R7: 8 role-agent files deleted; 3 profile definitions exist (`implementer.md`, `reviewer.md`, `researcher.md`) with lore names in content
+- [ ] R8: Reviewer profile has read-only tool access (mechanically enforced); `subagent_type: "reviewer"`
+- [ ] R9: Researcher profile has read + web only, no write or bash access (mechanically enforced); `subagent_type: "researcher"`
+- [ ] R10: Multiple implementer instances can run in parallel with purpose-first lore names; `subagent_type: "implementer"`
+
+### Warden + orchestration
+- [ ] R11: SOUL.md defines Warden identity, fellowship profiles, and council conventions
+- [ ] R12: AGENTS.md references SOUL.md; SOUL.md sourced from canonical template
+- [ ] R13: SessionStart hook detects missing SOUL.md and injects from template
+- [ ] R14: `docs/ARCHITECTURE.md` reflects the profile model with Tolkien naming
+- [ ] R15: Skills reference concept names only (e.g., "spawn an implementer"); lore applied by SOUL.md and profile definitions, not skills
+
+### Description audit
+- [ ] R16: Every skill has an audited description with action verb opener, user-intent phrases, and negative routing
 
 ## Circuit Breaker
 
-**At 50% appetite:** Ship foundations decomposition (Track A) + description audit for new skills only. Agents still exist but are flagged for removal. Build system untouched.
+**At 50% appetite:** Ship foundations decomposition (Track A) + description audit for new skills only. Role agents still exist but are flagged for removal. Build system untouched.
 
-**At 75% appetite:** Ship foundations decomposition + agent elimination (Tracks A + B) + build cleanup (Track D). Description audit limited to reference skills. Council redesign deferred.
+**At 75% appetite:** Ship foundations decomposition + agent convergence to profiles (Tracks A + B) + build cleanup (Track D). Description audit limited to reference skills.
 
-**At 100% appetite:** Full spec: all four tracks including comprehensive description audit and council redesign.
+**At 100% appetite:** All four tracks including comprehensive description audit and SOUL.md with Arandil identity.
