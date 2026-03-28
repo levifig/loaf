@@ -11,6 +11,7 @@ import { registerSpecCommand } from "./commands/spec.js";
 import { registerKbCommand } from "./commands/kb.js";
 import { registerSetupCommand } from "./commands/setup.js";
 import { registerVersionCommand } from "./commands/version.js";
+import { registerCleanupCommand } from "./commands/cleanup.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -40,6 +41,7 @@ registerSpecCommand(program);
 registerKbCommand(program);
 registerSetupCommand(program);
 registerVersionCommand(program);
+registerCleanupCommand(program);
 
 // Show help when no subcommand is given (exit 0, not error)
 if (process.argv.length <= 2) {

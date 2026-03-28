@@ -19,6 +19,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { createInterface } from "readline";
 
+import { askYesNo } from "../lib/prompts.js";
 import { getLastTag, getCommitsSince, suggestBump } from "../lib/release/commits.js";
 import type { ParsedCommit } from "../lib/release/commits.js";
 import {
@@ -45,32 +46,6 @@ const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-function askYesNo(question: string): Promise<boolean> {
-  if (!process.stdin.isTTY) {
-    return Promise.resolve(false);
-  }
-
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    let resolved = false;
-    rl.on("close", () => {
-      if (!resolved) {
-        resolved = true;
-        resolve(false);
-      }
-    });
-    rl.question(question, (answer) => {
-      resolved = true;
-      rl.close();
-      resolve(answer.trim().toLowerCase().startsWith("y"));
-    });
-  });
-}
 
 async function askChoice(
   question: string,
