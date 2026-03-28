@@ -1,12 +1,10 @@
 ---
 id: SPEC-011
-title: "Enhance /reflect with workflow-integrated suggestions"
+title: Enhance /reflect with workflow-integrated suggestions
 source: direct
 created: '2026-03-16T23:50:30.000Z'
 status: complete
-appetite: "Small (1 session)"
-depends_on: []
-soft_dependencies: []
+appetite: Small (1 session)
 ---
 
 # SPEC-011: Enhance /reflect with workflow-integrated suggestions
