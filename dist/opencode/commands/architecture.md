@@ -3,7 +3,6 @@ description: >-
   Creates Architecture Decision Records (ADRs) through structured evaluation.
   Use when making technical decisions or when the user asks "should we use X or
   Y?"
-agent: '{{AGENT:pm}}'
 subtask: false
 version: 2.0.0-dev.5
 ---

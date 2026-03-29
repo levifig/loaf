@@ -4,7 +4,6 @@ description: >-
   Covers thermal rating models (CIGRE TB 601, IEEE 738), conductor physics, and
   electrical properties.
 user-invocable: false
-agent: backend-dev
 allowed-tools: 'Read, Write, Edit, Glob, Grep, Bash(python:*)'
 ---
 

@@ -28,13 +28,13 @@ Delegate specialized work to specialized agents.
 
 ## Quick Reference
 
-| Agent | Specialization | Use For |
-|-------|----------------|---------|
-| `{{AGENT:backend-dev}}` | Server-side logic | APIs, services, business logic |
-| `{{AGENT:frontend-dev}}` | Client-side UI | Components, state, styling |
-| `{{AGENT:dba}}` | Database | Schema, migrations, queries |
-| `{{AGENT:qa}}` | Testing | Test suites, quality checks |
-| `{{AGENT:devops}}` | Infrastructure | CI/CD, deployment, config |
+| Profile | Specialization | Use For |
+|---------|----------------|---------|
+| `implementer` | Server-side logic | APIs, services, business logic (with language skill) |
+| `implementer` | Client-side UI | Components, state, styling (with typescript-development) |
+| `implementer` | Database | Schema, migrations, queries (with database-design) |
+| `implementer` | Testing | Test suites, quality checks (with foundations) |
+| `implementer` | Infrastructure | CI/CD, deployment, config (with infrastructure-management) |
 
 ## When to Use Subagents
 
@@ -68,7 +68,7 @@ Match task to specialization:
 
 ```markdown
 Task: Add user validation endpoint
-Agent: {{AGENT:backend-dev}}
+Profile: implementer (with python-development)
 Why: Server-side API work
 ```
 
@@ -84,7 +84,8 @@ Include:
 
 ```
 [Task tool invocation]
-- Subagent type: {{AGENT:backend-dev}}
+- Subagent type: implementer
+- Skills: [language skill + domain skills]
 - Task: [Clear description]
 - Context: [Relevant details]
 ```
@@ -102,7 +103,7 @@ When subagent completes:
 ```markdown
 ## Subagent Task
 
-**Agent:** [{{AGENT:backend-dev}} | {{AGENT:frontend-dev}} | {{AGENT:dba}} | {{AGENT:qa}} | {{AGENT:devops}}]
+**Profile:** [implementer | reviewer | researcher]
 
 **Objective:**
 [One sentence: what to accomplish]
@@ -155,7 +156,7 @@ When subagent completes:
 When Task B needs Task A's output:
 
 ```
-1. Dispatch Task A ({{AGENT:backend-dev}})
+1. Dispatch Task A (implementer)
 2. Wait for completion
 3. Verify Task A output
 4. Dispatch Task B with Task A's output as context
@@ -166,8 +167,8 @@ When Task B needs Task A's output:
 When tasks are independent:
 
 ```
-1. Dispatch Task A ({{AGENT:backend-dev}})
-2. Dispatch Task B ({{AGENT:frontend-dev}}) [parallel]
+1. Dispatch Task A (implementer with backend skills)
+2. Dispatch Task B (implementer with frontend skills) [parallel]
 3. Wait for both
 4. Integrate results
 ```

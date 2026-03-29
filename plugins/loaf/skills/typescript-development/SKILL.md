@@ -4,7 +4,6 @@ description: >-
   Covers TypeScript 5+, React 18+, Next.js 14+ App Router, Zustand, Tailwind
   CSS, and Vitest testing.
 user-invocable: false
-agent: '{{AGENT:frontend-dev}}'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---
 

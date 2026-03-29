@@ -4,7 +4,6 @@ description: >-
   Covers Ruby and Rails 8+ development: Hotwire, Solid Queue, Minitest, and
   Rails conventions.
 user-invocable: false
-agent: '{{AGENT:backend-dev}}'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---
 

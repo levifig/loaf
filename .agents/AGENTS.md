@@ -31,11 +31,11 @@ cli/                            # CLI tool (TypeScript, bundled by tsup)
 content/                        # Distributable content
 ├── skills/{name}/SKILL.md      # Domain knowledge + references/ + templates/
 ├── templates/                  # Shared templates (distributed at build time)
-├── agents/{name}.md            # Thin routers (frontmatter: model, skills, tools)
+├── agents/{name}.md            # Functional profiles (tool boundaries + behavioral contracts)
 └── hooks/{pre,post}-tool/      # Hook scripts
 
 config/                         # Build configuration
-├── hooks.yaml                  # Hook definitions, plugin-groups
+├── hooks.yaml                  # Hook definitions
 └── targets.yaml                # Target defaults, sidecars, shared-templates
 ```
 
@@ -51,11 +51,21 @@ config/                         # Build configuration
 | Config | `config/` | `hooks.yaml`, `targets.yaml` |
 | CLI | `cli/` | `index.ts` |
 
+## Agent Profiles
+
+See [SOUL.md](../SOUL.md) for the Warden identity and fellowship conventions.
+
+| Profile | Concept | Tool Access | Use For |
+|---------|---------|-------------|---------|
+| **implementer** | Smith (Dwarf) | Full write | Code, tests, config, docs — speciality via skills |
+| **reviewer** | Sentinel (Elf) | Read-only | Audits, reviews — mechanical independence |
+| **researcher** | Ranger (Human) | Read + web | Research, comparison — structured reports |
+| **background-runner** | System | Read + Edit | Async non-blocking tasks |
+| **context-archiver** | System | Read + Edit + Serena | Session preservation |
+
 ## Common Tasks
 
-**Add skill:** Create `content/skills/{name}/SKILL.md`, add to `plugin-groups` in `hooks.yaml`
-
-**Add agent:** Create `content/agents/{name}.md`, add to `plugin-groups` in `hooks.yaml`
+**Add skill:** Create `content/skills/{name}/SKILL.md`, register hooks in `hooks.yaml`
 
 **Add hook:** Create script in `content/hooks/{pre,post}-tool/`, register in `hooks.yaml`
 
@@ -183,7 +193,6 @@ Claude Code-specific fields go in `SKILL.claude-code.yaml`:
 ```yaml
 # Claude Code extensions
 user-invocable: false
-agent: backend-dev
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ```
 
@@ -193,7 +202,6 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 | `disable-model-invocation` | `true` for manual-only workflows |
 | `argument-hint` | Autocomplete hint: `"[topic]"`, `"[file]"` |
 | `context` | `fork` to run in subagent |
-| `agent` | Subagent type when `context: fork` |
 | `model` | Override model for this skill |
 | `hooks` | Skill-scoped lifecycle hooks |
 
@@ -308,14 +316,15 @@ npm link                       # Make `loaf` available globally
 
 ### hooks.yaml
 
-Register new skills/agents in plugin-groups:
+Register hooks with their `skill:` field pointing to the relevant skill:
 
 ```yaml
-plugin-groups:
-  my-group:
-    description: Group description
-    agents: [agent-name]
-    skills: [skill-name, foundations]
+hooks:
+  pre-tool:
+    - id: my-hook
+      skill: my-skill
+      script: hooks/pre-tool/my-hook.sh
+      matcher: "Edit|Write"
 ```
 
 ### targets.yaml

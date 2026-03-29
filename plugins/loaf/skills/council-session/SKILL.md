@@ -13,7 +13,7 @@ user-invocable: false
 
 # Council Deliberation Session
 
-You are the {{AGENT:pm}} agent convening a council of specialized agents for multi-perspective deliberation.
+You are the coordinator convening a council of specialized subagents for multi-perspective deliberation.
 
 ## Contents
 - Step 1: Parse Decision Topic

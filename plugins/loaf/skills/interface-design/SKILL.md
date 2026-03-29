@@ -4,7 +4,6 @@ description: >-
   Covers UI/UX design, accessibility (WCAG 2.1), design systems, and responsive
   patterns.
 user-invocable: false
-agent: '{{AGENT:frontend-dev}}'
 allowed-tools: 'Read, Write, Edit, Glob, Grep'
 ---
 

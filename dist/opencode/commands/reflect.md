@@ -2,7 +2,6 @@
 description: >-
   Integrates learnings from shipped work into strategic documents. Use after
   completing significant work or when the user asks "what did we learn?"
-agent: '{{AGENT:pm}}'
 subtask: false
 version: 2.0.0-dev.5
 ---

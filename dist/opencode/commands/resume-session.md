@@ -2,7 +2,6 @@
 description: >-
   Resumes existing session files and syncs state with Linear. Use when the user
   asks "resume that session" or "pick up where we left off."
-agent: '{{AGENT:pm}}'
 subtask: false
 version: 2.0.0-dev.5
 ---

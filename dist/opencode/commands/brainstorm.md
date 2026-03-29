@@ -6,7 +6,6 @@ description: >-
   tradeoffs, or comparing approaches without committing. Produces brainstorm
   documents with sparks (speculative byproducts) that can later be promoted to
   ideas via /idea.
-agent: '{{AGENT:pm}}'
 subtask: false
 version: 2.0.0-dev.5
 ---

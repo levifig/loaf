@@ -2,7 +2,6 @@
 name: infrastructure-management
 description: 'Covers Docker, Kubernetes, GitOps, CI/CD pipelines, and container security.'
 user-invocable: false
-agent: '{{AGENT:devops}}'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---
 

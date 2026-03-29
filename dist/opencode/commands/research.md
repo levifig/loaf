@@ -2,7 +2,6 @@
 description: >-
   Conducts project assessment and topic investigation. Use when stepping back to
   understand the big picture or when the user asks "what's the current state?"
-agent: '{{AGENT:pm}}'
 subtask: false
 version: 2.0.0-dev.5
 ---
