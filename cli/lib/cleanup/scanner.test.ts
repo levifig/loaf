@@ -292,6 +292,24 @@ describe("drafts", () => {
     expect(rec?.hint).toContain("Sparks");
   });
 
+  it("flags drafts promoted to a spec", () => {
+    writeArtifact("drafts", "brainstorm-loaf-cli.md", { title: "Brainstorm", created: new Date().toISOString() });
+    writeIndex(
+      {},
+      {
+        "SPEC-009": {
+          title: "Knowledge Management", status: "complete", appetite: null,
+          requirement: null, source: ".agents/drafts/brainstorm-loaf-cli.md",
+          created: "2026-03-01", file: "archive/SPEC-009-knowledge.md",
+        },
+      },
+    );
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "brainstorm-loaf-cli.md");
+    expect(rec?.action).toBe("flag");
+    expect(rec?.reason).toContain("promoted to spec");
+  });
+
   it("skips recent drafts", () => {
     writeArtifact("drafts", "draft-003.md", { title: "Fresh draft", created: new Date().toISOString() });
     writeIndex();

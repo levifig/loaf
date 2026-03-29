@@ -403,16 +403,39 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
   return recs;
 }
 
-function scanDrafts(agentsDir: string): CleanupRecommendation[] {
+function scanDrafts(agentsDir: string, index: TaskIndex): CleanupRecommendation[] {
   const dir = join(agentsDir, "drafts");
   const files = readMdFiles(dir);
   const recs: CleanupRecommendation[] = [];
+
+  // Build set of draft references from spec source fields.
+  // Specs record source as full path (".agents/drafts/FILE.md") or keyword ("brainstorm", "direct").
+  const promotedDrafts = new Set<string>();
+  for (const entry of Object.values(index.specs)) {
+    if (entry.source && entry.source.includes("/drafts/")) {
+      // Extract bare filename from path
+      const filename = entry.source.replace(/^.*\/drafts\//, "");
+      promotedDrafts.add(filename);
+    }
+  }
 
   for (const file of files) {
     const fm = file.frontmatter;
     const days = daysSince(lastActivity(fm) || fm.created as string);
 
-    if (days !== null && days > 30) {
+    // Check if this draft has been promoted to a spec
+    if (promotedDrafts.has(file.filename)) {
+      const hasSparks = file.raw.includes("## Sparks");
+      recs.push({
+        type: "draft",
+        path: file.path,
+        filename: file.filename,
+        action: "flag",
+        reason: "Draft promoted to spec — served its purpose",
+        hint: hasSparks ? "Contains ## Sparks section — review before deletion" : "Can be archived or deleted",
+        frontmatter: fm,
+      });
+    } else if (days !== null && days > 30) {
       const hasSparks = file.raw.includes("## Sparks");
       recs.push({
         type: "draft",
@@ -683,7 +706,7 @@ export function scanArtifacts(options: ScanOptions): ScanResult {
   if (shouldScan("task")) recommendations.push(...scanTasks(agentsDir, index));
   if (shouldScan("spec")) recommendations.push(...scanSpecs(agentsDir, index));
   if (shouldScan("plan")) recommendations.push(...scanPlans(agentsDir));
-  if (shouldScan("draft")) recommendations.push(...scanDrafts(agentsDir));
+  if (shouldScan("draft")) recommendations.push(...scanDrafts(agentsDir, index));
   if (shouldScan("council")) recommendations.push(...scanCouncils(agentsDir));
   if (shouldScan("report")) recommendations.push(...scanReports(agentsDir));
 
