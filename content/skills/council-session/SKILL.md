@@ -7,7 +7,8 @@ description: >-
   specialists", "what do the experts think", or wants a structured debate
   between domain-specific viewpoints. Not for single-perspective research
   (use research) or architectural decisions that don't need multi-agent
-  deliberation (use architecture).
+  deliberation (use architecture). Produces structured council reports with
+  per-specialist analysis and synthesized recommendations.
 ---
 
 # Council Deliberation Session

@@ -1,7 +1,11 @@
 ---
 name: interface-design
 description: >-
-  Covers UI/UX design, accessibility (WCAG 2.1), design systems, and responsive patterns.
+  Covers UI/UX design principles, accessibility (WCAG 2.1), design systems, color
+  theory, typography, and responsive patterns. Use when making design decisions,
+  evaluating layouts, or ensuring accessibility compliance. Not for writing
+  frontend code (use typescript-development) or API design (use
+  documentation-standards).
 ---
 
 # Design Principles

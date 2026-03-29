@@ -1,8 +1,10 @@
 ---
 name: architecture
 description: >-
-  Creates Architecture Decision Records (ADRs) through structured evaluation. Use when making
-  technical decisions or when the user asks "should we use X or Y?"
+  Creates Architecture Decision Records (ADRs) through structured evaluation. Use
+  when making technical decisions or when the user asks "should we use X or Y?"
+  Produces ADRs and updates to ARCHITECTURE.md. Not for strategic direction (use
+  strategy) or multi-perspective deliberation (use council-session).
 ---
 
 # Architecture
