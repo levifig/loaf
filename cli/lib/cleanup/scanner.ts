@@ -541,6 +541,7 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
           filename: file.filename,
           action: "archive",
           reason: `Council is ${days} days old — decision recorded, session completed`,
+          hint: "Verify the linked session summary captures the council outcome before archiving",
           frontmatter: fm,
         });
       } else {
