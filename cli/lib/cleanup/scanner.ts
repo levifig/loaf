@@ -430,9 +430,9 @@ function scanDrafts(agentsDir: string, index: TaskIndex): CleanupRecommendation[
         type: "draft",
         path: file.path,
         filename: file.filename,
-        action: "flag",
+        action: "delete",
         reason: "Draft promoted to spec — served its purpose",
-        hint: hasSparks ? "Contains ## Sparks section — review before deletion" : "Can be archived or deleted",
+        hint: hasSparks ? "Contains ## Sparks section — review before deletion" : undefined,
         frontmatter: fm,
       });
     } else if (days !== null && days > 30) {

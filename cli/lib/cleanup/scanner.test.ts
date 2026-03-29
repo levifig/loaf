@@ -306,7 +306,7 @@ describe("drafts", () => {
     );
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "brainstorm-loaf-cli.md");
-    expect(rec?.action).toBe("flag");
+    expect(rec?.action).toBe("delete");
     expect(rec?.reason).toContain("promoted to spec");
   });
 
