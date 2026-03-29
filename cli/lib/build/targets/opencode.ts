@@ -57,6 +57,14 @@ export async function build({
   copyAgents(srcDir, distDir);
   generateCommandsFromSkills(srcDir, distDir, version);
   generateHooks(config as HooksConfig, srcDir, distDir);
+
+  // Copy plugin-root templates (e.g. soul.md for SessionStart hook)
+  const soulTemplateSrc = join(srcDir, "templates", "soul.md");
+  if (existsSync(soulTemplateSrc)) {
+    const templatesDir = join(distDir, "templates");
+    mkdirSync(templatesDir, { recursive: true });
+    cpSync(soulTemplateSrc, join(templatesDir, "soul.md"));
+  }
 }
 
 function copySkills(
