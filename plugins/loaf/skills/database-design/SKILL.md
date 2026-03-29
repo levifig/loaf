@@ -4,7 +4,7 @@ description: >-
   Covers schema design, migrations, query optimization, indexing strategies, and
   normalization tradeoffs.
 user-invocable: false
-agent: 'backend-dev'
+agent: '{{AGENT:backend-dev}}'
 allowed-tools: 'Read, Write, Edit, Glob, Grep, Bash(psql:*, sqlite3:*, mysql:*)'
 ---
 

@@ -7,14 +7,14 @@ description: >-
   between domain-specific viewpoints. Not for single-perspective research (use
   research) or architectural decisions that don't need multi-agent deliberation
   (use architecture).
-agent: PM
+agent: '{{AGENT:pm}}'
 subtask: false
 version: 2.0.0-dev.5
 ---
 
 # Council Deliberation Session
 
-You are the PM agent convening a council of specialized agents for multi-perspective deliberation.
+You are the {{AGENT:pm}} agent convening a council of specialized agents for multi-perspective deliberation.
 
 ## Contents
 - Step 1: Parse Decision Topic

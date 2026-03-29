@@ -30,11 +30,11 @@ Delegate specialized work to specialized agents.
 
 | Agent | Specialization | Use For |
 |-------|----------------|---------|
-| `Backend Dev` | Server-side logic | APIs, services, business logic |
-| `Frontend Dev` | Client-side UI | Components, state, styling |
-| `DBA` | Database | Schema, migrations, queries |
-| `QA` | Testing | Test suites, quality checks |
-| `DevOps` | Infrastructure | CI/CD, deployment, config |
+| `{{AGENT:backend-dev}}` | Server-side logic | APIs, services, business logic |
+| `{{AGENT:frontend-dev}}` | Client-side UI | Components, state, styling |
+| `{{AGENT:dba}}` | Database | Schema, migrations, queries |
+| `{{AGENT:qa}}` | Testing | Test suites, quality checks |
+| `{{AGENT:devops}}` | Infrastructure | CI/CD, deployment, config |
 
 ## When to Use Subagents
 
@@ -68,7 +68,7 @@ Match task to specialization:
 
 ```markdown
 Task: Add user validation endpoint
-Agent: Backend Dev
+Agent: {{AGENT:backend-dev}}
 Why: Server-side API work
 ```
 
@@ -84,7 +84,7 @@ Include:
 
 ```
 [Task tool invocation]
-- Subagent type: Backend Dev
+- Subagent type: {{AGENT:backend-dev}}
 - Task: [Clear description]
 - Context: [Relevant details]
 ```
@@ -102,7 +102,7 @@ When subagent completes:
 ```markdown
 ## Subagent Task
 
-**Agent:** [Backend Dev | Frontend Dev | DBA | QA | DevOps]
+**Agent:** [{{AGENT:backend-dev}} | {{AGENT:frontend-dev}} | {{AGENT:dba}} | {{AGENT:qa}} | {{AGENT:devops}}]
 
 **Objective:**
 [One sentence: what to accomplish]
@@ -155,7 +155,7 @@ When subagent completes:
 When Task B needs Task A's output:
 
 ```
-1. Dispatch Task A (Backend Dev)
+1. Dispatch Task A ({{AGENT:backend-dev}})
 2. Wait for completion
 3. Verify Task A output
 4. Dispatch Task B with Task A's output as context
@@ -166,8 +166,8 @@ When Task B needs Task A's output:
 When tasks are independent:
 
 ```
-1. Dispatch Task A (Backend Dev)
-2. Dispatch Task B (Frontend Dev) [parallel]
+1. Dispatch Task A ({{AGENT:backend-dev}})
+2. Dispatch Task B ({{AGENT:frontend-dev}}) [parallel]
 3. Wait for both
 4. Integrate results
 ```

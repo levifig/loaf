@@ -116,7 +116,7 @@ When sessions are archived, decisions are extracted to Serena memory:
 ### Decision 1: JWT Token Rotation Strategy
 **Decision**: Rotate tokens every 15 minutes with sliding window refresh
 **Rationale**: Balances security (limited token lifetime) with UX (seamless refresh)
-**Council**: None - backend-dev recommendation accepted
+**Council**: None - {{AGENT:backend-dev}} recommendation accepted
 
 ### Decision 2: Refresh Token Storage
 **Decision**: Store refresh tokens in HttpOnly cookies, not localStorage
@@ -131,7 +131,7 @@ When sessions are archived, decisions are extracted to Serena memory:
 
 ## Workflow
 
-### At Archive Time (context-archiver)
+### At Archive Time ({{AGENT:context-archiver}})
 
 1. Read session file
 2. Check for `## Decisions` section

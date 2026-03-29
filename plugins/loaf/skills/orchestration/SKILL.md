@@ -4,7 +4,7 @@ description: >-
   Coordinates multi-agent work: agent delegation, session management, Linear
   integration, and council workflows.
 user-invocable: false
-agent: 'pm'
+agent: '{{AGENT:pm}}'
 allowed-tools: 'Read, Write, Edit, Glob, Grep, TodoWrite, TodoRead'
 ---
 

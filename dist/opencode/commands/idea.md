@@ -4,7 +4,7 @@ description: >-
   says "I have an idea" or "note this down." Also activate when a specific
   actionable concept crystallizes during conversation. Without arguments, scans
   brainstorm documents for unprocessed sparks to promote.
-agent: PM
+agent: '{{AGENT:pm}}'
 subtask: false
 version: 2.0.0-dev.5
 ---

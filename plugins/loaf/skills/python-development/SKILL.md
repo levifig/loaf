@@ -4,7 +4,7 @@ description: >-
   Covers Python 3.12+ with FastAPI, Pydantic, async patterns, pytest,
   SQLAlchemy, and uv toolchain.
 user-invocable: false
-agent: 'backend-dev'
+agent: '{{AGENT:backend-dev}}'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---
 

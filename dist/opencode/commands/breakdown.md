@@ -2,7 +2,7 @@
 description: >-
   Decomposes specs into atomic tasks with dependencies and priorities. Use when
   the user asks "break this down" or "create tasks for this spec."
-agent: PM
+agent: '{{AGENT:pm}}'
 subtask: false
 version: 2.0.0-dev.5
 ---

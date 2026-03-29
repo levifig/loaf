@@ -12,7 +12,7 @@ description: >-
 
 # Council Deliberation Session
 
-You are the PM agent convening a council of specialized agents for multi-perspective deliberation.
+You are the {{AGENT:pm}} agent convening a council of specialized agents for multi-perspective deliberation.
 
 ## Contents
 - Step 1: Parse Decision Topic

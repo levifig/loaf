@@ -4,7 +4,7 @@ description: >-
   Covers idiomatic Go development: project structure, concurrency, error
   handling, and testing.
 user-invocable: false
-agent: 'backend-dev'
+agent: '{{AGENT:backend-dev}}'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---
 
