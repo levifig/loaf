@@ -176,12 +176,15 @@ After creating session AND plan files:
 ### AFTER (Completion)
 1. Code review pass (spawn `pr-review-toolkit:code-reviewer`)
 2. Spawn `{{AGENT:qa}}` for final testing
-3. If on a feature branch: push and create PR (`gh pr create`). Follow PR format and squash merge conventions in [commits reference](../foundations/references/commits.md).
-4. After merge lands on main, switch to main and pull
-5. `loaf task update TASK-XXX --status done`
-6. Update session file (status: complete, `archived_at`, `archived_by`)
-7. Commit housekeeping to main: `chore: close TASK-XXX session`
-8. **Suggest reflection:** Check the session file for extractable learnings before closing out:
+3. **Close out spec artifacts on the branch** (included in the squash merge):
+   - `loaf task update TASK-XXX --status done` (for each task)
+   - `loaf task archive --spec SPEC-XXX`
+   - Mark spec complete and archive: `loaf spec archive SPEC-XXX`
+   - Update session file (status: complete, `archived_at`, `archived_by`)
+   - Commit: `chore: close SPEC-XXX — archive tasks, spec, and session`
+4. If on a feature branch: push and create PR (`gh pr create`). Follow PR format and squash merge conventions in [commits reference](../foundations/references/commits.md).
+5. After merge lands on main: switch to main, pull, delete merged branch.
+6. **Suggest reflection:** Check the session file for extractable learnings before closing out:
    - `## Key Decisions` has content (not `*(none yet)*` or empty)
    - `traceability.decisions` has entries (ADRs were recorded)
    If any signal is present, suggest: *"This session produced key decisions. Consider running `/reflect` to update strategic docs."* If none are present, stay silent.
