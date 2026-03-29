@@ -484,15 +484,18 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
         frontmatter: fm,
       });
     } else if (days !== null && days > 14) {
-      // If the council has a valid linked session, it's archive-ready (outcome captured).
-      // Without a session link, just flag for review.
-      if (sessionRef && matchesAnySession(normalizeSessionRef(sessionRef))) {
+      // Archive only if council has a Decision/outcome recorded.
+      // The council file itself is the source — check for ## Decision content.
+      const hasDecision = file.raw.includes("## Decision") &&
+        !file.raw.match(/## Decision\s*\n\s*\n\s*(\[To be filled|$)/);
+
+      if (hasDecision && sessionRef && matchesAnySession(normalizeSessionRef(sessionRef))) {
         recs.push({
           type: "council",
           path: file.path,
           filename: file.filename,
           action: "archive",
-          reason: `Council is ${days} days old with linked session — ready for archive`,
+          reason: `Council is ${days} days old with decision recorded — ready for archive`,
           frontmatter: fm,
         });
       } else {
@@ -501,7 +504,9 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
           path: file.path,
           filename: file.filename,
           action: "flag",
-          reason: `Stale council — ${days} days old, no linked session`,
+          reason: hasDecision
+            ? `Stale council — ${days} days old, no linked session`
+            : `Stale council — ${days} days old, decision not yet recorded`,
           frontmatter: fm,
         });
       }
@@ -592,14 +597,16 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
         });
       }
     } else {
+      // Unprocessed reports: flag if stale, skip if recent.
+      // No age-based archive — reports must be processed first.
       const days = daysSince(lastActivity(fm));
       if (days !== null && days > 14) {
         recs.push({
           type: "report",
           path: file.path,
           filename: file.filename,
-          action: "archive",
-          reason: `Report is ${days} days old — ready for archive`,
+          action: "flag",
+          reason: `Report is ${days} days old but not yet processed`,
           frontmatter: fm,
         });
       } else {

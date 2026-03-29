@@ -353,7 +353,7 @@ describe("councils", () => {
       topic: "Orchestration format",
       timestamp: staleDate,
       session: "20260301-session",
-    });
+    }, "## Decision\n\nUse option B.\n");
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "council-005.md");
@@ -361,18 +361,33 @@ describe("councils", () => {
     expect(rec?.reason).toContain("days old");
   });
 
-  it("recommends archive for old councils with valid linked session", () => {
+  it("recommends archive for old councils with decision recorded and valid session", () => {
     const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
     writeSession("20260301-session.md", { status: "active", last_updated: new Date().toISOString() });
     writeNestedArtifact("councils", "council-004.md", "council", {
       topic: "Old council",
       created: staleDate,
       session_reference: ".agents/sessions/20260301-session.md",
-    });
+    }, "## Decision\n\nApproved option A.\n");
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "council-004.md");
     expect(rec?.action).toBe("archive");
+  });
+
+  it("flags old councils without decision recorded", () => {
+    const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
+    writeSession("20260301-session.md", { status: "active", last_updated: new Date().toISOString() });
+    writeNestedArtifact("councils", "council-006.md", "council", {
+      topic: "Undecided council",
+      created: staleDate,
+      session_reference: ".agents/sessions/20260301-session.md",
+    }, "## Decision\n\n[To be filled after user approval]\n");
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "council-006.md");
+    expect(rec?.action).toBe("flag");
+    expect(rec?.reason).toContain("decision not yet recorded");
   });
 });
 
@@ -417,6 +432,21 @@ describe("reports", () => {
     const rec = findRec(result.recommendations, "report-004.md");
     expect(rec?.action).toBe("flag");
     expect(rec?.reason).toContain("missing session_reference");
+  });
+
+  it("flags old unprocessed reports instead of archiving them", () => {
+    const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
+    writeNestedArtifact("reports", "report-005.md", "report", {
+      status: "pending",
+    });
+    // Need to write with a stale date — use flat frontmatter for created
+    const dir = setupDir("reports");
+    writeFileSync(join(dir, "report-005.md"), `---\nreport:\n  status: "pending"\ncreated: ${JSON.stringify(staleDate)}\n---\n`, "utf-8");
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "report-005.md");
+    expect(rec?.action).toBe("flag");
+    expect(rec?.reason).toContain("not yet processed");
   });
 
   it("skips processed reports when linked session is not yet archived", () => {
