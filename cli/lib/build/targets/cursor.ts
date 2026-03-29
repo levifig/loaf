@@ -248,12 +248,12 @@ function mapSessionEvent(event: string): string {
 }
 
 function getHookCommand(hook: HookDefinition): string {
-  const scriptPath = hook.script.replace(/^hooks\//, "");
+  const scriptPath = hook.script!.replace(/^hooks\//, "");
   const basePath = "$HOME/.cursor/hooks";
 
-  if (hook.script.endsWith(".py")) {
+  if (hook.script!.endsWith(".py")) {
     return `python3 ${basePath}/${scriptPath}`;
-  } else if (hook.script.endsWith(".ts")) {
+  } else if (hook.script!.endsWith(".ts")) {
     return `bun run ${basePath}/${scriptPath}`;
   }
   return `bash ${basePath}/${scriptPath}`;
@@ -271,16 +271,20 @@ function generateHooksJson(config: HooksConfig, distDir: string): void {
 
   const hooks = hooksJson.hooks as Record<string, unknown>;
 
-  if (preToolHooks.length > 0) {
-    hooks.preToolUse = preToolHooks.map((hook) => ({
+  // Filter out prompt hooks — Cursor only supports command (script) hooks
+  const commandPreToolHooks = preToolHooks.filter((h) => h.type !== "prompt");
+  const commandPostToolHooks = postToolHooks.filter((h) => h.type !== "prompt");
+
+  if (commandPreToolHooks.length > 0) {
+    hooks.preToolUse = commandPreToolHooks.map((hook) => ({
       command: getHookCommand(hook),
       timeout: Math.floor((hook.timeout || 60000) / 1000),
       ...(hook.matcher && { matcher: hook.matcher }),
     }));
   }
 
-  if (postToolHooks.length > 0) {
-    hooks.postToolUse = postToolHooks.map((hook) => ({
+  if (commandPostToolHooks.length > 0) {
+    hooks.postToolUse = commandPostToolHooks.map((hook) => ({
       command: getHookCommand(hook),
       timeout: 30,
       ...(hook.matcher && { matcher: hook.matcher }),
