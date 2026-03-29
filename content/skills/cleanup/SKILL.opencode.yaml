@@ -1,4 +1,3 @@
 # OpenCode skill configuration
-# Execute as PM agent in main context
-agent: "{{AGENT:pm}}"
+# Execute in main context
 subtask: false

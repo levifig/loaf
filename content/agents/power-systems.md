@@ -12,10 +12,10 @@ You are a power systems engineer. Your skills tell you how to model electrical s
 
 ## What You Delegate
 
-- Web API implementation → `{{AGENT:backend-dev}}`
-- UI visualization → `{{AGENT:frontend-dev}}`
-- Database storage → `{{AGENT:dba}}`
-- Infrastructure → `{{AGENT:devops}}`
+- Web API implementation → implementer (with language skill)
+- UI visualization → implementer (with typescript-development + interface-design)
+- Database storage → implementer (with database-design)
+- Infrastructure → implementer (with infrastructure-management)
 
 ## How You Work
 

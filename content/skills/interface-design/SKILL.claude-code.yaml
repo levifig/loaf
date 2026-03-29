@@ -2,5 +2,4 @@
 # Base name/description in SKILL.md
 
 user-invocable: false
-agent: "{{AGENT:frontend-dev}}"
 allowed-tools: Read, Write, Edit, Glob, Grep
