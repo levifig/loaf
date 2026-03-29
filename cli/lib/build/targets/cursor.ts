@@ -19,7 +19,7 @@ import { join, dirname, basename } from "path";
 import { parse as parseYaml } from "yaml";
 import { loadSkillFrontmatter, loadTargetSkillSidecar, loadAgentSidecarOptional } from "../lib/sidecar.js";
 import { getVersion, injectVersion } from "../lib/version.js";
-import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
+
 import { copySharedTemplates } from "../lib/shared-templates.js";
 import { copyDirWithTransform } from "../lib/copy-utils.js";
 import type { BuildContext, HooksConfig, HookDefinition } from "../types.js";
@@ -52,9 +52,7 @@ export async function build({
   distDir,
 }: BuildContext): Promise<void> {
   const version = getVersion(rootDir);
-  const agentMap = buildAgentMap(srcDir, TARGET_NAME);
-  const transformMd = (content: string) =>
-    substituteAgentNames(substituteCommands(content), agentMap);
+  const transformMd = (content: string) => substituteCommands(content);
 
   const skillsDir = join(distDir, "skills");
   const agentsDir = join(distDir, "agents");
@@ -72,7 +70,7 @@ export async function build({
   }
 
   copySkills(srcDir, skillsDir, version, targetsConfig, transformMd);
-  copyAgents(srcDir, agentsDir, targetConfig, version, agentMap);
+  copyAgents(srcDir, agentsDir, targetConfig, version);
   copyHooks(srcDir, hooksDir);
   generateHooksJson(config as HooksConfig, distDir);
 }
@@ -140,7 +138,6 @@ function copyAgents(
   destDir: string,
   targetConfig: BuildContext["targetConfig"],
   version: string,
-  agentMap: Record<string, string>,
 ): void {
   const src = join(srcDir, "agents");
   if (!existsSync(src)) return;
@@ -174,11 +171,7 @@ function copyAgents(
     };
 
     const bodyWithFooter = body.trim() + `\n\n---\nversion: ${version}\n`;
-    const transformed = substituteAgentNames(
-      matter.stringify(bodyWithFooter, frontmatter),
-      agentMap,
-    );
-    writeFileSync(destPath, transformed);
+    writeFileSync(destPath, matter.stringify(bodyWithFooter, frontmatter));
   }
 }
 

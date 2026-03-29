@@ -24,7 +24,7 @@ import { join } from "path";
 import { parse as parseYaml } from "yaml";
 import { loadAgentSidecar, loadSkillFrontmatter } from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
-import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
+
 import { copySharedTemplates } from "../lib/shared-templates.js";
 import { copyDirWithTransform } from "../lib/copy-utils.js";
 import type { BuildContext, HooksConfig, HookDefinition } from "../types.js";
@@ -46,9 +46,7 @@ export async function build({
   distDir,
 }: BuildContext): Promise<void> {
   const version = getVersion(rootDir);
-  const agentMap = buildAgentMap(srcDir, TARGET_NAME);
-  const transformMd = (content: string) =>
-    substituteAgentNames(substituteCommands(content), agentMap);
+  const transformMd = (content: string) => substituteCommands(content);
 
   if (existsSync(distDir)) {
     rmSync(distDir, { recursive: true });
@@ -56,8 +54,8 @@ export async function build({
   mkdirSync(distDir, { recursive: true });
 
   copySkills(srcDir, distDir, targetsConfig, transformMd);
-  copyAgents(srcDir, distDir, agentMap);
-  generateCommandsFromSkills(srcDir, distDir, version, agentMap);
+  copyAgents(srcDir, distDir);
+  generateCommandsFromSkills(srcDir, distDir, version);
   generateHooks(config as HooksConfig, srcDir, distDir);
 }
 
@@ -114,7 +112,6 @@ function copySkills(
 function copyAgents(
   srcDir: string,
   distDir: string,
-  agentMap: Record<string, string>,
 ): void {
   const src = join(srcDir, "agents");
   const dest = join(distDir, "agents");
@@ -133,11 +130,7 @@ function copyAgents(
     const { content: body } = matter(content);
     const frontmatter = loadAgentSidecar(srcPath, TARGET_NAME);
 
-    const transformed = substituteAgentNames(
-      matter.stringify(body, frontmatter),
-      agentMap,
-    );
-    writeFileSync(destPath, transformed);
+    writeFileSync(destPath, matter.stringify(body, frontmatter));
   }
 }
 
@@ -145,7 +138,6 @@ function generateCommandsFromSkills(
   srcDir: string,
   distDir: string,
   version: string,
-  agentMap: Record<string, string>,
 ): void {
   const skillsSrc = join(srcDir, "skills");
   const commandsDest = join(distDir, "commands");
@@ -179,19 +171,12 @@ function generateCommandsFromSkills(
       version,
     };
 
-    if (mergedFrontmatter.agent && typeof mergedFrontmatter.agent === "string") {
-      mergedFrontmatter.agent = substituteAgentNames(mergedFrontmatter.agent, agentMap);
-    }
-
     // Rewrite relative links for command files
     const relinked = body
       .replace(/\]\(templates\//g, `](../skills/${skill}/templates/`)
       .replace(/\]\(references\//g, `](../skills/${skill}/references/`);
 
-    const transformed = substituteAgentNames(
-      substituteCommands(matter.stringify(relinked, mergedFrontmatter)),
-      agentMap,
-    );
+    const transformed = substituteCommands(matter.stringify(relinked, mergedFrontmatter));
     writeFileSync(join(commandsDest, `${skill}.md`), transformed);
   }
 }

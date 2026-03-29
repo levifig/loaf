@@ -55,24 +55,12 @@ export interface HookDefinition {
   event?: string;
 }
 
-export interface PluginGroup {
-  description: string;
-  agents: string[];
-  skills: string[];
-  "related-hooks"?: {
-    "pre-tool"?: string[];
-    "post-tool"?: string[];
-    session?: string[];
-  };
-}
-
 export interface HooksConfig {
   hooks: {
     "pre-tool"?: HookDefinition[];
     "post-tool"?: HookDefinition[];
     session?: HookDefinition[];
   };
-  "plugin-groups"?: Record<string, PluginGroup>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
