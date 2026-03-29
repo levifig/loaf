@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 53,
+  "next_id": 57,
   "tasks": {
     "TASK-001": {
       "title": "Create verification reference",
@@ -1031,6 +1031,70 @@
       "updated": "2026-03-27T23:26:23.582Z",
       "completed_at": "2026-03-27T23:26:23.581Z",
       "file": "archive/TASK-052-add-reflect-suggestions-to-shape-and-cleanup.md"
+    },
+    "TASK-053": {
+      "title": "Extract shared prompt helpers to cli/lib/prompts.ts",
+      "slug": "extract-shared-prompt-helpers-to-cli-lib-prompts-t",
+      "spec": "SPEC-012",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-28T23:36:06.000Z",
+      "updated": "2026-03-28T23:36:06.000Z",
+      "completed_at": null,
+      "file": "TASK-053-extract-shared-prompt-helpers-to-cli-lib-prompts-t.md"
+    },
+    "TASK-054": {
+      "title": "Build cleanup scanner engine",
+      "slug": "build-cleanup-scanner-engine",
+      "spec": "SPEC-012",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-28T23:36:09.760Z",
+      "updated": "2026-03-28T23:36:09.760Z",
+      "completed_at": null,
+      "file": "TASK-054-build-cleanup-scanner-engine.md"
+    },
+    "TASK-055": {
+      "title": "Wire loaf cleanup CLI command with interactive mode",
+      "slug": "wire-loaf-cleanup-cli-command-with-interactive-mod",
+      "spec": "SPEC-012",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-28T23:36:10.956Z",
+      "updated": "2026-03-28T23:36:10.956Z",
+      "completed_at": null,
+      "file": "TASK-055-wire-loaf-cleanup-cli-command-with-interactive-mod.md"
+    },
+    "TASK-056": {
+      "title": "Update cleanup skill to reference CLI",
+      "slug": "update-cleanup-skill-to-reference-cli",
+      "spec": "SPEC-012",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-03-28T23:36:12.093Z",
+      "updated": "2026-03-28T23:36:12.093Z",
+      "completed_at": null,
+      "file": "TASK-056-update-cleanup-skill-to-reference-cli.md"
     }
   },
   "specs": {
@@ -1177,6 +1241,15 @@
       "source": "direct",
       "created": "2026-03-27T13:32:06.000Z",
       "file": "archive/SPEC-015-workflow-hooks-changelog.md"
+    },
+    "SPEC-017": {
+      "title": "TDD Harness — spec-driven testing, eval accumulation, reviewer-to-R mapping",
+      "status": "drafting",
+      "appetite": "Medium (3-5 sessions)",
+      "requirement": null,
+      "source": "SPEC-014",
+      "created": "2026-03-28T15:45:00.000Z",
+      "file": "SPEC-017-tdd-harness.md"
     }
   }
 }

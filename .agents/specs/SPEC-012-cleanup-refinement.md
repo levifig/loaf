@@ -1,17 +1,18 @@
 ---
 id: SPEC-012
-title: "Cleanup Refinement — differentiated processes + CLI"
+title: Cleanup Refinement — differentiated processes + CLI
 source: direct
-created: 2026-03-16T23:50:30Z
-status: drafting
-appetite: "Medium (3-5 days)"
+created: '2026-03-16T23:50:30.000Z'
+status: implementing
+branch: feat/cleanup-cli
+appetite: Medium (3-5 days)
 ---
 
 # SPEC-012: Cleanup Refinement
 
 ## Problem Statement
 
-The `/cleanup` skill (formerly `/review-sessions`) reviews agent artifacts and recommends actions, but it treats all artifact states the same way and relies entirely on the agent following skill instructions. There's no CLI surface for humans to run cleanup directly, no differentiated handling for completed vs stale vs cancelled work, and no guardrails against accidental data loss.
+The `/cleanup` skill already defines differentiated handling rules for every artifact type (sessions, tasks, specs, plans, drafts, councils, reports) — but those rules only execute when an agent reads the skill and follows its instructions. There's no CLI surface for humans to run cleanup directly, no way to automate or test the rules, and no guardrails against accidental data loss. The gap is CLI automation of existing policy, not defining new policy.
 
 ## Strategic Alignment
 
@@ -21,19 +22,21 @@ The `/cleanup` skill (formerly `/review-sessions`) reviews agent artifacts and r
 
 ## Solution Direction
 
-### Part 1: Differentiated Artifact Handling
+### Part 1: CLI Implementation of Existing Cleanup Rules
 
-Refine the cleanup skill with explicit processes per artifact state:
+The cleanup skill already defines these rules. The CLI implements them programmatically:
 
-| Artifact | State | Process | Preservation |
-|----------|-------|---------|-------------|
+| Artifact | State | Action | Preservation |
+|----------|-------|--------|-------------|
 | **Sessions** | Completed | Archive (move to archive/) | Full — set `archived_at`, `archived_by` |
-| **Sessions** | Stale (>7 days inactive) | Review → user decides | Never auto-delete |
+| **Sessions** | Stale (>7 days inactive) | Flag for review | Never auto-delete |
 | **Sessions** | Cancelled/abandoned | Archive with `status: cancelled` | Preserved with reason |
-| **Specs** | Complete | Archive | Full — move to archive/ |
+| **Tasks** | Done | Archive via `loaf task archive` (per-task or `--spec`) | Full — uses existing archive helpers |
+| **Tasks** | Orphaned (no spec match) | Flag for review | Never auto-delete |
+| **Specs** | Complete | Archive via `loaf spec archive` | Full — uses existing archive helpers |
 | **Specs** | Stale drafting | Flag for review | Never auto-delete |
 | **Plans** | Session archived | Delete | Ephemeral — decisions in session |
-| **Plans** | Orphaned (no session) | Delete | Ephemeral — no value without session |
+| **Plans** | Orphaned (no linked session) | Delete | Ephemeral — no value without session |
 | **Drafts** | Promoted to spec | Archive or delete (user choice) | Ask first |
 | **Drafts** | Stale (>30 days) | Flag for review | Never auto-delete |
 | **Councils** | Session summary captured | Archive | Full preservation |
@@ -41,9 +44,27 @@ Refine the cleanup skill with explicit processes per artifact state:
 
 **Core principle:** Archive, don't delete — except for truly ephemeral artifacts (plans) whose value lives entirely in session files and git history.
 
+### V1 Artifact Contract
+
+| Directory | Status | Notes |
+|-----------|--------|-------|
+| `sessions/` | **Required** | Scaffolded by `loaf init` |
+| `specs/` | **Required** | Scaffolded by `loaf init` |
+| `tasks/` | **Required** | Scaffolded by `loaf init` |
+| `ideas/` | **Required** | Scaffolded by `loaf init`. Not scanned — ideas have no lifecycle state to clean up |
+| `plans/` | Optional | Created by workflow on demand |
+| `drafts/` | Optional | Created by workflow on demand |
+| `councils/` | Optional | Created by workflow on demand |
+| `reports/` | Optional | Created by workflow on demand |
+
+- Missing optional directories → skip silently, no empty dir creation
+- Missing required directories → warn and continue (partial init or old checkout)
+- Unknown directories inside `.agents/` → ignore
+- Each archive target gets an `archive/` subdirectory created on first use
+
 ### Part 2: `loaf cleanup` CLI Command
 
-A new CLI command that automates the scanning and reporting:
+A new CLI command that automates scanning and reporting:
 
 ```
 loaf cleanup              # Scan all artifacts, show summary + recommendations
@@ -55,43 +76,47 @@ loaf cleanup --drafts     # Only review drafts
 ```
 
 The command:
-1. Scans `.agents/` directories for each artifact type
-2. Applies the differentiated rules above
-3. Shows a formatted summary table (like `loaf task status`)
+1. Scans `.agents/` directories for each artifact type (per V1 contract above)
+2. Applies the existing cleanup rules
+3. Shows a formatted summary table (like `loaf task list`)
 4. For each actionable item, prompts: Archive / Delete / Keep / Skip
 5. Performs the chosen action (move, delete, update status)
 6. Suggests `/crystallize` for sessions with extractable learnings
 
-### Part 3: Spec Completion Lifecycle
+#### CLI Interaction Contract
 
-Add `completed_at` timestamp to spec frontmatter schema. When all tasks for a spec are marked done (or the spec is manually marked complete), record when it happened. This prevents losing provenance when specs are archived.
+- **Prompts:** Reuse `askYesNo()` / `askChoice()` from `release.ts` (extract to shared `cli/lib/prompts.ts` if needed)
+- **Per-item confirmation:** Each actionable artifact is confirmed individually (not batch). Matches `loaf release` UX pattern.
+- **Delete previews:** Show first 3 lines of frontmatter before any destructive action.
+- **`--dry-run`:** Print recommendations table, exit 0, no prompts.
+- **Non-TTY (piped):** Behave like `--dry-run` — report only, no prompts. Detect via `process.stdout.isTTY`.
+- **75% circuit-breaker mode** (scanning + dry-run only) is functionally identical to `--dry-run` shipping as the only mode.
 
-Also: when a spec is marked complete on a feature branch, suggest creating a PR. The implement skill's "AFTER" flow should include branch → PR as a standard step.
+### Part 3: Skill Update
 
-### Part 4: Skill Update
-
-Update the `/cleanup` skill to reference the CLI command and the differentiated rules. The skill becomes guidance for agents on when/how to invoke `loaf cleanup`, while the CLI does the actual work.
+Update the `/cleanup` skill to reference the CLI command. The skill becomes guidance for agents on _when_ to invoke `loaf cleanup`, while the CLI does the actual work. The differentiated rules stay in the skill as the authoritative source; the CLI is the execution engine.
 
 ## Scope
 
 ### In Scope
-- Differentiated handling rules per artifact type and state
 - `loaf cleanup` CLI command with scanning, reporting, and interactive actions
-- `--dry-run` and artifact-type filters
-- Archive operations (move + set metadata)
+- `--dry-run` and artifact-type filters (`--sessions`, `--specs`, `--plans`, `--drafts`)
+- Non-TTY detection (pipe-safe output)
+- Archive operations (move + set metadata) for sessions, specs, councils, reports
 - Delete operations for ephemeral artifacts (plans)
+- Reuse existing `archiveTasks()` / `archiveSpecs()` from `migrate.ts`
+- Extract prompt helpers to shared `cli/lib/prompts.ts` if needed
 - Suggest `/crystallize` for sessions with extractable learnings
 - Update `/cleanup` skill to reference CLI
 - Register command in `cli/index.ts`
-- Add `completed_at` timestamp to spec frontmatter schema
-- Suggest PR creation when spec completes on a feature branch
-- Update implement skill "AFTER" flow to include branch → PR step
 
 ### Out of Scope
 - Automatic cleanup (always interactive or dry-run)
 - Linear integration (existing, not changing)
 - Knowledge staleness detection (SPEC-009)
 - The `/crystallize` skill itself (SPEC-011)
+- Spec `completed_at` data model changes (follow-up spec or fold into SPEC-014)
+- Branch → PR suggestions (already in implement skill's AFTER flow)
 
 ### Rabbit Holes
 - Building a TUI for cleanup — stick with sequential prompts like `loaf release`
@@ -101,8 +126,9 @@ Update the `/cleanup` skill to reference the CLI command and the differentiated 
 ### No-Gos
 - Don't auto-delete anything without user confirmation
 - Don't archive sessions without checking for extractable learnings first
-- Don't touch files outside `.agents/`
+- Cleanup **runtime actions** (archive, delete, move) only operate on `.agents/` contents — CLI registration, skill updates, and test files are normal implementation work
 - Don't require Linear for any functionality
+- Don't create empty directories for optional artifact types
 
 ## Risks
 
@@ -119,16 +145,19 @@ Update the `/cleanup` skill to reference the CLI command and the differentiated 
 
 ## Test Conditions
 
-- [ ] `loaf cleanup` scans all artifact types and shows formatted summary
-- [ ] `loaf cleanup --dry-run` shows recommendations without prompting for actions
-- [ ] `loaf cleanup --sessions` filters to sessions only
-- [ ] Completed sessions are offered for archive with correct metadata
+- [ ] `loaf cleanup` scans required + present optional directories and shows formatted summary
+- [ ] `loaf cleanup --dry-run` shows recommendations table without prompting for actions
+- [ ] `loaf cleanup --sessions` filters to sessions only (same for `--specs`, `--plans`, `--drafts`)
+- [ ] Non-TTY invocation (piped) behaves like `--dry-run`
+- [ ] Missing optional directories (plans, drafts, councils, reports) are skipped silently
+- [ ] Completed sessions are offered for archive with `archived_at` and `archived_by` metadata
 - [ ] Stale sessions (>7 days) are flagged but not auto-actioned
+- [ ] Done tasks are offered for archive via existing `archiveTasks()` helper
 - [ ] Orphaned plans (no linked session) are offered for deletion
 - [ ] Plans linked to archived sessions are offered for deletion
 - [ ] Drafts >30 days old are flagged for review
-- [ ] Archive operations set `archived_at`, `archived_by`, and move to archive/
-- [ ] Delete operations require confirmation before removing files
+- [ ] Delete operations show frontmatter preview and require confirmation
+- [ ] Archive operations move files to `archive/` subdirectory (created on first use)
 - [ ] Suggests `/crystallize` for sessions with key decisions or lessons
 
 ## Circuit Breaker

@@ -1,6 +1,6 @@
 ---
 id: SPEC-014
-title: "Harness Redesign — functional profiles, skill activation, build cleanup"
+title: Skill Activation Redesign — foundations decomposition + agent elimination
 source: brainstorm
 created: '2026-03-24T23:30:00.000Z'
 status: drafting
