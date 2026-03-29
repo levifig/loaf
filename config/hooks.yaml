@@ -8,23 +8,7 @@
 
 hooks:
   pre-tool:
-    # Foundations - Universal quality gates
-    - id: check-secrets
-      skill: foundations
-      script: hooks/pre-tool/foundations-check-secrets.sh
-      matcher: "Edit|Write"
-      blocking: true
-      timeout: 30000
-      description: Check for hardcoded secrets before writing
-
-    - id: validate-changelog
-      skill: foundations
-      script: hooks/pre-tool/foundations-validate-changelog.sh
-      matcher: "Edit|Write"
-      blocking: false
-      timeout: 30000
-      description: Validate changelog format
-
+    # Foundations - Code quality gates
     - id: format-check
       skill: foundations
       script: hooks/pre-tool/foundations-format-check.sh
@@ -32,14 +16,6 @@ hooks:
       blocking: false
       timeout: 60000
       description: Check code formatting
-
-    - id: security-audit
-      skill: foundations
-      script: hooks/pre-tool/foundations-security-audit.sh
-      matcher: "Bash"
-      blocking: false
-      timeout: 600000
-      description: Run security audit on bash commands
 
     - id: tdd-advisory
       skill: foundations
@@ -49,8 +25,35 @@ hooks:
       timeout: 5000
       description: Advisory warning when editing implementation without tests
 
+    # Security Compliance - Secret scanning and security auditing
+    - id: check-secrets
+      skill: security-compliance
+      script: hooks/pre-tool/foundations-check-secrets.sh
+      matcher: "Edit|Write"
+      blocking: true
+      timeout: 30000
+      description: Check for hardcoded secrets before writing
+
+    - id: security-audit
+      skill: security-compliance
+      script: hooks/pre-tool/foundations-security-audit.sh
+      matcher: "Bash"
+      blocking: false
+      timeout: 600000
+      description: Run security audit on bash commands
+
+    # Documentation Standards - Changelog validation
+    - id: validate-changelog
+      skill: documentation-standards
+      script: hooks/pre-tool/foundations-validate-changelog.sh
+      matcher: "Edit|Write"
+      blocking: false
+      timeout: 30000
+      description: Validate changelog format
+
+    # Git Workflow - Push, PR, merge, and push guards
     - id: validate-push
-      skill: foundations
+      skill: git-workflow
       script: hooks/pre-tool/foundations-validate-push.sh
       matcher: "Bash"
       blocking: true
@@ -58,7 +61,7 @@ hooks:
       description: Validates version bump, CHANGELOG, and build before git push
 
     - id: workflow-pre-pr
-      skill: foundations
+      skill: git-workflow
       script: hooks/pre-tool/workflow-pre-pr.sh
       matcher: "Bash"
       blocking: true
@@ -66,7 +69,7 @@ hooks:
       description: "Enforce PR format and CHANGELOG entry before gh pr create"
 
     - id: workflow-pre-merge
-      skill: foundations
+      skill: git-workflow
       type: prompt
       prompt: >-
         STOP. Before running gh pr merge, follow squash merge conventions:
@@ -93,7 +96,7 @@ hooks:
       description: Remind about squash merge conventions before gh pr merge
 
     - id: workflow-pre-push
-      skill: foundations
+      skill: git-workflow
       script: hooks/pre-tool/workflow-pre-push.sh
       matcher: "Bash"
       blocking: false
@@ -290,9 +293,9 @@ hooks:
       matcher: "Edit|Write"
       description: Full accessibility audit
 
-    # Foundations - Changelog reminder
+    # Documentation Standards - Changelog reminder
     - id: changelog-reminder
-      skill: foundations
+      skill: documentation-standards
       script: hooks/post-tool/foundations-changelog-reminder.sh
       matcher: "Bash"
       description: Remind about changelog updates after git commit
@@ -311,9 +314,9 @@ hooks:
       matcher: "Edit|Write"
       description: Alert when editing files covered by stale knowledge
 
-    # Workflow - Post-merge housekeeping
+    # Git Workflow - Post-merge housekeeping
     - id: workflow-post-merge
-      skill: foundations
+      skill: git-workflow
       script: hooks/post-tool/workflow-post-merge.sh
       matcher: "Bash"
       description: Inject housekeeping checklist after successful gh pr merge
@@ -351,128 +354,3 @@ hooks:
       script: hooks/session/kb-session-end.sh
       event: SessionEnd
       description: Prompt for knowledge consolidation if stale files were flagged
-
-# Legacy plugin groupings (kept for documentation purposes)
-# NOTE: Claude Code build now creates a single unified "loaf" plugin
-# containing ALL agents and skills from src/
-#
-# The groupings below document logical relationships but are NOT used
-# by the build system. All hooks defined above are included in the
-# unified plugin automatically.
-#
-# Scoping in Claude Code: /loaf:implement, Task(loaf:backend-dev)
-plugin-groups:
-  # Orchestration - PM workflows and session management
-  orchestration:
-    description: PM orchestration, session management, Linear workflow integration
-    agents: [pm]
-    skills: [orchestration, research, implement, resume-session, cleanup, council-session, reference-session, architecture, idea, shape, strategy, breakdown, reflect, brainstorm]
-    related-hooks:
-      pre-tool: [validate-commit, detect-linear-magic]
-      post-tool: [generate-task-board]
-      session: [session-start, session-end, pre-compact-archive]
-
-  # Bootstrap - First-contact project setup
-  bootstrap:
-    description: Interactive project bootstrapping with state detection and document population
-    agents: []
-    skills: [bootstrap]
-
-  # Research - Project understanding and investigation
-  research:
-    description: Project state assessment, topic investigation
-    agents: []
-    skills: [research]
-
-  # Ideation - Capture and explore ideas
-  ideation:
-    description: Quick idea capture, deep brainstorming, and problem exploration
-    agents: []
-    skills: [idea, brainstorm]
-
-  # Shaping - Define and bound work
-  shaping:
-    description: Shape ideas into specs, discover strategy, decompose into tasks
-    agents: []
-    skills: [orchestration, shape, strategy, breakdown]
-
-  # Learning - Reflect and evolve
-  learning:
-    description: Integrate learnings from shipped work into strategic documents
-    agents: []
-    skills: [reflect]
-
-  # Quality - Cross-language fundamentals and coding discipline
-  foundations:
-    description: Cross-language development fundamentals, quality gates, and coding discipline
-    agents: [qa]
-    skills: [foundations]
-    related-hooks:
-      pre-tool: [check-secrets, validate-changelog, format-check, security-audit, tdd-advisory, validate-push, workflow-pre-pr, workflow-pre-merge, workflow-pre-push]
-      post-tool: [workflow-post-merge]
-
-  # Language-specific groups
-  python:
-    description: Python 3.12+ development with FastAPI, async, and pytest
-    agents: [backend-dev]
-    skills: [python-development, foundations]
-    related-hooks:
-      pre-tool: [python-type-check, python-pytest-validation, python-type-check-progressive, python-ruff-lint, python-pytest-execution, python-bandit-scan]
-      post-tool: [python-ruff-check]
-
-  typescript:
-    description: TypeScript and React development with Next.js
-    agents: [frontend-dev]
-    skills: [typescript-development, interface-design, foundations]
-    related-hooks:
-      pre-tool: [typescript-tsc-check, typescript-bundle-analysis]
-      post-tool: [typescript-eslint-check]
-
-  ruby:
-    description: Ruby development following the DHH/37signals way (includes Rails)
-    agents: [backend-dev]
-    skills: [ruby-development, foundations]
-    related-hooks:
-      pre-tool: [rails-migration-safety, rails-migration-safety-deep, rails-test-execution, rails-brakeman-scan]
-      post-tool: [rails-rubocop-check]
-
-  go:
-    description: Go development following Effective Go principles
-    agents: [backend-dev]
-    skills: [go-development, foundations]
-
-  # Infrastructure and operations
-  infrastructure:
-    description: DevOps and infrastructure patterns
-    agents: [devops, dba]
-    skills: [infrastructure-management, foundations]
-    related-hooks:
-      pre-tool: [infra-validate-k8s, infra-dockerfile-lint, infra-k8s-dry-run, infra-terraform-plan]
-
-  database:
-    description: Database design, migrations, query optimization, and indexing patterns
-    agents: [dba]
-    skills: [database-design, foundations]
-
-  # Design and UI/UX
-  design:
-    description: UI/UX design patterns and accessibility standards
-    agents: [design]
-    skills: [interface-design, foundations]
-    related-hooks:
-      post-tool: [design-a11y-validation, design-token-check, design-a11y-audit]
-
-  # Knowledge Base
-  knowledge-base:
-    description: Knowledge base lifecycle hooks for staleness tracking and review nudges
-    agents: []
-    skills: [knowledge-base]
-    related-hooks:
-      post-tool: [kb-staleness-nudge]
-      session: [kb-session-start, kb-session-end]
-
-  # Domain-specific
-  power-systems:
-    description: Power systems engineering for thermal modeling, conductor physics, and grid calculations
-    agents: [power-systems]
-    skills: [power-systems-modeling, python-development, foundations]
