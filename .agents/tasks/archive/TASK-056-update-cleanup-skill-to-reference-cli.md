@@ -2,10 +2,11 @@
 id: TASK-056
 title: Update cleanup skill to reference CLI
 spec: SPEC-012
-status: todo
+status: done
 priority: P2
 created: '2026-03-28T23:36:12.093Z'
-updated: '2026-03-28T23:36:12.093Z'
+updated: '2026-03-29T02:21:19.733Z'
+completed_at: '2026-03-29T02:21:19.733Z'
 ---
 
 # TASK-056: Update cleanup skill to reference CLI

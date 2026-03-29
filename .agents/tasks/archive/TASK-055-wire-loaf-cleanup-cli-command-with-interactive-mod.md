@@ -2,10 +2,11 @@
 id: TASK-055
 title: Wire loaf cleanup CLI command with interactive mode
 spec: SPEC-012
-status: todo
+status: done
 priority: P1
 created: '2026-03-28T23:36:10.956Z'
-updated: '2026-03-28T23:36:10.956Z'
+updated: '2026-03-29T02:21:19.103Z'
+completed_at: '2026-03-29T02:21:19.102Z'
 ---
 
 # TASK-055: Wire loaf cleanup CLI command with interactive mode

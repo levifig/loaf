@@ -2,10 +2,11 @@
 id: TASK-053
 title: Extract shared prompt helpers to cli/lib/prompts.ts
 spec: SPEC-012
-status: todo
+status: done
 priority: P1
 created: '2026-03-28T23:36:06.000Z'
-updated: '2026-03-28T23:36:06.000Z'
+updated: '2026-03-29T02:21:17.749Z'
+completed_at: '2026-03-29T02:21:17.748Z'
 ---
 
 # TASK-053: Extract shared prompt helpers to cli/lib/prompts.ts

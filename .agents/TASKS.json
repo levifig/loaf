@@ -1036,7 +1036,7 @@
       "title": "Extract shared prompt helpers to cli/lib/prompts.ts",
       "slug": "extract-shared-prompt-helpers-to-cli-lib-prompts-t",
       "spec": "SPEC-012",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -1044,15 +1044,15 @@
       "done": null,
       "session": null,
       "created": "2026-03-28T23:36:06.000Z",
-      "updated": "2026-03-28T23:36:06.000Z",
-      "completed_at": null,
-      "file": "TASK-053-extract-shared-prompt-helpers-to-cli-lib-prompts-t.md"
+      "updated": "2026-03-29T02:21:17.749Z",
+      "completed_at": "2026-03-29T02:21:17.748Z",
+      "file": "archive/TASK-053-extract-shared-prompt-helpers-to-cli-lib-prompts-t.md"
     },
     "TASK-054": {
       "title": "Build cleanup scanner engine",
       "slug": "build-cleanup-scanner-engine",
       "spec": "SPEC-012",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -1060,15 +1060,15 @@
       "done": null,
       "session": null,
       "created": "2026-03-28T23:36:09.760Z",
-      "updated": "2026-03-28T23:36:09.760Z",
-      "completed_at": null,
-      "file": "TASK-054-build-cleanup-scanner-engine.md"
+      "updated": "2026-03-29T02:21:18.456Z",
+      "completed_at": "2026-03-29T02:21:18.455Z",
+      "file": "archive/TASK-054-build-cleanup-scanner-engine.md"
     },
     "TASK-055": {
       "title": "Wire loaf cleanup CLI command with interactive mode",
       "slug": "wire-loaf-cleanup-cli-command-with-interactive-mod",
       "spec": "SPEC-012",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -1076,15 +1076,15 @@
       "done": null,
       "session": null,
       "created": "2026-03-28T23:36:10.956Z",
-      "updated": "2026-03-28T23:36:10.956Z",
-      "completed_at": null,
-      "file": "TASK-055-wire-loaf-cleanup-cli-command-with-interactive-mod.md"
+      "updated": "2026-03-29T02:21:19.103Z",
+      "completed_at": "2026-03-29T02:21:19.102Z",
+      "file": "archive/TASK-055-wire-loaf-cleanup-cli-command-with-interactive-mod.md"
     },
     "TASK-056": {
       "title": "Update cleanup skill to reference CLI",
       "slug": "update-cleanup-skill-to-reference-cli",
       "spec": "SPEC-012",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [],
@@ -1092,9 +1092,9 @@
       "done": null,
       "session": null,
       "created": "2026-03-28T23:36:12.093Z",
-      "updated": "2026-03-28T23:36:12.093Z",
-      "completed_at": null,
-      "file": "TASK-056-update-cleanup-skill-to-reference-cli.md"
+      "updated": "2026-03-29T02:21:19.733Z",
+      "completed_at": "2026-03-29T02:21:19.733Z",
+      "file": "archive/TASK-056-update-cleanup-skill-to-reference-cli.md"
     }
   },
   "specs": {
@@ -1109,12 +1109,12 @@
     },
     "SPEC-012": {
       "title": "Cleanup Refinement — differentiated processes + CLI",
-      "status": "drafting",
+      "status": "complete",
       "appetite": "Medium (3-5 days)",
       "requirement": null,
       "source": "direct",
       "created": "2026-03-16T23:50:30.000Z",
-      "file": "SPEC-012-cleanup-refinement.md"
+      "file": "archive/SPEC-012-cleanup-refinement.md"
     },
     "SPEC-014": {
       "title": "Skill Activation Redesign — foundations decomposition + agent elimination",
