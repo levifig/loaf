@@ -443,14 +443,25 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
   const files = readMdFiles(dir);
   const recs: CleanupRecommendation[] = [];
 
-  // Build session lookup for orphan detection
+  // Build session lookup for orphan detection and archive-readiness
   const sessionsDir = join(agentsDir, "sessions");
   const allSessionFiles: string[] = [];
+  const completedSessionFiles: string[] = [];
+
   for (const subdir of [sessionsDir, join(sessionsDir, "archive")]) {
     if (existsSync(subdir)) {
       try {
         for (const name of readdirSync(subdir)) {
-          if (name.endsWith(".md")) allSessionFiles.push(name);
+          if (!name.endsWith(".md")) continue;
+          allSessionFiles.push(name);
+          try {
+            const raw = readFileSync(join(subdir, name), "utf-8");
+            const { data } = matter(raw);
+            const status = getStatus(data);
+            if (["completed", "complete", "archived", "cancelled"].includes(status)) {
+              completedSessionFiles.push(name);
+            }
+          } catch { /* skip */ }
         }
       } catch { /* skip */ }
     }
@@ -460,6 +471,12 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
     if (allSessionFiles.includes(ref)) return true;
     const stem = ref.replace(/\.md$/, "");
     return allSessionFiles.some((f) => f.startsWith(stem));
+  };
+
+  const sessionIsCompleted = (ref: string): boolean => {
+    if (completedSessionFiles.includes(ref)) return true;
+    const stem = ref.replace(/\.md$/, "");
+    return completedSessionFiles.some((f) => f.startsWith(stem));
   };
 
   for (const file of files) {
@@ -489,24 +506,31 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
       const hasDecision = file.raw.includes("## Decision") &&
         !file.raw.match(/## Decision\s*\n\s*\n\s*(\[To be filled|$)/);
 
-      if (hasDecision && sessionRef && matchesAnySession(normalizeSessionRef(sessionRef))) {
+      // Archive requires: decision recorded AND linked session completed/archived
+      // (policy: "session summary captured → archive")
+      const normalizedRef = sessionRef ? normalizeSessionRef(sessionRef) : null;
+      const sessionDone = normalizedRef && sessionIsCompleted(normalizedRef);
+
+      if (hasDecision && sessionDone) {
         recs.push({
           type: "council",
           path: file.path,
           filename: file.filename,
           action: "archive",
-          reason: `Council is ${days} days old with decision recorded — ready for archive`,
+          reason: `Council is ${days} days old — decision recorded, session completed`,
           frontmatter: fm,
         });
       } else {
+        const reasons: string[] = [];
+        if (!hasDecision) reasons.push("decision not yet recorded");
+        if (!sessionRef) reasons.push("no linked session");
+        else if (!sessionDone) reasons.push("linked session not yet completed");
         recs.push({
           type: "council",
           path: file.path,
           filename: file.filename,
           action: "flag",
-          reason: hasDecision
-            ? `Stale council — ${days} days old, no linked session`
-            : `Stale council — ${days} days old, decision not yet recorded`,
+          reason: `Stale council — ${days} days old, ${reasons.join(", ")}`,
           frontmatter: fm,
         });
       }

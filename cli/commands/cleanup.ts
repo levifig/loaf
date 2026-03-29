@@ -193,7 +193,13 @@ export function registerCleanupCommand(program: Command): void {
 
       console.log(`  ${bold("Actions")} — ${actionable.length} item(s)\n`);
 
-      const index = getOrBuildIndex(agentsDir);
+      // Defer index load until a task/spec archive is confirmed — avoid
+      // writing TASKS.json just because the user entered interactive mode.
+      let index: ReturnType<typeof getOrBuildIndex> | null = null;
+      const getIndex = () => {
+        if (!index) index = getOrBuildIndex(agentsDir);
+        return index;
+      };
       const tasksToArchive: string[] = [];
       const specsToArchive: string[] = [];
       let actionsPerformed = 0;
@@ -251,7 +257,8 @@ export function registerCleanupCommand(program: Command): void {
 
       // Batch archive tasks and specs via existing helpers
       if (tasksToArchive.length > 0) {
-        const results = archiveTasks(agentsDir, index, tasksToArchive);
+        const idx = getIndex();
+        const results = archiveTasks(agentsDir, idx, tasksToArchive);
         for (const r of results) {
           if (r.status === "archived") {
             console.log(`  ${green("✓")} Archived ${r.id}`);
@@ -262,7 +269,8 @@ export function registerCleanupCommand(program: Command): void {
       }
 
       if (specsToArchive.length > 0) {
-        const results = archiveSpecs(agentsDir, index, specsToArchive);
+        const idx = getIndex();
+        const results = archiveSpecs(agentsDir, idx, specsToArchive);
         for (const r of results) {
           if (r.status === "archived") {
             console.log(`  ${green("✓")} Archived ${r.id}`);
@@ -272,8 +280,8 @@ export function registerCleanupCommand(program: Command): void {
         }
       }
 
-      // Save index if we archived tasks/specs
-      if (tasksToArchive.length > 0 || specsToArchive.length > 0) {
+      // Save index only if we actually loaded and used it
+      if (index) {
         saveIndex(join(agentsDir, "TASKS.json"), index);
       }
 

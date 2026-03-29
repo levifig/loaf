@@ -348,7 +348,7 @@ describe("councils", () => {
 
   it("reads dates from orchestration schema (council.timestamp + council.session)", () => {
     const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
-    writeSession("20260301-session.md", { status: "active", last_updated: new Date().toISOString() });
+    writeSession("20260301-session.md", { status: "complete", last_updated: new Date().toISOString() });
     writeNestedArtifact("councils", "council-005.md", "council", {
       topic: "Orchestration format",
       timestamp: staleDate,
@@ -358,12 +358,12 @@ describe("councils", () => {
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "council-005.md");
     expect(rec?.action).toBe("archive");
-    expect(rec?.reason).toContain("days old");
+    expect(rec?.reason).toContain("session completed");
   });
 
-  it("recommends archive for old councils with decision recorded and valid session", () => {
+  it("recommends archive for old councils with decision and completed session", () => {
     const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
-    writeSession("20260301-session.md", { status: "active", last_updated: new Date().toISOString() });
+    writeSession("20260301-session.md", { status: "completed", last_updated: new Date().toISOString() });
     writeNestedArtifact("councils", "council-004.md", "council", {
       topic: "Old council",
       created: staleDate,
@@ -375,9 +375,24 @@ describe("councils", () => {
     expect(rec?.action).toBe("archive");
   });
 
-  it("flags old councils without decision recorded", () => {
+  it("flags old councils with decision but active session", () => {
     const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
     writeSession("20260301-session.md", { status: "active", last_updated: new Date().toISOString() });
+    writeNestedArtifact("councils", "council-007.md", "council", {
+      topic: "Decision made but session open",
+      created: staleDate,
+      session_reference: ".agents/sessions/20260301-session.md",
+    }, "## Decision\n\nApproved option A.\n");
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "council-007.md");
+    expect(rec?.action).toBe("flag");
+    expect(rec?.reason).toContain("linked session not yet completed");
+  });
+
+  it("flags old councils without decision recorded", () => {
+    const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
+    writeSession("20260301-session.md", { status: "complete", last_updated: new Date().toISOString() });
     writeNestedArtifact("councils", "council-006.md", "council", {
       topic: "Undecided council",
       created: staleDate,
