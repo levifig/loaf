@@ -24,7 +24,7 @@ cli/                            # CLI tool (TypeScript, bundled by tsup)
     ├── build/                  # Build system
     │   ├── types.ts            # Shared types
     │   ├── targets/            # Target transformers (claude-code, opencode, cursor, codex, gemini)
-    │   └── lib/                # Build utilities (version, sidecar, substitutions, etc.)
+    │   └── lib/                # Build utilities (version, sidecar, shared-templates, etc.)
     ├── detect/                 # Tool detection
     └── install/                # Installation logic
 
