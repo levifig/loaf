@@ -40,7 +40,14 @@ export interface TargetModule {
 export interface HookDefinition {
   id: string;
   skill: string;
-  script: string;
+  /** Shell script path (required for command hooks) */
+  script?: string;
+  /** Hook type: "command" (default) or "prompt" */
+  type?: "command" | "prompt";
+  /** Prompt text (required for prompt hooks) */
+  prompt?: string;
+  /** Permission rule filter (e.g., "Bash(gh pr merge:*)") */
+  if?: string;
   matcher?: string;
   blocking?: boolean;
   timeout?: number;

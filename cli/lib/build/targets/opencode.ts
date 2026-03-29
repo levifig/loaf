@@ -224,15 +224,19 @@ function generateHooksJs(config: HooksConfig): string {
   const postToolHooks = config.hooks["post-tool"] || [];
   const sessionHooks = config.hooks.session || [];
 
+  // Filter out prompt hooks — OpenCode only supports command (script) hooks
+  const commandPreToolHooks = preToolHooks.filter((h) => h.type !== "prompt");
+  const commandPostToolHooks = postToolHooks.filter((h) => h.type !== "prompt");
+
   const preToolByMatcher: Record<string, HookDefinition[]> = {};
-  for (const hook of preToolHooks) {
+  for (const hook of commandPreToolHooks) {
     const matcher = hook.matcher || "Edit|Write";
     if (!preToolByMatcher[matcher]) preToolByMatcher[matcher] = [];
     preToolByMatcher[matcher].push(hook);
   }
 
   const postToolByMatcher: Record<string, HookDefinition[]> = {};
-  for (const hook of postToolHooks) {
+  for (const hook of commandPostToolHooks) {
     const matcher = hook.matcher || "Edit|Write";
     if (!postToolByMatcher[matcher]) postToolByMatcher[matcher] = [];
     postToolByMatcher[matcher].push(hook);
@@ -279,7 +283,7 @@ const preToolHooks = {
 ${Object.entries(preToolByMatcher)
   .map(
     ([matcher, hooks]) => `  '${matcher}': [
-${hooks.map((h) => `    { id: '${h.id}', script: '${getScriptFilename(h.script)}', timeout: ${h.timeout || 60000} },`).join("\n")}
+${hooks.map((h) => `    { id: '${h.id}', script: '${getScriptFilename(h.script!)}', timeout: ${h.timeout || 60000} },`).join("\n")}
   ],`,
   )
   .join("\n")}
@@ -289,14 +293,14 @@ const postToolHooks = {
 ${Object.entries(postToolByMatcher)
   .map(
     ([matcher, hooks]) => `  '${matcher}': [
-${hooks.map((h) => `    { id: '${h.id}', script: '${getScriptFilename(h.script)}', timeout: ${h.timeout || 60000} },`).join("\n")}
+${hooks.map((h) => `    { id: '${h.id}', script: '${getScriptFilename(h.script!)}', timeout: ${h.timeout || 60000} },`).join("\n")}
   ],`,
   )
   .join("\n")}
 };
 
 const sessionHooks = {
-${sessionHooks.map((h) => `  '${(h.event || "").toLowerCase()}': { id: '${h.id}', script: '${getScriptFilename(h.script)}', timeout: ${h.timeout || 60000} },`).join("\n")}
+${sessionHooks.map((h) => `  '${(h.event || "").toLowerCase()}': { id: '${h.id}', script: '${getScriptFilename(h.script!)}', timeout: ${h.timeout || 60000} },`).join("\n")}
 };
 
 export default async function AgentSkillsPlugin({ client, $ }) {

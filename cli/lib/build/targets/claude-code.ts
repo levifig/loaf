@@ -165,7 +165,7 @@ function groupByMatcher(hooks: HookDefinition[]): Record<string, HookDefinition[
 }
 
 function getHookPath(hook: HookDefinition): string {
-  const parts = hook.script.split("/");
+  const parts = hook.script!.split("/");
   const filename = parts[parts.length - 1];
   return `hooks/${filename}`;
 }
@@ -200,12 +200,23 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
     const preToolByMatcher = groupByMatcher(allPreToolHooks);
     hooks.PreToolUse = Object.entries(preToolByMatcher).map(([matcher, hookList]) => ({
       matcher,
-      hooks: hookList.map((h) => ({
-        type: "command",
-        command: getHookCommand(h),
-        ...(h.timeout && { timeout: h.timeout }),
-        ...(h.description && { description: h.description }),
-      })),
+      hooks: hookList.map((h) => {
+        if (h.type === "prompt") {
+          return {
+            type: "prompt" as const,
+            prompt: h.prompt!,
+            ...(h.if && { if: h.if }),
+            ...(h.timeout && { timeout: h.timeout }),
+          };
+        }
+        return {
+          type: "command" as const,
+          command: getHookCommand(h),
+          ...(h.if && { if: h.if }),
+          ...(h.timeout && { timeout: h.timeout }),
+          ...(h.description && { description: h.description }),
+        };
+      }),
     }));
   }
 
@@ -323,7 +334,7 @@ function copyAllHooks(config: HooksConfig, srcDir: string, pluginDir: string): v
   for (const hookId of allHookIds) {
     const hookDef = config.hooks["pre-tool"]?.find((h) => h.id === hookId) || config.hooks["post-tool"]?.find((h) => h.id === hookId) || config.hooks.session?.find((h) => h.id === hookId);
 
-    if (hookDef) {
+    if (hookDef && hookDef.script) {
       const parts = hookDef.script.split("/");
       const filename = parts[parts.length - 1];
       const src = join(srcDir, hookDef.script);
