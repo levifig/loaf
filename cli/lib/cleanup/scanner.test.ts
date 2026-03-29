@@ -324,7 +324,7 @@ describe("councils", () => {
     writeNestedArtifact("councils", "council-002.md", "council", {
       topic: "Missing session",
       created: new Date().toISOString(),
-      session_reference: "20260101-000000-nonexistent.md",
+      session_reference: ".agents/sessions/20260101-000000-nonexistent.md",
     });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
@@ -333,17 +333,31 @@ describe("councils", () => {
     expect(rec?.reason).toContain("Orphaned");
   });
 
-  it("skips recent councils with valid session", () => {
+  it("skips recent councils with valid session (normalizes .agents/sessions/ prefix)", () => {
     writeSession("20260327-181352-task-020.md", { status: "active", last_updated: new Date().toISOString() });
     writeNestedArtifact("councils", "council-003.md", "council", {
       topic: "Active council",
       created: new Date().toISOString(),
-      session_reference: "20260327-181352-task-020.md",
+      session_reference: ".agents/sessions/20260327-181352-task-020.md",
     });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "council-003.md");
     expect(rec?.action).toBe("skip");
+  });
+
+  it("recommends archive for old councils with valid linked session", () => {
+    const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
+    writeSession("20260301-session.md", { status: "active", last_updated: new Date().toISOString() });
+    writeNestedArtifact("councils", "council-004.md", "council", {
+      topic: "Old council",
+      created: staleDate,
+      session_reference: ".agents/sessions/20260301-session.md",
+    });
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "council-004.md");
+    expect(rec?.action).toBe("archive");
   });
 });
 
@@ -369,7 +383,7 @@ describe("reports", () => {
     writeNestedArtifact("reports", "report-002.md", "report", {
       status: "processed",
       processed_at: "2026-03-01T00:00:00Z",
-      session_reference: "20260301-session.md",
+      session_reference: ".agents/sessions/20260301-session.md",
     });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
@@ -383,7 +397,7 @@ describe("reports", () => {
     writeNestedArtifact("reports", "report-003.md", "report", {
       status: "processed",
       processed_at: "2026-03-01T00:00:00Z",
-      session_reference: "20260327-active-session.md",
+      session_reference: ".agents/sessions/20260327-active-session.md",
     });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });

@@ -62,6 +62,14 @@ function daysSince(dateStr: string | undefined): number | null {
   return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+/**
+ * Normalize a session reference to a bare filename.
+ * Templates store paths like ".agents/sessions/FILE.md" — strip the prefix.
+ */
+function normalizeSessionRef(ref: string): string {
+  return ref.replace(/^\.agents\/sessions\/(archive\/)?/, "");
+}
+
 /** Get the most recent date from frontmatter (supports nested session.last_updated) */
 function lastActivity(fm: Record<string, unknown>): string | undefined {
   // Session files use nested session.last_updated / session.created
@@ -464,7 +472,7 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
     const days = daysSince(councilDate || lastActivity(fm));
 
     // Check for orphaned councils (no linked session or missing session)
-    if (sessionRef && !matchesAnySession(sessionRef)) {
+    if (sessionRef && !matchesAnySession(normalizeSessionRef(sessionRef))) {
       recs.push({
         type: "council",
         path: file.path,
@@ -474,14 +482,27 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
         frontmatter: fm,
       });
     } else if (days !== null && days > 14) {
-      recs.push({
-        type: "council",
-        path: file.path,
-        filename: file.filename,
-        action: "flag",
-        reason: `Stale council — ${days} days old`,
-        frontmatter: fm,
-      });
+      // If the council has a valid linked session, it's archive-ready (outcome captured).
+      // Without a session link, just flag for review.
+      if (sessionRef && matchesAnySession(normalizeSessionRef(sessionRef))) {
+        recs.push({
+          type: "council",
+          path: file.path,
+          filename: file.filename,
+          action: "archive",
+          reason: `Council is ${days} days old with linked session — ready for archive`,
+          frontmatter: fm,
+        });
+      } else {
+        recs.push({
+          type: "council",
+          path: file.path,
+          filename: file.filename,
+          action: "flag",
+          reason: `Stale council — ${days} days old, no linked session`,
+          frontmatter: fm,
+        });
+      }
     } else {
       recs.push({
         type: "council",
@@ -540,7 +561,7 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
       });
     } else if (reportStatus === "processed" || processedAt) {
       // Archive prerequisite: linked session must be archived first
-      if (sessionRef && !sessionIsArchived(sessionRef)) {
+      if (sessionRef && !sessionIsArchived(normalizeSessionRef(sessionRef))) {
         recs.push({
           type: "report",
           path: file.path,
