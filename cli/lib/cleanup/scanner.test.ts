@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "fs";
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -33,6 +33,18 @@ function writeArtifact(subdir: string, filename: string, frontmatter: Record<str
   const dir = setupDir(subdir);
   const lines = Object.entries(frontmatter).map(([k, v]) => `${k}: ${JSON.stringify(v)}`);
   const content = `---\n${lines.join("\n")}\n---\n\n${body}`;
+  writeFileSync(join(dir, filename), content, "utf-8");
+}
+
+/** Write a session file with the nested session: block format used in this repo */
+function writeSession(filename: string, sessionFields: Record<string, unknown>, body = ""): void {
+  const dir = setupDir("sessions");
+  // Build nested YAML manually for the session: block
+  let yaml = "session:\n";
+  for (const [k, v] of Object.entries(sessionFields)) {
+    yaml += `  ${k}: ${JSON.stringify(v)}\n`;
+  }
+  const content = `---\n${yaml}---\n\n${body}`;
   writeFileSync(join(dir, filename), content, "utf-8");
 }
 
@@ -63,8 +75,8 @@ afterEach(() => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("sessions", () => {
-  it("recommends archive for completed sessions", () => {
-    writeArtifact("sessions", "SESSION-001.md", { status: "completed", created: "2026-03-01" });
+  it("recommends archive for completed sessions (nested session.status)", () => {
+    writeSession("SESSION-001.md", { status: "completed", created: "2026-03-01" });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "SESSION-001.md");
@@ -72,7 +84,7 @@ describe("sessions", () => {
   });
 
   it("hints at /crystallize for sessions with learnings", () => {
-    writeArtifact("sessions", "SESSION-002.md", { status: "completed", created: "2026-03-01" }, "## Key Decisions\n- Did a thing");
+    writeSession("SESSION-002.md", { status: "completed", created: "2026-03-01" }, "## Key Decisions\n- Did a thing");
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "SESSION-002.md");
@@ -82,7 +94,7 @@ describe("sessions", () => {
 
   it("flags stale sessions (>7 days inactive)", () => {
     const staleDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
-    writeArtifact("sessions", "SESSION-003.md", { status: "active", updated: staleDate });
+    writeSession("SESSION-003.md", { status: "active", last_updated: staleDate });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "SESSION-003.md");
@@ -91,7 +103,7 @@ describe("sessions", () => {
   });
 
   it("skips active sessions", () => {
-    writeArtifact("sessions", "SESSION-004.md", { status: "active", updated: new Date().toISOString() });
+    writeSession("SESSION-004.md", { status: "active", last_updated: new Date().toISOString() });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "SESSION-004.md");
@@ -99,7 +111,7 @@ describe("sessions", () => {
   });
 
   it("archives cancelled sessions", () => {
-    writeArtifact("sessions", "SESSION-005.md", { status: "cancelled", created: "2026-03-01" });
+    writeSession("SESSION-005.md", { status: "cancelled", created: "2026-03-01" });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "SESSION-005.md");
@@ -224,20 +236,30 @@ describe("plans", () => {
   });
 
   it("recommends delete for plans linked to completed sessions", () => {
-    writeArtifact("sessions", "SESSION-010.md", { status: "completed", created: "2026-03-01" });
-    writeArtifact("plans", "plan-002.md", { session: "SESSION-010.md", created: "2026-03-01" });
+    writeSession("20260327-163059-spec-015-workflow-hooks.md", { status: "complete", created: "2026-03-01" });
+    writeArtifact("plans", "plan-002.md", { session: "20260327-163059-spec-015", created: "2026-03-01" });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "plan-002.md");
     expect(rec?.action).toBe("delete");
   });
 
-  it("skips plans linked to active sessions", () => {
-    writeArtifact("sessions", "SESSION-011.md", { status: "active", updated: new Date().toISOString() });
-    writeArtifact("plans", "plan-003.md", { session: "SESSION-011.md", updated: new Date().toISOString() });
+  it("matches session refs by stem (ID prefix without full filename)", () => {
+    writeSession("20260327-181352-task-020.md", { status: "active", last_updated: new Date().toISOString() });
+    // Plan uses the ID stem, not the full filename
+    writeArtifact("plans", "plan-003.md", { session: "20260327-181352-task-020", updated: new Date().toISOString() });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "plan-003.md");
+    expect(rec?.action).toBe("skip");
+  });
+
+  it("also matches session refs by full filename", () => {
+    writeSession("SESSION-011.md", { status: "active", last_updated: new Date().toISOString() });
+    writeArtifact("plans", "plan-004.md", { session: "SESSION-011.md", updated: new Date().toISOString() });
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "plan-004.md");
     expect(rec?.action).toBe("skip");
   });
 });
@@ -276,6 +298,37 @@ describe("drafts", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Reports
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("reports", () => {
+  it("reads nested report.archived_at and skips already-archived reports", () => {
+    // Write report with nested report: block (matching the template)
+    const dir = setupDir("reports");
+    const content = `---\nreport:\n  status: "processed"\n  archived_at: "2026-03-01T00:00:00Z"\n  archived_by: "agent-pm"\n---\n\n# Report`;
+    writeFileSync(join(dir, "report-001.md"), content, "utf-8");
+    writeIndex();
+
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "report-001.md");
+    expect(rec?.action).toBe("skip");
+    expect(rec?.reason).toContain("archived");
+  });
+
+  it("recommends archive for processed reports without archived_at", () => {
+    const dir = setupDir("reports");
+    const content = `---\nreport:\n  status: "processed"\n  processed_at: "2026-03-01T00:00:00Z"\n---\n\n# Report`;
+    writeFileSync(join(dir, "report-002.md"), content, "utf-8");
+    writeIndex();
+
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "report-002.md");
+    expect(rec?.action).toBe("archive");
+    expect(rec?.reason).toContain("processed");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Missing Directories
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -294,6 +347,14 @@ describe("directory handling", () => {
     const result = scanArtifacts({ agentsDir: agentsDir() });
     expect(result.warnings.filter((w) => w.includes("plans"))).toHaveLength(0);
   });
+
+  it("does not write TASKS.json when it is missing (read-only scan)", () => {
+    // Don't call writeIndex() — scanner should not create TASKS.json
+    const indexPath = join(agentsDir(), "TASKS.json");
+    expect(existsSync(indexPath)).toBe(false);
+    scanArtifacts({ agentsDir: agentsDir() });
+    expect(existsSync(indexPath)).toBe(false);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -302,7 +363,7 @@ describe("directory handling", () => {
 
 describe("filter option", () => {
   it("restricts scan to specified artifact types", () => {
-    writeArtifact("sessions", "SESSION-001.md", { status: "completed", created: "2026-03-01" });
+    writeSession("SESSION-001.md", { status: "completed", created: "2026-03-01" });
     writeArtifact("drafts", "draft-001.md", { title: "Draft", created: new Date().toISOString() });
     writeIndex();
 
@@ -319,8 +380,8 @@ describe("filter option", () => {
 
 describe("summary", () => {
   it("produces correct counts per artifact type", () => {
-    writeArtifact("sessions", "SESSION-001.md", { status: "completed", created: "2026-03-01" });
-    writeArtifact("sessions", "SESSION-002.md", { status: "active", updated: new Date().toISOString() });
+    writeSession("SESSION-001.md", { status: "completed", created: "2026-03-01" });
+    writeSession("SESSION-002.md", { status: "active", last_updated: new Date().toISOString() });
     writeIndex();
 
     const result = scanArtifacts({ agentsDir: agentsDir() });

@@ -9,8 +9,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "fs";
 import { join, basename } from "path";
 import matter from "gray-matter";
 
-import { getOrBuildIndex } from "../tasks/resolve.js";
-import { findOrphans } from "../tasks/migrate.js";
+import { findAgentsDir } from "../tasks/resolve.js";
+import { loadIndex, buildIndexFromFiles, findOrphans } from "../tasks/migrate.js";
 import type { TaskIndex } from "../tasks/types.js";
 import type {
   ArtifactType,
@@ -62,9 +62,23 @@ function daysSince(dateStr: string | undefined): number | null {
   return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-/** Get the most recent date from frontmatter (updated > created) */
+/** Get the most recent date from frontmatter (supports nested session.last_updated) */
 function lastActivity(fm: Record<string, unknown>): string | undefined {
+  // Session files use nested session.last_updated / session.created
+  const sessionBlock = fm.session as Record<string, unknown> | undefined;
+  if (sessionBlock && typeof sessionBlock === "object") {
+    return (sessionBlock.last_updated as string) || (sessionBlock.created as string) || undefined;
+  }
   return (fm.updated as string) || (fm.created as string) || undefined;
+}
+
+/** Extract status from frontmatter, supporting nested session.status */
+function getStatus(fm: Record<string, unknown>): string {
+  const sessionBlock = fm.session as Record<string, unknown> | undefined;
+  if (sessionBlock && typeof sessionBlock === "object" && sessionBlock.status) {
+    return String(sessionBlock.status).toLowerCase();
+  }
+  return String(fm.status || "").toLowerCase();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -78,7 +92,7 @@ function scanSessions(agentsDir: string): CleanupRecommendation[] {
 
   for (const file of files) {
     const fm = file.frontmatter;
-    const status = String(fm.status || "").toLowerCase();
+    const status = getStatus(fm);
 
     // Check for extractable learnings
     const hasLearnings =
@@ -275,10 +289,13 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
   const files = readMdFiles(dir);
   const recs: CleanupRecommendation[] = [];
 
-  // Build a set of active session filenames for cross-referencing
+  // Build sets of session IDs (stem without .md) for cross-referencing.
+  // Plan frontmatter stores session IDs (e.g., "20260327-163059-spec-015"),
+  // while session files are named like "20260327-163059-spec-015-workflow-hooks.md".
+  // Match by checking if any session filename starts with the plan's session ref.
   const sessionsDir = join(agentsDir, "sessions");
-  const activeSessions = new Set<string>();
-  const archivedSessions = new Set<string>();
+  const activeSessionFiles: string[] = [];
+  const archivedSessionFiles: string[] = [];
 
   if (existsSync(sessionsDir)) {
     for (const name of readdirSync(sessionsDir)) {
@@ -286,11 +303,11 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
       try {
         const raw = readFileSync(join(sessionsDir, name), "utf-8");
         const { data } = matter(raw);
-        const status = String(data.status || "").toLowerCase();
-        if (status === "completed" || status === "complete" || status === "cancelled") {
-          archivedSessions.add(name);
+        const status = getStatus(data);
+        if (status === "completed" || status === "complete" || status === "cancelled" || status === "archived") {
+          archivedSessionFiles.push(name);
         } else {
-          activeSessions.add(name);
+          activeSessionFiles.push(name);
         }
       } catch {
         // Skip unreadable
@@ -303,10 +320,20 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
   if (existsSync(sessionArchive)) {
     try {
       for (const name of readdirSync(sessionArchive)) {
-        if (name.endsWith(".md")) archivedSessions.add(name);
+        if (name.endsWith(".md")) archivedSessionFiles.push(name);
       }
     } catch { /* skip */ }
   }
+
+  // Match a session reference against session filenames.
+  // Refs can be filenames ("SESSION-001.md") or ID stems ("20260327-163059-spec-015").
+  const matchesSession = (ref: string, files: string[]): boolean => {
+    // Direct filename match
+    if (files.includes(ref)) return true;
+    // Stem match: ref is a prefix of a filename (without .md)
+    const stem = ref.replace(/\.md$/, "");
+    return files.some((f) => f.startsWith(stem));
+  };
 
   for (const file of files) {
     const fm = file.frontmatter;
@@ -322,7 +349,7 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
         reason: "Orphaned plan — no linked session",
         frontmatter: fm,
       });
-    } else if (archivedSessions.has(sessionRef)) {
+    } else if (matchesSession(sessionRef, archivedSessionFiles)) {
       recs.push({
         type: "plan",
         path: file.path,
@@ -331,7 +358,7 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
         reason: "Linked session is archived/completed",
         frontmatter: fm,
       });
-    } else if (!activeSessions.has(sessionRef)) {
+    } else if (!matchesSession(sessionRef, activeSessionFiles)) {
       recs.push({
         type: "plan",
         path: file.path,
@@ -444,14 +471,28 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
   for (const file of files) {
     const fm = file.frontmatter;
 
-    if (fm.archived_at) {
-      // Already has archive metadata — skip
+    // Report template nests metadata under `report:` block
+    const reportBlock = fm.report as Record<string, unknown> | undefined;
+    const archivedAt = reportBlock?.archived_at || fm.archived_at;
+    const reportStatus = reportBlock?.status as string | undefined;
+    const processedAt = reportBlock?.processed_at as string | undefined;
+
+    if (archivedAt) {
       recs.push({
         type: "report",
         path: file.path,
         filename: file.filename,
         action: "skip",
-        reason: "Already processed",
+        reason: "Already archived",
+        frontmatter: fm,
+      });
+    } else if (reportStatus === "processed" || processedAt) {
+      recs.push({
+        type: "report",
+        path: file.path,
+        filename: file.filename,
+        action: "archive",
+        reason: "Report is processed — ready for archive",
         frontmatter: fm,
       });
     } else {
@@ -504,8 +545,9 @@ export function scanArtifacts(options: ScanOptions): ScanResult {
     }
   }
 
-  // Load task index (needed for task and spec scanning)
-  const index = getOrBuildIndex(agentsDir);
+  // Load task index read-only (never write TASKS.json during scan)
+  const indexPath = join(agentsDir, "TASKS.json");
+  const index = loadIndex(indexPath) ?? buildIndexFromFiles(agentsDir);
 
   // Run per-type scanners
   const shouldScan = (type: ArtifactType) => !filter || filter.includes(type);
