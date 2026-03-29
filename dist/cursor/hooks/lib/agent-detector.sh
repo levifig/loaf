@@ -4,7 +4,7 @@
 
 get_agent_type() {
     # Get AGENT_TYPE from environment or detect from context
-    # Returns: Agent type string (orchestrator, backend-dev, etc.) or "main"
+    # Returns: Agent type string (implementer, reviewer, researcher, etc.) or "main"
 
     if [[ -n "${AGENT_TYPE:-}" ]]; then
         echo "${AGENT_TYPE}"
@@ -35,9 +35,9 @@ should_run_deep_check() {
     local agent_type
     agent_type=$(get_agent_type)
 
-    # Main agent or specific agents run deep checks
+    # Main agent or implementers run deep checks
     case "${agent_type}" in
-        main|backend-dev|frontend-dev|testing-qa)
+        main|implementer)
             return 0
             ;;
         *)
@@ -57,10 +57,10 @@ get_validation_level() {
         main)
             echo "thorough"
             ;;
-        backend-dev|frontend-dev|testing-qa)
+        implementer)
             echo "normal"
             ;;
-        orchestrator|product)
+        reviewer|researcher)
             echo "quick"
             ;;
         *)
@@ -77,11 +77,8 @@ get_timeout_budget() {
     agent_type=$(get_agent_type)
 
     case "${agent_type}" in
-        testing-qa)
-            echo "600"  # 10 minutes for testing agent
-            ;;
         *)
-            echo "300"  # 5 minutes for others
+            echo "300"  # 5 minutes for all profiles
             ;;
     esac
 }
