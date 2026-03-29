@@ -435,11 +435,45 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
   const files = readMdFiles(dir);
   const recs: CleanupRecommendation[] = [];
 
+  // Build session lookup for orphan detection
+  const sessionsDir = join(agentsDir, "sessions");
+  const allSessionFiles: string[] = [];
+  for (const subdir of [sessionsDir, join(sessionsDir, "archive")]) {
+    if (existsSync(subdir)) {
+      try {
+        for (const name of readdirSync(subdir)) {
+          if (name.endsWith(".md")) allSessionFiles.push(name);
+        }
+      } catch { /* skip */ }
+    }
+  }
+
+  const matchesAnySession = (ref: string): boolean => {
+    if (allSessionFiles.includes(ref)) return true;
+    const stem = ref.replace(/\.md$/, "");
+    return allSessionFiles.some((f) => f.startsWith(stem));
+  };
+
   for (const file of files) {
     const fm = file.frontmatter;
-    const days = daysSince(lastActivity(fm));
 
-    if (days !== null && days > 14) {
+    // Council template nests metadata under `council:` block
+    const councilBlock = fm.council as Record<string, unknown> | undefined;
+    const councilDate = councilBlock?.created as string | undefined;
+    const sessionRef = councilBlock?.session_reference as string | undefined;
+    const days = daysSince(councilDate || lastActivity(fm));
+
+    // Check for orphaned councils (no linked session or missing session)
+    if (sessionRef && !matchesAnySession(sessionRef)) {
+      recs.push({
+        type: "council",
+        path: file.path,
+        filename: file.filename,
+        action: "flag",
+        reason: `Orphaned council — linked session "${sessionRef}" not found`,
+        frontmatter: fm,
+      });
+    } else if (days !== null && days > 14) {
       recs.push({
         type: "council",
         path: file.path,
@@ -468,6 +502,23 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
   const files = readMdFiles(dir);
   const recs: CleanupRecommendation[] = [];
 
+  // Build set of archived session files for prerequisite check
+  const sessionArchiveDir = join(agentsDir, "sessions", "archive");
+  const archivedSessionFiles: string[] = [];
+  if (existsSync(sessionArchiveDir)) {
+    try {
+      for (const name of readdirSync(sessionArchiveDir)) {
+        if (name.endsWith(".md")) archivedSessionFiles.push(name);
+      }
+    } catch { /* skip */ }
+  }
+
+  const sessionIsArchived = (ref: string): boolean => {
+    if (archivedSessionFiles.includes(ref)) return true;
+    const stem = ref.replace(/\.md$/, "");
+    return archivedSessionFiles.some((f) => f.startsWith(stem));
+  };
+
   for (const file of files) {
     const fm = file.frontmatter;
 
@@ -476,6 +527,7 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
     const archivedAt = reportBlock?.archived_at || fm.archived_at;
     const reportStatus = reportBlock?.status as string | undefined;
     const processedAt = reportBlock?.processed_at as string | undefined;
+    const sessionRef = reportBlock?.session_reference as string | undefined;
 
     if (archivedAt) {
       recs.push({
@@ -487,14 +539,26 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
         frontmatter: fm,
       });
     } else if (reportStatus === "processed" || processedAt) {
-      recs.push({
-        type: "report",
-        path: file.path,
-        filename: file.filename,
-        action: "archive",
-        reason: "Report is processed — ready for archive",
-        frontmatter: fm,
-      });
+      // Archive prerequisite: linked session must be archived first
+      if (sessionRef && !sessionIsArchived(sessionRef)) {
+        recs.push({
+          type: "report",
+          path: file.path,
+          filename: file.filename,
+          action: "skip",
+          reason: "Report is processed but linked session is not yet archived",
+          frontmatter: fm,
+        });
+      } else {
+        recs.push({
+          type: "report",
+          path: file.path,
+          filename: file.filename,
+          action: "archive",
+          reason: "Report is processed and prerequisites met — ready for archive",
+          frontmatter: fm,
+        });
+      }
     } else {
       const days = daysSince(lastActivity(fm));
       if (days !== null && days > 14) {

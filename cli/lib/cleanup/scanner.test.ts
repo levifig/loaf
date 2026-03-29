@@ -36,16 +36,20 @@ function writeArtifact(subdir: string, filename: string, frontmatter: Record<str
   writeFileSync(join(dir, filename), content, "utf-8");
 }
 
-/** Write a session file with the nested session: block format used in this repo */
-function writeSession(filename: string, sessionFields: Record<string, unknown>, body = ""): void {
-  const dir = setupDir("sessions");
-  // Build nested YAML manually for the session: block
-  let yaml = "session:\n";
-  for (const [k, v] of Object.entries(sessionFields)) {
+/** Write a file with a nested YAML block (e.g., session:, council:, report:) */
+function writeNestedArtifact(subdir: string, filename: string, blockName: string, fields: Record<string, unknown>, body = ""): void {
+  const dir = setupDir(subdir);
+  let yaml = `${blockName}:\n`;
+  for (const [k, v] of Object.entries(fields)) {
     yaml += `  ${k}: ${JSON.stringify(v)}\n`;
   }
   const content = `---\n${yaml}---\n\n${body}`;
   writeFileSync(join(dir, filename), content, "utf-8");
+}
+
+/** Write a session file with the nested session: block format used in this repo */
+function writeSession(filename: string, sessionFields: Record<string, unknown>, body = ""): void {
+  writeNestedArtifact("sessions", filename, "session", sessionFields, body);
 }
 
 /** Write a minimal TASKS.json */
@@ -301,30 +305,91 @@ describe("drafts", () => {
 // Reports
 // ─────────────────────────────────────────────────────────────────────────────
 
+describe("councils", () => {
+  it("reads dates from nested council.created", () => {
+    const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
+    writeNestedArtifact("councils", "council-001.md", "council", {
+      topic: "Architecture decision",
+      created: staleDate,
+      status: "in_progress",
+    });
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "council-001.md");
+    expect(rec?.action).toBe("flag");
+    expect(rec?.reason).toContain("Stale");
+  });
+
+  it("flags orphaned councils with missing session reference", () => {
+    writeNestedArtifact("councils", "council-002.md", "council", {
+      topic: "Missing session",
+      created: new Date().toISOString(),
+      session_reference: "20260101-000000-nonexistent.md",
+    });
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "council-002.md");
+    expect(rec?.action).toBe("flag");
+    expect(rec?.reason).toContain("Orphaned");
+  });
+
+  it("skips recent councils with valid session", () => {
+    writeSession("20260327-181352-task-020.md", { status: "active", last_updated: new Date().toISOString() });
+    writeNestedArtifact("councils", "council-003.md", "council", {
+      topic: "Active council",
+      created: new Date().toISOString(),
+      session_reference: "20260327-181352-task-020.md",
+    });
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "council-003.md");
+    expect(rec?.action).toBe("skip");
+  });
+});
+
 describe("reports", () => {
   it("reads nested report.archived_at and skips already-archived reports", () => {
-    // Write report with nested report: block (matching the template)
-    const dir = setupDir("reports");
-    const content = `---\nreport:\n  status: "processed"\n  archived_at: "2026-03-01T00:00:00Z"\n  archived_by: "agent-pm"\n---\n\n# Report`;
-    writeFileSync(join(dir, "report-001.md"), content, "utf-8");
+    writeNestedArtifact("reports", "report-001.md", "report", {
+      status: "processed",
+      archived_at: "2026-03-01T00:00:00Z",
+      archived_by: "agent-pm",
+    });
     writeIndex();
-
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "report-001.md");
     expect(rec?.action).toBe("skip");
     expect(rec?.reason).toContain("archived");
   });
 
-  it("recommends archive for processed reports without archived_at", () => {
-    const dir = setupDir("reports");
-    const content = `---\nreport:\n  status: "processed"\n  processed_at: "2026-03-01T00:00:00Z"\n---\n\n# Report`;
-    writeFileSync(join(dir, "report-002.md"), content, "utf-8");
-    writeIndex();
+  it("recommends archive for processed reports when session is archived", () => {
+    // Create an archived session
+    const archiveDir = setupDir("sessions", "archive");
+    writeFileSync(join(archiveDir, "20260301-session.md"), "---\nsession:\n  status: archived\n---\n", "utf-8");
 
+    writeNestedArtifact("reports", "report-002.md", "report", {
+      status: "processed",
+      processed_at: "2026-03-01T00:00:00Z",
+      session_reference: "20260301-session.md",
+    });
+    writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });
     const rec = findRec(result.recommendations, "report-002.md");
     expect(rec?.action).toBe("archive");
-    expect(rec?.reason).toContain("processed");
+    expect(rec?.reason).toContain("prerequisites met");
+  });
+
+  it("skips processed reports when linked session is not yet archived", () => {
+    writeSession("20260327-active-session.md", { status: "active", last_updated: new Date().toISOString() });
+    writeNestedArtifact("reports", "report-003.md", "report", {
+      status: "processed",
+      processed_at: "2026-03-01T00:00:00Z",
+      session_reference: "20260327-active-session.md",
+    });
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "report-003.md");
+    expect(rec?.action).toBe("skip");
+    expect(rec?.reason).toContain("not yet archived");
   });
 });
 

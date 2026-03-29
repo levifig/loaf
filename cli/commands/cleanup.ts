@@ -53,8 +53,12 @@ function formatPreview(fm: Record<string, unknown> | undefined): string {
     .join("\n");
 }
 
-/** Archive a generic artifact (session, council, report) by moving to archive/ */
-function archiveGenericArtifact(filePath: string): void {
+/**
+ * Archive a generic artifact (session, council, report) by moving to archive/.
+ * Writes archive metadata into the correct nested block matching the repo's
+ * frontmatter conventions: session.*, council.*, report.* respectively.
+ */
+function archiveGenericArtifact(filePath: string, artifactType: ArtifactType): void {
   const dir = dirname(filePath);
   const archiveDir = join(dir, "archive");
   const filename = filePath.split("/").pop()!;
@@ -62,11 +66,27 @@ function archiveGenericArtifact(filePath: string): void {
 
   mkdirSync(archiveDir, { recursive: true });
 
-  // Add archived_at and archived_by to frontmatter
+  const now = new Date().toISOString();
   const raw = readFileSync(filePath, "utf-8");
   const { data, content } = matter(raw);
-  data.archived_at = new Date().toISOString();
-  data.archived_by = "loaf cleanup";
+
+  // Write archive metadata into the nested block that matches the artifact type
+  const blockKey = artifactType === "session" ? "session"
+    : artifactType === "council" ? "council"
+    : artifactType === "report" ? "report"
+    : null;
+
+  if (blockKey && data[blockKey] && typeof data[blockKey] === "object") {
+    const block = data[blockKey] as Record<string, unknown>;
+    block.status = "archived";
+    block.archived_at = now;
+    block.archived_by = "loaf cleanup";
+  } else {
+    // Fallback for files without a nested block
+    data.archived_at = now;
+    data.archived_by = "loaf cleanup";
+  }
+
   const updated = matter.stringify(content, data);
   writeFileSync(filePath, updated, "utf-8");
 
@@ -208,7 +228,7 @@ export function registerCleanupCommand(program: Command): void {
             // Generic archive (session, council, report)
             const confirmed = await askYesNo(`    Archive? [y/N] `);
             if (confirmed && existsSync(rec.path)) {
-              archiveGenericArtifact(rec.path);
+              archiveGenericArtifact(rec.path, rec.type);
               console.log(`    ${green("✓")} Archived`);
               actionsPerformed++;
             }
