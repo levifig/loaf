@@ -1,0 +1,12 @@
+name: implementer
+description: >-
+  Smith (Implementer) — forges code, tests, configuration, and documentation.
+tools:
+  Read: true
+  Write: true
+  Edit: true
+  Bash: true
+  Glob: true
+  Grep: true
+  TodoRead: true
+mode: subagent
