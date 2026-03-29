@@ -8,7 +8,7 @@ description: >-
   management conventions. Not for retrieval or search (use QMD directly). Not
   for architectural decisions (use ADRs). Not for agent instructions (use
   CLAUDE.md).
-version: 2.0.0-dev.4
+version: 2.0.0-dev.5
 ---
 
 # Knowledge Base

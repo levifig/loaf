@@ -5,14 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0-dev.5] - 2026-03-29
 
 ### Added
+- `loaf cleanup` command — scan `.agents/` artifacts and recommend cleanup actions (SPEC-012)
+  - Covers all 7 artifact types: sessions, tasks, specs, plans, drafts, councils, reports
+  - `--dry-run` and `--sessions`/`--specs`/`--plans`/`--drafts` filters
+  - Non-TTY pipe-safe output (behaves like `--dry-run` when piped)
+  - Interactive per-item confirmation with delete previews
+  - Nested frontmatter support (`session.*`, `council.*`, `report.*`)
+  - Dual council schema support (council-session + orchestration formats)
+  - Detects drafts promoted to specs via `source` field cross-reference
+- Shared prompt helpers (`askYesNo`, `askChoice`, `isTTY`) in `cli/lib/prompts.ts`
+- Pre-merge prompt hook for squash merge conventions (clean body, no auto-dump)
+- Prompt hook support in build system (Claude Code target; filtered for other targets)
 - Advisory `/reflect` suggestion in `/implement` AFTER phase when session has extractable learnings (SPEC-011)
 - Post-implementation reflection flag in `/shape` Step 9 for sessions with strategic tensions (SPEC-011)
 - `/reflect` recommendation in `/cleanup` extraction checks before archiving decision-rich sessions (SPEC-011)
 
+### Changed
+- Spec cleanup (task archival, spec archival) moved to pre-merge on the feature branch instead of post-merge on main
+- Post-merge housekeeping reduced to: pull main, delete branch, suggest reflection
+- `/cleanup` skill updated to reference CLI as execution engine (skill = policy + Linear, CLI = filesystem)
+
 ### Fixed
+- Pre-push hook changed from unconditionally blocking (exit 2) to advisory (exit 0)
 - Stale `docs/specs/` paths in `/reflect`, `/shape`, and spec template — now `.agents/specs/`
 
 ## [2.0.0-dev.4] - 2026-03-27
