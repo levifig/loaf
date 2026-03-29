@@ -156,7 +156,7 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/workflow-pre-push.sh",
             "timeout": 5000,
-            "description": "Block git push without explicit user approval"
+            "description": "Advisory reminders before git push (confirmation via Claude Code permissions)"
           },
           {
             "type": "command",
