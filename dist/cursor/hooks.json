@@ -187,6 +187,10 @@
     ],
     "sessionStart": [
       {
+        "command": "bash $HOME/.cursor/hooks/session/session-start-soul.sh",
+        "timeout": 60
+      },
+      {
         "command": "bash $HOME/.cursor/hooks/session/session-start.sh",
         "timeout": 60
       },

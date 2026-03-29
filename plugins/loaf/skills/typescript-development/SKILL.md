@@ -1,8 +1,11 @@
 ---
 name: typescript-development
 description: >-
-  Covers TypeScript 5+, React 18+, Next.js 14+ App Router, Zustand, Tailwind
-  CSS, and Vitest testing.
+  Covers TypeScript 5+ development with React 18+, Next.js 14+ App Router,
+  Zustand, Tailwind CSS, and Vitest testing. Use when writing TypeScript
+  applications, React components, or Node.js services. Not for UI/UX design
+  decisions (use interface-design), database schema design (use
+  database-design), or backend Python services (use python-development).
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---

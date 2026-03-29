@@ -2,7 +2,10 @@
 name: reference-session
 description: >-
   Imports decisions and context from past sessions. Use when the user asks
-  "reference that earlier session" or "what did we decide before?"
+  "reference that earlier session" or "what did we decide before?" Produces a
+  context summary with key decisions and outcomes from referenced sessions. Not
+  for resuming active work (use resume-session) or general research (use
+  research).
 ---
 
 # Reference Session

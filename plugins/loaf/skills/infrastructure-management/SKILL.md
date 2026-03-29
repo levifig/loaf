@@ -1,6 +1,11 @@
 ---
 name: infrastructure-management
-description: 'Covers Docker, Kubernetes, GitOps, CI/CD pipelines, and container security.'
+description: >-
+  Covers Docker, Kubernetes, GitOps, CI/CD pipelines, and container security.
+  Use when writing Dockerfiles, configuring Kubernetes manifests, setting up
+  CI/CD, or managing deployment infrastructure. Not for application code (use
+  the relevant language skill), database schema design (use database-design), or
+  security audits (use security-compliance).
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---

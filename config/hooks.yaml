@@ -323,6 +323,12 @@ hooks:
 
   session:
     # Session lifecycle
+    - id: session-start-soul
+      skill: orchestration
+      script: hooks/session/session-start-soul.sh
+      event: SessionStart
+      description: Validate SOUL.md is present; restore from template if missing
+
     - id: session-start
       skill: orchestration
       script: hooks/session/session-start.sh

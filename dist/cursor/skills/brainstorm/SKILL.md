@@ -6,7 +6,8 @@ description: >-
   options?" Also activate when the user is thinking out loud, exploring
   tradeoffs, or comparing approaches without committing. Produces brainstorm
   documents with sparks (speculative byproducts) that can later be promoted to
-  ideas via /idea.
+  ideas via /idea. Not for capturing a single quick idea (use idea) or shaping
+  into a bounded spec (use shape).
 version: 2.0.0-dev.5
 ---
 

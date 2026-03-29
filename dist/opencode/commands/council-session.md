@@ -6,7 +6,8 @@ description: >-
   specialists", "what do the experts think", or wants a structured debate
   between domain-specific viewpoints. Not for single-perspective research (use
   research) or architectural decisions that don't need multi-agent deliberation
-  (use architecture).
+  (use architecture). Produces structured council reports with per-specialist
+  analysis and synthesized recommendations.
 subtask: false
 version: 2.0.0-dev.5
 ---

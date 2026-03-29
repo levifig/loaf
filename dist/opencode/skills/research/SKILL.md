@@ -3,6 +3,9 @@ name: research
 description: >-
   Conducts project assessment and topic investigation. Use when stepping back to
   understand the big picture or when the user asks "what's the current state?"
+  Produces state assessments, research findings with ranked options, or vision
+  change proposals. Not for multi-agent deliberation (use council-session) or
+  implementing changes (use implement).
 ---
 
 # Research

@@ -1,8 +1,11 @@
 ---
 name: ruby-development
 description: >-
-  Covers Ruby and Rails 8+ development: Hotwire, Solid Queue, Minitest, and
-  Rails conventions.
+  Covers Ruby and Rails 8+ development with Hotwire, Solid Queue, Minitest, and
+  Rails conventions. Use when building Rails applications, writing Ruby code, or
+  following Rails-specific patterns. Not for database schema decisions (use
+  database-design) or frontend-only work outside Hotwire (use
+  typescript-development).
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 ---

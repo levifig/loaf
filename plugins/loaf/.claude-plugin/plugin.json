@@ -246,6 +246,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start-soul.sh",
+            "description": "Validate SOUL.md is present; restore from template if missing"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
             "description": "Agent-aware session context and active sessions overview"
           }

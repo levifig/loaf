@@ -86,6 +86,7 @@ const postToolHooks = {
 };
 
 const sessionHooks = {
+  'sessionstart': { id: 'session-start-soul', script: 'session/session-start-soul.sh', timeout: 60000 },
   'sessionstart': { id: 'session-start', script: 'session/session-start.sh', timeout: 60000 },
   'sessionend': { id: 'session-end', script: 'session/session-end.sh', timeout: 60000 },
   'precompact': { id: 'pre-compact-archive', script: 'session/pre-compact-archive.sh', timeout: 60000 },
