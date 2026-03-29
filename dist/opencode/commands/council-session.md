@@ -9,7 +9,7 @@ description: >-
   (use architecture).
 agent: PM
 subtask: false
-version: 2.0.0-dev.4
+version: 2.0.0-dev.5
 ---
 
 # Council Deliberation Session

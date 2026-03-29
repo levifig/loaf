@@ -3,7 +3,7 @@ name: orchestration
 description: >-
   Coordinates multi-agent work: agent delegation, session management, Linear
   integration, and council workflows.
-version: 2.0.0-dev.4
+version: 2.0.0-dev.5
 ---
 
 # PM Orchestration

@@ -8,7 +8,7 @@ description: >-
   between domain-specific viewpoints. Not for single-perspective research (use
   research) or architectural decisions that don't need multi-agent deliberation
   (use architecture).
-version: 2.0.0-dev.4
+version: 2.0.0-dev.5
 ---
 
 # Council Deliberation Session
