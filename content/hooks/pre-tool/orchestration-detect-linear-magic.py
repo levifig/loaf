@@ -161,7 +161,7 @@ def main():
         print()
 
     print("💡 Consider updating Linear issue status to match commit intent.")
-    print("   Use the pm-orchestrator agent to sync status automatically.")
+    print("   Use the coordinator session to sync status automatically.")
     print()
 
     sys.exit(0)

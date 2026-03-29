@@ -29,30 +29,27 @@ echo ""
 
 # Agent-specific checklists
 case "$AGENT_TYPE" in
-  pm-orchestrator|product)
-    # PM agents: Full completion checklist
-    echo "## PM Orchestration Checklist"
+  main)
+    # Coordinator (main session): Full completion checklist
+    echo "## Coordinator Checklist"
     echo ""
-    echo "- [ ] All spawned agents completed their tasks"
+    echo "- [ ] All spawned implementers/reviewers completed their tasks"
     echo "- [ ] Session outcomes logged in session file"
     echo "- [ ] Linear issues synced with actual progress"
     echo "- [ ] Decisions captured (ADRs if architectural)"
     echo "- [ ] Session file \`## Current State\` is handoff-ready"
-    echo "- [ ] **Code review completed** (run \`pr-review-toolkit:code-reviewer\` if significant changes)"
+    echo "- [ ] **Code review completed** (spawn a reviewer if significant changes)"
     echo "- [ ] Completed sessions deleted (knowledge extracted)"
     echo "- [ ] Active sessions have clear next steps"
     echo ""
     echo "### Code Review Reminder"
     echo ""
-    echo "If this session involved significant code changes, consider running:"
-    echo "\`\`\`"
-    echo "Task(subagent_type=\"pr-review-toolkit:code-reviewer\", prompt=\"Review recent changes for this session\")"
-    echo "\`\`\`"
+    echo "If this session involved significant code changes, consider spawning a reviewer."
     ;;
 
-  backend-dev|frontend-dev|rails-dev|dba|devops)
-    # Implementation agents: Outcome reminder
-    echo "## Implementation Outcome Checklist"
+  implementer)
+    # Implementer profile: Outcome reminder
+    echo "## Implementer Outcome Checklist"
     echo ""
     echo "- [ ] Tests pass for implemented changes"
     echo "- [ ] Code follows project style conventions"
@@ -61,24 +58,24 @@ case "$AGENT_TYPE" in
     echo "- [ ] Documentation updated (if significant changes)"
     ;;
 
-  code-reviewer|security|testing-qa)
-    # Quality agents: Review completion
-    echo "## Quality Review Checklist"
+  reviewer)
+    # Reviewer profile: Review completion
+    echo "## Reviewer Checklist"
     echo ""
     echo "- [ ] Review findings documented"
     echo "- [ ] Critical issues flagged appropriately"
     echo "- [ ] Session file updated with review outcomes"
-    echo "- [ ] Recommendations captured for PM coordination"
+    echo "- [ ] Recommendations captured for coordinator"
     ;;
 
-  design)
-    # design agent: Design deliverables
-    echo "## Design Deliverables Checklist"
+  researcher)
+    # Researcher profile: Research deliverables
+    echo "## Researcher Checklist"
     echo ""
-    echo "- [ ] Design decisions documented"
-    echo "- [ ] UI/UX patterns consistent with project standards"
-    echo "- [ ] Session file updated with design outcomes"
-    echo "- [ ] Implementation guidance clear for developers"
+    echo "- [ ] Research findings documented"
+    echo "- [ ] Options and trade-offs clearly presented"
+    echo "- [ ] Session file updated with research outcomes"
+    echo "- [ ] Recommendations captured for coordinator"
     ;;
 
   *)

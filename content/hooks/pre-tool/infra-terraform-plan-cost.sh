@@ -19,11 +19,11 @@ if ! is_hook_enabled "terraform-plan"; then
     exit 0
 fi
 
-# Only run for devops agent or thorough validation
+# Only run for implementer agent or thorough validation
 AGENT_TYPE=$(get_agent_type)
 VALIDATION_LEVEL=$(get_validation_level)
 
-if [[ "${AGENT_TYPE}" != "devops" ]] && [[ "${VALIDATION_LEVEL}" != "thorough" ]]; then
+if [[ "${AGENT_TYPE}" != "implementer" ]] && [[ "${VALIDATION_LEVEL}" != "thorough" ]]; then
     exit 0
 fi
 
