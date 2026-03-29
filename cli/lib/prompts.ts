@@ -8,11 +8,13 @@
 import { createInterface } from "readline";
 
 /**
- * Check if stdout is a TTY (interactive terminal).
- * Returns false when output is piped or in CI environments.
+ * Check if both stdin and stdout are TTYs (interactive terminal).
+ * Returns false when either is piped or redirected — this matters because
+ * askYesNo/askChoice key off stdin.isTTY while the CLI dry-run check
+ * uses this function. Both must agree to enter interactive mode.
  */
 export function isTTY(): boolean {
-  return !!process.stdout.isTTY;
+  return !!process.stdin.isTTY && !!process.stdout.isTTY;
 }
 
 /**

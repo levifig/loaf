@@ -346,6 +346,21 @@ describe("councils", () => {
     expect(rec?.action).toBe("skip");
   });
 
+  it("reads dates from orchestration schema (council.timestamp + council.session)", () => {
+    const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
+    writeSession("20260301-session.md", { status: "active", last_updated: new Date().toISOString() });
+    writeNestedArtifact("councils", "council-005.md", "council", {
+      topic: "Orchestration format",
+      timestamp: staleDate,
+      session: "20260301-session",
+    });
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "council-005.md");
+    expect(rec?.action).toBe("archive");
+    expect(rec?.reason).toContain("days old");
+  });
+
   it("recommends archive for old councils with valid linked session", () => {
     const staleDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
     writeSession("20260301-session.md", { status: "active", last_updated: new Date().toISOString() });
@@ -390,6 +405,18 @@ describe("reports", () => {
     const rec = findRec(result.recommendations, "report-002.md");
     expect(rec?.action).toBe("archive");
     expect(rec?.reason).toContain("prerequisites met");
+  });
+
+  it("flags processed reports missing session_reference", () => {
+    writeNestedArtifact("reports", "report-004.md", "report", {
+      status: "processed",
+      processed_at: "2026-03-01T00:00:00Z",
+    });
+    writeIndex();
+    const result = scanArtifacts({ agentsDir: agentsDir() });
+    const rec = findRec(result.recommendations, "report-004.md");
+    expect(rec?.action).toBe("flag");
+    expect(rec?.reason).toContain("missing session_reference");
   });
 
   it("skips processed reports when linked session is not yet archived", () => {

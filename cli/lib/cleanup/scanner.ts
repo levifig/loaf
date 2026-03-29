@@ -465,10 +465,12 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
   for (const file of files) {
     const fm = file.frontmatter;
 
-    // Council template nests metadata under `council:` block
+    // Two council schemas exist:
+    //   council-session template: council.created, council.session_reference
+    //   orchestration reference:  council.timestamp, council.session
     const councilBlock = fm.council as Record<string, unknown> | undefined;
-    const councilDate = councilBlock?.created as string | undefined;
-    const sessionRef = councilBlock?.session_reference as string | undefined;
+    const councilDate = (councilBlock?.created || councilBlock?.timestamp) as string | undefined;
+    const sessionRef = (councilBlock?.session_reference || councilBlock?.session) as string | undefined;
     const days = daysSince(councilDate || lastActivity(fm));
 
     // Check for orphaned councils (no linked session or missing session)
@@ -560,8 +562,17 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
         frontmatter: fm,
       });
     } else if (reportStatus === "processed" || processedAt) {
-      // Archive prerequisite: linked session must be archived first
-      if (sessionRef && !sessionIsArchived(normalizeSessionRef(sessionRef))) {
+      // Archive prerequisites: session_reference required, and that session must be archived
+      if (!sessionRef) {
+        recs.push({
+          type: "report",
+          path: file.path,
+          filename: file.filename,
+          action: "flag",
+          reason: "Report is processed but missing session_reference — repair metadata",
+          frontmatter: fm,
+        });
+      } else if (!sessionIsArchived(normalizeSessionRef(sessionRef))) {
         recs.push({
           type: "report",
           path: file.path,
