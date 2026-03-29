@@ -1,10 +1,3 @@
-/**
- * Cleanup Scanner Tests
- *
- * Tests the scanner engine against temp .agents/ fixtures.
- * Each test creates a minimal directory structure with specific artifact states.
- */
-
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync } from "fs";
 import { join } from "path";
@@ -64,7 +57,6 @@ function findRec(recs: CleanupRecommendation[], filename: string): CleanupRecomm
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "loaf-cleanup-test-"));
-  // Create required directories
   setupDir("sessions");
   setupDir("tasks");
   setupDir("specs");

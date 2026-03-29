@@ -1,9 +1,5 @@
 /**
- * loaf cleanup command
- *
- * Scans .agents/ directories and recommends cleanup actions based on
- * the existing cleanup skill's rules. Supports interactive mode,
- * dry-run, artifact-type filters, and non-TTY pipe-safe output.
+ * loaf cleanup — scan .agents/, recommend actions (dry-run, filters, pipe-safe).
  */
 
 import { Command } from "commander";
@@ -17,7 +13,6 @@ import { archiveTasks, archiveSpecs, saveIndex } from "../lib/tasks/migrate.js";
 import { scanArtifacts } from "../lib/cleanup/scanner.js";
 import type { ArtifactType, CleanupRecommendation } from "../lib/cleanup/types.js";
 
-// ANSI color helpers
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
@@ -25,7 +20,6 @@ const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const gray = (s: string) => `\x1b[90m${s}\x1b[0m`;
 const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 
-// Display names for artifact types
 const TYPE_LABELS: Record<ArtifactType, string> = {
   session: "SESSIONS",
   task: "TASKS",
@@ -40,7 +34,6 @@ const TYPE_LABELS: Record<ArtifactType, string> = {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Format a frontmatter preview (first few fields) for delete confirmation */
 function formatPreview(fm: Record<string, unknown> | undefined): string {
   if (!fm) return gray("  (no frontmatter)");
   const keys = Object.keys(fm).slice(0, 3);
@@ -53,11 +46,9 @@ function formatPreview(fm: Record<string, unknown> | undefined): string {
     .join("\n");
 }
 
-/**
- * Archive a generic artifact (session, council, report) by moving to archive/.
- * Writes archive metadata into the correct nested block matching the repo's
- * frontmatter conventions: session.*, council.*, report.* respectively.
- */
+const NESTED_ARCHIVE_TYPES = new Set<ArtifactType>(["session", "council", "report"]);
+
+/** Move session/council/report to archive/ and set archived metadata in frontmatter. */
 function archiveGenericArtifact(filePath: string, artifactType: ArtifactType): void {
   const dir = dirname(filePath);
   const archiveDir = join(dir, "archive");
@@ -70,11 +61,7 @@ function archiveGenericArtifact(filePath: string, artifactType: ArtifactType): v
   const raw = readFileSync(filePath, "utf-8");
   const { data, content } = matter(raw);
 
-  // Write archive metadata into the nested block that matches the artifact type
-  const blockKey = artifactType === "session" ? "session"
-    : artifactType === "council" ? "council"
-    : artifactType === "report" ? "report"
-    : null;
+  const blockKey = NESTED_ARCHIVE_TYPES.has(artifactType) ? artifactType : null;
 
   if (blockKey && data[blockKey] && typeof data[blockKey] === "object") {
     const block = data[blockKey] as Record<string, unknown>;
@@ -82,7 +69,6 @@ function archiveGenericArtifact(filePath: string, artifactType: ArtifactType): v
     block.archived_at = now;
     block.archived_by = "loaf cleanup";
   } else {
-    // Fallback for files without a nested block
     data.archived_at = now;
     data.archived_by = "loaf cleanup";
   }
@@ -121,7 +107,6 @@ export function registerCleanupCommand(program: Command): void {
 
       console.log(`\n${bold("loaf cleanup")}\n`);
 
-      // Build filter from flags
       const filter: ArtifactType[] | undefined = (() => {
         const types: ArtifactType[] = [];
         if (options.sessions) types.push("session");
@@ -131,16 +116,13 @@ export function registerCleanupCommand(program: Command): void {
         return types.length > 0 ? types : undefined;
       })();
 
-      // Scan
       const result = scanArtifacts({ agentsDir, filter });
 
-      // Print warnings
       for (const warning of result.warnings) {
         console.log(`  ${yellow("warn:")} ${warning}`);
       }
       if (result.warnings.length > 0) console.log();
 
-      // Print summary table
       for (const typeSummary of result.summary) {
         const label = TYPE_LABELS[typeSummary.type];
         console.log(`  ${bold(label)} ${gray(`(${typeSummary.total} total)`)}`);
@@ -174,7 +156,6 @@ export function registerCleanupCommand(program: Command): void {
         console.log();
       }
 
-      // Count actionable items
       const actionable = result.recommendations.filter((r) => r.action !== "skip");
 
       if (actionable.length === 0) {
@@ -182,19 +163,14 @@ export function registerCleanupCommand(program: Command): void {
         return;
       }
 
-      // Dry-run or non-TTY: stop here
       if (options.dryRun || !isTTY()) {
         const mode = options.dryRun ? "--dry-run" : "non-TTY";
         console.log(`  ${cyan(`(${mode})`)} ${actionable.length} actionable item(s). Run interactively to take action.\n`);
         return;
       }
 
-      // ── Interactive mode ────────────────────────────────────────────────
-
       console.log(`  ${bold("Actions")} — ${actionable.length} item(s)\n`);
 
-      // Defer index load until a task/spec archive is confirmed — avoid
-      // writing TASKS.json just because the user entered interactive mode.
       let index: ReturnType<typeof getOrBuildIndex> | null = null;
       const getIndex = () => {
         if (!index) index = getOrBuildIndex(agentsDir);
@@ -205,14 +181,12 @@ export function registerCleanupCommand(program: Command): void {
       let actionsPerformed = 0;
 
       for (const rec of actionable) {
-        // Header for each item
         console.log(`  ${cyan("→")} ${bold(rec.filename)}`);
         console.log(`    ${rec.reason}`);
         if (rec.hint) console.log(`    ${yellow("hint:")} ${rec.hint}`);
 
         if (rec.action === "archive") {
           if (rec.type === "task") {
-            // Extract task ID from filename
             const match = rec.filename.match(/^(TASK-\d+)/);
             if (match) {
               const confirmed = await askYesNo(`    Archive ${match[1]}? [y/N] `);
@@ -231,7 +205,6 @@ export function registerCleanupCommand(program: Command): void {
               }
             }
           } else {
-            // Generic archive (session, council, report)
             const confirmed = await askYesNo(`    Archive? [y/N] `);
             if (confirmed && existsSync(rec.path)) {
               archiveGenericArtifact(rec.path, rec.type);
@@ -240,7 +213,6 @@ export function registerCleanupCommand(program: Command): void {
             }
           }
         } else if (rec.action === "delete") {
-          // Show preview before delete
           console.log(formatPreview(rec.frontmatter));
           const confirmed = await askYesNo(`    ${red("Delete")}? [y/N] `);
           if (confirmed && existsSync(rec.path)) {
@@ -255,7 +227,6 @@ export function registerCleanupCommand(program: Command): void {
         console.log();
       }
 
-      // Batch archive tasks and specs via existing helpers
       if (tasksToArchive.length > 0) {
         const idx = getIndex();
         const results = archiveTasks(agentsDir, idx, tasksToArchive);
@@ -280,7 +251,6 @@ export function registerCleanupCommand(program: Command): void {
         }
       }
 
-      // Save index only if we actually loaded and used it
       if (index) {
         saveIndex(join(agentsDir, "TASKS.json"), index);
       }

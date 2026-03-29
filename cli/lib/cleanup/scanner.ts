@@ -1,15 +1,11 @@
 /**
- * Cleanup Scanner Engine
- *
- * Walks .agents/ directories and produces typed recommendations based on
- * the cleanup skill's existing rules. Pure logic — no I/O prompts.
+ * Walks .agents/ and produces cleanup recommendations (no prompts).
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
-import { join, basename } from "path";
+import { join } from "path";
 import matter from "gray-matter";
 
-import { findAgentsDir } from "../tasks/resolve.js";
 import { loadIndex, buildIndexFromFiles, findOrphans } from "../tasks/migrate.js";
 import type { TaskIndex } from "../tasks/types.js";
 import type {
@@ -32,23 +28,24 @@ function readMdFiles(dir: string): Array<{ path: string; filename: string; front
 
   const results: Array<{ path: string; filename: string; frontmatter: Record<string, unknown>; raw: string }> = [];
 
+  let entries: string[];
   try {
-    const entries = readdirSync(dir);
-    for (const name of entries) {
-      if (name === "archive" || !name.endsWith(".md")) continue;
-      const filePath = join(dir, name);
-      try {
-        const stat = statSync(filePath);
-        if (!stat.isFile()) continue;
-        const raw = readFileSync(filePath, "utf-8");
-        const { data } = matter(raw);
-        results.push({ path: filePath, filename: name, frontmatter: data, raw });
-      } catch {
-        // Can't read file — skip
-      }
-    }
+    entries = readdirSync(dir);
   } catch {
-    // Can't read directory — skip
+    return results;
+  }
+
+  for (const name of entries) {
+    if (name === "archive" || !name.endsWith(".md")) continue;
+    const filePath = join(dir, name);
+    try {
+      if (!statSync(filePath).isFile()) continue;
+      const raw = readFileSync(filePath, "utf-8");
+      const { data } = matter(raw);
+      results.push({ path: filePath, filename: name, frontmatter: data, raw });
+    } catch {
+      continue;
+    }
   }
 
   return results;
@@ -70,9 +67,8 @@ function normalizeSessionRef(ref: string): string {
   return ref.replace(/^\.agents\/sessions\/(archive\/)?/, "");
 }
 
-/** Get the most recent date from frontmatter (supports nested session.last_updated) */
+/** Most recent activity date from frontmatter (nested `session.*` or top-level). */
 function lastActivity(fm: Record<string, unknown>): string | undefined {
-  // Session files use nested session.last_updated / session.created
   const sessionBlock = fm.session as Record<string, unknown> | undefined;
   if (sessionBlock && typeof sessionBlock === "object") {
     return (sessionBlock.last_updated as string) || (sessionBlock.created as string) || undefined;
@@ -102,7 +98,6 @@ function scanSessions(agentsDir: string): CleanupRecommendation[] {
     const fm = file.frontmatter;
     const status = getStatus(fm);
 
-    // Check for extractable learnings
     const hasLearnings =
       file.raw.includes("## Key Decisions") ||
       file.raw.includes("## Lessons Learned") ||
@@ -170,11 +165,9 @@ function scanSessions(agentsDir: string): CleanupRecommendation[] {
 function scanTasks(agentsDir: string, index: TaskIndex): CleanupRecommendation[] {
   const recs: CleanupRecommendation[] = [];
 
-  // Known spec IDs for orphan detection
   const knownSpecIds = new Set(Object.keys(index.specs));
 
   for (const [id, entry] of Object.entries(index.tasks)) {
-    // Skip already-archived tasks
     if (entry.file.startsWith("archive/")) continue;
 
     const filePath = join(agentsDir, "tasks", entry.file);
@@ -189,7 +182,6 @@ function scanTasks(agentsDir: string, index: TaskIndex): CleanupRecommendation[]
         frontmatter: { id, title: entry.title, status: entry.status, spec: entry.spec },
       });
     } else if (entry.spec && !knownSpecIds.has(entry.spec)) {
-      // Orphaned: references a spec that doesn't exist
       recs.push({
         type: "task",
         path: filePath,
@@ -210,7 +202,6 @@ function scanTasks(agentsDir: string, index: TaskIndex): CleanupRecommendation[]
     }
   }
 
-  // Also check for filesystem orphans (files not in index)
   const orphans = findOrphans(agentsDir, index);
   for (const orphan of orphans.tasks) {
     recs.push({
@@ -276,7 +267,6 @@ function scanSpecs(agentsDir: string, index: TaskIndex): CleanupRecommendation[]
     }
   }
 
-  // Check for filesystem orphans
   const orphans = findOrphans(agentsDir, index);
   for (const orphan of orphans.specs) {
     recs.push({
@@ -297,10 +287,6 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
   const files = readMdFiles(dir);
   const recs: CleanupRecommendation[] = [];
 
-  // Build sets of session IDs (stem without .md) for cross-referencing.
-  // Plan frontmatter stores session IDs (e.g., "20260327-163059-spec-015"),
-  // while session files are named like "20260327-163059-spec-015-workflow-hooks.md".
-  // Match by checking if any session filename starts with the plan's session ref.
   const sessionsDir = join(agentsDir, "sessions");
   const activeSessionFiles: string[] = [];
   const archivedSessionFiles: string[] = [];
@@ -318,27 +304,24 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
           activeSessionFiles.push(name);
         }
       } catch {
-        // Skip unreadable
+        continue;
       }
     }
   }
 
-  // Also check archive/ for sessions
   const sessionArchive = join(sessionsDir, "archive");
   if (existsSync(sessionArchive)) {
     try {
       for (const name of readdirSync(sessionArchive)) {
         if (name.endsWith(".md")) archivedSessionFiles.push(name);
       }
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 
-  // Match a session reference against session filenames.
-  // Refs can be filenames ("SESSION-001.md") or ID stems ("20260327-163059-spec-015").
   const matchesSession = (ref: string, files: string[]): boolean => {
-    // Direct filename match
     if (files.includes(ref)) return true;
-    // Stem match: ref is a prefix of a filename (without .md)
     const stem = ref.replace(/\.md$/, "");
     return files.some((f) => f.startsWith(stem));
   };
@@ -348,7 +331,6 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
     const sessionRef = fm.session as string | undefined;
 
     if (!sessionRef) {
-      // No session link — orphaned
       recs.push({
         type: "plan",
         path: file.path,
@@ -376,7 +358,6 @@ function scanPlans(agentsDir: string): CleanupRecommendation[] {
         frontmatter: fm,
       });
     } else {
-      // Check staleness
       const days = daysSince(lastActivity(fm));
       if (days !== null && days > 14) {
         recs.push({
@@ -408,12 +389,9 @@ function scanDrafts(agentsDir: string, index: TaskIndex): CleanupRecommendation[
   const files = readMdFiles(dir);
   const recs: CleanupRecommendation[] = [];
 
-  // Build set of draft references from spec source fields.
-  // Specs record source as full path (".agents/drafts/FILE.md") or keyword ("brainstorm", "direct").
   const promotedDrafts = new Set<string>();
   for (const entry of Object.values(index.specs)) {
     if (entry.source && entry.source.includes("/drafts/")) {
-      // Extract bare filename from path
       const filename = entry.source.replace(/^.*\/drafts\//, "");
       promotedDrafts.add(filename);
     }
@@ -423,7 +401,6 @@ function scanDrafts(agentsDir: string, index: TaskIndex): CleanupRecommendation[
     const fm = file.frontmatter;
     const days = daysSince(lastActivity(fm) || fm.created as string);
 
-    // Check if this draft has been promoted to a spec
     if (promotedDrafts.has(file.filename)) {
       const hasSparks = file.raw.includes("## Sparks");
       recs.push({
@@ -466,7 +443,6 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
   const files = readMdFiles(dir);
   const recs: CleanupRecommendation[] = [];
 
-  // Build session lookup for orphan detection and archive-readiness
   const sessionsDir = join(agentsDir, "sessions");
   const allSessionFiles: string[] = [];
   const completedSessionFiles: string[] = [];
@@ -505,15 +481,11 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
   for (const file of files) {
     const fm = file.frontmatter;
 
-    // Two council schemas exist:
-    //   council-session template: council.created, council.session_reference
-    //   orchestration reference:  council.timestamp, council.session
     const councilBlock = fm.council as Record<string, unknown> | undefined;
     const councilDate = (councilBlock?.created || councilBlock?.timestamp) as string | undefined;
     const sessionRef = (councilBlock?.session_reference || councilBlock?.session) as string | undefined;
     const days = daysSince(councilDate || lastActivity(fm));
 
-    // Check for orphaned councils (no linked session or missing session)
     if (sessionRef && !matchesAnySession(normalizeSessionRef(sessionRef))) {
       recs.push({
         type: "council",
@@ -524,13 +496,9 @@ function scanCouncils(agentsDir: string): CleanupRecommendation[] {
         frontmatter: fm,
       });
     } else if (days !== null && days > 14) {
-      // Archive only if council has a Decision/outcome recorded.
-      // The council file itself is the source — check for ## Decision content.
       const hasDecision = file.raw.includes("## Decision") &&
         !file.raw.match(/## Decision\s*\n\s*\n\s*(\[To be filled|$)/);
 
-      // Archive requires: decision recorded AND linked session completed/archived
-      // (policy: "session summary captured → archive")
       const normalizedRef = sessionRef ? normalizeSessionRef(sessionRef) : null;
       const sessionDone = normalizedRef && sessionIsCompleted(normalizedRef);
 
@@ -578,7 +546,6 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
   const files = readMdFiles(dir);
   const recs: CleanupRecommendation[] = [];
 
-  // Build set of archived session files for prerequisite check
   const sessionArchiveDir = join(agentsDir, "sessions", "archive");
   const archivedSessionFiles: string[] = [];
   if (existsSync(sessionArchiveDir)) {
@@ -598,7 +565,6 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
   for (const file of files) {
     const fm = file.frontmatter;
 
-    // Report template nests metadata under `report:` block
     const reportBlock = fm.report as Record<string, unknown> | undefined;
     const archivedAt = reportBlock?.archived_at || fm.archived_at;
     const reportStatus = reportBlock?.status as string | undefined;
@@ -615,7 +581,6 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
         frontmatter: fm,
       });
     } else if (reportStatus === "processed" || processedAt) {
-      // Archive prerequisites: session_reference required, and that session must be archived
       if (!sessionRef) {
         recs.push({
           type: "report",
@@ -645,8 +610,6 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
         });
       }
     } else {
-      // Unprocessed reports: flag if stale, skip if recent.
-      // No age-based archive — reports must be processed first.
       const days = daysSince(lastActivity(fm));
       if (days !== null && days > 14) {
         recs.push({
@@ -677,13 +640,11 @@ function scanReports(agentsDir: string): CleanupRecommendation[] {
 // Main Scanner
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Scan .agents/ artifacts and produce cleanup recommendations */
 export function scanArtifacts(options: ScanOptions): ScanResult {
   const { agentsDir, filter } = options;
   const recommendations: CleanupRecommendation[] = [];
   const warnings: string[] = [];
 
-  // Check directory existence per V1 contract
   for (const dir of ARTIFACT_DIRS) {
     if (filter && !filter.includes(dir.type)) continue;
 
@@ -692,15 +653,12 @@ export function scanArtifacts(options: ScanOptions): ScanResult {
       if (dir.required) {
         warnings.push(`Required directory missing: ${dir.dirname}/`);
       }
-      // Optional dirs: skip silently
     }
   }
 
-  // Load task index read-only (never write TASKS.json during scan)
   const indexPath = join(agentsDir, "TASKS.json");
   const index = loadIndex(indexPath) ?? buildIndexFromFiles(agentsDir);
 
-  // Run per-type scanners
   const shouldScan = (type: ArtifactType) => !filter || filter.includes(type);
 
   if (shouldScan("session")) recommendations.push(...scanSessions(agentsDir));
@@ -711,7 +669,6 @@ export function scanArtifacts(options: ScanOptions): ScanResult {
   if (shouldScan("council")) recommendations.push(...scanCouncils(agentsDir));
   if (shouldScan("report")) recommendations.push(...scanReports(agentsDir));
 
-  // Build summary
   const summary: TypeSummary[] = ARTIFACT_TYPES
     .filter((t) => shouldScan(t))
     .map((type) => {
