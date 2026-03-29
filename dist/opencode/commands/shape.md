@@ -3,8 +3,9 @@ description: >-
   Shapes ideas into implementable specs with scope boundaries and test
   conditions. Use when the user asks "shape this idea" or "write a spec." Also
   activate when an explored idea has accumulated enough constraints and scope
-  definition to bound into a spec.
-agent: PM
+  definition to bound into a spec. Produces spec files with scope, acceptance
+  criteria, and test conditions. Not for breaking specs into tasks (use
+  breakdown) or brainstorming without constraints (use brainstorm).
 subtask: false
 version: 2.0.0-dev.5
 ---

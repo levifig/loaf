@@ -147,7 +147,7 @@ Task(Explore, "How does authentication work in this codebase?")
 |-----------|----------|
 | Quick file lookup | Direct Read tool |
 | Multi-file exploration | Task(Explore) |
-| Implementation work | Task(backend-dev) |
+| Implementation work | Task(implementer) |
 | Complex investigation | Task(Plan) then implement |
 
 ## Context Budget Guidelines

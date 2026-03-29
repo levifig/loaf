@@ -18,7 +18,7 @@ import matter from "gray-matter";
 import { join } from "path";
 import { loadSkillFrontmatter, loadTargetSkillSidecar } from "../lib/sidecar.js";
 import { getVersion, injectVersion } from "../lib/version.js";
-import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
+
 import { copySharedTemplates } from "../lib/shared-templates.js";
 import { copyDirWithTransform } from "../lib/copy-utils.js";
 import type { BuildContext } from "../types.js";
@@ -34,9 +34,7 @@ function substituteCommands(content: string): string {
 
 export async function build({ rootDir, srcDir, distDir, targetsConfig }: BuildContext): Promise<void> {
   const version = getVersion(rootDir);
-  const agentMap = buildAgentMap(srcDir, TARGET_NAME);
-  const transformMd = (content: string) =>
-    substituteAgentNames(substituteCommands(content), agentMap);
+  const transformMd = (content: string) => substituteCommands(content);
 
   const skillsDir = join(distDir, "skills");
 

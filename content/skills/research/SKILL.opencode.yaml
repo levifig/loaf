@@ -1,3 +1,2 @@
 # OpenCode skill configuration
-agent: "{{AGENT:pm}}"
 subtask: false

@@ -3,18 +3,18 @@
   "hooks": {
     "preToolUse": [
       {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-check-secrets.sh",
-        "timeout": 30,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-validate-changelog.sh",
-        "timeout": 30,
-        "matcher": "Edit|Write"
-      },
-      {
         "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-format-check.sh",
         "timeout": 60,
+        "matcher": "Edit|Write"
+      },
+      {
+        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-tdd-advisory.sh",
+        "timeout": 5,
+        "matcher": "Edit|Write"
+      },
+      {
+        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-check-secrets.sh",
+        "timeout": 30,
         "matcher": "Edit|Write"
       },
       {
@@ -23,8 +23,8 @@
         "matcher": "Bash"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-tdd-advisory.sh",
-        "timeout": 5,
+        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-validate-changelog.sh",
+        "timeout": 30,
         "matcher": "Edit|Write"
       },
       {
@@ -186,6 +186,10 @@
       }
     ],
     "sessionStart": [
+      {
+        "command": "bash $HOME/.cursor/hooks/session/session-start-soul.sh",
+        "timeout": 60
+      },
       {
         "command": "bash $HOME/.cursor/hooks/session/session-start.sh",
         "timeout": 60

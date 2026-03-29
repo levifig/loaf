@@ -1,8 +1,11 @@
 ---
 name: python-development
 description: >-
-  Covers Python 3.12+ with FastAPI, Pydantic, async patterns, pytest, SQLAlchemy, and uv
-  toolchain.
+  Covers Python 3.12+ development with FastAPI, Pydantic, async patterns, pytest,
+  SQLAlchemy, and uv toolchain. Use when writing Python services, APIs, data models,
+  or tests. Not for database schema design (use database-design), infrastructure or
+  deployment (use infrastructure-management), or frontend code (use
+  typescript-development).
 ---
 
 # Python Development
