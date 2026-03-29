@@ -13,6 +13,25 @@ version: 2.0.0-dev.4
 
 Review ALL agent artifacts in `.agents/` and provide hygiene recommendations.
 
+## CLI Command
+
+Use `loaf cleanup` for filesystem scanning and actions. The CLI is the execution engine; this skill defines the policy and adds Linear-aware checks the CLI cannot perform.
+
+```bash
+loaf cleanup              # Scan all artifacts, show summary + interactive actions
+loaf cleanup --dry-run    # Show recommendations without prompting
+loaf cleanup --sessions   # Only review sessions
+loaf cleanup --specs      # Only review specs
+loaf cleanup --plans      # Only review plans
+loaf cleanup --drafts     # Only review drafts
+```
+
+**Division of responsibility:**
+- **CLI (`loaf cleanup`):** Filesystem scanning, archive/delete operations, non-TTY reporting
+- **This skill (agent context):** Linear status checks, extraction recommendations, cross-referencing external systems
+
+When running as an agent, use `loaf cleanup --dry-run` first to assess, then take actions interactively or via the CLI.
+
 ## Contents
 - Sessions
 - Tasks

@@ -1,12 +1,10 @@
 ---
 id: SPEC-017
-title: "TDD Harness — spec-driven testing, eval accumulation, reviewer-to-R mapping"
+title: 'TDD Harness — spec-driven testing, eval accumulation, reviewer-to-R mapping'
 source: SPEC-014
-created: 2026-03-28T15:45:00Z
+created: '2026-03-28T15:45:00.000Z'
 status: drafting
-appetite: "Medium (3-5 sessions)"
-depends_on: [SPEC-014]
-soft_dependencies: [SPEC-016]
+appetite: Medium (3-5 sessions)
 ---
 
 # SPEC-017: TDD Harness — Spec-Driven Testing and Eval Accumulation

@@ -1,10 +1,10 @@
 ---
 id: SPEC-016
-title: "Council Advisory Redesign — racial composition, structured output"
+title: 'Council Advisory Redesign — dynamic specialists, structured output'
 source: direct
-created: 2026-03-27T20:50:19Z
+created: '2026-03-27T20:50:19.000Z'
 status: drafting
-appetite: "Medium (3-5 sessions)"
+appetite: Medium (3-5 sessions)
 ---
 
 # SPEC-016: Council Advisory Redesign — Racial Composition, Structured Output
