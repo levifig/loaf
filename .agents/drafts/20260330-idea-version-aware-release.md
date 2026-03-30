@@ -36,9 +36,25 @@ Discovered during SPEC-019 merge ritual — the `/release` skill had to explicit
 
 The promotion validation catches a real risk: shipping breaking changes across a dev cycle without bumping the major version.
 
+### Configurable version files (no more hardcoded candidates)
+
+Replace the hardcoded `CANDIDATES` array in `version.ts` with project-declared config:
+
+```json
+"loaf": {
+  "version-files": [
+    "package.json",
+    ".claude-plugin/marketplace.json"
+  ]
+}
+```
+
+Check for explicit config first (in `package.json` under `loaf` key, or `.agents/loaf.json`), fall back to auto-detection for unconfigured projects. This way each project declares its own version files — no CLI changes needed when someone has a custom version file like `marketplace.json` or a monorepo with multiple `package.json` files.
+
 ## Scope
 
 - Modify tag/gh steps in `release.ts` to check `isPrerelease` on the new version
 - Add promotion validation: `suggestBump` on commits since last stable tag vs target version
 - Update `/release` skill to drop explicit `--no-tag --no-gh`
+- Add configurable version file detection with auto-detection fallback
 - Add tests for conditional behavior
