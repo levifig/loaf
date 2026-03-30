@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- 4 focused skills extracted from foundations: git-workflow, debugging, security-compliance, documentation-standards (SPEC-014)
+- 3 functional profile agents: implementer (Smith), reviewer (Sentinel), researcher (Ranger) with enforced tool boundaries (SPEC-014)
+- SOUL.md — Warden identity (Arandil) for coordinator sessions (SPEC-014)
+- Self-healing SessionStart hook that restores SOUL.md from canonical template if missing (SPEC-014)
+
+### Changed
+- Foundations skill slimmed to code style, TDD, verification, review, and production readiness (SPEC-014)
+- All 29 skill descriptions rewritten with action verb openers, user-intent phrases, negative routing, and success criteria (SPEC-014)
+- Hook `skill:` fields reassigned to match new skill boundaries (SPEC-014)
+- Hook agent predicates updated from role-agent IDs to profile names across 12 hook scripts (SPEC-014)
+- OpenCode session hooks now stored as arrays, fixing collision where only the last hook per event survived (SPEC-014)
+- ARCHITECTURE.md updated to document profile model and Warden identity (SPEC-014)
+
+### Removed
+- 8 role-based agents: pm, backend-dev, frontend-dev, dba, devops, qa, design, power-systems (SPEC-014)
+- `{{AGENT:...}}` substitution system from build pipeline (SPEC-014)
+- Legacy `plugin-groups` section from hooks.yaml (SPEC-014)
+
 ## [2.0.0-dev.5] - 2026-03-29
 
 ### Added

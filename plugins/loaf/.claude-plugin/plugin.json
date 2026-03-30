@@ -11,18 +11,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-check-secrets.sh",
-            "timeout": 30000,
-            "description": "Check for hardcoded secrets before writing"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-validate-changelog.sh",
-            "timeout": 30000,
-            "description": "Validate changelog format"
-          },
-          {
-            "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-format-check.sh",
             "timeout": 60000,
             "description": "Check code formatting"
@@ -32,6 +20,18 @@
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-tdd-advisory.sh",
             "timeout": 5000,
             "description": "Advisory warning when editing implementation without tests"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-check-secrets.sh",
+            "timeout": 30000,
+            "description": "Check for hardcoded secrets before writing"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-validate-changelog.sh",
+            "timeout": 30000,
+            "description": "Validate changelog format"
           },
           {
             "type": "command",
@@ -242,6 +242,15 @@
       }
     ],
     "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start-soul.sh",
+            "description": "Validate SOUL.md is present; restore from template if missing"
+          }
+        ]
+      },
       {
         "hooks": [
           {

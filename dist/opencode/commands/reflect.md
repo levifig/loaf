@@ -2,7 +2,9 @@
 description: >-
   Integrates learnings from shipped work into strategic documents. Use after
   completing significant work or when the user asks "what did we learn?"
-agent: PM
+  Produces updates to VISION.md, STRATEGY.md, and ARCHITECTURE.md based on
+  proven implementation. Not for pre-implementation strategy (use strategy) or
+  architecture decisions (use architecture).
 subtask: false
 version: 2.0.0-dev.5
 ---

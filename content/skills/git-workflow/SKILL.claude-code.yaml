@@ -1,0 +1,5 @@
+# Claude Code extensions for Git Workflow skill
+# Base name/description in SKILL.md
+
+user-invocable: false
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep

@@ -55,7 +55,7 @@ def check_linear_format(content: str) -> tuple[list[str], list[str]]:
 
         # Check for agent/council references
         agent_patterns = [
-            r'\bspawned\s+(backend|frontend|dba|devops|testing)',
+            r'\bspawned\s+(implementer|reviewer|researcher)',
             r'\bcouncil\s+decision',
             r'\bsession\s+file',
         ]

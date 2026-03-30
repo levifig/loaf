@@ -37,6 +37,7 @@ Project TDD conventions and workflow.
 | Test is too complex | Testing too much at once | Break into smaller behaviors |
 | Implementation explodes | Test scope too large | Smaller test, smaller implementation |
 | Refactor breaks tests | Tests coupled to implementation | Test behavior, not structure |
+| Failure cause isn't obvious | Multiple possible root causes | Load the **debugging** skill for structured hypothesis tracking |
 
 ## TDD for Bug Fixes
 
@@ -45,6 +46,8 @@ Project TDD conventions and workflow.
 3. **Refactor if needed**
 
 This ensures the bug is understood, actually fixed, and won't regress.
+
+If the failing test points to a non-obvious root cause, or if your first fix attempt doesn't work, load the **debugging** skill before continuing. It provides structured hypothesis tracking that prevents trial-and-error loops.
 
 ## Integration with Loaf Workflow
 

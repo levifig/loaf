@@ -1,13 +1,15 @@
 ---
 name: implement
 description: >-
-  Orchestrates implementation sessions through agent delegation and batch execution. Use when
-  the user asks "implement this" or "start working on TASK-XXX."
+  Orchestrates implementation sessions through agent delegation and batch execution.
+  Use when the user asks "implement this" or "start working on TASK-XXX." Produces
+  session files, plans, and coordinated agent output. Not for shaping work (use
+  shape) or breaking down specs (use breakdown).
 ---
 
 # Implement
 
-You are the {{AGENT:pm}} agent. Start by understanding the task:
+You are the coordinator. Start by understanding the task:
 
 ## Contents
 - Step 0: Context Check
@@ -85,14 +87,16 @@ When no task exists: inform user, ask if Linear issue or local task should be cr
 
 Use the **Task tool** with appropriate `subagent_type`:
 
-| Work Type | `subagent_type` |
-|-----------|-----------------|
-| Python/FastAPI/Rails/Ruby | `{{AGENT:backend-dev}}` |
-| Next.js/React/Tailwind | `{{AGENT:frontend-dev}}` |
-| Schema/migrations/SQL | `{{AGENT:dba}}` |
-| Docker/K8s/CI/CD | `{{AGENT:devops}}` |
-| Tests/security | `{{AGENT:qa}}` |
-| UI/UX design | `{{AGENT:design}}` |
+| Work Type | Profile | Skills to Load |
+|-----------|---------|---------------|
+| Python/FastAPI/Rails/Ruby/Go backend | implementer | Language skill + relevant domain skills |
+| Next.js/React/Tailwind frontend | implementer | typescript-development + interface-design |
+| Schema/migrations/SQL | implementer | database-design + language skill |
+| Docker/K8s/CI/CD/Terraform | implementer | infrastructure-management |
+| Tests/security audits | implementer | foundations + language skill |
+| UI/UX design review | reviewer | interface-design |
+| Code review/audit | reviewer | relevant domain skills |
+| Research/comparison | researcher | relevant domain skills |
 
 **Rules:** Be specific in prompts. One concern per agent. Include context. Parallel when independent, sequential when dependent.
 
@@ -118,8 +122,9 @@ Use the **Task tool** with appropriate `subagent_type`:
 1. **Strict delegation** -- ALL implementation via Task tool
 2. **Keep this session lean** -- focus on planning, coordination, oversight
 3. **When uncertain** -- convene council, present results, **wait for user approval**
-4. **Ensure quality** -- spawn `{{AGENT:qa}}` for tests, route reviews to domain agents
-5. **Update session file continuously** -- log spawns, update current_task, keep handoff-ready
+4. **Ensure quality** -- spawn implementer for tests, route reviews to reviewer subagents
+5. **When debugging** -- if a test failure or error isn't immediately obvious, load the **debugging** skill for structured hypothesis tracking before retrying
+6. **Update session file continuously** -- log spawns, update current_task, keep handoff-ready
 6. **Clean up** -- no ephemeral files, archive completed sessions (status + `archived_at` + `archived_by` + move to archive/)
 7. **When in doubt, ask the user**
 
@@ -175,14 +180,14 @@ After creating session AND plan files:
 
 ### AFTER (Completion)
 1. Code review pass (spawn `pr-review-toolkit:code-reviewer`)
-2. Spawn `{{AGENT:qa}}` for final testing
+2. Spawn implementer (with foundations + language skill) for final testing
 3. **Close out spec artifacts on the branch** (included in the squash merge):
    - `loaf task update TASK-XXX --status done` (for each task)
    - `loaf task archive --spec SPEC-XXX`
    - Mark spec complete and archive: `loaf spec archive SPEC-XXX`
    - Update session file (status: complete, `archived_at`, `archived_by`)
    - Commit: `chore: close SPEC-XXX — archive tasks, spec, and session`
-4. If on a feature branch: push and create PR (`gh pr create`). Follow PR format and squash merge conventions in [commits reference](../foundations/references/commits.md).
+4. If on a feature branch: push and create PR (`gh pr create`). Follow PR format and squash merge conventions in [commits reference](../git-workflow/references/commits.md).
 5. After merge lands on main: switch to main, pull, delete merged branch.
 6. **Suggest reflection:** Check the session file for extractable learnings before closing out:
    - `## Key Decisions` has content (not `*(none yet)*` or empty)

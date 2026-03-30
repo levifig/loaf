@@ -134,12 +134,12 @@ When parallel streams produce conflicts:
 ```markdown
 ## Feature: User Profile Page
 
-### Stream A: Backend (backend-dev agent)
+### Stream A: Backend (implementer with language skill)
 - Files: `api/users.py`, `tests/test_users.py`
 - Success: GET /users/{id}/profile returns user data
 - Output: API contract documented
 
-### Stream B: Frontend (frontend-dev agent)
+### Stream B: Frontend (implementer with typescript-development)
 - Files: `components/Profile.tsx`, `tests/Profile.test.tsx`
 - Success: Profile component renders mock data
 - Output: Component accepts ProfileData prop

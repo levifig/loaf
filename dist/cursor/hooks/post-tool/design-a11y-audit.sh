@@ -15,9 +15,9 @@ if ! is_hook_enabled "a11y-audit"; then
     exit 0
 fi
 
-# Only run for design or frontend-dev agent
+# Only run for implementer or reviewer agent
 AGENT_TYPE=$(get_agent_type)
-if [[ "${AGENT_TYPE}" != "design" ]] && [[ "${AGENT_TYPE}" != "frontend-dev" ]]; then
+if [[ "${AGENT_TYPE}" != "implementer" ]] && [[ "${AGENT_TYPE}" != "reviewer" ]]; then
     exit 0
 fi
 

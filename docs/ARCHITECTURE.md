@@ -53,6 +53,39 @@ All TypeScript, bundled into a single file by tsup. No dynamic imports.
 | codex | dist/codex/ | No | Yes | No | No |
 | gemini | dist/gemini/ | No | Yes | No | No |
 
+### Agent Model: Functional Profiles
+
+Loaf uses **functional profiles** defined by tool access boundaries, not role-based agents defined by domain identity. Skills provide all domain knowledge; profiles provide the tool sandbox.
+
+**The Warden (Coordinator):**
+
+The main session is the Warden — a persistent coordinator identity defined in `SOUL.md`. The Warden orchestrates, advises, and delegates but does not forge, review, or scout directly. `SOUL.md` lives at the project root; a SessionStart hook validates its presence and restores it from the canonical template (`content/templates/soul.md`) if missing.
+
+**3 Functional Profiles:**
+
+| Profile | Concept | Race | Tool Access | Purpose |
+|---------|---------|------|-------------|---------|
+| Smith | Implementer | Dwarf | Full write | Forges code, tests, config, docs. Speciality via skills at spawn time. |
+| Sentinel | Reviewer | Elf | Read-only | Watches, guards, verifies. Cannot modify what it reviews. |
+| Ranger | Researcher | Human | Read + Web | Scouts far, gathers intelligence, reports back. No write or execute. |
+
+Each profile is defined in `content/agents/{implementer,reviewer,researcher}.md` — a minimal behavioral contract and tool boundary, not domain knowledge. A spawned Smith becomes a backend engineer, DBA, or devops engineer depending entirely on the skills loaded at spawn time.
+
+**2 System Agents (unchanged):**
+
+| Agent | Purpose |
+|-------|---------|
+| background-runner | Async non-blocking tasks (haiku model) |
+| context-archiver | Session preservation before context compaction |
+
+**Council Composition:**
+
+Councils convene Smiths and Rangers for deliberation. Rangers advocate for users, informed by their scouting. Sentinels come after, not during — they verify the outcome. The Warden orchestrates but never votes.
+
+**Skills as Universal Knowledge Layer:**
+
+Skills are the only knowledge mechanism that works across all targets (Claude Code, Cursor, Codex, Gemini). Profiles are Claude Code infrastructure — other targets activate knowledge through skills alone. This makes skills the primary investment surface: better skill descriptions and organization improve all targets simultaneously.
+
 ## Planned Architecture
 
 ### Loaf CLI

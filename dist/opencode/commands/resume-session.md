@@ -1,8 +1,9 @@
 ---
 description: >-
   Resumes existing session files and syncs state with Linear. Use when the user
-  asks "resume that session" or "pick up where we left off."
-agent: PM
+  asks "resume that session" or "pick up where we left off." Produces an updated
+  session file with synced state and next steps. Not for referencing past
+  decisions (use reference-session) or starting new work (use implement).
 subtask: false
 version: 2.0.0-dev.5
 ---

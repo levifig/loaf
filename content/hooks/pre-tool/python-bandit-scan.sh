@@ -18,11 +18,11 @@ if ! is_hook_enabled "bandit-scan"; then
     exit 0
 fi
 
-# Only run for security agent or thorough validation
+# Only run for reviewer agent or thorough validation
 AGENT_TYPE=$(get_agent_type)
 VALIDATION_LEVEL=$(get_validation_level)
 
-if [[ "${AGENT_TYPE}" != "security" ]] && [[ "${VALIDATION_LEVEL}" != "thorough" ]]; then
+if [[ "${AGENT_TYPE}" != "reviewer" ]] && [[ "${VALIDATION_LEVEL}" != "thorough" ]]; then
     exit 0
 fi
 

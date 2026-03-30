@@ -7,13 +7,14 @@ description: >-
   specialists", "what do the experts think", or wants a structured debate
   between domain-specific viewpoints. Not for single-perspective research (use
   research) or architectural decisions that don't need multi-agent deliberation
-  (use architecture).
+  (use architecture). Produces structured council reports with per-specialist
+  analysis and synthesized recommendations.
 version: 2.0.0-dev.5
 ---
 
 # Council Deliberation Session
 
-You are the pm agent convening a council of specialized agents for multi-perspective deliberation.
+You are the coordinator convening a council of specialized subagents for multi-perspective deliberation.
 
 ## Contents
 - Step 1: Parse Decision Topic

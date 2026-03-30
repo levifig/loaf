@@ -2,9 +2,11 @@
 name: database-design
 description: >-
   Covers schema design, migrations, query optimization, indexing strategies, and
-  normalization tradeoffs.
+  normalization tradeoffs. Use when designing tables, writing migrations,
+  optimizing queries, or evaluating denormalization. Not for ORM usage in
+  application code (use the relevant language skill) or infrastructure
+  provisioning (use infrastructure-management).
 user-invocable: false
-agent: 'backend-dev'
 allowed-tools: 'Read, Write, Edit, Glob, Grep, Bash(psql:*, sqlite3:*, mysql:*)'
 ---
 
@@ -65,5 +67,5 @@ Exact equality only                  → Hash (rare)
 
 ## Related Skills
 
-- See `foundations` for universal code quality principles
+- See `foundations` for code style, TDD, and verification principles
 - See `infrastructure` for connection pooling and deployment patterns

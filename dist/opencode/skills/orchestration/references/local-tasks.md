@@ -219,7 +219,7 @@ traceability:
 
 | Rule | Guideline |
 |------|-----------|
-| **One agent type** | Task completable by ONE agent (Backend Dev, Frontend Dev, DBA, QA, DevOps) |
+| **One agent type** | Task completable by ONE subagent (implementer, reviewer, researcher) |
 | **One concern** | Task touches one layer, one service, or one component |
 | **Context-appropriate** | Fits in model context with room for exploration |
 | **Not over-fragmented** | Don't split what naturally belongs together |
@@ -235,11 +235,11 @@ traceability:
 
 | Agent | Typical Task Scope |
 |-------|-------------------|
-| `Backend Dev` | One service/module, its tests, its docs |
-| `Frontend Dev` | One component/page, its tests, its styles |
-| `DBA` | One migration, related schema changes |
-| `QA` | Test suite for one feature/area |
-| `DevOps` | One infrastructure concern (CI, deploy, config) |
+| implementer (backend) | One service/module, its tests, its docs |
+| implementer (frontend) | One component/page, its tests, its styles |
+| implementer (database) | One migration, related schema changes |
+| implementer (testing) | Test suite for one feature/area |
+| implementer (infra) | One infrastructure concern (CI, deploy, config) |
 
 ## Priority Levels
 

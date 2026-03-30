@@ -2,12 +2,15 @@
 name: power-systems-modeling
 description: >-
   Covers thermal rating models (CIGRE TB 601, IEEE 738), conductor physics, and
-  electrical properties.
+  electrical properties for overhead transmission lines. Use when implementing
+  thermal calculations, validating conductor parameters, or working with sag and
+  resistance formulas. Not for general infrastructure (use
+  infrastructure-management) or application architecture (use architecture).
 ---
 
 # Power Systems Reference
 
-Follows [foundations principles](../foundations/SKILL.md).
+Follows [foundations](../foundations/SKILL.md) code quality and TDD principles.
 
 Domain knowledge for overhead transmission line physics, thermal ratings, and mechanical analysis.
 

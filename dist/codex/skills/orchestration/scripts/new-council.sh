@@ -1,7 +1,7 @@
 #!/bin/bash
 # Generate a new council file with correct format
 # Usage: new-council.sh <topic> <session-filename> <participant1> <participant2> ...
-# Example: new-council.sh database-schema-choice 20251204-143000-auth-system backend-dev dba devops security testing-qa
+# Example: new-council.sh database-schema-choice 20251204-143000-auth-system architect dba-specialist ops-lead security
 
 set -e
 

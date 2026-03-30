@@ -17,7 +17,7 @@ import matter from "gray-matter";
 import { join } from "path";
 import { loadAgentSidecar, loadSkillFrontmatter, loadSkillExtensions, mergeSkillFrontmatter } from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
-import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
+
 import { copySharedTemplates } from "../lib/shared-templates.js";
 import { copyDirWithTransform, discoverAgents, discoverSkills } from "../lib/copy-utils.js";
 import type { BuildContext, HooksConfig, HookDefinition } from "../types.js";
@@ -139,14 +139,20 @@ function buildUnifiedPlugin(config: HooksConfig, srcDir: string, pluginsDir: str
     return extensions["user-invocable"] !== false;
   });
 
-  const agentMap = buildAgentMap(srcDir, TARGET_NAME);
-
   createPluginJson(config, pluginDir);
-  copyAgents(allAgents, srcDir, pluginDir, agentMap);
-  copySkills(allSkills, srcDir, pluginDir, knownCommands, agentMap, targetsConfig);
+  copyAgents(allAgents, srcDir, pluginDir);
+  copySkills(allSkills, srcDir, pluginDir, knownCommands, targetsConfig);
   copyAllHooks(config, srcDir, pluginDir);
 
   writeFileSync(join(pluginDir, ".lsp.json"), JSON.stringify(LSP_SERVERS, null, 2));
+
+  // Copy plugin-root templates (e.g. soul.md for SessionStart hook self-healing)
+  const pluginTemplatesDir = join(pluginDir, "templates");
+  const soulTemplateSrc = join(srcDir, "templates", "soul.md");
+  if (existsSync(soulTemplateSrc)) {
+    mkdirSync(pluginTemplatesDir, { recursive: true });
+    cpSync(soulTemplateSrc, join(pluginTemplatesDir, "soul.md"));
+  }
 
   const setupSrc = join(srcDir, "SETUP.md");
   if (existsSync(setupSrc)) {
@@ -254,7 +260,7 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
   writeFileSync(join(pluginJsonDir, "plugin.json"), JSON.stringify(pluginJson, null, 2));
 }
 
-function copyAgents(agents: string[], srcDir: string, pluginDir: string, agentMap: Record<string, string>): void {
+function copyAgents(agents: string[], srcDir: string, pluginDir: string): void {
   const agentsDir = join(pluginDir, "agents");
   mkdirSync(agentsDir, { recursive: true });
 
@@ -268,16 +274,15 @@ function copyAgents(agents: string[], srcDir: string, pluginDir: string, agentMa
     const content = readFileSync(srcPath, "utf-8");
     const { content: body } = matter(content);
 
-    const transformed = substituteAgentNames(matter.stringify(body, frontmatter), agentMap);
-    writeFileSync(destPath, transformed);
+    writeFileSync(destPath, matter.stringify(body, frontmatter));
   }
 }
 
-function copySkills(skills: string[], srcDir: string, pluginDir: string, knownCommands: string[], agentMap: Record<string, string>, targetsConfig: BuildContext["targetsConfig"]): void {
+function copySkills(skills: string[], srcDir: string, pluginDir: string, knownCommands: string[], targetsConfig: BuildContext["targetsConfig"]): void {
   const skillsDir = join(pluginDir, "skills");
   mkdirSync(skillsDir, { recursive: true });
 
-  const transformMd = (content: string) => substituteAgentNames(substituteCommands(content, knownCommands), agentMap);
+  const transformMd = (content: string) => substituteCommands(content, knownCommands);
 
   for (const skill of skills) {
     const skillSrc = join(srcDir, "skills", skill);

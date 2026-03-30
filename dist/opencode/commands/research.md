@@ -2,7 +2,9 @@
 description: >-
   Conducts project assessment and topic investigation. Use when stepping back to
   understand the big picture or when the user asks "what's the current state?"
-agent: PM
+  Produces state assessments, research findings with ranked options, or vision
+  change proposals. Not for multi-agent deliberation (use council-session) or
+  implementing changes (use implement).
 subtask: false
 version: 2.0.0-dev.5
 ---
