@@ -106,40 +106,62 @@ On gaps: present them to the user. Offer to fix (delegate to `loaf task archive`
 
 ## Step 4: Version Bump + Changelog (on feature branch)
 
-This step uses the `loaf release` CLI for all mechanical versioning work.
+This step handles versioning and changelog. The approach depends on whether curated changelog entries already exist.
 
-### Preview
+### Check for existing changelog entries
 
-Run `loaf release --base <baseRefName> --dry-run` to show:
-- Current version and suggested bump type
-- Generated changelog section from **this branch's commits only** (not everything since the last tag)
-- Which version files will be updated
+Read `CHANGELOG.md` and check if `[Unreleased]` has content (entries written during development, often required by pre-PR hooks).
 
-The `--base` flag scopes the commit analysis to `<baseRefName>..HEAD`, so only commits on the feature branch are considered. Without it, `loaf release` uses the last git tag as the base, which would pull in unrelated already-merged commits.
+- **If curated entries exist** → Use the **Curated path** (preserve them)
+- **If `[Unreleased]` is empty** → Use the **Generated path** (auto-generate from commits)
 
-Present the preview to the user. They may:
-- Accept the suggested bump type
-- Override with a different type (`prerelease`, `release`, `major`, `minor`, `patch`)
-- Edit the changelog content (note: without `$EDITOR` set, editing happens conversationally)
+### Curated path (preferred when entries exist)
 
-### Execute
+The pre-PR workflow requires writing CHANGELOG entries before creating a PR. These curated entries are typically better than auto-generated ones (grouped by category, human-written descriptions). Preserve them.
 
-Once the user confirms, run:
-```bash
-loaf release --base <baseRefName> --bump <type> --no-tag --no-gh --yes
-```
+1. Run `loaf release --base <baseRefName> --dry-run` to get the **suggested bump type** and **current version**
+2. Present the bump suggestion to the user. They may accept or override.
+3. Once confirmed, perform the version bump manually:
+   - Bump version in `package.json` (or other version files)
+   - Convert the `[Unreleased]` header to `## [X.Y.Z] - YYYY-MM-DD` (preserving the curated entries beneath it)
+   - Add a fresh empty `## [Unreleased]` section above it
+   - Run the project's build command (e.g., `npm run build` or `loaf build`)
+   - Commit: `release: vX.Y.Z`
 
-This will:
-1. Bump version in all detected files (package.json, pyproject.toml, etc.)
-2. Generate and insert changelog section from branch commits (preserving `[Unreleased]`)
-3. Run `loaf build` to rebuild all targets with new version
-4. Commit: `release: vX.Y.Z`
+### Generated path (when no entries exist)
 
-After the commit, push to the feature branch (**with user confirmation**).
+When `[Unreleased]` is empty, use `loaf release` to auto-generate changelog entries from branch commits.
+
+1. Run `loaf release --base <baseRefName> --dry-run` to preview:
+   - Current version and suggested bump type
+   - Generated changelog section from **this branch's commits only**
+   - Which version files will be updated
+
+   The `--base` flag scopes the commit analysis to `<baseRefName>..HEAD`, so only commits on the feature branch are considered.
+
+2. Present the preview to the user. They may:
+   - Accept the suggested bump type
+   - Override with a different type (`prerelease`, `release`, `major`, `minor`, `patch`)
+   - Edit the changelog content conversationally
+
+3. Once the user confirms, run:
+   ```bash
+   loaf release --base <baseRefName> --bump <type> --no-tag --no-gh --yes
+   ```
+
+   This will:
+   1. Bump version in all detected files (package.json, pyproject.toml, etc.)
+   2. Generate and insert changelog section from branch commits (adding fresh `[Unreleased]`)
+   3. Run `loaf build` to rebuild all targets with new version
+   4. Commit: `release: vX.Y.Z`
+
+### After either path
+
+Push to the feature branch (**with user confirmation**).
 
 ### Why these flags?
 
-- `--base <baseRefName>` — Scopes changelog to this PR's work, not everything since the last tag
+- `--base <baseRefName>` — Scopes changelog and bump suggestion to this PR's work, not everything since the last tag
 - `--no-tag` — Tags belong to stable releases, not pre-merge bumps (also implies `--no-gh`)
 - `--no-gh` — GitHub release drafts belong to stable releases
 - `--yes` — Skip the CLI confirmation prompt (the skill already confirmed with the user conversationally)

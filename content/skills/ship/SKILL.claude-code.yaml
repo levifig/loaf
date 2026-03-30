@@ -1,0 +1,2 @@
+# Claude Code skill configuration — alias for /release
+argument-hint: "[PR number or URL]"
