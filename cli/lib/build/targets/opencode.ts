@@ -293,7 +293,21 @@ ${hooks.map((h) => `    { id: '${h.id}', script: '${getScriptFilename(h.script!)
 };
 
 const sessionHooks = {
-${sessionHooks.map((h) => `  '${(h.event || "").toLowerCase()}': { id: '${h.id}', script: '${getScriptFilename(h.script!)}', timeout: ${h.timeout || 60000} },`).join("\n")}
+${(() => {
+    const grouped: Record<string, HookDefinition[]> = {};
+    for (const h of sessionHooks) {
+      const key = (h.event || "").toLowerCase();
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(h);
+    }
+    return Object.entries(grouped)
+      .map(
+        ([event, hooks]) => `  '${event}': [
+${hooks.map((h) => `    { id: '${h.id}', script: '${getScriptFilename(h.script!)}', timeout: ${h.timeout || 60000} },`).join("\n")}
+  ],`,
+      )
+      .join("\n");
+  })()}
 };
 
 export default async function AgentSkillsPlugin({ client, $ }) {
@@ -332,10 +346,14 @@ export default async function AgentSkillsPlugin({ client, $ }) {
 
     'event': async ({ event }) => {
       if (event.type === 'session.created' && sessionHooks.sessionstart) {
-        runHook(sessionHooks.sessionstart.script, 'session', {}, sessionHooks.sessionstart.timeout);
+        for (const hook of sessionHooks.sessionstart) {
+          runHook(hook.script, 'session', {}, hook.timeout);
+        }
       }
       if (event.type === 'session.ended' && sessionHooks.sessionend) {
-        runHook(sessionHooks.sessionend.script, 'session', {}, sessionHooks.sessionend.timeout);
+        for (const hook of sessionHooks.sessionend) {
+          runHook(hook.script, 'session', {}, hook.timeout);
+        }
       }
     },
   };

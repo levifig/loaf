@@ -31,11 +31,6 @@ const DEFAULT_AGENT_FRONTMATTER = {
   is_background: true,
 };
 
-const PM_AGENT_FRONTMATTER = {
-  model: "inherit",
-  is_background: false,
-};
-
 function substituteCommands(content: string): string {
   return content
     .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/implement")
@@ -163,11 +158,9 @@ function copyAgents(
     const sidecarFrontmatter = loadAgentSidecarOptional(srcPath, TARGET_NAME);
 
     const defaults =
-      agentName === "pm"
-        ? PM_AGENT_FRONTMATTER
-        : (targetConfig as Record<string, unknown>)?.defaults
-          ? ((targetConfig as { defaults?: { agents?: { frontmatter?: Record<string, unknown> } } }).defaults?.agents?.frontmatter || DEFAULT_AGENT_FRONTMATTER)
-          : DEFAULT_AGENT_FRONTMATTER;
+      (targetConfig as Record<string, unknown>)?.defaults
+        ? ((targetConfig as { defaults?: { agents?: { frontmatter?: Record<string, unknown> } } }).defaults?.agents?.frontmatter || DEFAULT_AGENT_FRONTMATTER)
+        : DEFAULT_AGENT_FRONTMATTER;
 
     const frontmatter: Record<string, unknown> = {
       ...defaults,

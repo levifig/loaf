@@ -69,7 +69,7 @@ function writeMarker(configDir: string): void {
 }
 
 export function installOpencode(distDir: string, configDir: string): void {
-  const dirs = ["skills", "agents", "commands", "plugins"];
+  const dirs = ["skills", "agents", "commands", "plugins", "templates"];
 
   for (const dir of dirs) {
     const src = join(distDir, dir);
@@ -112,6 +112,12 @@ export function installCursor(distDir: string, configDir: string): void {
   const hooksDir = join(distDir, "hooks");
   if (existsSync(hooksDir)) {
     syncDir(hooksDir, join(configDir, "hooks"));
+  }
+
+  // Templates (e.g. soul.md for SessionStart hook self-healing)
+  const templatesSrc = join(distDir, "templates");
+  if (existsSync(templatesSrc)) {
+    syncDir(templatesSrc, join(configDir, "templates"));
   }
 
   writeMarker(configDir);
