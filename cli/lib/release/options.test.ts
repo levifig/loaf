@@ -80,6 +80,12 @@ describe("validateBaseRef", () => {
       /Tried "missing-branch" and "origin\/missing-branch"/,
     );
   });
+
+  it("does not claim an origin/origin fallback for refs with a slash", () => {
+    expect(() => validateBaseRef(cwd, "missing/branch")).toThrow(
+      /Tried "missing\/branch"\. If this is a remote branch, run: git fetch origin missing\/branch/,
+    );
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

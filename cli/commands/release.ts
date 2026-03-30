@@ -203,7 +203,10 @@ export function registerReleaseCommand(program: Command): void {
       const commits = getCommitsSince(cwd, baseRef);
 
       if (options.base) {
-        console.log(`  Base ref: ${bold(options.base)} (via --base flag)`);
+        const baseRefLabel = baseRef === options.base
+          ? `${bold(options.base)} (via --base flag)`
+          : `${bold(options.base)} (resolved to ${bold(baseRef!)} via --base flag)`;
+        console.log(`  Base ref: ${baseRefLabel}`);
       } else {
         console.log(`  Last tag: ${baseRef ? bold(baseRef) : gray("(none)")}`);
       }

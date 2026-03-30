@@ -53,21 +53,22 @@ export function validateBumpType(value: string): BumpType {
  * no local `main` branch.
  */
 export function validateBaseRef(cwd: string, ref: string): string {
-  // Try the literal ref first
-  if (refResolves(cwd, ref)) return ref;
+  const attemptedRefs = getCandidateRefs(ref);
 
-  // Fall back to origin/<ref> if the ref doesn't contain a slash
-  // (i.e., don't try origin/origin/main)
-  if (!ref.includes("/")) {
-    const remoteRef = `origin/${ref}`;
-    if (refResolves(cwd, remoteRef)) return remoteRef;
+  for (const candidate of attemptedRefs) {
+    if (refResolves(cwd, candidate)) return candidate;
   }
 
   throw new Error(
     `Base ref "${ref}" does not exist or is not reachable. ` +
-    `Tried "${ref}" and "origin/${ref}". ` +
+    `Tried ${attemptedRefs.map((candidate) => `"${candidate}"`).join(" and ")}. ` +
     `If this is a remote branch, run: git fetch origin ${ref}`,
   );
+}
+
+function getCandidateRefs(ref: string): string[] {
+  if (ref.includes("/")) return [ref];
+  return [ref, `origin/${ref}`];
 }
 
 function refResolves(cwd: string, ref: string): boolean {
