@@ -355,6 +355,11 @@ export default async function AgentSkillsPlugin({ client, $ }) {
           runHook(hook.script, 'session', {}, hook.timeout);
         }
       }
+      if (event.type === 'context.compacting' && sessionHooks.precompact) {
+        for (const hook of sessionHooks.precompact) {
+          runHook(hook.script, 'session', {}, hook.timeout);
+        }
+      }
     },
   };
 }
