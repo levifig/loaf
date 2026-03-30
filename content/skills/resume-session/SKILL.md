@@ -1,10 +1,10 @@
 ---
 name: resume-session
 description: >-
-  Resumes existing session files and syncs state with Linear. Use when the user asks
-  "resume that session" or "pick up where we left off." Produces an updated session
-  file with synced state and next steps. Not for referencing past decisions (use
-  reference-session) or starting new work (use implement).
+  Resumes session files and syncs state with Linear. Use when the user asks
+  "resume that session" or "pick up where we left off." Produces updated
+  session with synced state and next steps. Not for referencing past
+  decisions or starting new work.
 ---
 
 # Resume Session

@@ -1,11 +1,10 @@
 ---
 name: orchestration
 description: >-
-  Coordinates multi-agent work including agent delegation, session management,
-  Linear integration, and council workflows. Use when managing sessions,
-  delegating to agents, or coordinating cross-cutting work. Produces session
-  files and coordinated agent output. Not for single-task implementation (use
-  implement) or research without delegation (use research).
+  Coordinates multi-agent work: delegation, session management, Linear
+  integration, and council workflows. Use when managing sessions, delegating to
+  agents, or coordinating cross-cutting work. Not for single-task implementation
+  or solo research.
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Glob, Grep, TodoWrite, TodoRead'
 ---
