@@ -1,7 +1,8 @@
 ---
 type: idea
 created: '2026-03-30'
-status: captured
+status: superseded
+superseded_by: SPEC-019
 ---
 
 # Idea: `/merge` Slash Command
