@@ -187,7 +187,7 @@ After creating session AND plan files:
    - Mark spec complete and archive: `loaf spec archive SPEC-XXX`
    - Update session file (status: complete, `archived_at`, `archived_by`)
    - Commit: `chore: close SPEC-XXX — archive tasks, spec, and session`
-4. If on a feature branch: push and create PR (`gh pr create`). Follow PR format and squash merge conventions in [commits reference](../foundations/references/commits.md).
+4. If on a feature branch: push and create PR (`gh pr create`). Follow PR format and squash merge conventions in [commits reference](../git-workflow/references/commits.md).
 5. After merge lands on main: switch to main, pull, delete merged branch.
 6. **Suggest reflection:** Check the session file for extractable learnings before closing out:
    - `## Key Decisions` has content (not `*(none yet)*` or empty)

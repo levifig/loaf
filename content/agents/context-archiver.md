@@ -141,7 +141,7 @@ mcp__serena__write_memory(
 ### Decision 1: JWT Token Rotation Strategy
 **Decision**: Rotate tokens every 15 minutes with sliding window
 **Rationale**: Balance between security and user experience
-**Council**: None - backend-dev recommendation accepted
+**Council**: None - implementer recommendation accepted
 
 ### Decision 2: Refresh Token Storage
 **Decision**: Store in HttpOnly cookies, not localStorage

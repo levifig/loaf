@@ -66,5 +66,5 @@ Exact equality only                  → Hash (rare)
 
 ## Related Skills
 
-- See `foundations` for universal code quality principles
+- See `foundations` for code style, TDD, and verification principles
 - See `infrastructure` for connection pooling and deployment patterns

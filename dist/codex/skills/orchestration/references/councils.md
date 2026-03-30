@@ -169,7 +169,7 @@ Display each agent's report separately so the user sees each perspective clearly
 
 ---
 
-### 🗄️ DBA Perspective
+### 🗄️ Database Specialist Perspective
 
 **Recommendation**: PostgreSQL
 
@@ -189,7 +189,7 @@ Display each agent's report separately so the user sees each perspective clearly
 
 ---
 
-### 🔧 Backend-Dev Perspective
+### 🔧 Backend Specialist Perspective
 
 **Recommendation**: Redis
 
@@ -244,8 +244,8 @@ After individual reports, PM creates a combined synthesis:
 - Performance is acceptable with either option for current scale
 
 ### Key Disagreements
-- **DBA & Security** favor PostgreSQL for operational simplicity
-- **Backend-Dev & DevOps** favor Redis for performance headroom
+- **Database & Security specialists** favor PostgreSQL for operational simplicity
+- **Backend & DevOps specialists** favor Redis for performance headroom
 
 ### Trade-Off Summary
 

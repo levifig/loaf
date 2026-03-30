@@ -98,4 +98,4 @@ Convene when: decision affects multiple domains, team has conflicting opinions, 
 
 - **orchestration/councils** - Council deliberation workflow
 - **orchestration/product-development** - Where architecture fits in hierarchy
-- **foundations** - Documentation standards for ADRs
+- **documentation-standards** - Documentation standards for ADRs

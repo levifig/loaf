@@ -31,14 +31,14 @@ Decompose specifications into atomic, implementable tasks.
 
 | Rule | Guideline |
 |------|-----------|
-| **One agent type** | Completable by ONE agent (backend-dev, frontend-dev, dba, qa, devops) |
+| **One agent type** | Completable by a single implementer (after skills narrowing) |
 | **One concern** | Touches one layer, service, or component |
 | **Context-appropriate** | Fits in model context with room for exploration |
 | **Not over-fragmented** | Don't split what naturally belongs together |
 
 ### The Right Size Test
 
-1. Can a single specialized agent complete this? If no, split by agent type
+1. Can a single implementer complete this? If no, split by concern
 2. Does it touch multiple unrelated concerns? If yes, split by concern
 3. Will the agent need too much context? If yes, split into phases
 4. Am I splitting just to have more tasks? If yes, merge back
@@ -76,7 +76,7 @@ Extract: test conditions, scope, implementation notes, appetite.
 
 ### Step 3: Identify Task Boundaries
 
-Break down by concern (DBA, Backend, Frontend, QA, DevOps). One concern per task. Explicit dependencies for sequential tasks.
+Break down by concern (data layer, backend, frontend, infrastructure, etc.). One concern per task. Explicit dependencies for sequential tasks.
 
 ### Step 4: Decide Priorities and Granularity
 

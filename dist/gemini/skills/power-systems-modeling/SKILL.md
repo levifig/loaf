@@ -11,7 +11,7 @@ version: 2.0.0-dev.5
 
 # Power Systems Reference
 
-Follows [foundations principles](../foundations/SKILL.md).
+Follows [foundations](../foundations/SKILL.md) code quality and TDD principles.
 
 Domain knowledge for overhead transmission line physics, thermal ratings, and mechanical analysis.
 
