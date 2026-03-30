@@ -6,7 +6,7 @@ description: >-
   following Rails-specific patterns. Not for database schema decisions (use
   database-design) or frontend-only work outside Hotwire (use
   typescript-development).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Ruby Development

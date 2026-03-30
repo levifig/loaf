@@ -6,7 +6,7 @@ description: >-
   data models, or tests. Not for database schema design (use database-design),
   infrastructure or deployment (use infrastructure-management), or frontend code
   (use typescript-development).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Python Development

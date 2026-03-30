@@ -7,7 +7,7 @@ description: >-
   preserved. Not for reflecting on learnings (use reflect) or managing knowledge
   files (use knowledge-base).
 subtask: false
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Cleanup

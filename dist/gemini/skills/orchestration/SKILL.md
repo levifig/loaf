@@ -6,7 +6,7 @@ description: >-
   delegating to agents, or coordinating cross-cutting work. Produces session
   files and coordinated agent output. Not for single-task implementation (use
   implement) or research without delegation (use research).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # PM Orchestration

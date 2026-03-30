@@ -6,7 +6,7 @@ description: >-
   CI/CD, or managing deployment infrastructure. Not for application code (use
   the relevant language skill), database schema design (use database-design), or
   security audits (use security-compliance).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Infrastructure

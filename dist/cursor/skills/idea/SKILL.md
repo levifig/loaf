@@ -7,7 +7,7 @@ description: >-
   brainstorm documents for unprocessed sparks to promote. Produces idea files
   with context and evaluation criteria. Not for deep exploration (use
   brainstorm) or shaping into specs (use shape).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Idea

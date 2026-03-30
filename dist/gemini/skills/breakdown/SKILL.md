@@ -5,7 +5,7 @@ description: >-
   the user asks "break this down" or "create tasks for this spec." Produces task
   files with estimates, dependencies, and acceptance criteria. Not for shaping
   ideas into specs (use shape) or implementing tasks (use implement).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Breakdown
