@@ -5,7 +5,8 @@
 
 set -eo pipefail
 
-SOUL_PATH="SOUL.md"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+SOUL_PATH="$PROJECT_DIR/SOUL.md"
 
 if [[ -f "$SOUL_PATH" ]]; then
   exit 0

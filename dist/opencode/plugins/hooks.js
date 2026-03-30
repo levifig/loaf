@@ -86,12 +86,18 @@ const postToolHooks = {
 };
 
 const sessionHooks = {
-  'sessionstart': { id: 'session-start-soul', script: 'session/session-start-soul.sh', timeout: 60000 },
-  'sessionstart': { id: 'session-start', script: 'session/session-start.sh', timeout: 60000 },
-  'sessionend': { id: 'session-end', script: 'session/session-end.sh', timeout: 60000 },
-  'precompact': { id: 'pre-compact-archive', script: 'session/pre-compact-archive.sh', timeout: 60000 },
-  'sessionstart': { id: 'kb-session-start', script: 'session/kb-session-start.sh', timeout: 60000 },
-  'sessionend': { id: 'kb-session-end', script: 'session/kb-session-end.sh', timeout: 60000 },
+  'sessionstart': [
+    { id: 'session-start-soul', script: 'session/session-start-soul.sh', timeout: 60000 },
+    { id: 'session-start', script: 'session/session-start.sh', timeout: 60000 },
+    { id: 'kb-session-start', script: 'session/kb-session-start.sh', timeout: 60000 },
+  ],
+  'sessionend': [
+    { id: 'session-end', script: 'session/session-end.sh', timeout: 60000 },
+    { id: 'kb-session-end', script: 'session/kb-session-end.sh', timeout: 60000 },
+  ],
+  'precompact': [
+    { id: 'pre-compact-archive', script: 'session/pre-compact-archive.sh', timeout: 60000 },
+  ],
 };
 
 export default async function AgentSkillsPlugin({ client, $ }) {
@@ -130,10 +136,14 @@ export default async function AgentSkillsPlugin({ client, $ }) {
 
     'event': async ({ event }) => {
       if (event.type === 'session.created' && sessionHooks.sessionstart) {
-        runHook(sessionHooks.sessionstart.script, 'session', {}, sessionHooks.sessionstart.timeout);
+        for (const hook of sessionHooks.sessionstart) {
+          runHook(hook.script, 'session', {}, hook.timeout);
+        }
       }
       if (event.type === 'session.ended' && sessionHooks.sessionend) {
-        runHook(sessionHooks.sessionend.script, 'session', {}, sessionHooks.sessionend.timeout);
+        for (const hook of sessionHooks.sessionend) {
+          runHook(hook.script, 'session', {}, hook.timeout);
+        }
       }
     },
   };

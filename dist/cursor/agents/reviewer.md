@@ -2,7 +2,13 @@
 model: inherit
 is_background: true
 name: reviewer
-description: reviewer agent for specialized tasks
+description: >-
+  Sentinel (Reviewer) — watches, guards, and verifies. Read-only access ensures
+  independent audits.
+tools:
+  Read: true
+  Glob: true
+  Grep: true
 ---
 # Sentinel (Reviewer)
 
