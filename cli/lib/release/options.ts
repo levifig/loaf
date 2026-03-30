@@ -1,7 +1,7 @@
 /**
  * Release Option Validation & Normalization
  *
- * Pure functions for validating and normalizing CLI options
+ * Validation and normalization helpers for CLI options
  * used by the `loaf release` command. Extracted for testability.
  */
 
@@ -18,6 +18,7 @@ export interface ReleaseOptions {
   base?: string;
   tag?: boolean;
   gh?: boolean;
+  yes?: boolean;
 }
 
 export interface NormalizedFlags {
@@ -79,8 +80,13 @@ function refResolves(cwd: string, ref: string): boolean {
       stdio: ["ignore", "pipe", "ignore"],
     });
     return true;
-  } catch {
-    return false;
+  } catch (error: unknown) {
+    // Expected: git ran but the ref was invalid (non-zero exit code).
+    // Unexpected: git not found, permission denied, etc. — propagate.
+    if (error && typeof error === "object" && "status" in error) {
+      return false;
+    }
+    throw error;
   }
 }
 

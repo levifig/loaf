@@ -98,7 +98,7 @@ Present findings to the user. They decide whether to fix now or note for later. 
 
 1. **Spec archived**: If a spec is associated with this branch (check `.agents/specs/` for matching spec), verify its status is `complete`.
 2. **Tasks archived**: Check `.agents/tasks/` for tasks related to the spec that aren't archived.
-3. **CHANGELOG updated**: Verify `CHANGELOG.md` has entries under `[Unreleased]`.
+3. **CHANGELOG ready**: Verify `CHANGELOG.md` exists and has the `[Unreleased]` marker (Step 4 will generate the actual entries).
 4. **Session file**: If a session file exists, check that its status reflects completion.
 
 On gaps: present them to the user. Offer to fix (delegate to `loaf task archive`, `loaf spec archive`). The user decides. Do NOT silently fix or silently skip.
@@ -125,9 +125,9 @@ Present the preview to the user. They may:
 
 ### Execute
 
-Once confirmed, run:
+Once the user confirms, run:
 ```bash
-loaf release --base <baseRefName> --bump <type> --no-tag --no-gh
+loaf release --base <baseRefName> --bump <type> --no-tag --no-gh --yes
 ```
 
 This will:
@@ -143,6 +143,7 @@ After the commit, push to the feature branch (**with user confirmation**).
 - `--base <baseRefName>` — Scopes changelog to this PR's work, not everything since the last tag
 - `--no-tag` — Tags belong to stable releases, not pre-merge bumps (also implies `--no-gh`)
 - `--no-gh` — GitHub release drafts belong to stable releases
+- `--yes` — Skip the CLI confirmation prompt (the skill already confirmed with the user conversationally)
 
 The `/release` skill bumps version so the squash commit carries it. Tagging happens later via `loaf release` (without these flags) when cutting a stable release.
 

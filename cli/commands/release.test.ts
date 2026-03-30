@@ -120,6 +120,24 @@ describe("--no-tag implies --no-gh", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// --yes flag wiring
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("--yes flag", () => {
+  it("is accepted as a valid option", () => {
+    // --yes with --dry-run: dry-run exits before confirmation, so --yes has
+    // no visible effect, but the flag must parse without error
+    const result = runRelease("--yes", "--dry-run");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("short form -y is accepted", () => {
+    const result = runRelease("-y", "--dry-run");
+    expect(result.exitCode).toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Regression guards
 // ─────────────────────────────────────────────────────────────────────────────
 

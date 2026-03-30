@@ -108,5 +108,19 @@ describe("bumpVersion", () => {
     it("increments existing numeric suffix", () => {
       expect(bumpVersion("1.0.0-alpha.3", "prerelease")).toBe("1.0.0-alpha.4");
     });
+
+    it("appends .1 to non-numeric suffix segment", () => {
+      expect(bumpVersion("1.0.0-alpha.beta", "prerelease")).toBe("1.0.0-alpha.beta.1");
+    });
+  });
+
+  describe("invalid input", () => {
+    it("returns null for unparseable version", () => {
+      expect(bumpVersion("garbage", "major")).toBeNull();
+    });
+
+    it("returns null for incomplete version", () => {
+      expect(bumpVersion("1.2", "patch")).toBeNull();
+    });
   });
 });

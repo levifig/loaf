@@ -171,6 +171,7 @@ export function registerReleaseCommand(program: Command): void {
     .option("--base <ref>", "Use commits since <ref> instead of last tag (e.g. main)")
     .option("--no-tag", "Skip git tag creation")
     .option("--no-gh", "Skip GitHub release draft")
+    .option("-y, --yes", "Skip confirmation prompt (for non-interactive use)")
     .action(async (options: ReleaseOptions) => {
       const cwd = process.cwd();
 
@@ -387,11 +388,13 @@ export function registerReleaseCommand(program: Command): void {
         process.exit(0);
       }
 
-      // Confirmation
-      const confirmed = await askYesNo(`  Proceed with release ${bold(tagName)}? [y/N] `);
-      if (!confirmed) {
-        console.log(`\n  ${gray("Release cancelled.")}\n`);
-        process.exit(0);
+      // Confirmation (--yes skips the prompt for non-interactive use)
+      if (!options.yes) {
+        const confirmed = await askYesNo(`  Proceed with release ${bold(tagName)}? [y/N] `);
+        if (!confirmed) {
+          console.log(`\n  ${gray("Release cancelled.")}\n`);
+          process.exit(0);
+        }
       }
 
       console.log();
@@ -426,7 +429,7 @@ export function registerReleaseCommand(program: Command): void {
           if (inserted) {
             changelogContent = inserted;
           } else {
-            // No [Unreleased] marker — append after header
+            // No [Unreleased] marker — append at end of file
             changelogContent = existing + "\n" + changelogSection + "\n";
           }
         } else {

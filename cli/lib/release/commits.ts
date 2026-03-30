@@ -1,8 +1,9 @@
 /**
  * Conventional Commit Parser
  *
- * Shells out to git to get commits since the last tag, then parses them
- * into typed structures for changelog generation and version bumping.
+ * Shells out to git to get commits since a given ref (tag or branch),
+ * then parses them into typed structures for changelog generation and
+ * version bumping.
  */
 
 import { execFileSync } from "child_process";
@@ -102,7 +103,8 @@ export function getCommitsSince(
   return commits;
 }
 
-function parseCommit(hash: string, subject: string, body: string): ParsedCommit {
+/** Parse a single commit's subject and body into a typed structure. */
+export function parseCommit(hash: string, subject: string, body: string): ParsedCommit {
   const match = subject.match(CONVENTIONAL_RE);
 
   if (!match) {
