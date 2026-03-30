@@ -124,7 +124,8 @@ Use the **Task tool** with appropriate `subagent_type`:
 2. **Keep this session lean** -- focus on planning, coordination, oversight
 3. **When uncertain** -- convene council, present results, **wait for user approval**
 4. **Ensure quality** -- spawn implementer for tests, route reviews to reviewer subagents
-5. **Update session file continuously** -- log spawns, update current_task, keep handoff-ready
+5. **When debugging** -- if a test failure or error isn't immediately obvious, load the **debugging** skill for structured hypothesis tracking before retrying
+6. **Update session file continuously** -- log spawns, update current_task, keep handoff-ready
 6. **Clean up** -- no ephemeral files, archive completed sessions (status + `archived_at` + `archived_by` + move to archive/)
 7. **When in doubt, ask the user**
 
