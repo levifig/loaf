@@ -2,7 +2,7 @@
 id: TASK-058
 title: Slim foundations and reassign hook skill fields
 spec: SPEC-014
-status: todo
+status: done
 priority: p0
 dependencies: [TASK-057]
 track: A

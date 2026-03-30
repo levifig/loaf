@@ -2,7 +2,7 @@
 id: TASK-059
 title: Create SOUL.md, canonical template, and 3 profile definitions
 spec: SPEC-014
-status: todo
+status: done
 priority: p0
 dependencies: []
 track: B

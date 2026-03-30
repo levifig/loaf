@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Foundations skill slimmed to code style, TDD, verification, review, and production readiness (SPEC-014)
 - All 29 skill descriptions rewritten with action verb openers, user-intent phrases, negative routing, and success criteria (SPEC-014)
 - Hook `skill:` fields reassigned to match new skill boundaries (SPEC-014)
+- Hook agent predicates updated from role-agent IDs to profile names across 12 hook scripts (SPEC-014)
+- OpenCode session hooks now stored as arrays, fixing collision where only the last hook per event survived (SPEC-014)
 - ARCHITECTURE.md updated to document profile model and Warden identity (SPEC-014)
 
 ### Removed

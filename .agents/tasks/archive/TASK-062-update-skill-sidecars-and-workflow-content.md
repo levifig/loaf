@@ -2,7 +2,7 @@
 id: TASK-062
 title: Update all skill sidecars and workflow content for profile model
 spec: SPEC-014
-status: todo
+status: done
 priority: p1
 dependencies: [TASK-059, TASK-061]
 track: D

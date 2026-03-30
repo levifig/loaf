@@ -2,7 +2,7 @@
 id: TASK-061
 title: Update build system — remove substitutions, profile-aware discovery
 spec: SPEC-014
-status: todo
+status: done
 priority: p1
 dependencies: [TASK-059]
 track: D

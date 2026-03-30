@@ -2,7 +2,7 @@
 id: TASK-057
 title: Create 4 focused skills from foundations decomposition
 spec: SPEC-014
-status: todo
+status: done
 priority: p0
 dependencies: []
 track: A

@@ -2,7 +2,7 @@
 id: TASK-063
 title: Audit and rewrite descriptions for all skills
 spec: SPEC-014
-status: todo
+status: done
 priority: p2
 dependencies: [TASK-057, TASK-058]
 track: C

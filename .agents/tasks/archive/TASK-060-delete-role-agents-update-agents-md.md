@@ -2,7 +2,7 @@
 id: TASK-060
 title: Delete 8 role-agent files and update AGENTS.md
 spec: SPEC-014
-status: todo
+status: done
 priority: p1
 dependencies: [TASK-059, TASK-062]
 track: B

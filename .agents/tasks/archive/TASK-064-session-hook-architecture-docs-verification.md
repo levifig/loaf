@@ -2,7 +2,7 @@
 id: TASK-064
 title: SessionStart hook, ARCHITECTURE.md update, end-to-end verification
 spec: SPEC-014
-status: todo
+status: done
 priority: p2
 dependencies: [TASK-060, TASK-061, TASK-062, TASK-063]
 track: D

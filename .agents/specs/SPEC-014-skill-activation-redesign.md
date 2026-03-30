@@ -3,7 +3,7 @@ id: SPEC-014
 title: Skill Activation Redesign — foundations decomposition + agent elimination
 source: brainstorm
 created: '2026-03-24T23:30:00.000Z'
-status: shaped
+status: complete
 appetite: Large (4+ sessions)
 branch: feat/skill-activation-redesign
 ---
