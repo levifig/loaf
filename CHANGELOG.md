@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `/release` skill — orchestrates squash merge ritual: pre-flight, docs freshness, housekeeping, version bump, merge, cleanup (SPEC-019)
+- `loaf release --bump <type>` — skip interactive bump prompt for non-interactive use
+- `loaf release --base <ref>` — scope commits to a branch instead of last tag
+- `loaf release --no-tag` — skip git tag creation (implies `--no-gh`)
+- Release library test suite: version, changelog, commits, options, and command integration tests
+
+### Changed
+- Option validation and skip-flag logic extracted to `cli/lib/release/options.ts`
+
 ## [2.0.0-dev.6] - 2026-03-30
 
 ### Added
