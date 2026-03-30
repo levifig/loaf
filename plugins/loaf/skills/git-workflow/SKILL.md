@@ -21,3 +21,4 @@ Git conventions for branching, commits, PRs, and merge workflow.
 | Topic | Reference | Use When |
 |-------|-----------|----------|
 | Commits | `references/commits.md` | Writing commit messages, creating PRs, branching, pre-PR/pre-push/post-merge hooks |
+| Release ritual | `/loaf:release` skill | Orchestrating the full squash merge workflow (pre-flight, version bump, merge, cleanup) |

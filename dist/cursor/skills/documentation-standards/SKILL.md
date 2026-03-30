@@ -6,7 +6,7 @@ description: >-
   APIs, maintaining changelogs, reviewing documentation quality, or creating
   architectural diagrams. Not for code comments (use foundations) or README
   files (project-specific).
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Documentation Standards

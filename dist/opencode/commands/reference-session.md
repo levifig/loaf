@@ -6,7 +6,7 @@ description: >-
   for resuming active work (use resume-session) or general research (use
   research).
 subtask: false
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Reference Session

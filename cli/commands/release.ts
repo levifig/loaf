@@ -34,6 +34,12 @@ import {
   insertIntoChangelog,
   createChangelog,
 } from "../lib/release/changelog.js";
+import {
+  validateBumpType,
+  validateBaseRef,
+  normalizeSkipFlags,
+} from "../lib/release/options.js";
+import type { ReleaseOptions } from "../lib/release/options.js";
 
 // ANSI color helpers
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
@@ -161,7 +167,12 @@ export function registerReleaseCommand(program: Command): void {
     .command("release")
     .description("Create a new release with changelog, version bump, and tag")
     .option("--dry-run", "Preview release without making changes")
-    .action(async (options: { dryRun?: boolean }) => {
+    .option("--bump <type>", "Skip interactive bump choice (prerelease, release, major, minor, patch)")
+    .option("--base <ref>", "Use commits since <ref> instead of last tag (e.g. main)")
+    .option("--no-tag", "Skip git tag creation")
+    .option("--no-gh", "Skip GitHub release draft")
+    .option("-y, --yes", "Skip confirmation prompt (for non-interactive use)")
+    .action(async (options: ReleaseOptions) => {
       const cwd = process.cwd();
 
       console.log(`\n${bold("loaf release")}\n`);
@@ -177,11 +188,30 @@ export function registerReleaseCommand(program: Command): void {
 
       process.stdout.write(`  ${cyan("Analyzing")}...\n\n`);
 
-      const lastTag = getLastTag(cwd);
-      const commits = getCommitsSince(cwd, lastTag);
+      let baseRef = options.base ?? getLastTag(cwd);
 
-      console.log(`  Last tag: ${lastTag ? bold(lastTag) : gray("(none)")}`);
-      console.log(`  Commits since tag: ${bold(String(commits.length))}`);
+      // Validate --base ref exists before proceeding (may resolve to origin/<ref>)
+      if (options.base) {
+        try {
+          baseRef = validateBaseRef(cwd, options.base);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`  ${red("error:")} ${message}`);
+          process.exit(1);
+        }
+      }
+
+      const commits = getCommitsSince(cwd, baseRef);
+
+      if (options.base) {
+        const baseRefLabel = baseRef === options.base
+          ? `${bold(options.base)} (via --base flag)`
+          : `${bold(options.base)} (resolved to ${bold(baseRef!)} via --base flag)`;
+        console.log(`  Base ref: ${baseRefLabel}`);
+      } else {
+        console.log(`  Last tag: ${baseRef ? bold(baseRef) : gray("(none)")}`);
+      }
+      console.log(`  Commits since ${options.base ? "base" : "tag"}: ${bold(String(commits.length))}`);
       console.log();
 
       if (commits.length === 0) {
@@ -219,7 +249,19 @@ export function registerReleaseCommand(program: Command): void {
       let bump: BumpType;
       let newVersion: string | null;
 
-      if (isPrerelease) {
+      // Validate --bump flag if provided
+      if (options.bump) {
+        try {
+          bump = validateBumpType(options.bump);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`  ${red("error:")} ${message}`);
+          process.exit(1);
+        }
+        newVersion = bumpVersion(currentVersion, bump);
+        console.log(`  Bump type: ${bold(bump)} (via --bump flag)`);
+        console.log();
+      } else if (isPrerelease) {
         // On a pre-release version — default to bumping the prerelease counter
         // Show available options
         console.log(`  ${bold("Current pre-release:")} ${currentVersion}`);
@@ -316,6 +358,9 @@ export function registerReleaseCommand(program: Command): void {
       console.log(`  New version: ${bold(newVersion)}`);
       console.log();
 
+      // Determine which steps are enabled
+      const { skipTag, skipGh } = normalizeSkipFlags(options);
+
       // Action list
       console.log(`  ${bold("Actions:")}`);
       let actionNum = 1;
@@ -323,8 +368,14 @@ export function registerReleaseCommand(program: Command): void {
       console.log(`    ${actionNum++}. Update CHANGELOG.md`);
       console.log(`    ${actionNum++}. Run loaf build`);
       console.log(`    ${actionNum++}. Commit release artifacts`);
-      console.log(`    ${actionNum++}. Create git tag ${tagName}`);
-      if (ghAvailable) {
+      if (skipTag) {
+        console.log(`    ${gray(`${actionNum++}. Create git tag ${tagName} (--no-tag — skipped)`)}`);
+      } else {
+        console.log(`    ${actionNum++}. Create git tag ${tagName}`);
+      }
+      if (skipGh) {
+        console.log(`    ${gray(`${actionNum++}. Create GitHub release draft (--no-gh — skipped)`)}`);
+      } else if (ghAvailable) {
         console.log(`    ${actionNum++}. Create GitHub release draft (gh available)`);
       } else {
         console.log(`    ${gray(`${actionNum++}. Create GitHub release draft (gh not available — skipped)`)}`);
@@ -337,11 +388,13 @@ export function registerReleaseCommand(program: Command): void {
         process.exit(0);
       }
 
-      // Confirmation
-      const confirmed = await askYesNo(`  Proceed with release ${bold(tagName)}? [y/N] `);
-      if (!confirmed) {
-        console.log(`\n  ${gray("Release cancelled.")}\n`);
-        process.exit(0);
+      // Confirmation (--yes skips the prompt for non-interactive use)
+      if (!options.yes) {
+        const confirmed = await askYesNo(`  Proceed with release ${bold(tagName)}? [y/N] `);
+        if (!confirmed) {
+          console.log(`\n  ${gray("Release cancelled.")}\n`);
+          process.exit(0);
+        }
       }
 
       console.log();
@@ -376,7 +429,7 @@ export function registerReleaseCommand(program: Command): void {
           if (inserted) {
             changelogContent = inserted;
           } else {
-            // No [Unreleased] marker — append after header
+            // No [Unreleased] marker — append at end of file
             changelogContent = existing + "\n" + changelogSection + "\n";
           }
         } else {
@@ -423,20 +476,26 @@ export function registerReleaseCommand(program: Command): void {
       }
 
       // Step 5: Create git tag
-      try {
-        execFileSync("git", ["tag", "-a", tagName, "-m", `Release ${newVersion}`], {
-          cwd,
-          stdio: ["ignore", "pipe", "ignore"],
-        });
-        console.log(`    ${green("\u2713")} Created tag ${tagName}`);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error(`    ${red("\u2717")} Failed to create tag: ${message}`);
-        process.exit(1);
+      if (skipTag) {
+        console.log(`    ${gray("-")} Git tag skipped (--no-tag)`);
+      } else {
+        try {
+          execFileSync("git", ["tag", "-a", tagName, "-m", `Release ${newVersion}`], {
+            cwd,
+            stdio: ["ignore", "pipe", "ignore"],
+          });
+          console.log(`    ${green("\u2713")} Created tag ${tagName}`);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`    ${red("\u2717")} Failed to create tag: ${message}`);
+          process.exit(1);
+        }
       }
 
       // Step 6: Create GitHub release draft
-      if (ghAvailable) {
+      if (skipGh) {
+        console.log(`    ${gray("-")} GitHub release skipped (--no-gh)`);
+      } else if (ghAvailable) {
         try {
           execFileSync(
             "gh",

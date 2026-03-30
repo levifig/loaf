@@ -6,7 +6,7 @@ description: >-
   decisions, evaluating layouts, or ensuring accessibility compliance. Not for
   writing frontend code (use typescript-development) or API design (use
   documentation-standards).
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Design Principles
