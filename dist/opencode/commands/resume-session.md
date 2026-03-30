@@ -5,7 +5,7 @@ description: >-
   session file with synced state and next steps. Not for referencing past
   decisions (use reference-session) or starting new work (use implement).
 subtask: false
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Resume Session

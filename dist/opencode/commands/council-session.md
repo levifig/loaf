@@ -9,7 +9,7 @@ description: >-
   (use architecture). Produces structured council reports with per-specialist
   analysis and synthesized recommendations.
 subtask: false
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Council Deliberation Session

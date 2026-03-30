@@ -6,7 +6,7 @@ description: >-
   applications, React components, or Node.js services. Not for UI/UX design
   decisions (use interface-design), database schema design (use
   database-design), or backend Python services (use python-development).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # TypeScript Development

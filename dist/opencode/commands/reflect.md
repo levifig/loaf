@@ -6,7 +6,7 @@ description: >-
   proven implementation. Not for pre-implementation strategy (use strategy) or
   architecture decisions (use architecture).
 subtask: false
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Reflect

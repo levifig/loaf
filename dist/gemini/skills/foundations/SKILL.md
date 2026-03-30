@@ -6,7 +6,7 @@ description: >-
   quality, running verification checks, or setting up review processes. Not for
   git workflow (use git-workflow), debugging (use debugging), security (use
   security-compliance), or documentation (use documentation-standards).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Code Standards

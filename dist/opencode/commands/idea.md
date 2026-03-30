@@ -7,7 +7,7 @@ description: >-
   with context and evaluation criteria. Not for deep exploration (use
   brainstorm) or shaping into specs (use shape).
 subtask: false
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Idea

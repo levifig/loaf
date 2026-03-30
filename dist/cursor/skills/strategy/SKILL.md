@@ -6,7 +6,7 @@ description: >-
   strategic direction." Produces or updates STRATEGY.md with personas, market
   landscape, and problem space. Not for technical architecture (use
   architecture) or reflecting on shipped work (use reflect).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Strategy

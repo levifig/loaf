@@ -5,7 +5,7 @@ description: >-
   execution. Use when the user asks "implement this" or "start working on
   TASK-XXX." Produces session files, plans, and coordinated agent output. Not
   for shaping work (use shape) or breaking down specs (use breakdown).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Implement

@@ -8,7 +8,7 @@ description: >-
   ideas via /idea. Not for capturing a single quick idea (use idea) or shaping
   into a bounded spec (use shape).
 subtask: false
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Brainstorm

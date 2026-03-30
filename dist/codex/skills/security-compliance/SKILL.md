@@ -6,7 +6,7 @@ description: >-
   secrets or credentials, performing threat analysis, or running compliance
   audits. Not for debugging (use debugging) or general code review (use
   foundations).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Security & Compliance

@@ -6,7 +6,7 @@ description: >-
   during investigation, or fixing flaky or intermittent tests. Not for writing
   new tests (use foundations TDD reference) or security vulnerability analysis
   (use security-compliance).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Debugging

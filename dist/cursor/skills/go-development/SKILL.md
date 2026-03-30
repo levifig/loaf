@@ -5,7 +5,7 @@ description: >-
   error handling, and testing. Use when writing Go services, CLIs, or libraries.
   Not for database schema design (use database-design) or infrastructure
   orchestration (use infrastructure-management).
-version: 2.0.0-dev.5
+version: 2.0.0-dev.6
 ---
 
 # Go Skill
