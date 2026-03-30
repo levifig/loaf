@@ -57,14 +57,14 @@ Add this section for post-compaction continuation:
 ```markdown
 ## Resumption Prompt
 
-> **Context**: Working on PLT-123 (auth endpoints). {{AGENT:backend-dev}} completed
+> **Context**: Working on PLT-123 (auth endpoints). Implementer completed
 > login/logout endpoints. Tests passing.
 >
 > **Last Action**: Reviewed test coverage, identified missing edge case for
 > token expiration.
 >
 > **Immediate Next**: Add token expiration test to `tests/auth/test_login.py`,
-> then spawn {{AGENT:frontend-dev}} for UI components.
+> then spawn implementer for UI components.
 >
 > **Key Files**: `src/auth/endpoints.py`, `tests/auth/test_login.py`
 >
@@ -141,7 +141,7 @@ mcp__serena__write_memory(
 ### Decision 1: JWT Token Rotation Strategy
 **Decision**: Rotate tokens every 15 minutes with sliding window
 **Rationale**: Balance between security and user experience
-**Council**: None - backend-dev recommendation accepted
+**Council**: None - implementer recommendation accepted
 
 ### Decision 2: Refresh Token Storage
 **Decision**: Store in HttpOnly cookies, not localStorage

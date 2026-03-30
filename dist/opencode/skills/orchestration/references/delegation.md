@@ -41,30 +41,30 @@
 
 ## Agent Capability Matrix
 
-### Implementation Agents
+### Implementation Profiles
 
-| Agent | Focus | Use For |
-|-------|-------|---------|
-| `Backend Dev` | Backend | Services, APIs, business logic, backend code review |
-| `Frontend Dev` | Frontend | UI components, state management, frontend code review |
-| `rails-dev` | Ruby on Rails | Controllers, models, views, Hotwire/Stimulus, ActiveRecord |
-| `DBA` | Database | Schema design, migrations, indexes, query optimization |
-| `DevOps` | Infrastructure | Docker, Kubernetes, CI/CD, monitoring |
+| Profile | Focus | Skills to Load |
+|---------|-------|---------------|
+| `implementer` | Backend code | Language skill (python, ruby, go, typescript) + domain skills |
+| `implementer` | Frontend code | typescript-development + interface-design |
+| `implementer` | Ruby on Rails | ruby-development |
+| `implementer` | Database | database-design + language skill |
+| `implementer` | Infrastructure | infrastructure-management |
 
-### Quality Assurance Agents
+### Quality Assurance Profiles
 
-| Agent | Focus | Use For |
-|-------|-------|---------|
-| `QA` | Tests | Unit tests, integration tests, fixtures, coverage |
-| `security` | Security | Audits, vulnerabilities, OWASP, secrets, threat modeling |
+| Profile | Focus | Skills to Load |
+|---------|-------|---------------|
+| `implementer` | Tests | foundations + language skill |
+| `implementer` | Security | foundations + language skill |
 
-### Documentation & Planning
+### Review & Advisory Profiles
 
-| Agent | Focus | Use For |
-|-------|-------|---------|
-| `docs` | Documentation | API docs, ADRs, READMEs, guides |
-| `product` | Planning | Requirements, roadmaps, feature specs, user stories |
-| `Design` | UI/UX | Interface design, accessibility, design systems |
+| Profile | Focus | Skills to Load |
+|---------|-------|---------------|
+| `reviewer` | Code review | relevant domain skills |
+| `reviewer` | UI/UX review | interface-design |
+| `researcher` | Research | relevant domain skills |
 
 ## Delegation Decision Tree
 
@@ -72,30 +72,30 @@
 What type of work is needed?
 
 |-- Code Implementation
-|   |-- Python/FastAPI/Backend --> Backend Dev
-|   |-- React/Next.js/Frontend --> Frontend Dev
-|   |-- Ruby on Rails --> rails-dev
-|   +-- Database Schema/Migrations --> DBA
+|   |-- Python/FastAPI/Backend --> implementer (language skill)
+|   |-- React/Next.js/Frontend --> implementer (typescript-development + interface-design)
+|   |-- Ruby on Rails --> implementer (ruby-development)
+|   +-- Database Schema/Migrations --> implementer (database-design)
 
 |-- Infrastructure & Operations
-|   |-- Docker/K8s/CI/CD --> DevOps
-|   +-- Database Performance --> DBA
+|   |-- Docker/K8s/CI/CD --> implementer (infrastructure-management)
+|   +-- Database Performance --> implementer (database-design)
 
 |-- Quality Assurance
-|   |-- Test Implementation --> QA
-|   +-- Security Audit --> security
+|   |-- Test Implementation --> implementer (foundations + language skill)
+|   +-- Security Audit --> implementer (foundations)
 
-|-- Code Review (Domain Dev)
-|   |-- Backend Review --> Backend Dev
-|   +-- Frontend Review --> Frontend Dev
+|-- Code Review
+|   |-- Backend Review --> reviewer (language skill)
+|   +-- Frontend Review --> reviewer (typescript-development)
 
 |-- Documentation & Design
-|   |-- Technical Documentation --> docs
-|   |-- UI/UX Design --> Design
-|   +-- Product Requirements --> product
+|   |-- Technical Documentation --> implementer (foundations)
+|   |-- UI/UX Design --> reviewer (interface-design)
+|   +-- Product Requirements --> researcher
 
 +-- Complex Decision?
-    +-- Council (5-7 agents, odd number)
+    +-- Council (5-7 subagents, odd number)
 ```
 
 ## Spawn Patterns
@@ -108,17 +108,17 @@ Use when output of one agent is input to another:
 
 ```python
 # Step 1: Schema first
-Task(subagent_type="DBA", prompt="Create users table...")
+Task(subagent_type="implementer", prompt="Create users table... Follow database-design skill.")
 
 # Wait for completion
 
 # Step 2: Implementation uses schema
-Task(subagent_type="Backend Dev", prompt="Implement user service...")
+Task(subagent_type="implementer", prompt="Implement user service... Follow python-development skill.")
 
 # Wait for completion
 
 # Step 3: Tests use implementation
-Task(subagent_type="QA", prompt="Write user tests...")
+Task(subagent_type="implementer", prompt="Write user tests... Follow foundations + python-development skills.")
 ```
 
 **Common sequences:**
@@ -132,8 +132,8 @@ Use when work is truly independent:
 
 ```python
 # Both can run simultaneously
-Task(subagent_type="Backend Dev", prompt="Implement API...")
-Task(subagent_type="Frontend Dev", prompt="Build UI...")
+Task(subagent_type="implementer", prompt="Implement API... Follow python-development skill.")
+Task(subagent_type="implementer", prompt="Build UI... Follow typescript-development + interface-design skills.")
 ```
 
 **Requirements for parallel:**
@@ -144,7 +144,7 @@ Task(subagent_type="Frontend Dev", prompt="Build UI...")
 ### Spawning Best Practices
 
 1. **Be specific in prompts** - Include file paths, requirements, constraints
-2. **One concern per agent** - Don't ask Backend Dev to also write tests
+2. **One concern per agent** - Don't ask a backend implementer to also write tests
 3. **Include context** - Session file, issue ID, previous outcomes
 4. **Reference session** - `Session: .agents/sessions/YYYYMMDD-HHMMSS-name.md`
 5. **Include skill hints** - Name the skills that should guide the agent's work
@@ -175,7 +175,7 @@ prompt="... Build the API endpoint."
 
 ```python
 Task(
-    subagent_type="Backend Dev",
+    subagent_type="implementer",
     prompt="""
     Implement POST /api/v1/users endpoint.
 
@@ -203,8 +203,8 @@ Task(
 | Anti-Pattern | Better Approach |
 |--------------|-----------------|
 | PM implementing code | PM orchestrates, always delegate |
-| Asking Backend Dev for React | Spawn Frontend Dev |
-| Single agent for database + backend + tests | Sequential: DBA, Backend Dev, QA |
+| Asking backend implementer for React | Spawn implementer with frontend skills |
+| Single agent for database + backend + tests | Sequential: implementer (database-design), implementer (language skill), implementer (foundations) |
 | Parallel spawns with hidden dependencies | Make dependencies explicit, spawn sequentially |
 | Spawning without session context | Create session first, reference in prompts |
 | Council for simple decisions | Single agent or PM judgment |

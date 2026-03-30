@@ -19,7 +19,7 @@ import { join, dirname, basename } from "path";
 import { parse as parseYaml } from "yaml";
 import { loadSkillFrontmatter, loadTargetSkillSidecar, loadAgentSidecarOptional } from "../lib/sidecar.js";
 import { getVersion, injectVersion } from "../lib/version.js";
-import { buildAgentMap, substituteAgentNames } from "../lib/substitutions.js";
+
 import { copySharedTemplates } from "../lib/shared-templates.js";
 import { copyDirWithTransform } from "../lib/copy-utils.js";
 import type { BuildContext, HooksConfig, HookDefinition } from "../types.js";
@@ -29,11 +29,6 @@ const TARGET_NAME = "cursor";
 const DEFAULT_AGENT_FRONTMATTER = {
   model: "inherit",
   is_background: true,
-};
-
-const PM_AGENT_FRONTMATTER = {
-  model: "inherit",
-  is_background: false,
 };
 
 function substituteCommands(content: string): string {
@@ -52,9 +47,7 @@ export async function build({
   distDir,
 }: BuildContext): Promise<void> {
   const version = getVersion(rootDir);
-  const agentMap = buildAgentMap(srcDir, TARGET_NAME);
-  const transformMd = (content: string) =>
-    substituteAgentNames(substituteCommands(content), agentMap);
+  const transformMd = (content: string) => substituteCommands(content);
 
   const skillsDir = join(distDir, "skills");
   const agentsDir = join(distDir, "agents");
@@ -72,9 +65,17 @@ export async function build({
   }
 
   copySkills(srcDir, skillsDir, version, targetsConfig, transformMd);
-  copyAgents(srcDir, agentsDir, targetConfig, version, agentMap);
+  copyAgents(srcDir, agentsDir, targetConfig, version);
   copyHooks(srcDir, hooksDir);
   generateHooksJson(config as HooksConfig, distDir);
+
+  // Copy plugin-root templates (e.g. soul.md for SessionStart hook)
+  const soulTemplateSrc = join(srcDir, "templates", "soul.md");
+  if (existsSync(soulTemplateSrc)) {
+    const templatesDir = join(distDir, "templates");
+    mkdirSync(templatesDir, { recursive: true });
+    cpSync(soulTemplateSrc, join(templatesDir, "soul.md"));
+  }
 }
 
 function copySkills(
@@ -140,7 +141,6 @@ function copyAgents(
   destDir: string,
   targetConfig: BuildContext["targetConfig"],
   version: string,
-  agentMap: Record<string, string>,
 ): void {
   const src = join(srcDir, "agents");
   if (!existsSync(src)) return;
@@ -158,11 +158,9 @@ function copyAgents(
     const sidecarFrontmatter = loadAgentSidecarOptional(srcPath, TARGET_NAME);
 
     const defaults =
-      agentName === "pm"
-        ? PM_AGENT_FRONTMATTER
-        : (targetConfig as Record<string, unknown>)?.defaults
-          ? ((targetConfig as { defaults?: { agents?: { frontmatter?: Record<string, unknown> } } }).defaults?.agents?.frontmatter || DEFAULT_AGENT_FRONTMATTER)
-          : DEFAULT_AGENT_FRONTMATTER;
+      (targetConfig as Record<string, unknown>)?.defaults
+        ? ((targetConfig as { defaults?: { agents?: { frontmatter?: Record<string, unknown> } } }).defaults?.agents?.frontmatter || DEFAULT_AGENT_FRONTMATTER)
+        : DEFAULT_AGENT_FRONTMATTER;
 
     const frontmatter: Record<string, unknown> = {
       ...defaults,
@@ -174,11 +172,7 @@ function copyAgents(
     };
 
     const bodyWithFooter = body.trim() + `\n\n---\nversion: ${version}\n`;
-    const transformed = substituteAgentNames(
-      matter.stringify(bodyWithFooter, frontmatter),
-      agentMap,
-    );
-    writeFileSync(destPath, transformed);
+    writeFileSync(destPath, matter.stringify(bodyWithFooter, frontmatter));
   }
 }
 

@@ -15,9 +15,9 @@ if ! is_hook_enabled "bundle-analysis"; then
     exit 0
 fi
 
-# Only run for frontend-dev agent
+# Only run for implementer agent
 AGENT_TYPE=$(get_agent_type)
-if [[ "${AGENT_TYPE}" != "frontend-dev" ]]; then
+if [[ "${AGENT_TYPE}" != "implementer" ]]; then
     exit 0
 fi
 

@@ -48,22 +48,22 @@ Councils are deliberation mechanisms for decisions with multiple valid approache
 
 | Decision Type | 5-Agent Council | Extended (7) |
 |---------------|-----------------|--------------|
-| Database/Data | {{AGENT:dba}}, {{AGENT:backend-dev}}, {{AGENT:devops}}, security, {{AGENT:qa}} | + {{AGENT:frontend-dev}}, docs |
-| API Design | {{AGENT:backend-dev}}, {{AGENT:frontend-dev}}, security, docs, {{AGENT:qa}} | + {{AGENT:dba}}, {{AGENT:devops}} |
-| UI/UX | {{AGENT:design}}, {{AGENT:frontend-dev}}, product, {{AGENT:backend-dev}}, {{AGENT:qa}} | + docs |
-| Infrastructure | {{AGENT:devops}}, {{AGENT:backend-dev}}, security, {{AGENT:dba}}, {{AGENT:qa}} | + {{AGENT:frontend-dev}}, docs |
-| Security | security, {{AGENT:backend-dev}}, {{AGENT:devops}}, {{AGENT:dba}}, {{AGENT:qa}} | + {{AGENT:frontend-dev}}, docs |
-| Full Architecture | {{AGENT:backend-dev}}, {{AGENT:frontend-dev}}, {{AGENT:dba}}, {{AGENT:devops}}, security, {{AGENT:qa}}, docs | N/A |
-| Feature Scope | product, {{AGENT:design}}, {{AGENT:backend-dev}}, {{AGENT:frontend-dev}}, {{AGENT:qa}} | + security |
+| Database/Data | database specialist, backend specialist, infra specialist, security, testing specialist | + frontend specialist, docs |
+| API Design | backend specialist, frontend specialist, security, docs, testing specialist | + database specialist, infra specialist |
+| UI/UX | design specialist, frontend specialist, product, backend specialist, testing specialist | + docs |
+| Infrastructure | infra specialist, backend specialist, security, database specialist, testing specialist | + frontend specialist, docs |
+| Security | security, backend specialist, infra specialist, database specialist, testing specialist | + frontend specialist, docs |
+| Full Architecture | backend specialist, frontend specialist, database specialist, infra specialist, security, testing specialist, docs | N/A |
+| Feature Scope | product, design specialist, backend specialist, frontend specialist, testing specialist | + security |
 
 ### Composition Rules
 
 - **5 or 7 agents** (always odd)
 - Primary domain expert must be included
-- Include domain devs for code review ({{AGENT:backend-dev}}/{{AGENT:frontend-dev}})
+- Include domain specialists for code review (backend/frontend)
 - Include `security` if security-relevant
-- PM coordinates but does NOT vote
-- Any agent type can participate (implementation agents like {{AGENT:backend-dev}} bring valuable perspectives)
+- Coordinator does NOT vote
+- Any specialist can participate (implementers bring valuable domain perspectives)
 
 ### Ad-Hoc Specialist Personas
 
@@ -75,11 +75,11 @@ When a council needs expertise not covered by existing agents, PM can create a s
 **Decision**: Real-time data pipeline architecture
 
 **Agents** (5):
-1. {{AGENT:backend-dev}} - Application integration
-2. {{AGENT:dba}} - Data storage patterns
-3. {{AGENT:devops}} - Infrastructure and scaling
+1. backend specialist - Application integration
+2. database specialist - Data storage patterns
+3. infra specialist - Infrastructure and scaling
 4. **[Ad-hoc] Streaming Specialist** - Kafka/event-driven expertise
-5. {{AGENT:qa}} - Testing distributed systems
+5. testing specialist - Testing distributed systems
 
 **Ad-hoc Specialist Prompt**:
 > You are a streaming data specialist with deep expertise in Apache Kafka,
@@ -114,11 +114,11 @@ Present to user for approval:
 **Decision**: Session storage strategy
 
 **Agents** (5):
-1. {{AGENT:dba}} - Database implications
-2. {{AGENT:backend-dev}} - Application integration
-3. {{AGENT:devops}} - Operational complexity
+1. database specialist - Database implications
+2. backend specialist - Application integration
+3. infra specialist - Operational complexity
 4. security - Session security
-5. {{AGENT:backend-dev}} (or {{AGENT:frontend-dev}}) - Long-term maintainability (domain review)
+5. domain reviewer - Long-term maintainability (domain review)
 
 Do you approve this composition?
 ```
@@ -136,7 +136,7 @@ Each agent receives:
 
 ```python
 Task(
-  subagent_type="{{AGENT:dba}}",
+  subagent_type="implementer",
   prompt="""
   Provide database perspective on session storage.
 
@@ -169,7 +169,7 @@ Display each agent's report separately so the user sees each perspective clearly
 
 ---
 
-### 🗄️ DBA Perspective
+### 🗄️ Database Specialist Perspective
 
 **Recommendation**: PostgreSQL
 
@@ -189,7 +189,7 @@ Display each agent's report separately so the user sees each perspective clearly
 
 ---
 
-### 🔧 Backend-Dev Perspective
+### 🔧 Backend Specialist Perspective
 
 **Recommendation**: Redis
 
@@ -244,8 +244,8 @@ After individual reports, PM creates a combined synthesis:
 - Performance is acceptable with either option for current scale
 
 ### Key Disagreements
-- **DBA & Security** favor PostgreSQL for operational simplicity
-- **Backend-Dev & DevOps** favor Redis for performance headroom
+- **Database & Security specialists** favor PostgreSQL for operational simplicity
+- **Backend & DevOps specialists** favor Redis for performance headroom
 
 ### Trade-Off Summary
 
@@ -274,10 +274,10 @@ After the synthesis, prompt the user with concrete next steps:
 Based on the council deliberation, here are your options:
 
 1. **Accept recommendation (PostgreSQL)**
-   → {{AGENT:backend-dev}} implements session table with connection pooling
+   → implementer builds session table with connection pooling
 
 2. **Choose alternative (Redis)**
-   → {{AGENT:devops}} provisions Redis cluster, {{AGENT:backend-dev}} implements client
+   → implementer provisions Redis cluster, implementer builds client
 
 3. **Hybrid approach**
    → PostgreSQL for persistence, Redis for hot cache
@@ -320,11 +320,11 @@ council:
   archived_at: "2025-12-10T18:00:00Z"   # Required when archived
   session: "20251210-140000-user-auth"  # REQUIRED
   participants:
-    - {{AGENT:dba}}
-    - {{AGENT:backend-dev}}
-    - {{AGENT:devops}}
+    - database specialist
+    - backend specialist
+    - infra specialist
     - security
-    - {{AGENT:backend-dev}}               # Min 5, MUST be odd
+    - domain reviewer               # Min 5, MUST be odd
   decision: "postgresql"
   linear_issue: "AUTH-45"       # Optional
 ---

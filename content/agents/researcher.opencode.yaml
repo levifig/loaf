@@ -1,0 +1,9 @@
+name: researcher
+description: >-
+  Ranger (Researcher) — scouts far and gathers intelligence.
+tools:
+  Read: true
+  Glob: true
+  Grep: true
+  TodoRead: true
+mode: subagent

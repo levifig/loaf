@@ -87,9 +87,9 @@ fi
 
 # Agent-specific messaging
 case "$AGENT_TYPE" in
-  pm-orchestrator|product)
-    # PM agents: Show active sessions, session creation reminder
-    echo "# PM Agent Session Context"
+  main)
+    # Coordinator (main session): Show active sessions, session creation reminder
+    echo "# Coordinator Session Context"
     echo ""
     if [ "$SESSION_COUNT" -gt 0 ]; then
       echo "**$SESSION_COUNT** active session file(s) found in \`.agents/sessions/\`:"
@@ -124,9 +124,9 @@ case "$AGENT_TYPE" in
     fi
     ;;
 
-  backend-dev|frontend-dev|rails-dev|dba|devops)
-    # Implementation agents: Show session context, active task
-    echo "# Implementation Agent Context"
+  implementer)
+    # Implementer profile: Show session context, active task
+    echo "# Implementer Session Context"
     echo ""
     if [ "$SESSION_COUNT" -gt 0 ]; then
       echo "**$SESSION_COUNT** active session file(s) exist:"
@@ -153,13 +153,13 @@ case "$AGENT_TYPE" in
     else
       echo "No active sessions found."
       echo ""
-      echo "**Tip**: If this is coordinated work, ask PM to create a session file."
+      echo "**Tip**: If this is coordinated work, create a session file with \`/implement\`."
     fi
     ;;
 
-  code-reviewer|security|testing-qa)
-    # Quality agents: Show scope focus
-    echo "# Quality Agent Context"
+  reviewer|researcher)
+    # Reviewer/Researcher profile: Show scope focus
+    echo "# Reviewer/Researcher Session Context"
     echo ""
     if [ "$SESSION_COUNT" -gt 0 ]; then
       echo "**$SESSION_COUNT** active session file(s) found:"
@@ -182,34 +182,6 @@ case "$AGENT_TYPE" in
       echo "No active sessions found."
       echo ""
       echo "**Tip**: Review work in context of overall project goals."
-    fi
-    ;;
-
-  design)
-    # Design agent: UI/UX focus
-    echo "# Design Agent Context"
-    echo ""
-    if [ "$SESSION_COUNT" -gt 0 ]; then
-      echo "**$SESSION_COUNT** active session file(s) found:"
-      echo ""
-
-      find "$SESSIONS_DIR" -maxdepth 1 -name "*.md" -type f 2>/dev/null | while read -r session; do
-        FILENAME=$(basename "$session")
-        TITLE=$(extract_yaml_value "$session" "title")
-        SESSION_BRANCH=$(extract_yaml_value "$session" "branch")
-
-        echo "- **$FILENAME**: $TITLE"
-        # Warn on branch mismatch
-        if [ -n "$SESSION_BRANCH" ] && [ -n "$CURRENT_BRANCH" ] && [ "$SESSION_BRANCH" != "$CURRENT_BRANCH" ]; then
-          echo "  - **WARNING**: Session expects branch \`$SESSION_BRANCH\`, currently on \`$CURRENT_BRANCH\`"
-        fi
-      done
-      echo ""
-      echo "**Focus**: Ensure UI/UX decisions align with session requirements and user experience goals."
-    else
-      echo "No active sessions found."
-      echo ""
-      echo "**Tip**: Check for design specifications in project documentation."
     fi
     ;;
 

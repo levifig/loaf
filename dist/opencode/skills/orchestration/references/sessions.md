@@ -124,14 +124,14 @@ plans: []  # List of plan files in .agents/plans/ used by this session
 orchestration:
   current_task: "What's actively being worked" # REQUIRED
   spawned_agents:
-    - agent: Backend Dev
+    - agent: implementer
       task: "Brief task description"
       status: completed                        # pending|in_progress|completed
       summary: "Outcome summary"
 
 background_agents:                             # Background work running independently
   - id: "bg-20260123-143000-security-scan"     # ID: bg-YYYYMMDD-HHMMSS-description
-    agent: background-runner                   # Agent type
+    agent: background-runner                              # Agent type
     task: "Full security audit"                # Brief description
     status: running                            # running|completed|failed
     result_location: null                      # Path to report when complete
@@ -402,7 +402,7 @@ When starting a new orchestration context:
 ### PreCompact Hook
 - Identifies recently modified sessions (last 60 minutes)
 - Outputs instructions for spawning context-archiver agent
-- context-archiver updates sessions with:
+- Context-archiver updates sessions with:
   - Current state (concrete, handoff-ready)
   - `## Resumption Prompt` section for post-compaction continuation
   - Session log entry with timestamp

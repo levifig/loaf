@@ -1,0 +1,9 @@
+name: reviewer
+description: >-
+  Sentinel (Reviewer) — watches, guards, and verifies. Read-only access ensures
+  independent audits.
+is_background: true
+tools:
+  Read: true
+  Glob: true
+  Grep: true

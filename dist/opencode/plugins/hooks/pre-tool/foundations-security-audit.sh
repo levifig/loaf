@@ -1,7 +1,7 @@
 #!/bin/bash
 # Comprehensive Security Audit
 # Deep security scanning using multiple tools
-# Only runs on commits or when agent=security
+# Only runs on commits or when agent=reviewer
 # Exit 2 if critical vulnerabilities, 0 otherwise
 
 set -euo pipefail
@@ -24,9 +24,10 @@ fi
 AGENT_TYPE=$(get_agent_type)
 VALIDATION_LEVEL=$(get_validation_level)
 
-# Skip unless: main agent, security agent, or thorough validation
+# Skip unless: main agent, reviewer, implementer, or thorough validation
 if [[ "${AGENT_TYPE}" != "main" ]] && \
-   [[ "${AGENT_TYPE}" != "security" ]] && \
+   [[ "${AGENT_TYPE}" != "reviewer" ]] && \
+   [[ "${AGENT_TYPE}" != "implementer" ]] && \
    [[ "${VALIDATION_LEVEL}" != "thorough" ]]; then
     exit 0
 fi
@@ -35,8 +36,8 @@ fi
 HOOK_INPUT=$(cat)
 TOOL_NAME=$(parse_tool_name "${HOOK_INPUT}")
 
-# Only run on Bash tool (likely commits) or when agent=security
-if [[ "${TOOL_NAME}" != "Bash" ]] && [[ "${AGENT_TYPE}" != "security" ]]; then
+# Only run on Bash tool (likely commits) or when agent=reviewer
+if [[ "${TOOL_NAME}" != "Bash" ]] && [[ "${AGENT_TYPE}" != "reviewer" ]]; then
     exit 0
 fi
 

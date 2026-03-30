@@ -5,7 +5,8 @@ description: >-
   Use when the user asks "help me think through this" or "what are the options?"
   Also activate when the user is thinking out loud, exploring tradeoffs, or comparing
   approaches without committing. Produces brainstorm documents with sparks (speculative
-  byproducts) that can later be promoted to ideas via /idea.
+  byproducts) that can later be promoted to ideas via /idea. Not for capturing a
+  single quick idea (use idea) or shaping into a bounded spec (use shape).
 ---
 
 # Brainstorm

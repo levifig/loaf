@@ -2,8 +2,8 @@
 description: >-
   Creates Architecture Decision Records (ADRs) through structured evaluation.
   Use when making technical decisions or when the user asks "should we use X or
-  Y?"
-agent: PM
+  Y?" Produces ADRs and updates to ARCHITECTURE.md. Not for strategic direction
+  (use strategy) or multi-perspective deliberation (use council-session).
 subtask: false
 version: 2.0.0-dev.5
 ---
@@ -99,4 +99,4 @@ Convene when: decision affects multiple domains, team has conflicting opinions, 
 
 - **orchestration/councils** - Council deliberation workflow
 - **orchestration/product-development** - Where architecture fits in hierarchy
-- **foundations** - Documentation standards for ADRs
+- **documentation-standards** - Documentation standards for ADRs
