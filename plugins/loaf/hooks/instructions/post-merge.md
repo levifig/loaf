@@ -1,3 +1,5 @@
+**Note:** If you used `/release`, these steps were already handled by the skill. This checklist is for manual merges.
+
 # Pre-Merge Checklist
 
 Complete these steps on the feature branch before creating the PR.

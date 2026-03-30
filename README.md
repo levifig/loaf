@@ -2,44 +2,45 @@
 
 > "Why have just a slice when you can get the whole loaf?"
 
-Loaf is an opinionated agentic framework (*An Opinionated Agentic Framework*) that transforms how you work with AI coding assistants. Instead of ad-hoc prompting, Loaf provides a **complete pipeline from idea to implementation to learning**—with full traceability at every step.
+Loaf is an opinionated agentic framework that gives AI coding assistants structured knowledge, enforced tool boundaries, and a complete pipeline from idea to implementation to learning. Write your skills once, deploy to Claude Code, OpenCode, Cursor, Codex, and Gemini.
 
-## Philosophy
+## Why Loaf?
 
-**Spec-first development**: Ideas are shaped into bounded specs before any code is written. No more scope creep or undefined requirements.
+**Portable knowledge** — 29 skills covering workflows, engineering standards, and language expertise. Build once, deploy to five AI coding tools without rewriting anything.
 
-**Multi-agent delegation**: A PM agent orchestrates work, specialized agents implement. The orchestrator never touches code directly—it plans, coordinates, and verifies.
+**Spec-first pipeline** — Ideas are shaped into bounded specs before any code is written. Every change flows: Idea → Spec → Tasks → Code → Learnings. Nothing gets lost.
 
-**Full traceability**: Every piece of work flows through: Idea → Spec → Tasks → Code → Learnings. Nothing gets lost.
+**Profile-based agents** — Three functional profiles defined by tool access, not job titles. A Smith with `python-development` skills becomes a backend engineer; the same Smith with `infrastructure-management` becomes a DevOps engineer. Skills determine what an agent knows; the profile determines what it can touch.
 
-**Session continuity**: Work survives context loss, compaction, and `/clear`. Pick up exactly where you left off.
+**Session continuity** — Work survives context loss, compaction, and `/clear`. Pick up exactly where you left off with full traceability.
 
-## The Command Pipeline
+**Hooks as quality gates** — Pre-tool hooks block secrets in commits. Post-tool hooks run linters, type checkers, and security scans. Language-aware and automatic.
+
+## The Pipeline
 
 Loaf's commands form a three-phase workflow that mirrors how good software gets built:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    PHASE 1: SHAPE                           │
+│                      PHASE 1: SHAPE                         │
 │                                                             │
-│   /idea  →  /brainstorm  →  /shape  →  Bounded Spec         │
-│   (capture) (explore)       (define)                        │
+│   /idea  →  /brainstorm  →  /shape  →  Bounded Spec        │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                    PHASE 2: BUILD                           │
+│                      PHASE 2: BUILD                         │
 │                                                             │
 │   /breakdown  →  /implement                                 │
-│   (decompose)    (single task or multi-task orchestration)  │
 │                                                             │
-│   Optional: /council-session for complex decisions          │
+│   /resume-session after context loss                        │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                    PHASE 3: LEARN                           │
+│                      PHASE 3: LEARN                         │
 │                                                             │
-│   /review-sessions  →  /reflect  →  Updated Strategy        │
-│   (outcomes)           (learnings)                          │
+│   /cleanup  →  /reflect  →  Updated Strategy                │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -47,8 +48,8 @@ Loaf's commands form a three-phase workflow that mirrors how good software gets 
 
 Transform raw ideas into implementable specs with clear boundaries.
 
-| Command | Purpose |
-|---------|---------|
+| Command | What It Does |
+|---------|--------------|
 | `/idea` | Quick capture of rough ideas into `.agents/ideas/` |
 | `/brainstorm` | Deep exploration of a problem space |
 | `/shape` | Rigorous shaping into bounded spec (what's IN and OUT) |
@@ -58,102 +59,107 @@ Transform raw ideas into implementable specs with clear boundaries.
 
 Decompose specs into atomic tasks and execute with specialized agents.
 
-| Command | Purpose |
-|---------|---------|
+| Command | What It Does |
+|---------|--------------|
 | `/breakdown` | Split spec into agent-sized atomic tasks |
-| `/implement` | Start single-task work or multi-task orchestration with dependency tracking |
-| `/council-session` | Convene agents for multi-perspective decisions |
-| `/resume` | Continue after context loss or new conversation |
+| `/implement` | Execute tasks with orchestrated agent delegation |
+| `/release` (`/ship`) | Orchestrate the merge ritual: pre-flight, docs check, version bump, squash merge, cleanup |
+| `/resume-session` | Continue after context loss or new conversation |
 
 ### Phase 3: Learn
 
 Integrate outcomes into strategic knowledge.
 
-| Command | Purpose |
-|---------|---------|
-| `/review-sessions` | Review completed sessions, identify patterns |
-| `/reflect` | Integrate learnings into STRATEGY.md |
-| `/reference-session` | Reuse patterns from prior sessions |
+| Command | What It Does |
+|---------|--------------|
+| `/cleanup` | Review completed sessions, archive artifacts |
+| `/reflect` | Integrate learnings into strategic documents |
+| `/reference-session` | Import decisions from prior sessions |
 
-## Key Concepts
+## Profiles
 
-**Shape Up Methodology**: Inspired by Basecamp's Shape Up. Specs define appetite (how much effort), boundaries (what's out), and rabbit holes (known risks). Work is shaped, not just specified.
+Loaf uses three functional profiles defined by mechanically enforced tool boundaries — not role titles, not domain labels. What an agent *can do* is fixed by its profile. What it *knows* comes from skills loaded at spawn time.
 
-**Strict Delegation**: The PM agent plans and coordinates but never writes code. All implementation is delegated to specialized agents: `backend-dev`, `frontend-dev`, `dba`, `qa`, `devops`, `design`.
+| Profile | Role | Tool Access | What It Does |
+|---------|------|-------------|--------------|
+| **Smith** | Implementer | Full write | Forges code, tests, config, and docs. Speciality determined by skills. |
+| **Sentinel** | Reviewer | Read-only | Watches, guards, and verifies. Cannot modify what it reviews — by design. |
+| **Ranger** | Researcher | Read + web | Scouts far, gathers intelligence, reports structured findings. |
 
-**Sessions as State Machines**: Every `/implement` creates a session file in `.agents/sessions/`. Sessions track: spec → tasks → agent assignments → outcomes. They survive `/clear`, compaction, and context switches.
-
-**Hooks as Quality Gates**: Pre-tool hooks can block dangerous actions (secrets in commits). Post-tool hooks run linters, type checkers, security scans. Language-aware and automatic.
-
-## Agents
-
-**Orchestrator:**
-
-| Agent | Use For |
-|-------|---------|
-| `pm` | Orchestrating work, managing sessions, delegating to specialists |
-
-**Implementation Agents** (write code):
-
-| Agent | Use For |
-|-------|---------|
-| `backend-dev` | Python, Ruby/Rails, Go, or TypeScript services |
-| `frontend-dev` | React, Next.js, UI components |
-| `devops` | Docker, Kubernetes, CI/CD |
-
-**Advisory Agents** (expertise in councils, delegate implementation):
-
-| Agent | Use For |
-|-------|---------|
-| `dba` | Schema design, migrations, queries |
-| `qa` | Testing, code review, security |
-| `design` | UI/UX, accessibility |
-| `power-systems` | Grid design, power electronics |
+The main session is the **Warden** — it coordinates and delegates but never implements directly. See [SOUL.md](SOUL.md) for the full fellowship identity.
 
 ## Skills
 
-Domain knowledge that agents draw from:
+### Workflow
 
-| Skill | Coverage |
-|-------|----------|
-| `orchestration` | Sessions, councils, Linear integration, Shape Up |
-| `foundations` | Code style, docs, security, commits |
-| `python-development` | FastAPI, Pydantic, pytest, async |
-| `typescript-development` | TypeScript, React, Next.js, type safety |
-| `ruby-development` | Rails 8, Hotwire, Minitest, DHH philosophy |
+Skills you invoke directly to drive work forward.
+
+| Skill | Activates When |
+|-------|----------------|
+| `implement` | Starting task or spec implementation |
+| `breakdown` | Decomposing specs into atomic tasks |
+| `shape` | Shaping ideas into bounded specs |
+| `brainstorm` | Deep exploration of a problem space |
+| `research` | Investigating questions, comparing options |
+| `strategy` | Discovering or updating strategic direction |
+| `architecture` | Creating Architecture Decision Records |
+| `reflect` | Integrating learnings into strategic docs |
+| `cleanup` | Reviewing and archiving agent artifacts |
+| `reference-session` | Importing decisions from past sessions |
+| `resume-session` | Continuing after context loss |
+| `bootstrap` | Bootstrapping new or existing projects |
+| `idea` | Quick capture of ideas for later evaluation |
+
+### Orchestration & Knowledge
+
+Background skills that activate automatically during agent coordination and project management.
+
+| Skill | Activates When |
+|-------|----------------|
+| `orchestration` | Managing sessions, delegating agents, Linear integration |
+| `council-session` | Multi-perspective deliberation during complex decisions |
+| `knowledge-base` | Managing project knowledge files |
+
+### Engineering Standards
+
+Background knowledge that activates automatically to enforce quality.
+
+| Skill | Activates When |
+|-------|----------------|
+| `foundations` | Writing code — style, naming, TDD, verification, code review |
+| `git-workflow` | Branching, commits, PRs, squash merges |
+| `debugging` | Diagnosing failures, tracking hypotheses, flaky tests |
+| `security-compliance` | Threat modeling, secrets management, compliance checks |
+| `documentation-standards` | ADRs, API docs, changelogs, Mermaid diagrams |
+
+### Language & Domain
+
+Domain expertise that loads based on project context.
+
+| Skill | Activates When |
+|-------|----------------|
+| `typescript-development` | TypeScript, React, Next.js, Tailwind, Vitest |
+| `python-development` | FastAPI, Pydantic, pytest, async patterns |
+| `ruby-development` | Rails 8, Hotwire, Minitest |
 | `go-development` | Go services, concurrency, testing |
-| `database-design` | Schema design, migrations, optimization |
-| `infrastructure-management` | Docker, K8s, Terraform |
-| `interface-design` | Accessibility, design systems |
-| `power-systems-modeling` | Grid design, power electronics |
+| `interface-design` | UI/UX, accessibility (WCAG 2.1), design systems |
+| `database-design` | Schema design, migrations, query optimization |
+| `infrastructure-management` | Docker, Kubernetes, CI/CD, Terraform |
+| `power-systems-modeling` | Thermal rating models, conductor physics |
 
 ## Multi-Target Support
 
-Loaf is built once and deployed to multiple AI coding tools:
+Build once, deploy everywhere. Skills are the universal layer; profiles and hooks adapt per target.
 
-| Target | Features | Status |
-|--------|----------|--------|
-| Claude Code | Full (agents, skills, hooks, MCP, LSP) | Primary |
-| OpenCode | Full (agents, skills, commands, hooks) | Full support |
-| Cursor | Agents, skills, hooks | Full support |
-| Codex | Skills only | Partial |
-| Gemini | Skills only | Partial |
+| Target | Profiles | Skills | Hooks | MCP | Status |
+|--------|:--------:|:------:|:-----:|:---:|--------|
+| Claude Code | ✓ | ✓ | ✓ | ✓ | Primary |
+| OpenCode | ✓ | ✓ | ✓ | — | Full support |
+| Cursor | ✓ | ✓ | ✓ | — | Full support |
+| Codex | — | ✓ | — | — | Skills only |
+| Gemini | — | ✓ | — | — | Skills only |
 
-## Integrations
-
-*Claude Code only.*
-
-**MCP Servers:**
-
-- **Serena** - Code intelligence and semantic search
-- **Sequential Thinking** - Structured reasoning
-- **Linear** - Issue tracking and project management
-
-**LSP Servers:**
-
-- **gopls**, **pyright**, **typescript-language-server**, **solargraph**
-
-## Installation
+## Getting Started
 
 ### Claude Code
 
@@ -161,7 +167,7 @@ Loaf is built once and deployed to multiple AI coding tools:
 /plugin marketplace add levifig/loaf
 ```
 
-Updates happen automatically via plugin marketplace.
+Updates happen automatically via plugin marketplace. Commands are scoped under `loaf:` (e.g., `/loaf:implement`).
 
 ### OpenCode, Cursor, Codex, Gemini
 
@@ -169,17 +175,7 @@ Updates happen automatically via plugin marketplace.
 curl -fsSL https://raw.githubusercontent.com/levifig/loaf/main/install.sh | bash
 ```
 
-The installer detects installed tools, lets you select targets, and downloads pre-built distributions.
-
-**Update:**
-
-```bash
-# Interactive
-curl -fsSL https://raw.githubusercontent.com/levifig/loaf/main/install.sh | bash
-
-# Unattended (CI, scripts)
-curl -fsSL https://raw.githubusercontent.com/levifig/loaf/main/install.sh | bash -s -- --upgrade
-```
+The installer detects installed tools, lets you select targets, and downloads pre-built distributions. Re-run with `--upgrade` to update.
 
 **Install locations:**
 
@@ -190,17 +186,13 @@ curl -fsSL https://raw.githubusercontent.com/levifig/loaf/main/install.sh | bash
 | Codex | `$CODEX_HOME/skills/` or `~/.codex/skills/` |
 | Gemini | `~/.gemini/skills/` |
 
-## Plugin Scoping
+## Integrations
 
 *Claude Code only.*
 
-Commands and agents are scoped to avoid conflicts:
+**MCP Servers:** Serena (code intelligence), Sequential Thinking (structured reasoning), Linear (issue tracking)
 
-```bash
-/loaf:implement          # Start implementation session
-/loaf:council-session    # Run a council deliberation
-@loaf:backend-dev        # Reference an agent
-```
+**LSP Servers:** gopls, pyright, typescript-language-server, solargraph
 
 ## Development
 
@@ -212,6 +204,13 @@ npm run build
 ```
 
 See [AGENTS.md](.agents/AGENTS.md) for development guidelines.
+
+```bash
+npm run typecheck    # Type check
+npm run test         # Run tests
+loaf build           # Build all targets (after initial npm run build)
+loaf install --to all  # Install to detected tools
+```
 
 **Testing locally:**
 

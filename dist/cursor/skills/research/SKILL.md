@@ -6,7 +6,7 @@ description: >-
   Produces state assessments, research findings with ranked options, or vision
   change proposals. Not for multi-agent deliberation (use council-session) or
   implementing changes (use implement).
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Research

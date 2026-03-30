@@ -5,7 +5,7 @@ description: >-
   Use when making technical decisions or when the user asks "should we use X or
   Y?" Produces ADRs and updates to ARCHITECTURE.md. Not for strategic direction
   (use strategy) or multi-perspective deliberation (use council-session).
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Architecture

@@ -6,7 +6,7 @@ description: >-
   Produces updates to VISION.md, STRATEGY.md, and ARCHITECTURE.md based on
   proven implementation. Not for pre-implementation strategy (use strategy) or
   architecture decisions (use architecture).
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Reflect

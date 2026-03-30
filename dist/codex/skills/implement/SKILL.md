@@ -5,7 +5,7 @@ description: >-
   execution. Use when the user asks "implement this" or "start working on
   TASK-XXX." Produces session files, plans, and coordinated agent output. Not
   for shaping work (use shape) or breaking down specs (use breakdown).
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Implement
@@ -189,7 +189,7 @@ After creating session AND plan files:
    - Update session file (status: complete, `archived_at`, `archived_by`)
    - Commit: `chore: close SPEC-XXX — archive tasks, spec, and session`
 4. If on a feature branch: push and create PR (`gh pr create`). Follow PR format and squash merge conventions in [commits reference](../git-workflow/references/commits.md).
-5. After merge lands on main: switch to main, pull, delete merged branch.
+5. After PR is created and approved, use `/release` to orchestrate the squash merge with correct version ordering, documentation freshness check, and post-merge cleanup.
 6. **Suggest reflection:** Check the session file for extractable learnings before closing out:
    - `## Key Decisions` has content (not `*(none yet)*` or empty)
    - `traceability.decisions` has entries (ADRs were recorded)
