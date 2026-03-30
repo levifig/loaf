@@ -1,0 +1,219 @@
+---
+name: release
+description: >-
+  Orchestrates the full release ritual for squash-merging a feature branch:
+  pre-flight checks, documentation freshness review, housekeeping verification,
+  version bump and changelog via `loaf release` CLI, squash merge with clean
+  body, and post-merge cleanup. Use when the user says "release this", "merge
+  this PR", "ready to merge", or "ship it." Enforces correct ordering so the
+  squash commit on the target branch carries the new version. Not for creating
+  PRs (use implement) or strategic reflection (use reflect).
+---
+
+# Release
+
+Orchestrate a squash merge with correct version ordering, documentation checks, and cleanup.
+
+## Contents
+- Context Detection
+- Step 1: Pre-Flight Checks
+- Step 2: Documentation Freshness
+- Step 3: Housekeeping Verification
+- Step 4: Version Bump + Changelog
+- Step 5: Squash Merge
+- Step 6: Post-Merge Cleanup
+- Guardrails
+- Hook Interaction
+- Related Skills
+
+**Input:** $ARGUMENTS
+
+---
+
+## Context Detection
+
+Before anything, detect where we are:
+
+1. **Get current branch and repo default branch:**
+   ```bash
+   git branch --show-current
+   gh repo view --json defaultBranchRef -q .defaultBranchRef.name
+   ```
+2. **If on the default branch**, STOP — there is no PR to merge. Offer post-merge cleanup only (Step 6), using the default branch as `baseRefName`.
+3. **Parse `$ARGUMENTS`**: may be a PR number (`42`), a PR URL, or empty.
+4. If `$ARGUMENTS` is empty, auto-detect from the current branch:
+   ```bash
+   gh pr view --json number,title,url,headRefName,baseRefName
+   ```
+5. If no PR exists for this branch, STOP — suggest creating one first.
+6. **Save `baseRefName`** from the PR metadata (e.g., `main`, `release/1.0`, `develop`). All subsequent steps use this as the base reference for diffs and changelog scoping. Do NOT hardcode `main`.
+7. Confirm the PR identity with the user before proceeding: show PR title, number, branch, and target base.
+
+---
+
+## Step 1: Pre-Flight Checks (BLOCKING)
+
+Run these and **BLOCK on any failure** — do not offer to skip.
+
+### Detect project type
+
+Inspect the repo to determine available checks:
+- **Node** (`package.json`): look for `typecheck`, `test`, `build` scripts
+- **Python** (`pyproject.toml`): look for `pytest`, `mypy`, `ruff` in dev dependencies or tool config
+- **Rust** (`Cargo.toml`): `cargo check`, `cargo test`
+- **Go** (`go.mod`): `go vet`, `go test`
+
+### Run checks
+
+Run whichever checks the project supports. Examples for a Node project:
+1. `npm run typecheck` (if the script exists)
+2. `npm run test` (if the script exists)
+3. `npm run build` (preferred) or `loaf build` if `npm run build` is not available
+
+For Python: `pytest`, `mypy .` (if configured). For Rust: `cargo check`, `cargo test`.
+
+**If no checks are detected**, WARN the user explicitly: *"No pre-flight checks found (no test runner, type checker, or build script detected). Proceeding without verification — consider adding checks before merging."* Do NOT silently skip.
+
+On failure: show the error, STOP, explain what needs fixing. Do not proceed to Step 2.
+
+---
+
+## Step 2: Documentation Freshness
+
+Check whether documentation is stale relative to the branch's changes:
+
+1. Run `git diff <baseRefName>..HEAD --name-only -- README.md ARCHITECTURE.md docs/` to identify changed doc files (use the `baseRefName` from Context Detection).
+2. Run `git diff <baseRefName>..HEAD --stat` to understand the scope of code changes.
+3. Read README.md and ARCHITECTURE.md. Look for references to concepts, features, agents, or APIs that the branch may have changed or removed.
+4. If the branch introduced significant changes (new features, removed components, renamed concepts) but docs weren't updated, flag specific sections that may be stale.
+
+Present findings to the user. They decide whether to fix now or note for later. Do NOT silently skip.
+
+---
+
+## Step 3: Housekeeping Verification
+
+**Verify** that implementation housekeeping was done. Do NOT do it — that's the implement skill's job. Each check produces pass/fail:
+
+1. **Spec archived**: If a spec is associated with this branch (check `.agents/specs/` for matching spec), verify its status is `complete`.
+2. **Tasks archived**: Check `.agents/tasks/` for tasks related to the spec that aren't archived.
+3. **CHANGELOG updated**: Verify `CHANGELOG.md` has entries under `[Unreleased]`.
+4. **Session file**: If a session file exists, check that its status reflects completion.
+
+On gaps: present them to the user. Offer to fix (delegate to `loaf task archive`, `loaf spec archive`). The user decides. Do NOT silently fix or silently skip.
+
+---
+
+## Step 4: Version Bump + Changelog (on feature branch)
+
+This step uses the `loaf release` CLI for all mechanical versioning work.
+
+### Preview
+
+Run `loaf release --base <baseRefName> --dry-run` to show:
+- Current version and suggested bump type
+- Generated changelog section from **this branch's commits only** (not everything since the last tag)
+- Which version files will be updated
+
+The `--base` flag scopes the commit analysis to `<baseRefName>..HEAD`, so only commits on the feature branch are considered. Without it, `loaf release` uses the last git tag as the base, which would pull in unrelated already-merged commits.
+
+Present the preview to the user. They may:
+- Accept the suggested bump type
+- Override with a different type (`prerelease`, `release`, `major`, `minor`, `patch`)
+- Edit the changelog content (note: without `$EDITOR` set, editing happens conversationally)
+
+### Execute
+
+Once confirmed, run:
+```bash
+loaf release --base <baseRefName> --bump <type> --no-tag --no-gh
+```
+
+This will:
+1. Bump version in all detected files (package.json, pyproject.toml, etc.)
+2. Generate and insert changelog section from branch commits (preserving `[Unreleased]`)
+3. Run `loaf build` to rebuild all targets with new version
+4. Commit: `release: vX.Y.Z`
+
+After the commit, push to the feature branch (**with user confirmation**).
+
+### Why these flags?
+
+- `--base <baseRefName>` — Scopes changelog to this PR's work, not everything since the last tag
+- `--no-tag` — Tags belong to stable releases, not pre-merge bumps (also implies `--no-gh`)
+- `--no-gh` — GitHub release drafts belong to stable releases
+
+The `/release` skill bumps version so the squash commit carries it. Tagging happens later via `loaf release` (without these flags) when cutting a stable release.
+
+---
+
+## Step 5: Squash Merge
+
+1. **Draft a clean squash body**: Read the branch's commit history and PR description. Write a 2–4 sentence summary focusing on *what shipped and why* — not individual commits.
+2. **Present the draft** to the user for review. They may edit it.
+3. **Execute** (after user confirms):
+   ```bash
+   gh pr merge <N> --squash --body "$(cat <<'EOF'
+   <body>
+   EOF
+   )"
+   ```
+4. Let GitHub default the title (`PR title (#N)`).
+5. **NEVER** use `--auto` or the automatic squash description that dumps all commits.
+
+---
+
+## Step 6: Post-Merge Cleanup
+
+After successful merge:
+
+1. Switch to the base branch and pull:
+   ```bash
+   git checkout <baseRefName> && git pull --rebase
+   ```
+2. Delete the merged feature branch locally and remotely:
+   ```bash
+   git branch -d <branch>
+   git push origin --delete <branch>
+   ```
+3. **Suggest `/reflect`** if the session has extractable learnings:
+   - Check session file for `## Key Decisions` with content
+   - Check `traceability.decisions` for ADR entries
+   - If signal present: *"This session produced key decisions. Consider running `/reflect` to update strategic docs."*
+   - If none: stay silent.
+
+---
+
+## Guardrails
+
+1. **BLOCK on pre-flight failure** — do not offer to skip
+2. **User confirms** every destructive action (version bump commit, push, merge, branch deletion)
+3. **Version bump before merge** — this is the skill's reason for existing; never defer the bump to post-merge
+4. **Clean squash body** — never use the auto-generated commit dump
+5. **Verify, don't do** — housekeeping is the implementer's job; this skill verifies it was done
+6. **Detect-first** — auto-detect PR from branch before asking for a number
+7. **Abort gracefully** — if user cancels at any step, stop cleanly with no partial state
+8. **Never push without confirmation** — even after successful version bump
+
+---
+
+## Hook Interaction
+
+This skill coexists with existing hooks. They remain as safety nets for manual merges:
+
+| Hook | When `/release` Runs |
+|------|---------------------|
+| `workflow-pre-merge` (prompt) | Fires on `gh pr merge`. Redundant — body already crafted. Harmless. |
+| `workflow-post-merge` (bash) | Fires after merge. Outputs checklist the skill already handled. Informational. |
+| `validate-push` (bash) | Fires on push. Cross-validates version bump — should pass since Step 4 did both. |
+
+Do not modify, disable, or skip these hooks.
+
+---
+
+## Related Skills
+
+- **implement** — Does the work and housekeeping; `/release` handles the merge afterward
+- **reflect** — Suggested post-merge if session has learnings
+- **git-workflow** — Conventions this skill enforces
+- **cleanup** — Handles artifact hygiene; `/release` verifies it was done

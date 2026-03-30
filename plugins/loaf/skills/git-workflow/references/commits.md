@@ -168,6 +168,7 @@ Refs BACK-124
 - **Write a clean extended description** for the squash merge commit — a concise summary of the branch's work (2-4 lines)
 - **Never use the automatic squash description** that dumps all individual commit messages — it's noisy and unhelpful in git history
 - Don't push or merge without explicit request
+- The `/loaf:release` skill automates this workflow, including version bump on the feature branch before merge — use it when ready to squash merge a PR
 
 ## Critical Rules
 
