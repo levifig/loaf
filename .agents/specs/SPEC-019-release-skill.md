@@ -3,7 +3,7 @@ id: SPEC-019
 title: Release Skill — orchestrated merge ritual with CLI-backed versioning
 source: idea/20260330-idea-merge-command
 created: '2026-03-30T15:20:00.000Z'
-status: drafting
+status: complete
 appetite: Small (1–2 sessions)
 branch: feat/release-skill
 ---

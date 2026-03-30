@@ -10,7 +10,7 @@ description: >-
   shaping features into specs -- use /shape. Not for brainstorming ideas -- use
   /brainstorm. Not for mechanical scaffolding -- use `loaf setup` first, then
   /bootstrap.
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Bootstrap

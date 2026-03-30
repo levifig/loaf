@@ -8,7 +8,7 @@ description: >-
   this PR", "ready to merge", or "ship it." Enforces correct ordering so the
   squash commit on the target branch carries the new version. Not for creating
   PRs (use implement) or strategic reflection (use reflect).
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Release
@@ -212,12 +212,13 @@ After successful merge:
 
 1. **BLOCK on pre-flight failure** — do not offer to skip
 2. **User confirms** every destructive action (version bump commit, push, merge, branch deletion)
-3. **Version bump before merge** — this is the skill's reason for existing; never defer the bump to post-merge
-4. **Clean squash body** — never use the auto-generated commit dump
-5. **Verify, don't do** — housekeeping is the implementer's job; this skill verifies it was done
-6. **Detect-first** — auto-detect PR from branch before asking for a number
-7. **Abort gracefully** — if user cancels at any step, stop cleanly with no partial state
-8. **Never push without confirmation** — even after successful version bump
+3. **Use `AskUserQuestion` (or equivalent)** for all confirmation gates — push, merge, branch deletion. Provides structured choices instead of inline text questions. If not available, fall back to inline confirmation.
+4. **Version bump before merge** — this is the skill's reason for existing; never defer the bump to post-merge
+5. **Clean squash body** — never use the auto-generated commit dump
+6. **Verify, don't do** — housekeeping is the implementer's job; this skill verifies it was done
+7. **Detect-first** — auto-detect PR from branch before asking for a number
+8. **Abort gracefully** — if user cancels at any step, stop cleanly with no partial state
+9. **Never push without confirmation** — even after successful version bump
 
 ---
 

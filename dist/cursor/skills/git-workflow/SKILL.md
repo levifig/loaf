@@ -5,7 +5,7 @@ description: >-
   merge workflow. Use when creating branches, writing commit messages, creating
   or merging pull requests, or managing git history. Not for code style (use
   foundations) or CI/CD pipelines (use infrastructure-management).
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Git Workflow

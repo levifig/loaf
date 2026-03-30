@@ -7,7 +7,7 @@ description: >-
   criteria, and test conditions. Not for breaking specs into tasks (use
   breakdown) or brainstorming without constraints (use brainstorm).
 subtask: false
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Shape

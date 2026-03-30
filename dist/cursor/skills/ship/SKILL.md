@@ -4,7 +4,7 @@ description: >-
   Alias for /release. Orchestrates the full release ritual for squash-merging a
   feature branch. Use when the user says "ship it", "let's ship", or "ship this
   PR." See release skill for full documentation.
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Ship

@@ -6,7 +6,7 @@ description: >-
   optimizing queries, or evaluating denormalization. Not for ORM usage in
   application code (use the relevant language skill) or infrastructure
   provisioning (use infrastructure-management).
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Database Skill

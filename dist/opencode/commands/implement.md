@@ -5,7 +5,7 @@ description: >-
   TASK-XXX." Produces session files, plans, and coordinated agent output. Not
   for shaping work (use shape) or breaking down specs (use breakdown).
 subtask: false
-version: 2.0.0-dev.6
+version: 2.0.0-dev.7
 ---
 
 # Implement
