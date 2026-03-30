@@ -3,22 +3,36 @@
  *
  * Tests that the `loaf release` command correctly wires option parsing
  * to the underlying helpers. These are subprocess tests that invoke the
- * built CLI binary, so they verify the full Commander → handler → helper
- * chain, not just the helpers in isolation.
+ * CLI, so they verify the full Commander → handler → helper chain,
+ * not just the helpers in isolation.
  *
- * Requires: `npm run build:cli` to have been run (tests use dist-cli/index.js).
+ * The CLI is built from source in beforeAll, so these tests always
+ * exercise current code regardless of dist-cli/ state.
+ *
  * All tests use --dry-run, so no files or git state are modified.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { execFileSync } from "child_process";
 import { join } from "path";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helpers
+// Setup — build the CLI from source before running integration tests
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CLI_PATH = join(process.cwd(), "dist-cli", "index.js");
+
+beforeAll(() => {
+  execFileSync("npm", ["run", "build:cli"], {
+    cwd: process.cwd(),
+    stdio: "ignore",
+    timeout: 30_000,
+  });
+}, 30_000);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface RunResult {
   stdout: string;

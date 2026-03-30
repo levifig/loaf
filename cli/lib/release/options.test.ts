@@ -47,8 +47,20 @@ describe("validateBumpType", () => {
 describe("validateBaseRef", () => {
   const cwd = process.cwd();
 
-  it("accepts HEAD as a valid ref", () => {
-    expect(() => validateBaseRef(cwd, "HEAD")).not.toThrow();
+  it("returns the ref when it resolves directly", () => {
+    expect(validateBaseRef(cwd, "HEAD")).toBe("HEAD");
+  });
+
+  it("falls back to origin/<ref> when local ref is missing", () => {
+    // origin/main exists in any clone, even without a local main branch
+    const result = validateBaseRef(cwd, "main");
+    // Should resolve to either "main" (local exists) or "origin/main" (fallback)
+    expect(result).toMatch(/^(origin\/)?main$/);
+  });
+
+  it("does not double-prefix refs that already contain a slash", () => {
+    // origin/main should resolve directly, not try origin/origin/main
+    expect(validateBaseRef(cwd, "origin/main")).toBe("origin/main");
   });
 
   it("rejects a nonexistent ref", () => {
@@ -63,9 +75,9 @@ describe("validateBaseRef", () => {
     );
   });
 
-  it("error message suggests fetching", () => {
+  it("error message mentions both attempted refs", () => {
     expect(() => validateBaseRef(cwd, "missing-branch")).toThrow(
-      /git fetch origin missing-branch/,
+      /Tried "missing-branch" and "origin\/missing-branch"/,
     );
   });
 });

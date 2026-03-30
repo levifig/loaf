@@ -187,12 +187,12 @@ export function registerReleaseCommand(program: Command): void {
 
       process.stdout.write(`  ${cyan("Analyzing")}...\n\n`);
 
-      const baseRef = options.base ?? getLastTag(cwd);
+      let baseRef = options.base ?? getLastTag(cwd);
 
-      // Validate --base ref exists before proceeding
+      // Validate --base ref exists before proceeding (may resolve to origin/<ref>)
       if (options.base) {
         try {
-          validateBaseRef(cwd, options.base);
+          baseRef = validateBaseRef(cwd, options.base);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           console.error(`  ${red("error:")} ${message}`);
