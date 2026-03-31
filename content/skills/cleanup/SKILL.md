@@ -1,11 +1,10 @@
 ---
 name: cleanup
 description: >-
-  Reviews and cleans up agent artifacts in .agents/ -- sessions, specs, plans, drafts,
-  councils, and reports. Use when the user asks "clean up", "review sessions", "review
-  artifacts", or "tidy up .agents/." Produces hygiene recommendations, archives
-  completed work, and ensures extracted knowledge is preserved. Not for reflecting on
-  learnings (use reflect) or managing knowledge files (use knowledge-base).
+  Reviews agent artifacts in .agents/ — sessions, specs, plans, drafts,
+  councils. Use when the user asks "clean up," "review sessions," or "tidy
+  up." Archives completed work and preserves knowledge. Not for reflection
+  or knowledge management.
 ---
 
 # Cleanup

@@ -1,12 +1,10 @@
 ---
 name: infrastructure-management
 description: >-
-  Covers Docker, Kubernetes, GitOps, CI/CD pipelines, and container security.
-  Use when writing Dockerfiles, configuring Kubernetes manifests, setting up
-  CI/CD, or managing deployment infrastructure. Not for application code (use
-  the relevant language skill), database schema design (use database-design), or
-  security audits (use security-compliance).
-version: 2.0.0-dev.7
+  Covers Docker, Kubernetes, GitOps, CI/CD, and container security. Use when
+  writing Dockerfiles, configuring K8s manifests, setting up CI/CD, or managing
+  deployments. Not for application code, database schema, or security audits.
+version: 2.0.0-dev.8
 ---
 
 # Infrastructure

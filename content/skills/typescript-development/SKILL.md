@@ -1,11 +1,9 @@
 ---
 name: typescript-development
 description: >-
-  Covers TypeScript 5+ development with React 18+, Next.js 14+ App Router, Zustand,
-  Tailwind CSS, and Vitest testing. Use when writing TypeScript applications, React
-  components, or Node.js services. Not for UI/UX design decisions (use
-  interface-design), database schema design (use database-design), or backend Python
-  services (use python-development).
+  Covers TypeScript 5+ with React 18+, Next.js 14+ App Router, Zustand, Tailwind,
+  and Vitest. Use when writing TypeScript apps, React components, or Node.js
+  services. Not for UI/UX design, database schema, or Python.
 ---
 
 # TypeScript Development

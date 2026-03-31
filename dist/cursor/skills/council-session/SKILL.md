@@ -1,15 +1,11 @@
 ---
 name: council-session
 description: >-
-  Convenes multi-agent council deliberations for decisions requiring diverse
-  perspectives. Use when the user asks "call a council", "gather specialists",
-  "get a council opinion", "I need multiple perspectives", "check with
-  specialists", "what do the experts think", or wants a structured debate
-  between domain-specific viewpoints. Not for single-perspective research (use
-  research) or architectural decisions that don't need multi-agent deliberation
-  (use architecture). Produces structured council reports with per-specialist
-  analysis and synthesized recommendations.
-version: 2.0.0-dev.7
+  Convenes multi-agent councils for decisions needing diverse perspectives. Use
+  when the user asks "call a council," "gather specialists," "what do the
+  experts think," or wants structured debate. Not for solo research or simple
+  ADRs.
+version: 2.0.0-dev.8
 ---
 
 # Council Deliberation Session

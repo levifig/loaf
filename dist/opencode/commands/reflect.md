@@ -1,12 +1,11 @@
 ---
 description: >-
-  Integrates learnings from shipped work into strategic documents. Use after
-  completing significant work or when the user asks "what did we learn?"
-  Produces updates to VISION.md, STRATEGY.md, and ARCHITECTURE.md based on
-  proven implementation. Not for pre-implementation strategy (use strategy) or
-  architecture decisions (use architecture).
+  Integrates learnings from shipped work into strategic docs. Use after
+  completing significant work or the user asks "what did we learn?" Updates
+  VISION.md, STRATEGY.md, and ARCHITECTURE.md. Not for pre-implementation
+  strategy or ADRs.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Reflect

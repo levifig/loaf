@@ -1,12 +1,10 @@
 ---
 name: database-design
 description: >-
-  Covers schema design, migrations, query optimization, indexing strategies, and
-  normalization tradeoffs. Use when designing tables, writing migrations,
-  optimizing queries, or evaluating denormalization. Not for ORM usage in
-  application code (use the relevant language skill) or infrastructure
-  provisioning (use infrastructure-management).
-version: 2.0.0-dev.7
+  Covers schema design, migrations, query optimization, indexing, and
+  normalization tradeoffs. Use when designing tables, writing migrations, or
+  optimizing queries. Not for ORM usage in app code or infrastructure.
+version: 2.0.0-dev.8
 ---
 
 # Database Skill

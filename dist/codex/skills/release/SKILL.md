@@ -1,14 +1,11 @@
 ---
 name: release
 description: >-
-  Orchestrates the full release ritual for squash-merging a feature branch:
-  pre-flight checks, documentation freshness review, housekeeping verification,
-  version bump and changelog via `loaf release` CLI, squash merge with clean
-  body, and post-merge cleanup. Use when the user says "release this", "merge
-  this PR", "ready to merge", or "ship it." Enforces correct ordering so the
-  squash commit on the target branch carries the new version. Not for creating
-  PRs (use implement) or strategic reflection (use reflect).
-version: 2.0.0-dev.7
+  Orchestrates release: pre-flight checks, version bump via `loaf release`,
+  squash merge, and post-merge cleanup. Use when the user says "release this,"
+  "merge this PR," "ready to merge," or "ship it." Not for creating PRs or
+  reflection.
+version: 2.0.0-dev.8
 ---
 
 # Release

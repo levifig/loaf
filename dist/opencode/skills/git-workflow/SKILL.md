@@ -1,10 +1,9 @@
 ---
 name: git-workflow
 description: >-
-  Covers branching strategy, commit message conventions, PR creation, and squash
-  merge workflow. Use when creating branches, writing commit messages, creating
-  or merging pull requests, or managing git history. Not for code style (use
-  foundations) or CI/CD pipelines (use infrastructure-management).
+  Covers branching, commit conventions, PR creation, and squash merge workflow.
+  Use when creating branches, writing commits, creating or merging PRs, or
+  managing git history. Not for code style or CI/CD.
 ---
 
 # Git Workflow

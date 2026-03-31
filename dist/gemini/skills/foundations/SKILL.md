@@ -1,12 +1,10 @@
 ---
 name: foundations
 description: >-
-  Establishes code style, naming conventions, TDD discipline, verification
-  checklists, and code review standards. Use when writing or reviewing code
-  quality, running verification checks, or setting up review processes. Not for
-  git workflow (use git-workflow), debugging (use debugging), security (use
-  security-compliance), or documentation (use documentation-standards).
-version: 2.0.0-dev.7
+  Covers code style, naming, TDD, verification, and code review standards. Use
+  when writing or reviewing code, running checks, or setting up reviews. Not for
+  git workflow, debugging, security, or documentation.
+version: 2.0.0-dev.8
 ---
 
 # Code Standards
