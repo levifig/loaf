@@ -2,8 +2,8 @@
 name: council-session
 description: >-
   Convenes multi-agent councils for decisions needing diverse perspectives.
-  Use when the user asks "call a council," "gather specialists," or wants
-  structured debate. Produces council reports with synthesis. Not for solo
+  Use when the user asks "call a council," "gather specialists," "I need
+  multiple perspectives," or "what do the experts think?" Not for solo
   research or simple ADRs.
 ---
 
