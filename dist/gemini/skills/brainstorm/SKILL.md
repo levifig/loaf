@@ -1,14 +1,11 @@
 ---
 name: brainstorm
 description: >-
-  Conducts deep, structured brainstorming with divergent thinking and trade-off
-  analysis. Use when the user asks "help me think through this" or "what are the
-  options?" Also activate when the user is thinking out loud, exploring
-  tradeoffs, or comparing approaches without committing. Produces brainstorm
-  documents with sparks (speculative byproducts) that can later be promoted to
-  ideas via /idea. Not for capturing a single quick idea (use idea) or shaping
-  into a bounded spec (use shape).
-version: 2.0.0-dev.7
+  Conducts structured brainstorming with divergent thinking and trade-off
+  analysis. Use when the user asks "help me think through this," "what are the
+  options," or is exploring tradeoffs. Produces docs with sparks. Not for quick
+  ideas or shaping.
+version: 2.0.0-dev.8
 ---
 
 # Brainstorm

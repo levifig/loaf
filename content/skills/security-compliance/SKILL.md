@@ -1,10 +1,9 @@
 ---
 name: security-compliance
 description: >-
-  Covers threat modeling, secrets management, security review checklists, and
-  compliance checks. Use when reviewing code for security issues, managing secrets
-  or credentials, performing threat analysis, or running compliance audits. Not for
-  debugging (use debugging) or general code review (use foundations).
+  Covers threat modeling, secrets management, security reviews, and compliance.
+  Use when reviewing code for security, managing secrets, performing threat
+  analysis, or running compliance audits. Not for debugging or code review.
 ---
 
 # Security & Compliance

@@ -1,11 +1,9 @@
 ---
 name: documentation-standards
 description: >-
-  Covers ADR creation, API documentation, changelog maintenance, documentation
-  review, and Mermaid diagram conventions. Use when writing ADRs, documenting
-  APIs, maintaining changelogs, reviewing documentation quality, or creating
-  architectural diagrams. Not for code comments (use foundations) or README
-  files (project-specific).
+  Covers ADRs, API docs, changelogs, documentation review, and Mermaid diagrams.
+  Use when writing ADRs, documenting APIs, maintaining changelogs, reviewing
+  docs, or creating diagrams. Not for code comments or READMEs.
 ---
 
 # Documentation Standards

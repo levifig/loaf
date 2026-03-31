@@ -2,11 +2,9 @@
 name: debugging
 description: >-
   Covers systematic debugging, hypothesis tracking, and flaky test
-  investigation. Use when diagnosing failures, tracking multiple hypotheses
-  during investigation, or fixing flaky or intermittent tests. Not for writing
-  new tests (use foundations TDD reference) or security vulnerability analysis
-  (use security-compliance).
-version: 2.0.0-dev.7
+  investigation. Use when diagnosing failures, tracking hypotheses, or fixing
+  flaky tests. Not for writing new tests or security analysis.
+version: 2.0.0-dev.8
 ---
 
 # Debugging

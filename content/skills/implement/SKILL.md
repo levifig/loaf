@@ -1,10 +1,9 @@
 ---
 name: implement
 description: >-
-  Orchestrates implementation sessions through agent delegation and batch execution.
-  Use when the user asks "implement this" or "start working on TASK-XXX." Produces
-  session files, plans, and coordinated agent output. Not for shaping work (use
-  shape) or breaking down specs (use breakdown).
+  Orchestrates implementation through agent delegation and batch execution.
+  Use when the user asks "implement this" or "start working on TASK-XXX."
+  Produces sessions, plans, and agent output. Not for shaping or breakdown.
 ---
 
 # Implement
