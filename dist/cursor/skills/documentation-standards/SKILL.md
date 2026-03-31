@@ -4,7 +4,7 @@ description: >-
   Covers ADRs, API docs, changelogs, documentation review, and Mermaid diagrams.
   Use when writing ADRs, documenting APIs, maintaining changelogs, reviewing
   docs, or creating diagrams. Not for code comments or READMEs.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Documentation Standards

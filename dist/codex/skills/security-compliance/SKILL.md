@@ -4,7 +4,7 @@ description: >-
   Covers threat modeling, secrets management, security reviews, and compliance.
   Use when reviewing code for security, managing secrets, performing threat
   analysis, or running compliance audits. Not for debugging or code review.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Security & Compliance

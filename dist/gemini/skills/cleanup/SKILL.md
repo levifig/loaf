@@ -5,7 +5,7 @@ description: >-
   councils. Use when the user asks "clean up," "review sessions," or "tidy up."
   Archives completed work and preserves knowledge. Not for reflection or
   knowledge management.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Cleanup

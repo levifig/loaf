@@ -5,7 +5,7 @@ description: >-
   completing significant work or the user asks "what did we learn?" Updates
   VISION.md, STRATEGY.md, and ARCHITECTURE.md. Not for pre-implementation
   strategy or ADRs.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Reflect

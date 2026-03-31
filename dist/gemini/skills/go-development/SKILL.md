@@ -4,7 +4,7 @@ description: >-
   Covers idiomatic Go: project structure, concurrency, error handling, and
   testing. Use when writing Go services, CLIs, or libraries. Not for database
   schema or infrastructure orchestration.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Go Skill

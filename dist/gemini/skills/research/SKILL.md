@@ -5,7 +5,7 @@ description: >-
   understand the big picture or the user asks "what's the current state?"
   Produces assessments and ranked findings. Not for multi-agent deliberation or
   implementation.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Research

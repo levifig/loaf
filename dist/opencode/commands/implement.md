@@ -4,7 +4,7 @@ description: >-
   when the user asks "implement this" or "start working on TASK-XXX." Produces
   sessions, plans, and agent output. Not for shaping or breakdown.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Implement

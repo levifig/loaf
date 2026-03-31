@@ -5,7 +5,7 @@ description: >-
   integration, and council workflows. Use when managing sessions, delegating to
   agents, or coordinating cross-cutting work. Not for single-task implementation
   or solo research.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # PM Orchestration

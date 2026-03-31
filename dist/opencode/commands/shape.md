@@ -5,7 +5,7 @@ description: >-
   constraints to bound. Produces specs with acceptance criteria. Not for
   breakdown or brainstorming.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Shape

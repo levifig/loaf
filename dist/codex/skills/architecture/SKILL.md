@@ -5,7 +5,7 @@ description: >-
   decisions or the user asks "should we use X or Y?" Produces ADRs and
   ARCHITECTURE.md updates. Not for strategic direction or multi-perspective
   deliberation.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Architecture

@@ -5,7 +5,7 @@ description: >-
   population. Adapts to brownfield or greenfield. Use when the user asks "start
   a project," "set up Loaf," or "bootstrap." Not for shaping, brainstorming, or
   scaffolding.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Bootstrap

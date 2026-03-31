@@ -5,7 +5,7 @@ description: >-
   Produces personas, market landscape, and problem space. Not for architecture
   or reflection.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Strategy

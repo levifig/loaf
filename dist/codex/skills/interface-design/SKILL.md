@@ -4,7 +4,7 @@ description: >-
   Covers UI/UX principles, accessibility (WCAG 2.1), design systems, color,
   typography, and responsive patterns. Use when making design decisions,
   evaluating layouts, or ensuring a11y. Not for frontend code or API design.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Design Principles

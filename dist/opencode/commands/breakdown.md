@@ -4,7 +4,7 @@ description: >-
   the user asks "break this down" or "create tasks for this spec." Produces task
   files with estimates and acceptance criteria. Not for shaping or implementing.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Breakdown

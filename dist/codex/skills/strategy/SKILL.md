@@ -5,7 +5,7 @@ description: >-
   when the user asks "what's our strategy?" or "update strategic direction."
   Produces personas, market landscape, and problem space. Not for architecture
   or reflection.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Strategy

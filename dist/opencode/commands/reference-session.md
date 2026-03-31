@@ -5,7 +5,7 @@ description: >-
   context summary with key decisions and outcomes. Not for resuming active work
   or general research.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Reference Session

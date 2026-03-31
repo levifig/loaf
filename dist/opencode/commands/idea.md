@@ -5,7 +5,7 @@ description: >-
   args, scans for unprocessed sparks to promote. Not for deep exploration or
   shaping.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Idea

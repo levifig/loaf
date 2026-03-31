@@ -4,7 +4,7 @@ description: >-
   Covers TypeScript 5+ with React 18+, Next.js 14+ App Router, Zustand,
   Tailwind, and Vitest. Use when writing TypeScript apps, React components, or
   Node.js services. Not for UI/UX design, database schema, or Python.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # TypeScript Development

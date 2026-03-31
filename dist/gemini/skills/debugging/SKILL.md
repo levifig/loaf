@@ -4,7 +4,7 @@ description: >-
   Covers systematic debugging, hypothesis tracking, and flaky test
   investigation. Use when diagnosing failures, tracking hypotheses, or fixing
   flaky tests. Not for writing new tests or security analysis.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Debugging

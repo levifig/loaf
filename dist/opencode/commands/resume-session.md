@@ -5,7 +5,7 @@ description: >-
   with synced state and next steps. Not for referencing past decisions or
   starting new work.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Resume Session

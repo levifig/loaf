@@ -5,7 +5,7 @@ description: >-
   VISION.md, STRATEGY.md, and ARCHITECTURE.md. Not for pre-implementation
   strategy or ADRs.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Reflect

@@ -5,7 +5,7 @@ description: >-
   electrical properties for overhead lines. Use when implementing thermal calcs,
   validating conductors, or sag/resistance. Not for infrastructure or
   architecture.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Power Systems Reference

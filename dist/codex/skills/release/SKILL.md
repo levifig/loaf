@@ -5,7 +5,7 @@ description: >-
   squash merge, and post-merge cleanup. Use when the user says "release this,"
   "merge this PR," "ready to merge," or "ship it." Not for creating PRs or
   reflection.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Release

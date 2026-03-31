@@ -5,7 +5,7 @@ description: >-
   the user asks "shape this" or "write a spec," or when an idea has enough
   constraints to bound. Produces specs with acceptance criteria. Not for
   breakdown or brainstorming.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Shape

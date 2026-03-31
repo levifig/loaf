@@ -4,7 +4,7 @@ description: >-
   Covers Docker, Kubernetes, GitOps, CI/CD, and container security. Use when
   writing Dockerfiles, configuring K8s manifests, setting up CI/CD, or managing
   deployments. Not for application code, database schema, or security audits.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Infrastructure

@@ -4,7 +4,7 @@ description: >-
   Covers branching, commit conventions, PR creation, and squash merge workflow.
   Use when creating branches, writing commits, creating or merging PRs, or
   managing git history. Not for code style or CI/CD.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Git Workflow

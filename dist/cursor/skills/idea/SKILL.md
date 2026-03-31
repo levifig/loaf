@@ -5,7 +5,7 @@ description: >-
   idea" or "note this down," or when an actionable concept crystallizes. Without
   args, scans for unprocessed sparks to promote. Not for deep exploration or
   shaping.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Idea

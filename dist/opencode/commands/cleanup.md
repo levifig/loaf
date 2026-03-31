@@ -5,7 +5,7 @@ description: >-
   Archives completed work and preserves knowledge. Not for reflection or
   knowledge management.
 subtask: false
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Cleanup

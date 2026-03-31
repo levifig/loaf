@@ -4,7 +4,7 @@ description: >-
   Covers Python 3.12+ with FastAPI, Pydantic, async, pytest, SQLAlchemy, and uv.
   Use when writing Python services, APIs, data models, or tests. Not for
   database schema, infrastructure, or frontend code.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Python Development

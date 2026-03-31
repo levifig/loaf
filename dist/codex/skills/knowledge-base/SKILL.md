@@ -5,7 +5,7 @@ description: >-
   detection, and review workflow. Use when creating or updating knowledge files
   or understanding knowledge conventions. Not for retrieval, ADRs, or agent
   instructions.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Knowledge Base

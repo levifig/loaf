@@ -5,7 +5,7 @@ description: >-
   when the user asks "call a council," "gather specialists," "what do the
   experts think," or wants structured debate. Not for solo research or simple
   ADRs.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Council Deliberation Session

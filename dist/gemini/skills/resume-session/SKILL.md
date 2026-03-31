@@ -5,7 +5,7 @@ description: >-
   "resume that session" or "pick up where we left off." Produces updated session
   with synced state and next steps. Not for referencing past decisions or
   starting new work.
-version: 2.0.0-dev.7
+version: 2.0.0-dev.8
 ---
 
 # Resume Session
