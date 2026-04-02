@@ -238,13 +238,14 @@ function generateHooksJson(config: HooksConfig, distDir: string): void {
         ...(hook.failClosed && { failClosed: hook.failClosed }),
       };
       
-      // Command hooks get a command field; prompt hooks get prompt and optional 'if'
+      // Command hooks get a command field; prompt hooks get prompt
+      // Both can have optional 'if' condition for command-scoped filtering
       if (hook.type === "prompt") {
         if (hook.prompt) result.prompt = hook.prompt;
-        if (hook.if) result.if = hook.if;
       } else {
         result.command = getCursorHookCommand(hook);
       }
+      if (hook.if) result.if = hook.if;
       
       return result;
     });
@@ -258,13 +259,14 @@ function generateHooksJson(config: HooksConfig, distDir: string): void {
         ...(hook.failClosed && { failClosed: hook.failClosed }),
       };
       
-      // Handle prompt type for post-tool hooks
+      // Command hooks get a command field; prompt hooks get prompt
+      // Both can have optional 'if' condition for command-scoped filtering
       if (hook.type === "prompt") {
         if (hook.prompt) result.prompt = hook.prompt;
-        if (hook.if) result.if = hook.if;
       } else {
         result.command = getCursorHookCommand(hook);
       }
+      if (hook.if) result.if = hook.if;
       
       return result;
     });
@@ -274,22 +276,21 @@ function generateHooksJson(config: HooksConfig, distDir: string): void {
     const eventName = mapSessionEvent(hook.event || "");
     if (!hooks[eventName]) hooks[eventName] = [];
     
-    // Handle prompt type session hooks
+    const result: Record<string, unknown> = {
+      timeout: Math.floor((hook.timeout || 60000) / 1000),
+    };
+    
+    // Command hooks get a command field; prompt hooks get prompt
+    // Both can have optional 'if' condition for command-scoped filtering
     if (hook.type === "prompt") {
-      const result: Record<string, unknown> = {
-        timeout: Math.floor((hook.timeout || 60000) / 1000),
-      };
       if (hook.prompt) result.prompt = hook.prompt;
-      if (hook.if) result.if = hook.if;
-      (hooks[eventName] as unknown[]).push(result);
     } else {
-      // Command type session hooks
-      (hooks[eventName] as unknown[]).push({
-        command: getCursorHookCommand(hook),
-        timeout: Math.floor((hook.timeout || 60000) / 1000),
-        ...(hook.failClosed && { failClosed: hook.failClosed }),
-      });
+      result.command = getCursorHookCommand(hook);
     }
+    if (hook.if) result.if = hook.if;
+    if (hook.failClosed) result.failClosed = hook.failClosed;
+    
+    (hooks[eventName] as unknown[]).push(result);
   }
 
   writeFileSync(

@@ -265,13 +265,12 @@ function findSpecForBranch(
   return null;
 }
 
-/** Get session file path for a branch (timestamped format) */
-function getSessionFilePath(agentsDir: string, branch: string, timestamp?: Date): string {
-  const now = timestamp || new Date();
-  const datePrefix = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const timePrefix = now.toTimeString().slice(0, 8).replace(/:/g, "");
+/** Get session file path for a branch (deterministic based on branch name) */
+function getSessionFilePath(agentsDir: string, branch: string): string {
+  // Use deterministic path based on branch name only
+  // This prevents duplicate session files when concurrent processes race
   const slug = branch.replace(/^feat\//, "").replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-");
-  return join(agentsDir, "sessions", `${datePrefix}-${timePrefix}-${slug}.md`);
+  return join(agentsDir, "sessions", `${slug}.md`);
 }
 
 /** Find active session for a branch by scanning files */
@@ -337,16 +336,44 @@ async function getOrCreateSession(
     await acquireLock(lockPath, 100, 50);
     lockAcquired = true;
     
-    // Re-check for existing session under lock
-    const existing = findActiveSessionForBranch(agentsDir, branch);
+    // Re-check for existing session under lock with small delay for filesystem sync
+    // This handles the race condition where another process just created the file
+    let existing = findActiveSessionForBranch(agentsDir, branch);
+    
+    // Also check deterministic path directly for faster detection
+    const deterministicPath = getSessionFilePath(agentsDir, branch);
+    if (!existing && existsSync(deterministicPath)) {
+      // Delay to ensure file is fully written and visible
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const directSession = readSessionFile(deterministicPath);
+      if (directSession) {
+        existing = { ...directSession, filePath: deterministicPath };
+      }
+    }
+    
     if (existing) {
       return { ...existing, isNew: false };
     }
     
-    // Create new session file
-    const timestamp = new Date();
-    const filePath = getSessionFilePath(agentsDir, branch, timestamp);
-    createSessionFile(filePath, branch, specInfo);
+    // Create new session file (or detect if another process created it)
+    const filePath = getSessionFilePath(agentsDir, branch);
+    const created = createSessionFile(filePath, branch, specInfo);
+    
+    if (!created) {
+      // Another process created the file while we were waiting for the lock
+      // Read the existing session
+      const existingSession = readSessionFile(filePath);
+      if (existingSession) {
+        return { filePath, data: existingSession.data, content: existingSession.content, isNew: false };
+      }
+      // File was created but we couldn't read it - try to create anyway
+      const fallbackSession = readSessionFile(filePath);
+      if (fallbackSession) {
+        return { filePath, data: fallbackSession.data, content: fallbackSession.content, isNew: false };
+      }
+      // This shouldn't happen, but fall back to treating as new
+    }
+    
     const session = readSessionFile(filePath)!;
     
     return { filePath, data: session.data, content: session.content, isNew: true };
@@ -443,7 +470,12 @@ function createSessionFile(
   filePath: string,
   branch: string,
   specInfo: { id: string; title: string } | null
-): SessionFrontmatter {
+): SessionFrontmatter | null {
+  // Check if file already exists (from concurrent process)
+  if (existsSync(filePath)) {
+    return null;
+  }
+  
   const now = getTimestamp();
   const frontmatter: SessionFrontmatter = {
     branch,
@@ -462,7 +494,16 @@ function createSessionFile(
     : `# Session: ${branch}\n\n## Context\n\nAd-hoc session for branch \`${branch}\`.\n\n## Current State\n\nSession started.\n\n## Next Steps\n\n- [ ] First action item\n`;
 
   const content = matter.stringify(body, frontmatter as unknown as Record<string, unknown>);
-  writeFileSync(filePath, content, "utf-8");
+  
+  // Use atomic write with 'wx' flag to prevent race conditions
+  try {
+    const fd = openSync(filePath, 'wx');
+    writeFileSync(fd, content, 'utf-8');
+    closeSync(fd);
+  } catch {
+    // File already exists (another process created it)
+    return null;
+  }
 
   return frontmatter;
 }
@@ -806,7 +847,29 @@ export function registerSessionCommand(program: Command): void {
               const hash = getLastCommitSha();
               entryText = `commit(${hash}): ${message}`;
             } else if (command.includes("gh pr create")) {
-              entryText = `pr: PR created`;
+              // Extract PR title from command
+              const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
+              const title = titleMatch ? titleMatch[1] : "";
+              
+              // Try to extract PR number from hook output (if available)
+              // The raw field may contain tool output with PR URL
+              const raw = hookData.raw;
+              let prNum = "";
+              if (raw && typeof raw === "string") {
+                // Match PR URL patterns like https://github.com/owner/repo/pull/123
+                const prUrlMatch = raw.match(/https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/);
+                if (prUrlMatch) {
+                  prNum = prUrlMatch[1];
+                }
+              }
+              
+              if (prNum && title) {
+                entryText = `pr(#${prNum}): ${title}`;
+              } else if (title) {
+                entryText = `pr: ${title}`;
+              } else {
+                entryText = `pr: PR created`;
+              }
             } else if (command.includes("gh pr merge")) {
               // Try to extract PR number from URL or direct argument
               const prMatch = command.match(/merge\s+https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/) ||

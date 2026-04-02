@@ -136,10 +136,22 @@ describe("check: hook validation", () => {
 
     for (const hook of validHooks) {
       // Each should at least parse the hook ID without error
+      // Skip validate-push in this loop since it may fail due to build validation
+      // in the test environment - it has its own dedicated tests
+      if (hook === "validate-push") continue;
+      
       const result = runCheck(hook, { tool: { name: "Bash" } });
       // Exit code should be 0 or 2 (not 1 for unknown hook)
       expect(result.exitCode).not.toBe(1);
     }
+    
+    // validate-push should be recognized (not exit 1 for unknown hook)
+    // even if it may exit 2 for validation failures
+    const validatePushResult = runCheck("validate-push", { 
+      tool: { name: "Bash" },
+      tool_input: { command: "echo 'not git push'" }  // Non-git-push command should pass
+    });
+    expect(validatePushResult.exitCode).not.toBe(1);
   });
 });
 
@@ -454,7 +466,7 @@ describe("check: workflow-pre-pr", () => {
 
     const result = runCheck("workflow-pre-pr", {
       tool: { name: "Bash" },
-      tool_input: { command: "gh pr create --title 'Test'" },
+      tool_input: { command: 'gh pr create --title "feat: add new feature" --body "This PR adds a new feature"' },
     });
 
     expect(result.exitCode).toBe(0);
@@ -463,7 +475,7 @@ describe("check: workflow-pre-pr", () => {
   it("blocks when CHANGELOG is missing", () => {
     const result = runCheck("workflow-pre-pr", {
       tool: { name: "Bash" },
-      tool_input: { command: "gh pr create --title 'Test'" },
+      tool_input: { command: 'gh pr create --title "feat: add new feature" --body "Description"' },
     });
 
     expect(result.exitCode).toBe(2);
@@ -483,7 +495,7 @@ describe("check: workflow-pre-pr", () => {
 
     const result = runCheck("workflow-pre-pr", {
       tool: { name: "Bash" },
-      tool_input: { command: "gh pr create --title 'Test'" },
+      tool_input: { command: 'gh pr create --title "feat: add new feature" --body "Description"' },
     });
 
     expect(result.exitCode).toBe(2);
@@ -494,6 +506,118 @@ describe("check: workflow-pre-pr", () => {
     const result = runCheck("workflow-pre-pr", {
       tool: { name: "Bash" },
       tool_input: { command: "ls -la" },
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  // New PR title/body requirement tests
+  it("blocks when --title flag is missing", () => {
+    // Create a CHANGELOG with entries
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+- Added new feature
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: "gh pr create --body 'Description'" },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("title");
+  });
+
+  it("blocks when PR title is too short", () => {
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+- Added new feature
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "fix" --body "Description"' },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("short");
+  });
+
+  it("blocks when --body flag is missing", () => {
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+- Added new feature
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "feat: add new feature"' },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("body");
+  });
+
+  it("warns when PR title doesn't follow conventional format", () => {
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+- Added new feature
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "This is a descriptive PR title" --body "Description"' },
+    });
+
+    // Should pass but with warning
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Conventional");
+  });
+
+  it("passes with valid PR title and body", () => {
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+- Added new feature
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "feat: add new feature" --body "This PR adds a new feature"' },
     });
 
     expect(result.exitCode).toBe(0);
@@ -569,6 +693,40 @@ describe("check: validate-push", () => {
 
     // Should warn about CHANGELOG
     expect(result.exitCode).toBe(2);
+  });
+
+  // New build validation test
+  it("blocks when build script fails", () => {
+    // Create package.json with a failing build script
+    const pkg = { 
+      name: "test", 
+      version: "1.1.0",
+      scripts: { build: "exit 1" }  // Failing build
+    };
+    writeFileSync(join(TEST_ROOT, "package.json"), JSON.stringify(pkg, null, 2));
+    
+    const changelog = `# Changelog
+## [Unreleased]
+- Some change
+## [1.0.0] - 2024-01-01
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    // Create initial commit and tag
+    writeFileSync(join(TEST_ROOT, "file.txt"), "content v2");
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "bump version"', { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync("git tag v1.0.0", { cwd: TEST_ROOT, stdio: "ignore" });
+
+    const result = runCheck("validate-push", {
+      tool: { name: "Bash" },
+      tool_input: { command: "git push origin main" },
+    });
+
+    // Should block because build fails
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Build failed");
   });
 });
 

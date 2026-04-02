@@ -360,10 +360,20 @@ async function validatePush(context: HookContext): Promise<CheckResult> {
     // No tags yet, skip changelog check
   }
 
-  // Note: Build validation removed from pre-push hook
-  // Rationale: Build checks are slow (30-120s) and better handled by CI.
-  // Pre-push hooks should be fast (<5s) to avoid developer friction.
-  // The validate-push hook now focuses on: version bump, changelog update.
+  // Check 3: Build validation (SPEC-020 compliance)
+  // Validates that the build succeeds before pushing
+  if (hasBuildScript) {
+    try {
+      execSync("npm run build", {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+        timeout: 120000, // 2 minute timeout
+      });
+    } catch {
+      errors.push("Build failed - fix build errors before pushing");
+    }
+  }
 
   if (errors.length > 0) {
     result.passed = false;
@@ -395,7 +405,7 @@ async function workflowPrePr(context: HookContext): Promise<CheckResult> {
     return result;
   }
 
-  // Check if CHANGELOG.md has actual entries under [Unreleased]
+  // Check 1: CHANGELOG.md has actual entries under [Unreleased]
   if (existsSync("CHANGELOG.md")) {
     try {
       const changelog = readFileSync("CHANGELOG.md", "utf-8");
@@ -428,6 +438,42 @@ async function workflowPrePr(context: HookContext): Promise<CheckResult> {
     result.passed = false;
     result.blocked = true;
     result.errors.push("CHANGELOG.md not found");
+  }
+
+  // Check 2: PR title and body requirements
+  // Must have --title flag with non-empty value
+  const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
+  if (!titleMatch) {
+    result.passed = false;
+    result.blocked = true;
+    result.errors.push("Missing --title flag - PR title is required");
+    result.errors.push("Example: gh pr create --title \"feat: add new feature\"");
+  } else {
+    const title = titleMatch[1].trim();
+    
+    // Title should follow conventional format: type(scope): description
+    // or at minimum be descriptive (not just "fix" or "update")
+    if (title.length < 10) {
+      result.passed = false;
+      result.blocked = true;
+      result.errors.push(`PR title is too short (${title.length} chars) - minimum 10 characters`);
+    }
+    
+    // Check for conventional commit format (optional but recommended)
+    const conventionalPattern = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .+/i;
+    if (!conventionalPattern.test(title)) {
+      result.warnings.push("PR title doesn't follow Conventional Commits format (e.g., 'feat: add feature')");
+    }
+  }
+  
+  // Must have --body flag (can be empty but flag should be present)
+  // This ensures the PR has a description field
+  const hasBodyFlag = /--body/.test(command);
+  if (!hasBodyFlag) {
+    result.passed = false;
+    result.blocked = true;
+    result.errors.push("Missing --body flag - PR description is required");
+    result.errors.push("Example: gh pr create --title \"...\" --body \"Description of changes\"");
   }
 
   return result;

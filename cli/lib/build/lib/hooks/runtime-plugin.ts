@@ -274,17 +274,27 @@ function matchesTool(toolName: string, pattern: string): boolean {
 
 function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: string | undefined): boolean {
   if (!ifCondition) return true;
+  
+  // Parse pattern like "Bash(gh pr merge:*)" or "Bash(git push:*)"
+  // Tool name before '(' and pattern inside parentheses
   const match = ifCondition.match(/^(\\w+)\\(([^)]+)\\)$/);
   if (!match) return true;
+  
   const [, expectedTool, commandPattern] = match;
   if (toolName !== expectedTool) return false;
+  
   const input = toolInput as Record<string, unknown> | undefined;
   const command = input?.command as string | undefined;
   if (!command) return false;
-  const regexPattern = commandPattern
+  
+  // Convert glob pattern to regex
+  // * matches any characters (including none)
+  // Escape regex special characters except *
+  let regexPattern = commandPattern
     .replace(/[.+^\\$" + "{}()|[\\]\\\\]/g, '\\\\$&')
     .replace(/\\\\\\*/g, '.*')
     .replace(/\\\\\\?/g, '.');
+  
   const regex = new RegExp('^' + regexPattern + '$');
   return regex.test(command);
 }

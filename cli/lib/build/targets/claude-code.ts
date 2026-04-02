@@ -386,33 +386,22 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
       const eventName = hook.event!;
       if (!hooks[eventName]) hooks[eventName] = [];
       
-      // Handle prompt type hooks
+      // Both prompt and command type hooks can have 'if' conditions
+      const hookEntry: Record<string, unknown> = {
+        type: hook.type,
+        ...(hook.timeout && { timeout: Math.floor((hook.timeout || 60000) / 1000) }),
+        ...(hook.description && { description: hook.description }),
+        ...(hook.if && { if: hook.if }),
+      };
+      
       if (hook.type === "prompt") {
-        (hooks[eventName] as unknown[]).push({
-          hooks: [
-            {
-              type: "prompt",
-              prompt: hook.prompt!,
-              ...(hook.if && { if: hook.if }),
-              ...(hook.timeout && { timeout: Math.floor((hook.timeout || 60000) / 1000) }),
-              ...(hook.description && { description: hook.description }),
-            },
-          ],
-        });
+        hookEntry.prompt = hook.prompt!;
       } else {
-        // Command type hooks
-        (hooks[eventName] as unknown[]).push({
-          hooks: [
-            {
-              type: "command",
-              command: getClaudeHookCommand(hook),
-              ...(hook.description && { description: hook.description }),
-              ...(hook.timeout && { timeout: Math.floor((hook.timeout || 60000) / 1000) }),
-              ...(hook.failClosed && { failClosed: hook.failClosed }),
-            },
-          ],
-        });
+        hookEntry.command = getClaudeHookCommand(hook);
+        if (hook.failClosed) hookEntry.failClosed = hook.failClosed;
       }
+      
+      (hooks[eventName] as unknown[]).push({ hooks: [hookEntry] });
     }
   }
 
