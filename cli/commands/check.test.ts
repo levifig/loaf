@@ -823,7 +823,7 @@ describe("check: context parsing", () => {
 
   it("handles invalid JSON gracefully", () => {
     try {
-      const result = execSync(
+      execSync(
         `echo 'not valid json' | node ${process.cwd()}/dist-cli/index.js check --hook check-secrets`,
         {
           encoding: "utf-8",
@@ -831,12 +831,11 @@ describe("check: context parsing", () => {
           timeout: 10000,
         }
       );
-      // Invalid JSON should be treated as empty context (pass)
-      expect(result).toContain("passed");
+      expect(false).toBe(true);
     } catch (error: unknown) {
-      const err = error as { status?: number };
-      // Should exit 0 (pass with empty context)
-      expect(err.status).toBe(0);
+      const err = error as { status?: number; stderr?: string };
+      // Should exit 1 on parse failure
+      expect(err.status).toBe(1);
     }
   });
 

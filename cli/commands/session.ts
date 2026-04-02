@@ -21,6 +21,7 @@ import { join, dirname, basename } from "path";
 import matter from "gray-matter";
 
 import { findAgentsDir } from "../lib/tasks/resolve.js";
+import { readStdin } from "./check.js";
 
 // ANSI color helpers
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
@@ -586,7 +587,7 @@ function extractDecideEntries(content: string): string[] {
   const lines = content.split("\n");
 
   for (const line of lines) {
-    if (line.match(/^- decide\([^)]+\):/)) {
+    if (line.match(/^- decide(?:\([^)]+\))?:/)) {
       decideEntries.push(line.trim());
     }
   }
@@ -829,7 +830,7 @@ export function registerSessionCommand(program: Command): void {
       // Handle --from-hook: parse JSON from stdin
       if (options.fromHook) {
         try {
-          const stdin = readFileSync(0, "utf-8"); // Read from fd 0 (stdin)
+          const stdin = await readStdin(); // Read from fd 0 (stdin)
           const hookData = JSON.parse(stdin);
           
           // Extract command from generic tool payload

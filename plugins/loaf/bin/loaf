@@ -7476,11 +7476,7 @@ function parseContext(stdinData) {
   if (!stdinData.trim()) {
     return {};
   }
-  try {
-    return JSON.parse(stdinData);
-  } catch {
-    return {};
-  }
+  return JSON.parse(stdinData);
 }
 function getToolName(context) {
   return context.tool?.name || context.tool_name || "";
@@ -7617,7 +7613,7 @@ async function validatePush(context) {
         );
         const tagPkg = JSON.parse(tagPkgContent);
         const tagVersion = tagPkg.version;
-        if (currentVersion === tagVersion) {
+        if (currentVersion && currentVersion === tagVersion) {
           errors.push(`Version not bumped since ${lastTag} (still ${currentVersion})`);
         }
       } catch {
@@ -8328,7 +8324,7 @@ function extractDecideEntries(content) {
   const decideEntries = [];
   const lines = content.split("\n");
   for (const line of lines) {
-    if (line.match(/^- decide\([^)]+\):/)) {
+    if (line.match(/^- decide(?:\([^)]+\))?:/)) {
       decideEntries.push(line.trim());
     }
   }
@@ -8501,7 +8497,7 @@ function registerSessionCommand(program2) {
     let entryText = entry;
     if (options.fromHook) {
       try {
-        const stdin = readFileSync28(0, "utf-8");
+        const stdin = await readStdin();
         const hookData = JSON.parse(stdin);
         const command = hookData.tool_input?.command || hookData.tool?.input?.command || hookData.input?.command;
         if (command && typeof command === "string") {

@@ -88,7 +88,7 @@ const gray = (s: string) => `\x1b[90m${s}\x1b[0m`;
 // Utility Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function readStdin(): Promise<string> {
+export async function readStdin(): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = "";
     process.stdin.setEncoding("utf8");
@@ -117,11 +117,7 @@ function parseContext(stdinData: string): HookContext {
     return {};
   }
   
-  try {
-    return JSON.parse(stdinData) as HookContext;
-  } catch {
-    return {};
-  }
+  return JSON.parse(stdinData) as HookContext;
 }
 
 function getToolName(context: HookContext): string {
@@ -320,7 +316,7 @@ async function validatePush(context: HookContext): Promise<CheckResult> {
         const tagPkg = JSON.parse(tagPkgContent);
         const tagVersion = tagPkg.version;
 
-        if (currentVersion === tagVersion) {
+        if (currentVersion && currentVersion === tagVersion) {
           errors.push(`Version not bumped since ${lastTag} (still ${currentVersion})`);
         }
       } catch {
