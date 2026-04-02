@@ -753,31 +753,19 @@ function createPluginJson(config, pluginDir) {
     for (const hook of allSessionHooks) {
       const eventName = hook.event;
       if (!hooks[eventName]) hooks[eventName] = [];
+      const hookEntry = {
+        type: hook.type,
+        ...hook.timeout && { timeout: Math.floor((hook.timeout || 6e4) / 1e3) },
+        ...hook.description && { description: hook.description },
+        ...hook.if && { if: hook.if }
+      };
       if (hook.type === "prompt") {
-        hooks[eventName].push({
-          hooks: [
-            {
-              type: "prompt",
-              prompt: hook.prompt,
-              ...hook.if && { if: hook.if },
-              ...hook.timeout && { timeout: Math.floor((hook.timeout || 6e4) / 1e3) },
-              ...hook.description && { description: hook.description }
-            }
-          ]
-        });
+        hookEntry.prompt = hook.prompt;
       } else {
-        hooks[eventName].push({
-          hooks: [
-            {
-              type: "command",
-              command: getClaudeHookCommand(hook),
-              ...hook.description && { description: hook.description },
-              ...hook.timeout && { timeout: Math.floor((hook.timeout || 6e4) / 1e3) },
-              ...hook.failClosed && { failClosed: hook.failClosed }
-            }
-          ]
-        });
+        hookEntry.command = getClaudeHookCommand(hook);
+        if (hook.failClosed) hookEntry.failClosed = hook.failClosed;
       }
+      hooks[eventName].push({ hooks: [hookEntry] });
     }
   }
   const pluginJsonDir = join7(pluginDir, ".claude-plugin");
@@ -1075,17 +1063,40 @@ function matchesTool(toolName: string, pattern: string): boolean {
 
 function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: string | undefined): boolean {
   if (!ifCondition) return true;
+  
+  // Parse pattern like "Bash(gh pr merge:*)" or "Bash(git push:*)"
+  // Tool name before '(' and command pattern inside parentheses
   const match = ifCondition.match(/^(\\w+)\\(([^)]+)\\)$/);
   if (!match) return true;
+  
   const [, expectedTool, commandPattern] = match;
   if (toolName !== expectedTool) return false;
+  
   const input = toolInput as Record<string, unknown> | undefined;
   const command = input?.command as string | undefined;
   if (!command) return false;
-  const regexPattern = commandPattern
-    .replace(/[.+^\\$" + "{}()|[\\]\\\\]/g, '\\\\$&')
-    .replace(/\\\\\\*/g, '.*')
-    .replace(/\\\\\\?/g, '.');
+  
+  // Handle glob patterns with :* suffix (e.g., "git commit:*" means "starts with git commit")
+  // The :* format treats everything before : as a literal prefix, * matches anything after
+  if (commandPattern.endsWith(':')) {
+    // Pattern like "git commit:" - match commands starting with this prefix
+    const prefix = commandPattern.slice(0, -1);
+    return command.startsWith(prefix);
+  }
+  
+  if (commandPattern.endsWith(':*')) {
+    // Pattern like "git commit:*" - match commands starting with "git commit"
+    const prefix = commandPattern.slice(0, -2);
+    return command.startsWith(prefix);
+  }
+  
+  // For other patterns, convert glob to regex
+  // Escape regex special characters then convert * to .* and ? to .
+  let regexPattern = commandPattern
+    .replace(/[.+^$"{}()|[]\\]/g, '\\$&')
+    .replace(/*/g, '.*')
+    .replace(/?/g, '.');
+  
   const regex = new RegExp('^' + regexPattern + '$');
   return regex.test(command);
 }
@@ -1568,10 +1579,10 @@ function generateHooksJson(config, distDir) {
       };
       if (hook.type === "prompt") {
         if (hook.prompt) result.prompt = hook.prompt;
-        if (hook.if) result.if = hook.if;
       } else {
         result.command = getCursorHookCommand(hook);
       }
+      if (hook.if) result.if = hook.if;
       return result;
     });
   }
@@ -1584,30 +1595,27 @@ function generateHooksJson(config, distDir) {
       };
       if (hook.type === "prompt") {
         if (hook.prompt) result.prompt = hook.prompt;
-        if (hook.if) result.if = hook.if;
       } else {
         result.command = getCursorHookCommand(hook);
       }
+      if (hook.if) result.if = hook.if;
       return result;
     });
   }
   for (const hook of sessionHooks) {
     const eventName = mapSessionEvent(hook.event || "");
     if (!hooks[eventName]) hooks[eventName] = [];
+    const result = {
+      timeout: Math.floor((hook.timeout || 6e4) / 1e3)
+    };
     if (hook.type === "prompt") {
-      const result = {
-        timeout: Math.floor((hook.timeout || 6e4) / 1e3)
-      };
       if (hook.prompt) result.prompt = hook.prompt;
-      if (hook.if) result.if = hook.if;
-      hooks[eventName].push(result);
     } else {
-      hooks[eventName].push({
-        command: getCursorHookCommand(hook),
-        timeout: Math.floor((hook.timeout || 6e4) / 1e3),
-        ...hook.failClosed && { failClosed: hook.failClosed }
-      });
+      result.command = getCursorHookCommand(hook);
     }
+    if (hook.if) result.if = hook.if;
+    if (hook.failClosed) result.failClosed = hook.failClosed;
+    hooks[eventName].push(result);
   }
   writeFileSync8(
     join10(distDir, "hooks.json"),
@@ -7640,6 +7648,19 @@ async function validatePush(context) {
     }
   } catch {
   }
+  if (hasBuildScript) {
+    try {
+      execSync2("npm run build", {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+        timeout: 12e4
+        // 2 minute timeout
+      });
+    } catch {
+      errors.push("Build failed - fix build errors before pushing");
+    }
+  }
   if (errors.length > 0) {
     result.passed = false;
     result.blocked = true;
@@ -7686,6 +7707,31 @@ async function workflowPrePr(context) {
     result.passed = false;
     result.blocked = true;
     result.errors.push("CHANGELOG.md not found");
+  }
+  const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
+  if (!titleMatch) {
+    result.passed = false;
+    result.blocked = true;
+    result.errors.push("Missing --title flag - PR title is required");
+    result.errors.push('Example: gh pr create --title "feat: add new feature"');
+  } else {
+    const title = titleMatch[1].trim();
+    if (title.length < 10) {
+      result.passed = false;
+      result.blocked = true;
+      result.errors.push(`PR title is too short (${title.length} chars) - minimum 10 characters`);
+    }
+    const conventionalPattern = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .+/i;
+    if (!conventionalPattern.test(title)) {
+      result.warnings.push("PR title doesn't follow Conventional Commits format (e.g., 'feat: add feature')");
+    }
+  }
+  const hasBodyFlag = /--body/.test(command);
+  if (!hasBodyFlag) {
+    result.passed = false;
+    result.blocked = true;
+    result.errors.push("Missing --body flag - PR description is required");
+    result.errors.push('Example: gh pr create --title "..." --body "Description of changes"');
   }
   return result;
 }
@@ -8030,12 +8076,9 @@ function findSpecForBranch(agentsDir, branch) {
   }
   return null;
 }
-function getSessionFilePath(agentsDir, branch, timestamp) {
-  const now = timestamp || /* @__PURE__ */ new Date();
-  const datePrefix = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const timePrefix = now.toTimeString().slice(0, 8).replace(/:/g, "");
+function getSessionFilePath(agentsDir, branch) {
   const slug = branch.replace(/^feat\//, "").replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-");
-  return join36(agentsDir, "sessions", `${datePrefix}-${timePrefix}-${slug}.md`);
+  return join36(agentsDir, "sessions", `${slug}.md`);
 }
 function findActiveSessionForBranch(agentsDir, branch) {
   const sessionsDir = join36(agentsDir, "sessions");
@@ -8075,13 +8118,30 @@ async function getOrCreateSession(agentsDir, branch, specInfo) {
   try {
     await acquireLock(lockPath, 100, 50);
     lockAcquired = true;
-    const existing = findActiveSessionForBranch(agentsDir, branch);
+    let existing = findActiveSessionForBranch(agentsDir, branch);
+    const deterministicPath = getSessionFilePath(agentsDir, branch);
+    if (!existing && existsSync32(deterministicPath)) {
+      await new Promise((resolve2) => setTimeout(resolve2, 50));
+      const directSession = readSessionFile(deterministicPath);
+      if (directSession) {
+        existing = { ...directSession, filePath: deterministicPath };
+      }
+    }
     if (existing) {
       return { ...existing, isNew: false };
     }
-    const timestamp = /* @__PURE__ */ new Date();
-    const filePath = getSessionFilePath(agentsDir, branch, timestamp);
-    createSessionFile(filePath, branch, specInfo);
+    const filePath = getSessionFilePath(agentsDir, branch);
+    const created = createSessionFile(filePath, branch, specInfo);
+    if (!created) {
+      const existingSession = readSessionFile(filePath);
+      if (existingSession) {
+        return { filePath, data: existingSession.data, content: existingSession.content, isNew: false };
+      }
+      const fallbackSession = readSessionFile(filePath);
+      if (fallbackSession) {
+        return { filePath, data: fallbackSession.data, content: fallbackSession.content, isNew: false };
+      }
+    }
     const session = readSessionFile(filePath);
     return { filePath, data: session.data, content: session.content, isNew: true };
   } finally {
@@ -8165,6 +8225,9 @@ function getDateTimeString() {
   return `${date} ${time}`;
 }
 function createSessionFile(filePath, branch, specInfo) {
+  if (existsSync32(filePath)) {
+    return null;
+  }
   const now = getTimestamp();
   const frontmatter = {
     branch,
@@ -8203,7 +8266,13 @@ Session started.
 - [ ] First action item
 `;
   const content = matter13.stringify(body, frontmatter);
-  writeFileSync19(filePath, content, "utf-8");
+  try {
+    const fd = openSync(filePath, "wx");
+    writeFileSync19(fd, content, "utf-8");
+    closeSync(fd);
+  } catch {
+    return null;
+  }
   return frontmatter;
 }
 async function appendEntry(filePath, header, entries, updateFrontmatter) {
@@ -8442,7 +8511,23 @@ function registerSessionCommand(program2) {
             const hash = getLastCommitSha();
             entryText = `commit(${hash}): ${message}`;
           } else if (command.includes("gh pr create")) {
-            entryText = `pr: PR created`;
+            const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
+            const title = titleMatch ? titleMatch[1] : "";
+            const raw = hookData.raw;
+            let prNum = "";
+            if (raw && typeof raw === "string") {
+              const prUrlMatch = raw.match(/https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/);
+              if (prUrlMatch) {
+                prNum = prUrlMatch[1];
+              }
+            }
+            if (prNum && title) {
+              entryText = `pr(#${prNum}): ${title}`;
+            } else if (title) {
+              entryText = `pr: ${title}`;
+            } else {
+              entryText = `pr: PR created`;
+            }
           } else if (command.includes("gh pr merge")) {
             const prMatch = command.match(/merge\s+https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/) || command.match(/pr\s+merge\s+(\d+)/);
             const prNum = prMatch ? prMatch[1] : "unknown";

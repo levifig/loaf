@@ -126,9 +126,24 @@
       {
         "hooks": [
           {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start-soul.sh",
-            "description": "Validate SOUL.md is present; restore from template if missing"
+            "description": "Validate SOUL.md is present; restore from template if missing",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start-soul.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "description": "Agent-aware session context and active sessions overview",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "description": "Surface stale knowledge count at session start",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-session-start.sh"
           }
         ]
       },
@@ -136,26 +151,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
-            "description": "Agent-aware session context and active sessions overview"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-session-start.sh",
-            "description": "Surface stale knowledge count at session start"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session start",
-            "description": "Start session journal for current branch"
+            "description": "Start session journal for current branch",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session start"
           }
         ]
       }
@@ -164,9 +161,16 @@
       {
         "hooks": [
           {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh",
-            "description": "Agent-specific completion checklist and session hygiene reminder"
+            "description": "Agent-specific completion checklist and session hygiene reminder",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "description": "Prompt for knowledge consolidation if stale files were flagged",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-session-end.sh"
           }
         ]
       },
@@ -174,17 +178,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-session-end.sh",
-            "description": "Prompt for knowledge consolidation if stale files were flagged"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session end",
-            "description": "End session with progress summary"
+            "description": "End session with progress summary",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session end"
           }
         ]
       }
@@ -193,10 +188,9 @@
       {
         "hooks": [
           {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact-archive.sh",
+            "timeout": 60,
             "description": "Identify active sessions and prompt for context-archiver agent to preserve state",
-            "timeout": 60
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact-archive.sh"
           }
         ]
       },
@@ -204,8 +198,8 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.\nBefore compaction, consider flushing important journal entries: - `decide(scope): key decisions made this session` - `discover(scope): important findings` - `conclude(scope): session summary`\nRun `loaf session log \"type(scope): description\"` to capture entries. After compaction, the transcript will be preserved in `.agents/transcripts/`.",
-            "description": "Nudge for journal flush before context compaction"
+            "description": "Nudge for journal flush before context compaction",
+            "prompt": "CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.\nBefore compaction, consider flushing important journal entries: - `decide(scope): key decisions made this session` - `discover(scope): important findings` - `conclude(scope): session summary`\nRun `loaf session log \"type(scope): description\"` to capture entries. After compaction, the transcript will be preserved in `.agents/transcripts/`."
           }
         ]
       }
@@ -215,8 +209,8 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "SESSION JOURNAL NUDGE: You have made edits or commits this turn but have not recorded any `decide()`, `discover()`, or `conclude()` entries in the session journal.\nConsider capturing key decisions before ending: - `decide(scope): rationale for decision made` - `discover(scope): insight or finding` - `conclude(scope): final summary or learning`\nRun `loaf session log \"decide(scope): description\"` to capture decisions. See orchestration skill for session management patterns.",
-            "description": "Nudge to journal when edits/commits exist without decision entries"
+            "description": "Nudge to journal when edits/commits exist without decision entries",
+            "prompt": "SESSION JOURNAL NUDGE: You have made edits or commits this turn but have not recorded any `decide()`, `discover()`, or `conclude()` entries in the session journal.\nConsider capturing key decisions before ending: - `decide(scope): rationale for decision made` - `discover(scope): insight or finding` - `conclude(scope): final summary or learning`\nRun `loaf session log \"decide(scope): description\"` to capture decisions. See orchestration skill for session management patterns."
           }
         ]
       }

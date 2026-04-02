@@ -70,55 +70,58 @@
       {
         "timeout": 30,
         "matcher": "Bash",
-        "command": "loaf session log --from-hook"
+        "command": "loaf session log --from-hook",
+        "if": "Bash(git commit:*)"
       },
       {
         "timeout": 30,
         "matcher": "Bash",
-        "command": "loaf session log --from-hook"
+        "command": "loaf session log --from-hook",
+        "if": "Bash(gh pr create:*)"
       },
       {
         "timeout": 30,
         "matcher": "Bash",
-        "command": "loaf session log --from-hook"
+        "command": "loaf session log --from-hook",
+        "if": "Bash(gh pr merge:*)"
       }
     ],
     "sessionStart": [
       {
-        "command": "bash $HOME/.cursor/hooks/session/session-start-soul.sh",
-        "timeout": 60
+        "timeout": 60,
+        "command": "bash $HOME/.cursor/hooks/session/session-start-soul.sh"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/session/session-start.sh",
-        "timeout": 60
+        "timeout": 60,
+        "command": "bash $HOME/.cursor/hooks/session/session-start.sh"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/session/kb-session-start.sh",
-        "timeout": 60
+        "timeout": 60,
+        "command": "bash $HOME/.cursor/hooks/session/kb-session-start.sh"
       },
       {
-        "command": "loaf session start",
-        "timeout": 60
+        "timeout": 60,
+        "command": "loaf session start"
       }
     ],
     "sessionEnd": [
       {
-        "command": "bash $HOME/.cursor/hooks/session/session-end.sh",
-        "timeout": 60
+        "timeout": 60,
+        "command": "bash $HOME/.cursor/hooks/session/session-end.sh"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/session/kb-session-end.sh",
-        "timeout": 60
+        "timeout": 60,
+        "command": "bash $HOME/.cursor/hooks/session/kb-session-end.sh"
       },
       {
-        "command": "loaf session end",
-        "timeout": 60
+        "timeout": 60,
+        "command": "loaf session end"
       }
     ],
     "preCompact": [
       {
-        "command": "bash $HOME/.cursor/hooks/session/pre-compact-archive.sh",
-        "timeout": 60
+        "timeout": 60,
+        "command": "bash $HOME/.cursor/hooks/session/pre-compact-archive.sh"
       },
       {
         "timeout": 60,
