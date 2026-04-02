@@ -8158,11 +8158,16 @@ function findActiveSessionForBranch(agentsDir, branch) {
             const sessionPath = join36(agentsDir, "sessions", specFm.session);
             if (existsSync32(sessionPath)) {
               const session = readSessionFile(sessionPath);
-              if (session && session.data.branch === branch && session.data.status !== "archived") {
-                if (specFm.branch !== branch) {
-                  specFm.branch = branch;
-                  const newSpecContent = matter13.stringify(specParsed.content, specFm);
-                  writeFileSync19(specPath, newSpecContent, "utf-8");
+              if (session && session.data.status !== "archived") {
+                if (session.data.branch !== branch) {
+                  session.data.branch = branch;
+                  const newSessionContent = matter13.stringify(session.content, session.data);
+                  writeFileSync19(sessionPath, newSessionContent, "utf-8");
+                  if (specFm.branch !== branch) {
+                    specFm.branch = branch;
+                    const newSpecContent = matter13.stringify(specParsed.content, specFm);
+                    writeFileSync19(specPath, newSpecContent, "utf-8");
+                  }
                 }
                 candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
                 break;
@@ -8477,17 +8482,6 @@ function registerSessionCommand(program2) {
         for (const commit of commits.slice(0, 3)) {
           journalLines.push(`- ${timestamp} commit(${commit.hash}): "${commit.message}"`);
         }
-      }
-    }
-    if (lastCommit !== "unknown") {
-      journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
-    }
-    if (completed > 0 || total > 0) {
-      journalLines.push(`- ${timestamp} progress: ${completed}/${total} tasks completed`);
-    }
-    if (commits.length > 0) {
-      for (const commit of commits.slice(0, 3)) {
-        journalLines.push(`- ${timestamp} commit(${commit.hash}): "${commit.message}"`);
       }
     }
     if (!isNew) {

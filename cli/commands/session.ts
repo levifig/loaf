@@ -340,7 +340,7 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
   // If no session found by branch name, check for renamed branch via spec linkage
   // This handles: git branch -m old-name new-name
   if (candidates.length === 0) {
-    // Look through ALL specs to find one whose session file has branch === current branch
+    // Look through ALL specs to find one with a session: field
     const specsDir = join(agentsDir, "specs");
     if (existsSync(specsDir)) {
       const specFiles = readdirSync(specsDir).filter(f => f.endsWith(".md"));
@@ -357,13 +357,22 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
             const sessionPath = join(agentsDir, "sessions", specFm.session);
             if (existsSync(sessionPath)) {
               const session = readSessionFile(sessionPath);
-              // Check if this session's branch matches current branch (rename detected)
-              if (session && session.data.branch === branch && session.data.status !== "archived") {
-                // Update spec's branch field to match current branch
-                if (specFm.branch !== branch) {
-                  specFm.branch = branch;
-                  const newSpecContent = matter.stringify(specParsed.content, specFm as Record<string, unknown>);
-                  writeFileSync(specPath, newSpecContent, "utf-8");
+              // Check if this session exists and is non-archived
+              // If session's branch differs from current branch, it's a rename
+              if (session && session.data.status !== "archived") {
+                // Rename detected: session's branch != current branch
+                if (session.data.branch !== branch) {
+                  // Update session's branch field to match current branch
+                  session.data.branch = branch;
+                  const newSessionContent = matter.stringify(session.content, session.data as unknown as Record<string, unknown>);
+                  writeFileSync(sessionPath, newSessionContent, "utf-8");
+                  
+                  // Also update spec's branch field
+                  if (specFm.branch !== branch) {
+                    specFm.branch = branch;
+                    const newSpecContent = matter.stringify(specParsed.content, specFm as Record<string, unknown>);
+                    writeFileSync(specPath, newSpecContent, "utf-8");
+                  }
                 }
                 candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
                 break; // Found it
@@ -809,17 +818,6 @@ export function registerSessionCommand(program: Command): void {
           for (const commit of commits.slice(0, 3)) {
             journalLines.push(`- ${timestamp} commit(${commit.hash}): "${commit.message}"`);
           }
-        }
-      }
-      if (lastCommit !== "unknown") {
-        journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
-      }
-      if (completed > 0 || total > 0) {
-        journalLines.push(`- ${timestamp} progress: ${completed}/${total} tasks completed`);
-      }
-      if (commits.length > 0) {
-        for (const commit of commits.slice(0, 3)) {
-          journalLines.push(`- ${timestamp} commit(${commit.hash}): "${commit.message}"`);
         }
       }
 
