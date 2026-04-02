@@ -17,7 +17,7 @@ import {
   openSync,
   closeSync,
 } from "fs";
-import { join, dirname } from "path";
+import { join, dirname, basename } from "path";
 import matter from "gray-matter";
 
 import { findAgentsDir } from "../lib/tasks/resolve.js";
@@ -91,16 +91,59 @@ interface SpecFrontmatterWithBranch {
 // File Locking for Atomic Operations
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Simple file lock using lock file with retry logic */
+/** Staleness threshold in milliseconds (30 seconds) */
+const LOCK_STALENESS_THRESHOLD = 30000;
+
+/** Lock file content format: JSON with PID and timestamp */
+interface LockFileContent {
+  pid: number;
+  timestamp: number;
+}
+
+/** Check if lock file is stale (older than threshold) */
+function isLockStale(lockPath: string): boolean {
+  try {
+    const content = readFileSync(lockPath, 'utf-8');
+    const data: LockFileContent = JSON.parse(content);
+    const age = Date.now() - data.timestamp;
+    return age > LOCK_STALENESS_THRESHOLD;
+  } catch {
+    // If we can't read/parse the lock file, assume it's stale
+    return true;
+  }
+}
+
+/** Force-release a stale lock */
+function forceReleaseLock(lockPath: string): void {
+  try {
+    unlinkSync(lockPath);
+    console.log(`  Released stale lock: ${lockPath}`);
+  } catch {
+    // Ignore errors
+  }
+}
+
+/** Simple file lock using lock file with retry logic and staleness detection */
 async function acquireLock(lockPath: string, maxRetries = 50, retryDelay = 100): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
     try {
+      // Check if existing lock is stale
+      if (existsSync(lockPath) && isLockStale(lockPath)) {
+        forceReleaseLock(lockPath);
+      }
+      
       // Try to create lock file atomically with O_EXCL
       const fd = openSync(lockPath, 'wx');
+      // Write PID and timestamp to lock file
+      const lockContent: LockFileContent = {
+        pid: process.pid,
+        timestamp: Date.now()
+      };
+      writeFileSync(fd, JSON.stringify(lockContent), 'utf-8');
       closeSync(fd);
       return; // Lock acquired
     } catch {
-      // Lock file exists, wait and retry
+      // Lock file exists (and is not stale), wait and retry
       await new Promise(resolve => setTimeout(resolve, retryDelay));
     }
   }
@@ -925,7 +968,7 @@ export function registerSessionCommand(program: Command): void {
       writeFileSync(sessionFilePath, newContent, "utf-8");
 
       // Move to archive
-      const fileName = sessionFilePath.split("/").pop()!;
+      const fileName = basename(sessionFilePath);
       const archivePath = join(archiveDir, fileName);
 
       try {

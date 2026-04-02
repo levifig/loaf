@@ -360,56 +360,15 @@ async function validatePush(context: HookContext): Promise<CheckResult> {
     // No tags yet, skip changelog check
   }
 
-  // Check 3: Build succeeds
-  if (hasBuildScript) {
-    try {
-      execSync("npm run build --silent 2>/dev/null", {
-        stdio: "ignore",
-        timeout: 60000,
-      });
-    } catch {
-      errors.push("Build failed (npm run build)");
-    }
-  } else if (existsSync("Makefile")) {
-    try {
-      const makefile = readFileSync("Makefile", "utf-8");
-      if (makefile.includes("build:") || makefile.match(/^build:/m)) {
-        try {
-          execSync("make build 2>/dev/null", {
-            stdio: "ignore",
-            timeout: 60000,
-          });
-        } catch {
-          errors.push("Build failed (make build)");
-        }
-      }
-    } catch {
-      // ignore
-    }
-  } else if (existsSync("Cargo.toml")) {
-    try {
-      execSync("cargo build 2>/dev/null", {
-        stdio: "ignore",
-        timeout: 120000,
-      });
-    } catch {
-      errors.push("Build failed (cargo build)");
-    }
-  } else if (existsSync("go.mod")) {
-    try {
-      execSync("go build ./... 2>/dev/null", {
-        stdio: "ignore",
-        timeout: 60000,
-      });
-    } catch {
-      errors.push("Build failed (go build ./...)");
-    }
-  }
+  // Note: Build validation removed from pre-push hook
+  // Rationale: Build checks are slow (30-120s) and better handled by CI.
+  // Pre-push hooks should be fast (<5s) to avoid developer friction.
+  // The validate-push hook now focuses on: version bump, changelog update.
 
   if (errors.length > 0) {
     result.passed = false;
     result.blocked = true;
-    result.errors = errors;
+    result.errors.push(...errors);
   }
 
   return result;

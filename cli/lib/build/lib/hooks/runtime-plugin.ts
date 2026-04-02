@@ -230,10 +230,13 @@ function runHook(
     // Handle subprocess errors
     if (error.status !== undefined) {
       // Subprocess exited with non-zero code
+      // Ensure stderr/stdout are strings (handles edge cases where they might be Buffers)
+      const stderrStr = error.stderr ? String(error.stderr) : '';
+      const stdoutStr = error.stdout ? String(error.stdout) : '';
       return {
         exitCode: error.status,
-        stdout: error.stdout || '',
-        stderr: error.stderr || error.message,
+        stdout: stdoutStr,
+        stderr: stderrStr || error.message,
       };
     }
     
