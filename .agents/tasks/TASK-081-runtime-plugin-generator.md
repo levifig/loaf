@@ -2,7 +2,7 @@
 id: TASK-081
 title: Create shared runtime plugin generator (OpenCode + Amp)
 spec: SPEC-020
-status: todo
+status: complete
 priority: p1
 dependencies: [TASK-076, TASK-077]
 track: C
@@ -12,21 +12,22 @@ track: C
 
 Unified runtime plugin generator for TypeScript-plugin harnesses.
 
-## Scope
+## Implementation
 
-Create `cli/lib/build/lib/hooks/runtime-plugin.ts`:
+Created `cli/lib/build/lib/hooks/runtime-plugin.ts` with:
+- `RuntimePlatform` interface supporting OpenCode and Amp adapters
+- `generateRuntimePlugin()` function with shared core + platform-specific adapters
+- Event wiring for preTool, postTool, sessionStart, sessionEnd
+- Hook command execution via subprocess calls to `loaf check` and `loaf session`
+- Platform-specific `extraEvents` callback for OpenCode's extended event surface
 
-```typescript
-interface RuntimePlatform {
-  platform: 'opencode' | 'amp';
-  header: string;
-  events: { preTool: string; postTool: string; sessionStart: string; sessionEnd?: string; };
-  toolNameAccessor: string;
-  wrapExport: (body: string) => string;
-  rejectPattern: (msgVar: string) => string;
-  extraEvents?: (config: HooksConfig, srcDir: string) => string;
-}
-```
+## Verification
+
+- [x] Runtime plugin generates valid TypeScript for OpenCode
+- [x] Runtime plugin generates valid TypeScript for Amp with experimental header
+- [x] Plugins call `loaf check` and `loaf session` via subprocess
+- [x] Session lifecycle events mapped correctly
+- [x] All tests pass
 
 **Shared core:** `runHook()` (calls `loaf check`/`loaf session` as subprocess), `matchesTool()`, hook grouping by matcher, exit code interpretation (0=allow, 2=block, 1=error), `failClosed` handling.
 

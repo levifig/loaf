@@ -230,15 +230,9 @@ describe("getTargetFile", () => {
     expect(result).toBe(join(TEST_ROOT, ".claude", "CLAUDE.md"));
   });
 
-  it("returns first option for cursor when no files exist", () => {
+  it("returns correct path for cursor", () => {
     const result = getTargetFile("cursor", TEST_ROOT);
     expect(result).toBe(join(TEST_ROOT, ".cursor", "rules", "loaf.mdc"));
-  });
-
-  it("returns existing file for cursor when .agents/AGENTS.md exists", () => {
-    createTestFile(".agents/AGENTS.md", "# Test");
-    const result = getTargetFile("cursor", TEST_ROOT);
-    expect(result).toBe(join(TEST_ROOT, ".agents", "AGENTS.md"));
   });
 
   it("returns null for unknown target", () => {
@@ -403,5 +397,31 @@ describe("fenced content format", () => {
     // The fenced section should be approximately 20-30 lines
     expect(lines.length).toBeGreaterThanOrEqual(15);
     expect(lines.length).toBeLessThanOrEqual(30);
+  });
+
+  it("adds Cursor frontmatter for new .mdc files", () => {
+    const targetFile = join(TEST_ROOT, ".cursor", "rules", "loaf.mdc");
+    const result = installFencedSection(targetFile, false);
+
+    expect(result.action).toBe("created");
+
+    const content = readFileSync(targetFile, "utf-8");
+    // Should have Cursor frontmatter
+    expect(content).toMatch(/^---\n/);
+    expect(content).toContain("description: Loaf framework conventions");
+    expect(content).toContain("alwaysApply: true");
+    expect(content).toContain("<!-- loaf:managed:start");
+  });
+
+  it("does not add frontmatter for new .md files", () => {
+    const targetFile = join(TEST_ROOT, ".agents", "NEW.md");
+    const result = installFencedSection(targetFile, false);
+
+    expect(result.action).toBe("created");
+
+    const content = readFileSync(targetFile, "utf-8");
+    // Should NOT have frontmatter for regular markdown
+    expect(content).not.toMatch(/^---\n/);
+    expect(content).toContain("<!-- loaf:managed:start");
   });
 });

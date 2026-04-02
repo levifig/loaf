@@ -223,6 +223,50 @@ describe("session: start", () => {
 });
 
 describe("session: log", () => {
+  it("hook-safe exit when no active session exists", async () => {
+    const repoPath = createTempRepo("no-session-hook-test");
+    
+    // Try to log from hook without starting a session first
+    // Should exit 0 (hook-safe) not 1 (error)
+    const result = await runLoaf(["log", "--from-hook"], { 
+      cwd: repoPath,
+      input: JSON.stringify({ tool_input: { command: "git commit -m 'test commit'" } })
+    });
+    
+    // Should exit 0 (no-op for hooks) rather than failing
+    expect(result.exitCode).toBe(0);
+  }, 10000);
+
+  it("accepts nested tool.input format from hooks", async () => {
+    const repoPath = createTempRepo("nested-payload-test");
+    
+    // Start a session
+    await runLoaf(["start"], { cwd: repoPath });
+    
+    // Log with nested format (tool.input instead of tool_input)
+    const result = await runLoaf(["log", "--from-hook"], { 
+      cwd: repoPath,
+      input: JSON.stringify({ 
+        tool: { 
+          name: "Bash",
+          input: { command: "git commit -m 'feat: add feature'" } 
+        } 
+      })
+    });
+    
+    expect(result.exitCode).toBe(0);
+    
+    // Verify the commit was logged
+    const sessionFiles = getSessionFiles(repoPath);
+    const content = readFileSync(
+      join(repoPath, ".agents/sessions", sessionFiles[0]),
+      "utf-8"
+    );
+    
+    expect(content).toContain("commit(");
+    expect(content).toContain("feat: add feature");
+  }, 10000);
+
   it("two concurrent session log processes both preserve their entries", async () => {
     const repoPath = createTempRepo("concurrent-log-test");
     

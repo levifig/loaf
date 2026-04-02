@@ -14,12 +14,13 @@ const FENCED_END = "<!-- loaf:managed:end -->";
 const FENCED_WARNING = "<!-- Maintained by loaf install/upgrade — do not edit manually -->";
 
 /** Per-target file paths relative to project root */
-const TARGET_FILES: Record<string, string | string[]> = {
+const TARGET_FILES: Record<string, string> = {
   "claude-code": ".claude/CLAUDE.md",
-  cursor: [".cursor/rules/loaf.mdc", ".agents/AGENTS.md"],
+  cursor: ".cursor/rules/loaf.mdc",  // Always use .mdc for Cursor rules
   codex: ".agents/AGENTS.md",
   opencode: ".agents/AGENTS.md",
   amp: ".agents/AGENTS.md",
+  // NOTE: gemini excluded - per SPEC-020, Gemini has no prompt overlay/project-file layer
 };
 
 interface FencedSection {
@@ -99,19 +100,6 @@ function resolveTargetFile(
 ): string | null {
   const targetPath = TARGET_FILES[target];
   if (!targetPath) return null;
-
-  if (Array.isArray(targetPath)) {
-    // For arrays, prefer the first existing file, otherwise use the first option
-    for (const path of targetPath) {
-      const fullPath = join(projectRoot, path);
-      if (existsSync(fullPath)) {
-        return fullPath;
-      }
-    }
-    // Default to first option if none exist
-    return join(projectRoot, targetPath[0]);
-  }
-
   return join(projectRoot, targetPath);
 }
 
@@ -161,25 +149,32 @@ export function installFencedSection(
 
     writeFileSync(targetFile, fileContent);
     return { action: "updated", version: currentVersion };
-  } else {
-    // No fenced section found
-    const newContent = generateFencedContent(currentVersion);
-
-    if (fileExisted) {
-      // Append to existing file
-      const trimmedContent = fileContent.trimEnd();
-      fileContent =
-        trimmedContent + (trimmedContent ? "\n\n" : "") + newContent + "\n";
-      writeFileSync(targetFile, fileContent);
-      return { action: "appended", version: currentVersion };
     } else {
-      // Create new file with fenced section
-      // Ensure directory exists
-      mkdirSync(dirname(targetFile), { recursive: true });
-      writeFileSync(targetFile, newContent + "\n");
-      return { action: "created", version: currentVersion };
+      // No fenced section found
+      const newContent = generateFencedContent(currentVersion);
+
+      if (fileExisted) {
+        // Append to existing file
+        const trimmedContent = fileContent.trimEnd();
+        fileContent =
+          trimmedContent + (trimmedContent ? "\n\n" : "") + newContent + "\n";
+        writeFileSync(targetFile, fileContent);
+        return { action: "appended", version: currentVersion };
+      } else {
+        // Create new file with fenced section
+        // Ensure directory exists
+        mkdirSync(dirname(targetFile), { recursive: true });
+        
+        // Add frontmatter for .mdc files (Cursor rules format)
+        const isMdc = targetFile.endsWith(".mdc");
+        const prefix = isMdc
+          ? "---\ndescription: Loaf framework conventions\nalwaysApply: true\n---\n\n"
+          : "";
+        
+        writeFileSync(targetFile, prefix + newContent + "\n");
+        return { action: "created", version: currentVersion };
+      }
     }
-  }
 }
 
 /**

@@ -2217,7 +2217,7 @@ var INSTALLERS = {
 };
 
 // cli/lib/install/fenced-section.ts
-import { readFileSync as readFileSync12, writeFileSync as writeFileSync11, existsSync as existsSync13, mkdirSync as mkdirSync11 } from "fs";
+import { readFileSync as readFileSync12, writeFileSync as writeFileSync11, mkdirSync as mkdirSync11 } from "fs";
 import { join as join17, dirname as dirname5 } from "path";
 import { fileURLToPath as fileURLToPath3 } from "url";
 var FENCED_START = "<!-- loaf:managed:start";
@@ -2225,10 +2225,12 @@ var FENCED_END = "<!-- loaf:managed:end -->";
 var FENCED_WARNING = "<!-- Maintained by loaf install/upgrade \u2014 do not edit manually -->";
 var TARGET_FILES = {
   "claude-code": ".claude/CLAUDE.md",
-  cursor: [".cursor/rules/loaf.mdc", ".agents/AGENTS.md"],
+  cursor: ".cursor/rules/loaf.mdc",
+  // Always use .mdc for Cursor rules
   codex: ".agents/AGENTS.md",
   opencode: ".agents/AGENTS.md",
   amp: ".agents/AGENTS.md"
+  // NOTE: gemini excluded - per SPEC-020, Gemini has no prompt overlay/project-file layer
 };
 function getVersion3() {
   const __dirname7 = dirname5(fileURLToPath3(import.meta.url));
@@ -2289,15 +2291,6 @@ function generateFencedContent(version) {
 function resolveTargetFile(target, projectRoot) {
   const targetPath = TARGET_FILES[target];
   if (!targetPath) return null;
-  if (Array.isArray(targetPath)) {
-    for (const path of targetPath) {
-      const fullPath = join17(projectRoot, path);
-      if (existsSync13(fullPath)) {
-        return fullPath;
-      }
-    }
-    return join17(projectRoot, targetPath[0]);
-  }
   return join17(projectRoot, targetPath);
 }
 function installFencedSection(targetFile, upgrade = false) {
@@ -2331,7 +2324,9 @@ function installFencedSection(targetFile, upgrade = false) {
       return { action: "appended", version: currentVersion };
     } else {
       mkdirSync11(dirname5(targetFile), { recursive: true });
-      writeFileSync11(targetFile, newContent + "\n");
+      const isMdc = targetFile.endsWith(".mdc");
+      const prefix = isMdc ? "---\ndescription: Loaf framework conventions\nalwaysApply: true\n---\n\n" : "";
+      writeFileSync11(targetFile, prefix + newContent + "\n");
       return { action: "created", version: currentVersion };
     }
   }
@@ -2473,23 +2468,6 @@ ${bold2("loaf install")}
       return;
     }
     console.log();
-    if (!isLoafOnPath()) {
-      console.log(`  ${yellow("\u26A0")} The 'loaf' command is not available on your PATH`);
-      console.log(`  ${gray2("Hooks and commands may fail without it.")}`);
-      const shouldInstallBinary = await askYesNo(
-        `  Install 'loaf' binary to ~/.local/bin? [y/N] `
-      );
-      if (shouldInstallBinary) {
-        await installLoafBinary(rootDir);
-        console.log();
-      } else {
-        console.log(`  ${gray2("Skipping binary installation. Some features may not work.")}`);
-        console.log();
-      }
-    } else {
-      console.log(`  ${green2("\u2713")} loaf binary available on PATH`);
-      console.log();
-    }
     let selectedTargets;
     if (options.to === "all") {
       selectedTargets = tools.map((t) => t.key);
@@ -2511,6 +2489,20 @@ ${gray2("Valid targets:")} ${VALID_TARGETS.join(", ")}, all`
     } else if (options.upgrade) {
       selectedTargets = tools.filter((t) => t.installed).map((t) => t.key);
       if (selectedTargets.length === 0) {
+        if (hasClaudeCode) {
+          const projectRoot2 = process.cwd();
+          const fencedResults2 = installFencedSectionsForTargets(
+            ["claude-code"],
+            projectRoot2,
+            options.upgrade ?? false
+          );
+          if (fencedResults2["claude-code"]?.action === "updated") {
+            console.log(`  ${green2("\u2713")} claude-code updated Loaf framework section in project file`);
+          } else if (fencedResults2["claude-code"]?.action === "skipped") {
+            console.log(`  ${gray2("\u25CB")} claude-code Loaf framework section already current`);
+          }
+          console.log();
+        }
         console.log(`  ${gray2("No installed targets to upgrade")}`);
         console.log();
         return;
@@ -2529,9 +2521,54 @@ ${gray2("Valid targets:")} ${VALID_TARGETS.join(", ")}, all`
       }
     }
     if (selectedTargets.length === 0) {
+      if (hasClaudeCode) {
+        const projectRoot2 = process.cwd();
+        const fencedResults2 = installFencedSectionsForTargets(
+          ["claude-code"],
+          projectRoot2,
+          options.upgrade ?? false
+        );
+        if (fencedResults2["claude-code"]?.action === "created") {
+          console.log(`  ${green2("\u2713")} claude-code created project file with Loaf framework section`);
+        } else if (fencedResults2["claude-code"]?.action === "appended") {
+          console.log(`  ${green2("\u2713")} claude-code added Loaf framework section to project file`);
+        } else if (fencedResults2["claude-code"]?.action === "updated") {
+          console.log(`  ${green2("\u2713")} claude-code updated Loaf framework section in project file`);
+        } else if (fencedResults2["claude-code"]?.action === "skipped") {
+          console.log(`  ${gray2("\u25CB")} claude-code Loaf framework section already current`);
+        }
+        console.log();
+      }
       console.log(`  ${gray2("No targets selected")}`);
       console.log();
       return;
+    }
+    const pathDependentTargets = ["opencode", "cursor", "codex", "amp"];
+    const needsPathBinary = selectedTargets.some(
+      (t) => pathDependentTargets.includes(t)
+    );
+    if (needsPathBinary && !isLoafOnPath()) {
+      console.log(
+        `  ${yellow("\u26A0")} Selected targets need 'loaf' on PATH but it's not available`
+      );
+      console.log(
+        `  ${gray2("Targets:")} ${selectedTargets.filter((t) => pathDependentTargets.includes(t)).join(", ")}`
+      );
+      const shouldInstallBinary = await askYesNo(
+        `  Install 'loaf' binary to ~/.local/bin? [y/N] `
+      );
+      if (shouldInstallBinary) {
+        await installLoafBinary(rootDir);
+        console.log();
+      } else {
+        console.log(
+          `  ${gray2("Skipping binary installation. Some hooks may not work for PATH-dependent targets.")}`
+        );
+        console.log();
+      }
+    } else if (needsPathBinary) {
+      console.log(`  ${green2("\u2713")} loaf binary available on PATH for target hooks`);
+      console.log();
     }
     console.log();
     const installedTargets = [];
@@ -2561,8 +2598,10 @@ ${gray2("Valid targets:")} ${VALID_TARGETS.join(", ")}, all`
     }
     console.log();
     const projectRoot = process.cwd();
+    const targetsWithFencedSections = installedTargets.filter((t) => t !== "gemini");
+    const fencedTargets = hasClaudeCode ? ["claude-code", ...targetsWithFencedSections] : [...targetsWithFencedSections];
     const fencedResults = installFencedSectionsForTargets(
-      installedTargets,
+      fencedTargets,
       projectRoot,
       options.upgrade ?? false
     );
@@ -7436,13 +7475,13 @@ function getToolName(context) {
   return context.tool?.name || context.tool_name || "";
 }
 function getCommand(context) {
-  return context.tool_input?.command || context.input?.command || "";
+  return context.tool_input?.command || context.tool?.input?.command || context.input?.command || "";
 }
 function getFilePath(context) {
-  return context.tool_input?.file_path || context.input?.file_path || "";
+  return context.tool_input?.file_path || context.tool?.input?.file_path || context.input?.file_path || "";
 }
 function getContent(context) {
-  return context.tool_input?.content || context.tool_input?.new_string || context.input?.content || context.input?.new_string || "";
+  return context.tool_input?.content || context.tool?.input?.content || context.tool_input?.new_string || context.tool?.input?.new_string || context.input?.content || context.input?.new_string || "";
 }
 function outputJson(result, hookId) {
   const output = {
@@ -7498,22 +7537,6 @@ async function checkSecrets(context) {
   }
   if (!filePath && !contentToScan.trim()) {
     return result;
-  }
-  const safePatterns = [
-    /\.md$/,
-    /\.txt$/,
-    /\.lock$/,
-    /package-lock\.json$/,
-    /yarn\.lock$/,
-    /poetry\.lock$/,
-    /\.example$/,
-    /\.template$/,
-    /\.sample$/
-  ];
-  for (const pattern of safePatterns) {
-    if (pattern.test(filePath)) {
-      return result;
-    }
   }
   const secretPatterns = [
     { name: "AWS Access Key ID", regex: /AKIA[0-9A-Z]{16}/ },
@@ -7596,16 +7619,20 @@ async function validatePush(context) {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "ignore"]
     }).trim();
-    if (lastTag && existsSync31("CHANGELOG.md")) {
-      try {
-        const changedFiles = execSync2(
-          `git diff ${lastTag} --name-only -- CHANGELOG.md 2>/dev/null`,
-          { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
-        ).trim();
-        if (!changedFiles) {
-          errors.push(`CHANGELOG.md not updated since ${lastTag}`);
+    if (lastTag) {
+      if (!existsSync31("CHANGELOG.md")) {
+        errors.push("CHANGELOG.md not found (required for tagged releases)");
+      } else {
+        try {
+          const changedFiles = execSync2(
+            `git diff ${lastTag} --name-only -- CHANGELOG.md 2>/dev/null`,
+            { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
+          ).trim();
+          if (!changedFiles) {
+            errors.push(`CHANGELOG.md not updated since ${lastTag}`);
+          }
+        } catch {
         }
-      } catch {
       }
     }
   } catch {
@@ -8028,14 +8055,32 @@ function findActiveSessionForBranch(agentsDir, branch) {
   const sessionsDir = join36(agentsDir, "sessions");
   if (!existsSync32(sessionsDir)) return null;
   const files = readdirSync14(sessionsDir).filter((f) => f.endsWith(".md") && !f.startsWith("archive"));
+  const candidates = [];
   for (const file of files) {
     const filePath = join36(sessionsDir, file);
     const session = readSessionFile(filePath);
     if (session && session.data.branch === branch && session.data.status !== "archived") {
-      return { filePath, data: session.data, content: session.content };
+      candidates.push({ filePath, data: session.data, content: session.content });
     }
   }
-  return null;
+  if (candidates.length === 0) return null;
+  const statusPriority = {
+    active: 1,
+    paused: 2,
+    blocked: 2,
+    complete: 2
+  };
+  candidates.sort((a, b) => {
+    const priorityA = statusPriority[a.data.status] ?? 3;
+    const priorityB = statusPriority[b.data.status] ?? 3;
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    const timeA = a.data.last_updated || a.data.last_entry || "0";
+    const timeB = b.data.last_updated || b.data.last_entry || "0";
+    return timeB.localeCompare(timeA);
+  });
+  return candidates[0];
 }
 async function getOrCreateSession(agentsDir, branch, specInfo) {
   const sessionsDir = join36(agentsDir, "sessions");
@@ -8280,7 +8325,11 @@ function registerSessionCommand(program2) {
     const commits = getRecentCommits(3);
     const { completed, total } = countTasksInSession(sessionContent);
     const entries = [];
-    entries.push(`resume(${branch}): session started`);
+    if (isNew) {
+      entries.push(`resume(${branch}): session started`);
+    } else {
+      entries.push(`resume(${branch}): session resumed`);
+    }
     if (lastCommit !== "unknown") {
       entries.push(`context: last commit ${lastCommit}`);
     }
@@ -8295,7 +8344,7 @@ function registerSessionCommand(program2) {
     }
     await appendEntry(
       sessionFilePath,
-      `${getDateTimeString()} \u2014 Start`,
+      isNew ? `${getDateTimeString()} \u2014 Start` : `${getDateTimeString()} \u2014 Resume`,
       entries,
       (data) => {
         data.status = "active";
@@ -8386,6 +8435,9 @@ function registerSessionCommand(program2) {
     }
     let existingSession = findActiveSessionForBranch(agentsDir, branch);
     if (!existingSession) {
+      if (options.fromHook) {
+        process.exit(0);
+      }
       console.error(`  ${red10("error:")} No active session found for branch ${branch}. Run 'loaf session start' first.`);
       process.exit(1);
     }
@@ -8396,7 +8448,7 @@ function registerSessionCommand(program2) {
       try {
         const stdin = readFileSync28(0, "utf-8");
         const hookData = JSON.parse(stdin);
-        const command = hookData.tool_input?.command || hookData.input?.command;
+        const command = hookData.tool_input?.command || hookData.tool?.input?.command || hookData.input?.command;
         if (command && typeof command === "string") {
           if (command.includes("git commit")) {
             const msgMatch = command.match(/-m\s+['"]([^'"]+)['"]/) || command.match(/-m\s+(\S+)/);
@@ -8420,8 +8472,7 @@ function registerSessionCommand(program2) {
           } else if (hookData.merge) {
             entryText = `merge(#${hookData.merge}): merged`;
           } else {
-            console.error(`  ${red10("error:")} Could not parse hook data - no command found`);
-            process.exit(1);
+            process.exit(0);
           }
         }
       } catch (err) {

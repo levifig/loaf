@@ -160,19 +160,24 @@ describe("check: check-secrets", () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it("passes for safe file types (.md, .txt, .lock)", () => {
-    const safeFiles = [
-      { file_path: "README.md", content: "sk-live-test123" },
-      { file_path: "notes.txt", content: "password: secret123" },
+  it("blocks credentials in all file types", () => {
+    // All files are now scanned for secrets - no safe file exemptions
+    // This prevents credentials from leaking in any file type
+    const filesWithCredentials = [
       { file_path: "yarn.lock", content: "AKIAIOSFODNN7EXAMPLE" },
+      { file_path: "package-lock.json", content: "AKIAIOSFODNN7EXAMPLE1234" },
+      { file_path: "README.md", content: "sk-1234567890abcdef1234567890" },
+      { file_path: "config.md", content: "const apiKey = \"sk-1234567890abcdef1234567890\"" },
+      { file_path: "notes.txt", content: "AKIAIOSFODNN7EXAMPLE1234" },
     ];
 
-    for (const file of safeFiles) {
+    for (const file of filesWithCredentials) {
       const result = runCheck("check-secrets", {
         tool: { name: "Edit" },
         tool_input: file,
       });
-      expect(result.exitCode).toBe(0);
+      // All files with credentials should be blocked
+      expect(result.exitCode).toBe(2);
     }
   });
 
@@ -686,19 +691,25 @@ describe("check: context parsing", () => {
     }
   });
 
-  it("accepts both tool.tool_name and tool.tool.name formats", () => {
-    // Format 1: tool.tool_name (Claude Code style)
+  it("accepts both flat and nested payload formats", () => {
+    // Format 1: tool_name/tool_input (Claude Code/Cursor/Codex flat style)
     const result1 = runCheck("validate-commit", {
       tool_name: "Bash",
       tool_input: { command: 'git commit -m "feat: test"' },
     });
     expect(result1.exitCode).toBe(0);
 
-    // Format 2: tool.name (nested style)
+    // Format 2: tool.name/tool.input (nested style for cross-harness compatibility)
     const result2 = runCheck("validate-commit", {
+      tool: { name: "Bash", input: { command: 'git commit -m "feat: test"' } },
+    });
+    expect(result2.exitCode).toBe(0);
+    
+    // Format 3: top-level input (legacy/fallback style)
+    const result3 = runCheck("validate-commit", {
       tool: { name: "Bash" },
       input: { command: 'git commit -m "feat: test"' },
     });
-    expect(result2.exitCode).toBe(0);
+    expect(result3.exitCode).toBe(0);
   });
 });

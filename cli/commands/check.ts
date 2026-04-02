@@ -29,6 +29,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 interface HookContext {
   tool?: {
     name?: string;
+    input?: {
+      command?: string;
+      file_path?: string;
+      content?: string;
+      new_string?: string;
+      [key: string]: unknown;
+    };
   };
   tool_name?: string;
   tool_input?: {
@@ -122,16 +129,27 @@ function getToolName(context: HookContext): string {
 }
 
 function getCommand(context: HookContext): string {
-  return context.tool_input?.command || context.input?.command || "";
+  // Support both flat (tool_input) and nested (tool.input) formats for cross-harness compatibility
+  return context.tool_input?.command || 
+         context.tool?.input?.command || 
+         context.input?.command || 
+         "";
 }
 
 function getFilePath(context: HookContext): string {
-  return context.tool_input?.file_path || context.input?.file_path || "";
+  // Support both flat (tool_input) and nested (tool.input) formats for cross-harness compatibility
+  return context.tool_input?.file_path || 
+         context.tool?.input?.file_path || 
+         context.input?.file_path || 
+         "";
 }
 
 function getContent(context: HookContext): string {
+  // Support both flat (tool_input) and nested (tool.input) formats for cross-harness compatibility
   return context.tool_input?.content || 
+         context.tool?.input?.content || 
          context.tool_input?.new_string || 
+         context.tool?.input?.new_string || 
          context.input?.content || 
          context.input?.new_string || 
          "";
@@ -204,25 +222,12 @@ async function checkSecrets(context: HookContext): Promise<CheckResult> {
     return result;
   }
 
-  // Skip known safe files
-  const safePatterns = [
-    /\.md$/,
-    /\.txt$/,
-    /\.lock$/,
-    /package-lock\.json$/,
-    /yarn\.lock$/,
-    /poetry\.lock$/,
-    /\.example$/,
-    /\.template$/,
-    /\.sample$/,
-  ];
-
-  for (const pattern of safePatterns) {
-    if (pattern.test(filePath)) {
-      return result;
-    }
-  }
-
+  // All files are scanned for secrets - no exemptions
+  // Previous exemptions for .md, .txt, lock files removed because:
+  // - Lock files: may contain hashed secrets that should still be flagged
+  // - Documentation files: common place for real credentials to leak
+  // - Example/template files: often contain real-looking credentials that get copy-pasted
+  
   // Secret patterns to detect
   const secretPatterns: Array<{ name: string; regex: RegExp }> = [
     { name: "AWS Access Key ID", regex: /AKIA[0-9A-Z]{16}/ },
@@ -326,25 +331,29 @@ async function validatePush(context: HookContext): Promise<CheckResult> {
     // No tags yet, skip version check
   }
 
-  // Check 2: CHANGELOG updated since last tag
+  // Check 2: CHANGELOG exists and is updated since last tag
   try {
     const lastTag = execSync("git describe --tags --abbrev=0 2>/dev/null", {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "ignore"],
     }).trim();
 
-    if (lastTag && existsSync("CHANGELOG.md")) {
-      try {
-        const changedFiles = execSync(
-          `git diff ${lastTag} --name-only -- CHANGELOG.md 2>/dev/null`,
-          { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
-        ).trim();
+    if (lastTag) {
+      if (!existsSync("CHANGELOG.md")) {
+        errors.push("CHANGELOG.md not found (required for tagged releases)");
+      } else {
+        try {
+          const changedFiles = execSync(
+            `git diff ${lastTag} --name-only -- CHANGELOG.md 2>/dev/null`,
+            { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
+          ).trim();
 
-        if (!changedFiles) {
-          errors.push(`CHANGELOG.md not updated since ${lastTag}`);
+          if (!changedFiles) {
+            errors.push(`CHANGELOG.md not updated since ${lastTag}`);
+          }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
       }
     }
   } catch {

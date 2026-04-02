@@ -238,15 +238,44 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
   
   const files = readdirSync(sessionsDir).filter(f => f.endsWith(".md") && !f.startsWith("archive"));
   
+  // Collect all candidate sessions for this branch
+  const candidates: Array<{ filePath: string; data: SessionFrontmatter; content: string }> = [];
+  
   for (const file of files) {
     const filePath = join(sessionsDir, file);
     const session = readSessionFile(filePath);
     if (session && session.data.branch === branch && session.data.status !== "archived") {
-      return { filePath, data: session.data, content: session.content };
+      candidates.push({ filePath, data: session.data, content: session.content });
     }
   }
   
-  return null;
+  if (candidates.length === 0) return null;
+  
+  // Prioritize: active > paused/blocked/complete > others
+  // Sort by status priority (lower number = higher priority)
+  const statusPriority: Record<string, number> = {
+    active: 1,
+    paused: 2,
+    blocked: 2,
+    complete: 2,
+  };
+  
+  candidates.sort((a, b) => {
+    // First: sort by status priority
+    const priorityA = statusPriority[a.data.status] ?? 3;
+    const priorityB = statusPriority[b.data.status] ?? 3;
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    
+    // Second: tie-break by recency (newer wins)
+    // Use last_updated from frontmatter, or fall back to last_entry, or 0
+    const timeA = a.data.last_updated || a.data.last_entry || "0";
+    const timeB = b.data.last_updated || b.data.last_entry || "0";
+    return timeB.localeCompare(timeA); // descending (newer first)
+  });
+  
+  return candidates[0];
 }
 
 /** Atomically get existing session or create new one (prevents concurrent creation) */
@@ -699,6 +728,11 @@ export function registerSessionCommand(program: Command): void {
       // Find active session by branch lookup
       let existingSession = findActiveSessionForBranch(agentsDir, branch);
       if (!existingSession) {
+        // For hook calls, no-op gracefully instead of erroring
+        // This prevents hooks from failing when no session exists
+        if (options.fromHook) {
+          process.exit(0);
+        }
         console.error(`  ${red("error:")} No active session found for branch ${branch}. Run 'loaf session start' first.`);
         process.exit(1);
       }
@@ -715,7 +749,10 @@ export function registerSessionCommand(program: Command): void {
           const hookData = JSON.parse(stdin);
           
           // Extract command from generic tool payload
-          const command = hookData.tool_input?.command || hookData.input?.command;
+          // Support both flat (tool_input) and nested (tool.input) formats for cross-harness compatibility
+          const command = hookData.tool_input?.command || 
+                          hookData.tool?.input?.command || 
+                          hookData.input?.command;
           
           if (command && typeof command === "string") {
             // Parse Bash command to detect entry type
@@ -746,8 +783,9 @@ export function registerSessionCommand(program: Command): void {
             } else if (hookData.merge) {
               entryText = `merge(#${hookData.merge}): merged`;
             } else {
-              console.error(`  ${red("error:")} Could not parse hook data - no command found`);
-              process.exit(1);
+              // No command found - this is a hook-safe no-op for when session doesn't exist
+              // Exit 0 so hooks don't fail, but don't log anything
+              process.exit(0);
             }
           }
         } catch (err) {

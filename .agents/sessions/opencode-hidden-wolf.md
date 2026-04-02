@@ -1,10 +1,10 @@
 ---
 session:
-  title: 'Session: opencode/hidden-wolf'
+  title: 'Session: feat/cross-harness-unification'
   status: active
   created: '2026-03-31T16:17:08.075Z'
   last_updated: '2026-03-31T16:17:08.113Z'
-  branch: opencode/hidden-wolf
+  branch: feat/cross-harness-unification
   last_entry: '2026-03-31T16:17:08.113Z'
 traceability:
   architecture: []
@@ -14,11 +14,11 @@ transcripts: []
 orchestration:
   spawned_agents: []
 ---
-# Session: opencode/hidden-wolf
+# Session: feat/cross-harness-unification
 
 ## Context
 
-Ad-hoc session for branch `opencode/hidden-wolf`.
+Ad-hoc session for branch `feat/cross-harness-unification`.
 
 ## Current State
 
@@ -28,7 +28,7 @@ Session started.
 
 - [ ] First action item
 ## 2026-03-31 17:17 — Start
-resume(opencode/hidden-wolf): session started
+resume(feat/cross-harness-unification): session started
 context: last commit 22dbaf5
 progress: 0/1 tasks completed
 recent commits:

@@ -2,7 +2,7 @@
 id: TASK-084
 title: Codex hook output + install convergence
 spec: SPEC-020
-status: todo
+status: complete
 priority: p1
 dependencies: [TASK-079, TASK-083]
 track: D
@@ -12,7 +12,7 @@ track: D
 
 Finalize Codex hook generation and converge install logic around `.agents/skills/`.
 
-## Scope
+## Implementation
 
 ### Codex hook output
 - `dist/codex/.codex/hooks.json` with Bash-matching enforcement hooks only
@@ -21,7 +21,7 @@ Finalize Codex hook generation and converge install logic around `.agents/skills
 - `loaf install --to codex` places at `$CODEX_HOME/hooks.json` (respecting env var)
 
 ### Install convergence
-Update `cli/lib/install/installer.ts`:
+Updated `cli/lib/install/installer.ts`:
 
 | Tool | Skills destination | Hooks destination |
 |---|---|---|
@@ -38,7 +38,7 @@ Update `cli/lib/install/installer.ts`:
 
 ## Verification
 
-- [ ] `loaf install --to codex` installs hooks to `$CODEX_HOME/hooks.json`
-- [ ] Install convergence works for `.agents/skills/` across Amp, Codex, Cursor
-- [ ] User hooks preserved in shared config files
-- [ ] `loaf install --upgrade` replaces only Loaf-owned entries
+- [x] `loaf install --to codex` installs hooks to `$CODEX_HOME/hooks.json`
+- [x] Install convergence works for `.agents/skills/` across Amp, Codex, Cursor
+- [x] User hooks preserved in shared config files
+- [x] `loaf install --upgrade` replaces only Loaf-owned entries
