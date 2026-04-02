@@ -341,66 +341,6 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
   // If no session found by branch name, check for renamed branch via spec linkage
   // This handles: git branch -m old-name new-name
   // The spec's and session's branch fields will still have the old name.
-  if (candidates.length === 0) {
-    // Get list of current git branches
-    let gitBranches: string[] = [];
-    try {
-      const output = execSync("git for-each-ref --format='%(refname:short)' refs/heads/", { encoding: "utf-8" });
-      gitBranches = output.split("\n").map(b => b.trim()).filter(b => b.length > 0);
-    } catch {
-      // Not a git repo or error executing git, skip rename detection
-    }
-
-    if (gitBranches.length > 0) {
-      // Look for specs with a session: field
-      const specsDir = join(agentsDir, "specs");
-      if (existsSync(specsDir)) {
-        const specFiles = readdirSync(specsDir).filter(f => f.endsWith(".md"));
-        
-        for (const specFile of specFiles) {
-          try {
-            const specPath = join(specsDir, specFile);
-            const specContent = readFileSync(specPath, "utf-8");
-            const specParsed = matter(specContent);
-            const specFm = specParsed.data as SpecFrontmatterWithBranch;
-            
-            // If spec has a session: field pointing to a session file
-            if (specFm.session && specFm.branch) {
-              const sessionPath = join(agentsDir, "sessions", specFm.session);
-              if (existsSync(sessionPath)) {
-                const session = readSessionFile(sessionPath);
-                
-                // If this session is non-archived AND its original branch NO LONGER EXISTS in git,
-                // we assume the branch was renamed to our current branch.
-                if (session && session.data.status !== "archived" && session.data.branch) {
-                  if (!gitBranches.includes(session.data.branch)) {
-                    // Rename detected! Update session's branch field to match current branch
-                    session.data.branch = branch;
-                    const newSessionContent = matter.stringify(session.content, session.data as unknown as Record<string, unknown>);
-                    writeFileSync(sessionPath, newSessionContent, "utf-8");
-                    
-                    // Also update spec's branch field
-                    if (specFm.branch !== branch) {
-                      specFm.branch = branch;
-                      const newSpecContent = matter.stringify(specParsed.content, specFm as Record<string, unknown>);
-                      writeFileSync(specPath, newSpecContent, "utf-8");
-                    }
-                    
-                    candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
-                    break; // Found it
-                  }
-                }
-              }
-            }
-          } catch {
-            // Continue to next spec
-            continue;
-          }
-        }
-      }
-    }
-  }
-  
   if (candidates.length === 0) return null;
   
   // Prioritize: active > paused/blocked/complete > others

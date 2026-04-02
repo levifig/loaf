@@ -8144,50 +8144,6 @@ function findActiveSessionForBranch(agentsDir, branch) {
       candidates.push({ filePath, data: session.data, content: session.content });
     }
   }
-  if (candidates.length === 0) {
-    let gitBranches = [];
-    try {
-      const output = execSync3("git for-each-ref --format='%(refname:short)' refs/heads/", { encoding: "utf-8" });
-      gitBranches = output.split("\n").map((b) => b.trim()).filter((b) => b.length > 0);
-    } catch {
-    }
-    if (gitBranches.length > 0) {
-      const specsDir = join36(agentsDir, "specs");
-      if (existsSync32(specsDir)) {
-        const specFiles = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
-        for (const specFile of specFiles) {
-          try {
-            const specPath = join36(specsDir, specFile);
-            const specContent = readFileSync28(specPath, "utf-8");
-            const specParsed = matter13(specContent);
-            const specFm = specParsed.data;
-            if (specFm.session && specFm.branch) {
-              const sessionPath = join36(agentsDir, "sessions", specFm.session);
-              if (existsSync32(sessionPath)) {
-                const session = readSessionFile(sessionPath);
-                if (session && session.data.status !== "archived" && session.data.branch) {
-                  if (!gitBranches.includes(session.data.branch)) {
-                    session.data.branch = branch;
-                    const newSessionContent = matter13.stringify(session.content, session.data);
-                    writeFileSync19(sessionPath, newSessionContent, "utf-8");
-                    if (specFm.branch !== branch) {
-                      specFm.branch = branch;
-                      const newSpecContent = matter13.stringify(specParsed.content, specFm);
-                      writeFileSync19(specPath, newSpecContent, "utf-8");
-                    }
-                    candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
-                    break;
-                  }
-                }
-              }
-            }
-          } catch {
-            continue;
-          }
-        }
-      }
-    }
-  }
   if (candidates.length === 0) return null;
   const statusPriority = {
     active: 1,
