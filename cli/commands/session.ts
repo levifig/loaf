@@ -85,6 +85,7 @@ interface SpecFrontmatterWithBranch {
   title: string;
   branch?: string;
   status?: string;
+  session?: string;
   [key: string]: unknown;
 }
 
@@ -243,7 +244,7 @@ function getLastCommitSha(): string {
 function findSpecForBranch(
   agentsDir: string,
   branch: string
-): { id: string; title: string } | null {
+): { id: string; title: string; sessionFile?: string } | null {
   const specsDir = join(agentsDir, "specs");
   if (!existsSync(specsDir)) return null;
 
@@ -256,7 +257,11 @@ function findSpecForBranch(
       const fm = parsed.data as SpecFrontmatterWithBranch;
 
       if (fm.branch === branch) {
-        return { id: fm.id || file.replace(/\.md$/, ""), title: fm.title || "Untitled" };
+        return { 
+          id: fm.id || file.replace(/\.md$/, ""), 
+          title: fm.title || "Untitled",
+          sessionFile: fm.session
+        };
       }
     } catch {
       continue;
@@ -289,6 +294,28 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
     const session = readSessionFile(filePath);
     if (session && session.data.branch === branch && session.data.status !== "archived") {
       candidates.push({ filePath, data: session.data, content: session.content });
+    }
+  }
+  
+  // If no session found by branch name, check for renamed branch via spec linkage
+  if (candidates.length === 0) {
+    const specInfo = findSpecForBranch(agentsDir, branch);
+    if (specInfo && specInfo.sessionFile) {
+      // Spec references a session file - check if it exists and is non-archived
+      const sessionPath = join(agentsDir, "sessions", specInfo.sessionFile);
+      if (existsSync(sessionPath)) {
+        const session = readSessionFile(sessionPath);
+        if (session && session.data.status !== "archived") {
+          // Update the session's branch field to match current branch (rename detection)
+          if (session.data.branch !== branch) {
+            session.data.branch = branch;
+            // Write updated session
+            const newContent = matter.stringify(session.content, session.data as unknown as Record<string, unknown>);
+            writeFileSync(sessionPath, newContent, "utf-8");
+          }
+          candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+        }
+      }
     }
   }
   
@@ -593,6 +620,54 @@ function extractDecideEntries(content: string): string[] {
   }
 
   return decideEntries;
+}
+
+/** Persist decisions to spec changelog */
+function persistDecisionsToSpec(
+  agentsDir: string,
+  specId: string,
+  decideEntries: string[],
+  sessionBranch: string
+): { success: boolean; message: string } {
+  // Find spec file
+  const specsDir = join(agentsDir, "specs");
+  if (!existsSync(specsDir)) {
+    return { success: false, message: "No specs directory found" };
+  }
+
+  // Look for spec file with matching ID
+  const specFiles = readdirSync(specsDir).filter((f) => f.endsWith(".md"));
+  const specFile = specFiles.find((f) => f.includes(specId));
+
+  if (!specFile) {
+    return { success: false, message: `Spec ${specId} not found` };
+  }
+
+  const specPath = join(specsDir, specFile);
+  const specContent = readFileSync(specPath, "utf-8");
+
+  // Find or create Changelog section
+  const changelogMatch = specContent.match(/\n## Changelog\n/);
+  const dateStr = new Date().toISOString().split("T")[0];
+  const entryHeader = `- ${dateStr} — Session ${sessionBranch} archived: ${decideEntries.length} decision(s) extracted`;
+  
+  let updatedContent: string;
+  
+  if (changelogMatch) {
+    // Insert after "## Changelog\n"
+    const insertPos = changelogMatch.index! + changelogMatch[0].length;
+    const decisionsList = decideEntries.map((e) => `  ${e}`).join("\n");
+    const entry = `${entryHeader}\n${decisionsList}\n\n`;
+    updatedContent = specContent.slice(0, insertPos) + entry + specContent.slice(insertPos);
+  } else {
+    // Append Changelog section at end
+    const decisionsList = decideEntries.map((e) => `  ${e}`).join("\n");
+    const entry = `\n## Changelog\n\n${entryHeader}\n${decisionsList}\n`;
+    updatedContent = specContent + entry;
+  }
+
+  writeFileSync(specPath, updatedContent, "utf-8");
+  return { success: true, message: `Appended to ${specFile}` };
 }
 
 /** Count tasks by status from session content */
@@ -1016,6 +1091,22 @@ export function registerSessionCommand(program: Command): void {
           console.log(`    ${gray(`... and ${decideEntries.length - 10} more`)}`);
         }
         console.log();
+
+        // Persist to spec changelog if linked
+        if (session.data.spec && decideEntries.length > 0) {
+          const result = persistDecisionsToSpec(
+            agentsDir,
+            session.data.spec,
+            decideEntries,
+            session.data.branch || branch
+          );
+          if (result.success) {
+            console.log(`  ${green("✓")} ${result.message}`);
+          } else {
+            console.log(`  ${yellow("⚠")} Could not persist to spec: ${result.message}`);
+          }
+          console.log();
+        }
       }
 
       // Update frontmatter

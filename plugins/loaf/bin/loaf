@@ -2156,8 +2156,21 @@ function installCursor(distDir, configDir, upgrade = false) {
   }
   const hooksSrc = join16(distDir, "hooks.json");
   if (existsSync12(hooksSrc)) {
-    mkdirSync10(configDir, { recursive: true });
-    cpSync6(hooksSrc, join16(configDir, "hooks.json"));
+    const hooksPath = join16(configDir, "hooks.json");
+    const existing = loadHooksJson(hooksPath);
+    const loafHooks = loadHooksJson(hooksSrc);
+    const merged = { version: 1, hooks: {} };
+    const allHookTypes = /* @__PURE__ */ new Set([
+      ...Object.keys(existing.hooks || {}),
+      ...Object.keys(loafHooks.hooks || {})
+    ]);
+    for (const hookType of allHookTypes) {
+      const existingHooks = existing.hooks?.[hookType] || [];
+      const loafHooksList = loafHooks.hooks?.[hookType] || [];
+      const userHooks = existingHooks.filter((h) => !isLoafHook(h));
+      merged.hooks[hookType] = [...userHooks, ...loafHooksList];
+    }
+    saveHooksJson(hooksPath, merged);
   }
   const hooksDir = join16(distDir, "hooks");
   if (existsSync12(hooksDir)) {
@@ -8064,7 +8077,11 @@ function findSpecForBranch(agentsDir, branch) {
       const parsed = matter13(content);
       const fm = parsed.data;
       if (fm.branch === branch) {
-        return { id: fm.id || file.replace(/\.md$/, ""), title: fm.title || "Untitled" };
+        return {
+          id: fm.id || file.replace(/\.md$/, ""),
+          title: fm.title || "Untitled",
+          sessionFile: fm.session
+        };
       }
     } catch {
       continue;
@@ -8086,6 +8103,23 @@ function findActiveSessionForBranch(agentsDir, branch) {
     const session = readSessionFile(filePath);
     if (session && session.data.branch === branch && session.data.status !== "archived") {
       candidates.push({ filePath, data: session.data, content: session.content });
+    }
+  }
+  if (candidates.length === 0) {
+    const specInfo = findSpecForBranch(agentsDir, branch);
+    if (specInfo && specInfo.sessionFile) {
+      const sessionPath = join36(agentsDir, "sessions", specInfo.sessionFile);
+      if (existsSync32(sessionPath)) {
+        const session = readSessionFile(sessionPath);
+        if (session && session.data.status !== "archived") {
+          if (session.data.branch !== branch) {
+            session.data.branch = branch;
+            const newContent = matter13.stringify(session.content, session.data);
+            writeFileSync19(sessionPath, newContent, "utf-8");
+          }
+          candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+        }
+      }
     }
   }
   if (candidates.length === 0) return null;
@@ -8329,6 +8363,43 @@ function extractDecideEntries(content) {
     }
   }
   return decideEntries;
+}
+function persistDecisionsToSpec(agentsDir, specId, decideEntries, sessionBranch) {
+  const specsDir = join36(agentsDir, "specs");
+  if (!existsSync32(specsDir)) {
+    return { success: false, message: "No specs directory found" };
+  }
+  const specFiles = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
+  const specFile = specFiles.find((f) => f.includes(specId));
+  if (!specFile) {
+    return { success: false, message: `Spec ${specId} not found` };
+  }
+  const specPath = join36(specsDir, specFile);
+  const specContent = readFileSync28(specPath, "utf-8");
+  const changelogMatch = specContent.match(/\n## Changelog\n/);
+  const dateStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const entryHeader = `- ${dateStr} \u2014 Session ${sessionBranch} archived: ${decideEntries.length} decision(s) extracted`;
+  let updatedContent;
+  if (changelogMatch) {
+    const insertPos = changelogMatch.index + changelogMatch[0].length;
+    const decisionsList = decideEntries.map((e) => `  ${e}`).join("\n");
+    const entry = `${entryHeader}
+${decisionsList}
+
+`;
+    updatedContent = specContent.slice(0, insertPos) + entry + specContent.slice(insertPos);
+  } else {
+    const decisionsList = decideEntries.map((e) => `  ${e}`).join("\n");
+    const entry = `
+## Changelog
+
+${entryHeader}
+${decisionsList}
+`;
+    updatedContent = specContent + entry;
+  }
+  writeFileSync19(specPath, updatedContent, "utf-8");
+  return { success: true, message: `Appended to ${specFile}` };
 }
 function countTasksInSession(content) {
   const completed = (content.match(/- \[x\]/gi) || []).length;
@@ -8634,6 +8705,20 @@ function registerSessionCommand(program2) {
         console.log(`    ${gray13(`... and ${decideEntries.length - 10} more`)}`);
       }
       console.log();
+      if (session2.data.spec && decideEntries.length > 0) {
+        const result = persistDecisionsToSpec(
+          agentsDir,
+          session2.data.spec,
+          decideEntries,
+          session2.data.branch || branch
+        );
+        if (result.success) {
+          console.log(`  ${green11("\u2713")} ${result.message}`);
+        } else {
+          console.log(`  ${yellow13("\u26A0")} Could not persist to spec: ${result.message}`);
+        }
+        console.log();
+      }
     }
     const now = getTimestamp();
     session2.data.status = "archived";

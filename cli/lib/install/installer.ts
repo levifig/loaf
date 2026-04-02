@@ -76,7 +76,7 @@ function writeMarker(configDir: string): void {
 interface CodexHooksJson {
   version?: number;
   hooks?: {
-    PreToolUse?: Array<Record<string, unknown>>;
+    [key: string]: Array<Record<string, unknown>>;
   };
 }
 
@@ -141,10 +141,33 @@ export function installCursor(distDir: string, configDir: string, upgrade: boole
     syncDir(agentsSrc, join(configDir, "agents"));
   }
 
+  // Hooks → merge with existing (preserve user hooks, update Loaf hooks)
   const hooksSrc = join(distDir, "hooks.json");
   if (existsSync(hooksSrc)) {
-    mkdirSync(configDir, { recursive: true });
-    cpSync(hooksSrc, join(configDir, "hooks.json"));
+    const hooksPath = join(configDir, "hooks.json");
+    const existing = loadHooksJson(hooksPath);
+    const loafHooks = loadHooksJson(hooksSrc);
+
+    // Merge: keep user hooks, replace Loaf hooks (or add if new)
+    const merged: CodexHooksJson = { version: 1, hooks: {} };
+    
+    // Process each hook type (PreToolUse, PostToolUse, etc.)
+    const allHookTypes = new Set([
+      ...Object.keys(existing.hooks || {}),
+      ...Object.keys(loafHooks.hooks || {})
+    ]);
+    
+    for (const hookType of allHookTypes) {
+      const existingHooks = (existing.hooks?.[hookType] || []) as Record<string, unknown>[];
+      const loafHooksList = (loafHooks.hooks?.[hookType] || []) as Record<string, unknown>[];
+      
+      // Filter out existing Loaf hooks
+      const userHooks = existingHooks.filter((h) => !isLoafHook(h));
+      
+      merged.hooks![hookType] = [...userHooks, ...loafHooksList];
+    }
+
+    saveHooksJson(hooksPath, merged);
   }
 
   const hooksDir = join(distDir, "hooks");
