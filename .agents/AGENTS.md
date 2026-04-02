@@ -312,18 +312,38 @@ Users shouldn't invoke `/python-development` directly.
 
 ### Session Journal Vocabulary
 
-Session journals in `.agents/sessions/` capture work state for continuity:
+Session journals in `.agents/sessions/` use a **compact inline format** — append-only structured logs. Think "conventional commits meets bullet journal."
 
 | Term | Meaning |
 |------|---------|
-| **Session** | A markdown file tracking work on a task/spec with frontmatter state |
+| **Session** | A markdown file with compact inline journal entries |
 | **Session File** | Named `YYYYMMDD-HHMMSS-description.md` in `.agents/sessions/` |
-| **Frontmatter** | YAML header with `status`, `task`, `spec`, `started_at`, etc. |
-| **Current State** | Section documenting what is happening right now |
-| **Next Steps** | Section documenting what should happen next |
-| **Handoff Context** | Information needed to resume work after context loss |
+| **Frontmatter** | YAML header with `spec`, `branch`, `status`, `created`, `last_entry` |
+| **Journal Entry** | `- YYYY-MM-DD HH:MM type(scope): description` |
+| **Entry Type** | `resume`, `pause`, `commit`, `decide`, `discover`, `block`, `unblock`, `spark`, `todo`, `conclude`, etc. |
+| **PAUSE Header** | `--- PAUSE YYYY-MM-DD HH:MM ---` separator between sessions |
+| **Burst** | Entries grouped without blank lines (within 5 min or same state) |
 | **Archive** | Completed sessions moved to `.agents/sessions/archive/` |
-| **Transcript** | Copy of tool output captured during session |
+
+**Session Status Values:** `active`, `paused`, `blocked`, `complete`, `archived`
+
+**Entry Format:**
+```markdown
+- YYYY-MM-DD HH:MM resume(branch-name): from commit abc1234
+- YYYY-MM-DD HH:MM decide(scope): description
+
+- YYYY-MM-DD HH:MM block(scope): what is blocked
+
+- YYYY-MM-DD HH:MM unblock(scope): how resolved
+- YYYY-MM-DD HH:MM commit(abc1234): "message"
+
+--- PAUSE YYYY-MM-DD HH:MM ---
+```
+
+**Blank line rules:**
+- Insert blank line when gap ≥ 5 minutes
+- Insert blank line on state transition (block/unblock)
+- `--- PAUSE ---` always starts new section
 
 **Session Status Values:** `active`, `paused`, `blocked`, `complete`, `archived`
 
@@ -447,12 +467,17 @@ Configure target-specific behavior and sidecars.
 <!-- Maintained by loaf install/upgrade — do not edit manually -->
 ## Loaf Framework
 
+**Session Journal Format:** Compact inline journal — `- YYYY-MM-DD HH:MM type(scope): description`. Blank lines separate bursts. `--- PAUSE YYYY-MM-DD HH:MM ---` separates sessions.
+
 **Session Journal Entry Types:**
 - `decide(scope)`: Key decisions with rationale
 - `discover(scope)`: Something learned
 - `block(scope)` / `unblock(scope)`: Blockers and resolutions
 - `spark(scope)`: Ideas to promote via `/idea`
 - `todo(scope)`: Action items to promote to tasks
+- `resume(scope)`: Session started/resumed (auto)
+- `pause`: Session ended (auto)
+- `commit(SHA)`: Code committed (auto)
 
 **CLI Commands:**
 - `loaf session start/end/log/archive` — Session management
