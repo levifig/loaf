@@ -10,7 +10,7 @@ session:
   created: "YYYY-MM-DDTHH:MM:SSZ"
   last_updated: "YYYY-MM-DDTHH:MM:SSZ"
   archived_at: "YYYY-MM-DDTHH:MM:SSZ"   # Required when archived
-  archived_by: "agent-pm"                # Required when archived
+  archived_by: "warden"                   # Required when archived
   linear_issue: "PLT-XXX"               # If applicable
   linear_url: "https://linear.app/{{your-workspace}}/issue/PLT-XXX"
   branch: "username/plt-xxx-feature"

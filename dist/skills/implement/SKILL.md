@@ -180,7 +180,7 @@ After creating session AND plan files:
 5. After each agent completes: update session, spawn next
 
 ### AFTER (Completion)
-1. Code review pass (spawn `pr-review-toolkit:code-reviewer`)
+1. Code review pass (spawn `reviewer` agent)
 2. Spawn implementer (with foundations + language skill) for final testing
 3. **Close out spec artifacts on the branch** (included in the squash merge):
    - `loaf task update TASK-XXX --status done` (for each task)

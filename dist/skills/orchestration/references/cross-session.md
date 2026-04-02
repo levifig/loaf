@@ -205,7 +205,7 @@ If imported decisions conflict with current approach:
 ## Example Session Log Entry
 
 ```markdown
-### 2025-01-23 14:30 - PM
+### 2025-01-23 14:30 - warden
 Referenced decisions from auth-jwt session (PLT-123):
 - Token rotation strategy (15-min window)
 - Refresh token storage (HttpOnly cookies)

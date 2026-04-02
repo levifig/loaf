@@ -1031,10 +1031,13 @@ function runHook(
     // Handle subprocess errors
     if (error.status !== undefined) {
       // Subprocess exited with non-zero code
+      // Ensure stderr/stdout are strings (handles edge cases where they might be Buffers)
+      const stderrStr = error.stderr ? String(error.stderr) : '';
+      const stdoutStr = error.stdout ? String(error.stdout) : '';
       return {
         exitCode: error.status,
-        stdout: error.stdout || '',
-        stderr: error.stderr || error.message,
+        stdout: stdoutStr,
+        stderr: stderrStr || error.message,
       };
     }
     
@@ -7637,53 +7640,10 @@ async function validatePush(context) {
     }
   } catch {
   }
-  if (hasBuildScript) {
-    try {
-      execSync2("npm run build --silent 2>/dev/null", {
-        stdio: "ignore",
-        timeout: 6e4
-      });
-    } catch {
-      errors.push("Build failed (npm run build)");
-    }
-  } else if (existsSync31("Makefile")) {
-    try {
-      const makefile = readFileSync27("Makefile", "utf-8");
-      if (makefile.includes("build:") || makefile.match(/^build:/m)) {
-        try {
-          execSync2("make build 2>/dev/null", {
-            stdio: "ignore",
-            timeout: 6e4
-          });
-        } catch {
-          errors.push("Build failed (make build)");
-        }
-      }
-    } catch {
-    }
-  } else if (existsSync31("Cargo.toml")) {
-    try {
-      execSync2("cargo build 2>/dev/null", {
-        stdio: "ignore",
-        timeout: 12e4
-      });
-    } catch {
-      errors.push("Build failed (cargo build)");
-    }
-  } else if (existsSync31("go.mod")) {
-    try {
-      execSync2("go build ./... 2>/dev/null", {
-        stdio: "ignore",
-        timeout: 6e4
-      });
-    } catch {
-      errors.push("Build failed (go build ./...)");
-    }
-  }
   if (errors.length > 0) {
     result.passed = false;
     result.blocked = true;
-    result.errors = errors;
+    result.errors.push(...errors);
   }
   return result;
 }
@@ -7940,7 +7900,7 @@ import {
   openSync,
   closeSync
 } from "fs";
-import { join as join36 } from "path";
+import { join as join36, basename as basename7 } from "path";
 import matter13 from "gray-matter";
 var bold12 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green11 = (s) => `\x1B[32m${s}\x1B[0m`;
@@ -7948,10 +7908,36 @@ var red10 = (s) => `\x1B[31m${s}\x1B[0m`;
 var yellow13 = (s) => `\x1B[33m${s}\x1B[0m`;
 var cyan9 = (s) => `\x1B[36m${s}\x1B[0m`;
 var gray13 = (s) => `\x1B[90m${s}\x1B[0m`;
+var LOCK_STALENESS_THRESHOLD = 3e4;
+function isLockStale(lockPath) {
+  try {
+    const content = readFileSync28(lockPath, "utf-8");
+    const data = JSON.parse(content);
+    const age = Date.now() - data.timestamp;
+    return age > LOCK_STALENESS_THRESHOLD;
+  } catch {
+    return true;
+  }
+}
+function forceReleaseLock(lockPath) {
+  try {
+    unlinkSync3(lockPath);
+    console.log(`  Released stale lock: ${lockPath}`);
+  } catch {
+  }
+}
 async function acquireLock(lockPath, maxRetries = 50, retryDelay = 100) {
   for (let i = 0; i < maxRetries; i++) {
     try {
+      if (existsSync32(lockPath) && isLockStale(lockPath)) {
+        forceReleaseLock(lockPath);
+      }
       const fd = openSync(lockPath, "wx");
+      const lockContent = {
+        pid: process.pid,
+        timestamp: Date.now()
+      };
+      writeFileSync19(fd, JSON.stringify(lockContent), "utf-8");
       closeSync(fd);
       return;
     } catch {
@@ -8577,7 +8563,7 @@ function registerSessionCommand(program2) {
       session2.data
     );
     writeFileSync19(sessionFilePath, newContent, "utf-8");
-    const fileName = sessionFilePath.split("/").pop();
+    const fileName = basename7(sessionFilePath);
     const archivePath = join36(archiveDir, fileName);
     try {
       renameSync3(sessionFilePath, archivePath);
