@@ -4,7 +4,7 @@ description: >-
   Orchestrates releases: pre-flight checks, version bump via `loaf release`,
   squash merge, and post-merge cleanup. Use when the user says "release this,"
   "merge this PR," "ready to merge," or "ship it." Produces version bumps,
-  changelog updates, and me...
+  changelog updates, and...
 user-invocable: true
 argument-hint: '[PR number or URL]'
 version: 2.0.0-dev.8

@@ -202,20 +202,23 @@ export function installCodex(distDir: string, configDir: string, upgrade: boolea
     const loafHooks = loadHooksJson(loafHooksPath);
 
     // Merge: keep user hooks, replace Loaf hooks (or add if new)
-    const existingPreTool = existing.hooks?.PreToolUse || [];
-    const loafPreTool = loafHooks.hooks?.PreToolUse || [];
-
-    // Filter out any existing Loaf hooks
-    const userHooks = upgrade
-      ? existingPreTool.filter((h) => !isLoafHook(h))
-      : existingPreTool.filter((h) => !isLoafHook(h));
-
-    const merged = {
-      version: 1,
-      hooks: {
-        PreToolUse: [...userHooks, ...loafPreTool],
-      },
-    };
+    const merged: CodexHooksJson = { version: 1, hooks: {} };
+    
+    // Process each hook type (PreToolUse, PostToolUse, etc.)
+    const allHookTypes = new Set([
+      ...Object.keys(existing.hooks || {}),
+      ...Object.keys(loafHooks.hooks || {})
+    ]);
+    
+    for (const hookType of allHookTypes) {
+      const existingHooks = (existing.hooks?.[hookType] || []) as Record<string, unknown>[];
+      const loafHooksList = (loafHooks.hooks?.[hookType] || []) as Record<string, unknown>[];
+      
+      // Filter out existing Loaf hooks
+      const userHooks = existingHooks.filter((h) => !isLoafHook(h));
+      
+      merged.hooks![hookType] = [...userHooks, ...loafHooksList];
+    }
 
     saveHooksJson(hooksPath, merged);
   }

@@ -4,7 +4,7 @@ description: >-
   Reviews and cleans up agent artifacts in .agents/ — sessions, specs, plans,
   drafts, councils, and reports. Use when the user asks "clean up," "review
   sessions," or "tidy up .agents/." Provides hygiene recommendations, archives
-  completed work, and ens...
+  completed work, and ...
 user-invocable: true
 argument-hint: '[sessions|specs|plans|drafts]'
 version: 2.0.0-dev.8

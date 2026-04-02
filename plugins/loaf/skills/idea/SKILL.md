@@ -4,7 +4,7 @@ description: >-
   Captures ideas into structured nuggets for later evaluation. Use when the user
   says "I have an idea" or "note this down." Also activate when a specific
   actionable concept crystallizes during conversation. Without args, scans
-  brainstorm documents for ...
+  brainstorm documents f...
 user-invocable: true
 argument-hint: '[idea description]'
 version: 2.0.0-dev.8

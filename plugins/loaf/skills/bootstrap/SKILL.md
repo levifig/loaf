@@ -4,7 +4,7 @@ description: >-
   Bootstraps new or existing projects through intelligent state detection,
   structured interviews, and document population. Use when the user asks "how do
   I start a new project?", "set up Loaf," or "bootstrap my project." Produces
-  populated project docu...
+  populated project d...
 user-invocable: true
 argument-hint: '[brief or path]'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion'

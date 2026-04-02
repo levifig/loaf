@@ -4,7 +4,7 @@ description: >-
   Covers ADRs, API documentation, changelogs, documentation review, and Mermaid
   diagrams. Use when writing ADRs, documenting APIs, maintaining changelogs,
   reviewing documentation quality, or creating architecture diagrams. Not for
-  inline code comments ...
+  inline code commen...
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 version: 2.0.0-dev.8

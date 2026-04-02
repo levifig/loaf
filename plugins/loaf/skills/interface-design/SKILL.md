@@ -4,7 +4,7 @@ description: >-
   Covers UI/UX design principles, accessibility (WCAG 2.1), design systems, and
   responsive patterns. Use when making design decisions, evaluating layouts, or
   ensuring accessibility compliance. Not for frontend code (use
-  typescript-development) or API d...
+  typescript-development) or AP...
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Glob, Grep'
 version: 2.0.0-dev.8

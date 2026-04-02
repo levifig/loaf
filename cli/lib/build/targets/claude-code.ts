@@ -229,9 +229,9 @@ function buildUnifiedPlugin(
       const extensions = loadSkillExtensions(contentSkillDir);
       const merged = { ...base, ...extensions } as SkillFrontmatter;
       
-      // Truncate description at 250 chars for Claude Code
+      // Truncate description at 250 chars for Claude Code (accounting for ellipsis)
       if (merged.description && merged.description.length > 250) {
-        merged.description = merged.description.substring(0, 250) + "...";
+        merged.description = merged.description.substring(0, 247) + "...";
       }
       
       return merged;

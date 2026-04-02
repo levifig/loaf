@@ -437,39 +437,49 @@ async function workflowPrePr(context: HookContext): Promise<CheckResult> {
   }
 
   // Check 2: PR title and body requirements
-  // Must have --title flag with non-empty value
-  const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
-  if (!titleMatch) {
-    result.passed = false;
-    result.blocked = true;
-    result.errors.push("Missing --title flag - PR title is required");
-    result.errors.push("Example: gh pr create --title \"feat: add new feature\"");
-  } else {
-    const title = titleMatch[1].trim();
-    
-    // Title should follow conventional format: type(scope): description
-    // or at minimum be descriptive (not just "fix" or "update")
-    if (title.length < 10) {
+  // Allow --fill or --body-file as alternatives to --title/--body
+  // Interactive mode (no flags at all) is also allowed
+  const hasFillFlag = /--fill/.test(command);
+  const hasBodyFileFlag = /--body-file/.test(command);
+  const hasAnyExplicitFlag = /--(title|body|fill|body-file)/.test(command);
+  
+  // If using --fill or --body-file, skip strict checks
+  // If NO flags at all, also skip (interactive mode)
+  // But if ANY explicit flag is present, require complete --title/--body
+  if (hasAnyExplicitFlag && !hasFillFlag && !hasBodyFileFlag) {
+    // Must have --title flag with non-empty value
+    const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
+    if (!titleMatch) {
       result.passed = false;
       result.blocked = true;
-      result.errors.push(`PR title is too short (${title.length} chars) - minimum 10 characters`);
+      result.errors.push("Missing --title flag - PR title is required");
+      result.errors.push("Example: gh pr create --title \"feat: add new feature\"");
+    } else {
+      const title = titleMatch[1].trim();
+      
+      // Title should follow conventional format: type(scope): description
+      // or at minimum be descriptive (not just "fix" or "update")
+      if (title.length < 10) {
+        result.passed = false;
+        result.blocked = true;
+        result.errors.push(`PR title is too short (${title.length} chars) - minimum 10 characters`);
+      }
+      
+      // Check for conventional commit format (optional but recommended)
+      const conventionalPattern = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .+/i;
+      if (!conventionalPattern.test(title)) {
+        result.warnings.push("PR title doesn't follow Conventional Commits format (e.g., 'feat: add feature')");
+      }
     }
     
-    // Check for conventional commit format (optional but recommended)
-    const conventionalPattern = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .+/i;
-    if (!conventionalPattern.test(title)) {
-      result.warnings.push("PR title doesn't follow Conventional Commits format (e.g., 'feat: add feature')");
+    // Must have --body flag (can be empty but flag should be present)
+    const hasBodyFlag = /--body/.test(command);
+    if (!hasBodyFlag) {
+      result.passed = false;
+      result.blocked = true;
+      result.errors.push("Missing --body flag - PR description is required");
+      result.errors.push("Example: gh pr create --title \"...\" --body \"Description of changes\"");
     }
-  }
-  
-  // Must have --body flag (can be empty but flag should be present)
-  // This ensures the PR has a description field
-  const hasBodyFlag = /--body/.test(command);
-  if (!hasBodyFlag) {
-    result.passed = false;
-    result.blocked = true;
-    result.errors.push("Missing --body flag - PR description is required");
-    result.errors.push("Example: gh pr create --title \"...\" --body \"Description of changes\"");
   }
 
   return result;

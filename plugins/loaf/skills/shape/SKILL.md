@@ -4,7 +4,7 @@ description: >-
   Shapes ideas into implementable specs with scope boundaries and test
   conditions. Use when the user asks "shape this" or "write a spec," or when an
   idea has accumulated enough constraints to bound. Produces specs with
-  acceptance criteria. Not for brai...
+  acceptance criteria. Not for b...
 user-invocable: true
 argument-hint: '[idea or requirement]'
 version: 2.0.0-dev.8

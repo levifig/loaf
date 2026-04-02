@@ -626,7 +626,7 @@ function buildUnifiedPlugin(config, rootDir, srcDir, pluginsDir, targetsConfig) 
       const extensions = loadSkillExtensions(contentSkillDir);
       const merged = { ...base, ...extensions };
       if (merged.description && merged.description.length > 250) {
-        merged.description = merged.description.substring(0, 250) + "...";
+        merged.description = merged.description.substring(0, 247) + "...";
       }
       return merged;
     }
@@ -2195,15 +2195,17 @@ function installCodex(distDir, configDir, upgrade = false) {
     const hooksPath = join16(codexHome, "hooks.json");
     const existing = loadHooksJson(hooksPath);
     const loafHooks = loadHooksJson(loafHooksPath);
-    const existingPreTool = existing.hooks?.PreToolUse || [];
-    const loafPreTool = loafHooks.hooks?.PreToolUse || [];
-    const userHooks = upgrade ? existingPreTool.filter((h) => !isLoafHook(h)) : existingPreTool.filter((h) => !isLoafHook(h));
-    const merged = {
-      version: 1,
-      hooks: {
-        PreToolUse: [...userHooks, ...loafPreTool]
-      }
-    };
+    const merged = { version: 1, hooks: {} };
+    const allHookTypes = /* @__PURE__ */ new Set([
+      ...Object.keys(existing.hooks || {}),
+      ...Object.keys(loafHooks.hooks || {})
+    ]);
+    for (const hookType of allHookTypes) {
+      const existingHooks = existing.hooks?.[hookType] || [];
+      const loafHooksList = loafHooks.hooks?.[hookType] || [];
+      const userHooks = existingHooks.filter((h) => !isLoafHook(h));
+      merged.hooks[hookType] = [...userHooks, ...loafHooksList];
+    }
     saveHooksJson(hooksPath, merged);
   }
   writeMarker(configDir);
@@ -7717,30 +7719,35 @@ async function workflowPrePr(context) {
     result.blocked = true;
     result.errors.push("CHANGELOG.md not found");
   }
-  const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
-  if (!titleMatch) {
-    result.passed = false;
-    result.blocked = true;
-    result.errors.push("Missing --title flag - PR title is required");
-    result.errors.push('Example: gh pr create --title "feat: add new feature"');
-  } else {
-    const title = titleMatch[1].trim();
-    if (title.length < 10) {
+  const hasFillFlag = /--fill/.test(command);
+  const hasBodyFileFlag = /--body-file/.test(command);
+  const hasAnyExplicitFlag = /--(title|body|fill|body-file)/.test(command);
+  if (hasAnyExplicitFlag && !hasFillFlag && !hasBodyFileFlag) {
+    const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
+    if (!titleMatch) {
       result.passed = false;
       result.blocked = true;
-      result.errors.push(`PR title is too short (${title.length} chars) - minimum 10 characters`);
+      result.errors.push("Missing --title flag - PR title is required");
+      result.errors.push('Example: gh pr create --title "feat: add new feature"');
+    } else {
+      const title = titleMatch[1].trim();
+      if (title.length < 10) {
+        result.passed = false;
+        result.blocked = true;
+        result.errors.push(`PR title is too short (${title.length} chars) - minimum 10 characters`);
+      }
+      const conventionalPattern = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .+/i;
+      if (!conventionalPattern.test(title)) {
+        result.warnings.push("PR title doesn't follow Conventional Commits format (e.g., 'feat: add feature')");
+      }
     }
-    const conventionalPattern = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .+/i;
-    if (!conventionalPattern.test(title)) {
-      result.warnings.push("PR title doesn't follow Conventional Commits format (e.g., 'feat: add feature')");
+    const hasBodyFlag = /--body/.test(command);
+    if (!hasBodyFlag) {
+      result.passed = false;
+      result.blocked = true;
+      result.errors.push("Missing --body flag - PR description is required");
+      result.errors.push('Example: gh pr create --title "..." --body "Description of changes"');
     }
-  }
-  const hasBodyFlag = /--body/.test(command);
-  if (!hasBodyFlag) {
-    result.passed = false;
-    result.blocked = true;
-    result.errors.push("Missing --body flag - PR description is required");
-    result.errors.push('Example: gh pr create --title "..." --body "Description of changes"');
   }
   return result;
 }

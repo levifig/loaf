@@ -4,7 +4,7 @@ description: >-
   Orchestrates implementation sessions through agent delegation and batch
   execution. Use when the user asks "implement this" or "start working on
   TASK-XXX." Produces session files, agent spawn plans, and progress tracking.
-  Not for shaping (use shape), ...
+  Not for shaping (use shape...
 user-invocable: true
 argument-hint: '[TASK-XXX | SPEC-XXX | TASK-XXX..YYY | TASK-XXX,YYY | description]'
 version: 2.0.0-dev.8

@@ -4,7 +4,7 @@ description: >-
   Creates Architecture Decision Records through structured evaluation. Use when
   making technical decisions or when the user asks "should we use X or Y?"
   Produces ADRs and updates ARCHITECTURE.md with technical constraints. Not for
-  strategic direction (...
+  strategic directio...
 user-invocable: true
 argument-hint: '[topic or decision]'
 version: 2.0.0-dev.8

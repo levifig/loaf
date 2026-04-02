@@ -4,7 +4,7 @@ description: >-
   Coordinates multi-agent work: agent delegation, session management, Linear
   integration, and council workflows. Use when managing sessions, delegating to
   agents, or coordinating cross-cutting work across multiple agents. Not for
-  single-task implementa...
+  single-task impleme...
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Glob, Grep, TodoWrite, TodoRead'
 version: 2.0.0-dev.8

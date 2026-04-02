@@ -4,7 +4,7 @@ description: >-
   Covers systematic debugging, hypothesis tracking, and flaky test
   investigation. Use when diagnosing failures, tracking hypotheses, or fixing
   flaky tests. Provides methodology for root cause analysis and issue
-  resolution. Not for writing new tests (us...
+  resolution. Not for writing new tests ...
 user-invocable: true
 argument-hint: '[issue or error]'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'

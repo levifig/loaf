@@ -4,7 +4,7 @@ description: >-
   Discovers and maintains strategic context in STRATEGY.md. Use when the user
   asks "what's our strategy?" or "update the strategic direction." Produces
   personas, market landscape analysis, and problem space definitions. Not for
-  architecture (use archit...
+  architecture (use arc...
 user-invocable: true
 argument-hint: '[topic]'
 version: 2.0.0-dev.8

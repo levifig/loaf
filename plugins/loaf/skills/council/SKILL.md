@@ -4,7 +4,7 @@ description: >-
   Convenes multi-agent council deliberations for decisions requiring diverse
   perspectives. Use when the user asks "call a council", "gather specialists",
   "get a council opinion", or "what do the experts think". Also activate when
-  the user wants a struc...
+  the user wants a st...
 user-invocable: true
 argument-hint: '[topic]'
 version: 2.0.0-dev.8

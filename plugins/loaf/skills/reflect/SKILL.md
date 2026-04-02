@@ -4,7 +4,7 @@ description: >-
   Integrates learnings from shipped work into strategic documents. Use after
   completing significant work or when the user asks "what did we learn?" Updates
   VISION.md, STRATEGY.md, and ARCHITECTURE.md based on implementation
-  experience. Not for pre-impl...
+  experience. Not for pre-i...
 user-invocable: true
 argument-hint: '[session-file]'
 version: 2.0.0-dev.8
