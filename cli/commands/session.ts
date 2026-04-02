@@ -339,8 +339,10 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
   
   // If no session found by branch name, check for renamed branch via spec linkage
   // This handles: git branch -m old-name new-name
+  // Only do this when a spec IS linked to current branch (spec.branch === branch)
+  // but the session file has a different branch name (rename detected)
   if (candidates.length === 0) {
-    // Look through ALL specs to find one with a session: field
+    // First, find if there's a spec linked to this branch
     const specsDir = join(agentsDir, "specs");
     if (existsSync(specsDir)) {
       const specFiles = readdirSync(specsDir).filter(f => f.endsWith(".md"));
@@ -352,13 +354,11 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
           const specParsed = matter(specContent);
           const specFm = specParsed.data as SpecFrontmatterWithBranch;
           
-          // If spec has a session: field pointing to a session file
-          if (specFm.session) {
+          // Only consider specs linked to CURRENT branch
+          if (specFm.branch === branch && specFm.session) {
             const sessionPath = join(agentsDir, "sessions", specFm.session);
             if (existsSync(sessionPath)) {
               const session = readSessionFile(sessionPath);
-              // Check if this session exists and is non-archived
-              // If session's branch differs from current branch, it's a rename
               if (session && session.data.status !== "archived") {
                 // Rename detected: session's branch != current branch
                 if (session.data.branch !== branch) {
@@ -366,13 +366,6 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
                   session.data.branch = branch;
                   const newSessionContent = matter.stringify(session.content, session.data as unknown as Record<string, unknown>);
                   writeFileSync(sessionPath, newSessionContent, "utf-8");
-                  
-                  // Also update spec's branch field
-                  if (specFm.branch !== branch) {
-                    specFm.branch = branch;
-                    const newSpecContent = matter.stringify(specParsed.content, specFm as Record<string, unknown>);
-                    writeFileSync(specPath, newSpecContent, "utf-8");
-                  }
                 }
                 candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
                 break; // Found it
