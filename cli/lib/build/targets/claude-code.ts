@@ -98,6 +98,10 @@ const BINARY_PATH_HOOKS = new Set([
   "journal-post-commit",
   "journal-post-pr",
   "journal-post-merge",
+  // Task management hooks
+  "generate-task-board",
+  // Linear integration hooks
+  "detect-linear-magic",
 ]);
 
 let VERSION = "0.0.0";

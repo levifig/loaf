@@ -34,8 +34,6 @@ Loaf's commands form a three-phase workflow that mirrors how good software gets 
 │                      PHASE 2: BUILD                         │
 │                                                             │
 │   /breakdown  →  /implement                                 │
-│                                                             │
-│   /resume-session after context loss                        │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -66,7 +64,6 @@ Decompose specs into atomic tasks and execute with specialized agents.
 | `/breakdown` | Split spec into agent-sized atomic tasks |
 | `/implement` | Execute tasks with orchestrated agent delegation |
 | `/release` (`/ship`) | Orchestrate the merge ritual: pre-flight, docs check, version bump, squash merge, cleanup |
-| `/resume-session` | Continue after context loss or new conversation |
 
 ### Phase 3: Learn
 
@@ -76,7 +73,6 @@ Integrate outcomes into strategic knowledge.
 |---------|--------------|
 | `/cleanup` | Review completed sessions, archive artifacts |
 | `/reflect` | Integrate learnings into strategic documents |
-| `/reference-session` | Import decisions from prior sessions |
 
 ### Pipeline Commands
 
@@ -123,8 +119,6 @@ Skills you invoke directly to drive work forward.
 | `architecture` | Creating Architecture Decision Records |
 | `reflect` | Integrating learnings into strategic docs |
 | `cleanup` | Reviewing and archiving agent artifacts |
-| `reference-session` | Importing decisions from past sessions |
-| `resume-session` | Continuing after context loss |
 | `bootstrap` | Bootstrapping new or existing projects |
 | `idea` | Quick capture of ideas for later evaluation |
 
@@ -178,7 +172,7 @@ Build once, deploy everywhere. Skills are the universal layer; profiles and hook
 | Codex | — | ✓ | ✓ | — | — | Skills + hooks |
 | Gemini | — | ✓ | — | — | — | Skills only |
 
-*Note: `council-session` skill renamed to `council` for consistency. Deprecated skills: `resume-session`, `reference-session`.*
+*Note: `council-session` skill renamed to `council` for consistency. Removed skills: `resume-session`, `reference-session`.*
 
 ## Getting Started
 

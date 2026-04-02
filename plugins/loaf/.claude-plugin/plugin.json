@@ -7,7 +7,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|Bash",
         "hooks": [
           {
             "type": "command",
@@ -63,7 +63,7 @@
           },
           {
             "type": "command",
-            "command": "loaf session log --detect-linear",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session log --detect-linear",
             "timeout": 30,
             "description": "Detect Linear magic words for auto-status updates"
           }
@@ -76,7 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "loaf task refresh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" task refresh",
             "description": "Regenerate TASKS.md when task files change",
             "timeout": 30
           },
@@ -94,8 +94,30 @@
           {
             "type": "prompt",
             "prompt": "POST-MERGE HOUSEKEEPING:\n1. Delete local branch: git branch -d <branch-name> 2. Update main: git checkout main && git pull 3. Archive session: loaf session archive\nConsider running these commands now.",
+            "if": "Bash(gh pr merge:*)",
             "timeout": 5,
             "description": "Inject housekeeping checklist after successful gh pr merge"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session log --from-hook",
+            "if": "Bash(git commit:*)",
+            "description": "Auto-log commit entry to session journal",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session log --from-hook",
+            "if": "Bash(gh pr create:*)",
+            "description": "Auto-log PR creation entry to session journal",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session log --from-hook",
+            "if": "Bash(gh pr merge:*)",
+            "description": "Auto-log merge entry to session journal",
+            "timeout": 30
           }
         ]
       }
@@ -132,7 +154,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "loaf session start",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session start",
             "description": "Start session journal for current branch"
           }
         ]
@@ -161,7 +183,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "loaf session end",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session end",
             "description": "End session with progress summary"
           }
         ]

@@ -140,7 +140,7 @@ background_agents:                             # Background work running indepen
 
 ### Cross-Session References
 
-Track decisions imported from past sessions via `/reference-session`:
+Track decisions imported from past sessions via Serena memory:
 
 ```yaml
 session:

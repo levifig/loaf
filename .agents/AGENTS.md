@@ -214,7 +214,7 @@ Artifact format templates (session files, specs, ADRs, task files) live in `temp
 ```yaml
 # targets.yaml
 shared-templates:
-  session.md: [implement, resume, orchestration, reference-session, review-sessions]
+  session.md: [implement, orchestration, review-sessions]
   plan.md: [implement, council]
   adr.md: [architecture, reflect]
 ```

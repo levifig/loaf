@@ -33,13 +33,21 @@ const DEFAULT_AGENT_FRONTMATTER = {
   is_background: true,
 };
 
-// Enforcement hooks that use `loaf check --hook <id>`
-const ENFORCEMENT_HOOKS = new Set([
+// Hooks that use `loaf` binary path
+const BINARY_PATH_HOOKS = new Set([
+  // Enforcement hooks
   "check-secrets",
   "validate-push",
   "validate-commit",
   "workflow-pre-pr",
   "security-audit",
+  // Session lifecycle hooks
+  "session-start-loaf",
+  "session-end-loaf",
+  // Journal auto-entry hooks
+  "journal-post-commit",
+  "journal-post-pr",
+  "journal-post-merge",
 ]);
 
 function substituteCommands(content: string): string {
@@ -183,12 +191,18 @@ function mapSessionEvent(event: string): string {
 }
 
 function getCursorHookCommand(hook: HookDefinition): string {
-  // If hook has direct command field, use it
-  if (hook.command) {
-    // For enforcement hooks, use loaf check --hook <id>
-    if (ENFORCEMENT_HOOKS.has(hook.id)) {
+  // For binary path hooks (enforcement + session + journal), handle specially
+  if (BINARY_PATH_HOOKS.has(hook.id)) {
+    // Enforcement hooks don't have a command field - construct it
+    if (!hook.command) {
       return `loaf check --hook ${hook.id}`;
     }
+    // Session and journal hooks have commands - keep them as-is
+    return hook.command;
+  }
+
+  // If hook has direct command field (not in BINARY_PATH_HOOKS), use it
+  if (hook.command) {
     return hook.command;
   }
 

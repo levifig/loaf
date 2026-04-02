@@ -166,7 +166,7 @@ mcp__serena__write_memory(
 ```
 
 **Why store decisions:**
-- Enables `/reference-session` command for cross-session continuity
+- Enables Serena memory for cross-session continuity
 - Preserves decision rationale for future work
 - Avoids re-deliberating already-resolved questions
 

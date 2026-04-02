@@ -4,6 +4,13 @@
     "PreToolUse": [
       {
         "matcher": "Bash",
+        "command": "loaf check --hook check-secrets",
+        "timeout": 30,
+        "failClosed": true,
+        "description": "Check for hardcoded secrets before writing"
+      },
+      {
+        "matcher": "Bash",
         "command": "loaf check --hook security-audit",
         "timeout": 600,
         "failClosed": true,

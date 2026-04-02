@@ -20,9 +20,7 @@ hooks:
     # Security Compliance - Secret scanning and security auditing (ENFORCEMENT)
     - id: check-secrets
       skill: security-compliance
-      type: command
-      command: 'loaf check --hook check-secrets'
-      matcher: "Edit|Write"
+      matcher: "Edit|Write|Bash"
       blocking: true
       timeout: 30000
       failClosed: true
@@ -30,10 +28,8 @@ hooks:
 
     - id: security-audit
       skill: security-compliance
-      type: command
-      command: 'loaf check --hook security-audit'
       matcher: "Bash"
-      blocking: false
+      blocking: true
       timeout: 600000
       failClosed: true
       description: Run security audit on bash commands
@@ -41,8 +37,6 @@ hooks:
     # Git Workflow - Push, PR, merge, and commit guards (ENFORCEMENT)
     - id: validate-push
       skill: git-workflow
-      type: command
-      command: 'loaf check --hook validate-push'
       matcher: "Bash"
       blocking: true
       timeout: 60000
@@ -51,8 +45,6 @@ hooks:
 
     - id: workflow-pre-pr
       skill: git-workflow
-      type: command
-      command: 'loaf check --hook workflow-pre-pr'
       matcher: "Bash"
       blocking: true
       timeout: 5000
@@ -107,10 +99,8 @@ hooks:
     # Orchestration - Commit validation (ENFORCEMENT)
     - id: validate-commit
       skill: orchestration
-      type: command
-      command: 'loaf check --hook validate-commit'
       matcher: "Bash"
-      blocking: false
+      blocking: true
       timeout: 30000
       failClosed: true
       description: Validate commit messages follow conventions
@@ -163,8 +153,37 @@ hooks:
         
         Consider running these commands now.
       matcher: "Bash"
+      if: "Bash(gh pr merge:*)"
       timeout: 5000
       description: Inject housekeeping checklist after successful gh pr merge
+
+    # Session Journal Auto-Entry Hooks
+    - id: journal-post-commit
+      skill: orchestration
+      type: command
+      command: 'loaf session log --from-hook'
+      matcher: "Bash"
+      if: "Bash(git commit:*)"
+      timeout: 30000
+      description: Auto-log commit entry to session journal
+
+    - id: journal-post-pr
+      skill: orchestration
+      type: command
+      command: 'loaf session log --from-hook'
+      matcher: "Bash"
+      if: "Bash(gh pr create:*)"
+      timeout: 30000
+      description: Auto-log PR creation entry to session journal
+
+    - id: journal-post-merge
+      skill: orchestration
+      type: command
+      command: 'loaf session log --from-hook'
+      matcher: "Bash"
+      if: "Bash(gh pr merge:*)"
+      timeout: 30000
+      description: Auto-log merge entry to session journal
 
   session:
     # Session lifecycle

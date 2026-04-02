@@ -4,7 +4,7 @@
     "preToolUse": [
       {
         "timeout": 30,
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|Bash",
         "failClosed": true,
         "command": "loaf check --hook check-secrets"
       },
@@ -64,7 +64,23 @@
       {
         "timeout": 30,
         "matcher": "Bash",
-        "prompt": "POST-MERGE HOUSEKEEPING:\n1. Delete local branch: git branch -d <branch-name> 2. Update main: git checkout main && git pull 3. Archive session: loaf session archive\nConsider running these commands now."
+        "prompt": "POST-MERGE HOUSEKEEPING:\n1. Delete local branch: git branch -d <branch-name> 2. Update main: git checkout main && git pull 3. Archive session: loaf session archive\nConsider running these commands now.",
+        "if": "Bash(gh pr merge:*)"
+      },
+      {
+        "timeout": 30,
+        "matcher": "Bash",
+        "command": "loaf session log --from-hook"
+      },
+      {
+        "timeout": 30,
+        "matcher": "Bash",
+        "command": "loaf session log --from-hook"
+      },
+      {
+        "timeout": 30,
+        "matcher": "Bash",
+        "command": "loaf session log --from-hook"
       }
     ],
     "sessionStart": [

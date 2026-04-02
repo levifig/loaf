@@ -198,7 +198,7 @@ var init_cli_reference_generator = __esm({
 // cli/index.ts
 import { Command } from "commander";
 import { readFileSync as readFileSync29 } from "fs";
-import { join as join37, dirname as dirname14 } from "path";
+import { join as join37, dirname as dirname15 } from "path";
 import { fileURLToPath as fileURLToPath8 } from "url";
 
 // cli/commands/build.ts
@@ -515,12 +515,24 @@ var MCP_SERVERS = {
     args: ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
   }
 };
-var ENFORCEMENT_HOOKS = /* @__PURE__ */ new Set([
+var BINARY_PATH_HOOKS = /* @__PURE__ */ new Set([
+  // Enforcement hooks
   "check-secrets",
   "validate-push",
   "validate-commit",
   "workflow-pre-pr",
-  "security-audit"
+  "security-audit",
+  // Session lifecycle hooks
+  "session-start-loaf",
+  "session-end-loaf",
+  // Journal auto-entry hooks
+  "journal-post-commit",
+  "journal-post-pr",
+  "journal-post-merge",
+  // Task management hooks
+  "generate-task-board",
+  // Linear integration hooks
+  "detect-linear-magic"
 ]);
 var VERSION = "0.0.0";
 async function build({
@@ -657,10 +669,13 @@ function groupByMatcher(hooks) {
   return groups;
 }
 function getClaudeHookCommand(hook) {
-  if (hook.command) {
-    if (ENFORCEMENT_HOOKS.has(hook.id)) {
+  if (BINARY_PATH_HOOKS.has(hook.id)) {
+    if (!hook.command) {
       return `"\${CLAUDE_PLUGIN_ROOT}/bin/loaf" check --hook ${hook.id}`;
     }
+    return hook.command.replace(/\bloaf\b/g, '"${CLAUDE_PLUGIN_ROOT}/bin/loaf"');
+  }
+  if (hook.command) {
     return hook.command.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, "${CLAUDE_PLUGIN_ROOT}");
   }
   const parts = hook.script.split("/");
@@ -726,6 +741,7 @@ function createPluginJson(config, pluginDir) {
         return {
           type: "command",
           command: getClaudeHookCommand(h),
+          ...h.if && { if: h.if },
           ...h.description && { description: h.description },
           ...h.timeout && { timeout: Math.floor((h.timeout || 3e4) / 1e3) },
           ...h.failClosed && { failClosed: h.failClosed }
@@ -777,12 +793,12 @@ function copyAllHooks(config, srcDir, pluginDir) {
   }
   const scriptHookIds = /* @__PURE__ */ new Set();
   for (const hook of config.hooks["pre-tool"] || []) {
-    if (hook.script && !ENFORCEMENT_HOOKS.has(hook.id)) {
+    if (hook.script && !BINARY_PATH_HOOKS.has(hook.id)) {
       scriptHookIds.add(hook.id);
     }
   }
   for (const hook of config.hooks["post-tool"] || []) {
-    if (hook.script && !ENFORCEMENT_HOOKS.has(hook.id)) {
+    if (hook.script && !BINARY_PATH_HOOKS.has(hook.id)) {
       scriptHookIds.add(hook.id);
     }
   }
@@ -839,6 +855,13 @@ import { parse as parseYaml2 } from "yaml";
 // cli/lib/build/lib/hooks/runtime-plugin.ts
 import { writeFileSync as writeFileSync6, mkdirSync as mkdirSync6 } from "fs";
 import { join as join8 } from "path";
+var ENFORCEMENT_HOOKS = /* @__PURE__ */ new Set([
+  "check-secrets",
+  "validate-push",
+  "validate-commit",
+  "workflow-pre-pr",
+  "security-audit"
+]);
 var OpenCodePlatform = {
   platform: "opencode",
   header: `/**
@@ -1045,7 +1068,25 @@ function matchesTool(toolName: string, pattern: string): boolean {
     }
     return toolName === trimmed;
   });
-}`;
+}
+
+function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: string | undefined): boolean {
+  if (!ifCondition) return true;
+  const match = ifCondition.match(/^(\\w+)\\(([^)]+)\\)$/);
+  if (!match) return true;
+  const [, expectedTool, commandPattern] = match;
+  if (toolName !== expectedTool) return false;
+  const input = toolInput as Record<string, unknown> | undefined;
+  const command = input?.command as string | undefined;
+  if (!command) return false;
+  const regexPattern = commandPattern
+    .replace(/[.+^\\$" + "{}()|[\\]\\\\]/g, '\\\\$&')
+    .replace(/\\\\\\*/g, '.*')
+    .replace(/\\\\\\?/g, '.');
+  const regex = new RegExp('^' + regexPattern + '$');
+  return regex.test(command);
+}
+`;
 }
 function generateHookData(config) {
   const preToolHooks = config.hooks["pre-tool"] || [];
@@ -1067,6 +1108,7 @@ interface HookEntry {
   script?: string;
   timeout: number;
   failClosed: boolean;
+  if?: string;
 }
 
 const preToolHooks: Record<string, HookEntry[]> = ${JSON.stringify(preToolByMatcher, null, 2)};
@@ -1091,6 +1133,7 @@ function generatePluginBody(config, platform2) {
       for (const [matcher, hookList] of Object.entries(preToolHooks)) {
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
+            if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
             const result = runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             // Exit code 2 = block the action
@@ -1118,6 +1161,7 @@ function generatePluginBody(config, platform2) {
       for (const [matcher, hookList] of Object.entries(postToolHooks)) {
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
+            if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
             const result = runHook('post-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             if (result.exitCode !== 0) {
@@ -1202,12 +1246,17 @@ function groupHooksByMatcher(hooks) {
   for (const hook of hooks) {
     const matcher = hook.matcher || "Edit|Write";
     if (!grouped[matcher]) grouped[matcher] = [];
+    let command = hook.command;
+    if (!command && !hook.script && ENFORCEMENT_HOOKS.has(hook.id)) {
+      command = `loaf check --hook ${hook.id}`;
+    }
     grouped[matcher].push({
       id: hook.id,
-      command: hook.command,
+      command,
       script: hook.script ? getScriptFilename(hook.script) : void 0,
       timeout: hook.timeout || 6e4,
-      failClosed: hook.failClosed || false
+      failClosed: hook.failClosed || false,
+      if: hook.if
     });
   }
   return grouped;
@@ -1218,12 +1267,17 @@ function groupSessionHooksByEvent(hooks) {
     const event = (hook.event || "").toLowerCase().replace(/\s+/g, "");
     if (!event) continue;
     if (!grouped[event]) grouped[event] = [];
+    let command = hook.command;
+    if (!command && !hook.script && ENFORCEMENT_HOOKS.has(hook.id)) {
+      command = `loaf check --hook ${hook.id}`;
+    }
     grouped[event].push({
       id: hook.id,
-      command: hook.command,
+      command,
       script: hook.script ? getScriptFilename(hook.script) : void 0,
       timeout: hook.timeout || 6e4,
-      failClosed: hook.failClosed || false
+      failClosed: hook.failClosed || false,
+      if: hook.if
     });
   }
   return grouped;
@@ -1353,12 +1407,20 @@ var DEFAULT_AGENT_FRONTMATTER = {
   model: "inherit",
   is_background: true
 };
-var ENFORCEMENT_HOOKS2 = /* @__PURE__ */ new Set([
+var BINARY_PATH_HOOKS2 = /* @__PURE__ */ new Set([
+  // Enforcement hooks
   "check-secrets",
   "validate-push",
   "validate-commit",
   "workflow-pre-pr",
-  "security-audit"
+  "security-audit",
+  // Session lifecycle hooks
+  "session-start-loaf",
+  "session-end-loaf",
+  // Journal auto-entry hooks
+  "journal-post-commit",
+  "journal-post-pr",
+  "journal-post-merge"
 ]);
 function substituteCommands2(content) {
   return content.replace(/\{\{IMPLEMENT_CMD\}\}/g, "/implement").replace(/\{\{RESUME_CMD\}\}/g, "/resume").replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/implement");
@@ -1467,10 +1529,13 @@ function mapSessionEvent(event) {
   return mapping[event] || event.toLowerCase();
 }
 function getCursorHookCommand(hook) {
-  if (hook.command) {
-    if (ENFORCEMENT_HOOKS2.has(hook.id)) {
+  if (BINARY_PATH_HOOKS2.has(hook.id)) {
+    if (!hook.command) {
       return `loaf check --hook ${hook.id}`;
     }
+    return hook.command;
+  }
+  if (hook.command) {
     return hook.command;
   }
   const scriptPath = hook.script.replace(/^hooks\//, "");
@@ -1555,7 +1620,7 @@ __export(codex_exports, {
 import { mkdirSync as mkdirSync9, writeFileSync as writeFileSync9 } from "fs";
 import { join as join11 } from "path";
 var TARGET_NAME3 = "codex";
-var ENFORCEMENT_HOOKS3 = /* @__PURE__ */ new Set([
+var ENFORCEMENT_HOOKS2 = /* @__PURE__ */ new Set([
   "check-secrets",
   "validate-push",
   "validate-commit",
@@ -1589,7 +1654,7 @@ async function build4({
 function generateCodexHooksJson(config, distDir) {
   const preToolHooks = config.hooks["pre-tool"] || [];
   const enforcementHooks = preToolHooks.filter((hook) => {
-    if (!ENFORCEMENT_HOOKS3.has(hook.id)) return false;
+    if (!ENFORCEMENT_HOOKS2.has(hook.id)) return false;
     const matcher = hook.matcher || "";
     return matcher.includes("Bash");
   });
@@ -1829,10 +1894,11 @@ ${gray("Valid targets:")} ${TARGET_NAMES.join(", ")}`
 }
 
 // cli/commands/install.ts
-import { existsSync as existsSync14, readFileSync as readFileSync13 } from "fs";
+import { existsSync as existsSync14, readFileSync as readFileSync13, mkdirSync as mkdirSync12, copyFileSync as copyFileSync2, chmodSync as chmodSync2, unlinkSync } from "fs";
 import { join as join18, dirname as dirname6 } from "path";
 import { fileURLToPath as fileURLToPath4 } from "url";
 import { createInterface } from "readline";
+import { execSync } from "child_process";
 
 // cli/lib/detect/tools.ts
 import { existsSync as existsSync11 } from "fs";
@@ -2324,6 +2390,55 @@ function askYesNo(question) {
     });
   });
 }
+function isLoafOnPath() {
+  try {
+    execSync("which loaf", { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function installLoafBinary(rootDir) {
+  const localBinDir = join18(process.env.HOME || "~", ".local", "bin");
+  const sourceBinary = join18(rootDir, "dist-cli", "index.js");
+  const targetBinary = join18(localBinDir, "loaf");
+  if (!existsSync14(sourceBinary)) {
+    console.log(`  ${red2("\u2717")} CLI binary not found at ${sourceBinary}`);
+    console.log(`  ${gray2("Run 'npm run build:cli' first.")}`);
+    return false;
+  }
+  if (!existsSync14(localBinDir)) {
+    try {
+      mkdirSync12(localBinDir, { recursive: true });
+      console.log(`  ${green2("\u2713")} Created ${localBinDir}`);
+    } catch (err) {
+      console.log(`  ${red2("\u2717")} Could not create ${localBinDir}: ${err}`);
+      return false;
+    }
+  }
+  if (existsSync14(targetBinary)) {
+    try {
+      unlinkSync(targetBinary);
+    } catch {
+    }
+  }
+  try {
+    copyFileSync2(sourceBinary, targetBinary);
+    chmodSync2(targetBinary, 493);
+    console.log(`  ${green2("\u2713")} Installed loaf binary to ${targetBinary}`);
+    const pathEnv = process.env.PATH || "";
+    if (!pathEnv.includes(localBinDir)) {
+      console.log(`  ${yellow("\u26A0")} ${localBinDir} is not on your PATH`);
+      console.log(`  ${gray2("Add this to your shell profile:")}`);
+      console.log(`  ${gray2(`  export PATH="${localBinDir}:$PATH"`)}`);
+    }
+    return true;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  ${red2("\u2717")} Failed to install binary: ${msg}`);
+    return false;
+  }
+}
 var VALID_TARGETS = Object.keys(DEFAULT_CONFIG_DIRS);
 function registerInstallCommand(program2) {
   program2.command("install").description("Install Loaf to detected AI tool configurations").option("--to <target>", 'Target to install to (or "all")').option("--upgrade", "Update only already-installed targets").action(async (options) => {
@@ -2358,6 +2473,23 @@ ${bold2("loaf install")}
       return;
     }
     console.log();
+    if (!isLoafOnPath()) {
+      console.log(`  ${yellow("\u26A0")} The 'loaf' command is not available on your PATH`);
+      console.log(`  ${gray2("Hooks and commands may fail without it.")}`);
+      const shouldInstallBinary = await askYesNo(
+        `  Install 'loaf' binary to ~/.local/bin? [y/N] `
+      );
+      if (shouldInstallBinary) {
+        await installLoafBinary(rootDir);
+        console.log();
+      } else {
+        console.log(`  ${gray2("Skipping binary installation. Some features may not work.")}`);
+        console.log();
+      }
+    } else {
+      console.log(`  ${green2("\u2713")} loaf binary available on PATH`);
+      console.log();
+    }
     let selectedTargets;
     if (options.to === "all") {
       selectedTargets = tools.map((t) => t.key);
@@ -2472,7 +2604,7 @@ ${gray2("Valid targets:")} ${VALID_TARGETS.join(", ")}, all`
 // cli/commands/init.ts
 import {
   existsSync as existsSync16,
-  mkdirSync as mkdirSync12,
+  mkdirSync as mkdirSync13,
   writeFileSync as writeFileSync12,
   symlinkSync,
   lstatSync,
@@ -2807,7 +2939,7 @@ function scaffoldDirs(cwd) {
         skipped.push(dir + "/");
         continue;
       }
-      mkdirSync12(fullPath, { recursive: true });
+      mkdirSync13(fullPath, { recursive: true });
       created.push(dir + "/");
     }
   }
@@ -2825,7 +2957,7 @@ function scaffoldFiles(cwd) {
       }
       const parentDir = dirname7(fullPath);
       if (!existsSync16(parentDir)) {
-        mkdirSync12(parentDir, { recursive: true });
+        mkdirSync13(parentDir, { recursive: true });
       }
       writeFileSync12(fullPath, contentFn(), "utf-8");
       created.push(relPath);
@@ -2904,7 +3036,7 @@ ${bold3("loaf init")}
           if (yes) {
             const claudeDir = join20(cwd, ".claude");
             if (!existsSync16(claudeDir)) {
-              mkdirSync12(claudeDir, { recursive: true });
+              mkdirSync13(claudeDir, { recursive: true });
             }
             const relTarget = relative(claudeDir, agentsMdPath);
             symlinkSync(relTarget, claudeSymlink);
@@ -2962,7 +3094,7 @@ import {
   writeFileSync as writeFileSync13,
   readdirSync as readdirSync8,
   mkdtempSync,
-  unlinkSync
+  unlinkSync as unlinkSync2
 } from "fs";
 import { join as join22 } from "path";
 import { tmpdir } from "os";
@@ -3619,7 +3751,7 @@ ${bold4("loaf release")}
         writeFileSync13(tmpFile, changelogSection, "utf-8");
         execFileSync5(editor, [tmpFile], { stdio: "inherit" });
         changelogSection = readFileSync16(tmpFile, "utf-8");
-        unlinkSync(tmpFile);
+        unlinkSync2(tmpFile);
         console.log(`  ${green4("Edited changelog accepted.")}`);
         console.log();
       } catch {
@@ -3806,7 +3938,7 @@ ${bold4("loaf release")}
 }
 
 // cli/commands/task.ts
-import { existsSync as existsSync21, mkdirSync as mkdirSync14, readFileSync as readFileSync18, writeFileSync as writeFileSync15 } from "fs";
+import { existsSync as existsSync21, mkdirSync as mkdirSync15, readFileSync as readFileSync18, writeFileSync as writeFileSync15 } from "fs";
 import { join as join25 } from "path";
 import matter7 from "gray-matter";
 
@@ -3815,7 +3947,7 @@ import { existsSync as existsSync20 } from "fs";
 import { join as join24, dirname as dirname8 } from "path";
 
 // cli/lib/tasks/migrate.ts
-import { existsSync as existsSync19, mkdirSync as mkdirSync13, readFileSync as readFileSync17, renameSync, writeFileSync as writeFileSync14, readdirSync as readdirSync9 } from "fs";
+import { existsSync as existsSync19, mkdirSync as mkdirSync14, readFileSync as readFileSync17, renameSync, writeFileSync as writeFileSync14, readdirSync as readdirSync9 } from "fs";
 import { join as join23, basename as basename5, relative as relative3 } from "path";
 import matter6 from "gray-matter";
 
@@ -4227,7 +4359,7 @@ function archiveItems(baseDir, entries, ids, requiredStatus) {
       results.push({ id, status: "skipped", reason: `file not found at ${entry.file}` });
       continue;
     }
-    mkdirSync13(archiveDir, { recursive: true });
+    mkdirSync14(archiveDir, { recursive: true });
     const destPath = join23(archiveDir, entry.file);
     if (existsSync19(destPath)) {
       results.push({ id, status: "skipped", reason: `archive/${entry.file} already exists` });
@@ -4604,7 +4736,7 @@ function registerTaskCommand(program2) {
     saveIndex(indexPath, index);
     const tasksDir = join25(agentsDir, "tasks");
     if (!existsSync21(tasksDir)) {
-      mkdirSync14(tasksDir, { recursive: true });
+      mkdirSync15(tasksDir, { recursive: true });
     }
     const frontmatterData = {
       id: taskId,
@@ -5065,7 +5197,7 @@ ${bold6("  loaf spec archive")}
 }
 
 // cli/commands/kb.ts
-import { existsSync as existsSync26, mkdirSync as mkdirSync15, readFileSync as readFileSync22, writeFileSync as writeFileSync16 } from "fs";
+import { existsSync as existsSync26, mkdirSync as mkdirSync16, readFileSync as readFileSync22, writeFileSync as writeFileSync16 } from "fs";
 import { join as join30, basename as basename6, relative as relative6, isAbsolute } from "path";
 import matter10 from "gray-matter";
 
@@ -5760,7 +5892,7 @@ function registerKbCommand(program2) {
       if (existsSync26(fullPath)) {
         actions.push({ action: "directory", target: dir, status: "exists" });
       } else {
-        mkdirSync15(fullPath, { recursive: true });
+        mkdirSync16(fullPath, { recursive: true });
         actions.push({ action: "directory", target: dir, status: "created" });
       }
     }
@@ -5769,7 +5901,7 @@ function registerKbCommand(program2) {
     if (!existsSync26(configPath)) {
       const agentsDir = join30(gitRoot, ".agents");
       if (!existsSync26(agentsDir)) {
-        mkdirSync15(agentsDir, { recursive: true });
+        mkdirSync16(agentsDir, { recursive: true });
       }
       const config = {
         knowledge: {
@@ -5922,7 +6054,7 @@ function registerKbCommand(program2) {
     } else {
       const agentsDir = join30(gitRoot, ".agents");
       if (!existsSync26(agentsDir)) {
-        mkdirSync15(agentsDir, { recursive: true });
+        mkdirSync16(agentsDir, { recursive: true });
       }
     }
     const existing = listCollections();
@@ -5965,7 +6097,7 @@ function registerKbCommand(program2) {
 // cli/commands/setup.ts
 import {
   existsSync as existsSync27,
-  mkdirSync as mkdirSync16,
+  mkdirSync as mkdirSync17,
   readFileSync as readFileSync23,
   realpathSync as realpathSync2,
   statSync,
@@ -6135,7 +6267,7 @@ function scaffoldDirs2(cwd) {
         skipped.push(dir + "/");
         continue;
       }
-      mkdirSync16(fullPath, { recursive: true });
+      mkdirSync17(fullPath, { recursive: true });
       created.push(dir + "/");
     }
   }
@@ -6153,7 +6285,7 @@ function scaffoldFiles2(cwd) {
       }
       const parentDir = dirname10(fullPath);
       if (!existsSync27(parentDir)) {
-        mkdirSync16(parentDir, { recursive: true });
+        mkdirSync17(parentDir, { recursive: true });
       }
       writeFileSync17(fullPath, contentFn(), "utf-8");
       created.push(relPath);
@@ -6261,7 +6393,7 @@ ${bold8("loaf setup")}
           `  ${gray9("\xB7")} ${gray9(targetDir)} already exists`
         );
       } else {
-        mkdirSync16(targetDir, { recursive: true });
+        mkdirSync17(targetDir, { recursive: true });
         console.log(
           `  ${green8("\u2713")} Created ${gray9(targetDir)}`
         );
@@ -6463,7 +6595,7 @@ ${bold9("Content:")}`);
 }
 
 // cli/commands/cleanup.ts
-import { existsSync as existsSync30, mkdirSync as mkdirSync17, readFileSync as readFileSync26, renameSync as renameSync2, rmSync as rmSync7, writeFileSync as writeFileSync18 } from "fs";
+import { existsSync as existsSync30, mkdirSync as mkdirSync18, readFileSync as readFileSync26, renameSync as renameSync2, rmSync as rmSync7, writeFileSync as writeFileSync18 } from "fs";
 import { join as join34, dirname as dirname12 } from "path";
 import matter12 from "gray-matter";
 
@@ -7101,7 +7233,7 @@ function archiveGenericArtifact(filePath, artifactType) {
   const archiveDir = join34(dir, "archive");
   const filename = filePath.split("/").pop();
   const destPath = join34(archiveDir, filename);
-  mkdirSync17(archiveDir, { recursive: true });
+  mkdirSync18(archiveDir, { recursive: true });
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const raw = readFileSync26(filePath, "utf-8");
   const { data, content } = matter12(raw);
@@ -7265,7 +7397,7 @@ ${bold10("loaf cleanup")}
 import { readFileSync as readFileSync27, existsSync as existsSync31 } from "fs";
 import { dirname as dirname13 } from "path";
 import { fileURLToPath as fileURLToPath7 } from "url";
-import { execSync } from "child_process";
+import { execSync as execSync2 } from "child_process";
 var __dirname5 = dirname13(fileURLToPath7(import.meta.url));
 var bold11 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green10 = (s) => `\x1B[32m${s}\x1B[0m`;
@@ -7358,7 +7490,13 @@ async function checkSecrets(context) {
   };
   const filePath = getFilePath(context);
   const content = getContent(context);
-  if (!filePath && !content) {
+  const command = getCommand(context);
+  const toolName = getToolName(context);
+  let contentToScan = content || "";
+  if (toolName === "Bash" && command) {
+    contentToScan += "\n" + command;
+  }
+  if (!filePath && !contentToScan.trim()) {
     return result;
   }
   const safePatterns = [
@@ -7391,7 +7529,7 @@ async function checkSecrets(context) {
     { name: "JWT Token", regex: /eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*/ },
     { name: "GitHub Token", regex: /gh[pousr]_[A-Za-z0-9_]{36}/ }
   ];
-  const targetContent = content || "";
+  const targetContent = contentToScan;
   const foundSecrets = [];
   for (const { name, regex } of secretPatterns) {
     const matches = targetContent.match(regex);
@@ -7431,7 +7569,7 @@ async function validatePush(context) {
     }
   }
   try {
-    const lastTag = execSync("git describe --tags --abbrev=0 2>/dev/null", {
+    const lastTag = execSync2("git describe --tags --abbrev=0 2>/dev/null", {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "ignore"]
     }).trim();
@@ -7439,7 +7577,7 @@ async function validatePush(context) {
       try {
         const pkg = JSON.parse(readFileSync27("package.json", "utf-8"));
         const currentVersion = pkg.version;
-        const tagPkgContent = execSync(
+        const tagPkgContent = execSync2(
           `git show ${lastTag}:package.json 2>/dev/null`,
           { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
         );
@@ -7454,13 +7592,13 @@ async function validatePush(context) {
   } catch {
   }
   try {
-    const lastTag = execSync("git describe --tags --abbrev=0 2>/dev/null", {
+    const lastTag = execSync2("git describe --tags --abbrev=0 2>/dev/null", {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "ignore"]
     }).trim();
     if (lastTag && existsSync31("CHANGELOG.md")) {
       try {
-        const changedFiles = execSync(
+        const changedFiles = execSync2(
           `git diff ${lastTag} --name-only -- CHANGELOG.md 2>/dev/null`,
           { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
         ).trim();
@@ -7474,7 +7612,7 @@ async function validatePush(context) {
   }
   if (hasBuildScript) {
     try {
-      execSync("npm run build --silent 2>/dev/null", {
+      execSync2("npm run build --silent 2>/dev/null", {
         stdio: "ignore",
         timeout: 6e4
       });
@@ -7486,7 +7624,7 @@ async function validatePush(context) {
       const makefile = readFileSync27("Makefile", "utf-8");
       if (makefile.includes("build:") || makefile.match(/^build:/m)) {
         try {
-          execSync("make build 2>/dev/null", {
+          execSync2("make build 2>/dev/null", {
             stdio: "ignore",
             timeout: 6e4
           });
@@ -7498,7 +7636,7 @@ async function validatePush(context) {
     }
   } else if (existsSync31("Cargo.toml")) {
     try {
-      execSync("cargo build 2>/dev/null", {
+      execSync2("cargo build 2>/dev/null", {
         stdio: "ignore",
         timeout: 12e4
       });
@@ -7507,7 +7645,7 @@ async function validatePush(context) {
     }
   } else if (existsSync31("go.mod")) {
     try {
-      execSync("go build ./... 2>/dev/null", {
+      execSync2("go build ./... 2>/dev/null", {
         stdio: "ignore",
         timeout: 6e4
       });
@@ -7763,14 +7901,17 @@ function registerCheckCommand(program2) {
 }
 
 // cli/commands/session.ts
-import { execSync as execSync2 } from "child_process";
+import { execSync as execSync3 } from "child_process";
 import {
   existsSync as existsSync32,
-  mkdirSync as mkdirSync18,
+  mkdirSync as mkdirSync19,
   readdirSync as readdirSync14,
   readFileSync as readFileSync28,
   writeFileSync as writeFileSync19,
-  renameSync as renameSync3
+  renameSync as renameSync3,
+  unlinkSync as unlinkSync3,
+  openSync,
+  closeSync
 } from "fs";
 import { join as join36 } from "path";
 import matter13 from "gray-matter";
@@ -7780,19 +7921,58 @@ var red10 = (s) => `\x1B[31m${s}\x1B[0m`;
 var yellow13 = (s) => `\x1B[33m${s}\x1B[0m`;
 var cyan9 = (s) => `\x1B[36m${s}\x1B[0m`;
 var gray13 = (s) => `\x1B[90m${s}\x1B[0m`;
+async function acquireLock(lockPath, maxRetries = 50, retryDelay = 100) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const fd = openSync(lockPath, "wx");
+      closeSync(fd);
+      return;
+    } catch {
+      await new Promise((resolve2) => setTimeout(resolve2, retryDelay));
+    }
+  }
+  throw new Error(`Could not acquire lock after ${maxRetries} retries: ${lockPath}`);
+}
+function releaseLock(lockPath) {
+  try {
+    unlinkSync3(lockPath);
+  } catch {
+  }
+}
+function writeFileAtomic(filePath, content) {
+  const tempPath = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 11)}`;
+  try {
+    writeFileSync19(tempPath, content, "utf-8");
+    renameSync3(tempPath, filePath);
+  } catch (err) {
+    try {
+      unlinkSync3(tempPath);
+    } catch {
+    }
+    throw err;
+  }
+}
 function getCurrentBranch() {
   try {
-    return execSync2("git branch --show-current", {
+    const branch = execSync3("git branch --show-current", {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"]
     }).trim();
+    if (!branch) {
+      const commitSha = execSync3("git rev-parse --short HEAD", {
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"]
+      }).trim();
+      return `detached-${commitSha}`;
+    }
+    return branch;
   } catch {
     return "unknown";
   }
 }
 function getRecentCommits(count = 5) {
   try {
-    const output = execSync2(`git log --pretty=format:"%H %s" -${count}`, {
+    const output = execSync3(`git log --pretty=format:"%H %s" -${count}`, {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"]
     }).trim();
@@ -7811,7 +7991,7 @@ function getRecentCommits(count = 5) {
 }
 function getLastCommitSha() {
   try {
-    return execSync2("git rev-parse --short HEAD", {
+    return execSync3("git rev-parse --short HEAD", {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"]
     }).trim();
@@ -7837,9 +8017,73 @@ function findSpecForBranch(agentsDir, branch) {
   }
   return null;
 }
-function getSessionFilePath(agentsDir, branch) {
-  const sanitized = branch.replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-");
-  return join36(agentsDir, "sessions", `${sanitized}.md`);
+function getSessionFilePath(agentsDir, branch, timestamp) {
+  const now = timestamp || /* @__PURE__ */ new Date();
+  const datePrefix = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const timePrefix = now.toTimeString().slice(0, 8).replace(/:/g, "");
+  const slug = branch.replace(/^feat\//, "").replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-");
+  return join36(agentsDir, "sessions", `${datePrefix}-${timePrefix}-${slug}.md`);
+}
+function findActiveSessionForBranch(agentsDir, branch) {
+  const sessionsDir = join36(agentsDir, "sessions");
+  if (!existsSync32(sessionsDir)) return null;
+  const files = readdirSync14(sessionsDir).filter((f) => f.endsWith(".md") && !f.startsWith("archive"));
+  for (const file of files) {
+    const filePath = join36(sessionsDir, file);
+    const session = readSessionFile(filePath);
+    if (session && session.data.branch === branch && session.data.status !== "archived") {
+      return { filePath, data: session.data, content: session.content };
+    }
+  }
+  return null;
+}
+async function getOrCreateSession(agentsDir, branch, specInfo) {
+  const sessionsDir = join36(agentsDir, "sessions");
+  const lockPath = join36(sessionsDir, `.create-${branch.replace(/[^a-zA-Z0-9-]/g, "-")}.lock`);
+  let lockAcquired = false;
+  try {
+    await acquireLock(lockPath, 100, 50);
+    lockAcquired = true;
+    const existing = findActiveSessionForBranch(agentsDir, branch);
+    if (existing) {
+      return { ...existing, isNew: false };
+    }
+    const timestamp = /* @__PURE__ */ new Date();
+    const filePath = getSessionFilePath(agentsDir, branch, timestamp);
+    createSessionFile(filePath, branch, specInfo);
+    const session = readSessionFile(filePath);
+    return { filePath, data: session.data, content: session.content, isNew: true };
+  } finally {
+    if (lockAcquired) {
+      releaseLock(lockPath);
+    }
+  }
+}
+function readSessionFile(filePath) {
+  if (!existsSync32(filePath)) return null;
+  try {
+    const raw = readFileSync28(filePath, "utf-8");
+    const parsed = matter13(raw);
+    const rawData = parsed.data;
+    if (rawData.session && typeof rawData.session === "object") {
+      const nested = rawData.session;
+      const migratedData = { ...rawData };
+      delete migratedData.session;
+      for (const [key, value] of Object.entries(nested)) {
+        migratedData[key] = value;
+      }
+      return {
+        data: migratedData,
+        content: parsed.content
+      };
+    }
+    return {
+      data: rawData,
+      content: parsed.content
+    };
+  } catch {
+    return null;
+  }
 }
 function parseEntry(entry) {
   const match = entry.match(/^([a-z]+)(?:\(([^)]+)\))?:\s*(.+)$/);
@@ -7859,7 +8103,15 @@ function parseEntry(entry) {
     "unblock",
     "spark",
     "todo",
-    "assume"
+    "assume",
+    // New types
+    "branch",
+    "task",
+    "linear",
+    "hypothesis",
+    "try",
+    "reject",
+    "compact"
   ];
   if (!validTypes.includes(type)) return null;
   return {
@@ -7881,40 +8133,17 @@ function getDateTimeString() {
   const time = now.toTimeString().split(":")[0] + ":" + now.toTimeString().split(":")[1];
   return `${date} ${time}`;
 }
-function readSessionFile(filePath) {
-  if (!existsSync32(filePath)) return null;
-  try {
-    const raw = readFileSync28(filePath, "utf-8");
-    const parsed = matter13(raw);
-    return {
-      data: parsed.data,
-      content: parsed.content
-    };
-  } catch {
-    return null;
-  }
-}
 function createSessionFile(filePath, branch, specInfo) {
   const now = getTimestamp();
   const frontmatter = {
-    session: {
-      title: specInfo ? `${specInfo.id}: ${specInfo.title}` : `Session: ${branch}`,
-      status: "active",
-      created: now,
-      last_updated: now,
-      branch,
-      spec: specInfo?.id
-    },
-    traceability: {
-      architecture: [],
-      decisions: []
-    },
-    plans: [],
-    transcripts: [],
-    orchestration: {
-      spawned_agents: []
-    }
+    branch,
+    status: "active",
+    created: now,
+    title: specInfo ? `${specInfo.id}: ${specInfo.title}` : `Session: ${branch}`
   };
+  if (specInfo?.id) {
+    frontmatter.spec = specInfo.id;
+  }
   const body = specInfo ? `# ${specInfo.id}: ${specInfo.title}
 
 ## Context
@@ -7942,27 +8171,35 @@ Session started.
 
 - [ ] First action item
 `;
-  const cleanFrontmatter = JSON.parse(JSON.stringify(frontmatter));
-  const content = matter13.stringify(body, cleanFrontmatter);
+  const content = matter13.stringify(body, frontmatter);
   writeFileSync19(filePath, content, "utf-8");
   return frontmatter;
 }
-function appendEntry(filePath, header, entries, updateFrontmatter) {
-  const session = readSessionFile(filePath);
-  if (!session) {
-    throw new Error("Session file not found");
-  }
-  updateFrontmatter(session.data);
-  const newSection = `
+async function appendEntry(filePath, header, entries, updateFrontmatter) {
+  const lockPath = `${filePath}.lock`;
+  let lockAcquired = false;
+  try {
+    await acquireLock(lockPath);
+    lockAcquired = true;
+    const session = readSessionFile(filePath);
+    if (!session) {
+      throw new Error("Session file not found");
+    }
+    updateFrontmatter(session.data);
+    const newSection = `
 ## ${header}
 ${entries.map((e) => e).join("\n")}
 `;
-  const cleanFrontmatter = JSON.parse(JSON.stringify(session.data));
-  const newContent = matter13.stringify(
-    session.content.trim() + newSection,
-    cleanFrontmatter
-  );
-  writeFileSync19(filePath, newContent, "utf-8");
+    const newContent = matter13.stringify(
+      session.content.trim() + newSection,
+      session.data
+    );
+    writeFileAtomic(filePath, newContent);
+  } finally {
+    if (lockAcquired) {
+      releaseLock(lockPath);
+    }
+  }
 }
 function extractRecentEntries(content, count = 15) {
   const lines = content.split("\n");
@@ -8012,12 +8249,16 @@ function registerSessionCommand(program2) {
     }
     const sessionsDir = join36(agentsDir, "sessions");
     if (!existsSync32(sessionsDir)) {
-      mkdirSync18(sessionsDir, { recursive: true });
+      mkdirSync19(sessionsDir, { recursive: true });
     }
     const branch = getCurrentBranch();
     if (branch === "unknown") {
-      console.error(`  ${red10("error:")} Not in a git repository or no branch detected`);
+      console.error(`  ${red10("error:")} Not in a git repository`);
       process.exit(1);
+    }
+    if (branch.startsWith("detached-")) {
+      console.error(`  ${yellow13("\u26A0")} Warning: In detached HEAD state (${branch})`);
+      console.error(`  ${gray13("Sessions in detached HEAD state are isolated to the specific commit.")}`);
     }
     console.log(`
   ${bold12("loaf session start")}
@@ -8029,18 +8270,15 @@ function registerSessionCommand(program2) {
     } else {
       console.log(`  ${yellow13("!")} No linked spec found \u2014 creating ad-hoc session`);
     }
-    const sessionFilePath = getSessionFilePath(agentsDir, branch);
-    let session2 = readSessionFile(sessionFilePath);
-    if (!session2) {
+    const { filePath: sessionFilePath, data: sessionData, content: sessionContent, isNew } = await getOrCreateSession(agentsDir, branch, specInfo);
+    if (isNew) {
       console.log(`  ${green11("+")} Creating new session file`);
-      createSessionFile(sessionFilePath, branch, specInfo);
-      session2 = readSessionFile(sessionFilePath);
     } else {
       console.log(`  ${green11("\u2713")} Resuming existing session`);
     }
     const lastCommit = getLastCommitSha();
     const commits = getRecentCommits(3);
-    const { completed, total } = countTasksInSession(session2.content);
+    const { completed, total } = countTasksInSession(sessionContent);
     const entries = [];
     entries.push(`resume(${branch}): session started`);
     if (lastCommit !== "unknown") {
@@ -8055,18 +8293,18 @@ function registerSessionCommand(program2) {
         entries.push(`  - ${commit.hash} ${commit.message}`);
       }
     }
-    appendEntry(
+    await appendEntry(
       sessionFilePath,
       `${getDateTimeString()} \u2014 Start`,
       entries,
       (data) => {
-        data.session.status = "active";
-        data.session.last_updated = getTimestamp();
-        data.session.last_entry = getTimestamp();
+        data.status = "active";
+        data.last_updated = getTimestamp();
+        data.last_entry = getTimestamp();
       }
     );
     console.log(`  ${green11("\u2713")} Session active: ${gray13(sessionFilePath.replace(agentsDir, ".agents"))}`);
-    const recentEntries = extractRecentEntries(session2.content, 15);
+    const recentEntries = extractRecentEntries(sessionContent, 15);
     if (recentEntries.length > 0) {
       console.log(`
   ${bold12("Recent journal entries:")}
@@ -8094,12 +8332,13 @@ function registerSessionCommand(program2) {
       console.error(`  ${red10("error:")} Not in a git repository`);
       process.exit(1);
     }
-    const sessionFilePath = getSessionFilePath(agentsDir, branch);
-    const session2 = readSessionFile(sessionFilePath);
-    if (!session2) {
-      console.error(`  ${red10("error:")} No session found for branch ${branch}`);
+    let existingSession = findActiveSessionForBranch(agentsDir, branch);
+    if (!existingSession) {
+      console.error(`  ${red10("error:")} No active session found for branch ${branch}`);
       process.exit(1);
     }
+    const sessionFilePath = existingSession.filePath;
+    const session2 = existingSession;
     console.log(`
   ${bold12("loaf session end")}
 `);
@@ -8118,14 +8357,14 @@ function registerSessionCommand(program2) {
     console.log(`    ${gray13('loaf session log "conclude(scope): final notes"')}`);
     console.log(`    ${gray13('loaf session log "todo(next): follow-up task"')}`);
     console.log();
-    appendEntry(
+    await appendEntry(
       sessionFilePath,
       `${getDateTimeString()} \u2014 Pause`,
       entries,
       (data) => {
-        data.session.status = "paused";
-        data.session.last_updated = getTimestamp();
-        data.session.last_entry = getTimestamp();
+        data.status = "paused";
+        data.last_updated = getTimestamp();
+        data.last_entry = getTimestamp();
       }
     );
     console.log(`  ${green11("\u2713")} Session paused: ${gray13(sessionFilePath.replace(agentsDir, ".agents"))}`);
@@ -8142,26 +8381,48 @@ function registerSessionCommand(program2) {
       console.error(`  ${red10("error:")} Not in a git repository`);
       process.exit(1);
     }
-    const sessionFilePath = getSessionFilePath(agentsDir, branch);
-    const session2 = readSessionFile(sessionFilePath);
-    if (!session2) {
-      console.error(`  ${red10("error:")} No session found for branch ${branch}. Run 'loaf session start' first.`);
+    if (branch.startsWith("detached-")) {
+      console.error(`  ${yellow13("\u26A0")} Warning: In detached HEAD state (${branch})`);
+    }
+    let existingSession = findActiveSessionForBranch(agentsDir, branch);
+    if (!existingSession) {
+      console.error(`  ${red10("error:")} No active session found for branch ${branch}. Run 'loaf session start' first.`);
       process.exit(1);
     }
+    const sessionFilePath = existingSession.filePath;
+    const session2 = existingSession;
     let entryText = entry;
     if (options.fromHook) {
       try {
         const stdin = readFileSync28(0, "utf-8");
         const hookData = JSON.parse(stdin);
-        if (hookData.commit) {
-          entryText = `commit(${hookData.commit}): ${hookData.message || "commit"}`;
-        } else if (hookData.pr) {
-          entryText = `pr(#${hookData.pr}): ${hookData.title || "PR created"}`;
-        } else if (hookData.merge) {
-          entryText = `merge(#${hookData.merge}): merged`;
+        const command = hookData.tool_input?.command || hookData.input?.command;
+        if (command && typeof command === "string") {
+          if (command.includes("git commit")) {
+            const msgMatch = command.match(/-m\s+['"]([^'"]+)['"]/) || command.match(/-m\s+(\S+)/);
+            const message = msgMatch ? msgMatch[1] : "commit";
+            const hash = getLastCommitSha();
+            entryText = `commit(${hash}): ${message}`;
+          } else if (command.includes("gh pr create")) {
+            entryText = `pr: PR created`;
+          } else if (command.includes("gh pr merge")) {
+            const prMatch = command.match(/merge\s+https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/) || command.match(/pr\s+merge\s+(\d+)/);
+            const prNum = prMatch ? prMatch[1] : "unknown";
+            entryText = `merge(#${prNum}): merged`;
+          } else {
+            entryText = `progress(hook): ${command.slice(0, 100)}${command.length > 100 ? "..." : ""}`;
+          }
         } else {
-          console.error(`  ${red10("error:")} Could not parse hook data`);
-          process.exit(1);
+          if (hookData.commit) {
+            entryText = `commit(${hookData.commit}): ${hookData.message || "commit"}`;
+          } else if (hookData.pr) {
+            entryText = `pr(#${hookData.pr}): ${hookData.title || "PR created"}`;
+          } else if (hookData.merge) {
+            entryText = `merge(#${hookData.merge}): merged`;
+          } else {
+            console.error(`  ${red10("error:")} Could not parse hook data - no command found`);
+            process.exit(1);
+          }
         }
       } catch (err) {
         console.error(`  ${red10("error:")} Failed to parse stdin JSON: ${err}`);
@@ -8209,13 +8470,13 @@ function registerSessionCommand(program2) {
       console.error(`    ${gray13('loaf session log "todo(next): implement tests"')}`);
       process.exit(1);
     }
-    appendEntry(
+    await appendEntry(
       sessionFilePath,
       `${getDateTimeString()}`,
       [formatEntry2(parsedEntry)],
       (data) => {
-        data.session.last_updated = getTimestamp();
-        data.session.last_entry = getTimestamp();
+        data.last_updated = getTimestamp();
+        data.last_entry = getTimestamp();
       }
     );
     console.log(`  ${green11("\u2713")} Logged: ${cyan9(entryText)}`);
@@ -8231,18 +8492,19 @@ function registerSessionCommand(program2) {
       console.error(`  ${red10("error:")} Not in a git repository. Use --branch <branch>`);
       process.exit(1);
     }
-    const sessionFilePath = getSessionFilePath(agentsDir, branch);
-    const session2 = readSessionFile(sessionFilePath);
-    if (!session2) {
-      console.error(`  ${red10("error:")} No session found for branch ${branch}`);
+    let existingSession = findActiveSessionForBranch(agentsDir, branch);
+    if (!existingSession) {
+      console.error(`  ${red10("error:")} No active session found for branch ${branch}`);
       process.exit(1);
     }
+    const sessionFilePath = existingSession.filePath;
+    const session2 = existingSession;
     console.log(`
   ${bold12("loaf session archive")}
 `);
     const archiveDir = join36(agentsDir, "sessions", "archive");
     if (!existsSync32(archiveDir)) {
-      mkdirSync18(archiveDir, { recursive: true });
+      mkdirSync19(archiveDir, { recursive: true });
     }
     const decideEntries = extractDecideEntries(session2.content);
     if (decideEntries.length > 0) {
@@ -8256,13 +8518,12 @@ function registerSessionCommand(program2) {
       console.log();
     }
     const now = getTimestamp();
-    session2.data.session.status = "archived";
-    session2.data.session.archived_at = now;
-    session2.data.session.last_updated = now;
-    const cleanFrontmatter = JSON.parse(JSON.stringify(session2.data));
+    session2.data.status = "archived";
+    session2.data.archived_at = now;
+    session2.data.last_updated = now;
     const newContent = matter13.stringify(
       session2.content,
-      cleanFrontmatter
+      session2.data
     );
     writeFileSync19(sessionFilePath, newContent, "utf-8");
     const fileName = sessionFilePath.split("/").pop();
@@ -8276,10 +8537,75 @@ function registerSessionCommand(program2) {
     }
     console.log();
   });
+  session.command("list").description("List all active and archived sessions").option("--all", "Include archived sessions").action(async (options) => {
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      console.error(`  ${red10("error:")} Could not find .agents/ directory`);
+      process.exit(1);
+    }
+    const sessionsDir = join36(agentsDir, "sessions");
+    if (!existsSync32(sessionsDir)) {
+      console.log(`
+  ${gray13("No sessions directory found.")}`);
+      console.log(`  Run ${cyan9("loaf session start")} to create your first session.
+`);
+      return;
+    }
+    console.log(`
+  ${bold12("loaf session list")}
+`);
+    const activeSessions = [];
+    const files = readdirSync14(sessionsDir).filter((f) => f.endsWith(".md"));
+    for (const file of files) {
+      const filePath = join36(sessionsDir, file);
+      const session2 = readSessionFile(filePath);
+      if (session2 && session2.data.status !== "archived") {
+        activeSessions.push({ ...session2, filePath, isArchived: false });
+      }
+    }
+    const archivedSessions = [];
+    if (options.all) {
+      const archiveDir = join36(sessionsDir, "archive");
+      if (existsSync32(archiveDir)) {
+        const archiveFiles = readdirSync14(archiveDir).filter((f) => f.endsWith(".md"));
+        for (const file of archiveFiles) {
+          const filePath = join36(archiveDir, file);
+          const session2 = readSessionFile(filePath);
+          if (session2) {
+            archivedSessions.push({ ...session2, filePath, isArchived: true });
+          }
+        }
+      }
+    }
+    if (activeSessions.length === 0) {
+      console.log(`  ${gray13("No active sessions found.")}`);
+    } else {
+      console.log(`  ${bold12("Active Sessions")}:`);
+      for (const s of activeSessions) {
+        const statusColor = s.data.status === "active" ? green11 : yellow13;
+        const specInfo = s.data.spec ? gray13(` (${s.data.spec})`) : "";
+        const lastUpdated = s.data.last_updated ? gray13(` \u2014 updated ${new Date(s.data.last_updated).toLocaleDateString()}`) : "";
+        console.log(`    ${statusColor("\u25CF")} ${s.data.branch}${specInfo}${lastUpdated}`);
+        console.log(`      ${gray13(s.filePath.replace(agentsDir, ".agents"))}`);
+      }
+    }
+    if (options.all && archivedSessions.length > 0) {
+      console.log();
+      console.log(`  ${bold12("Archived Sessions")}:`);
+      for (const s of archivedSessions) {
+        const archivedDate = s.data.archived_at ? gray13(` \u2014 archived ${new Date(s.data.archived_at).toLocaleDateString()}`) : "";
+        console.log(`    ${gray13("\u25CB")} ${s.data.branch}${archivedDate}`);
+        console.log(`      ${gray13(s.filePath.replace(agentsDir, ".agents"))}`);
+      }
+    }
+    console.log();
+    console.log(`  ${activeSessions.length} active${options.all ? `, ${archivedSessions.length} archived` : ""}`);
+    console.log();
+  });
 }
 
 // cli/index.ts
-var __dirname6 = dirname14(fileURLToPath8(import.meta.url));
+var __dirname6 = dirname15(fileURLToPath8(import.meta.url));
 function getVersion5() {
   for (const candidate of [join37(__dirname6, "..", "package.json"), join37(__dirname6, "..", "..", "package.json")]) {
     try {

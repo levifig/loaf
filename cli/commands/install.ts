@@ -6,10 +6,11 @@
  */
 
 import { Command } from "commander";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, mkdirSync, copyFileSync, chmodSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { createInterface } from "readline";
+import { execSync } from "child_process";
 import {
   detectTools,
   detectClaudeCode,
@@ -62,6 +63,70 @@ function askYesNo(question: string): Promise<boolean> {
   });
 }
 
+/** Check if loaf is available on PATH */
+function isLoafOnPath(): boolean {
+  try {
+    execSync("which loaf", { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Install loaf binary to ~/.local/bin/ */
+async function installLoafBinary(rootDir: string): Promise<boolean> {
+  const localBinDir = join(process.env.HOME || "~", ".local", "bin");
+  const sourceBinary = join(rootDir, "dist-cli", "index.js");
+  const targetBinary = join(localBinDir, "loaf");
+  
+  if (!existsSync(sourceBinary)) {
+    console.log(`  ${red("✗")} CLI binary not found at ${sourceBinary}`);
+    console.log(`  ${gray("Run 'npm run build:cli' first.")}`);
+    return false;
+  }
+  
+  // Create ~/.local/bin if needed
+  if (!existsSync(localBinDir)) {
+    try {
+      mkdirSync(localBinDir, { recursive: true });
+      console.log(`  ${green("✓")} Created ${localBinDir}`);
+    } catch (err) {
+      console.log(`  ${red("✗")} Could not create ${localBinDir}: ${err}`);
+      return false;
+    }
+  }
+  
+  // Remove existing binary if present
+  if (existsSync(targetBinary)) {
+    try {
+      unlinkSync(targetBinary);
+    } catch {
+      // Ignore unlink errors
+    }
+  }
+  
+  // Copy and make executable
+  try {
+    copyFileSync(sourceBinary, targetBinary);
+    chmodSync(targetBinary, 0o755);
+    console.log(`  ${green("✓")} Installed loaf binary to ${targetBinary}`);
+    
+    // Check if ~/.local/bin is on PATH
+    const pathEnv = process.env.PATH || "";
+    if (!pathEnv.includes(localBinDir)) {
+      console.log(`  ${yellow("⚠")} ${localBinDir} is not on your PATH`);
+      console.log(`  ${gray("Add this to your shell profile:")}`);
+      console.log(`  ${gray(`  export PATH=\"${localBinDir}:\$PATH\"`)}`);
+    }
+    
+    return true;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  ${red("✗")} Failed to install binary: ${msg}`);
+    return false;
+  }
+}
+
 const VALID_TARGETS = Object.keys(DEFAULT_CONFIG_DIRS);
 
 export function registerInstallCommand(program: Command): void {
@@ -109,6 +174,27 @@ export function registerInstallCommand(program: Command): void {
         return;
       }
       console.log();
+
+      // Check/install loaf binary for hooks that need PATH access
+      if (!isLoafOnPath()) {
+        console.log(`  ${yellow("⚠")} The 'loaf' command is not available on your PATH`);
+        console.log(`  ${gray("Hooks and commands may fail without it.")}`);
+        
+        const shouldInstallBinary = await askYesNo(
+          `  Install 'loaf' binary to ~/.local/bin? [y/N] `,
+        );
+        
+        if (shouldInstallBinary) {
+          await installLoafBinary(rootDir);
+          console.log();
+        } else {
+          console.log(`  ${gray("Skipping binary installation. Some features may not work.")}`);
+          console.log();
+        }
+      } else {
+        console.log(`  ${green("✓")} loaf binary available on PATH`);
+        console.log();
+      }
 
       // Determine targets to install
       let selectedTargets: string[];

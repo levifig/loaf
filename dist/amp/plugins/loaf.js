@@ -149,6 +149,24 @@ function matchesTool(toolName: string, pattern: string): boolean {
   });
 }
 
+function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: string | undefined): boolean {
+  if (!ifCondition) return true;
+  const match = ifCondition.match(/^(\w+)\(([^)]+)\)$/);
+  if (!match) return true;
+  const [, expectedTool, commandPattern] = match;
+  if (toolName !== expectedTool) return false;
+  const input = toolInput as Record<string, unknown> | undefined;
+  const command = input?.command as string | undefined;
+  if (!command) return false;
+  const regexPattern = commandPattern
+    .replace(/[.+^\$" + "{}()|[\]\\]/g, '\\$&')
+    .replace(/\\\*/g, '.*')
+    .replace(/\\\?/g, '.');
+  const regex = new RegExp('^' + regexPattern + '$');
+  return regex.test(command);
+}
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Hook Data
 // ─────────────────────────────────────────────────────────────────────────────
@@ -159,10 +177,11 @@ interface HookEntry {
   script?: string;
   timeout: number;
   failClosed: boolean;
+  if?: string;
 }
 
 const preToolHooks: Record<string, HookEntry[]> = {
-  "Edit|Write": [
+  "Edit|Write|Bash": [
     {
       "id": "check-secrets",
       "command": "loaf check --hook check-secrets",
@@ -211,6 +230,29 @@ const postToolHooks: Record<string, HookEntry[]> = {
       "command": "loaf task refresh",
       "timeout": 30000,
       "failClosed": false
+    }
+  ],
+  "Bash": [
+    {
+      "id": "journal-post-commit",
+      "command": "loaf session log --from-hook",
+      "timeout": 30000,
+      "failClosed": false,
+      "if": "Bash(git commit:*)"
+    },
+    {
+      "id": "journal-post-pr",
+      "command": "loaf session log --from-hook",
+      "timeout": 30000,
+      "failClosed": false,
+      "if": "Bash(gh pr create:*)"
+    },
+    {
+      "id": "journal-post-merge",
+      "command": "loaf session log --from-hook",
+      "timeout": 30000,
+      "failClosed": false,
+      "if": "Bash(gh pr merge:*)"
     }
   ]
 };
@@ -284,6 +326,7 @@ export default {
       for (const [matcher, hookList] of Object.entries(preToolHooks)) {
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
+            if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
             const result = runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             // Exit code 2 = block the action
@@ -311,6 +354,7 @@ export default {
       for (const [matcher, hookList] of Object.entries(postToolHooks)) {
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
+            if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
             const result = runHook('post-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             if (result.exitCode !== 0) {

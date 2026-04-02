@@ -188,9 +188,19 @@ async function checkSecrets(context: HookContext): Promise<CheckResult> {
 
   const filePath = getFilePath(context);
   const content = getContent(context);
+  const command = getCommand(context);
+  const toolName = getToolName(context);
 
-  // Skip if no file path or content
-  if (!filePath && !content) {
+  // Build content to scan from file content and/or command
+  let contentToScan = content || "";
+
+  // If this is a Bash command, also scan the command text for secrets
+  if (toolName === "Bash" && command) {
+    contentToScan += "\n" + command;
+  }
+
+  // Skip if nothing to scan
+  if (!filePath && !contentToScan.trim()) {
     return result;
   }
 
@@ -229,7 +239,7 @@ async function checkSecrets(context: HookContext): Promise<CheckResult> {
     { name: "GitHub Token", regex: /gh[pousr]_[A-Za-z0-9_]{36}/ },
   ];
 
-  const targetContent = content || "";
+  const targetContent = contentToScan;
   const foundSecrets: string[] = [];
 
   for (const { name, regex } of secretPatterns) {
