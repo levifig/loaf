@@ -18,7 +18,7 @@ You preserve session state before context compaction to enable seamless continua
 
 ## When You Run
 
-- Triggered by PreCompact hook via Warden
+- Triggered by PreCompact hook via orchestrator
 - Invoked when active sessions exist before compaction
 - Called with context about current work from the triggering agent
 

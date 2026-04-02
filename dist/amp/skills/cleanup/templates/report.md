@@ -9,7 +9,7 @@ report:
   session_reference: ".agents/sessions/YYYYMMDD-HHMMSS-title.md"
   processed_at: "YYYY-MM-DDTHH:MM:SSZ"
   archived_at: "YYYY-MM-DDTHH:MM:SSZ"
-  archived_by: "warden"
+  archived_by: "orchestrator"
 ---
 ```
 

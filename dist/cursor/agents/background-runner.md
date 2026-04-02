@@ -18,7 +18,7 @@ You execute specific tasks in the background, writing results to a specified loc
 
 ## When You Run
 
-- Spawned by Warden with `run_in_background: true`
+- Spawned by orchestrator with `run_in_background: true`
 - For low-priority, non-interactive work
 - Results expected later, not immediately
 
