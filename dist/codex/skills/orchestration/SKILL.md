@@ -134,11 +134,11 @@ This skill uses paths from `.agents/config.json`:
 ## Critical Rules
 
 ### Sessions
-- Create following [session template](templates/session.md)
-- Required sections: Context, Current State, Next Steps
-- Archive when complete (status + `archived_at` + `archived_by` + move)
-- PreCompact hook: spawn context-archiver for Resumption Prompt
-- Post-compaction: copy transcript to `.agents/transcripts/`, add to session's `transcripts:` array
+- Create following [session template](templates/session.md) — compact inline journal format
+- Use `loaf session log` for journal entries: `decide(scope)`, `discover(scope)`, `block(scope)`, `spark(scope)`, `todo(scope)`
+- Archive when complete (status + `archived_at` + `archived_by` + move to `.agents/sessions/archive/`)
+- PreCompact hook: appends `compact` entry with context summary
+- Post-compaction: `loaf session start` outputs recent journal entries for recovery
 
 ### Councils
 - Always odd number: 5 or 7 agents
