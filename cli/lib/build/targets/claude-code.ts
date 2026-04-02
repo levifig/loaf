@@ -83,13 +83,21 @@ const MCP_SERVERS: Record<string, unknown> = {
   },
 };
 
-// Enforcement hooks that use `loaf check --hook <id>`
-const ENFORCEMENT_HOOKS = new Set([
+// Hooks that use `${CLAUDE_PLUGIN_ROOT}/bin/loaf` binary path
+const BINARY_PATH_HOOKS = new Set([
+  // Enforcement hooks
   "check-secrets",
   "validate-push",
   "validate-commit",
   "workflow-pre-pr",
   "security-audit",
+  // Session lifecycle hooks
+  "session-start-loaf",
+  "session-end-loaf",
+  // Journal auto-entry hooks
+  "journal-post-commit",
+  "journal-post-pr",
+  "journal-post-merge",
 ]);
 
 let VERSION = "0.0.0";
@@ -276,12 +284,18 @@ function groupByMatcher(hooks: HookDefinition[]): Record<string, HookDefinition[
 }
 
 function getClaudeHookCommand(hook: HookDefinition): string {
-  // If hook has direct command field, use it with plugin root substitution
-  if (hook.command) {
-    // For enforcement hooks, use the full plugin root path to loaf binary
-    if (ENFORCEMENT_HOOKS.has(hook.id)) {
+  // For binary path hooks (enforcement + session + journal), handle specially
+  if (BINARY_PATH_HOOKS.has(hook.id)) {
+    // Enforcement hooks don't have a command field - construct it
+    if (!hook.command) {
       return `"\${CLAUDE_PLUGIN_ROOT}/bin/loaf" check --hook ${hook.id}`;
     }
+    // Session and journal hooks have commands - just substitute the loaf binary path
+    return hook.command.replace(/\bloaf\b/g, '"${CLAUDE_PLUGIN_ROOT}/bin/loaf"');
+  }
+
+  // If hook has direct command field (not in BINARY_PATH_HOOKS), use as-is
+  if (hook.command) {
     return hook.command.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, "${CLAUDE_PLUGIN_ROOT}");
   }
 
@@ -354,6 +368,7 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
         return {
           type: "command" as const,
           command: getClaudeHookCommand(h),
+          ...(h.if && { if: h.if }),
           ...(h.description && { description: h.description }),
           ...(h.timeout && { timeout: Math.floor((h.timeout || 30000) / 1000) }),
           ...(h.failClosed && { failClosed: h.failClosed }),
@@ -416,12 +431,12 @@ function copyAllHooks(config: HooksConfig, srcDir: string, pluginDir: string): v
   // (only session hooks and legacy hooks without direct commands)
   const scriptHookIds = new Set<string>();
   for (const hook of config.hooks["pre-tool"] || []) {
-    if (hook.script && !ENFORCEMENT_HOOKS.has(hook.id)) {
+    if (hook.script && !BINARY_PATH_HOOKS.has(hook.id)) {
       scriptHookIds.add(hook.id);
     }
   }
   for (const hook of config.hooks["post-tool"] || []) {
-    if (hook.script && !ENFORCEMENT_HOOKS.has(hook.id)) {
+    if (hook.script && !BINARY_PATH_HOOKS.has(hook.id)) {
       scriptHookIds.add(hook.id);
     }
   }

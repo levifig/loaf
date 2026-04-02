@@ -32,35 +32,18 @@ const gray = (s: string) => `\x1b[90m${s}\x1b[0m`;
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SessionFrontmatter {
-  session: {
-    title: string;
-    status: "active" | "paused" | "blocked" | "complete" | "archived";
-    created: string;
-    last_updated: string;
-    last_entry?: string;
-    archived_at?: string;
-    archived_by?: string;
-    linear_issue?: string;
-    linear_url?: string;
-    branch: string;
-    task?: string;
-    spec?: string;
-  };
-  traceability: {
-    requirement?: string;
-    architecture?: string[];
-    decisions?: string[];
-  };
-  plans: string[];
-  transcripts: string[];
-  orchestration: {
-    current_task?: string;
-    spawned_agents?: Array<{
-      task?: string;
-      status?: string;
-      note?: string;
-    }>;
-  };
+  branch: string;
+  status: "active" | "paused" | "blocked" | "complete" | "archived";
+  created: string;
+  last_updated?: string;
+  last_entry?: string;
+  archived_at?: string;
+  archived_by?: string;
+  linear_issue?: string;
+  linear_url?: string;
+  task?: string;
+  spec?: string;
+  title?: string;
 }
 
 type EntryType =
@@ -77,7 +60,15 @@ type EntryType =
   | "unblock"
   | "spark"
   | "todo"
-  | "assume";
+  | "assume"
+  // New types from SPEC-020
+  | "branch"
+  | "task"
+  | "linear"
+  | "hypothesis"
+  | "try"
+  | "reject"
+  | "compact";
 
 interface JournalEntry {
   type: EntryType;
@@ -175,11 +166,69 @@ function findSpecForBranch(
   return null;
 }
 
-/** Get session file path for a branch */
-function getSessionFilePath(agentsDir: string, branch: string): string {
-  // Sanitize branch name for filename
-  const sanitized = branch.replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-");
-  return join(agentsDir, "sessions", `${sanitized}.md`);
+/** Get session file path for a branch (timestamped format) */
+function getSessionFilePath(agentsDir: string, branch: string, timestamp?: Date): string {
+  const now = timestamp || new Date();
+  const datePrefix = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const timePrefix = now.toTimeString().slice(0, 8).replace(/:/g, "");
+  const slug = branch.replace(/^feat\//, "").replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-");
+  return join(agentsDir, "sessions", `${datePrefix}-${timePrefix}-${slug}.md`);
+}
+
+/** Find active session for a branch by scanning files */
+function findActiveSessionForBranch(agentsDir: string, branch: string): { filePath: string; data: SessionFrontmatter; content: string } | null {
+  const sessionsDir = join(agentsDir, "sessions");
+  if (!existsSync(sessionsDir)) return null;
+  
+  const files = readdirSync(sessionsDir).filter(f => f.endsWith(".md") && !f.startsWith("archive"));
+  
+  for (const file of files) {
+    const filePath = join(sessionsDir, file);
+    const session = readSessionFile(filePath);
+    if (session && session.data.branch === branch && session.data.status !== "archived") {
+      return { filePath, data: session.data, content: session.content };
+    }
+  }
+  
+  return null;
+}
+
+/** Read session file or return null */
+function readSessionFile(filePath: string): { data: SessionFrontmatter; content: string } | null {
+  if (!existsSync(filePath)) return null;
+
+  try {
+    const raw = readFileSync(filePath, "utf-8");
+    const parsed = matter(raw);
+    const rawData = parsed.data as unknown as Record<string, unknown>;
+    
+    // Handle legacy nested frontmatter migration (SPEC-020 format change)
+    // Old format: { session: { branch, status, created, ... }, otherFields... }
+    // New format: { branch, status, created, ... }
+    // Migration strategy: nested fields take precedence over top-level fields on collision
+    if (rawData.session && typeof rawData.session === "object") {
+      const nested = rawData.session as Record<string, unknown>;
+      // Start with all existing top-level fields
+      const migratedData: Record<string, unknown> = { ...rawData };
+      // Remove the nested session object itself
+      delete migratedData.session;
+      // Add/replace fields from nested session data
+      for (const [key, value] of Object.entries(nested)) {
+        migratedData[key] = value;
+      }
+      return {
+        data: migratedData as unknown as SessionFrontmatter,
+        content: parsed.content,
+      };
+    }
+    
+    return { 
+      data: rawData as unknown as SessionFrontmatter, 
+      content: parsed.content 
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** Parse entry string into structured format */
@@ -190,20 +239,11 @@ function parseEntry(entry: string): JournalEntry | null {
 
   const [, type, scope, description] = match;
   const validTypes: EntryType[] = [
-    "resume",
-    "pause",
-    "progress",
-    "commit",
-    "pr",
-    "merge",
-    "decide",
-    "discover",
-    "conclude",
-    "block",
-    "unblock",
-    "spark",
-    "todo",
-    "assume",
+    "resume", "pause", "progress", "commit", "pr", "merge",
+    "decide", "discover", "conclude", "block", "unblock",
+    "spark", "todo", "assume",
+    // New types
+    "branch", "task", "linear", "hypothesis", "try", "reject", "compact"
   ];
 
   if (!validTypes.includes(type as EntryType)) return null;
@@ -234,22 +274,6 @@ function getDateTimeString(): string {
   return `${date} ${time}`;
 }
 
-/** Read session file or return null */
-function readSessionFile(filePath: string): { data: SessionFrontmatter; content: string } | null {
-  if (!existsSync(filePath)) return null;
-
-  try {
-    const raw = readFileSync(filePath, "utf-8");
-    const parsed = matter(raw);
-    return {
-      data: parsed.data as unknown as SessionFrontmatter,
-      content: parsed.content,
-    };
-  } catch {
-    return null;
-  }
-}
-
 /** Create new session file */
 function createSessionFile(
   filePath: string,
@@ -258,32 +282,18 @@ function createSessionFile(
 ): SessionFrontmatter {
   const now = getTimestamp();
   const frontmatter: SessionFrontmatter = {
-    session: {
-      title: specInfo ? `${specInfo.id}: ${specInfo.title}` : `Session: ${branch}`,
-      status: "active",
-      created: now,
-      last_updated: now,
-      branch,
-      spec: specInfo?.id,
-    },
-    traceability: {
-      architecture: [],
-      decisions: [],
-    },
-    plans: [],
-    transcripts: [],
-    orchestration: {
-      spawned_agents: [],
-    },
+    branch,
+    status: "active",
+    created: now,
+    spec: specInfo?.id,
+    title: specInfo ? `${specInfo.id}: ${specInfo.title}` : `Session: ${branch}`,
   };
 
   const body = specInfo
     ? `# ${specInfo.id}: ${specInfo.title}\n\n## Context\n\nSession for ${specInfo.id}: ${specInfo.title}\n\n## Current State\n\nSession started.\n\n## Next Steps\n\n- [ ] First action item\n`
     : `# Session: ${branch}\n\n## Context\n\nAd-hoc session for branch \`${branch}\`.\n\n## Current State\n\nSession started.\n\n## Next Steps\n\n- [ ] First action item\n`;
 
-  // Clean frontmatter to remove undefined values
-  const cleanFrontmatter = JSON.parse(JSON.stringify(frontmatter)) as Record<string, unknown>;
-  const content = matter.stringify(body, cleanFrontmatter);
+  const content = matter.stringify(body, frontmatter as unknown as Record<string, unknown>);
   writeFileSync(filePath, content, "utf-8");
 
   return frontmatter;
@@ -307,11 +317,9 @@ function appendEntry(
   // Build new content
   const newSection = `\n## ${header}\n${entries.map((e) => e).join("\n")}\n`;
   
-  // Clean frontmatter to remove undefined values
-  const cleanFrontmatter = JSON.parse(JSON.stringify(session.data)) as Record<string, unknown>;
   const newContent = matter.stringify(
     session.content.trim() + newSection,
-    cleanFrontmatter
+    session.data as unknown as Record<string, unknown>
   );
 
   // Atomic write
@@ -414,16 +422,23 @@ export function registerSessionCommand(program: Command): void {
         console.log(`  ${yellow("!")} No linked spec found — creating ad-hoc session`);
       }
 
-      // Get or create session file
-      const sessionFilePath = getSessionFilePath(agentsDir, branch);
-      let session = readSessionFile(sessionFilePath);
+      // Capture timestamp once at session start to ensure consistent filename
+      const sessionTimestamp = new Date();
 
-      if (!session) {
+      // Find existing active session or create new one
+      let existingSession = findActiveSessionForBranch(agentsDir, branch);
+      let sessionFilePath: string;
+      let session: { data: SessionFrontmatter; content: string };
+
+      if (existingSession) {
+        console.log(`  ${green("✓")} Resuming existing session`);
+        sessionFilePath = existingSession.filePath;
+        session = existingSession;
+      } else {
         console.log(`  ${green("+")} Creating new session file`);
+        sessionFilePath = getSessionFilePath(agentsDir, branch, sessionTimestamp);
         createSessionFile(sessionFilePath, branch, specInfo);
         session = readSessionFile(sessionFilePath)!;
-      } else {
-        console.log(`  ${green("✓")} Resuming existing session`);
       }
 
       // Compute state
@@ -453,9 +468,9 @@ export function registerSessionCommand(program: Command): void {
         `${getDateTimeString()} — Start`,
         entries,
         (data) => {
-          data.session.status = "active";
-          data.session.last_updated = getTimestamp();
-          data.session.last_entry = getTimestamp();
+          data.status = "active";
+          data.last_updated = getTimestamp();
+          data.last_entry = getTimestamp();
         }
       );
 
@@ -497,13 +512,15 @@ export function registerSessionCommand(program: Command): void {
         process.exit(1);
       }
 
-      const sessionFilePath = getSessionFilePath(agentsDir, branch);
-      const session = readSessionFile(sessionFilePath);
-
-      if (!session) {
-        console.error(`  ${red("error:")} No session found for branch ${branch}`);
+      // Find active session by branch lookup
+      let existingSession = findActiveSessionForBranch(agentsDir, branch);
+      if (!existingSession) {
+        console.error(`  ${red("error:")} No active session found for branch ${branch}`);
         process.exit(1);
       }
+      
+      const sessionFilePath = existingSession.filePath;
+      const session = existingSession;
 
       console.log(`\n  ${bold("loaf session end")}\n`);
 
@@ -534,9 +551,9 @@ export function registerSessionCommand(program: Command): void {
         `${getDateTimeString()} — Pause`,
         entries,
         (data) => {
-          data.session.status = "paused";
-          data.session.last_updated = getTimestamp();
-          data.session.last_entry = getTimestamp();
+          data.status = "paused";
+          data.last_updated = getTimestamp();
+          data.last_entry = getTimestamp();
         }
       );
 
@@ -564,13 +581,15 @@ export function registerSessionCommand(program: Command): void {
         process.exit(1);
       }
 
-      const sessionFilePath = getSessionFilePath(agentsDir, branch);
-      const session = readSessionFile(sessionFilePath);
-
-      if (!session) {
-        console.error(`  ${red("error:")} No session found for branch ${branch}. Run 'loaf session start' first.`);
+      // Find active session by branch lookup
+      let existingSession = findActiveSessionForBranch(agentsDir, branch);
+      if (!existingSession) {
+        console.error(`  ${red("error:")} No active session found for branch ${branch}. Run 'loaf session start' first.`);
         process.exit(1);
       }
+      
+      const sessionFilePath = existingSession.filePath;
+      const session = existingSession;
 
       let entryText = entry;
 
@@ -580,16 +599,41 @@ export function registerSessionCommand(program: Command): void {
           const stdin = readFileSync(0, "utf-8"); // Read from fd 0 (stdin)
           const hookData = JSON.parse(stdin);
           
-          // Extract IDs (commit SHA, PR number)
-          if (hookData.commit) {
-            entryText = `commit(${hookData.commit}): ${hookData.message || "commit"}`;
-          } else if (hookData.pr) {
-            entryText = `pr(#${hookData.pr}): ${hookData.title || "PR created"}`;
-          } else if (hookData.merge) {
-            entryText = `merge(#${hookData.merge}): merged`;
+          // Extract command from generic tool payload
+          const command = hookData.tool_input?.command || hookData.input?.command;
+          
+          if (command && typeof command === "string") {
+            // Parse Bash command to detect entry type
+            if (command.includes("git commit")) {
+              // Extract commit message if available
+              const msgMatch = command.match(/-m\s+['"]([^'"]+)['"]/) || command.match(/-m\s+(\S+)/);
+              const message = msgMatch ? msgMatch[1] : "commit";
+              const hash = getLastCommitSha();
+              entryText = `commit(${hash}): ${message}`;
+            } else if (command.includes("gh pr create")) {
+              entryText = `pr: PR created`;
+            } else if (command.includes("gh pr merge")) {
+              // Try to extract PR number from URL or direct argument
+              const prMatch = command.match(/merge\s+https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/) ||
+                               command.match(/pr\s+merge\s+(\d+)/);
+              const prNum = prMatch ? prMatch[1] : "unknown";
+              entryText = `merge(#${prNum}): merged`;
+            } else {
+              // Generic entry for unrecognized command
+              entryText = `progress(hook): ${command.slice(0, 100)}${command.length > 100 ? "..." : ""}`;
+            }
           } else {
-            console.error(`  ${red("error:")} Could not parse hook data`);
-            process.exit(1);
+            // Fallback: try legacy fields for backward compatibility
+            if (hookData.commit) {
+              entryText = `commit(${hookData.commit}): ${hookData.message || "commit"}`;
+            } else if (hookData.pr) {
+              entryText = `pr(#${hookData.pr}): ${hookData.title || "PR created"}`;
+            } else if (hookData.merge) {
+              entryText = `merge(#${hookData.merge}): merged`;
+            } else {
+              console.error(`  ${red("error:")} Could not parse hook data - no command found`);
+              process.exit(1);
+            }
           }
         } catch (err) {
           console.error(`  ${red("error:")} Failed to parse stdin JSON: ${err}`);
@@ -656,8 +700,8 @@ export function registerSessionCommand(program: Command): void {
         `${getDateTimeString()}`,
         [formatEntry(parsedEntry)],
         (data) => {
-          data.session.last_updated = getTimestamp();
-          data.session.last_entry = getTimestamp();
+          data.last_updated = getTimestamp();
+          data.last_entry = getTimestamp();
         }
       );
 
@@ -683,13 +727,15 @@ export function registerSessionCommand(program: Command): void {
         process.exit(1);
       }
 
-      const sessionFilePath = getSessionFilePath(agentsDir, branch);
-      const session = readSessionFile(sessionFilePath);
-
-      if (!session) {
-        console.error(`  ${red("error:")} No session found for branch ${branch}`);
+      // Find active session by branch lookup
+      let existingSession = findActiveSessionForBranch(agentsDir, branch);
+      if (!existingSession) {
+        console.error(`  ${red("error:")} No active session found for branch ${branch}`);
         process.exit(1);
       }
+      
+      const sessionFilePath = existingSession.filePath;
+      const session = existingSession;
 
       console.log(`\n  ${bold("loaf session archive")}\n`);
 
@@ -714,16 +760,14 @@ export function registerSessionCommand(program: Command): void {
 
       // Update frontmatter
       const now = getTimestamp();
-      session.data.session.status = "archived";
-      session.data.session.archived_at = now;
-      session.data.session.last_updated = now;
+      session.data.status = "archived";
+      session.data.archived_at = now;
+      session.data.last_updated = now;
 
       // Write updated content
-      // Clean frontmatter to remove undefined values
-      const cleanFrontmatter = JSON.parse(JSON.stringify(session.data)) as Record<string, unknown>;
       const newContent = matter.stringify(
         session.content,
-        cleanFrontmatter
+        session.data as unknown as Record<string, unknown>
       );
       writeFileSync(sessionFilePath, newContent, "utf-8");
 

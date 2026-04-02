@@ -9,6 +9,14 @@ import { writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import type { HooksConfig, HookDefinition } from "../../types.js";
 
+const ENFORCEMENT_HOOKS = new Set([
+  "check-secrets",
+  "validate-push",
+  "validate-commit",
+  "workflow-pre-pr",
+  "security-audit",
+]);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Platform Configuration Interface
 // ─────────────────────────────────────────────────────────────────────────────
@@ -259,7 +267,25 @@ function matchesTool(toolName: string, pattern: string): boolean {
     }
     return toolName === trimmed;
   });
-}`;
+}
+
+function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: string | undefined): boolean {
+  if (!ifCondition) return true;
+  const match = ifCondition.match(/^(\\w+)\\(([^)]+)\\)$/);
+  if (!match) return true;
+  const [, expectedTool, commandPattern] = match;
+  if (toolName !== expectedTool) return false;
+  const input = toolInput as Record<string, unknown> | undefined;
+  const command = input?.command as string | undefined;
+  if (!command) return false;
+  const regexPattern = commandPattern
+    .replace(/[.+^\\$" + "{}()|[\\]\\\\]/g, '\\\\$&')
+    .replace(/\\\\\\*/g, '.*')
+    .replace(/\\\\\\?/g, '.');
+  const regex = new RegExp('^' + regexPattern + '$');
+  return regex.test(command);
+}
+`;
 }
 
 function generateHookData(config: HooksConfig): string {
@@ -289,6 +315,7 @@ interface HookEntry {
   script?: string;
   timeout: number;
   failClosed: boolean;
+  if?: string;
 }
 
 const preToolHooks: Record<string, HookEntry[]> = ${JSON.stringify(preToolByMatcher, null, 2)};
@@ -315,6 +342,7 @@ function generatePluginBody(config: HooksConfig, platform: RuntimePlatform): str
       for (const [matcher, hookList] of Object.entries(preToolHooks)) {
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
+            if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
             const result = runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             // Exit code 2 = block the action
@@ -342,6 +370,7 @@ function generatePluginBody(config: HooksConfig, platform: RuntimePlatform): str
       for (const [matcher, hookList] of Object.entries(postToolHooks)) {
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
+            if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
             const result = runHook('post-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             if (result.exitCode !== 0) {
@@ -446,12 +475,19 @@ function groupHooksByMatcher(hooks: HookDefinition[]): Record<string, HookEntry[
     const matcher = hook.matcher || "Edit|Write";
     if (!grouped[matcher]) grouped[matcher] = [];
 
+    // Synthesize command for enforcement hooks that don't have explicit command/script
+    let command = hook.command;
+    if (!command && !hook.script && ENFORCEMENT_HOOKS.has(hook.id)) {
+      command = `loaf check --hook ${hook.id}`;
+    }
+
     grouped[matcher].push({
       id: hook.id,
-      command: hook.command,
+      command,
       script: hook.script ? getScriptFilename(hook.script) : undefined,
       timeout: hook.timeout || 60000,
       failClosed: hook.failClosed || false,
+      if: hook.if,
     });
   }
 
@@ -467,12 +503,19 @@ function groupSessionHooksByEvent(hooks: HookDefinition[]): Record<string, HookE
 
     if (!grouped[event]) grouped[event] = [];
 
+    // Synthesize command for enforcement hooks that don't have explicit command/script
+    let command = hook.command;
+    if (!command && !hook.script && ENFORCEMENT_HOOKS.has(hook.id)) {
+      command = `loaf check --hook ${hook.id}`;
+    }
+
     grouped[event].push({
       id: hook.id,
-      command: hook.command,
+      command,
       script: hook.script ? getScriptFilename(hook.script) : undefined,
       timeout: hook.timeout || 60000,
       failClosed: hook.failClosed || false,
+      if: hook.if,
     });
   }
 
@@ -490,4 +533,5 @@ interface HookEntry {
   script?: string;
   timeout: number;
   failClosed: boolean;
+  if?: string;
 }
