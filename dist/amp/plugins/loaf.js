@@ -164,7 +164,7 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
   if (toolName !== expectedTool) return false;
   
   const input = toolInput as Record<string, unknown> | undefined;
-  const command = input?.command as string | undefined;
+  const command = (input?.command || input?.file_path) as string | undefined;
   if (!command) return false;
   
   // Handle glob patterns with :* suffix (e.g., "git commit:*" means "starts with git commit")

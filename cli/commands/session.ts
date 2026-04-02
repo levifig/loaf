@@ -16,6 +16,7 @@ import {
   unlinkSync,
   openSync,
   closeSync,
+  statSync,
 } from "fs";
 import { join, dirname, basename } from "path";
 import matter from "gray-matter";
@@ -105,12 +106,11 @@ interface LockFileContent {
 /** Check if lock file is stale (older than threshold) */
 function isLockStale(lockPath: string): boolean {
   try {
-    const content = readFileSync(lockPath, 'utf-8');
-    const data: LockFileContent = JSON.parse(content);
-    const age = Date.now() - data.timestamp;
+    const stats = statSync(lockPath);
+    const age = Date.now() - stats.mtimeMs;
     return age > LOCK_STALENESS_THRESHOLD;
   } catch {
-    // If we can't read/parse the lock file, assume it's stale
+    // If we can't read the lock file, assume it's stale
     return true;
   }
 }

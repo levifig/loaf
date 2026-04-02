@@ -226,18 +226,18 @@ async function checkSecrets(context: HookContext): Promise<CheckResult> {
   
   // Secret patterns to detect
   const secretPatterns: Array<{ name: string; regex: RegExp }> = [
-    { name: "AWS Access Key ID", regex: /AKIA[0-9A-Z]{16}/ },
-    { name: "AWS Secret Key", regex: /aws_secret_access_key\s*=\s*["']?[A-Za-z0-9/+=]{40}["']?/i },
-    { name: "OpenAI API Key", regex: /sk-[a-zA-Z0-9]{20,}/ },
-    { name: "Stripe Live Key", regex: /sk_live_[a-zA-Z0-9]{10,}/ },
-    { name: "Stripe Test Key", regex: /sk_test_[a-zA-Z0-9]{10,}/ },
-    { name: "Private Key", regex: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/ },
-    { name: "Database Connection", regex: /(postgres|mysql|mongodb):\/\/[^:]+:[^@]+@/ },
-    { name: "Password Assignment", regex: /password\s*=\s*["'][^"']{8,}["']/i },
-    { name: "Secret Assignment", regex: /secret\s*=\s*["'][^"']{8,}["']/i },
-    { name: "API Key Assignment", regex: /api_key\s*=\s*["'][^"']{16,}["']/i },
-    { name: "JWT Token", regex: /eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*/ },
-    { name: "GitHub Token", regex: /gh[pousr]_[A-Za-z0-9_]{36}/ },
+    { name: "AWS Access Key ID", regex: /AKIA[0-9A-Z]{16}/g },
+    { name: "AWS Secret Key", regex: /aws_secret_access_key\s*=\s*["']?[A-Za-z0-9/+=]{40}["']?/ig },
+    { name: "OpenAI API Key", regex: /sk-[a-zA-Z0-9]{20,}/g },
+    { name: "Stripe Live Key", regex: /sk_live_[a-zA-Z0-9]{10,}/g },
+    { name: "Stripe Test Key", regex: /sk_test_[a-zA-Z0-9]{10,}/g },
+    { name: "Private Key", regex: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g },
+    { name: "Database Connection", regex: /(postgres|mysql|mongodb):\/\/[^:]+:[^@]+@/g },
+    { name: "Password Assignment", regex: /password\s*=\s*["'][^"']{8,}["']/ig },
+    { name: "Secret Assignment", regex: /secret\s*=\s*["'][^"']{8,}["']/ig },
+    { name: "API Key Assignment", regex: /api_key\s*=\s*["'][^"']{16,}["']/ig },
+    { name: "JWT Token", regex: /eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*/g },
+    { name: "GitHub Token", regex: /gh[pousr]_[A-Za-z0-9_]{36}/g },
   ];
 
   const targetContent = contentToScan;
@@ -246,8 +246,10 @@ async function checkSecrets(context: HookContext): Promise<CheckResult> {
   for (const { name, regex } of secretPatterns) {
     const matches = targetContent.match(regex);
     if (matches) {
-      const matchPreview = matches[0].substring(0, 40);
-      foundSecrets.push(`${name}: ${matchPreview}...`);
+      for (const match of matches) {
+        const matchPreview = match.substring(0, 40);
+        foundSecrets.push(`${name}: ${matchPreview}...`);
+      }
     }
   }
 
@@ -448,14 +450,14 @@ async function workflowPrePr(context: HookContext): Promise<CheckResult> {
   // But if ANY explicit flag is present, require complete --title/--body
   if (hasAnyExplicitFlag && !hasFillFlag && !hasBodyFileFlag) {
     // Must have --title flag with non-empty value
-    const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
+    const titleMatch = command.match(/--title(?:\s+|=)(?:["']([^"']+)["']|([^\s"']+))/);
     if (!titleMatch) {
       result.passed = false;
       result.blocked = true;
       result.errors.push("Missing --title flag - PR title is required");
       result.errors.push("Example: gh pr create --title \"feat: add new feature\"");
     } else {
-      const title = titleMatch[1].trim();
+      const title = (titleMatch[1] || titleMatch[2]).trim();
       
       // Title should follow conventional format: type(scope): description
       // or at minimum be descriptive (not just "fix" or "update")
@@ -519,14 +521,11 @@ async function validateCommit(context: HookContext): Promise<CheckResult> {
   // Extract commit message from command
   let message: string | null = null;
 
-  // Match -m "message" or -m 'message'
-  const doubleQuoteMatch = command.match(/-m\s+"([^"]+)"/);
-  const singleQuoteMatch = command.match(/-m\s+'([^']+)'/);
+  // Match -m "message" or -m 'message' or -m message
+  const msgMatch = command.match(/-m(?:\s+|=)(?:["']([^"']+)["']|([^\s"']+))/);
   
-  if (doubleQuoteMatch) {
-    message = doubleQuoteMatch[1];
-  } else if (singleQuoteMatch) {
-    message = singleQuoteMatch[1];
+  if (msgMatch) {
+    message = msgMatch[1] || msgMatch[2];
   } else {
     // Match HEREDOC: -m "$(cat <<'EOF' ... EOF )"
     const heredocMatch = command.match(/<<'?EOF'?\s*\n(.+?)\n\s*EOF/s);
