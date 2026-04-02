@@ -353,10 +353,17 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
       // Format: "hash message" - look for "branch: Created from ..." or checkout from another branch
       const reflogOutput = execSync(`git reflog show --format='%H %gs' ${branch} 2>/dev/null | tail -5`, { encoding: "utf-8" });
       
-      // Look for patterns like "checkout: moving from old-branch to new-branch" or "branch: Created from old-branch"
+      // Look for patterns like "checkout: moving from old-branch to new-branch", "branch: Created from old-branch", or "Branch: renamed refs/heads/old-branch to refs/heads/new-branch"
       const checkoutMatch = reflogOutput.match(/checkout: moving from ([^\s]+) to/);
+      const createdMatch = reflogOutput.match(/branch: Created from ([^\s]+)/);
+      const renamedMatch = reflogOutput.match(/Branch: renamed refs\/heads\/([^\s]+) to/);
+      
       if (checkoutMatch) {
         parentBranch = checkoutMatch[1];
+      } else if (createdMatch) {
+        parentBranch = createdMatch[1];
+      } else if (renamedMatch) {
+        parentBranch = renamedMatch[1];
       }
     } catch {
       // Git command failed, skip rename detection

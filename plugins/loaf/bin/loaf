@@ -908,11 +908,13 @@ function generateCode(config, platform2, version) {
   const pluginBody = generatePluginBody(config, platform2);
   return `${header}
 
-import { execFileSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const execFileAsync = promisify(execFile);
 
 ${coreFunctions}
 
@@ -970,7 +972,7 @@ function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: u
   }
 }
 
-function runHook(
+async function runHook(
   hookType: string,
   toolName: string,
   hookId: string,
@@ -979,7 +981,7 @@ function runHook(
   payload?: string,
   timeout: number = 60000,
   failClosed: boolean = false,
-): HookResult {
+): Promise<HookResult> {
   const env = {
     ...process.env,
     LOAF_HOOK_TYPE: hookType,
@@ -990,48 +992,64 @@ function runHook(
   try {
     // If hook has direct command (e.g., 'loaf check ...'), execute it
     if (command) {
-      const result = execFileSync('bash', ['-c', command], {
+      const child = execFile('bash', ['-c', command], {
         cwd: process.cwd(),
         env,
         encoding: 'utf-8',
-        input: payload,
         timeout,
       });
-      return { exitCode: 0, stdout: result, stderr: '' };
+      if (payload && child.stdin) {
+        child.stdin.write(payload);
+        child.stdin.end();
+      }
+      
+      const result = await new Promise<HookResult>((resolve) => {
+        let stdoutStr = '';
+        let stderrStr = '';
+        child.stdout?.on('data', (data) => stdoutStr += data);
+        child.stderr?.on('data', (data) => stderrStr += data);
+        child.on('close', (code) => {
+          resolve({ exitCode: code || 0, stdout: stdoutStr, stderr: stderrStr });
+        });
+        child.on('error', (err) => {
+          resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
+        });
+      });
+      return result;
     }
 
     // Otherwise run the script file
     if (script) {
       const scriptPath = join(__dirname, 'hooks', script);
       const interpreter = script.endsWith('.py') ? 'python3' : 'bash';
-      const result = execFileSync(interpreter, [scriptPath], {
+      const child = execFile(interpreter, [scriptPath], {
         cwd: process.cwd(),
         env,
         encoding: 'utf-8',
-        input: payload,
         timeout,
       });
-      return { exitCode: 0, stdout: result, stderr: '' };
+      if (payload && child.stdin) {
+        child.stdin.write(payload);
+        child.stdin.end();
+      }
+      
+      const result = await new Promise<HookResult>((resolve) => {
+        let stdoutStr = '';
+        let stderrStr = '';
+        child.stdout?.on('data', (data) => stdoutStr += data);
+        child.stderr?.on('data', (data) => stderrStr += data);
+        child.on('close', (code) => {
+          resolve({ exitCode: code || 0, stdout: stdoutStr, stderr: stderrStr });
+        });
+        child.on('error', (err) => {
+          resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
+        });
+      });
+      return result;
     }
 
     return { exitCode: 1, stdout: '', stderr: 'No command or script specified' };
   } catch (error: any) {
-    // Handle subprocess errors
-    if (error.status !== undefined) {
-      // Subprocess exited with non-zero code
-      // Ensure stderr/stdout are strings (handles edge cases where they might be Buffers)
-      const stderrStr = error.stderr ? String(error.stderr) : '';
-      const stdoutStr = error.stdout ? String(error.stdout) : '';
-      return {
-        exitCode: error.status,
-        stdout: stdoutStr,
-        stderr: stderrStr || error.message,
-      };
-    }
-    
-    // Subprocess failed to execute (crash, not found, etc.)
-    // failClosed=true: treat as blocking (exit code 2)
-    // failClosed=false: treat as error but allow (exit code 1)
     return {
       exitCode: failClosed ? 2 : 1,
       stdout: '',
@@ -1148,7 +1166,7 @@ function generatePluginBody(config, platform2) {
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
             if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
-            const result = runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
+            const result = await runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             // Exit code 2 = block the action
             if (result.exitCode === 2) {
@@ -1176,7 +1194,7 @@ function generatePluginBody(config, platform2) {
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
             if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
-            const result = runHook('post-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
+            const result = await runHook('post-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             if (result.exitCode !== 0) {
               console.warn(\`[loaf] Post-hook \${hook.id} error (exit \${result.exitCode}): \${result.stderr}\`);
@@ -1201,12 +1219,12 @@ function generateOpenCodeSessionHandlers(config, platform2) {
     'event': async ({ event }) => {
       if (event.type === '${platform2.events.sessionStart}' && sessionHooks.sessionstart) {
         for (const hook of sessionHooks.sessionstart) {
-          runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+          await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
         }
       }
       if (event.type === '${platform2.events.sessionEnd}' && sessionHooks.sessionend) {
         for (const hook of sessionHooks.sessionend) {
-          runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+          await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
         }
       }`;
   const extraEvents = generateOpenCodeExtraEvents(config);
@@ -1225,7 +1243,7 @@ function generateOpenCodeExtraEvents(config) {
   if (compactingHooks.length === 0) return "";
   return `      if (event.type === 'context.compacting' && sessionHooks.precompact) {
         for (const hook of sessionHooks.precompact) {
-          runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+          await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
         }
       }`;
 }
@@ -1236,7 +1254,7 @@ function generateAmpSessionHandlers(config, platform2) {
   '${platform2.events.sessionStart}': async () => {
     if (sessionHooks.sessionstart) {
       for (const hook of sessionHooks.sessionstart) {
-        runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+        await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
       }
     }
   },
@@ -1247,7 +1265,7 @@ function generateAmpSessionHandlers(config, platform2) {
   '${platform2.events.sessionEnd}': async () => {
     if (sessionHooks.sessionend) {
       for (const hook of sessionHooks.sessionend) {
-        runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+        await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
       }
     }
   },
@@ -7696,7 +7714,7 @@ async function workflowPrePr(context) {
   if (existsSync31("CHANGELOG.md")) {
     try {
       const changelog = readFileSync27("CHANGELOG.md", "utf-8");
-      const unreleasedMatch = changelog.match(/##\s*\[Unreleased\]([\s\S]*?)(?=##\s*\[|$)/);
+      const unreleasedMatch = changelog.match(/##\s*\[Unreleased\]([\s\S]*?)(?=\n##\s|$)/);
       if (unreleasedMatch) {
         const unreleasedSection = unreleasedMatch[1];
         const hasEntries = /^[-*]\s/m.test(unreleasedSection);
@@ -7725,14 +7743,14 @@ async function workflowPrePr(context) {
   const hasBodyFileFlag = /--body-file/.test(command);
   const hasAnyExplicitFlag = /--(title|body|fill|body-file)/.test(command);
   if (hasAnyExplicitFlag && !hasFillFlag && !hasBodyFileFlag) {
-    const titleMatch = command.match(/--title(?:\s+|=)(?:["']([^"']+)["']|([^\s"']+))/);
+    const titleMatch = command.match(/--title(?:\s+|=)(?:"([^"]+)"|'([^']+)'|([^\s"']+))/);
     if (!titleMatch) {
       result.passed = false;
       result.blocked = true;
       result.errors.push("Missing --title flag - PR title is required");
       result.errors.push('Example: gh pr create --title "feat: add new feature"');
     } else {
-      const title = (titleMatch[1] || titleMatch[2]).trim();
+      const title = (titleMatch[1] || titleMatch[2] || titleMatch[3]).trim();
       if (title.length < 10) {
         result.passed = false;
         result.blocked = true;
@@ -7772,9 +7790,9 @@ async function validateCommit(context) {
     return result;
   }
   let message = null;
-  const msgMatch = command.match(/-m(?:\s+|=)(?:["']([^"']+)["']|([^\s"']+))/);
+  const msgMatch = command.match(/-m(?:\s+|=)(?:"([^"]+)"|'([^']+)'|([^\s"']+))/);
   if (msgMatch) {
-    message = msgMatch[1] || msgMatch[2];
+    message = msgMatch[1] || msgMatch[2] || msgMatch[3];
   } else {
     const heredocMatch = command.match(/<<'?EOF'?\s*\n(.+?)\n\s*EOF/s);
     if (heredocMatch) {
@@ -8150,8 +8168,14 @@ function findActiveSessionForBranch(agentsDir, branch) {
       currentBranchHash = execSync3("git rev-parse HEAD", { encoding: "utf-8" }).trim();
       const reflogOutput = execSync3(`git reflog show --format='%H %gs' ${branch} 2>/dev/null | tail -5`, { encoding: "utf-8" });
       const checkoutMatch = reflogOutput.match(/checkout: moving from ([^\s]+) to/);
+      const createdMatch = reflogOutput.match(/branch: Created from ([^\s]+)/);
+      const renamedMatch = reflogOutput.match(/Branch: renamed refs\/heads\/([^\s]+) to/);
       if (checkoutMatch) {
         parentBranch = checkoutMatch[1];
+      } else if (createdMatch) {
+        parentBranch = createdMatch[1];
+      } else if (renamedMatch) {
+        parentBranch = renamedMatch[1];
       }
     } catch {
     }

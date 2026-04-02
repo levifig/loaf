@@ -409,7 +409,7 @@ async function workflowPrePr(context: HookContext): Promise<CheckResult> {
       const changelog = readFileSync("CHANGELOG.md", "utf-8");
       
       // Find the Unreleased section
-      const unreleasedMatch = changelog.match(/##\s*\[Unreleased\]([\s\S]*?)(?=##\s*\[|$)/);
+      const unreleasedMatch = changelog.match(/##\s*\[Unreleased\]([\s\S]*?)(?=\n##\s|$)/);
       
       if (unreleasedMatch) {
         const unreleasedSection = unreleasedMatch[1];
@@ -450,14 +450,14 @@ async function workflowPrePr(context: HookContext): Promise<CheckResult> {
   // But if ANY explicit flag is present, require complete --title/--body
   if (hasAnyExplicitFlag && !hasFillFlag && !hasBodyFileFlag) {
     // Must have --title flag with non-empty value
-    const titleMatch = command.match(/--title(?:\s+|=)(?:["']([^"']+)["']|([^\s"']+))/);
+    const titleMatch = command.match(/--title(?:\s+|=)(?:"([^"]+)"|'([^']+)'|([^\s"']+))/);
     if (!titleMatch) {
       result.passed = false;
       result.blocked = true;
       result.errors.push("Missing --title flag - PR title is required");
       result.errors.push("Example: gh pr create --title \"feat: add new feature\"");
     } else {
-      const title = (titleMatch[1] || titleMatch[2]).trim();
+      const title = (titleMatch[1] || titleMatch[2] || titleMatch[3]).trim();
       
       // Title should follow conventional format: type(scope): description
       // or at minimum be descriptive (not just "fix" or "update")
@@ -522,10 +522,10 @@ async function validateCommit(context: HookContext): Promise<CheckResult> {
   let message: string | null = null;
 
   // Match -m "message" or -m 'message' or -m message
-  const msgMatch = command.match(/-m(?:\s+|=)(?:["']([^"']+)["']|([^\s"']+))/);
+  const msgMatch = command.match(/-m(?:\s+|=)(?:"([^"]+)"|'([^']+)'|([^\s"']+))/);
   
   if (msgMatch) {
-    message = msgMatch[1] || msgMatch[2];
+    message = msgMatch[1] || msgMatch[2] || msgMatch[3];
   } else {
     // Match HEREDOC: -m "$(cat <<'EOF' ... EOF )"
     const heredocMatch = command.match(/<<'?EOF'?\s*\n(.+?)\n\s*EOF/s);

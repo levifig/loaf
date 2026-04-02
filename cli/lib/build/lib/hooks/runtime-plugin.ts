@@ -118,11 +118,13 @@ function generateCode(
 
   return `${header}
 
-import { execFileSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const execFileAsync = promisify(execFile);
 
 ${coreFunctions}
 
@@ -181,7 +183,7 @@ function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: u
   }
 }
 
-function runHook(
+async function runHook(
   hookType: string,
   toolName: string,
   hookId: string,
@@ -190,7 +192,7 @@ function runHook(
   payload?: string,
   timeout: number = 60000,
   failClosed: boolean = false,
-): HookResult {
+): Promise<HookResult> {
   const env = {
     ...process.env,
     LOAF_HOOK_TYPE: hookType,
@@ -201,48 +203,64 @@ function runHook(
   try {
     // If hook has direct command (e.g., 'loaf check ...'), execute it
     if (command) {
-      const result = execFileSync('bash', ['-c', command], {
+      const child = execFile('bash', ['-c', command], {
         cwd: process.cwd(),
         env,
         encoding: 'utf-8',
-        input: payload,
         timeout,
       });
-      return { exitCode: 0, stdout: result, stderr: '' };
+      if (payload && child.stdin) {
+        child.stdin.write(payload);
+        child.stdin.end();
+      }
+      
+      const result = await new Promise<HookResult>((resolve) => {
+        let stdoutStr = '';
+        let stderrStr = '';
+        child.stdout?.on('data', (data) => stdoutStr += data);
+        child.stderr?.on('data', (data) => stderrStr += data);
+        child.on('close', (code) => {
+          resolve({ exitCode: code || 0, stdout: stdoutStr, stderr: stderrStr });
+        });
+        child.on('error', (err) => {
+          resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
+        });
+      });
+      return result;
     }
 
     // Otherwise run the script file
     if (script) {
       const scriptPath = join(__dirname, 'hooks', script);
       const interpreter = script.endsWith('.py') ? 'python3' : 'bash';
-      const result = execFileSync(interpreter, [scriptPath], {
+      const child = execFile(interpreter, [scriptPath], {
         cwd: process.cwd(),
         env,
         encoding: 'utf-8',
-        input: payload,
         timeout,
       });
-      return { exitCode: 0, stdout: result, stderr: '' };
+      if (payload && child.stdin) {
+        child.stdin.write(payload);
+        child.stdin.end();
+      }
+      
+      const result = await new Promise<HookResult>((resolve) => {
+        let stdoutStr = '';
+        let stderrStr = '';
+        child.stdout?.on('data', (data) => stdoutStr += data);
+        child.stderr?.on('data', (data) => stderrStr += data);
+        child.on('close', (code) => {
+          resolve({ exitCode: code || 0, stdout: stdoutStr, stderr: stderrStr });
+        });
+        child.on('error', (err) => {
+          resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
+        });
+      });
+      return result;
     }
 
     return { exitCode: 1, stdout: '', stderr: 'No command or script specified' };
   } catch (error: any) {
-    // Handle subprocess errors
-    if (error.status !== undefined) {
-      // Subprocess exited with non-zero code
-      // Ensure stderr/stdout are strings (handles edge cases where they might be Buffers)
-      const stderrStr = error.stderr ? String(error.stderr) : '';
-      const stdoutStr = error.stdout ? String(error.stdout) : '';
-      return {
-        exitCode: error.status,
-        stdout: stdoutStr,
-        stderr: stderrStr || error.message,
-      };
-    }
-    
-    // Subprocess failed to execute (crash, not found, etc.)
-    // failClosed=true: treat as blocking (exit code 2)
-    // failClosed=false: treat as error but allow (exit code 1)
     return {
       exitCode: failClosed ? 2 : 1,
       stdout: '',
@@ -369,7 +387,7 @@ function generatePluginBody(config: HooksConfig, platform: RuntimePlatform): str
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
             if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
-            const result = runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
+            const result = await runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             // Exit code 2 = block the action
             if (result.exitCode === 2) {
@@ -397,7 +415,7 @@ function generatePluginBody(config: HooksConfig, platform: RuntimePlatform): str
         if (matchesTool(toolName, matcher)) {
           for (const hook of hookList) {
             if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
-            const result = runHook('post-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
+            const result = await runHook('post-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
             
             if (result.exitCode !== 0) {
               console.warn(\`[loaf] Post-hook \${hook.id} error (exit \${result.exitCode}): \${result.stderr}\`);
@@ -428,12 +446,12 @@ function generateOpenCodeSessionHandlers(config: HooksConfig, platform: RuntimeP
     'event': async ({ event }) => {
       if (event.type === '${platform.events.sessionStart}' && sessionHooks.sessionstart) {
         for (const hook of sessionHooks.sessionstart) {
-          runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+          await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
         }
       }
       if (event.type === '${platform.events.sessionEnd}' && sessionHooks.sessionend) {
         for (const hook of sessionHooks.sessionend) {
-          runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+          await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
         }
       }`;
 
@@ -457,7 +475,7 @@ function generateOpenCodeExtraEvents(config: HooksConfig): string {
 
   return `      if (event.type === 'context.compacting' && sessionHooks.precompact) {
         for (const hook of sessionHooks.precompact) {
-          runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+          await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
         }
       }`;
 }
@@ -470,7 +488,7 @@ function generateAmpSessionHandlers(config: HooksConfig, platform: RuntimePlatfo
   '${platform.events.sessionStart}': async () => {
     if (sessionHooks.sessionstart) {
       for (const hook of sessionHooks.sessionstart) {
-        runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+        await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
       }
     }
   },\n`;
@@ -481,7 +499,7 @@ function generateAmpSessionHandlers(config: HooksConfig, platform: RuntimePlatfo
   '${platform.events.sessionEnd}': async () => {
     if (sessionHooks.sessionend) {
       for (const hook of sessionHooks.sessionend) {
-        runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
+        await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
       }
     }
   },\n`;
