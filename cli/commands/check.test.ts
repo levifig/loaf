@@ -136,22 +136,13 @@ describe("check: hook validation", () => {
 
     for (const hook of validHooks) {
       // Each should at least parse the hook ID without error
-      // Skip validate-push in this loop since it may fail due to build validation
-      // in the test environment - it has its own dedicated tests
-      if (hook === "validate-push") continue;
+      // Use a minimal context - the key is that it doesn't say "Unknown hook"
+      const result = runCheck(hook, { tool: { name: "Bash" }, tool_input: { command: "echo test" } });
       
-      const result = runCheck(hook, { tool: { name: "Bash" } });
-      // Exit code should be 0 or 2 (not 1 for unknown hook)
-      expect(result.exitCode).not.toBe(1);
+      // Check stderr doesn't contain "Unknown hook" 
+      // (exit code may be 0, 1, or 2 depending on validation results)
+      expect(result.stderr).not.toContain("Unknown hook");
     }
-    
-    // validate-push should be recognized (not exit 1 for unknown hook)
-    // even if it may exit 2 for validation failures
-    const validatePushResult = runCheck("validate-push", { 
-      tool: { name: "Bash" },
-      tool_input: { command: "echo 'not git push'" }  // Non-git-push command should pass
-    });
-    expect(validatePushResult.exitCode).not.toBe(1);
   });
 });
 

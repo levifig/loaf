@@ -276,7 +276,7 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
   if (!ifCondition) return true;
   
   // Parse pattern like "Bash(gh pr merge:*)" or "Bash(git push:*)"
-  // Tool name before '(' and pattern inside parentheses
+  // Tool name before '(' and command pattern inside parentheses
   const match = ifCondition.match(/^(\\w+)\\(([^)]+)\\)$/);
   if (!match) return true;
   
@@ -287,13 +287,26 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
   const command = input?.command as string | undefined;
   if (!command) return false;
   
-  // Convert glob pattern to regex
-  // * matches any characters (including none)
-  // Escape regex special characters except *
+  // Handle glob patterns with :* suffix (e.g., "git commit:*" means "starts with git commit")
+  // The :* format treats everything before : as a literal prefix, * matches anything after
+  if (commandPattern.endsWith(':')) {
+    // Pattern like "git commit:" - match commands starting with this prefix
+    const prefix = commandPattern.slice(0, -1);
+    return command.startsWith(prefix);
+  }
+  
+  if (commandPattern.endsWith(':*')) {
+    // Pattern like "git commit:*" - match commands starting with "git commit"
+    const prefix = commandPattern.slice(0, -2);
+    return command.startsWith(prefix);
+  }
+  
+  // For other patterns, convert glob to regex
+  // Escape regex special characters then convert * to .* and ? to .
   let regexPattern = commandPattern
-    .replace(/[.+^\\$" + "{}()|[\\]\\\\]/g, '\\\\$&')
-    .replace(/\\\\\\*/g, '.*')
-    .replace(/\\\\\\?/g, '.');
+    .replace(/[.+^\$"{}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.');
   
   const regex = new RegExp('^' + regexPattern + '$');
   return regex.test(command);

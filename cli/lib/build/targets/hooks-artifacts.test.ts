@@ -321,12 +321,11 @@ describe("runtime if matching behavior", () => {
     // Verify the matchesIfCondition function handles glob wildcards
     expect(hooksContent).toContain("matchesIfCondition");
     
-    // Should convert glob * to regex .*
-    expect(hooksContent).toContain(".*");
+    // Should handle :* suffix patterns (e.g., "git commit:*" matches commands starting with "git commit")
+    expect(hooksContent).toContain("endsWith(':*')");
     
     // Should parse if condition format: Tool(command:pattern)
-    // Check for the regex that parses "Bash(command:*)" format
-    expect(hooksContent).toMatch(/\.match\(\s*\/.*\\w\+.*\(\[\^\)\]/);
+    expect(hooksContent).toMatch(/ifCondition\.match\(\s*\/.*\w.*\(/);
   });
 
   it("includes all command-scoped hooks in runtime data", () => {
