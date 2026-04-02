@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, rmSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { parse as parseYaml } from "yaml";
@@ -11,6 +11,11 @@ import * as opencodeTarget from "../lib/build/targets/opencode.js";
 import * as cursorTarget from "../lib/build/targets/cursor.js";
 import * as codexTarget from "../lib/build/targets/codex.js";
 import * as geminiTarget from "../lib/build/targets/gemini.js";
+import * as ampTarget from "../lib/build/targets/amp.js";
+
+// Import shared build modules for intermediate generation
+import { copySkills } from "../lib/build/lib/skills.js";
+import { createCommandSubstituter } from "../lib/build/lib/commands.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +34,7 @@ const TARGETS: Record<string, TargetModule> = {
   cursor: cursorTarget,
   codex: codexTarget,
   gemini: geminiTarget,
+  amp: ampTarget,
 };
 
 function findRootDir(): string {
@@ -87,6 +93,46 @@ async function buildTarget(
   });
 }
 
+/**
+ * Build the shared skills intermediate in dist/skills/.
+ *
+ * This pre-target step produces a staging artifact that targets will
+ * read from instead of content/skills/ in their refactor tasks.
+ *
+ * Features:
+ * - Base frontmatter only (no sidecar merge, no version injection)
+ * - Universal command substitution (unscoped /implement, /resume)
+ * - Shared templates distributed per targets.yaml config
+ * - References, templates, scripts copied
+ */
+async function buildSharedIntermediate(
+  rootDir: string,
+  contentDir: string,
+  distDir: string,
+  targetsConfig: TargetsConfig,
+): Promise<void> {
+  const skillsDestDir = join(distDir, "skills");
+
+  // Clean existing directory
+  if (existsSync(skillsDestDir)) {
+    rmSync(skillsDestDir, { recursive: true, force: true });
+  }
+
+  // Create command substituter with 'shared' target (unscoped commands)
+  const transformMd = createCommandSubstituter("shared");
+
+  // Copy skills with base frontmatter only (no mergeFrontmatter, no version)
+  copySkills({
+    srcDir: contentDir,  // copySkills joins "skills" internally
+    destDir: skillsDestDir,
+    targetName: "shared",
+    targetsConfig,
+    transformMd,
+    // No mergeFrontmatter callback - base frontmatter only
+    // No version - targets add version during their copy step
+  });
+}
+
 export function registerBuildCommand(program: Command): void {
   program
     .command("build")
@@ -121,6 +167,20 @@ export function registerBuildCommand(program: Command): void {
       const targetsConfig = loadYamlConfig<TargetsConfig>(join(configDir, "targets.yaml"));
 
       const targets = options.target ? [options.target] : TARGET_NAMES;
+
+      // Build shared skills intermediate first (before any target builds)
+      process.stdout.write(`  ${cyan("building")} shared skills intermediate...`);
+      const intermediateStart = Date.now();
+      try {
+        await buildSharedIntermediate(rootDir, contentDir, distDir, targetsConfig);
+        const elapsed = ((Date.now() - intermediateStart) / 1000).toFixed(2);
+        process.stdout.write(`\r  ${green("✓")} shared skills intermediate ${gray(`(${elapsed}s)`)}\n`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        process.stdout.write(`\r  ${red("✗")} shared skills intermediate\n`);
+        console.error(`    ${red(message)}`);
+        process.exit(1);
+      }
 
       let failed = false;
       for (const targetName of targets) {

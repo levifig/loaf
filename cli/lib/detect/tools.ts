@@ -149,6 +149,29 @@ export function detectTools(): DetectedTool[] {
     });
   }
 
+  // Amp (experimental)
+  const ampConfig = join(HOME, ".amp");
+  let ampDetected = false;
+  let ampVia = "";
+
+  if (hasCmd("amp")) {
+    ampDetected = true;
+    ampVia = "cli";
+  } else if (existsSync(ampConfig)) {
+    ampDetected = true;
+    ampVia = "config";
+  }
+
+  if (ampDetected) {
+    tools.push({
+      key: "amp",
+      name: "Amp",
+      configDir: ampConfig,
+      installed: isLoafInstalled(ampConfig),
+      detectedVia: ampVia,
+    });
+  }
+
   return tools;
 }
 
@@ -158,6 +181,7 @@ export const DEFAULT_CONFIG_DIRS: Record<string, string> = {
   cursor: join(HOME, ".cursor"),
   codex: process.env.CODEX_HOME || join(HOME, ".codex"),
   gemini: join(HOME, ".gemini"),
+  amp: join(HOME, ".amp"),
 };
 
 /**

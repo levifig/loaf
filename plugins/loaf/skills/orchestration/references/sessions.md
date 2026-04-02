@@ -11,7 +11,7 @@ Sessions are coordination artifacts for active work. They are archived (set stat
 - Updating During Work
 - Handoff Protocol
 - Completing a Session
-- PM Start Protocol
+- Start Protocol
 - Hook Integration
 - Anti-Patterns
 
@@ -31,7 +31,7 @@ When implementing tasks via `/loaf:implement TASK-XXX`:
 - Session created automatically with filename `YYYYMMDD-HHMMSS-task-XXX.md`
 - Task file updated with `session:` field linking to session
 - No user interaction needed for session naming
-- Resume via `/loaf:resume-session TASK-XXX`
+- Resume via `loaf session start` then `/loaf:implement TASK-XXX`
 
 Users work with tasks; sessions are an implementation detail.
 
@@ -140,7 +140,7 @@ background_agents:                             # Background work running indepen
 
 ### Cross-Session References
 
-Track decisions imported from past sessions via `/loaf:reference-session`:
+Track decisions imported from past sessions via `/reference-session`:
 
 ```yaml
 session:
@@ -378,7 +378,7 @@ Sessions are **archived, not deleted** when complete to preserve audit trail (se
 - [ ] Archive indefinitely (no deletion policy)
 - [ ] Use `/loaf:cleanup` for auto-move + link updates after confirmation
 
-## PM Start Protocol
+## Start Protocol
 
 When starting a new orchestration context:
 

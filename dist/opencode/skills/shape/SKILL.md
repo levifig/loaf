@@ -1,10 +1,13 @@
 ---
 name: shape
 description: >-
-  Shapes ideas into specs with scope boundaries and test conditions. Use when
-  the user asks "shape this" or "write a spec," or when an idea has enough
-  constraints to bound. Produces specs with acceptance criteria. Not for
-  breakdown or brainstorming.
+  Shapes ideas into implementable specs with scope boundaries and test
+  conditions. Use when the user asks "shape this" or "write a spec," or when an
+  idea has accumulated enough constraints to bound. Produces specs with
+  acceptance criteria. Not for brainstorming (use brainstorm) or task breakdown
+  (use breakdown).
+subtask: false
+version: 2.0.0-dev.8
 ---
 
 # Shape

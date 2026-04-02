@@ -197,3 +197,6 @@ Before completing:
 - [ ] `## Session Log` has timestamped entry
 - [ ] Decisions extracted and written to Serena memory (if `## Decisions` has content)
 - [ ] Memory name follows convention: `session-<slug>-decisions.md`
+
+---
+version: 2.0.0-dev.8

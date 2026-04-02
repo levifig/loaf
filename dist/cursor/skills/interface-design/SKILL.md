@@ -1,9 +1,11 @@
 ---
 name: interface-design
 description: >-
-  Covers UI/UX principles, accessibility (WCAG 2.1), design systems, color,
-  typography, and responsive patterns. Use when making design decisions,
-  evaluating layouts, or ensuring a11y. Not for frontend code or API design.
+  Covers UI/UX design principles, accessibility (WCAG 2.1), design systems, and
+  responsive patterns. Use when making design decisions, evaluating layouts, or
+  ensuring accessibility compliance. Not for frontend code (use
+  typescript-development) or API design (use architecture or language-specific
+  skills).
 version: 2.0.0-dev.8
 ---
 
@@ -94,3 +96,44 @@ Every design deliverable must meet:
 - [ ] Touch targets minimum 44x44px
 - [ ] Mobile responsive
 - [ ] Documented in component library
+
+## Verification
+
+### After Editing Design/Code Files
+
+**Accessibility Validation:**
+- Check for common a11y issues in component files:
+  - `<div onClick>` without `role="button"` (use `<button>` instead)
+  - `<img>` without `alt` attribute
+  - `<input>` without associated `<label>` or `aria-label`
+  - Dialogs without `aria-modal="true"` and `aria-labelledby`
+  - Icon-only buttons without `aria-label`
+  - Missing focus-visible styles on interactive elements
+
+**Design Token Compliance:**
+- Check for hardcoded values in style files:
+  - Hardcoded colors (`#hex`, `rgb()`, `hsl()`) not using `tokens.color.*`
+  - Hardcoded spacing (`padding: 16px`) not using `tokens.spacing.*`
+  - Hardcoded font sizes not using `typography.fontSize.*`
+  - Hardcoded border-radius not using `primitives.borderRadius.*`
+  - Hardcoded box-shadow not using `primitives.shadow.*`
+  - Hardcoded transition durations not using `motion.duration.*`
+  - Inline styles in JSX with hardcoded values
+
+**Accessibility Audit (if ESLint jsx-a11y is available):**
+- Run: `npx eslint --plugin jsx-a11y --rule 'jsx-a11y/*: error' {files}`
+- Check for:
+  - Images without alt attributes
+  - Empty button elements (need text or aria-label)
+  - More inputs than labels
+  - Missing lang attribute on html element
+  - Multiple h1 elements
+  - Hardcoded colors (verify contrast ratio WCAG 4.5:1)
+
+### Before Committing
+
+- Verify WCAG 2.1 AA compliance (4.5:1 contrast, keyboard navigation)
+- Check all images have alt text
+- Verify design tokens are used (no hardcoded values)
+- Test with keyboard-only navigation
+- Run accessibility audit tools if available

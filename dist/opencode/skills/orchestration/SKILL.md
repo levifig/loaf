@@ -1,15 +1,17 @@
 ---
 name: orchestration
 description: >-
-  Coordinates multi-agent work: delegation, session management, Linear
+  Coordinates multi-agent work: agent delegation, session management, Linear
   integration, and council workflows. Use when managing sessions, delegating to
-  agents, or coordinating cross-cutting work. Not for single-task implementation
-  or solo research.
+  agents, or coordinating cross-cutting work across multiple agents. Not for
+  single-task implementation (use direct tool delegation) or solo research (use
+  research).
+version: 2.0.0-dev.8
 ---
 
-# PM Orchestration
+# Orchestration
 
-Comprehensive patterns for PM-style orchestration: coordinating multi-agent work, managing sessions, running councils, delegating to specialized agents, and integrating with Linear.
+Comprehensive patterns for orchestration: coordinating multi-agent work, managing sessions, running councils, delegating to specialized agents, and integrating with Linear.
 
 ## Contents
 - Philosophy
@@ -23,9 +25,9 @@ Comprehensive patterns for PM-style orchestration: coordinating multi-agent work
 
 ## Philosophy
 
-**PM is the orchestrator, not the implementer.**
+**You are the orchestrator, not the implementer.**
 
-The PM agent:
+The orchestrator:
 1. Creates issues and session files for tracking
 2. Breaks down work into delegable tasks
 3. Spawns specialized agents for implementation
@@ -94,7 +96,7 @@ This skill uses paths from `.agents/config.json`:
 | Reports | `.agents/reports/` | N/A | `YYYYMMDD-HHMMSS-subject.md` |
 | Tasks | `.agents/tasks/` | N/A | Per task manager conventions |
 
-**Rule:** Agents write artifacts to disk, PM reasons over artifacts, users retrieve from disk.
+**Rule:** Agents write artifacts to disk, orchestrator reasons over artifacts, users retrieve from disk.
 
 ## Available Scripts
 
@@ -141,7 +143,7 @@ This skill uses paths from `.agents/config.json`:
 ### Councils
 - Always odd number: 5 or 7 agents
 - Councils advise, users decide
-- PM coordinates but doesn't vote
+- Orchestrator coordinates but doesn't vote
 - Spawn all agents in parallel
 
 ### Linear

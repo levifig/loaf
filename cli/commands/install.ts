@@ -18,6 +18,7 @@ import {
   type DetectedTool,
 } from "../lib/detect/tools.js";
 import { INSTALLERS } from "../lib/install/installer.js";
+import { installFencedSectionsForTargets } from "../lib/install/fenced-section.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -166,6 +167,8 @@ export function registerInstallCommand(program: Command): void {
       console.log();
 
       // Install each target
+      const installedTargets: string[] = [];
+
       for (const target of selectedTargets) {
         const tool = tools.find((t) => t.key === target);
         const configDir = tool?.configDir || DEFAULT_CONFIG_DIRS[target];
@@ -185,8 +188,9 @@ export function registerInstallCommand(program: Command): void {
         }
 
         try {
-          installer(targetDistDir, configDir);
+          installer(targetDistDir, configDir, options.upgrade ?? false);
           console.log(`  ${green("✓")} ${target} installed to ${gray(configDir)}`);
+          installedTargets.push(target);
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           console.log(`  ${red("✗")} ${target} — ${msg}`);
@@ -194,5 +198,48 @@ export function registerInstallCommand(program: Command): void {
       }
 
       console.log();
+
+      // Install fenced sections to project files (only for successfully installed targets)
+      const projectRoot = process.cwd();
+      const fencedResults = installFencedSectionsForTargets(
+        installedTargets,
+        projectRoot,
+        options.upgrade ?? false
+      );
+
+      // Report fenced section results
+      let hasFencedOutput = false;
+      for (const [target, result] of Object.entries(fencedResults)) {
+        if (result.action === "error") {
+          console.log(
+            `  ${red("✗")} ${target} project file — ${result.error}`
+          );
+          hasFencedOutput = true;
+        } else if (result.action === "created") {
+          console.log(
+            `  ${green("✓")} ${target} created project file with Loaf framework section`
+          );
+          hasFencedOutput = true;
+        } else if (result.action === "appended") {
+          console.log(
+            `  ${green("✓")} ${target} added Loaf framework section to project file`
+          );
+          hasFencedOutput = true;
+        } else if (result.action === "updated") {
+          console.log(
+            `  ${green("✓")} ${target} updated Loaf framework section in project file (v${result.version})`
+          );
+          hasFencedOutput = true;
+        } else if (result.action === "skipped") {
+          console.log(
+            `  ${gray("○")} ${target} Loaf framework section already current (v${result.version})`
+          );
+          hasFencedOutput = true;
+        }
+      }
+
+      if (hasFencedOutput) {
+        console.log();
+      }
     });
 }

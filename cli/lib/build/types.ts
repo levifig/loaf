@@ -40,8 +40,10 @@ export interface TargetModule {
 export interface HookDefinition {
   id: string;
   skill: string;
-  /** Shell script path (required for command hooks) */
+  /** Shell script path (required for command hooks that use scripts) */
   script?: string;
+  /** Direct command to execute (alternative to script, for simple commands) */
+  command?: string;
   /** Hook type: "command" (default) or "prompt" */
   type?: "command" | "prompt";
   /** Prompt text (required for prompt hooks) */
@@ -53,6 +55,8 @@ export interface HookDefinition {
   timeout?: number;
   description?: string;
   event?: string;
+  /** When true, hook failure/crash blocks the action (fail-closed). Default: false (fail-open) */
+  failClosed?: boolean;
 }
 
 export interface HooksConfig {

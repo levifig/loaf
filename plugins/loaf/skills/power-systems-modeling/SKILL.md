@@ -1,12 +1,13 @@
 ---
 name: power-systems-modeling
 description: >-
-  Covers thermal rating (CIGRE TB 601, IEEE 738), conductor physics, and
-  electrical properties for overhead lines. Use when implementing thermal calcs,
-  validating conductors, or sag/resistance. Not for infrastructure or
-  architecture.
+  Covers thermal rating models (CIGRE TB 601, IEEE 738), conductor physics, and
+  electrical properties for overhead transmission lines. Use when implementing
+  thermal calculations, validating conductors, or computing sag and resistance.
+  Not for infrastru...
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Glob, Grep, Bash(python:*)'
+version: 2.0.0-dev.8
 ---
 
 # Power Systems Reference

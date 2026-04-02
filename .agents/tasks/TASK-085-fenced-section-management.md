@@ -2,7 +2,7 @@
 id: TASK-085
 title: Fenced-section management for CLAUDE.md/AGENTS.md
 spec: SPEC-020
-status: todo
+status: complete
 priority: p2
 dependencies: [TASK-075, TASK-084]
 track: D
@@ -12,43 +12,48 @@ track: D
 
 Install and upgrade Loaf framework conventions into user project instruction files.
 
-## Scope
+## Implementation
 
-### Fenced-section format
-```markdown
-<!-- loaf:managed:start v2.1.0 -->
-<!-- Maintained by loaf install/upgrade — do not edit manually -->
-## Loaf Framework
-[Compact framework essentials: session journal entry types, CLI commands,
- verification conventions, link to framework reference skill for full details]
-<!-- loaf:managed:end -->
-```
+### New Module: `cli/lib/install/fenced-section.ts`
 
-### `loaf install` behavior
-- Creates fenced section at end of target file (or creates the file if missing)
-- Content is ~20-30 lines, generated at build time from framework reference skill
+Created comprehensive fenced-section management with:
+- `installFencedSection(targetFile, upgrade)` - Install or upgrade fenced section
+- `getTargetFile(target, projectRoot)` - Get correct path per target
+- `getFencedVersion(targetFile)` - Check existing fence version
+- `installFencedSectionsForTargets(targets, projectRoot, upgrade)` - Batch install
 
-### `loaf install --upgrade` behavior
-- Finds `<!-- loaf:managed:start ... -->` / `<!-- loaf:managed:end -->` markers
-- Replaces only content between markers
-- User content outside fences preserved
-- Version in start marker — skip refresh if already current
-- If fences not found (user deleted them), append new fenced section
+### Updated: `cli/commands/install.ts`
 
-### Per-target file
-| Target | File |
-|---|---|
-| Claude Code | `.claude/CLAUDE.md` |
-| Cursor | `.cursor/rules/loaf.mdc` or `.agents/AGENTS.md` |
-| Codex | `.agents/AGENTS.md` |
-| OpenCode | `.agents/AGENTS.md` |
-| Amp | `.agents/AGENTS.md` |
+Integrated fenced-section installation:
+- After tool content installation, installs fenced section to project files
+- Respects `--upgrade` flag for version-aware updates
+- Reports status per target (created/appended/updated/skipped/error)
+
+### Test Coverage: `cli/lib/install/fenced-section.test.ts`
+
+23 tests covering:
+- Creating new files
+- Appending to existing files
+- Updating existing fenced sections
+- Skipping when version matches in upgrade mode
+- Preserving user content before and after fences
+- Version parsing (including prerelease versions)
+- Per-target file resolution (including Cursor's multiple options)
+- Batch installation to multiple targets
+- Content format validation
 
 ## Verification
 
-- [ ] `loaf install` creates fenced section in target file
-- [ ] `loaf install --upgrade` replaces only between fences
-- [ ] User content outside fences untouched
-- [ ] Version marker works (skip if current, refresh if outdated)
-- [ ] Missing fences = append new section
-- [ ] Fenced content is compact (~20-30 lines)
+- [x] `loaf install` creates fenced section in target file
+- [x] `loaf install --upgrade` replaces only between fences
+- [x] User content outside fences untouched
+- [x] Version marker works (skip if current, refresh if outdated)
+- [x] Missing fences = append new section
+- [x] Fenced content is compact (~20-30 lines)
+
+### Test Results
+- Type check: ✓ Pass
+- Build: ✓ Pass
+- Unit tests: ✓ 23/23 pass
+- Full test suite: ✓ 440/440 pass
+- Manual verification: ✓ Working as expected

@@ -1,89 +1,113 @@
 /**
  * Codex Build Target
  *
- * Codex only supports skills — no commands, agents, or hooks.
- * Optional SKILL.codex.yaml sidecar adds Codex-specific metadata like globs.
+ * Codex supports: skills, hooks (Bash-matching enforcement only)
+ * Generates dist/codex/.codex/hooks.json with Bash-only enforcement hooks.
+ * Reads from shared intermediate at dist/skills/, merges SKILL.codex.yaml sidecar.
  */
 
-import {
-  mkdirSync,
-  cpSync,
-  writeFileSync,
-  readFileSync,
-  existsSync,
-  readdirSync,
-  rmSync,
-} from "fs";
-import matter from "gray-matter";
+import { mkdirSync, writeFileSync, existsSync, rmSync } from "fs";
 import { join } from "path";
-import { loadSkillFrontmatter, loadTargetSkillSidecar } from "../lib/sidecar.js";
-import { getVersion, injectVersion } from "../lib/version.js";
-
-import { copySharedTemplates } from "../lib/shared-templates.js";
-import { copyDirWithTransform } from "../lib/copy-utils.js";
-import type { BuildContext } from "../types.js";
+import { copySkills } from "../lib/skills.js";
+import { loadTargetSkillSidecar } from "../lib/sidecar.js";
+import { getVersion } from "../lib/version.js";
+import type { BuildContext, HooksConfig, HookDefinition, SkillFrontmatter } from "../types.js";
 
 const TARGET_NAME = "codex";
 
-function substituteCommands(content: string): string {
-  return content
-    .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/implement")
-    .replace(/\{\{RESUME_CMD\}\}/g, "/resume")
-    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/implement");
+// Enforcement hooks that use `loaf check --hook <id>`
+const ENFORCEMENT_HOOKS = new Set([
+  "check-secrets",
+  "validate-push",
+  "validate-commit",
+  "workflow-pre-pr",
+  "security-audit",
+]);
+
+export async function build({
+  config,
+  rootDir,
+  distDir,
+  targetsConfig,
+}: BuildContext): Promise<void> {
+  const version = getVersion(rootDir);
+
+  // Identity transform - commands already substituted in intermediate
+  const transformMd = (content: string) => content;
+
+  // Merge sidecar fields into frontmatter
+  const mergeFrontmatter = (
+    base: SkillFrontmatter,
+    skillDir: string,
+  ): SkillFrontmatter => {
+    const sidecar = loadTargetSkillSidecar(skillDir, TARGET_NAME);
+    return { ...base, ...sidecar };
+  };
+
+  copySkills({
+    srcDir: join(rootDir, "dist"), // Read from dist/skills/ intermediate
+    destDir: join(distDir, "skills"),
+    targetName: TARGET_NAME,
+    version,
+    targetsConfig,
+    transformMd,
+    mergeFrontmatter,
+  });
+
+  // Generate Codex hooks.json (Bash-only enforcement hooks)
+  generateCodexHooksJson(config as HooksConfig, distDir);
 }
 
-export async function build({ rootDir, srcDir, distDir, targetsConfig }: BuildContext): Promise<void> {
-  const version = getVersion(rootDir);
-  const transformMd = (content: string) => substituteCommands(content);
+/**
+ * Generate Codex hooks.json with Bash-only enforcement hooks.
+ * Codex platform limitation: Only Bash matcher is supported.
+ */
+function generateCodexHooksJson(config: HooksConfig, distDir: string): void {
+  const preToolHooks = config.hooks["pre-tool"] || [];
 
-  const skillsDir = join(distDir, "skills");
+  // Filter to only enforcement hooks with Bash matcher
+  const enforcementHooks = preToolHooks.filter((hook) => {
+    // Must be an enforcement hook
+    if (!ENFORCEMENT_HOOKS.has(hook.id)) return false;
+    // Must have Bash matcher (Codex limitation)
+    const matcher = hook.matcher || "";
+    return matcher.includes("Bash");
+  });
 
-  if (existsSync(skillsDir)) {
-    rmSync(skillsDir, { recursive: true });
+  if (enforcementHooks.length === 0) {
+    // No hooks to generate
+    return;
   }
-  mkdirSync(skillsDir, { recursive: true });
 
-  const src = join(srcDir, "skills");
-  if (!existsSync(src)) return;
+  const hooksJson: Record<string, unknown> = {
+    version: 1,
+    hooks: {} as Record<string, unknown>,
+  };
 
-  const skills = readdirSync(src, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name);
+  const hooks = hooksJson.hooks as Record<string, unknown>;
 
-  for (const skill of skills) {
-    const skillSrc = join(src, skill);
-    const skillDest = join(skillsDir, skill);
-    mkdirSync(skillDest, { recursive: true });
+  // Codex uses PreToolUse (camelCase like Claude Code)
+  hooks.PreToolUse = enforcementHooks.map((hook) => {
+    const result: Record<string, unknown> = {
+      matcher: "Bash",
+      command: `loaf check --hook ${hook.id}`,
+      timeout: Math.floor((hook.timeout || 30000) / 1000),
+      failClosed: hook.failClosed !== false, // Default to true for enforcement
+    };
 
-    const baseFrontmatter = loadSkillFrontmatter(skillSrc);
-    const sidecarFrontmatter = loadTargetSkillSidecar(skillSrc, TARGET_NAME);
-    const frontmatter = injectVersion(
-      { ...baseFrontmatter, ...sidecarFrontmatter },
-      version,
-    );
-
-    const skillMdPath = join(skillSrc, "SKILL.md");
-    if (existsSync(skillMdPath)) {
-      const content = readFileSync(skillMdPath, "utf-8");
-      const { content: body } = matter(content);
-      writeFileSync(
-        join(skillDest, "SKILL.md"),
-        transformMd(matter.stringify(body, frontmatter)),
-      );
+    if (hook.description) {
+      result.description = hook.description;
     }
 
-    for (const subdir of ["references", "templates"]) {
-      const subSrc = join(skillSrc, subdir);
-      if (existsSync(subSrc)) {
-        copyDirWithTransform(subSrc, join(skillDest, subdir), transformMd);
-      }
-    }
+    return result;
+  });
 
-    const scriptsSrc = join(skillSrc, "scripts");
-    if (existsSync(scriptsSrc)) {
-      cpSync(scriptsSrc, join(skillDest, "scripts"), { recursive: true });
-    }
+  // Ensure .codex directory exists
+  const codexDir = join(distDir, ".codex");
+  mkdirSync(codexDir, { recursive: true });
 
-    copySharedTemplates(skill, skillDest, srcDir, targetsConfig, transformMd);
-  }
+  writeFileSync(
+    join(codexDir, "hooks.json"),
+    JSON.stringify(hooksJson, null, 2),
+  );
 }

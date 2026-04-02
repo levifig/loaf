@@ -14,7 +14,7 @@ Patterns for managing context efficiently across sessions and agent spawns.
 - Subagents for Context Isolation
 - Context Budget Guidelines
 - Preventing Context Bloat
-- PM Session Context Patterns
+- Session Context Patterns
 - Warning Signs
 - Best Practices
 
@@ -198,7 +198,7 @@ Glob("src/**/*.py", path="src/auth/")  # Scoped search
 2. Drill into specific areas
 3. Read full content only when needed
 
-## PM Session Context Patterns
+## Session Context Patterns
 
 ### Starting a Session
 

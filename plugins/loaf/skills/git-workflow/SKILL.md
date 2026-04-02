@@ -1,11 +1,13 @@
 ---
 name: git-workflow
 description: >-
-  Covers branching, commit conventions, PR creation, and squash merge workflow.
-  Use when creating branches, writing commits, creating or merging PRs, or
-  managing git history. Not for code style or CI/CD.
+  Covers branching strategies, commit conventions, PR creation, and squash merge
+  workflow. Use when creating branches, writing commits, creating or merging
+  PRs, or managing git history. Provides patterns for collaborative git
+  workflows. Not for code st...
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
+version: 2.0.0-dev.8
 ---
 
 # Git Workflow

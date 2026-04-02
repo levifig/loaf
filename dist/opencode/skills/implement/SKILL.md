@@ -1,9 +1,13 @@
 ---
 name: implement
 description: >-
-  Orchestrates implementation through agent delegation and batch execution. Use
-  when the user asks "implement this" or "start working on TASK-XXX." Produces
-  sessions, plans, and agent output. Not for shaping or breakdown.
+  Orchestrates implementation sessions through agent delegation and batch
+  execution. Use when the user asks "implement this" or "start working on
+  TASK-XXX." Produces session files, agent spawn plans, and progress tracking.
+  Not for shaping (use shape), breakdown (use breakdown), or single-file edits
+  (use direct tools).
+subtask: false
+version: 2.0.0-dev.8
 ---
 
 # Implement
@@ -73,13 +77,13 @@ When no task exists: inform user, ask if Linear issue or local task should be cr
 
 **You are the ORCHESTRATOR, not the implementer.**
 
-### PM Can Do Directly
+### Orchestrator Can Do Directly
 - Create/edit session files, council files
 - Use TodoWrite/TodoRead, Linear MCP tools
 - Read any file for context
 - Ask clarifying questions
 
-### PM MUST Delegate (via Task Tool)
+### Orchestrator MUST Delegate (via Task Tool)
 **ALL code changes, documentation edits, and implementation work** to specialized agents. **No exceptions**, even for "trivial" 1-line fixes.
 
 ## Agent Spawning

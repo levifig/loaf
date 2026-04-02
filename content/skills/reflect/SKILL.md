@@ -1,10 +1,10 @@
 ---
 name: reflect
 description: >-
-  Integrates learnings from shipped work into strategic docs. Use after
-  completing significant work or the user asks "what did we learn?" Updates
-  VISION.md, STRATEGY.md, and ARCHITECTURE.md. Not for pre-implementation
-  strategy or ADRs.
+  Integrates learnings from shipped work into strategic documents. Use after
+  completing significant work or when the user asks "what did we learn?"
+  Updates VISION.md, STRATEGY.md, and ARCHITECTURE.md based on implementation experience.
+  Not for pre-implementation strategy (use strategy) or ADRs (use architecture).
 ---
 
 # Reflect

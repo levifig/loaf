@@ -121,8 +121,8 @@ report:
 ### Processing Results
 
 1. SessionStart hook alerts user to completed background work
-2. User or PM reviews report in `.agents/reports/`
-3. PM updates session frontmatter:
+2. User or orchestrator reviews report in `.agents/reports/`
+3. Orchestrator updates session frontmatter:
    - Change `status` from `running` to `completed`
    - Set `result_location` to report path
 4. Process findings as needed (spawn agents, create issues)
@@ -130,11 +130,11 @@ report:
 
 ## Workflow Example
 
-### 1. PM Identifies Low-Priority Work
+### 1. Orchestrator Identifies Low-Priority Work
 
-During auth feature implementation, PM identifies need for security audit but it is not blocking current work.
+During auth feature implementation, orchestrator identifies need for security audit but it is not blocking current work.
 
-### 2. PM Spawns Background Agent
+### 2. Orchestrator Spawns Background Agent
 
 ```python
 Task(
@@ -161,7 +161,7 @@ Task(
 )
 ```
 
-### 3. PM Updates Session Frontmatter
+### 3. Orchestrator Updates Session Frontmatter
 
 ```yaml
 background_agents:
@@ -174,7 +174,7 @@ background_agents:
 
 ### 4. Work Continues
 
-PM and other agents continue with main implementation while background agent works.
+Orchestrator and other agents continue with main implementation while background agent works.
 
 ### 5. Session Resumes Later
 
@@ -194,7 +194,7 @@ Review reports and update session frontmatter after processing.
 
 ### 6. Results Processed
 
-PM reads report, creates issues for findings, updates session.
+Orchestrator reads report, creates issues for findings, updates session.
 
 ## Anti-Patterns
 

@@ -1,10 +1,11 @@
 ---
 name: bootstrap
 description: >-
-  Bootstraps projects through state detection, interviews, and document
-  population. Adapts to brownfield or greenfield. Use when the user asks "start
-  a project," "set up Loaf," or "bootstrap." Not for shaping, brainstorming, or
-  scaffolding.
+  Bootstraps new or existing projects through intelligent state detection,
+  structured interviews, and document population. Use when the user asks "how do
+  I start a new project?", "set up Loaf," or "bootstrap my project." Produces
+  populated project documents and setup recommendations. Not for shaping
+  features (use shape) or brainstorming ideas (use brainstorm).
 version: 2.0.0-dev.8
 ---
 

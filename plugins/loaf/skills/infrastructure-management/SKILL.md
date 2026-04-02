@@ -1,11 +1,13 @@
 ---
 name: infrastructure-management
 description: >-
-  Covers Docker, Kubernetes, GitOps, CI/CD, and container security. Use when
-  writing Dockerfiles, configuring K8s manifests, setting up CI/CD, or managing
-  deployments. Not for application code, database schema, or security audits.
+  Covers Docker, Kubernetes, GitOps, CI/CD pipelines, and container security.
+  Use when writing Dockerfiles, configuring K8s manifests, setting up CI/CD, or
+  managing deployments. Provides patterns for infrastructure as code. Not for
+  application code (us...
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
+version: 2.0.0-dev.8
 ---
 
 # Infrastructure
@@ -78,3 +80,43 @@ CI Failed
     +-- Check external service access
     +-- Check CI-specific config
 ```
+
+## Verification
+
+### After Editing Infrastructure Files
+
+**Kubernetes Manifests:**
+- If `kubectl` is available, validate with dry-run:
+  - Client-side: `kubectl apply --dry-run=client -f {manifest}`
+  - Server-side (if cluster access): `kubectl apply --dry-run=server -f {manifest}`
+- Check for common issues:
+  - Missing resource limits/requests (CPU, memory)
+  - Missing liveness/readiness probes
+  - Using `:latest` tag (prefer specific versions)
+  - Privileged containers (security concern)
+  - No namespace specified
+- If `kubesec` is available: `kubesec scan {manifest}`
+
+**Dockerfiles:**
+- Check for:
+  - Non-root USER specified
+  - Specific image versions (no `:latest`)
+  - HEALTHCHECK instruction
+  - No secrets in ENV instructions
+  - Using COPY instead of ADD for local files
+
+**Terraform Files:**
+- If `terraform` is available:
+  - Check format: `terraform fmt -check -recursive .`
+  - Validate: `terraform validate`
+  - Plan: `terraform plan -out=/tmp/tfplan`
+- If `infracost` is available: `infracost breakdown --path /tmp/tfplan`
+- If `tfsec` is available: `tfsec .`
+
+### Before Committing
+
+- Validate Kubernetes manifests with kubectl dry-run
+- Check Dockerfile best practices
+- Run terraform fmt and validate if applicable
+- Review security scan results
+- Ensure no secrets are committed

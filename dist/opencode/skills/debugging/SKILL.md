@@ -3,7 +3,10 @@ name: debugging
 description: >-
   Covers systematic debugging, hypothesis tracking, and flaky test
   investigation. Use when diagnosing failures, tracking hypotheses, or fixing
-  flaky tests. Not for writing new tests or security analysis.
+  flaky tests. Provides methodology for root cause analysis and issue
+  resolution. Not for writing new tests (use development skills) or security
+  analysis (use security-compliance).
+version: 2.0.0-dev.8
 ---
 
 # Debugging

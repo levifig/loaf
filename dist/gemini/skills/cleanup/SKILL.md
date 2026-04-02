@@ -1,257 +1,71 @@
 ---
 name: cleanup
 description: >-
-  Reviews agent artifacts in .agents/ — sessions, specs, plans, drafts,
-  councils. Use when the user asks "clean up," "review sessions," or "tidy up."
-  Archives completed work and preserves knowledge. Not for reflection or
-  knowledge management.
+  Reviews and cleans up agent artifacts in .agents/ — sessions, specs, plans,
+  drafts, councils, and reports. Use when the user asks "clean up," "review
+  sessions," or "tidy up .agents/." Provides hygiene recommendations, archives
+  completed work, and ensures extracted knowledge is preserved. Not for
+  strategic reflection (use reflect) or knowledge management (use
+  knowledge-base).
 version: 2.0.0-dev.8
 ---
 
 # Cleanup
 
-Review ALL agent artifacts in `.agents/` and provide hygiene recommendations.
+Systematic review and archival of all `.agents/` artifacts with Linear-aware checks.
 
-## CLI Command
+## Critical Rules
 
-Use `loaf cleanup` for filesystem scanning and actions. The CLI is the execution engine; this skill defines the policy and adds Linear-aware checks the CLI cannot perform.
+**Always**
+- Review EVERY file individually — never sample or average
+- Check Linear issue status before archiving sessions
+- Extract lessons learned and decisions before archiving
+- Use CLI (`loaf cleanup`, `loaf task archive`, `loaf spec archive`) — never raw `mv`
+- Verify `TASKS.json` sync after archival with `loaf task sync`
+
+**Never**
+- Auto-archive without user confirmation for each artifact
+- Delete plans — they are ephemeral and should be deleted, not archived
+- Skip spark extraction before deleting brainstorm drafts
+- Leave `archived_at` or `archived_by` fields empty in archived files
+
+## Verification
+
+After work completes, verify:
+- Session files archived with proper metadata (status, archived_at, archived_by)
+- Tasks archived via `loaf task archive` (updates TASKS.json)
+- Specs archived via `loaf spec archive` (updates TASKS.json)
+- Drafts checked for unprocessed sparks before deletion
+- Plans deleted (not archived) when linked sessions are archived
+- Summary table presented showing all actions taken
+
+## Quick Reference
+
+### CLI Commands
 
 ```bash
-loaf cleanup              # Scan all artifacts, show summary + interactive actions
-loaf cleanup --dry-run    # Show recommendations without prompting
-loaf cleanup --sessions   # Only review sessions
-loaf cleanup --specs      # Only review specs
-loaf cleanup --plans      # Only review plans
-loaf cleanup --drafts     # Only review drafts
+loaf cleanup --dry-run        # Preview all actions
+loaf cleanup --sessions       # Sessions only
+loaf cleanup --specs          # Specs only
+loaf task archive TASK-XXX    # Archive single task
+loaf spec archive SPEC-XXX    # Archive single spec
+loaf task sync                # Fix TASKS.json drift
 ```
 
-**Division of responsibility:**
-- **CLI (`loaf cleanup`):** Filesystem scanning, archive/delete operations, non-TTY reporting
-- **This skill (agent context):** Linear status checks, extraction recommendations, cross-referencing external systems
+### Artifact Lifecycle
 
-When running as an agent, use `loaf cleanup --dry-run` first to assess, then take actions interactively or via the CLI.
+| Artifact | Active Location | Archive | Action |
+|----------|-----------------|---------|--------|
+| Sessions | `.agents/sessions/` | `archive/` | Move with metadata |
+| Tasks | `.agents/tasks/` | `archive/` | `loaf task archive` |
+| Specs | `.agents/specs/` | `archive/` | `loaf spec archive` |
+| Plans | `.agents/plans/` | N/A | Delete when done |
+| Drafts | `.agents/drafts/` | `archive/` | User decision |
 
-## Contents
-- Sessions
-- Tasks
-- Specs
-- Plans
-- Drafts
-- Councils
-- Reports
-- Summary Table
-- Archival Process
-- Where Knowledge Belongs
+## Topics
 
-**CRITICAL: Review EVERY file, not samples or averages.**
-**Never reference `.agents/` files in output docs outside `.agents/`.**
-**After user confirmation, auto-move archived artifacts and update `.agents/` links.**
-**Archived artifacts are retained indefinitely.**
-
----
-
-## 1. Sessions
-
-For EACH session file in `.agents/sessions/` and `.agents/sessions/archive/`:
-
-### A. Read and Summarize
-- Title, status, Linear issue (query Linear for current status), dates, current state
-
-### B. Check for Issues
-- [ ] References missing files? → **Stale**
-- [ ] Linear issue closed? → **Ready for archive**
-- [ ] Status "completed" but not archived? → **Ready for archive**
-- [ ] File in archive but status not `archived`? → **Fix status**
-- [ ] Archived missing `archived_at` or `archived_by`? → **Add metadata**
-- [ ] >7 days since last update with no activity? → **Review for staleness**
-
-### C. Check for Extraction Needs
-- [ ] Contains `lessons_learned`? → Extract to relevant docs
-- [ ] Contains unrecorded `decisions`? → Suggest ADR creation
-- [ ] `## Key Decisions` has content or `traceability.decisions` has entries? → Suggest running `/reflect` before archiving
-- [ ] Contains `remaining_work`/`next_steps`/`technical_debt`? → Check if tracked
-- [ ] CHANGELOG draft present but not integrated? → Flag for integration
-
-### D. Present Per Session
-Summary (2-3 lines), issues found, extraction recommendations.
-Recommendation: **Extract & Archive** (suggest `/reflect` first) / **Archive** / **Keep**
-
----
-
-## 2. Tasks
-
-For EACH task in `.agents/tasks/` (not archive):
-
-### Check for Issues
-- [ ] Status `done` but not in archive/? → **Ready for archive**
-- [ ] Status `done` but TASKS.json `file` field missing `archive/` prefix? → **Index drift**
-- [ ] File exists on disk but not in TASKS.json? → **Orphan — run `loaf task sync --import`**
-- [ ] TASKS.json entry exists but file not found on disk? → **Stale reference**
-- [ ] Frontmatter disagrees with TASKS.json? → **Drift — run `loaf task sync`**
-
-### Archival
-
-Use the CLI to archive tasks — do NOT use raw `mv`:
-```bash
-loaf task archive TASK-040 TASK-041 TASK-042    # specific tasks
-loaf task archive --spec SPEC-013               # all done tasks for a spec
-```
-
-### Present Per Task
-ID, title, status, spec, age since completion.
-Recommendation: **Archive** / **Keep**
-
----
-
-## 3. Specs
-
-For EACH spec file in `.agents/specs/` and `.agents/specs/archive/`:
-
-### Check for Issues
-- [ ] Status `complete` but not in archive/? → **Ready for archive**
-- [ ] Status `implementing` but no active session or tasks? → **Stale**
-- [ ] Status `drafting` with no activity >14 days? → **Review for staleness**
-- [ ] Status `approved` but never started? → **Flag for prioritization**
-- [ ] References tasks or sessions that don't exist? → **Stale references**
-- [ ] Frontmatter missing required fields (id, title, status)? → **Fix metadata**
-
-### Archival
-
-Use the CLI to archive specs — do NOT use raw `mv`:
-```bash
-loaf spec archive SPEC-009 SPEC-013
-```
-
-### Present Per Spec
-ID, title, status, appetite, task count (from TASKS.json if available).
-Recommendation: **Archive** / **Keep** / **Flag for review**
-
----
-
-## 4. Plans
-
-For EACH plan file in `.agents/plans/`:
-
-### Check for Issues
-- [ ] Linked session is archived or doesn't exist? → **Orphaned — delete**
-- [ ] Linked session is complete? → **Ready for cleanup**
-- [ ] >14 days old with no linked active session? → **Stale — delete**
-- [ ] No session link at all? → **Orphaned — delete**
-
-Plans are ephemeral — they exist to support a session. When the session is archived, the plan should be deleted (not archived). The decisions and outcomes live in the session file and git history.
-
-### Present Per Plan
-Filename, linked session, session status, age.
-Recommendation: **Delete** / **Keep**
-
----
-
-## 5. Drafts
-
-For EACH file in `.agents/drafts/`:
-
-### Check for Issues
-- [ ] Content was used to create a spec? → **Served its purpose — archive or delete**
-- [ ] >30 days old with no related spec or active work? → **Stale — review for deletion**
-- [ ] Contains unique research or analysis not captured elsewhere? → **Keep or extract**
-- [ ] Duplicates information in an existing spec or ADR? → **Delete**
-
-Drafts include brainstorms, research documents, and exploratory notes. They feed into specs and decisions but are not themselves durable artifacts.
-
-### Extract Sparks Before Deletion
-
-**CRITICAL: Before deleting any brainstorm draft, check for a `## Sparks` section.** For each spark that is not already marked `*(promoted)*` or `*(discarded)*`:
-- Present the spark text
-- Note whether it was incorporated into any spec, task, or shipped feature
-- Suggest: **Promote** (creates idea file via `/idea`) or **Discard**
-
-Only delete the draft after the user has reviewed all unincorporated sparks. Promoted sparks get marked `*(promoted)*` in the source document; discarded ones get marked `*(discarded)*`.
-
-### Present Per Draft
-Filename, age, related specs (if any), size, unincorporated sparks (count).
-Recommendation: **Delete** / **Keep** / **Extract & Delete**
-
----
-
-## 6. Councils
-
-For EACH council file in `.agents/councils/` and archive:
-- Topic, date, linked session, decision outcome
-- Flag: orphaned (no session), >14 days old, decision should be ADR
-- Archive only after session summary captures outcome
-
----
-
-## 7. Reports
-
-For EACH file in `.agents/reports/` and archive.
-Report frontmatter follows [report template](templates/report.md).
-
-Archive prerequisites: processed, linked session archived, `archived_at` + `archived_by` set.
-
----
-
-## 8. Summary Table
-
-```
-SESSIONS (N total):
-  Ready for archive: N (list)
-  Need extraction:   N (list)
-  Keep active:       N
-
-TASKS (N total):
-  Done (archive):     N (list)
-  Orphans:            N
-  Index drift:        N
-  Active:             N
-
-SPECS (N total):
-  Complete (archive): N (list)
-  Active:             N
-  Stale:              N
-
-PLANS (N total):
-  Orphaned (delete):  N (list)
-  Active:             N
-
-DRAFTS (N total):
-  Stale (review):     N (list)
-  Active:             N
-
-COUNCILS (N total): ...
-REPORTS (N total): ...
-```
-
----
-
-## 9. Archival Process
-
-**Never auto-archive or auto-delete.** For each flagged artifact:
-1. Show checklist with specific items to extract or verify
-2. Ask user: "Archive" / "Delete" / "Keep"
-3. If extracting, perform extractions first
-4. For sessions: set status `archived`, `archived_at`, `archived_by`, move to archive/
-5. For tasks: use `loaf task archive TASK-XXX` (moves file + updates TASKS.json)
-6. For specs: use `loaf spec archive SPEC-XXX` (moves file + updates TASKS.json)
-7. For plans: delete (not archive — ephemeral)
-8. For drafts: delete or archive based on user preference
-9. Auto-update `.agents/` references after moves
-
-**Final reconciliation:** After all archival is complete, run `loaf task sync` to ensure TASKS.json matches the filesystem. This catches any drift from manual file moves.
-
----
-
-## 10. Where Knowledge Belongs
-
-| Information Type | Destination |
-|------------------|-------------|
-| Work tracking | Linear issues / TASKS.json |
-| Implementation details | Git commits |
-| Architectural decisions | `docs/decisions/ADR-XXX-*.md` |
-| API contracts | `docs/api/` |
-| Remaining work | Linear backlog / TASKS.json |
-| User-facing changes | CHANGELOG.md |
-| Council outcomes | Session summary → archive |
-| Report conclusions | Session summary → archive |
-| Spec decisions | Spec file → `.agents/specs/` |
-| Archived artifacts | `.agents/<type>/archive/` |
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Report Template | [templates/report.md](templates/report.md) | Creating cleanup reports |
+| Linear Integration | `orchestration/references/linear.md` | Checking external issue status |
+| Session Management | `orchestration/references/sessions.md` | Understanding session lifecycle |

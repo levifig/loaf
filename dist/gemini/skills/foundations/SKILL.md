@@ -1,9 +1,11 @@
 ---
 name: foundations
 description: >-
-  Covers code style, naming, TDD, verification, and code review standards. Use
-  when writing or reviewing code, running checks, or setting up reviews. Not for
-  git workflow, debugging, security, or documentation.
+  Establishes code quality, commit conventions, documentation standards, and
+  security patterns. Use when writing or reviewing code, running checks, or
+  setting up project standards. Covers naming, TDD, verification, and review
+  workflows. Not for git workflow (use git-workflow), debugging (use debugging),
+  or security audits (use security-compliance).
 version: 2.0.0-dev.8
 ---
 
@@ -69,3 +71,43 @@ Scenario-based fixture naming:
 - `*_chaos` - Edge cases, malformed data
 
 Coverage target: 70% minimum across all components.
+
+## Verification
+
+### After Editing Files
+
+**Format Checking:**
+- For Python files: If `black` is available, run `black --check {files}`
+- For TypeScript/JavaScript files: If `prettier` is available, run `prettier --check {files}`
+- For Ruby files: If `standardrb` is available, run `standardrb --format quiet {files}` or if `rubocop` is available, run `rubocop --format quiet {files}`
+- Auto-fix commands:
+  - Python: `black {files}`
+  - TypeScript/JavaScript: `prettier --write {files}`
+  - Ruby: `standardrb --fix {files}` or `rubocop -a {files}`
+
+**TDD Advisory:**
+- When editing implementation files (not test/spec files):
+  - Check if corresponding test file exists
+  - If no test found, consider Test-Driven Development:
+    1. Write a failing test first
+    2. Then implement the feature
+    3. Run tests until green
+  - Expected test file patterns:
+    - Python: `test_{name}.py` or `{name}_test.py`
+    - TypeScript/JavaScript: `{name}.test.{ext}` or `{name}.spec.{ext}`
+    - Ruby: `spec/{name}_spec.rb` or `test/{name}_test.rb`
+    - Go: `{name}_test.go`
+
+### Before Committing
+
+- Run appropriate formatter on all changed files
+- Run linter/type checker for the language
+- Verify tests exist for new functionality
+- Run test suite if tests were modified
+- Ensure CHANGELOG.md is updated if needed
+
+### Workflow Notes
+
+- Quick fixes with existing test coverage may skip TDD advisory
+- Configuration and generated files don't need tests
+- Editor format-on-save helps maintain compliance automatically

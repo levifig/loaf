@@ -78,7 +78,7 @@ Bash(npm run lint), Bash(pytest --collect-only)
 
 ## Agent-Specific Recommendations
 
-### PM Agent
+### Orchestrator
 
 ```
 # Coordination only - no implementation
@@ -222,7 +222,7 @@ When granting permissions:
 ### Linear MCP
 
 ```
-# Safe for PM coordination
+# Safe for orchestration
 list_issues, get_issue, list_comments
 create_comment, update_issue
 list_initiatives, list_initiative_updates

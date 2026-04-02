@@ -12,13 +12,14 @@ import {
   rmSync,
   existsSync,
   readdirSync,
+  readFileSync,
 } from "fs";
-import { join, dirname } from "path";
-import { readFileSync } from "fs";
+import { join, dirname, basename } from "path";
 import { execFileSync } from "child_process";
 import { fileURLToPath } from "url";
 
 const LOAF_MARKER_FILE = ".loaf-version";
+const LOAF_HOOK_MARKER = "loaf-managed";
 
 function getVersion(): string {
   const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -68,7 +69,45 @@ function writeMarker(configDir: string): void {
   writeFileSync(join(configDir, LOAF_MARKER_FILE), `${getVersion()}\n`);
 }
 
-export function installOpencode(distDir: string, configDir: string): void {
+// ─────────────────────────────────────────────────────────────────────────────
+// Hook Management Helpers (for user-hooks coexistence)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface CodexHooksJson {
+  version?: number;
+  hooks?: {
+    PreToolUse?: Array<Record<string, unknown>>;
+  };
+}
+
+function isLoafHook(hook: Record<string, unknown>): boolean {
+  // Loaf-managed hooks have commands that start with "loaf check --hook"
+  const command = hook.command as string | undefined;
+  return command?.startsWith("loaf check --hook") || false;
+}
+
+function loadHooksJson(path: string): CodexHooksJson {
+  if (!existsSync(path)) {
+    return { version: 1, hooks: {} };
+  }
+  try {
+    const content = readFileSync(path, "utf-8");
+    return JSON.parse(content) as CodexHooksJson;
+  } catch {
+    return { version: 1, hooks: {} };
+  }
+}
+
+function saveHooksJson(path: string, hooks: CodexHooksJson): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(hooks, null, 2));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Install Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function installOpencode(distDir: string, configDir: string, _upgrade: boolean = false): void {
   const dirs = ["skills", "agents", "commands", "plugins", "templates"];
 
   for (const dir of dirs) {
@@ -82,39 +121,37 @@ export function installOpencode(distDir: string, configDir: string): void {
   writeMarker(configDir);
 }
 
-export function installCursor(distDir: string, configDir: string): void {
-  // Remove stale commands from previous installs
+export function installCursor(distDir: string, configDir: string, upgrade: boolean = false): void {
+  // Skills → .agents/skills/ (converged path)
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const skillsDest = join(homeDir, ".agents/skills");
+  const skillsSrc = join(distDir, "skills");
+  if (existsSync(skillsSrc)) {
+    syncDir(skillsSrc, skillsDest);
+  }
+
+  // Agents, hooks.json, hook scripts, templates → ~/.cursor/
   const staleCommands = join(configDir, "commands");
   if (existsSync(staleCommands)) {
     rmSync(staleCommands, { recursive: true });
   }
 
-  // Skills
-  const skillsSrc = join(distDir, "skills");
-  if (existsSync(skillsSrc)) {
-    syncDir(skillsSrc, join(configDir, "skills"));
-  }
-
-  // Agents
   const agentsSrc = join(distDir, "agents");
   if (existsSync(agentsSrc)) {
     syncDir(agentsSrc, join(configDir, "agents"));
   }
 
-  // hooks.json
   const hooksSrc = join(distDir, "hooks.json");
   if (existsSync(hooksSrc)) {
     mkdirSync(configDir, { recursive: true });
     cpSync(hooksSrc, join(configDir, "hooks.json"));
   }
 
-  // Hook scripts
   const hooksDir = join(distDir, "hooks");
   if (existsSync(hooksDir)) {
     syncDir(hooksDir, join(configDir, "hooks"));
   }
 
-  // Templates (e.g. soul.md for SessionStart hook self-healing)
   const templatesSrc = join(distDir, "templates");
   if (existsSync(templatesSrc)) {
     syncDir(templatesSrc, join(configDir, "templates"));
@@ -123,19 +160,75 @@ export function installCursor(distDir: string, configDir: string): void {
   writeMarker(configDir);
 }
 
-export function installCodex(distDir: string, configDir: string): void {
+export function installCodex(distDir: string, configDir: string, upgrade: boolean = false): void {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const codexHome = process.env.CODEX_HOME || join(homeDir, ".codex");
+
+  // Skills → .agents/skills/ (converged path)
+  const skillsDest = join(homeDir, ".agents/skills");
   const skillsSrc = join(distDir, "skills");
   if (existsSync(skillsSrc)) {
-    syncDir(skillsSrc, join(configDir, "skills"));
+    syncDir(skillsSrc, skillsDest);
+  }
+
+  // Hooks → $CODEX_HOME/hooks.json (merge with existing)
+  const loafHooksPath = join(distDir, ".codex/hooks.json");
+  if (existsSync(loafHooksPath)) {
+    const hooksPath = join(codexHome, "hooks.json");
+    const existing = loadHooksJson(hooksPath);
+    const loafHooks = loadHooksJson(loafHooksPath);
+
+    // Merge: keep user hooks, replace Loaf hooks (or add if new)
+    const existingPreTool = existing.hooks?.PreToolUse || [];
+    const loafPreTool = loafHooks.hooks?.PreToolUse || [];
+
+    // Filter out any existing Loaf hooks
+    const userHooks = upgrade
+      ? existingPreTool.filter((h) => !isLoafHook(h))
+      : existingPreTool.filter((h) => !isLoafHook(h));
+
+    const merged = {
+      version: 1,
+      hooks: {
+        PreToolUse: [...userHooks, ...loafPreTool],
+      },
+    };
+
+    saveHooksJson(hooksPath, merged);
   }
 
   writeMarker(configDir);
 }
 
-export function installGemini(distDir: string, configDir: string): void {
+export function installGemini(distDir: string, configDir: string, _upgrade: boolean = false): void {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  
+  // Skills → .agents/skills/ (converged path)
+  const skillsDest = join(homeDir, ".agents/skills");
   const skillsSrc = join(distDir, "skills");
   if (existsSync(skillsSrc)) {
-    syncDir(skillsSrc, join(configDir, "skills"));
+    syncDir(skillsSrc, skillsDest);
+  }
+
+  writeMarker(configDir);
+}
+
+export function installAmp(distDir: string, configDir: string, _upgrade: boolean = false): void {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  
+  // Skills → .agents/skills/ or ~/.config/agents/skills/
+  const skillsDest = process.env.AMP_SKILLS_HOME || join(homeDir, ".config/agents/skills");
+  const skillsSrc = join(distDir, "skills");
+  if (existsSync(skillsSrc)) {
+    syncDir(skillsSrc, skillsDest);
+  }
+
+  // Plugins → ~/.amp/plugins/
+  const pluginsDest = process.env.AMP_PLUGINS_DIR || join(homeDir, ".amp/plugins");
+  const pluginSrc = join(distDir, "plugins/loaf.js");
+  if (existsSync(pluginSrc)) {
+    mkdirSync(pluginsDest, { recursive: true });
+    cpSync(pluginSrc, join(pluginsDest, "loaf.js"));
   }
 
   writeMarker(configDir);
@@ -143,10 +236,11 @@ export function installGemini(distDir: string, configDir: string): void {
 
 export const INSTALLERS: Record<
   string,
-  (distDir: string, configDir: string) => void
+  (distDir: string, configDir: string, upgrade?: boolean) => void
 > = {
   opencode: installOpencode,
   cursor: installCursor,
   codex: installCodex,
   gemini: installGemini,
+  amp: installAmp,
 };

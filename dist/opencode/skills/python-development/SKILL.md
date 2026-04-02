@@ -1,9 +1,12 @@
 ---
 name: python-development
 description: >-
-  Covers Python 3.12+ with FastAPI, Pydantic, async, pytest, SQLAlchemy, and uv.
-  Use when writing Python services, APIs, data models, or tests. Not for
-  database schema, infrastructure, or frontend code.
+  Covers Python 3.12+ with FastAPI, Pydantic, async patterns, pytest,
+  SQLAlchemy, and uv toolchain. Use when building Python services, APIs, data
+  models, or tests. Provides patterns for modern Python development. Not for
+  schema design (use database-design), infrastructure (use
+  infrastructure-management), or frontend code (use typescript-development).
+version: 2.0.0-dev.8
 ---
 
 # Python Development
@@ -57,3 +60,47 @@ Modern Python 3.12+ development with FastAPI ecosystem.
 - Use mutable default arguments (`def foo(items=[])`)
 - Skip validation on external input
 - Hardcode configuration values (use pydantic-settings)
+
+## Verification
+
+### After Editing Python Files
+
+**Type Checking:**
+- If `mypy` is available in the project, run: `mypy --show-error-codes {files}`
+- Skip test files and migrations (they often have looser types)
+- For strict mode: `mypy --strict {files}`
+
+**Linting:**
+- If `ruff` is available, run: `ruff check {files}`
+- To auto-fix issues: `ruff check --fix {files}`
+- To format: `ruff format {files}`
+
+**Security Scanning:**
+- If `bandit` is available, run: `bandit -f txt {files}`
+- Review high/medium severity findings
+- Common fixes: replace assert with proper error handling, use secrets module for random tokens
+
+**Testing:**
+- If `pytest` is available:
+  - For specific test file: `pytest {test_file} -v --tb=short`
+  - For related module tests: `pytest tests/test_{module}/ -v`
+  - For full suite: `pytest -v --tb=short`
+- Check test file structure:
+  - Test functions named `test_*`
+  - Async tests use `@pytest.mark.asyncio`
+  - `import pytest` present in test files
+
+### Before Committing
+
+- Run formatters on changed files (black/ruff format)
+- Run type checker on modified source files
+- Run security scanner if reviewing or doing thorough validation
+- Ensure tests pass for modified code
+
+### Test Structure Validation
+
+When writing test files, verify:
+- Test functions named `test_*` (not just `test`)
+- Async tests have `@pytest.mark.asyncio` decorator
+- `import pytest` present in test files
+- Use fixtures for setup/teardown instead of bare asserts

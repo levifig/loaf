@@ -1,9 +1,11 @@
 ---
 name: go-development
 description: >-
-  Covers idiomatic Go: project structure, concurrency, error handling, and
-  testing. Use when writing Go services, CLIs, or libraries. Not for database
-  schema or infrastructure orchestration.
+  Covers idiomatic Go development: project structure, concurrency patterns,
+  error handling, and testing. Use when writing Go services, CLIs, or libraries.
+  Follows Effective Go principles and community conventions. Not for database
+  schema design (use database-design) or infrastructure orchestration (use
+  infrastructure-management).
 version: 2.0.0-dev.8
 ---
 

@@ -3,9 +3,12 @@ name: debugging
 description: >-
   Covers systematic debugging, hypothesis tracking, and flaky test
   investigation. Use when diagnosing failures, tracking hypotheses, or fixing
-  flaky tests. Not for writing new tests or security analysis.
-user-invocable: false
+  flaky tests. Provides methodology for root cause analysis and issue
+  resolution. Not for writing new tests (us...
+user-invocable: true
+argument-hint: '[issue or error]'
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
+version: 2.0.0-dev.8
 ---
 
 # Debugging

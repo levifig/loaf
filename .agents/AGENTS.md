@@ -108,13 +108,40 @@ description: >-
 Brief intro paragraph.
 
 ## Contents
-- Section One
-- Section Two
-- Section Three
+- Critical Rules
+- Verification
+- Quick Reference
+- Topics
 
-## Section One
+## Critical Rules
+...
+
+## Verification
+...
+
+## Quick Reference
+...
+
+## Topics
 ...
 ```
+
+**Standard section order:**
+1. **Critical Rules** — Must-follow constraints, guardrails, delegation patterns
+2. **Verification** — How to confirm success, test conditions, validation steps
+3. **Quick Reference** — Tables, decision trees, command cheatsheets
+4. **Topics** — Detailed references linked from SKILL.md
+
+#### Verb/Noun Principle
+
+Use action verbs for workflows, nouns for knowledge:
+
+| Pattern | Use For | Examples |
+|---------|---------|----------|
+| **Verb** (gerund) | Workflow skills | `implement`, `breakdown`, `research` |
+| **Noun** (domain) | Knowledge skills | `typescript-development`, `database-design` |
+
+**Why:** Skills that DO things get verbs. Skills that ARE things get nouns. This makes the distinction between "use me to act" and "reference me to know" immediately clear.
 
 #### Frontmatter Fields (Standard)
 
@@ -130,6 +157,21 @@ Only these fields belong in `SKILL.md`:
 | `allowed-tools` | No | Space-delimited tool list (experimental) |
 
 #### Description Best Practices
+
+**Two-tier structure** for Claude's 250-char truncation vs full description:
+
+1. **First sentence (≤250 chars):** Action verb, what it covers, key trigger phrases
+2. **Rest:** User-intent examples, negative routing, success criteria
+
+```yaml
+description: >-
+  Covers Python 3.12+ with FastAPI, Pydantic, async patterns, pytest, SQLAlchemy.
+  Use when building APIs, or when the user asks "how do I validate data?"
+  or "what's the best way to structure a Python project?"
+  Not for schema design decisions (use database-design).
+```
+
+**Additional guidelines:**
 
 1. **Start with action verb** (third-person):
    - Good: "Covers...", "Establishes...", "Coordinates..."
@@ -173,7 +215,7 @@ Artifact format templates (session files, specs, ADRs, task files) live in `temp
 # targets.yaml
 shared-templates:
   session.md: [implement, resume, orchestration, reference-session, review-sessions]
-  plan.md: [implement, council-session]
+  plan.md: [implement, council]
   adr.md: [architecture, reflect]
 ```
 
@@ -221,7 +263,7 @@ skill-name/
     └── artifact-b.md
 ```
 
-#### Reference Table Pattern
+### Reference Table Pattern
 
 Use "Use When" (action-oriented), not "Coverage" (content-oriented):
 
@@ -268,6 +310,23 @@ Brief intro paragraph.
 Reference skills provide background knowledge Claude loads automatically.
 Users shouldn't invoke `/python-development` directly.
 
+### Session Journal Vocabulary
+
+Session journals in `.agents/sessions/` capture work state for continuity:
+
+| Term | Meaning |
+|------|---------|
+| **Session** | A markdown file tracking work on a task/spec with frontmatter state |
+| **Session File** | Named `YYYYMMDD-HHMMSS-description.md` in `.agents/sessions/` |
+| **Frontmatter** | YAML header with `status`, `task`, `spec`, `started_at`, etc. |
+| **Current State** | Section documenting what is happening right now |
+| **Next Steps** | Section documenting what should happen next |
+| **Handoff Context** | Information needed to resume work after context loss |
+| **Archive** | Completed sessions moved to `.agents/sessions/archive/` |
+| **Transcript** | Copy of tool output captured during session |
+
+**Session Status Values:** `active`, `paused`, `blocked`, `complete`, `archived`
+
 ## Build System
 
 ### Commands
@@ -278,6 +337,10 @@ loaf build --target claude-code  # Specific target
 loaf install --to all          # Install to all detected tools
 loaf install --to cursor       # Install to specific tool
 loaf install --upgrade         # Update already-installed targets
+loaf check                     # Run enforcement hooks manually
+loaf session list              # List active sessions
+loaf session start <desc>      # Start new session
+loaf session end <file>        # End/archive session
 ```
 
 ### Development
@@ -314,16 +377,36 @@ npm link                       # Make `loaf` available globally
 
 ## Configuration
 
+### Hook Model
+
+Two types of hooks serve different purposes:
+
+**Enforcement Hooks** — Quality gates that block bad actions:
+- Run automatically at git lifecycle points (pre-commit, pre-push)
+- Example: Secrets scanning, linting, type checking
+- Can be run manually via `loaf check`
+- Exit non-zero to block the action
+
+**Skill Instruction Hooks** — Context injection at tool invocation:
+- Triggered when specific tools are invoked
+- Inject relevant skill instructions based on context
+- Example: When `Edit` is used, inject language-specific style guide
+- Registered in `hooks.yaml` with `matcher` patterns
+
 ### hooks.yaml
 
 Register hooks with their `skill:` field pointing to the relevant skill:
 
 ```yaml
 hooks:
+  pre-commit:
+    - id: scan-secrets
+      skill: security-compliance
+      script: hooks/pre-commit/scan-secrets.sh
   pre-tool:
-    - id: my-hook
-      skill: my-skill
-      script: hooks/pre-tool/my-hook.sh
+    - id: python-style
+      skill: python-development
+      script: hooks/pre-tool/python-style.sh
       matcher: "Edit|Write"
 ```
 
@@ -359,3 +442,22 @@ Configure target-specific behavior and sidecars.
 - [Agent Skills Specification](https://agentskills.io/specification)
 - [Claude Code Skills Best Practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
+
+<!-- loaf:managed:start v2.0.0-dev.8 -->
+<!-- Maintained by loaf install/upgrade — do not edit manually -->
+## Loaf Framework
+
+**Session Journal Entry Types:**
+- `decide(scope)`: Key decisions with rationale
+- `discover(scope)`: Something learned
+- `block(scope)` / `unblock(scope)`: Blockers and resolutions
+- `spark(scope)`: Ideas to promote via `/idea`
+- `todo(scope)`: Action items to promote to tasks
+
+**CLI Commands:**
+- `loaf session start/end/log/archive` — Session management
+- `loaf check` — Run enforcement hooks
+- `loaf task/spec/kb` — Task and knowledge management
+
+See [orchestration skill](skills/orchestration/SKILL.md) for full details.
+<!-- loaf:managed:end -->

@@ -1,11 +1,13 @@
 ---
 name: typescript-development
 description: >-
-  Covers TypeScript 5+ with React 18+, Next.js 14+ App Router, Zustand,
-  Tailwind, and Vitest. Use when writing TypeScript apps, React components, or
-  Node.js services. Not for UI/UX design, database schema, or Python.
+  Covers TypeScript 5+, React 18+, Next.js 14+ App Router, Zustand, Tailwind
+  CSS, and Vitest testing. Use when writing TypeScript applications, React
+  components, or Node.js services. Not for UI/UX design (use interface-design),
+  database schema (use dat...
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
+version: 2.0.0-dev.8
 ---
 
 # TypeScript Development
@@ -67,3 +69,29 @@ Modern TypeScript development with React ecosystem.
 - Rely on color alone for information
 - Create new functions in render
 - Skip error handling for API calls
+
+## Verification
+
+### After Editing TypeScript/JavaScript Files
+
+**Type Checking:**
+- If `tsc` is available, run: `npx tsc --noEmit`
+- Checks entire project against tsconfig.json
+- Common fixes: add proper type annotations, use union types for nullable values, import types from @types/* packages
+
+**Linting:**
+- If `eslint` is available, run: `npx eslint {files}`
+- To auto-fix issues: `npx eslint --fix {files}`
+
+**Bundle Analysis (for component files):**
+- Check file size and LOC when modifying components
+- Warn if file > 100 KB or > 500 lines of code
+- Consider breaking into smaller components for large files
+- Use code splitting and lazy loading for heavy dependencies
+
+### Before Committing
+
+- Run type checker on the entire project
+- Run ESLint on modified files
+- Verify component sizes are reasonable
+- Check for console errors and warnings

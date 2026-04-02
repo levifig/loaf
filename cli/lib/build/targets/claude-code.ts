@@ -12,15 +12,28 @@
  * Scoping: /loaf:implement, Task(loaf:backend-dev)
  */
 
-import { mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, readdirSync, rmSync } from "fs";
-import matter from "gray-matter";
+import {
+  mkdirSync,
+  cpSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+  rmSync,
+  copyFileSync,
+  chmodSync,
+} from "fs";
 import { join } from "path";
-import { loadAgentSidecar, loadSkillFrontmatter, loadSkillExtensions, mergeSkillFrontmatter } from "../lib/sidecar.js";
+import {
+  loadSkillExtensions,
+} from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
-
+import { copySkills } from "../lib/skills.js";
+import { copyAgents } from "../lib/agents.js";
+import { createCommandSubstituter } from "../lib/commands.js";
 import { copySharedTemplates } from "../lib/shared-templates.js";
-import { copyDirWithTransform, discoverAgents, discoverSkills } from "../lib/copy-utils.js";
-import type { BuildContext, HooksConfig, HookDefinition } from "../types.js";
+import { copyDirWithTransform, discoverSkills } from "../lib/copy-utils.js";
+import type { BuildContext, HooksConfig, HookDefinition, SkillFrontmatter } from "../types.js";
 
 const TARGET_NAME = "claude-code";
 const PLUGIN_NAME = "loaf";
@@ -70,27 +83,24 @@ const MCP_SERVERS: Record<string, unknown> = {
   },
 };
 
-/**
- * Substitute command references with Claude Code scoped commands.
- * Generic slash commands: /breakdown -> /loaf:breakdown (for known commands only).
- */
-function substituteCommands(content: string, knownCommands: string[] = []): string {
-  let result = content
-    .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/loaf:implement")
-    .replace(/\{\{RESUME_CMD\}\}/g, "/loaf:resume-session")
-    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/loaf:implement");
-
-  for (const cmd of knownCommands) {
-    const pattern = new RegExp(`(?<!/\\w+:)\\/${cmd}(?=\\s|\\)|\\]|,|$|\`)`, "g");
-    result = result.replace(pattern, `/loaf:${cmd}`);
-  }
-
-  return result;
-}
+// Enforcement hooks that use `loaf check --hook <id>`
+const ENFORCEMENT_HOOKS = new Set([
+  "check-secrets",
+  "validate-push",
+  "validate-commit",
+  "workflow-pre-pr",
+  "security-audit",
+]);
 
 let VERSION = "0.0.0";
 
-export async function build({ config, targetsConfig, rootDir, srcDir, distDir }: BuildContext): Promise<void> {
+export async function build({
+  config,
+  targetsConfig,
+  rootDir,
+  srcDir,
+  distDir,
+}: BuildContext): Promise<void> {
   VERSION = getVersion(rootDir);
 
   // distDir is the repo root for claude-code target
@@ -104,7 +114,7 @@ export async function build({ config, targetsConfig, rootDir, srcDir, distDir }:
   mkdirSync(marketplaceDir, { recursive: true });
 
   createMarketplace(marketplaceDir);
-  buildUnifiedPlugin(config as HooksConfig, srcDir, pluginsDir, targetsConfig);
+  buildUnifiedPlugin(config as HooksConfig, rootDir, srcDir, pluginsDir, targetsConfig);
 }
 
 function createMarketplace(marketplaceDir: string): void {
@@ -124,24 +134,100 @@ function createMarketplace(marketplaceDir: string): void {
     ],
   };
 
-  writeFileSync(join(marketplaceDir, "marketplace.json"), JSON.stringify(marketplace, null, 2));
+  writeFileSync(
+    join(marketplaceDir, "marketplace.json"),
+    JSON.stringify(marketplace, null, 2)
+  );
 }
 
-function buildUnifiedPlugin(config: HooksConfig, srcDir: string, pluginsDir: string, targetsConfig: BuildContext["targetsConfig"]): void {
+function buildUnifiedPlugin(
+  config: HooksConfig,
+  rootDir: string,
+  srcDir: string,
+  pluginsDir: string,
+  targetsConfig: BuildContext["targetsConfig"]
+): void {
   const pluginDir = join(pluginsDir, PLUGIN_NAME);
   mkdirSync(pluginDir, { recursive: true });
 
-  const allAgents = discoverAgents(srcDir);
-  const allSkills = discoverSkills(srcDir);
+  // Discover all skills to determine knownCommands for scoping
+  const allSkills = discoverSkills(join(rootDir, "dist"));
 
-  const knownCommands = allSkills.filter((skill) => {
-    const extensions = loadSkillExtensions(join(srcDir, "skills", skill));
-    return extensions["user-invocable"] !== false;
-  });
+  const knownCommands: string[] = [];
+  for (const skill of allSkills) {
+    const skillDir = join(rootDir, "content", "skills", skill);
+    if (existsSync(skillDir)) {
+      const extensions = loadSkillExtensions(skillDir);
+      // Only include user-invocable skills (default true)
+      if (extensions["user-invocable"] !== false) {
+        knownCommands.push(skill);
+      }
+    }
+  }
+
+  // Create base command substituter (universal unscoped substitution)
+  const baseTransform = createCommandSubstituter("claude-code");
+
+  // Create scoping transform that applies /loaf: prefix to known commands
+  const scopingTransform = (content: string): string => {
+    let result = content;
+    for (const cmd of knownCommands) {
+      // Match /cmd that is not already scoped (e.g., not /loaf:cmd or /other:cmd)
+      const pattern = new RegExp(
+        `(?<!/\\w+:)\\/${cmd}(?=\\s|\\)|\\]|,|$|\`)`,
+        "g"
+      );
+      result = result.replace(pattern, `/loaf:${cmd}`);
+    }
+    return result;
+  };
+
+  // Combine transforms: base first, then scoping
+  const transformMd = (content: string): string =>
+    scopingTransform(baseTransform(content));
 
   createPluginJson(config, pluginDir);
-  copyAgents(allAgents, srcDir, pluginDir);
-  copySkills(allSkills, srcDir, pluginDir, knownCommands, targetsConfig);
+
+  // Copy agents using shared module with required sidecar
+  const agentsDir = join(pluginDir, "agents");
+  mkdirSync(agentsDir, { recursive: true });
+  copyAgents({
+    srcDir,
+    destDir: agentsDir,
+    targetName: TARGET_NAME,
+    version: VERSION,
+    sidecarRequired: true,
+  });
+
+  // Copy skills using shared module with Claude-specific sidecar merge and scoping
+  const skillsDir = join(pluginDir, "skills");
+  mkdirSync(skillsDir, { recursive: true });
+  copySkills({
+    srcDir: join(rootDir, "dist"), // Read from intermediate dist/skills/
+    destDir: skillsDir,
+    targetName: TARGET_NAME,
+    version: VERSION,
+    targetsConfig,
+    transformMd,
+    mergeFrontmatter: (base, skillDir) => {
+      // skillDir is from dist/skills/, extract skill name
+      const skillName = skillDir.split("/").pop() || "";
+      // Load sidecar from content/skills/ (sidecars are not in intermediate)
+      const contentSkillDir = join(srcDir, "skills", skillName);
+      const extensions = loadSkillExtensions(contentSkillDir);
+      const merged = { ...base, ...extensions } as SkillFrontmatter;
+      
+      // Truncate description at 250 chars for Claude Code
+      if (merged.description && merged.description.length > 250) {
+        merged.description = merged.description.substring(0, 250) + "...";
+      }
+      
+      return merged;
+    },
+  });
+
+  // Hooks are now defined as direct commands in plugin.json, no need to copy scripts
+  // Keep the copyAllHooks for backward compatibility and session hooks
   copyAllHooks(config, srcDir, pluginDir);
 
   writeFileSync(join(pluginDir, ".lsp.json"), JSON.stringify(LSP_SERVERS, null, 2));
@@ -158,6 +244,25 @@ function buildUnifiedPlugin(config: HooksConfig, srcDir: string, pluginsDir: str
   if (existsSync(setupSrc)) {
     cpSync(setupSrc, join(pluginDir, "SETUP.md"));
   }
+
+  // Copy CLI binary to plugin bin/ directory for enforcement hooks
+  const binDir = join(pluginDir, "bin");
+  mkdirSync(binDir, { recursive: true });
+  const cliSource = join(rootDir, "dist-cli", "index.js");
+  if (existsSync(cliSource)) {
+    copyFileSync(cliSource, join(binDir, "loaf"));
+    chmodSync(join(binDir, "loaf"), 0o755);
+  }
+  
+  // Write minimal package.json so the binary can find its version
+  const pluginPackageJson = {
+    name: PLUGIN_NAME,
+    version: VERSION,
+  };
+  writeFileSync(
+    join(pluginDir, "package.json"),
+    JSON.stringify(pluginPackageJson, null, 2)
+  );
 }
 
 function groupByMatcher(hooks: HookDefinition[]): Record<string, HookDefinition[]> {
@@ -170,15 +275,20 @@ function groupByMatcher(hooks: HookDefinition[]): Record<string, HookDefinition[
   return groups;
 }
 
-function getHookPath(hook: HookDefinition): string {
+function getClaudeHookCommand(hook: HookDefinition): string {
+  // If hook has direct command field, use it with plugin root substitution
+  if (hook.command) {
+    // For enforcement hooks, use the full plugin root path to loaf binary
+    if (ENFORCEMENT_HOOKS.has(hook.id)) {
+      return `"\${CLAUDE_PLUGIN_ROOT}/bin/loaf" check --hook ${hook.id}`;
+    }
+    return hook.command.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, "${CLAUDE_PLUGIN_ROOT}");
+  }
+
+  // Otherwise build command from script path (fallback for legacy hooks)
   const parts = hook.script!.split("/");
   const filename = parts[parts.length - 1];
-  return `hooks/${filename}`;
-}
-
-function getHookCommand(hook: HookDefinition): string {
-  const hookPath = getHookPath(hook);
-  const filename = hookPath.split("/").pop()!;
+  const hookPath = `hooks/${filename}`;
 
   if (filename.endsWith(".py")) {
     return `python3 \${CLAUDE_PLUGIN_ROOT}/${hookPath}`;
@@ -212,15 +322,16 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
             type: "prompt" as const,
             prompt: h.prompt!,
             ...(h.if && { if: h.if }),
-            ...(h.timeout && { timeout: h.timeout }),
+            ...(h.timeout && { timeout: Math.floor((h.timeout || 5000) / 1000) }),
           };
         }
         return {
           type: "command" as const,
-          command: getHookCommand(h),
+          command: getClaudeHookCommand(h),
           ...(h.if && { if: h.if }),
-          ...(h.timeout && { timeout: h.timeout }),
+          ...(h.timeout && { timeout: Math.floor((h.timeout || 30000) / 1000) }),
           ...(h.description && { description: h.description }),
+          ...(h.failClosed && { failClosed: h.failClosed }),
         };
       }),
     }));
@@ -230,11 +341,24 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
     const postToolByMatcher = groupByMatcher(allPostToolHooks);
     hooks.PostToolUse = Object.entries(postToolByMatcher).map(([matcher, hookList]) => ({
       matcher,
-      hooks: hookList.map((h) => ({
-        type: "command",
-        command: getHookCommand(h),
-        ...(h.description && { description: h.description }),
-      })),
+      hooks: hookList.map((h) => {
+        if (h.type === "prompt") {
+          return {
+            type: "prompt" as const,
+            prompt: h.prompt!,
+            ...(h.if && { if: h.if }),
+            ...(h.timeout && { timeout: Math.floor((h.timeout || 5000) / 1000) }),
+            ...(h.description && { description: h.description }),
+          };
+        }
+        return {
+          type: "command" as const,
+          command: getClaudeHookCommand(h),
+          ...(h.description && { description: h.description }),
+          ...(h.timeout && { timeout: Math.floor((h.timeout || 30000) / 1000) }),
+          ...(h.failClosed && { failClosed: h.failClosed }),
+        };
+      }),
     }));
   }
 
@@ -242,81 +366,40 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
     for (const hook of allSessionHooks) {
       const eventName = hook.event!;
       if (!hooks[eventName]) hooks[eventName] = [];
-      (hooks[eventName] as unknown[]).push({
-        hooks: [
-          {
-            type: "command",
-            command: getHookCommand(hook),
-            ...(hook.description && { description: hook.description }),
-            ...(hook.timeout && { timeout: hook.timeout }),
-          },
-        ],
-      });
+      
+      // Handle prompt type hooks
+      if (hook.type === "prompt") {
+        (hooks[eventName] as unknown[]).push({
+          hooks: [
+            {
+              type: "prompt",
+              prompt: hook.prompt!,
+              ...(hook.if && { if: hook.if }),
+              ...(hook.timeout && { timeout: Math.floor((hook.timeout || 60000) / 1000) }),
+              ...(hook.description && { description: hook.description }),
+            },
+          ],
+        });
+      } else {
+        // Command type hooks
+        (hooks[eventName] as unknown[]).push({
+          hooks: [
+            {
+              type: "command",
+              command: getClaudeHookCommand(hook),
+              ...(hook.description && { description: hook.description }),
+              ...(hook.timeout && { timeout: Math.floor((hook.timeout || 60000) / 1000) }),
+              ...(hook.failClosed && { failClosed: hook.failClosed }),
+            },
+          ],
+        });
+      }
     }
   }
 
   const pluginJsonDir = join(pluginDir, ".claude-plugin");
   mkdirSync(pluginJsonDir, { recursive: true });
   writeFileSync(join(pluginJsonDir, "plugin.json"), JSON.stringify(pluginJson, null, 2));
-}
-
-function copyAgents(agents: string[], srcDir: string, pluginDir: string): void {
-  const agentsDir = join(pluginDir, "agents");
-  mkdirSync(agentsDir, { recursive: true });
-
-  for (const agent of agents) {
-    const srcPath = join(srcDir, "agents", `${agent}.md`);
-    const destPath = join(agentsDir, `${agent}.md`);
-
-    if (!existsSync(srcPath)) continue;
-
-    const frontmatter = loadAgentSidecar(srcPath, TARGET_NAME);
-    const content = readFileSync(srcPath, "utf-8");
-    const { content: body } = matter(content);
-
-    writeFileSync(destPath, matter.stringify(body, frontmatter));
-  }
-}
-
-function copySkills(skills: string[], srcDir: string, pluginDir: string, knownCommands: string[], targetsConfig: BuildContext["targetsConfig"]): void {
-  const skillsDir = join(pluginDir, "skills");
-  mkdirSync(skillsDir, { recursive: true });
-
-  const transformMd = (content: string) => substituteCommands(content, knownCommands);
-
-  for (const skill of skills) {
-    const skillSrc = join(srcDir, "skills", skill);
-    const skillDest = join(skillsDir, skill);
-
-    if (!existsSync(skillSrc)) continue;
-
-    mkdirSync(skillDest, { recursive: true });
-
-    const baseFrontmatter = loadSkillFrontmatter(skillSrc);
-    const extensions = loadSkillExtensions(skillSrc);
-    const frontmatter = mergeSkillFrontmatter(baseFrontmatter, extensions);
-
-    const skillMdPath = join(skillSrc, "SKILL.md");
-    if (existsSync(skillMdPath)) {
-      const content = readFileSync(skillMdPath, "utf-8");
-      const { content: body } = matter(content);
-      writeFileSync(join(skillDest, "SKILL.md"), transformMd(matter.stringify(body, frontmatter)));
-    }
-
-    for (const subdir of ["references", "templates"]) {
-      const subSrc = join(skillSrc, subdir);
-      if (existsSync(subSrc)) {
-        copyDirWithTransform(subSrc, join(skillDest, subdir), transformMd);
-      }
-    }
-
-    const scriptsSrc = join(skillSrc, "scripts");
-    if (existsSync(scriptsSrc)) {
-      cpSync(scriptsSrc, join(skillDest, "scripts"), { recursive: true });
-    }
-
-    copySharedTemplates(skill, skillDest, srcDir, targetsConfig, transformMd);
-  }
 }
 
 function copyAllHooks(config: HooksConfig, srcDir: string, pluginDir: string): void {
@@ -329,15 +412,30 @@ function copyAllHooks(config: HooksConfig, srcDir: string, pluginDir: string): v
     cpSync(libSrc, join(hooksDir, "lib"), { recursive: true });
   }
 
-  // Collect all hook IDs
-  const allHookIds = new Set<string>();
-  for (const hook of config.hooks["pre-tool"] || []) allHookIds.add(hook.id);
-  for (const hook of config.hooks["post-tool"] || []) allHookIds.add(hook.id);
-  for (const hook of config.hooks.session || []) allHookIds.add(hook.id);
+  // Collect all hook IDs that still need script files
+  // (only session hooks and legacy hooks without direct commands)
+  const scriptHookIds = new Set<string>();
+  for (const hook of config.hooks["pre-tool"] || []) {
+    if (hook.script && !ENFORCEMENT_HOOKS.has(hook.id)) {
+      scriptHookIds.add(hook.id);
+    }
+  }
+  for (const hook of config.hooks["post-tool"] || []) {
+    if (hook.script && !ENFORCEMENT_HOOKS.has(hook.id)) {
+      scriptHookIds.add(hook.id);
+    }
+  }
+  for (const hook of config.hooks.session || []) {
+    if (hook.script) {
+      scriptHookIds.add(hook.id);
+    }
+  }
 
   // Find and copy each hook script
-  for (const hookId of allHookIds) {
-    const hookDef = config.hooks["pre-tool"]?.find((h) => h.id === hookId) || config.hooks["post-tool"]?.find((h) => h.id === hookId) || config.hooks.session?.find((h) => h.id === hookId);
+  for (const hookId of scriptHookIds) {
+    const hookDef = config.hooks["pre-tool"]?.find((h) => h.id === hookId) || 
+                    config.hooks["post-tool"]?.find((h) => h.id === hookId) || 
+                    config.hooks.session?.find((h) => h.id === hookId);
 
     if (hookDef && hookDef.script) {
       const parts = hookDef.script.split("/");

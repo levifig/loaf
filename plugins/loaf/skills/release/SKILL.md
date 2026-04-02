@@ -1,11 +1,13 @@
 ---
 name: release
 description: >-
-  Orchestrates release: pre-flight checks, version bump via `loaf release`,
+  Orchestrates releases: pre-flight checks, version bump via `loaf release`,
   squash merge, and post-merge cleanup. Use when the user says "release this,"
-  "merge this PR," "ready to merge," or "ship it." Not for creating PRs or
-  reflection.
+  "merge this PR," "ready to merge," or "ship it." Produces version bumps,
+  changelog updates, and me...
+user-invocable: true
 argument-hint: '[PR number or URL]'
+version: 2.0.0-dev.8
 ---
 
 # Release

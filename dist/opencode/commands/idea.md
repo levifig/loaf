@@ -1,9 +1,10 @@
 ---
 description: >-
-  Captures ideas into structured nuggets. Use when the user says "I have an
-  idea" or "note this down," or when an actionable concept crystallizes. Without
-  args, scans for unprocessed sparks to promote. Not for deep exploration or
-  shaping.
+  Captures ideas into structured nuggets for later evaluation. Use when the user
+  says "I have an idea" or "note this down." Also activate when a specific
+  actionable concept crystallizes during conversation. Without args, scans
+  brainstorm documents for unprocessed sparks to promote. Not for deep
+  exploration (use brainstorm) or shaping (use shape).
 subtask: false
 version: 2.0.0-dev.8
 ---

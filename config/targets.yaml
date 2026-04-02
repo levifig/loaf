@@ -6,8 +6,8 @@
 # resolve in build output but not in raw source (by design: source is build-input).
 # Format: template-filename: [list of skill names that receive it]
 shared-templates:
-  session.md: [implement, resume-session, orchestration, reference-session, cleanup, bootstrap]
-  plan.md: [implement, council-session]
+  session.md: [implement, orchestration, cleanup, bootstrap]
+  plan.md: [implement, council]
   adr.md: [architecture, reflect]
 
 targets:
@@ -40,3 +40,9 @@ targets:
     output: dist/gemini/
     # Skills only (structure TBD, similar to codex)
     # Gemini doesn't support XDG yet - uses ~/.gemini/ directly
+
+  amp:
+    output: dist/amp/
+    # Experimental Amp target
+    # Skills only - no sidecar merge, standard SKILL.md
+    # Runtime plugin at plugins/loaf.js (auto-generated)

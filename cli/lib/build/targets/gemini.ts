@@ -2,88 +2,43 @@
  * Gemini Build Target
  *
  * Gemini only supports skills — no commands, agents, or hooks.
- * Note: Gemini doesn't support XDG conventions yet, uses ~/.gemini/ directly.
+ * Reads from shared intermediate at dist/skills/, merges SKILL.gemini.yaml sidecar.
  */
 
-import {
-  mkdirSync,
-  cpSync,
-  writeFileSync,
-  readFileSync,
-  existsSync,
-  readdirSync,
-  rmSync,
-} from "fs";
-import matter from "gray-matter";
 import { join } from "path";
-import { loadSkillFrontmatter, loadTargetSkillSidecar } from "../lib/sidecar.js";
-import { getVersion, injectVersion } from "../lib/version.js";
-
-import { copySharedTemplates } from "../lib/shared-templates.js";
-import { copyDirWithTransform } from "../lib/copy-utils.js";
-import type { BuildContext } from "../types.js";
+import { copySkills } from "../lib/skills.js";
+import { loadTargetSkillSidecar } from "../lib/sidecar.js";
+import { getVersion } from "../lib/version.js";
+import type { BuildContext, SkillFrontmatter } from "../types.js";
 
 const TARGET_NAME = "gemini";
 
-function substituteCommands(content: string): string {
-  return content
-    .replace(/\{\{IMPLEMENT_CMD\}\}/g, "/implement")
-    .replace(/\{\{RESUME_CMD\}\}/g, "/resume")
-    .replace(/\{\{ORCHESTRATE_CMD\}\}/g, "/implement");
-}
-
-export async function build({ rootDir, srcDir, distDir, targetsConfig }: BuildContext): Promise<void> {
+export async function build({
+  rootDir,
+  distDir,
+  targetsConfig,
+}: BuildContext): Promise<void> {
   const version = getVersion(rootDir);
-  const transformMd = (content: string) => substituteCommands(content);
 
-  const skillsDir = join(distDir, "skills");
+  // Identity transform - commands already substituted in intermediate
+  const transformMd = (content: string) => content;
 
-  if (existsSync(skillsDir)) {
-    rmSync(skillsDir, { recursive: true });
-  }
-  mkdirSync(skillsDir, { recursive: true });
+  // Merge sidecar fields into frontmatter
+  const mergeFrontmatter = (
+    base: SkillFrontmatter,
+    skillDir: string,
+  ): SkillFrontmatter => {
+    const sidecar = loadTargetSkillSidecar(skillDir, TARGET_NAME);
+    return { ...base, ...sidecar };
+  };
 
-  const src = join(srcDir, "skills");
-  if (!existsSync(src)) return;
-
-  const skills = readdirSync(src, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name);
-
-  for (const skill of skills) {
-    const skillSrc = join(src, skill);
-    const skillDest = join(skillsDir, skill);
-    mkdirSync(skillDest, { recursive: true });
-
-    const baseFrontmatter = loadSkillFrontmatter(skillSrc);
-    const sidecarFrontmatter = loadTargetSkillSidecar(skillSrc, TARGET_NAME);
-    const frontmatter = injectVersion(
-      { ...baseFrontmatter, ...sidecarFrontmatter },
-      version,
-    );
-
-    const skillMdPath = join(skillSrc, "SKILL.md");
-    if (existsSync(skillMdPath)) {
-      const content = readFileSync(skillMdPath, "utf-8");
-      const { content: body } = matter(content);
-      writeFileSync(
-        join(skillDest, "SKILL.md"),
-        transformMd(matter.stringify(body, frontmatter)),
-      );
-    }
-
-    for (const subdir of ["references", "templates"]) {
-      const subSrc = join(skillSrc, subdir);
-      if (existsSync(subSrc)) {
-        copyDirWithTransform(subSrc, join(skillDest, subdir), transformMd);
-      }
-    }
-
-    const scriptsSrc = join(skillSrc, "scripts");
-    if (existsSync(scriptsSrc)) {
-      cpSync(scriptsSrc, join(skillDest, "scripts"), { recursive: true });
-    }
-
-    copySharedTemplates(skill, skillDest, srcDir, targetsConfig, transformMd);
-  }
+  copySkills({
+    srcDir: join(rootDir, "dist"), // Read from dist/skills/ intermediate
+    destDir: join(distDir, "skills"),
+    targetName: TARGET_NAME,
+    version,
+    targetsConfig,
+    transformMd,
+    mergeFrontmatter,
+  });
 }

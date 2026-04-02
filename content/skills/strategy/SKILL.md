@@ -1,10 +1,10 @@
 ---
 name: strategy
 description: >-
-  Discovers strategic context in STRATEGY.md through structured interviews.
-  Use when the user asks "what's our strategy?" or "update strategic
-  direction." Produces personas, market landscape, and problem space. Not
-  for architecture or reflection.
+  Discovers and maintains strategic context in STRATEGY.md. Use when the user asks
+  "what's our strategy?" or "update the strategic direction." Produces personas,
+  market landscape analysis, and problem space definitions.
+  Not for architecture (use architecture) or post-implementation reflection (use reflect).
 ---
 
 # Strategy

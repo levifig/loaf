@@ -1,10 +1,11 @@
 ---
 name: knowledge-base
 description: >-
-  Covers knowledge file creation, frontmatter schema, naming, staleness
-  detection, and review workflow. Use when creating or updating knowledge files
-  or understanding knowledge conventions. Not for retrieval, ADRs, or agent
-  instructions.
+  Provides guidance for creating, updating, and reviewing project knowledge
+  files. Covers frontmatter schema, naming conventions, staleness detection via
+  covers: field, and the review workflow. Not for retrieval or search (use QMD
+  directly), architectural decisions (use ADRs), or agent instructions (use
+  CLAUDE.md).
 version: 2.0.0-dev.8
 ---
 

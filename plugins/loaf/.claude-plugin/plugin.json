@@ -11,123 +11,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-format-check.sh",
-            "timeout": 60000,
-            "description": "Check code formatting"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-tdd-advisory.sh",
-            "timeout": 5000,
-            "description": "Advisory warning when editing implementation without tests"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-check-secrets.sh",
-            "timeout": 30000,
-            "description": "Check for hardcoded secrets before writing"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-validate-changelog.sh",
-            "timeout": 30000,
-            "description": "Validate changelog format"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-type-check.sh",
-            "timeout": 60000,
-            "description": "Run mypy type checking"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-pytest-validation.sh",
-            "timeout": 120000,
-            "description": "Validate pytest configuration"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-type-check-progressive.sh",
-            "timeout": 120000,
-            "description": "Progressive type checking"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-ruff-lint.sh",
-            "timeout": 30000,
-            "description": "Run ruff linting"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-pytest-execution.sh",
-            "timeout": 480000,
-            "description": "Run pytest tests"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-bandit-scan.sh",
-            "timeout": 60000,
-            "description": "Run bandit security scan"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/typescript-tsc-check.sh",
-            "timeout": 60000,
-            "description": "Run TypeScript compiler check"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/typescript-bundle-analysis.sh",
-            "timeout": 60000,
-            "description": "Analyze bundle size impact"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-migration-safety.sh",
-            "timeout": 60000,
-            "description": "Check migration safety"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-migration-safety-deep.sh",
-            "timeout": 300000,
-            "description": "Deep migration safety analysis"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-test-execution.sh",
-            "timeout": 480000,
-            "description": "Run Rails tests"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-brakeman-scan.sh",
-            "timeout": 120000,
-            "description": "Run Brakeman security scan"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/infra-validate-k8s.sh",
-            "timeout": 60000,
-            "description": "Validate Kubernetes manifests"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/infra-dockerfile-lint.sh",
-            "timeout": 30000,
-            "description": "Lint Dockerfile"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/infra-k8s-dry-run-server.sh",
-            "timeout": 120000,
-            "description": "Kubernetes dry-run validation"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/infra-terraform-plan-cost.sh",
-            "timeout": 300000,
-            "description": "Terraform plan with cost estimation"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook check-secrets",
+            "timeout": 30,
+            "description": "Check for hardcoded secrets before writing",
+            "failClosed": true
           }
         ]
       },
@@ -136,44 +23,48 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-security-audit.sh",
-            "timeout": 600000,
-            "description": "Run security audit on bash commands"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook security-audit",
+            "timeout": 600,
+            "description": "Run security audit on bash commands",
+            "failClosed": true
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-validate-push.sh",
-            "timeout": 60000,
-            "description": "Validates version bump, CHANGELOG, and build before git push"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook validate-push",
+            "timeout": 60,
+            "description": "Validates version bump, CHANGELOG, and build before git push",
+            "failClosed": true
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/workflow-pre-pr.sh",
-            "timeout": 5000,
-            "description": "Enforce PR format and CHANGELOG entry before gh pr create"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook workflow-pre-pr",
+            "timeout": 5,
+            "description": "Enforce PR format and CHANGELOG entry before gh pr create",
+            "failClosed": true
           },
           {
             "type": "prompt",
             "prompt": "STOP. Before running gh pr merge, follow squash merge conventions:\n1. TITLE: Let GitHub default it — \"PR title (#N)\" format.\n2. BODY: Write a clean, concise summary of the branch's work (2-4 sentences).\n   NEVER use the automatic squash description that dumps all individual commit messages.\n\n3. Use --body flag with a HEREDOC to pass the clean description.\nExample: gh pr merge N --squash --body \"$(cat <<'EOF' Add loaf cleanup CLI command that scans .agents/ directories and recommends cleanup actions. Includes shared prompt helpers, scanner engine, interactive/dry-run modes, and skill update. EOF )\"\nRewrite your gh pr merge command now with a clean --body.",
             "if": "Bash(gh pr merge:*)",
-            "timeout": 5000
+            "timeout": 5
+          },
+          {
+            "type": "prompt",
+            "prompt": "ADVISORY: You are about to run `git push`. \nConfirm the following before proceeding: - All tests pass locally - CHANGELOG.md has been updated - Version has been bumped if releasing\nType 'yes' to proceed with the push.",
+            "if": "Bash(git push:*)",
+            "timeout": 5
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/workflow-pre-push.sh",
-            "timeout": 5000,
-            "description": "Advisory reminders before git push (confirmation via Claude Code permissions)"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook validate-commit",
+            "timeout": 30,
+            "description": "Validate commit messages follow conventions",
+            "failClosed": true
           },
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/orchestration-validate-commit.py",
-            "timeout": 30000,
-            "description": "Validate commit messages follow conventions"
-          },
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/orchestration-detect-linear-magic.py",
-            "timeout": 30000,
+            "command": "loaf session log --detect-linear",
+            "timeout": 30,
             "description": "Detect Linear magic words for auto-status updates"
           }
         ]
@@ -185,42 +76,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/python-ruff-check.sh",
-            "description": "Run ruff after changes"
+            "command": "loaf task refresh",
+            "description": "Regenerate TASKS.md when task files change",
+            "timeout": 30
           },
           {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/typescript-eslint-check.sh",
-            "description": "Run ESLint after changes"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/rails-rubocop-check.sh",
-            "description": "Run RuboCop after changes"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/design-a11y-validation.sh",
-            "description": "Validate accessibility after changes"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/design-token-check.sh",
-            "description": "Check design token usage"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/design-a11y-audit.sh",
-            "description": "Full accessibility audit"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/orchestration-generate-task-board.sh",
-            "description": "Regenerate TASKS.md when task files change"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-staleness-nudge.sh",
+            "type": "prompt",
+            "prompt": "KNOWLEDGE BASE: The file you just edited may have stale knowledge coverage.\nConsider updating the corresponding knowledge file if: - The change affects documented patterns or conventions - The file is listed in covers: frontmatter of any knowledge file\nRun `loaf kb review` to check coverage status.",
+            "timeout": 5,
             "description": "Alert when editing files covered by stale knowledge"
           }
         ]
@@ -229,13 +92,9 @@
         "matcher": "Bash",
         "hooks": [
           {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/foundations-changelog-reminder.sh",
-            "description": "Remind about changelog updates after git commit"
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/workflow-post-merge.sh",
+            "type": "prompt",
+            "prompt": "POST-MERGE HOUSEKEEPING:\n1. Delete local branch: git branch -d <branch-name> 2. Update main: git checkout main && git pull 3. Archive session: loaf session archive\nConsider running these commands now.",
+            "timeout": 5,
             "description": "Inject housekeeping checklist after successful gh pr merge"
           }
         ]
@@ -268,6 +127,15 @@
             "description": "Surface stale knowledge count at session start"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "loaf session start",
+            "description": "Start session journal for current branch"
+          }
+        ]
       }
     ],
     "SessionEnd": [
@@ -288,6 +156,15 @@
             "description": "Prompt for knowledge consolidation if stale files were flagged"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "loaf session end",
+            "description": "End session with progress summary"
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -297,7 +174,27 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact-archive.sh",
             "description": "Identify active sessions and prompt for context-archiver agent to preserve state",
-            "timeout": 60000
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.\nBefore compaction, consider flushing important journal entries: - `decide(scope): key decisions made this session` - `discover(scope): important findings` - `conclude(scope): session summary`\nRun `loaf session log \"type(scope): description\"` to capture entries. After compaction, the transcript will be preserved in `.agents/transcripts/`.",
+            "description": "Nudge for journal flush before context compaction"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "SESSION JOURNAL NUDGE: You have made edits or commits this turn but have not recorded any `decide()`, `discover()`, or `conclude()` entries in the session journal.\nConsider capturing key decisions before ending: - `decide(scope): rationale for decision made` - `discover(scope): insight or finding` - `conclude(scope): final summary or learning`\nRun `loaf session log \"decide(scope): description\"` to capture decisions. See orchestration skill for session management patterns.",
+            "description": "Nudge to journal when edits/commits exist without decision entries"
           }
         ]
       }

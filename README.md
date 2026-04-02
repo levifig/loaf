@@ -6,15 +6,17 @@ Loaf is an opinionated agentic framework that gives AI coding assistants structu
 
 ## Why Loaf?
 
-**Portable knowledge** — 29 skills covering workflows, engineering standards, and language expertise. Build once, deploy to five AI coding tools without rewriting anything.
+**Portable knowledge** — 31 skills (29 active, 2 deprecated) covering workflows, engineering standards, and language expertise. Build once, deploy to five AI coding tools without rewriting anything.
+
+**Session journal model** — Session files in `.agents/sessions/` capture state, decisions, and handoff context with frontmatter tracking. Work survives context loss, compaction, and `/clear`.
 
 **Spec-first pipeline** — Ideas are shaped into bounded specs before any code is written. Every change flows: Idea → Spec → Tasks → Code → Learnings. Nothing gets lost.
 
 **Profile-based agents** — Three functional profiles defined by tool access, not job titles. A Smith with `python-development` skills becomes a backend engineer; the same Smith with `infrastructure-management` becomes a DevOps engineer. Skills determine what an agent knows; the profile determines what it can touch.
 
-**Session continuity** — Work survives context loss, compaction, and `/clear`. Pick up exactly where you left off with full traceability.
+**Session continuity** — Pick up exactly where you left off with full traceability. Session journals capture state, decisions, and handoff context in `.agents/sessions/`.
 
-**Hooks as quality gates** — Pre-tool hooks block secrets in commits. Post-tool hooks run linters, type checkers, and security scans. Language-aware and automatic.
+**Hooks as quality gates** — Two hook types: enforcement hooks (pre-commit secrets scanning, pre-push linting) block bad commits automatically; skill instruction hooks inject context at tool invocation time. Language-aware and automatic.
 
 ## The Pipeline
 
@@ -76,6 +78,22 @@ Integrate outcomes into strategic knowledge.
 | `/reflect` | Integrate learnings into strategic documents |
 | `/reference-session` | Import decisions from prior sessions |
 
+### Pipeline Commands
+
+CLI commands that support the workflow pipeline:
+
+| Command | What It Does |
+|---------|--------------|
+| `loaf build` | Build all targets after modifying skills/agents |
+| `loaf install` | Install to detected AI tools |
+| `loaf check` | Run enforcement hooks manually |
+| `loaf task` | Manage project tasks (list, show, update, archive) |
+| `loaf spec` | Manage spec lifecycle |
+| `loaf kb` | Knowledge base management |
+| `loaf session` | Session journal management (list, start, end, log) |
+| `loaf cleanup` | Review and archive agent artifacts |
+| `loaf release` / `loaf ship` | Orchestrate release ritual |
+
 ## Profiles
 
 Loaf uses three functional profiles defined by mechanically enforced tool boundaries — not role titles, not domain labels. What an agent *can do* is fixed by its profile. What it *knows* comes from skills loaded at spawn time.
@@ -117,8 +135,9 @@ Background skills that activate automatically during agent coordination and proj
 | Skill | Activates When |
 |-------|----------------|
 | `orchestration` | Managing sessions, delegating agents, Linear integration |
-| `council-session` | Multi-perspective deliberation during complex decisions |
+| `council` | Multi-perspective deliberation during complex decisions |
 | `knowledge-base` | Managing project knowledge files |
+| `cli-reference` | Looking up which CLI command to use |
 
 ### Engineering Standards
 
@@ -151,13 +170,15 @@ Domain expertise that loads based on project context.
 
 Build once, deploy everywhere. Skills are the universal layer; profiles and hooks adapt per target.
 
-| Target | Profiles | Skills | Hooks | MCP | Status |
-|--------|:--------:|:------:|:-----:|:---:|--------|
-| Claude Code | ✓ | ✓ | ✓ | ✓ | Primary |
-| OpenCode | ✓ | ✓ | ✓ | — | Full support |
-| Cursor | ✓ | ✓ | ✓ | — | Full support |
-| Codex | — | ✓ | — | — | Skills only |
-| Gemini | — | ✓ | — | — | Skills only |
+| Target | Profiles | Skills | Hooks | MCP | Amp | Status |
+|--------|:--------:|:------:|:-----:|:---:|:---:|--------|
+| Claude Code | ✓ | ✓ | ✓ | ✓ | ✓ | Primary |
+| OpenCode | ✓ | ✓ | ✓ | — | ✓ | Full support |
+| Cursor | ✓ | ✓ | ✓ | — | — | Full support |
+| Codex | — | ✓ | ✓ | — | — | Skills + hooks |
+| Gemini | — | ✓ | — | — | — | Skills only |
+
+*Note: `council-session` skill renamed to `council` for consistency. Deprecated skills: `resume-session`, `reference-session`.*
 
 ## Getting Started
 

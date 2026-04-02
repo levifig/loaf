@@ -2,10 +2,12 @@
 name: research
 description: >-
   Conducts project assessment and topic investigation. Use when stepping back to
-  understand the big picture or the user asks "what's the current state?"
-  Produces assessments and ranked findings. Not for multi-agent deliberation or
-  implementation.
+  understand the big picture or when the user asks "what's the current state?"
+  Produces state assessments, research findings with ranked options, or vision
+  change proposals....
+user-invocable: true
 argument-hint: '[topic]'
+version: 2.0.0-dev.8
 ---
 
 # Research

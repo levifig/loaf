@@ -2,7 +2,14 @@
 model: inherit
 is_background: true
 name: context-archiver
-description: context-archiver agent for specialized tasks
+description: >-
+  Preserves session state before context compaction for seamless resumption. Use
+  when PreCompact hook identifies active sessions that need archival.
+tools:
+  Read: true
+  Edit: true
+  Glob: true
+  Grep: true
 ---
 # Context Archiver
 
