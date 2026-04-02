@@ -250,6 +250,7 @@ function findSpecForBranch(
 
   const files = readdirSync(specsDir).filter((f) => f.endsWith(".md"));
 
+  // Pass 1: Exact match
   for (const file of files) {
     try {
       const content = readFileSync(join(specsDir, file), "utf-8");
@@ -257,6 +258,44 @@ function findSpecForBranch(
       const fm = parsed.data as SpecFrontmatterWithBranch;
 
       if (fm.branch === branch) {
+        return { 
+          id: fm.id || file.replace(/\.md$/, ""), 
+          title: fm.title || "Untitled",
+          sessionFile: fm.session
+        };
+      }
+    } catch {
+      continue;
+    }
+  }
+  
+  // Pass 2: Branch rename detection
+  // If we couldn't find a spec for the current branch, check if an old branch was renamed.
+  // We do this by finding specs pointing to branches that NO LONGER EXIST in git.
+  let gitBranches: string[] = [];
+  try {
+    const output = execSync("git for-each-ref --format='%(refname:short)' refs/heads/", { encoding: "utf-8" });
+    gitBranches = output.split("\n").filter(b => b.trim().length > 0);
+  } catch {
+    // Not a git repo or error executing git, skip rename detection
+    return null;
+  }
+  
+  for (const file of files) {
+    try {
+      const filePath = join(specsDir, file);
+      const content = readFileSync(filePath, "utf-8");
+      const parsed = matter(content);
+      const fm = parsed.data as SpecFrontmatterWithBranch;
+
+      // If spec has a branch, and that branch NO LONGER EXISTS in git
+      if (fm.branch && !gitBranches.includes(fm.branch)) {
+        // We assume this spec's branch was renamed to our current branch.
+        // Update the spec's branch field!
+        fm.branch = branch;
+        const newContent = matter.stringify(parsed.content, fm as Record<string, unknown>);
+        writeFileSync(filePath, newContent, "utf-8");
+        
         return { 
           id: fm.id || file.replace(/\.md$/, ""), 
           title: fm.title || "Untitled",
@@ -339,42 +378,62 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
   
   // If no session found by branch name, check for renamed branch via spec linkage
   // This handles: git branch -m old-name new-name
-  // The spec's branch field may be outdated, so we use the session file's branch as source of truth
+  // The spec's and session's branch fields will still have the old name.
   if (candidates.length === 0) {
-    // Look for specs with a session: field and check if that session belongs to current branch
-    const specsDir = join(agentsDir, "specs");
-    if (existsSync(specsDir)) {
-      const specFiles = readdirSync(specsDir).filter(f => f.endsWith(".md"));
-      
-      for (const specFile of specFiles) {
-        try {
-          const specPath = join(specsDir, specFile);
-          const specContent = readFileSync(specPath, "utf-8");
-          const specParsed = matter(specContent);
-          const specFm = specParsed.data as SpecFrontmatterWithBranch;
-          
-          // If spec has a session: field pointing to a session file
-          if (specFm.session) {
-            const sessionPath = join(agentsDir, "sessions", specFm.session);
-            if (existsSync(sessionPath)) {
-              const session = readSessionFile(sessionPath);
-              // Check if this session belongs to current branch (session.branch is source of truth)
-              if (session && session.data.branch === branch && session.data.status !== "archived") {
-                // Found it! The spec's branch field may be outdated (rename scenario)
-                // Update spec's branch field to match current branch
-                if (specFm.branch !== branch) {
-                  specFm.branch = branch;
-                  const newSpecContent = matter.stringify(specParsed.content, specFm as Record<string, unknown>);
-                  writeFileSync(specPath, newSpecContent, "utf-8");
+    // Get list of current git branches
+    let gitBranches: string[] = [];
+    try {
+      const output = execSync("git for-each-ref --format='%(refname:short)' refs/heads/", { encoding: "utf-8" });
+      gitBranches = output.split("\n").map(b => b.trim()).filter(b => b.length > 0);
+    } catch {
+      // Not a git repo or error executing git, skip rename detection
+    }
+
+    if (gitBranches.length > 0) {
+      // Look for specs with a session: field
+      const specsDir = join(agentsDir, "specs");
+      if (existsSync(specsDir)) {
+        const specFiles = readdirSync(specsDir).filter(f => f.endsWith(".md"));
+        
+        for (const specFile of specFiles) {
+          try {
+            const specPath = join(specsDir, specFile);
+            const specContent = readFileSync(specPath, "utf-8");
+            const specParsed = matter(specContent);
+            const specFm = specParsed.data as SpecFrontmatterWithBranch;
+            
+            // If spec has a session: field pointing to a session file
+            if (specFm.session && specFm.branch) {
+              const sessionPath = join(agentsDir, "sessions", specFm.session);
+              if (existsSync(sessionPath)) {
+                const session = readSessionFile(sessionPath);
+                
+                // If this session is non-archived AND its original branch NO LONGER EXISTS in git,
+                // we assume the branch was renamed to our current branch.
+                if (session && session.data.status !== "archived" && session.data.branch) {
+                  if (!gitBranches.includes(session.data.branch)) {
+                    // Rename detected! Update session's branch field to match current branch
+                    session.data.branch = branch;
+                    const newSessionContent = matter.stringify(session.content, session.data as unknown as Record<string, unknown>);
+                    writeFileSync(sessionPath, newSessionContent, "utf-8");
+                    
+                    // Also update spec's branch field
+                    if (specFm.branch !== branch) {
+                      specFm.branch = branch;
+                      const newSpecContent = matter.stringify(specParsed.content, specFm as Record<string, unknown>);
+                      writeFileSync(specPath, newSpecContent, "utf-8");
+                    }
+                    
+                    candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+                    break; // Found it
+                  }
                 }
-                candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
-                break; // Found it
               }
             }
+          } catch {
+            // Continue to next spec
+            continue;
           }
-        } catch {
-          // Continue to next spec
-          continue;
         }
       }
     }
@@ -794,12 +853,13 @@ export function registerSessionCommand(program: Command): void {
 
       // Build journal entries (inline format per SPEC-020)
       // For NEW sessions: createSessionFile() already added initial resume entry
-      // For EXISTING sessions: add resume entry with current state
+      // For EXISTING sessions: only add resume entry if the session was not already active
       const timestamp = getDateTimeString();
       const journalLines: string[] = [];
       
-      if (!isNew) {
-        // Only add resume entry when resuming (not for new sessions)
+      const shouldAppendResume = !isNew && sessionData.status !== "active";
+      
+      if (shouldAppendResume) {
         journalLines.push(`- ${timestamp} resume(${branch}): session resumed`);
         if (lastCommit !== "unknown") {
           journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
@@ -814,8 +874,8 @@ export function registerSessionCommand(program: Command): void {
         }
       }
 
-      // Append entries to journal (only for existing sessions; new sessions already have initial entry)
-      if (!isNew) {
+      // Append entries to journal (only if we built some)
+      if (journalLines.length > 0) {
         await appendEntry(
           sessionFilePath,
           journalLines,
@@ -825,8 +885,9 @@ export function registerSessionCommand(program: Command): void {
             data.last_entry = getTimestamp();
           }
         );
-      } else {
-        // For new sessions, just update frontmatter without appending
+      } else if (sessionData.status !== "active" || isNew) {
+        // If we didn't append anything, we still might need to update the status for new sessions
+        // (Though if it's new, it's already set to active, but we'll update timestamps)
         sessionData.status = "active";
         sessionData.last_updated = getTimestamp();
         sessionData.last_entry = getTimestamp();

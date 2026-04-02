@@ -8094,6 +8094,33 @@ function findSpecForBranch(agentsDir, branch) {
       continue;
     }
   }
+  let gitBranches = [];
+  try {
+    const output = execSync3("git for-each-ref --format='%(refname:short)' refs/heads/", { encoding: "utf-8" });
+    gitBranches = output.split("\n").filter((b) => b.trim().length > 0);
+  } catch {
+    return null;
+  }
+  for (const file of files) {
+    try {
+      const filePath = join36(specsDir, file);
+      const content = readFileSync28(filePath, "utf-8");
+      const parsed = matter13(content);
+      const fm = parsed.data;
+      if (fm.branch && !gitBranches.includes(fm.branch)) {
+        fm.branch = branch;
+        const newContent = matter13.stringify(parsed.content, fm);
+        writeFileSync19(filePath, newContent, "utf-8");
+        return {
+          id: fm.id || file.replace(/\.md$/, ""),
+          title: fm.title || "Untitled",
+          sessionFile: fm.session
+        };
+      }
+    } catch {
+      continue;
+    }
+  }
   return null;
 }
 function updateSpecSessionField(agentsDir, specId, sessionFileName) {
@@ -8145,32 +8172,45 @@ function findActiveSessionForBranch(agentsDir, branch) {
     }
   }
   if (candidates.length === 0) {
-    const specsDir = join36(agentsDir, "specs");
-    if (existsSync32(specsDir)) {
-      const specFiles = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
-      for (const specFile of specFiles) {
-        try {
-          const specPath = join36(specsDir, specFile);
-          const specContent = readFileSync28(specPath, "utf-8");
-          const specParsed = matter13(specContent);
-          const specFm = specParsed.data;
-          if (specFm.session) {
-            const sessionPath = join36(agentsDir, "sessions", specFm.session);
-            if (existsSync32(sessionPath)) {
-              const session = readSessionFile(sessionPath);
-              if (session && session.data.branch === branch && session.data.status !== "archived") {
-                if (specFm.branch !== branch) {
-                  specFm.branch = branch;
-                  const newSpecContent = matter13.stringify(specParsed.content, specFm);
-                  writeFileSync19(specPath, newSpecContent, "utf-8");
+    let gitBranches = [];
+    try {
+      const output = execSync3("git for-each-ref --format='%(refname:short)' refs/heads/", { encoding: "utf-8" });
+      gitBranches = output.split("\n").map((b) => b.trim()).filter((b) => b.length > 0);
+    } catch {
+    }
+    if (gitBranches.length > 0) {
+      const specsDir = join36(agentsDir, "specs");
+      if (existsSync32(specsDir)) {
+        const specFiles = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
+        for (const specFile of specFiles) {
+          try {
+            const specPath = join36(specsDir, specFile);
+            const specContent = readFileSync28(specPath, "utf-8");
+            const specParsed = matter13(specContent);
+            const specFm = specParsed.data;
+            if (specFm.session && specFm.branch) {
+              const sessionPath = join36(agentsDir, "sessions", specFm.session);
+              if (existsSync32(sessionPath)) {
+                const session = readSessionFile(sessionPath);
+                if (session && session.data.status !== "archived" && session.data.branch) {
+                  if (!gitBranches.includes(session.data.branch)) {
+                    session.data.branch = branch;
+                    const newSessionContent = matter13.stringify(session.content, session.data);
+                    writeFileSync19(sessionPath, newSessionContent, "utf-8");
+                    if (specFm.branch !== branch) {
+                      specFm.branch = branch;
+                      const newSpecContent = matter13.stringify(specParsed.content, specFm);
+                      writeFileSync19(specPath, newSpecContent, "utf-8");
+                    }
+                    candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+                    break;
+                  }
                 }
-                candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
-                break;
               }
             }
+          } catch {
+            continue;
           }
-        } catch {
-          continue;
         }
       }
     }
@@ -8465,7 +8505,8 @@ function registerSessionCommand(program2) {
     const { completed, total } = countTasksInSession(sessionContent);
     const timestamp = getDateTimeString();
     const journalLines = [];
-    if (!isNew) {
+    const shouldAppendResume = !isNew && sessionData.status !== "active";
+    if (shouldAppendResume) {
       journalLines.push(`- ${timestamp} resume(${branch}): session resumed`);
       if (lastCommit !== "unknown") {
         journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
@@ -8479,7 +8520,7 @@ function registerSessionCommand(program2) {
         }
       }
     }
-    if (!isNew) {
+    if (journalLines.length > 0) {
       await appendEntry(
         sessionFilePath,
         journalLines,
@@ -8489,7 +8530,7 @@ function registerSessionCommand(program2) {
           data.last_entry = getTimestamp();
         }
       );
-    } else {
+    } else if (sessionData.status !== "active" || isNew) {
       sessionData.status = "active";
       sessionData.last_updated = getTimestamp();
       sessionData.last_entry = getTimestamp();
