@@ -102,9 +102,12 @@ describe("check: hook validation", () => {
       );
       expect(false).toBe(true); // Should not reach here
     } catch (error: unknown) {
-      const err = error as { status?: number; stderr?: string };
+      const err = error as { status?: number; stderr?: string; stdout?: string };
       expect(err.status).toBe(1);
-      expect(err.stderr).toContain("--hook <id> is required");
+      // Check both stdout and stderr (error output location may vary)
+      const output = (err.stdout || "") + (err.stderr || "");
+      const cleanOutput = output.replace(/\x1b\[\d+m/g, "");
+      expect(cleanOutput).toContain("--hook <id> is required");
     }
   });
 

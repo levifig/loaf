@@ -553,37 +553,37 @@ export function registerSessionCommand(program: Command): void {
       const commits = getRecentCommits(3);
       const { completed, total } = countTasksInSession(sessionContent);
 
-      // Only append resume entry for NEW sessions
-      // When resuming, we don't want duplicate "Start" entries
+      // Build entries based on whether this is a new or resumed session
+      const entries: string[] = [];
       if (isNew) {
-        // Build resume entries
-        const entries: string[] = [];
         entries.push(`resume(${branch}): session started`);
-        if (lastCommit !== "unknown") {
-          entries.push(`context: last commit ${lastCommit}`);
-        }
-        if (completed > 0 || total > 0) {
-          entries.push(`progress: ${completed}/${total} tasks completed`);
-        }
-        if (commits.length > 0) {
-          entries.push("recent commits:");
-          for (const commit of commits.slice(0, 3)) {
-            entries.push(`  - ${commit.hash} ${commit.message}`);
-          }
-        }
-
-        // Append resume entry
-        await appendEntry(
-          sessionFilePath,
-          `${getDateTimeString()} — Start`,
-          entries,
-          (data) => {
-            data.status = "active";
-            data.last_updated = getTimestamp();
-            data.last_entry = getTimestamp();
-          }
-        );
+      } else {
+        entries.push(`resume(${branch}): session resumed`);
       }
+      if (lastCommit !== "unknown") {
+        entries.push(`context: last commit ${lastCommit}`);
+      }
+      if (completed > 0 || total > 0) {
+        entries.push(`progress: ${completed}/${total} tasks completed`);
+      }
+      if (commits.length > 0) {
+        entries.push("recent commits:");
+        for (const commit of commits.slice(0, 3)) {
+          entries.push(`  - ${commit.hash} ${commit.message}`);
+        }
+      }
+
+      // Append entry with appropriate header
+      await appendEntry(
+        sessionFilePath,
+        isNew ? `${getDateTimeString()} — Start` : `${getDateTimeString()} — Resume`,
+        entries,
+        (data) => {
+          data.status = "active";
+          data.last_updated = getTimestamp();
+          data.last_entry = getTimestamp();
+        }
+      );
 
       console.log(`  ${green("✓")} Session active: ${gray(sessionFilePath.replace(agentsDir, ".agents"))}`);
 

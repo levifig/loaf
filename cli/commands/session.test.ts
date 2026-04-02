@@ -184,6 +184,42 @@ describe("session: start", () => {
     const startMatches = content.match(/## \d{4}-\d{2}-\d{2}.*— Start/g);
     expect(startMatches?.length ?? 0).toBe(1);
   }, 30000); // Higher timeout for concurrent operations
+
+  it("resuming a paused session adds resume entry and updates status", async () => {
+    const repoPath = createTempRepo("resume-test");
+    
+    // Start session
+    const startResult = await runLoaf(["start"], { cwd: repoPath });
+    expect(startResult.exitCode).toBe(0);
+    
+    // End session (pauses it)
+    const endResult = await runLoaf(["end"], { cwd: repoPath });
+    expect(endResult.exitCode).toBe(0);
+    
+    // Resume session
+    const resumeResult = await runLoaf(["start"], { cwd: repoPath });
+    expect(resumeResult.exitCode).toBe(0);
+    expect(resumeResult.stdout).toContain("Resuming existing session");
+    
+    // Verify session file
+    const sessionFiles = getSessionFiles(repoPath);
+    expect(sessionFiles.length).toBe(1);
+    
+    const content = readFileSync(
+      join(repoPath, ".agents/sessions", sessionFiles[0]),
+      "utf-8"
+    );
+    
+    // Should have both Start and Resume sections
+    expect(content).toContain("— Start");
+    expect(content).toContain("— Resume");
+    
+    // Should have a resume entry
+    expect(content).toContain("session resumed");
+    
+    // Status should be active (updated from paused)
+    expect(content).toContain("status: active");
+  });
 });
 
 describe("session: log", () => {
