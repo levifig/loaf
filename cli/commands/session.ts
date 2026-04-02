@@ -340,7 +340,71 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
   
   // If no session found by branch name, check for renamed branch via spec linkage
   // This handles: git branch -m old-name new-name
-  // The spec's and session's branch fields will still have the old name.
+  // We verify the rename by checking git reflog to confirm current branch was created from the session's branch
+  if (candidates.length === 0) {
+    // Get current branch's creation info from reflog
+    let currentBranchHash: string | null = null;
+    let parentBranch: string | null = null;
+    try {
+      // Get the hash of the current branch
+      currentBranchHash = execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+      
+      // Check reflog to see if current branch was created from another branch
+      // Format: "hash message" - look for "branch: Created from ..." or checkout from another branch
+      const reflogOutput = execSync(`git reflog show --format='%H %gs' ${branch} 2>/dev/null | tail -5`, { encoding: "utf-8" });
+      
+      // Look for patterns like "checkout: moving from old-branch to new-branch" or "branch: Created from old-branch"
+      const checkoutMatch = reflogOutput.match(/checkout: moving from ([^\s]+) to/);
+      if (checkoutMatch) {
+        parentBranch = checkoutMatch[1];
+      }
+    } catch {
+      // Git command failed, skip rename detection
+    }
+    
+    // If we found a parent branch, look for sessions that were on that branch
+    if (parentBranch) {
+      const specsDir = join(agentsDir, "specs");
+      if (existsSync(specsDir)) {
+        const specFiles = readdirSync(specsDir).filter(f => f.endsWith(".md"));
+        
+        for (const specFile of specFiles) {
+          try {
+            const specPath = join(specsDir, specFile);
+            const specContent = readFileSync(specPath, "utf-8");
+            const specParsed = matter(specContent);
+            const specFm = specParsed.data as SpecFrontmatterWithBranch;
+            
+            // Only consider specs linked to the PARENT branch (the one we came from)
+            if (specFm.branch === parentBranch && specFm.session) {
+              const sessionPath = join(agentsDir, "sessions", specFm.session);
+              if (existsSync(sessionPath)) {
+                const session = readSessionFile(sessionPath);
+                // Verify this session was indeed on the parent branch and is non-archived
+                if (session && session.data.branch === parentBranch && session.data.status !== "archived") {
+                  // RENAME CONFIRMED: Update both session and spec to new branch name
+                  session.data.branch = branch;
+                  const newSessionContent = matter.stringify(session.content, session.data as unknown as Record<string, unknown>);
+                  writeFileSync(sessionPath, newSessionContent, "utf-8");
+                  
+                  specFm.branch = branch;
+                  const newSpecContent = matter.stringify(specParsed.content, specFm as Record<string, unknown>);
+                  writeFileSync(specPath, newSpecContent, "utf-8");
+                  
+                  candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+                  break; // Found it
+                }
+              }
+            }
+          } catch {
+            // Continue to next spec
+            continue;
+          }
+        }
+      }
+    }
+  }
+  
   if (candidates.length === 0) return null;
   
   // Prioritize: active > paused/blocked/complete > others

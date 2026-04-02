@@ -8144,6 +8144,51 @@ function findActiveSessionForBranch(agentsDir, branch) {
       candidates.push({ filePath, data: session.data, content: session.content });
     }
   }
+  if (candidates.length === 0) {
+    let currentBranchHash = null;
+    let parentBranch = null;
+    try {
+      currentBranchHash = execSync3("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+      const reflogOutput = execSync3(`git reflog show --format='%H %gs' ${branch} 2>/dev/null | tail -5`, { encoding: "utf-8" });
+      const checkoutMatch = reflogOutput.match(/checkout: moving from ([^\s]+) to/);
+      if (checkoutMatch) {
+        parentBranch = checkoutMatch[1];
+      }
+    } catch {
+    }
+    if (parentBranch) {
+      const specsDir = join36(agentsDir, "specs");
+      if (existsSync32(specsDir)) {
+        const specFiles = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
+        for (const specFile of specFiles) {
+          try {
+            const specPath = join36(specsDir, specFile);
+            const specContent = readFileSync28(specPath, "utf-8");
+            const specParsed = matter13(specContent);
+            const specFm = specParsed.data;
+            if (specFm.branch === parentBranch && specFm.session) {
+              const sessionPath = join36(agentsDir, "sessions", specFm.session);
+              if (existsSync32(sessionPath)) {
+                const session = readSessionFile(sessionPath);
+                if (session && session.data.branch === parentBranch && session.data.status !== "archived") {
+                  session.data.branch = branch;
+                  const newSessionContent = matter13.stringify(session.content, session.data);
+                  writeFileSync19(sessionPath, newSessionContent, "utf-8");
+                  specFm.branch = branch;
+                  const newSpecContent = matter13.stringify(specParsed.content, specFm);
+                  writeFileSync19(specPath, newSpecContent, "utf-8");
+                  candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+                  break;
+                }
+              }
+            }
+          } catch {
+            continue;
+          }
+        }
+      }
+    }
+  }
   if (candidates.length === 0) return null;
   const statusPriority = {
     active: 1,
