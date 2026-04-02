@@ -271,12 +271,24 @@ function findSpecForBranch(
   return null;
 }
 
-/** Get session file path for a branch (deterministic based on branch name) */
-function getSessionFilePath(agentsDir: string, branch: string): string {
-  // Use deterministic path based on branch name only
-  // This prevents duplicate session files when concurrent processes race
+/** Get session file path (timestamped filename per SPEC-020) */
+function getSessionFilePath(agentsDir: string, branch: string, timestamp?: string): string {
+  // Use timestamped filename: YYYYMMDD-HHMMSS-slug.md
+  const ts = timestamp || getTimestampForFilename();
   const slug = branch.replace(/^feat\//, "").replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-");
-  return join(agentsDir, "sessions", `${slug}.md`);
+  return join(agentsDir, "sessions", `${ts}-${slug}.md`);
+}
+
+/** Get timestamp in filename format: YYYYMMDD-HHMMSS */
+function getTimestampForFilename(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  const second = String(now.getSeconds()).padStart(2, '0');
+  return `${year}${month}${day}-${hour}${minute}${second}`;
 }
 
 /** Find active session for a branch by scanning files */
@@ -364,19 +376,13 @@ async function getOrCreateSession(
     await acquireLock(lockPath, 100, 50);
     lockAcquired = true;
     
-    // Re-check for existing session under lock with small delay for filesystem sync
+    // Re-check for existing session under lock with retry for filesystem sync
     // This handles the race condition where another process just created the file
-    let existing = findActiveSessionForBranch(agentsDir, branch);
-    
-    // Also check deterministic path directly for faster detection
-    const deterministicPath = getSessionFilePath(agentsDir, branch);
-    if (!existing && existsSync(deterministicPath)) {
-      // Delay to ensure file is fully written and visible
-      await new Promise(resolve => setTimeout(resolve, 50));
-      const directSession = readSessionFile(deterministicPath);
-      if (directSession) {
-        existing = { ...directSession, filePath: deterministicPath };
-      }
+    let existing: { filePath: string; data: SessionFrontmatter; content: string } | null = null;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => setTimeout(resolve, 20));
+      existing = findActiveSessionForBranch(agentsDir, branch);
+      if (existing) break;
     }
     
     if (existing) {
@@ -485,7 +491,7 @@ function getTimestamp(): string {
   return new Date().toISOString();
 }
 
-/** Get date-time string for journal header */
+/** Get date-time string for journal entries (YYYY-MM-DD HH:MM) */
 function getDateTimeString(): string {
   const now = new Date();
   const date = now.toISOString().split("T")[0];
@@ -493,7 +499,7 @@ function getDateTimeString(): string {
   return `${date} ${time}`;
 }
 
-/** Create new session file */
+/** Create new session file with compact inline journal format */
 function createSessionFile(
   filePath: string,
   branch: string,
@@ -509,7 +515,7 @@ function createSessionFile(
     branch,
     status: "active",
     created: now,
-    title: specInfo ? `${specInfo.id}: ${specInfo.title}` : `Session: ${branch}`,
+    last_entry: now,
   };
 
   // Only add spec field when there's a linked spec
@@ -517,9 +523,10 @@ function createSessionFile(
     frontmatter.spec = specInfo.id;
   }
 
-  const body = specInfo
-    ? `# ${specInfo.id}: ${specInfo.title}\n\n## Context\n\nSession for ${specInfo.id}: ${specInfo.title}\n\n## Current State\n\nSession started.\n\n## Next Steps\n\n- [ ] First action item\n`
-    : `# Session: ${branch}\n\n## Context\n\nAd-hoc session for branch \`${branch}\`.\n\n## Current State\n\nSession started.\n\n## Next Steps\n\n- [ ] First action item\n`;
+  const title = specInfo ? `${specInfo.id}: ${specInfo.title}` : branch;
+  const entry = `- ${getDateTimeString()} resume(${branch}): session started`;
+  
+  const body = `# Session: ${title}\n\n## Journal\n\n${entry}\n`;
 
   const content = matter.stringify(body, frontmatter as unknown as Record<string, unknown>);
   
@@ -536,11 +543,10 @@ function createSessionFile(
   return frontmatter;
 }
 
-/** Append entry to session file (atomic with file locking) */
+/** Append inline journal entry to session file (atomic with file locking) */
 async function appendEntry(
   filePath: string,
-  header: string,
-  entries: string[],
+  entryLines: string[],
   updateFrontmatter: (data: SessionFrontmatter) => void
 ): Promise<void> {
   const lockPath = `${filePath}.lock`;
@@ -560,11 +566,11 @@ async function appendEntry(
     // Update frontmatter
     updateFrontmatter(session.data);
 
-    // Build new content
-    const newSection = `\n## ${header}\n${entries.map((e) => e).join("\n")}\n`;
-    
+    // Build new content: add blank line before entry if needed
+    const trimmedContent = session.content.trimEnd();
+    const separator = trimmedContent.endsWith('\n') ? '\n' : '\n\n';
     const newContent = matter.stringify(
-      session.content.trim() + newSection,
+      trimmedContent + separator + entryLines.join("\n") + "\n",
       session.data as unknown as Record<string, unknown>
     );
 
@@ -742,32 +748,32 @@ export function registerSessionCommand(program: Command): void {
       const commits = getRecentCommits(3);
       const { completed, total } = countTasksInSession(sessionContent);
 
-      // Build entries based on whether this is a new or resumed session
-      const entries: string[] = [];
+      // Build journal entries (inline format per SPEC-020)
+      const timestamp = getDateTimeString();
+      const journalLines: string[] = [];
+      
       if (isNew) {
-        entries.push(`resume(${branch}): session started`);
+        journalLines.push(`- ${timestamp} resume(${branch}): session started`);
       } else {
-        entries.push(`resume(${branch}): session resumed`);
+        journalLines.push(`- ${timestamp} resume(${branch}): session resumed`);
       }
       if (lastCommit !== "unknown") {
-        entries.push(`context: last commit ${lastCommit}`);
+        journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
       }
       if (completed > 0 || total > 0) {
-        entries.push(`progress: ${completed}/${total} tasks completed`);
+        journalLines.push(`- ${timestamp} progress: ${completed}/${total} tasks completed`);
       }
       if (commits.length > 0) {
-        entries.push("recent commits:");
         for (const commit of commits.slice(0, 3)) {
-          entries.push(`  - ${commit.hash} ${commit.message}`);
+          journalLines.push(`- ${timestamp} commit(${commit.hash}): "${commit.message}"`);
         }
       }
 
-      // Append entry with appropriate header
+      // Append entries to journal
       await appendEntry(
         sessionFilePath,
-        isNew ? `${getDateTimeString()} — Start` : `${getDateTimeString()} — Resume`,
-        entries,
-        (data) => {
+        journalLines,
+        (data: SessionFrontmatter) => {
           data.status = "active";
           data.last_updated = getTimestamp();
           data.last_entry = getTimestamp();
@@ -830,12 +836,14 @@ export function registerSessionCommand(program: Command): void {
       const { completed, total } = countTasksInSession(session.content);
       const commitCount = commits.length;
 
-      // Build pause entries
-      const entries: string[] = [];
-      entries.push(`pause(${branch}): session paused`);
-      entries.push(`progress: ${completed}/${total} tasks completed, ${commitCount} commits`);
+      // Build pause entries (inline format per SPEC-020)
+      const timestamp = getDateTimeString();
+      const journalLines: string[] = [
+        `- ${timestamp} pause(${branch}): session paused`,
+        `- ${timestamp} progress: ${completed}/${total} tasks completed, ${commitCount} commits`,
+      ];
       if (lastCommit !== "unknown") {
-        entries.push(`last commit: ${lastCommit}`);
+        journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
       }
 
       // Prompt for final entries
@@ -845,12 +853,11 @@ export function registerSessionCommand(program: Command): void {
       console.log(`    ${gray("loaf session log \"todo(next): follow-up task\"")}`);
       console.log();
 
-      // Append pause entry
+      // Append pause entries
       await appendEntry(
         sessionFilePath,
-        `${getDateTimeString()} — Pause`,
-        entries,
-        (data) => {
+        journalLines,
+        (data: SessionFrontmatter) => {
           data.status = "paused";
           data.last_updated = getTimestamp();
           data.last_entry = getTimestamp();
@@ -1029,12 +1036,14 @@ export function registerSessionCommand(program: Command): void {
         process.exit(1);
       }
 
-      // Append entry
+      // Append entry (inline format with timestamp)
+      const timestamp = getDateTimeString();
+      const formattedEntry = `- ${timestamp} ${entryText}`;
+      
       await appendEntry(
         sessionFilePath,
-        `${getDateTimeString()}`,
-        [formatEntry(parsedEntry)],
-        (data) => {
+        [formattedEntry],
+        (data: SessionFrontmatter) => {
           data.last_updated = getTimestamp();
           data.last_entry = getTimestamp();
         }
