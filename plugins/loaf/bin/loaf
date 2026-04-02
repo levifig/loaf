@@ -8096,6 +8096,27 @@ function findSpecForBranch(agentsDir, branch) {
   }
   return null;
 }
+function updateSpecSessionField(agentsDir, specId, sessionFileName) {
+  const specsDir = join36(agentsDir, "specs");
+  if (!existsSync32(specsDir)) return;
+  const files = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
+  for (const file of files) {
+    if (file.includes(specId)) {
+      const filePath = join36(specsDir, file);
+      try {
+        const content = readFileSync28(filePath, "utf-8");
+        const parsed = matter13(content);
+        if (parsed.data.session !== sessionFileName) {
+          parsed.data.session = sessionFileName;
+          const newContent = matter13.stringify(parsed.content, parsed.data);
+          writeFileSync19(filePath, newContent, "utf-8");
+        }
+      } catch {
+      }
+      break;
+    }
+  }
+}
 function getSessionFilePath(agentsDir, branch, timestamp) {
   const ts = timestamp || getTimestampForFilename();
   const slug = branch.replace(/^feat\//, "").replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-");
@@ -8324,23 +8345,11 @@ async function appendEntry(filePath, entryLines, updateFrontmatter) {
 function extractRecentEntries(content, count = 15) {
   const lines = content.split("\n");
   const entries = [];
-  let collecting = false;
-  let currentEntry = [];
-  for (let i = lines.length - 1; i >= 0 && entries.length < count; i--) {
-    const line = lines[i];
-    if (line.match(/^## \d{4}-\d{2}-\d{2}/)) {
-      if (currentEntry.length > 0) {
-        entries.unshift(currentEntry.join("\n"));
-        currentEntry = [];
-      }
-      collecting = true;
+  const entryPattern = /^- \d{4}-\d{2}-\d{2} \d{2}:\d{2} /;
+  for (const line of lines) {
+    if (entryPattern.test(line)) {
+      entries.push(line.trim());
     }
-    if (collecting && line.trim()) {
-      currentEntry.unshift(line);
-    }
-  }
-  if (currentEntry.length > 0) {
-    entries.unshift(currentEntry.join("\n"));
   }
   return entries.slice(-count);
 }
@@ -8348,7 +8357,7 @@ function extractDecideEntries(content) {
   const decideEntries = [];
   const lines = content.split("\n");
   for (const line of lines) {
-    if (line.match(/^- decide(?:\([^)]+\))?:/)) {
+    if (line.match(/^- \d{4}-\d{2}-\d{2} \d{2}:\d{2} decide\([^)]+\):/)) {
       decideEntries.push(line.trim());
     }
   }
@@ -8430,6 +8439,10 @@ function registerSessionCommand(program2) {
     const { filePath: sessionFilePath, data: sessionData, content: sessionContent, isNew } = await getOrCreateSession(agentsDir, branch, specInfo);
     if (isNew) {
       console.log(`  ${green11("+")} Creating new session file`);
+      if (specInfo) {
+        const sessionFileName = basename7(sessionFilePath);
+        updateSpecSessionField(agentsDir, specInfo.id, sessionFileName);
+      }
     } else {
       console.log(`  ${green11("\u2713")} Resuming existing session`);
     }

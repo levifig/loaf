@@ -271,6 +271,34 @@ function findSpecForBranch(
   return null;
 }
 
+/** Update spec file with session filename (for branch rename recovery) */
+function updateSpecSessionField(agentsDir: string, specId: string, sessionFileName: string): void {
+  const specsDir = join(agentsDir, "specs");
+  if (!existsSync(specsDir)) return;
+
+  const files = readdirSync(specsDir).filter((f) => f.endsWith(".md"));
+
+  for (const file of files) {
+    if (file.includes(specId)) {
+      const filePath = join(specsDir, file);
+      try {
+        const content = readFileSync(filePath, "utf-8");
+        const parsed = matter(content);
+        
+        // Only update if session field is missing or different
+        if (parsed.data.session !== sessionFileName) {
+          parsed.data.session = sessionFileName;
+          const newContent = matter.stringify(parsed.content, parsed.data as Record<string, unknown>);
+          writeFileSync(filePath, newContent, "utf-8");
+        }
+      } catch {
+        // Silently fail - spec update is best-effort
+      }
+      break;
+    }
+  }
+}
+
 /** Get session file path (timestamped filename per SPEC-020) */
 function getSessionFilePath(agentsDir: string, branch: string, timestamp?: string): string {
   // Use timestamped filename: YYYYMMDD-HHMMSS-slug.md
@@ -584,43 +612,32 @@ async function appendEntry(
   }
 }
 
-/** Extract recent journal entries for context display */
+/** Extract recent journal entries for context display (compact inline format) */
 function extractRecentEntries(content: string, count = 15): string[] {
   const lines = content.split("\n");
   const entries: string[] = [];
-  let collecting = false;
-  let currentEntry: string[] = [];
 
-  for (let i = lines.length - 1; i >= 0 && entries.length < count; i--) {
-    const line = lines[i];
+  // Match inline journal entries: "- YYYY-MM-DD HH:MM type(scope): description"
+  const entryPattern = /^- \d{4}-\d{2}-\d{2} \d{2}:\d{2} /;
 
-    if (line.match(/^## \d{4}-\d{2}-\d{2}/)) {
-      if (currentEntry.length > 0) {
-        entries.unshift(currentEntry.join("\n"));
-        currentEntry = [];
-      }
-      collecting = true;
-    }
-
-    if (collecting && line.trim()) {
-      currentEntry.unshift(line);
+  for (const line of lines) {
+    if (entryPattern.test(line)) {
+      entries.push(line.trim());
     }
   }
 
-  if (currentEntry.length > 0) {
-    entries.unshift(currentEntry.join("\n"));
-  }
-
+  // Return last 'count' entries
   return entries.slice(-count);
 }
 
-/** Extract decide entries from session */
+/** Extract decide entries from session (compact inline format) */
 function extractDecideEntries(content: string): string[] {
   const decideEntries: string[] = [];
   const lines = content.split("\n");
 
+  // Match inline format: "- YYYY-MM-DD HH:MM decide(scope): description"
   for (const line of lines) {
-    if (line.match(/^- decide(?:\([^)]+\))?:/)) {
+    if (line.match(/^- \d{4}-\d{2}-\d{2} \d{2}:\d{2} decide\([^)]+\):/)) {
       decideEntries.push(line.trim());
     }
   }
@@ -739,6 +756,12 @@ export function registerSessionCommand(program: Command): void {
       
       if (isNew) {
         console.log(`  ${green("+")} Creating new session file`);
+        
+        // Update linked spec with session filename (for branch rename recovery)
+        if (specInfo) {
+          const sessionFileName = basename(sessionFilePath);
+          updateSpecSessionField(agentsDir, specInfo.id, sessionFileName);
+        }
       } else {
         console.log(`  ${green("✓")} Resuming existing session`);
       }
