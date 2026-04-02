@@ -2129,7 +2129,8 @@ function writeMarker(configDir) {
 }
 function isLoafHook(hook) {
   const command = hook.command;
-  return command?.startsWith("loaf check --hook") || false;
+  if (!command) return false;
+  return command.startsWith("loaf ") || command.startsWith("loaf	");
 }
 function loadHooksJson(path) {
   if (!existsSync12(path)) {
@@ -7640,8 +7641,12 @@ async function validatePush(context) {
     }).trim();
     if (lastTag && hasPackageJson) {
       try {
-        const pkg = JSON.parse(readFileSync27("package.json", "utf-8"));
-        const currentVersion = pkg.version;
+        const headPkgContent = execSync2(
+          "git show HEAD:package.json 2>/dev/null",
+          { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
+        );
+        const headPkg = JSON.parse(headPkgContent);
+        const currentVersion = headPkg.version;
         const tagPkgContent = execSync2(
           `git show ${lastTag}:package.json 2>/dev/null`,
           { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
@@ -7667,7 +7672,7 @@ async function validatePush(context) {
       } else {
         try {
           const changedFiles = execSync2(
-            `git diff ${lastTag} --name-only -- CHANGELOG.md 2>/dev/null`,
+            `git diff ${lastTag} HEAD --name-only -- CHANGELOG.md 2>/dev/null`,
             { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
           ).trim();
           if (!changedFiles) {
@@ -8162,19 +8167,11 @@ function findActiveSessionForBranch(agentsDir, branch) {
     }
   }
   if (candidates.length === 0) {
-    let currentBranchHash = null;
     let parentBranch = null;
     try {
-      currentBranchHash = execSync3("git rev-parse HEAD", { encoding: "utf-8" }).trim();
-      const reflogOutput = execSync3(`git reflog show --format='%H %gs' ${branch} 2>/dev/null | tail -5`, { encoding: "utf-8" });
-      const checkoutMatch = reflogOutput.match(/checkout: moving from ([^\s]+) to/);
-      const createdMatch = reflogOutput.match(/branch: Created from ([^\s]+)/);
+      const reflogOutput = execSync3(`git reflog show --format='%H %gs' ${branch} 2>/dev/null | head -10`, { encoding: "utf-8" });
       const renamedMatch = reflogOutput.match(/Branch: renamed refs\/heads\/([^\s]+) to/);
-      if (checkoutMatch) {
-        parentBranch = checkoutMatch[1];
-      } else if (createdMatch) {
-        parentBranch = createdMatch[1];
-      } else if (renamedMatch) {
+      if (renamedMatch) {
         parentBranch = renamedMatch[1];
       }
     } catch {

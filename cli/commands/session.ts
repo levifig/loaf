@@ -339,30 +339,21 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
   }
   
   // If no session found by branch name, check for renamed branch via spec linkage
-  // This handles: git branch -m old-name new-name
-  // We verify the rename by checking git reflog to confirm current branch was created from the session's branch
+  // This handles: git branch -m old-name new-name (explicit rename only)
+  // We verify the rename by checking git reflog for the explicit "Branch: renamed" pattern
   if (candidates.length === 0) {
     // Get current branch's creation info from reflog
-    let currentBranchHash: string | null = null;
     let parentBranch: string | null = null;
     try {
-      // Get the hash of the current branch
-      currentBranchHash = execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+      // Check reflog for explicit rename pattern from "git branch -m old new"
+      const reflogOutput = execSync(`git reflog show --format='%H %gs' ${branch} 2>/dev/null | head -10`, { encoding: "utf-8" });
       
-      // Check reflog to see if current branch was created from another branch
-      // Format: "hash message" - look for "branch: Created from ..." or checkout from another branch
-      const reflogOutput = execSync(`git reflog show --format='%H %gs' ${branch} 2>/dev/null | tail -5`, { encoding: "utf-8" });
-      
-      // Look for patterns like "checkout: moving from old-branch to new-branch", "branch: Created from old-branch", or "Branch: renamed refs/heads/old-branch to refs/heads/new-branch"
-      const checkoutMatch = reflogOutput.match(/checkout: moving from ([^\s]+) to/);
-      const createdMatch = reflogOutput.match(/branch: Created from ([^\s]+)/);
+      // ONLY match explicit rename: "Branch: renamed refs/heads/old-branch to refs/heads/new-branch"
+      // Do NOT match "branch: Created from ..." (that's normal branch creation)
+      // Do NOT match "checkout: moving from ..." (that's branch switching)
       const renamedMatch = reflogOutput.match(/Branch: renamed refs\/heads\/([^\s]+) to/);
       
-      if (checkoutMatch) {
-        parentBranch = checkoutMatch[1];
-      } else if (createdMatch) {
-        parentBranch = createdMatch[1];
-      } else if (renamedMatch) {
+      if (renamedMatch) {
         parentBranch = renamedMatch[1];
       }
     } catch {

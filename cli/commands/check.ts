@@ -308,8 +308,13 @@ async function validatePush(context: HookContext): Promise<CheckResult> {
 
     if (lastTag && hasPackageJson) {
       try {
-        const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
-        const currentVersion = pkg.version;
+        // Read version from HEAD (committed), not disk (may have uncommitted changes)
+        const headPkgContent = execSync(
+          "git show HEAD:package.json 2>/dev/null",
+          { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
+        );
+        const headPkg = JSON.parse(headPkgContent);
+        const currentVersion = headPkg.version;
         
         const tagPkgContent = execSync(
           `git show ${lastTag}:package.json 2>/dev/null`,
@@ -336,24 +341,25 @@ async function validatePush(context: HookContext): Promise<CheckResult> {
       stdio: ["pipe", "pipe", "ignore"],
     }).trim();
 
-    if (lastTag) {
-      if (!existsSync("CHANGELOG.md")) {
-        errors.push("CHANGELOG.md not found (required for tagged releases)");
-      } else {
-        try {
-          const changedFiles = execSync(
-            `git diff ${lastTag} --name-only -- CHANGELOG.md 2>/dev/null`,
-            { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
-          ).trim();
+      if (lastTag) {
+        if (!existsSync("CHANGELOG.md")) {
+          errors.push("CHANGELOG.md not found (required for tagged releases)");
+        } else {
+          try {
+            // Check only committed changes between lastTag and HEAD (not unstaged edits)
+            const changedFiles = execSync(
+              `git diff ${lastTag} HEAD --name-only -- CHANGELOG.md 2>/dev/null`,
+              { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
+            ).trim();
 
-          if (!changedFiles) {
-            errors.push(`CHANGELOG.md not updated since ${lastTag}`);
+            if (!changedFiles) {
+              errors.push(`CHANGELOG.md not updated since ${lastTag}`);
+            }
+          } catch {
+            // ignore
           }
-        } catch {
-          // ignore
         }
       }
-    }
   } catch {
     // No tags yet, skip changelog check
   }

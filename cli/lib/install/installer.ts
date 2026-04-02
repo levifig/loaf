@@ -81,9 +81,12 @@ interface CodexHooksJson {
 }
 
 function isLoafHook(hook: Record<string, unknown>): boolean {
-  // Loaf-managed hooks have commands that start with "loaf check --hook"
+  // Loaf-managed hooks have commands that start with "loaf"
   const command = hook.command as string | undefined;
-  return command?.startsWith("loaf check --hook") || false;
+  if (!command) return false;
+  
+  // Loaf hooks include: check, task, session commands
+  return command.startsWith("loaf ") || command.startsWith("loaf\t");
 }
 
 function loadHooksJson(path: string): CodexHooksJson {
