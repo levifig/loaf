@@ -8145,18 +8145,32 @@ function findActiveSessionForBranch(agentsDir, branch) {
     }
   }
   if (candidates.length === 0) {
-    const specInfo = findSpecForBranch(agentsDir, branch);
-    if (specInfo && specInfo.sessionFile) {
-      const sessionPath = join36(agentsDir, "sessions", specInfo.sessionFile);
-      if (existsSync32(sessionPath)) {
-        const session = readSessionFile(sessionPath);
-        if (session && session.data.status !== "archived") {
-          if (session.data.branch !== branch) {
-            session.data.branch = branch;
-            const newContent = matter13.stringify(session.content, session.data);
-            writeFileSync19(sessionPath, newContent, "utf-8");
+    const specsDir = join36(agentsDir, "specs");
+    if (existsSync32(specsDir)) {
+      const specFiles = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
+      for (const specFile of specFiles) {
+        try {
+          const specPath = join36(specsDir, specFile);
+          const specContent = readFileSync28(specPath, "utf-8");
+          const specParsed = matter13(specContent);
+          const specFm = specParsed.data;
+          if (specFm.session) {
+            const sessionPath = join36(agentsDir, "sessions", specFm.session);
+            if (existsSync32(sessionPath)) {
+              const session = readSessionFile(sessionPath);
+              if (session && session.data.branch === branch && session.data.status !== "archived") {
+                if (specFm.branch !== branch) {
+                  specFm.branch = branch;
+                  const newSpecContent = matter13.stringify(specParsed.content, specFm);
+                  writeFileSync19(specPath, newSpecContent, "utf-8");
+                }
+                candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+                break;
+              }
+            }
           }
-          candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+        } catch {
+          continue;
         }
       }
     }
@@ -8451,10 +8465,19 @@ function registerSessionCommand(program2) {
     const { completed, total } = countTasksInSession(sessionContent);
     const timestamp = getDateTimeString();
     const journalLines = [];
-    if (isNew) {
-      journalLines.push(`- ${timestamp} resume(${branch}): session started`);
-    } else {
+    if (!isNew) {
       journalLines.push(`- ${timestamp} resume(${branch}): session resumed`);
+      if (lastCommit !== "unknown") {
+        journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
+      }
+      if (completed > 0 || total > 0) {
+        journalLines.push(`- ${timestamp} progress: ${completed}/${total} tasks completed`);
+      }
+      if (commits.length > 0) {
+        for (const commit of commits.slice(0, 3)) {
+          journalLines.push(`- ${timestamp} commit(${commit.hash}): "${commit.message}"`);
+        }
+      }
     }
     if (lastCommit !== "unknown") {
       journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
@@ -8467,15 +8490,23 @@ function registerSessionCommand(program2) {
         journalLines.push(`- ${timestamp} commit(${commit.hash}): "${commit.message}"`);
       }
     }
-    await appendEntry(
-      sessionFilePath,
-      journalLines,
-      (data) => {
-        data.status = "active";
-        data.last_updated = getTimestamp();
-        data.last_entry = getTimestamp();
-      }
-    );
+    if (!isNew) {
+      await appendEntry(
+        sessionFilePath,
+        journalLines,
+        (data) => {
+          data.status = "active";
+          data.last_updated = getTimestamp();
+          data.last_entry = getTimestamp();
+        }
+      );
+    } else {
+      sessionData.status = "active";
+      sessionData.last_updated = getTimestamp();
+      sessionData.last_entry = getTimestamp();
+      const newContent = matter13.stringify(sessionContent, sessionData);
+      writeFileSync19(sessionFilePath, newContent, "utf-8");
+    }
     console.log(`  ${green11("\u2713")} Session active: ${gray13(sessionFilePath.replace(agentsDir, ".agents"))}`);
     const recentEntries = extractRecentEntries(sessionContent, 15);
     if (recentEntries.length > 0) {

@@ -338,22 +338,41 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
   }
   
   // If no session found by branch name, check for renamed branch via spec linkage
+  // This handles: git branch -m old-name new-name
   if (candidates.length === 0) {
-    const specInfo = findSpecForBranch(agentsDir, branch);
-    if (specInfo && specInfo.sessionFile) {
-      // Spec references a session file - check if it exists and is non-archived
-      const sessionPath = join(agentsDir, "sessions", specInfo.sessionFile);
-      if (existsSync(sessionPath)) {
-        const session = readSessionFile(sessionPath);
-        if (session && session.data.status !== "archived") {
-          // Update the session's branch field to match current branch (rename detection)
-          if (session.data.branch !== branch) {
-            session.data.branch = branch;
-            // Write updated session
-            const newContent = matter.stringify(session.content, session.data as unknown as Record<string, unknown>);
-            writeFileSync(sessionPath, newContent, "utf-8");
+    // Look through ALL specs to find one whose session file has branch === current branch
+    const specsDir = join(agentsDir, "specs");
+    if (existsSync(specsDir)) {
+      const specFiles = readdirSync(specsDir).filter(f => f.endsWith(".md"));
+      
+      for (const specFile of specFiles) {
+        try {
+          const specPath = join(specsDir, specFile);
+          const specContent = readFileSync(specPath, "utf-8");
+          const specParsed = matter(specContent);
+          const specFm = specParsed.data as SpecFrontmatterWithBranch;
+          
+          // If spec has a session: field pointing to a session file
+          if (specFm.session) {
+            const sessionPath = join(agentsDir, "sessions", specFm.session);
+            if (existsSync(sessionPath)) {
+              const session = readSessionFile(sessionPath);
+              // Check if this session's branch matches current branch (rename detected)
+              if (session && session.data.branch === branch && session.data.status !== "archived") {
+                // Update spec's branch field to match current branch
+                if (specFm.branch !== branch) {
+                  specFm.branch = branch;
+                  const newSpecContent = matter.stringify(specParsed.content, specFm as Record<string, unknown>);
+                  writeFileSync(specPath, newSpecContent, "utf-8");
+                }
+                candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+                break; // Found it
+              }
+            }
           }
-          candidates.push({ filePath: sessionPath, data: session.data, content: session.content });
+        } catch {
+          // Continue to next spec
+          continue;
         }
       }
     }
@@ -772,13 +791,25 @@ export function registerSessionCommand(program: Command): void {
       const { completed, total } = countTasksInSession(sessionContent);
 
       // Build journal entries (inline format per SPEC-020)
+      // For NEW sessions: createSessionFile() already added initial resume entry
+      // For EXISTING sessions: add resume entry with current state
       const timestamp = getDateTimeString();
       const journalLines: string[] = [];
       
-      if (isNew) {
-        journalLines.push(`- ${timestamp} resume(${branch}): session started`);
-      } else {
+      if (!isNew) {
+        // Only add resume entry when resuming (not for new sessions)
         journalLines.push(`- ${timestamp} resume(${branch}): session resumed`);
+        if (lastCommit !== "unknown") {
+          journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
+        }
+        if (completed > 0 || total > 0) {
+          journalLines.push(`- ${timestamp} progress: ${completed}/${total} tasks completed`);
+        }
+        if (commits.length > 0) {
+          for (const commit of commits.slice(0, 3)) {
+            journalLines.push(`- ${timestamp} commit(${commit.hash}): "${commit.message}"`);
+          }
+        }
       }
       if (lastCommit !== "unknown") {
         journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
@@ -792,16 +823,25 @@ export function registerSessionCommand(program: Command): void {
         }
       }
 
-      // Append entries to journal
-      await appendEntry(
-        sessionFilePath,
-        journalLines,
-        (data: SessionFrontmatter) => {
-          data.status = "active";
-          data.last_updated = getTimestamp();
-          data.last_entry = getTimestamp();
-        }
-      );
+      // Append entries to journal (only for existing sessions; new sessions already have initial entry)
+      if (!isNew) {
+        await appendEntry(
+          sessionFilePath,
+          journalLines,
+          (data: SessionFrontmatter) => {
+            data.status = "active";
+            data.last_updated = getTimestamp();
+            data.last_entry = getTimestamp();
+          }
+        );
+      } else {
+        // For new sessions, just update frontmatter without appending
+        sessionData.status = "active";
+        sessionData.last_updated = getTimestamp();
+        sessionData.last_entry = getTimestamp();
+        const newContent = matter.stringify(sessionContent, sessionData as unknown as Record<string, unknown>);
+        writeFileSync(sessionFilePath, newContent, "utf-8");
+      }
 
       console.log(`  ${green("✓")} Session active: ${gray(sessionFilePath.replace(agentsDir, ".agents"))}`);
 
