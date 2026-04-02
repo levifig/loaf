@@ -8094,33 +8094,6 @@ function findSpecForBranch(agentsDir, branch) {
       continue;
     }
   }
-  let gitBranches = [];
-  try {
-    const output = execSync3("git for-each-ref --format='%(refname:short)' refs/heads/", { encoding: "utf-8" });
-    gitBranches = output.split("\n").filter((b) => b.trim().length > 0);
-  } catch {
-    return null;
-  }
-  for (const file of files) {
-    try {
-      const filePath = join36(specsDir, file);
-      const content = readFileSync28(filePath, "utf-8");
-      const parsed = matter13(content);
-      const fm = parsed.data;
-      if (fm.branch && !gitBranches.includes(fm.branch)) {
-        fm.branch = branch;
-        const newContent = matter13.stringify(parsed.content, fm);
-        writeFileSync19(filePath, newContent, "utf-8");
-        return {
-          id: fm.id || file.replace(/\.md$/, ""),
-          title: fm.title || "Untitled",
-          sessionFile: fm.session
-        };
-      }
-    } catch {
-      continue;
-    }
-  }
   return null;
 }
 function updateSpecSessionField(agentsDir, specId, sessionFileName) {

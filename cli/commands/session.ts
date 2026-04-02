@@ -250,7 +250,7 @@ function findSpecForBranch(
 
   const files = readdirSync(specsDir).filter((f) => f.endsWith(".md"));
 
-  // Pass 1: Exact match
+  // Only exact branch match - never assume stale specs are "renamed"
   for (const file of files) {
     try {
       const content = readFileSync(join(specsDir, file), "utf-8");
@@ -258,44 +258,6 @@ function findSpecForBranch(
       const fm = parsed.data as SpecFrontmatterWithBranch;
 
       if (fm.branch === branch) {
-        return { 
-          id: fm.id || file.replace(/\.md$/, ""), 
-          title: fm.title || "Untitled",
-          sessionFile: fm.session
-        };
-      }
-    } catch {
-      continue;
-    }
-  }
-  
-  // Pass 2: Branch rename detection
-  // If we couldn't find a spec for the current branch, check if an old branch was renamed.
-  // We do this by finding specs pointing to branches that NO LONGER EXIST in git.
-  let gitBranches: string[] = [];
-  try {
-    const output = execSync("git for-each-ref --format='%(refname:short)' refs/heads/", { encoding: "utf-8" });
-    gitBranches = output.split("\n").filter(b => b.trim().length > 0);
-  } catch {
-    // Not a git repo or error executing git, skip rename detection
-    return null;
-  }
-  
-  for (const file of files) {
-    try {
-      const filePath = join(specsDir, file);
-      const content = readFileSync(filePath, "utf-8");
-      const parsed = matter(content);
-      const fm = parsed.data as SpecFrontmatterWithBranch;
-
-      // If spec has a branch, and that branch NO LONGER EXISTS in git
-      if (fm.branch && !gitBranches.includes(fm.branch)) {
-        // We assume this spec's branch was renamed to our current branch.
-        // Update the spec's branch field!
-        fm.branch = branch;
-        const newContent = matter.stringify(parsed.content, fm as Record<string, unknown>);
-        writeFileSync(filePath, newContent, "utf-8");
-        
         return { 
           id: fm.id || file.replace(/\.md$/, ""), 
           title: fm.title || "Untitled",
