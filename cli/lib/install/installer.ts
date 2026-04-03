@@ -14,12 +14,54 @@ import {
   readdirSync,
   readFileSync,
 } from "fs";
-import { join, dirname, basename } from "path";
+import { join, dirname } from "path";
 import { execFileSync } from "child_process";
 import { fileURLToPath } from "url";
 
 const LOAF_MARKER_FILE = ".loaf-version";
 const LOAF_HOOK_MARKER = "loaf-managed";
+const LEGACY_LOAF_SIGNATURES = new Set([
+  "command:loaf check --hook check-secrets|matcher:Edit|Write|Bash|if:",
+  "command:loaf check --hook security-audit|matcher:Bash|if:",
+  "command:loaf check --hook validate-push|matcher:Bash|if:",
+  "command:loaf check --hook workflow-pre-pr|matcher:Bash|if:",
+  "command:loaf check --hook validate-commit|matcher:Bash|if:",
+  "command:loaf session log --detect-linear|matcher:Bash|if:",
+  "command:loaf task refresh|matcher:Edit|Write|if:",
+  "command:loaf session log --from-hook|matcher:Bash|if:Bash(git commit:*)",
+  "command:loaf session log --from-hook|matcher:Bash|if:Bash(gh pr create:*)",
+  "command:loaf session log --from-hook|matcher:Bash|if:Bash(gh pr merge:*)",
+  "command:loaf session start|matcher:|if:",
+  "command:loaf session end|matcher:|if:",
+  "command:bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh|matcher:Edit|Write|if:",
+  "command:bash $HOME/.cursor/hooks/session/compact.sh|matcher:|if:",
+]);
+const LEGACY_LOAF_COMMANDS = new Set([
+  "bash $HOME/.cursor/hooks/session/session-start-soul.sh",
+  "bash $HOME/.cursor/hooks/session/session-start.sh",
+  "bash $HOME/.cursor/hooks/session/kb-session-start.sh",
+  "bash $HOME/.cursor/hooks/session/session-end.sh",
+  "bash $HOME/.cursor/hooks/session/kb-session-end.sh",
+  "bash $HOME/.cursor/hooks/session/pre-compact-archive.sh",
+]);
+const OBSOLETE_CURSOR_HOOK_FILES = [
+  "session/check-sessions.sh",
+  "session/kb-session-end.sh",
+  "session/kb-session-start.sh",
+  "session/pre-compact-archive.sh",
+  "session/session-end-simple.sh",
+  "session/session-end.sh",
+  "session/session-start-soul.sh",
+  "session/session-start.sh",
+];
+const LEGACY_LOAF_PROMPT_PREFIXES = [
+  "STOP. Before running gh pr merge",
+  "ADVISORY: You are about to run `git push`",
+  "KNOWLEDGE BASE:",
+  "POST-MERGE HOUSEKEEPING:",
+  "CONTEXT COMPACTION IMMINENT:",
+  "SESSION JOURNAL NUDGE:",
+];
 
 function getVersion(): string {
   const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +106,11 @@ function syncDir(src: string, dest: string): void {
   }
 }
 
+function mergeDir(src: string, dest: string): void {
+  mkdirSync(dest, { recursive: true });
+  cpSync(src, dest, { recursive: true, force: true });
+}
+
 function writeMarker(configDir: string): void {
   mkdirSync(configDir, { recursive: true });
   writeFileSync(join(configDir, LOAF_MARKER_FILE), `${getVersion()}\n`);
@@ -80,41 +127,49 @@ interface CodexHooksJson {
   };
 }
 
-function isLoafHook(hook: Record<string, unknown>): boolean {
-  // Loaf-managed hooks include:
-  // 1. Commands starting with "loaf " (all loaf CLI invocations)
-  // 2. Shell scripts in Loaf's hooks directory
-  // 3. Prompts containing Loaf markers (specific Loaf-generated content)
+function getHookSignature(hook: Record<string, unknown>): string | null {
   const command = hook.command as string | undefined;
   const prompt = hook.prompt as string | undefined;
-  
-  // Check 1: All loaf commands (including variations like --detect-linear, --from-hook)
+  const matcher = hook.matcher as string | undefined;
+  const condition = hook.if as string | undefined;
+
   if (command) {
-    if (command.startsWith("loaf ")) {
-      return true;
-    }
-    // Shell scripts in Loaf's hooks directory
-    if (command.includes("/.cursor/hooks/") || command.includes("/.codex/hooks/")) {
-      return true;
-    }
+    return `command:${command}|matcher:${matcher || ""}|if:${condition || ""}`;
   }
-  
-  // Check 2: Loaf-generated prompts (contain specific Loaf markers)
+
   if (prompt) {
-    const loafMarkers = [
-      "STOP. Before running gh pr merge",
-      "ADVISORY: You are about to run `git push`",
-      "KNOWLEDGE BASE:",
-      "POST-MERGE HOUSEKEEPING:",
-      "CONTEXT COMPACTION IMMINENT:",
-      "SESSION JOURNAL NUDGE:",
-      "loaf session log",
-      "loaf kb review",
-    ];
-    return loafMarkers.some(marker => prompt.includes(marker));
+    return `prompt:${prompt}|matcher:${matcher || ""}|if:${condition || ""}`;
   }
-  
+
+  return null;
+}
+
+function isLegacyLoafHook(hook: Record<string, unknown>): boolean {
+  const signature = getHookSignature(hook);
+  if (signature && LEGACY_LOAF_SIGNATURES.has(signature)) {
+    return true;
+  }
+
+  const command = hook.command as string | undefined;
+  const prompt = hook.prompt as string | undefined;
+
+  if (command) {
+    return LEGACY_LOAF_COMMANDS.has(command);
+  }
+
+  if (prompt) {
+    return LEGACY_LOAF_PROMPT_PREFIXES.some((prefix) => prompt.startsWith(prefix));
+  }
+
   return false;
+}
+
+function isLoafHook(hook: Record<string, unknown>): boolean {
+  if (hook[LOAF_HOOK_MARKER] === true) {
+    return true;
+  }
+
+  return isLegacyLoafHook(hook);
 }
 
 function loadHooksJson(path: string): CodexHooksJson {
@@ -193,7 +248,7 @@ export function installCursor(distDir: string, configDir: string, upgrade: boole
       const loafHooksList = (loafHooks.hooks?.[hookType] || []) as Record<string, unknown>[];
       
       // Filter out existing Loaf hooks
-      const userHooks = existingHooks.filter((h) => !isLoafHook(h));
+      const userHooks = existingHooks.filter((hook) => !isLoafHook(hook));
       
       merged.hooks![hookType] = [...userHooks, ...loafHooksList];
     }
@@ -203,7 +258,14 @@ export function installCursor(distDir: string, configDir: string, upgrade: boole
 
   const hooksDir = join(distDir, "hooks");
   if (existsSync(hooksDir)) {
-    syncDir(hooksDir, join(configDir, "hooks"));
+    if (upgrade) {
+      const installedHooksDir = join(configDir, "hooks");
+      for (const file of OBSOLETE_CURSOR_HOOK_FILES) {
+        rmSync(join(installedHooksDir, file), { force: true });
+      }
+    }
+
+    mergeDir(hooksDir, join(configDir, "hooks"));
   }
 
   const templatesSrc = join(distDir, "templates");
@@ -246,7 +308,7 @@ export function installCodex(distDir: string, configDir: string, upgrade: boolea
       const loafHooksList = (loafHooks.hooks?.[hookType] || []) as Record<string, unknown>[];
       
       // Filter out existing Loaf hooks
-      const userHooks = existingHooks.filter((h) => !isLoafHook(h));
+      const userHooks = existingHooks.filter((hook) => !isLoafHook(hook));
       
       merged.hooks![hookType] = [...userHooks, ...loafHooksList];
     }

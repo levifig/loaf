@@ -197,13 +197,13 @@ var init_cli_reference_generator = __esm({
 
 // cli/index.ts
 import { Command } from "commander";
-import { readFileSync as readFileSync29 } from "fs";
-import { join as join37, dirname as dirname15 } from "path";
-import { fileURLToPath as fileURLToPath8 } from "url";
+import { readFileSync as readFileSync28 } from "fs";
+import { join as join38, dirname as dirname14 } from "path";
+import { fileURLToPath as fileURLToPath9 } from "url";
 
 // cli/commands/build.ts
-import { existsSync as existsSync10, readFileSync as readFileSync10, rmSync as rmSync5 } from "fs";
-import { join as join14, dirname as dirname3 } from "path";
+import { existsSync as existsSync10, readFileSync as readFileSync9, rmSync as rmSync3 } from "fs";
+import { join as join15, dirname as dirname2 } from "path";
 import { fileURLToPath } from "url";
 import { parse as parseYaml3 } from "yaml";
 
@@ -828,21 +828,33 @@ __export(opencode_exports, {
   build: () => build2
 });
 import {
-  mkdirSync as mkdirSync7,
+  mkdirSync as mkdirSync8,
   cpSync as cpSync4,
   writeFileSync as writeFileSync7,
   readFileSync as readFileSync8,
   readdirSync as readdirSync5,
-  existsSync as existsSync7,
-  rmSync as rmSync2
+  existsSync as existsSync8
 } from "fs";
 import matter4 from "gray-matter";
-import { join as join9 } from "path";
+import { join as join10 } from "path";
 import { parse as parseYaml2 } from "yaml";
 
-// cli/lib/build/lib/hooks/runtime-plugin.ts
-import { writeFileSync as writeFileSync6, mkdirSync as mkdirSync6 } from "fs";
+// cli/lib/build/lib/target-output.ts
+import { existsSync as existsSync7, mkdirSync as mkdirSync6, rmSync as rmSync2 } from "fs";
 import { join as join8 } from "path";
+function resetTargetOutput(distDir, subdirs = []) {
+  if (existsSync7(distDir)) {
+    rmSync2(distDir, { recursive: true });
+  }
+  mkdirSync6(distDir, { recursive: true });
+  for (const subdir of subdirs) {
+    mkdirSync6(join8(distDir, subdir), { recursive: true });
+  }
+}
+
+// cli/lib/build/lib/hooks/runtime-plugin.ts
+import { writeFileSync as writeFileSync6, mkdirSync as mkdirSync7 } from "fs";
+import { join as join9 } from "path";
 var ENFORCEMENT_HOOKS = /* @__PURE__ */ new Set([
   "check-secrets",
   "validate-push",
@@ -895,11 +907,11 @@ ${body}
   rejectPattern: (msgVar) => `return { error: ${msgVar}, block: true };`
 };
 function generateRuntimePlugin(config, srcDir, distDir, platform2, version) {
-  const pluginDir = join8(distDir, "plugins");
-  mkdirSync6(pluginDir, { recursive: true });
+  const pluginDir = join9(distDir, "plugins");
+  mkdirSync7(pluginDir, { recursive: true });
   const code = generateCode(config, platform2, version);
   const outputFile = platform2.platform === "opencode" ? "hooks.ts" : "loaf.js";
-  writeFileSync6(join8(pluginDir, outputFile), code);
+  writeFileSync6(join9(pluginDir, outputFile), code);
 }
 function generateCode(config, platform2, version) {
   const header = platform2.header.replace("{{VERSION}}", version || "unknown");
@@ -1332,10 +1344,7 @@ async function build2({
 }) {
   const version = getVersion(rootDir);
   const transformMd = (content) => substituteCommands(content);
-  if (existsSync7(distDir)) {
-    rmSync2(distDir, { recursive: true });
-  }
-  mkdirSync7(distDir, { recursive: true });
+  resetTargetOutput(distDir);
   copySkills2(rootDir, srcDir, distDir, targetsConfig, transformMd, version);
   copyAgents2(srcDir, distDir, version);
   generateCommandsFromSkills(rootDir, distDir, version);
@@ -1346,24 +1355,24 @@ async function build2({
     OpenCodePlatform,
     version
   );
-  const soulTemplateSrc = join9(srcDir, "templates", "soul.md");
-  if (existsSync7(soulTemplateSrc)) {
-    const templatesDir = join9(distDir, "templates");
-    mkdirSync7(templatesDir, { recursive: true });
-    cpSync4(soulTemplateSrc, join9(templatesDir, "soul.md"));
+  const soulTemplateSrc = join10(srcDir, "templates", "soul.md");
+  if (existsSync8(soulTemplateSrc)) {
+    const templatesDir = join10(distDir, "templates");
+    mkdirSync8(templatesDir, { recursive: true });
+    cpSync4(soulTemplateSrc, join10(templatesDir, "soul.md"));
   }
-  const hooksSrc = join9(srcDir, "hooks");
-  if (existsSync7(hooksSrc)) {
-    const hooksDest = join9(distDir, "plugins", "hooks");
-    mkdirSync7(hooksDest, { recursive: true });
+  const hooksSrc = join10(srcDir, "hooks");
+  if (existsSync8(hooksSrc)) {
+    const hooksDest = join10(distDir, "plugins", "hooks");
+    mkdirSync8(hooksDest, { recursive: true });
     cpSync4(hooksSrc, hooksDest, { recursive: true });
   }
 }
 function copySkills2(rootDir, srcDir, distDir, targetsConfig, transformMd, version) {
-  const destDir = join9(distDir, "skills");
-  mkdirSync7(destDir, { recursive: true });
+  const destDir = join10(distDir, "skills");
+  mkdirSync8(destDir, { recursive: true });
   copySkills({
-    srcDir: join9(rootDir, "dist"),
+    srcDir: join10(rootDir, "dist"),
     // Reads from dist/skills/
     destDir,
     targetName: "opencode",
@@ -1372,8 +1381,8 @@ function copySkills2(rootDir, srcDir, distDir, targetsConfig, transformMd, versi
     transformMd,
     mergeFrontmatter: (base, skillDir) => {
       const skillName = skillDir.split("/").pop() || "";
-      const sidecarPath = join9(srcDir, "skills", skillName, "SKILL.opencode.yaml");
-      if (existsSync7(sidecarPath)) {
+      const sidecarPath = join10(srcDir, "skills", skillName, "SKILL.opencode.yaml");
+      if (existsSync8(sidecarPath)) {
         const sidecarContent = readFileSync8(sidecarPath, "utf-8");
         const sidecar = parseYaml2(sidecarContent) || {};
         return { ...base, ...sidecar };
@@ -1383,8 +1392,8 @@ function copySkills2(rootDir, srcDir, distDir, targetsConfig, transformMd, versi
   });
 }
 function copyAgents2(srcDir, distDir, version) {
-  const destDir = join9(distDir, "agents");
-  mkdirSync7(destDir, { recursive: true });
+  const destDir = join10(distDir, "agents");
+  mkdirSync8(destDir, { recursive: true });
   copyAgents({
     srcDir,
     destDir,
@@ -1394,17 +1403,17 @@ function copyAgents2(srcDir, distDir, version) {
   });
 }
 function generateCommandsFromSkills(rootDir, distDir, version) {
-  const skillsSrc = join9(rootDir, "dist", "skills");
-  const sidecarsSrc = join9(rootDir, "content", "skills");
-  const commandsDest = join9(distDir, "commands");
-  if (!existsSync7(skillsSrc)) return;
-  mkdirSync7(commandsDest, { recursive: true });
+  const skillsSrc = join10(rootDir, "dist", "skills");
+  const sidecarsSrc = join10(rootDir, "content", "skills");
+  const commandsDest = join10(distDir, "commands");
+  if (!existsSync8(skillsSrc)) return;
+  mkdirSync8(commandsDest, { recursive: true });
   const skills = readdirSync5(skillsSrc, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
   for (const skill of skills) {
-    const sidecarPath = join9(sidecarsSrc, skill, "SKILL.opencode.yaml");
-    if (!existsSync7(sidecarPath)) continue;
-    const skillMdPath = join9(skillsSrc, skill, "SKILL.md");
-    if (!existsSync7(skillMdPath)) continue;
+    const sidecarPath = join10(sidecarsSrc, skill, "SKILL.opencode.yaml");
+    if (!existsSync8(sidecarPath)) continue;
+    const skillMdPath = join10(skillsSrc, skill, "SKILL.md");
+    if (!existsSync8(skillMdPath)) continue;
     const content = readFileSync8(skillMdPath, "utf-8");
     const { content: body, data: skillFrontmatter } = matter4(content);
     const sidecarContent = readFileSync8(sidecarPath, "utf-8");
@@ -1416,7 +1425,7 @@ function generateCommandsFromSkills(rootDir, distDir, version) {
     };
     const relinked = body.replace(/\]\(templates\//g, `](../skills/${skill}/templates/`).replace(/\]\(references\//g, `](../skills/${skill}/references/`);
     const transformed = substituteCommands(matter4.stringify(relinked, mergedFrontmatter));
-    writeFileSync7(join9(commandsDest, `${skill}.md`), transformed);
+    writeFileSync7(join10(commandsDest, `${skill}.md`), transformed);
   }
 }
 
@@ -1426,15 +1435,15 @@ __export(cursor_exports, {
   build: () => build3
 });
 import {
-  mkdirSync as mkdirSync8,
+  mkdirSync as mkdirSync9,
   cpSync as cpSync5,
   writeFileSync as writeFileSync8,
-  existsSync as existsSync8,
   readdirSync as readdirSync6,
-  rmSync as rmSync3
+  existsSync as existsSync9
 } from "fs";
-import { join as join10 } from "path";
+import { join as join11 } from "path";
 var TARGET_NAME2 = "cursor";
+var LOAF_HOOK_MARKER = "loaf-managed";
 var DEFAULT_AGENT_FRONTMATTER = {
   model: "inherit",
   is_background: true
@@ -1467,19 +1476,12 @@ async function build3({
 }) {
   const version = getVersion(rootDir);
   const transformMd = (content) => substituteCommands2(content);
-  const skillsDir = join10(distDir, "skills");
-  const agentsDir = join10(distDir, "agents");
-  const hooksDir = join10(distDir, "hooks");
-  const staleCommandsDir = join10(distDir, "commands");
-  if (existsSync8(staleCommandsDir)) {
-    rmSync3(staleCommandsDir, { recursive: true });
-  }
-  for (const dir of [skillsDir, agentsDir, hooksDir]) {
-    if (existsSync8(dir)) rmSync3(dir, { recursive: true });
-    mkdirSync8(dir, { recursive: true });
-  }
+  resetTargetOutput(distDir, ["skills", "agents", "hooks"]);
+  const skillsDir = join11(distDir, "skills");
+  const agentsDir = join11(distDir, "agents");
+  const hooksDir = join11(distDir, "hooks");
   copySkills({
-    srcDir: join10(rootDir, "dist"),
+    srcDir: join11(rootDir, "dist"),
     destDir: skillsDir,
     targetName: TARGET_NAME2,
     version,
@@ -1501,29 +1503,29 @@ async function build3({
   });
   copyHooks(srcDir, hooksDir);
   generateHooksJson(config, distDir);
-  const soulTemplateSrc = join10(srcDir, "templates", "soul.md");
-  if (existsSync8(soulTemplateSrc)) {
-    const templatesDir = join10(distDir, "templates");
-    mkdirSync8(templatesDir, { recursive: true });
-    cpSync5(soulTemplateSrc, join10(templatesDir, "soul.md"));
+  const soulTemplateSrc = join11(srcDir, "templates", "soul.md");
+  if (existsSync9(soulTemplateSrc)) {
+    const templatesDir = join11(distDir, "templates");
+    mkdirSync9(templatesDir, { recursive: true });
+    cpSync5(soulTemplateSrc, join11(templatesDir, "soul.md"));
   }
 }
 function copyHooks(srcDir, destDir) {
-  const hooksSrc = join10(srcDir, "hooks");
-  if (!existsSync8(hooksSrc)) return;
-  const subdirs = ["session", "lib", "instructions"];
+  const hooksSrc = join11(srcDir, "hooks");
+  if (!existsSync9(hooksSrc)) return;
+  const subdirs = ["session", "post-tool", "lib", "instructions"];
   for (const subdir of subdirs) {
-    const subSrc = join10(hooksSrc, subdir);
-    const subDest = join10(destDir, subdir);
-    if (existsSync8(subSrc)) {
-      mkdirSync8(subDest, { recursive: true });
+    const subSrc = join11(hooksSrc, subdir);
+    const subDest = join11(destDir, subdir);
+    if (existsSync9(subSrc)) {
+      mkdirSync9(subDest, { recursive: true });
       copyHookFiles(subSrc, subDest);
     }
   }
   const entries = readdirSync6(hooksSrc, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.isFile()) {
-      cpSync5(join10(hooksSrc, entry.name), join10(destDir, entry.name));
+      cpSync5(join11(hooksSrc, entry.name), join11(destDir, entry.name));
     }
   }
 }
@@ -1537,16 +1539,16 @@ function copyHookFiles(srcDir, destDir) {
   }
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      const subSrc = join10(srcDir, entry.name);
-      const subDest = join10(destDir, entry.name);
-      mkdirSync8(subDest, { recursive: true });
+      const subSrc = join11(srcDir, entry.name);
+      const subDest = join11(destDir, entry.name);
+      mkdirSync9(subDest, { recursive: true });
       copyHookFiles(subSrc, subDest);
     } else if (entry.isFile()) {
       if (entry.name.endsWith(".cursor.sh")) {
         const destName = entry.name.replace(".cursor.sh", ".sh");
-        cpSync5(join10(srcDir, entry.name), join10(destDir, destName));
+        cpSync5(join11(srcDir, entry.name), join11(destDir, destName));
       } else if (!cursorOverrides.has(entry.name)) {
-        cpSync5(join10(srcDir, entry.name), join10(destDir, entry.name));
+        cpSync5(join11(srcDir, entry.name), join11(destDir, entry.name));
       }
     }
   }
@@ -1591,6 +1593,7 @@ function generateHooksJson(config, distDir) {
   if (preToolHooks.length > 0) {
     hooks.preToolUse = preToolHooks.map((hook) => {
       const result = {
+        [LOAF_HOOK_MARKER]: true,
         timeout: Math.floor((hook.timeout || 6e4) / 1e3),
         ...hook.matcher && { matcher: hook.matcher },
         ...hook.failClosed && { failClosed: hook.failClosed }
@@ -1607,6 +1610,7 @@ function generateHooksJson(config, distDir) {
   if (postToolHooks.length > 0) {
     hooks.postToolUse = postToolHooks.map((hook) => {
       const result = {
+        [LOAF_HOOK_MARKER]: true,
         timeout: 30,
         ...hook.matcher && { matcher: hook.matcher },
         ...hook.failClosed && { failClosed: hook.failClosed }
@@ -1624,6 +1628,7 @@ function generateHooksJson(config, distDir) {
     const eventName = mapSessionEvent(hook.event || "");
     if (!hooks[eventName]) hooks[eventName] = [];
     const result = {
+      [LOAF_HOOK_MARKER]: true,
       timeout: Math.floor((hook.timeout || 6e4) / 1e3)
     };
     if (hook.type === "prompt") {
@@ -1636,7 +1641,7 @@ function generateHooksJson(config, distDir) {
     hooks[eventName].push(result);
   }
   writeFileSync8(
-    join10(distDir, "hooks.json"),
+    join11(distDir, "hooks.json"),
     JSON.stringify(hooksJson, null, 2)
   );
 }
@@ -1646,9 +1651,10 @@ var codex_exports = {};
 __export(codex_exports, {
   build: () => build4
 });
-import { mkdirSync as mkdirSync9, writeFileSync as writeFileSync9 } from "fs";
-import { join as join11 } from "path";
+import { mkdirSync as mkdirSync10, writeFileSync as writeFileSync9 } from "fs";
+import { join as join12 } from "path";
 var TARGET_NAME3 = "codex";
+var LOAF_HOOK_MARKER2 = "loaf-managed";
 var ENFORCEMENT_HOOKS2 = /* @__PURE__ */ new Set([
   "check-secrets",
   "validate-push",
@@ -1663,15 +1669,16 @@ async function build4({
   targetsConfig
 }) {
   const version = getVersion(rootDir);
+  resetTargetOutput(distDir);
   const transformMd = (content) => content;
   const mergeFrontmatter = (base, skillDir) => {
     const sidecar = loadTargetSkillSidecar(skillDir, TARGET_NAME3);
     return { ...base, ...sidecar };
   };
   copySkills({
-    srcDir: join11(rootDir, "dist"),
+    srcDir: join12(rootDir, "dist"),
     // Read from dist/skills/ intermediate
-    destDir: join11(distDir, "skills"),
+    destDir: join12(distDir, "skills"),
     targetName: TARGET_NAME3,
     version,
     targetsConfig,
@@ -1697,6 +1704,7 @@ function generateCodexHooksJson(config, distDir) {
   const hooks = hooksJson.hooks;
   hooks.PreToolUse = enforcementHooks.map((hook) => {
     const result = {
+      [LOAF_HOOK_MARKER2]: true,
       matcher: "Bash",
       command: `loaf check --hook ${hook.id}`,
       timeout: Math.floor((hook.timeout || 3e4) / 1e3),
@@ -1708,10 +1716,10 @@ function generateCodexHooksJson(config, distDir) {
     }
     return result;
   });
-  const codexDir = join11(distDir, ".codex");
-  mkdirSync9(codexDir, { recursive: true });
+  const codexDir = join12(distDir, ".codex");
+  mkdirSync10(codexDir, { recursive: true });
   writeFileSync9(
-    join11(codexDir, "hooks.json"),
+    join12(codexDir, "hooks.json"),
     JSON.stringify(hooksJson, null, 2)
   );
 }
@@ -1721,7 +1729,7 @@ var gemini_exports = {};
 __export(gemini_exports, {
   build: () => build5
 });
-import { join as join12 } from "path";
+import { join as join13 } from "path";
 var TARGET_NAME4 = "gemini";
 async function build5({
   rootDir,
@@ -1729,15 +1737,16 @@ async function build5({
   targetsConfig
 }) {
   const version = getVersion(rootDir);
+  resetTargetOutput(distDir);
   const transformMd = (content) => content;
   const mergeFrontmatter = (base, skillDir) => {
     const sidecar = loadTargetSkillSidecar(skillDir, TARGET_NAME4);
     return { ...base, ...sidecar };
   };
   copySkills({
-    srcDir: join12(rootDir, "dist"),
+    srcDir: join13(rootDir, "dist"),
     // Read from dist/skills/ intermediate
-    destDir: join12(distDir, "skills"),
+    destDir: join13(distDir, "skills"),
     targetName: TARGET_NAME4,
     version,
     targetsConfig,
@@ -1751,7 +1760,7 @@ var amp_exports = {};
 __export(amp_exports, {
   build: () => build6
 });
-import { join as join13 } from "path";
+import { join as join14 } from "path";
 var TARGET_NAME5 = "amp";
 async function build6({
   config,
@@ -1760,11 +1769,12 @@ async function build6({
   targetsConfig
 }) {
   const version = getVersion(rootDir);
+  resetTargetOutput(distDir);
   const transformMd = (content) => content;
   copySkills({
-    srcDir: join13(rootDir, "dist"),
+    srcDir: join14(rootDir, "dist"),
     // Read from dist/skills/ intermediate
-    destDir: join13(distDir, "skills"),
+    destDir: join14(distDir, "skills"),
     targetName: TARGET_NAME5,
     version,
     targetsConfig,
@@ -1773,7 +1783,7 @@ async function build6({
   });
   generateRuntimePlugin(
     config,
-    join13(rootDir, "content"),
+    join14(rootDir, "content"),
     distDir,
     AmpPlatform,
     version
@@ -1781,7 +1791,7 @@ async function build6({
 }
 
 // cli/commands/build.ts
-var __dirname = dirname3(fileURLToPath(import.meta.url));
+var __dirname = dirname2(fileURLToPath(import.meta.url));
 var bold = (s) => `\x1B[1m${s}\x1B[0m`;
 var green = (s) => `\x1B[32m${s}\x1B[0m`;
 var red = (s) => `\x1B[31m${s}\x1B[0m`;
@@ -1798,13 +1808,13 @@ var TARGETS = {
 function findRootDir() {
   let dir = __dirname;
   for (let i = 0; i < 10; i++) {
-    const pkgPath = join14(dir, "package.json");
+    const pkgPath = join15(dir, "package.json");
     try {
-      const pkg = JSON.parse(readFileSync10(pkgPath, "utf-8"));
+      const pkg = JSON.parse(readFileSync9(pkgPath, "utf-8"));
       if (pkg.name === "loaf") return dir;
     } catch {
     }
-    const parent = dirname3(dir);
+    const parent = dirname2(dir);
     if (parent === dir) break;
     dir = parent;
   }
@@ -1812,7 +1822,7 @@ function findRootDir() {
 }
 function loadYamlConfig(path) {
   if (!existsSync10(path)) return {};
-  return parseYaml3(readFileSync10(path, "utf-8"));
+  return parseYaml3(readFileSync9(path, "utf-8"));
 }
 var TARGET_NAMES = Object.keys(TARGETS);
 async function buildTarget(targetName, rootDir, contentDir, distDir, hooksConfig, targetsConfig) {
@@ -1820,7 +1830,7 @@ async function buildTarget(targetName, rootDir, contentDir, distDir, hooksConfig
   if (!targetModule) {
     throw new Error(`Unknown target: ${targetName}`);
   }
-  const outputDir = targetName === "claude-code" ? rootDir : join14(distDir, targetName);
+  const outputDir = targetName === "claude-code" ? rootDir : join15(distDir, targetName);
   const targetConfig = targetsConfig.targets?.[targetName] || {};
   await targetModule.build({
     config: hooksConfig,
@@ -1833,9 +1843,9 @@ async function buildTarget(targetName, rootDir, contentDir, distDir, hooksConfig
   });
 }
 async function buildSharedIntermediate(rootDir, contentDir, distDir, targetsConfig) {
-  const skillsDestDir = join14(distDir, "skills");
+  const skillsDestDir = join15(distDir, "skills");
   if (existsSync10(skillsDestDir)) {
-    rmSync5(skillsDestDir, { recursive: true, force: true });
+    rmSync3(skillsDestDir, { recursive: true, force: true });
   }
   const transformMd = createCommandSubstituter("shared");
   copySkills({
@@ -1853,9 +1863,9 @@ function registerBuildCommand(program2) {
   program2.command("build").description("Build skill distributions for agent harnesses").option("-t, --target <name>", "Build a specific target only").action(async (options) => {
     const startTime = Date.now();
     const rootDir = findRootDir();
-    const contentDir = join14(rootDir, "content");
-    const configDir = join14(rootDir, "config");
-    const distDir = join14(rootDir, "dist");
+    const contentDir = join15(rootDir, "content");
+    const configDir = join15(rootDir, "config");
+    const distDir = join15(rootDir, "dist");
     console.log(`
 ${bold("loaf build")}
 `);
@@ -1866,13 +1876,13 @@ ${gray("Valid targets:")} ${TARGET_NAMES.join(", ")}`
       );
       process.exit(1);
     }
-    const hooksConfigPath = join14(configDir, "hooks.yaml");
+    const hooksConfigPath = join15(configDir, "hooks.yaml");
     if (!existsSync10(hooksConfigPath)) {
       console.error(`${red("error:")} Hooks config not found: ${hooksConfigPath}`);
       process.exit(1);
     }
     const hooksConfig = loadYamlConfig(hooksConfigPath);
-    const targetsConfig = loadYamlConfig(join14(configDir, "targets.yaml"));
+    const targetsConfig = loadYamlConfig(join15(configDir, "targets.yaml"));
     const targets = options.target ? [options.target] : TARGET_NAMES;
     process.stdout.write(`  ${cyan("building")} shared skills intermediate...`);
     const intermediateStart = Date.now();
@@ -1923,19 +1933,19 @@ ${gray("Valid targets:")} ${TARGET_NAMES.join(", ")}`
 }
 
 // cli/commands/install.ts
-import { existsSync as existsSync14, readFileSync as readFileSync13, mkdirSync as mkdirSync12, copyFileSync as copyFileSync2, chmodSync as chmodSync2, unlinkSync } from "fs";
-import { join as join18, dirname as dirname6 } from "path";
+import { existsSync as existsSync14, readFileSync as readFileSync12, mkdirSync as mkdirSync13, copyFileSync as copyFileSync2, chmodSync as chmodSync2, unlinkSync } from "fs";
+import { join as join19, dirname as dirname5 } from "path";
 import { fileURLToPath as fileURLToPath4 } from "url";
 import { createInterface } from "readline";
 import { execSync } from "child_process";
 
 // cli/lib/detect/tools.ts
 import { existsSync as existsSync11 } from "fs";
-import { join as join15 } from "path";
+import { join as join16 } from "path";
 import { execFileSync } from "child_process";
 import { platform } from "os";
 var HOME = process.env.HOME || process.env.USERPROFILE || "";
-var XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME || join15(HOME, ".config");
+var XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME || join16(HOME, ".config");
 var LOAF_MARKER_FILE = ".loaf-version";
 function hasCmd(cmd) {
   try {
@@ -1949,12 +1959,12 @@ function isMacOS() {
   return platform() === "darwin";
 }
 function isLoafInstalled(configDir) {
-  if (existsSync11(join15(configDir, LOAF_MARKER_FILE))) {
+  if (existsSync11(join16(configDir, LOAF_MARKER_FILE))) {
     return true;
   }
-  const skillsDir = join15(configDir, "skills");
+  const skillsDir = join16(configDir, "skills");
   for (const skill of ["foundations", "python-development", "python"]) {
-    if (existsSync11(join15(skillsDir, skill))) {
+    if (existsSync11(join16(skillsDir, skill))) {
       return true;
     }
   }
@@ -1965,7 +1975,7 @@ function detectClaudeCode() {
 }
 function detectTools() {
   const tools = [];
-  const opencodeConfig = join15(XDG_CONFIG_HOME, "opencode");
+  const opencodeConfig = join16(XDG_CONFIG_HOME, "opencode");
   if (existsSync11(opencodeConfig)) {
     tools.push({
       key: "opencode",
@@ -1975,13 +1985,13 @@ function detectTools() {
       detectedVia: "config"
     });
   }
-  const cursorConfig = join15(HOME, ".cursor");
+  const cursorConfig = join16(HOME, ".cursor");
   let cursorDetected = false;
   let cursorVia = "";
   if (hasCmd("cursor")) {
     cursorDetected = true;
     cursorVia = "cli";
-  } else if (isMacOS() && (existsSync11("/Applications/Cursor.app") || existsSync11(join15(HOME, "Applications/Cursor.app")))) {
+  } else if (isMacOS() && (existsSync11("/Applications/Cursor.app") || existsSync11(join16(HOME, "Applications/Cursor.app")))) {
     cursorDetected = true;
     cursorVia = "app";
   } else if (existsSync11(cursorConfig)) {
@@ -1997,7 +2007,7 @@ function detectTools() {
       detectedVia: cursorVia
     });
   }
-  const codexConfig = (process.env.CODEX_HOME || join15(HOME, ".codex")).replace(
+  const codexConfig = (process.env.CODEX_HOME || join16(HOME, ".codex")).replace(
     /\/$/,
     ""
   );
@@ -2006,7 +2016,7 @@ function detectTools() {
   if (hasCmd("codex")) {
     codexDetected = true;
     codexVia = "cli";
-  } else if (existsSync11(codexConfig) || existsSync11(join15(HOME, ".codex"))) {
+  } else if (existsSync11(codexConfig) || existsSync11(join16(HOME, ".codex"))) {
     codexDetected = true;
     codexVia = "config";
   }
@@ -2019,7 +2029,7 @@ function detectTools() {
       detectedVia: codexVia
     });
   }
-  const geminiConfig = join15(HOME, ".gemini");
+  const geminiConfig = join16(HOME, ".gemini");
   let geminiDetected = false;
   let geminiVia = "";
   if (hasCmd("gemini")) {
@@ -2038,7 +2048,7 @@ function detectTools() {
       detectedVia: geminiVia
     });
   }
-  const ampConfig = join15(HOME, ".amp");
+  const ampConfig = join16(HOME, ".amp");
   let ampDetected = false;
   let ampVia = "";
   if (hasCmd("amp")) {
@@ -2060,39 +2070,82 @@ function detectTools() {
   return tools;
 }
 var DEFAULT_CONFIG_DIRS = {
-  opencode: join15(XDG_CONFIG_HOME, "opencode"),
-  cursor: join15(HOME, ".cursor"),
-  codex: process.env.CODEX_HOME || join15(HOME, ".codex"),
-  gemini: join15(HOME, ".gemini"),
-  amp: join15(HOME, ".amp")
+  opencode: join16(XDG_CONFIG_HOME, "opencode"),
+  cursor: join16(HOME, ".cursor"),
+  codex: process.env.CODEX_HOME || join16(HOME, ".codex"),
+  gemini: join16(HOME, ".gemini"),
+  amp: join16(HOME, ".amp")
 };
 function isDevMode(rootDir) {
-  return existsSync11(join15(rootDir, ".git")) && existsSync11(join15(rootDir, "package.json")) && existsSync11(join15(rootDir, "content", "skills"));
+  return existsSync11(join16(rootDir, ".git")) && existsSync11(join16(rootDir, "package.json")) && existsSync11(join16(rootDir, "content", "skills"));
 }
 
 // cli/lib/install/installer.ts
 import {
-  mkdirSync as mkdirSync10,
+  mkdirSync as mkdirSync11,
   cpSync as cpSync6,
   writeFileSync as writeFileSync10,
-  rmSync as rmSync6,
+  rmSync as rmSync4,
   existsSync as existsSync12,
   readdirSync as readdirSync7,
-  readFileSync as readFileSync11
+  readFileSync as readFileSync10
 } from "fs";
-import { join as join16, dirname as dirname4 } from "path";
+import { join as join17, dirname as dirname3 } from "path";
 import { execFileSync as execFileSync2 } from "child_process";
 import { fileURLToPath as fileURLToPath2 } from "url";
 var LOAF_MARKER_FILE2 = ".loaf-version";
+var LOAF_HOOK_MARKER3 = "loaf-managed";
+var LEGACY_LOAF_SIGNATURES = /* @__PURE__ */ new Set([
+  "command:loaf check --hook check-secrets|matcher:Edit|Write|Bash|if:",
+  "command:loaf check --hook security-audit|matcher:Bash|if:",
+  "command:loaf check --hook validate-push|matcher:Bash|if:",
+  "command:loaf check --hook workflow-pre-pr|matcher:Bash|if:",
+  "command:loaf check --hook validate-commit|matcher:Bash|if:",
+  "command:loaf session log --detect-linear|matcher:Bash|if:",
+  "command:loaf task refresh|matcher:Edit|Write|if:",
+  "command:loaf session log --from-hook|matcher:Bash|if:Bash(git commit:*)",
+  "command:loaf session log --from-hook|matcher:Bash|if:Bash(gh pr create:*)",
+  "command:loaf session log --from-hook|matcher:Bash|if:Bash(gh pr merge:*)",
+  "command:loaf session start|matcher:|if:",
+  "command:loaf session end|matcher:|if:",
+  "command:bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh|matcher:Edit|Write|if:",
+  "command:bash $HOME/.cursor/hooks/session/compact.sh|matcher:|if:"
+]);
+var LEGACY_LOAF_COMMANDS = /* @__PURE__ */ new Set([
+  "bash $HOME/.cursor/hooks/session/session-start-soul.sh",
+  "bash $HOME/.cursor/hooks/session/session-start.sh",
+  "bash $HOME/.cursor/hooks/session/kb-session-start.sh",
+  "bash $HOME/.cursor/hooks/session/session-end.sh",
+  "bash $HOME/.cursor/hooks/session/kb-session-end.sh",
+  "bash $HOME/.cursor/hooks/session/pre-compact-archive.sh"
+]);
+var OBSOLETE_CURSOR_HOOK_FILES = [
+  "session/check-sessions.sh",
+  "session/kb-session-end.sh",
+  "session/kb-session-start.sh",
+  "session/pre-compact-archive.sh",
+  "session/session-end-simple.sh",
+  "session/session-end.sh",
+  "session/session-start-soul.sh",
+  "session/session-start.sh"
+];
+var LEGACY_LOAF_PROMPT_PREFIXES = [
+  "STOP. Before running gh pr merge",
+  "ADVISORY: You are about to run `git push`",
+  "KNOWLEDGE BASE:",
+  "POST-MERGE HOUSEKEEPING:",
+  "CONTEXT COMPACTION IMMINENT:",
+  "SESSION JOURNAL NUDGE:"
+];
 function getVersion2() {
-  const __dirname7 = dirname4(fileURLToPath2(import.meta.url));
+  const __dirname7 = dirname3(fileURLToPath2(import.meta.url));
   for (const candidate of [
-    join16(__dirname7, "..", "package.json"),
-    join16(__dirname7, "..", "..", "package.json"),
-    join16(__dirname7, "..", "..", "..", "package.json")
+    join17(__dirname7, "..", "package.json"),
+    join17(__dirname7, "..", "..", "package.json"),
+    join17(__dirname7, "..", "..", "..", "package.json")
   ]) {
     try {
-      const pkg = JSON.parse(readFileSync11(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync10(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -2109,7 +2162,7 @@ function hasRsync() {
   }
 }
 function syncDir(src, dest) {
-  mkdirSync10(dest, { recursive: true });
+  mkdirSync11(dest, { recursive: true });
   if (hasRsync()) {
     execFileSync2("rsync", ["-a", "--delete", `${src}/`, `${dest}/`], {
       stdio: "inherit"
@@ -2117,62 +2170,74 @@ function syncDir(src, dest) {
   } else {
     const entries = readdirSync7(dest);
     for (const entry of entries) {
-      rmSync6(join16(dest, entry), { recursive: true, force: true });
+      rmSync4(join17(dest, entry), { recursive: true, force: true });
     }
     cpSync6(src, dest, { recursive: true });
   }
 }
+function mergeDir(src, dest) {
+  mkdirSync11(dest, { recursive: true });
+  cpSync6(src, dest, { recursive: true, force: true });
+}
 function writeMarker(configDir) {
-  mkdirSync10(configDir, { recursive: true });
-  writeFileSync10(join16(configDir, LOAF_MARKER_FILE2), `${getVersion2()}
+  mkdirSync11(configDir, { recursive: true });
+  writeFileSync10(join17(configDir, LOAF_MARKER_FILE2), `${getVersion2()}
 `);
 }
-function isLoafHook(hook) {
+function getHookSignature(hook) {
+  const command = hook.command;
+  const prompt = hook.prompt;
+  const matcher = hook.matcher;
+  const condition = hook.if;
+  if (command) {
+    return `command:${command}|matcher:${matcher || ""}|if:${condition || ""}`;
+  }
+  if (prompt) {
+    return `prompt:${prompt}|matcher:${matcher || ""}|if:${condition || ""}`;
+  }
+  return null;
+}
+function isLegacyLoafHook(hook) {
+  const signature = getHookSignature(hook);
+  if (signature && LEGACY_LOAF_SIGNATURES.has(signature)) {
+    return true;
+  }
   const command = hook.command;
   const prompt = hook.prompt;
   if (command) {
-    if (command.startsWith("loaf ")) {
-      return true;
-    }
-    if (command.includes("/.cursor/hooks/") || command.includes("/.codex/hooks/")) {
-      return true;
-    }
+    return LEGACY_LOAF_COMMANDS.has(command);
   }
   if (prompt) {
-    const loafMarkers = [
-      "STOP. Before running gh pr merge",
-      "ADVISORY: You are about to run `git push`",
-      "KNOWLEDGE BASE:",
-      "POST-MERGE HOUSEKEEPING:",
-      "CONTEXT COMPACTION IMMINENT:",
-      "SESSION JOURNAL NUDGE:",
-      "loaf session log",
-      "loaf kb review"
-    ];
-    return loafMarkers.some((marker) => prompt.includes(marker));
+    return LEGACY_LOAF_PROMPT_PREFIXES.some((prefix) => prompt.startsWith(prefix));
   }
   return false;
+}
+function isLoafHook(hook) {
+  if (hook[LOAF_HOOK_MARKER3] === true) {
+    return true;
+  }
+  return isLegacyLoafHook(hook);
 }
 function loadHooksJson(path) {
   if (!existsSync12(path)) {
     return { version: 1, hooks: {} };
   }
   try {
-    const content = readFileSync11(path, "utf-8");
+    const content = readFileSync10(path, "utf-8");
     return JSON.parse(content);
   } catch {
     return { version: 1, hooks: {} };
   }
 }
 function saveHooksJson(path, hooks) {
-  mkdirSync10(dirname4(path), { recursive: true });
+  mkdirSync11(dirname3(path), { recursive: true });
   writeFileSync10(path, JSON.stringify(hooks, null, 2));
 }
 function installOpencode(distDir, configDir, _upgrade = false) {
   const dirs = ["skills", "agents", "commands", "plugins", "templates"];
   for (const dir of dirs) {
-    const src = join16(distDir, dir);
-    const dest = join16(configDir, dir);
+    const src = join17(distDir, dir);
+    const dest = join17(configDir, dir);
     if (existsSync12(src)) {
       syncDir(src, dest);
     }
@@ -2181,22 +2246,22 @@ function installOpencode(distDir, configDir, _upgrade = false) {
 }
 function installCursor(distDir, configDir, upgrade = false) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-  const skillsDest = join16(homeDir, ".agents/skills");
-  const skillsSrc = join16(distDir, "skills");
+  const skillsDest = join17(homeDir, ".agents/skills");
+  const skillsSrc = join17(distDir, "skills");
   if (existsSync12(skillsSrc)) {
     syncDir(skillsSrc, skillsDest);
   }
-  const staleCommands = join16(configDir, "commands");
+  const staleCommands = join17(configDir, "commands");
   if (existsSync12(staleCommands)) {
-    rmSync6(staleCommands, { recursive: true });
+    rmSync4(staleCommands, { recursive: true });
   }
-  const agentsSrc = join16(distDir, "agents");
+  const agentsSrc = join17(distDir, "agents");
   if (existsSync12(agentsSrc)) {
-    syncDir(agentsSrc, join16(configDir, "agents"));
+    syncDir(agentsSrc, join17(configDir, "agents"));
   }
-  const hooksSrc = join16(distDir, "hooks.json");
+  const hooksSrc = join17(distDir, "hooks.json");
   if (existsSync12(hooksSrc)) {
-    const hooksPath = join16(configDir, "hooks.json");
+    const hooksPath = join17(configDir, "hooks.json");
     const existing = loadHooksJson(hooksPath);
     const loafHooks = loadHooksJson(hooksSrc);
     const merged = { version: 1, hooks: {} };
@@ -2207,32 +2272,38 @@ function installCursor(distDir, configDir, upgrade = false) {
     for (const hookType of allHookTypes) {
       const existingHooks = existing.hooks?.[hookType] || [];
       const loafHooksList = loafHooks.hooks?.[hookType] || [];
-      const userHooks = existingHooks.filter((h) => !isLoafHook(h));
+      const userHooks = existingHooks.filter((hook) => !isLoafHook(hook));
       merged.hooks[hookType] = [...userHooks, ...loafHooksList];
     }
     saveHooksJson(hooksPath, merged);
   }
-  const hooksDir = join16(distDir, "hooks");
+  const hooksDir = join17(distDir, "hooks");
   if (existsSync12(hooksDir)) {
-    syncDir(hooksDir, join16(configDir, "hooks"));
+    if (upgrade) {
+      const installedHooksDir = join17(configDir, "hooks");
+      for (const file of OBSOLETE_CURSOR_HOOK_FILES) {
+        rmSync4(join17(installedHooksDir, file), { force: true });
+      }
+    }
+    mergeDir(hooksDir, join17(configDir, "hooks"));
   }
-  const templatesSrc = join16(distDir, "templates");
+  const templatesSrc = join17(distDir, "templates");
   if (existsSync12(templatesSrc)) {
-    syncDir(templatesSrc, join16(configDir, "templates"));
+    syncDir(templatesSrc, join17(configDir, "templates"));
   }
   writeMarker(configDir);
 }
 function installCodex(distDir, configDir, upgrade = false) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-  const codexHome = process.env.CODEX_HOME || join16(homeDir, ".codex");
-  const skillsDest = join16(homeDir, ".agents/skills");
-  const skillsSrc = join16(distDir, "skills");
+  const codexHome = process.env.CODEX_HOME || join17(homeDir, ".codex");
+  const skillsDest = join17(homeDir, ".agents/skills");
+  const skillsSrc = join17(distDir, "skills");
   if (existsSync12(skillsSrc)) {
     syncDir(skillsSrc, skillsDest);
   }
-  const loafHooksPath = join16(distDir, ".codex/hooks.json");
+  const loafHooksPath = join17(distDir, ".codex/hooks.json");
   if (existsSync12(loafHooksPath)) {
-    const hooksPath = join16(codexHome, "hooks.json");
+    const hooksPath = join17(codexHome, "hooks.json");
     const existing = loadHooksJson(hooksPath);
     const loafHooks = loadHooksJson(loafHooksPath);
     const merged = { version: 1, hooks: {} };
@@ -2243,7 +2314,7 @@ function installCodex(distDir, configDir, upgrade = false) {
     for (const hookType of allHookTypes) {
       const existingHooks = existing.hooks?.[hookType] || [];
       const loafHooksList = loafHooks.hooks?.[hookType] || [];
-      const userHooks = existingHooks.filter((h) => !isLoafHook(h));
+      const userHooks = existingHooks.filter((hook) => !isLoafHook(hook));
       merged.hooks[hookType] = [...userHooks, ...loafHooksList];
     }
     saveHooksJson(hooksPath, merged);
@@ -2252,8 +2323,8 @@ function installCodex(distDir, configDir, upgrade = false) {
 }
 function installGemini(distDir, configDir, _upgrade = false) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-  const skillsDest = join16(homeDir, ".agents/skills");
-  const skillsSrc = join16(distDir, "skills");
+  const skillsDest = join17(homeDir, ".agents/skills");
+  const skillsSrc = join17(distDir, "skills");
   if (existsSync12(skillsSrc)) {
     syncDir(skillsSrc, skillsDest);
   }
@@ -2261,16 +2332,16 @@ function installGemini(distDir, configDir, _upgrade = false) {
 }
 function installAmp(distDir, configDir, _upgrade = false) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-  const skillsDest = process.env.AMP_SKILLS_HOME || join16(homeDir, ".config/agents/skills");
-  const skillsSrc = join16(distDir, "skills");
+  const skillsDest = process.env.AMP_SKILLS_HOME || join17(homeDir, ".config/agents/skills");
+  const skillsSrc = join17(distDir, "skills");
   if (existsSync12(skillsSrc)) {
     syncDir(skillsSrc, skillsDest);
   }
-  const pluginsDest = process.env.AMP_PLUGINS_DIR || join16(homeDir, ".amp/plugins");
-  const pluginSrc = join16(distDir, "plugins/loaf.js");
+  const pluginsDest = process.env.AMP_PLUGINS_DIR || join17(homeDir, ".amp/plugins");
+  const pluginSrc = join17(distDir, "plugins/loaf.js");
   if (existsSync12(pluginSrc)) {
-    mkdirSync10(pluginsDest, { recursive: true });
-    cpSync6(pluginSrc, join16(pluginsDest, "loaf.js"));
+    mkdirSync11(pluginsDest, { recursive: true });
+    cpSync6(pluginSrc, join17(pluginsDest, "loaf.js"));
   }
   writeMarker(configDir);
 }
@@ -2283,8 +2354,8 @@ var INSTALLERS = {
 };
 
 // cli/lib/install/fenced-section.ts
-import { readFileSync as readFileSync12, writeFileSync as writeFileSync11, mkdirSync as mkdirSync11 } from "fs";
-import { join as join17, dirname as dirname5 } from "path";
+import { readFileSync as readFileSync11, writeFileSync as writeFileSync11, mkdirSync as mkdirSync12 } from "fs";
+import { join as join18, dirname as dirname4 } from "path";
 import { fileURLToPath as fileURLToPath3 } from "url";
 var FENCED_START = "<!-- loaf:managed:start";
 var FENCED_END = "<!-- loaf:managed:end -->";
@@ -2299,14 +2370,14 @@ var TARGET_FILES = {
   // NOTE: gemini excluded - per SPEC-020, Gemini has no prompt overlay/project-file layer
 };
 function getVersion3() {
-  const __dirname7 = dirname5(fileURLToPath3(import.meta.url));
+  const __dirname7 = dirname4(fileURLToPath3(import.meta.url));
   for (const candidate of [
-    join17(__dirname7, "..", "..", "..", "package.json"),
-    join17(__dirname7, "..", "..", "package.json"),
-    join17(__dirname7, "..", "package.json")
+    join18(__dirname7, "..", "..", "..", "package.json"),
+    join18(__dirname7, "..", "..", "package.json"),
+    join18(__dirname7, "..", "package.json")
   ]) {
     try {
-      const pkg = JSON.parse(readFileSync12(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync11(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;
@@ -2357,14 +2428,14 @@ function generateFencedContent(version) {
 function resolveTargetFile(target, projectRoot) {
   const targetPath = TARGET_FILES[target];
   if (!targetPath) return null;
-  return join17(projectRoot, targetPath);
+  return join18(projectRoot, targetPath);
 }
 function installFencedSection(targetFile, upgrade = false) {
   const currentVersion = getVersion3();
   let fileContent = "";
   let fileExisted = false;
   try {
-    fileContent = readFileSync12(targetFile, "utf-8");
+    fileContent = readFileSync11(targetFile, "utf-8");
     fileExisted = true;
   } catch {
   }
@@ -2389,7 +2460,7 @@ function installFencedSection(targetFile, upgrade = false) {
       writeFileSync11(targetFile, fileContent);
       return { action: "appended", version: currentVersion };
     } else {
-      mkdirSync11(dirname5(targetFile), { recursive: true });
+      mkdirSync12(dirname4(targetFile), { recursive: true });
       const isMdc = targetFile.endsWith(".mdc");
       const prefix = isMdc ? "---\ndescription: Loaf framework conventions\nalwaysApply: true\n---\n\n" : "";
       writeFileSync11(targetFile, prefix + newContent + "\n");
@@ -2417,7 +2488,7 @@ function installFencedSectionsForTargets(targets, projectRoot = process.cwd(), u
 }
 
 // cli/commands/install.ts
-var __dirname2 = dirname6(fileURLToPath4(import.meta.url));
+var __dirname2 = dirname5(fileURLToPath4(import.meta.url));
 var bold2 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green2 = (s) => `\x1B[32m${s}\x1B[0m`;
 var red2 = (s) => `\x1B[31m${s}\x1B[0m`;
@@ -2427,13 +2498,13 @@ var white = (s) => `\x1B[97m${s}\x1B[0m`;
 function findRootDir2() {
   let dir = __dirname2;
   for (let i = 0; i < 10; i++) {
-    const pkgPath = join18(dir, "package.json");
+    const pkgPath = join19(dir, "package.json");
     try {
-      const pkg = JSON.parse(readFileSync13(pkgPath, "utf-8"));
+      const pkg = JSON.parse(readFileSync12(pkgPath, "utf-8"));
       if (pkg.name === "loaf") return dir;
     } catch {
     }
-    const parent = dirname6(dir);
+    const parent = dirname5(dir);
     if (parent === dir) break;
     dir = parent;
   }
@@ -2460,9 +2531,9 @@ function isLoafOnPath() {
   }
 }
 async function installLoafBinary(rootDir) {
-  const localBinDir = join18(process.env.HOME || "~", ".local", "bin");
-  const sourceBinary = join18(rootDir, "dist-cli", "index.js");
-  const targetBinary = join18(localBinDir, "loaf");
+  const localBinDir = join19(process.env.HOME || "~", ".local", "bin");
+  const sourceBinary = join19(rootDir, "dist-cli", "index.js");
+  const targetBinary = join19(localBinDir, "loaf");
   if (!existsSync14(sourceBinary)) {
     console.log(`  ${red2("\u2717")} CLI binary not found at ${sourceBinary}`);
     console.log(`  ${gray2("Run 'npm run build:cli' first.")}`);
@@ -2470,7 +2541,7 @@ async function installLoafBinary(rootDir) {
   }
   if (!existsSync14(localBinDir)) {
     try {
-      mkdirSync12(localBinDir, { recursive: true });
+      mkdirSync13(localBinDir, { recursive: true });
       console.log(`  ${green2("\u2713")} Created ${localBinDir}`);
     } catch (err) {
       console.log(`  ${red2("\u2717")} Could not create ${localBinDir}: ${err}`);
@@ -2504,7 +2575,7 @@ var VALID_TARGETS = Object.keys(DEFAULT_CONFIG_DIRS);
 function registerInstallCommand(program2) {
   program2.command("install").description("Install Loaf to detected AI tool configurations").option("--to <target>", 'Target to install to (or "all")').option("--upgrade", "Update only already-installed targets").action(async (options) => {
     const rootDir = findRootDir2();
-    const distDir = join18(rootDir, "dist");
+    const distDir = join19(rootDir, "dist");
     const devMode = isDevMode(rootDir);
     console.log(`
 ${bold2("loaf install")}
@@ -2641,7 +2712,7 @@ ${gray2("Valid targets:")} ${VALID_TARGETS.join(", ")}, all`
     for (const target of selectedTargets) {
       const tool = tools.find((t) => t.key === target);
       const configDir = tool?.configDir || DEFAULT_CONFIG_DIRS[target];
-      const targetDistDir = join18(distDir, target);
+      const targetDistDir = join19(distDir, target);
       if (!existsSync14(targetDistDir)) {
         console.log(
           `  ${red2("\u2717")} ${target} \u2014 no build output found. Run ${bold2("loaf build")} first.`
@@ -2709,21 +2780,21 @@ ${gray2("Valid targets:")} ${VALID_TARGETS.join(", ")}, all`
 // cli/commands/init.ts
 import {
   existsSync as existsSync16,
-  mkdirSync as mkdirSync13,
+  mkdirSync as mkdirSync14,
   writeFileSync as writeFileSync12,
   symlinkSync,
   lstatSync,
   realpathSync
 } from "fs";
-import { join as join20, relative, dirname as dirname7 } from "path";
+import { join as join21, relative, dirname as dirname6 } from "path";
 import { createInterface as createInterface2 } from "readline";
 
 // cli/lib/detect/project.ts
-import { existsSync as existsSync15, readFileSync as readFileSync14 } from "fs";
-import { join as join19 } from "path";
+import { existsSync as existsSync15, readFileSync as readFileSync13 } from "fs";
+import { join as join20 } from "path";
 function safeReadFile(path) {
   try {
-    return readFileSync14(path, "utf-8");
+    return readFileSync13(path, "utf-8");
   } catch {
     return "";
   }
@@ -2736,41 +2807,41 @@ function hasJsFamily(languages) {
 }
 function detectLanguages(cwd) {
   const languages = [];
-  if (existsSync15(join19(cwd, "tsconfig.json"))) {
+  if (existsSync15(join20(cwd, "tsconfig.json"))) {
     languages.push({ name: "TypeScript", confidence: "high", indicator: "tsconfig.json" });
-  } else if (existsSync15(join19(cwd, "package.json"))) {
-    const content = safeReadFile(join19(cwd, "package.json"));
+  } else if (existsSync15(join20(cwd, "package.json"))) {
+    const content = safeReadFile(join20(cwd, "package.json"));
     if (content.includes('"typescript"') || content.includes('"ts-node"')) {
       languages.push({ name: "TypeScript", confidence: "medium", indicator: "package.json (typescript in deps)" });
     }
   }
   if (!hasLanguage(languages, "TypeScript")) {
-    if (existsSync15(join19(cwd, "package.json"))) {
+    if (existsSync15(join20(cwd, "package.json"))) {
       languages.push({ name: "JavaScript", confidence: "high", indicator: "package.json" });
     }
   }
-  if (existsSync15(join19(cwd, "pyproject.toml"))) {
+  if (existsSync15(join20(cwd, "pyproject.toml"))) {
     languages.push({ name: "Python", confidence: "high", indicator: "pyproject.toml" });
-  } else if (existsSync15(join19(cwd, "setup.py"))) {
+  } else if (existsSync15(join20(cwd, "setup.py"))) {
     languages.push({ name: "Python", confidence: "high", indicator: "setup.py" });
-  } else if (existsSync15(join19(cwd, "requirements.txt"))) {
+  } else if (existsSync15(join20(cwd, "requirements.txt"))) {
     languages.push({ name: "Python", confidence: "medium", indicator: "requirements.txt" });
-  } else if (existsSync15(join19(cwd, "uv.lock"))) {
+  } else if (existsSync15(join20(cwd, "uv.lock"))) {
     languages.push({ name: "Python", confidence: "medium", indicator: "uv.lock" });
-  } else if (existsSync15(join19(cwd, "Pipfile"))) {
+  } else if (existsSync15(join20(cwd, "Pipfile"))) {
     languages.push({ name: "Python", confidence: "medium", indicator: "Pipfile" });
   }
-  if (existsSync15(join19(cwd, "Gemfile"))) {
+  if (existsSync15(join20(cwd, "Gemfile"))) {
     languages.push({ name: "Ruby", confidence: "high", indicator: "Gemfile" });
-  } else if (existsSync15(join19(cwd, ".ruby-version"))) {
+  } else if (existsSync15(join20(cwd, ".ruby-version"))) {
     languages.push({ name: "Ruby", confidence: "medium", indicator: ".ruby-version" });
-  } else if (existsSync15(join19(cwd, ".ruby-gemset"))) {
+  } else if (existsSync15(join20(cwd, ".ruby-gemset"))) {
     languages.push({ name: "Ruby", confidence: "medium", indicator: ".ruby-gemset" });
   }
-  if (existsSync15(join19(cwd, "go.mod"))) {
+  if (existsSync15(join20(cwd, "go.mod"))) {
     languages.push({ name: "Go", confidence: "high", indicator: "go.mod" });
   }
-  if (existsSync15(join19(cwd, "Cargo.toml"))) {
+  if (existsSync15(join20(cwd, "Cargo.toml"))) {
     languages.push({ name: "Rust", confidence: "high", indicator: "Cargo.toml" });
   }
   return languages;
@@ -2780,26 +2851,26 @@ function detectFrameworks(cwd, languages) {
   if (hasJsFamily(languages)) {
     const lang = hasLanguage(languages, "TypeScript") ? "TypeScript" : "JavaScript";
     const nextConfigs = ["next.config.js", "next.config.mjs", "next.config.ts"];
-    const nextIndicator = nextConfigs.find((f) => existsSync15(join19(cwd, f)));
+    const nextIndicator = nextConfigs.find((f) => existsSync15(join20(cwd, f)));
     if (nextIndicator) {
       frameworks.push({ name: "Next.js", language: lang, indicator: nextIndicator });
     }
-    if (!nextIndicator && existsSync15(join19(cwd, "package.json"))) {
-      const content = safeReadFile(join19(cwd, "package.json"));
+    if (!nextIndicator && existsSync15(join20(cwd, "package.json"))) {
+      const content = safeReadFile(join20(cwd, "package.json"));
       if (content.includes('"react"')) {
         frameworks.push({ name: "React", language: lang, indicator: "package.json (react in deps)" });
       }
     }
   }
   if (hasLanguage(languages, "Python")) {
-    const pyprojectContent = safeReadFile(join19(cwd, "pyproject.toml"));
-    const requirementsContent = safeReadFile(join19(cwd, "requirements.txt"));
+    const pyprojectContent = safeReadFile(join20(cwd, "pyproject.toml"));
+    const requirementsContent = safeReadFile(join20(cwd, "requirements.txt"));
     const pyDeps = pyprojectContent + "\n" + requirementsContent;
     if (pyDeps.includes("fastapi")) {
       frameworks.push({ name: "FastAPI", language: "Python", indicator: "fastapi in deps" });
     }
-    if (existsSync15(join19(cwd, "manage.py")) || pyDeps.includes("django")) {
-      const indicator = existsSync15(join19(cwd, "manage.py")) ? "manage.py" : "django in deps";
+    if (existsSync15(join20(cwd, "manage.py")) || pyDeps.includes("django")) {
+      const indicator = existsSync15(join20(cwd, "manage.py")) ? "manage.py" : "django in deps";
       frameworks.push({ name: "Django", language: "Python", indicator });
     }
     if (pyDeps.includes("flask")) {
@@ -2807,8 +2878,8 @@ function detectFrameworks(cwd, languages) {
     }
   }
   if (hasLanguage(languages, "Ruby")) {
-    if (existsSync15(join19(cwd, "config", "routes.rb")) || existsSync15(join19(cwd, "bin", "rails"))) {
-      const indicator = existsSync15(join19(cwd, "config", "routes.rb")) ? "config/routes.rb" : "bin/rails";
+    if (existsSync15(join20(cwd, "config", "routes.rb")) || existsSync15(join20(cwd, "bin", "rails"))) {
+      const indicator = existsSync15(join20(cwd, "config", "routes.rb")) ? "config/routes.rb" : "bin/rails";
       frameworks.push({ name: "Rails", language: "Ruby", indicator });
     }
   }
@@ -2821,14 +2892,14 @@ function detectExistingStructure(cwd) {
     "docs/ARCHITECTURE.md",
     "README.md"
   ];
-  const existingDocs = docFiles.filter((f) => existsSync15(join19(cwd, f)));
+  const existingDocs = docFiles.filter((f) => existsSync15(join20(cwd, f)));
   return {
-    hasAgentsDir: existsSync15(join19(cwd, ".agents")),
-    hasAgentsMd: existsSync15(join19(cwd, ".agents", "AGENTS.md")),
-    hasDocsDir: existsSync15(join19(cwd, "docs")),
-    hasChangelog: existsSync15(join19(cwd, "CHANGELOG.md")),
-    hasClaudeDir: existsSync15(join19(cwd, ".claude")),
-    hasLoafJson: existsSync15(join19(cwd, ".agents", "loaf.json")),
+    hasAgentsDir: existsSync15(join20(cwd, ".agents")),
+    hasAgentsMd: existsSync15(join20(cwd, ".agents", "AGENTS.md")),
+    hasDocsDir: existsSync15(join20(cwd, "docs")),
+    hasChangelog: existsSync15(join20(cwd, "CHANGELOG.md")),
+    hasClaudeDir: existsSync15(join20(cwd, ".claude")),
+    hasLoafJson: existsSync15(join20(cwd, ".agents", "loaf.json")),
     existingDocs
   };
 }
@@ -2844,7 +2915,7 @@ var yellow2 = (s) => `\x1B[33m${s}\x1B[0m`;
 function withinProject(cwd, fullPath) {
   let check = fullPath;
   while (!existsSync16(check) && check !== cwd) {
-    check = dirname7(check);
+    check = dirname6(check);
   }
   try {
     const realCheck = realpathSync(check);
@@ -3038,13 +3109,13 @@ function scaffoldDirs(cwd) {
   const created = [];
   const skipped = [];
   for (const dir of SCAFFOLD_DIRS) {
-    const fullPath = join20(cwd, dir);
+    const fullPath = join21(cwd, dir);
     if (!existsSync16(fullPath)) {
       if (!withinProject(cwd, fullPath)) {
         skipped.push(dir + "/");
         continue;
       }
-      mkdirSync13(fullPath, { recursive: true });
+      mkdirSync14(fullPath, { recursive: true });
       created.push(dir + "/");
     }
   }
@@ -3054,15 +3125,15 @@ function scaffoldFiles(cwd) {
   const created = [];
   const skipped = [];
   for (const [relPath, contentFn] of SCAFFOLD_FILES) {
-    const fullPath = join20(cwd, relPath);
+    const fullPath = join21(cwd, relPath);
     if (!existsSync16(fullPath)) {
       if (!withinProject(cwd, fullPath)) {
         skipped.push(relPath);
         continue;
       }
-      const parentDir = dirname7(fullPath);
+      const parentDir = dirname6(fullPath);
       if (!existsSync16(parentDir)) {
-        mkdirSync13(parentDir, { recursive: true });
+        mkdirSync14(parentDir, { recursive: true });
       }
       writeFileSync12(fullPath, contentFn(), "utf-8");
       created.push(relPath);
@@ -3130,25 +3201,25 @@ ${bold3("loaf init")}
       console.log();
     }
     if (options.symlinks) {
-      const agentsMdPath = join20(cwd, ".agents", "AGENTS.md");
+      const agentsMdPath = join21(cwd, ".agents", "AGENTS.md");
       if (existsSync16(agentsMdPath)) {
         console.log(`  ${bold3("Symlinks:")}`);
-        const claudeSymlink = join20(cwd, ".claude", "CLAUDE.md");
+        const claudeSymlink = join21(cwd, ".claude", "CLAUDE.md");
         if (!fileOrSymlinkExists(claudeSymlink)) {
           const yes = await askYesNo2(
             `    Create .claude/CLAUDE.md \u2192 .agents/AGENTS.md? [y/N] `
           );
           if (yes) {
-            const claudeDir = join20(cwd, ".claude");
+            const claudeDir = join21(cwd, ".claude");
             if (!existsSync16(claudeDir)) {
-              mkdirSync13(claudeDir, { recursive: true });
+              mkdirSync14(claudeDir, { recursive: true });
             }
             const relTarget = relative(claudeDir, agentsMdPath);
             symlinkSync(relTarget, claudeSymlink);
             console.log(`    ${green3("\u2713")} Created .claude/CLAUDE.md`);
           }
         }
-        const rootSymlink = join20(cwd, "AGENTS.md");
+        const rootSymlink = join21(cwd, "AGENTS.md");
         if (!fileOrSymlinkExists(rootSymlink)) {
           const yes = await askYesNo2(
             `    Create ./AGENTS.md \u2192 .agents/AGENTS.md? [y/N] `
@@ -3195,13 +3266,13 @@ ${bold3("loaf init")}
 import { execFileSync as execFileSync5 } from "child_process";
 import {
   existsSync as existsSync18,
-  readFileSync as readFileSync16,
+  readFileSync as readFileSync15,
   writeFileSync as writeFileSync13,
   readdirSync as readdirSync8,
   mkdtempSync,
   unlinkSync as unlinkSync2
 } from "fs";
-import { join as join22 } from "path";
+import { join as join23 } from "path";
 import { tmpdir } from "os";
 import { createInterface as createInterface4 } from "readline";
 
@@ -3337,8 +3408,8 @@ function suggestBump(commits) {
 }
 
 // cli/lib/release/version.ts
-import { existsSync as existsSync17, readFileSync as readFileSync15 } from "fs";
-import { join as join21, relative as relative2 } from "path";
+import { existsSync as existsSync17, readFileSync as readFileSync14 } from "fs";
+import { join as join22, relative as relative2 } from "path";
 function parseSemVer(version) {
   const hyphenIndex = version.indexOf("-");
   const core = hyphenIndex === -1 ? version : version.slice(0, hyphenIndex);
@@ -3471,10 +3542,10 @@ function detectVersionFiles(cwd) {
   const ecosystemFiles = [];
   let loafFile = null;
   for (const candidate of CANDIDATES) {
-    const absolutePath = join21(cwd, candidate.relativePath);
+    const absolutePath = join22(cwd, candidate.relativePath);
     if (!existsSync17(absolutePath)) continue;
     try {
-      const content = readFileSync15(absolutePath, "utf-8");
+      const content = readFileSync14(absolutePath, "utf-8");
       let version;
       if (candidate.source.type === "json") {
         const parsed = JSON.parse(content);
@@ -3508,7 +3579,7 @@ function prepareVersionUpdates(files, newVersion) {
   const updates = [];
   for (const file of files) {
     try {
-      const content = readFileSync15(file.path, "utf-8");
+      const content = readFileSync14(file.path, "utf-8");
       let updated;
       if (file.format === "json") {
         const parsed = JSON.parse(content);
@@ -3725,14 +3796,14 @@ function isGhAvailable() {
   }
 }
 function scanIncompleteTasks(cwd) {
-  const tasksDir = join22(cwd, ".agents", "tasks");
+  const tasksDir = join23(cwd, ".agents", "tasks");
   if (!existsSync18(tasksDir)) return [];
   const incomplete = [];
   try {
     const files = readdirSync8(tasksDir).filter((f) => f.endsWith(".md"));
     for (const file of files) {
       try {
-        const content = readFileSync16(join22(tasksDir, file), "utf-8");
+        const content = readFileSync15(join23(tasksDir, file), "utf-8");
         const lines = content.split("\n").slice(0, 20);
         for (const line of lines) {
           const match = line.match(/^status:\s*(.+)/);
@@ -3851,11 +3922,11 @@ ${bold4("loaf release")}
     const editor = getEditor();
     if (editor && process.stdin.isTTY) {
       try {
-        const tmpDir = mkdtempSync(join22(tmpdir(), "loaf-release-"));
-        const tmpFile = join22(tmpDir, "CHANGELOG_SECTION.md");
+        const tmpDir = mkdtempSync(join23(tmpdir(), "loaf-release-"));
+        const tmpFile = join23(tmpDir, "CHANGELOG_SECTION.md");
         writeFileSync13(tmpFile, changelogSection, "utf-8");
         execFileSync5(editor, [tmpFile], { stdio: "inherit" });
-        changelogSection = readFileSync16(tmpFile, "utf-8");
+        changelogSection = readFileSync15(tmpFile, "utf-8");
         unlinkSync2(tmpFile);
         console.log(`  ${green4("Edited changelog accepted.")}`);
         console.log();
@@ -3947,10 +4018,10 @@ ${bold4("loaf release")}
       process.exit(1);
     }
     try {
-      const changelogPath = join22(cwd, "CHANGELOG.md");
+      const changelogPath = join23(cwd, "CHANGELOG.md");
       let changelogContent;
       if (existsSync18(changelogPath)) {
-        const existing = readFileSync16(changelogPath, "utf-8");
+        const existing = readFileSync15(changelogPath, "utf-8");
         const inserted = insertIntoChangelog(existing, changelogSection);
         if (inserted) {
           changelogContent = inserted;
@@ -4043,21 +4114,21 @@ ${bold4("loaf release")}
 }
 
 // cli/commands/task.ts
-import { existsSync as existsSync21, mkdirSync as mkdirSync15, readFileSync as readFileSync18, writeFileSync as writeFileSync15 } from "fs";
-import { join as join25 } from "path";
+import { existsSync as existsSync21, mkdirSync as mkdirSync16, readFileSync as readFileSync17, writeFileSync as writeFileSync15 } from "fs";
+import { join as join26 } from "path";
 import matter7 from "gray-matter";
 
 // cli/lib/tasks/resolve.ts
 import { existsSync as existsSync20 } from "fs";
-import { join as join24, dirname as dirname8 } from "path";
+import { join as join25, dirname as dirname7 } from "path";
 
 // cli/lib/tasks/migrate.ts
-import { existsSync as existsSync19, mkdirSync as mkdirSync14, readFileSync as readFileSync17, renameSync, writeFileSync as writeFileSync14, readdirSync as readdirSync9 } from "fs";
-import { join as join23, basename as basename5, relative as relative3 } from "path";
+import { existsSync as existsSync19, mkdirSync as mkdirSync15, readFileSync as readFileSync16, renameSync, writeFileSync as writeFileSync14, readdirSync as readdirSync9 } from "fs";
+import { join as join24, basename as basename3, relative as relative3 } from "path";
 import matter6 from "gray-matter";
 
 // cli/lib/tasks/parser.ts
-import { basename as basename4 } from "path";
+import { basename as basename2 } from "path";
 import matter5 from "gray-matter";
 
 // cli/lib/tasks/types.ts
@@ -4142,7 +4213,7 @@ function normalizeDate(value) {
   return (/* @__PURE__ */ new Date()).toISOString();
 }
 function parseTaskFilename(filePath) {
-  const name = basename4(filePath, ".md");
+  const name = basename2(filePath, ".md");
   const match = name.match(/^(TASK-\d+)(?:-(.+))?$/);
   if (!match) {
     return { id: null, slug: name };
@@ -4153,7 +4224,7 @@ function parseTaskFilename(filePath) {
   };
 }
 function parseSpecFilename(filePath) {
-  const name = basename4(filePath, ".md");
+  const name = basename2(filePath, ".md");
   const match = name.match(/^(SPEC-\d+)/);
   return { id: match ? match[1] : null };
 }
@@ -4164,13 +4235,13 @@ function parseTaskFile(filePath, content) {
     const { id: filenameId, slug } = parseTaskFilename(filePath);
     const id = fm.id || filenameId;
     if (!id) {
-      console.error(`  ${yellow4("warn:")} Could not determine task ID for ${basename4(filePath)}`);
+      console.error(`  ${yellow4("warn:")} Could not determine task ID for ${basename2(filePath)}`);
       return null;
     }
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const status = normalizeTaskStatus(fm.status);
     const entry = {
-      title: fm.title || basename4(filePath, ".md"),
+      title: fm.title || basename2(filePath, ".md"),
       slug,
       spec: fm.spec || null,
       status,
@@ -4183,12 +4254,12 @@ function parseTaskFile(filePath, content) {
       created: normalizeDate(fm.created),
       updated: normalizeDate(fm.updated ?? fm.created),
       completed_at: status === "done" ? fm.completed_at ? normalizeDate(fm.completed_at) : normalizeDate(fm.updated ?? fm.created ?? now) : null,
-      file: basename4(filePath)
+      file: basename2(filePath)
     };
     return { id, entry };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`  ${yellow4("warn:")} Failed to parse ${basename4(filePath)}: ${message}`);
+    console.error(`  ${yellow4("warn:")} Failed to parse ${basename2(filePath)}: ${message}`);
     return null;
   }
 }
@@ -4199,22 +4270,22 @@ function parseSpecFile(filePath, content) {
     const { id: filenameId } = parseSpecFilename(filePath);
     const id = fm.id || filenameId;
     if (!id) {
-      console.error(`  ${yellow4("warn:")} Could not determine spec ID for ${basename4(filePath)}`);
+      console.error(`  ${yellow4("warn:")} Could not determine spec ID for ${basename2(filePath)}`);
       return null;
     }
     const entry = {
-      title: fm.title || basename4(filePath, ".md"),
+      title: fm.title || basename2(filePath, ".md"),
       status: normalizeSpecStatus(fm.status),
       appetite: fm.appetite || null,
       requirement: fm.requirement || null,
       source: fm.source || null,
       created: normalizeDate(fm.created),
-      file: basename4(filePath)
+      file: basename2(filePath)
     };
     return { id, entry };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`  ${yellow4("warn:")} Failed to parse ${basename4(filePath)}: ${message}`);
+    console.error(`  ${yellow4("warn:")} Failed to parse ${basename2(filePath)}: ${message}`);
     return null;
   }
 }
@@ -4225,7 +4296,7 @@ var gray5 = (s) => `\x1B[90m${s}\x1B[0m`;
 function collectFiles(dir, prefix) {
   if (!existsSync19(dir)) return [];
   try {
-    return readdirSync9(dir).filter((f) => f.startsWith(prefix) && f.endsWith(".md")).map((f) => join23(dir, f));
+    return readdirSync9(dir).filter((f) => f.startsWith(prefix) && f.endsWith(".md")).map((f) => join24(dir, f));
   } catch {
     return [];
   }
@@ -4237,13 +4308,13 @@ function collectFilesDeep(dir, prefix) {
     const entries = readdirSync9(dir, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.isFile() && entry.name.startsWith(prefix) && entry.name.endsWith(".md")) {
-        results.push(join23(dir, entry.name));
+        results.push(join24(dir, entry.name));
       } else if (entry.isDirectory()) {
         try {
-          const subEntries = readdirSync9(join23(dir, entry.name));
+          const subEntries = readdirSync9(join24(dir, entry.name));
           for (const sub of subEntries) {
             if (sub.startsWith(prefix) && sub.endsWith(".md")) {
-              results.push(join23(dir, entry.name, sub));
+              results.push(join24(dir, entry.name, sub));
             }
           }
         } catch {
@@ -4259,26 +4330,26 @@ function extractNumber(id) {
   return match ? parseInt(match[0], 10) : 0;
 }
 function buildIndexFromFiles(agentsDir) {
-  const tasksDir = join23(agentsDir, "tasks");
-  const specsDir = join23(agentsDir, "specs");
-  const tasksArchiveDir = join23(tasksDir, "archive");
-  const specsArchiveDir = join23(specsDir, "archive");
+  const tasksDir = join24(agentsDir, "tasks");
+  const specsDir = join24(agentsDir, "specs");
+  const tasksArchiveDir = join24(tasksDir, "archive");
+  const specsArchiveDir = join24(specsDir, "archive");
   const tasks = {};
   const specs = {};
   let maxTaskNum = 0;
   const activeTaskFiles = collectFiles(tasksDir, "TASK-");
   const archivedTaskFiles = collectFilesDeep(tasksArchiveDir, "TASK-");
   for (const filePath of activeTaskFiles) {
-    const content = readFileSync17(filePath, "utf-8");
+    const content = readFileSync16(filePath, "utf-8");
     const result = parseTaskFile(filePath, content);
     if (result) {
-      result.entry.file = basename5(filePath);
+      result.entry.file = basename3(filePath);
       tasks[result.id] = result.entry;
       maxTaskNum = Math.max(maxTaskNum, extractNumber(result.id));
     }
   }
   for (const filePath of archivedTaskFiles) {
-    const content = readFileSync17(filePath, "utf-8");
+    const content = readFileSync16(filePath, "utf-8");
     const result = parseTaskFile(filePath, content);
     if (result) {
       result.entry.file = relative3(tasksDir, filePath);
@@ -4289,15 +4360,15 @@ function buildIndexFromFiles(agentsDir) {
   const activeSpecFiles = collectFiles(specsDir, "SPEC-");
   const archivedSpecFiles = collectFilesDeep(specsArchiveDir, "SPEC-");
   for (const filePath of activeSpecFiles) {
-    const content = readFileSync17(filePath, "utf-8");
+    const content = readFileSync16(filePath, "utf-8");
     const result = parseSpecFile(filePath, content);
     if (result) {
-      result.entry.file = basename5(filePath);
+      result.entry.file = basename3(filePath);
       specs[result.id] = result.entry;
     }
   }
   for (const filePath of archivedSpecFiles) {
-    const content = readFileSync17(filePath, "utf-8");
+    const content = readFileSync16(filePath, "utf-8");
     const result = parseSpecFile(filePath, content);
     if (result) {
       result.entry.file = relative3(specsDir, filePath);
@@ -4314,7 +4385,7 @@ function buildIndexFromFiles(agentsDir) {
 function loadIndex(indexPath) {
   if (!existsSync19(indexPath)) return null;
   try {
-    const content = readFileSync17(indexPath, "utf-8");
+    const content = readFileSync16(indexPath, "utf-8");
     const parsed = JSON.parse(content);
     if (typeof parsed.version !== "number" || typeof parsed.next_id !== "number" || typeof parsed.tasks !== "object" || typeof parsed.specs !== "object") {
       console.error(`  ${yellow5("warn:")} TASKS.json has invalid shape, ignoring`);
@@ -4365,7 +4436,7 @@ function frontmatterEquals(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 function resolveFilePath(agentsDir, subdir, relFile) {
-  return join23(agentsDir, subdir, relFile);
+  return join24(agentsDir, subdir, relFile);
 }
 function syncFrontmatterFromIndex(agentsDir, index) {
   for (const [id, entry] of Object.entries(index.tasks)) {
@@ -4375,7 +4446,7 @@ function syncFrontmatterFromIndex(agentsDir, index) {
       continue;
     }
     try {
-      const raw = readFileSync17(filePath, "utf-8");
+      const raw = readFileSync16(filePath, "utf-8");
       const { data: existingFm, content: body } = matter6(raw);
       const newFm = taskEntryToFrontmatter(id, entry);
       if (frontmatterEquals(existingFm, newFm)) continue;
@@ -4393,7 +4464,7 @@ function syncFrontmatterFromIndex(agentsDir, index) {
       continue;
     }
     try {
-      const raw = readFileSync17(filePath, "utf-8");
+      const raw = readFileSync16(filePath, "utf-8");
       const { data: existingFm, content: body } = matter6(raw);
       const newFm = specEntryToFrontmatter(id, entry);
       if (frontmatterEquals(existingFm, newFm)) continue;
@@ -4406,10 +4477,10 @@ function syncFrontmatterFromIndex(agentsDir, index) {
   }
 }
 function findOrphans(agentsDir, index) {
-  const tasksDir = join23(agentsDir, "tasks");
-  const specsDir = join23(agentsDir, "specs");
-  const tasksArchiveDir = join23(tasksDir, "archive");
-  const specsArchiveDir = join23(specsDir, "archive");
+  const tasksDir = join24(agentsDir, "tasks");
+  const specsDir = join24(agentsDir, "specs");
+  const tasksArchiveDir = join24(tasksDir, "archive");
+  const specsArchiveDir = join24(specsDir, "archive");
   const orphanTasks = [];
   const orphanSpecs = [];
   const knownTaskIds = new Set(Object.keys(index.tasks));
@@ -4417,7 +4488,7 @@ function findOrphans(agentsDir, index) {
   const checkTaskFiles = (dir, baseDir, deep) => {
     const files = deep ? collectFilesDeep(dir, "TASK-") : collectFiles(dir, "TASK-");
     for (const filePath of files) {
-      const content = readFileSync17(filePath, "utf-8");
+      const content = readFileSync16(filePath, "utf-8");
       const result = parseTaskFile(filePath, content);
       if (result && !knownTaskIds.has(result.id)) {
         result.entry.file = relative3(baseDir, filePath);
@@ -4430,7 +4501,7 @@ function findOrphans(agentsDir, index) {
   const checkSpecFiles = (dir, baseDir, deep) => {
     const files = deep ? collectFilesDeep(dir, "SPEC-") : collectFiles(dir, "SPEC-");
     for (const filePath of files) {
-      const content = readFileSync17(filePath, "utf-8");
+      const content = readFileSync16(filePath, "utf-8");
       const result = parseSpecFile(filePath, content);
       if (result && !knownSpecIds.has(result.id)) {
         result.entry.file = relative3(baseDir, filePath);
@@ -4443,7 +4514,7 @@ function findOrphans(agentsDir, index) {
   return { tasks: orphanTasks, specs: orphanSpecs };
 }
 function archiveItems(baseDir, entries, ids, requiredStatus) {
-  const archiveDir = join23(baseDir, "archive");
+  const archiveDir = join24(baseDir, "archive");
   const results = [];
   for (const id of ids) {
     const entry = entries[id];
@@ -4459,13 +4530,13 @@ function archiveItems(baseDir, entries, ids, requiredStatus) {
       results.push({ id, status: "skipped", reason: "already archived" });
       continue;
     }
-    const srcPath = join23(baseDir, entry.file);
+    const srcPath = join24(baseDir, entry.file);
     if (!existsSync19(srcPath)) {
       results.push({ id, status: "skipped", reason: `file not found at ${entry.file}` });
       continue;
     }
-    mkdirSync14(archiveDir, { recursive: true });
-    const destPath = join23(archiveDir, entry.file);
+    mkdirSync15(archiveDir, { recursive: true });
+    const destPath = join24(archiveDir, entry.file);
     if (existsSync19(destPath)) {
       results.push({ id, status: "skipped", reason: `archive/${entry.file} already exists` });
       continue;
@@ -4477,21 +4548,21 @@ function archiveItems(baseDir, entries, ids, requiredStatus) {
   return results;
 }
 function archiveTasks(agentsDir, index, taskIds) {
-  return archiveItems(join23(agentsDir, "tasks"), index.tasks, taskIds, "done");
+  return archiveItems(join24(agentsDir, "tasks"), index.tasks, taskIds, "done");
 }
 function archiveSpecs(agentsDir, index, specIds) {
-  return archiveItems(join23(agentsDir, "specs"), index.specs, specIds, "complete");
+  return archiveItems(join24(agentsDir, "specs"), index.specs, specIds, "complete");
 }
 
 // cli/lib/tasks/resolve.ts
 function findAgentsDir(startDir = process.cwd()) {
   let current = startDir;
   while (true) {
-    const candidate = join24(current, ".agents");
+    const candidate = join25(current, ".agents");
     if (existsSync20(candidate)) {
       return candidate;
     }
-    const parent = dirname8(current);
+    const parent = dirname7(current);
     if (parent === current) {
       return null;
     }
@@ -4499,7 +4570,7 @@ function findAgentsDir(startDir = process.cwd()) {
   }
 }
 function getOrBuildIndex(agentsDir) {
-  const indexPath = join24(agentsDir, "TASKS.json");
+  const indexPath = join25(agentsDir, "TASKS.json");
   if (existsSync20(indexPath)) {
     const index2 = loadIndex(indexPath);
     if (index2) return index2;
@@ -4600,7 +4671,7 @@ function countSpecs(index) {
   };
 }
 function rebuildTaskIndex(agentsDir) {
-  const indexPath = join25(agentsDir, "TASKS.json");
+  const indexPath = join26(agentsDir, "TASKS.json");
   const index = buildIndexFromFiles(agentsDir);
   saveIndex(indexPath, index);
   return index;
@@ -4624,9 +4695,9 @@ function registerTaskCommand(program2) {
         }
         process.stdout.write(JSON.stringify(filtered, null, 2) + "\n");
       } else {
-        const indexPath = join25(agentsDir, "TASKS.json");
+        const indexPath = join26(agentsDir, "TASKS.json");
         if (existsSync21(indexPath)) {
-          process.stdout.write(readFileSync18(indexPath, "utf-8"));
+          process.stdout.write(readFileSync17(indexPath, "utf-8"));
         } else {
           process.stdout.write(JSON.stringify(index, null, 2) + "\n");
         }
@@ -4715,7 +4786,7 @@ function registerTaskCommand(program2) {
       console.log(`  Depends on: ${entry.depends_on.join(", ")}`);
     }
     console.log(`  File: .agents/tasks/${entry.file}`);
-    const filePath = join25(agentsDir, "tasks", entry.file);
+    const filePath = join26(agentsDir, "tasks", entry.file);
     if (!existsSync21(filePath)) {
       console.log();
       console.log(`  ${gray6("(no detail file)")}`);
@@ -4723,7 +4794,7 @@ function registerTaskCommand(program2) {
       return;
     }
     try {
-      const raw = readFileSync18(filePath, "utf-8");
+      const raw = readFileSync17(filePath, "utf-8");
       const { content: body } = matter7(raw);
       const trimmedBody = body.replace(/^\n+/, "").replace(/\n+$/, "");
       if (trimmedBody.length > 0) {
@@ -4794,7 +4865,7 @@ function registerTaskCommand(program2) {
       process.exit(1);
     }
     const index = getOrBuildIndex(agentsDir);
-    const indexPath = join25(agentsDir, "TASKS.json");
+    const indexPath = join26(agentsDir, "TASKS.json");
     const priority = options.priority;
     if (!TASK_PRIORITIES.includes(priority)) {
       console.error(`  ${red4("error:")} Invalid priority "${options.priority}". Must be one of: ${TASK_PRIORITIES.join(", ")}`);
@@ -4839,9 +4910,9 @@ function registerTaskCommand(program2) {
     index.tasks[taskId] = entry;
     index.next_id = nextId + 1;
     saveIndex(indexPath, index);
-    const tasksDir = join25(agentsDir, "tasks");
+    const tasksDir = join26(agentsDir, "tasks");
     if (!existsSync21(tasksDir)) {
-      mkdirSync15(tasksDir, { recursive: true });
+      mkdirSync16(tasksDir, { recursive: true });
     }
     const frontmatterData = {
       id: taskId,
@@ -4871,7 +4942,7 @@ function registerTaskCommand(program2) {
 \`\`\`
 `;
     const mdContent = matter7.stringify(body, frontmatterData);
-    writeFileSync15(join25(tasksDir, fileName), mdContent, "utf-8");
+    writeFileSync15(join26(tasksDir, fileName), mdContent, "utf-8");
     console.log(`
   ${bold5("loaf task create")}
 `);
@@ -4955,7 +5026,7 @@ function registerTaskCommand(program2) {
       changes.push({ field: "Spec", from: oldSpec, to: newSpec || "(none)" });
     }
     entry.updated = (/* @__PURE__ */ new Date()).toISOString();
-    const indexPath = join25(agentsDir, "TASKS.json");
+    const indexPath = join26(agentsDir, "TASKS.json");
     saveIndex(indexPath, index);
     syncFrontmatterFromIndex(agentsDir, index);
     console.log(`
@@ -4985,7 +5056,7 @@ function registerTaskCommand(program2) {
       process.exit(1);
     }
     const index = getOrBuildIndex(agentsDir);
-    const indexPath = join25(agentsDir, "TASKS.json");
+    const indexPath = join26(agentsDir, "TASKS.json");
     let targetIds = [];
     if (options.spec) {
       if (!index.specs[options.spec]) {
@@ -5063,7 +5134,7 @@ function registerTaskCommand(program2) {
       console.error(`  ${red4("error:")} Could not find .agents/ directory`);
       process.exit(1);
     }
-    const indexPath = join25(agentsDir, "TASKS.json");
+    const indexPath = join26(agentsDir, "TASKS.json");
     console.log(`
   ${bold5("loaf task sync")}
 `);
@@ -5136,7 +5207,7 @@ function extractOrphanNumber(id) {
 
 // cli/commands/spec.ts
 import { existsSync as existsSync22 } from "fs";
-import { join as join26 } from "path";
+import { join as join27 } from "path";
 var bold6 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green6 = (s) => `\x1B[32m${s}\x1B[0m`;
 var red5 = (s) => `\x1B[31m${s}\x1B[0m`;
@@ -5162,7 +5233,7 @@ var STATUS_LABELS2 = {
   complete: "Complete"
 };
 function resolveIndex(agentsDir) {
-  const indexPath = join26(agentsDir, "TASKS.json");
+  const indexPath = join27(agentsDir, "TASKS.json");
   if (existsSync22(indexPath)) {
     const index2 = loadIndex(indexPath);
     if (index2) return index2;
@@ -5268,7 +5339,7 @@ ${bold6("  loaf spec list")}
       process.exit(1);
     }
     const index = resolveIndex(agentsDir);
-    const indexPath = join26(agentsDir, "TASKS.json");
+    const indexPath = join27(agentsDir, "TASKS.json");
     console.log(`
 ${bold6("  loaf spec archive")}
 `);
@@ -5302,14 +5373,14 @@ ${bold6("  loaf spec archive")}
 }
 
 // cli/commands/kb.ts
-import { existsSync as existsSync26, mkdirSync as mkdirSync16, readFileSync as readFileSync22, writeFileSync as writeFileSync16 } from "fs";
-import { join as join30, basename as basename6, relative as relative6, isAbsolute } from "path";
+import { existsSync as existsSync26, mkdirSync as mkdirSync17, readFileSync as readFileSync21, writeFileSync as writeFileSync16 } from "fs";
+import { join as join31, basename as basename4, relative as relative6, isAbsolute } from "path";
 import matter10 from "gray-matter";
 
 // cli/lib/kb/resolve.ts
 import { execFileSync as execFileSync6 } from "child_process";
-import { existsSync as existsSync23, readFileSync as readFileSync19 } from "fs";
-import { join as join27 } from "path";
+import { existsSync as existsSync23, readFileSync as readFileSync18 } from "fs";
+import { join as join28 } from "path";
 var DEFAULT_KB_CONFIG = {
   local: ["docs/knowledge", "docs/decisions"],
   staleness_threshold_days: 30,
@@ -5327,12 +5398,12 @@ function findGitRoot() {
   }
 }
 function loadKbConfig(gitRoot) {
-  const configPath = join27(gitRoot, ".agents", "loaf.json");
+  const configPath = join28(gitRoot, ".agents", "loaf.json");
   if (!existsSync23(configPath)) {
     return { ...DEFAULT_KB_CONFIG, local: [...DEFAULT_KB_CONFIG.local], imports: [...DEFAULT_KB_CONFIG.imports] };
   }
   try {
-    const raw = readFileSync19(configPath, "utf-8");
+    const raw = readFileSync18(configPath, "utf-8");
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || !parsed.knowledge) {
       return { ...DEFAULT_KB_CONFIG, local: [...DEFAULT_KB_CONFIG.local], imports: [...DEFAULT_KB_CONFIG.imports] };
@@ -5349,14 +5420,14 @@ function loadKbConfig(gitRoot) {
 }
 
 // cli/lib/kb/loader.ts
-import { existsSync as existsSync24, readdirSync as readdirSync10, readFileSync as readFileSync20 } from "fs";
-import { join as join28, relative as relative4 } from "path";
+import { existsSync as existsSync24, readdirSync as readdirSync10, readFileSync as readFileSync19 } from "fs";
+import { join as join29, relative as relative4 } from "path";
 import matter8 from "gray-matter";
 var yellow8 = (s) => `\x1B[33m${s}\x1B[0m`;
 function loadKnowledgeFiles(gitRoot, config) {
   const files = [];
   for (const dir of config.local) {
-    const absDir = join28(gitRoot, dir);
+    const absDir = join29(gitRoot, dir);
     if (!existsSync24(absDir)) {
       console.warn(`  ${yellow8("warn:")} KB directory not found: ${dir}`);
       continue;
@@ -5371,10 +5442,10 @@ function loadKnowledgeFiles(gitRoot, config) {
     }
     for (const entry of entries) {
       if (!entry.endsWith(".md")) continue;
-      const absPath = join28(absDir, entry);
+      const absPath = join29(absDir, entry);
       const relPath = relative4(gitRoot, absPath);
       try {
-        const raw = readFileSync20(absPath, "utf-8");
+        const raw = readFileSync19(absPath, "utf-8");
         const { data, content } = matter8(raw);
         if (!data || typeof data !== "object") continue;
         if (!Array.isArray(data.topics) || data.topics.length === 0) continue;
@@ -5427,8 +5498,8 @@ function normalizeImplementationStatus(value) {
 
 // cli/lib/kb/validate.ts
 import { execFileSync as execFileSync7 } from "child_process";
-import { existsSync as existsSync25, readdirSync as readdirSync11, readFileSync as readFileSync21 } from "fs";
-import { dirname as dirname9, join as join29, relative as relative5 } from "path";
+import { existsSync as existsSync25, readdirSync as readdirSync11, readFileSync as readFileSync20 } from "fs";
+import { dirname as dirname8, join as join30, relative as relative5 } from "path";
 import matter9 from "gray-matter";
 
 // cli/lib/kb/types.ts
@@ -5445,7 +5516,7 @@ function validateLoadedFiles(gitRoot, files) {
 function findSkippedFiles(gitRoot, config) {
   const results = [];
   for (const dir of config.local) {
-    const absDir = join29(gitRoot, dir);
+    const absDir = join30(gitRoot, dir);
     if (!existsSync25(absDir)) continue;
     let entries;
     try {
@@ -5455,10 +5526,10 @@ function findSkippedFiles(gitRoot, config) {
     }
     for (const entry of entries) {
       if (!entry.endsWith(".md")) continue;
-      const absPath = join29(absDir, entry);
+      const absPath = join30(absDir, entry);
       const relPath = relative5(gitRoot, absPath);
       try {
-        const raw = readFileSync21(absPath, "utf-8");
+        const raw = readFileSync20(absPath, "utf-8");
         const { data, content } = matter9(raw);
         if (!data || typeof data !== "object" || Object.keys(data).length === 0) {
           continue;
@@ -5539,8 +5610,8 @@ function validateLoadedFile(gitRoot, file) {
   }
   if (fm.depends_on) {
     for (const dep of fm.depends_on) {
-      const fromRoot = join29(gitRoot, dep);
-      const fromFileDir = join29(dirname9(file.path), dep);
+      const fromRoot = join30(gitRoot, dep);
+      const fromFileDir = join30(dirname8(file.path), dep);
       if (!existsSync25(fromRoot) && !existsSync25(fromFileDir)) {
         warnings.push({
           field: "depends_on",
@@ -5942,11 +6013,11 @@ function registerKbCommand(program2) {
       }
       process.exit(1);
     }
-    const absPath = isAbsolute(filePath) ? filePath : join30(gitRoot, filePath);
+    const absPath = isAbsolute(filePath) ? filePath : join31(gitRoot, filePath);
     const relPath = relative6(gitRoot, absPath);
     let raw;
     try {
-      raw = readFileSync22(absPath, "utf-8");
+      raw = readFileSync21(absPath, "utf-8");
     } catch {
       if (!options.json) {
         console.error(`  ${red6("error:")} File not found: ${relPath}`);
@@ -5989,24 +6060,24 @@ function registerKbCommand(program2) {
       }
       process.exit(1);
     }
-    const repoName = basename6(gitRoot);
+    const repoName = basename4(gitRoot);
     const actions = [];
     const dirs = ["docs/knowledge", "docs/decisions"];
     for (const dir of dirs) {
-      const fullPath = join30(gitRoot, dir);
+      const fullPath = join31(gitRoot, dir);
       if (existsSync26(fullPath)) {
         actions.push({ action: "directory", target: dir, status: "exists" });
       } else {
-        mkdirSync16(fullPath, { recursive: true });
+        mkdirSync17(fullPath, { recursive: true });
         actions.push({ action: "directory", target: dir, status: "created" });
       }
     }
-    const configPath = join30(gitRoot, ".agents", "loaf.json");
+    const configPath = join31(gitRoot, ".agents", "loaf.json");
     let configStatus = "exists";
     if (!existsSync26(configPath)) {
-      const agentsDir = join30(gitRoot, ".agents");
+      const agentsDir = join31(gitRoot, ".agents");
       if (!existsSync26(agentsDir)) {
-        mkdirSync16(agentsDir, { recursive: true });
+        mkdirSync17(agentsDir, { recursive: true });
       }
       const config = {
         knowledge: {
@@ -6019,7 +6090,7 @@ function registerKbCommand(program2) {
       configStatus = "created";
     } else {
       try {
-        const raw = readFileSync22(configPath, "utf-8");
+        const raw = readFileSync21(configPath, "utf-8");
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
           configStatus = "exists";
@@ -6046,8 +6117,8 @@ function registerKbCommand(program2) {
     if (qmdAvailable) {
       const existing = listCollections();
       const collections = [
-        { name: `${repoName}-knowledge`, path: join30(gitRoot, "docs/knowledge") },
-        { name: `${repoName}-decisions`, path: join30(gitRoot, "docs/decisions") }
+        { name: `${repoName}-knowledge`, path: join31(gitRoot, "docs/knowledge") },
+        { name: `${repoName}-decisions`, path: join31(gitRoot, "docs/decisions") }
       ];
       for (const col of collections) {
         if (existing.includes(col.name)) {
@@ -6136,11 +6207,11 @@ function registerKbCommand(program2) {
       }
       process.exit(0);
     }
-    const configPath = join30(gitRoot, ".agents", "loaf.json");
+    const configPath = join31(gitRoot, ".agents", "loaf.json");
     let parsed = {};
     if (existsSync26(configPath)) {
       try {
-        const raw = readFileSync22(configPath, "utf-8");
+        const raw = readFileSync21(configPath, "utf-8");
         const result = JSON.parse(raw);
         if (!result || typeof result !== "object" || Array.isArray(result)) {
           throw new Error("Expected a JSON object");
@@ -6157,9 +6228,9 @@ function registerKbCommand(program2) {
         process.exit(1);
       }
     } else {
-      const agentsDir = join30(gitRoot, ".agents");
+      const agentsDir = join31(gitRoot, ".agents");
       if (!existsSync26(agentsDir)) {
-        mkdirSync16(agentsDir, { recursive: true });
+        mkdirSync17(agentsDir, { recursive: true });
       }
     }
     const existing = listCollections();
@@ -6202,16 +6273,16 @@ function registerKbCommand(program2) {
 // cli/commands/setup.ts
 import {
   existsSync as existsSync27,
-  mkdirSync as mkdirSync17,
-  readFileSync as readFileSync23,
+  mkdirSync as mkdirSync18,
+  readFileSync as readFileSync22,
   realpathSync as realpathSync2,
   statSync,
   writeFileSync as writeFileSync17
 } from "fs";
-import { join as join31, dirname as dirname10, resolve } from "path";
+import { join as join32, dirname as dirname9, resolve } from "path";
 import { fileURLToPath as fileURLToPath5 } from "url";
 import { parse as parseYaml4 } from "yaml";
-var __dirname3 = dirname10(fileURLToPath5(import.meta.url));
+var __dirname3 = dirname9(fileURLToPath5(import.meta.url));
 var bold8 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green8 = (s) => `\x1B[32m${s}\x1B[0m`;
 var red7 = (s) => `\x1B[31m${s}\x1B[0m`;
@@ -6222,13 +6293,13 @@ var white2 = (s) => `\x1B[97m${s}\x1B[0m`;
 function findRootDir3() {
   let dir = __dirname3;
   for (let i = 0; i < 10; i++) {
-    const pkgPath = join31(dir, "package.json");
+    const pkgPath = join32(dir, "package.json");
     try {
-      const pkg = JSON.parse(readFileSync23(pkgPath, "utf-8"));
+      const pkg = JSON.parse(readFileSync22(pkgPath, "utf-8"));
       if (pkg.name === "loaf") return dir;
     } catch {
     }
-    const parent = dirname10(dir);
+    const parent = dirname9(dir);
     if (parent === dir) break;
     dir = parent;
   }
@@ -6239,7 +6310,7 @@ function findRootDir3() {
 function withinProject2(cwd, fullPath) {
   let check = fullPath;
   while (!existsSync27(check) && check !== cwd) {
-    const parent = dirname10(check);
+    const parent = dirname9(check);
     if (parent === check) break;
     check = parent;
   }
@@ -6366,13 +6437,13 @@ function scaffoldDirs2(cwd) {
   const created = [];
   const skipped = [];
   for (const dir of SCAFFOLD_DIRS2) {
-    const fullPath = join31(cwd, dir);
+    const fullPath = join32(cwd, dir);
     if (!existsSync27(fullPath)) {
       if (!withinProject2(cwd, fullPath)) {
         skipped.push(dir + "/");
         continue;
       }
-      mkdirSync17(fullPath, { recursive: true });
+      mkdirSync18(fullPath, { recursive: true });
       created.push(dir + "/");
     }
   }
@@ -6382,15 +6453,15 @@ function scaffoldFiles2(cwd) {
   const created = [];
   const skipped = [];
   for (const [relPath, contentFn] of SCAFFOLD_FILES2) {
-    const fullPath = join31(cwd, relPath);
+    const fullPath = join32(cwd, relPath);
     if (!existsSync27(fullPath)) {
       if (!withinProject2(cwd, fullPath)) {
         skipped.push(relPath);
         continue;
       }
-      const parentDir = dirname10(fullPath);
+      const parentDir = dirname9(fullPath);
       if (!existsSync27(parentDir)) {
-        mkdirSync17(parentDir, { recursive: true });
+        mkdirSync18(parentDir, { recursive: true });
       }
       writeFileSync17(fullPath, contentFn(), "utf-8");
       created.push(relPath);
@@ -6408,14 +6479,14 @@ var TARGETS2 = {
 var TARGET_NAMES2 = Object.keys(TARGETS2);
 function loadYamlConfig2(path) {
   if (!existsSync27(path)) return {};
-  return parseYaml4(readFileSync23(path, "utf-8"));
+  return parseYaml4(readFileSync22(path, "utf-8"));
 }
 async function buildTarget2(targetName, rootDir, contentDir, distDir, hooksConfig, targetsConfig) {
   const targetModule = TARGETS2[targetName];
   if (!targetModule) {
     throw new Error(`Unknown target: ${targetName}`);
   }
-  const outputDir = targetName === "claude-code" ? rootDir : join31(distDir, targetName);
+  const outputDir = targetName === "claude-code" ? rootDir : join32(distDir, targetName);
   const targetConfig = targetsConfig.targets?.[targetName] || {};
   await targetModule.build({
     config: hooksConfig,
@@ -6428,7 +6499,7 @@ async function buildTarget2(targetName, rootDir, contentDir, distDir, hooksConfi
   });
 }
 function runInstall(rootDir) {
-  const distDir = join31(rootDir, "dist");
+  const distDir = join32(rootDir, "dist");
   const devMode = isDevMode(rootDir);
   const hasClaudeCode = detectClaudeCode();
   const tools = detectTools();
@@ -6449,7 +6520,7 @@ function runInstall(rootDir) {
   for (const target of selectedTargets) {
     const tool = tools.find((t) => t.key === target);
     const configDir = tool?.configDir || DEFAULT_CONFIG_DIRS[target];
-    const targetDistDir = join31(distDir, target);
+    const targetDistDir = join32(distDir, target);
     if (!existsSync27(targetDistDir)) {
       console.log(
         `  ${red7("\u2717")} ${target} \u2014 no build output found`
@@ -6498,7 +6569,7 @@ ${bold8("loaf setup")}
           `  ${gray9("\xB7")} ${gray9(targetDir)} already exists`
         );
       } else {
-        mkdirSync17(targetDir, { recursive: true });
+        mkdirSync18(targetDir, { recursive: true });
         console.log(
           `  ${green8("\u2713")} Created ${gray9(targetDir)}`
         );
@@ -6538,10 +6609,10 @@ ${bold8("loaf setup")}
   ${red7("error:")} ${msg}`);
       process.exit(1);
     }
-    const contentDir = join31(rootDir, "content");
-    const configDir = join31(rootDir, "config");
-    const distDir = join31(rootDir, "dist");
-    const hooksConfigPath = join31(configDir, "hooks.yaml");
+    const contentDir = join32(rootDir, "content");
+    const configDir = join32(rootDir, "config");
+    const distDir = join32(rootDir, "dist");
+    const hooksConfigPath = join32(configDir, "hooks.yaml");
     if (!existsSync27(hooksConfigPath)) {
       console.error(
         `
@@ -6551,7 +6622,7 @@ ${bold8("loaf setup")}
     }
     const hooksConfig = loadYamlConfig2(hooksConfigPath);
     const targetsConfig = loadYamlConfig2(
-      join31(configDir, "targets.yaml")
+      join32(configDir, "targets.yaml")
     );
     let buildFailed = false;
     for (const targetName of TARGET_NAMES2) {
@@ -6603,11 +6674,11 @@ ${bold8("loaf setup")}
 }
 
 // cli/commands/version.ts
-import { existsSync as existsSync28, readFileSync as readFileSync24, readdirSync as readdirSync12 } from "fs";
-import { join as join32, dirname as dirname11 } from "path";
+import { existsSync as existsSync28, readFileSync as readFileSync23, readdirSync as readdirSync12 } from "fs";
+import { join as join33, dirname as dirname10 } from "path";
 import { fileURLToPath as fileURLToPath6 } from "url";
 import { parse as parseYaml5 } from "yaml";
-var __dirname4 = dirname11(fileURLToPath6(import.meta.url));
+var __dirname4 = dirname10(fileURLToPath6(import.meta.url));
 var bold9 = (s) => `\x1B[1m${s}\x1B[0m`;
 var gray10 = (s) => `\x1B[90m${s}\x1B[0m`;
 var TARGET_OUTPUTS = {
@@ -6620,13 +6691,13 @@ var TARGET_OUTPUTS = {
 function findRootDir4() {
   let dir = __dirname4;
   for (let i = 0; i < 10; i++) {
-    const pkgPath = join32(dir, "package.json");
+    const pkgPath = join33(dir, "package.json");
     try {
-      const pkg = JSON.parse(readFileSync24(pkgPath, "utf-8"));
+      const pkg = JSON.parse(readFileSync23(pkgPath, "utf-8"));
       if (pkg.name === "loaf") return dir;
     } catch {
     }
-    const parent = dirname11(dir);
+    const parent = dirname10(dir);
     if (parent === dir) break;
     dir = parent;
   }
@@ -6634,27 +6705,27 @@ function findRootDir4() {
 }
 function getVersion4(rootDir) {
   try {
-    const pkg = JSON.parse(readFileSync24(join32(rootDir, "package.json"), "utf-8"));
+    const pkg = JSON.parse(readFileSync23(join33(rootDir, "package.json"), "utf-8"));
     return pkg.version || "0.0.0";
   } catch {
     return "0.0.0";
   }
 }
 function countSkills(rootDir) {
-  const skillsDir = join32(rootDir, "content", "skills");
+  const skillsDir = join33(rootDir, "content", "skills");
   if (!existsSync28(skillsDir)) return 0;
   return readdirSync12(skillsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).length;
 }
 function countAgents(rootDir) {
-  const agentsDir = join32(rootDir, "content", "agents");
+  const agentsDir = join33(rootDir, "content", "agents");
   if (!existsSync28(agentsDir)) return 0;
   return readdirSync12(agentsDir).filter((name) => name.endsWith(".md")).length;
 }
 function countHooks(rootDir) {
-  const hooksPath = join32(rootDir, "config", "hooks.yaml");
+  const hooksPath = join33(rootDir, "config", "hooks.yaml");
   if (!existsSync28(hooksPath)) return 0;
   try {
-    const config = parseYaml5(readFileSync24(hooksPath, "utf-8"));
+    const config = parseYaml5(readFileSync23(hooksPath, "utf-8"));
     const hooks = config?.hooks;
     if (!hooks) return 0;
     return (hooks["pre-tool"]?.length ?? 0) + (hooks["post-tool"]?.length ?? 0) + (hooks.session?.length ?? 0);
@@ -6665,7 +6736,7 @@ function countHooks(rootDir) {
 function getBuiltTargets(rootDir) {
   const built = [];
   for (const [name, relPath] of Object.entries(TARGET_OUTPUTS)) {
-    if (existsSync28(join32(rootDir, relPath))) {
+    if (existsSync28(join33(rootDir, relPath))) {
       built.push({ name, path: relPath });
     }
   }
@@ -6700,13 +6771,13 @@ ${bold9("Content:")}`);
 }
 
 // cli/commands/cleanup.ts
-import { existsSync as existsSync30, mkdirSync as mkdirSync18, readFileSync as readFileSync26, renameSync as renameSync2, rmSync as rmSync7, writeFileSync as writeFileSync18 } from "fs";
-import { join as join34, dirname as dirname12 } from "path";
+import { existsSync as existsSync30, mkdirSync as mkdirSync19, readFileSync as readFileSync25, renameSync as renameSync2, rmSync as rmSync5, writeFileSync as writeFileSync18 } from "fs";
+import { join as join35, dirname as dirname11 } from "path";
 import matter12 from "gray-matter";
 
 // cli/lib/cleanup/scanner.ts
-import { existsSync as existsSync29, readFileSync as readFileSync25, readdirSync as readdirSync13, statSync as statSync2 } from "fs";
-import { join as join33 } from "path";
+import { existsSync as existsSync29, readFileSync as readFileSync24, readdirSync as readdirSync13, statSync as statSync2 } from "fs";
+import { join as join34 } from "path";
 import matter11 from "gray-matter";
 
 // cli/lib/cleanup/types.ts
@@ -6741,10 +6812,10 @@ function readMdFiles(dir) {
   }
   for (const name of entries) {
     if (name === "archive" || !name.endsWith(".md")) continue;
-    const filePath = join33(dir, name);
+    const filePath = join34(dir, name);
     try {
       if (!statSync2(filePath).isFile()) continue;
-      const raw = readFileSync25(filePath, "utf-8");
+      const raw = readFileSync24(filePath, "utf-8");
       const { data } = matter11(raw);
       results.push({ path: filePath, filename: name, frontmatter: data, raw });
     } catch {
@@ -6777,7 +6848,7 @@ function getStatus(fm) {
   return String(fm.status || "").toLowerCase();
 }
 function scanSessions(agentsDir) {
-  const dir = join33(agentsDir, "sessions");
+  const dir = join34(agentsDir, "sessions");
   const files = readMdFiles(dir);
   const recs = [];
   for (const file of files) {
@@ -6844,7 +6915,7 @@ function scanTasks(agentsDir, index) {
   const knownSpecIds = new Set(Object.keys(index.specs));
   for (const [id, entry] of Object.entries(index.tasks)) {
     if (entry.file.startsWith("archive/")) continue;
-    const filePath = join33(agentsDir, "tasks", entry.file);
+    const filePath = join34(agentsDir, "tasks", entry.file);
     if (entry.status === "done") {
       recs.push({
         type: "task",
@@ -6878,7 +6949,7 @@ function scanTasks(agentsDir, index) {
   for (const orphan of orphans.tasks) {
     recs.push({
       type: "task",
-      path: join33(agentsDir, "tasks", orphan.entry.file),
+      path: join34(agentsDir, "tasks", orphan.entry.file),
       filename: orphan.entry.file,
       action: "flag",
       reason: `Task ${orphan.id} exists on disk but not in index \u2014 run loaf task sync --import`,
@@ -6891,7 +6962,7 @@ function scanSpecs(agentsDir, index) {
   const recs = [];
   for (const [id, entry] of Object.entries(index.specs)) {
     if (entry.file.startsWith("archive/")) continue;
-    const filePath = join33(agentsDir, "specs", entry.file);
+    const filePath = join34(agentsDir, "specs", entry.file);
     if (entry.status === "complete") {
       recs.push({
         type: "spec",
@@ -6937,7 +7008,7 @@ function scanSpecs(agentsDir, index) {
   for (const orphan of orphans.specs) {
     recs.push({
       type: "spec",
-      path: join33(agentsDir, "specs", orphan.entry.file),
+      path: join34(agentsDir, "specs", orphan.entry.file),
       filename: orphan.entry.file,
       action: "flag",
       reason: `Spec ${orphan.id} exists on disk but not in index \u2014 run loaf task sync --import`,
@@ -6947,17 +7018,17 @@ function scanSpecs(agentsDir, index) {
   return recs;
 }
 function scanPlans(agentsDir) {
-  const dir = join33(agentsDir, "plans");
+  const dir = join34(agentsDir, "plans");
   const files = readMdFiles(dir);
   const recs = [];
-  const sessionsDir = join33(agentsDir, "sessions");
+  const sessionsDir = join34(agentsDir, "sessions");
   const activeSessionFiles = [];
   const archivedSessionFiles = [];
   if (existsSync29(sessionsDir)) {
     for (const name of readdirSync13(sessionsDir)) {
       if (name === "archive" || !name.endsWith(".md")) continue;
       try {
-        const raw = readFileSync25(join33(sessionsDir, name), "utf-8");
+        const raw = readFileSync24(join34(sessionsDir, name), "utf-8");
         const { data } = matter11(raw);
         const status = getStatus(data);
         if (status === "completed" || status === "complete" || status === "cancelled" || status === "archived") {
@@ -6970,7 +7041,7 @@ function scanPlans(agentsDir) {
       }
     }
   }
-  const sessionArchive = join33(sessionsDir, "archive");
+  const sessionArchive = join34(sessionsDir, "archive");
   if (existsSync29(sessionArchive)) {
     try {
       for (const name of readdirSync13(sessionArchive)) {
@@ -7040,7 +7111,7 @@ function scanPlans(agentsDir) {
   return recs;
 }
 function scanDrafts(agentsDir, index) {
-  const dir = join33(agentsDir, "drafts");
+  const dir = join34(agentsDir, "drafts");
   const files = readMdFiles(dir);
   const recs = [];
   const promotedDrafts = /* @__PURE__ */ new Set();
@@ -7089,20 +7160,20 @@ function scanDrafts(agentsDir, index) {
   return recs;
 }
 function scanCouncils(agentsDir) {
-  const dir = join33(agentsDir, "councils");
+  const dir = join34(agentsDir, "councils");
   const files = readMdFiles(dir);
   const recs = [];
-  const sessionsDir = join33(agentsDir, "sessions");
+  const sessionsDir = join34(agentsDir, "sessions");
   const allSessionFiles = [];
   const completedSessionFiles = [];
-  for (const subdir of [sessionsDir, join33(sessionsDir, "archive")]) {
+  for (const subdir of [sessionsDir, join34(sessionsDir, "archive")]) {
     if (existsSync29(subdir)) {
       try {
         for (const name of readdirSync13(subdir)) {
           if (!name.endsWith(".md")) continue;
           allSessionFiles.push(name);
           try {
-            const raw = readFileSync25(join33(subdir, name), "utf-8");
+            const raw = readFileSync24(join34(subdir, name), "utf-8");
             const { data } = matter11(raw);
             const status = getStatus(data);
             if (["completed", "complete", "archived", "cancelled"].includes(status)) {
@@ -7182,10 +7253,10 @@ function scanCouncils(agentsDir) {
   return recs;
 }
 function scanReports(agentsDir) {
-  const dir = join33(agentsDir, "reports");
+  const dir = join34(agentsDir, "reports");
   const files = readMdFiles(dir);
   const recs = [];
-  const sessionArchiveDir = join33(agentsDir, "sessions", "archive");
+  const sessionArchiveDir = join34(agentsDir, "sessions", "archive");
   const archivedSessionFiles = [];
   if (existsSync29(sessionArchiveDir)) {
     try {
@@ -7276,14 +7347,14 @@ function scanArtifacts(options) {
   const warnings = [];
   for (const dir of ARTIFACT_DIRS) {
     if (filter && !filter.includes(dir.type)) continue;
-    const fullPath = join33(agentsDir, dir.dirname);
+    const fullPath = join34(agentsDir, dir.dirname);
     if (!existsSync29(fullPath)) {
       if (dir.required) {
         warnings.push(`Required directory missing: ${dir.dirname}/`);
       }
     }
   }
-  const indexPath = join33(agentsDir, "TASKS.json");
+  const indexPath = join34(agentsDir, "TASKS.json");
   const index = loadIndex(indexPath) ?? buildIndexFromFiles(agentsDir);
   const shouldScan = (type) => !filter || filter.includes(type);
   if (shouldScan("session")) recommendations.push(...scanSessions(agentsDir));
@@ -7334,13 +7405,13 @@ function formatPreview(fm) {
 }
 var NESTED_ARCHIVE_TYPES = /* @__PURE__ */ new Set(["session", "council", "report"]);
 function archiveGenericArtifact(filePath, artifactType) {
-  const dir = dirname12(filePath);
-  const archiveDir = join34(dir, "archive");
+  const dir = dirname11(filePath);
+  const archiveDir = join35(dir, "archive");
   const filename = filePath.split("/").pop();
-  const destPath = join34(archiveDir, filename);
-  mkdirSync18(archiveDir, { recursive: true });
+  const destPath = join35(archiveDir, filename);
+  mkdirSync19(archiveDir, { recursive: true });
   const now = (/* @__PURE__ */ new Date()).toISOString();
-  const raw = readFileSync26(filePath, "utf-8");
+  const raw = readFileSync25(filePath, "utf-8");
   const { data, content } = matter12(raw);
   const blockKey = NESTED_ARCHIVE_TYPES.has(artifactType) ? artifactType : null;
   if (blockKey && data[blockKey] && typeof data[blockKey] === "object") {
@@ -7459,7 +7530,7 @@ ${bold10("loaf cleanup")}
         console.log(formatPreview(rec.frontmatter));
         const confirmed = await askYesNo3(`    ${red8("Delete")}? [y/N] `);
         if (confirmed && existsSync30(rec.path)) {
-          rmSync7(rec.path);
+          rmSync5(rec.path);
           console.log(`    ${green9("\u2713")} Deleted`);
           actionsPerformed++;
         }
@@ -7491,7 +7562,7 @@ ${bold10("loaf cleanup")}
       }
     }
     if (index) {
-      saveIndex(join34(agentsDir, "TASKS.json"), index);
+      saveIndex(join35(agentsDir, "TASKS.json"), index);
     }
     console.log(`  ${green9("\u2713")} Cleanup complete \u2014 ${actionsPerformed} action(s) performed.
 `);
@@ -7499,11 +7570,11 @@ ${bold10("loaf cleanup")}
 }
 
 // cli/commands/check.ts
-import { readFileSync as readFileSync27, existsSync as existsSync31 } from "fs";
-import { dirname as dirname13 } from "path";
+import { readFileSync as readFileSync26, existsSync as existsSync31 } from "fs";
+import { dirname as dirname12 } from "path";
 import { fileURLToPath as fileURLToPath7 } from "url";
 import { execSync as execSync2 } from "child_process";
-var __dirname5 = dirname13(fileURLToPath7(import.meta.url));
+var __dirname5 = dirname12(fileURLToPath7(import.meta.url));
 var bold11 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green10 = (s) => `\x1B[32m${s}\x1B[0m`;
 var red9 = (s) => `\x1B[31m${s}\x1B[0m`;
@@ -7746,7 +7817,7 @@ async function workflowPrePr(context) {
   }
   if (existsSync31("CHANGELOG.md")) {
     try {
-      const changelog = readFileSync27("CHANGELOG.md", "utf-8");
+      const changelog = readFileSync26("CHANGELOG.md", "utf-8");
       const unreleasedMatch = changelog.match(/##\s*\[Unreleased\]([\s\S]*?)(?=\n##\s|$)/);
       if (unreleasedMatch) {
         const unreleasedSection = unreleasedMatch[1];
@@ -8001,11 +8072,12 @@ function registerCheckCommand(program2) {
 
 // cli/commands/session.ts
 import { execSync as execSync3 } from "child_process";
+import { createHash } from "crypto";
 import {
   existsSync as existsSync32,
-  mkdirSync as mkdirSync19,
+  mkdirSync as mkdirSync20,
   readdirSync as readdirSync14,
-  readFileSync as readFileSync28,
+  readFileSync as readFileSync27,
   writeFileSync as writeFileSync19,
   renameSync as renameSync3,
   unlinkSync as unlinkSync3,
@@ -8014,7 +8086,8 @@ import {
   statSync as statSync3,
   copyFileSync as copyFileSync3
 } from "fs";
-import { join as join36, basename as basename7 } from "path";
+import { join as join37, dirname as dirname13, basename as basename5 } from "path";
+import { fileURLToPath as fileURLToPath8 } from "url";
 import matter13 from "gray-matter";
 var bold12 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green11 = (s) => `\x1B[32m${s}\x1B[0m`;
@@ -8022,57 +8095,79 @@ var red10 = (s) => `\x1B[31m${s}\x1B[0m`;
 var yellow13 = (s) => `\x1B[33m${s}\x1B[0m`;
 var cyan9 = (s) => `\x1B[36m${s}\x1B[0m`;
 var gray13 = (s) => `\x1B[90m${s}\x1B[0m`;
+function getProjectRoot(agentsDir) {
+  return dirname13(agentsDir);
+}
+function getInstalledTemplateCandidates() {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const configHome = process.env.XDG_CONFIG_HOME || join37(homeDir, ".config");
+  return [
+    join37(configHome, "opencode", "templates", "soul.md"),
+    join37(homeDir, ".cursor", "templates", "soul.md"),
+    join37(process.env.CODEX_HOME || join37(homeDir, ".codex"), "templates", "soul.md"),
+    join37(homeDir, ".amp", "templates", "soul.md"),
+    process.env.CLAUDE_PLUGIN_ROOT ? join37(process.env.CLAUDE_PLUGIN_ROOT, "templates", "soul.md") : ""
+  ].filter(Boolean);
+}
+function resolveSoulTemplate(agentsDir) {
+  const projectRoot = getProjectRoot(agentsDir);
+  const moduleDir = dirname13(fileURLToPath8(import.meta.url));
+  for (const candidate of [
+    join37(agentsDir, "templates", "soul.md"),
+    join37(projectRoot, "templates", "soul.md"),
+    join37(projectRoot, "content", "templates", "soul.md"),
+    join37(moduleDir, "..", "templates", "soul.md"),
+    join37(moduleDir, "..", "..", "templates", "soul.md"),
+    join37(moduleDir, "..", "content", "templates", "soul.md"),
+    join37(moduleDir, "..", "..", "content", "templates", "soul.md"),
+    join37(projectRoot, "SOUL.md"),
+    ...getInstalledTemplateCandidates()
+  ]) {
+    if (existsSync32(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
 function validateSoulMd(agentsDir) {
-  const soulPath = join36(agentsDir, "SOUL.md");
-  const templatePath = join36(agentsDir, "templates", "SOUL.md");
+  const soulPath = join37(agentsDir, "SOUL.md");
   if (existsSync32(soulPath)) {
     return { exists: true, restored: false };
   }
-  if (existsSync32(templatePath)) {
-    try {
-      copyFileSync3(templatePath, soulPath);
-      return { exists: true, restored: true };
-    } catch {
-    }
+  const templatePath = resolveSoulTemplate(agentsDir);
+  if (!templatePath) {
+    return { exists: false, restored: false };
   }
-  return { exists: false, restored: false };
+  try {
+    copyFileSync3(templatePath, soulPath);
+    return { exists: true, restored: true };
+  } catch {
+    return { exists: false, restored: false };
+  }
 }
-function countStaleKnowledge(agentsDir) {
-  const kbDir = join36(agentsDir, "kb");
-  if (!existsSync32(kbDir)) return 0;
-  let staleCount = 0;
-  const files = readdirSync14(kbDir).filter((f) => f.endsWith(".md"));
-  for (const file of files) {
-    try {
-      const content = readFileSync28(join36(kbDir, file), "utf-8");
-      const parsed = matter13(content);
-      const lastReviewed = parsed.data.last_reviewed;
-      const covers = parsed.data.covers;
-      if (!lastReviewed) {
-        staleCount++;
-        continue;
-      }
-      const reviewDate = new Date(lastReviewed);
-      const daysSinceReview = (Date.now() - reviewDate.getTime()) / (1e3 * 60 * 60 * 24);
-      if (daysSinceReview > 30) {
-        staleCount++;
-      }
-    } catch {
-    }
+function countStaleKnowledge() {
+  const gitRoot = findGitRoot();
+  const config = loadKbConfig(gitRoot);
+  const local = config.local.filter((dir) => existsSync32(join37(gitRoot, dir)));
+  if (local.length === 0) {
+    return 0;
   }
-  return staleCount;
+  const effectiveConfig = { ...config, local };
+  const files = loadKnowledgeFiles(gitRoot, effectiveConfig);
+  return checkAllStaleness(gitRoot, files, effectiveConfig).filter((result) => result.isStale).length;
 }
-function needsKnowledgeConsolidation(agentsDir) {
-  const reviewFlagPath = join36(agentsDir, ".kb-review-flag");
-  if (existsSync32(reviewFlagPath)) {
-    try {
-      const flagged = readFileSync28(reviewFlagPath, "utf-8").trim();
-      return flagged === "true" || flagged === "1";
-    } catch {
-      return false;
-    }
+function getKnowledgeNudgeFilePath(projectRoot, branch) {
+  const hash = createHash("md5").update(`${projectRoot}:${branch}`).digest("hex").slice(0, 8);
+  return join37("/tmp", `loaf-kb-nudged-${hash}`);
+}
+function consumeKnowledgeNudges(projectRoot, branch) {
+  const nudgeFile = getKnowledgeNudgeFilePath(projectRoot, branch);
+  if (!existsSync32(nudgeFile)) {
+    return [];
   }
-  return false;
+  const files = readFileSync27(nudgeFile, "utf-8").split("\n").map((line) => line.trim()).filter(Boolean);
+  unlinkSync3(nudgeFile);
+  return [...new Set(files)];
 }
 var LOCK_STALENESS_THRESHOLD = 3e4;
 function isLockStale(lockPath) {
@@ -8178,12 +8273,12 @@ function getLastCommitSha() {
   }
 }
 function findSpecForBranch(agentsDir, branch) {
-  const specsDir = join36(agentsDir, "specs");
+  const specsDir = join37(agentsDir, "specs");
   if (!existsSync32(specsDir)) return null;
   const files = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
   for (const file of files) {
     try {
-      const content = readFileSync28(join36(specsDir, file), "utf-8");
+      const content = readFileSync27(join37(specsDir, file), "utf-8");
       const parsed = matter13(content);
       const fm = parsed.data;
       if (fm.branch === branch) {
@@ -8200,14 +8295,14 @@ function findSpecForBranch(agentsDir, branch) {
   return null;
 }
 function updateSpecSessionField(agentsDir, specId, sessionFileName) {
-  const specsDir = join36(agentsDir, "specs");
+  const specsDir = join37(agentsDir, "specs");
   if (!existsSync32(specsDir)) return;
   const files = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
   for (const file of files) {
     if (file.includes(specId)) {
-      const filePath = join36(specsDir, file);
+      const filePath = join37(specsDir, file);
       try {
-        const content = readFileSync28(filePath, "utf-8");
+        const content = readFileSync27(filePath, "utf-8");
         const parsed = matter13(content);
         if (parsed.data.session !== sessionFileName) {
           parsed.data.session = sessionFileName;
@@ -8223,7 +8318,7 @@ function updateSpecSessionField(agentsDir, specId, sessionFileName) {
 function getSessionFilePath(agentsDir, branch, timestamp) {
   const ts = timestamp || getTimestampForFilename();
   const slug = branch.replace(/^feat\//, "").replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-");
-  return join36(agentsDir, "sessions", `${ts}-${slug}.md`);
+  return join37(agentsDir, "sessions", `${ts}-${slug}.md`);
 }
 function getTimestampForFilename() {
   const now = /* @__PURE__ */ new Date();
@@ -8236,12 +8331,12 @@ function getTimestampForFilename() {
   return `${year}${month}${day}-${hour}${minute}${second}`;
 }
 function findActiveSessionForBranch(agentsDir, branch) {
-  const sessionsDir = join36(agentsDir, "sessions");
+  const sessionsDir = join37(agentsDir, "sessions");
   if (!existsSync32(sessionsDir)) return null;
   const files = readdirSync14(sessionsDir).filter((f) => f.endsWith(".md") && !f.startsWith("archive"));
   const candidates = [];
   for (const file of files) {
-    const filePath = join36(sessionsDir, file);
+    const filePath = join37(sessionsDir, file);
     const session = readSessionFile(filePath);
     if (session && session.data.branch === branch && session.data.status !== "archived") {
       candidates.push({ filePath, data: session.data, content: session.content });
@@ -8258,17 +8353,17 @@ function findActiveSessionForBranch(agentsDir, branch) {
     } catch {
     }
     if (parentBranch) {
-      const specsDir = join36(agentsDir, "specs");
+      const specsDir = join37(agentsDir, "specs");
       if (existsSync32(specsDir)) {
         const specFiles = readdirSync14(specsDir).filter((f) => f.endsWith(".md"));
         for (const specFile of specFiles) {
           try {
-            const specPath = join36(specsDir, specFile);
-            const specContent = readFileSync28(specPath, "utf-8");
+            const specPath = join37(specsDir, specFile);
+            const specContent = readFileSync27(specPath, "utf-8");
             const specParsed = matter13(specContent);
             const specFm = specParsed.data;
             if (specFm.branch === parentBranch && specFm.session) {
-              const sessionPath = join36(agentsDir, "sessions", specFm.session);
+              const sessionPath = join37(agentsDir, "sessions", specFm.session);
               if (existsSync32(sessionPath)) {
                 const session = readSessionFile(sessionPath);
                 if (session && session.data.branch === parentBranch && session.data.status !== "archived") {
@@ -8310,8 +8405,8 @@ function findActiveSessionForBranch(agentsDir, branch) {
   return candidates[0];
 }
 async function getOrCreateSession(agentsDir, branch, specInfo) {
-  const sessionsDir = join36(agentsDir, "sessions");
-  const lockPath = join36(sessionsDir, `.create-${branch.replace(/[^a-zA-Z0-9-]/g, "-")}.lock`);
+  const sessionsDir = join37(agentsDir, "sessions");
+  const lockPath = join37(sessionsDir, `.create-${branch.replace(/[^a-zA-Z0-9-]/g, "-")}.lock`);
   let lockAcquired = false;
   try {
     await acquireLock(lockPath, 100, 50);
@@ -8348,7 +8443,7 @@ async function getOrCreateSession(agentsDir, branch, specInfo) {
 function readSessionFile(filePath) {
   if (!existsSync32(filePath)) return null;
   try {
-    const raw = readFileSync28(filePath, "utf-8");
+    const raw = readFileSync27(filePath, "utf-8");
     const parsed = matter13(raw);
     const rawData = parsed.data;
     if (rawData.session && typeof rawData.session === "object") {
@@ -8493,7 +8588,7 @@ function extractDecideEntries(content) {
   return decideEntries;
 }
 function persistDecisionsToSpec(agentsDir, specId, decideEntries, sessionBranch) {
-  const specsDir = join36(agentsDir, "specs");
+  const specsDir = join37(agentsDir, "specs");
   if (!existsSync32(specsDir)) {
     return { success: false, message: "No specs directory found" };
   }
@@ -8502,8 +8597,8 @@ function persistDecisionsToSpec(agentsDir, specId, decideEntries, sessionBranch)
   if (!specFile) {
     return { success: false, message: `Spec ${specId} not found` };
   }
-  const specPath = join36(specsDir, specFile);
-  const specContent = readFileSync28(specPath, "utf-8");
+  const specPath = join37(specsDir, specFile);
+  const specContent = readFileSync27(specPath, "utf-8");
   const changelogMatch = specContent.match(/\n## Changelog\n/);
   const dateStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
   const entryHeader = `- ${dateStr} \u2014 Session ${sessionBranch} archived: ${decideEntries.length} decision(s) extracted`;
@@ -8542,9 +8637,9 @@ function registerSessionCommand(program2) {
       console.error(`  ${red10("error:")} Could not find .agents/ directory`);
       process.exit(1);
     }
-    const sessionsDir = join36(agentsDir, "sessions");
+    const sessionsDir = join37(agentsDir, "sessions");
     if (!existsSync32(sessionsDir)) {
-      mkdirSync19(sessionsDir, { recursive: true });
+      mkdirSync20(sessionsDir, { recursive: true });
     }
     const branch = getCurrentBranch();
     if (branch === "unknown") {
@@ -8569,7 +8664,7 @@ function registerSessionCommand(program2) {
     if (isNew) {
       console.log(`  ${green11("+")} Creating new session file`);
       if (specInfo) {
-        const sessionFileName = basename7(sessionFilePath);
+        const sessionFileName = basename5(sessionFilePath);
         updateSpecSessionField(agentsDir, specInfo.id, sessionFileName);
       }
     } else {
@@ -8619,11 +8714,12 @@ function registerSessionCommand(program2) {
     } else if (!soulStatus.exists) {
       console.log(`  ${yellow13("\u26A0")} SOUL.md not found \u2014 run 'loaf install' to set up project`);
     }
-    const staleKbCount = countStaleKnowledge(agentsDir);
+    const staleKbCount = countStaleKnowledge();
     if (staleKbCount > 0) {
       console.log(`  ${yellow13("\u26A0")} ${staleKbCount} stale knowledge file(s) \u2014 run 'loaf kb review'`);
     }
-    const recentEntries = extractRecentEntries(sessionContent, 15);
+    const currentSessionContent = readSessionFile(sessionFilePath)?.content || sessionContent;
+    const recentEntries = extractRecentEntries(currentSessionContent, 15);
     if (recentEntries.length > 0) {
       console.log(`
   ${bold12("Recent journal entries:")}
@@ -8640,7 +8736,7 @@ function registerSessionCommand(program2) {
     }
     console.log();
   });
-  session.command("end").description("End session with progress summary").action(async () => {
+  session.command("end").description("End session with progress summary").option("--if-active", "Exit successfully when no active session exists").action(async (options) => {
     const agentsDir = findAgentsDir();
     if (!agentsDir) {
       console.error(`  ${red10("error:")} Could not find .agents/ directory`);
@@ -8653,8 +8749,14 @@ function registerSessionCommand(program2) {
     }
     let existingSession = findActiveSessionForBranch(agentsDir, branch);
     if (!existingSession) {
+      if (options.ifActive) {
+        process.exit(0);
+      }
       console.error(`  ${red10("error:")} No active session found for branch ${branch}`);
       process.exit(1);
+    }
+    if (options.ifActive && existingSession.data.status !== "active") {
+      process.exit(0);
     }
     const sessionFilePath = existingSession.filePath;
     const session2 = existingSession;
@@ -8687,10 +8789,13 @@ function registerSessionCommand(program2) {
         data.last_entry = getTimestamp();
       }
     );
-    if (needsKnowledgeConsolidation(agentsDir)) {
-      console.log(`  ${yellow13("\u26A0")} Knowledge consolidation recommended:`);
-      console.log(`    ${gray13("Stale files were flagged during this session.")}`);
-      console.log(`    ${gray13("Consider running 'loaf kb review' before ending.")}`);
+    const knowledgeFiles = consumeKnowledgeNudges(findGitRoot(), branch);
+    if (knowledgeFiles.length > 0) {
+      console.log(`  ${yellow13("\u26A0")} Knowledge consolidation recommended for ${knowledgeFiles.length} file(s):`);
+      for (const file of knowledgeFiles) {
+        console.log(`    ${gray13(file)}`);
+      }
+      console.log(`    ${gray13("Run 'loaf kb review <file>' before ending.")}`);
       console.log();
     }
     console.log(`  ${green11("\u2713")} Session paused: ${gray13(sessionFilePath.replace(agentsDir, ".agents"))}`);
@@ -8847,9 +8952,9 @@ function registerSessionCommand(program2) {
     console.log(`
   ${bold12("loaf session archive")}
 `);
-    const archiveDir = join36(agentsDir, "sessions", "archive");
+    const archiveDir = join37(agentsDir, "sessions", "archive");
     if (!existsSync32(archiveDir)) {
-      mkdirSync19(archiveDir, { recursive: true });
+      mkdirSync20(archiveDir, { recursive: true });
     }
     const decideEntries = extractDecideEntries(session2.content);
     if (decideEntries.length > 0) {
@@ -8885,8 +8990,8 @@ function registerSessionCommand(program2) {
       session2.data
     );
     writeFileSync19(sessionFilePath, newContent, "utf-8");
-    const fileName = basename7(sessionFilePath);
-    const archivePath = join36(archiveDir, fileName);
+    const fileName = basename5(sessionFilePath);
+    const archivePath = join37(archiveDir, fileName);
     try {
       renameSync3(sessionFilePath, archivePath);
       console.log(`  ${green11("\u2713")} Archived: ${gray13(archivePath.replace(agentsDir, ".agents"))}`);
@@ -8902,7 +9007,7 @@ function registerSessionCommand(program2) {
       console.error(`  ${red10("error:")} Could not find .agents/ directory`);
       process.exit(1);
     }
-    const sessionsDir = join36(agentsDir, "sessions");
+    const sessionsDir = join37(agentsDir, "sessions");
     if (!existsSync32(sessionsDir)) {
       console.log(`
   ${gray13("No sessions directory found.")}`);
@@ -8916,7 +9021,7 @@ function registerSessionCommand(program2) {
     const activeSessions = [];
     const files = readdirSync14(sessionsDir).filter((f) => f.endsWith(".md"));
     for (const file of files) {
-      const filePath = join36(sessionsDir, file);
+      const filePath = join37(sessionsDir, file);
       const session2 = readSessionFile(filePath);
       if (session2 && session2.data.status !== "archived") {
         activeSessions.push({ ...session2, filePath, isArchived: false });
@@ -8924,11 +9029,11 @@ function registerSessionCommand(program2) {
     }
     const archivedSessions = [];
     if (options.all) {
-      const archiveDir = join36(sessionsDir, "archive");
+      const archiveDir = join37(sessionsDir, "archive");
       if (existsSync32(archiveDir)) {
         const archiveFiles = readdirSync14(archiveDir).filter((f) => f.endsWith(".md"));
         for (const file of archiveFiles) {
-          const filePath = join36(archiveDir, file);
+          const filePath = join37(archiveDir, file);
           const session2 = readSessionFile(filePath);
           if (session2) {
             archivedSessions.push({ ...session2, filePath, isArchived: true });
@@ -8964,11 +9069,11 @@ function registerSessionCommand(program2) {
 }
 
 // cli/index.ts
-var __dirname6 = dirname15(fileURLToPath8(import.meta.url));
+var __dirname6 = dirname14(fileURLToPath9(import.meta.url));
 function getVersion5() {
-  for (const candidate of [join37(__dirname6, "..", "package.json"), join37(__dirname6, "..", "..", "package.json")]) {
+  for (const candidate of [join38(__dirname6, "..", "package.json"), join38(__dirname6, "..", "..", "package.json")]) {
     try {
-      const pkg = JSON.parse(readFileSync29(candidate, "utf-8"));
+      const pkg = JSON.parse(readFileSync28(candidate, "utf-8"));
       if (pkg.name === "loaf") return pkg.version;
     } catch {
       continue;

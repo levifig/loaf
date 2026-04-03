@@ -174,10 +174,8 @@ describe("install.sh: dev mode wrapper", () => {
     mkdirSync(homeDir, { recursive: true });
     
     // Initialize git to trigger dev mode detection
-    require("child_process").execSync("git init", { cwd: repoPath });
-    writeFileSync(join(repoPath, "README.md"), "# Loaf\n");
-    require("child_process").execSync('git add . && git commit -m "init"', { cwd: repoPath });
-    
+    mkdirSync(join(repoPath, ".git"), { recursive: true });
+
     // Verify all dev mode requirements are present
     expect(existsSync(join(repoPath, ".git"))).toBe(true);
     expect(existsSync(join(repoPath, "package.json"))).toBe(true);
@@ -242,12 +240,7 @@ describe("install.sh: runtime behavior", () => {
     mkdirSync(homeDir, { recursive: true });
     
     // Initialize git to trigger dev mode detection
-    require("child_process").execSync("git init", { cwd: repoPath, stdio: "ignore" });
-    writeFileSync(join(repoPath, "README.md"), "# Loaf\n");
-    require("child_process").execSync('git add . && git commit -m "init"', { 
-      cwd: repoPath, 
-      stdio: "ignore" 
-    });
+    mkdirSync(join(repoPath, ".git"), { recursive: true });
     
     // Run install.sh with --help to trigger just the wrapper creation check
     // The script should see dev mode and set up wrapper creation

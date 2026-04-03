@@ -17,11 +17,11 @@ import {
   readFileSync,
   readdirSync,
   existsSync,
-  rmSync,
 } from "fs";
 import matter from "gray-matter";
 import { join } from "path";
 import { parse as parseYaml } from "yaml";
+import { resetTargetOutput } from "../lib/target-output.js";
 import { getVersion } from "../lib/version.js";
 import { copySkills as copySharedSkills } from "../lib/skills.js";
 import { copyAgents as copySharedAgents } from "../lib/agents.js";
@@ -50,10 +50,7 @@ export async function build({
   const version = getVersion(rootDir);
   const transformMd = (content: string) => substituteCommands(content);
 
-  if (existsSync(distDir)) {
-    rmSync(distDir, { recursive: true });
-  }
-  mkdirSync(distDir, { recursive: true });
+  resetTargetOutput(distDir);
 
   copySkills(rootDir, srcDir, distDir, targetsConfig, transformMd, version);
   copyAgents(srcDir, distDir, version);

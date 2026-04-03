@@ -127,18 +127,10 @@ hooks:
     # Knowledge Base - Staleness nudge (side-effect)
     - id: kb-staleness-nudge
       skill: knowledge-base
-      type: prompt
-      prompt: >-
-        KNOWLEDGE BASE: The file you just edited may have stale knowledge coverage.
-        
-        Consider updating the corresponding knowledge file if:
-        - The change affects documented patterns or conventions
-        - The file is listed in covers: frontmatter of any knowledge file
-        
-        Run `loaf kb review` to check coverage status.
+      script: hooks/post-tool/kb-staleness-nudge.sh
       matcher: "Edit|Write"
       timeout: 5000
-      description: Alert when editing files covered by stale knowledge
+      description: Track covered edits and nudge when covered knowledge is stale
 
     # Git Workflow - Post-merge housekeeping (side-effect)
     - id: workflow-post-merge
@@ -186,24 +178,19 @@ hooks:
       description: Auto-log merge entry to session journal
 
   session:
-    # Session lifecycle
-    - id: session-start-soul
+    - id: session-start-loaf
       skill: orchestration
-      script: hooks/session/session-start-soul.sh
+      type: command
+      command: 'loaf session start'
       event: SessionStart
-      description: Validate SOUL.md is present; restore from template if missing
+      description: Start session journal and surface session context
 
-    - id: session-start
+    - id: session-end-loaf
       skill: orchestration
-      script: hooks/session/session-start.sh
-      event: SessionStart
-      description: Agent-aware session context and active sessions overview
-
-    - id: session-end
-      skill: orchestration
-      script: hooks/session/session-end.sh
+      type: command
+      command: 'loaf session end --if-active'
       event: SessionEnd
-      description: Agent-specific completion checklist and session hygiene reminder
+      description: End session with progress summary and KB follow-up
 
     - id: pre-compact
       skill: orchestration
@@ -211,38 +198,6 @@ hooks:
       event: PreCompact
       timeout: 60000
       description: Append compact entry to session journal before context compaction
-
-    # Knowledge Base - Session lifecycle
-    - id: kb-session-start
-      skill: knowledge-base
-      script: hooks/session/kb-session-start.sh
-      event: SessionStart
-      description: Surface stale knowledge count at session start
-
-    - id: kb-session-end
-      skill: knowledge-base
-      script: hooks/session/kb-session-end.sh
-      event: SessionEnd
-      description: Prompt for knowledge consolidation if stale files were flagged
-
-    # ─────────────────────────────────────────────────────────────────────────────
-    # Session Journal (loaf session integration)
-    # ─────────────────────────────────────────────────────────────────────────────
-
-    # Session lifecycle using loaf session command directly
-    - id: session-start-loaf
-      skill: orchestration
-      type: command
-      command: 'loaf session start'
-      event: SessionStart
-      description: Start session journal for current branch
-
-    - id: session-end-loaf
-      skill: orchestration
-      type: command
-      command: 'loaf session end'
-      event: SessionEnd
-      description: End session with progress summary
 
     # Journal nudge hooks (prompt type)
     - id: session-stop-nudge

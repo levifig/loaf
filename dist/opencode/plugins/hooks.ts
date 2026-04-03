@@ -272,6 +272,12 @@ const postToolHooks: Record<string, HookEntry[]> = {
       "command": "loaf task refresh",
       "timeout": 30000,
       "failClosed": false
+    },
+    {
+      "id": "kb-staleness-nudge",
+      "script": "post-tool/kb-staleness-nudge.sh",
+      "timeout": 5000,
+      "failClosed": false
     }
   ],
   "Bash": [
@@ -302,24 +308,6 @@ const postToolHooks: Record<string, HookEntry[]> = {
 const sessionHooks: Record<string, HookEntry[]> = {
   "sessionstart": [
     {
-      "id": "session-start-soul",
-      "script": "session/session-start-soul.sh",
-      "timeout": 60000,
-      "failClosed": false
-    },
-    {
-      "id": "session-start",
-      "script": "session/session-start.sh",
-      "timeout": 60000,
-      "failClosed": false
-    },
-    {
-      "id": "kb-session-start",
-      "script": "session/kb-session-start.sh",
-      "timeout": 60000,
-      "failClosed": false
-    },
-    {
       "id": "session-start-loaf",
       "command": "loaf session start",
       "timeout": 60000,
@@ -328,20 +316,8 @@ const sessionHooks: Record<string, HookEntry[]> = {
   ],
   "sessionend": [
     {
-      "id": "session-end",
-      "script": "session/session-end.sh",
-      "timeout": 60000,
-      "failClosed": false
-    },
-    {
-      "id": "kb-session-end",
-      "script": "session/kb-session-end.sh",
-      "timeout": 60000,
-      "failClosed": false
-    },
-    {
       "id": "session-end-loaf",
-      "command": "loaf session end",
+      "command": "loaf session end --if-active",
       "timeout": 60000,
       "failClosed": false
     }

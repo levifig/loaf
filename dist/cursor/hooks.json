@@ -3,48 +3,56 @@
   "hooks": {
     "preToolUse": [
       {
+        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Edit|Write|Bash",
         "failClosed": true,
         "command": "loaf check --hook check-secrets"
       },
       {
+        "loaf-managed": true,
         "timeout": 600,
         "matcher": "Bash",
         "failClosed": true,
         "command": "loaf check --hook security-audit"
       },
       {
+        "loaf-managed": true,
         "timeout": 60,
         "matcher": "Bash",
         "failClosed": true,
         "command": "loaf check --hook validate-push"
       },
       {
+        "loaf-managed": true,
         "timeout": 5,
         "matcher": "Bash",
         "failClosed": true,
         "command": "loaf check --hook workflow-pre-pr"
       },
       {
+        "loaf-managed": true,
         "timeout": 5,
         "matcher": "Bash",
         "prompt": "STOP. Before running gh pr merge, follow squash merge conventions:\n1. TITLE: Let GitHub default it — \"PR title (#N)\" format.\n2. BODY: Write a clean, concise summary of the branch's work (2-4 sentences).\n   NEVER use the automatic squash description that dumps all individual commit messages.\n\n3. Use --body flag with a HEREDOC to pass the clean description.\nExample: gh pr merge N --squash --body \"$(cat <<'EOF' Add loaf cleanup CLI command that scans .agents/ directories and recommends cleanup actions. Includes shared prompt helpers, scanner engine, interactive/dry-run modes, and skill update. EOF )\"\nRewrite your gh pr merge command now with a clean --body.",
         "if": "Bash(gh pr merge:*)"
       },
       {
+        "loaf-managed": true,
         "timeout": 5,
         "matcher": "Bash",
         "prompt": "ADVISORY: You are about to run `git push`. \nConfirm the following before proceeding: - All tests pass locally - CHANGELOG.md has been updated - Version has been bumped if releasing\nType 'yes' to proceed with the push.",
         "if": "Bash(git push:*)"
       },
       {
+        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
         "command": "loaf check --hook validate-commit"
       },
       {
+        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Bash",
         "command": "loaf session log --detect-linear"
@@ -52,34 +60,40 @@
     ],
     "postToolUse": [
       {
+        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Edit|Write",
         "command": "loaf task refresh"
       },
       {
+        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Edit|Write",
-        "prompt": "KNOWLEDGE BASE: The file you just edited may have stale knowledge coverage.\nConsider updating the corresponding knowledge file if: - The change affects documented patterns or conventions - The file is listed in covers: frontmatter of any knowledge file\nRun `loaf kb review` to check coverage status."
+        "command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh"
       },
       {
+        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Bash",
         "prompt": "POST-MERGE HOUSEKEEPING:\n1. Delete local branch: git branch -d <branch-name> 2. Update main: git checkout main && git pull 3. Archive session: loaf session archive\nConsider running these commands now.",
         "if": "Bash(gh pr merge:*)"
       },
       {
+        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Bash",
         "command": "loaf session log --from-hook",
         "if": "Bash(git commit:*)"
       },
       {
+        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Bash",
         "command": "loaf session log --from-hook",
         "if": "Bash(gh pr create:*)"
       },
       {
+        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Bash",
         "command": "loaf session log --from-hook",
@@ -88,48 +102,33 @@
     ],
     "sessionStart": [
       {
-        "timeout": 60,
-        "command": "bash $HOME/.cursor/hooks/session/session-start-soul.sh"
-      },
-      {
-        "timeout": 60,
-        "command": "bash $HOME/.cursor/hooks/session/session-start.sh"
-      },
-      {
-        "timeout": 60,
-        "command": "bash $HOME/.cursor/hooks/session/kb-session-start.sh"
-      },
-      {
+        "loaf-managed": true,
         "timeout": 60,
         "command": "loaf session start"
       }
     ],
     "sessionEnd": [
       {
+        "loaf-managed": true,
         "timeout": 60,
-        "command": "bash $HOME/.cursor/hooks/session/session-end.sh"
-      },
-      {
-        "timeout": 60,
-        "command": "bash $HOME/.cursor/hooks/session/kb-session-end.sh"
-      },
-      {
-        "timeout": 60,
-        "command": "loaf session end"
+        "command": "loaf session end --if-active"
       }
     ],
     "preCompact": [
       {
+        "loaf-managed": true,
         "timeout": 60,
         "command": "bash $HOME/.cursor/hooks/session/compact.sh"
       },
       {
+        "loaf-managed": true,
         "timeout": 60,
         "prompt": "CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.\nBefore compaction, consider flushing important journal entries: - `decide(scope): key decisions made this session` - `discover(scope): important findings` - `conclude(scope): session summary`\nRun `loaf session log \"type(scope): description\"` to capture entries. After compaction, the transcript will be preserved in `.agents/transcripts/`."
       }
     ],
     "stop": [
       {
+        "loaf-managed": true,
         "timeout": 60,
         "prompt": "SESSION JOURNAL NUDGE: You have made edits or commits this turn but have not recorded any `decide()`, `discover()`, or `conclude()` entries in the session journal.\nConsider capturing key decisions before ending: - `decide(scope): rationale for decision made` - `discover(scope): insight or finding` - `conclude(scope): final summary or learning`\nRun `loaf session log \"decide(scope): description\"` to capture decisions. See orchestration skill for session management patterns."
       }

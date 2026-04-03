@@ -6,6 +6,7 @@
  */
 
 import { join } from "path";
+import { resetTargetOutput } from "../lib/target-output.js";
 import { copySkills } from "../lib/skills.js";
 import { loadTargetSkillSidecar } from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
@@ -19,6 +20,7 @@ export async function build({
   targetsConfig,
 }: BuildContext): Promise<void> {
   const version = getVersion(rootDir);
+  resetTargetOutput(distDir);
 
   // Identity transform - commands already substituted in intermediate
   const transformMd = (content: string) => content;

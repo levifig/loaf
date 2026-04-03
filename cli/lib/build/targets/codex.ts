@@ -6,14 +6,16 @@
  * Reads from shared intermediate at dist/skills/, merges SKILL.codex.yaml sidecar.
  */
 
-import { mkdirSync, writeFileSync, existsSync, rmSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
+import { resetTargetOutput } from "../lib/target-output.js";
 import { copySkills } from "../lib/skills.js";
 import { loadTargetSkillSidecar } from "../lib/sidecar.js";
 import { getVersion } from "../lib/version.js";
-import type { BuildContext, HooksConfig, HookDefinition, SkillFrontmatter } from "../types.js";
+import type { BuildContext, HooksConfig, SkillFrontmatter } from "../types.js";
 
 const TARGET_NAME = "codex";
+const LOAF_HOOK_MARKER = "loaf-managed";
 
 // Enforcement hooks that use `loaf check --hook <id>`
 const ENFORCEMENT_HOOKS = new Set([
@@ -31,6 +33,7 @@ export async function build({
   targetsConfig,
 }: BuildContext): Promise<void> {
   const version = getVersion(rootDir);
+  resetTargetOutput(distDir);
 
   // Identity transform - commands already substituted in intermediate
   const transformMd = (content: string) => content;
@@ -89,6 +92,7 @@ function generateCodexHooksJson(config: HooksConfig, distDir: string): void {
   // Codex uses PreToolUse (camelCase like Claude Code)
   hooks.PreToolUse = enforcementHooks.map((hook) => {
     const result: Record<string, unknown> = {
+      [LOAF_HOOK_MARKER]: true,
       matcher: "Bash",
       command: `loaf check --hook ${hook.id}`,
       timeout: Math.floor((hook.timeout || 30000) / 1000),

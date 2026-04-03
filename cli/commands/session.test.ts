@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { execFile, spawn } from "child_process";
-import { promisify } from "util";
+import { spawn } from "child_process";
+import { createHash } from "crypto";
 import {
   existsSync,
   mkdirSync,
@@ -17,8 +17,6 @@ import {
   readFileSync,
 } from "fs";
 import { join } from "path";
-
-const execFileAsync = promisify(execFile);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
@@ -96,6 +94,38 @@ function getSessionFiles(repoPath: string): string[] {
   const sessionsDir = join(repoPath, ".agents/sessions");
   if (!existsSync(sessionsDir)) return [];
   return readdirSync(sessionsDir).filter(f => f.endsWith(".md") && !f.startsWith("."));
+}
+
+function writeKnowledgeFile(repoPath: string, fileName: string, daysOld: number) {
+  const knowledgeDir = join(repoPath, "docs/knowledge");
+  mkdirSync(knowledgeDir, { recursive: true });
+
+  const reviewedAt = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  writeFileSync(
+    join(knowledgeDir, fileName),
+    `---
+topics:
+  - session
+last_reviewed: ${reviewedAt}
+covers:
+  - README.md
+---
+
+# Knowledge
+`,
+    "utf-8"
+  );
+}
+
+function getKnowledgeNudgeFile(repoPath: string): string {
+  const branch = require("child_process")
+    .execFileSync("git", ["branch", "--show-current"], { cwd: repoPath, encoding: "utf-8" })
+    .trim();
+  const hash = createHash("md5").update(`${repoPath}:${branch}`).digest("hex").slice(0, 8);
+  return `/tmp/loaf-kb-nudged-${hash}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -220,6 +250,27 @@ describe("session: start", () => {
     // Status should be active (updated from paused)
     expect(content).toContain("status: active");
   });
+
+  it("surfaces stale knowledge count from configured knowledge files", async () => {
+    const repoPath = createTempRepo("stale-kb-test");
+
+    writeKnowledgeFile(repoPath, "stale.md", 45);
+
+    const result = await runLoaf(["start"], { cwd: repoPath });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("1 stale knowledge file");
+    expect(result.stderr).not.toContain("KB directory not found");
+  });
+
+  it("does not emit KB directory warnings when no knowledge roots exist", async () => {
+    const repoPath = createTempRepo("no-kb-test");
+
+    const result = await runLoaf(["start"], { cwd: repoPath });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).not.toContain("KB directory not found");
+  });
 });
 
 describe("session: log", () => {
@@ -328,5 +379,47 @@ describe("session: list", () => {
     expect(result.stdout).toContain("Active Sessions");
     expect(result.stdout).toContain("Archived Sessions");
     expect(result.stdout).toContain("1 active, 1 archived");
+  });
+});
+
+describe("session: end", () => {
+  it("exits successfully with --if-active when no session exists", async () => {
+    const repoPath = createTempRepo("if-active-test");
+
+    const result = await runLoaf(["end", "--if-active"], { cwd: repoPath });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("does not append another pause entry for a paused session when using --if-active", async () => {
+    const repoPath = createTempRepo("if-active-paused-test");
+
+    await runLoaf(["start"], { cwd: repoPath });
+    await runLoaf(["end"], { cwd: repoPath });
+
+    const sessionFiles = getSessionFiles(repoPath);
+    const sessionPath = join(repoPath, ".agents/sessions", sessionFiles[0]);
+    const before = readFileSync(sessionPath, "utf-8");
+
+    const result = await runLoaf(["end", "--if-active"], { cwd: repoPath });
+
+    expect(result.exitCode).toBe(0);
+    expect(readFileSync(sessionPath, "utf-8")).toBe(before);
+  });
+
+  it("surfaces knowledge files flagged by the staleness nudge", async () => {
+    const repoPath = createTempRepo("kb-end-test");
+
+    await runLoaf(["start"], { cwd: repoPath });
+
+    const nudgeFile = getKnowledgeNudgeFile(repoPath);
+    writeFileSync(nudgeFile, "docs/knowledge/stale.md\n", "utf-8");
+
+    const result = await runLoaf(["end"], { cwd: repoPath });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Knowledge consolidation recommended for 1 file");
+    expect(result.stdout).toContain("docs/knowledge/stale.md");
+    expect(existsSync(nudgeFile)).toBe(false);
   });
 });

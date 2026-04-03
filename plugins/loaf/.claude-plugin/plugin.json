@@ -81,10 +81,10 @@
             "timeout": 30
           },
           {
-            "type": "prompt",
-            "prompt": "KNOWLEDGE BASE: The file you just edited may have stale knowledge coverage.\nConsider updating the corresponding knowledge file if: - The change affects documented patterns or conventions - The file is listed in covers: frontmatter of any knowledge file\nRun `loaf kb review` to check coverage status.",
-            "timeout": 5,
-            "description": "Alert when editing files covered by stale knowledge"
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-staleness-nudge.sh",
+            "description": "Track covered edits and nudge when covered knowledge is stale",
+            "timeout": 5
           }
         ]
       },
@@ -126,32 +126,8 @@
       {
         "hooks": [
           {
-            "description": "Validate SOUL.md is present; restore from template if missing",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start-soul.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "description": "Agent-aware session context and active sessions overview",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "description": "Surface stale knowledge count at session start",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-session-start.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
             "type": "command",
-            "description": "Start session journal for current branch",
+            "description": "Start session journal and surface session context",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session start"
           }
         ]
@@ -161,25 +137,9 @@
       {
         "hooks": [
           {
-            "description": "Agent-specific completion checklist and session hygiene reminder",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "description": "Prompt for knowledge consolidation if stale files were flagged",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-session-end.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
             "type": "command",
-            "description": "End session with progress summary",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session end"
+            "description": "End session with progress summary and KB follow-up",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session end --if-active"
           }
         ]
       }

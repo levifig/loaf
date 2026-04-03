@@ -6,6 +6,7 @@
 
 import { Command } from "commander";
 import { execSync } from "child_process";
+import { createHash } from "crypto";
 import {
   existsSync,
   mkdirSync,
@@ -18,11 +19,14 @@ import {
   closeSync,
   statSync,
   copyFileSync,
-  rmSync,
 } from "fs";
 import { join, dirname, basename } from "path";
+import { fileURLToPath } from "url";
 import matter from "gray-matter";
 
+import { loadKnowledgeFiles } from "../lib/kb/loader.js";
+import { findGitRoot, loadKbConfig } from "../lib/kb/resolve.js";
+import { checkAllStaleness } from "../lib/kb/staleness.js";
 import { findAgentsDir } from "../lib/tasks/resolve.js";
 import { readStdin } from "./check.js";
 
@@ -96,77 +100,98 @@ interface SpecFrontmatterWithBranch {
 // Session Lifecycle Helpers (SPEC-020 compliance)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Validate SOUL.md exists and restore from template if missing */
+function getProjectRoot(agentsDir: string): string {
+  return dirname(agentsDir);
+}
+
+function getInstalledTemplateCandidates(): string[] {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const configHome = process.env.XDG_CONFIG_HOME || join(homeDir, ".config");
+
+  return [
+    join(configHome, "opencode", "templates", "soul.md"),
+    join(homeDir, ".cursor", "templates", "soul.md"),
+    join(process.env.CODEX_HOME || join(homeDir, ".codex"), "templates", "soul.md"),
+    join(homeDir, ".amp", "templates", "soul.md"),
+    process.env.CLAUDE_PLUGIN_ROOT ? join(process.env.CLAUDE_PLUGIN_ROOT, "templates", "soul.md") : "",
+  ].filter(Boolean);
+}
+
+function resolveSoulTemplate(agentsDir: string): string | null {
+  const projectRoot = getProjectRoot(agentsDir);
+  const moduleDir = dirname(fileURLToPath(import.meta.url));
+
+  for (const candidate of [
+    join(agentsDir, "templates", "soul.md"),
+    join(projectRoot, "templates", "soul.md"),
+    join(projectRoot, "content", "templates", "soul.md"),
+    join(moduleDir, "..", "templates", "soul.md"),
+    join(moduleDir, "..", "..", "templates", "soul.md"),
+    join(moduleDir, "..", "content", "templates", "soul.md"),
+    join(moduleDir, "..", "..", "content", "templates", "soul.md"),
+    join(projectRoot, "SOUL.md"),
+    ...getInstalledTemplateCandidates(),
+  ]) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 function validateSoulMd(agentsDir: string): { exists: boolean; restored: boolean } {
   const soulPath = join(agentsDir, "SOUL.md");
-  const templatePath = join(agentsDir, "templates", "SOUL.md");
-  
+
   if (existsSync(soulPath)) {
     return { exists: true, restored: false };
   }
-  
-  // Try to restore from template
-  if (existsSync(templatePath)) {
-    try {
-      copyFileSync(templatePath, soulPath);
-      return { exists: true, restored: true };
-    } catch {
-      // Failed to copy
-    }
+
+  const templatePath = resolveSoulTemplate(agentsDir);
+  if (!templatePath) {
+    return { exists: false, restored: false };
   }
-  
-  return { exists: false, restored: false };
+
+  try {
+    copyFileSync(templatePath, soulPath);
+    return { exists: true, restored: true };
+  } catch {
+    return { exists: false, restored: false };
+  }
 }
 
-/** Count stale knowledge files */
-function countStaleKnowledge(agentsDir: string): number {
-  const kbDir = join(agentsDir, "kb");
-  if (!existsSync(kbDir)) return 0;
-  
-  let staleCount = 0;
-  const files = readdirSync(kbDir).filter(f => f.endsWith(".md"));
-  
-  for (const file of files) {
-    try {
-      const content = readFileSync(join(kbDir, file), "utf-8");
-      const parsed = matter(content);
-      
-      // Check staleness criteria from frontmatter
-      const lastReviewed = parsed.data.last_reviewed as string | undefined;
-      const covers = parsed.data.covers as string[] | undefined;
-      
-      if (!lastReviewed) {
-        staleCount++;
-        continue;
-      }
-      
-      // Check if older than 30 days
-      const reviewDate = new Date(lastReviewed);
-      const daysSinceReview = (Date.now() - reviewDate.getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSinceReview > 30) {
-        staleCount++;
-      }
-    } catch {
-      // Skip files that can't be read
-    }
+function countStaleKnowledge(): number {
+  const gitRoot = findGitRoot();
+  const config = loadKbConfig(gitRoot);
+  const local = config.local.filter((dir) => existsSync(join(gitRoot, dir)));
+
+  if (local.length === 0) {
+    return 0;
   }
-  
-  return staleCount;
+
+  const effectiveConfig = { ...config, local };
+  const files = loadKnowledgeFiles(gitRoot, effectiveConfig);
+  return checkAllStaleness(gitRoot, files, effectiveConfig).filter((result) => result.isStale).length;
 }
 
-/** Check if knowledge consolidation is needed based on session activity */
-function needsKnowledgeConsolidation(agentsDir: string): boolean {
-  // Check if any files were flagged as needing review during this session
-  const reviewFlagPath = join(agentsDir, ".kb-review-flag");
-  if (existsSync(reviewFlagPath)) {
-    try {
-      const flagged = readFileSync(reviewFlagPath, "utf-8").trim();
-      return flagged === "true" || flagged === "1";
-    } catch {
-      return false;
-    }
+function getKnowledgeNudgeFilePath(projectRoot: string, branch: string): string {
+  const hash = createHash("md5").update(`${projectRoot}:${branch}`).digest("hex").slice(0, 8);
+  return join("/tmp", `loaf-kb-nudged-${hash}`);
+}
+
+function consumeKnowledgeNudges(projectRoot: string, branch: string): string[] {
+  const nudgeFile = getKnowledgeNudgeFilePath(projectRoot, branch);
+  if (!existsSync(nudgeFile)) {
+    return [];
   }
-  return false;
+
+  const files = readFileSync(nudgeFile, "utf-8")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  unlinkSync(nudgeFile);
+  return [...new Set(files)];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -940,21 +965,21 @@ export function registerSessionCommand(program: Command): void {
 
       console.log(`  ${green("✓")} Session active: ${gray(sessionFilePath.replace(agentsDir, ".agents"))}`);
 
-      // SPEC-020: Session lifecycle - SOUL.md validation and stale KB surfacing
       const soulStatus = validateSoulMd(agentsDir);
       if (soulStatus.restored) {
         console.log(`  ${yellow("⚠")} SOUL.md was missing — restored from template`);
       } else if (!soulStatus.exists) {
         console.log(`  ${yellow("⚠")} SOUL.md not found — run 'loaf install' to set up project`);
       }
-      
-      const staleKbCount = countStaleKnowledge(agentsDir);
+
+      const staleKbCount = countStaleKnowledge();
       if (staleKbCount > 0) {
         console.log(`  ${yellow("⚠")} ${staleKbCount} stale knowledge file(s) — run 'loaf kb review'`);
       }
 
       // Output recent entries for context
-      const recentEntries = extractRecentEntries(sessionContent, 15);
+      const currentSessionContent = readSessionFile(sessionFilePath)?.content || sessionContent;
+      const recentEntries = extractRecentEntries(currentSessionContent, 15);
       if (recentEntries.length > 0) {
         console.log(`\n  ${bold("Recent journal entries:")}\n`);
         for (const entry of recentEntries.slice(0, 20)) {
@@ -976,7 +1001,8 @@ export function registerSessionCommand(program: Command): void {
   session
     .command("end")
     .description("End session with progress summary")
-    .action(async () => {
+    .option("--if-active", "Exit successfully when no active session exists")
+    .action(async (options: { ifActive?: boolean }) => {
       const agentsDir = findAgentsDir();
       if (!agentsDir) {
         console.error(`  ${red("error:")} Could not find .agents/ directory`);
@@ -992,8 +1018,14 @@ export function registerSessionCommand(program: Command): void {
       // Find active session by branch lookup
       let existingSession = findActiveSessionForBranch(agentsDir, branch);
       if (!existingSession) {
+        if (options.ifActive) {
+          process.exit(0);
+        }
         console.error(`  ${red("error:")} No active session found for branch ${branch}`);
         process.exit(1);
+      }
+      if (options.ifActive && existingSession.data.status !== "active") {
+        process.exit(0);
       }
       
       const sessionFilePath = existingSession.filePath;
@@ -1035,11 +1067,13 @@ export function registerSessionCommand(program: Command): void {
         }
       );
 
-      // SPEC-020: Knowledge consolidation prompt if needed
-      if (needsKnowledgeConsolidation(agentsDir)) {
-        console.log(`  ${yellow("⚠")} Knowledge consolidation recommended:`);
-        console.log(`    ${gray("Stale files were flagged during this session.")}`);
-        console.log(`    ${gray("Consider running 'loaf kb review' before ending.")}`);
+      const knowledgeFiles = consumeKnowledgeNudges(findGitRoot(), branch);
+      if (knowledgeFiles.length > 0) {
+        console.log(`  ${yellow("⚠")} Knowledge consolidation recommended for ${knowledgeFiles.length} file(s):`);
+        for (const file of knowledgeFiles) {
+          console.log(`    ${gray(file)}`);
+        }
+        console.log(`    ${gray("Run 'loaf kb review <file>' before ending.")}`);
         console.log();
       }
 

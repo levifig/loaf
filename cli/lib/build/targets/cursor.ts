@@ -9,24 +9,20 @@ import {
   mkdirSync,
   cpSync,
   writeFileSync,
-  readFileSync,
-  existsSync,
   readdirSync,
-  rmSync,
+  existsSync,
 } from "fs";
-import matter from "gray-matter";
-import { join, dirname, basename } from "path";
-import { parse as parseYaml } from "yaml";
-import { loadAgentSidecarOptional, loadTargetSkillSidecar } from "../lib/sidecar.js";
+import { join } from "path";
+import { resetTargetOutput } from "../lib/target-output.js";
+import { loadTargetSkillSidecar } from "../lib/sidecar.js";
 import { getVersion, injectVersion } from "../lib/version.js";
 
 import { copySkills } from "../lib/skills.js";
 import { copyAgents } from "../lib/agents.js";
-import { copySharedTemplates } from "../lib/shared-templates.js";
-import { copyDirWithTransform } from "../lib/copy-utils.js";
 import type { BuildContext, HooksConfig, HookDefinition } from "../types.js";
 
 const TARGET_NAME = "cursor";
+const LOAF_HOOK_MARKER = "loaf-managed";
 
 const DEFAULT_AGENT_FRONTMATTER = {
   model: "inherit",
@@ -68,20 +64,11 @@ export async function build({
   const version = getVersion(rootDir);
   const transformMd = (content: string) => substituteCommands(content);
 
+  resetTargetOutput(distDir, ["skills", "agents", "hooks"]);
+
   const skillsDir = join(distDir, "skills");
   const agentsDir = join(distDir, "agents");
   const hooksDir = join(distDir, "hooks");
-
-  // Remove stale commands directory from previous builds
-  const staleCommandsDir = join(distDir, "commands");
-  if (existsSync(staleCommandsDir)) {
-    rmSync(staleCommandsDir, { recursive: true });
-  }
-
-  for (const dir of [skillsDir, agentsDir, hooksDir]) {
-    if (existsSync(dir)) rmSync(dir, { recursive: true });
-    mkdirSync(dir, { recursive: true });
-  }
 
   // Copy skills using shared module with Cursor-specific extensions
   // The shared module expects srcDir/skills/, so we pass the intermediate directory
@@ -110,8 +97,7 @@ export async function build({
     defaults: DEFAULT_AGENT_FRONTMATTER,
   });
   
-  // Hooks are now defined as direct commands in hooks.json, no need to copy scripts
-  // Keep the copyHooks for backward compatibility and session hooks
+  // Copy remaining shell hooks used by session/pre-compact flows.
   copyHooks(srcDir, hooksDir);
   generateHooksJson(config as HooksConfig, distDir);
 
@@ -128,7 +114,7 @@ function copyHooks(srcDir: string, destDir: string): void {
   const hooksSrc = join(srcDir, "hooks");
   if (!existsSync(hooksSrc)) return;
 
-  const subdirs = ["session", "lib", "instructions"];
+  const subdirs = ["session", "post-tool", "lib", "instructions"];
 
   for (const subdir of subdirs) {
     const subSrc = join(hooksSrc, subdir);
@@ -233,6 +219,7 @@ function generateHooksJson(config: HooksConfig, distDir: string): void {
   if (preToolHooks.length > 0) {
     hooks.preToolUse = preToolHooks.map((hook) => {
       const result: Record<string, unknown> = {
+        [LOAF_HOOK_MARKER]: true,
         timeout: Math.floor((hook.timeout || 60000) / 1000),
         ...(hook.matcher && { matcher: hook.matcher }),
         ...(hook.failClosed && { failClosed: hook.failClosed }),
@@ -254,6 +241,7 @@ function generateHooksJson(config: HooksConfig, distDir: string): void {
   if (postToolHooks.length > 0) {
     hooks.postToolUse = postToolHooks.map((hook) => {
       const result: Record<string, unknown> = {
+        [LOAF_HOOK_MARKER]: true,
         timeout: 30,
         ...(hook.matcher && { matcher: hook.matcher }),
         ...(hook.failClosed && { failClosed: hook.failClosed }),
@@ -277,6 +265,7 @@ function generateHooksJson(config: HooksConfig, distDir: string): void {
     if (!hooks[eventName]) hooks[eventName] = [];
     
     const result: Record<string, unknown> = {
+      [LOAF_HOOK_MARKER]: true,
       timeout: Math.floor((hook.timeout || 60000) / 1000),
     };
     

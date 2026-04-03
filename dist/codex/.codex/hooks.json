@@ -3,6 +3,7 @@
   "hooks": {
     "PreToolUse": [
       {
+        "loaf-managed": true,
         "matcher": "Bash",
         "command": "loaf check --hook check-secrets",
         "timeout": 30,
@@ -10,6 +11,7 @@
         "description": "Check for hardcoded secrets before writing"
       },
       {
+        "loaf-managed": true,
         "matcher": "Bash",
         "command": "loaf check --hook security-audit",
         "timeout": 600,
@@ -17,6 +19,7 @@
         "description": "Run security audit on bash commands"
       },
       {
+        "loaf-managed": true,
         "matcher": "Bash",
         "command": "loaf check --hook validate-push",
         "timeout": 60,
@@ -24,6 +27,7 @@
         "description": "Validates version bump, CHANGELOG, and build before git push"
       },
       {
+        "loaf-managed": true,
         "matcher": "Bash",
         "command": "loaf check --hook workflow-pre-pr",
         "timeout": 5,
@@ -31,6 +35,7 @@
         "description": "Enforce PR format and CHANGELOG entry before gh pr create"
       },
       {
+        "loaf-managed": true,
         "matcher": "Bash",
         "command": "loaf check --hook validate-commit",
         "timeout": 30,
