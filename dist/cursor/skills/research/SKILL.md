@@ -14,14 +14,54 @@ version: 2.0.0-dev.8
 Patterns for zooming out, investigating topics, and evolving project direction.
 
 ## Contents
+- Critical Rules
+- Verification
+- Quick Reference
+- Topics
 - Input Parsing
 - Confidence Hierarchy
 - Research Modes
-- Output Templates
-- Critical Rules
 - Related Skills
 
 **Input:** $ARGUMENTS
+
+## Critical Rules
+
+### Always
+- Interview before researching
+- Check project context first
+- Cite sources with confidence levels
+- Present options, let user decide
+- Get approval before editing VISION
+
+### Never
+- Edit VISION without explicit approval
+- Research indefinitely (set time bounds)
+- Ignore existing project decisions
+- Present research as implementation plan
+- Skip the interview step
+
+## Verification
+
+- Interview step was completed before research began
+- All findings cite sources with confidence levels (High/Medium/Low)
+- VISION.md was not modified without explicit user approval
+
+## Quick Reference
+
+| Input Pattern | Mode |
+|---------------|------|
+| Empty / "project state" / "catch me up" | State Assessment |
+| Topic or question | Topic Investigation |
+| "let's brainstorm" / "ideas for X" | Brainstorming |
+| "should we change direction?" / "update VISION" | Vision Evolution |
+
+## Topics
+
+| Topic | Template | Use When |
+|-------|----------|----------|
+| State Assessment | [state-assessment.md](templates/state-assessment.md) | Producing a project state overview |
+| Topic Investigation | [findings.md](templates/findings.md) | Documenting research findings |
 
 ## Input Parsing
 
@@ -86,29 +126,6 @@ Always check project context first. Rate findings: **High** (official/verified),
 2. Identify what's changed since last VISION update
 3. Propose specific changes with rationale
 4. **Get user approval before any edits**
-
-## Output Templates
-
-| Mode | Template |
-|------|----------|
-| State Assessment | [state-assessment.md](templates/state-assessment.md) |
-| Topic Investigation | [findings.md](templates/findings.md) |
-
-## Critical Rules
-
-### Always
-- Interview before researching
-- Check project context first
-- Cite sources with confidence levels
-- Present options, let user decide
-- Get approval before editing VISION
-
-### Never
-- Edit VISION without explicit approval
-- Research indefinitely (set time bounds)
-- Ignore existing project decisions
-- Present research as implementation plan
-- Skip the interview step
 
 ## Related Skills
 

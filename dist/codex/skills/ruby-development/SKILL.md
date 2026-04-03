@@ -13,49 +13,12 @@ version: 2.0.0-dev.8
 
 The DHH/37signals way: convention over configuration, programmer happiness, and elegant simplicity.
 
-## Stack Overview
-
-### Rails 8 (Default)
-
-| Component | Default | Alternative |
-|-----------|---------|-------------|
-| Database | SQLite (dev/prod) | PostgreSQL |
-| Background Jobs | Solid Queue | Sidekiq |
-| Caching | Solid Cache | Redis |
-| WebSockets | Solid Cable | Redis |
-| Assets | Propshaft + Import Maps | esbuild |
-| CSS | Tailwind (standalone) | Bootstrap |
-| Deployment | Kamal | Capistrano |
-
-### Beyond Rails
-
-| Use Case | Tool |
-|----------|------|
-| Microservices | Sinatra, Roda |
-| API-only | Grape |
-| Full-stack alternative | Hanami |
-| CLI tools | Thor, TTY |
-| Gem development | Bundler |
-
-## Topics
-
-| Topic | Reference | Use When |
-|-------|-----------|----------|
-| Core | [core.md](references/core.md) | Writing idiomatic Ruby, organizing Rails files |
-| Models | [models.md](references/models.md) | Creating models, validations, associations, migrations |
-| Controllers | [controllers.md](references/controllers.md) | Building RESTful actions, strong params, filters |
-| Views | [views.md](references/views.md) | Creating templates, partials, layouts, helpers |
-| Hotwire | [hotwire.md](references/hotwire.md) | Adding Turbo Drive/Frames/Streams, Stimulus |
-| API | [api.md](references/api.md) | Building JSON APIs, versioning, authentication |
-| Jobs | [jobs.md](references/jobs.md) | Setting up Solid Queue, Active Job, recurring jobs |
-| Security | [security.md](references/security.md) | Implementing authentication, authorization, CSRF |
-| Testing | [testing.md](references/testing.md) | Writing Minitest, fixtures, system tests |
-| Performance | [performance.md](references/performance.md) | Fixing N+1 queries, caching, indexing |
-| Deployment | [deployment.md](references/deployment.md) | Deploying with Kamal, Docker, zero-downtime |
-| Styling | [styling.md](references/styling.md) | Setting up Tailwind CSS, responsive design |
-| Services | [services.md](references/services.md) | Creating service objects, result patterns |
-| Mobile | [mobile.md](references/mobile.md) | Building Hotwire Native, Bridge Components |
-| Debugging | [debugging.md](references/debugging.md) | Using binding.irb, byebug, Rails console |
+## Contents
+- Critical Rules
+- Verification
+- Quick Reference
+- Topics
+- Stack Overview
 
 ## Critical Rules
 
@@ -114,3 +77,47 @@ The DHH/37signals way: convention over configuration, programmer happiness, and 
 - Run tests for modified components
 - Run Brakeman scan if reviewing or doing thorough validation
 - Check CHANGELOG.md format if it exists
+
+## Quick Reference
+
+### Rails 8 (Default)
+
+| Component | Default | Alternative |
+|-----------|---------|-------------|
+| Database | SQLite (dev/prod) | PostgreSQL |
+| Background Jobs | Solid Queue | Sidekiq |
+| Caching | Solid Cache | Redis |
+| WebSockets | Solid Cable | Redis |
+| Assets | Propshaft + Import Maps | esbuild |
+| CSS | Tailwind (standalone) | Bootstrap |
+| Deployment | Kamal | Capistrano |
+
+### Beyond Rails
+
+| Use Case | Tool |
+|----------|------|
+| Microservices | Sinatra, Roda |
+| API-only | Grape |
+| Full-stack alternative | Hanami |
+| CLI tools | Thor, TTY |
+| Gem development | Bundler |
+
+## Topics
+
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Core | [core.md](references/core.md) | Writing idiomatic Ruby, organizing Rails files |
+| Models | [models.md](references/models.md) | Creating models, validations, associations, migrations |
+| Controllers | [controllers.md](references/controllers.md) | Building RESTful actions, strong params, filters |
+| Views | [views.md](references/views.md) | Creating templates, partials, layouts, helpers |
+| Hotwire | [hotwire.md](references/hotwire.md) | Adding Turbo Drive/Frames/Streams, Stimulus |
+| API | [api.md](references/api.md) | Building JSON APIs, versioning, authentication |
+| Jobs | [jobs.md](references/jobs.md) | Setting up Solid Queue, Active Job, recurring jobs |
+| Security | [security.md](references/security.md) | Implementing authentication, authorization, CSRF |
+| Testing | [testing.md](references/testing.md) | Writing Minitest, fixtures, system tests |
+| Performance | [performance.md](references/performance.md) | Fixing N+1 queries, caching, indexing |
+| Deployment | [deployment.md](references/deployment.md) | Deploying with Kamal, Docker, zero-downtime |
+| Styling | [styling.md](references/styling.md) | Setting up Tailwind CSS, responsive design |
+| Services | [services.md](references/services.md) | Creating service objects, result patterns |
+| Mobile | [mobile.md](references/mobile.md) | Building Hotwire Native, Bridge Components |
+| Debugging | [debugging.md](references/debugging.md) | Using binding.irb, byebug, Rails console |

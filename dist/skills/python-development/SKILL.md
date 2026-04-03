@@ -12,37 +12,12 @@ description: >-
 
 Modern Python 3.12+ development with FastAPI ecosystem.
 
-## Stack Overview
-
-| Layer | Default | Alternatives |
-|-------|---------|--------------|
-| Runtime | Python 3.12+ | - |
-| Package Manager | uv | rye, poetry |
-| Linter/Formatter | ruff | black + flake8 |
-| Type Checker | mypy (strict) | pyright |
-| Web Framework | FastAPI | Flask, Django |
-| Validation | Pydantic v2 | - |
-| ORM | SQLAlchemy 2.0 | - |
-| Data Processing | Polars | Pandas |
-| HTTP Client | httpx | aiohttp |
-| Testing | pytest | - |
-| Containerization | Docker | - |
-
-## Topics
-
-| Topic | Use For |
-|-------|---------|
-| [Core](references/core.md) | Project setup, pyproject.toml, modern Python features |
-| [FastAPI](references/fastapi.md) | REST APIs, routing, dependency injection, middleware |
-| [Pydantic](references/pydantic.md) | Data models, validation, settings management |
-| [Async](references/async.md) | async/await, TaskGroup, context managers |
-| [Types](references/types.md) | Type hints, mypy, Protocol, generics |
-| [Testing](references/testing.md) | pytest, fixtures, mocking, async tests |
-| [Database](references/database.md) | SQLAlchemy 2.0, Alembic migrations, transactions |
-| [Data](references/data.md) | Polars, ETL pipelines, schema validation |
-| [API Clients](references/api.md) | httpx, retries, rate limiting, error handling |
-| [Deployment](references/deployment.md) | Docker, logging, OpenTelemetry, health checks |
-| [Debugging](references/debugging.md) | pdb, structlog, pytest debugging, remote debugging |
+## Contents
+- Critical Rules
+- Verification
+- Quick Reference
+- Topics
+- Stack Overview
 
 ## Critical Rules
 
@@ -103,3 +78,39 @@ When writing test files, verify:
 - Async tests have `@pytest.mark.asyncio` decorator
 - `import pytest` present in test files
 - Use fixtures for setup/teardown instead of bare asserts
+
+## Quick Reference
+
+See Stack Overview below for default technology choices.
+
+## Topics
+
+| Topic | Use For |
+|-------|---------|
+| [Core](references/core.md) | Project setup, pyproject.toml, modern Python features |
+| [FastAPI](references/fastapi.md) | REST APIs, routing, dependency injection, middleware |
+| [Pydantic](references/pydantic.md) | Data models, validation, settings management |
+| [Async](references/async.md) | async/await, TaskGroup, context managers |
+| [Types](references/types.md) | Type hints, mypy, Protocol, generics |
+| [Testing](references/testing.md) | pytest, fixtures, mocking, async tests |
+| [Database](references/database.md) | SQLAlchemy 2.0, Alembic migrations, transactions |
+| [Data](references/data.md) | Polars, ETL pipelines, schema validation |
+| [API Clients](references/api.md) | httpx, retries, rate limiting, error handling |
+| [Deployment](references/deployment.md) | Docker, logging, OpenTelemetry, health checks |
+| [Debugging](references/debugging.md) | pdb, structlog, pytest debugging, remote debugging |
+
+## Stack Overview
+
+| Layer | Default | Alternatives |
+|-------|---------|--------------|
+| Runtime | Python 3.12+ | - |
+| Package Manager | uv | rye, poetry |
+| Linter/Formatter | ruff | black + flake8 |
+| Type Checker | mypy (strict) | pyright |
+| Web Framework | FastAPI | Flask, Django |
+| Validation | Pydantic v2 | - |
+| ORM | SQLAlchemy 2.0 | - |
+| Data Processing | Polars | Pandas |
+| HTTP Client | httpx | aiohttp |
+| Testing | pytest | - |
+| Containerization | Docker | - |

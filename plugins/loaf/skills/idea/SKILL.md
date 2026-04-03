@@ -18,6 +18,41 @@ Capture ideas quickly with minimal friction.
 
 ---
 
+## Contents
+- Critical Rules
+- Verification
+- Quick Reference
+- Purpose
+- Process
+- Idea Lifecycle
+- Guardrails
+- Related Skills
+
+## Critical Rules
+
+- Speed over completeness -- capture quickly, shape later
+- 2-3 questions maximum -- don't turn capture into an interview
+- Infer metadata automatically -- don't ask for tags, title, or links
+- One idea per file -- keep them atomic
+- No shaping here -- that's what `/loaf:shape` is for
+
+## Verification
+
+- Idea file created in `.agents/ideas/` with correct `YYYYMMDD-HHMMSS-slug.md` naming
+- Frontmatter contains required fields (title, status: raw, created timestamp)
+- If promoted from a spark, source document is marked `*(promoted)*`
+
+## Quick Reference
+
+| Status | Meaning |
+|--------|---------|
+| `raw` | Just captured, unprocessed |
+| `shaping` | Being developed via /loaf:shape or /loaf:brainstorm |
+| `shaped` | Converted to SPEC, idea file archived |
+| `archived` | Decided not to pursue, kept for reference |
+
+---
+
 ## Purpose
 
 Ideas are raw nuggets -- unprocessed, unshaped, but worth remembering. The goal is **speed of capture**, not thoroughness. Shape later via `/loaf:shape`.

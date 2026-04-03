@@ -12,7 +12,34 @@ description: >-
 
 Deep discovery for personas, market landscape, and problem space.
 
+## Contents
+- Critical Rules
+- Verification
+- Purpose
+- Mode Detection
+- Process
+- Guardrails
+- Related Skills
+
 **Input:** $ARGUMENTS
+
+---
+
+## Critical Rules
+
+- **Interview deeply** -- strategy is domain knowledge extraction, not guesswork
+- **Align with VISION** -- strategy serves the north star, never contradicts it
+- **Get approval** -- do NOT update STRATEGY.md without explicit user confirmation
+- **Define anti-personas** -- who we are NOT building for is as important as who we are
+- **Keep it current** -- outdated strategy is worse than no strategy
+
+---
+
+## Verification
+
+- STRATEGY.md content aligns with VISION.md direction
+- All persona definitions include anti-personas (who we are NOT building for)
+- User has explicitly approved all updates before STRATEGY.md is modified
 
 ---
 

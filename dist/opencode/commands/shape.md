@@ -14,8 +14,9 @@ version: 2.0.0-dev.8
 Develop ideas into bounded, buildable specifications.
 
 ## Contents
+- Critical Rules
+- Verification
 - Purpose
-- CRITICAL: Interview Extensively
 - Process
 - Spec Lifecycle
 - Strategic Tensions
@@ -26,17 +27,34 @@ Develop ideas into bounded, buildable specifications.
 
 ---
 
+## Critical Rules
+
+Unlike `/idea` (quick capture), shaping requires **deep understanding**. Ask about edge cases, conflicts with existing patterns, hidden complexity, and scope boundaries. Use `AskUserQuestion` throughout.
+
+1. **Interview extensively** -- not quick capture
+2. **Evaluate strategic fit** -- don't shape in a vacuum
+3. **Respect appetite** -- fixed time, variable scope
+4. **Document rabbit holes** -- prevent scope creep
+5. **Clear test conditions** -- observable outcomes
+6. **Circuit breaker** -- plan for running out of time
+7. **Get approval** -- don't create spec file without explicit confirmation
+8. **Note tensions, don't fix** -- strategy evolves via /reflect
+
+---
+
+## Verification
+
+- Spec has a clear problem statement, solution direction, hard boundaries, and identified rabbit holes
+- All test conditions are observable and measurable outcomes
+- User has explicitly approved the spec before the file is created
+
+---
+
 ## Purpose
 
 Shaping transforms raw ideas into **well-defined SPECs** with clear problem statement, solution direction (not blueprint), hard boundaries, identified rabbit holes, and enough direction without too much constraint.
 
 Evaluates ideas against strategic context (VISION, STRATEGY, ARCHITECTURE) to ensure alignment.
-
----
-
-## CRITICAL: Interview Extensively
-
-Unlike `/idea` (quick capture), shaping requires **deep understanding**. Ask about edge cases, conflicts with existing patterns, hidden complexity, and scope boundaries. Use `AskUserQuestion` throughout.
 
 ---
 

@@ -13,6 +13,9 @@ description: >-
 Quick reference for all Loaf CLI commands. Each command includes its purpose, common usage patterns, and when to use it.
 
 ## Contents
+- Critical Rules
+- Verification
+- Quick Decision Guide
 - Global Commands
 - Build Commands
 - Task Management
@@ -21,6 +24,36 @@ Quick reference for all Loaf CLI commands. Each command includes its purpose, co
 - Session Management
 - Project Setup
 - Utility Commands
+- Command Substitution Reference
+
+## Critical Rules
+
+- **Always run `loaf build`** after modifying skills, agents, or hooks before installing
+- **Always run `loaf install`** after building to propagate changes to target tools
+- **Use `loaf task refresh`** after manually editing task files to keep the TASKS.json index in sync
+- **Never skip `loaf check`** before committing -- it runs enforcement hooks (secrets scanning, linting)
+
+## Verification
+
+- `loaf build` exits cleanly with no errors for all targets
+- `loaf check` passes all enforcement hooks before committing
+- `loaf task list` reflects the expected state after task updates
+
+## Quick Decision Guide
+
+**Need to start working?** → `{{IMPLEMENT_CMD}} TASK-XXX`
+
+**Need to continue after restart?** → `loaf session start` then `{{IMPLEMENT_CMD}}`
+
+**Need to coordinate agents?** → `{{ORCHESTRATE_CMD}}`
+
+**Made changes to skills?** → `loaf build && loaf install --to <target>`
+
+**Want to see what's in progress?** → `loaf task list --active`
+
+**Ready to archive completed work?** → `loaf task archive TASK-XXX`
+
+**Need to check knowledge freshness?** → `loaf kb check`
 
 ---
 
@@ -266,21 +299,3 @@ The following placeholders are substituted at build time per target:
 |-------------|-------------|----------|--------|
 | `{{IMPLEMENT_CMD}}` | `/implement` | `/implement` | `@loaf/implement` |
 | `{{ORCHESTRATE_CMD}}` | `/implement` | `/implement` | `@loaf/implement` |
-
----
-
-## Quick Decision Guide
-
-**Need to start working?** → `{{IMPLEMENT_CMD}} TASK-XXX`
-
-**Need to continue after restart?** → `loaf session start` then `{{IMPLEMENT_CMD}}`
-
-**Need to coordinate agents?** → `{{ORCHESTRATE_CMD}}`
-
-**Made changes to skills?** → `loaf build && loaf install --to <target>`
-
-**Want to see what's in progress?** → `loaf task list --active`
-
-**Ready to archive completed work?** → `loaf task archive TASK-XXX`
-
-**Need to check knowledge freshness?** → `loaf kb check`

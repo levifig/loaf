@@ -10,16 +10,62 @@ description: >-
 
 # Knowledge Base
 
+## Contents
+- Critical Rules
+- Verification
+- Quick Reference
+- Topics
+- When to Create a Knowledge File
+- The covers: Field
+- Review Workflow
+
 Conventions and workflows for managing project knowledge files -- structured
 domain knowledge that lives in `docs/knowledge/` and persists across sessions.
 
-## Contents
-- When to Create a Knowledge File
-- Topics
-- The covers: Field
-- Review Workflow
-- What Goes Where
-- Critical Rules
+## Critical Rules
+
+### Always
+- Include `topics` (min 1) and `last_reviewed` in frontmatter
+- Use kebab-case filenames in `docs/knowledge/`
+- Add `covers:` globs when the knowledge maps to specific code paths
+- Run `loaf kb validate` before committing new knowledge files
+- Mark files reviewed with `loaf kb review` after updating
+
+### Never
+- Duplicate code documentation in knowledge files
+- Use date prefixes on knowledge filenames (unlike sessions or ideas)
+- Use overly broad `covers:` globs that trigger constant staleness alerts
+- Skip the `last_reviewed` field -- it is required for the lifecycle to work
+- Store knowledge files outside `docs/knowledge/` (ADRs go in `docs/decisions/`)
+
+## Verification
+
+- Run `loaf kb validate` to confirm frontmatter is valid (required fields, correct types, valid globs)
+- Run `loaf kb check` to confirm no covered code paths have changed since last review
+- Verify `covers:` globs are precise enough to avoid false-positive staleness alerts
+
+## Quick Reference
+
+| Surface | Contains | Decision Test |
+|---------|----------|---------------|
+| **Code** (docstrings, types) | What the code does | Is it self-documenting? |
+| **Knowledge files** | Domain rules, cross-cutting context, roadmap | Requires context beyond the code? |
+| **ADRs** | Why we chose this approach | Is it an architectural decision? |
+| **CLAUDE.md** | Agent instructions, conventions | Is it about how agents should behave? |
+| **MEMORY.md** | User preferences, session pointers | Is it personal or ephemeral? |
+
+CLAUDE.md may reference knowledge files but should never duplicate their content.
+
+## Topics
+
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Frontmatter Schema | [frontmatter-schema.md](references/frontmatter-schema.md) | Creating or validating knowledge file frontmatter |
+| Naming Conventions | [naming-conventions.md](references/naming-conventions.md) | Deciding where to put knowledge and what to name it |
+
+| Template | Use When |
+|----------|----------|
+| [knowledge-file.md](templates/knowledge-file.md) | Creating a new knowledge file from scratch |
 
 ## When to Create a Knowledge File
 
@@ -39,17 +85,6 @@ Do NOT create knowledge files for:
 - One-off architectural decisions (write an ADR instead)
 - Agent behavior instructions (put those in CLAUDE.md)
 - User preferences or session pointers (those belong in MEMORY.md)
-
-## Topics
-
-| Topic | Reference | Use When |
-|-------|-----------|----------|
-| Frontmatter Schema | [frontmatter-schema.md](references/frontmatter-schema.md) | Creating or validating knowledge file frontmatter |
-| Naming Conventions | [naming-conventions.md](references/naming-conventions.md) | Deciding where to put knowledge and what to name it |
-
-| Template | Use When |
-|----------|----------|
-| [knowledge-file.md](templates/knowledge-file.md) | Creating a new knowledge file from scratch |
 
 ## The covers: Field
 
@@ -130,35 +165,3 @@ loaf kb status
 
 Summary of all knowledge files: total count, stale count, files missing
 `covers:`, last review dates.
-
-## What Goes Where
-
-| Surface | Contains | Decision Test |
-|---------|----------|---------------|
-| **Code** (docstrings, types) | What the code does | Is it self-documenting? |
-| **Knowledge files** | Domain rules, cross-cutting context, roadmap | Requires context beyond the code? |
-| **ADRs** | Why we chose this approach | Is it an architectural decision? |
-| **CLAUDE.md** | Agent instructions, conventions | Is it about how agents should behave? |
-| **MEMORY.md** | User preferences, session pointers | Is it personal or ephemeral? |
-
-CLAUDE.md may reference knowledge files but should never duplicate their content.
-
-For the authoritative design document covering the full knowledge management
-system (QMD integration, growth loops, cross-project sharing), see
-`docs/knowledge/knowledge-management-design.md`.
-
-## Critical Rules
-
-### Always
-- Include `topics` (min 1) and `last_reviewed` in frontmatter
-- Use kebab-case filenames in `docs/knowledge/`
-- Add `covers:` globs when the knowledge maps to specific code paths
-- Run `loaf kb validate` before committing new knowledge files
-- Mark files reviewed with `loaf kb review` after updating
-
-### Never
-- Duplicate code documentation in knowledge files
-- Use date prefixes on knowledge filenames (unlike sessions or ideas)
-- Use overly broad `covers:` globs that trigger constant staleness alerts
-- Skip the `last_reviewed` field -- it is required for the lifecycle to work
-- Store knowledge files outside `docs/knowledge/` (ADRs go in `docs/decisions/`)

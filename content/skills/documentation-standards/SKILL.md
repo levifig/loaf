@@ -13,15 +13,16 @@ description: >-
 Standards for ADRs, API docs, changelogs, and diagrams.
 
 ## Contents
+- Critical Rules
+- Verification
 - Topics
 
-## Topics
+## Critical Rules
 
-| Topic | Reference | Use When |
-|-------|-----------|----------|
-| Documentation | `references/documentation.md` | Writing ADRs, API docs, changelogs |
-| Documentation Review | `references/documentation-review.md` | Reviewing documentation quality and completeness |
-| Diagrams | `references/diagrams.md` | Creating Mermaid diagrams, visualizing architecture |
+- **API docs reflect only what is implemented and released** -- never document future or planned endpoints in API specifications; update docs AFTER features ship
+- **Never modify version numbers** in CHANGELOG.md without explicit user approval -- new version headers require user confirmation
+- **CHANGELOG entries must be user-focused** -- no file paths, no implementation details without user benefit, no references to ADR files
+- **Keep a Changelog format** -- entries categorized under Added, Changed, Fixed, Removed, Deprecated, or Security
 
 ## Verification
 
@@ -66,3 +67,11 @@ After committing, consider updating CHANGELOG.md with the changes made. Use cate
 - **Removed** for removed features
 - **Deprecated** for soon-to-be-removed features
 - **Security** for security-related changes
+
+## Topics
+
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Documentation | `references/documentation.md` | Writing ADRs, API docs, changelogs |
+| Documentation Review | `references/documentation-review.md` | Reviewing documentation quality and completeness |
+| Diagrams | `references/diagrams.md` | Creating Mermaid diagrams, visualizing architecture |

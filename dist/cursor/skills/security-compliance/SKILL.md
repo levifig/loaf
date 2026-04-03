@@ -13,7 +13,23 @@ version: 2.0.0-dev.8
 Security patterns, threat modeling, and compliance verification.
 
 ## Contents
+- Critical Rules
+- Verification
 - Topics
+
+## Critical Rules
+
+- **Never** store secrets, credentials, or PII in version control — use environment variables or secret managers
+- **Always** run secrets scanning before committing (pre-commit hooks)
+- **Validate all inputs** at trust boundaries — never trust client-side validation alone
+- **Apply least privilege** — grant minimum permissions required for each component
+- **Document threat model** before implementing security-sensitive features
+
+## Verification
+
+- Secrets scanner passes with zero findings on all staged files
+- No hardcoded credentials, API keys, or tokens in source code
+- Security review checklist completed for changes touching auth, crypto, or data handling
 
 ## Topics
 

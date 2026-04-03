@@ -15,6 +15,9 @@ version: 2.0.0-dev.8
 Decompose specifications into atomic, implementable tasks.
 
 ## Contents
+- Critical Rules
+- Verification
+- Quick Reference
 - Task Breakdown Philosophy
 - Task Backend Detection
 - Process
@@ -26,9 +29,34 @@ Decompose specifications into atomic, implementable tasks.
 
 ---
 
-## Task Breakdown Philosophy
+## Critical Rules
 
-**Primary principle: separation of concerns.**
+- **One concern per task** -- never mix unrelated layers (backend + frontend) in a single task
+- **Every task includes its own verification** -- no separate "verify" tasks; each task must have an observable done condition
+- **Own the decisions** -- decide granularity and priorities autonomously; only ask the user when two equally valid orderings have genuinely different trade-offs
+- **Keep tests with the code they test** -- never split implementation and tests into separate tasks
+- **Update spec status** -- mark the spec as `implementing` after tasks are created
+
+---
+
+## Verification
+
+- Each created task has a clear title, priority, file hints, verification command, and observable done condition
+- The dependency graph has no cycles and reflects actual implementation order
+- Spec status has been updated to `implementing`
+
+---
+
+## Quick Reference
+
+### Priority Levels
+
+| Priority | Meaning |
+|----------|---------|
+| P0 | Urgent/blocking -- drop everything |
+| P1 | High -- work next |
+| P2 | Normal -- scheduled work (default) |
+| P3 | Low -- when time permits |
 
 ### Right-Sizing Rules
 
@@ -38,6 +66,12 @@ Decompose specifications into atomic, implementable tasks.
 | **One concern** | Touches one layer, service, or component |
 | **Context-appropriate** | Fits in model context with room for exploration |
 | **Not over-fragmented** | Don't split what naturally belongs together |
+
+---
+
+## Task Breakdown Philosophy
+
+**Primary principle: separation of concerns.**
 
 ### The Right Size Test
 
@@ -109,17 +143,6 @@ can still adjust after creation, but the default is to proceed.
 ### Step 8: Update Spec and Announce
 
 Set spec status to `implementing`. Announce created tasks with next steps.
-
----
-
-## Priority Levels
-
-| Priority | Meaning |
-|----------|---------|
-| P0 | Urgent/blocking -- drop everything |
-| P1 | High -- work next |
-| P2 | Normal -- scheduled work (default) |
-| P3 | Low -- when time permits |
 
 ---
 

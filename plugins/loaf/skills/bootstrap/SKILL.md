@@ -16,8 +16,10 @@ version: 2.0.0-dev.8
 First-contact project setup: detect state, interview the builder, populate project documents.
 
 ## Contents
-- Purpose
+- Critical Rules
+- Verification
 - Topics
+- Purpose
 - Input Parsing
 - State Detection
 - Brief Intake
@@ -33,11 +35,21 @@ First-contact project setup: detect state, interview the builder, populate proje
 
 ---
 
-## Purpose
+## Critical Rules
 
-Bootstrap is the **intelligent half** of the 0-to-1 experience. The mechanical half (`loaf setup`) handles scaffolding, building, and installing. Bootstrap handles everything that requires understanding: reading briefs, interviewing the builder, populating project documents, and recording decisions.
+- **Detect, don't ask** -- auto-classify project mode (brownfield/greenfield+brief/greenfield+empty), confirm briefly, let the user correct
+- **Never overwrite existing documents** without explicit confirmation -- read first, note what exists, ask before changing
+- **Always interview** -- even with a rich brief, confirm understanding through structured questions using `AskUserQuestion`
+- **Persist the brief** -- every bootstrap must produce a `docs/BRIEF.md`
+- **Suggest, don't execute** -- recommend next skills at the end, never auto-run them
 
-The goal is to go from "I have an idea" (or "I have a codebase") to a populated set of project documents -- BRIEF.md, VISION.md, STRATEGY.md, ARCHITECTURE.md, and AGENTS.md -- through a structured but conversational process.
+---
+
+## Verification
+
+- All expected documents (`docs/BRIEF.md`, `docs/VISION.md`, `.agents/AGENTS.md` at minimum) exist and contain populated content
+- Symlinks are correct: `.claude/CLAUDE.md -> .agents/AGENTS.md` and `./AGENTS.md -> .agents/AGENTS.md`
+- A session file was saved in `.agents/sessions/` capturing key decisions and interview exchanges
 
 ---
 
@@ -46,6 +58,14 @@ The goal is to go from "I have an idea" (or "I have a codebase") to a populated 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
 | Interview Guide | [interview-guide.md](references/interview-guide.md) | Conducting the builder interview (all modes) |
+
+---
+
+## Purpose
+
+Bootstrap is the **intelligent half** of the 0-to-1 experience. The mechanical half (`loaf setup`) handles scaffolding, building, and installing. Bootstrap handles everything that requires understanding: reading briefs, interviewing the builder, populating project documents, and recording decisions.
+
+The goal is to go from "I have an idea" (or "I have a codebase") to a populated set of project documents -- BRIEF.md, VISION.md, STRATEGY.md, ARCHITECTURE.md, and AGENTS.md -- through a structured but conversational process.
 
 ---
 
