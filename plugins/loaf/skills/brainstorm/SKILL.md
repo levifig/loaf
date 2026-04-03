@@ -5,69 +5,49 @@ description: >-
   analysis. Use when the user asks "help me think through this," "what are the
   options," or is exploring tradeoffs. Produces docs with sparks. Not for quick
   ideas or shaping.
+user-invocable: true
 argument-hint: '[idea or problem]'
+version: 2.0.0-dev.8
 ---
 
 # Brainstorm
 
-Think deeply about an existing idea or explore a new problem space.
+Generative thinking — expanding possibilities before narrowing through structured exploration.
 
-**Input:** $ARGUMENTS
+## Critical Rules
 
----
+**Always**
+- Diverge before converging — generate options before judging
+- Connect exploration to VISION.md and STRATEGY.md context
+- Document discarded options — they hold valuable reasoning
+- Capture sparks (speculative byproducts) in a dedicated section
+- Set boundaries on exploration time
 
-## Purpose
+**Never**
+- Prematurely commit to an option before full exploration
+- Delete brainstorm documents — archive them for context preservation
+- Process sparks during the main brainstorm — capture only, expand later
+- Turn brainstorm into an interview — keep it exploratory
 
-Brainstorming is **generative thinking** -- expanding possibilities before narrowing.
+## Verification
 
-Unlike `/loaf:idea` (quick capture) or `/loaf:shape` (rigorous bounding), brainstorming is exploratory: process an existing idea, explore a problem space, or generate options before committing.
+After work completes, verify:
+- Brainstorm document created at `.agents/drafts/{YYYYMMDD}-{HHMMSS}-brainstorm-{slug}.md`
+- `## Sparks` section present with speculative byproducts
+- Spark lifecycle documented: unprocessed → promoted/discarded
+- Brainstorm references strategic context from VISION/STRATEGY
 
----
+## Quick Reference
 
-## Mode Detection
+### Mode Detection
 
-| Input Pattern | Mode |
-|---------------|------|
-| Idea file reference | Idea Processing (deep dive on captured idea) |
-| Problem/question | Problem Exploration |
-| Empty | Open Brainstorm ("What should we be thinking about?") |
+| Input Pattern | Mode | Output |
+|---------------|------|--------|
+| Idea file reference | Idea Processing | Deep dive on captured idea |
+| Problem/question | Problem Exploration | Exploratory options |
+| Empty | Open Brainstorm | "What should we think about?" |
 
----
-
-## Process
-
-### Idea Processing
-
-1. Read idea from `.agents/ideas/{filename}.md`
-2. Gather context: VISION.md, STRATEGY.md, ARCHITECTURE.md, related ideas
-3. **Deep exploration**: ask about user value, problem depth, alternatives, risks, dependencies, scope (minimal vs maximal)
-4. Generate options: conventional, minimal, ambitious, contrarian approaches
-5. Create brainstorm document following [brainstorm template](templates/brainstorm.md)
-6. Update idea file status if proceeding
-
-**Output file:** `.agents/drafts/{YYYYMMDD}-{HHMMSS}-brainstorm-{slug}.md`
-
-### Problem Exploration
-
-1. **Interview**: problem definition, who's affected, impact, prior attempts, constraints
-2. Gather strategic context
-3. **Diverge**: first principles, inversion, analogy, extreme constraints, persona lens
-4. **Converge**: filter by strategy alignment, feasibility, value
-5. Create brainstorm document following [brainstorm template](templates/brainstorm.md)
-
-**Output file:** `.agents/drafts/{YYYYMMDD}-{HHMMSS}-brainstorm-{slug}.md`
-
-### Open Brainstorm
-
-1. Assess: list ideas in `.agents/ideas/`, check recent sessions, review VISION for gaps
-2. Surface opportunities: what's blocking? What's not being pursued? Untested assumptions?
-3. Present options for exploration
-
-### Capture Sparks (All Modes)
-
-After the main brainstorm concludes, identify **sparks** -- speculative ideas that emerged but aren't part of the main direction. These are byproducts of exploration, not the conclusion.
-
-Add a `## Sparks` section at the end of the brainstorm document:
+### Spark Format
 
 ```markdown
 ## Sparks
@@ -76,33 +56,11 @@ Add a `## Sparks` section at the end of the brainstorm document:
 - **Title** -- one-line description
 ```
 
-Sparks are:
-- **Lightweight** -- one bullet, one line each. Don't expand or analyze.
-- **Byproducts** -- they emerged during brainstorming, not the main output
-- **Worth remembering** -- interesting enough to not lose, not ready for `/loaf:shape`
+Sparks are: lightweight, byproducts, worth remembering. Mark as `*(promoted)*` or `*(abandoned)*` after processing.
 
-Spark lifecycle:
-- Unprocessed (default) -- sitting in the brainstorm document
-- `*(promoted)*` -- processed into an idea via `/loaf:idea`
-- `~~Strikethrough~~ *(abandoned)*` -- decided not to pursue
+## Topics
 
-Brainstorm documents are **archived, never deleted** -- they hold exploration context, reasoning, and unprocessed sparks. A brainstorm doc remains active while it has unprocessed sparks.
-
----
-
-## Guardrails
-
-1. **Diverge before converging** -- generate options before judging
-2. **Stay exploratory** -- don't prematurely commit
-3. **Document the thinking** -- even discarded options are valuable
-4. **Connect to strategy** -- ground exploration in context
-5. **Know when to stop** -- set boundaries on exploration
-
----
-
-## Related Skills
-
-- **idea** -- Quick capture (may precede brainstorming)
-- **shape** -- Rigorous bounding (often follows brainstorming)
-- **research** -- Fact-finding (complements brainstorming)
-- **strategy** -- Strategic context (grounds brainstorming)
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Brainstorm Template | [templates/brainstorm.md](templates/brainstorm.md) | Creating structured brainstorm documents |
+| Strategic Context | `strategy/references/` | Grounding exploration in project direction |

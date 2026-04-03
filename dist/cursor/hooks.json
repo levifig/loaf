@@ -3,216 +3,134 @@
   "hooks": {
     "preToolUse": [
       {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-format-check.sh",
-        "timeout": 60,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-tdd-advisory.sh",
-        "timeout": 5,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-check-secrets.sh",
+        "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Edit|Write"
+        "matcher": "Edit|Write|Bash",
+        "failClosed": true,
+        "command": "loaf check --hook check-secrets"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-security-audit.sh",
+        "loaf-managed": true,
         "timeout": 600,
-        "matcher": "Bash"
+        "matcher": "Bash",
+        "failClosed": true,
+        "command": "loaf check --hook security-audit"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-validate-changelog.sh",
-        "timeout": 30,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/foundations-validate-push.sh",
+        "loaf-managed": true,
         "timeout": 60,
-        "matcher": "Bash"
+        "matcher": "Bash",
+        "failClosed": true,
+        "command": "loaf check --hook validate-push"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/workflow-pre-pr.sh",
+        "loaf-managed": true,
         "timeout": 5,
-        "matcher": "Bash"
+        "matcher": "Bash",
+        "failClosed": true,
+        "command": "loaf check --hook workflow-pre-pr"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/workflow-pre-push.sh",
+        "loaf-managed": true,
         "timeout": 5,
-        "matcher": "Bash"
+        "matcher": "Bash",
+        "prompt": "STOP. Before running gh pr merge, follow squash merge conventions:\n1. TITLE: Let GitHub default it — \"PR title (#N)\" format.\n2. BODY: Write a clean, concise summary of the branch's work (2-4 sentences).\n   NEVER use the automatic squash description that dumps all individual commit messages.\n\n3. Use --body flag with a HEREDOC to pass the clean description.\nExample: gh pr merge N --squash --body \"$(cat <<'EOF' Add loaf cleanup CLI command that scans .agents/ directories and recommends cleanup actions. Includes shared prompt helpers, scanner engine, interactive/dry-run modes, and skill update. EOF )\"\nRewrite your gh pr merge command now with a clean --body.",
+        "if": "Bash(gh pr merge:*)"
       },
       {
-        "command": "python3 $HOME/.cursor/hooks/pre-tool/orchestration-validate-commit.py",
+        "loaf-managed": true,
+        "timeout": 5,
+        "matcher": "Bash",
+        "prompt": "ADVISORY: You are about to run `git push`. \nConfirm the following before proceeding: - All tests pass locally - CHANGELOG.md has been updated - Version has been bumped if releasing\nType 'yes' to proceed with the push.",
+        "if": "Bash(git push:*)"
+      },
+      {
+        "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Bash"
+        "matcher": "Bash",
+        "failClosed": true,
+        "command": "loaf check --hook validate-commit"
       },
       {
-        "command": "python3 $HOME/.cursor/hooks/pre-tool/orchestration-detect-linear-magic.py",
+        "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Bash"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/python-type-check.sh",
-        "timeout": 60,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/python-pytest-validation.sh",
-        "timeout": 120,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/python-type-check-progressive.sh",
-        "timeout": 120,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/python-ruff-lint.sh",
-        "timeout": 30,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/python-pytest-execution.sh",
-        "timeout": 480,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/python-bandit-scan.sh",
-        "timeout": 60,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/typescript-tsc-check.sh",
-        "timeout": 60,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/typescript-bundle-analysis.sh",
-        "timeout": 60,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/rails-migration-safety.sh",
-        "timeout": 60,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/rails-migration-safety-deep.sh",
-        "timeout": 300,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/rails-test-execution.sh",
-        "timeout": 480,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/rails-brakeman-scan.sh",
-        "timeout": 120,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/infra-validate-k8s.sh",
-        "timeout": 60,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/infra-dockerfile-lint.sh",
-        "timeout": 30,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/infra-k8s-dry-run-server.sh",
-        "timeout": 120,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/pre-tool/infra-terraform-plan-cost.sh",
-        "timeout": 300,
-        "matcher": "Edit|Write"
+        "matcher": "Bash",
+        "command": "loaf session log --detect-linear"
       }
     ],
     "postToolUse": [
       {
-        "command": "bash $HOME/.cursor/hooks/post-tool/python-ruff-check.sh",
+        "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Edit|Write"
+        "matcher": "Edit|Write",
+        "command": "loaf task refresh"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/post-tool/typescript-eslint-check.sh",
-        "timeout": 30,
-        "matcher": "Edit|Write"
+        "loaf-managed": true,
+        "timeout": 5,
+        "matcher": "Edit|Write",
+        "command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/post-tool/rails-rubocop-check.sh",
-        "timeout": 30,
-        "matcher": "Edit|Write"
+        "loaf-managed": true,
+        "timeout": 5,
+        "matcher": "Bash",
+        "prompt": "POST-MERGE HOUSEKEEPING:\n1. Delete local branch: git branch -d <branch-name> 2. Update main: git checkout main && git pull 3. Archive session: loaf session archive\nConsider running these commands now.",
+        "if": "Bash(gh pr merge:*)"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/post-tool/design-a11y-validation.sh",
+        "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Edit|Write"
+        "matcher": "Bash",
+        "command": "loaf session log --from-hook",
+        "if": "Bash(git commit:*)"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/post-tool/design-token-check.sh",
+        "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Edit|Write"
+        "matcher": "Bash",
+        "command": "loaf session log --from-hook",
+        "if": "Bash(gh pr create:*)"
       },
       {
-        "command": "bash $HOME/.cursor/hooks/post-tool/design-a11y-audit.sh",
+        "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/post-tool/foundations-changelog-reminder.sh",
-        "timeout": 30,
-        "matcher": "Bash"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/post-tool/orchestration-generate-task-board.sh",
-        "timeout": 30,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh",
-        "timeout": 30,
-        "matcher": "Edit|Write"
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/post-tool/workflow-post-merge.sh",
-        "timeout": 30,
-        "matcher": "Bash"
+        "matcher": "Bash",
+        "command": "loaf session log --from-hook",
+        "if": "Bash(gh pr merge:*)"
       }
     ],
     "sessionStart": [
       {
-        "command": "bash $HOME/.cursor/hooks/session/session-start-soul.sh",
-        "timeout": 60
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/session/session-start.sh",
-        "timeout": 60
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/session/kb-session-start.sh",
-        "timeout": 60
+        "loaf-managed": true,
+        "timeout": 60,
+        "command": "loaf session start"
       }
     ],
     "sessionEnd": [
       {
-        "command": "bash $HOME/.cursor/hooks/session/session-end.sh",
-        "timeout": 60
-      },
-      {
-        "command": "bash $HOME/.cursor/hooks/session/kb-session-end.sh",
-        "timeout": 60
+        "loaf-managed": true,
+        "timeout": 60,
+        "command": "loaf session end --if-active"
       }
     ],
     "preCompact": [
       {
-        "command": "bash $HOME/.cursor/hooks/session/pre-compact-archive.sh",
-        "timeout": 60
+        "loaf-managed": true,
+        "timeout": 60,
+        "command": "bash $HOME/.cursor/hooks/session/compact.sh"
+      },
+      {
+        "loaf-managed": true,
+        "timeout": 60,
+        "prompt": "CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.\nBefore compaction, consider flushing important journal entries: - `decide(scope): key decisions made this session` - `discover(scope): important findings` - `conclude(scope): session summary`\nRun `loaf session log \"type(scope): description\"` to capture entries. After compaction, the transcript will be preserved in `.agents/transcripts/`."
+      }
+    ],
+    "stop": [
+      {
+        "loaf-managed": true,
+        "timeout": 60,
+        "prompt": "SESSION JOURNAL NUDGE: You have made edits or commits this turn but have not recorded any `decide()`, `discover()`, or `conclude()` entries in the session journal.\nConsider capturing key decisions before ending: - `decide(scope): rationale for decision made` - `discover(scope): insight or finding` - `conclude(scope): final summary or learning`\nRun `loaf session log \"decide(scope): description\"` to capture decisions. See orchestration skill for session management patterns."
       }
     ]
   }

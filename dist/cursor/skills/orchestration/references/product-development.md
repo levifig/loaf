@@ -195,7 +195,7 @@ docs:
 ```bash
 # Create task directly (bug report, small fix)
 /implement TASK-099
-# PM: "No parent spec. Proceed?"
+# Orchestrator: "No parent spec. Proceed?"
 # User: "Yes, small fix"
 # → Session → Fix → Done
 ```

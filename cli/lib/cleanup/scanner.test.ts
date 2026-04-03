@@ -421,7 +421,7 @@ describe("reports", () => {
     writeNestedArtifact("reports", "report-001.md", "report", {
       status: "processed",
       archived_at: "2026-03-01T00:00:00Z",
-      archived_by: "agent-pm",
+      archived_by: "orchestrator",
     });
     writeIndex();
     const result = scanArtifacts({ agentsDir: agentsDir() });

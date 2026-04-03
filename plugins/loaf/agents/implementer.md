@@ -33,3 +33,6 @@ Example: `Borin — auth API implementation`
 - Do not review your own output — that is Sentinel work.
 - Do not research external options — that is Ranger work.
 - Do not orchestrate other agents — that is the Warden's role.
+
+---
+version: 2.0.0-dev.8

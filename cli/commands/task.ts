@@ -75,6 +75,13 @@ function countSpecs(index: TaskIndex): { total: number; byStatus: Record<SpecSta
   };
 }
 
+function rebuildTaskIndex(agentsDir: string): TaskIndex {
+  const indexPath = join(agentsDir, "TASKS.json");
+  const index = buildIndexFromFiles(agentsDir);
+  saveIndex(indexPath, index);
+  return index;
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Command
@@ -713,6 +720,34 @@ export function registerTaskCommand(program: Command): void {
   // ── loaf task sync ──────────────────────────────────────────────────────
 
   task
+    .command("refresh")
+    .description("Rebuild TASKS.json from task and spec files")
+    .action(async () => {
+      const agentsDir = findAgentsDir();
+      if (!agentsDir) {
+        console.error(`  ${red("error:")} Could not find .agents/ directory`);
+        process.exit(1);
+      }
+
+      const index = rebuildTaskIndex(agentsDir);
+
+      const statusCounts: Record<string, number> = {};
+      for (const entry of Object.values(index.tasks)) {
+        statusCounts[entry.status] = (statusCounts[entry.status] || 0) + 1;
+      }
+
+      const totalTasks = Object.keys(index.tasks).length;
+      const totalSpecs = Object.keys(index.specs).length;
+      const countParts = STATUS_DISPLAY_ORDER.map((s) => `${statusCounts[s] || 0} ${s}`);
+
+      console.log(`\n  ${bold("loaf task refresh")}\n`);
+      console.log(`  ${green("\u2713")} Rebuilt TASKS.json from .md files`);
+      console.log(`    Tasks: ${totalTasks} (${countParts.join(", ")})`);
+      console.log(`    Specs: ${totalSpecs}`);
+      console.log();
+    });
+
+  task
     .command("sync")
     .description("Sync between TASKS.json and .md files")
     .option("--import", "Import orphan .md files not in the index")
@@ -791,8 +826,7 @@ export function registerTaskCommand(program: Command): void {
       } else {
         // ── Full rebuild mode ────────────────────────────────────────────
 
-        const index = buildIndexFromFiles(agentsDir);
-        saveIndex(indexPath, index);
+        const index = rebuildTaskIndex(agentsDir);
 
         // Count tasks by status
         const statusCounts: Record<string, number> = {};

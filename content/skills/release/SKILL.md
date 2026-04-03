@@ -1,10 +1,11 @@
 ---
 name: release
 description: >-
-  Orchestrates release: pre-flight checks, version bump via `loaf release`,
+  Orchestrates releases: pre-flight checks, version bump via `loaf release`,
   squash merge, and post-merge cleanup. Use when the user says "release this,"
-  "merge this PR," "ready to merge," or "ship it." Not for creating PRs or
-  reflection.
+  "merge this PR," "ready to merge," or "ship it." Produces version bumps,
+  changelog updates, and merged code.
+  Not for creating PRs (use git-workflow) or reflection (use reflect).
 ---
 
 # Release
@@ -12,6 +13,10 @@ description: >-
 Orchestrate a squash merge with correct version ordering, documentation checks, and cleanup.
 
 ## Contents
+- Critical Rules
+- Verification
+- Quick Reference
+- Topics
 - Context Detection
 - Step 1: Pre-Flight Checks
 - Step 2: Documentation Freshness
@@ -19,11 +24,47 @@ Orchestrate a squash merge with correct version ordering, documentation checks, 
 - Step 4: Version Bump + Changelog
 - Step 5: Squash Merge
 - Step 6: Post-Merge Cleanup
-- Guardrails
 - Hook Interaction
 - Related Skills
 
 **Input:** $ARGUMENTS
+
+---
+
+## Critical Rules
+
+- **Block on pre-flight failure** -- do not offer to skip any failing check
+- **User confirms every destructive action** -- version bump commit, push, merge, branch deletion
+- **Version bump before merge** -- this is the skill's reason for existing; never defer to post-merge
+- **Clean squash body** -- never use the auto-generated commit dump
+- **Verify, don't do** -- housekeeping is the implementer's job; this skill only verifies it was done
+- **Detect-first** -- auto-detect PR from branch before asking for a number
+- **Never push without confirmation** -- even after successful version bump
+
+## Verification
+
+- Pre-flight checks (typecheck, test, build) all pass before proceeding
+- Version bump commit exists on the feature branch before merge
+- Squash merge body is a clean 2-4 sentence summary, not a commit dump
+- Post-merge cleanup completed: base branch pulled, feature branch deleted
+
+## Quick Reference
+
+| Step | Gate | Blocking? |
+|------|------|-----------|
+| Pre-Flight | typecheck + test + build pass | Yes |
+| Doc Freshness | User reviews stale docs | No (user decides) |
+| Housekeeping | Spec/tasks archived, CHANGELOG ready | No (user decides) |
+| Version Bump | User confirms bump type | Yes |
+| Squash Merge | User approves body text | Yes |
+| Post-Merge | Branch cleanup | Yes |
+
+## Topics
+
+| Topic | Use When |
+|-------|----------|
+| [Context Detection](#context-detection) | Determining current branch and PR state |
+| [Hook Interaction](#hook-interaction) | Understanding coexistence with git hooks |
 
 ---
 
@@ -201,20 +242,6 @@ After successful merge:
    - Check `traceability.decisions` for ADR entries
    - If signal present: *"This session produced key decisions. Consider running `/reflect` to update strategic docs."*
    - If none: stay silent.
-
----
-
-## Guardrails
-
-1. **BLOCK on pre-flight failure** — do not offer to skip
-2. **User confirms** every destructive action (version bump commit, push, merge, branch deletion)
-3. **Use `AskUserQuestion` (or equivalent)** for all confirmation gates — push, merge, branch deletion. Provides structured choices instead of inline text questions. If not available, fall back to inline confirmation.
-4. **Version bump before merge** — this is the skill's reason for existing; never defer the bump to post-merge
-5. **Clean squash body** — never use the auto-generated commit dump
-6. **Verify, don't do** — housekeeping is the implementer's job; this skill verifies it was done
-7. **Detect-first** — auto-detect PR from branch before asking for a number
-8. **Abort gracefully** — if user cancels at any step, stop cleanly with no partial state
-9. **Never push without confirmation** — even after successful version bump
 
 ---
 

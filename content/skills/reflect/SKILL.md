@@ -1,10 +1,10 @@
 ---
 name: reflect
 description: >-
-  Integrates learnings from shipped work into strategic docs. Use after
-  completing significant work or the user asks "what did we learn?" Updates
-  VISION.md, STRATEGY.md, and ARCHITECTURE.md. Not for pre-implementation
-  strategy or ADRs.
+  Integrates learnings from shipped work into strategic documents. Use after
+  completing significant work or when the user asks "what did we learn?"
+  Updates VISION.md, STRATEGY.md, and ARCHITECTURE.md based on implementation experience.
+  Not for pre-implementation strategy (use strategy) or ADRs (use architecture).
 ---
 
 # Reflect
@@ -12,13 +12,47 @@ description: >-
 Update VISION, STRATEGY, and ARCHITECTURE based on proven implementation.
 
 ## Contents
+- Critical Rules
+- Verification
+- Quick Reference
+- Topics
 - Purpose
 - When to Reflect
 - Process
-- Guardrails
 - Related Skills
 
 **Input:** $ARGUMENTS
+
+---
+
+## Critical Rules
+
+- **Evidence-based** -- proposals need supporting evidence from shipped work
+- **Post-implementation only** -- reflect after shipping, not before or during planning
+- **Get explicit approval** -- never update strategic docs (VISION.md, STRATEGY.md, ARCHITECTURE.md) without user confirmation
+- **Consolidate** -- batch related learnings into coherent updates, avoid micro-updates
+- **Link back** -- always reference the specs/sessions that informed each update
+
+## Verification
+
+- Proposals cite specific specs, sessions, or commits as evidence
+- No strategic document was modified without explicit user approval
+- Completed specs referenced in updates are archived after reflection
+
+## Quick Reference
+
+| Learning Type | Document |
+|---------------|----------|
+| User behavior / market / problem understanding | STRATEGY.md |
+| Direction changes | VISION.md |
+| Technical constraints / patterns | ARCHITECTURE.md |
+| Decision updates | ADR (new or supersede) |
+
+## Topics
+
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Update Proposal | [templates/update-proposal.md](templates/update-proposal.md) | Drafting proposals for strategic doc changes |
 
 ---
 
@@ -85,17 +119,6 @@ After approval:
 2. Create ADRs if needed (see `/architecture` for format)
 3. Archive completed specs if appropriate
 4. Announce what was updated
-
----
-
-## Guardrails
-
-1. **Evidence-based** -- proposals need supporting evidence from shipped work
-2. **Post-implementation** -- reflect after shipping, not before
-3. **Get approval** -- don't update strategic docs without confirmation
-4. **Consolidate** -- batch related learnings, don't create micro-updates
-5. **Link back** -- reference specs/sessions that informed the update
-6. **Archive completed work** -- move done specs to archive
 
 ---
 

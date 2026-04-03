@@ -3,7 +3,7 @@
 ## Contents
 
 - Core Principle
-- What PM Does vs Delegates
+- What Orchestrator Does vs Delegates
 - Agent Capability Matrix
 - Delegation Decision Tree
 - Spawn Patterns
@@ -12,11 +12,11 @@
 
 ## Core Principle
 
-**PM is the orchestrator, not the implementer.** All code changes, documentation edits, and implementation work MUST be delegated to specialized agents.
+**You are the orchestrator, not the implementer.** All code changes, documentation edits, and implementation work MUST be delegated to specialized agents.
 
-## What PM Does vs Delegates
+## What Orchestrator Does vs Delegates
 
-### PM Does Directly
+### Orchestrator Does Directly
 
 | Action | Tool |
 |--------|------|
@@ -28,7 +28,7 @@
 | Ask clarifying questions | AskUserQuestion (OpenCode: `question`) |
 | Assign subagent work | TodoWrite (subagents read via TodoRead) |
 
-### PM MUST Delegate
+### Orchestrator MUST Delegate
 
 - Any code in `backend/`, `frontend/`, `src/`, `tests/`
 - Documentation in `docs/`
@@ -202,20 +202,20 @@ Task(
 
 | Anti-Pattern | Better Approach |
 |--------------|-----------------|
-| PM implementing code | PM orchestrates, always delegate |
+| Orchestrator implementing code | Orchestrator delegates, always use specialized agents |
 | Asking backend implementer for React | Spawn implementer with frontend skills |
 | Single agent for database + backend + tests | Sequential: implementer (database-design), implementer (language skill), implementer (foundations) |
 | Parallel spawns with hidden dependencies | Make dependencies explicit, spawn sequentially |
 | Spawning without session context | Create session first, reference in prompts |
-| Council for simple decisions | Single agent or PM judgment |
+| Council for simple decisions | Single agent or orchestrator judgment |
 
 ## Agent Access Hierarchy
 
 | Agent Type | External Issue Access | Reports To |
 |------------|----------------------|------------|
-| PM | Read/Write | User |
-| Implementation agents | None | PM (via session) |
-| Review agents (backend/frontend devs) | None | PM (via session) |
-| Product agent | Read-only | PM |
+| Orchestrator | Read/Write | User |
+| Implementation agents | None | Orchestrator (via session) |
+| Review agents (backend/frontend devs) | None | Orchestrator (via session) |
+| Product agent | Read-only | Orchestrator |
 
-**Key**: Only PM writes to external issue trackers. All other agents report through session files.
+**Key**: Only orchestrator writes to external issue trackers. All other agents report through session files.

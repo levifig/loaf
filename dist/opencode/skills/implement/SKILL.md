@@ -1,9 +1,13 @@
 ---
 name: implement
 description: >-
-  Orchestrates implementation through agent delegation and batch execution. Use
-  when the user asks "implement this" or "start working on TASK-XXX." Produces
-  sessions, plans, and agent output. Not for shaping or breakdown.
+  Orchestrates implementation sessions through agent delegation and batch
+  execution. Use when the user asks "implement this" or "start working on
+  TASK-XXX." Produces session files, agent spawn plans, and progress tracking.
+  Not for shaping (use shape), breakdown (use breakdown), or single-file edits
+  (use direct tools).
+subtask: false
+version: 2.0.0-dev.8
 ---
 
 # Implement
@@ -11,9 +15,11 @@ description: >-
 You are the coordinator. Start by understanding the task:
 
 ## Contents
+- Critical Rules
+- Verification
+- Quick Reference
 - Step 0: Context Check
 - Input Detection
-- CRITICAL: Strict Delegation Model
 - Agent Spawning
 - Session and Plan Creation
 - Session Guardrails
@@ -21,8 +27,44 @@ You are the coordinator. Start by understanding the task:
 - Startup Checklist
 - Then Execute
 - Topics
+- Related Skills
 
 **Input:** $ARGUMENTS
+
+---
+
+## Critical Rules
+
+**You are the ORCHESTRATOR, not the implementer.**
+
+### Orchestrator Can Do Directly
+- Create/edit session files, council files
+- Use TodoWrite/TodoRead, Linear MCP tools
+- Read any file for context
+- Ask clarifying questions
+
+### Orchestrator MUST Delegate (via Task Tool)
+**ALL code changes, documentation edits, and implementation work** to specialized agents. **No exceptions**, even for "trivial" 1-line fixes.
+
+## Verification
+
+- Session file AND plan file exist before any implementation work begins
+- All code changes delegated via Task tool -- no direct edits by orchestrator
+- Session file is continuously updated with spawns, progress, and current state
+- Spec artifacts closed out on branch before PR creation
+
+## Quick Reference
+
+| Work Type | Profile | Skills to Load |
+|-----------|---------|---------------|
+| Python/FastAPI/Rails/Ruby/Go backend | implementer | Language skill + relevant domain skills |
+| Next.js/React/Tailwind frontend | implementer | typescript-development + interface-design |
+| Schema/migrations/SQL | implementer | database-design + language skill |
+| Docker/K8s/CI/CD/Terraform | implementer | infrastructure-management |
+| Tests/security audits | implementer | foundations + language skill |
+| UI/UX design review | reviewer | interface-design |
+| Code review/audit | reviewer | relevant domain skills |
+| Research/comparison | researcher | relevant domain skills |
 
 ---
 
@@ -68,19 +110,6 @@ When starting from `TASK-XXX`:
 When no task exists: inform user, ask if Linear issue or local task should be created.
 
 ---
-
-## CRITICAL: Strict Delegation Model
-
-**You are the ORCHESTRATOR, not the implementer.**
-
-### PM Can Do Directly
-- Create/edit session files, council files
-- Use TodoWrite/TodoRead, Linear MCP tools
-- Read any file for context
-- Ask clarifying questions
-
-### PM MUST Delegate (via Task Tool)
-**ALL code changes, documentation edits, and implementation work** to specialized agents. **No exceptions**, even for "trivial" 1-line fixes.
 
 ## Agent Spawning
 
@@ -178,7 +207,7 @@ After creating session AND plan files:
 5. After each agent completes: update session, spawn next
 
 ### AFTER (Completion)
-1. Code review pass (spawn `pr-review-toolkit:code-reviewer`)
+1. Code review pass (spawn `reviewer` agent)
 2. Spawn implementer (with foundations + language skill) for final testing
 3. **Close out spec artifacts on the branch** (included in the squash merge):
    - `loaf task update TASK-XXX --status done` (for each task)

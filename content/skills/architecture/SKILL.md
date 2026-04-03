@@ -1,71 +1,39 @@
 ---
 name: architecture
 description: >-
-  Creates ADRs through structured evaluation. Use when making technical
-  decisions or the user asks "should we use X or Y?" Produces ADRs and
-  ARCHITECTURE.md updates. Not for strategic direction or multi-perspective
-  deliberation.
+  Creates Architecture Decision Records through structured evaluation.
+  Use when making technical decisions or when the user asks "should we use X or Y?"
+  Produces ADRs and updates ARCHITECTURE.md with technical constraints.
+  Not for strategic direction (use strategy) or multi-perspective deliberation (use council).
 ---
 
 # Architecture
 
-Interview about technical decisions, update ARCHITECTURE.md, create ADRs.
+Guides technical decision-making through structured interviews, options analysis, and ADR creation.
 
-## Contents
-- CRITICAL: Interview First
-- Process
-- ADR Format
-- Guardrails
-- Council Trigger Conditions
-- Related Skills
+## Critical Rules
 
-**Input:** $ARGUMENTS
+**Always**
+- Interview first to understand constraints, options already considered, and tradeoffs
+- Read existing VISION.md, ARCHITECTURE.md, and ADRs before proposing changes
+- Present multiple options with pros/cons and "fits when" context
+- Wait for explicit user decision before proceeding with documentation
 
----
+**Never**
+- Make architectural decisions without user input
+- Contradict existing decisions without explicitly superseding them
+- Skip the interview phase for complex decisions
+- Create ADRs without user approval
 
-## CRITICAL: Interview First
+## Verification
 
-Before any architectural decision, understand:
-1. What decision needs to be made?
-2. What constraints exist (technical, business, team)?
-3. What options have already been considered?
-4. What would "good enough" look like vs "ideal"?
-5. What's the impact of getting this wrong?
+After work completes, verify:
+- ADR created using template at [templates/adr.md](templates/adr.md)
+- ARCHITECTURE.md updated with new constraints and ADR reference
+- ADR number assigned sequentially (ls docs/decisions/ADR-*.md for next number)
+- Council convened if decision affects multiple domains
 
-Use `AskUserQuestion` to gather context.
-
----
-
-## Process
-
-### Step 1: Understand the Decision
-
-Parse `$ARGUMENTS`. If unclear, ask about: the problem, technical constraints, business constraints, time/resource constraints.
-
-### Step 2: Gather Context
-
-1. Read: VISION.md, ARCHITECTURE.md, existing ADRs in `docs/decisions/`
-2. Check: how similar problems were solved, established conventions, previous attempts
-
-### Step 3: Consider Options
-
-For each viable option, evaluate: alignment with VISION/ARCHITECTURE, complexity added, reversibility, team capability, maintenance cost.
-
-### Step 4: Convene Council (If Needed)
-
-For complex/contentious decisions: 5 or 7 agents, diverse expertise. See `orchestration/councils` skill. **Council advises, user decides.**
-
-### Step 5: Present Options
-
-Show each option with pros, cons, and "fits when" context. Include recommendation and ask for user decision.
-
-**Do NOT proceed without explicit user choice.**
-
-### Step 6: Document the Decision
-
-After user decides:
-1. Update ARCHITECTURE.md with new decision and ADR reference
-2. Create ADR following [ADR template](templates/adr.md)
+## Quick Reference
 
 ### ADR Numbering
 
@@ -74,28 +42,20 @@ ls docs/decisions/ADR-*.md 2>/dev/null | \
   grep -oE 'ADR-[0-9]+' | sort -t- -k2 -n | tail -1 | awk -F- '{print $2 + 1}'
 ```
 
-If none exist, start with `ADR-001`.
+Start with `ADR-001` if none exist.
 
----
+### Council Triggers
 
-## Guardrails
+Convene when: multiple domains affected, conflicting team opinions, high reversal cost, novel problem, or user requests deliberation.
 
-1. **Interview first** -- understand the full context
-2. **Check existing decisions** -- don't contradict without superseding
-3. **Present options** -- user decides, not you
-4. **Document thoroughly** -- ADRs explain the "why"
-5. **Keep ARCHITECTURE.md current** -- update, don't just append
+### Evaluation Criteria
 
----
+For each option: alignment with VISION/ARCHITECTURE, complexity added, reversibility, team capability, maintenance cost.
 
-## Council Trigger Conditions
+## Topics
 
-Convene when: decision affects multiple domains, team has conflicting opinions, high cost of reversal, novel problem, or user requests deliberation.
-
----
-
-## Related Skills
-
-- **orchestration/councils** - Council deliberation workflow
-- **orchestration/product-development** - Where architecture fits in hierarchy
-- **documentation-standards** - Documentation standards for ADRs
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| ADR Template | [templates/adr.md](templates/adr.md) | Creating new architecture decision records |
+| Council Workflow | `orchestration/references/councils.md` | Multi-agent deliberation for complex decisions |
+| Documentation | `documentation-standards/references/documentation.md` | ADR formatting and standards |

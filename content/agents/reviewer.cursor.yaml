@@ -2,7 +2,7 @@ name: reviewer
 description: >-
   Sentinel (Reviewer) — watches, guards, and verifies. Read-only access ensures
   independent audits.
-is_background: true
+disable-model-invocation: true
 tools:
   Read: true
   Glob: true

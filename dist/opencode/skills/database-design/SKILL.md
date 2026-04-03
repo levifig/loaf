@@ -1,31 +1,31 @@
 ---
 name: database-design
 description: >-
-  Covers schema design, migrations, query optimization, indexing, and
-  normalization tradeoffs. Use when designing tables, writing migrations, or
-  optimizing queries. Not for ORM usage in app code or infrastructure.
+  Covers schema design, migrations, query optimization, indexing strategies, and
+  normalization tradeoffs. Use when designing tables, writing migrations,
+  optimizing queries, or planning index strategies. Provides patterns for
+  database administration and development. Not for ORM usage in application code
+  (use language-specific development skills) or infrastructure orchestration
+  (use infrastructure-management).
+version: 2.0.0-dev.8
 ---
 
 # Database Skill
 
 Domain knowledge for database administration and development. Covers schema design, migrations, query optimization, and indexing strategies.
 
-## When to Use This Skill
+## Critical Rules
 
-- Designing new tables or modifying existing schemas
-- Writing or reviewing database migrations
-- Optimizing slow queries
-- Planning index strategies
-- Evaluating normalization vs denormalization tradeoffs
+- **Data integrity first** -- constraints catch bugs that code misses; always define foreign keys, NOT NULLs, and check constraints at the database level
+- **Backward compatibility** -- migrations must not break running code; use safe online operations (ADD COLUMN nullable, ADD INDEX CONCURRENTLY) over unsafe ones
+- **Measure before optimizing** -- use EXPLAIN ANALYZE, not intuition; never add indexes or denormalize without evidence of a performance problem
+- **Plan for scale** -- design decisions are expensive to change; consider write patterns, cardinality, and growth from the start
 
-## Key Reference Files
+## Verification
 
-| File | Use When |
-|------|----------|
-| [schema-design.md](references/schema-design.md) | Creating tables, choosing keys, audit patterns |
-| [migrations.md](references/migrations.md) | Writing safe, reversible migrations |
-| [query-optimization.md](references/query-optimization.md) | Debugging slow queries, N+1 detection |
-| [indexing.md](references/indexing.md) | Choosing index types, composite index order |
+- New tables have appropriate primary keys, foreign keys, and NOT NULL constraints
+- Migrations use only safe online operations, or document a maintenance window if unsafe operations are required
+- Query changes are validated with EXPLAIN ANALYZE showing expected plan improvements
 
 ## Quick Reference
 
@@ -54,12 +54,22 @@ Geometric/range queries              → GiST
 Exact equality only                  → Hash (rare)
 ```
 
-## Core Principles
+## Topics
 
-1. **Data integrity first** - Constraints catch bugs that code misses
-2. **Plan for scale** - Design decisions are expensive to change
-3. **Measure before optimizing** - Use EXPLAIN ANALYZE, not intuition
-4. **Backward compatibility** - Migrations must not break running code
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Schema Design | [schema-design.md](references/schema-design.md) | Creating tables, choosing keys, audit patterns |
+| Migrations | [migrations.md](references/migrations.md) | Writing safe, reversible migrations |
+| Query Optimization | [query-optimization.md](references/query-optimization.md) | Debugging slow queries, N+1 detection |
+| Indexing | [indexing.md](references/indexing.md) | Choosing index types, composite index order |
+
+## When to Use This Skill
+
+- Designing new tables or modifying existing schemas
+- Writing or reviewing database migrations
+- Optimizing slow queries
+- Planning index strategies
+- Evaluating normalization vs denormalization tradeoffs
 
 ## Related Skills
 

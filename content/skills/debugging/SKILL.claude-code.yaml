@@ -1,5 +1,6 @@
 # Claude Code extensions for Debugging skill
 # Base name/description in SKILL.md
 
-user-invocable: false
+user-invocable: true
+argument-hint: "[issue or error]"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep

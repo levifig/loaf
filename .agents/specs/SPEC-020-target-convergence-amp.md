@@ -3,8 +3,9 @@ id: SPEC-020
 title: Cross-Harness Skills, Hook Consolidation & Target Convergence
 source: brainstorm/amp-target-exploration + brainstorm-session-20260331
 created: '2026-03-30T23:13:00.000Z'
-status: drafting
+status: complete
 appetite: XL (unbounded — foundational architecture)
+branch: feat/cross-harness-unification
 absorbs:
   - ideas/20260331-005849-skill-simplification-cross-harness.md
 ---

@@ -60,7 +60,7 @@ If work can't be shaped to fit the appetite, it's not ready - needs more shaping
 
 **Shape = define boundaries, not tasks.**
 
-PM shapes before delegating to implementation agents:
+Orchestrator shapes before delegating to implementation agents:
 
 1. **Problem**: What are we solving? (not "build feature X")
 2. **Appetite**: How much is it worth?
@@ -512,7 +512,7 @@ What this plan explicitly does NOT cover.
 | `approved` | User approved, ready for implementation |
 | `superseded` | Replaced by a newer plan |
 
-### PM Workflow
+### Orchestrator Workflow
 
 1. **Receive plan** from Task(Plan) or exploration
 2. **Save to `.agents/plans/`** with proper filename
