@@ -205,12 +205,12 @@ hooks:
       event: SessionEnd
       description: Agent-specific completion checklist and session hygiene reminder
 
-    - id: pre-compact-archive
+    - id: pre-compact
       skill: orchestration
-      script: hooks/session/pre-compact-archive.sh
+      script: hooks/session/compact.sh
       event: PreCompact
       timeout: 60000
-      description: Identify active sessions and prompt for context-archiver agent to preserve state
+      description: Append compact entry to session journal before context compaction
 
     # Knowledge Base - Session lifecycle
     - id: kb-session-start

@@ -17,6 +17,8 @@ import {
   openSync,
   closeSync,
   statSync,
+  copyFileSync,
+  rmSync,
 } from "fs";
 import { join, dirname, basename } from "path";
 import matter from "gray-matter";
@@ -88,6 +90,83 @@ interface SpecFrontmatterWithBranch {
   status?: string;
   session?: string;
   [key: string]: unknown;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Session Lifecycle Helpers (SPEC-020 compliance)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Validate SOUL.md exists and restore from template if missing */
+function validateSoulMd(agentsDir: string): { exists: boolean; restored: boolean } {
+  const soulPath = join(agentsDir, "SOUL.md");
+  const templatePath = join(agentsDir, "templates", "SOUL.md");
+  
+  if (existsSync(soulPath)) {
+    return { exists: true, restored: false };
+  }
+  
+  // Try to restore from template
+  if (existsSync(templatePath)) {
+    try {
+      copyFileSync(templatePath, soulPath);
+      return { exists: true, restored: true };
+    } catch {
+      // Failed to copy
+    }
+  }
+  
+  return { exists: false, restored: false };
+}
+
+/** Count stale knowledge files */
+function countStaleKnowledge(agentsDir: string): number {
+  const kbDir = join(agentsDir, "kb");
+  if (!existsSync(kbDir)) return 0;
+  
+  let staleCount = 0;
+  const files = readdirSync(kbDir).filter(f => f.endsWith(".md"));
+  
+  for (const file of files) {
+    try {
+      const content = readFileSync(join(kbDir, file), "utf-8");
+      const parsed = matter(content);
+      
+      // Check staleness criteria from frontmatter
+      const lastReviewed = parsed.data.last_reviewed as string | undefined;
+      const covers = parsed.data.covers as string[] | undefined;
+      
+      if (!lastReviewed) {
+        staleCount++;
+        continue;
+      }
+      
+      // Check if older than 30 days
+      const reviewDate = new Date(lastReviewed);
+      const daysSinceReview = (Date.now() - reviewDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceReview > 30) {
+        staleCount++;
+      }
+    } catch {
+      // Skip files that can't be read
+    }
+  }
+  
+  return staleCount;
+}
+
+/** Check if knowledge consolidation is needed based on session activity */
+function needsKnowledgeConsolidation(agentsDir: string): boolean {
+  // Check if any files were flagged as needing review during this session
+  const reviewFlagPath = join(agentsDir, ".kb-review-flag");
+  if (existsSync(reviewFlagPath)) {
+    try {
+      const flagged = readFileSync(reviewFlagPath, "utf-8").trim();
+      return flagged === "true" || flagged === "1";
+    } catch {
+      return false;
+    }
+  }
+  return false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -861,6 +940,19 @@ export function registerSessionCommand(program: Command): void {
 
       console.log(`  ${green("✓")} Session active: ${gray(sessionFilePath.replace(agentsDir, ".agents"))}`);
 
+      // SPEC-020: Session lifecycle - SOUL.md validation and stale KB surfacing
+      const soulStatus = validateSoulMd(agentsDir);
+      if (soulStatus.restored) {
+        console.log(`  ${yellow("⚠")} SOUL.md was missing — restored from template`);
+      } else if (!soulStatus.exists) {
+        console.log(`  ${yellow("⚠")} SOUL.md not found — run 'loaf install' to set up project`);
+      }
+      
+      const staleKbCount = countStaleKnowledge(agentsDir);
+      if (staleKbCount > 0) {
+        console.log(`  ${yellow("⚠")} ${staleKbCount} stale knowledge file(s) — run 'loaf kb review'`);
+      }
+
       // Output recent entries for context
       const recentEntries = extractRecentEntries(sessionContent, 15);
       if (recentEntries.length > 0) {
@@ -942,6 +1034,14 @@ export function registerSessionCommand(program: Command): void {
           data.last_entry = getTimestamp();
         }
       );
+
+      // SPEC-020: Knowledge consolidation prompt if needed
+      if (needsKnowledgeConsolidation(agentsDir)) {
+        console.log(`  ${yellow("⚠")} Knowledge consolidation recommended:`);
+        console.log(`    ${gray("Stale files were flagged during this session.")}`);
+        console.log(`    ${gray("Consider running 'loaf kb review' before ending.")}`);
+        console.log();
+      }
 
       console.log(`  ${green("✓")} Session paused: ${gray(sessionFilePath.replace(agentsDir, ".agents"))}`);
       console.log();

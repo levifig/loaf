@@ -81,21 +81,40 @@ interface CodexHooksJson {
 }
 
 function isLoafHook(hook: Record<string, unknown>): boolean {
-  // Loaf-managed hooks are ONLY the hooks that Loaf itself generates
-  // Don't match user-defined hooks that happen to call loaf (e.g., "loaf kb review")
+  // Loaf-managed hooks include:
+  // 1. Commands starting with "loaf " (all loaf CLI invocations)
+  // 2. Shell scripts in Loaf's hooks directory
+  // 3. Prompts containing Loaf markers (specific Loaf-generated content)
   const command = hook.command as string | undefined;
-  if (!command) return false;
+  const prompt = hook.prompt as string | undefined;
   
-  // Only match Loaf-generated hooks (check, task with specific patterns, session with --from-hook)
-  const loafGeneratedPatterns = [
-    "loaf check --hook",
-    "loaf task",
-    "loaf session start",
-    "loaf session end",
-    "loaf session log --from-hook",
-  ];
+  // Check 1: All loaf commands (including variations like --detect-linear, --from-hook)
+  if (command) {
+    if (command.startsWith("loaf ")) {
+      return true;
+    }
+    // Shell scripts in Loaf's hooks directory
+    if (command.includes("/.cursor/hooks/") || command.includes("/.codex/hooks/")) {
+      return true;
+    }
+  }
   
-  return loafGeneratedPatterns.some(pattern => command.startsWith(pattern));
+  // Check 2: Loaf-generated prompts (contain specific Loaf markers)
+  if (prompt) {
+    const loafMarkers = [
+      "STOP. Before running gh pr merge",
+      "ADVISORY: You are about to run `git push`",
+      "KNOWLEDGE BASE:",
+      "POST-MERGE HOUSEKEEPING:",
+      "CONTEXT COMPACTION IMMINENT:",
+      "SESSION JOURNAL NUDGE:",
+      "loaf session log",
+      "loaf kb review",
+    ];
+    return loafMarkers.some(marker => prompt.includes(marker));
+  }
+  
+  return false;
 }
 
 function loadHooksJson(path: string): CodexHooksJson {

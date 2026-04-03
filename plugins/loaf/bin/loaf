@@ -2129,15 +2129,29 @@ function writeMarker(configDir) {
 }
 function isLoafHook(hook) {
   const command = hook.command;
-  if (!command) return false;
-  const loafGeneratedPatterns = [
-    "loaf check --hook",
-    "loaf task",
-    "loaf session start",
-    "loaf session end",
-    "loaf session log --from-hook"
-  ];
-  return loafGeneratedPatterns.some((pattern) => command.startsWith(pattern));
+  const prompt = hook.prompt;
+  if (command) {
+    if (command.startsWith("loaf ")) {
+      return true;
+    }
+    if (command.includes("/.cursor/hooks/") || command.includes("/.codex/hooks/")) {
+      return true;
+    }
+  }
+  if (prompt) {
+    const loafMarkers = [
+      "STOP. Before running gh pr merge",
+      "ADVISORY: You are about to run `git push`",
+      "KNOWLEDGE BASE:",
+      "POST-MERGE HOUSEKEEPING:",
+      "CONTEXT COMPACTION IMMINENT:",
+      "SESSION JOURNAL NUDGE:",
+      "loaf session log",
+      "loaf kb review"
+    ];
+    return loafMarkers.some((marker) => prompt.includes(marker));
+  }
+  return false;
 }
 function loadHooksJson(path) {
   if (!existsSync12(path)) {
@@ -7997,7 +8011,8 @@ import {
   unlinkSync as unlinkSync3,
   openSync,
   closeSync,
-  statSync as statSync3
+  statSync as statSync3,
+  copyFileSync as copyFileSync3
 } from "fs";
 import { join as join36, basename as basename7 } from "path";
 import matter13 from "gray-matter";
@@ -8007,6 +8022,58 @@ var red10 = (s) => `\x1B[31m${s}\x1B[0m`;
 var yellow13 = (s) => `\x1B[33m${s}\x1B[0m`;
 var cyan9 = (s) => `\x1B[36m${s}\x1B[0m`;
 var gray13 = (s) => `\x1B[90m${s}\x1B[0m`;
+function validateSoulMd(agentsDir) {
+  const soulPath = join36(agentsDir, "SOUL.md");
+  const templatePath = join36(agentsDir, "templates", "SOUL.md");
+  if (existsSync32(soulPath)) {
+    return { exists: true, restored: false };
+  }
+  if (existsSync32(templatePath)) {
+    try {
+      copyFileSync3(templatePath, soulPath);
+      return { exists: true, restored: true };
+    } catch {
+    }
+  }
+  return { exists: false, restored: false };
+}
+function countStaleKnowledge(agentsDir) {
+  const kbDir = join36(agentsDir, "kb");
+  if (!existsSync32(kbDir)) return 0;
+  let staleCount = 0;
+  const files = readdirSync14(kbDir).filter((f) => f.endsWith(".md"));
+  for (const file of files) {
+    try {
+      const content = readFileSync28(join36(kbDir, file), "utf-8");
+      const parsed = matter13(content);
+      const lastReviewed = parsed.data.last_reviewed;
+      const covers = parsed.data.covers;
+      if (!lastReviewed) {
+        staleCount++;
+        continue;
+      }
+      const reviewDate = new Date(lastReviewed);
+      const daysSinceReview = (Date.now() - reviewDate.getTime()) / (1e3 * 60 * 60 * 24);
+      if (daysSinceReview > 30) {
+        staleCount++;
+      }
+    } catch {
+    }
+  }
+  return staleCount;
+}
+function needsKnowledgeConsolidation(agentsDir) {
+  const reviewFlagPath = join36(agentsDir, ".kb-review-flag");
+  if (existsSync32(reviewFlagPath)) {
+    try {
+      const flagged = readFileSync28(reviewFlagPath, "utf-8").trim();
+      return flagged === "true" || flagged === "1";
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
 var LOCK_STALENESS_THRESHOLD = 3e4;
 function isLockStale(lockPath) {
   try {
@@ -8546,6 +8613,16 @@ function registerSessionCommand(program2) {
       writeFileSync19(sessionFilePath, newContent, "utf-8");
     }
     console.log(`  ${green11("\u2713")} Session active: ${gray13(sessionFilePath.replace(agentsDir, ".agents"))}`);
+    const soulStatus = validateSoulMd(agentsDir);
+    if (soulStatus.restored) {
+      console.log(`  ${yellow13("\u26A0")} SOUL.md was missing \u2014 restored from template`);
+    } else if (!soulStatus.exists) {
+      console.log(`  ${yellow13("\u26A0")} SOUL.md not found \u2014 run 'loaf install' to set up project`);
+    }
+    const staleKbCount = countStaleKnowledge(agentsDir);
+    if (staleKbCount > 0) {
+      console.log(`  ${yellow13("\u26A0")} ${staleKbCount} stale knowledge file(s) \u2014 run 'loaf kb review'`);
+    }
     const recentEntries = extractRecentEntries(sessionContent, 15);
     if (recentEntries.length > 0) {
       console.log(`
@@ -8610,6 +8687,12 @@ function registerSessionCommand(program2) {
         data.last_entry = getTimestamp();
       }
     );
+    if (needsKnowledgeConsolidation(agentsDir)) {
+      console.log(`  ${yellow13("\u26A0")} Knowledge consolidation recommended:`);
+      console.log(`    ${gray13("Stale files were flagged during this session.")}`);
+      console.log(`    ${gray13("Consider running 'loaf kb review' before ending.")}`);
+      console.log();
+    }
     console.log(`  ${green11("\u2713")} Session paused: ${gray13(sessionFilePath.replace(agentsDir, ".agents"))}`);
     console.log();
   });

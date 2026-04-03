@@ -348,8 +348,8 @@ const sessionHooks: Record<string, HookEntry[]> = {
   ],
   "precompact": [
     {
-      "id": "pre-compact-archive",
-      "script": "session/pre-compact-archive.sh",
+      "id": "pre-compact",
+      "script": "session/compact.sh",
       "timeout": 60000,
       "failClosed": false
     }

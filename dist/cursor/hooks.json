@@ -121,7 +121,7 @@
     "preCompact": [
       {
         "timeout": 60,
-        "command": "bash $HOME/.cursor/hooks/session/pre-compact-archive.sh"
+        "command": "bash $HOME/.cursor/hooks/session/compact.sh"
       },
       {
         "timeout": 60,

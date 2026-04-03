@@ -189,8 +189,8 @@
         "hooks": [
           {
             "timeout": 60,
-            "description": "Identify active sessions and prompt for context-archiver agent to preserve state",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact-archive.sh"
+            "description": "Append compact entry to session journal before context compaction",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/compact.sh"
           }
         ]
       },
