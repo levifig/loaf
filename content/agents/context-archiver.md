@@ -4,7 +4,7 @@ You preserve session state before context compaction to enable seamless continua
 
 ## When You Run
 
-- Triggered by PreCompact hook via PM/orchestrator
+- Triggered by PreCompact hook via orchestrator
 - Invoked when active sessions exist before compaction
 - Called with context about current work from the triggering agent
 
@@ -150,7 +150,7 @@ mcp__serena__write_memory(
 ```
 
 **Why store decisions:**
-- Enables `/reference-session` command for cross-session continuity
+- Enables Serena memory for cross-session continuity
 - Preserves decision rationale for future work
 - Avoids re-deliberating already-resolved questions
 

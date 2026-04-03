@@ -1,2 +1,3 @@
 # Claude Code skill configuration
+user-invocable: true
 argument-hint: "[idea description]"

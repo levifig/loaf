@@ -67,7 +67,7 @@ Councils are deliberation mechanisms for decisions with multiple valid approache
 
 ### Ad-Hoc Specialist Personas
 
-When a council needs expertise not covered by existing agents, PM can create a specialist persona:
+When a council needs expertise not covered by existing agents, the orchestrator can create a specialist persona:
 
 ```markdown
 ## Proposed Council Composition
@@ -233,7 +233,7 @@ Display each agent's report separately so the user sees each perspective clearly
 
 ### Step 6: Synthesize Final Report
 
-After individual reports, PM creates a combined synthesis:
+After individual reports, the orchestrator creates a combined synthesis:
 
 ```markdown
 ## Council Synthesis
@@ -256,7 +256,7 @@ After individual reports, PM creates a combined synthesis:
 | Persistence | Native | Requires config |
 | Scaling | Vertical + read replicas | Horizontal (cluster) |
 
-### PM Recommendation
+### Orchestrator Recommendation
 Based on council input: **PostgreSQL** for initial implementation.
 
 **Rationale**: Operational simplicity wins at current scale. The team has existing
@@ -356,7 +356,7 @@ council:
 | Outcome | Recommendation | Work completed |
 | User Role | Approves decision | Reviews results |
 
-After council concludes and user decides, PM spawns implementation agents to execute.
+After council concludes and user decides, the orchestrator spawns implementation agents to execute.
 
 ## Archiving Guidance
 
@@ -368,10 +368,10 @@ After council concludes and user decides, PM spawns implementation agents to exe
 
 | Don't | Do Instead |
 |-------|------------|
-| Council for simple decisions | Single agent or PM judgment |
+| Council for simple decisions | Single agent or orchestrator judgment |
 | Wrong composition | Match agents to decision domain |
 | Even number of agents | Always 5 or 7 |
-| PM as council member | PM coordinates, doesn't vote |
+| Orchestrator as council member | Orchestrator coordinates, doesn't vote |
 | Proceed without user approval | Wait for explicit decision |
 | Implement during council | Advise only, implement after |
 | Skip documentation | Record decision in council file |

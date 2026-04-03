@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "loaf-managed": true,
+        "matcher": "Bash",
+        "command": "loaf check --hook check-secrets",
+        "timeout": 30,
+        "failClosed": true,
+        "description": "Check for hardcoded secrets before writing"
+      },
+      {
+        "loaf-managed": true,
+        "matcher": "Bash",
+        "command": "loaf check --hook security-audit",
+        "timeout": 600,
+        "failClosed": true,
+        "description": "Run security audit on bash commands"
+      },
+      {
+        "loaf-managed": true,
+        "matcher": "Bash",
+        "command": "loaf check --hook validate-push",
+        "timeout": 60,
+        "failClosed": true,
+        "description": "Validates version bump, CHANGELOG, and build before git push"
+      },
+      {
+        "loaf-managed": true,
+        "matcher": "Bash",
+        "command": "loaf check --hook workflow-pre-pr",
+        "timeout": 5,
+        "failClosed": true,
+        "description": "Enforce PR format and CHANGELOG entry before gh pr create"
+      },
+      {
+        "loaf-managed": true,
+        "matcher": "Bash",
+        "command": "loaf check --hook validate-commit",
+        "timeout": 30,
+        "failClosed": true,
+        "description": "Validate commit messages follow conventions"
+      }
+    ]
+  }
+}

@@ -138,7 +138,7 @@ When sessions are archived, decisions are extracted to Serena memory:
 3. If present, run `extract-decisions.py`
 4. Write output to Serena memory via MCP
 
-### At Reference Time (/loaf:reference-session)
+### At Reference Time (Serena memory)
 
 1. Search Serena memories for matching sessions
 2. Read selected decision memory
@@ -205,7 +205,7 @@ If imported decisions conflict with current approach:
 ## Example Session Log Entry
 
 ```markdown
-### 2025-01-23 14:30 - PM
+### 2025-01-23 14:30 - orchestrator
 Referenced decisions from auth-jwt session (PLT-123):
 - Token rotation strategy (15-min window)
 - Refresh token storage (HttpOnly cookies)

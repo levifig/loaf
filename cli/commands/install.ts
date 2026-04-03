@@ -6,10 +6,11 @@
  */
 
 import { Command } from "commander";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, mkdirSync, copyFileSync, chmodSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { createInterface } from "readline";
+import { execSync } from "child_process";
 import {
   detectTools,
   detectClaudeCode,
@@ -18,6 +19,7 @@ import {
   type DetectedTool,
 } from "../lib/detect/tools.js";
 import { INSTALLERS } from "../lib/install/installer.js";
+import { installFencedSectionsForTargets } from "../lib/install/fenced-section.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -27,7 +29,6 @@ const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const gray = (s: string) => `\x1b[90m${s}\x1b[0m`;
-const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 const white = (s: string) => `\x1b[97m${s}\x1b[0m`;
 
 function findRootDir(): string {
@@ -59,6 +60,70 @@ function askYesNo(question: string): Promise<boolean> {
       resolve(answer.trim().toLowerCase().startsWith("y"));
     });
   });
+}
+
+/** Check if loaf is available on PATH */
+function isLoafOnPath(): boolean {
+  try {
+    execSync("which loaf", { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Install loaf binary to ~/.local/bin/ */
+async function installLoafBinary(rootDir: string): Promise<boolean> {
+  const localBinDir = join(process.env.HOME || "~", ".local", "bin");
+  const sourceBinary = join(rootDir, "dist-cli", "index.js");
+  const targetBinary = join(localBinDir, "loaf");
+  
+  if (!existsSync(sourceBinary)) {
+    console.log(`  ${red("✗")} CLI binary not found at ${sourceBinary}`);
+    console.log(`  ${gray("Run 'npm run build:cli' first.")}`);
+    return false;
+  }
+  
+  // Create ~/.local/bin if needed
+  if (!existsSync(localBinDir)) {
+    try {
+      mkdirSync(localBinDir, { recursive: true });
+      console.log(`  ${green("✓")} Created ${localBinDir}`);
+    } catch (err) {
+      console.log(`  ${red("✗")} Could not create ${localBinDir}: ${err}`);
+      return false;
+    }
+  }
+  
+  // Remove existing binary if present
+  if (existsSync(targetBinary)) {
+    try {
+      unlinkSync(targetBinary);
+    } catch {
+      // Ignore unlink errors
+    }
+  }
+  
+  // Copy and make executable
+  try {
+    copyFileSync(sourceBinary, targetBinary);
+    chmodSync(targetBinary, 0o755);
+    console.log(`  ${green("✓")} Installed loaf binary to ${targetBinary}`);
+    
+    // Check if ~/.local/bin is on PATH
+    const pathEnv = process.env.PATH || "";
+    if (!pathEnv.includes(localBinDir)) {
+      console.log(`  ${yellow("⚠")} ${localBinDir} is not on your PATH`);
+      console.log(`  ${gray("Add this to your shell profile:")}`);
+      console.log(`  ${gray(`  export PATH=\"${localBinDir}:\$PATH\"`)}`);
+    }
+    
+    return true;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  ${red("✗")} Failed to install binary: ${msg}`);
+    return false;
+  }
 }
 
 const VALID_TARGETS = Object.keys(DEFAULT_CONFIG_DIRS);
@@ -138,6 +203,21 @@ export function registerInstallCommand(program: Command): void {
           .map((t) => t.key);
 
         if (selectedTargets.length === 0) {
+          // Still install fenced sections for Claude Code even if no other targets to upgrade
+          if (hasClaudeCode) {
+            const projectRoot = process.cwd();
+            const fencedResults = installFencedSectionsForTargets(
+              ["claude-code"],
+              projectRoot,
+              options.upgrade ?? false
+            );
+            if (fencedResults["claude-code"]?.action === "updated") {
+              console.log(`  ${green("✓")} claude-code updated Loaf framework section in project file`);
+            } else if (fencedResults["claude-code"]?.action === "skipped") {
+              console.log(`  ${gray("○")} claude-code Loaf framework section already current`);
+            }
+            console.log();
+          }
           console.log(`  ${gray("No installed targets to upgrade")}`);
           console.log();
           return;
@@ -158,14 +238,71 @@ export function registerInstallCommand(program: Command): void {
       }
 
       if (selectedTargets.length === 0) {
+        // Still install fenced sections for Claude Code even if no targets selected
+        if (hasClaudeCode) {
+          const projectRoot = process.cwd();
+          const fencedResults = installFencedSectionsForTargets(
+            ["claude-code"],
+            projectRoot,
+            options.upgrade ?? false
+          );
+          if (fencedResults["claude-code"]?.action === "created") {
+            console.log(`  ${green("✓")} claude-code created project file with Loaf framework section`);
+          } else if (fencedResults["claude-code"]?.action === "appended") {
+            console.log(`  ${green("✓")} claude-code added Loaf framework section to project file`);
+          } else if (fencedResults["claude-code"]?.action === "updated") {
+            console.log(`  ${green("✓")} claude-code updated Loaf framework section in project file`);
+          } else if (fencedResults["claude-code"]?.action === "skipped") {
+            console.log(`  ${gray("○")} claude-code Loaf framework section already current`);
+          }
+          console.log();
+        }
         console.log(`  ${gray("No targets selected")}`);
         console.log();
         return;
       }
 
+      // Check/install loaf binary for targets that need PATH access
+      // Per SPEC-020: only opencode, cursor, codex, amp need PATH-based binary
+      // Claude Code uses plugin-bundled binary via ${CLAUDE_PLUGIN_ROOT}
+      const pathDependentTargets = ["opencode", "cursor", "codex", "amp"];
+      const needsPathBinary = selectedTargets.some((t) =>
+        pathDependentTargets.includes(t),
+      );
+
+      if (needsPathBinary && !isLoafOnPath()) {
+        console.log(
+          `  ${yellow("⚠")} Selected targets need 'loaf' on PATH but it's not available`,
+        );
+        console.log(
+          `  ${gray("Targets:")} ${selectedTargets
+            .filter((t) => pathDependentTargets.includes(t))
+            .join(", ")}`,
+        );
+
+        const shouldInstallBinary = await askYesNo(
+          `  Install 'loaf' binary to ~/.local/bin? [y/N] `,
+        );
+
+        if (shouldInstallBinary) {
+          await installLoafBinary(rootDir);
+          console.log();
+        } else {
+          console.log(
+            `  ${gray("Skipping binary installation. Some hooks may not work for PATH-dependent targets.")}`,
+          );
+          console.log();
+        }
+      } else if (needsPathBinary) {
+        console.log(`  ${green("✓")} loaf binary available on PATH for target hooks`);
+        console.log();
+      }
+
       console.log();
 
       // Install each target
+      const installedTargets: string[] = [];
+
       for (const target of selectedTargets) {
         const tool = tools.find((t) => t.key === target);
         const configDir = tool?.configDir || DEFAULT_CONFIG_DIRS[target];
@@ -185,8 +322,9 @@ export function registerInstallCommand(program: Command): void {
         }
 
         try {
-          installer(targetDistDir, configDir);
+          installer(targetDistDir, configDir, options.upgrade ?? false);
           console.log(`  ${green("✓")} ${target} installed to ${gray(configDir)}`);
+          installedTargets.push(target);
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           console.log(`  ${red("✗")} ${target} — ${msg}`);
@@ -194,5 +332,55 @@ export function registerInstallCommand(program: Command): void {
       }
 
       console.log();
+
+      // Install fenced sections to project files
+      // Include: (1) successfully installed targets (excluding gemini which has no project file layer),
+      // (2) Claude Code if detected
+      // Claude Code uses plugin-bundled binary but still needs fenced sections in project
+      const projectRoot = process.cwd();
+      const targetsWithFencedSections = installedTargets.filter(t => t !== "gemini");
+      const fencedTargets = hasClaudeCode
+        ? ["claude-code", ...targetsWithFencedSections]
+        : [...targetsWithFencedSections];
+      const fencedResults = installFencedSectionsForTargets(
+        fencedTargets,
+        projectRoot,
+        options.upgrade ?? false
+      );
+
+      // Report fenced section results
+      let hasFencedOutput = false;
+      for (const [target, result] of Object.entries(fencedResults)) {
+        if (result.action === "error") {
+          console.log(
+            `  ${red("✗")} ${target} project file — ${result.error}`
+          );
+          hasFencedOutput = true;
+        } else if (result.action === "created") {
+          console.log(
+            `  ${green("✓")} ${target} created project file with Loaf framework section`
+          );
+          hasFencedOutput = true;
+        } else if (result.action === "appended") {
+          console.log(
+            `  ${green("✓")} ${target} added Loaf framework section to project file`
+          );
+          hasFencedOutput = true;
+        } else if (result.action === "updated") {
+          console.log(
+            `  ${green("✓")} ${target} updated Loaf framework section in project file (v${result.version})`
+          );
+          hasFencedOutput = true;
+        } else if (result.action === "skipped") {
+          console.log(
+            `  ${gray("○")} ${target} Loaf framework section already current (v${result.version})`
+          );
+          hasFencedOutput = true;
+        }
+      }
+
+      if (hasFencedOutput) {
+        console.log();
+      }
     });
 }

@@ -1,10 +1,11 @@
 ---
 name: strategy
 description: >-
-  Discovers strategic context in STRATEGY.md through structured interviews. Use
-  when the user asks "what's our strategy?" or "update strategic direction."
-  Produces personas, market landscape, and problem space. Not for architecture
-  or reflection.
+  Discovers and maintains strategic context in STRATEGY.md. Use when the user
+  asks "what's our strategy?" or "update the strategic direction." Produces
+  personas, market landscape analysis, and problem space definitions. Not for
+  architecture (use architecture) or post-implementation reflection (use
+  reflect).
 version: 2.0.0-dev.8
 ---
 
@@ -12,7 +13,34 @@ version: 2.0.0-dev.8
 
 Deep discovery for personas, market landscape, and problem space.
 
+## Contents
+- Critical Rules
+- Verification
+- Purpose
+- Mode Detection
+- Process
+- Guardrails
+- Related Skills
+
 **Input:** $ARGUMENTS
+
+---
+
+## Critical Rules
+
+- **Interview deeply** -- strategy is domain knowledge extraction, not guesswork
+- **Align with VISION** -- strategy serves the north star, never contradicts it
+- **Get approval** -- do NOT update STRATEGY.md without explicit user confirmation
+- **Define anti-personas** -- who we are NOT building for is as important as who we are
+- **Keep it current** -- outdated strategy is worse than no strategy
+
+---
+
+## Verification
+
+- STRATEGY.md content aligns with VISION.md direction
+- All persona definitions include anti-personas (who we are NOT building for)
+- User has explicitly approved all updates before STRATEGY.md is modified
 
 ---
 

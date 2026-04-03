@@ -19,11 +19,13 @@ cli/                            # CLI tool (TypeScript, bundled by tsup)
 ├── index.ts                    # Entry point (Commander.js)
 ├── commands/
 │   ├── build.ts                # loaf build
-│   └── install.ts              # loaf install
+│   ├── check.ts                # loaf check
+│   ├── install.ts              # loaf install
+│   └── session.ts              # loaf session
 └── lib/
     ├── build/                  # Build system
     │   ├── types.ts            # Shared types
-    │   ├── targets/            # Target transformers (claude-code, opencode, cursor, codex, gemini)
+    │   ├── targets/            # Target transformers (claude-code, opencode, cursor, codex, gemini, amp)
     │   └── lib/                # Build utilities (version, sidecar, shared-templates, etc.)
     ├── detect/                 # Tool detection
     └── install/                # Installation logic
@@ -108,13 +110,40 @@ description: >-
 Brief intro paragraph.
 
 ## Contents
-- Section One
-- Section Two
-- Section Three
+- Critical Rules
+- Verification
+- Quick Reference
+- Topics
 
-## Section One
+## Critical Rules
+...
+
+## Verification
+...
+
+## Quick Reference
+...
+
+## Topics
 ...
 ```
+
+**Standard section order:**
+1. **Critical Rules** — Must-follow constraints, guardrails, delegation patterns
+2. **Verification** — How to confirm success, test conditions, validation steps
+3. **Quick Reference** — Tables, decision trees, command cheatsheets
+4. **Topics** — Detailed references linked from SKILL.md
+
+#### Verb/Noun Principle
+
+Use action verbs for workflows, nouns for knowledge:
+
+| Pattern | Use For | Examples |
+|---------|---------|----------|
+| **Verb** (gerund) | Workflow skills | `implement`, `breakdown`, `research` |
+| **Noun** (domain) | Knowledge skills | `typescript-development`, `database-design` |
+
+**Why:** Skills that DO things get verbs. Skills that ARE things get nouns. This makes the distinction between "use me to act" and "reference me to know" immediately clear.
 
 #### Frontmatter Fields (Standard)
 
@@ -130,6 +159,21 @@ Only these fields belong in `SKILL.md`:
 | `allowed-tools` | No | Space-delimited tool list (experimental) |
 
 #### Description Best Practices
+
+**Two-tier structure** for Claude's 250-char truncation vs full description:
+
+1. **First sentence (≤250 chars):** Action verb, what it covers, key trigger phrases
+2. **Rest:** User-intent examples, negative routing, success criteria
+
+```yaml
+description: >-
+  Covers Python 3.12+ with FastAPI, Pydantic, async patterns, pytest, SQLAlchemy.
+  Use when building APIs, or when the user asks "how do I validate data?"
+  or "what's the best way to structure a Python project?"
+  Not for schema design decisions (use database-design).
+```
+
+**Additional guidelines:**
 
 1. **Start with action verb** (third-person):
    - Good: "Covers...", "Establishes...", "Coordinates..."
@@ -172,8 +216,8 @@ Artifact format templates (session files, specs, ADRs, task files) live in `temp
 ```yaml
 # targets.yaml
 shared-templates:
-  session.md: [implement, resume, orchestration, reference-session, review-sessions]
-  plan.md: [implement, council-session]
+  session.md: [implement, orchestration, review-sessions]
+  plan.md: [implement, council]
   adr.md: [architecture, reflect]
 ```
 
@@ -221,7 +265,7 @@ skill-name/
     └── artifact-b.md
 ```
 
-#### Reference Table Pattern
+### Reference Table Pattern
 
 Use "Use When" (action-oriented), not "Coverage" (content-oriented):
 
@@ -268,6 +312,43 @@ Brief intro paragraph.
 Reference skills provide background knowledge Claude loads automatically.
 Users shouldn't invoke `/python-development` directly.
 
+### Session Journal Vocabulary
+
+Session journals in `.agents/sessions/` use a **compact inline format** — append-only structured logs. Think "conventional commits meets bullet journal."
+
+| Term | Meaning |
+|------|---------|
+| **Session** | A markdown file with compact inline journal entries |
+| **Session File** | Named `YYYYMMDD-HHMMSS-description.md` in `.agents/sessions/` |
+| **Frontmatter** | YAML header with `spec`, `branch`, `status`, `created`, `last_entry` |
+| **Journal Entry** | `- YYYY-MM-DD HH:MM type(scope): description` |
+| **Entry Type** | `resume`, `pause`, `commit`, `decide`, `discover`, `block`, `unblock`, `spark`, `todo`, `conclude`, etc. |
+| **PAUSE Header** | `--- PAUSE YYYY-MM-DD HH:MM ---` separator between sessions |
+| **Burst** | Entries grouped without blank lines (within 5 min or same state) |
+| **Archive** | Completed sessions moved to `.agents/sessions/archive/` |
+
+**Session Status Values:** `active`, `paused`, `blocked`, `complete`, `archived`
+
+**Entry Format:**
+```markdown
+- YYYY-MM-DD HH:MM resume(branch-name): from commit abc1234
+- YYYY-MM-DD HH:MM decide(scope): description
+
+- YYYY-MM-DD HH:MM block(scope): what is blocked
+
+- YYYY-MM-DD HH:MM unblock(scope): how resolved
+- YYYY-MM-DD HH:MM commit(abc1234): "message"
+
+--- PAUSE YYYY-MM-DD HH:MM ---
+```
+
+**Blank line rules:**
+- Insert blank line when gap ≥ 5 minutes
+- Insert blank line on state transition (block/unblock)
+- `--- PAUSE ---` always starts new section
+
+**Session Status Values:** `active`, `paused`, `blocked`, `complete`, `archived`
+
 ## Build System
 
 ### Commands
@@ -278,6 +359,10 @@ loaf build --target claude-code  # Specific target
 loaf install --to all          # Install to all detected tools
 loaf install --to cursor       # Install to specific tool
 loaf install --upgrade         # Update already-installed targets
+loaf check                     # Run enforcement hooks manually
+loaf session list              # List active sessions
+loaf session start <desc>      # Start new session
+loaf session end <file>        # End/archive session
 ```
 
 ### Development
@@ -299,6 +384,7 @@ npm link                       # Make `loaf` available globally
 | cursor | `dist/cursor/` | Skills, agents, and hooks |
 | codex | `dist/codex/` | Skills only |
 | gemini | `dist/gemini/` | Skills only |
+| amp | `dist/amp/` | Skills, runtime plugin |
 
 ### Before Committing
 
@@ -314,17 +400,68 @@ npm link                       # Make `loaf` available globally
 
 ## Configuration
 
+### Hook Model
+
+Two types of hooks serve different purposes:
+
+**Enforcement Hooks** — Quality gates that block bad actions:
+- Run automatically at git lifecycle points (pre-commit, pre-push)
+- Example: Secrets scanning, linting, type checking
+- Can be run manually via `loaf check`
+- Exit non-zero to block the action
+- Hooks without explicit `script:` or `command:` auto-dispatch as `loaf check --hook <id>`
+
+**Skill Instruction Hooks** — Context injection at tool invocation:
+- Triggered when specific tools are invoked
+- Inject relevant skill instructions based on context
+- Example: When `Edit` is used, inject language-specific style guide
+- Registered in `hooks.yaml` with `matcher` patterns
+
+### Hook Dispatch Mechanisms
+
+Three dispatch types control how a hook executes:
+
+| Type | Field | Behavior |
+|------|-------|----------|
+| `script` (default) | `script:` | Runs a shell script |
+| `command` | `command:` | Runs a CLI command (e.g., `loaf session log --from-hook`) |
+| `prompt` | `prompt:` | Injects text directly to the AI model |
+
+### Hook Fields
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `id` | Yes | Unique hook identifier |
+| `skill` | Yes | Owning skill name |
+| `type` | No | `script` (default), `command`, or `prompt` |
+| `matcher` | No | Tool name filter: `"Edit\|Write\|Bash"` |
+| `if` | No | Conditional matcher, e.g., `"Bash(git commit:*)"` — hook only runs when invocation matches |
+| `failClosed` | No | `true` to block the action on hook failure (enforcement hooks) |
+| `blocking` | No | `true` if hook can block tool execution |
+| `timeout` | No | Timeout in milliseconds |
+
 ### hooks.yaml
 
 Register hooks with their `skill:` field pointing to the relevant skill:
 
 ```yaml
 hooks:
+  pre-commit:
+    - id: scan-secrets
+      skill: security-compliance
+      script: hooks/pre-commit/scan-secrets.sh
   pre-tool:
-    - id: my-hook
-      skill: my-skill
-      script: hooks/pre-tool/my-hook.sh
-      matcher: "Edit|Write"
+    - id: check-secrets
+      skill: foundations
+      type: command
+      command: loaf check --hook check-secrets
+      failClosed: true
+      matcher: "Bash"
+    - id: session-nudge
+      skill: orchestration
+      type: prompt
+      prompt: "Log important decisions to the session journal."
+      if: "Bash(git commit:*)"
 ```
 
 ### targets.yaml
@@ -359,3 +496,27 @@ Configure target-specific behavior and sidecars.
 - [Agent Skills Specification](https://agentskills.io/specification)
 - [Claude Code Skills Best Practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
+
+<!-- loaf:managed:start v2.0.0-dev.8 -->
+<!-- Maintained by loaf install/upgrade — do not edit manually -->
+## Loaf Framework
+
+**Session Journal Format:** Compact inline journal — `- YYYY-MM-DD HH:MM type(scope): description`. Blank lines separate bursts. `--- PAUSE YYYY-MM-DD HH:MM ---` separates sessions.
+
+**Session Journal Entry Types:**
+- `decide(scope)`: Key decisions with rationale
+- `discover(scope)`: Something learned
+- `block(scope)` / `unblock(scope)`: Blockers and resolutions
+- `spark(scope)`: Ideas to promote via `/idea`
+- `todo(scope)`: Action items to promote to tasks
+- `resume(scope)`: Session started/resumed (auto)
+- `pause`: Session ended (auto)
+- `commit(SHA)`: Code committed (auto)
+
+**CLI Commands:**
+- `loaf session start/end/log/archive` — Session management
+- `loaf check` — Run enforcement hooks
+- `loaf task/spec/kb` — Task and knowledge management
+
+See [orchestration skill](skills/orchestration/SKILL.md) for full details.
+<!-- loaf:managed:end -->

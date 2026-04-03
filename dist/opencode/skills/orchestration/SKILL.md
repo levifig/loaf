@@ -1,38 +1,60 @@
 ---
 name: orchestration
 description: >-
-  Coordinates multi-agent work: delegation, session management, Linear
+  Coordinates multi-agent work: agent delegation, session management, Linear
   integration, and council workflows. Use when managing sessions, delegating to
-  agents, or coordinating cross-cutting work. Not for single-task implementation
-  or solo research.
+  agents, or coordinating cross-cutting work across multiple agents. Not for
+  single-task implementation (use direct tool delegation) or solo research (use
+  research).
+version: 2.0.0-dev.8
 ---
 
-# PM Orchestration
-
-Comprehensive patterns for PM-style orchestration: coordinating multi-agent work, managing sessions, running councils, delegating to specialized agents, and integrating with Linear.
+# Orchestration
 
 ## Contents
-- Philosophy
+- Critical Rules
+- Verification
 - Quick Reference
 - Topics
+- Philosophy
 - Configuration
 - Artifact Locations
 - Available Scripts
 - Three-Phase Workflow
-- Critical Rules
 
-## Philosophy
+Comprehensive patterns for orchestration: coordinating multi-agent work, managing sessions, running councils, delegating to specialized agents, and integrating with Linear.
 
-**PM is the orchestrator, not the implementer.**
+## Critical Rules
 
-The PM agent:
-1. Creates issues and session files for tracking
-2. Breaks down work into delegable tasks
-3. Spawns specialized agents for implementation
-4. Coordinates outcomes and updates external systems
-5. Never implements code, tests, or documentation directly
+### Sessions
+- Create following [session template](templates/session.md) — compact inline journal format
+- Use `loaf session log` for journal entries: `decide(scope)`, `discover(scope)`, `block(scope)`, `spark(scope)`, `todo(scope)`
+- Archive when complete (status + `archived_at` + `archived_by` + move to `.agents/sessions/archive/`)
+- PreCompact hook: appends `compact` entry with context summary
+- Post-compaction: `loaf session start` outputs recent journal entries for recovery
 
-Every release should be complete, polished, and delightful.
+### Councils
+- Always odd number: 5 or 7 agents
+- Councils advise, users decide
+- Orchestrator coordinates but doesn't vote
+- Spawn all agents in parallel
+
+### Linear
+- Checkboxes only (`- [x]`), no emoji
+- Outcome-focused, self-contained, no local file references
+- Magic words in commit body, not subject
+
+### Planning (Shape Up)
+- Appetite over estimates (decide time, flex scope)
+- Shape before building (boundaries, not tasks)
+- Circuit breakers at 50% to reassess
+- No backlogs -- bet or let go
+
+## Verification
+
+- Validate session files with `validate-session.py` before archiving
+- Validate council files with `validate-council.py` before concluding
+- Confirm Linear issue updates are self-contained (no local paths, no emoji)
 
 ## Quick Reference
 
@@ -66,6 +88,19 @@ Every release should be complete, polished, and delightful.
 | Linear Integration | [references/linear.md](references/linear.md) | Updating Linear issues, magic words, status conventions |
 | Product Planning | [references/planning.md](references/planning.md) | Shape Up methodology, setting appetite, roadmaps |
 
+## Philosophy
+
+**You are the orchestrator, not the implementer.**
+
+The orchestrator:
+1. Creates issues and session files for tracking
+2. Breaks down work into delegable tasks
+3. Spawns specialized agents for implementation
+4. Coordinates outcomes and updates external systems
+5. Never implements code, tests, or documentation directly
+
+Every release should be complete, polished, and delightful.
+
 ## Configuration
 
 This skill uses paths from `.agents/config.json`:
@@ -94,7 +129,7 @@ This skill uses paths from `.agents/config.json`:
 | Reports | `.agents/reports/` | N/A | `YYYYMMDD-HHMMSS-subject.md` |
 | Tasks | `.agents/tasks/` | N/A | Per task manager conventions |
 
-**Rule:** Agents write artifacts to disk, PM reasons over artifacts, users retrieve from disk.
+**Rule:** Agents write artifacts to disk, orchestrator reasons over artifacts, users retrieve from disk.
 
 ## Available Scripts
 
@@ -128,29 +163,3 @@ This skill uses paths from `.agents/config.json`:
 - Update external issue to Done
 - Ensure knowledge captured in permanent locations
 - Archive session (status + `archived_at` + `archived_by` + move + update links)
-
-## Critical Rules
-
-### Sessions
-- Create following [session template](templates/session.md)
-- Required sections: Context, Current State, Next Steps
-- Archive when complete (status + `archived_at` + `archived_by` + move)
-- PreCompact hook: spawn context-archiver for Resumption Prompt
-- Post-compaction: copy transcript to `.agents/transcripts/`, add to session's `transcripts:` array
-
-### Councils
-- Always odd number: 5 or 7 agents
-- Councils advise, users decide
-- PM coordinates but doesn't vote
-- Spawn all agents in parallel
-
-### Linear
-- Checkboxes only (`- [x]`), no emoji
-- Outcome-focused, self-contained, no local file references
-- Magic words in commit body, not subject
-
-### Planning (Shape Up)
-- Appetite over estimates (decide time, flex scope)
-- Shape before building (boundaries, not tasks)
-- Circuit breakers at 50% to reassess
-- No backlogs -- bet or let go

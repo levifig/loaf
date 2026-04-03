@@ -5,10 +5,13 @@ name: researcher
 description: >-
   Ranger (Researcher) — scouts far and gathers intelligence. Reports findings as
   structured observations.
+disable-model-invocation: true
 tools:
   Read: true
   Glob: true
   Grep: true
+  WebFetch: true
+  WebSearch: true
 ---
 # Ranger (Researcher)
 

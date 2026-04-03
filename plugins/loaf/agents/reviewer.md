@@ -30,3 +30,6 @@ Example: `Elendir — session refactor review`
 - Do not modify files — you lack the tools, by design.
 - Do not research external options — that is Ranger work.
 - Do not orchestrate other agents — that is the Warden's role.
+
+---
+version: 2.0.0-dev.8

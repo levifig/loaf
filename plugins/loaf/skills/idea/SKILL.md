@@ -1,11 +1,13 @@
 ---
 name: idea
 description: >-
-  Captures ideas into structured nuggets. Use when the user says "I have an
-  idea" or "note this down," or when an actionable concept crystallizes. Without
-  args, scans for unprocessed sparks to promote. Not for deep exploration or
-  shaping.
+  Captures ideas into structured nuggets for later evaluation. Use when the user
+  says "I have an idea" or "note this down." Also activate when a specific
+  actionable concept crystallizes during conversation. Without args, scans
+  brainstorm documents f...
+user-invocable: true
 argument-hint: '[idea description]'
+version: 2.0.0-dev.8
 ---
 
 # Idea
@@ -13,6 +15,41 @@ argument-hint: '[idea description]'
 Capture ideas quickly with minimal friction.
 
 **Input:** $ARGUMENTS
+
+---
+
+## Contents
+- Critical Rules
+- Verification
+- Quick Reference
+- Purpose
+- Process
+- Idea Lifecycle
+- Guardrails
+- Related Skills
+
+## Critical Rules
+
+- Speed over completeness -- capture quickly, shape later
+- 2-3 questions maximum -- don't turn capture into an interview
+- Infer metadata automatically -- don't ask for tags, title, or links
+- One idea per file -- keep them atomic
+- No shaping here -- that's what `/loaf:shape` is for
+
+## Verification
+
+- Idea file created in `.agents/ideas/` with correct `YYYYMMDD-HHMMSS-slug.md` naming
+- Frontmatter contains required fields (title, status: raw, created timestamp)
+- If promoted from a spark, source document is marked `*(promoted)*`
+
+## Quick Reference
+
+| Status | Meaning |
+|--------|---------|
+| `raw` | Just captured, unprocessed |
+| `shaping` | Being developed via /loaf:shape or /loaf:brainstorm |
+| `shaped` | Converted to SPEC, idea file archived |
+| `archived` | Decided not to pursue, kept for reference |
 
 ---
 
