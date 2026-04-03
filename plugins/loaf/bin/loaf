@@ -2130,7 +2130,14 @@ function writeMarker(configDir) {
 function isLoafHook(hook) {
   const command = hook.command;
   if (!command) return false;
-  return command.startsWith("loaf ") || command.startsWith("loaf	");
+  const loafGeneratedPatterns = [
+    "loaf check --hook",
+    "loaf task",
+    "loaf session start",
+    "loaf session end",
+    "loaf session log --from-hook"
+  ];
+  return loafGeneratedPatterns.some((pattern) => command.startsWith(pattern));
 }
 function loadHooksJson(path) {
   if (!existsSync12(path)) {
@@ -7625,14 +7632,15 @@ async function validatePush(context) {
     return result;
   }
   const errors = [];
-  const hasPackageJson = existsSync31("package.json");
+  let hasPackageJson = false;
   let hasBuildScript = false;
-  if (hasPackageJson) {
-    try {
-      const pkg = JSON.parse(readFileSync27("package.json", "utf-8"));
-      hasBuildScript = !!pkg.scripts?.build;
-    } catch {
-    }
+  try {
+    execSync2("git show HEAD:package.json 2>/dev/null", { stdio: "pipe" });
+    hasPackageJson = true;
+    const pkgContent = execSync2("git show HEAD:package.json 2>/dev/null", { encoding: "utf-8" });
+    const pkg = JSON.parse(pkgContent);
+    hasBuildScript = !!pkg.scripts?.build;
+  } catch {
   }
   try {
     const lastTag = execSync2("git describe --tags --abbrev=0 2>/dev/null", {
@@ -7667,8 +7675,14 @@ async function validatePush(context) {
       stdio: ["pipe", "pipe", "ignore"]
     }).trim();
     if (lastTag) {
-      if (!existsSync31("CHANGELOG.md")) {
-        errors.push("CHANGELOG.md not found (required for tagged releases)");
+      let hasChangelogInHead = false;
+      try {
+        execSync2("git show HEAD:CHANGELOG.md 2>/dev/null", { stdio: "pipe" });
+        hasChangelogInHead = true;
+      } catch {
+      }
+      if (!hasChangelogInHead) {
+        errors.push("CHANGELOG.md not found in HEAD (required for tagged releases)");
       } else {
         try {
           const changedFiles = execSync2(

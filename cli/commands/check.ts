@@ -286,17 +286,19 @@ async function validatePush(context: HookContext): Promise<CheckResult> {
 
   const errors: string[] = [];
 
-  // Detect project type
-  const hasPackageJson = existsSync("package.json");
+  // Detect project type - check from HEAD (committed), not disk (may have uncommitted changes)
+  let hasPackageJson = false;
   let hasBuildScript = false;
   
-  if (hasPackageJson) {
-    try {
-      const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
-      hasBuildScript = !!pkg.scripts?.build;
-    } catch {
-      // ignore
-    }
+  try {
+    execSync("git show HEAD:package.json 2>/dev/null", { stdio: "pipe" });
+    hasPackageJson = true;
+    
+    const pkgContent = execSync("git show HEAD:package.json 2>/dev/null", { encoding: "utf-8" });
+    const pkg = JSON.parse(pkgContent);
+    hasBuildScript = !!pkg.scripts?.build;
+  } catch {
+    // No package.json in HEAD
   }
 
   // Check 1: Version bump since last tag
@@ -341,10 +343,19 @@ async function validatePush(context: HookContext): Promise<CheckResult> {
       stdio: ["pipe", "pipe", "ignore"],
     }).trim();
 
-      if (lastTag) {
-        if (!existsSync("CHANGELOG.md")) {
-          errors.push("CHANGELOG.md not found (required for tagged releases)");
-        } else {
+    if (lastTag) {
+      // Check from HEAD (committed), not disk (may have uncommitted changes)
+      let hasChangelogInHead = false;
+      try {
+        execSync("git show HEAD:CHANGELOG.md 2>/dev/null", { stdio: "pipe" });
+        hasChangelogInHead = true;
+      } catch {
+        // No CHANGELOG.md in HEAD
+      }
+      
+      if (!hasChangelogInHead) {
+        errors.push("CHANGELOG.md not found in HEAD (required for tagged releases)");
+      } else {
           try {
             // Check only committed changes between lastTag and HEAD (not unstaged edits)
             const changedFiles = execSync(
