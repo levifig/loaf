@@ -220,7 +220,7 @@ async function runHook(
         child.stdout?.on('data', (data) => stdoutStr += data);
         child.stderr?.on('data', (data) => stderrStr += data);
         child.on('close', (code) => {
-          resolve({ exitCode: code || 0, stdout: stdoutStr, stderr: stderrStr });
+          resolve({ exitCode: code ?? 1, stdout: stdoutStr, stderr: stderrStr }); // null means signal-killed; fail closed
         });
         child.on('error', (err) => {
           resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
@@ -250,7 +250,7 @@ async function runHook(
         child.stdout?.on('data', (data) => stdoutStr += data);
         child.stderr?.on('data', (data) => stderrStr += data);
         child.on('close', (code) => {
-          resolve({ exitCode: code || 0, stdout: stdoutStr, stderr: stderrStr });
+          resolve({ exitCode: code ?? 1, stdout: stdoutStr, stderr: stderrStr }); // null means signal-killed; fail closed
         });
         child.on('error', (err) => {
           resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });

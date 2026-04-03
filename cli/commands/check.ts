@@ -379,11 +379,12 @@ async function validatePush(context: HookContext): Promise<CheckResult> {
   // Validates that the build succeeds before pushing
   if (hasBuildScript) {
     try {
+      // Must be < hook timeout (60s in hooks.yaml)
       execSync("npm run build", {
         cwd: process.cwd(),
         encoding: "utf-8",
         stdio: ["pipe", "pipe", "pipe"],
-        timeout: 120000, // 2 minute timeout
+        timeout: 45000,
       });
     } catch {
       errors.push("Build failed - fix build errors before pushing");
@@ -556,17 +557,25 @@ async function validateCommit(context: HookContext): Promise<CheckResult> {
     return result;
   }
 
-  // Validate Conventional Commits format
-  // Format: <type>[optional scope]: <description>
-  const conventionalCommitRegex = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .+/;
-  
+  // Validate Conventional Commits format (scoped commits not allowed)
+  // Format: <type>[!]: <description>
+  const conventionalCommitRegex = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)!?: .+/;
+
   if (!conventionalCommitRegex.test(message)) {
     result.passed = false;
     result.blocked = true;
     result.errors.push("Commit message does not follow Conventional Commits format");
-    result.errors.push("Expected format: <type>[optional scope]: <description>");
+    result.errors.push("Expected format: <type>: <description> (scoped commits not allowed)");
     result.errors.push("Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert");
     result.errors.push(`Your message: "${message}"`);
+  }
+
+  // Check for AI attribution in commit body
+  const aiAttributionPattern = /\b(claude|gpt|copilot|chatgpt|gemini|anthropic)\b/i;
+  if (aiAttributionPattern.test(message)) {
+    result.passed = false;
+    result.blocked = true;
+    result.errors.push("Commit message contains AI attribution. Remove tool references from commit messages.");
   }
 
   // Check message length (should be under 72 chars for the subject)
@@ -671,6 +680,131 @@ async function securityAudit(context: HookContext): Promise<CheckResult> {
     result.findings = [...criticalFindings, ...warningFindings];
   } else if (warningFindings.length > 0) {
     result.warnings.push(...warningFindings);
+  }
+
+  // ─── Vulnerability Scanner Execution ─────────────────────────────────
+  // Additive to pattern checks above. Runs real scanners against the
+  // project filesystem, matching the coverage the old shell script
+  // (foundations-security-audit.sh) provided via Trivy, Semgrep, npm audit.
+  //
+  // Gated: only runs when VALIDATION_LEVEL=thorough or AGENT_TYPE is
+  // reviewer/implementer, to avoid expensive scans on every Bash command.
+  // ─────────────────────────────────────────────────────────────────────
+
+  const validationLevel = context.validation_level || process.env.VALIDATION_LEVEL || "";
+  const agentType = context.agent_type || process.env.AGENT_TYPE || "";
+  const shouldRunScanners =
+    validationLevel === "thorough" ||
+    agentType === "reviewer" ||
+    agentType === "implementer";
+
+  // Skip scanners for trivial commands (ls, echo, pwd, etc.)
+  const isTrivialCommand = /^\s*(ls|echo|pwd|whoami|date|cat|head|tail|wc|true|false)\b/.test(targetCommand);
+
+  if (shouldRunScanners && !isTrivialCommand) {
+    const scannerTimeout = 30000; // 30s per tool
+    let anyScannerAvailable = false;
+
+    // Trivy — filesystem vulnerability scan
+    try {
+      execSync("command -v trivy", { stdio: "pipe" });
+      anyScannerAvailable = true;
+      try {
+        const trivyOutput = execSync(
+          "trivy fs --severity CRITICAL,HIGH --format json --quiet .",
+          { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"], timeout: scannerTimeout }
+        );
+        const trivyResults = JSON.parse(trivyOutput);
+        if (trivyResults?.Results) {
+          for (const r of trivyResults.Results) {
+            for (const v of r.Vulnerabilities || []) {
+              const finding = `trivy: ${v.VulnerabilityID} (${v.Severity}) in ${v.PkgName}`;
+              if (v.Severity === "CRITICAL") {
+                criticalFindings.push(finding);
+              } else {
+                warningFindings.push(finding);
+              }
+            }
+          }
+        }
+      } catch {
+        // Trivy execution failed — non-fatal, continue
+      }
+    } catch {
+      // Trivy not installed
+    }
+
+    // Semgrep — static analysis
+    try {
+      execSync("command -v semgrep", { stdio: "pipe" });
+      anyScannerAvailable = true;
+      try {
+        const semgrepOutput = execSync(
+          "semgrep --config auto --json --quiet --severity ERROR .",
+          { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"], timeout: scannerTimeout }
+        );
+        const semgrepResults = JSON.parse(semgrepOutput);
+        for (const finding of semgrepResults?.results || []) {
+          const severity = finding.extra?.severity || "WARNING";
+          const desc = `semgrep: ${finding.check_id} in ${finding.path}:${finding.start?.line}`;
+          if (severity === "ERROR") {
+            criticalFindings.push(desc);
+          } else {
+            warningFindings.push(desc);
+          }
+        }
+      } catch {
+        // Semgrep execution failed — non-fatal, continue
+      }
+    } catch {
+      // Semgrep not installed
+    }
+
+    // npm audit — dependency vulnerabilities (only if package.json exists)
+    if (existsSync("package.json")) {
+      try {
+        anyScannerAvailable = true;
+        const auditOutput = execSync(
+          "npm audit --json 2>/dev/null || true",
+          { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"], timeout: scannerTimeout }
+        );
+        const auditResults = JSON.parse(auditOutput);
+        const vulnerabilities = auditResults?.vulnerabilities || {};
+        for (const [pkg, info] of Object.entries(vulnerabilities)) {
+          const vuln = info as { severity?: string };
+          const severity = vuln.severity || "unknown";
+          const desc = `npm-audit: ${severity} vulnerability in ${pkg}`;
+          if (severity === "critical") {
+            criticalFindings.push(desc);
+          } else if (severity === "high") {
+            warningFindings.push(desc);
+          }
+        }
+      } catch {
+        // npm audit failed — non-fatal, continue
+      }
+    }
+
+    if (!anyScannerAvailable) {
+      result.warnings.push(
+        "No vulnerability scanners found (trivy, semgrep, npm audit). Install for deeper security coverage."
+      );
+    }
+
+    // Re-evaluate findings after scanner results
+    if (criticalFindings.length > 0 && !result.blocked) {
+      result.passed = false;
+      result.blocked = true;
+      result.errors.push("Critical vulnerabilities detected by security scanners");
+      result.findings = [...(result.findings || []), ...criticalFindings, ...warningFindings];
+    } else if (warningFindings.length > 0) {
+      // Merge scanner warnings with any existing warnings
+      for (const w of warningFindings) {
+        if (!result.warnings.includes(w)) {
+          result.warnings.push(w);
+        }
+      }
+    }
   }
 
   return result;

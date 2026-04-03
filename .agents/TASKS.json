@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 57,
+  "next_id": 87,
   "tasks": {
     "TASK-001": {
       "title": "Create verification reference",
@@ -1095,6 +1095,408 @@
       "updated": "2026-03-29T02:21:19.733Z",
       "completed_at": "2026-03-29T02:21:19.733Z",
       "file": "archive/TASK-056-update-cleanup-skill-to-reference-cli.md"
+    },
+    "TASK-065": {
+      "title": "Extract shared content modules (skills, agents, commands)",
+      "slug": "extract-shared-content-modules",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-065-extract-shared-content-modules.md"
+    },
+    "TASK-066": {
+      "title": "Build shared skill intermediate at dist/skills/",
+      "slug": "shared-skill-intermediate",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [
+        "TASK-065"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-066-shared-skill-intermediate.md"
+    },
+    "TASK-067": {
+      "title": "Refactor Codex + Gemini targets (byte-identical parity)",
+      "slug": "refactor-codex-gemini-targets",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [
+        "TASK-066"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-067-refactor-codex-gemini-targets.md"
+    },
+    "TASK-068": {
+      "title": "Refactor Cursor target + fix prompt hook filter bug",
+      "slug": "refactor-cursor-target",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [
+        "TASK-066"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-068-refactor-cursor-target.md"
+    },
+    "TASK-069": {
+      "title": "Refactor OpenCode target to use shared intermediate",
+      "slug": "refactor-opencode-target",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [
+        "TASK-066"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-069-refactor-opencode-target.md"
+    },
+    "TASK-070": {
+      "title": "Refactor Claude Code target to use shared intermediate",
+      "slug": "refactor-claude-code-target",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-066"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-070-refactor-claude-code-target.md"
+    },
+    "TASK-071": {
+      "title": "Rework ~30 skill descriptions for two-tier routing",
+      "slug": "skill-descriptions-two-tier",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-065"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-071-skill-descriptions-two-tier.md"
+    },
+    "TASK-072": {
+      "title": "Apply SKILL.md structural convention + verb/noun hygiene",
+      "slug": "skill-structural-convention",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-072-skill-structural-convention.md"
+    },
+    "TASK-073": {
+      "title": "Migrate ~20 non-blocking hooks to skill instructions",
+      "slug": "hook-to-skill-migration",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-072"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-073-hook-to-skill-migration.md"
+    },
+    "TASK-074": {
+      "title": "Sidecar audit, agent profile audit, description truncation",
+      "slug": "sidecar-agent-audit-truncation",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-071",
+        "TASK-072"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-074-sidecar-agent-audit-truncation.md"
+    },
+    "TASK-075": {
+      "title": "CLI reference skill + update README.md / CLAUDE.md",
+      "slug": "cli-reference-skill-docs",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-071",
+        "TASK-072",
+        "TASK-073"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-075-cli-reference-skill-docs.md"
+    },
+    "TASK-076": {
+      "title": "Implement loaf check CLI command",
+      "slug": "loaf-check-cli",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [
+        "TASK-073"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-076-loaf-check-cli.md"
+    },
+    "TASK-077": {
+      "title": "Implement loaf session subcommands (start/end/log/archive)",
+      "slug": "loaf-session-subcommands",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-077-loaf-session-subcommands.md"
+    },
+    "TASK-078": {
+      "title": "Add failClosed to hook schema and build output",
+      "slug": "failclosed-hook-schema",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-076"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-078-failclosed-hook-schema.md"
+    },
+    "TASK-079": {
+      "title": "Generate direct loaf check commands in hook configs",
+      "slug": "direct-command-hook-generation",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [
+        "TASK-076",
+        "TASK-078"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-079-direct-command-hook-generation.md"
+    },
+    "TASK-080": {
+      "title": "Generate session lifecycle + journal nudge hooks",
+      "slug": "session-lifecycle-nudge-hooks",
+      "spec": "SPEC-020",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-077",
+        "TASK-079"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:22.000Z",
+      "completed_at": null,
+      "file": "TASK-080-session-lifecycle-nudge-hooks.md"
+    },
+    "TASK-081": {
+      "title": "Create shared runtime plugin generator (OpenCode + Amp)",
+      "slug": "runtime-plugin-generator",
+      "spec": "SPEC-020",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-076",
+        "TASK-077"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:24.000Z",
+      "completed_at": "2026-04-02T02:25:24.000Z",
+      "file": "TASK-081-runtime-plugin-generator.md"
+    },
+    "TASK-082": {
+      "title": "Remove migrated hooks, shell libs, session skills + bundle binary",
+      "slug": "remove-migrated-hooks-bundle-binary",
+      "spec": "SPEC-020",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-079",
+        "TASK-080",
+        "TASK-081"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:24.000Z",
+      "completed_at": "2026-04-02T02:25:24.000Z",
+      "file": "TASK-082-remove-migrated-hooks-bundle-binary.md"
+    },
+    "TASK-083": {
+      "title": "Amp target",
+      "slug": "amp-target",
+      "spec": "SPEC-020",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-081"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:24.000Z",
+      "completed_at": "2026-04-02T02:25:24.000Z",
+      "file": "TASK-083-amp-target.md"
+    },
+    "TASK-084": {
+      "title": "Codex hook output + install convergence",
+      "slug": "codex-hooks-install-convergence",
+      "spec": "SPEC-020",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-079",
+        "TASK-083"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:24.000Z",
+      "completed_at": "2026-04-02T02:25:24.000Z",
+      "file": "TASK-084-codex-hooks-install-convergence.md"
+    },
+    "TASK-085": {
+      "title": "Fenced-section management for CLAUDE.md/AGENTS.md",
+      "slug": "fenced-section-management",
+      "spec": "SPEC-020",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-075",
+        "TASK-084"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:23.000Z",
+      "completed_at": "2026-04-02T02:25:23.000Z",
+      "file": "TASK-085-fenced-section-management.md"
+    },
+    "TASK-086": {
+      "title": "Verify loaf binary accessibility from all hook environments",
+      "slug": "verify-binary-accessibility",
+      "spec": "SPEC-020",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-082",
+        "TASK-083",
+        "TASK-084"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-02T02:25:22.000Z",
+      "updated": "2026-04-02T02:25:24.000Z",
+      "completed_at": "2026-04-02T02:25:24.000Z",
+      "file": "TASK-086-verify-binary-accessibility.md"
     }
   },
   "specs": {

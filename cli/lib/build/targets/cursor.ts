@@ -242,7 +242,7 @@ function generateHooksJson(config: HooksConfig, distDir: string): void {
     hooks.postToolUse = postToolHooks.map((hook) => {
       const result: Record<string, unknown> = {
         [LOAF_HOOK_MARKER]: true,
-        timeout: 30,
+        timeout: Math.floor((hook.timeout || 30000) / 1000),
         ...(hook.matcher && { matcher: hook.matcher }),
         ...(hook.failClosed && { failClosed: hook.failClosed }),
       };

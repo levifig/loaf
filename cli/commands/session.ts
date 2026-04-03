@@ -930,7 +930,7 @@ export function registerSessionCommand(program: Command): void {
       if (shouldAppendResume) {
         journalLines.push(`- ${timestamp} resume(${branch}): session resumed`);
         if (lastCommit !== "unknown") {
-          journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
+          journalLines.push(`- ${timestamp} resume(${branch}): from commit ${lastCommit}`);
         }
         if (completed > 0 || total > 0) {
           journalLines.push(`- ${timestamp} progress: ${completed}/${total} tasks completed`);
@@ -1046,7 +1046,7 @@ export function registerSessionCommand(program: Command): void {
         `- ${timestamp} progress: ${completed}/${total} tasks completed, ${commitCount} commits`,
       ];
       if (lastCommit !== "unknown") {
-        journalLines.push(`- ${timestamp} context: last commit ${lastCommit}`);
+        journalLines.push(`- ${timestamp} conclude(${branch}): at commit ${lastCommit}`);
       }
 
       // Prompt for final entries
@@ -1331,30 +1331,36 @@ export function registerSessionCommand(program: Command): void {
         }
       }
 
-      // Update frontmatter
-      const now = getTimestamp();
-      session.data.status = "archived";
-      session.data.archived_at = now;
-      session.data.last_updated = now;
-
-      // Write updated content
-      const newContent = matter.stringify(
-        session.content,
-        session.data as unknown as Record<string, unknown>
-      );
-      writeFileSync(sessionFilePath, newContent, "utf-8");
-
-      // Move to archive
+      // Move to archive first (atomic on same filesystem), then update frontmatter.
+      // This avoids a corruption window where the file has status: archived but is
+      // still in sessions/ — if the process crashes between write and rename the
+      // session becomes invisible to both `session list` and the archive directory.
       const fileName = basename(sessionFilePath);
       const archivePath = join(archiveDir, fileName);
 
       try {
         renameSync(sessionFilePath, archivePath);
-        console.log(`  ${green("✓")} Archived: ${gray(archivePath.replace(agentsDir, ".agents"))}`);
       } catch (err) {
         console.error(`  ${red("error:")} Failed to move file: ${err}`);
         process.exit(1);
       }
+
+      // Now update frontmatter in the already-archived file
+      const now = getTimestamp();
+      const archivedSession = readSessionFile(archivePath);
+      if (archivedSession) {
+        archivedSession.data.status = "archived";
+        archivedSession.data.archived_at = now;
+        archivedSession.data.last_updated = now;
+
+        const newContent = matter.stringify(
+          archivedSession.content,
+          archivedSession.data as unknown as Record<string, unknown>
+        );
+        writeFileSync(archivePath, newContent, "utf-8");
+      }
+
+      console.log(`  ${green("✓")} Archived: ${gray(archivePath.replace(agentsDir, ".agents"))}`);
 
       console.log();
     });

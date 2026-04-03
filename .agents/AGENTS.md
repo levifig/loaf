@@ -19,11 +19,13 @@ cli/                            # CLI tool (TypeScript, bundled by tsup)
 ├── index.ts                    # Entry point (Commander.js)
 ├── commands/
 │   ├── build.ts                # loaf build
-│   └── install.ts              # loaf install
+│   ├── check.ts                # loaf check
+│   ├── install.ts              # loaf install
+│   └── session.ts              # loaf session
 └── lib/
     ├── build/                  # Build system
     │   ├── types.ts            # Shared types
-    │   ├── targets/            # Target transformers (claude-code, opencode, cursor, codex, gemini)
+    │   ├── targets/            # Target transformers (claude-code, opencode, cursor, codex, gemini, amp)
     │   └── lib/                # Build utilities (version, sidecar, shared-templates, etc.)
     ├── detect/                 # Tool detection
     └── install/                # Installation logic
@@ -382,6 +384,7 @@ npm link                       # Make `loaf` available globally
 | cursor | `dist/cursor/` | Skills, agents, and hooks |
 | codex | `dist/codex/` | Skills only |
 | gemini | `dist/gemini/` | Skills only |
+| amp | `dist/amp/` | Skills, runtime plugin |
 
 ### Before Committing
 
@@ -406,12 +409,36 @@ Two types of hooks serve different purposes:
 - Example: Secrets scanning, linting, type checking
 - Can be run manually via `loaf check`
 - Exit non-zero to block the action
+- Hooks without explicit `script:` or `command:` auto-dispatch as `loaf check --hook <id>`
 
 **Skill Instruction Hooks** — Context injection at tool invocation:
 - Triggered when specific tools are invoked
 - Inject relevant skill instructions based on context
 - Example: When `Edit` is used, inject language-specific style guide
 - Registered in `hooks.yaml` with `matcher` patterns
+
+### Hook Dispatch Mechanisms
+
+Three dispatch types control how a hook executes:
+
+| Type | Field | Behavior |
+|------|-------|----------|
+| `script` (default) | `script:` | Runs a shell script |
+| `command` | `command:` | Runs a CLI command (e.g., `loaf session log --from-hook`) |
+| `prompt` | `prompt:` | Injects text directly to the AI model |
+
+### Hook Fields
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `id` | Yes | Unique hook identifier |
+| `skill` | Yes | Owning skill name |
+| `type` | No | `script` (default), `command`, or `prompt` |
+| `matcher` | No | Tool name filter: `"Edit\|Write\|Bash"` |
+| `if` | No | Conditional matcher, e.g., `"Bash(git commit:*)"` — hook only runs when invocation matches |
+| `failClosed` | No | `true` to block the action on hook failure (enforcement hooks) |
+| `blocking` | No | `true` if hook can block tool execution |
+| `timeout` | No | Timeout in milliseconds |
 
 ### hooks.yaml
 
@@ -424,10 +451,17 @@ hooks:
       skill: security-compliance
       script: hooks/pre-commit/scan-secrets.sh
   pre-tool:
-    - id: python-style
-      skill: python-development
-      script: hooks/pre-tool/python-style.sh
-      matcher: "Edit|Write"
+    - id: check-secrets
+      skill: foundations
+      type: command
+      command: loaf check --hook check-secrets
+      failClosed: true
+      matcher: "Bash"
+    - id: session-nudge
+      skill: orchestration
+      type: prompt
+      prompt: "Log important decisions to the session journal."
+      if: "Bash(git commit:*)"
 ```
 
 ### targets.yaml
