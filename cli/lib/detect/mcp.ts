@@ -1,5 +1,5 @@
 /**
- * MCP detection for Linear and Serena across Claude Code and Cursor (TASK-088).
+ * MCP detection for Linear and Serena across Claude Code and Cursor.
  */
 
 import { existsSync, readFileSync } from "fs";
@@ -8,7 +8,7 @@ import { join } from "path";
 
 import { readAgentsConfig } from "../config/agents-config.js";
 
-function getHome(): string {
+function home(): string {
   return process.env.HOME || process.env.USERPROFILE || "";
 }
 
@@ -16,7 +16,6 @@ export type McpTier = "recommended" | "optional";
 
 export type McpScope = "global" | "project" | null;
 
-/** Per-IDE stack (Claude settings vs Cursor mcp.json). */
 export interface McpStackStatus {
   configured: boolean;
   scope: McpScope;
@@ -34,9 +33,7 @@ export interface McpDefinition {
   id: "linear" | "serena";
   displayName: string;
   tier: McpTier;
-  /** Claude Code: args after `--` (Linear is always plain `npx -y mcp-remote …`). */
   claudeArgs: string[];
-  /** One-line manual hint for other targets */
   manualHint: string;
 }
 
@@ -70,19 +67,6 @@ export const MCP_REGISTRY: McpDefinition[] = [
   },
 ];
 
-const LINEAR_REMOTE_URL = "https://mcp.linear.app/mcp";
-
-/** Args after `--` for `claude mcp add linear -- …`. Auth (OAuth, API keys, env) is the user's concern. */
-export function linearMcpRemoteArgv(): string[] {
-  return ["npx", "-y", "mcp-remote", LINEAR_REMOTE_URL];
-}
-
-/** Cursor `mcpServers.linear` entry — matches Claude install. */
-export function linearCursorMcpEntry(): { command: string; args: string[] } {
-  const argv = linearMcpRemoteArgv();
-  return { command: argv[0], args: argv.slice(1) };
-}
-
 function safeJson(path: string): unknown {
   try {
     if (!existsSync(path)) return null;
@@ -106,7 +90,6 @@ function blobMatchesSerena(blob: string): boolean {
   );
 }
 
-/** Best-effort parse of `claude mcp list` stdout (for tests / tooling). */
 export function parseClaudeMcpListOutput(output: string): Set<string> {
   const names = new Set<string>();
   for (const line of output.split(/\r?\n/)) {
@@ -153,18 +136,13 @@ function claudeListNames(): Set<string> {
   return claudeListCache;
 }
 
-/** Test helper: reset cached `claude mcp list` parse. */
-export function resetClaudeMcpListCacheForTest(): void {
-  claudeListCache = null;
-}
-
 export function detectClaudeStackMcp(
   projectRoot: string,
   id: "linear" | "serena",
 ): McpStackStatus {
   const match = id === "linear" ? blobMatchesLinear : blobMatchesSerena;
-  const globalPath = join(getHome(), ".claude", "settings.json");
-  const globalLocal = join(getHome(), ".claude", "settings.local.json");
+  const globalPath = join(home(), ".claude", "settings.json");
+  const globalLocal = join(home(), ".claude", "settings.local.json");
   for (const p of [globalPath, globalLocal]) {
     const j = safeJson(p);
     if (scanMcpServers(j, match)) {
@@ -193,32 +171,13 @@ export function detectCursorStackMcp(
   id: "linear" | "serena",
 ): McpStackStatus {
   const match = id === "linear" ? blobMatchesLinear : blobMatchesSerena;
-  const globalPath = join(getHome(), ".cursor", "mcp.json");
+  const globalPath = join(home(), ".cursor", "mcp.json");
   const projectPath = join(projectRoot, ".cursor", "mcp.json");
   const g = scanMcpServers(safeJson(globalPath), match);
   const p = scanMcpServers(safeJson(projectPath), match);
   if (g && !p) return { configured: true, scope: "global" };
   if (p) return { configured: true, scope: g ? "global" : "project" };
   return { configured: false, scope: null };
-}
-
-/** Legacy merged view — prefer detectClaudeStackMcp + detectCursorStackMcp. */
-export function detectMcpStatus(
-  projectRoot: string,
-  id: "linear" | "serena",
-): { configured: boolean; scope: McpScope } {
-  const c = detectClaudeStackMcp(projectRoot, id);
-  const u = detectCursorStackMcp(projectRoot, id);
-  if (!c.configured && !u.configured) {
-    return { configured: false, scope: null };
-  }
-  const scope: McpScope =
-    c.scope === "global" || u.scope === "global"
-      ? "global"
-      : c.scope === "project" || u.scope === "project"
-        ? "project"
-        : null;
-  return { configured: true, scope };
 }
 
 export function buildMcpStatuses(projectRoot: string): McpStatus[] {
@@ -239,7 +198,6 @@ export function getMcpDefinition(id: string): McpDefinition | undefined {
   return MCP_REGISTRY.find((d) => d.id === id);
 }
 
-/** True when `.agents/config.json` sets `integrations.linear.enabled` to false. */
 export function isLinearIntegrationDisabled(projectRoot: string): boolean {
   const cfg = readAgentsConfig(projectRoot);
   return cfg.integrations?.linear?.enabled === false;

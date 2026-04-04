@@ -7,8 +7,6 @@ import {
   detectCursorStackMcp,
   buildMcpStatuses,
   parseClaudeMcpListOutput,
-  linearMcpRemoteArgv,
-  resetClaudeMcpListCacheForTest,
 } from "./mcp.js";
 import {
   mergeAgentsConfigIntegrations,
@@ -18,16 +16,11 @@ import {
 let TMP: string;
 
 beforeEach(() => {
-  resetClaudeMcpListCacheForTest();
   TMP = mkdtempSync(join(tmpdir(), "loaf-mcp-"));
 });
 
 afterEach(() => {
-  try {
-    rmSync(TMP, { recursive: true, force: true });
-  } catch {
-    // ignore
-  }
+  rmSync(TMP, { recursive: true, force: true });
 });
 
 describe("parseClaudeMcpListOutput", () => {
@@ -93,15 +86,6 @@ describe("MCP stack detection", () => {
     expect(linear?.claude.configured).toBe(true);
     expect(linear?.cursor.configured).toBe(false);
     process.env.HOME = prevHome;
-  });
-
-  it("linearMcpRemoteArgv is plain npx -y mcp-remote", () => {
-    expect(linearMcpRemoteArgv()).toEqual([
-      "npx",
-      "-y",
-      "mcp-remote",
-      "https://mcp.linear.app/mcp",
-    ]);
   });
 
   it("buildMcpStatuses returns linear + serena entries", () => {

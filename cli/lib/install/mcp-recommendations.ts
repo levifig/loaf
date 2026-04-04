@@ -1,5 +1,5 @@
 /**
- * Post-install MCP recommendation flow (TASK-088).
+ * Post-install MCP recommendation flow.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
@@ -11,34 +11,24 @@ import { mergeAgentsConfigIntegrations } from "../config/agents-config.js";
 import {
   buildMcpStatuses,
   getMcpDefinition,
-  linearCursorMcpEntry,
-  linearMcpRemoteArgv,
   type McpDefinition,
   type McpStatus,
 } from "../detect/mcp.js";
+import { detectClaudeCode } from "../detect/tools.js";
 
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const gray = (s: string) => `\x1b[90m${s}\x1b[0m`;
 const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
+const white = (s: string) => `\x1b[97m${s}\x1b[0m`;
 
 export interface McpRecommendationOptions {
   projectRoot: string;
   upgrade: boolean;
   hasClaudeCode: boolean;
-  /** True only when Cursor was selected for this install (not merely detected on disk). */
   cursorTargetThisRun: boolean;
   hasAnyDetectedTool: boolean;
   installedTargets?: string[];
-}
-
-function hasClaudeCli(): boolean {
-  try {
-    execFileSync("which", ["claude"], { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function askGpn(question: string): Promise<"global" | "project" | "no"> {
@@ -65,22 +55,16 @@ function installViaClaude(
   def: McpDefinition,
   scope: "global" | "project",
 ): void {
-  const scopeFlag = claudeScopeFlag(scope);
-  const argv =
-    def.id === "linear" ? linearMcpRemoteArgv() : def.claudeArgs;
   execFileSync(
     "claude",
-    ["mcp", "add", "--scope", scopeFlag, def.id, "--", ...argv],
+    ["mcp", "add", "--scope", claudeScopeFlag(scope), def.id, "--", ...def.claudeArgs],
     { stdio: "inherit" },
   );
 }
 
-const white = (s: string) => `\x1b[97m${s}\x1b[0m`;
-
 function mergeCursorMcpServer(
   projectRoot: string,
-  serverKey: string,
-  spec: Record<string, unknown>,
+  def: McpDefinition,
   scope: "global" | "project",
 ): void {
   const home = process.env.HOME || process.env.USERPROFILE || "";
@@ -98,46 +82,16 @@ function mergeCursorMcpServer(
   if (!data.mcpServers || typeof data.mcpServers !== "object") {
     data.mcpServers = {};
   }
-  (data.mcpServers as Record<string, unknown>)[serverKey] = spec;
+  (data.mcpServers as Record<string, unknown>)[def.id] = {
+    command: def.claudeArgs[0],
+    args: def.claudeArgs.slice(1),
+  };
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
   writeFileSync(p, `${JSON.stringify(data, null, 2)}\n`, "utf-8");
 }
 
-function installLinearCursor(
-  projectRoot: string,
-  scope: "global" | "project",
-): void {
-  const { command, args } = linearCursorMcpEntry();
-  mergeCursorMcpServer(projectRoot, "linear", { command, args }, scope);
-}
-
-function installSerenaCursor(
-  projectRoot: string,
-  def: McpDefinition,
-  scope: "global" | "project",
-): void {
-  mergeCursorMcpServer(
-    projectRoot,
-    "serena",
-    {
-      command: def.claudeArgs[0],
-      args: def.claudeArgs.slice(1),
-    },
-    scope,
-  );
-}
-
-/**
- * Whether this MCP is fully satisfied for the current install run (exported for tests).
- * Cursor is only required when `cursorTargetThisRun` is true.
- *
- * When neither Claude nor Cursor is part of this run (Codex/OpenCode/Gemini/Amp only),
- * we do **not** treat on-disk Claude/Cursor MCP config as "done" — those clients are
- * unrelated to the tool the user is installing for, so we must not set
- * `integrations.*.enabled` from them or skip manual setup instructions.
- */
 export function mcpIntegrationDoneForSession(
   st: McpStatus,
   canClaude: boolean,
@@ -185,7 +139,7 @@ export async function runMcpRecommendations(
     return;
   }
 
-  const canClaude = hasClaudeCode && hasClaudeCli();
+  const canClaude = hasClaudeCode && detectClaudeCode();
   const hasAutoPath = canClaude || cursorTargetThisRun;
 
   console.log(`\n${bold("Recommended MCP servers")}\n`);
@@ -240,7 +194,7 @@ export async function runMcpRecommendations(
     let claudeSuccess = false;
     let cursorSuccess = false;
 
-    if (needsClaudeInstall && canClaude) {
+    if (needsClaudeInstall) {
       try {
         installViaClaude(def, choice);
         claudeSuccess = true;
@@ -256,11 +210,7 @@ export async function runMcpRecommendations(
 
     if (needsCursorInstall) {
       try {
-        if (def.id === "linear") {
-          installLinearCursor(projectRoot, choice);
-        } else {
-          installSerenaCursor(projectRoot, def, choice);
-        }
+        mergeCursorMcpServer(projectRoot, def, choice);
         cursorSuccess = true;
         const loc =
           choice === "global" ? "~/.cursor/mcp.json" : ".cursor/mcp.json";
@@ -309,9 +259,4 @@ export async function runMcpRecommendations(
     `${green("✓")} Integration choices recorded under ${gray("integrations")} in ${gray(".agents/config.json")}`,
   );
   console.log();
-}
-
-/** Exported for tests: install one MCP via Cursor file merge. */
-export function installLinearCursorForTest(projectRoot: string): void {
-  installLinearCursor(projectRoot, "project");
 }
