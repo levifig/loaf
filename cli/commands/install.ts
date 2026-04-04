@@ -259,8 +259,9 @@ export function registerInstallCommand(program: Command): void {
           console.log();
         }
         // UX: skip MCP prompts when the user declined every target interactively.
-        // Still offer them for `loaf install --to all` with no matching tools (explicit intent).
-        if (options.to === "all") {
+        // Still offer them for Claude Code (MCPs are primarily Claude integrations)
+        // or `loaf install --to all` with no matching tools (explicit intent).
+        if (hasClaudeCode || options.to === "all") {
           await runMcpRecommendations({
             projectRoot,
             upgrade,
