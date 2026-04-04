@@ -11,6 +11,7 @@ import { mergeAgentsConfigIntegrations } from "../config/agents-config.js";
 import {
   buildMcpStatuses,
   getMcpDefinition,
+  MCP_REGISTRY,
   type McpDefinition,
   type McpStatus,
 } from "../detect/mcp.js";
@@ -82,9 +83,10 @@ function mergeCursorMcpServer(
   if (!data.mcpServers || typeof data.mcpServers !== "object") {
     data.mcpServers = {};
   }
+  const argv = def.cursorArgs ?? def.claudeArgs;
   (data.mcpServers as Record<string, unknown>)[def.id] = {
-    command: def.claudeArgs[0],
-    args: def.claudeArgs.slice(1),
+    command: argv[0],
+    args: argv.slice(1),
   };
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
@@ -124,13 +126,21 @@ function formatStackLine(
 }
 
 /**
- * Run after target installation. Skipped when --upgrade or non-interactive stdin.
+ * Run after target installation. Skipped when --upgrade.
+ * Non-interactive stdin writes safe defaults (disabled) and returns.
  */
 export async function runMcpRecommendations(
   opts: McpRecommendationOptions,
 ): Promise<void> {
   if (opts.upgrade) return;
-  if (!process.stdin.isTTY) return;
+  if (!process.stdin.isTTY) {
+    for (const def of MCP_REGISTRY) {
+      mergeAgentsConfigIntegrations(opts.projectRoot, {
+        [def.id]: { enabled: false },
+      });
+    }
+    return;
+  }
 
   const { projectRoot, hasClaudeCode, cursorTargetThisRun, hasAnyDetectedTool } =
     opts;

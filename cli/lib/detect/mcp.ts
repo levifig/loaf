@@ -34,8 +34,15 @@ export interface McpDefinition {
   displayName: string;
   tier: McpTier;
   claudeArgs: string[];
+  cursorArgs?: string[];
   manualHint: string;
 }
+
+const SERENA_BASE_ARGS = [
+  "uvx", "-p", "3.13", "--from",
+  "git+https://github.com/oraios/serena",
+  "serena", "start-mcp-server",
+];
 
 export const MCP_REGISTRY: McpDefinition[] = [
   {
@@ -50,18 +57,8 @@ export const MCP_REGISTRY: McpDefinition[] = [
     id: "serena",
     displayName: "Serena",
     tier: "optional",
-    claudeArgs: [
-      "uvx",
-      "-p",
-      "3.13",
-      "--from",
-      "git+https://github.com/oraios/serena",
-      "serena",
-      "start-mcp-server",
-      "--context",
-      "claude-code",
-      "--project-from-cwd",
-    ],
+    claudeArgs: [...SERENA_BASE_ARGS, "--context", "claude-code", "--project-from-cwd"],
+    cursorArgs: [...SERENA_BASE_ARGS, "--context", "cursor", "--project-from-cwd"],
     manualHint:
       "claude mcp add [--scope user|project] serena -- uvx -p 3.13 --from git+https://github.com/oraios/serena serena start-mcp-server --context claude-code --project-from-cwd",
   },
@@ -103,13 +100,16 @@ export function parseClaudeMcpListOutput(output: string): Set<string> {
 
 function scanMcpServers(
   raw: unknown,
+  id: string,
   match: (blob: string) => boolean,
 ): boolean {
   if (!raw || typeof raw !== "object") return false;
   const o = raw as Record<string, unknown>;
   const servers = o.mcpServers;
   if (!servers || typeof servers !== "object") return false;
-  for (const [, spec] of Object.entries(servers as Record<string, unknown>)) {
+  const entries = servers as Record<string, unknown>;
+  if (id in entries) return true;
+  for (const [, spec] of Object.entries(entries)) {
     if (match(JSON.stringify(spec))) return true;
   }
   return false;
@@ -145,7 +145,7 @@ export function detectClaudeStackMcp(
   const globalLocal = join(home(), ".claude", "settings.local.json");
   for (const p of [globalPath, globalLocal]) {
     const j = safeJson(p);
-    if (scanMcpServers(j, match)) {
+    if (scanMcpServers(j, id, match)) {
       return { configured: true, scope: "global" };
     }
   }
@@ -155,12 +155,11 @@ export function detectClaudeStackMcp(
     join(projectRoot, ".mcp.json"),
   ]) {
     const j = safeJson(p);
-    if (scanMcpServers(j, match)) {
+    if (scanMcpServers(j, id, match)) {
       return { configured: true, scope: "project" };
     }
   }
-  const want = id === "linear" ? "linear" : "serena";
-  if (claudeListNames().has(want)) {
+  if (claudeListNames().has(id)) {
     return { configured: true, scope: "global" };
   }
   return { configured: false, scope: null };
@@ -173,8 +172,8 @@ export function detectCursorStackMcp(
   const match = id === "linear" ? blobMatchesLinear : blobMatchesSerena;
   const globalPath = join(home(), ".cursor", "mcp.json");
   const projectPath = join(projectRoot, ".cursor", "mcp.json");
-  const g = scanMcpServers(safeJson(globalPath), match);
-  const p = scanMcpServers(safeJson(projectPath), match);
+  const g = scanMcpServers(safeJson(globalPath), id, match);
+  const p = scanMcpServers(safeJson(projectPath), id, match);
   if (g && !p) return { configured: true, scope: "global" };
   if (p) return { configured: true, scope: g ? "global" : "project" };
   return { configured: false, scope: null };
