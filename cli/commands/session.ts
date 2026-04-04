@@ -1199,10 +1199,10 @@ export function registerSessionCommand(program: Command): void {
 
       // Handle --detect-linear: scan commits for magic words
       if (options.detectLinear) {
-        if (isLinearIntegrationDisabled(findGitRoot())) {
-          process.exit(0);
-        }
         try {
+          if (isLinearIntegrationDisabled(findGitRoot())) {
+            process.exit(0);
+          }
           const commits = getRecentCommits(3);
           const detections: Array<{ issueId: string; action: string; commit: string }> = [];
 

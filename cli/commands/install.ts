@@ -10,7 +10,7 @@ import { existsSync, readFileSync, mkdirSync, copyFileSync, chmodSync, unlinkSyn
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { createInterface } from "readline";
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import {
   detectTools,
   detectClaudeCode,
@@ -20,6 +20,17 @@ import {
 import { INSTALLERS } from "../lib/install/installer.js";
 import { installFencedSectionsForTargets } from "../lib/install/fenced-section.js";
 import { runMcpRecommendations } from "../lib/install/mcp-recommendations.js";
+
+function findProjectRoot(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+  } catch {
+    return process.cwd();
+  }
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -139,6 +150,7 @@ export function registerInstallCommand(program: Command): void {
       const distDir = join(rootDir, "dist");
       const devMode = isDevMode(rootDir);
       const upgrade = options.upgrade ?? false;
+      const projectRoot = findProjectRoot();
 
       console.log(`\n${bold("loaf install")}\n`);
 
@@ -206,7 +218,7 @@ export function registerInstallCommand(program: Command): void {
         if (selectedTargets.length === 0) {
           // Still install fenced sections for Claude Code even if no other targets to upgrade
           if (hasClaudeCode) {
-            const projectRoot = process.cwd();
+    
             const fencedResults = installFencedSectionsForTargets(
               ["claude-code"],
               projectRoot,
@@ -239,7 +251,7 @@ export function registerInstallCommand(program: Command): void {
       }
 
       if (selectedTargets.length === 0) {
-        const projectRoot = process.cwd();
+
         // Still install fenced sections for Claude Code even if no targets selected
         if (hasClaudeCode) {
           const fencedResults = installFencedSectionsForTargets(
@@ -351,7 +363,6 @@ export function registerInstallCommand(program: Command): void {
       // Include: (1) successfully installed targets (excluding gemini which has no project file layer),
       // (2) Claude Code if detected
       // Claude Code uses plugin-bundled binary but still needs fenced sections in project
-      const projectRoot = process.cwd();
       const targetsWithFencedSections = installedTargets.filter(t => t !== "gemini");
       const fencedTargets = hasClaudeCode
         ? ["claude-code", ...targetsWithFencedSections]
