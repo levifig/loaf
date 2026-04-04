@@ -73,6 +73,19 @@ function askYesNo(question: string): Promise<boolean> {
   });
 }
 
+const DISPLAY_NAMES: Record<string, string> = {
+  "claude-code": "Claude Code",
+  opencode: "OpenCode",
+  cursor: "Cursor",
+  codex: "Codex",
+  gemini: "Gemini",
+  amp: "Amp",
+};
+
+function displayName(target: string): string {
+  return DISPLAY_NAMES[target] ?? target;
+}
+
 /** Check if loaf is available on PATH */
 function isLoafOnPath(): boolean {
   try {
@@ -225,9 +238,9 @@ export function registerInstallCommand(program: Command): void {
               upgrade
             );
             if (fencedResults["claude-code"]?.action === "updated") {
-              console.log(`  ${green("✓")} claude-code updated Loaf framework section in project file`);
+              console.log(`  ${green("✓")} Claude Code updated Loaf framework section in project file`);
             } else if (fencedResults["claude-code"]?.action === "skipped") {
-              console.log(`  ${gray("○")} claude-code Loaf framework section already current`);
+              console.log(`  ${gray("○")} Claude Code Loaf framework section already current`);
             }
             console.log();
           }
@@ -260,13 +273,13 @@ export function registerInstallCommand(program: Command): void {
             upgrade
           );
           if (fencedResults["claude-code"]?.action === "created") {
-            console.log(`  ${green("✓")} claude-code created project file with Loaf framework section`);
+            console.log(`  ${green("✓")} Claude Code created project file with Loaf framework section`);
           } else if (fencedResults["claude-code"]?.action === "appended") {
-            console.log(`  ${green("✓")} claude-code added Loaf framework section to project file`);
+            console.log(`  ${green("✓")} Claude Code added Loaf framework section to project file`);
           } else if (fencedResults["claude-code"]?.action === "updated") {
-            console.log(`  ${green("✓")} claude-code updated Loaf framework section in project file`);
+            console.log(`  ${green("✓")} Claude Code updated Loaf framework section in project file`);
           } else if (fencedResults["claude-code"]?.action === "skipped") {
-            console.log(`  ${gray("○")} claude-code Loaf framework section already current`);
+            console.log(`  ${gray("○")} Claude Code Loaf framework section already current`);
           }
           console.log();
         }
@@ -336,24 +349,24 @@ export function registerInstallCommand(program: Command): void {
 
         if (!existsSync(targetDistDir)) {
           console.log(
-            `  ${red("✗")} ${target} — no build output found. Run ${bold("loaf build")} first.`,
+            `  ${red("✗")} ${displayName(target)} — no build output found. Run ${bold("loaf build")} first.`,
           );
           continue;
         }
 
         const installer = INSTALLERS[target];
         if (!installer) {
-          console.log(`  ${red("✗")} ${target} — no installer available`);
+          console.log(`  ${red("✗")} ${displayName(target)} — no installer available`);
           continue;
         }
 
         try {
           installer(targetDistDir, configDir, upgrade);
-          console.log(`  ${green("✓")} ${target} installed to ${gray(configDir)}`);
+          console.log(`  ${green("✓")} ${displayName(target)} installed to ${gray(configDir)}`);
           installedTargets.push(target);
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
-          console.log(`  ${red("✗")} ${target} — ${msg}`);
+          console.log(`  ${red("✗")} ${displayName(target)} — ${msg}`);
         }
       }
 
@@ -376,29 +389,30 @@ export function registerInstallCommand(program: Command): void {
       // Report fenced section results
       let hasFencedOutput = false;
       for (const [target, result] of Object.entries(fencedResults)) {
+        const name = displayName(target);
         if (result.action === "error") {
           console.log(
-            `  ${red("✗")} ${target} project file — ${result.error}`
+            `  ${red("✗")} ${name} project file — ${result.error}`
           );
           hasFencedOutput = true;
         } else if (result.action === "created") {
           console.log(
-            `  ${green("✓")} ${target} created project file with Loaf framework section`
+            `  ${green("✓")} ${name} created project file with Loaf framework section`
           );
           hasFencedOutput = true;
         } else if (result.action === "appended") {
           console.log(
-            `  ${green("✓")} ${target} added Loaf framework section to project file`
+            `  ${green("✓")} ${name} added Loaf framework section to project file`
           );
           hasFencedOutput = true;
         } else if (result.action === "updated") {
           console.log(
-            `  ${green("✓")} ${target} updated Loaf framework section in project file (v${result.version})`
+            `  ${green("✓")} ${name} updated Loaf framework section in project file (v${result.version})`
           );
           hasFencedOutput = true;
         } else if (result.action === "skipped") {
           console.log(
-            `  ${gray("○")} ${target} Loaf framework section already current (v${result.version})`
+            `  ${gray("○")} ${name} Loaf framework section already current (v${result.version})`
           );
           hasFencedOutput = true;
         }
