@@ -7,7 +7,7 @@ import { createInterface } from "readline";
 import { execFileSync } from "child_process";
 import { join } from "path";
 
-import { mergeAgentsConfigIntegrations } from "../config/agents-config.js";
+import { mergeAgentsConfigIntegrations, readAgentsConfig } from "../config/agents-config.js";
 import {
   buildMcpStatuses,
   getMcpDefinition,
@@ -134,10 +134,13 @@ export async function runMcpRecommendations(
 ): Promise<void> {
   if (opts.upgrade) return;
   if (!process.stdin.isTTY) {
+    const existing = readAgentsConfig(opts.projectRoot);
     for (const def of MCP_REGISTRY) {
-      mergeAgentsConfigIntegrations(opts.projectRoot, {
-        [def.id]: { enabled: false },
-      });
+      if (existing.integrations?.[def.id] === undefined) {
+        mergeAgentsConfigIntegrations(opts.projectRoot, {
+          [def.id]: { enabled: false },
+        });
+      }
     }
     return;
   }
@@ -188,6 +191,15 @@ export async function runMcpRecommendations(
     const needsClaudeInstall = canClaude && !st.claude.configured;
     const needsCursorInstall = cursorTargetThisRun && !st.cursor.configured;
 
+    if (!hasAutoPath) {
+      console.log(`    ${gray("Manual:")} ${white(def.manualHint)}`);
+      mergeAgentsConfigIntegrations(projectRoot, {
+        [def.id]: { enabled: false },
+      });
+      console.log();
+      continue;
+    }
+
     const choice = await askGpn(
       `    Install missing MCP(s)? [g]lobal / [p]roject / [n]o: `,
     );
@@ -233,27 +245,20 @@ export async function runMcpRecommendations(
       }
     }
 
-    if (!hasAutoPath) {
-      console.log(`    ${gray("Manual:")} ${white(def.manualHint)}`);
-      mergeAgentsConfigIntegrations(projectRoot, {
-        [def.id]: { enabled: false },
-      });
-    } else {
-      const stacksOk =
-        (!canClaude || st.claude.configured || claudeSuccess) &&
-        (!cursorTargetThisRun || st.cursor.configured || cursorSuccess);
-      mergeAgentsConfigIntegrations(projectRoot, {
-        [def.id]: { enabled: stacksOk },
-      });
-      if (!stacksOk) {
-        console.log(
-          `    ${yellow("⚠")} ${gray(`integrations.${def.id}.enabled remains false until every required stack succeeds.`)}`,
-        );
-      }
+    const stacksOk =
+      (!canClaude || st.claude.configured || claudeSuccess) &&
+      (!cursorTargetThisRun || st.cursor.configured || cursorSuccess);
+    mergeAgentsConfigIntegrations(projectRoot, {
+      [def.id]: { enabled: stacksOk },
+    });
+    if (!stacksOk) {
+      console.log(
+        `    ${yellow("⚠")} ${gray(`integrations.${def.id}.enabled remains false until every required stack succeeds.`)}`,
+      );
     }
 
     const otherHint = installedTargets.filter((t) =>
-      ["opencode", "codex", "gemini", "amp"].includes(t),
+      ["opencode", "codex", "amp"].includes(t),
     );
     if (otherHint.length > 0) {
       console.log(

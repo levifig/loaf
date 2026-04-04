@@ -174,8 +174,8 @@ export function detectCursorStackMcp(
   const projectPath = join(projectRoot, ".cursor", "mcp.json");
   const g = scanMcpServers(safeJson(globalPath), id, match);
   const p = scanMcpServers(safeJson(projectPath), id, match);
-  if (g && !p) return { configured: true, scope: "global" };
-  if (p) return { configured: true, scope: g ? "global" : "project" };
+  if (p) return { configured: true, scope: "project" };
+  if (g) return { configured: true, scope: "global" };
   return { configured: false, scope: null };
 }
 
