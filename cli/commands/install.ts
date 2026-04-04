@@ -59,7 +59,7 @@ function findRootDir(): string {
   throw new Error("Could not find loaf root directory");
 }
 
-function askYesNo(question: string): Promise<boolean> {
+function askYesNo(question: string, defaultYes = false): Promise<boolean> {
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -68,7 +68,9 @@ function askYesNo(question: string): Promise<boolean> {
   return new Promise((resolve) => {
     rl.question(question, (answer) => {
       rl.close();
-      resolve(answer.trim().toLowerCase().startsWith("y"));
+      const a = answer.trim().toLowerCase();
+      if (!a) resolve(defaultYes);
+      else resolve(a.startsWith("y"));
     });
   });
 }
@@ -255,7 +257,8 @@ export function registerInstallCommand(program: Command): void {
         for (const tool of tools) {
           const status = tool.installed ? ` ${yellow("(installed)")}` : "";
           const yes = await askYesNo(
-            `  Install to ${bold(tool.name)}${status}? [y/N] `,
+            `  Install to ${bold(tool.name)}${status}? [Y/n] `,
+            true,
           );
           if (yes) {
             selectedTargets.push(tool.key);
