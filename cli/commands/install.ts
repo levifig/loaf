@@ -16,10 +16,10 @@ import {
   detectClaudeCode,
   DEFAULT_CONFIG_DIRS,
   isDevMode,
-  type DetectedTool,
 } from "../lib/detect/tools.js";
 import { INSTALLERS } from "../lib/install/installer.js";
 import { installFencedSectionsForTargets } from "../lib/install/fenced-section.js";
+import { runMcpRecommendations } from "../lib/install/mcp-recommendations.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -138,6 +138,7 @@ export function registerInstallCommand(program: Command): void {
       const rootDir = findRootDir();
       const distDir = join(rootDir, "dist");
       const devMode = isDevMode(rootDir);
+      const upgrade = options.upgrade ?? false;
 
       console.log(`\n${bold("loaf install")}\n`);
 
@@ -197,7 +198,7 @@ export function registerInstallCommand(program: Command): void {
             `  ${yellow("⚡")} ${options.to} was not auto-detected; installing to ${DEFAULT_CONFIG_DIRS[options.to]}`,
           );
         }
-      } else if (options.upgrade) {
+      } else if (upgrade) {
         selectedTargets = tools
           .filter((t) => t.installed)
           .map((t) => t.key);
@@ -209,7 +210,7 @@ export function registerInstallCommand(program: Command): void {
             const fencedResults = installFencedSectionsForTargets(
               ["claude-code"],
               projectRoot,
-              options.upgrade ?? false
+              upgrade
             );
             if (fencedResults["claude-code"]?.action === "updated") {
               console.log(`  ${green("✓")} claude-code updated Loaf framework section in project file`);
@@ -238,13 +239,13 @@ export function registerInstallCommand(program: Command): void {
       }
 
       if (selectedTargets.length === 0) {
+        const projectRoot = process.cwd();
         // Still install fenced sections for Claude Code even if no targets selected
         if (hasClaudeCode) {
-          const projectRoot = process.cwd();
           const fencedResults = installFencedSectionsForTargets(
             ["claude-code"],
             projectRoot,
-            options.upgrade ?? false
+            upgrade
           );
           if (fencedResults["claude-code"]?.action === "created") {
             console.log(`  ${green("✓")} claude-code created project file with Loaf framework section`);
@@ -256,6 +257,18 @@ export function registerInstallCommand(program: Command): void {
             console.log(`  ${gray("○")} claude-code Loaf framework section already current`);
           }
           console.log();
+        }
+        // UX: skip MCP prompts when the user declined every target interactively.
+        // Still offer them for `loaf install --to all` with no matching tools (explicit intent).
+        if (options.to === "all") {
+          await runMcpRecommendations({
+            projectRoot,
+            upgrade,
+            hasClaudeCode,
+            cursorTargetThisRun: false,
+            hasAnyDetectedTool: tools.length > 0 || hasClaudeCode,
+            installedTargets: [],
+          });
         }
         console.log(`  ${gray("No targets selected")}`);
         console.log();
@@ -322,7 +335,7 @@ export function registerInstallCommand(program: Command): void {
         }
 
         try {
-          installer(targetDistDir, configDir, options.upgrade ?? false);
+          installer(targetDistDir, configDir, upgrade);
           console.log(`  ${green("✓")} ${target} installed to ${gray(configDir)}`);
           installedTargets.push(target);
         } catch (error) {
@@ -345,7 +358,7 @@ export function registerInstallCommand(program: Command): void {
       const fencedResults = installFencedSectionsForTargets(
         fencedTargets,
         projectRoot,
-        options.upgrade ?? false
+        upgrade
       );
 
       // Report fenced section results
@@ -382,5 +395,17 @@ export function registerInstallCommand(program: Command): void {
       if (hasFencedOutput) {
         console.log();
       }
+
+      await runMcpRecommendations({
+        projectRoot,
+        upgrade,
+        hasClaudeCode,
+        cursorTargetThisRun:
+          selectedTargets.includes("cursor") ||
+          installedTargets.includes("cursor"),
+        hasAnyDetectedTool:
+          tools.length > 0 || hasClaudeCode || installedTargets.length > 0,
+        installedTargets,
+      });
     });
 }
