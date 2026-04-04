@@ -30,6 +30,13 @@ describe("parseClaudeMcpListOutput", () => {
     expect(s.has("serena")).toBe(true);
     expect(s.has("foo")).toBe(true);
   });
+
+  it("extracts server name from plugin:namespace:server format", () => {
+    const s = parseClaudeMcpListOutput("plugin:serena:serena\nplugin:context7:context7");
+    expect(s.has("serena")).toBe(true);
+    expect(s.has("context7")).toBe(true);
+    expect(s.has("plugin:serena:serena")).toBe(true);
+  });
 });
 
 describe("MCP stack detection", () => {

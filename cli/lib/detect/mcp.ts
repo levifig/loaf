@@ -92,8 +92,15 @@ export function parseClaudeMcpListOutput(output: string): Set<string> {
   for (const line of output.split(/\r?\n/)) {
     const t = line.trim();
     if (!t) continue;
-    const m = t.match(/^(?:[\d.]+\s+|[•*-]\s+)?([a-zA-Z0-9_-]+)\b/);
-    if (m) names.add(m[1].toLowerCase());
+    const m = t.match(/^(?:[\d.]+\s+|[•*-]\s+)?([a-zA-Z0-9_:-]+)\b/);
+    if (!m) continue;
+    const full = m[1].toLowerCase();
+    names.add(full);
+    // Plugin MCPs use plugin:<plugin>:<server> format -- extract the server name
+    const parts = full.split(":");
+    if (parts.length > 1) {
+      names.add(parts[parts.length - 1]);
+    }
   }
   return names;
 }
