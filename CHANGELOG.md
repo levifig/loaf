@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.13] - 2026-04-06
+
 ### Fixed
 - Session journal blank line between every entry — `trimEnd()` made separator condition unreachable
 - Session resume replaying commits already logged in journal
