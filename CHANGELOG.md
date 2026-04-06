@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.14] - 2026-04-07
+
 ### Added
 - `/wrap` skill — responsible session shutdown with journal flush, loose end prompts, and housekeeping check
 - `/triage` skill added to README pipeline
