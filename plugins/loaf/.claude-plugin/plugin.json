@@ -44,13 +44,15 @@
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/workflow-pre-merge.sh",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/instructions/pre-merge.md\"",
+            "if": "Bash(gh pr merge:*)",
             "timeout": 5,
             "description": "Remind about squash merge conventions before gh pr merge"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/workflow-pre-push.sh",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/instructions/pre-push.md\"",
+            "if": "Bash(git push:*)",
             "timeout": 5,
             "description": "Advisory reminders before git push"
           },
@@ -99,7 +101,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/workflow-post-merge.sh",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/instructions/post-merge.md\"",
+            "if": "Bash(gh pr merge:*)",
             "description": "Inject housekeeping checklist after successful gh pr merge",
             "timeout": 5
           },

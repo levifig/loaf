@@ -76,6 +76,7 @@ async function runHook(
     LOAF_HOOK_TYPE: hookType,
     LOAF_HOOK_ID: hookId,
     LOAF_TOOL_NAME: toolName || '',
+    LOAF_PLUGIN_DIR: __dirname,
   };
 
   try {
@@ -252,15 +253,17 @@ const preToolHooks: Record<string, HookEntry[]> = {
     },
     {
       "id": "workflow-pre-merge",
-      "script": "pre-tool/workflow-pre-merge.sh",
+      "command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/pre-merge.md\"",
       "timeout": 5000,
-      "failClosed": false
+      "failClosed": false,
+      "if": "Bash(gh pr merge:*)"
     },
     {
       "id": "workflow-pre-push",
-      "script": "pre-tool/workflow-pre-push.sh",
+      "command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/pre-push.md\"",
       "timeout": 5000,
-      "failClosed": false
+      "failClosed": false,
+      "if": "Bash(git push:*)"
     },
     {
       "id": "validate-commit",
@@ -295,9 +298,10 @@ const postToolHooks: Record<string, HookEntry[]> = {
   "Bash": [
     {
       "id": "workflow-post-merge",
-      "script": "post-tool/workflow-post-merge.sh",
+      "command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/post-merge.md\"",
       "timeout": 5000,
-      "failClosed": false
+      "failClosed": false,
+      "if": "Bash(gh pr merge:*)"
     },
     {
       "id": "journal-post-commit",
