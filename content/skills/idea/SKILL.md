@@ -4,8 +4,9 @@ description: >-
   Captures ideas into structured nuggets for later evaluation. Use when the user
   says "I have an idea" or "note this down." Also activate when a specific
   actionable concept crystallizes during conversation. Without args, scans
-  brainstorm documents for unprocessed sparks to promote. Not for deep
-  exploration (use brainstorm) or shaping (use shape).
+  brainstorm documents and session journals for unprocessed sparks to
+  promote or discard. Not for deep exploration (use brainstorm) or
+  shaping (use shape).
 ---
 
 # Idea
@@ -63,11 +64,33 @@ Ideas are raw nuggets -- unprocessed, unshaped, but worth remembering. The goal 
 
 If `$ARGUMENTS` contains the idea, capture directly.
 
-If `$ARGUMENTS` is empty, **scan for sparks** in brainstorm documents:
+If `$ARGUMENTS` is empty, **scan for sparks** from two sources:
+
+**Brainstorm documents:**
 1. Search `.agents/drafts/*brainstorm*.md` for `## Sparks` sections
-2. List unprocessed sparks (not marked as promoted or abandoned)
-3. Present the list and let the user pick one to promote
-4. When promoting: create idea file with `origin:` field (relative to `.agents/`, e.g. `drafts/YYYYMMDD-brainstorm-slug.md`), mark spark as `*(promoted)*` in source document
+2. List unprocessed sparks (not marked as `*(promoted)*` or `*(discarded)*`)
+
+**Session journals:**
+1. Search `.agents/sessions/*.md` for `spark()` journal entries
+2. Exclude sparks that have a matching `resolve(spark)` entry in the same session
+3. Also scan `.agents/sessions/archive/*.md` for unresolved sparks from past sessions
+
+Present all unprocessed sparks from both sources. For each, the user decides:
+- **Promote** → create idea file, log resolution in source
+- **Discard** → log resolution with reason, no idea file
+- **Defer** → skip for now, resurface next time
+
+**When promoting from a brainstorm:** create idea file with `origin:` field, mark spark as `*(promoted)*` in source document.
+
+**When promoting from a session journal:** create idea file with `origin:` field pointing to the session file, append a `resolve(spark)` entry:
+```
+- YYYY-MM-DD HH:MM resolve(spark): slug → promoted to .agents/ideas/YYYYMMDD-HHMMSS-slug.md [YYYY-MM-DD HH:MM]
+```
+
+**When discarding from a session journal:** append a `resolve(spark)` entry:
+```
+- YYYY-MM-DD HH:MM resolve(spark): slug → discarded, reason [YYYY-MM-DD HH:MM]
+```
 
 If no sparks found and no arguments, ask **at most 2-3 questions**: core idea, problem/opportunity, immediate constraints.
 
