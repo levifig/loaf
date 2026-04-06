@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.12] - 2026-04-06
+
 ### Fixed
 - Three advisory hooks (pre-merge, pre-push, post-merge) broken since SPEC-020 — `json-parser.sh` dependency deleted but hooks not migrated
 
 ### Changed
 - New `instruction:` field in hooks.yaml — hooks that output static files now use native `if` conditions instead of bash JSON parsing
 - Removed 3 bash hook scripts and shared `json-parser.sh` library (-491 lines)
+- Swap `tsx` for `bun` in build script — tsx was declared but not installed; bun is available natively via mise
 - All three target builders (Claude Code, Cursor, OpenCode) generate `cat` commands for instruction-file hooks
 
 ## [2.0.0-dev.11] - 2026-04-04
