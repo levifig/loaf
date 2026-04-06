@@ -25166,7 +25166,8 @@ function parseEntry(entry) {
     "hypothesis",
     "try",
     "reject",
-    "compact"
+    "compact",
+    "skill"
   ];
   if (!validTypes.includes(type)) return null;
   return {

@@ -26,6 +26,7 @@ Responsible session shutdown — everything that needs a conscious model before 
 
 ## Critical Rules
 
+- Log `skill(wrap): <context>` to the session journal as the first action (e.g. "end-of-session summary" or "user requested wrap-up")
 - Never commit, push, or archive without explicit user confirmation
 - Flush journal entries BEFORE generating the report — unrecorded decisions are lost after this conversation
 - Pull from live data (git, filesystem), not memory or assumptions
@@ -82,6 +83,9 @@ Surface each loose end with a clear action the user can take. Ask once, respect 
 | Unpushed commits | "N commit(s) on <branch> not pushed — push now?" |
 | Stale KB files | "N stale knowledge file(s) — address now or defer?" |
 | Unresolved blocks | "Block on <scope> still open — note for next session?" |
+| No `/housekeeping` this session | "No housekeeping run this session — run `/housekeeping` now?" |
+
+To check if housekeeping ran, scan the session journal for a `skill(housekeeping)` entry. If absent and the session had significant work (commits, archived specs, etc.), suggest it.
 
 ### Step 4: Generate Report
 

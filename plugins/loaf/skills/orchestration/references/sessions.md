@@ -340,6 +340,7 @@ Sessions use an **append-only structured journal** format — a running log of w
 | `hypothesis` | Theory being tested | Agent | — |
 | `try` | Approach attempted | Agent | — |
 | `reject` | Approach abandoned | Agent | — |
+| `skill(name)` | Skill invoked with context | Skill (self-log) | Skill name |
 
 ### Format Rules
 
