@@ -277,6 +277,10 @@ Do not modify, disable, or skip these hooks.
 
 ---
 
+## Suggests Next
+
+After a successful release, suggest `/loaf:wrap` to summarize the session.
+
 ## Related Skills
 
 - **implement** — Does the work and housekeeping; `/loaf:release` handles the merge afterward

@@ -157,6 +157,10 @@ Set spec status to `implementing`. Announce created tasks with next steps.
 
 ---
 
+## Suggests Next
+
+After breakdown completes, suggest `/loaf:implement` to start working on the tasks.
+
 ## Related Skills
 
 - **shape** -- Create specs that get broken down

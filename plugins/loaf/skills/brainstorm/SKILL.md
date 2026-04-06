@@ -58,6 +58,10 @@ After work completes, verify:
 
 Sparks are: lightweight, byproducts, worth remembering. Mark as `*(promoted)*` or `*(abandoned)*` after processing.
 
+## Suggests Next
+
+After brainstorming, suggest `/loaf:shape` if a clear idea emerged, or `/loaf:idea` to capture sparks for later.
+
 ## Topics
 
 | Topic | Reference | Use When |
