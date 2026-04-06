@@ -20105,6 +20105,11 @@ var CANDIDATES = [
     relativePath: ".agents/loaf.json",
     format: "json",
     source: { type: "json" }
+  },
+  {
+    relativePath: ".claude-plugin/marketplace.json",
+    format: "json",
+    source: { type: "json", versionPath: "metadata.version" }
   }
 ];
 function detectVersionFiles(cwd) {
@@ -20118,7 +20123,11 @@ function detectVersionFiles(cwd) {
       let version;
       if (candidate.source.type === "json") {
         const parsed = JSON.parse(content);
-        version = parsed.version;
+        if (candidate.source.versionPath) {
+          version = candidate.source.versionPath.split(".").reduce((obj, key) => obj?.[key], parsed);
+        } else {
+          version = parsed.version;
+        }
       } else {
         const result = readTomlVersion(content, candidate.source.section);
         if (result) version = result;
@@ -20151,9 +20160,10 @@ function prepareVersionUpdates(files, newVersion) {
       const content = readFileSync17(file.path, "utf-8");
       let updated;
       if (file.format === "json") {
-        const parsed = JSON.parse(content);
-        parsed.version = newVersion;
-        updated = JSON.stringify(parsed, null, 2) + "\n";
+        updated = content.replace(
+          new RegExp(`"version"(\\s*:\\s*)"${escapeRegex(file.currentVersion)}"`, "g"),
+          `"version"$1"${newVersion}"`
+        );
       } else {
         const section = tomlSectionForPath(file.relativePath);
         if (!section) continue;
@@ -24410,6 +24420,21 @@ async function workflowPrePr(context) {
     result.passed = false;
     result.blocked = true;
     result.errors.push("CHANGELOG.md not found");
+  }
+  try {
+    const branch = execSync2("git branch --show-current", { encoding: "utf-8" }).trim();
+    const baseRef = execSync2("gh repo view --json defaultBranchRef -q .defaultBranchRef.name", { encoding: "utf-8" }).trim();
+    if (branch !== baseRef) {
+      const unpushed = execSync2(`git rev-list --count origin/${baseRef}..${baseRef}`, { encoding: "utf-8" }).trim();
+      const count = parseInt(unpushed, 10);
+      if (count > 0) {
+        result.warnings.push(
+          `${baseRef} has ${count} unpushed commit(s) that will be absorbed into this PR's squash merge`,
+          `Fix: git checkout ${baseRef} && git push && git checkout ${branch} \u2014 then create the PR`
+        );
+      }
+    }
+  } catch {
   }
   const hasFillFlag = /--fill/.test(command);
   const hasBodyFileFlag = /--body-file/.test(command);
