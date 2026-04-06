@@ -2,9 +2,9 @@
 description: >-
   Captures ideas into structured nuggets for later evaluation. Use when the user
   says "I have an idea" or "note this down." Also activate when a specific
-  actionable concept crystallizes during conversation. Without args, scans
-  brainstorm documents and session journals for unprocessed sparks to promote or
-  discard. Not for deep exploration (use brainstorm) or shaping (use shape).
+  actionable concept crystallizes during conversation. For reviewing and
+  processing the intake queue (sparks + raw ideas), use triage instead. Not for
+  deep exploration (use brainstorm) or shaping (use shape).
 subtask: false
 version: 2.0.0-dev.12
 ---
@@ -64,35 +64,7 @@ Ideas are raw nuggets -- unprocessed, unshaped, but worth remembering. The goal 
 
 If `$ARGUMENTS` contains the idea, capture directly.
 
-If `$ARGUMENTS` is empty, **scan for sparks** from two sources:
-
-**Brainstorm documents:**
-1. Search `.agents/drafts/*brainstorm*.md` for `## Sparks` sections
-2. List unprocessed sparks (not marked as `*(promoted)*` or `*(discarded)*`)
-
-**Session journals:**
-1. Search `.agents/sessions/*.md` for `spark()` journal entries
-2. Exclude sparks that have a matching `resolve(spark)` entry in the same session
-3. Also scan `.agents/sessions/archive/*.md` for unresolved sparks from past sessions
-
-Present all unprocessed sparks from both sources. For each, the user decides:
-- **Promote** → create idea file, log resolution in source
-- **Discard** → log resolution with reason, no idea file
-- **Defer** → skip for now, resurface next time
-
-**When promoting from a brainstorm:** create idea file with `origin:` field, mark spark as `*(promoted)*` in source document.
-
-**When promoting from a session journal:** create idea file with `origin:` field pointing to the session file, append a `resolve(spark)` entry:
-```
-- YYYY-MM-DD HH:MM resolve(spark): slug → promoted to .agents/ideas/YYYYMMDD-HHMMSS-slug.md [YYYY-MM-DD HH:MM]
-```
-
-**When discarding from a session journal:** append a `resolve(spark)` entry:
-```
-- YYYY-MM-DD HH:MM resolve(spark): slug → discarded, reason [YYYY-MM-DD HH:MM]
-```
-
-If no sparks found and no arguments, ask **at most 2-3 questions**: core idea, problem/opportunity, immediate constraints.
+If `$ARGUMENTS` is empty, ask **at most 2-3 questions**: core idea, problem/opportunity, immediate constraints.
 
 ### Step 2: Generate Idea File
 
@@ -135,6 +107,7 @@ raw -> shaping -> shaped (becomes SPEC) -> archived
 
 ## Related Skills
 
+- **triage** -- Review and process the intake queue (sparks + raw ideas)
 - **shape** -- Develop an idea into a SPEC
-- **brainstorm** -- Deep thinking on an idea or problem space (sparks from brainstorms can be promoted to ideas)
+- **brainstorm** -- Deep thinking on an idea or problem space
 - **research** -- Investigate before capturing
