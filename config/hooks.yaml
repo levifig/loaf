@@ -34,22 +34,22 @@ hooks:
       failClosed: true
       description: Run security audit on bash commands
 
-    # Git Workflow - Push, PR, merge, and commit guards (ENFORCEMENT)
+    # Git Workflow - Push and PR guards (ADVISORY)
+    # These are safety nets, not gates — the release skill orchestrates the same checks.
+    # Security hooks (above) stay blocking; workflow hooks warn but don't block.
     - id: validate-push
       skill: git-workflow
       matcher: "Bash"
-      blocking: true
+      blocking: false
       timeout: 60000
-      failClosed: true
       description: Validates version bump, CHANGELOG, and build before git push
 
     - id: workflow-pre-pr
       skill: git-workflow
       matcher: "Bash"
-      blocking: true
+      blocking: false
       timeout: 5000
-      failClosed: true
-      description: "Enforce PR format and CHANGELOG entry before gh pr create"
+      description: "Remind about PR format and CHANGELOG entry before gh pr create"
 
     - id: workflow-pre-merge
       skill: git-workflow

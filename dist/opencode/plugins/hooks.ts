@@ -243,13 +243,13 @@ const preToolHooks: Record<string, HookEntry[]> = {
       "id": "validate-push",
       "command": "loaf check --hook validate-push",
       "timeout": 60000,
-      "failClosed": true
+      "failClosed": false
     },
     {
       "id": "workflow-pre-pr",
       "command": "loaf check --hook workflow-pre-pr",
       "timeout": 5000,
-      "failClosed": true
+      "failClosed": false
     },
     {
       "id": "workflow-pre-merge",
