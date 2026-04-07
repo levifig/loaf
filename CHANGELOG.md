@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.18] - 2026-04-07
+
 ### Fixed
 - Session end now sets status to `stopped` instead of `paused`
 - Same `claude_session_id` always resumes the session (fixes `claude -c` creating duplicate session files)
