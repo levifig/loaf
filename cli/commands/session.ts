@@ -98,7 +98,7 @@ async function parseHookInput(): Promise<HookInput> {
       process.stdin.removeListener("data", onData);
       process.stdin.removeListener("end", onEnd);
       process.stdin.removeListener("error", onError);
-      process.stdin.unref();
+      if (typeof process.stdin.unref === "function") process.stdin.unref();
       resolve(result);
     }
 
@@ -714,7 +714,7 @@ function createSessionFile(
   const title = specInfo ? `${specInfo.id}: ${specInfo.title}` : branch;
   const entry = `[${getDateTimeString()}] start(${branch}): session started`;
   
-  const body = `# Session: ${title}\n\n## Journal\n\n${entry}\n`;
+  const body = `# Session: ${title}\n\n## Current State\n\n*No state summary yet — updated by PreCompact or /wrap.*\n\n## Journal\n\n${entry}\n`;
 
   const content = matter.stringify(body, frontmatter as unknown as Record<string, unknown>);
   
@@ -876,7 +876,7 @@ function countJournalActivity(content: string): {
   decisions: number;
   entries: number;
 } {
-  const systemTypes = new Set(["resume", "pause", "progress", "conclude"]);
+  const systemTypes = new Set(["start", "resume", "pause", "progress", "conclude"]);
   const pattern = /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\] (\w+)\(/gm;
   let commits = 0;
   let decisions = 0;

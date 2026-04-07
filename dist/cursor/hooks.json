@@ -141,7 +141,7 @@
         "prompt": "CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.\nREQUIRED — two actions before the model responds:\n1. **Flush journal entries.** Log all unrecorded decisions, discoveries, and progress:\n   - `decision(scope): key decisions made this session`\n   - `discover(scope): important findings`\n   - `conclude(scope): session summary`\n   Run `loaf session log \"type(scope): description\"` for each.\n\n2. **Write state summary.** Update the session file's `## Current State` section\n   with a condensed summary of: what was accomplished, current work state,\n   key decisions, git state, and next steps. This section is the resumption\n   context after compaction — write it as if briefing a colleague who just\n   walked in.\n\nThe journal IS your external memory. Entries not flushed now are lost forever."
       }
     ],
-    "postcompact": [
+    "postCompact": [
       {
         "loaf-managed": true,
         "timeout": 60,

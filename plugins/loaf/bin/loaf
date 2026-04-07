@@ -17566,6 +17566,7 @@ function mapSessionEvent(event) {
     SessionStart: "sessionStart",
     SessionEnd: "sessionEnd",
     PreCompact: "preCompact",
+    PostCompact: "postCompact",
     Stop: "stop"
   };
   return mapping[event] || event.toLowerCase();
@@ -24813,7 +24814,7 @@ async function parseHookInput() {
       process.stdin.removeListener("data", onData);
       process.stdin.removeListener("end", onEnd);
       process.stdin.removeListener("error", onError);
-      process.stdin.unref();
+      if (typeof process.stdin.unref === "function") process.stdin.unref();
       resolve2(result);
     }
     process.stdin.setEncoding("utf8");
@@ -25236,6 +25237,10 @@ function createSessionFile(filePath, branch, specInfo) {
   const entry = `[${getDateTimeString()}] start(${branch}): session started`;
   const body = `# Session: ${title}
 
+## Current State
+
+*No state summary yet \u2014 updated by PreCompact or /wrap.*
+
 ## Journal
 
 ${entry}
@@ -25356,7 +25361,7 @@ function countTasksInSession(content) {
   return { completed, total };
 }
 function countJournalActivity(content) {
-  const systemTypes = /* @__PURE__ */ new Set(["resume", "pause", "progress", "conclude"]);
+  const systemTypes = /* @__PURE__ */ new Set(["start", "resume", "pause", "progress", "conclude"]);
   const pattern = /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\] (\w+)\(/gm;
   let commits = 0;
   let decisions = 0;
