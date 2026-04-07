@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.16] - 2026-04-07
+
 ### Added
 - Session stability: subagent detection via `agent_id` in hook JSON — subagent spawns no longer create session churn
 - `claude_session_id` tagging in session frontmatter for cross-conversation PAUSE/resume detection
