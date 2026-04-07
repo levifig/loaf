@@ -92,7 +92,7 @@ Parse `$ARGUMENTS` to determine session type:
 | `TASK-XXX..YYY` | Task range | Expand range, build dependency waves |
 | `TASK-XXX,YYY,ZZZ` | Task list | Parse list, build dependency waves |
 | `PLT-123`, `PROJ-123` | Linear issue | **If `integrations.linear.enabled` is `true`:** fetch from Linear. **Otherwise:** treat as label text or create local task |
-| Description text | Ad-hoc | **If Linear enabled:** ask about Linear issue. **Else:** offer `loaf task create` / local session |
+| Description text | Ad-hoc | Auto-create local task from description, then fall through to task-coupled flow |
 
 ### Task-Coupled Sessions
 
@@ -105,9 +105,27 @@ When starting from `TASK-XXX`:
 
 **No user interaction required for session naming.**
 
-### Ad-hoc Sessions
+### Ad-hoc Task Auto-Creation
 
-When no task exists: inform user, ask if Linear issue or local task should be created.
+When input is free-text description (not matching any known pattern):
+
+1. **Parse the description:**
+   - Single sentence → use entire text as task title
+   - Multi-sentence → first sentence = title, remainder = acceptance criteria
+   - Split on `. ` followed by uppercase letter only (conservative — avoids false positives from URLs, abbreviations)
+2. **Create the task:** `loaf task create --title "<parsed title>"`
+3. **Write criteria** (if multi-sentence): edit the task `.md` file body to add the remaining sentences as acceptance criteria
+4. **Fall through** to the task-coupled flow above — the result is a `TASK-XXX` ID that enters the existing session/plan pipeline unchanged
+
+**No user interaction required.** The description IS the task; invoking `/implement` already expressed intent.
+
+### Non-Existent Task ID Error
+
+If input matches `TASK-XXX` pattern but the task doesn't exist in TASKS.json:
+
+1. Show error: `"TASK-XXX not found in TASKS.json"`
+2. Ask the user: `"Did you mean to create a new task? You can re-run with the description as free text."`
+3. **Do not silently create** — the user likely has a typo
 
 ---
 
