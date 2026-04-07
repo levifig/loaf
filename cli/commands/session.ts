@@ -56,9 +56,61 @@ interface SessionFrontmatter {
   task?: string;
   spec?: string;
   title?: string;
+  claude_session_id?: string;
+}
+
+/** Hook JSON input from Claude Code stdin */
+interface HookInput {
+  session_id?: string;
+  agent_id?: string;
+  agent_type?: string;
+  transcript_path?: string;
+  cwd?: string;
+  permission_mode?: string;
+}
+
+/** Parse hook JSON from stdin (returns empty object if stdin is TTY or invalid) */
+async function parseHookInput(): Promise<HookInput> {
+  if (process.stdin.isTTY) return {};
+
+  let data = "";
+  return new Promise<HookInput>((resolve) => {
+    const timer = setTimeout(() => {
+      finish({});
+    }, 100);
+
+    const onData = (chunk: string) => { data += chunk; };
+    const onEnd = () => {
+      clearTimeout(timer);
+      try {
+        finish(data.trim() ? JSON.parse(data) as HookInput : {});
+      } catch {
+        finish({});
+      }
+    };
+    const onError = () => { finish({}); };
+
+    let finished = false;
+    function finish(result: HookInput) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      process.stdin.removeListener("data", onData);
+      process.stdin.removeListener("end", onEnd);
+      process.stdin.removeListener("error", onError);
+      process.stdin.unref();
+      resolve(result);
+    }
+
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", onData);
+    process.stdin.on("end", onEnd);
+    process.stdin.on("error", onError);
+  });
 }
 
 type EntryType =
+  | "start"
   | "resume"
   | "pause"
   | "progress"
@@ -605,7 +657,7 @@ function parseEntry(entry: string): JournalEntry | null {
 
   const [, type, scope, description] = match;
   const validTypes: EntryType[] = [
-    "resume", "pause", "progress", "commit", "pr", "merge",
+    "start", "resume", "pause", "progress", "commit", "pr", "merge",
     "decision", "discover", "conclude", "block", "unblock",
     "spark", "todo", "assume",
     // New types
@@ -660,7 +712,7 @@ function createSessionFile(
   }
 
   const title = specInfo ? `${specInfo.id}: ${specInfo.title}` : branch;
-  const entry = `[${getDateTimeString()}] resume(${branch}): session started`;
+  const entry = `[${getDateTimeString()}] start(${branch}): session started`;
   
   const body = `# Session: ${title}\n\n## Journal\n\n${entry}\n`;
 
@@ -892,7 +944,16 @@ export function registerSessionCommand(program: Command): void {
     .command("start")
     .description("Start/resume session for current branch")
     .option("--resume", "Resume existing paused session instead of creating new")
-    .action(async (options: { resume?: boolean }) => {
+    .option("--force", "Force session creation, bypassing subagent detection")
+    .action(async (options: { resume?: boolean; force?: boolean }) => {
+      // Parse hook JSON from stdin (when invoked as a hook by Claude Code)
+      const hookInput = await parseHookInput();
+
+      // Subagent detection: agent_id is only present for subagents
+      if (hookInput.agent_id && !options.force) {
+        process.exit(0);
+      }
+
       const agentsDir = findAgentsDir();
       if (!agentsDir) {
         console.error(`  ${red("error:")} Could not find .agents/ directory`);
@@ -909,7 +970,7 @@ export function registerSessionCommand(program: Command): void {
         console.error(`  ${red("error:")} Not in a git repository`);
         process.exit(1);
       }
-      
+
       if (branch.startsWith("detached-")) {
         console.error(`  ${yellow("⚠")} Warning: In detached HEAD state (${branch})`);
         console.error(`  ${gray("Sessions in detached HEAD state are isolated to the specific commit.")}`);
@@ -931,13 +992,24 @@ export function registerSessionCommand(program: Command): void {
       let sessionData: SessionFrontmatter;
       let sessionContent: string;
       let isResume = false;
+      let isNewConversation = false;
 
       if (existingSession && (options.resume || existingSession.data.status === "active")) {
         // --resume flag, or session is active (wasn't properly closed)
         sessionFilePath = existingSession.filePath;
         sessionData = existingSession.data;
         sessionContent = existingSession.content;
-        isResume = existingSession.data.status !== "active";
+
+        // Detect new conversation via claude_session_id comparison
+        const storedSessionId = existingSession.data.claude_session_id;
+        if (hookInput.session_id && storedSessionId && hookInput.session_id !== storedSessionId) {
+          // Different session_id = new conversation on same branch
+          isNewConversation = true;
+          isResume = true;
+        } else {
+          isResume = existingSession.data.status !== "active";
+        }
+
         console.log(`  ${green("✓")} Resuming existing session`);
       } else {
         if (existingSession) {
@@ -968,6 +1040,10 @@ export function registerSessionCommand(program: Command): void {
       const timestamp = getDateTimeString();
       const journalLines: string[] = [];
 
+      if (isNewConversation) {
+        journalLines.push(`--- PAUSE ${timestamp} ---`);
+      }
+
       if (isResume) {
         journalLines.push(`[${timestamp}] resume(${branch}): session resumed`);
         if (lastCommit !== "unknown") {
@@ -993,12 +1069,18 @@ export function registerSessionCommand(program: Command): void {
             data.status = "active";
             data.last_updated = getTimestamp();
             data.last_entry = getTimestamp();
+            if (hookInput.session_id) {
+              data.claude_session_id = hookInput.session_id;
+            }
           }
         );
-      } else if (sessionData.status !== "active") {
+      } else if (sessionData.status !== "active" || hookInput.session_id) {
         sessionData.status = "active";
         sessionData.last_updated = getTimestamp();
         sessionData.last_entry = getTimestamp();
+        if (hookInput.session_id) {
+          sessionData.claude_session_id = hookInput.session_id;
+        }
         const newContent = matter.stringify(sessionContent, sessionData as unknown as Record<string, unknown>);
         writeFileSync(sessionFilePath, newContent, "utf-8");
       }

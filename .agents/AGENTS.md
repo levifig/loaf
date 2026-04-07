@@ -335,7 +335,7 @@ Session journals in `.agents/sessions/` use a **compact inline format** — appe
 | **Session File** | Named `YYYYMMDD-HHMMSS-description.md` in `.agents/sessions/` |
 | **Frontmatter** | YAML header with `spec`, `branch`, `status`, `created`, `last_entry` |
 | **Journal Entry** | `[YYYY-MM-DD HH:MM] type(scope): description` |
-| **Entry Type** | `resume`, `pause`, `commit`, `decision`, `discover`, `block`, `unblock`, `spark`, `todo`, `conclude`, etc. |
+| **Entry Type** | `start`, `resume`, `pause`, `commit`, `decision`, `discover`, `block`, `unblock`, `spark`, `todo`, `conclude`, etc. |
 | **PAUSE Header** | `--- PAUSE YYYY-MM-DD HH:MM ---` separator between sessions |
 | **Burst** | Entries grouped without blank lines (within 5 min or same state) |
 | **Archive** | Completed sessions moved to `.agents/sessions/archive/` |

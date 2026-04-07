@@ -24787,6 +24787,44 @@ var red10 = (s) => `\x1B[31m${s}\x1B[0m`;
 var yellow14 = (s) => `\x1B[33m${s}\x1B[0m`;
 var cyan9 = (s) => `\x1B[36m${s}\x1B[0m`;
 var gray14 = (s) => `\x1B[90m${s}\x1B[0m`;
+async function parseHookInput() {
+  if (process.stdin.isTTY) return {};
+  let data = "";
+  return new Promise((resolve2) => {
+    const timer = setTimeout(() => {
+      finish({});
+    }, 100);
+    const onData = (chunk) => {
+      data += chunk;
+    };
+    const onEnd = () => {
+      clearTimeout(timer);
+      try {
+        finish(data.trim() ? JSON.parse(data) : {});
+      } catch {
+        finish({});
+      }
+    };
+    const onError = () => {
+      finish({});
+    };
+    let finished = false;
+    function finish(result) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      process.stdin.removeListener("data", onData);
+      process.stdin.removeListener("end", onEnd);
+      process.stdin.removeListener("error", onError);
+      process.stdin.unref();
+      resolve2(result);
+    }
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", onData);
+    process.stdin.on("end", onEnd);
+    process.stdin.on("error", onError);
+  });
+}
 function getProjectRoot(agentsDir) {
   return dirname13(agentsDir);
 }
@@ -25142,6 +25180,7 @@ function parseEntry(entry) {
   if (!match) return null;
   const [, type, scope, description] = match;
   const validTypes = [
+    "start",
     "resume",
     "pause",
     "progress",
@@ -25197,7 +25236,7 @@ function createSessionFile(filePath, branch, specInfo) {
     frontmatter.spec = specInfo.id;
   }
   const title = specInfo ? `${specInfo.id}: ${specInfo.title}` : branch;
-  const entry = `[${getDateTimeString()}] resume(${branch}): session started`;
+  const entry = `[${getDateTimeString()}] start(${branch}): session started`;
   const body = `# Session: ${title}
 
 ## Journal
@@ -25363,7 +25402,11 @@ function quickArchiveSession(filePath, agentsDir) {
 }
 function registerSessionCommand(program3) {
   const session = program3.command("session").description("Manage session journals");
-  session.command("start").description("Start/resume session for current branch").option("--resume", "Resume existing paused session instead of creating new").action(async (options2) => {
+  session.command("start").description("Start/resume session for current branch").option("--resume", "Resume existing paused session instead of creating new").option("--force", "Force session creation, bypassing subagent detection").action(async (options2) => {
+    const hookInput = await parseHookInput();
+    if (hookInput.agent_id && !options2.force) {
+      process.exit(0);
+    }
     const agentsDir = findAgentsDir();
     if (!agentsDir) {
       console.error(`  ${red10("error:")} Could not find .agents/ directory`);
@@ -25397,11 +25440,18 @@ function registerSessionCommand(program3) {
     let sessionData;
     let sessionContent;
     let isResume = false;
+    let isNewConversation = false;
     if (existingSession && (options2.resume || existingSession.data.status === "active")) {
       sessionFilePath = existingSession.filePath;
       sessionData = existingSession.data;
       sessionContent = existingSession.content;
-      isResume = existingSession.data.status !== "active";
+      const storedSessionId = existingSession.data.claude_session_id;
+      if (hookInput.session_id && storedSessionId && hookInput.session_id !== storedSessionId) {
+        isNewConversation = true;
+        isResume = true;
+      } else {
+        isResume = existingSession.data.status !== "active";
+      }
       console.log(`  ${green12("\u2713")} Resuming existing session`);
     } else {
       if (existingSession) {
@@ -25428,6 +25478,9 @@ function registerSessionCommand(program3) {
     const { completed, total } = countTasksInSession(sessionContent);
     const timestamp = getDateTimeString();
     const journalLines = [];
+    if (isNewConversation) {
+      journalLines.push(`--- PAUSE ${timestamp} ---`);
+    }
     if (isResume) {
       journalLines.push(`[${timestamp}] resume(${branch}): session resumed`);
       if (lastCommit !== "unknown") {
@@ -25452,12 +25505,18 @@ function registerSessionCommand(program3) {
           data.status = "active";
           data.last_updated = getTimestamp();
           data.last_entry = getTimestamp();
+          if (hookInput.session_id) {
+            data.claude_session_id = hookInput.session_id;
+          }
         }
       );
-    } else if (sessionData.status !== "active") {
+    } else if (sessionData.status !== "active" || hookInput.session_id) {
       sessionData.status = "active";
       sessionData.last_updated = getTimestamp();
       sessionData.last_entry = getTimestamp();
+      if (hookInput.session_id) {
+        sessionData.claude_session_id = hookInput.session_id;
+      }
       const newContent = import_gray_matter13.default.stringify(sessionContent, sessionData);
       writeFileSync21(sessionFilePath, newContent, "utf-8");
     }
