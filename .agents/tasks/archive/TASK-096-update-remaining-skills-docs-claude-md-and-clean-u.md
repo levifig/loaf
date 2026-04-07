@@ -2,10 +2,11 @@
 id: TASK-096
 title: 'Update remaining skills, docs, CLAUDE.md, and clean up data'
 spec: SPEC-025
-status: in_progress
+status: done
 priority: P2
 created: '2026-04-07T10:42:34.097Z'
-updated: '2026-04-07T10:53:23.579Z'
+updated: '2026-04-07T11:03:21.619Z'
+completed_at: '2026-04-07T11:03:21.618Z'
 ---
 
 # TASK-096: Update remaining skills, docs, CLAUDE.md, and clean up data

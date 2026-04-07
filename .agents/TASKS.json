@@ -16,7 +16,7 @@
       "created": "2026-04-07T10:10:52.668Z",
       "updated": "2026-04-07T10:30:26.324Z",
       "completed_at": "2026-04-07T10:30:26.324Z",
-      "file": "TASK-089-session-stability-subagent-detection-and-session-i.md"
+      "file": "archive/TASK-089-session-stability-subagent-detection-and-session-i.md"
     },
     "TASK-090": {
       "title": "Ad-hoc task auto-creation in /implement",
@@ -32,7 +32,7 @@
       "created": "2026-04-07T10:10:56.366Z",
       "updated": "2026-04-07T10:31:23.408Z",
       "completed_at": "2026-04-07T10:31:23.407Z",
-      "file": "TASK-090-ad-hoc-task-auto-creation-in-implement.md"
+      "file": "archive/TASK-090-ad-hoc-task-auto-creation-in-implement.md"
     },
     "TASK-091": {
       "title": "Compaction-aware sessions — PreCompact, PostCompact, retire archive-context",
@@ -48,7 +48,7 @@
       "created": "2026-04-07T10:11:01.349Z",
       "updated": "2026-04-07T10:33:17.300Z",
       "completed_at": "2026-04-07T10:33:17.300Z",
-      "file": "TASK-091-compaction-aware-sessions-precompact-postcompact-r.md"
+      "file": "archive/TASK-091-compaction-aware-sessions-precompact-postcompact-r.md"
     },
     "TASK-092": {
       "title": "Session management policy and rename nudges",
@@ -64,7 +64,7 @@
       "created": "2026-04-07T10:11:05.268Z",
       "updated": "2026-04-07T10:35:08.881Z",
       "completed_at": "2026-04-07T10:35:08.881Z",
-      "file": "TASK-092-session-management-policy-and-rename-nudges.md"
+      "file": "archive/TASK-092-session-management-policy-and-rename-nudges.md"
     },
     "TASK-093": {
       "title": "Remove appetite from types, parser, CLI display, and tests",
@@ -80,7 +80,7 @@
       "created": "2026-04-07T10:42:33.953Z",
       "updated": "2026-04-07T10:47:57.088Z",
       "completed_at": "2026-04-07T10:47:57.087Z",
-      "file": "TASK-093-remove-appetite-from-types-parser-cli-display-and-.md"
+      "file": "archive/TASK-093-remove-appetite-from-types-parser-cli-display-and-.md"
     },
     "TASK-094": {
       "title": "Replace circuit breaker with priority order in spec template and shape skill",
@@ -96,7 +96,7 @@
       "created": "2026-04-07T10:42:34.000Z",
       "updated": "2026-04-07T10:49:22.466Z",
       "completed_at": "2026-04-07T10:49:22.465Z",
-      "file": "TASK-094-replace-circuit-breaker-with-priority-order-in-spe.md"
+      "file": "archive/TASK-094-replace-circuit-breaker-with-priority-order-in-spe.md"
     },
     "TASK-095": {
       "title": "Remove plan file concept from implement, orchestration, housekeeping, and config",
@@ -112,13 +112,13 @@
       "created": "2026-04-07T10:42:34.049Z",
       "updated": "2026-04-07T10:53:23.509Z",
       "completed_at": "2026-04-07T10:53:23.508Z",
-      "file": "TASK-095-remove-plan-file-concept-from-implement-orchestrat.md"
+      "file": "archive/TASK-095-remove-plan-file-concept-from-implement-orchestrat.md"
     },
     "TASK-096": {
       "title": "Update remaining skills, docs, CLAUDE.md, and clean up data",
       "slug": "update-remaining-skills-docs-claude-md-and-clean-u",
       "spec": "SPEC-025",
-      "status": "in_progress",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [],
@@ -126,9 +126,9 @@
       "done": null,
       "session": null,
       "created": "2026-04-07T10:42:34.097Z",
-      "updated": "2026-04-07T10:53:23.579Z",
-      "completed_at": null,
-      "file": "TASK-096-update-remaining-skills-docs-claude-md-and-clean-u.md"
+      "updated": "2026-04-07T11:03:21.619Z",
+      "completed_at": "2026-04-07T11:03:21.618Z",
+      "file": "archive/TASK-096-update-remaining-skills-docs-claude-md-and-clean-u.md"
     },
     "TASK-001": {
       "title": "Create verification reference",
@@ -1796,21 +1796,21 @@
     },
     "SPEC-025": {
       "title": "Remove appetite and replace circuit breaker with go/no-go gates",
-      "status": "implementing",
+      "status": "complete",
       "appetite": null,
       "requirement": null,
       "source": "direct",
       "created": "2026-04-06T17:04:15.000Z",
-      "file": "SPEC-025-remove-appetite.md"
+      "file": "archive/SPEC-025-remove-appetite.md"
     },
     "SPEC-027": {
       "title": "Implement ad-hoc task creation and session stability",
-      "status": "implementing",
+      "status": "complete",
       "appetite": null,
       "requirement": null,
       "source": "direct",
       "created": "2026-04-07T00:01:56.000Z",
-      "file": "SPEC-027-implement-adhoc-session-stability.md"
+      "file": "archive/SPEC-027-implement-adhoc-session-stability.md"
     },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",

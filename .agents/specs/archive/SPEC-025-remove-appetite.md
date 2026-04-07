@@ -3,7 +3,7 @@ id: SPEC-025
 title: Remove appetite and replace circuit breaker with go/no-go gates
 source: direct
 created: '2026-04-06T17:04:15.000Z'
-status: implementing
+status: complete
 ---
 
 # SPEC-025: Remove Appetite and Replace Circuit Breaker with Go/No-Go Gates
