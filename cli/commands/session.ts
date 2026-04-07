@@ -1108,6 +1108,12 @@ export function registerSessionCommand(program: Command): void {
         }
       }
 
+      // Suggest /rename when a spec is linked to the branch
+      if (specInfo) {
+        const slug = specInfo.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 30);
+        console.log(`\n  ${gray(`Suggestion: /rename ${specInfo.id}-${slug}`)}`);
+      }
+
       console.log();
     });
 

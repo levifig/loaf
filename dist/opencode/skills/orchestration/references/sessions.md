@@ -4,6 +4,7 @@ Sessions are coordination artifacts for active work. They are archived (set stat
 
 ## Contents
 
+- Compact vs New Session
 - When to Use Sessions
 - Session Types
 - Session File Format
@@ -14,6 +15,18 @@ Sessions are coordination artifacts for active work. They are archived (set stat
 - Start Protocol
 - Hook Integration
 - Anti-Patterns
+
+## Compact vs New Session
+
+| Scenario | Action |
+|----------|--------|
+| Picking up previous work, same scope | Compact or resume existing conversation |
+| Switching to entirely different scope | New conversation (new session) |
+| Finished and archived a spec | New conversation |
+| Context full mid-task | Auto-compact (journal survives) |
+| Quick unrelated question | New conversation (don't pollute working session) |
+
+**Rule of thumb:** if you'd need the same session file, compact. If you'd need a different one, start fresh.
 
 ## When to Use Sessions
 

@@ -154,7 +154,10 @@ Use the **Task tool** with appropriate `subagent_type`:
 3. Create plan file following [plan template](templates/plan.md)
 4. Update session frontmatter to link the plan
 5. Verify both files exist with valid frontmatter
-6. Suggest renaming Claude Code session: `/rename {descriptive-name}`
+6. Suggest renaming Claude Code session with a meaningful name derived from context:
+   - From spec: `Suggestion: /rename SPEC-027-session-stability`
+   - From task: `Suggestion: /rename TASK-042-login-fix`
+   - From ad-hoc: `Suggestion: /rename {short-slug-from-description}`
 
 **DO NOT PROCEED WITHOUT A SESSION FILE AND PLAN FILE.**
 
