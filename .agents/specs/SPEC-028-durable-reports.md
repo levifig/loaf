@@ -1,9 +1,8 @@
 ---
 id: SPEC-028
 title: Durable Reports — reports/ as concluded artifact store
+created: '2026-04-07T00:00:00.000Z'
 status: implementing
-created: 2026-04-07
-branch: feat/durable-reports
 ---
 
 # SPEC-028: Durable Reports

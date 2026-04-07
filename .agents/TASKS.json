@@ -6,7 +6,7 @@
       "title": "Unified report template and research skill updates",
       "slug": "unified-report-template-and-research-skill-updates",
       "spec": "SPEC-028",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -14,8 +14,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-07T22:05:27.033Z",
-      "updated": "2026-04-07T22:05:27.033Z",
-      "completed_at": null,
+      "updated": "2026-04-07T22:16:30.195Z",
+      "completed_at": "2026-04-07T22:16:30.195Z",
       "file": "TASK-097-unified-report-template-and-research-skill-updates.md"
     },
     "TASK-098": {
@@ -38,7 +38,7 @@
       "title": "Drafts lifecycle policy — session-linked cleanup in housekeeping",
       "slug": "drafts-lifecycle-policy-session-linked-cleanup-in-",
       "spec": "SPEC-028",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [],
@@ -46,8 +46,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-07T22:05:33.575Z",
-      "updated": "2026-04-07T22:05:33.575Z",
-      "completed_at": null,
+      "updated": "2026-04-07T22:16:30.267Z",
+      "completed_at": "2026-04-07T22:16:30.267Z",
       "file": "TASK-099-drafts-lifecycle-policy-session-linked-cleanup-in-.md"
     },
     "TASK-001": {
