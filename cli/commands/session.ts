@@ -1288,8 +1288,8 @@ export function registerSessionCommand(program: Command): void {
               const prNum = prMatch ? prMatch[1] : "unknown";
               entryText = `merge(#${prNum}): merged`;
             } else {
-              // Generic entry for unrecognized command
-              entryText = `progress(hook): ${command.slice(0, 100)}${command.length > 100 ? "..." : ""}`;
+              // Unrecognized command — skip silently (only log known patterns)
+              process.exit(0);
             }
           } else {
             // Fallback: try legacy fields for backward compatibility

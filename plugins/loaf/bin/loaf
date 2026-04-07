@@ -25673,7 +25673,7 @@ function registerSessionCommand(program3) {
             const prNum = prMatch ? prMatch[1] : "unknown";
             entryText = `merge(#${prNum}): merged`;
           } else {
-            entryText = `progress(hook): ${command.slice(0, 100)}${command.length > 100 ? "..." : ""}`;
+            process.exit(0);
           }
         } else {
           if (hookData.commit) {
