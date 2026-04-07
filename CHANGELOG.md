@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.19] - 2026-04-07
+
 ### Fixed
 - `validate-push` no longer false-positives when pushing a release commit (tag at HEAD)
 - `workflow-pre-pr` no longer blocks when `[Unreleased]` is empty after release flow moved entries to a version header
