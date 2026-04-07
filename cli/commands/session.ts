@@ -712,7 +712,7 @@ function createSessionFile(
   }
 
   const title = specInfo ? `${specInfo.id}: ${specInfo.title}` : branch;
-  const entry = `[${getDateTimeString()}] start(${branch}): session started`;
+  const entry = `[${getDateTimeString()}] start: SESSION STARTED`;
   
   const body = `# Session: ${title}\n\n## Current State\n\n*No state summary yet — updated by PreCompact or /wrap.*\n\n## Journal\n\n${entry}\n`;
 
@@ -747,22 +747,13 @@ async function appendEntry(
 
     updateFrontmatter(session.data);
 
-    // Blank line when gap ≥ 5 minutes or on state transitions (block/unblock/pause/resume)
+    // Blank line before start/resume entries only (visual separation for new conversations)
     const trimmedContent = session.content.trimEnd();
-    const lastTimestamp = extractLastEntryTimestamp(trimmedContent);
-    const STATE_TRANSITION_TYPES = ['block', 'unblock', 'pause', 'resume'];
-    const hasStateTransition = entryLines.some(line =>
-      STATE_TRANSITION_TYPES.some(type => new RegExp(`\\] ${type}[:(]`).test(line))
+    const hasNewSession = entryLines.some(line =>
+      /\] (?:start|resume)[:(]/.test(line)
     );
 
-    let needsBlankLine = hasStateTransition;
-    if (!needsBlankLine && lastTimestamp) {
-      needsBlankLine = (Date.now() - lastTimestamp.getTime()) >= 5 * 60 * 1000;
-    } else if (!lastTimestamp) {
-      needsBlankLine = true;
-    }
-
-    const separator = needsBlankLine ? '\n\n' : '\n';
+    const separator = hasNewSession ? '\n\n' : '\n';
     const newContent = matter.stringify(
       trimmedContent + separator + entryLines.join("\n") + "\n",
       session.data as unknown as Record<string, unknown>
@@ -787,19 +778,6 @@ function extractRecentEntries(content: string, count = 15): string[] {
 
   // Return last 'count' entries
   return entries.slice(-count);
-}
-
-function extractLastEntryTimestamp(content: string): Date | null {
-  const lines = content.split('\n');
-  const pattern = /^\[(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})\]/;
-
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const match = lines[i].trim().match(pattern);
-    if (match) {
-      return new Date(`${match[1]}T${match[2]}:00`);
-    }
-  }
-  return null;
 }
 
 function extractDecisionEntries(content: string): string[] {
@@ -1040,14 +1018,10 @@ export function registerSessionCommand(program: Command): void {
       const timestamp = getDateTimeString();
       const journalLines: string[] = [];
 
-      if (isNewConversation) {
-        journalLines.push(`--- PAUSE ${timestamp} ---`);
-      }
-
       if (isResume) {
-        journalLines.push(`[${timestamp}] resume(${branch}): session resumed`);
+        journalLines.push(`[${timestamp}] resume: SESSION RESUMED`);
         if (lastCommit !== "unknown") {
-          journalLines.push(`[${timestamp}] resume(${branch}): from commit ${lastCommit}`);
+          journalLines.push(`[${timestamp}] resume: from commit ${lastCommit}`);
         }
         if (completed > 0 || total > 0) {
           journalLines.push(`[${timestamp}] progress: ${completed}/${total} tasks completed`);
@@ -1162,16 +1136,16 @@ export function registerSessionCommand(program: Command): void {
         entries: activity.entries,
       });
       const journalLines: string[] = [
-        `[${timestamp}] pause(${branch}): session paused`,
+        `[${timestamp}] pause: SESSION PAUSED`,
         `[${timestamp}] progress: ${progressText}`,
       ];
       if (lastCommit !== "unknown") {
-        journalLines.push(`[${timestamp}] conclude(${branch}): at commit ${lastCommit}`);
+        journalLines.push(`[${timestamp}] conclude: at commit ${lastCommit}`);
       }
 
-      // PAUSE separator (visual boundary between sessions)
-      journalLines.push('');
+      // PAUSE separator — no blank before, blank after (resume adds blank before itself)
       journalLines.push(`--- PAUSE ${timestamp} ---`);
+      journalLines.push('');
       console.log(`  ${yellow("?")} Consider adding final entries:`);
       console.log(`    ${gray("loaf session log \"decision(scope): key decision\"")}`);
       console.log(`    ${gray("loaf session log \"conclude(scope): final notes\"")}`);

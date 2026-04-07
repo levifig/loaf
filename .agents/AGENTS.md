@@ -344,21 +344,21 @@ Session journals in `.agents/sessions/` use a **compact inline format** — appe
 
 **Entry Format:**
 ```markdown
-[YYYY-MM-DD HH:MM] resume(branch-name): from commit abc1234
+[YYYY-MM-DD HH:MM] start: SESSION STARTED
 [YYYY-MM-DD HH:MM] decision(scope): description
-
-[YYYY-MM-DD HH:MM] block(scope): what is blocked
-
-[YYYY-MM-DD HH:MM] unblock(scope): how resolved
 [YYYY-MM-DD HH:MM] commit(abc1234): message
-
+[YYYY-MM-DD HH:MM] pause: SESSION PAUSED
+[YYYY-MM-DD HH:MM] conclude: at commit abc1234
 --- PAUSE YYYY-MM-DD HH:MM ---
+
+[YYYY-MM-DD HH:MM] resume: SESSION RESUMED
+[YYYY-MM-DD HH:MM] resume: from commit abc1234
 ```
 
 **Blank line rules:**
-- Insert blank line when gap ≥ 5 minutes
-- Insert blank line on state transition (block/unblock)
-- `--- PAUSE ---` always starts new section
+- `--- PAUSE ---` has blank line after, not before
+- `start` / `resume` entries have blank line before, not after
+- No other automatic blank lines
 
 **Session Status Values:** `active`, `paused`, `blocked`, `complete`, `archived`
 

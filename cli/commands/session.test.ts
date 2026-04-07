@@ -163,7 +163,7 @@ describe("session: start", () => {
     );
     // New compact inline format (SPEC-020)
     expect(content).toContain("## Journal");
-    expect(content).toContain("start(");
+    expect(content).toContain("start: SESSION STARTED");
     expect(content).toContain("status: active");
   });
 
@@ -213,7 +213,7 @@ describe("session: start", () => {
       join(repoPath, ".agents/sessions", sessionFiles[0]),
       "utf-8"
     );
-    const startMatches = content.match(/session started/g);
+    const startMatches = content.match(/SESSION STARTED/g);
     expect(startMatches?.length ?? 0).toBe(1);
   }, 30000); // Higher timeout for concurrent operations
 
@@ -249,7 +249,7 @@ describe("session: start", () => {
       join(repoPath, ".agents/sessions", sessionFiles[0]),
       "utf-8"
     );
-    expect(content).toContain("session started");
+    expect(content).toContain("SESSION STARTED");
     expect(content).toContain("status: active");
   });
 
@@ -277,7 +277,7 @@ describe("session: start", () => {
     );
 
     // Should have resume entry and still be active
-    expect(content).toContain("session resumed");
+    expect(content).toContain("SESSION RESUMED");
     expect(content).toContain("status: active");
 
     // No archive directory should exist (session was resumed, not archived)
@@ -506,7 +506,7 @@ describe("session: end", () => {
     expect(content).toContain("claude_session_id: sess-unique-456");
   });
 
-  it("writes PAUSE header when session_id changes between conversations", async () => {
+  it("writes resume entries when session_id changes between conversations", async () => {
     const repoPath = createTempRepo("session-id-change-test");
 
     // First conversation
@@ -524,9 +524,10 @@ describe("session: end", () => {
       join(repoPath, ".agents/sessions", sessionFiles[0]),
       "utf-8"
     );
-    expect(content).toMatch(/--- PAUSE \d{4}-\d{2}-\d{2} \d{2}:\d{2} ---/);
+    // PAUSE is written by session end, not session start
+    // But resume entries should appear with updated session_id
     expect(content).toContain("claude_session_id: sess-second");
-    expect(content).toContain("session resumed");
+    expect(content).toContain("SESSION RESUMED");
   });
 
   it("does not write PAUSE when same session_id reconnects", async () => {
@@ -546,7 +547,7 @@ describe("session: end", () => {
     // No PAUSE header — same conversation
     expect(content).not.toMatch(/--- PAUSE/);
     // No resume entry — same conversation, session still active
-    expect(content).not.toContain("session resumed");
+    expect(content).not.toContain("SESSION RESUMED");
   });
 
   it("adds PAUSE separator header to journal on end", async () => {
