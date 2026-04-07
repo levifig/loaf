@@ -1226,10 +1226,14 @@ export function registerSessionCommand(program: Command): void {
           if (command && typeof command === "string") {
             // Parse Bash command to detect entry type
             if (command.includes("git commit")) {
-              // Extract commit message if available
-              const msgMatch = command.match(/-m\s+['"]([^'"]+)['"]/) || command.match(/-m\s+(\S+)/);
-              const message = msgMatch ? msgMatch[1] : "commit";
               const hash = getLastCommitSha();
+              // Read actual commit message from git (works for -m, --amend, editor commits)
+              let message = "commit";
+              try {
+                message = execSync("git log -1 --format=%s", {
+                  encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"],
+                }).trim();
+              } catch { /* fallback */ }
               entryText = `commit(${hash}): ${message}`;
             } else if (command.includes("gh pr create")) {
               // Extract PR title from command
