@@ -1234,33 +1234,28 @@ export function registerSessionCommand(program: Command): void {
             } else if (command.includes("gh pr create")) {
               // Extract PR title from command
               const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
-              const title = titleMatch ? titleMatch[1] : "";
-              
-              // Try to extract PR number from hook output (if available)
-              // The raw field may contain tool output with PR URL
-              const raw = hookData.raw;
-              let prNum = "";
-              if (raw && typeof raw === "string") {
-                // Match PR URL patterns like https://github.com/owner/repo/pull/123
-                const prUrlMatch = raw.match(/https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/);
-                if (prUrlMatch) {
-                  prNum = prUrlMatch[1];
+              const title = titleMatch ? titleMatch[1] : "PR created";
+
+              // Try to extract PR number from tool_response (post-tool hook output)
+              let prSuffix = "";
+              const response = hookData.tool_response;
+              if (response) {
+                const stdout = typeof response === "string" ? response : response.stdout;
+                if (stdout && typeof stdout === "string") {
+                  const prUrlMatch = stdout.match(/https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/);
+                  if (prUrlMatch) {
+                    prSuffix = ` (#${prUrlMatch[1]})`;
+                  }
                 }
               }
-              
-              if (prNum && title) {
-                entryText = `pr(#${prNum}): ${title}`;
-              } else if (title) {
-                entryText = `pr: ${title}`;
-              } else {
-                entryText = `pr: PR created`;
-              }
+
+              entryText = `pr(create): ${title}${prSuffix}`;
             } else if (command.includes("gh pr merge")) {
-              // Try to extract PR number from URL or direct argument
+              // Extract PR number from URL or direct argument
               const prMatch = command.match(/merge\s+https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/) ||
                                command.match(/pr\s+merge\s+(\d+)/);
               const prNum = prMatch ? prMatch[1] : "unknown";
-              entryText = `merge(#${prNum}): merged`;
+              entryText = `pr(merge): #${prNum} merged`;
             } else {
               // Unrecognized command — skip silently (only log known patterns)
               process.exit(0);
@@ -1270,9 +1265,9 @@ export function registerSessionCommand(program: Command): void {
             if (hookData.commit) {
               entryText = `commit(${hookData.commit}): ${hookData.message || "commit"}`;
             } else if (hookData.pr) {
-              entryText = `pr(#${hookData.pr}): ${hookData.title || "PR created"}`;
+              entryText = `pr(create): ${hookData.title || "PR created"} (#${hookData.pr})`;
             } else if (hookData.merge) {
-              entryText = `merge(#${hookData.merge}): merged`;
+              entryText = `pr(merge): #${hookData.merge}`;
             } else {
               // No command found - this is a hook-safe no-op for when session doesn't exist
               // Exit 0 so hooks don't fail, but don't log anything

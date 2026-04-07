@@ -25635,26 +25635,23 @@ function registerSessionCommand(program3) {
             entryText = `commit(${hash}): ${message}`;
           } else if (command.includes("gh pr create")) {
             const titleMatch = command.match(/--title\s+["']([^"']+)["']/);
-            const title = titleMatch ? titleMatch[1] : "";
-            const raw = hookData.raw;
-            let prNum = "";
-            if (raw && typeof raw === "string") {
-              const prUrlMatch = raw.match(/https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/);
-              if (prUrlMatch) {
-                prNum = prUrlMatch[1];
+            const title = titleMatch ? titleMatch[1] : "PR created";
+            let prSuffix = "";
+            const response = hookData.tool_response;
+            if (response) {
+              const stdout = typeof response === "string" ? response : response.stdout;
+              if (stdout && typeof stdout === "string") {
+                const prUrlMatch = stdout.match(/https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/);
+                if (prUrlMatch) {
+                  prSuffix = ` (#${prUrlMatch[1]})`;
+                }
               }
             }
-            if (prNum && title) {
-              entryText = `pr(#${prNum}): ${title}`;
-            } else if (title) {
-              entryText = `pr: ${title}`;
-            } else {
-              entryText = `pr: PR created`;
-            }
+            entryText = `pr(create): ${title}${prSuffix}`;
           } else if (command.includes("gh pr merge")) {
             const prMatch = command.match(/merge\s+https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/) || command.match(/pr\s+merge\s+(\d+)/);
             const prNum = prMatch ? prMatch[1] : "unknown";
-            entryText = `merge(#${prNum}): merged`;
+            entryText = `pr(merge): #${prNum} merged`;
           } else {
             process.exit(0);
           }
@@ -25662,9 +25659,9 @@ function registerSessionCommand(program3) {
           if (hookData.commit) {
             entryText = `commit(${hookData.commit}): ${hookData.message || "commit"}`;
           } else if (hookData.pr) {
-            entryText = `pr(#${hookData.pr}): ${hookData.title || "PR created"}`;
+            entryText = `pr(create): ${hookData.title || "PR created"} (#${hookData.pr})`;
           } else if (hookData.merge) {
-            entryText = `merge(#${hookData.merge}): merged`;
+            entryText = `pr(merge): #${hookData.merge}`;
           } else {
             process.exit(0);
           }
