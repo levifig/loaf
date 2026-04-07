@@ -359,3 +359,110 @@ describe("report archive", () => {
     expect(existsSync(join(REPORTS_DIR, "archive"))).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tests: security and edge cases (from Codex review)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("report create sanitization", () => {
+  it("sanitizes path traversal in slug", () => {
+    const result = runReport(["create", "../notes"]);
+    expect(result.exitCode).toBe(0);
+
+    // File should be in reports/, not escaped out
+    const files = readdirSync(REPORTS_DIR).filter((f) => f.endsWith(".md"));
+    expect(files.length).toBe(1);
+    expect(files[0]).not.toContain("..");
+    expect(existsSync(join(REPORTS_DIR, "..", "notes"))).toBe(false);
+  });
+
+  it("sanitizes path separators in --type", () => {
+    const result = runReport(["create", "test", "--type", "audit/foo"]);
+    expect(result.exitCode).toBe(0);
+
+    const files = readdirSync(REPORTS_DIR).filter((f) => f.endsWith(".md"));
+    expect(files.length).toBe(1);
+    expect(files[0]).not.toContain("/");
+  });
+});
+
+describe("report list includes archived", () => {
+  it("shows archived reports from archive/ directory", () => {
+    // Create an archived report in archive/
+    const archiveDir = join(REPORTS_DIR, "archive");
+    mkdirSync(archiveDir, { recursive: true });
+
+    const data = {
+      title: "Old Research",
+      type: "research",
+      created: new Date().toISOString(),
+      status: "archived",
+      source: "ad-hoc",
+      tags: [],
+      archived_at: new Date().toISOString(),
+      archived_by: "cli",
+    };
+    const body = "# Old Research\n\nArchived content.\n";
+    writeFileSync(
+      join(archiveDir, "20260101-100000-research-old.md"),
+      matter.stringify(body, data),
+      "utf-8"
+    );
+
+    const result = runReport(["list"]);
+    expect(result.exitCode).toBe(0);
+    const clean = result.stdout.replace(/\x1b\[\d+m/g, "");
+    expect(clean).toContain("Old Research");
+    expect(clean).toContain("Archived");
+  });
+
+  it("filters archived reports with --status archived", () => {
+    // Create a draft and an archived report
+    createTestReport("20260407-100000-research-active.md", {
+      title: "Active Report",
+      status: "draft",
+    });
+
+    const archiveDir = join(REPORTS_DIR, "archive");
+    mkdirSync(archiveDir, { recursive: true });
+    const data = {
+      title: "Archived Report",
+      type: "research",
+      created: new Date().toISOString(),
+      status: "archived",
+      source: "ad-hoc",
+      tags: [],
+    };
+    writeFileSync(
+      join(archiveDir, "20260101-100000-research-old.md"),
+      matter.stringify("# Archived\n", data),
+      "utf-8"
+    );
+
+    const result = runReport(["list", "--status", "archived"]);
+    expect(result.exitCode).toBe(0);
+    const clean = result.stdout.replace(/\x1b\[\d+m/g, "");
+    expect(clean).toContain("Archived Report");
+    expect(clean).not.toContain("Active Report");
+  });
+});
+
+describe("report ambiguous match", () => {
+  it("errors on ambiguous substring match", () => {
+    createTestReport("20260407-100000-research-alpha-one.md", {
+      title: "Alpha One",
+      status: "draft",
+    });
+    createTestReport("20260407-100001-research-alpha-two.md", {
+      title: "Alpha Two",
+      status: "draft",
+    });
+
+    const result = runReport(["finalize", "alpha"], { expectError: true });
+    expect(result.exitCode).not.toBe(0);
+    const clean = result.stderr.replace(/\x1b\[\d+m/g, "");
+    expect(clean).toContain("Ambiguous");
+    expect(clean).toContain("alpha-one");
+    expect(clean).toContain("alpha-two");
+  });
+});

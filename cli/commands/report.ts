@@ -67,6 +67,11 @@ function getTimestampForFilename(): string {
   return `${year}${month}${day}-${hour}${minute}${second}`;
 }
 
+/** Sanitize a user-provided slug/type: strip path separators and special chars */
+function sanitizePathSegment(input: string): string {
+  return input.replace(/[/\\:*?"<>|]/g, "-").replace(/^\.+/, "");
+}
+
 /** Resolve a file argument to a path in .agents/reports/ */
 function resolveReportFile(reportsDir: string, fileArg: string): string | null {
   // Try exact path first
@@ -85,10 +90,17 @@ function resolveReportFile(reportsDir: string, fileArg: string): string | null {
     const files = readdirSync(reportsDir).filter(
       (f) => f.endsWith(".md") && f !== "archive"
     );
-    for (const file of files) {
-      if (file.includes(fileArg)) {
-        return join(reportsDir, file);
+    const matches = files.filter((f) => f.includes(fileArg));
+    if (matches.length === 1) {
+      return join(reportsDir, matches[0]);
+    }
+    if (matches.length > 1) {
+      console.error(`  ${red("error:")} Ambiguous match for "${fileArg}" — ${matches.length} reports match:`);
+      for (const m of matches) {
+        console.error(`    ${gray(m)}`);
       }
+      console.error(`  Provide a more specific name or the full filename.`);
+      process.exit(1);
     }
   }
 
@@ -133,7 +145,7 @@ export function registerReportCommand(program: Command): void {
           return;
         }
 
-        // Collect reports from main dir (skip archive/)
+        // Collect reports from main dir and archive/
         const reports: Array<{
           file: string;
           data: ReportFrontmatter;
@@ -148,13 +160,34 @@ export function registerReportCommand(program: Command): void {
             const parsed = matter(raw);
             const data = parsed.data as unknown as ReportFrontmatter;
 
-            // Apply filters
             if (options.type && data.type !== options.type) continue;
             if (options.status && data.status !== options.status) continue;
 
             reports.push({ file, data });
           } catch {
             continue;
+          }
+        }
+
+        // Also scan archive/ directory
+        const archiveDir = join(reportsDir, "archive");
+        if (existsSync(archiveDir)) {
+          const archivedFiles = readdirSync(archiveDir).filter(
+            (f) => f.endsWith(".md")
+          );
+          for (const file of archivedFiles) {
+            try {
+              const raw = readFileSync(join(archiveDir, file), "utf-8");
+              const parsed = matter(raw);
+              const data = parsed.data as unknown as ReportFrontmatter;
+
+              if (options.type && data.type !== options.type) continue;
+              if (options.status && data.status !== options.status) continue;
+
+              reports.push({ file: `archive/${file}`, data });
+            } catch {
+              continue;
+            }
           }
         }
 
@@ -244,7 +277,9 @@ export function registerReportCommand(program: Command): void {
       }
 
       const timestamp = getTimestampForFilename();
-      const filename = `${timestamp}-${options.type}-${slug}.md`;
+      const safeType = sanitizePathSegment(options.type);
+      const safeSlug = sanitizePathSegment(slug);
+      const filename = `${timestamp}-${safeType}-${safeSlug}.md`;
       const filePath = join(reportsDir, filename);
 
       const title = slugToTitleCase(slug);
