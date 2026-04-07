@@ -1,11 +1,12 @@
 ---
 id: TASK-089
 title: Session stability — subagent detection and session ID tagging
-status: todo
+spec: SPEC-027
+status: done
 priority: P1
 created: '2026-04-07T10:10:52.668Z'
-updated: '2026-04-07T10:10:52.668Z'
-spec: SPEC-027
+updated: '2026-04-07T10:30:26.324Z'
+completed_at: '2026-04-07T10:30:26.324Z'
 ---
 
 # TASK-089: Session stability — subagent detection and session ID tagging

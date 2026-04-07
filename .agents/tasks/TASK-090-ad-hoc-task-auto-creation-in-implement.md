@@ -1,11 +1,12 @@
 ---
 id: TASK-090
 title: Ad-hoc task auto-creation in /implement
-status: todo
+spec: SPEC-027
+status: done
 priority: P1
 created: '2026-04-07T10:10:56.366Z'
-updated: '2026-04-07T10:10:56.366Z'
-spec: SPEC-027
+updated: '2026-04-07T10:31:23.408Z'
+completed_at: '2026-04-07T10:31:23.407Z'
 ---
 
 # TASK-090: Ad-hoc task auto-creation in /implement

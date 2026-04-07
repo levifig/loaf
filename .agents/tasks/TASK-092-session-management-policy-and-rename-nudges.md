@@ -1,11 +1,12 @@
 ---
 id: TASK-092
 title: Session management policy and rename nudges
-status: todo
+spec: SPEC-027
+status: done
 priority: P2
 created: '2026-04-07T10:11:05.268Z'
-updated: '2026-04-07T10:11:05.268Z'
-spec: SPEC-027
+updated: '2026-04-07T10:35:08.881Z'
+completed_at: '2026-04-07T10:35:08.881Z'
 ---
 
 # TASK-092: Session management policy and rename nudges

@@ -1,11 +1,12 @@
 ---
 id: TASK-091
 title: 'Compaction-aware sessions — PreCompact, PostCompact, retire archive-context'
-status: todo
+spec: SPEC-027
+status: done
 priority: P2
 created: '2026-04-07T10:11:01.349Z'
-updated: '2026-04-07T10:11:01.349Z'
-spec: SPEC-027
+updated: '2026-04-07T10:33:17.300Z'
+completed_at: '2026-04-07T10:33:17.300Z'
 ---
 
 # TASK-091: Compaction-aware sessions — PreCompact, PostCompact, retire archive-context
