@@ -3,11 +3,12 @@ id: TASK-095
 title: >-
   Remove plan file concept from implement, orchestration, housekeeping, and
   config
-status: todo
+spec: SPEC-025
+status: done
 priority: P2
 created: '2026-04-07T10:42:34.049Z'
-updated: '2026-04-07T10:42:34.049Z'
-spec: SPEC-025
+updated: '2026-04-07T10:53:23.509Z'
+completed_at: '2026-04-07T10:53:23.508Z'
 ---
 
 # TASK-095: Remove plan file concept from implement, orchestration, housekeeping, and config

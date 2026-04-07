@@ -30,30 +30,17 @@ Every release should be:
 
 Adapted from [Shape Up](https://basecamp.com/shapeup) for AI agent orchestration.
 
-### Appetite Over Estimates
+### Complexity-Based Sizing
 
-**Don't estimate how long work will take. Decide how much time it's worth.**
+**Size work by complexity, not time. Agents don't have time budgets.**
 
-```markdown
-# Bad (estimate-driven)
-"How long will this feature take?"
-→ "About 2 weeks"
-→ Scope creeps → Takes 4 weeks
+| Size | Complexity | Suitable For |
+|------|-----------|--------------|
+| Small | Single concern, clear approach | Bug fixes, minor enhancements |
+| Medium | Multiple concerns, known patterns | Feature additions, refactors |
+| Large | Cross-cutting, needs exploration | Major features (should be split) |
 
-# Good (appetite-driven)
-"We're willing to invest 2 days on this."
-→ Shape to fit the appetite
-→ Cut scope if needed, not time
-```
-
-**Appetite levels:**
-| Appetite | Size | Suitable For |
-|----------|------|--------------|
-| Small | 1-2 days | Bug fixes, minor enhancements |
-| Medium | 3-5 days | Feature additions, refactors |
-| Large | 1-2 weeks | Major features (rare) |
-
-If work can't be shaped to fit the appetite, it's not ready - needs more shaping or should be broken down.
+If work is too complex for its size, it needs more shaping or should be split.
 
 ### Shaping Before Building
 
@@ -62,7 +49,7 @@ If work can't be shaped to fit the appetite, it's not ready - needs more shaping
 Orchestrator shapes before delegating to implementation agents:
 
 1. **Problem**: What are we solving? (not "build feature X")
-2. **Appetite**: How much is it worth?
+2. **Complexity**: Small / medium / large?
 3. **Solution sketch**: Rough direction, not detailed design
 4. **Rabbit holes**: What to avoid (explicitly list pitfalls)
 5. **No-gos**: What's out of scope (be specific)
@@ -71,7 +58,7 @@ Orchestrator shapes before delegating to implementation agents:
 ## Shaped Task: Improve Export Performance
 
 **Problem**: CSV exports timeout on large datasets (>10k rows)
-**Appetite**: 1 day (small batch)
+**Complexity**: Small (single concern, clear approach)
 **Solution sketch**: Stream to temp file, return async download link
 **Rabbit holes**:
 - Don't rewrite the export format
@@ -81,35 +68,35 @@ Orchestrator shapes before delegating to implementation agents:
 - Scheduled exports
 ```
 
-### Fixed Time, Variable Scope
+### Priority Ordering
 
-**Time is fixed. Scope flexes.**
+**Ship tracks in priority order. Drop from the end, not the middle.**
 
-When running out of appetite:
-1. **Cut scope** - Remove nice-to-haves, keep must-haves
-2. **Simplify** - Reduce complexity, accept rougher edges
-3. **Document what's left** - Create follow-up issues for cut scope
+When scope exceeds complexity sizing:
+1. **Ship in order** - Deliver the highest-priority tracks first
+2. **Go/no-go gates** - Binary check between tracks (does the previous track pass its test conditions?)
+3. **Drop from end** - If later tracks won't fit, drop them into follow-up specs
 
-Never extend time. If it doesn't fit, the shaping was wrong.
+If the core tracks don't fit, the shaping was wrong.
 
-### Circuit Breakers
+### Go/No-Go Gates
 
 **Know when to stop.**
 
-Set explicit checkpoints for re-evaluation:
+Set explicit gates between priority tracks:
 
 ```markdown
-## Circuit Breaker Points
+## Go/No-Go Gates
 
-After 50% of appetite spent:
-- [ ] Is the core approach working?
+After each priority track completes:
+- [ ] Does this track pass its test conditions?
 - [ ] Are we still solving the right problem?
-- [ ] Should we stop and reshape?
+- [ ] Is the next track still worth pursuing?
 
-If two "no" answers → STOP, reassess with user
+If any "no" answer → STOP, reassess with user before continuing
 ```
 
-Circuit breakers prevent sunk cost fallacy. Stopping early to reshape is not failure.
+Go/no-go gates prevent sunk cost fallacy. Stopping to reshape is not failure.
 
 ### Hill Charts
 
@@ -151,9 +138,9 @@ Each cycle, review what to bet on:
 ## Betting Table
 
 **Shaped and ready:**
-1. Export performance fix (1 day appetite) ✅ Bet
-2. Dashboard redesign (1 week appetite) ✅ Bet
-3. API v2 migration (2 week appetite) ❌ Too big, re-shape
+1. Export performance fix (small) ✅ Bet
+2. Dashboard redesign (medium) ✅ Bet
+3. API v2 migration (large) ❌ Too big, re-shape
 
 **Not ready (needs shaping):**
 - "Improve search" - too vague

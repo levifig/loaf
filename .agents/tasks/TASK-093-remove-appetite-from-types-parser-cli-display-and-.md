@@ -1,11 +1,12 @@
 ---
 id: TASK-093
 title: 'Remove appetite from types, parser, CLI display, and tests'
-status: todo
+spec: SPEC-025
+status: done
 priority: P1
 created: '2026-04-07T10:42:33.953Z'
-updated: '2026-04-07T10:42:33.953Z'
-spec: SPEC-025
+updated: '2026-04-07T10:47:57.088Z'
+completed_at: '2026-04-07T10:47:57.087Z'
 ---
 
 # TASK-093: Remove appetite from types, parser, CLI display, and tests
