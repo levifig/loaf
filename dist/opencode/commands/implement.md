@@ -47,7 +47,7 @@ You are the coordinator. Start by understanding the task:
 
 ## Verification
 
-- Session file AND plan file exist before any implementation work begins
+- Session file exists before any implementation work begins
 - All code changes delegated via Task tool -- no direct edits by orchestrator
 - Session file is continuously updated with spawns, progress, and current state
 - Spec artifacts closed out on branch before PR creation
@@ -147,21 +147,19 @@ Use the **Task tool** with appropriate `subagent_type`:
 
 ---
 
-## Session and Plan Creation
+## Session Creation
 
-**MANDATORY: Create session AND plan file BEFORE any other work.**
+**MANDATORY: Create session file BEFORE any other work.**
 
 1. Generate timestamps: `date -u +"%Y%m%d-%H%M%S"` and `date -u +"%Y-%m-%dT%H:%M:%SZ"`
 2. Create session file following [session template](../skills/implement/templates/session.md)
-3. Create plan file following [plan template](../skills/implement/templates/plan.md)
-4. Update session frontmatter to link the plan
-5. Verify both files exist with valid frontmatter
-6. Suggest renaming Claude Code session with a meaningful name derived from context:
+3. Verify session file exists with valid frontmatter
+4. Suggest renaming Claude Code session with a meaningful name derived from context:
    - From spec: `Suggestion: /rename SPEC-027-session-stability`
    - From task: `Suggestion: /rename TASK-042-login-fix`
    - From ad-hoc: `Suggestion: /rename {short-slug-from-description}`
 
-**DO NOT PROCEED WITHOUT A SESSION FILE AND PLAN FILE.**
+**DO NOT PROCEED WITHOUT A SESSION FILE.**
 
 ---
 
@@ -193,27 +191,26 @@ When multiple valid approaches exist: spawn council (5-7 agents, odd), present r
 
 ## Startup Checklist
 
-After creating session AND plan files:
+After creating session file:
 
 1. [ ] Parse input (task, Linear ID, or description)
 2. [ ] If TASK-XXX: load task via `loaf task show TASK-XXX`, update with `loaf task update TASK-XXX --session <session-file>`, load parent spec
 3. [ ] If Linear ID: fetch issue, update session, move to "In Progress"
-4. [ ] If description: ask about creating Linear issue
+4. [ ] If description: auto-create task (see Ad-hoc Task Auto-Creation above)
 5. [ ] Create dedicated branch (see [session-management.md](../skills/implement/references/session-management.md))
 6. [ ] Suggest team based on task context
-7. [ ] Fill in plan file sections
-8. [ ] Populate session Context section
-9. [ ] Break down work using TodoWrite
-10. [ ] Identify needed specialized agents
-11. [ ] Update session Next Steps
-12. [ ] **Get user approval on plan** before spawning
+7. [ ] Populate session Context section
+8. [ ] Break down work using TodoWrite
+9. [ ] Identify needed specialized agents
+10. [ ] Update session Next Steps
+11. [ ] **Get user approval** before spawning
 
 ---
 
 ## Then Execute
 
 ### BEFORE (Planning)
-1. Create session + plan files
+1. Create session file
 2. Set task status: `loaf task update TASK-XXX --status in_progress`
 3. Break down work into agent-sized tasks
 4. Identify spawn order (respect dependencies)

@@ -122,9 +122,6 @@ session:
                                                # Example: ["2a244262-8599-4bef-8bb8-3feea33d14e2.jsonl"]
   referenced_sessions: []                      # Cross-session references (see below)
 
-plans: []  # List of plan files in .agents/plans/ used by this session
-           # Example: ["20251204-143500-api-design.md", "20251204-150000-frontend.md"]
-
 orchestration:
   current_task: "What's actively being worked" # REQUIRED
   spawned_agents:
@@ -241,15 +238,6 @@ mypy path/to/code/
 
 **Decision**: What was decided
 **Rationale**: Why
-
-## Plans
-
-Implementation plans for this session (stored in `.agents/plans/`):
-
-| Plan | Status | Description |
-|------|--------|-------------|
-| [api-design](../plans/20251204-143500-api-design.md) | approved | API endpoint structure |
-| [frontend](../plans/20251204-150000-frontend.md) | pending | UI component design |
 
 ## Architecture Diagrams
 

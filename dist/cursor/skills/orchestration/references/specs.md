@@ -170,18 +170,6 @@ When all tasks for a spec are complete:
 loaf spec archive SPEC-001
 ```
 
-## Spec vs Plan
-
-| Spec | Plan |
-|------|------|
-| **What** to build | **How** to build it |
-| Lives in `.agents/specs/` | Lives in `.agents/plans/` |
-| Survives sessions | Tied to session |
-| User-facing | Implementation detail |
-| Shape Up shaped | Tactical steps |
-
-Specs define the target. Plans define the route to get there.
-
 ## Validation Checklist
 
 Before approving a spec:

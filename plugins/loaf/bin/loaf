@@ -20855,7 +20855,6 @@ function parseSpecFile(filePath, content) {
     const entry = {
       title: fm.title || basename2(filePath, ".md"),
       status: normalizeSpecStatus(fm.status),
-      appetite: fm.appetite || null,
       requirement: fm.requirement || null,
       source: fm.source || null,
       created: normalizeDate(fm.created),
@@ -21007,7 +21006,6 @@ function specEntryToFrontmatter(id, entry) {
   if (entry.source) fm.source = entry.source;
   if (entry.created) fm.created = entry.created;
   fm.status = entry.status;
-  if (entry.appetite) fm.appetite = entry.appetite;
   if (entry.requirement) fm.requirement = entry.requirement;
   return fm;
 }
@@ -21902,8 +21900,7 @@ ${bold7("  loaf spec list")}
       const label = STATUS_LABELS2[status];
       console.log(`  ${bold7(colorFn(`${label} (${entries.length})`))}`);
       for (const [id, entry] of entries) {
-        const appetite = entry.appetite ? gray8(entry.appetite) : gray8("TBD");
-        console.log(`    ${bold7(id)}  ${entry.title}  ${appetite}`);
+        console.log(`    ${bold7(id)}  ${entry.title}`);
         console.log(`              Tasks: ${formatTaskCounts(taskCounts[id])}`);
       }
       console.log();
@@ -25540,6 +25537,11 @@ function registerSessionCommand(program3) {
       for (const entry of recentEntries) {
         console.log(`    ${entry}`);
       }
+    }
+    if (specInfo) {
+      const slug = specInfo.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 30);
+      console.log(`
+  ${gray14(`Suggestion: /rename ${specInfo.id}-${slug}`)}`);
     }
     console.log();
   });
