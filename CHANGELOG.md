@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.23] - 2026-04-08
+
 ### Added
 - `/clear` session continuity — `SessionEnd(reason=clear)` logs `session(clear)` marker and keeps session active; `SessionStart(source=clear)` resumes existing session file with new `claude_session_id`
 - `## Current State` section in session files, mechanically updated on every Stop event with branch, commit, activity summary, and last 5 journal entries
