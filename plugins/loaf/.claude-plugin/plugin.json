@@ -159,6 +159,18 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 5,
+            "description": "Update Current State section in session file after each turn",
+            "command": "loaf session state update"
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "hooks": [

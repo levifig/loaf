@@ -348,6 +348,14 @@ const sessionHooks: Record<string, HookEntry[]> = {
       "failClosed": false
     }
   ],
+  "stop": [
+    {
+      "id": "session-state-update",
+      "command": "loaf session state update",
+      "timeout": 5000,
+      "failClosed": false
+    }
+  ],
   "precompact": [
     {
       "id": "pre-compact",
