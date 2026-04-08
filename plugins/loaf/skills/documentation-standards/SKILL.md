@@ -7,7 +7,7 @@ description: >-
   inline code commen...
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
-version: 2.0.0-dev.21
+version: 2.0.0-dev.22
 ---
 
 # Documentation Standards
