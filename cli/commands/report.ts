@@ -14,7 +14,7 @@ import {
   renameSync,
   unlinkSync,
 } from "fs";
-import { join, basename } from "path";
+import { join, basename, resolve } from "path";
 import matter from "gray-matter";
 
 import { findAgentsDir } from "../lib/tasks/resolve.js";
@@ -72,16 +72,23 @@ function sanitizePathSegment(input: string): string {
   return input.replace(/[/\\:*?"<>|]/g, "-").replace(/^\.+/, "");
 }
 
+/** Check that a resolved path is inside the allowed directory */
+function isInsideDir(filePath: string, dir: string): boolean {
+  const resolved = resolve(filePath);
+  const resolvedDir = resolve(dir);
+  return resolved.startsWith(resolvedDir + "/") || resolved === resolvedDir;
+}
+
 /** Resolve a file argument to a path in .agents/reports/ */
 function resolveReportFile(reportsDir: string, fileArg: string): string | null {
-  // Try exact path first
-  if (existsSync(fileArg)) {
+  // Try exact path first — but only if inside reportsDir
+  if (existsSync(fileArg) && isInsideDir(fileArg, reportsDir)) {
     return fileArg;
   }
 
-  // Try as filename in reports dir
+  // Try as filename in reports dir — reject path traversal
   const directPath = join(reportsDir, fileArg);
-  if (existsSync(directPath)) {
+  if (existsSync(directPath) && isInsideDir(directPath, reportsDir)) {
     return directPath;
   }
 

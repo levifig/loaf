@@ -18786,10 +18786,10 @@ function ask(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve2) => {
+  return new Promise((resolve3) => {
     rl.question(question, (answer) => {
       rl.close();
-      resolve2(answer.trim().toLowerCase());
+      resolve3(answer.trim().toLowerCase());
     });
   });
 }
@@ -19053,12 +19053,12 @@ function askYesNo(question, defaultYes = false) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve2) => {
+  return new Promise((resolve3) => {
     rl.question(question, (answer) => {
       rl.close();
       const a = answer.trim().toLowerCase();
-      if (!a) resolve2(defaultYes);
-      else resolve2(a.startsWith("y"));
+      if (!a) resolve3(defaultYes);
+      else resolve3(a.startsWith("y"));
     });
   });
 }
@@ -19630,18 +19630,18 @@ function askYesNo2(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve2) => {
+  return new Promise((resolve3) => {
     let resolved = false;
     rl.on("close", () => {
       if (!resolved) {
         resolved = true;
-        resolve2(false);
+        resolve3(false);
       }
     });
     rl.question(question, (answer) => {
       resolved = true;
       rl.close();
-      resolve2(answer.trim().toLowerCase().startsWith("y"));
+      resolve3(answer.trim().toLowerCase().startsWith("y"));
     });
   });
 }
@@ -19859,18 +19859,18 @@ function askYesNo3(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve2) => {
+  return new Promise((resolve3) => {
     let resolved = false;
     rl.on("close", () => {
       if (!resolved) {
         resolved = true;
-        resolve2(false);
+        resolve3(false);
       }
     });
     rl.question(question, (answer) => {
       resolved = true;
       rl.close();
-      resolve2(answer.trim().toLowerCase().startsWith("y"));
+      resolve3(answer.trim().toLowerCase().startsWith("y"));
     });
   });
 }
@@ -20332,12 +20332,12 @@ async function askChoice(question, options2, defaultChoice) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve2) => {
+  return new Promise((resolve3) => {
     let resolved = false;
     rl.on("close", () => {
       if (!resolved) {
         resolved = true;
-        resolve2(defaultChoice);
+        resolve3(defaultChoice);
       }
     });
     rl.question(question, (answer) => {
@@ -20345,9 +20345,9 @@ async function askChoice(question, options2, defaultChoice) {
       rl.close();
       const num = parseInt(answer.trim(), 10);
       if (num >= 1 && num <= options2.length) {
-        resolve2(options2[num - 1]);
+        resolve3(options2[num - 1]);
       } else {
-        resolve2(defaultChoice);
+        resolve3(defaultChoice);
       }
     });
   });
@@ -23691,6 +23691,38 @@ function scanDrafts(agentsDir, index) {
   const dir = join37(agentsDir, "drafts");
   const files = readMdFiles(dir);
   const recs = [];
+  const archivedSessionFiles = [];
+  const sessionArchiveDir = join37(agentsDir, "sessions", "archive");
+  if (existsSync32(sessionArchiveDir)) {
+    try {
+      for (const name of readdirSync13(sessionArchiveDir)) {
+        if (name.endsWith(".md")) archivedSessionFiles.push(name);
+      }
+    } catch {
+    }
+  }
+  const sessionsDir = join37(agentsDir, "sessions");
+  if (existsSync32(sessionsDir)) {
+    for (const name of readdirSync13(sessionsDir)) {
+      if (name === "archive" || !name.endsWith(".md")) continue;
+      try {
+        const raw = readFileSync27(join37(sessionsDir, name), "utf-8");
+        const { data } = (0, import_gray_matter11.default)(raw);
+        const status = getStatus(data);
+        if (["completed", "complete", "archived", "stopped"].includes(status)) {
+          archivedSessionFiles.push(name);
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+  const sessionIsArchived = (ref) => {
+    const normalized = normalizeSessionRef(ref);
+    if (archivedSessionFiles.includes(normalized)) return true;
+    const stem = normalized.replace(/\.md$/, "");
+    return archivedSessionFiles.some((f) => f.startsWith(stem));
+  };
   const promotedDrafts = /* @__PURE__ */ new Set();
   for (const entry of Object.values(index.specs)) {
     if (entry.source && entry.source.includes("/drafts/")) {
@@ -23701,6 +23733,8 @@ function scanDrafts(agentsDir, index) {
   for (const file of files) {
     const fm = file.frontmatter;
     const days = daysSince(lastActivity(fm) || fm.created);
+    const draftType = (fm.type || "").toLowerCase();
+    const sessionRef = fm.session;
     if (promotedDrafts.has(file.filename)) {
       const hasSparks = file.raw.includes("## Sparks");
       recs.push({
@@ -23710,6 +23744,15 @@ function scanDrafts(agentsDir, index) {
         action: "delete",
         reason: "Draft promoted to spec \u2014 served its purpose",
         hint: hasSparks ? "Contains ## Sparks section \u2014 review before deletion" : void 0,
+        frontmatter: fm
+      });
+    } else if (draftType === "state-assessment" && sessionRef && sessionIsArchived(sessionRef)) {
+      recs.push({
+        type: "draft",
+        path: file.path,
+        filename: file.filename,
+        action: "delete",
+        reason: "State assessment \u2014 linked session is archived",
         frontmatter: fm
       });
     } else if (days !== null && days > 30) {
@@ -23851,11 +23894,10 @@ function scanReports(agentsDir) {
   for (const file of files) {
     const fm = file.frontmatter;
     const reportBlock = fm.report;
-    const archivedAt = reportBlock?.archived_at || fm.archived_at;
-    const reportStatus = reportBlock?.status;
-    const processedAt = reportBlock?.processed_at;
+    const archivedAt = fm.archived_at || reportBlock?.archived_at;
+    const status = (fm.status || reportBlock?.status || "").toLowerCase();
     const sessionRef = reportBlock?.session_reference;
-    if (archivedAt) {
+    if (archivedAt || status === "archived") {
       recs.push({
         type: "report",
         path: file.path,
@@ -23864,23 +23906,14 @@ function scanReports(agentsDir) {
         reason: "Already archived",
         frontmatter: fm
       });
-    } else if (reportStatus === "processed" || processedAt) {
-      if (!sessionRef) {
-        recs.push({
-          type: "report",
-          path: file.path,
-          filename: file.filename,
-          action: "flag",
-          reason: "Report is processed but missing session_reference \u2014 repair metadata",
-          frontmatter: fm
-        });
-      } else if (!sessionIsArchived(normalizeSessionRef(sessionRef))) {
+    } else if (status === "final" || status === "processed" || reportBlock?.processed_at) {
+      if (sessionRef && !sessionIsArchived(normalizeSessionRef(sessionRef))) {
         recs.push({
           type: "report",
           path: file.path,
           filename: file.filename,
           action: "skip",
-          reason: "Report is processed but linked session is not yet archived",
+          reason: "Report is finalized but linked session is not yet archived",
           frontmatter: fm
         });
       } else {
@@ -23889,7 +23922,28 @@ function scanReports(agentsDir) {
           path: file.path,
           filename: file.filename,
           action: "archive",
-          reason: "Report is processed and prerequisites met \u2014 ready for archive",
+          reason: "Report is finalized and prerequisites met \u2014 ready for archive",
+          frontmatter: fm
+        });
+      }
+    } else if (status === "draft") {
+      const days = daysSince(lastActivity(fm));
+      if (days !== null && days > 14) {
+        recs.push({
+          type: "report",
+          path: file.path,
+          filename: file.filename,
+          action: "flag",
+          reason: `Draft report is ${days} days old \u2014 consider finalizing or deleting`,
+          frontmatter: fm
+        });
+      } else {
+        recs.push({
+          type: "report",
+          path: file.path,
+          filename: file.filename,
+          action: "skip",
+          reason: "Recent draft report",
           frontmatter: fm
         });
       }
@@ -23901,7 +23955,7 @@ function scanReports(agentsDir) {
           path: file.path,
           filename: file.filename,
           action: "flag",
-          reason: `Report is ${days} days old but not yet processed`,
+          reason: `Report is ${days} days old with unknown status "${status || "(none)"}"`,
           frontmatter: fm
         });
       } else {
@@ -24158,20 +24212,20 @@ var red9 = (s) => `\x1B[31m${s}\x1B[0m`;
 var yellow13 = (s) => `\x1B[33m${s}\x1B[0m`;
 var gray13 = (s) => `\x1B[90m${s}\x1B[0m`;
 async function readStdin() {
-  return new Promise((resolve2, reject) => {
+  return new Promise((resolve3, reject) => {
     let data = "";
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => {
       data += chunk;
     });
     process.stdin.on("end", () => {
-      resolve2(data);
+      resolve3(data);
     });
     process.stdin.on("error", (err) => {
       reject(err);
     });
     if (process.stdin.isTTY) {
-      resolve2("");
+      resolve3("");
     }
   });
 }
@@ -24805,7 +24859,7 @@ var gray14 = (s) => `\x1B[90m${s}\x1B[0m`;
 async function parseHookInput() {
   if (process.stdin.isTTY) return {};
   let data = "";
-  return new Promise((resolve2) => {
+  return new Promise((resolve3) => {
     const timer = setTimeout(() => {
       finish({});
     }, 100);
@@ -24832,7 +24886,7 @@ async function parseHookInput() {
       process.stdin.removeListener("end", onEnd);
       process.stdin.removeListener("error", onError);
       if (typeof process.stdin.unref === "function") process.stdin.unref();
-      resolve2(result);
+      resolve3(result);
     }
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", onData);
@@ -24946,7 +25000,7 @@ async function acquireLock(lockPath, maxRetries = 50, retryDelay = 100) {
       closeSync(fd);
       return;
     } catch {
-      await new Promise((resolve2) => setTimeout(resolve2, retryDelay));
+      await new Promise((resolve3) => setTimeout(resolve3, retryDelay));
     }
   }
   throw new Error(`Could not acquire lock after ${maxRetries} retries: ${lockPath}`);
@@ -25933,7 +25987,7 @@ import {
   readdirSync as readdirSync15,
   unlinkSync as unlinkSync4
 } from "fs";
-import { join as join41, basename as basename6 } from "path";
+import { join as join41, basename as basename6, resolve as resolve2 } from "path";
 var bold14 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green13 = (s) => `\x1B[32m${s}\x1B[0m`;
 var red11 = (s) => `\x1B[31m${s}\x1B[0m`;
@@ -25956,12 +26010,17 @@ function getTimestampForFilename2() {
 function sanitizePathSegment(input) {
   return input.replace(/[/\\:*?"<>|]/g, "-").replace(/^\.+/, "");
 }
+function isInsideDir(filePath, dir) {
+  const resolved = resolve2(filePath);
+  const resolvedDir = resolve2(dir);
+  return resolved.startsWith(resolvedDir + "/") || resolved === resolvedDir;
+}
 function resolveReportFile(reportsDir, fileArg) {
-  if (existsSync36(fileArg)) {
+  if (existsSync36(fileArg) && isInsideDir(fileArg, reportsDir)) {
     return fileArg;
   }
   const directPath = join41(reportsDir, fileArg);
-  if (existsSync36(directPath)) {
+  if (existsSync36(directPath) && isInsideDir(directPath, reportsDir)) {
     return directPath;
   }
   if (existsSync36(reportsDir)) {
