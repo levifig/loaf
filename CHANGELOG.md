@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `/clear` session continuity — `SessionEnd(reason=clear)` logs `session(clear)` marker and keeps session active; `SessionStart(source=clear)` resumes existing session file with new `claude_session_id`
+- `## Current State` section in session files, mechanically updated on every Stop event with branch, commit, activity summary, and last 5 journal entries
+- Stop hook (`session-state-update`) to trigger Current State updates after each model turn
+- Session ID tracking in `session(start)` and `session(resume)` journal entries: `(session {short_id})`
+- Current State surfaced in SessionStart output on resume for immediate context recovery
+- `source` and `reason` fields in `HookInput` for lifecycle event discrimination
+- `clear` entry type in session journal vocabulary
+
+### Removed
+- Dead `isNewConversation` variable in session start logic (set but never read)
+
 ## [2.0.0-dev.22] - 2026-04-08
 
 ### Fixed
