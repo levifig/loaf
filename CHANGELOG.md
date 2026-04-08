@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.20] - 2026-04-08
+
 ### Added
 - `loaf report` CLI with `list`, `create`, `finalize`, `archive` subcommands
 - Unified report template with status lifecycle (draft → final → archived) and multi-type support (research, audit, analysis, council)

@@ -1836,14 +1836,6 @@
       "created": "2026-04-04T12:13:54Z",
       "file": "SPEC-024-harness-native-surface-model.md"
     },
-    "SPEC-028": {
-      "title": "Durable Reports — reports/ as concluded artifact store",
-      "status": "complete",
-      "requirement": null,
-      "source": null,
-      "created": "2026-04-07T00:00:00.000Z",
-      "file": "archive/SPEC-028-durable-reports.md"
-    },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",
       "status": "complete",
@@ -2011,6 +2003,14 @@
       "source": "direct",
       "created": "2026-04-07T00:01:56.000Z",
       "file": "archive/SPEC-027-implement-adhoc-session-stability.md"
+    },
+    "SPEC-028": {
+      "title": "Durable Reports — reports/ as concluded artifact store",
+      "status": "complete",
+      "requirement": null,
+      "source": null,
+      "created": "2026-04-07T00:00:00.000Z",
+      "file": "archive/SPEC-028-durable-reports.md"
     }
   }
 }
