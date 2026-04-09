@@ -79,12 +79,15 @@ const BINARY_PATH_HOOKS = new Set([
   // Session lifecycle hooks
   "session-start-loaf",
   "session-end-loaf",
+  "session-context-inject",
   // Journal auto-entry hooks
   "journal-post-commit",
   "journal-post-pr",
   "journal-post-merge",
   // Task management hooks
   "generate-task-board",
+  // Task journal hooks
+  "journal-task-completed",
   // Linear integration hooks
   "detect-linear-magic",
 ]);

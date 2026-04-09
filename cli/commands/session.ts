@@ -1392,14 +1392,29 @@ export function registerSessionCommand(program: Command): void {
         try {
           const stdin = await readStdin(); // Read from fd 0 (stdin)
           const hookData = JSON.parse(stdin);
-          
-          // Extract command from generic tool payload
+
+          // Detect tool name for non-Bash tools (TaskCreate, TaskUpdate, etc.)
+          const toolName = hookData.tool_name || hookData.tool?.name;
+
+          if (toolName === "TaskCompleted") {
+            // TaskCompleted hook event — fires when a task reaches a terminal state
+            const subject = hookData.task_subject || hookData.tool_input?.subject || "task";
+            const owner = hookData.task_owner || hookData.tool_input?.owner || "";
+            const status = hookData.task_status || hookData.tool_input?.status || "completed";
+
+            // Determine outcome: completed or cancelled/deleted
+            const outcome = (status === "completed") ? "completed" : "cancelled";
+            const ownerPrefix = owner ? `${owner}: ` : "";
+            entryText = `task(${outcome}): ${ownerPrefix}${subject}`;
+          }
+
+          // Extract command from generic tool payload (Bash tools)
           // Support both flat (tool_input) and nested (tool.input) formats for cross-harness compatibility
-          const command = hookData.tool_input?.command || 
-                          hookData.tool?.input?.command || 
+          const command = hookData.tool_input?.command ||
+                          hookData.tool?.input?.command ||
                           hookData.input?.command;
-          
-          if (command && typeof command === "string") {
+
+          if (!entryText && command && typeof command === "string") {
             // Parse Bash command to detect entry type
             if (command.includes("git commit")) {
               const hash = getLastCommitSha();
@@ -1455,7 +1470,7 @@ export function registerSessionCommand(program: Command): void {
               // Unrecognized command — skip silently (only log known patterns)
               process.exit(0);
             }
-          } else {
+          } else if (!entryText) {
             // Fallback: try legacy fields for backward compatibility
             if (hookData.commit) {
               entryText = `commit(${hookData.commit}): ${hookData.message || "commit"}`;
@@ -1464,8 +1479,7 @@ export function registerSessionCommand(program: Command): void {
             } else if (hookData.merge) {
               entryText = `pr(merge): #${hookData.merge}`;
             } else {
-              // No command found - this is a hook-safe no-op for when session doesn't exist
-              // Exit 0 so hooks don't fail, but don't log anything
+              // No recognized tool or command — exit silently
               process.exit(0);
             }
           }
@@ -1769,5 +1783,71 @@ export function registerSessionCommand(program: Command): void {
 
       const stateSection = buildCurrentStateSection(freshSession.content);
       await writeCurrentState(existingSession.filePath, stateSection);
+    });
+
+  // ── loaf session context ──────────────────────────────────────────────────
+
+  const context = session
+    .command("context")
+    .description("Session context for hooks and agents");
+
+  context
+    .command("for-prompt")
+    .alias("--for-prompt")
+    .description("Print session context for UserPromptSubmit hook injection")
+    .action(async () => {
+      const hookInput = await parseHookInput();
+
+      // Skip for subagents
+      if (hookInput.agent_id) {
+        process.exit(0);
+      }
+
+      const agentsDir = findAgentsDir();
+      if (!agentsDir) {
+        process.exit(0);
+      }
+
+      const branch = getCurrentBranch();
+      if (branch === "unknown") {
+        process.exit(0);
+      }
+
+      const existingSession = findActiveSessionForBranch(agentsDir, branch);
+      if (!existingSession) {
+        process.exit(0);
+      }
+
+      // Build compact context block for model injection
+      const lines: string[] = [];
+      lines.push("[Session Context]");
+      lines.push(`Session: ${existingSession.filePath.replace(agentsDir, ".agents")}`);
+      lines.push(`Branch: ${branch}`);
+
+      if (existingSession.data.spec) {
+        lines.push(`Spec: ${existingSession.data.spec}`);
+      }
+
+      // Surface Current State if it exists
+      const freshSession = readSessionFile(existingSession.filePath);
+      if (freshSession) {
+        const currentState = extractCurrentState(freshSession.content);
+        if (currentState) {
+          // Extract just the body lines (skip heading)
+          const stateLines = currentState.split("\n").slice(1).filter(l => l.trim());
+          if (stateLines.length > 0) {
+            lines.push(`State: ${stateLines.join(" | ")}`);
+          }
+        }
+      }
+
+      lines.push("");
+      lines.push("[Orchestration Conventions]");
+      lines.push("- Use TaskCreate/TaskUpdate to track work (journal entries are derived from task events)");
+      lines.push("- Log key decisions: loaf session log \"decision(scope): description\"");
+      lines.push("- Read the session file for resumption context when resuming work");
+
+      // Print to stdout — exit 0 means this becomes model context
+      console.log(lines.join("\n"));
     });
 }

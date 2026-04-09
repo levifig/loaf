@@ -328,6 +328,14 @@ const postToolHooks: Record<string, HookEntry[]> = {
       "failClosed": false,
       "if": "Bash(gh pr merge:*)"
     }
+  ],
+  "TaskCompleted": [
+    {
+      "id": "journal-task-completed",
+      "command": "loaf session log --from-hook",
+      "timeout": 30000,
+      "failClosed": false
+    }
   ]
 };
 
@@ -345,6 +353,14 @@ const sessionHooks: Record<string, HookEntry[]> = {
       "id": "session-end-loaf",
       "command": "loaf session end --if-active",
       "timeout": 60000,
+      "failClosed": false
+    }
+  ],
+  "userpromptsubmit": [
+    {
+      "id": "session-context-inject",
+      "command": "loaf session context --for-prompt",
+      "timeout": 5000,
       "failClosed": false
     }
   ],

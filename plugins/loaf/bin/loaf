@@ -16514,12 +16514,15 @@ var BINARY_PATH_HOOKS = /* @__PURE__ */ new Set([
   // Session lifecycle hooks
   "session-start-loaf",
   "session-end-loaf",
+  "session-context-inject",
   // Journal auto-entry hooks
   "journal-post-commit",
   "journal-post-pr",
   "journal-post-merge",
   // Task management hooks
   "generate-task-board",
+  // Task journal hooks
+  "journal-task-completed",
   // Linear integration hooks
   "detect-linear-magic"
 ]);
@@ -25825,8 +25828,17 @@ function registerSessionCommand(program3) {
       try {
         const stdin = await readStdin();
         const hookData = JSON.parse(stdin);
+        const toolName = hookData.tool_name || hookData.tool?.name;
+        if (toolName === "TaskCompleted") {
+          const subject = hookData.task_subject || hookData.tool_input?.subject || "task";
+          const owner = hookData.task_owner || hookData.tool_input?.owner || "";
+          const status = hookData.task_status || hookData.tool_input?.status || "completed";
+          const outcome = status === "completed" ? "completed" : "cancelled";
+          const ownerPrefix = owner ? `${owner}: ` : "";
+          entryText = `task(${outcome}): ${ownerPrefix}${subject}`;
+        }
         const command = hookData.tool_input?.command || hookData.tool?.input?.command || hookData.input?.command;
-        if (command && typeof command === "string") {
+        if (!entryText && command && typeof command === "string") {
           if (command.includes("git commit")) {
             const hash = getLastCommitSha();
             const isAmend = command.includes("--amend");
@@ -25872,7 +25884,7 @@ function registerSessionCommand(program3) {
           } else {
             process.exit(0);
           }
-        } else {
+        } else if (!entryText) {
           if (hookData.commit) {
             entryText = `commit(${hookData.commit}): ${hookData.message || "commit"}`;
           } else if (hookData.pr) {
@@ -26103,6 +26115,48 @@ function registerSessionCommand(program3) {
     }
     const stateSection = buildCurrentStateSection(freshSession.content);
     await writeCurrentState(existingSession.filePath, stateSection);
+  });
+  const context = session.command("context").description("Session context for hooks and agents");
+  context.command("for-prompt").alias("--for-prompt").description("Print session context for UserPromptSubmit hook injection").action(async () => {
+    const hookInput = await parseHookInput();
+    if (hookInput.agent_id) {
+      process.exit(0);
+    }
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      process.exit(0);
+    }
+    const branch = getCurrentBranch();
+    if (branch === "unknown") {
+      process.exit(0);
+    }
+    const existingSession = findActiveSessionForBranch(agentsDir, branch);
+    if (!existingSession) {
+      process.exit(0);
+    }
+    const lines = [];
+    lines.push("[Session Context]");
+    lines.push(`Session: ${existingSession.filePath.replace(agentsDir, ".agents")}`);
+    lines.push(`Branch: ${branch}`);
+    if (existingSession.data.spec) {
+      lines.push(`Spec: ${existingSession.data.spec}`);
+    }
+    const freshSession = readSessionFile(existingSession.filePath);
+    if (freshSession) {
+      const currentState = extractCurrentState(freshSession.content);
+      if (currentState) {
+        const stateLines = currentState.split("\n").slice(1).filter((l) => l.trim());
+        if (stateLines.length > 0) {
+          lines.push(`State: ${stateLines.join(" | ")}`);
+        }
+      }
+    }
+    lines.push("");
+    lines.push("[Orchestration Conventions]");
+    lines.push("- Use TaskCreate/TaskUpdate to track work (journal entries are derived from task events)");
+    lines.push('- Log key decisions: loaf session log "decision(scope): description"');
+    lines.push("- Read the session file for resumption context when resuming work");
+    console.log(lines.join("\n"));
   });
 }
 

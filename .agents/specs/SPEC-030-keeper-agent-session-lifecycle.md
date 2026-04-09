@@ -1,18 +1,24 @@
 ---
 id: SPEC-030
-title: "Keeper agent — session lifecycle management via agent hooks"
-source: "20260409-140251-session-lifecycle-states.md"
-created: 2026-04-09T15:30:00Z
-status: drafting
+title: Keeper agent — session lifecycle management via task-driven journaling
+source: 20260409-140251-session-lifecycle-states.md
+created: 2026-04-09T15:30:00.000Z
+status: implementing
+branch: feat/keeper-agent-session-lifecycle
+session: 20260409-195649-session.md
 ---
 
-# SPEC-030: Keeper Agent — Session Lifecycle Management via Agent Hooks
+# SPEC-030: Keeper Agent — Session Lifecycle Management via Task-Driven Journaling
 
 ## Problem Statement
 
-Session lifecycle management currently relies on prompt-type hooks that misuse Claude Code's hook model. Prompt hooks are binary gates (`ok: true/false`) designed for pass/fail decisions, but we use them for advisory work — writing Current State summaries, nudging journal entries, routing implementation work. The result: hooks that correctly evaluate "this is fine, skip" still block tool calls because any response is treated as a decision.
+Session lifecycle management has two problems:
 
-Meanwhile, session housekeeping (wrap-ups, state updates, archive readiness) falls on the main conversation agent, fragmenting its attention between the user's work and bookkeeping. There's no dedicated agent profile for session lifecycle management.
+1. **Prompt hooks misused for advisory work.** The Stop hook (`session-state-update`), `implement-routing`, and `journal-nudge` are prompt-type hooks used for side effects (writing summaries, nudging behavior). Prompt hooks are binary gates, but we use them for advisory work — the result is conversation bleed, blocking legitimate tool calls, and noisy feedback injected into the user's flow.
+
+2. **No dedicated agent for session lifecycle.** Session housekeeping (wrap-ups, state updates, archive readiness) falls on the main conversation agent, fragmenting its attention between the user's work and bookkeeping.
+
+**Constraints discovered during implementation:** Claude Code agent hooks (`type: "agent"`) are read-only — they can Read/Grep/Glob but cannot Edit or Write. This rules out using agent hooks for session state writes. The Keeper operates as a spawned agent (via the Agent tool), not a hook agent.
 
 ## Strategic Alignment
 
@@ -49,115 +55,92 @@ Example: `Bregalad — session state update on stop`
 
 ## Solution Direction
 
-### Track 1: Agent Hook Conversion
+### Track 1: Hook Cleanup + Task-Driven Journaling
 
-Replace the three prompt-type hooks with agent hooks that spawn a Keeper:
+**Remove problematic hooks:**
+- `session-state-update` (Stop prompt) — removed. Caused conversation bleed.
+- `implement-routing` (PreToolUse prompt on Edit|Write) — removed. Blocked legitimate edits.
+- `journal-nudge` (PostToolUse prompt on Agent|WebFetch|WebSearch) — removed. Replaced by task events.
 
-| Hook ID | Event | Current Type | New Type | Keeper Action |
-|---------|-------|-------------|----------|---------------|
-| `session-state-update` | Stop | `prompt` | `agent` | Read session file, assess if Current State needs updating, write contextual summary if meaningful work happened |
-| `implement-routing` | PreToolUse | `prompt` | Remove or convert to `prompt` with clean binary question | N/A — this was misusing prompt hooks for advisory nudging |
-| `session-pre-compact-nudge` | PreCompact | `prompt` | `agent` | Flush journal entries, write state summary before compaction |
+**Add task-based journal hooks:**
+- PostToolUse on `TaskCreate` → `loaf session log --from-hook` → logs `task(create): #N — subject`
+- PostToolUse on `TaskUpdate` → `loaf session log --from-hook` → logs `task(complete): #N` (only on completion)
 
-Each agent hook includes a `statusMessage` for the spinner (so the user sees what's happening, not a generic wait). The agent hook configuration in `hooks.yaml`:
+**Journal entry sources (layered):**
 
-```yaml
-session:
-  - id: session-state-update
-    skill: orchestration
-    type: agent
-    prompt: >-
-      You are a Keeper. Read the active session file for the current branch.
-      If the conversation involved meaningful work (edits, commits, decisions),
-      update the ## Current State section with a 2-4 line contextual summary.
-      Skip silently if this was just Q&A. Return {"ok": true} when done.
-      Session file: $ARGUMENTS
-    model: sonnet
-    event: Stop
-    timeout: 30
-    statusMessage: "Keeper tending session state..."
-    description: Keeper updates session state after meaningful turns
-```
+| Source | Mechanism | When |
+|--------|-----------|------|
+| Skills | `loaf session log` in Critical Rules | Self-logging on invocation |
+| Git events | PostToolUse command hooks | Commits, PRs, merges |
+| Task events | PostToolUse command hooks | Task created/completed |
+| PreCompact | Prompt hook (stays) | Emergency journal flush |
 
-### Track 2: Session Lifecycle States
+### Track 2: Keeper Agent Profile
 
-Add intermediate states to the session lifecycle:
+Create a dedicated agent profile for session lifecycle work, spawned via the Agent tool (not hooks):
 
-```
-active → stopped → done → processed → archived
-```
+- `content/agents/keeper.md` — Ent lore, behavioral contract
+- `content/agents/keeper.claude-code.yaml` — sonnet model, orchestration skill, Read+Edit+Glob+Grep tools
+- SOUL.md updated with Keeper entry in fellowship table
+- Used by `/wrap`, `/housekeeping`, and manual agent spawning
 
-- **stopped** — SessionEnd fired, conversation over
-- **done** — Keeper confirmed complete (no loose ends, or loose ends acknowledged)
-- **processed** — Wrap summary exists, JSONL enrichment complete (SPEC-029)
-- **archived** — Moved to `archive/`
+### Track 3: Absorb Context Archiver (Future)
 
-The Keeper manages transitions:
-1. On **Stop**: update Current State (Track 1)
-2. On **SessionEnd**: verify session has stop marker (existing behavior)
-3. On **housekeeping trigger**: scan stopped sessions → mark done if age threshold met → run wrap if missing → mark processed → archive
-
-### Track 3: Absorb Context Archiver
-
-The context-archiver agent handles PreCompact session preservation. The Keeper's responsibilities are a superset — absorb context-archiver into the Keeper profile. The Keeper handles:
-- PreCompact: journal flush + state summary (currently context-archiver + prompt hook)
-- PostCompact: resumption context (currently shell script)
+The context-archiver agent handles PreCompact session preservation. The Keeper's responsibilities are a superset — absorb context-archiver into the Keeper profile. Deferred to a follow-up: the PreCompact prompt hook + compact.sh script work adequately today.
 
 ## Scope
 
 ### In Scope
 - Keeper agent profile (`content/agents/keeper.md`) with lore and behavioral contract
-- Agent hook conversion for `session-state-update` and `session-pre-compact-nudge`
-- `implement-routing` hook reclassification (remove or convert to clean binary prompt)
-- Session lifecycle states (`done`, `processed`) in `SessionFrontmatter`
-- SOUL.md update with Keeper entry
-- Absorb context-archiver responsibilities
+- Remove `session-state-update`, `implement-routing`, and `journal-nudge` hooks
+- Add PostToolUse hooks for TaskCreate/TaskUpdate → session journal entries
+- Extend `loaf session log --from-hook` to parse task event payloads
+- SOUL.md update with Keeper entry in fellowship table
 
 ### Out of Scope
-- JSONL enrichment pipeline (SPEC-029 — the Keeper calls `loaf session sync` but doesn't implement parsing)
+- JSONL enrichment pipeline (SPEC-029)
 - Housekeeping skill rewrite (Keeper participates but housekeeping orchestration is separate)
 - Journal quality analysis (future Keeper capability, not initial scope)
+- Context-archiver absorption (deferred — current PreCompact mechanism works)
+- Session lifecycle state machine expansion (done/processed — deferred)
 
 ### Rabbit Holes
 - Making the Keeper a full orchestrator — it tends, it doesn't coordinate
 - Giving the Keeper write access to code — it touches only `.agents/` artifacts
-- Over-engineering lifecycle state machines — simple linear progression, not a DAG
+- Agent hooks for write operations — Claude Code agent hooks are read-only
 
 ### No-Gos
-- The Keeper must not block the user's workflow. Agent hooks that take >30s on Stop are unacceptable.
 - The Keeper must not modify code files. Tool access is scoped to `.agents/` paths only.
+- Do not re-introduce prompt hooks for advisory side effects on Stop or PostToolUse.
 
 ## Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Agent hook latency on Stop adds noticeable delay | Medium | Medium | Use haiku, cap at 30s timeout, fail-open (ok: true on timeout) |
-| Keeper state updates conflict with user's manual edits | Low | Low | Keeper reads before writing, uses atomic file operations |
-| Agent hook `$ARGUMENTS` doesn't include session file path | Medium | High | Verify agent hook input schema; fall back to `loaf session` CLI discovery |
-| Model quality insufficient for contextual summaries | Low | Medium | Start with sonnet; downgrade to haiku after validating output quality with real sessions |
+| Task hooks fire too frequently, cluttering journal | Low | Low | Only log TaskCreate and TaskUpdate(completed); skip other status changes |
+| Agent forgets to use Task* tools consistently | Medium | Medium | Bake task discipline into orchestration skill defaults; hooks are catch-all, not sole source |
+| Keeper model quality on sonnet insufficient for state summaries | Low | Medium | Start with sonnet; validate during /wrap testing |
 
-## Open Questions
+## Resolved Questions
 
-- [ ] Does the agent hook `$ARGUMENTS` placeholder include enough context for the Keeper to find the session file? (Need to test the actual JSON input for Stop events)
-- [ ] Can agent hooks scope tool access (e.g., only Edit files in `.agents/`)? Or is it full tool access?
-- [ ] Should the Keeper run on every Stop, or only when `stop_hook_active` is false? (Avoid infinite loops)
-- [ ] What's the interaction between the Keeper agent hook and the existing `session-end-loaf` command hook on SessionEnd? Order of execution?
+- [x] Can agent hooks scope tool access? **No — read-only (Read, Grep, Glob, WebFetch, WebSearch). No Edit/Write/Bash.** Keeper operates as spawned agent instead.
+- [x] Should Keeper run on every Stop? **No — removed Stop hook entirely. Keeper is invoked explicitly via /wrap and housekeeping.**
+- [x] How do journal entries get created without prompt hooks? **Task events (PostToolUse on TaskCreate/TaskUpdate), git hooks (PostToolUse on Bash), and skill self-logging.**
 
 ## Test Conditions
 
-- [ ] Keeper agent hook fires on Stop, reads session file, writes contextual Current State — no user intervention needed
-- [ ] Keeper correctly skips Q&A-only turns (returns ok: true without writing)
-- [ ] Keeper handles PreCompact: flushes journal, writes state summary before compaction
-- [ ] Session lifecycle transitions work: stopped → done → processed → archived
-- [ ] Context archiver functionality preserved — PreCompact session preservation still works
-- [ ] Agent hook latency on Stop is <10s for typical sessions
-- [ ] `implement-routing` no longer blocks non-implementation edits
-- [ ] SOUL.md and fellowship table updated with Keeper profile
+- [x] `implement-routing` no longer blocks non-implementation edits
+- [x] `session-state-update` Stop hook removed — no conversation bleed
+- [x] `journal-nudge` removed — no prompt-based advisory noise
+- [x] SOUL.md and fellowship table updated with Keeper profile
+- [ ] TaskCreate fires PostToolUse hook → journal entry logged
+- [ ] TaskUpdate(completed) fires PostToolUse hook → journal entry logged
+- [ ] TaskUpdate(in_progress) does NOT create journal entry
+- [ ] Keeper agent profile builds to all targets
+- [ ] `loaf build` succeeds, typecheck passes, tests pass
 
 ## Priority Order
 
-Tracks ship in this order. If scope needs cutting, drop from the end.
-
-1. **Track 1: Agent Hook Conversion** — Keeper profile + Stop/PreCompact hooks converted. Go/no-go: Current State updates happen automatically without blocking edits or showing spurious errors.
-2. **Track 2: Session Lifecycle States** — done/processed states + housekeeping transitions. Go/no-go: `loaf session list` shows lifecycle states; housekeeping manages transitions.
-3. **Track 3: Absorb Context Archiver** — Merge context-archiver into Keeper. Go/no-go: PreCompact preservation works via Keeper; context-archiver.md removed.
+1. **Track 1: Hook Cleanup + Task-Driven Journaling** — Remove problematic hooks, add task event hooks, extend CLI. Go/no-go: no conversation bleed, task events produce journal entries.
+2. **Track 2: Keeper Agent Profile** — Agent profile with lore, behavioral contract, sidecar. Go/no-go: Keeper appears in built plugins, spawnable by Agent tool.
+3. **Track 3: Context Archiver Absorption** — Deferred. Current PreCompact mechanism works.
