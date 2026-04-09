@@ -1533,15 +1533,33 @@ export function registerSessionCommand(program: Command): void {
 
       const timestamp = getDateTimeString();
       const formattedEntry = `[${timestamp}] ${entryText}`;
+
+      // Auto-resume: if session is stopped but new entries are being logged,
+      // insert a SESSION RESUMED marker and set status back to active.
+      // Handles mid-conversation stops (e.g. wrap skill) where work continues.
+      const isAutoResume = existingSession.data.status === "stopped";
+      const entryLines: string[] = [];
+
+      if (isAutoResume) {
+        entryLines.push(`[${timestamp}] session(resume): === SESSION RESUMED ===`);
+      }
+      entryLines.push(formattedEntry);
+
       await appendEntry(
         existingSession.filePath,
-        [formattedEntry],
+        entryLines,
         (data: SessionFrontmatter) => {
+          if (isAutoResume) {
+            data.status = "active";
+          }
           data.last_updated = getTimestamp();
           data.last_entry = getTimestamp();
         }
       );
 
+      if (isAutoResume) {
+        console.log(`  ${green("✓")} Auto-resumed stopped session`);
+      }
       console.log(`  ${green("✓")} Logged: ${cyan(entryText)}`);
     });
 

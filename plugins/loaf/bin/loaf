@@ -25934,14 +25934,26 @@ function registerSessionCommand(program3) {
     }
     const timestamp = getDateTimeString();
     const formattedEntry = `[${timestamp}] ${entryText}`;
+    const isAutoResume = existingSession.data.status === "stopped";
+    const entryLines = [];
+    if (isAutoResume) {
+      entryLines.push(`[${timestamp}] session(resume): === SESSION RESUMED ===`);
+    }
+    entryLines.push(formattedEntry);
     await appendEntry(
       existingSession.filePath,
-      [formattedEntry],
+      entryLines,
       (data) => {
+        if (isAutoResume) {
+          data.status = "active";
+        }
         data.last_updated = getTimestamp();
         data.last_entry = getTimestamp();
       }
     );
+    if (isAutoResume) {
+      console.log(`  ${green12("\u2713")} Auto-resumed stopped session`);
+    }
     console.log(`  ${green12("\u2713")} Logged: ${cyan9(entryText)}`);
   });
   session.command("archive").description("Archive completed session").option("--branch <branch>", "Archive session for specific branch (default: current)").action(async (options2) => {
