@@ -1924,61 +1924,23 @@ export function registerSessionCommand(program: Command): void {
   context
     .command("for-prompt")
     .alias("--for-prompt")
-    .description("Print session context for UserPromptSubmit hook injection")
+    .description("Print implementation principles for UserPromptSubmit hook injection")
     .action(async () => {
       const hookInput = await parseHookInput();
 
-      // Skip for subagents
+      // Skip for subagents — they have their own instructions
       if (hookInput.agent_id) {
         process.exit(0);
       }
 
-      const agentsDir = findAgentsDir();
-      if (!agentsDir) {
-        process.exit(0);
-      }
-
-      const branch = getCurrentBranch();
-      if (branch === "unknown") {
-        process.exit(0);
-      }
-
-      // Session ID-first lookup, then branch fallback
-      const existingSession = (hookInput.session_id
-        ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch)
-        : null) || findActiveSessionForBranch(agentsDir, branch);
-      if (!existingSession) {
-        process.exit(0);
-      }
-
-      // Build compact context block for model injection
+      // Static implementation principles — cached after first injection
       const lines: string[] = [];
-      lines.push("[Session Context]");
-      lines.push(`Session: ${existingSession.filePath.replace(agentsDir, ".agents")}`);
-      lines.push(`Branch: ${branch}`);
-
-      if (existingSession.data.spec) {
-        lines.push(`Spec: ${existingSession.data.spec}`);
-      }
-
-      // Surface Current State if it exists
-      const freshSession = readSessionFile(existingSession.filePath);
-      if (freshSession) {
-        const currentState = extractCurrentState(freshSession.content);
-        if (currentState) {
-          // Extract just the body lines (skip heading)
-          const stateLines = currentState.split("\n").slice(1).filter(l => l.trim());
-          if (stateLines.length > 0) {
-            lines.push(`State: ${stateLines.join(" | ")}`);
-          }
-        }
-      }
-
-      lines.push("");
-      lines.push("[Orchestration Conventions]");
-      lines.push("- Use TaskCreate/TaskUpdate to track work (journal entries are derived from task events)");
-      lines.push("- Log key decisions: loaf session log \"decision(scope): description\"");
-      lines.push("- Read the session file for resumption context when resuming work");
+      lines.push("[Implementation Principles]");
+      lines.push("- Track work with TaskCreate/TaskUpdate (journal entries derive from task events)");
+      lines.push("- Delegate code changes to agents — orchestrator coordinates, doesn't implement");
+      lines.push("- Log decisions: loaf session log \"decision(scope): description\"");
+      lines.push("- One concern per agent, parallel when independent");
+      lines.push("- Keep session file handoff-ready");
 
       // Print to stdout — exit 0 means this becomes model context
       console.log(lines.join("\n"));

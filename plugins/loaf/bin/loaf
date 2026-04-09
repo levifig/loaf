@@ -26203,45 +26203,18 @@ function registerSessionCommand(program3) {
     await writeCurrentState(existingSession.filePath, stateSection);
   });
   const context = session.command("context").description("Session context for hooks and agents");
-  context.command("for-prompt").alias("--for-prompt").description("Print session context for UserPromptSubmit hook injection").action(async () => {
+  context.command("for-prompt").alias("--for-prompt").description("Print implementation principles for UserPromptSubmit hook injection").action(async () => {
     const hookInput = await parseHookInput();
     if (hookInput.agent_id) {
       process.exit(0);
     }
-    const agentsDir = findAgentsDir();
-    if (!agentsDir) {
-      process.exit(0);
-    }
-    const branch = getCurrentBranch();
-    if (branch === "unknown") {
-      process.exit(0);
-    }
-    const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch) : null) || findActiveSessionForBranch(agentsDir, branch);
-    if (!existingSession) {
-      process.exit(0);
-    }
     const lines = [];
-    lines.push("[Session Context]");
-    lines.push(`Session: ${existingSession.filePath.replace(agentsDir, ".agents")}`);
-    lines.push(`Branch: ${branch}`);
-    if (existingSession.data.spec) {
-      lines.push(`Spec: ${existingSession.data.spec}`);
-    }
-    const freshSession = readSessionFile(existingSession.filePath);
-    if (freshSession) {
-      const currentState = extractCurrentState(freshSession.content);
-      if (currentState) {
-        const stateLines = currentState.split("\n").slice(1).filter((l) => l.trim());
-        if (stateLines.length > 0) {
-          lines.push(`State: ${stateLines.join(" | ")}`);
-        }
-      }
-    }
-    lines.push("");
-    lines.push("[Orchestration Conventions]");
-    lines.push("- Use TaskCreate/TaskUpdate to track work (journal entries are derived from task events)");
-    lines.push('- Log key decisions: loaf session log "decision(scope): description"');
-    lines.push("- Read the session file for resumption context when resuming work");
+    lines.push("[Implementation Principles]");
+    lines.push("- Track work with TaskCreate/TaskUpdate (journal entries derive from task events)");
+    lines.push("- Delegate code changes to agents \u2014 orchestrator coordinates, doesn't implement");
+    lines.push('- Log decisions: loaf session log "decision(scope): description"');
+    lines.push("- One concern per agent, parallel when independent");
+    lines.push("- Keep session file handoff-ready");
     console.log(lines.join("\n"));
   });
   context.command("for-resumption").alias("--for-resumption").description("Print rich resumption context after compaction (PostCompact hook)").action(async () => {
