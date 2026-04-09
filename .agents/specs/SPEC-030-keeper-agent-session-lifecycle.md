@@ -62,9 +62,15 @@ Example: `Bregalad — session state update on stop`
 - `implement-routing` (PreToolUse prompt on Edit|Write) — removed. Blocked legitimate edits.
 - `journal-nudge` (PostToolUse prompt on Agent|WebFetch|WebSearch) — removed. Replaced by task events.
 
-**Add task-based journal hooks:**
-- PostToolUse on `TaskCreate` → `loaf session log --from-hook` → logs `task(create): #N — subject`
-- PostToolUse on `TaskUpdate` → `loaf session log --from-hook` → logs `task(complete): #N` (only on completion)
+**Add event-driven journal hooks:**
+- `TaskCompleted` session event → `loaf session log --from-hook` → logs `task(completed|cancelled): owner: subject`
+- `UserPromptSubmit` session event → `loaf session context --for-prompt` → injects session context + orchestration conventions
+
+**Replace PostCompact bash script with CLI:**
+- `loaf session context --for-resumption` — prints rich resumption context (state + spec + journal + git)
+
+**Session consolidation on start:**
+- `findSessionByClaudeId` scans active + archive, prioritizes current branch, merges split sessions, deletes duplicates
 
 **Journal entry sources (layered):**
 
@@ -72,7 +78,8 @@ Example: `Bregalad — session state update on stop`
 |--------|-----------|------|
 | Skills | `loaf session log` in Critical Rules | Self-logging on invocation |
 | Git events | PostToolUse command hooks | Commits, PRs, merges |
-| Task events | PostToolUse command hooks | Task created/completed |
+| Task events | `TaskCompleted` session hook | Task completed/cancelled |
+| Context | `UserPromptSubmit` command hook | Every user prompt |
 | PreCompact | Prompt hook (stays) | Emergency journal flush |
 
 ### Track 2: Librarian Agent Profile
@@ -84,28 +91,66 @@ Create a dedicated agent profile for session lifecycle work, spawned via the Age
 - SOUL.md updated with Librarian entry in fellowship table
 - Used by `/wrap`, `/housekeeping`, and manual agent spawning
 
-### Track 3: Wrap Skill — Composable Session Close
+### Track 3: Wrap Skill — Interactive + Scripted Session Close
 
-Make `/wrap` work as both interactive command and composable step (callable from `/release`):
+`/wrap` is a hybrid: the interactive agent writes the summary (has conversation context), then scripted CLI commands handle the bookkeeping. Callable from `/release` as a sub-skill.
 
-- Librarian writes final state summary (AI-quality, from conversation context)
-- Generates wrap report: what was done, decisions, loose ends
-- Cleans up dangling `## Current State` sections — wrap report replaces them
-- Closes journal (stop marker), marks session `complete`
-- No archive — session stays in `sessions/` for housekeeping to handle
-- Non-interactive mode: when invoked as sub-skill (e.g., from `/release`), skips prompts
+**Interactive agent steps (conversation context required):**
 
-### Track 4: Housekeeping Skill — Scheduling-Ready Maintenance
+| Step | Action | Why interactive |
+|------|--------|----------------|
+| Flush journal | Log unrecorded decisions, discoveries, progress | Only the conversation agent knows what it hasn't logged |
+| Write wrap summary | Synthesize what was done, why, loose ends | Needs full conversation context — journal alone can't capture "why it was hard" |
+| Write final state | Wrap summary replaces `## Current State` | Part of the summary — the wrap report IS the final state |
 
-Make `/housekeeping` autonomous and idempotent:
+**Scripted steps (CLI, deterministic):**
 
-- Find orphaned sessions (no matching branch, stale timestamps)
-- Consolidate split sessions (same `claude_session_id`)
-- Archive completed sessions past age threshold (`complete` → `archived`)
-- Verify session/spec linkage consistency
-- Check stale knowledge files
-- Structured report output, no `AskUserQuestion` calls
-- Works when invoked by `loaf schedule` or cron — no conversation context needed
+| Step | Action | Implementation |
+|------|--------|---------------|
+| Close journal | Append `session(end)` + `session(stop)` markers | `loaf session end` (already exists) |
+| Mark complete | Set frontmatter `status: complete` | Part of `loaf session end` |
+| Remove dangling state | Strip old `## Current State` if wrap summary exists | Scripted check in `loaf session end` |
+| Persist decisions | Extract decisions to linked spec changelog | Part of `loaf session archive` |
+| KB staleness | Flag knowledge files touched during session | Part of `loaf session end` |
+
+**Flow:** Interactive agent (flush + summary) → `loaf session end` (close + cleanup)
+
+**No archive** — session stays in `sessions/` with status `complete`. Archival is housekeeping's job.
+
+### Track 4: Housekeeping — Fully Scripted, Trigger-Scheduled
+
+Housekeeping is **fully scripted** — no `claude -p` needed. All operations are deterministic file scans and timestamp checks. Triggered via a state flag, not cron.
+
+**Trigger mechanism:**
+
+```
+SessionEnd (`loaf session end`)
+  → read .agents/.loaf-state → last_housekeeping older than 24h?
+    → yes: set housekeeping_pending = true
+
+SessionStart (`loaf session start`)
+  → read .agents/.loaf-state → housekeeping_pending?
+    → yes: run housekeeping inline, update last_housekeeping, clear flag
+```
+
+State file: `.agents/.loaf-state` (gitignored, local machine state)
+
+**Housekeeping operations (all scripted):**
+
+| Step | Action | Implementation |
+|------|--------|---------------|
+| Scan sessions | List active + stopped sessions | Read `sessions/*.md` frontmatter |
+| Detect orphans | Sessions whose branch no longer exists | `git branch --list` vs session `branch:` field |
+| Triage orphans | Archive empty orphans, flag non-empty for review | Count journal entries + commits (heuristic) |
+| Detect splits | Multiple sessions with same `claude_session_id` | Already implemented in `findSessionByClaudeId` |
+| Consolidate splits | Merge journals, delete duplicates | Already implemented in `consolidateSession` |
+| Age-based archival | `complete` sessions older than N days → archive | Timestamp compare + rename to `archive/` |
+| Session/spec linkage | Verify spec `session:` field → file exists | File existence check |
+| Fix broken linkage | Update spec if session renamed/moved | Deterministic repair |
+| KB staleness | Scan stale knowledge files | `loaf kb review` (exists) |
+| Report | Print structured summary of actions taken | Scripted output |
+
+**Future: `claude -p` for complex decisions.** If orphan triage needs genuine judgment (e.g., "this session has 50 entries but the branch was force-deleted — what happened?"), a piped Librarian can be invoked. But day-one implementation is pure scripting.
 
 ### Track 5: Absorb Context Archiver (Future)
 
