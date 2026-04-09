@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.24] - 2026-04-09
+
 ### Changed
 - Release skill: tags and GH Releases now created post-merge on `main` instead of pre-merge on feature branch, fixing dangling tag references after squash merge
 - Release skill: housekeeping step orchestrates `/wrap`, `/reflect`, and archive instead of just verifying they were done
