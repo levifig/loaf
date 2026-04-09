@@ -5,7 +5,7 @@ source: 20260409-140251-session-lifecycle-states.md
 created: 2026-04-09T15:30:00.000Z
 status: implementing
 branch: feat/keeper-agent-session-lifecycle
-session: 20260409-195649-session.md
+session: 20260409-200731-session.md
 ---
 
 # SPEC-030: Keeper Agent — Session Lifecycle Management via Task-Driven Journaling
@@ -117,15 +117,15 @@ The context-archiver agent handles PreCompact session preservation. The Keeper's
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Task hooks fire too frequently, cluttering journal | Low | Low | Only log TaskCreate and TaskUpdate(completed); skip other status changes |
-| Agent forgets to use Task* tools consistently | Medium | Medium | Bake task discipline into orchestration skill defaults; hooks are catch-all, not sole source |
+| Task hooks fire too frequently, cluttering journal | Low | Low | Only log TaskCompleted; skip in_progress and other status changes |
+| Agent forgets to use Task* tools consistently | Medium | Medium | UserPromptSubmit hook injects orchestration conventions; hooks are catch-all, not sole source |
 | Keeper model quality on sonnet insufficient for state summaries | Low | Medium | Start with sonnet; validate during /wrap testing |
 
 ## Resolved Questions
 
 - [x] Can agent hooks scope tool access? **No — read-only (Read, Grep, Glob, WebFetch, WebSearch). No Edit/Write/Bash.** Keeper operates as spawned agent instead.
 - [x] Should Keeper run on every Stop? **No — removed Stop hook entirely. Keeper is invoked explicitly via /wrap and housekeeping.**
-- [x] How do journal entries get created without prompt hooks? **Task events (PostToolUse on TaskCreate/TaskUpdate), git hooks (PostToolUse on Bash), and skill self-logging.**
+- [x] How do journal entries get created without prompt hooks? **TaskCompleted hook, git event hooks (PostToolUse on Bash), UserPromptSubmit context injection, and skill self-logging.**
 
 ## Test Conditions
 
@@ -133,11 +133,11 @@ The context-archiver agent handles PreCompact session preservation. The Keeper's
 - [x] `session-state-update` Stop hook removed — no conversation bleed
 - [x] `journal-nudge` removed — no prompt-based advisory noise
 - [x] SOUL.md and fellowship table updated with Keeper profile
-- [ ] TaskCreate fires PostToolUse hook → journal entry logged
-- [ ] TaskUpdate(completed) fires PostToolUse hook → journal entry logged
-- [ ] TaskUpdate(in_progress) does NOT create journal entry
-- [ ] Keeper agent profile builds to all targets
-- [ ] `loaf build` succeeds, typecheck passes, tests pass
+- [x] Keeper agent profile builds to all targets
+- [x] `loaf build` succeeds, typecheck passes, tests pass
+- [ ] TaskCompleted fires PostToolUse hook → journal entry logged (completed + cancelled)
+- [ ] UserPromptSubmit hook injects session context on every prompt
+- [ ] Live test: no Stop hook feedback bleeding into conversation
 
 ## Priority Order
 

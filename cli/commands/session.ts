@@ -494,6 +494,45 @@ function getTimestampForFilename(): string {
   return `${year}${month}${day}-${hour}${minute}${second}`;
 }
 
+/** Find session by claude_session_id — scans active AND archived sessions */
+function findSessionByClaudeId(agentsDir: string, claudeSessionId: string): { filePath: string; data: SessionFrontmatter; content: string } | null {
+  const sessionsDir = join(agentsDir, "sessions");
+  if (!existsSync(sessionsDir)) return null;
+
+  // Scan active sessions first
+  const activeFiles = readdirSync(sessionsDir).filter(f => f.endsWith(".md") && !f.startsWith("archive"));
+  for (const file of activeFiles) {
+    const filePath = join(sessionsDir, file);
+    const session = readSessionFile(filePath);
+    if (session && session.data.claude_session_id === claudeSessionId) {
+      return { filePath, data: session.data, content: session.content };
+    }
+  }
+
+  // Scan archive
+  const archiveDir = join(sessionsDir, "archive");
+  if (existsSync(archiveDir)) {
+    const archiveFiles = readdirSync(archiveDir).filter(f => f.endsWith(".md"));
+    for (const file of archiveFiles) {
+      const filePath = join(archiveDir, file);
+      const session = readSessionFile(filePath);
+      if (session && session.data.claude_session_id === claudeSessionId) {
+        // Restore from archive — move back to sessions/
+        const restoredPath = join(sessionsDir, file);
+        try {
+          renameSync(filePath, restoredPath);
+          return { filePath: restoredPath, data: session.data, content: session.content };
+        } catch {
+          // If move fails, use in place
+          return { filePath, data: session.data, content: session.content };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 /** Find active session for a branch by scanning files */
 function findActiveSessionForBranch(agentsDir: string, branch: string): { filePath: string; data: SessionFrontmatter; content: string } | null {
   const sessionsDir = join(agentsDir, "sessions");
@@ -1080,22 +1119,33 @@ export function registerSessionCommand(program: Command): void {
         console.log(`  ${yellow("!")} No linked spec found — creating ad-hoc session`);
       }
 
-      const existingSession = findActiveSessionForBranch(agentsDir, branch);
+      // Session ID-first lookup: strongest continuity signal, searches active + archive
+      const sessionByClaudeId = hookInput.session_id
+        ? findSessionByClaudeId(agentsDir, hookInput.session_id)
+        : null;
+
+      // Branch-based fallback
+      const existingSession = sessionByClaudeId || findActiveSessionForBranch(agentsDir, branch);
 
       let sessionFilePath: string;
       let sessionData: SessionFrontmatter;
       let sessionContent: string;
       let isResume = false;
 
-      const sameConversation = existingSession && hookInput.session_id && existingSession.data.claude_session_id === hookInput.session_id;
+      const sameConversation = sessionByClaudeId != null;
       const isClearResume = existingSession && hookInput.source === "clear";
 
       if (existingSession && sameConversation) {
-        // Same claude_session_id — always resume, strongest signal
+        // Same claude_session_id — always resume, strongest signal (even from archive)
         sessionFilePath = existingSession.filePath;
         sessionData = existingSession.data;
         sessionContent = existingSession.content;
         isResume = existingSession.data.status !== "active";
+
+        // Update branch if it changed (e.g., git checkout while in same conversation)
+        if (existingSession.data.branch !== branch) {
+          existingSession.data.branch = branch;
+        }
 
         console.log(`  ${green("✓")} Resuming existing session`);
       } else if (isClearResume) {
@@ -1268,7 +1318,10 @@ export function registerSessionCommand(program: Command): void {
         process.exit(1);
       }
 
-      const existingSession = findActiveSessionForBranch(agentsDir, branch);
+      // Session ID-first lookup, then branch fallback
+      const existingSession = (hookInput.session_id
+        ? findSessionByClaudeId(agentsDir, hookInput.session_id)
+        : null) || findActiveSessionForBranch(agentsDir, branch);
       if (!existingSession) {
         if (options.ifActive) {
           process.exit(0);
@@ -1769,7 +1822,10 @@ export function registerSessionCommand(program: Command): void {
         process.exit(0);
       }
 
-      const existingSession = findActiveSessionForBranch(agentsDir, branch);
+      // Session ID-first lookup, then branch fallback
+      const existingSession = (hookInput.session_id
+        ? findSessionByClaudeId(agentsDir, hookInput.session_id)
+        : null) || findActiveSessionForBranch(agentsDir, branch);
       if (!existingSession) {
         // Hook-safe: no active session
         process.exit(0);
@@ -1813,7 +1869,10 @@ export function registerSessionCommand(program: Command): void {
         process.exit(0);
       }
 
-      const existingSession = findActiveSessionForBranch(agentsDir, branch);
+      // Session ID-first lookup, then branch fallback
+      const existingSession = (hookInput.session_id
+        ? findSessionByClaudeId(agentsDir, hookInput.session_id)
+        : null) || findActiveSessionForBranch(agentsDir, branch);
       if (!existingSession) {
         process.exit(0);
       }

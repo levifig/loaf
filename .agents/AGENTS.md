@@ -62,6 +62,7 @@ See [SOUL.md](../SOUL.md) for the Warden identity and fellowship conventions.
 | **implementer** | Smith (Dwarf) | Full write | Code, tests, config, docs — speciality via skills |
 | **reviewer** | Sentinel (Elf) | Read-only | Audits, reviews — mechanical independence |
 | **researcher** | Ranger (Human) | Read + web | Research, comparison — structured reports |
+| **keeper** | Keeper (Ent) | Read + Edit (.agents/) | Session lifecycle, state, wrap |
 | **background-runner** | System | Read + Edit | Async non-blocking tasks |
 | **context-archiver** | System | Read + Edit + Serena | Session preservation |
 
@@ -507,7 +508,7 @@ Configure target-specific behavior and sidecars.
 - [Claude Code Skills Best Practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
 
-<!-- loaf:managed:start v2.0.0-dev.16 -->
+<!-- loaf:managed:start v2.0.0-dev.24 -->
 <!-- Maintained by loaf install/upgrade — do not edit manually -->
 ## Loaf Framework
 
@@ -524,7 +525,7 @@ Configure target-specific behavior and sidecars.
 - `loaf task/spec/kb` — Task and knowledge management
 
 **Journal Discipline:**
-Before completing any response that includes edits, commits, or significant decisions, log journal entries using `loaf session log "type(scope): description"`. Entry types: `decision`, `discover`, `finding`. Do not defer journaling — log before responding.
+Before completing any response that includes edits, commits, or significant decisions, log journal entries using `loaf session log "type(scope): description"`. Entry types: `decision`, `discover`, `conclude`. Do not defer journaling — log before responding.
 
 See [orchestration skill](skills/orchestration/SKILL.md) for full details.
 <!-- loaf:managed:end -->
