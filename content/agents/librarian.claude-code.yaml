@@ -1,4 +1,4 @@
-name: keeper
+name: librarian
 description: >-
   Tends session lifecycle: Current State updates, journal quality, wrap summaries,
   and status transitions. Use for session housekeeping, state snapshots, and

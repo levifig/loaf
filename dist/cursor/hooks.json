@@ -83,12 +83,6 @@
       {
         "loaf-managed": true,
         "timeout": 30,
-        "matcher": "TaskCompleted",
-        "command": "loaf session log --from-hook"
-      },
-      {
-        "loaf-managed": true,
-        "timeout": 30,
         "matcher": "Bash",
         "command": "loaf session log --from-hook",
         "if": "Bash(git commit:*)"
@@ -122,6 +116,13 @@
         "command": "loaf session end --if-active"
       }
     ],
+    "taskcompleted": [
+      {
+        "loaf-managed": true,
+        "timeout": 30,
+        "command": "loaf session log --from-hook"
+      }
+    ],
     "userpromptsubmit": [
       {
         "loaf-managed": true,
@@ -145,7 +146,7 @@
       {
         "loaf-managed": true,
         "timeout": 60,
-        "command": "bash $HOME/.cursor/hooks/session/post-compact.sh"
+        "command": "loaf session context --for-resumption"
       }
     ]
   }

@@ -330,14 +330,6 @@ const postToolHooks: Record<string, HookEntry[]> = {
       "failClosed": false,
       "if": "Bash(gh pr merge:*)"
     }
-  ],
-  "TaskCompleted": [
-    {
-      "id": "journal-task-completed",
-      "command": "loaf session log --from-hook",
-      "timeout": 30000,
-      "failClosed": false
-    }
   ]
 };
 
@@ -355,6 +347,14 @@ const sessionHooks: Record<string, HookEntry[]> = {
       "id": "session-end-loaf",
       "command": "loaf session end --if-active",
       "timeout": 60000,
+      "failClosed": false
+    }
+  ],
+  "taskcompleted": [
+    {
+      "id": "journal-task-completed",
+      "command": "loaf session log --from-hook",
+      "timeout": 30000,
       "failClosed": false
     }
   ],
@@ -377,7 +377,7 @@ const sessionHooks: Record<string, HookEntry[]> = {
   "postcompact": [
     {
       "id": "post-compact",
-      "script": "session/post-compact.sh",
+      "command": "loaf session context --for-resumption",
       "timeout": 60000,
       "failClosed": false
     }

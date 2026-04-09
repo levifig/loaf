@@ -121,15 +121,6 @@ hooks:
       timeout: 5000
       description: Inject housekeeping checklist after successful gh pr merge
 
-    # Session Journal Auto-Entry Hooks — Task Events
-    - id: journal-task-completed
-      skill: orchestration
-      type: command
-      command: 'loaf session log --from-hook'
-      matcher: "TaskCompleted"
-      timeout: 30000
-      description: Auto-log task completion or cancellation to session journal
-
     # Session Journal Auto-Entry Hooks — Git Events
     - id: journal-post-commit
       skill: orchestration
@@ -172,6 +163,15 @@ hooks:
       command: 'loaf session end --if-active'
       event: SessionEnd
       description: End session with progress summary and KB follow-up
+
+    # Task lifecycle — auto-log completions and cancellations
+    - id: journal-task-completed
+      skill: orchestration
+      type: command
+      command: 'loaf session log --from-hook'
+      event: TaskCompleted
+      timeout: 30000
+      description: Auto-log task completion or cancellation to session journal
 
     # Context injection — implementation principles on every user prompt
     - id: session-context-inject
@@ -216,10 +216,11 @@ hooks:
       description: Require journal flush and state summary before context compaction
 
 
-    # PostCompact — print Current State and instruct journal read
+    # PostCompact — print rich resumption context for model and user
     - id: post-compact
       skill: orchestration
-      script: hooks/session/post-compact.sh
+      type: command
+      command: 'loaf session context --for-resumption'
       event: PostCompact
       timeout: 60000
-      description: Print session Current State and instruct model to read journal for resumption
+      description: Print session state, spec, journal, and git context for post-compaction resumption

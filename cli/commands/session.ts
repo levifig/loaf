@@ -494,18 +494,55 @@ function getTimestampForFilename(): string {
   return `${year}${month}${day}-${hour}${minute}${second}`;
 }
 
-/** Find session by claude_session_id — scans active AND archived sessions */
-function findSessionByClaudeId(agentsDir: string, claudeSessionId: string): { filePath: string; data: SessionFrontmatter; content: string } | null {
+/** Extract journal entries from session content (lines matching [YYYY-MM-DD HH:MM] pattern) */
+function extractJournalLines(content: string): string[] {
+  return content.split("\n").filter(line => /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\] /.test(line));
+}
+
+/** Merge journal entries from a secondary session into a primary session file */
+function consolidateSession(primaryPath: string, secondary: { filePath: string; data: SessionFrontmatter; content: string }, agentsDir: string): void {
+  const primary = readSessionFile(primaryPath);
+  if (!primary) return;
+
+  // Extract journal entries from secondary that aren't already in primary
+  const primaryEntries = new Set(extractJournalLines(primary.content));
+  const secondaryEntries = extractJournalLines(secondary.content);
+  const newEntries = secondaryEntries.filter(e => !primaryEntries.has(e));
+
+  if (newEntries.length > 0) {
+    // Append new entries before the last line of the journal
+    const timestamp = getDateTimeString();
+    const mergeMarker = `[${timestamp}] session(merge): consolidated from ${basename(secondary.filePath)}`;
+    const entriesToAdd = [mergeMarker, ...newEntries];
+
+    // Use appendEntry synchronously via direct file manipulation
+    const trimmedContent = primary.content.trimEnd();
+    const newContent = matter.stringify(
+      trimmedContent + "\n" + entriesToAdd.join("\n") + "\n",
+      { ...primary.data, last_updated: getTimestamp(), last_entry: getTimestamp() } as unknown as Record<string, unknown>
+    );
+    writeFileAtomic(primaryPath, newContent);
+  }
+
+  // Delete the duplicate — its content is now in the primary
+  try { unlinkSync(secondary.filePath); } catch { /* already gone */ }
+}
+
+/** Find session by claude_session_id — scans active AND archived sessions, consolidates splits */
+function findSessionByClaudeId(agentsDir: string, claudeSessionId: string, currentBranch?: string): { filePath: string; data: SessionFrontmatter; content: string } | null {
   const sessionsDir = join(agentsDir, "sessions");
   if (!existsSync(sessionsDir)) return null;
 
-  // Scan active sessions first
+  type SessionMatch = { filePath: string; data: SessionFrontmatter; content: string; isArchived: boolean };
+  const matches: SessionMatch[] = [];
+
+  // Scan active sessions
   const activeFiles = readdirSync(sessionsDir).filter(f => f.endsWith(".md") && !f.startsWith("archive"));
   for (const file of activeFiles) {
     const filePath = join(sessionsDir, file);
     const session = readSessionFile(filePath);
     if (session && session.data.claude_session_id === claudeSessionId) {
-      return { filePath, data: session.data, content: session.content };
+      matches.push({ filePath, data: session.data, content: session.content, isArchived: false });
     }
   }
 
@@ -517,20 +554,57 @@ function findSessionByClaudeId(agentsDir: string, claudeSessionId: string): { fi
       const filePath = join(archiveDir, file);
       const session = readSessionFile(filePath);
       if (session && session.data.claude_session_id === claudeSessionId) {
-        // Restore from archive — move back to sessions/
-        const restoredPath = join(sessionsDir, file);
-        try {
-          renameSync(filePath, restoredPath);
-          return { filePath: restoredPath, data: session.data, content: session.content };
-        } catch {
-          // If move fails, use in place
-          return { filePath, data: session.data, content: session.content };
-        }
+        matches.push({ filePath, data: session.data, content: session.content, isArchived: true });
       }
     }
   }
 
-  return null;
+  if (matches.length === 0) return null;
+
+  // Pick primary: prefer current branch match, then most recent
+  matches.sort((a, b) => {
+    // Current branch wins
+    if (currentBranch) {
+      const aMatch = a.data.branch === currentBranch ? 0 : 1;
+      const bMatch = b.data.branch === currentBranch ? 0 : 1;
+      if (aMatch !== bMatch) return aMatch - bMatch;
+    }
+    // Active over archived
+    if (a.isArchived !== b.isArchived) return a.isArchived ? 1 : -1;
+    // Most recent wins
+    const aTime = a.data.last_updated || a.data.last_entry || "0";
+    const bTime = b.data.last_updated || b.data.last_entry || "0";
+    return bTime.localeCompare(aTime);
+  });
+
+  const primary = matches[0];
+
+  // Restore from archive if needed
+  if (primary.isArchived) {
+    const restoredPath = join(sessionsDir, basename(primary.filePath));
+    try {
+      renameSync(primary.filePath, restoredPath);
+      primary.filePath = restoredPath;
+      primary.isArchived = false;
+    } catch {
+      // Use in place if move fails
+    }
+  }
+
+  // Consolidate duplicates into primary
+  for (const secondary of matches.slice(1)) {
+    consolidateSession(primary.filePath, secondary, agentsDir);
+  }
+
+  // Re-read primary after consolidation
+  if (matches.length > 1) {
+    const refreshed = readSessionFile(primary.filePath);
+    if (refreshed) {
+      return { filePath: primary.filePath, data: refreshed.data, content: refreshed.content };
+    }
+  }
+
+  return { filePath: primary.filePath, data: primary.data, content: primary.content };
 }
 
 /** Find active session for a branch by scanning files */
@@ -1121,7 +1195,7 @@ export function registerSessionCommand(program: Command): void {
 
       // Session ID-first lookup: strongest continuity signal, searches active + archive
       const sessionByClaudeId = hookInput.session_id
-        ? findSessionByClaudeId(agentsDir, hookInput.session_id)
+        ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch)
         : null;
 
       // Branch-based fallback
@@ -1320,7 +1394,7 @@ export function registerSessionCommand(program: Command): void {
 
       // Session ID-first lookup, then branch fallback
       const existingSession = (hookInput.session_id
-        ? findSessionByClaudeId(agentsDir, hookInput.session_id)
+        ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch)
         : null) || findActiveSessionForBranch(agentsDir, branch);
       if (!existingSession) {
         if (options.ifActive) {
@@ -1824,7 +1898,7 @@ export function registerSessionCommand(program: Command): void {
 
       // Session ID-first lookup, then branch fallback
       const existingSession = (hookInput.session_id
-        ? findSessionByClaudeId(agentsDir, hookInput.session_id)
+        ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch)
         : null) || findActiveSessionForBranch(agentsDir, branch);
       if (!existingSession) {
         // Hook-safe: no active session
@@ -1871,7 +1945,7 @@ export function registerSessionCommand(program: Command): void {
 
       // Session ID-first lookup, then branch fallback
       const existingSession = (hookInput.session_id
-        ? findSessionByClaudeId(agentsDir, hookInput.session_id)
+        ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch)
         : null) || findActiveSessionForBranch(agentsDir, branch);
       if (!existingSession) {
         process.exit(0);
@@ -1908,5 +1982,95 @@ export function registerSessionCommand(program: Command): void {
 
       // Print to stdout — exit 0 means this becomes model context
       console.log(lines.join("\n"));
+    });
+
+  context
+    .command("for-resumption")
+    .alias("--for-resumption")
+    .description("Print rich resumption context after compaction (PostCompact hook)")
+    .action(async () => {
+      const hookInput = await parseHookInput();
+
+      const agentsDir = findAgentsDir();
+      if (!agentsDir) {
+        process.exit(0);
+      }
+
+      const branch = getCurrentBranch();
+      if (branch === "unknown") {
+        process.exit(0);
+      }
+
+      // Session ID-first lookup, then branch fallback
+      const existingSession = (hookInput.session_id
+        ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch)
+        : null) || findActiveSessionForBranch(agentsDir, branch);
+      if (!existingSession) {
+        console.log("=== POST-COMPACTION RESUMPTION ===");
+        console.log("");
+        console.log("WARNING: No active session found. Read .agents/sessions/ manually.");
+        process.exit(0);
+      }
+
+      const freshSession = readSessionFile(existingSession.filePath);
+      const sessionContent = freshSession?.content || existingSession.content;
+      const sessionPath = existingSession.filePath.replace(agentsDir, ".agents");
+
+      // Header
+      console.log("=== POST-COMPACTION RESUMPTION ===");
+      console.log("");
+      console.log(`Session: ${sessionPath}`);
+      console.log(`Branch: ${branch}`);
+
+      // Spec linkage
+      if (existingSession.data.spec) {
+        const specInfo = findSpecForBranch(agentsDir, branch);
+        if (specInfo) {
+          console.log(`Spec: ${specInfo.id} — ${specInfo.title}`);
+        } else {
+          console.log(`Spec: ${existingSession.data.spec}`);
+        }
+      }
+
+      // Git state
+      const lastCommit = getLastCommitSha();
+      const uncommitted = getUncommittedCount();
+      if (lastCommit !== "unknown") {
+        const commits = getRecentCommits(1);
+        console.log(`Last commit: ${commits[0]?.hash || lastCommit} — ${commits[0]?.message || ""}`);
+      }
+      if (uncommitted > 0) {
+        console.log(`Uncommitted: ${uncommitted} file${uncommitted === 1 ? "" : "s"}`);
+      }
+
+      // Current State (the rich summary written by the model before compaction)
+      console.log("");
+      const currentState = extractCurrentState(sessionContent);
+      if (currentState) {
+        console.log(currentState);
+      } else {
+        console.log("WARNING: No ## Current State was written before compaction.");
+        console.log("Read the session file's ## Journal section for context.");
+      }
+
+      // Recent journal entries (last 20 for resumption context)
+      console.log("");
+      console.log("## Recent Journal");
+      console.log("");
+      const recentEntries = extractRecentEntries(sessionContent, 20);
+      if (recentEntries.length > 0) {
+        for (const entry of recentEntries) {
+          console.log(entry);
+        }
+      } else {
+        console.log("(no journal entries)");
+      }
+
+      // Instructions for the model
+      console.log("");
+      console.log("---");
+      console.log("Resume work from where the state summary left off.");
+      console.log("Do not ask 'where were we?' — the context above tells you.");
+      console.log(`If you need more detail, read the full session file: ${sessionPath}`);
     });
 }

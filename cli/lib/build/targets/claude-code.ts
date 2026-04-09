@@ -80,6 +80,7 @@ const BINARY_PATH_HOOKS = new Set([
   "session-start-loaf",
   "session-end-loaf",
   "session-context-inject",
+  "post-compact",
   // Journal auto-entry hooks
   "journal-post-commit",
   "journal-post-pr",

@@ -16515,6 +16515,7 @@ var BINARY_PATH_HOOKS = /* @__PURE__ */ new Set([
   "session-start-loaf",
   "session-end-loaf",
   "session-context-inject",
+  "post-compact",
   // Journal auto-entry hooks
   "journal-post-commit",
   "journal-post-pr",
@@ -25146,15 +25147,41 @@ function getTimestampForFilename() {
   const second = String(now.getSeconds()).padStart(2, "0");
   return `${year}${month}${day}-${hour}${minute}${second}`;
 }
-function findSessionByClaudeId(agentsDir, claudeSessionId) {
+function extractJournalLines(content) {
+  return content.split("\n").filter((line) => /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\] /.test(line));
+}
+function consolidateSession(primaryPath, secondary, agentsDir) {
+  const primary = readSessionFile(primaryPath);
+  if (!primary) return;
+  const primaryEntries = new Set(extractJournalLines(primary.content));
+  const secondaryEntries = extractJournalLines(secondary.content);
+  const newEntries = secondaryEntries.filter((e) => !primaryEntries.has(e));
+  if (newEntries.length > 0) {
+    const timestamp = getDateTimeString();
+    const mergeMarker = `[${timestamp}] session(merge): consolidated from ${basename5(secondary.filePath)}`;
+    const entriesToAdd = [mergeMarker, ...newEntries];
+    const trimmedContent = primary.content.trimEnd();
+    const newContent = import_gray_matter13.default.stringify(
+      trimmedContent + "\n" + entriesToAdd.join("\n") + "\n",
+      { ...primary.data, last_updated: getTimestamp(), last_entry: getTimestamp() }
+    );
+    writeFileAtomic(primaryPath, newContent);
+  }
+  try {
+    unlinkSync3(secondary.filePath);
+  } catch {
+  }
+}
+function findSessionByClaudeId(agentsDir, claudeSessionId, currentBranch) {
   const sessionsDir = join40(agentsDir, "sessions");
   if (!existsSync35(sessionsDir)) return null;
+  const matches = [];
   const activeFiles = readdirSync14(sessionsDir).filter((f) => f.endsWith(".md") && !f.startsWith("archive"));
   for (const file of activeFiles) {
     const filePath = join40(sessionsDir, file);
     const session = readSessionFile(filePath);
     if (session && session.data.claude_session_id === claudeSessionId) {
-      return { filePath, data: session.data, content: session.content };
+      matches.push({ filePath, data: session.data, content: session.content, isArchived: false });
     }
   }
   const archiveDir = join40(sessionsDir, "archive");
@@ -25164,17 +25191,42 @@ function findSessionByClaudeId(agentsDir, claudeSessionId) {
       const filePath = join40(archiveDir, file);
       const session = readSessionFile(filePath);
       if (session && session.data.claude_session_id === claudeSessionId) {
-        const restoredPath = join40(sessionsDir, file);
-        try {
-          renameSync3(filePath, restoredPath);
-          return { filePath: restoredPath, data: session.data, content: session.content };
-        } catch {
-          return { filePath, data: session.data, content: session.content };
-        }
+        matches.push({ filePath, data: session.data, content: session.content, isArchived: true });
       }
     }
   }
-  return null;
+  if (matches.length === 0) return null;
+  matches.sort((a, b) => {
+    if (currentBranch) {
+      const aMatch = a.data.branch === currentBranch ? 0 : 1;
+      const bMatch = b.data.branch === currentBranch ? 0 : 1;
+      if (aMatch !== bMatch) return aMatch - bMatch;
+    }
+    if (a.isArchived !== b.isArchived) return a.isArchived ? 1 : -1;
+    const aTime = a.data.last_updated || a.data.last_entry || "0";
+    const bTime = b.data.last_updated || b.data.last_entry || "0";
+    return bTime.localeCompare(aTime);
+  });
+  const primary = matches[0];
+  if (primary.isArchived) {
+    const restoredPath = join40(sessionsDir, basename5(primary.filePath));
+    try {
+      renameSync3(primary.filePath, restoredPath);
+      primary.filePath = restoredPath;
+      primary.isArchived = false;
+    } catch {
+    }
+  }
+  for (const secondary of matches.slice(1)) {
+    consolidateSession(primary.filePath, secondary, agentsDir);
+  }
+  if (matches.length > 1) {
+    const refreshed = readSessionFile(primary.filePath);
+    if (refreshed) {
+      return { filePath: primary.filePath, data: refreshed.data, content: refreshed.content };
+    }
+  }
+  return { filePath: primary.filePath, data: primary.data, content: primary.content };
 }
 function findActiveSessionForBranch(agentsDir, branch) {
   const sessionsDir = join40(agentsDir, "sessions");
@@ -25605,7 +25657,7 @@ function registerSessionCommand(program3) {
     } else {
       console.log(`  ${yellow14("!")} No linked spec found \u2014 creating ad-hoc session`);
     }
-    const sessionByClaudeId = hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id) : null;
+    const sessionByClaudeId = hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch) : null;
     const existingSession = sessionByClaudeId || findActiveSessionForBranch(agentsDir, branch);
     let sessionFilePath;
     let sessionData;
@@ -25761,7 +25813,7 @@ function registerSessionCommand(program3) {
       console.error(`  ${red10("error:")} Not in a git repository`);
       process.exit(1);
     }
-    const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id) : null) || findActiveSessionForBranch(agentsDir, branch);
+    const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch) : null) || findActiveSessionForBranch(agentsDir, branch);
     if (!existingSession) {
       if (options2.ifActive) {
         process.exit(0);
@@ -26139,7 +26191,7 @@ function registerSessionCommand(program3) {
     if (branch === "unknown") {
       process.exit(0);
     }
-    const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id) : null) || findActiveSessionForBranch(agentsDir, branch);
+    const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch) : null) || findActiveSessionForBranch(agentsDir, branch);
     if (!existingSession) {
       process.exit(0);
     }
@@ -26164,7 +26216,7 @@ function registerSessionCommand(program3) {
     if (branch === "unknown") {
       process.exit(0);
     }
-    const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id) : null) || findActiveSessionForBranch(agentsDir, branch);
+    const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch) : null) || findActiveSessionForBranch(agentsDir, branch);
     if (!existingSession) {
       process.exit(0);
     }
@@ -26191,6 +26243,72 @@ function registerSessionCommand(program3) {
     lines.push('- Log key decisions: loaf session log "decision(scope): description"');
     lines.push("- Read the session file for resumption context when resuming work");
     console.log(lines.join("\n"));
+  });
+  context.command("for-resumption").alias("--for-resumption").description("Print rich resumption context after compaction (PostCompact hook)").action(async () => {
+    const hookInput = await parseHookInput();
+    const agentsDir = findAgentsDir();
+    if (!agentsDir) {
+      process.exit(0);
+    }
+    const branch = getCurrentBranch();
+    if (branch === "unknown") {
+      process.exit(0);
+    }
+    const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch) : null) || findActiveSessionForBranch(agentsDir, branch);
+    if (!existingSession) {
+      console.log("=== POST-COMPACTION RESUMPTION ===");
+      console.log("");
+      console.log("WARNING: No active session found. Read .agents/sessions/ manually.");
+      process.exit(0);
+    }
+    const freshSession = readSessionFile(existingSession.filePath);
+    const sessionContent = freshSession?.content || existingSession.content;
+    const sessionPath = existingSession.filePath.replace(agentsDir, ".agents");
+    console.log("=== POST-COMPACTION RESUMPTION ===");
+    console.log("");
+    console.log(`Session: ${sessionPath}`);
+    console.log(`Branch: ${branch}`);
+    if (existingSession.data.spec) {
+      const specInfo = findSpecForBranch(agentsDir, branch);
+      if (specInfo) {
+        console.log(`Spec: ${specInfo.id} \u2014 ${specInfo.title}`);
+      } else {
+        console.log(`Spec: ${existingSession.data.spec}`);
+      }
+    }
+    const lastCommit = getLastCommitSha();
+    const uncommitted = getUncommittedCount();
+    if (lastCommit !== "unknown") {
+      const commits = getRecentCommits(1);
+      console.log(`Last commit: ${commits[0]?.hash || lastCommit} \u2014 ${commits[0]?.message || ""}`);
+    }
+    if (uncommitted > 0) {
+      console.log(`Uncommitted: ${uncommitted} file${uncommitted === 1 ? "" : "s"}`);
+    }
+    console.log("");
+    const currentState = extractCurrentState(sessionContent);
+    if (currentState) {
+      console.log(currentState);
+    } else {
+      console.log("WARNING: No ## Current State was written before compaction.");
+      console.log("Read the session file's ## Journal section for context.");
+    }
+    console.log("");
+    console.log("## Recent Journal");
+    console.log("");
+    const recentEntries = extractRecentEntries(sessionContent, 20);
+    if (recentEntries.length > 0) {
+      for (const entry of recentEntries) {
+        console.log(entry);
+      }
+    } else {
+      console.log("(no journal entries)");
+    }
+    console.log("");
+    console.log("---");
+    console.log("Resume work from where the state summary left off.");
+    console.log("Do not ask 'where were we?' \u2014 the context above tells you.");
+    console.log(`If you need more detail, read the full session file: ${sessionPath}`);
   });
 }
 

@@ -124,17 +124,6 @@
             "timeout": 30
           }
         ]
-      },
-      {
-        "matcher": "TaskCompleted",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session log --from-hook",
-            "description": "Auto-log task completion or cancellation to session journal",
-            "timeout": 30
-          }
-        ]
       }
     ],
     "SessionStart": [
@@ -155,6 +144,18 @@
             "type": "command",
             "description": "End session with progress summary and KB follow-up",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session end --if-active"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 30,
+            "description": "Auto-log task completion or cancellation to session journal",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session log --from-hook"
           }
         ]
       }
@@ -198,8 +199,8 @@
           {
             "type": "command",
             "timeout": 60,
-            "description": "Print session Current State and instruct model to read journal for resumption",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-compact.sh"
+            "description": "Print session state, spec, journal, and git context for post-compaction resumption",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session context --for-resumption"
           }
         ]
       }
