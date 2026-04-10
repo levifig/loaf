@@ -26879,7 +26879,6 @@ function registerSessionCommand(program3) {
     if (options2.dryRun) {
       agentArgs.push("--disallowedTools", "Edit,Write");
     }
-    agentArgs.push(prompt);
     console.log(`  ${gray14("Spawning librarian agent...")}`);
     const exitCode = await new Promise((resolve3) => {
       const childEnv = { ...process.env, LOAF_ENRICHMENT: "1" };
@@ -26892,6 +26891,8 @@ function registerSessionCommand(program3) {
         env: childEnv,
         stdio: childStdio
       });
+      child.stdin?.write(prompt);
+      child.stdin?.end();
       let stderr = "";
       child.stdout?.on("data", (data) => {
         if (options2.dryRun) {
