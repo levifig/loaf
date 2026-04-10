@@ -62,9 +62,8 @@ See [SOUL.md](../SOUL.md) for the Warden identity and fellowship conventions.
 | **implementer** | Smith (Dwarf) | Full write | Code, tests, config, docs — speciality via skills |
 | **reviewer** | Sentinel (Elf) | Read-only | Audits, reviews — mechanical independence |
 | **researcher** | Ranger (Human) | Read + web | Research, comparison — structured reports |
-| **librarian** | Librarian (Ent) | Read + Edit (.agents/) | Session lifecycle, state, wrap |
+| **librarian** | Librarian (Ent) | Read + Edit (.agents/) | Session lifecycle, state, wrap, pre-compaction preservation |
 | **background-runner** | System | Read + Edit | Async non-blocking tasks |
-| **context-archiver** | System | Read + Edit + Serena | Session preservation |
 
 ## Common Tasks
 
