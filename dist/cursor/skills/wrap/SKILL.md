@@ -6,7 +6,7 @@ description: >-
   summary that replaces Current State. Use at the end of a work session or when
   the user asks "wrap up." Not for archiving (use housekeeping) or capturing
   ideas (use idea). Produces a Session Wrap-Up section and closes the session
-  with complete status.
+  with done status.
 version: 2.0.0-dev.26
 ---
 
@@ -35,7 +35,7 @@ Responsible session shutdown — everything that needs a conscious model before 
 - Pull from live data (git, filesystem), not memory or assumptions
 - Keep the report concise — one screen, not a wall of text
 - Scope to THIS session, not the full backlog
-- Do NOT archive — session stays with `complete` status. Archival is housekeeping's job
+- Do NOT archive — session stays with `done` status. Archival is housekeeping's job
 
 ## Verification
 
@@ -44,7 +44,7 @@ Responsible session shutdown — everything that needs a conscious model before 
 - Stale KB files are flagged if any
 - `## Session Wrap-Up` section written to session file (replaces `## Current State`)
 - `loaf session end --wrap` run after writing the summary
-- Session status is `complete` (session stays open for further journal entries until `SessionEnd` fires)
+- Session status is `done` (session stays open for further journal entries until `SessionEnd` fires)
 
 ## Quick Reference
 
@@ -129,14 +129,14 @@ loaf session end --wrap
 
 This handles the mechanical bookkeeping:
 - Appends `session(wrap)` marker to the journal (NOT `session(end)` or `session(stop)`)
-- Sets session status to `complete`
+- Sets session status to `done`
 - Persists decisions to linked spec changelog
 - Strips any remaining `## Current State` section (if the Edit didn't fully replace it)
 - Flags stale knowledge files
 
 **The session stays open for further work** (merge commits, changelog fixes, etc.). The `SessionEnd` hook writes the actual `session(stop)` marker when the conversation ends. This prevents journal entries appearing after stop markers.
 
-**Do not archive.** The session stays in `sessions/` with `complete` status. Archival is housekeeping's job.
+**Do not archive.** The session stays in `sessions/` with `done` status. Archival is housekeeping's job.
 
 ## Composability
 

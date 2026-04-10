@@ -25383,10 +25383,9 @@ function findActiveSessionForBranch(agentsDir, branch) {
   if (candidates.length === 0) return null;
   const statusPriority = {
     active: 1,
-    paused: 2,
     stopped: 2,
     blocked: 2,
-    complete: 2
+    done: 2
   };
   candidates.sort((a, b) => {
     const priorityA = statusPriority[a.data.status] ?? 3;
@@ -25918,7 +25917,7 @@ function registerSessionCommand(program3) {
     }
     console.log();
   });
-  session.command("end").description("End session with progress summary").option("--if-active", "Exit successfully when no active session exists").option("--wrap", "Close session as complete (used after /wrap writes summary)").action(async (options2) => {
+  session.command("end").description("End session with progress summary").option("--if-active", "Exit successfully when no active session exists").option("--wrap", "Close session as done (used after /wrap writes summary)").action(async (options2) => {
     const hookInput = await parseHookInput();
     const agentsDir = findAgentsDir();
     if (!agentsDir) {
@@ -25982,7 +25981,7 @@ function registerSessionCommand(program3) {
         existingSession.filePath,
         journalLines,
         (data) => {
-          data.status = "complete";
+          data.status = "done";
           data.last_updated = getTimestamp();
           data.last_entry = getTimestamp();
         }
@@ -26050,7 +26049,7 @@ function registerSessionCommand(program3) {
       console.log();
     }
     checkHousekeepingDue(agentsDir);
-    const statusLabel = isWrap ? "complete" : "stopped";
+    const statusLabel = isWrap ? "done" : "stopped";
     console.log(`  ${green12("\u2713")} Session ${statusLabel}: ${gray14(existingSession.filePath.replace(agentsDir, ".agents"))}`);
     console.log();
   });
@@ -26331,7 +26330,7 @@ function registerSessionCommand(program3) {
     };
     console.log(`  ${bold13("Orphan detection")}`);
     const orphans = sessions.filter(
-      (s) => s.data.status !== "archived" && s.data.status !== "complete" && s.data.branch && !s.data.branch.startsWith("detached-") && !gitBranches.has(s.data.branch)
+      (s) => s.data.status !== "archived" && s.data.status !== "done" && s.data.branch && !s.data.branch.startsWith("detached-") && !gitBranches.has(s.data.branch)
     );
     if (orphans.length === 0) {
       console.log(`    ${green12("\u2713")} No orphaned sessions`);
@@ -26385,7 +26384,7 @@ function registerSessionCommand(program3) {
     console.log(`
   ${bold13("Age-based archival")}`);
     const AGE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1e3;
-    const completeSessions = sessions.filter((s) => s.data.status === "complete");
+    const completeSessions = sessions.filter((s) => s.data.status === "done");
     let ageArchived = 0;
     for (const s of completeSessions) {
       const completedAt = s.data.last_updated || s.data.last_entry;
@@ -26396,7 +26395,7 @@ function registerSessionCommand(program3) {
           quickArchiveSession(s.filePath, agentsDir);
         }
         const days = Math.floor(age / (24 * 60 * 60 * 1e3));
-        console.log(`    ${yellow14("\u2192")} Archived: ${gray14(s.fileName)} (complete, ${days}d old)`);
+        console.log(`    ${yellow14("\u2192")} Archived: ${gray14(s.fileName)} (done, ${days}d old)`);
         ageArchived++;
       }
     }

@@ -921,24 +921,24 @@ describe("session housekeeping", () => {
     expect(archived.length).toBe(1);
   });
 
-  it("archives complete sessions older than 7 days", async () => {
+  it("archives done sessions older than 7 days", async () => {
     const repoPath = createTempRepo("housekeeping-age");
     const sessionsDir = join(repoPath, ".agents/sessions");
     mkdirSync(sessionsDir, { recursive: true });
 
     const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Create a complete session that's 10 days old
+    // Create a done session that's 10 days old
     writeFileSync(
       join(sessionsDir, "20260330-120000-session.md"),
       [
         "---",
         "branch: main",
-        "status: complete",
+        "status: done",
         `created: '${oldDate}'`,
         `last_updated: '${oldDate}'`,
         "---",
-        "# Session: Old Complete",
+        "# Session: Old Done",
         "",
         "## Journal",
         "",
@@ -951,7 +951,7 @@ describe("session housekeeping", () => {
     const result = await runLoaf(["housekeeping"], { cwd: repoPath });
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Archived:");
-    expect(result.stdout).toContain("complete, 10d old");
+    expect(result.stdout).toContain("done, 10d old");
   });
 
   it("writes .loaf-state after housekeeping run", async () => {
@@ -980,7 +980,7 @@ describe("session housekeeping", () => {
       [
         "---",
         "branch: main",
-        "status: complete",
+        "status: done",
         `created: '${oldDate}'`,
         `last_updated: '${oldDate}'`,
         "---",

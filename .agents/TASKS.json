@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "next_id": 103,
+  "next_id": 104,
   "tasks": {
     "TASK-100": {
-      "title": "loaf session enrich CLI command + librarian profile update",
+      "title": "JSONL extractor + enrich CLI command + hook isolation + librarian update",
       "slug": "jsonl-reader-summary-extractor",
       "spec": "SPEC-029",
       "status": "todo",
@@ -13,8 +13,8 @@
       "verify": null,
       "done": null,
       "session": null,
-      "created": "2026-04-10T18:24:59.524Z",
-      "updated": "2026-04-10T18:24:59.524Z",
+      "created": "2026-04-10T21:08:33.374Z",
+      "updated": "2026-04-10T21:08:33.374Z",
       "completed_at": null,
       "file": "TASK-100-jsonl-reader-summary-extractor.md"
     },
@@ -29,9 +29,9 @@
       "verify": null,
       "done": null,
       "session": null,
-      "created": "2026-04-10T18:24:59.524Z",
-      "updated": "2026-04-10T18:24:59.524Z",
-      "completed_at": "2026-04-10T18:24:59.524Z",
+      "created": "2026-04-10T21:08:33.374Z",
+      "updated": "2026-04-10T21:08:33.374Z",
+      "completed_at": "2026-04-10T21:08:33.374Z",
       "file": "TASK-101-enrich-command.md"
     },
     "TASK-102": {
@@ -45,10 +45,26 @@
       "verify": null,
       "done": null,
       "session": null,
-      "created": "2026-04-10T18:24:59.525Z",
-      "updated": "2026-04-10T18:24:59.525Z",
+      "created": "2026-04-10T21:08:33.375Z",
+      "updated": "2026-04-10T21:08:33.375Z",
       "completed_at": null,
       "file": "TASK-102-lifecycle-integration.md"
+    },
+    "TASK-103": {
+      "title": "Add missing journal entry types for all artifact types",
+      "slug": "add-missing-journal-entry-types-for-all-artifact-t",
+      "spec": null,
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-10T20:53:48.695Z",
+      "updated": "2026-04-10T20:53:48.695Z",
+      "completed_at": null,
+      "file": "TASK-103-add-missing-journal-entry-types-for-all-artifact-t.md"
     },
     "TASK-001": {
       "title": "Create verification reference",

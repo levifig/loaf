@@ -5,7 +5,7 @@ source: spark — session 20260409-110153
 created: 2026-04-09T12:30:00.000Z
 status: approved
 branch: feat/jsonl-journal-sync
-session: 20260410-183845-session.md
+session: 20260410-202610-session.md
 ---
 
 # SPEC-029: JSONL-Driven Journal Enrichment
@@ -22,60 +22,78 @@ Rather than replacing the existing journaling mechanism (which works well enough
 
 - **Vision:** Advances "Autonomous Execution" — journal becomes more complete and reliable without increasing the model's bookkeeping burden during work.
 - **Personas:** Benefits all Loaf users — enrichment runs at lifecycle points, invisible during active work.
-- **Architecture:** Leverages the existing librarian agent profile via `claude --agent librarian -p`. The CLI command handles discovery and invocation; the librarian reads the JSONL and writes journal entries using its standard Read/Edit tools.
+- **Architecture:** The CLI extracts a clean conversation summary from the JSONL (including subagent transcripts), then delegates to the librarian agent via `claude --agent librarian -p` for semantic review and journal writing. Two concerns: deterministic extraction (CLI) and judgment-based enrichment (librarian).
 
 ## Solution Direction
 
-Add a `loaf session enrich` command that delegates to the librarian agent for JSONL review and journal enrichment.
+Add a `loaf session enrich` command that extracts a conversation summary from the JSONL log and delegates to the librarian agent for journal enrichment.
 
-### Architecture — CLI orchestrates, librarian enriches
+### Architecture — CLI extracts, librarian enriches
 
-The enrichment splits cleanly between two concerns:
-
-**CLI command (`loaf session enrich`)** — discovery and invocation:
+**CLI command (`loaf session enrich`)** — discovery, extraction, invocation, watermark:
 1. Find the active session file (or accept a specific file argument)
 2. Read `claude_session_id` and `enriched_at` from session frontmatter
 3. Discover the JSONL path via project directory + session ID
-4. Validate the JSONL exists and is readable
-5. Spawn `claude --agent librarian -p` with the enrichment prompt
-6. Verify exit code and report result
+4. **Extract conversation summary** from JSONL + subagent transcripts (filter noise, apply timestamp cutoff, enforce size cap)
+5. If summary is empty (no new entries since `enriched_at`), exit 0 (no-op)
+6. Spawn `claude --agent librarian -p` with the summary (isolated from Loaf hooks)
+7. On success: advance `enriched_at` to the **latest JSONL entry timestamp** in the summary
+8. On failure: do NOT advance `enriched_at`, report error
 
-**Librarian agent** — reads JSONL, identifies gaps, writes entries:
-1. Read the JSONL conversation log (the CLI passes the path)
-2. Read the existing session journal
+**JSONL extractor** (`cli/lib/journal/extractor.ts`) — deterministic, testable:
+1. Read the main JSONL line-by-line
+2. Discover and read subagent JSONLs from `<session_id>/subagents/agent-*.jsonl`
+3. Parse each line as JSON, filter to `user` and `assistant` types only
+4. Apply `enriched_at` timestamp cutoff (only entries after last enrichment)
+5. From `user` entries: extract `message.content` text
+6. From `assistant` entries: extract `text` blocks (full text) and `tool_use` blocks (name + key params)
+7. Skip `thinking` blocks
+8. Include subagent content with `[Subagent: {description}]` markers (from `*.meta.json`)
+9. Enforce **100KB summary cap** — truncate oldest entries first (keep newest, most likely to contain unlogged decisions)
+10. Track and return the **latest JSONL timestamp** in the processed entries (for watermark advancement)
+11. Output: clean conversation summary in readable text format
+
+**Librarian agent** — judgment-based, uses Read + Edit on session file only:
+1. Read the existing session journal (via Read tool)
+2. Review the conversation summary (passed inline in the prompt)
 3. Identify decisions, discoveries, and context not already captured
-4. Append missing entries to the session journal via Edit
-5. Update `enriched_at:` in session frontmatter
+4. Append missing entries to the session journal (via Edit tool)
 
-### Agent invocation
+### Why split extraction from enrichment?
 
-```bash
-claude --agent librarian -p \
-  --no-session-persistence \
-  --max-turns 10 \
-  "Enrich the session journal at <session-path>.
-   JSONL conversation log: <jsonl-path>
-   Last enriched: <enriched_at or 'never'>
-   
-   Read the JSONL log (entries after the enriched_at timestamp).
-   Read the existing journal entries.
-   Identify semantic events not already captured:
-   - Decisions with rationale (decision)
-   - Discoveries or things learned (discover)  
-   - Blockers encountered or resolved (block/unblock)
-   
-   Skip: commits, PRs, skill invocations (already logged by hooks).
-   Skip: routine tool calls, file reads, thinking blocks.
-   
-   Append missing entries to the journal section.
-   Update enriched_at in frontmatter to the current time."
+The JSONL is ~2/3 noise (progress events, hook events, attachment deltas). Even small files have this ratio. Empirical data: largest file 8.2MB/1502 lines, only ~1035 relevant entries. Pre-filtering is always worthwhile:
+- **Focused input** — librarian gets only the conversation, not system noise
+- **Lower token cost** — summary is a fraction of the raw JSONL size
+- **Bounded** — 100KB cap prevents context blowout on large sessions
+- **Testable** — extraction is deterministic and unit-testable; enrichment quality is iterated via prompt
+- **One code path** — no conditional logic based on file size
+
+### Extracted summary format
+
+The extractor produces a readable text summary:
+
+```
+[2026-04-10 14:21] User: reshape the spec for enrich-only
+[2026-04-10 14:22] Assistant: Here's the reshaped spec. Key changes: ...
+[2026-04-10 14:23] Tool: Edit .agents/specs/SPEC-029.md
+[2026-04-10 14:25] Tool: Bash — git commit -m "feat: reshape SPEC-029"
+[2026-04-10 14:26] User: looks good, commit it
+[2026-04-10 14:26] Assistant: Committed. The branch now has 4 commits ahead.
+
+--- Subagent: Research --agent flag resolution ---
+[2026-04-10 14:30] Assistant: The --agent flag resolves from plugins → ...
+[2026-04-10 14:31] Tool: WebFetch https://code.claude.com/docs/en/sub-agents
 ```
 
-Key flags:
-- `--agent librarian` — uses the Loaf librarian profile (session/journal expertise)
-- `-p` — non-interactive, exit when done
-- `--no-session-persistence` — don't save the enrichment session to disk
-- `--max-turns 10` — bounded execution (read JSONL + read journal + edit = ~3-5 turns typical)
+Rules:
+- Timestamps from JSONL `timestamp` field, converted to local `YYYY-MM-DD HH:MM` format
+- User messages: full text content
+- Assistant text blocks: full text (richest signal for decisions/discoveries)
+- Tool_use blocks: `Tool: {name}` + key param (command for Bash, file_path for Read/Edit/Write)
+- Skip tool results (large, noisy — the model's text already summarizes outcomes)
+- No thinking blocks
+- Subagent content separated by `--- Subagent: {description} ---` markers
+- 100KB cap with tail-priority (oldest entries dropped first)
 
 ### What stays the same
 
@@ -86,47 +104,41 @@ Key flags:
 
 ### JSONL conversation log discovery
 
-**Verified:** Claude Code names JSONL files as `<session_id>.jsonl` in the project config directory. The `session_id` is available from the session file's `claude_session_id` frontmatter field.
+**Verified:** Claude Code names JSONL files as `<session_id>.jsonl` in the project config directory. Subagent transcripts live in `<session_id>/subagents/agent-*.jsonl` with `agent-*.meta.json` for context.
 
 Discovery strategy:
 1. Read `claude_session_id` from session frontmatter
 2. Derive project directory: `${CLAUDE_CONFIG_DIR}/projects/` + path-to-dashed-name of cwd
-3. Construct path: `<project-dir>/<session_id>.jsonl`
-4. Fallback: scan project directory for `<session_id>.jsonl` if path construction fails
+3. Construct main JSONL path: `<project-dir>/<session_id>.jsonl`
+4. Discover subagent dir: `<project-dir>/<session_id>/subagents/`
+5. Fallback: scan project directory for `<session_id>.jsonl` if path construction fails
 
 The project hash directory name is derived from the working directory path (leading dash, path separators become dashes). Example: `/Users/levifig/Code/levifig/projects/loaf` → `-Users-levifig-Code-levifig-projects-loaf`. Do NOT hardcode it — discover at runtime.
 
-### JSONL structure (for librarian reference)
+### JSONL structure reference
 
-The JSONL contains several entry types:
+Empirical data (257 files, largest 8.2MB/1502 lines):
 
-| JSONL `type` | Relevant | What's in it |
-|--------------|----------|-------------|
-| `user` | Yes | `message.content` — user requests, decisions, direction |
-| `assistant` | Yes | `message.content` — text blocks (reasoning), tool_use blocks (actions) |
-| `attachment` | No | System/config noise — deferred tools, MCP instructions |
+| JSONL `type` | Keep? | What's in it |
+|--------------|-------|-------------|
+| `user` | **Yes** | `message.content` — user requests, decisions |
+| `assistant` | **Yes** | `message.content` — text blocks, tool_use blocks |
+| `progress` | No | Streaming progress (~1200 entries in big files, largest noise source) |
+| `agent_progress` | No | Subagent progress events |
+| `hook_progress` | No | Hook execution progress |
+| `attachment` | No | System/config deltas |
 | `queue-operation` | No | Internal bookkeeping |
 
-Within assistant messages, `content` is an array of blocks:
-- `{type: "text", text: "..."}` — model's words, decisions, explanations
-- `{type: "tool_use", name: "...", input: {...}}` — tool invocations
-- `{type: "thinking", ...}` — internal reasoning (skip)
+Within assistant `message.content` (array of blocks):
+- `{type: "text", text: "..."}` → **keep full text**
+- `{type: "tool_use", name: "...", input: {...}}` → **keep name + key param**
+- `{type: "thinking", ...}` → **skip**
 
-Each JSONL line has a `timestamp` field (ISO 8601) for incremental processing.
+Subagent meta: `{"agentType":"Explore","description":"Research --agent flag resolution"}`
 
-### Large JSONL handling
+### `enriched_at` watermark
 
-For long sessions, the JSONL can be tens of megabytes. The librarian uses the Read tool, which supports `offset` and `limit` parameters for sliced reading. Strategy:
-
-1. If the file is small (<2000 lines), read it all
-2. If large, the CLI can pass the file size in the prompt so the librarian reads from the tail
-3. The `enriched_at:` timestamp tells the librarian which entries to focus on — it can skip to recent content
-
-For v1, rely on the Read tool's natural pagination. Optimize if real-world sessions hit limits.
-
-### `enriched_at:` frontmatter
-
-Session frontmatter gains an `enriched_at` field — ISO 8601 timestamp of the last successful enrichment:
+Session frontmatter gains an `enriched_at` field — ISO 8601 timestamp representing "the latest JSONL entry we've reviewed":
 
 ```yaml
 ---
@@ -136,23 +148,100 @@ enriched_at: '2026-04-10T14:30:00.000Z'
 ---
 ```
 
-This serves two purposes:
-1. **Incremental processing** — Only JSONL entries after this timestamp need review
-2. **Idempotency** — Re-running enrich on an already-enriched session with no new entries produces no changes
+**Critical:** `enriched_at` advances to the **latest JSONL entry timestamp in the extracted summary**, not the current wall-clock time. This ensures the watermark reflects what was actually reviewed.
+
+**Advancement rules:**
+- **Summary non-empty + agent succeeds (exit 0):** Advance `enriched_at` to latest JSONL timestamp. The content was reviewed, regardless of whether the librarian added entries.
+- **Summary empty (no entries after cutoff):** No-op. `enriched_at` stays unchanged. Exit 0.
+- **Agent fails (exit non-zero):** Do NOT advance. The content was not successfully reviewed. Exit 1.
+
+**The CLI writes `enriched_at:`, not the librarian.** Uses existing `readSessionFile()` + `writeFileAtomic()` helpers for safe frontmatter updates.
+
+### Helper session isolation
+
+The enrichment agent runs as a separate `claude -p` process. Without isolation, it would trigger Loaf's SessionStart/SessionEnd hooks, creating spurious session files and potentially interfering with the active session.
+
+**Isolation mechanism:** The CLI sets `LOAF_ENRICHMENT=1` in the spawned process environment. Loaf's SessionStart and SessionEnd hooks check for this variable and exit early:
+
+```typescript
+// At top of session start/end actions:
+if (process.env.LOAF_ENRICHMENT === '1') {
+  process.exit(0);
+}
+```
+
+**Why not `--bare`?** `--bare` skips hooks but also skips OAuth/keychain reads, requiring API key auth. This breaks for subscription users. The env var approach works with any auth method and only suppresses Loaf's own hooks.
+
+**Full invocation:**
+
+```bash
+LOAF_ENRICHMENT=1 claude --agent librarian -p \
+  --no-session-persistence \
+  --permission-mode acceptEdits \
+  --max-turns 10 \
+  "<enrichment prompt>"
+```
+
+Flags:
+- `LOAF_ENRICHMENT=1` — suppresses Loaf hook side effects
+- `--agent librarian` — librarian profile (session/journal expertise)
+- `-p` — non-interactive, synchronous (CLI waits for exit)
+- `--no-session-persistence` — don't save enrichment session to disk
+- `--permission-mode acceptEdits` — auto-approve Read + Edit without prompts
+- `--max-turns 10` — bounded execution
 
 ### `--dry-run` implementation
 
-When `--dry-run` is passed, the CLI modifies the agent prompt to say: "Output the entries you would add, but do NOT edit any files." The CLI captures the agent's text output and prints it to stdout.
+Two-layer approach:
+1. **Technical:** `--disallowedTools "Edit,Write"` strips editing tools from the agent's context
+2. **Behavioral:** Append to prompt: "Output the entries you would add, but DO NOT edit any files."
+
+For dry-run, capture the agent's text output and print to stdout. If `--disallowedTools` doesn't override agent-level tools, the behavioral instruction catches it.
+
+### Concurrency
+
+**Wrap flow (active session):** Synchronous. The CLI spawns the librarian via `-p` and waits for exit. The main conversation is blocked during enrichment. Sequence:
+1. Wrap skill calls `loaf session enrich` → CLI spawns librarian → **blocks**
+2. Librarian reads session, appends entries, exits
+3. CLI updates `enriched_at` (with file lock)
+4. Main conversation continues with wrap summary generation
+
+No concurrent edits — the librarian finishes before the main conversation proceeds.
+
+**Housekeeping flow (other sessions):** Housekeeping **only enriches sessions with status `stopped` or `done`** — never `active`. An active session may be in use by another conversation. Stopped/done sessions are idle and safe to enrich. The current session's enrichment is handled by wrap, not housekeeping.
+
+### `--agent` resolution
+
+`--agent librarian` resolves from: plugins → `.claude/agents/` → built-in.
+
+Today, the librarian is defined in the Loaf plugin (`plugins/loaf/agents/librarian.md`). This works when Loaf is installed as a Claude Code plugin.
+
+**If `--agent librarian` is not found:** Exit 1 with error: "Librarian agent not found. Ensure Loaf is installed (`loaf install --to claude-code`)." No degraded fallback — a prompt-file fallback can't recreate the agent's model/tools contract.
+
+**Future:** If Loaf moves away from the plugin system, agents move to `.claude/agents/` or `~/.config/claude/agents/`, both of which `--agent` discovers. No code change needed — only the install target changes.
+
+### Librarian profile update
+
+The librarian agent profile (`content/agents/librarian.md`) gets one addition to "What You Tend":
+
+```
+- **Journal enrichment** — when invoked with a conversation summary, identify
+  missing semantic entries (decisions, discoveries, context) and append them
+  to the session journal. The conversation summary is pre-filtered by the CLI;
+  you receive clean text, not raw JSONL.
+```
+
+**No read permission changes.** The librarian receives the conversation summary inline in the prompt. It only needs to Read the session file (already within `.agents/`). The constraint "Scope all file operations to `.agents/` paths" remains unchanged.
 
 ### Lifecycle integration
 
-| Trigger | How | Purpose |
-|---------|-----|---------|
-| **Wrap skill** | Calls `loaf session enrich` before generating wrap-up | Ensures journal is complete before summary |
-| **Housekeeping skill** | Calls `loaf session enrich` on active sessions | Catches up sessions that haven't been enriched recently |
-| **Manual** | User runs `loaf session enrich` directly | On-demand enrichment |
+| Trigger | How | Scope |
+|---------|-----|-------|
+| **Wrap skill** | Calls `loaf session enrich` | Current active session |
+| **Housekeeping skill** | Calls `loaf session enrich <file>` | `stopped` and `done` sessions with `claude_session_id` |
+| **Manual** | User runs `loaf session enrich` | Any specified session |
 
-No Stop hook — enrichment involves spawning a separate agent, too expensive for every turn.
+No Stop hook — enrichment spawns a separate agent, too expensive for every turn.
 
 ### CLI interface
 
@@ -164,85 +253,101 @@ loaf session enrich --model <m>  # Override model for the librarian call
 ```
 
 **Exit codes:**
-- `0` — Success (entries added or already up-to-date)
-- `1` — Error (JSONL not found, `claude` binary not available, agent failed)
+- `0` — Success (entries added or already up-to-date / no-op)
+- `1` — Error (JSONL not found, `claude` not available, agent not found, agent failed)
 - Errors go to stderr with actionable messages
-
-### Librarian profile update
-
-The librarian agent profile (`content/agents/librarian.md`) needs a minor update to its constraints:
-
-**Current:** "Scope all file operations to `.agents/` paths."
-**Updated:** "Scope **write** operations to `.agents/` paths. Read JSONL conversation logs from `${CLAUDE_CONFIG_DIR}/projects/` when performing enrichment."
-
-This allows the librarian to read the JSONL (external to `.agents/`) while keeping all writes scoped to session files.
 
 ## Scope
 
 ### In Scope
 - `loaf session enrich` CLI command with `--dry-run` and `--model` flags
-- JSONL discovery logic (session ID → file path)
-- Agent invocation via `claude --agent librarian -p`
-- `enriched_at:` frontmatter field in `SessionFrontmatter` interface
-- Librarian profile update: read access for JSONL files
+- **JSONL extractor** (`cli/lib/journal/extractor.ts`) — line-by-line parse, type filter, timestamp cutoff, subagent discovery, summary cap, latest-timestamp tracking
+- JSONL + subagent transcript discovery logic
+- Agent invocation via `claude --agent librarian -p` with `LOAF_ENRICHMENT=1` isolation
+- `enriched_at` watermark management (CLI writes, advances to JSONL timestamp)
+- `LOAF_ENRICHMENT` env var check in SessionStart/SessionEnd hooks
+- Librarian profile update: enrichment section in "What You Tend"
 - Wrap skill integration: call enrich before wrap-up
-- Housekeeping skill integration: call enrich on active sessions
-- Tests: CLI discovery logic, exit code handling
+- Housekeeping skill integration: call enrich on `stopped`/`done` sessions
+- Tests: extractor unit tests, discovery tests, integration smoke test
 
 ### Out of Scope
-- Custom JSONL parser module (the librarian reads JSONL directly via Read tool)
 - Changing existing PostToolUse hooks (commits, PRs, merges — they work fine)
 - Adapters for other harnesses (Cursor, OpenCode, etc.)
 - Changing the journal entry format
 - Stop hook for enrichment (too expensive per-turn)
 - Contract migration (no docs changes needed — enrichment is additive)
+- Degraded fallback when librarian agent is not found
 
 ### Rabbit Holes
-- **Building a JSONL parser module** — Tempting to pre-process in TypeScript. Don't — the librarian reads the file directly. The Read tool handles file slicing. Keep the CLI thin.
-- **Running on every Stop** — Tempting for completeness. Don't — spawning a separate agent per turn is too expensive.
-- **Abstracting a harness adapter interface** — Build for Claude Code directly. Extract an interface when a second harness is needed.
+- **Full JSONL parser with schema validation** — Overkill. Line-by-line filter with defensive JSON.parse is sufficient.
+- **Running on every Stop** — Spawning a separate agent per turn is too expensive.
+- **`--bare` mode for isolation** — Breaks OAuth. Use `LOAF_ENRICHMENT` env var instead.
+- **Fallback to `--append-system-prompt-file`** — Can't recreate agent contract. Error out instead.
 - **Replacing PostToolUse hooks** — The hooks work. Enrichment is complementary, not a replacement.
 - **Parsing thinking blocks** — Internal reasoning, not journal events. Skip.
+- **Passing raw JSONL to the librarian** — Even small files are 2/3 noise. Always pre-filter.
+- **Librarian reading external files** — Pass summary inline. Keep librarian scoped to `.agents/`.
 
 ### No-Gos
 - Don't write to the JSONL — it's read-only, owned by Claude Code
 - Don't hardcode the project hash path — discover at runtime
 - Don't swallow errors — non-zero exit from the agent must surface
-- Don't run enrichment as a Stop hook — it spawns a separate agent, too heavy per-turn
+- Don't let the librarian edit frontmatter — CLI handles `enriched_at` safely
+- Don't advance `enriched_at` on agent failure
+- Don't advance `enriched_at` to current time — use latest JSONL entry timestamp
+- Don't enrich `active` sessions during housekeeping — only `stopped`/`done`
 
 ## Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| JSONL format changes between Claude Code versions | Medium | Medium | Librarian reads defensively. If format changes, the prompt instructions adapt without code changes. |
+| JSONL format changes between Claude Code versions | Medium | Medium | Extractor uses defensive JSON.parse per line. Unknown types skipped. |
 | JSONL naming convention changes | Low | High | Filesystem scan fallback in discovery logic. |
-| `claude` binary not available | Low | High | Check before spawning. Clear error message. Manual `loaf session log` remains as fallback. |
-| Librarian produces low-quality entries | Medium | Low | `--dry-run` lets user preview. Entries can be manually edited. Librarian profile/prompt can be iterated. |
-| Large JSONL exceeds Read tool limits | Low | Medium | Read tool supports offset/limit for pagination. CLI can pass file size hint in prompt. |
-| Token cost of agent invocation | Medium | Low | Only runs at lifecycle points. `--model` flag allows cost control (haiku for routine). |
-| `--agent` flag doesn't discover librarian in plugin-only install | Low | Medium | Agent must be accessible. If plugin caching is an issue, the spark about leaving the plugin system applies. Alternatively, use `--append-system-prompt-file` with the librarian profile content as fallback. |
-
-## Open Questions
-
-- [x] What model should enrichment use? → Default to whatever `claude` defaults to. `--model` flag for override. Haiku is likely sufficient.
-- [x] Should `--dry-run` output go to stdout or stderr? → stdout — it's the primary output.
-- [ ] Should the CLI pre-compute JSONL line count / byte size and pass it in the prompt to help the librarian paginate? (Probably yes for v2, not needed for v1)
+| `claude` binary not available | Low | High | Check before spawning. Clear error message. |
+| `--agent librarian` not found | Low | High | Exit 1 with clear install instructions. No degraded fallback. |
+| Librarian produces low-quality entries | Medium | Low | `--dry-run` for preview. Prompt iterated over time. |
+| Summary exceeds 100KB cap | Low | Low | Truncation drops oldest entries. Warning to stderr. |
+| `--disallowedTools` doesn't override agent tools | Low | Low | Behavioral prompt instruction as backup for dry-run. |
+| Token cost of agent invocation | Medium | Low | Only at lifecycle points. `--model` for cost control. |
+| `LOAF_ENRICHMENT` env var not checked by future hooks | Low | Medium | Document in CLAUDE.md. Centralize check in a shared helper. |
+| Subagent transcript format changes | Low | Low | Meta.json parsing is defensive. Missing subagents = skip gracefully. |
 
 ## Test Conditions
 
-- [ ] `loaf session enrich` on a session with a JSONL log adds semantic entries not already in the journal
+### Extractor
+- [ ] Filters JSONL to only user/assistant entries
+- [ ] Applies `enriched_at` timestamp cutoff correctly
+- [ ] Skips thinking blocks from assistant messages
+- [ ] Extracts tool name + key param from tool_use blocks
+- [ ] Handles malformed JSONL lines gracefully (skip + warning)
+- [ ] Discovers and includes subagent transcripts with markers
+- [ ] Enforces 100KB summary cap (oldest entries dropped first)
+- [ ] Returns latest JSONL timestamp from processed entries
+- [ ] Returns empty result when no entries match cutoff
+
+### CLI command
+- [ ] Discovers JSONL path from session_id + project directory derivation
+- [ ] Falls back to directory scan when direct path fails
+- [ ] Validates: claude binary, session_id, JSONL existence
+- [ ] Spawns agent with `LOAF_ENRICHMENT=1` in environment
+- [ ] `enriched_at` advances to latest JSONL timestamp (not current time)
+- [ ] `enriched_at` does NOT advance when agent fails
+- [ ] `enriched_at` does NOT advance on empty summary (no-op)
 - [ ] `--dry-run` shows entries without writing them
-- [ ] Re-running enrich on an already-enriched session with no new JSONL entries is a no-op
-- [ ] `enriched_at:` timestamp advances after successful enrichment
-- [ ] Missing JSONL file produces a clear error (exit 1) and does not crash
-- [ ] Missing `claude` binary produces a clear error
-- [ ] Missing `claude_session_id` in session frontmatter produces a clear error
+- [ ] `--agent librarian` not found → exit 1 with install instructions
+
+### Isolation
+- [ ] `LOAF_ENRICHMENT=1` causes SessionStart hook to exit early
+- [ ] `LOAF_ENRICHMENT=1` causes SessionEnd hook to exit early
+- [ ] Enrichment does NOT create spurious session files
+
+### Integration
 - [ ] Wrap skill calls enrich before generating wrap-up report
-- [ ] Housekeeping skill calls enrich on active sessions
+- [ ] Housekeeping enriches only `stopped`/`done` sessions, not `active`
 - [ ] `loaf build` succeeds with new command registered
-- [ ] Librarian profile update doesn't break existing behavior
 
 ## Priority Order
 
-1. **CLI command + librarian update** — `loaf session enrich`, JSONL discovery, agent invocation, `enriched_at:` field, librarian profile update. Go/no-go: enrichment adds entries to journal via librarian.
-2. **Lifecycle integration** — Wrap and housekeeping skill updates. Go/no-go: enrichment runs automatically at session boundaries.
+1. **Extractor + CLI command + hook isolation + librarian update** — JSONL extractor with subagent support, `loaf session enrich` command, JSONL discovery, agent invocation, `enriched_at` watermark, `LOAF_ENRICHMENT` env var in hooks, librarian profile update. Go/no-go: enrichment adds entries to journal via librarian, no spurious sessions created.
+2. **Lifecycle integration** — Wrap and housekeeping skill updates. Go/no-go: enrichment runs automatically at session boundaries with correct scope.

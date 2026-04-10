@@ -45,7 +45,7 @@ const gray = (s: string) => `\x1b[90m${s}\x1b[0m`;
 
 interface SessionFrontmatter {
   branch: string;
-  status: "active" | "paused" | "stopped" | "blocked" | "complete" | "archived";
+  status: "active" | "stopped" | "done" | "blocked" | "archived";
   created: string;
   last_updated?: string;
   last_entry?: string;
@@ -779,14 +779,13 @@ function findActiveSessionForBranch(agentsDir: string, branch: string): { filePa
 
   if (candidates.length === 0) return null;
 
-  // Prioritize: active > paused/blocked/complete > others
+  // Prioritize: active > stopped/blocked/done > others
   // Sort by status priority (lower number = higher priority)
   const statusPriority: Record<string, number> = {
     active: 1,
-    paused: 2,
     stopped: 2,
     blocked: 2,
-    complete: 2,
+    done: 2,
   };
   
   candidates.sort((a, b) => {
@@ -1494,7 +1493,7 @@ export function registerSessionCommand(program: Command): void {
     .command("end")
     .description("End session with progress summary")
     .option("--if-active", "Exit successfully when no active session exists")
-    .option("--wrap", "Close session as complete (used after /wrap writes summary)")
+    .option("--wrap", "Close session as done (used after /wrap writes summary)")
     .action(async (options: { ifActive?: boolean; wrap?: boolean }) => {
       // Parse hook JSON from stdin (when invoked as a hook by Claude Code)
       const hookInput = await parseHookInput();
@@ -1566,7 +1565,7 @@ export function registerSessionCommand(program: Command): void {
       const isWrap = !!options.wrap;
 
       if (isWrap) {
-        // Wrap: log wrap marker, set status to complete, but do NOT write
+        // Wrap: log wrap marker, set status to done, but do NOT write
         // session(end)/session(stop) — the SessionEnd hook handles stop
         // when the conversation actually ends. This prevents journal entries
         // (merge commits, etc.) appearing after stop markers.
@@ -1578,7 +1577,7 @@ export function registerSessionCommand(program: Command): void {
           existingSession.filePath,
           journalLines,
           (data: SessionFrontmatter) => {
-            data.status = "complete";
+            data.status = "done";
             data.last_updated = getTimestamp();
             data.last_entry = getTimestamp();
           }
@@ -1660,7 +1659,7 @@ export function registerSessionCommand(program: Command): void {
       // Check if housekeeping is due (sets pending flag for next session start)
       checkHousekeepingDue(agentsDir);
 
-      const statusLabel = isWrap ? "complete" : "stopped";
+      const statusLabel = isWrap ? "done" : "stopped";
       console.log(`  ${green("✓")} Session ${statusLabel}: ${gray(existingSession.filePath.replace(agentsDir, ".agents"))}`);
       console.log();
     });
@@ -2030,7 +2029,7 @@ export function registerSessionCommand(program: Command): void {
       console.log(`  ${bold("Orphan detection")}`);
       const orphans = sessions.filter(s =>
         s.data.status !== "archived" &&
-        s.data.status !== "complete" &&
+        s.data.status !== "done" &&
         s.data.branch &&
         !s.data.branch.startsWith("detached-") &&
         !gitBranches.has(s.data.branch)
@@ -2089,10 +2088,10 @@ export function registerSessionCommand(program: Command): void {
         }
       }
 
-      // 3. Age-based archival — complete sessions older than 7 days
+      // 3. Age-based archival — done sessions older than 7 days
       console.log(`\n  ${bold("Age-based archival")}`);
       const AGE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
-      const completeSessions = sessions.filter(s => s.data.status === "complete");
+      const completeSessions = sessions.filter(s => s.data.status === "done");
       let ageArchived = 0;
 
       for (const s of completeSessions) {
@@ -2104,7 +2103,7 @@ export function registerSessionCommand(program: Command): void {
             quickArchiveSession(s.filePath, agentsDir);
           }
           const days = Math.floor(age / (24 * 60 * 60 * 1000));
-          console.log(`    ${yellow("→")} Archived: ${gray(s.fileName)} (complete, ${days}d old)`);
+          console.log(`    ${yellow("→")} Archived: ${gray(s.fileName)} (done, ${days}d old)`);
           ageArchived++;
         }
       }
