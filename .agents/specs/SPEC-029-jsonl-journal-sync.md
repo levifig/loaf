@@ -1,231 +1,248 @@
 ---
 id: SPEC-029
-title: "JSONL-Driven Journal Sync"
-source: "spark — session 20260409-110153"
-created: 2026-04-09T12:30:00Z
-status: reshaping
+title: JSONL-Driven Journal Enrichment
+source: spark — session 20260409-110153
+created: 2026-04-09T12:30:00.000Z
+status: approved
 branch: feat/jsonl-journal-sync
+session: 20260410-183845-session.md
 ---
 
-# SPEC-029: JSONL-Driven Journal Sync
+# SPEC-029: JSONL-Driven Journal Enrichment
 
 ## Problem Statement
 
 The session journal relies on the model manually calling `loaf session log` throughout a conversation. This is lossy — the model forgets, skips entries, or logs imprecisely. After context compaction, the model may have forgotten half the session's work entirely. The journal-nudge PostToolUse hook helps but is best-effort.
 
-Meanwhile, Claude Code's JSONL conversation logs in `${CLAUDE_CONFIG_DIR}/projects/` capture **everything** — every tool call, every response, every timestamp. This is the session's black box recorder. The journal should be derived from it, not maintained by hand.
+Meanwhile, Claude Code's JSONL conversation logs capture **everything** — every tool call, every response, every timestamp. This is the session's black box recorder.
 
-**Note on prior art:** The journal-nudge hook was previously moved FROM Stop TO PostToolUse because Stop-level semantic filtering degraded to commit-only logging. This spec returns semantic filtering to Stop but with a different mechanism: the model reviews a **bounded diff summary** (only new entries since last sync), not the entire conversation. This is the mitigation for the known degradation risk.
+Rather than replacing the existing journaling mechanism (which works well enough for mechanical events via PostToolUse hooks), this spec adds a **complementary enrichment step** that reviews the JSONL after the fact and fills in what the model missed — decisions, discoveries, and context that didn't get logged in the moment.
 
 ## Strategic Alignment
 
-- **Vision:** Advances "Autonomous Execution" — journal becomes reliable ground-truth rather than best-effort model memory. Sessions are accurately recorded regardless of compaction or model forgetfulness.
-- **Personas:** Benefits all Loaf users — removes cognitive burden of manual logging. The model focuses on work, not bookkeeping.
-- **Architecture:** Adds `cli/lib/journal/` with two layers: harness-agnostic sync logic (cursor tracking, dedup, entry writing) and a harness-specific adapter (Claude Code JSONL parser). Other harness adapters plug into the same sync interface. Hooks orchestrate.
+- **Vision:** Advances "Autonomous Execution" — journal becomes more complete and reliable without increasing the model's bookkeeping burden during work.
+- **Personas:** Benefits all Loaf users — enrichment runs at lifecycle points, invisible during active work.
+- **Architecture:** Leverages the existing librarian agent profile via `claude --agent librarian -p`. The CLI command handles discovery and invocation; the librarian reads the JSONL and writes journal entries using its standard Read/Edit tools.
 
 ## Solution Direction
 
-Replace the manual `loaf session log` workflow with automated journal sync driven by conversation log parsing.
+Add a `loaf session enrich` command that delegates to the librarian agent for JSONL review and journal enrichment.
 
-### Architecture — two layers
+### Architecture — CLI orchestrates, librarian enriches
 
-- **Sync engine** (`cli/lib/journal/sync.ts`) — harness-agnostic. Accepts a list of extracted events (typed, see mapping table below). Handles cursor tracking, dedup against existing journal entries, and atomic writes to the session file.
-- **Harness adapter** (e.g., `cli/lib/journal/adapters/claude-code.ts`) — reads the harness's conversation log, extracts events, returns them to the sync engine. Each harness gets its own adapter. This spec implements Claude Code only.
+The enrichment splits cleanly between two concerns:
 
-### Event type mapping
+**CLI command (`loaf session enrich`)** — discovery and invocation:
+1. Find the active session file (or accept a specific file argument)
+2. Read `claude_session_id` and `enriched_at` from session frontmatter
+3. Discover the JSONL path via project directory + session ID
+4. Validate the JSONL exists and is readable
+5. Spawn `claude --agent librarian -p` with the enrichment prompt
+6. Verify exit code and report result
 
-Extracted events map to journal entry types:
+**Librarian agent** — reads JSONL, identifies gaps, writes entries:
+1. Read the JSONL conversation log (the CLI passes the path)
+2. Read the existing session journal
+3. Identify decisions, discoveries, and context not already captured
+4. Append missing entries to the session journal via Edit
+5. Update `enriched_at:` in session frontmatter
 
-| Extracted event | Journal entry | Example |
-|-----------------|---------------|---------|
-| commit | `commit(hash): message` | `commit(abc1234): feat: add routing hook` |
-| pr-create | `pr(#N): title` | `pr(#28): feat: release redesign` |
-| merge | `merge(#N): title` | `merge(#28): feat: release redesign` |
-| branch-change | `branch(name): description` | `branch(feat/release): switched to feature branch` |
-| linear-ref | `linear(PROJ-123): description` | `linear(LOAF-42): referenced in commit` |
+### Agent invocation
 
-File edit counts and other mechanical signals are NOT written as individual entries — they inform the model filter's diff summary but don't become journal entries on their own.
-
-### Three-layer extraction, run on every Stop
-
-1. **CLI mechanical extraction** — The adapter reads the conversation log since the last cursor position. Extracts structured events (commits, PRs, merges, branch changes, Linear refs). The sync engine writes them as journal entries.
-
-2. **Model semantic filtering + state update** — A single Stop prompt hook presents the CLI's extraction summary (new entries since last sync) and asks the model to: (a) add decisions, discoveries, and context that the CLI can't infer, and (b) update the session's `## Current State` section. This merges the current `session-state-update` prompt hook with the new semantic filter — one Stop prompt, not two.
-
-3. **Skills self-log** — Skills continue to log their own invocation (e.g., `skill(shape): ...`). These are deduplicated against what the sync engine already wrote.
-
-### Cursor tracking
-
-Session frontmatter stores a keyed cursor that tracks both the conversation identity and the read position:
-
-```yaml
-log_cursor:
-  session_id: "abc123"
-  offset: 45678
+```bash
+claude --agent librarian -p \
+  --no-session-persistence \
+  --max-turns 10 \
+  "Enrich the session journal at <session-path>.
+   JSONL conversation log: <jsonl-path>
+   Last enriched: <enriched_at or 'never'>
+   
+   Read the JSONL log (entries after the enriched_at timestamp).
+   Read the existing journal entries.
+   Identify semantic events not already captured:
+   - Decisions with rationale (decision)
+   - Discoveries or things learned (discover)  
+   - Blockers encountered or resolved (block/unblock)
+   
+   Skip: commits, PRs, skill invocations (already logged by hooks).
+   Skip: routine tool calls, file reads, thinking blocks.
+   
+   Append missing entries to the journal section.
+   Update enriched_at in frontmatter to the current time."
 ```
 
-On each Stop, the adapter checks if the current `claude_session_id` matches the cursor's `session_id`:
-- **Match** → seek to offset, read new lines, advance offset
-- **Mismatch** (post-`/clear`) → reset cursor to `{session_id: <new_id>, offset: 0}` and start fresh on the new log
+Key flags:
+- `--agent librarian` — uses the Loaf librarian profile (session/journal expertise)
+- `-p` — non-interactive, exit when done
+- `--no-session-persistence` — don't save the enrichment session to disk
+- `--max-turns 10` — bounded execution (read JSONL + read journal + edit = ~3-5 turns typical)
 
-**`/clear` gap:** `/clear` is an uncontrolled event — the agent cannot act during it, so there's no opportunity to sync the old log. Entries from the tail of the previous conversation may not be synced. Under normal operation, the Stop hook syncs after every turn, so the gap is one turn. However, if the sync command fails silently for multiple turns (timeout, JSONL locked), the gap widens — `/clear` then loses the entire unsynced range. Mitigation: sync errors must be visible (non-zero exit code logged to stderr), not swallowed.
+### What stays the same
 
-### Conversation log discovery
+- **Mechanical events** (commits, PRs, merges) — existing PostToolUse hooks handle these. No changes.
+- **Skill self-logging** — Skills continue to log their own invocation. No changes.
+- **`loaf session log`** — Remains available for manual logging. No changes.
+- **Journal format** — Still `[YYYY-MM-DD HH:MM] type(scope): description`. No changes.
 
-**Verified assumption:** Claude Code names JSONL files as `<session_id>.jsonl` in the project directory. Empirically confirmed: session `207bd9ba-0e21-4f22-bcfb-b0a192fdd152` maps to file `207bd9ba-0e21-4f22-bcfb-b0a192fdd152.jsonl`. This is an internal implementation detail that may change.
+### JSONL conversation log discovery
+
+**Verified:** Claude Code names JSONL files as `<session_id>.jsonl` in the project config directory. The `session_id` is available from the session file's `claude_session_id` frontmatter field.
 
 Discovery strategy:
-1. **`session_id`** from `HookInput` → construct candidate filename `<session_id>.jsonl`
-2. **Filesystem scan** of `${CLAUDE_CONFIG_DIR}/projects/` for matching file as fallback
-3. **`transcript_path`** from `HookInput` — declared in the interface but currently unused by Claude Code. Do not depend on it. If Claude Code starts providing it, prefer it over filesystem scan.
+1. Read `claude_session_id` from session frontmatter
+2. Derive project directory: `${CLAUDE_CONFIG_DIR}/projects/` + path-to-dashed-name of cwd
+3. Construct path: `<project-dir>/<session_id>.jsonl`
+4. Fallback: scan project directory for `<session_id>.jsonl` if path construction fails
 
-Do NOT hardcode the project hash path construction — it's fragile.
+The project hash directory name is derived from the working directory path (leading dash, path separators become dashes). Example: `/Users/levifig/Code/levifig/projects/loaf` → `-Users-levifig-Code-levifig-projects-loaf`. Do NOT hardcode it — discover at runtime.
 
-### PreCompact safety net
+### JSONL structure (for librarian reference)
 
-Before context compaction, a **blocking** forced sync runs to ensure nothing is lost. The existing PreCompact command hook already has `timeout: 60000` (60s), which is more than sufficient for sync. The PreCompact prompt hook is updated to tell the model to review the journal (now complete from sync) rather than manually flush entries.
+The JSONL contains several entry types:
 
-### Wrap integration
+| JSONL `type` | Relevant | What's in it |
+|--------------|----------|-------------|
+| `user` | Yes | `message.content` — user requests, decisions, direction |
+| `assistant` | Yes | `message.content` — text blocks (reasoning), tool_use blocks (actions) |
+| `attachment` | No | System/config noise — deferred tools, MCP instructions |
+| `queue-operation` | No | Internal bookkeeping |
 
-The wrap skill triggers a final forced sync (`loaf session sync --final`) before generating the wrap-up report. After the sync, the model still reviews the journal for missing semantic events — the forced sync handles mechanical events, but the model may notice decisions or discoveries that neither the CLI nor previous Stop filters caught. Step 1 becomes: "(a) trigger forced sync, then (b) review journal for missing semantic events."
+Within assistant messages, `content` is an array of blocks:
+- `{type: "text", text: "..."}` — model's words, decisions, explanations
+- `{type: "tool_use", name: "...", input: {...}}` — tool invocations
+- `{type: "thinking", ...}` — internal reasoning (skip)
 
-### Hook changes
+Each JSONL line has a `timestamp` field (ISO 8601) for incremental processing.
 
-This spec modifies 7 hooks total:
+### Large JSONL handling
 
-| Hook | Action |
-|------|--------|
-| `journal-post-commit` | **Remove** — replaced by CLI sync |
-| `journal-post-pr` | **Remove** — replaced by CLI sync |
-| `journal-post-merge` | **Remove** — replaced by CLI sync |
-| `detect-linear-magic` | **Remove** — replaced by CLI sync |
-| `journal-nudge` | **Remove** — replaced by model filter |
-| `session-state-update` | **Merge** into model filter prompt (one Stop prompt, not two) |
-| `session-pre-compact-nudge` | **Update** — reference forced sync instead of manual flush |
+For long sessions, the JSONL can be tens of megabytes. The librarian uses the Read tool, which supports `offset` and `limit` parameters for sliced reading. Strategy:
 
-### Journaling contract migration
+1. If the file is small (<2000 lines), read it all
+2. If large, the CLI can pass the file size in the prompt so the librarian reads from the tail
+3. The `enriched_at:` timestamp tells the librarian which entries to focus on — it can skip to recent content
 
-The current contract ("model manually calls `loaf session log` for everything") is replaced:
+For v1, rely on the Read tool's natural pagination. Optimize if real-world sessions hit limits.
 
-| Responsibility | Old model | New model |
-|----------------|-----------|-----------|
-| Mechanical events (commits, PRs, merges) | Model + PostToolUse hooks | CLI adapter (automatic) |
-| Semantic events (decisions, discoveries) | Model memory + journal-nudge | Stop prompt hook (model reviews diff) |
-| Session state | Separate Stop prompt hook | Merged into model filter Stop prompt |
-| Skill invocation | Skills self-log | Skills self-log (unchanged) |
-| PreCompact flush | Model reviews conversation | Blocking sync + model reviews journal |
-| `loaf session log` | Primary mechanism | Supplementary — manual override for edge cases |
+### `enriched_at:` frontmatter
 
-**`loaf session log` remains available** as a command but is no longer the primary journaling mechanism. The following must be updated:
+Session frontmatter gains an `enriched_at` field — ISO 8601 timestamp of the last successful enrichment:
 
-- **CLAUDE.md**: Remove "Journal Discipline" paragraph requiring manual logging before every response
-- **AGENTS.md**: Update session journal instructions to reflect automated sync
-- **Skill Critical Rules**: Keep `skill(name): context` self-logging (it's useful metadata). Remove instructions to manually log other event types. See Appendix A for per-skill changes.
-- **hooks.yaml**: Remove 5 hooks, merge 1, update 1 (see Hook changes table above)
-- **Wrap skill**: Step 1 becomes forced sync + model review (not just forced sync)
+```yaml
+---
+branch: feat/some-feature
+status: active
+enriched_at: '2026-04-10T14:30:00.000Z'
+---
+```
+
+This serves two purposes:
+1. **Incremental processing** — Only JSONL entries after this timestamp need review
+2. **Idempotency** — Re-running enrich on an already-enriched session with no new entries produces no changes
+
+### `--dry-run` implementation
+
+When `--dry-run` is passed, the CLI modifies the agent prompt to say: "Output the entries you would add, but do NOT edit any files." The CLI captures the agent's text output and prints it to stdout.
+
+### Lifecycle integration
+
+| Trigger | How | Purpose |
+|---------|-----|---------|
+| **Wrap skill** | Calls `loaf session enrich` before generating wrap-up | Ensures journal is complete before summary |
+| **Housekeeping skill** | Calls `loaf session enrich` on active sessions | Catches up sessions that haven't been enriched recently |
+| **Manual** | User runs `loaf session enrich` directly | On-demand enrichment |
+
+No Stop hook — enrichment involves spawning a separate agent, too expensive for every turn.
+
+### CLI interface
+
+```bash
+loaf session enrich              # Enrich the active session
+loaf session enrich <file>       # Enrich a specific session file
+loaf session enrich --dry-run    # Show what would be added without writing
+loaf session enrich --model <m>  # Override model for the librarian call
+```
+
+**Exit codes:**
+- `0` — Success (entries added or already up-to-date)
+- `1` — Error (JSONL not found, `claude` binary not available, agent failed)
+- Errors go to stderr with actionable messages
+
+### Librarian profile update
+
+The librarian agent profile (`content/agents/librarian.md`) needs a minor update to its constraints:
+
+**Current:** "Scope all file operations to `.agents/` paths."
+**Updated:** "Scope **write** operations to `.agents/` paths. Read JSONL conversation logs from `${CLAUDE_CONFIG_DIR}/projects/` when performing enrichment."
+
+This allows the librarian to read the JSONL (external to `.agents/`) while keeping all writes scoped to session files.
 
 ## Scope
 
 ### In Scope
-- **Journal sync engine** (`cli/lib/journal/sync.ts`) — harness-agnostic: cursor tracking, dedup, entry writing. Accepts extracted events from any adapter
-- **Claude Code adapter** (`cli/lib/journal/adapters/claude-code.ts`) — JSONL parser, keyed cursor seek, event extraction
-- **Conversation log discovery** — `session_id`-based filename matching with filesystem scan fallback
-- CLI command: `loaf session sync [--final]` — detects active harness, calls adapter, writes journal entries
-- Keyed cursor in session frontmatter (`log_cursor: {session_id, offset}`) for incremental reads across `/clear` boundaries
-- Stop hook: one command hook (CLI sync) + one prompt hook (model filter + state update, merging `session-state-update`)
-- Removal of 5 existing hooks, merge of 1, update of 1 (see Hook changes)
-- **Journaling contract migration**: update CLAUDE.md, AGENTS.md, skill Critical Rules (see Appendix A), hooks.yaml, wrap skill, PreCompact prompt
-- **Test and build artifact updates**: smoke-test.js (~6 assertions), hooks-artifacts.test.ts (~7 assertions), runtime-logic.test.ts (~7 assertions), cursor.ts and claude-code.ts hook whitelists, installer.ts legacy signatures
-- Wrap skill update: forced sync + model review before wrap-up report
-- PreCompact update: blocking forced sync + updated prompt
-- Dedup logic: entries from CLI, model, and skills don't create duplicates
+- `loaf session enrich` CLI command with `--dry-run` and `--model` flags
+- JSONL discovery logic (session ID → file path)
+- Agent invocation via `claude --agent librarian -p`
+- `enriched_at:` frontmatter field in `SessionFrontmatter` interface
+- Librarian profile update: read access for JSONL files
+- Wrap skill integration: call enrich before wrap-up
+- Housekeeping skill integration: call enrich on active sessions
+- Tests: CLI discovery logic, exit code handling
 
 ### Out of Scope
-- Adapters for other harnesses (Cursor, OpenCode, Codex, Gemini, Amp) — the interface is ready, but research into their log formats is a separate effort
-- Changing the journal entry format itself (still `[YYYY-MM-DD HH:MM] type(scope): description`)
-- Session file structural changes beyond adding `log_cursor` to frontmatter
+- Custom JSONL parser module (the librarian reads JSONL directly via Read tool)
+- Changing existing PostToolUse hooks (commits, PRs, merges — they work fine)
+- Adapters for other harnesses (Cursor, OpenCode, etc.)
+- Changing the journal entry format
+- Stop hook for enrichment (too expensive per-turn)
+- Contract migration (no docs changes needed — enrichment is additive)
 
 ### Rabbit Holes
-- **Parsing thinking blocks for decisions** — Tempting to scan `thinking` content blocks for decision language. Don't — thinking blocks are internal reasoning, not journal events. Let the model filter handle semantic extraction from its own context.
-- **Real-time streaming** — Tempting to watch the JSONL file for changes. Unnecessary — Stop hook batches are sufficient.
-- **Cross-session JSONL correlation** — Tempting to link parent/child sessions via `parentUuid`. Out of scope — each session syncs its own JSONL independently.
-- **Abstracting the adapter interface prematurely** — Build the Claude Code adapter directly. Extract the interface when the second adapter arrives, not before.
-- **`transcript_path` dependency** — Tempting to design around this HookInput field. It's declared but currently unused by Claude Code. Don't depend on it.
+- **Building a JSONL parser module** — Tempting to pre-process in TypeScript. Don't — the librarian reads the file directly. The Read tool handles file slicing. Keep the CLI thin.
+- **Running on every Stop** — Tempting for completeness. Don't — spawning a separate agent per turn is too expensive.
+- **Abstracting a harness adapter interface** — Build for Claude Code directly. Extract an interface when a second harness is needed.
+- **Replacing PostToolUse hooks** — The hooks work. Enrichment is complementary, not a replacement.
+- **Parsing thinking blocks** — Internal reasoning, not journal events. Skip.
 
 ### No-Gos
-- Don't depend on JSONL field ordering or optional fields — parse defensively
 - Don't write to the JSONL — it's read-only, owned by Claude Code
-- Don't parse assistant message content beyond tool_use blocks for mechanical extraction — natural language parsing is the model filter's job
-- Don't hardcode the project hash path construction — use session_id filename matching or filesystem scan
-- Don't swallow sync errors — non-zero exit must be visible so the model (and user) know entries may be missing
+- Don't hardcode the project hash path — discover at runtime
+- Don't swallow errors — non-zero exit from the agent must surface
+- Don't run enrichment as a Stop hook — it spawns a separate agent, too heavy per-turn
 
 ## Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| JSONL format changes between Claude Code versions | Medium | Medium | Direct parsing with defensive checks. Parser tests against sample JSONL fixtures. Graceful degradation on unknown fields. |
-| JSONL naming convention changes | Low | High | Verified empirically but it's an internal detail. Filesystem scan fallback handles renamed files. |
-| Stop hook adds latency to every turn | Low | Low | CLI processes only the diff (keyed cursor). Typical diff is a few KB. |
-| Model filter adds token cost to every turn | Medium | Low | Diff summary is bounded by entries-since-last-sync. Trivial turns produce empty diffs — model skips silently. |
-| Semantic filter degrades to commit-only logging (prior art) | Medium | Medium | Bounded diff summary (not full conversation) prevents the degradation that caused the original journal-nudge move to PostToolUse. |
-| JSONL file missing or unreadable | Low | Medium | Graceful no-op. Warning to stderr. `loaf session log` remains available as manual fallback. |
-| Sync command fails silently for multiple turns, then `/clear` | Low | Medium | Sync errors must be visible (stderr). Gap is bounded by turns-since-last-successful-sync, not just one turn. |
-| Dedup false negatives (duplicate entries) | Low | Low | Dedup by matching type + scope + description substring. Duplicates are annoying but not harmful. |
-| Journaling contract migration incomplete | Medium | High | Track 3 explicitly scopes all files (see Appendix A). Smoke tests verify old hooks are gone. |
+| JSONL format changes between Claude Code versions | Medium | Medium | Librarian reads defensively. If format changes, the prompt instructions adapt without code changes. |
+| JSONL naming convention changes | Low | High | Filesystem scan fallback in discovery logic. |
+| `claude` binary not available | Low | High | Check before spawning. Clear error message. Manual `loaf session log` remains as fallback. |
+| Librarian produces low-quality entries | Medium | Low | `--dry-run` lets user preview. Entries can be manually edited. Librarian profile/prompt can be iterated. |
+| Large JSONL exceeds Read tool limits | Low | Medium | Read tool supports offset/limit for pagination. CLI can pass file size hint in prompt. |
+| Token cost of agent invocation | Medium | Low | Only runs at lifecycle points. `--model` flag allows cost control (haiku for routine). |
+| `--agent` flag doesn't discover librarian in plugin-only install | Low | Medium | Agent must be accessible. If plugin caching is an issue, the spark about leaving the plugin system applies. Alternatively, use `--append-system-prompt-file` with the librarian profile content as fallback. |
 
 ## Open Questions
 
-- [ ] Do other harnesses (Cursor, OpenCode) have equivalent conversation logs? (Research for future adapters, not blocking)
-- [ ] How should the model filter's prompt be structured to minimize token waste on trivial turns? (Prototype in Track 2)
+- [x] What model should enrichment use? → Default to whatever `claude` defaults to. `--model` flag for override. Haiku is likely sufficient.
+- [x] Should `--dry-run` output go to stdout or stderr? → stdout — it's the primary output.
+- [ ] Should the CLI pre-compute JSONL line count / byte size and pass it in the prompt to help the librarian paginate? (Probably yes for v2, not needed for v1)
 
 ## Test Conditions
 
-- [ ] After a session with 5+ commits, all commits appear in the journal without manual `loaf session log` calls
-- [ ] Decisions logged by the model filter match what a human would consider journal-worthy
-- [ ] Keyed cursor advances correctly — re-running sync produces no duplicate entries
-- [ ] `/clear` scenario: cursor resets to new JSONL, sync continues from offset 0 on new conversation
-- [ ] PreCompact triggers blocking forced sync — journal is complete before compaction
-- [ ] Wrap skill's forced sync + model review captures all remaining events before generating report
-- [ ] Graceful degradation: if JSONL is missing, session works normally (no crash, warning to stderr)
-- [ ] Sync failure visibility: non-zero exit code produces visible warning, cursor does not advance
-- [ ] The removed hooks produce no regressions — journal quality is equal or better
-- [ ] Skills self-log entries are not duplicated by the CLI mechanical extraction
-- [ ] All smoke tests pass after hook changes (updated assertions)
-- [ ] Build artifacts for all targets generate correctly with new hook configuration
-- [ ] CLAUDE.md, AGENTS.md, and skill files reflect the new journaling contract
-- [ ] Cursor atomicity: crash between read and cursor write does not corrupt state (re-sync produces duplicates, not data loss — dedup handles it)
-- [ ] Malformed JSONL lines are skipped with a warning, not a crash
-- [ ] Large JSONL files (10MB+): sync completes within Stop hook timeout
-- [ ] `--final` flag processes remaining entries and does NOT advance cursor (wrap may run multiple times)
+- [ ] `loaf session enrich` on a session with a JSONL log adds semantic entries not already in the journal
+- [ ] `--dry-run` shows entries without writing them
+- [ ] Re-running enrich on an already-enriched session with no new JSONL entries is a no-op
+- [ ] `enriched_at:` timestamp advances after successful enrichment
+- [ ] Missing JSONL file produces a clear error (exit 1) and does not crash
+- [ ] Missing `claude` binary produces a clear error
+- [ ] Missing `claude_session_id` in session frontmatter produces a clear error
+- [ ] Wrap skill calls enrich before generating wrap-up report
+- [ ] Housekeeping skill calls enrich on active sessions
+- [ ] `loaf build` succeeds with new command registered
+- [ ] Librarian profile update doesn't break existing behavior
 
 ## Priority Order
 
-Tracks ship in this order. If scope needs cutting, drop from the end.
-
-1. **CLI mechanical sync + hook swap** — JSONL parser, keyed cursor, conversation log discovery, `loaf session sync` command, Stop command hook, removal of 4 mechanical PostToolUse hooks (`journal-post-commit`, `journal-post-pr`, `journal-post-merge`, `detect-linear-magic`), update to corresponding smoke tests and build target whitelists. Go/no-go: commits and PRs appear in journal automatically; no duplicate entries from old+new hooks.
-2. **Model semantic filter** — Single Stop prompt hook replacing both `journal-nudge` and `session-state-update`. Model reviews bounded diff for decisions/discoveries and updates Current State. Go/no-go: model adds contextual entries that CLI can't detect; Current State still updates correctly.
-3. **Contract migration** — Update CLAUDE.md, AGENTS.md, all affected skill files (see Appendix A), wrap skill, PreCompact prompt, remaining installer signatures. Go/no-go: full suite passes, no journal regressions, all documentation reflects new model.
-
-## Appendix A: Skill files requiring journal instruction updates
-
-Skills that reference `loaf session log` for non-self-log purposes (i.e., instructions telling the model to manually log events that the sync now handles):
-
-| Skill | Current instruction | Action |
-|-------|--------------------|--------|
-| orchestration | Critical Rules: "Log important decisions to the session journal" | Remove — model filter handles |
-| release | Critical Rule: `loaf session log "decision(release): vX.Y.Z shipped"` | Keep as self-log (skill invocation result) |
-| shape | Critical Rule: `loaf session log "decision(shape): SPEC-NNN created"` | Keep as self-log |
-| wrap | Step 1: "Log each via `loaf session log` before proceeding" | Replace with forced sync + model review |
-| implement | References to manual logging in session management | Remove — sync handles |
-| research | Session journal logging instructions | Remove — sync handles |
-| reflect | Decision logging instructions | Keep as self-log (reflection outcome) |
-| brainstorm | Spark logging instructions | Keep as self-log |
-| council | Decision logging instructions | Keep as self-log (council outcome) |
-| architecture | ADR decision logging | Keep as self-log |
-| idea | Idea capture logging | Keep as self-log |
-| breakdown | Task creation logging | Keep as self-log |
-| housekeeping | Cleanup logging | Keep as self-log |
-| bootstrap | Session logging instructions | Remove — sync handles |
-| strategy | Decision logging | Keep as self-log |
-
-**Rule of thumb:** If the `loaf session log` call records the **skill's own output** (a decision it made, a spec it created, an idea it captured), keep it. If it instructs the model to log **ambient events** (commits, discoveries during work), remove it — the sync handles those.
+1. **CLI command + librarian update** — `loaf session enrich`, JSONL discovery, agent invocation, `enriched_at:` field, librarian profile update. Go/no-go: enrichment adds entries to journal via librarian.
+2. **Lifecycle integration** — Wrap and housekeeping skill updates. Go/no-go: enrichment runs automatically at session boundaries.

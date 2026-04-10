@@ -1,7 +1,55 @@
 {
   "version": 1,
-  "next_id": 100,
+  "next_id": 103,
   "tasks": {
+    "TASK-100": {
+      "title": "loaf session enrich CLI command + librarian profile update",
+      "slug": "jsonl-reader-summary-extractor",
+      "spec": "SPEC-029",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-10T18:24:59.524Z",
+      "updated": "2026-04-10T18:24:59.524Z",
+      "completed_at": null,
+      "file": "TASK-100-jsonl-reader-summary-extractor.md"
+    },
+    "TASK-101": {
+      "title": "(MERGED INTO TASK-100)",
+      "slug": "enrich-command",
+      "spec": "SPEC-029",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-10T18:24:59.524Z",
+      "updated": "2026-04-10T18:24:59.524Z",
+      "completed_at": "2026-04-10T18:24:59.524Z",
+      "file": "TASK-101-enrich-command.md"
+    },
+    "TASK-102": {
+      "title": "Lifecycle integration (wrap + housekeeping)",
+      "slug": "lifecycle-integration",
+      "spec": "SPEC-029",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-10T18:24:59.525Z",
+      "updated": "2026-04-10T18:24:59.525Z",
+      "completed_at": null,
+      "file": "TASK-102-lifecycle-integration.md"
+    },
     "TASK-001": {
       "title": "Create verification reference",
       "slug": "verification-reference",
@@ -1837,8 +1885,8 @@
       "file": "SPEC-024-harness-native-surface-model.md"
     },
     "SPEC-029": {
-      "title": "JSONL-Driven Journal Sync",
-      "status": "drafting",
+      "title": "JSONL-Driven Journal Enrichment",
+      "status": "approved",
       "requirement": null,
       "source": "spark — session 20260409-110153",
       "created": "2026-04-09T12:30:00.000Z",
