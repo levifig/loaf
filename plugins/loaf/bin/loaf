@@ -24909,11 +24909,10 @@ async function extractSummary(jsonlPath, projectDir, sessionId, agentsDir, since
   if (allLines.length === 0) {
     return { summaryPath, latestTimestamp: null, isEmpty: true };
   }
-  const latestTimestamp = findLatestTimestamp(allLines);
-  const summaryText = buildSummary(mainLines, subagentLines);
+  const summaryResult = buildSummary(mainLines, subagentLines);
   mkdirSync22(tmpDir, { recursive: true });
-  writeFileSync21(summaryPath, summaryText, "utf-8");
-  return { summaryPath, latestTimestamp, isEmpty: false };
+  writeFileSync21(summaryPath, summaryResult.text, "utf-8");
+  return { summaryPath, latestTimestamp: summaryResult.latestTimestamp, isEmpty: false };
 }
 function extractFromJsonl(filePath, since) {
   if (!existsSync35(filePath)) {
@@ -25060,13 +25059,14 @@ function readSubagentDescription(subagentDir, agentId) {
   return agentId;
 }
 function buildSummary(mainLines, subagentLines) {
-  const allText = [
-    ...mainLines.map((l) => l.text),
-    ...subagentLines.map((l) => l.text)
-  ].join("\n");
+  const allLines = [...mainLines, ...subagentLines];
+  const allText = allLines.map((l) => l.text).join("\n");
   const byteSize = Buffer.byteLength(allText, "utf-8");
   if (byteSize <= MAX_SUMMARY_BYTES) {
-    return allText + "\n";
+    return {
+      text: allText + "\n",
+      latestTimestamp: findLatestTimestamp(allLines)
+    };
   }
   process.stderr.write(
     `Warning: summary exceeds 100KB (${Math.round(byteSize / 1024)}KB), truncating oldest entries
@@ -25078,7 +25078,12 @@ function truncateToFit(mainLines, subagentLines) {
   const subagentText = subagentLines.map((l) => l.text).join("\n");
   const subagentSize = Buffer.byteLength(subagentText, "utf-8");
   if (subagentSize > MAX_SUMMARY_BYTES) {
-    return truncateLines([...mainLines, ...subagentLines]) + "\n";
+    const allCombined = [...mainLines, ...subagentLines];
+    const surviving = truncateLines(allCombined);
+    return {
+      text: surviving.text + "\n",
+      latestTimestamp: surviving.latestTimestamp
+    };
   }
   const mainBudget = MAX_SUMMARY_BYTES - subagentSize - (subagentLines.length > 0 ? 1 : 0);
   let startIdx = 0;
@@ -25086,6 +25091,8 @@ function truncateToFit(mainLines, subagentLines) {
     const candidateText = mainLines.slice(startIdx).map((l) => l.text).join("\n");
     const candidateSize = Buffer.byteLength(candidateText, "utf-8");
     if (candidateSize <= mainBudget) {
+      const survivingMain = mainLines.slice(startIdx);
+      const survivingAll = [...survivingMain, ...subagentLines];
       const parts = [];
       if (startIdx < mainLines.length) {
         parts.push(candidateText);
@@ -25093,22 +25100,29 @@ function truncateToFit(mainLines, subagentLines) {
       if (subagentLines.length > 0) {
         parts.push(subagentText);
       }
-      return parts.join("\n") + "\n";
+      return {
+        text: parts.join("\n") + "\n",
+        latestTimestamp: findLatestTimestamp(survivingAll)
+      };
     }
     startIdx++;
   }
-  return subagentText + "\n";
+  return {
+    text: subagentText + "\n",
+    latestTimestamp: findLatestTimestamp(subagentLines)
+  };
 }
 function truncateLines(lines) {
   let startIdx = 0;
   while (startIdx < lines.length) {
-    const text = lines.slice(startIdx).map((l) => l.text).join("\n");
+    const surviving = lines.slice(startIdx);
+    const text = surviving.map((l) => l.text).join("\n");
     if (Buffer.byteLength(text + "\n", "utf-8") <= MAX_SUMMARY_BYTES) {
-      return text;
+      return { text, latestTimestamp: findLatestTimestamp(surviving) };
     }
     startIdx++;
   }
-  return "";
+  return { text: "", latestTimestamp: null };
 }
 function findLatestTimestamp(lines) {
   let latest = null;
@@ -25941,6 +25955,13 @@ function quickArchiveSession(filePath, agentsDir) {
   try {
     const session = readSessionFile(filePath);
     if (session) {
+      if (session.data.claude_session_id) {
+        const tmpFile = join41(agentsDir, "tmp", `${session.data.claude_session_id}-enrichment.txt`);
+        try {
+          unlinkSync3(tmpFile);
+        } catch {
+        }
+      }
       session.data.status = "archived";
       session.data.archived_at = getTimestamp();
       const content = import_gray_matter13.default.stringify(session.content, session.data);
@@ -26532,6 +26553,13 @@ function registerSessionCommand(program3) {
         console.log();
       }
     }
+    if (existingSession.data.claude_session_id) {
+      const tmpFile = join41(agentsDir, "tmp", `${existingSession.data.claude_session_id}-enrichment.txt`);
+      try {
+        unlinkSync3(tmpFile);
+      } catch {
+      }
+    }
     const archivePath = join41(archiveDir, basename6(existingSession.filePath));
     try {
       renameSync3(existingSession.filePath, archivePath);
@@ -26806,12 +26834,6 @@ function registerSessionCommand(program3) {
       console.error(`  ${gray14("Project directory:")} ${projectDir}`);
       process.exit(1);
     }
-    try {
-      execSync3("command -v claude", { stdio: "pipe" });
-    } catch {
-      console.error(`  ${red10("error:")} claude binary not found. Install Claude Code CLI to use enrichment.`);
-      process.exit(1);
-    }
     console.log(`
   ${bold13("loaf session enrich")}${options2.dryRun ? gray14(" (dry run)") : ""}
 `);
@@ -26829,6 +26851,12 @@ function registerSessionCommand(program3) {
       console.log(`  ${green12("\u2713")} No new entries since last enrichment \u2014 nothing to do`);
       console.log();
       process.exit(0);
+    }
+    try {
+      execSync3("command -v claude", { stdio: "pipe" });
+    } catch {
+      console.error(`  ${red10("error:")} claude binary not found. Install Claude Code CLI to use enrichment.`);
+      process.exit(1);
     }
     console.log(`  Summary: ${gray14(extractionResult.summaryPath.replace(agentsDir, ".agents"))}`);
     if (extractionResult.latestTimestamp) {
@@ -26855,9 +26883,14 @@ function registerSessionCommand(program3) {
     console.log(`  ${gray14("Spawning librarian agent...")}`);
     const exitCode = await new Promise((resolve3) => {
       const childEnv = { ...process.env, LOAF_ENRICHMENT: "1" };
+      const childStdio = [
+        "pipe",
+        options2.dryRun ? "pipe" : "ignore",
+        "pipe"
+      ];
       const child = nodeSpawn("claude", agentArgs, {
         env: childEnv,
-        stdio: ["pipe", "pipe", "pipe"]
+        stdio: childStdio
       });
       let stderr = "";
       child.stdout?.on("data", (data) => {
