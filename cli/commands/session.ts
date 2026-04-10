@@ -153,6 +153,62 @@ interface SpecFrontmatterWithBranch {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// .loaf-state — Local Machine State (gitignored)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface LoafState {
+  last_housekeeping?: string;  // ISO timestamp
+  housekeeping_pending?: boolean;
+}
+
+/** 24 hours in milliseconds */
+const HOUSEKEEPING_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+function getLoafStatePath(agentsDir: string): string {
+  return join(agentsDir, ".loaf-state");
+}
+
+function readLoafState(agentsDir: string): LoafState {
+  const statePath = getLoafStatePath(agentsDir);
+  if (!existsSync(statePath)) return {};
+  try {
+    return JSON.parse(readFileSync(statePath, "utf-8")) as LoafState;
+  } catch {
+    return {};
+  }
+}
+
+function writeLoafState(agentsDir: string, state: LoafState): void {
+  writeFileSync(getLoafStatePath(agentsDir), JSON.stringify(state, null, 2) + "\n", "utf-8");
+}
+
+/** Check if housekeeping is due (>24h since last run) and set pending flag */
+function checkHousekeepingDue(agentsDir: string): void {
+  const state = readLoafState(agentsDir);
+  const lastRun = state.last_housekeeping ? new Date(state.last_housekeeping).getTime() : 0;
+  const age = Date.now() - lastRun;
+
+  if (age > HOUSEKEEPING_INTERVAL_MS) {
+    state.housekeeping_pending = true;
+    writeLoafState(agentsDir, state);
+  }
+}
+
+/** Mark housekeeping as completed */
+function markHousekeepingDone(agentsDir: string): void {
+  const state = readLoafState(agentsDir);
+  state.last_housekeeping = new Date().toISOString();
+  state.housekeeping_pending = false;
+  writeLoafState(agentsDir, state);
+}
+
+/** Check if housekeeping is pending and should run */
+function isHousekeepingPending(agentsDir: string): boolean {
+  const state = readLoafState(agentsDir);
+  return !!state.housekeeping_pending;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Session Lifecycle Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1411,6 +1467,11 @@ export function registerSessionCommand(program: Command): void {
         console.log(`\n  ${gray(`Suggestion: /rename ${specInfo.id}-${slug}`)}`);
       }
 
+      // Check if housekeeping is pending (flagged by previous session end)
+      if (isHousekeepingPending(agentsDir)) {
+        console.log(`\n  ${yellow("⚠")} Housekeeping pending — run ${cyan("loaf session housekeeping")} or ${cyan("/housekeeping")}`);
+      }
+
       console.log();
     });
 
@@ -1565,6 +1626,9 @@ export function registerSessionCommand(program: Command): void {
         console.log(`    ${gray("Run 'loaf kb review <file>' before ending.")}`);
         console.log();
       }
+
+      // Check if housekeeping is due (sets pending flag for next session start)
+      checkHousekeepingDue(agentsDir);
 
       const statusLabel = isWrap ? "complete" : "stopped";
       console.log(`  ${green("✓")} Session ${statusLabel}: ${gray(existingSession.filePath.replace(agentsDir, ".agents"))}`);
@@ -1865,6 +1929,225 @@ export function registerSessionCommand(program: Command): void {
 
       console.log(`  ${green("✓")} Archived: ${gray(archivePath.replace(agentsDir, ".agents"))}`);
 
+      console.log();
+    });
+
+  // ── loaf session housekeeping ─────────────────────────────────────────────
+
+  session
+    .command("housekeeping")
+    .description("Run session housekeeping: orphans, splits, archival, linkage repair")
+    .option("--dry-run", "Report what would be done without making changes")
+    .action(async (options: { dryRun?: boolean }) => {
+      const agentsDir = findAgentsDir();
+      if (!agentsDir) {
+        console.error(`  ${red("error:")} Could not find .agents/ directory`);
+        process.exit(1);
+      }
+
+      const sessionsDir = join(agentsDir, "sessions");
+      if (!existsSync(sessionsDir)) {
+        console.log(`  ${gray("No sessions directory. Nothing to do.")}`);
+        markHousekeepingDone(agentsDir);
+        return;
+      }
+
+      const dryRun = !!options.dryRun;
+      console.log(`\n  ${bold("loaf session housekeeping")}${dryRun ? gray(" (dry run)") : ""}\n`);
+
+      // Collect all sessions
+      const files = readdirSync(sessionsDir).filter(f => f.endsWith(".md"));
+      const sessions: Array<{ filePath: string; fileName: string; data: SessionFrontmatter; content: string }> = [];
+      for (const file of files) {
+        const filePath = join(sessionsDir, file);
+        const s = readSessionFile(filePath);
+        if (s) {
+          sessions.push({ filePath, fileName: file, data: s.data, content: s.content });
+        }
+      }
+
+      if (sessions.length === 0) {
+        console.log(`  ${gray("No sessions found.")}`);
+        markHousekeepingDone(agentsDir);
+        return;
+      }
+
+      // Get list of existing git branches
+      let gitBranches: Set<string>;
+      try {
+        const branchOutput = execSync("git branch --list --format='%(refname:short)'", {
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        }).trim();
+        gitBranches = new Set(branchOutput.split("\n").map(b => b.trim()).filter(Boolean));
+      } catch {
+        gitBranches = new Set();
+      }
+
+      const report = {
+        orphansArchived: 0,
+        orphansFlagged: 0,
+        splitsConsolidated: 0,
+        ageArchived: 0,
+        linkageFixed: 0,
+        total: sessions.length,
+      };
+
+      // 1. Detect orphans — sessions whose branch no longer exists
+      console.log(`  ${bold("Orphan detection")}`);
+      const orphans = sessions.filter(s =>
+        s.data.status !== "archived" &&
+        s.data.status !== "complete" &&
+        s.data.branch &&
+        !s.data.branch.startsWith("detached-") &&
+        !gitBranches.has(s.data.branch)
+      );
+
+      if (orphans.length === 0) {
+        console.log(`    ${green("✓")} No orphaned sessions`);
+      } else {
+        for (const orphan of orphans) {
+          const activity = countJournalActivity(orphan.content);
+          const isEmpty = activity.entries === 0 && activity.commits === 0;
+
+          if (isEmpty) {
+            if (!dryRun) {
+              quickArchiveSession(orphan.filePath, agentsDir);
+            }
+            console.log(`    ${yellow("→")} Archived empty orphan: ${gray(orphan.fileName)} (branch ${orphan.data.branch} deleted)`);
+            report.orphansArchived++;
+          } else {
+            console.log(`    ${yellow("⚠")} Orphan needs review: ${orphan.fileName} (branch ${orphan.data.branch} deleted, ${activity.entries} entries)`);
+            report.orphansFlagged++;
+          }
+        }
+      }
+
+      // 2. Detect and consolidate splits (same claude_session_id, multiple files)
+      console.log(`\n  ${bold("Split detection")}`);
+      const bySessionId = new Map<string, typeof sessions>();
+      for (const s of sessions) {
+        if (s.data.claude_session_id && s.data.status !== "archived") {
+          const existing = bySessionId.get(s.data.claude_session_id) || [];
+          existing.push(s);
+          bySessionId.set(s.data.claude_session_id, existing);
+        }
+      }
+
+      const splits = [...bySessionId.entries()].filter(([, group]) => group.length > 1);
+      if (splits.length === 0) {
+        console.log(`    ${green("✓")} No split sessions`);
+      } else {
+        for (const [sessionId, group] of splits) {
+          console.log(`    ${yellow("→")} Consolidating ${group.length} files for session ${sessionId.slice(0, 8)}`);
+          if (!dryRun) {
+            group.sort((a, b) => {
+              if (a.data.status === "active" && b.data.status !== "active") return -1;
+              if (b.data.status === "active" && a.data.status !== "active") return 1;
+              const aTime = a.data.last_updated || a.data.last_entry || "0";
+              const bTime = b.data.last_updated || b.data.last_entry || "0";
+              return bTime.localeCompare(aTime);
+            });
+            for (const secondary of group.slice(1)) {
+              consolidateSession(group[0].filePath, secondary, agentsDir);
+            }
+          }
+          report.splitsConsolidated++;
+        }
+      }
+
+      // 3. Age-based archival — complete sessions older than 7 days
+      console.log(`\n  ${bold("Age-based archival")}`);
+      const AGE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
+      const completeSessions = sessions.filter(s => s.data.status === "complete");
+      let ageArchived = 0;
+
+      for (const s of completeSessions) {
+        const completedAt = s.data.last_updated || s.data.last_entry;
+        if (!completedAt) continue;
+        const age = Date.now() - new Date(completedAt).getTime();
+        if (age > AGE_THRESHOLD_MS) {
+          if (!dryRun) {
+            quickArchiveSession(s.filePath, agentsDir);
+          }
+          const days = Math.floor(age / (24 * 60 * 60 * 1000));
+          console.log(`    ${yellow("→")} Archived: ${gray(s.fileName)} (complete, ${days}d old)`);
+          ageArchived++;
+        }
+      }
+      report.ageArchived = ageArchived;
+
+      if (ageArchived === 0) {
+        console.log(`    ${green("✓")} No sessions past age threshold`);
+      }
+
+      // 4. Session/spec linkage repair
+      console.log(`\n  ${bold("Spec linkage")}`);
+      const specsDir = join(agentsDir, "specs");
+      let linkageFixed = 0;
+
+      if (existsSync(specsDir)) {
+        const specFiles = readdirSync(specsDir).filter(f => f.endsWith(".md"));
+        for (const specFile of specFiles) {
+          try {
+            const specPath = join(specsDir, specFile);
+            const specContent = readFileSync(specPath, "utf-8");
+            const specParsed = matter(specContent);
+            const specFm = specParsed.data as SpecFrontmatterWithBranch;
+
+            if (specFm.session) {
+              const sessionPath = join(sessionsDir, specFm.session);
+              const archivePath = join(sessionsDir, "archive", specFm.session);
+
+              if (!existsSync(sessionPath) && !existsSync(archivePath)) {
+                const matchingSession = sessions.find(s =>
+                  s.data.spec === specFm.id || s.data.branch === specFm.branch
+                );
+                if (matchingSession) {
+                  const correctFileName = basename(matchingSession.filePath);
+                  if (!dryRun) {
+                    specFm.session = correctFileName;
+                    const newContent = matter.stringify(specParsed.content, specFm as Record<string, unknown>);
+                    writeFileSync(specPath, newContent, "utf-8");
+                  }
+                  console.log(`    ${yellow("→")} Fixed: ${specFile} → ${correctFileName}`);
+                  linkageFixed++;
+                } else {
+                  console.log(`    ${yellow("⚠")} Broken link: ${specFile} references missing ${specFm.session}`);
+                }
+              }
+            }
+          } catch {
+            continue;
+          }
+        }
+      }
+      report.linkageFixed = linkageFixed;
+
+      if (linkageFixed === 0) {
+        console.log(`    ${green("✓")} All spec links valid`);
+      }
+
+      // 5. KB staleness
+      console.log(`\n  ${bold("Knowledge base")}`);
+      const staleCount = countStaleKnowledge();
+      if (staleCount > 0) {
+        console.log(`    ${yellow("⚠")} ${staleCount} stale knowledge file(s) — run ${cyan("loaf kb review")}`);
+      } else {
+        console.log(`    ${green("✓")} All knowledge files current`);
+      }
+
+      // Mark housekeeping done
+      if (!dryRun) {
+        markHousekeepingDone(agentsDir);
+      }
+
+      // Summary
+      const actions = report.orphansArchived + report.splitsConsolidated + report.ageArchived + report.linkageFixed;
+      console.log(`\n  ${bold("Summary:")} ${report.total} sessions scanned, ${actions} action(s)${dryRun ? " (dry run)" : ""}`);
+      if (report.orphansFlagged > 0) {
+        console.log(`  ${yellow("⚠")} ${report.orphansFlagged} orphan(s) need manual review`);
+      }
       console.log();
     });
 
