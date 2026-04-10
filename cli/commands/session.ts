@@ -1682,8 +1682,9 @@ export function registerSessionCommand(program: Command): void {
 
           if (hookEventName === "TaskCompleted" || toolName === "TaskCompleted") {
             // TaskCompleted hook event — payload has task_id, task_subject, task_description
-            const subject = hookData.task_subject || hookData.tool_input?.subject || "task";
-            entryText = `task(completed): ${subject}`;
+            // Prefer description (richer context for compaction recovery and wrap summaries)
+            const description = hookData.task_description || hookData.task_subject || "task";
+            entryText = `task(completed): ${description}`;
           }
 
           // Extract command from generic tool payload (Bash tools)

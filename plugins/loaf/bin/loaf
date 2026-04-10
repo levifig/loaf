@@ -26031,8 +26031,8 @@ function registerSessionCommand(program3) {
         const hookEventName = hookData.hook_event_name;
         const toolName = hookData.tool_name || hookData.tool?.name;
         if (hookEventName === "TaskCompleted" || toolName === "TaskCompleted") {
-          const subject = hookData.task_subject || hookData.tool_input?.subject || "task";
-          entryText = `task(completed): ${subject}`;
+          const description = hookData.task_description || hookData.task_subject || "task";
+          entryText = `task(completed): ${description}`;
         }
         const command = hookData.tool_input?.command || hookData.tool?.input?.command || hookData.input?.command;
         if (!entryText && command && typeof command === "string") {
