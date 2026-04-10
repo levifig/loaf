@@ -2311,9 +2311,11 @@ export function registerSessionCommand(program: Command): void {
       // Static implementation principles — cached after first injection
       const lines: string[] = [];
       lines.push("[Implementation Principles]");
-      lines.push("- ALWAYS track work with Task tools (TaskCreate, TaskUpdate, TaskList, TaskGet, TaskStop)");
-      lines.push("  Tasks are the primary work-tracking mechanism — TaskCompleted events auto-log to the session journal");
-      lines.push("  Create tasks before starting work, update status as you go, mark complete when done");
+      lines.push("- When the user's message is a QUESTION, answer it and STOP. Do not implement anything.");
+      lines.push("  Wait for explicit instructions before taking action.");
+      lines.push("- Create a Task BEFORE any tool use that changes something (Edit, Write, Bash, etc.).");
+      lines.push("  No threshold — if it mutates, track it. TaskCompleted events auto-log to the session journal.");
+      lines.push("  Create tasks before starting work, update status as you go, mark complete when done.");
       lines.push("- Delegate code changes to agents — orchestrator coordinates, doesn't implement");
       lines.push("- Log decisions: loaf session log \"decision(scope): description\"");
       lines.push("- One concern per agent, parallel when independent");

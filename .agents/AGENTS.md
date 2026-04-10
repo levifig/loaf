@@ -524,7 +524,8 @@ Configure target-specific behavior and sidecars.
 - `loaf task/spec/kb` — Task and knowledge management
 
 **Journal Discipline:**
-Before completing any response that includes edits, commits, or significant decisions, log journal entries using `loaf session log "type(scope): description"`. Entry types: `decision`, `discover`, `conclude`. Do not defer journaling — log before responding.
+Before completing any response that includes significant decisions or discoveries, log journal entries using `loaf session log "type(scope): description"`. Entry types: `decision`, `discover`, `conclude`. Do not defer journaling — log before responding.
+Git events (commits, PRs, merges) are auto-logged by PostToolUse hooks — do not log them manually.
 
 See [orchestration skill](skills/orchestration/SKILL.md) for full details.
 <!-- loaf:managed:end -->

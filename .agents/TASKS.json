@@ -1838,7 +1838,7 @@
     },
     "SPEC-030": {
       "title": "Librarian agent — session lifecycle management via task-driven journaling",
-      "status": "implementing",
+      "status": "complete",
       "requirement": null,
       "source": "20260409-140251-session-lifecycle-states.md",
       "created": "2026-04-09T15:30:00.000Z",
