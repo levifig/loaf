@@ -28,6 +28,7 @@ Responsible session shutdown — everything that needs a conscious model before 
 ## Critical Rules
 
 - Log `skill(wrap): <context>` to the session journal as the first action (e.g. "end-of-session summary" or "user requested wrap-up")
+- **Use `AskUserQuestion` for all decisions and confirmations** — commit, push, stash, or skip choices. Never use inline text questions for permission prompts
 - Never commit, push, or archive without explicit user confirmation
 - Flush journal entries BEFORE generating the report — unrecorded decisions are lost after this conversation
 - Pull from live data (git, filesystem), not memory or assumptions
