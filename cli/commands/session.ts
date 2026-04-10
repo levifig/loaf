@@ -2392,9 +2392,9 @@ export function registerSessionCommand(program: Command): void {
         agentArgs.push('--disallowedTools', 'Edit,Write');
       }
 
-      agentArgs.push(prompt);
-
       // Spawn librarian agent with LOAF_ENRICHMENT isolation
+      // Prompt is piped via stdin (not positional arg) to handle multi-line
+      // content and avoid shell argument length limits.
       console.log(`  ${gray("Spawning librarian agent...")}`);
 
       const exitCode = await new Promise<number>((resolve) => {
@@ -2411,6 +2411,10 @@ export function registerSessionCommand(program: Command): void {
           env: childEnv,
           stdio: childStdio,
         });
+
+        // Write prompt to stdin and close it
+        child.stdin?.write(prompt);
+        child.stdin?.end();
 
         let stderr = '';
 
