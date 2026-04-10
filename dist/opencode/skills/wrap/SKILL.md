@@ -8,7 +8,7 @@ description: >-
   ideas (use idea). Produces a Session Wrap-Up section and closes the session
   with complete status.
 user-invocable: true
-version: 2.0.0-dev.24
+version: 2.0.0-dev.25
 ---
 
 # Wrap

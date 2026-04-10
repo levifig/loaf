@@ -1837,7 +1837,7 @@
       "file": "SPEC-024-harness-native-surface-model.md"
     },
     "SPEC-030": {
-      "title": "Keeper agent — session lifecycle management via task-driven journaling",
+      "title": "Librarian agent — session lifecycle management via task-driven journaling",
       "status": "implementing",
       "requirement": null,
       "source": "20260409-140251-session-lifecycle-states.md",

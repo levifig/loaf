@@ -5,7 +5,7 @@ source: 20260409-140251-session-lifecycle-states.md
 created: 2026-04-09T15:30:00.000Z
 status: implementing
 branch: feat/librarian-session-lifecycle
-session: 20260410-003708-session.md
+session: 20260409-200731-session.md
 ---
 
 # SPEC-030: Librarian Agent — Session Lifecycle Management via Task-Driven Journaling

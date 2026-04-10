@@ -1,5 +1,119 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook check-secrets",
+            "timeout": 30,
+            "description": "Check for hardcoded secrets before writing",
+            "failClosed": true
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook security-audit",
+            "timeout": 600,
+            "description": "Run security audit on bash commands",
+            "failClosed": true
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook validate-push",
+            "if": "Bash(git push:*)",
+            "timeout": 60,
+            "description": "Validates version bump, CHANGELOG, and build before git push"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook workflow-pre-pr",
+            "if": "Bash(gh pr create:*)",
+            "timeout": 5,
+            "description": "Remind about PR format and CHANGELOG entry before gh pr create"
+          },
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/instructions/pre-merge.md\"",
+            "if": "Bash(gh pr merge:*)",
+            "timeout": 5,
+            "description": "Remind about squash merge conventions before gh pr merge"
+          },
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/instructions/pre-push.md\"",
+            "if": "Bash(git push:*)",
+            "timeout": 5,
+            "description": "Advisory reminders before git push"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook validate-commit",
+            "if": "Bash(git commit:*)",
+            "timeout": 30,
+            "description": "Validate commit messages follow conventions",
+            "failClosed": true
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" session log --detect-linear",
+            "if": "Bash(git commit:*)",
+            "timeout": 30,
+            "description": "Detect Linear magic words for auto-status updates"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" task refresh",
+            "description": "Regenerate TASKS.md when task files change",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-staleness-nudge.sh",
+            "description": "Track covered edits and nudge when covered knowledge is stale",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/instructions/post-merge.md\"",
+            "if": "Bash(gh pr merge:*)",
+            "description": "Inject housekeeping checklist after successful gh pr merge",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "loaf session log --from-hook",
+            "if": "Bash(git commit:*)",
+            "description": "Auto-log git commits to session journal",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "loaf session log --from-hook",
+            "if": "Bash(gh pr:*)",
+            "description": "Auto-log GitHub PR events (create, merge) to session journal",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [
@@ -52,17 +166,8 @@
           {
             "type": "command",
             "timeout": 60,
-            "description": "Append compact entry to session journal before context compaction",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/compact.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "prompt",
-            "description": "Require journal flush and state summary before context compaction",
-            "prompt": "CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.\nREQUIRED — two actions before the model responds:\n1. **Flush journal entries.** Log all unrecorded decisions, discoveries, and progress:\n   - `decision(scope): key decisions made this session`\n   - `discover(scope): important findings`\n   - `finding(scope): analysis result`\n   Run `loaf session log \"type(scope): description\"` for each.\n\n2. **Write state summary.** Replace the session file's `## Current State` heading\n   with `## Current State (YYYY-MM-DD HH:MM)` (current timestamp) and write\n   a structured summary using this format:\n\n   ```\n   ## Current State (YYYY-MM-DD HH:MM)\n\n   **Working on:** spec/task — brief description\n   **Status:** one-line build/test/progress status\n\n   **Done this session:**\n   - bullet per significant change\n\n   **Blocked:** (omit if none)\n   - blockers with context\n\n   **Next:**\n   - immediate follow-ups\n   ```\n\n   This is the resumption context after compaction — write it as if briefing\n   a colleague who just walked in. Be specific (file names, commit hashes,\n   flag names), not vague. The timestamp lets future compactions detect stale\n   summaries. Update `last_updated` frontmatter via `loaf session state update`.\n\nThe journal IS your external memory. Entries not flushed now are lost forever."
+            "description": "Log compact marker and inject journal flush instructions before compaction",
+            "command": "loaf session context for-compact"
           }
         ]
       }

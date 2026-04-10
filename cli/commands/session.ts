@@ -2028,7 +2028,9 @@ export function registerSessionCommand(program: Command): void {
       // Static implementation principles — cached after first injection
       const lines: string[] = [];
       lines.push("[Implementation Principles]");
-      lines.push("- Track work with TaskCreate/TaskUpdate (journal entries derive from task events)");
+      lines.push("- ALWAYS track work with Task tools (TaskCreate, TaskUpdate, TaskList, TaskGet, TaskStop)");
+      lines.push("  Tasks are the primary work-tracking mechanism — TaskCompleted events auto-log to the session journal");
+      lines.push("  Create tasks before starting work, update status as you go, mark complete when done");
       lines.push("- Delegate code changes to agents — orchestrator coordinates, doesn't implement");
       lines.push("- Log decisions: loaf session log \"decision(scope): description\"");
       lines.push("- One concern per agent, parallel when independent");
@@ -2126,5 +2128,101 @@ export function registerSessionCommand(program: Command): void {
       console.log("Resume work from where the state summary left off.");
       console.log("Do not ask 'where were we?' — the context above tells you.");
       console.log(`If you need more detail, read the full session file: ${sessionPath}`);
+    });
+
+  context
+    .command("for-compact")
+    .alias("--for-compact")
+    .description("Log compact marker and print journal flush instructions (PreCompact hook)")
+    .action(async () => {
+      const hookInput = await parseHookInput();
+
+      // Skip for subagents
+      if (hookInput.agent_id) {
+        process.exit(0);
+      }
+
+      const agentsDir = findAgentsDir();
+      const branch = getCurrentBranch();
+
+      // 1. Log compact marker to session journal (absorbs compact.sh)
+      if (agentsDir && branch !== "unknown") {
+        const existingSession = (hookInput.session_id
+          ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch)
+          : null) || findActiveSessionForBranch(agentsDir, branch);
+
+        if (existingSession) {
+          const timestamp = getDateTimeString();
+          await appendEntry(
+            existingSession.filePath,
+            [`[${timestamp}] compact(session): context compaction triggered`],
+            (data: SessionFrontmatter) => {
+              data.last_updated = getTimestamp();
+              data.last_entry = getTimestamp();
+            }
+          );
+
+          // 2. Check Current State staleness
+          const freshSession = readSessionFile(existingSession.filePath);
+          const content = freshSession?.content || existingSession.content;
+          const stateMatch = content.match(/## Current State \((\d{4}-\d{2}-\d{2} \d{2}:\d{2})\)/);
+
+          if (!stateMatch) {
+            // No Current State section at all
+          } else {
+            const tsStr = stateMatch[1];
+            const tsParts = tsStr.split(/[-: ]/);
+            const tsDate = new Date(
+              parseInt(tsParts[0]), parseInt(tsParts[1]) - 1, parseInt(tsParts[2]),
+              parseInt(tsParts[3]), parseInt(tsParts[4])
+            );
+            const ageMinutes = Math.floor((Date.now() - tsDate.getTime()) / 60000);
+            if (ageMinutes > 5) {
+              // Stale state will be caught by the nudge instructions below
+            }
+          }
+        }
+      }
+
+      // 3. Print nudge instructions (injected as context via exit 0)
+      const lines: string[] = [];
+      lines.push("CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.");
+      lines.push("");
+      lines.push("REQUIRED — two actions before the model responds:");
+      lines.push("");
+      lines.push("1. **Flush journal entries.** Log all unrecorded decisions, discoveries, and progress:");
+      lines.push("   - `decision(scope): key decisions made this session`");
+      lines.push("   - `discover(scope): important findings`");
+      lines.push("   - `finding(scope): analysis result`");
+      lines.push('   Run `loaf session log "type(scope): description"` for each.');
+      lines.push("");
+      lines.push("2. **Write state summary.** Replace the session file's `## Current State` heading");
+      lines.push("   with `## Current State (YYYY-MM-DD HH:MM)` (current timestamp) and write");
+      lines.push("   a structured summary using this format:");
+      lines.push("");
+      lines.push("   ```");
+      lines.push("   ## Current State (YYYY-MM-DD HH:MM)");
+      lines.push("");
+      lines.push("   **Working on:** spec/task — brief description");
+      lines.push("   **Status:** one-line build/test/progress status");
+      lines.push("");
+      lines.push("   **Done this session:**");
+      lines.push("   - bullet per significant change");
+      lines.push("");
+      lines.push("   **Blocked:** (omit if none)");
+      lines.push("   - blockers with context");
+      lines.push("");
+      lines.push("   **Next:**");
+      lines.push("   - immediate follow-ups");
+      lines.push("   ```");
+      lines.push("");
+      lines.push("   This is the resumption context after compaction — write it as if briefing");
+      lines.push("   a colleague who just walked in. Be specific (file names, commit hashes,");
+      lines.push("   flag names), not vague. The timestamp lets future compactions detect stale");
+      lines.push("   summaries. Update `last_updated` frontmatter via `loaf session state update`.");
+      lines.push("");
+      lines.push("The journal IS your external memory. Entries not flushed now are lost forever.");
+
+      console.log(lines.join("\n"));
     });
 }

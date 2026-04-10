@@ -309,23 +309,24 @@ function getClaudeHookCommand(hook: HookDefinition): string {
 }
 
 function createPluginJson(config: HooksConfig, pluginDir: string): void {
+  // plugin.json — metadata only, no hooks (all hooks go to hooks/hooks.json)
   const pluginJson: Record<string, unknown> = {
     name: PLUGIN_NAME,
     version: VERSION,
     description: PLUGIN_DESCRIPTION,
     repository: REPOSITORY,
     license: "MIT",
-    hooks: {} as Record<string, unknown>,
   };
 
-  const hooks = pluginJson.hooks as Record<string, unknown>;
+  // All hooks go to hooks/hooks.json for consistent loading
   const allPreToolHooks = config.hooks["pre-tool"] || [];
   const allPostToolHooks = config.hooks["post-tool"] || [];
   const allSessionHooks = config.hooks.session || [];
+  const allHooks: Record<string, unknown[]> = {};
 
   if (allPreToolHooks.length > 0) {
     const preToolByMatcher = groupByMatcher(allPreToolHooks);
-    hooks.PreToolUse = Object.entries(preToolByMatcher).map(([matcher, hookList]) => ({
+    allHooks.PreToolUse = Object.entries(preToolByMatcher).map(([matcher, hookList]) => ({
       matcher,
       hooks: hookList.map((h) => {
         if (h.type === "prompt") {
@@ -350,7 +351,7 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
 
   if (allPostToolHooks.length > 0) {
     const postToolByMatcher = groupByMatcher(allPostToolHooks);
-    hooks.PostToolUse = Object.entries(postToolByMatcher).map(([matcher, hookList]) => ({
+    allHooks.PostToolUse = Object.entries(postToolByMatcher).map(([matcher, hookList]) => ({
       matcher,
       hooks: hookList.map((h) => {
         if (h.type === "prompt") {
@@ -374,39 +375,34 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
     }));
   }
 
-  // Session hooks go to hooks/hooks.json (separate file, merged by Claude Code)
-  // This avoids plugin.json validation issues with newer event types
-  if (allSessionHooks.length > 0) {
-    const sessionHooks: Record<string, unknown[]> = {};
+  for (const hook of allSessionHooks) {
+    const eventName = hook.event!;
+    if (!allHooks[eventName]) allHooks[eventName] = [];
 
-    for (const hook of allSessionHooks) {
-      const eventName = hook.event!;
-      if (!sessionHooks[eventName]) sessionHooks[eventName] = [];
+    const hookEntry: Record<string, unknown> = {
+      type: hook.type || "command",
+      ...(hook.timeout && { timeout: Math.floor((hook.timeout || 60000) / 1000) }),
+      ...(hook.description && { description: hook.description }),
+      ...(hook.if && { if: hook.if }),
+    };
 
-      const hookEntry: Record<string, unknown> = {
-        type: hook.type || "command",
-        ...(hook.timeout && { timeout: Math.floor((hook.timeout || 60000) / 1000) }),
-        ...(hook.description && { description: hook.description }),
-        ...(hook.if && { if: hook.if }),
-      };
-
-      if (hook.type === "prompt") {
-        hookEntry.prompt = hook.prompt!;
-      } else {
-        hookEntry.command = getClaudeHookCommand(hook);
-        if (hook.failClosed) hookEntry.failClosed = hook.failClosed;
-      }
-
-      sessionHooks[eventName].push({ hooks: [hookEntry] });
+    if (hook.type === "prompt") {
+      hookEntry.prompt = hook.prompt!;
+    } else {
+      hookEntry.command = getClaudeHookCommand(hook);
+      if (hook.failClosed) hookEntry.failClosed = hook.failClosed;
     }
 
-    const hooksJsonDir = join(pluginDir, "hooks");
-    mkdirSync(hooksJsonDir, { recursive: true });
-    writeFileSync(
-      join(hooksJsonDir, "hooks.json"),
-      JSON.stringify({ hooks: sessionHooks }, null, 2)
-    );
+    allHooks[eventName].push({ hooks: [hookEntry] });
   }
+
+  // Write hooks/hooks.json
+  const hooksJsonDir = join(pluginDir, "hooks");
+  mkdirSync(hooksJsonDir, { recursive: true });
+  writeFileSync(
+    join(hooksJsonDir, "hooks.json"),
+    JSON.stringify({ hooks: allHooks }, null, 2)
+  );
 
   const pluginJsonDir = join(pluginDir, ".claude-plugin");
   mkdirSync(pluginJsonDir, { recursive: true });

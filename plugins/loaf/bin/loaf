@@ -16688,16 +16688,15 @@ function createPluginJson(config, pluginDir) {
     version: VERSION,
     description: PLUGIN_DESCRIPTION,
     repository: REPOSITORY,
-    license: "MIT",
-    hooks: {}
+    license: "MIT"
   };
-  const hooks = pluginJson.hooks;
   const allPreToolHooks = config.hooks["pre-tool"] || [];
   const allPostToolHooks = config.hooks["post-tool"] || [];
   const allSessionHooks = config.hooks.session || [];
+  const allHooks = {};
   if (allPreToolHooks.length > 0) {
     const preToolByMatcher = groupByMatcher(allPreToolHooks);
-    hooks.PreToolUse = Object.entries(preToolByMatcher).map(([matcher, hookList]) => ({
+    allHooks.PreToolUse = Object.entries(preToolByMatcher).map(([matcher, hookList]) => ({
       matcher,
       hooks: hookList.map((h) => {
         if (h.type === "prompt") {
@@ -16721,7 +16720,7 @@ function createPluginJson(config, pluginDir) {
   }
   if (allPostToolHooks.length > 0) {
     const postToolByMatcher = groupByMatcher(allPostToolHooks);
-    hooks.PostToolUse = Object.entries(postToolByMatcher).map(([matcher, hookList]) => ({
+    allHooks.PostToolUse = Object.entries(postToolByMatcher).map(([matcher, hookList]) => ({
       matcher,
       hooks: hookList.map((h) => {
         if (h.type === "prompt") {
@@ -16744,32 +16743,29 @@ function createPluginJson(config, pluginDir) {
       })
     }));
   }
-  if (allSessionHooks.length > 0) {
-    const sessionHooks = {};
-    for (const hook of allSessionHooks) {
-      const eventName = hook.event;
-      if (!sessionHooks[eventName]) sessionHooks[eventName] = [];
-      const hookEntry = {
-        type: hook.type || "command",
-        ...hook.timeout && { timeout: Math.floor((hook.timeout || 6e4) / 1e3) },
-        ...hook.description && { description: hook.description },
-        ...hook.if && { if: hook.if }
-      };
-      if (hook.type === "prompt") {
-        hookEntry.prompt = hook.prompt;
-      } else {
-        hookEntry.command = getClaudeHookCommand(hook);
-        if (hook.failClosed) hookEntry.failClosed = hook.failClosed;
-      }
-      sessionHooks[eventName].push({ hooks: [hookEntry] });
+  for (const hook of allSessionHooks) {
+    const eventName = hook.event;
+    if (!allHooks[eventName]) allHooks[eventName] = [];
+    const hookEntry = {
+      type: hook.type || "command",
+      ...hook.timeout && { timeout: Math.floor((hook.timeout || 6e4) / 1e3) },
+      ...hook.description && { description: hook.description },
+      ...hook.if && { if: hook.if }
+    };
+    if (hook.type === "prompt") {
+      hookEntry.prompt = hook.prompt;
+    } else {
+      hookEntry.command = getClaudeHookCommand(hook);
+      if (hook.failClosed) hookEntry.failClosed = hook.failClosed;
     }
-    const hooksJsonDir = join7(pluginDir, "hooks");
-    mkdirSync5(hooksJsonDir, { recursive: true });
-    writeFileSync5(
-      join7(hooksJsonDir, "hooks.json"),
-      JSON.stringify({ hooks: sessionHooks }, null, 2)
-    );
+    allHooks[eventName].push({ hooks: [hookEntry] });
   }
+  const hooksJsonDir = join7(pluginDir, "hooks");
+  mkdirSync5(hooksJsonDir, { recursive: true });
+  writeFileSync5(
+    join7(hooksJsonDir, "hooks.json"),
+    JSON.stringify({ hooks: allHooks }, null, 2)
+  );
   const pluginJsonDir = join7(pluginDir, ".claude-plugin");
   mkdirSync5(pluginJsonDir, { recursive: true });
   writeFileSync5(join7(pluginJsonDir, "plugin.json"), JSON.stringify(pluginJson, null, 2));
@@ -26288,7 +26284,9 @@ function registerSessionCommand(program3) {
     }
     const lines = [];
     lines.push("[Implementation Principles]");
-    lines.push("- Track work with TaskCreate/TaskUpdate (journal entries derive from task events)");
+    lines.push("- ALWAYS track work with Task tools (TaskCreate, TaskUpdate, TaskList, TaskGet, TaskStop)");
+    lines.push("  Tasks are the primary work-tracking mechanism \u2014 TaskCompleted events auto-log to the session journal");
+    lines.push("  Create tasks before starting work, update status as you go, mark complete when done");
     lines.push("- Delegate code changes to agents \u2014 orchestrator coordinates, doesn't implement");
     lines.push('- Log decisions: loaf session log "decision(scope): description"');
     lines.push("- One concern per agent, parallel when independent");
@@ -26360,6 +26358,84 @@ function registerSessionCommand(program3) {
     console.log("Resume work from where the state summary left off.");
     console.log("Do not ask 'where were we?' \u2014 the context above tells you.");
     console.log(`If you need more detail, read the full session file: ${sessionPath}`);
+  });
+  context.command("for-compact").alias("--for-compact").description("Log compact marker and print journal flush instructions (PreCompact hook)").action(async () => {
+    const hookInput = await parseHookInput();
+    if (hookInput.agent_id) {
+      process.exit(0);
+    }
+    const agentsDir = findAgentsDir();
+    const branch = getCurrentBranch();
+    if (agentsDir && branch !== "unknown") {
+      const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch) : null) || findActiveSessionForBranch(agentsDir, branch);
+      if (existingSession) {
+        const timestamp = getDateTimeString();
+        await appendEntry(
+          existingSession.filePath,
+          [`[${timestamp}] compact(session): context compaction triggered`],
+          (data) => {
+            data.last_updated = getTimestamp();
+            data.last_entry = getTimestamp();
+          }
+        );
+        const freshSession = readSessionFile(existingSession.filePath);
+        const content = freshSession?.content || existingSession.content;
+        const stateMatch = content.match(/## Current State \((\d{4}-\d{2}-\d{2} \d{2}:\d{2})\)/);
+        if (!stateMatch) {
+        } else {
+          const tsStr = stateMatch[1];
+          const tsParts = tsStr.split(/[-: ]/);
+          const tsDate = new Date(
+            parseInt(tsParts[0]),
+            parseInt(tsParts[1]) - 1,
+            parseInt(tsParts[2]),
+            parseInt(tsParts[3]),
+            parseInt(tsParts[4])
+          );
+          const ageMinutes = Math.floor((Date.now() - tsDate.getTime()) / 6e4);
+          if (ageMinutes > 5) {
+          }
+        }
+      }
+    }
+    const lines = [];
+    lines.push("CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.");
+    lines.push("");
+    lines.push("REQUIRED \u2014 two actions before the model responds:");
+    lines.push("");
+    lines.push("1. **Flush journal entries.** Log all unrecorded decisions, discoveries, and progress:");
+    lines.push("   - `decision(scope): key decisions made this session`");
+    lines.push("   - `discover(scope): important findings`");
+    lines.push("   - `finding(scope): analysis result`");
+    lines.push('   Run `loaf session log "type(scope): description"` for each.');
+    lines.push("");
+    lines.push("2. **Write state summary.** Replace the session file's `## Current State` heading");
+    lines.push("   with `## Current State (YYYY-MM-DD HH:MM)` (current timestamp) and write");
+    lines.push("   a structured summary using this format:");
+    lines.push("");
+    lines.push("   ```");
+    lines.push("   ## Current State (YYYY-MM-DD HH:MM)");
+    lines.push("");
+    lines.push("   **Working on:** spec/task \u2014 brief description");
+    lines.push("   **Status:** one-line build/test/progress status");
+    lines.push("");
+    lines.push("   **Done this session:**");
+    lines.push("   - bullet per significant change");
+    lines.push("");
+    lines.push("   **Blocked:** (omit if none)");
+    lines.push("   - blockers with context");
+    lines.push("");
+    lines.push("   **Next:**");
+    lines.push("   - immediate follow-ups");
+    lines.push("   ```");
+    lines.push("");
+    lines.push("   This is the resumption context after compaction \u2014 write it as if briefing");
+    lines.push("   a colleague who just walked in. Be specific (file names, commit hashes,");
+    lines.push("   flag names), not vague. The timestamp lets future compactions detect stale");
+    lines.push("   summaries. Update `last_updated` frontmatter via `loaf session state update`.");
+    lines.push("");
+    lines.push("The journal IS your external memory. Entries not flushed now are lost forever.");
+    console.log(lines.join("\n"));
   });
 }
 
