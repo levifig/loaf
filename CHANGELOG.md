@@ -10,21 +10,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0-dev.26] - 2026-04-10
 
 ### Added
-- Track 4 — housekeeping command with orphan detection and age-based archival (8711d6d)
-- Wrap skill, session lifecycle fixes, hook registration (f0a5b81)
-- Librarian rename, PostCompact CLI, TaskCompleted event, session consolidation (41bdccf)
-- Keeper agent, task-driven journaling, UserPromptSubmit context injection (f391cdb)
-- SPEC-030 Keeper agent — session lifecycle management via agent hooks (6ea05ce)
+- `loaf session housekeeping` command — orphan detection, split consolidation, age-based archival, spec linkage repair
+- `.loaf-state` trigger mechanism — `SessionEnd` flags housekeeping due, `SessionStart` surfaces nudge
+- `/wrap` skill — interactive+scripted session close with `loaf session end --wrap`
+- `loaf session context for-compact` — PreCompact journal flush + nudge instructions (replaces `compact.sh`)
+- `loaf session context for-resumption` — PostCompact rich resumption context
+- Librarian agent profile — Ent lore, behavioral contract, `Read + Edit (.agents/)` tool scope
+- `TaskCompleted` session hook — auto-logs task completions to session journal
+- `UserPromptSubmit` hook — injects Implementation Principles on every prompt
+- `claude_session_id`-first session lookup with split consolidation on start
 
 ### Changed
-- Track 5 — absorb context-archiver into Librarian (40857b1)
-- Consolidate hooks into hooks.json, absorb compact.sh into CLI (5fa8531)
-- Simplify UserPromptSubmit hook to static implementation principles (cbcf63b)
+- All hooks moved from `plugin.json` to `hooks/hooks.json` (`plugin.json` silently drops non-matcher events)
+- Absorb `context-archiver` agent into Librarian profile (decisions persist to spec changelog)
+- Journal `PostToolUse` hooks consolidated: `git commit` + `gh pr` (specific `if` conditions)
+- `UserPromptSubmit` hook uses `type: command` (not `type: prompt` — prompt type acts as gate/validator)
+- Implementation Principles: question-guard, task-before-tool rule
+- Journal Discipline: git events auto-logged by hooks, manual logging removed
+- Release skill: `/wrap` runs after version bump, `AskUserQuestion` for all decisions, `/reflect` always post-merge
 
 ### Fixed
-- TaskCompleted hook logs description instead of subject (d6f81fe)
-- TaskCompleted hook handler, update Implementation Principles (60bf2ec)
-- Prioritize claude_session_id over branch for session lookup (b348d50)
+- `TaskCompleted` hook handler — uses `hook_event_name` (not `tool_name`), logs `task_description` for richer context
+- `claude_session_id` priority over branch for session lookup
+- `appendEntry` blank line handling after `session(stop)` markers
 
 ## [2.0.0-dev.24] - 2026-04-09
 

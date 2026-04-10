@@ -178,6 +178,11 @@ Read `CHANGELOG.md` and check if `[Unreleased]` has content (entries written dur
 
 The pre-PR workflow requires writing CHANGELOG entries before creating a PR. These curated entries are typically better than auto-generated ones (grouped by category, human-written descriptions). Preserve them.
 
+**Review curated entries for quality before bumping:**
+- Use backticks for code references (file names, commands, config keys, hook names)
+- Remove internal tracking terms (tracks, phases, stages, task IDs, spec IDs)
+- Write from the user's perspective — what changed, not how it was tracked
+
 1. Run `loaf release --base <baseRefName> --dry-run` to get the **suggested bump type** and **current version**
 2. Present the bump suggestion to the user. They may accept or override.
 3. Once confirmed, perform the version bump manually:
@@ -190,6 +195,12 @@ The pre-PR workflow requires writing CHANGELOG entries before creating a PR. The
 ### Generated path (when no entries exist)
 
 When `[Unreleased]` is empty, use `loaf release` to auto-generate changelog entries from branch commits.
+
+**After generation, review and rewrite entries before committing:**
+- Use backticks for code references (file names, commands, config keys, hook names)
+- Remove internal tracking terms (tracks, phases, stages, task IDs, spec IDs)
+- Write from the user's perspective — what changed, not how it was tracked
+- Keep entries concise but descriptive enough to understand the change without reading the diff
 
 1. Run `loaf release --base <baseRefName> --dry-run` to preview:
    - Current version and suggested bump type

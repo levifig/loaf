@@ -222,3 +222,19 @@ The context-archiver agent handles PreCompact session preservation. The Libraria
 3. **Track 3: Wrap Skill** — Composable session close, callable from `/release`. ✅
 4. **Track 4: Housekeeping Skill** — Scheduling-ready autonomous maintenance. ✅
 5. **Track 5: Context Archiver Absorption** — Absorbed into Librarian. ✅
+
+## Changelog
+
+- 2026-04-10 — Session feat/librarian-session-lifecycle archived: 12 decision(s) extracted
+  [2026-04-09 00:22] decision(spec-030): Tracks 1-2 complete, Tracks 3-4 specced. Wrap and housekeeping deferred to separate implementation passes.
+  [2026-04-09 00:22] decision(architecture): wrap is interactive+scripted (no pipe), housekeeping fully scripted, triggered via .loaf-state flag on SessionEnd/SessionStart
+  [2026-04-09 00:22] decision(naming): keeper renamed to librarian — Ents who tend the library of session records
+  [2026-04-09 00:45] decision(session-lifecycle): new claude_session_id creates fresh session file, closes stale one with stopped status
+  [2026-04-09 00:45] decision(session-lifecycle): filename collision avoidance via counter suffix when sessions created in same second
+  [2026-04-10 03:36] decision(track-5): absorbed context-archiver into Librarian — deleted agent, updated all fellowship tables and orchestration references
+  [2026-04-10 10:40] decision(journal): git events auto-logged by hooks — removed manual commit logging from Journal Discipline instruction
+  [2026-04-10 11:30] decision(hooks): PreCompact prompt hooks unsupported outside REPL — all hooks use type:command
+  [2026-04-10 11:30] decision(hooks): consolidated 3 journal PostToolUse hooks into 2 (git commit + gh pr) with specific if conditions
+  [2026-04-10 11:30] decision(hooks): all hooks moved from plugin.json to hooks/hooks.json for reliable registration
+  [2026-04-10 11:30] decision(task-tracking): task-before-tool rule — create task before any mutating tool use, no threshold debate
+  [2026-04-10 11:30] decision(journal): TaskCompleted logs description not subject — richer context for compaction recovery
