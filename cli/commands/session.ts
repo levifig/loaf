@@ -1676,19 +1676,14 @@ export function registerSessionCommand(program: Command): void {
           const stdin = await readStdin(); // Read from fd 0 (stdin)
           const hookData = JSON.parse(stdin);
 
-          // Detect tool name for non-Bash tools (TaskCreate, TaskUpdate, etc.)
+          // Detect hook event type — TaskCompleted uses hook_event_name, not tool_name
+          const hookEventName = hookData.hook_event_name;
           const toolName = hookData.tool_name || hookData.tool?.name;
 
-          if (toolName === "TaskCompleted") {
-            // TaskCompleted hook event — fires when a task reaches a terminal state
+          if (hookEventName === "TaskCompleted" || toolName === "TaskCompleted") {
+            // TaskCompleted hook event — payload has task_id, task_subject, task_description
             const subject = hookData.task_subject || hookData.tool_input?.subject || "task";
-            const owner = hookData.task_owner || hookData.tool_input?.owner || "";
-            const status = hookData.task_status || hookData.tool_input?.status || "completed";
-
-            // Determine outcome: completed or cancelled/deleted
-            const outcome = (status === "completed") ? "completed" : "cancelled";
-            const ownerPrefix = owner ? `${owner}: ` : "";
-            entryText = `task(${outcome}): ${ownerPrefix}${subject}`;
+            entryText = `task(completed): ${subject}`;
           }
 
           // Extract command from generic tool payload (Bash tools)

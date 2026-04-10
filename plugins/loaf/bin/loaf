@@ -26028,14 +26028,11 @@ function registerSessionCommand(program3) {
       try {
         const stdin = await readStdin();
         const hookData = JSON.parse(stdin);
+        const hookEventName = hookData.hook_event_name;
         const toolName = hookData.tool_name || hookData.tool?.name;
-        if (toolName === "TaskCompleted") {
+        if (hookEventName === "TaskCompleted" || toolName === "TaskCompleted") {
           const subject = hookData.task_subject || hookData.tool_input?.subject || "task";
-          const owner = hookData.task_owner || hookData.tool_input?.owner || "";
-          const status = hookData.task_status || hookData.tool_input?.status || "completed";
-          const outcome = status === "completed" ? "completed" : "cancelled";
-          const ownerPrefix = owner ? `${owner}: ` : "";
-          entryText = `task(${outcome}): ${ownerPrefix}${subject}`;
+          entryText = `task(completed): ${subject}`;
         }
         const command = hookData.tool_input?.command || hookData.tool?.input?.command || hookData.input?.command;
         if (!entryText && command && typeof command === "string") {
