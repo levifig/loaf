@@ -1002,3 +1002,136 @@ describe("session housekeeping", () => {
     expect(existsSync(archiveDir)).toBe(false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enrich Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("session: enrich", () => {
+  it("exits with error when session has no claude_session_id", async () => {
+    const repoPath = createTempRepo("enrich-no-id");
+
+    // Create a session without claude_session_id
+    await runLoaf(["start"], { cwd: repoPath });
+
+    const result = await runLoaf(["enrich"], { cwd: repoPath });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("claude_session_id");
+  });
+
+  it("exits with error when JSONL file not found", async () => {
+    const repoPath = createTempRepo("enrich-no-jsonl");
+    const sessionsDir = join(repoPath, ".agents/sessions");
+    mkdirSync(sessionsDir, { recursive: true });
+
+    // Create a session with claude_session_id but no matching JSONL
+    writeFileSync(
+      join(sessionsDir, "20260410-120000-session.md"),
+      [
+        "---",
+        "branch: main",
+        "status: active",
+        "created: '2026-04-10T12:00:00.000Z'",
+        "claude_session_id: sess-does-not-exist",
+        "---",
+        "# Session: Test",
+        "",
+        "## Journal",
+        "",
+        "[2026-04-10 12:00] session(start):  === SESSION STARTED ===",
+        "",
+      ].join("\n"),
+      "utf-8"
+    );
+
+    const result = await runLoaf(["enrich"], { cwd: repoPath });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("JSONL not found");
+  });
+
+  it("exits with error when session file not found for explicit path", async () => {
+    const repoPath = createTempRepo("enrich-no-file");
+
+    const result = await runLoaf(["enrich", "nonexistent.md"], { cwd: repoPath });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Session file not found");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hook Isolation Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("session: LOAF_ENRICHMENT isolation", () => {
+  it("session start exits early when LOAF_ENRICHMENT=1", async () => {
+    const repoPath = createTempRepo("enrichment-start-isolation");
+
+    // Run with LOAF_ENRICHMENT=1 set in the environment
+    const result = await new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve) => {
+      const child = spawn("node", [CLI_PATH, "session", "start"], {
+        cwd: repoPath,
+        stdio: ["pipe", "pipe", "pipe"],
+        env: { ...process.env, LOAF_ENRICHMENT: "1" },
+      });
+
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (data) => { stdout += data.toString(); });
+      child.stderr.on("data", (data) => { stderr += data.toString(); });
+      child.on("close", (exitCode) => {
+        resolve({ stdout, stderr, exitCode: exitCode ?? 0 });
+      });
+    });
+
+    expect(result.exitCode).toBe(0);
+
+    // No session file should have been created
+    const sessionFiles = getSessionFiles(repoPath);
+    expect(sessionFiles.length).toBe(0);
+  });
+
+  it("session end exits early when LOAF_ENRICHMENT=1", async () => {
+    const repoPath = createTempRepo("enrichment-end-isolation");
+
+    // Create a session first (without enrichment env)
+    await runLoaf(["start"], { cwd: repoPath });
+
+    const sessionFiles = getSessionFiles(repoPath);
+    expect(sessionFiles.length).toBe(1);
+
+    const contentBefore = readFileSync(
+      join(repoPath, ".agents/sessions", sessionFiles[0]),
+      "utf-8"
+    );
+
+    // Run end with LOAF_ENRICHMENT=1
+    const result = await new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve) => {
+      const child = spawn("node", [CLI_PATH, "session", "end"], {
+        cwd: repoPath,
+        stdio: ["pipe", "pipe", "pipe"],
+        env: { ...process.env, LOAF_ENRICHMENT: "1" },
+      });
+
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (data) => { stdout += data.toString(); });
+      child.stderr.on("data", (data) => { stderr += data.toString(); });
+      child.on("close", (exitCode) => {
+        resolve({ stdout, stderr, exitCode: exitCode ?? 0 });
+      });
+    });
+
+    expect(result.exitCode).toBe(0);
+
+    // Session file should be unchanged (no stop entry added)
+    const contentAfter = readFileSync(
+      join(repoPath, ".agents/sessions", sessionFiles[0]),
+      "utf-8"
+    );
+    expect(contentAfter).toBe(contentBefore);
+    expect(contentAfter).not.toContain("SESSION STOPPED");
+  });
+});
