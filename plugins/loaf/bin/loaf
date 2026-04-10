@@ -25439,7 +25439,8 @@ function parseEntry(entry) {
     "try",
     "reject",
     "compact",
-    "skill"
+    "skill",
+    "wrap"
   ];
   if (!validTypes.includes(type)) return null;
   return {
@@ -25940,29 +25941,40 @@ function registerSessionCommand(program3) {
     if (progressText !== "no activity logged") concludeParts.push(progressText);
     const concludeText = concludeParts.length > 0 ? concludeParts.join(", ") : "session ended";
     const isWrap = !!options2.wrap;
-    const endStatus = isWrap ? "complete" : "stopped";
-    const endMarker = isWrap ? "SESSION COMPLETE" : "SESSION STOPPED";
-    const journalLines = [
-      `[${timestamp}] session(end): ${concludeText}`,
-      `[${timestamp}] session(stop):   === ${endMarker} ===`,
-      ""
-    ];
-    if (!isWrap) {
+    if (isWrap) {
+      const journalLines = [
+        `[${timestamp}] session(wrap): ${concludeText}`
+      ];
+      await appendEntry(
+        existingSession.filePath,
+        journalLines,
+        (data) => {
+          data.status = "complete";
+          data.last_updated = getTimestamp();
+          data.last_entry = getTimestamp();
+        }
+      );
+    } else {
+      const journalLines = [
+        `[${timestamp}] session(end): ${concludeText}`,
+        `[${timestamp}] session(stop):   === SESSION STOPPED ===`,
+        ""
+      ];
       console.log(`  ${yellow14("?")} Consider adding final entries:`);
       console.log(`    ${gray14('loaf session log "decision(scope): key decision"')}`);
       console.log(`    ${gray14('loaf session log "finding(scope): final notes"')}`);
       console.log(`    ${gray14('loaf session log "todo(next): follow-up task"')}`);
       console.log();
+      await appendEntry(
+        existingSession.filePath,
+        journalLines,
+        (data) => {
+          data.status = "stopped";
+          data.last_updated = getTimestamp();
+          data.last_entry = getTimestamp();
+        }
+      );
     }
-    await appendEntry(
-      existingSession.filePath,
-      journalLines,
-      (data) => {
-        data.status = endStatus;
-        data.last_updated = getTimestamp();
-        data.last_entry = getTimestamp();
-      }
-    );
     if (isWrap) {
       const freshSession = readSessionFile(existingSession.filePath);
       const sessionContent = freshSession?.content || existingSession.content;

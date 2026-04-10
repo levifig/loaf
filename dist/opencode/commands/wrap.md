@@ -44,7 +44,7 @@ Responsible session shutdown — everything that needs a conscious model before 
 - Stale KB files are flagged if any
 - `## Session Wrap-Up` section written to session file (replaces `## Current State`)
 - `loaf session end --wrap` run after writing the summary
-- Session status is `complete`
+- Session status is `complete` (session stays open for further journal entries until `SessionEnd` fires)
 
 ## Quick Reference
 
@@ -128,11 +128,13 @@ loaf session end --wrap
 ```
 
 This handles the mechanical bookkeeping:
-- Appends `session(end)` and `session(stop)` markers to the journal
+- Appends `session(wrap)` marker to the journal (NOT `session(end)` or `session(stop)`)
 - Sets session status to `complete`
 - Persists decisions to linked spec changelog
 - Strips any remaining `## Current State` section (if the Edit didn't fully replace it)
 - Flags stale knowledge files
+
+**The session stays open for further work** (merge commits, changelog fixes, etc.). The `SessionEnd` hook writes the actual `session(stop)` marker when the conversation ends. This prevents journal entries appearing after stop markers.
 
 **Do not archive.** The session stays in `sessions/` with `complete` status. Archival is housekeeping's job.
 

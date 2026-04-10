@@ -135,7 +135,8 @@ type EntryType =
   | "try"
   | "reject"
   | "compact"
-  | "skill";
+  | "skill"
+  | "wrap";
 
 interface JournalEntry {
   type: EntryType;
@@ -883,7 +884,7 @@ function parseEntry(entry: string): JournalEntry | null {
     "spark", "todo", "assume",
     // New types
     "branch", "task", "linear", "hypothesis", "try", "reject", "compact",
-    "skill"
+    "skill", "wrap"
   ];
 
   if (!validTypes.includes(type as EntryType)) return null;
@@ -1563,32 +1564,49 @@ export function registerSessionCommand(program: Command): void {
       const concludeText = concludeParts.length > 0 ? concludeParts.join(", ") : "session ended";
 
       const isWrap = !!options.wrap;
-      const endStatus: SessionFrontmatter["status"] = isWrap ? "complete" : "stopped";
-      const endMarker = isWrap ? "SESSION COMPLETE" : "SESSION STOPPED";
 
-      const journalLines: string[] = [
-        `[${timestamp}] session(end): ${concludeText}`,
-        `[${timestamp}] session(stop):   === ${endMarker} ===`,
-        '',
-      ];
+      if (isWrap) {
+        // Wrap: log wrap marker, set status to complete, but do NOT write
+        // session(end)/session(stop) — the SessionEnd hook handles stop
+        // when the conversation actually ends. This prevents journal entries
+        // (merge commits, etc.) appearing after stop markers.
+        const journalLines: string[] = [
+          `[${timestamp}] session(wrap): ${concludeText}`,
+        ];
 
-      if (!isWrap) {
+        await appendEntry(
+          existingSession.filePath,
+          journalLines,
+          (data: SessionFrontmatter) => {
+            data.status = "complete";
+            data.last_updated = getTimestamp();
+            data.last_entry = getTimestamp();
+          }
+        );
+      } else {
+        // Normal end: write stop markers
+        const journalLines: string[] = [
+          `[${timestamp}] session(end): ${concludeText}`,
+          `[${timestamp}] session(stop):   === SESSION STOPPED ===`,
+          '',
+        ];
+
         console.log(`  ${yellow("?")} Consider adding final entries:`);
         console.log(`    ${gray("loaf session log \"decision(scope): key decision\"")}`);
         console.log(`    ${gray("loaf session log \"finding(scope): final notes\"")}`);
         console.log(`    ${gray("loaf session log \"todo(next): follow-up task\"")}`);
         console.log();
-      }
 
-      await appendEntry(
-        existingSession.filePath,
-        journalLines,
-        (data: SessionFrontmatter) => {
-          data.status = endStatus;
-          data.last_updated = getTimestamp();
-          data.last_entry = getTimestamp();
-        }
-      );
+        await appendEntry(
+          existingSession.filePath,
+          journalLines,
+          (data: SessionFrontmatter) => {
+            data.status = "stopped";
+            data.last_updated = getTimestamp();
+            data.last_entry = getTimestamp();
+          }
+        );
+      }
 
       // Wrap-specific: persist decisions to spec changelog and clean up Current State
       if (isWrap) {
