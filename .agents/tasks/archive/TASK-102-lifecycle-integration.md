@@ -3,8 +3,7 @@ id: TASK-102
 spec: SPEC-029
 title: Lifecycle integration (wrap + housekeeping)
 priority: P2
-status: pending
-blocked_by: [TASK-101]
+status: done
 ---
 
 # TASK-102: Lifecycle integration (wrap + housekeeping)

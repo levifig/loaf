@@ -3,8 +3,7 @@ id: TASK-101
 spec: SPEC-029
 title: loaf session enrich CLI command + hook isolation + librarian update
 priority: P1
-status: pending
-blocked_by: [TASK-100]
+status: done
 ---
 
 # TASK-101: `loaf session enrich` CLI command + hook isolation + librarian update

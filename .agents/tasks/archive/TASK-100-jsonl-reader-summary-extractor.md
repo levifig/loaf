@@ -3,7 +3,7 @@ id: TASK-100
 spec: SPEC-029
 title: JSONL extractor and .agents/tmp/ infrastructure
 priority: P1
-status: pending
+status: done
 ---
 
 # TASK-100: JSONL extractor and `.agents/tmp/` infrastructure
