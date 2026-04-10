@@ -1,7 +1,55 @@
 {
   "version": 1,
-  "next_id": 100,
+  "next_id": 103,
   "tasks": {
+    "TASK-100": {
+      "title": "Track 1: CLI mechanical sync + hook swap",
+      "slug": "track-1-cli-mechanical-sync-hook-swap",
+      "spec": "SPEC-029",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-10T17:27:21.202Z",
+      "updated": "2026-04-10T17:27:21.202Z",
+      "completed_at": null,
+      "file": "TASK-100-track-1-cli-mechanical-sync-hook-swap.md"
+    },
+    "TASK-101": {
+      "title": "Track 2: Model semantic filter",
+      "slug": "track-2-model-semantic-filter",
+      "spec": "SPEC-029",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-10T17:27:26.602Z",
+      "updated": "2026-04-10T17:27:26.602Z",
+      "completed_at": null,
+      "file": "TASK-101-track-2-model-semantic-filter.md"
+    },
+    "TASK-102": {
+      "title": "Track 3: Contract migration",
+      "slug": "track-3-contract-migration",
+      "spec": "SPEC-029",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-10T17:27:28.241Z",
+      "updated": "2026-04-10T17:27:28.241Z",
+      "completed_at": null,
+      "file": "TASK-102-track-3-contract-migration.md"
+    },
     "TASK-001": {
       "title": "Create verification reference",
       "slug": "verification-reference",
@@ -1836,13 +1884,13 @@
       "created": "2026-04-04T12:13:54Z",
       "file": "SPEC-024-harness-native-surface-model.md"
     },
-    "SPEC-030": {
-      "title": "Librarian agent — session lifecycle management via task-driven journaling",
-      "status": "complete",
+    "SPEC-029": {
+      "title": "JSONL-Driven Journal Sync",
+      "status": "implementing",
       "requirement": null,
-      "source": "20260409-140251-session-lifecycle-states.md",
-      "created": "2026-04-09T15:30:00.000Z",
-      "file": "SPEC-030-keeper-agent-session-lifecycle.md"
+      "source": "spark — session 20260409-110153",
+      "created": "2026-04-09T12:30:00.000Z",
+      "file": "SPEC-029-jsonl-journal-sync.md"
     },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",
@@ -2019,6 +2067,14 @@
       "source": null,
       "created": "2026-04-07T00:00:00.000Z",
       "file": "archive/SPEC-028-durable-reports.md"
+    },
+    "SPEC-030": {
+      "title": "Librarian agent — session lifecycle management via task-driven journaling",
+      "status": "complete",
+      "requirement": null,
+      "source": "20260409-140251-session-lifecycle-states.md",
+      "created": "2026-04-09T15:30:00.000Z",
+      "file": "archive/SPEC-030-keeper-agent-session-lifecycle.md"
     }
   }
 }
