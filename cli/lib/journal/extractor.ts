@@ -86,19 +86,18 @@ export async function extractSummary(
     return { summaryPath, latestTimestamp: null, isEmpty: true };
   }
 
-  // Track latest timestamp across all entries
-  const latestTimestamp = findLatestTimestamp(allLines);
-
-  // Build summary text, enforcing 100KB cap
-  const summaryText = buildSummary(mainLines, subagentLines);
+  // Build summary text, enforcing 100KB cap.
+  // latestTimestamp is computed from surviving lines (post-truncation),
+  // so the watermark never advances past content the librarian actually sees.
+  const summaryResult = buildSummary(mainLines, subagentLines);
 
   // Ensure .agents/tmp/ exists
   mkdirSync(tmpDir, { recursive: true });
 
   // Write summary file
-  writeFileSync(summaryPath, summaryText, "utf-8");
+  writeFileSync(summaryPath, summaryResult.text, "utf-8");
 
-  return { summaryPath, latestTimestamp, isEmpty: false };
+  return { summaryPath, latestTimestamp: summaryResult.latestTimestamp, isEmpty: false };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -349,23 +348,34 @@ function readSubagentDescription(subagentDir: string, agentId: string): string {
 // Summary Building
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Result from buildSummary — includes the text and the watermark-safe timestamp */
+interface BuildSummaryResult {
+  /** The summary text to write to disk */
+  text: string;
+  /** Latest timestamp from lines that survived truncation (null if empty) */
+  latestTimestamp: string | null;
+}
+
 /**
  * Build the final summary text from main and subagent lines.
  * Enforces 100KB cap by dropping oldest entries first.
+ * Returns both the text and the latest timestamp from surviving lines,
+ * so the watermark only advances past content the librarian actually sees.
  */
 function buildSummary(
   mainLines: SummaryLine[],
   subagentLines: SummaryLine[],
-): string {
+): BuildSummaryResult {
   // Combine: main conversation first, then subagent sections
-  const allText = [
-    ...mainLines.map((l) => l.text),
-    ...subagentLines.map((l) => l.text),
-  ].join("\n");
+  const allLines = [...mainLines, ...subagentLines];
+  const allText = allLines.map((l) => l.text).join("\n");
 
   const byteSize = Buffer.byteLength(allText, "utf-8");
   if (byteSize <= MAX_SUMMARY_BYTES) {
-    return allText + "\n";
+    return {
+      text: allText + "\n",
+      latestTimestamp: findLatestTimestamp(allLines),
+    };
   }
 
   // Over the cap — drop oldest main entries first, keeping subagent sections intact
@@ -380,18 +390,24 @@ function buildSummary(
  * Truncate the summary to fit within MAX_SUMMARY_BYTES.
  * Strategy: drop oldest main entries first (they're least likely to contain
  * unlogged decisions). If still over, drop oldest subagent entries.
+ * Returns both the text and the latest timestamp from surviving lines.
  */
 function truncateToFit(
   mainLines: SummaryLine[],
   subagentLines: SummaryLine[],
-): string {
+): BuildSummaryResult {
   // Start by trying with all subagent lines and progressively fewer main lines
   const subagentText = subagentLines.map((l) => l.text).join("\n");
   const subagentSize = Buffer.byteLength(subagentText, "utf-8");
 
   // If subagent content alone exceeds the cap, truncate subagent lines too
   if (subagentSize > MAX_SUMMARY_BYTES) {
-    return truncateLines([...mainLines, ...subagentLines]) + "\n";
+    const allCombined = [...mainLines, ...subagentLines];
+    const surviving = truncateLines(allCombined);
+    return {
+      text: surviving.text + "\n",
+      latestTimestamp: surviving.latestTimestamp,
+    };
   }
 
   // Budget for main lines = total cap minus subagent content minus newline
@@ -407,6 +423,8 @@ function truncateToFit(
     const candidateSize = Buffer.byteLength(candidateText, "utf-8");
 
     if (candidateSize <= mainBudget) {
+      const survivingMain = mainLines.slice(startIdx);
+      const survivingAll = [...survivingMain, ...subagentLines];
       const parts: string[] = [];
       if (startIdx < mainLines.length) {
         parts.push(candidateText);
@@ -414,32 +432,37 @@ function truncateToFit(
       if (subagentLines.length > 0) {
         parts.push(subagentText);
       }
-      return parts.join("\n") + "\n";
+      return {
+        text: parts.join("\n") + "\n",
+        latestTimestamp: findLatestTimestamp(survivingAll),
+      };
     }
 
     startIdx++;
   }
 
   // Edge case: even with no main lines, subagent content fits
-  return subagentText + "\n";
+  return {
+    text: subagentText + "\n",
+    latestTimestamp: findLatestTimestamp(subagentLines),
+  };
 }
 
 /**
  * Simple line-by-line truncation: drop from the beginning until under budget.
+ * Returns both the surviving text and the latest timestamp from surviving lines.
  */
-function truncateLines(lines: SummaryLine[]): string {
+function truncateLines(lines: SummaryLine[]): { text: string; latestTimestamp: string | null } {
   let startIdx = 0;
   while (startIdx < lines.length) {
-    const text = lines
-      .slice(startIdx)
-      .map((l) => l.text)
-      .join("\n");
+    const surviving = lines.slice(startIdx);
+    const text = surviving.map((l) => l.text).join("\n");
     if (Buffer.byteLength(text + "\n", "utf-8") <= MAX_SUMMARY_BYTES) {
-      return text;
+      return { text, latestTimestamp: findLatestTimestamp(surviving) };
     }
     startIdx++;
   }
-  return "";
+  return { text: "", latestTimestamp: null };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

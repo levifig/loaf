@@ -1209,6 +1209,12 @@ function quickArchiveSession(filePath: string, agentsDir: string): void {
   try {
     const session = readSessionFile(filePath);
     if (session) {
+      // Clean up enrichment temp file if it exists
+      if (session.data.claude_session_id) {
+        const tmpFile = join(agentsDir, "tmp", `${session.data.claude_session_id}-enrichment.txt`);
+        try { unlinkSync(tmpFile); } catch { /* file may not exist */ }
+      }
+
       session.data.status = "archived";
       session.data.archived_at = getTimestamp();
       const content = matter.stringify(session.content, session.data as unknown as Record<string, unknown>);
@@ -1987,6 +1993,12 @@ export function registerSessionCommand(program: Command): void {
         }
       }
 
+      // Clean up enrichment temp file before archiving
+      if (existingSession.data.claude_session_id) {
+        const tmpFile = join(agentsDir, "tmp", `${existingSession.data.claude_session_id}-enrichment.txt`);
+        try { unlinkSync(tmpFile); } catch { /* file may not exist */ }
+      }
+
       // Move first, then update frontmatter — avoids a window where status is
       // archived but the file is still in sessions/
       const archivePath = join(archiveDir, basename(existingSession.filePath));
@@ -2326,14 +2338,6 @@ export function registerSessionCommand(program: Command): void {
         process.exit(1);
       }
 
-      // Check claude binary availability
-      try {
-        execSync('command -v claude', { stdio: 'pipe' });
-      } catch {
-        console.error(`  ${red("error:")} claude binary not found. Install Claude Code CLI to use enrichment.`);
-        process.exit(1);
-      }
-
       console.log(`\n  ${bold("loaf session enrich")}${options.dryRun ? gray(" (dry run)") : ""}\n`);
       console.log(`  Session: ${gray(sessionPath.replace(agentsDir, ".agents"))}`);
       console.log(`  Claude session: ${gray(claudeSessionId.slice(0, 8))}`);
@@ -2352,6 +2356,15 @@ export function registerSessionCommand(program: Command): void {
         console.log(`  ${green("✓")} No new entries since last enrichment — nothing to do`);
         console.log();
         process.exit(0);
+      }
+
+      // Check claude binary availability (after no-op exit so we don't
+      // fail unnecessarily when there's nothing to enrich)
+      try {
+        execSync('command -v claude', { stdio: 'pipe' });
+      } catch {
+        console.error(`  ${red("error:")} claude binary not found. Install Claude Code CLI to use enrichment.`);
+        process.exit(1);
       }
 
       console.log(`  Summary: ${gray(extractionResult.summaryPath.replace(agentsDir, ".agents"))}`);
@@ -2386,9 +2399,17 @@ export function registerSessionCommand(program: Command): void {
 
       const exitCode = await new Promise<number>((resolve) => {
         const childEnv = { ...process.env, LOAF_ENRICHMENT: '1' };
+        // In normal mode, ignore stdout to prevent pipe buffer deadlock if the
+        // librarian produces >64KB of output. In dry-run mode, pipe stdout so
+        // we can echo it to the terminal.
+        const childStdio: ['pipe', 'pipe' | 'ignore', 'pipe'] = [
+          'pipe',
+          options.dryRun ? 'pipe' : 'ignore',
+          'pipe',
+        ];
         const child = nodeSpawn('claude', agentArgs, {
           env: childEnv,
-          stdio: ['pipe', 'pipe', 'pipe'],
+          stdio: childStdio,
         });
 
         let stderr = '';

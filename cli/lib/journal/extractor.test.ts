@@ -802,4 +802,173 @@ describe("extractSummary", () => {
       expect(content).toContain("new subagent response");
     });
   });
+
+  describe("watermark safety after truncation", () => {
+    it("latestTimestamp reflects surviving lines, not pre-truncation lines", async () => {
+      const jsonlPath = join(PROJECT_DIR, `${SESSION_ID}.jsonl`);
+      const lines: string[] = [];
+
+      // Generate enough entries to exceed 100KB, forcing truncation.
+      // Oldest entries (with the latest-alphabetically-named timestamps in
+      // early range) will be dropped.
+      for (let i = 0; i < 1500; i++) {
+        const ts = `2026-04-10T14:${String(Math.floor(i / 60)).padStart(2, "0")}:${String(i % 60).padStart(2, "0")}.000Z`;
+        const padding = "x".repeat(80);
+        lines.push(userEntry(ts, `message-${String(i).padStart(4, "0")}-${padding}`));
+      }
+
+      writeJsonl(jsonlPath, lines);
+
+      vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+      const result = await extractSummary(
+        jsonlPath,
+        PROJECT_DIR,
+        SESSION_ID,
+        AGENTS_DIR,
+      );
+
+      // The latest entry is always the last one (1499)
+      // But the watermark must reflect only what survived truncation
+      const content = readFileSync(result.summaryPath, "utf-8");
+
+      // message-1499 survived (newest), message-0000 was dropped (oldest)
+      expect(content).toContain("message-1499");
+      expect(content).not.toContain("message-0000");
+
+      // The latestTimestamp should match the latest timestamp in the
+      // surviving content — which is the last entry's timestamp
+      expect(result.latestTimestamp).toBe("2026-04-10T14:24:59.000Z");
+
+      // Critically, find the EARLIEST surviving entry's timestamp in the output
+      // and verify the watermark is >= it (i.e., the watermark didn't advance
+      // past content that was truncated away)
+      const firstLine = content.split("\n")[0];
+      const timestampMatch = firstLine.match(/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]/);
+      expect(timestampMatch).toBeTruthy();
+    });
+
+    it("latestTimestamp is from the full set when no truncation occurs", async () => {
+      const jsonlPath = join(PROJECT_DIR, `${SESSION_ID}.jsonl`);
+      writeJsonl(jsonlPath, [
+        userEntry("2026-04-10T14:00:00.000Z", "first"),
+        userEntry("2026-04-10T14:30:00.000Z", "middle"),
+        userEntry("2026-04-10T15:00:00.000Z", "last"),
+      ]);
+
+      const result = await extractSummary(
+        jsonlPath,
+        PROJECT_DIR,
+        SESSION_ID,
+        AGENTS_DIR,
+      );
+
+      expect(result.latestTimestamp).toBe("2026-04-10T15:00:00.000Z");
+      const content = readFileSync(result.summaryPath, "utf-8");
+      expect(content).toContain("first");
+      expect(content).toContain("last");
+    });
+  });
+
+  describe("non-canonical timestamps", () => {
+    it("handles ISO timestamps without milliseconds", async () => {
+      const jsonlPath = join(PROJECT_DIR, `${SESSION_ID}.jsonl`);
+      writeJsonl(jsonlPath, [
+        userEntry("2026-04-10T14:21:00Z", "no-millis message"),
+      ]);
+
+      const result = await extractSummary(
+        jsonlPath,
+        PROJECT_DIR,
+        SESSION_ID,
+        AGENTS_DIR,
+      );
+
+      expect(result.isEmpty).toBe(false);
+      expect(result.latestTimestamp).toBe("2026-04-10T14:21:00Z");
+      const content = readFileSync(result.summaryPath, "utf-8");
+      expect(content).toContain("no-millis message");
+    });
+
+    it("handles ISO timestamps with timezone offsets", async () => {
+      const jsonlPath = join(PROJECT_DIR, `${SESSION_ID}.jsonl`);
+      writeJsonl(jsonlPath, [
+        userEntry("2026-04-10T10:21:00.000-04:00", "offset message"),
+      ]);
+
+      const result = await extractSummary(
+        jsonlPath,
+        PROJECT_DIR,
+        SESSION_ID,
+        AGENTS_DIR,
+      );
+
+      expect(result.isEmpty).toBe(false);
+      expect(result.latestTimestamp).toBe("2026-04-10T10:21:00.000-04:00");
+      const content = readFileSync(result.summaryPath, "utf-8");
+      expect(content).toContain("offset message");
+      // formatTimestamp converts to UTC, so 10:21 -04:00 = 14:21 UTC
+      expect(content).toMatch(/\[2026-04-10 14:21\]/);
+    });
+  });
+
+  describe("non-standard content shapes", () => {
+    it("handles user message.content that is neither string nor array", async () => {
+      const jsonlPath = join(PROJECT_DIR, `${SESSION_ID}.jsonl`);
+      // User entry with content as a number (weird edge case)
+      const weirdEntry = JSON.stringify({
+        type: "user",
+        timestamp: "2026-04-10T14:21:00.000Z",
+        message: { role: "user", content: 42 },
+        uuid: "user-weird",
+        sessionId: SESSION_ID,
+      });
+      writeJsonl(jsonlPath, [
+        weirdEntry,
+        userEntry("2026-04-10T14:22:00.000Z", "normal message"),
+      ]);
+
+      const result = await extractSummary(
+        jsonlPath,
+        PROJECT_DIR,
+        SESSION_ID,
+        AGENTS_DIR,
+      );
+
+      expect(result.isEmpty).toBe(false);
+      const content = readFileSync(result.summaryPath, "utf-8");
+      // The weird entry should be skipped gracefully, normal entry survives
+      expect(content).toContain("normal message");
+      expect(content).not.toContain("42");
+    });
+
+    it("handles assistant message.content that is not an array", async () => {
+      const jsonlPath = join(PROJECT_DIR, `${SESSION_ID}.jsonl`);
+      // Assistant entry with content as a string (non-standard)
+      const weirdEntry = JSON.stringify({
+        type: "assistant",
+        timestamp: "2026-04-10T14:21:00.000Z",
+        message: { role: "assistant", content: "plain string, not array" },
+        uuid: "assistant-weird",
+        sessionId: SESSION_ID,
+      });
+      writeJsonl(jsonlPath, [
+        weirdEntry,
+        userEntry("2026-04-10T14:22:00.000Z", "normal message"),
+      ]);
+
+      const result = await extractSummary(
+        jsonlPath,
+        PROJECT_DIR,
+        SESSION_ID,
+        AGENTS_DIR,
+      );
+
+      expect(result.isEmpty).toBe(false);
+      const content = readFileSync(result.summaryPath, "utf-8");
+      // The weird assistant entry should be skipped, normal entry survives
+      expect(content).toContain("normal message");
+      expect(content).not.toContain("plain string, not array");
+    });
+  });
 });
