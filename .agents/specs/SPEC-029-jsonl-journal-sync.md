@@ -34,9 +34,9 @@ Add a `loaf session enrich` command that extracts a conversation summary from th
 1. Find the active session file (or accept a specific file argument)
 2. Read `claude_session_id` and `enriched_at` from session frontmatter
 3. Discover the JSONL path via project directory + session ID
-4. **Extract conversation summary** from JSONL + subagent transcripts (filter noise, apply timestamp cutoff, enforce size cap)
+4. **Extract conversation summary** from JSONL + subagent transcripts → write to `.agents/tmp/<session-id>-enrichment.txt`
 5. If summary is empty (no new entries since `enriched_at`), exit 0 (no-op)
-6. Spawn `claude --agent librarian -p` with the summary (isolated from Loaf hooks)
+6. Spawn `claude --agent librarian -p` with the temp file path (isolated from Loaf hooks)
 7. On success: advance `enriched_at` to the **latest JSONL entry timestamp** in the summary
 8. On failure: do NOT advance `enriched_at`, report error
 
@@ -51,13 +51,17 @@ Add a `loaf session enrich` command that extracts a conversation summary from th
 8. Include subagent content with `[Subagent: {description}]` markers (from `*.meta.json`)
 9. Enforce **100KB summary cap** — truncate oldest entries first (keep newest, most likely to contain unlogged decisions)
 10. Track and return the **latest JSONL timestamp** in the processed entries (for watermark advancement)
-11. Output: clean conversation summary in readable text format
+11. Write summary to `.agents/tmp/<session-id>-enrichment.txt`
 
-**Librarian agent** — judgment-based, uses Read + Edit on session file only:
-1. Read the existing session journal (via Read tool)
-2. Review the conversation summary (passed inline in the prompt)
+The `.agents/tmp/` directory is gitignored. Temp files persist until housekeeping archives the session, enabling iterative enrichment (re-run with different prompts, retry after failure). Housekeeping cleans up temp files when moving sessions to archive.
+
+**Librarian agent** — judgment-based, uses Read + Edit on `.agents/` files:
+1. Read the conversation summary from `.agents/tmp/<session-id>-enrichment.txt` (via Read tool)
+2. Read the existing session journal (via Read tool)
 3. Identify decisions, discoveries, and context not already captured
 4. Append missing entries to the session journal (via Edit tool)
+
+Both the temp file and session file are within `.agents/`, so the librarian's scope constraint is satisfied.
 
 ### Why split extraction from enrichment?
 
@@ -161,9 +165,12 @@ enriched_at: '2026-04-10T14:30:00.000Z'
 
 The enrichment agent runs as a separate `claude -p` process. Without isolation, it would trigger Loaf's SessionStart/SessionEnd hooks, creating spurious session files and potentially interfering with the active session.
 
-**Isolation mechanism:** The CLI sets `LOAF_ENRICHMENT=1` in the spawned process environment. Loaf's SessionStart and SessionEnd hooks check for this variable and exit early:
+**Isolation mechanism:** The CLI sets `LOAF_ENRICHMENT=1` in the **spawned child process's environment only** — never on the parent process. This is process-scoped: other `claude` sessions in other terminals never see it. The child's own subprocesses (e.g., if the librarian calls `loaf session log` via Bash) DO inherit it, which is correct — anything the enrichment agent spawns should also skip session hooks.
 
 ```typescript
+// Spawning (in the CLI):
+spawn('claude', args, { env: { ...process.env, LOAF_ENRICHMENT: '1' } })
+
 // At top of session start/end actions:
 if (process.env.LOAF_ENRICHMENT === '1') {
   process.exit(0);
@@ -179,16 +186,20 @@ LOAF_ENRICHMENT=1 claude --agent librarian -p \
   --no-session-persistence \
   --permission-mode acceptEdits \
   --max-turns 10 \
-  "<enrichment prompt>"
+  "Enrich the session journal at <session-path>.
+   Conversation summary: .agents/tmp/<session-id>-enrichment.txt
+   Read both files. Identify missing decisions, discoveries, context.
+   Append entries to the journal section. Do not edit frontmatter."
 ```
 
 Flags:
-- `LOAF_ENRICHMENT=1` — suppresses Loaf hook side effects
+- `LOAF_ENRICHMENT=1` — suppresses Loaf hook side effects (child-process-scoped)
 - `--agent librarian` — librarian profile (session/journal expertise)
 - `-p` — non-interactive, synchronous (CLI waits for exit)
 - `--no-session-persistence` — don't save enrichment session to disk
 - `--permission-mode acceptEdits` — auto-approve Read + Edit without prompts
 - `--max-turns 10` — bounded execution
+- `--model` (optional) — passed through from CLI's `--model` flag
 
 ### `--dry-run` implementation
 
@@ -231,7 +242,7 @@ The librarian agent profile (`content/agents/librarian.md`) gets one addition to
   you receive clean text, not raw JSONL.
 ```
 
-**No read permission changes.** The librarian receives the conversation summary inline in the prompt. It only needs to Read the session file (already within `.agents/`). The constraint "Scope all file operations to `.agents/` paths" remains unchanged.
+**No scope changes needed.** Both the temp file (`.agents/tmp/`) and the session file (`.agents/sessions/`) are within `.agents/`. The constraint "Scope all file operations to `.agents/` paths" is naturally satisfied.
 
 ### Lifecycle integration
 
@@ -261,7 +272,8 @@ loaf session enrich --model <m>  # Override model for the librarian call
 
 ### In Scope
 - `loaf session enrich` CLI command with `--dry-run` and `--model` flags
-- **JSONL extractor** (`cli/lib/journal/extractor.ts`) — line-by-line parse, type filter, timestamp cutoff, subagent discovery, summary cap, latest-timestamp tracking
+- **JSONL extractor** (`cli/lib/journal/extractor.ts`) — line-by-line parse, type filter, timestamp cutoff, subagent discovery, summary cap, latest-timestamp tracking, writes to `.agents/tmp/`
+- `.agents/tmp/` gitignored directory for extractor output (persists for iterative enrichment, cleaned by housekeeping)
 - JSONL + subagent transcript discovery logic
 - Agent invocation via `claude --agent librarian -p` with `LOAF_ENRICHMENT=1` isolation
 - `enriched_at` watermark management (CLI writes, advances to JSONL timestamp)
@@ -286,8 +298,8 @@ loaf session enrich --model <m>  # Override model for the librarian call
 - **Fallback to `--append-system-prompt-file`** — Can't recreate agent contract. Error out instead.
 - **Replacing PostToolUse hooks** — The hooks work. Enrichment is complementary, not a replacement.
 - **Parsing thinking blocks** — Internal reasoning, not journal events. Skip.
-- **Passing raw JSONL to the librarian** — Even small files are 2/3 noise. Always pre-filter.
-- **Librarian reading external files** — Pass summary inline. Keep librarian scoped to `.agents/`.
+- **Passing raw JSONL to the librarian** — Even small files are 2/3 noise. Always pre-filter to `.agents/tmp/`.
+- **Inlining summary in the prompt** — Summary can be large. Write to temp file instead; librarian reads with Read tool (supports pagination for large summaries).
 
 ### No-Gos
 - Don't write to the JSONL — it's read-only, owned by Claude Code

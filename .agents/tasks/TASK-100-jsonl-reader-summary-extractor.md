@@ -28,7 +28,8 @@ Build the full enrichment pipeline: JSONL extractor (deterministic, testable), C
 - [ ] Tracks and returns latest JSONL timestamp from processed entries
 - [ ] Handles malformed JSONL lines gracefully (skip + warning to stderr)
 - [ ] Returns empty string when no entries match (enables no-op detection)
-- [ ] Exports: `extractSummary(jsonlPath: string, projectDir: string, sessionId: string, since?: string): Promise<{summary: string, latestTimestamp: string | null}>`
+- [ ] Writes summary to `.agents/tmp/<session-id>-enrichment.txt` (creates `.agents/tmp/` if needed)
+- [ ] Exports: `extractSummary(jsonlPath: string, projectDir: string, sessionId: string, agentsDir: string, since?: string): Promise<{summaryPath: string, latestTimestamp: string | null, isEmpty: boolean}>`
 
 ### CLI command (`loaf session enrich`)
 - [ ] `loaf session enrich` — enriches the active session
@@ -38,9 +39,11 @@ Build the full enrichment pipeline: JSONL extractor (deterministic, testable), C
 - [ ] Discovers JSONL path from `claude_session_id` + project directory derivation
 - [ ] Falls back to scanning project directory if direct path construction fails
 - [ ] Validates: `claude` binary available, `claude_session_id` in frontmatter, JSONL exists
+- [ ] Ensures `.agents/tmp/` exists and is gitignored
 - [ ] Calls extractor → checks if summary is empty (no-op, exit 0) → spawns agent
 - [ ] Spawns: `LOAF_ENRICHMENT=1 claude --agent librarian -p --no-session-persistence --permission-mode acceptEdits --max-turns 10`
-- [ ] Passes enrichment prompt with: session path + inline conversation summary + instructions
+- [ ] `LOAF_ENRICHMENT=1` set only on child process env, never parent
+- [ ] Passes enrichment prompt with: session path + temp file path + instructions (summary NOT inline)
 - [ ] On agent success: advances `enriched_at` to `latestTimestamp` from extractor (not current time)
 - [ ] On agent failure: does NOT advance enriched_at, reports error to stderr
 - [ ] `--agent librarian` not found → exit 1 with "Ensure Loaf is installed" message
@@ -53,7 +56,7 @@ Build the full enrichment pipeline: JSONL extractor (deterministic, testable), C
 
 ### Librarian profile update (`content/agents/librarian.md`)
 - [ ] Add "Journal enrichment" to "What You Tend" section
-- [ ] No read permission changes (summary is inline, librarian stays scoped to `.agents/`)
+- [ ] No scope changes needed — temp file and session file both in `.agents/`
 - [ ] Existing behavior unchanged
 
 ### Build + tests
