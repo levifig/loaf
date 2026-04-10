@@ -361,7 +361,7 @@ const sessionHooks: Record<string, HookEntry[]> = {
   "userpromptsubmit": [
     {
       "id": "session-context-inject",
-      "command": "loaf session context --for-prompt",
+      "command": "loaf session context for-prompt",
       "timeout": 5000,
       "failClosed": false
     }
@@ -377,7 +377,7 @@ const sessionHooks: Record<string, HookEntry[]> = {
   "postcompact": [
     {
       "id": "post-compact",
-      "command": "loaf session context --for-resumption",
+      "command": "loaf session context for-resumption",
       "timeout": 60000,
       "failClosed": false
     }

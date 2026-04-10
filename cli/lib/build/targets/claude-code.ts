@@ -374,28 +374,38 @@ function createPluginJson(config: HooksConfig, pluginDir: string): void {
     }));
   }
 
+  // Session hooks go to hooks/hooks.json (separate file, merged by Claude Code)
+  // This avoids plugin.json validation issues with newer event types
   if (allSessionHooks.length > 0) {
+    const sessionHooks: Record<string, unknown[]> = {};
+
     for (const hook of allSessionHooks) {
       const eventName = hook.event!;
-      if (!hooks[eventName]) hooks[eventName] = [];
-      
-      // Both prompt and command type hooks can have 'if' conditions
+      if (!sessionHooks[eventName]) sessionHooks[eventName] = [];
+
       const hookEntry: Record<string, unknown> = {
         type: hook.type || "command",
         ...(hook.timeout && { timeout: Math.floor((hook.timeout || 60000) / 1000) }),
         ...(hook.description && { description: hook.description }),
         ...(hook.if && { if: hook.if }),
       };
-      
+
       if (hook.type === "prompt") {
         hookEntry.prompt = hook.prompt!;
       } else {
         hookEntry.command = getClaudeHookCommand(hook);
         if (hook.failClosed) hookEntry.failClosed = hook.failClosed;
       }
-      
-      (hooks[eventName] as unknown[]).push({ hooks: [hookEntry] });
+
+      sessionHooks[eventName].push({ hooks: [hookEntry] });
     }
+
+    const hooksJsonDir = join(pluginDir, "hooks");
+    mkdirSync(hooksJsonDir, { recursive: true });
+    writeFileSync(
+      join(hooksJsonDir, "hooks.json"),
+      JSON.stringify({ hooks: sessionHooks }, null, 2)
+    );
   }
 
   const pluginJsonDir = join(pluginDir, ".claude-plugin");

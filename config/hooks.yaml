@@ -177,7 +177,7 @@ hooks:
     - id: session-context-inject
       skill: orchestration
       type: command
-      command: 'loaf session context --for-prompt'
+      command: 'loaf session context for-prompt'
       event: UserPromptSubmit
       timeout: 5000
       description: Inject session context and implementation conventions on prompt submit
@@ -206,10 +206,28 @@ hooks:
 
         2. **Write state summary.** Replace the session file's `## Current State` heading
            with `## Current State (YYYY-MM-DD HH:MM)` (current timestamp) and write
-           a condensed summary of: what was accomplished, current work state,
-           key decisions, git state, and next steps. This section is the resumption
-           context after compaction — write it as if briefing a colleague who just
-           walked in. The timestamp lets future compactions detect stale summaries.
+           a structured summary using this format:
+
+           ```
+           ## Current State (YYYY-MM-DD HH:MM)
+
+           **Working on:** spec/task — brief description
+           **Status:** one-line build/test/progress status
+
+           **Done this session:**
+           - bullet per significant change
+
+           **Blocked:** (omit if none)
+           - blockers with context
+
+           **Next:**
+           - immediate follow-ups
+           ```
+
+           This is the resumption context after compaction — write it as if briefing
+           a colleague who just walked in. Be specific (file names, commit hashes,
+           flag names), not vague. The timestamp lets future compactions detect stale
+           summaries. Update `last_updated` frontmatter via `loaf session state update`.
 
         The journal IS your external memory. Entries not flushed now are lost forever.
       event: PreCompact
@@ -220,7 +238,7 @@ hooks:
     - id: post-compact
       skill: orchestration
       type: command
-      command: 'loaf session context --for-resumption'
+      command: 'loaf session context for-resumption'
       event: PostCompact
       timeout: 60000
       description: Print session state, spec, journal, and git context for post-compaction resumption

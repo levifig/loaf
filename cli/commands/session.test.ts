@@ -516,7 +516,7 @@ describe("session: end", () => {
     expect(content).toContain("claude_session_id: sess-unique-456");
   });
 
-  it("writes resume entries when session_id changes between conversations", async () => {
+  it("creates new session file when session_id changes between conversations", async () => {
     const repoPath = createTempRepo("session-id-change-test");
 
     // First conversation
@@ -528,15 +528,24 @@ describe("session: end", () => {
     await runLoaf(["start"], { cwd: repoPath, input: hookJson2 });
 
     const sessionFiles = getSessionFiles(repoPath);
-    expect(sessionFiles.length).toBe(1); // Same file, not a new one
+    expect(sessionFiles.length).toBe(2); // New file for new conversation
 
-    const content = readFileSync(
-      join(repoPath, ".agents/sessions", sessionFiles[0]),
-      "utf-8"
+    // Identify old vs new by content (ordering may vary due to collision suffix)
+    const contents = sessionFiles.map(f =>
+      readFileSync(join(repoPath, ".agents/sessions", f), "utf-8")
     );
-    // STOPPED is written by session end; RESUMED written by session start
-    expect(content).toContain("claude_session_id: sess-second");
-    expect(content).toContain("=== SESSION RESUMED ===");
+    const oldContent = contents.find(c => c.includes("claude_session_id: sess-first"))!;
+    const newContent = contents.find(c => c.includes("claude_session_id: sess-second"))!;
+
+    expect(oldContent).toBeDefined();
+    expect(newContent).toBeDefined();
+
+    // Old session should be stopped
+    expect(oldContent).toContain("status: stopped");
+    expect(oldContent).toContain("closed by new conversation");
+
+    // New session should be active
+    expect(newContent).toContain("status: active");
   });
 
   it("does not write PAUSE when same session_id reconnects", async () => {

@@ -477,9 +477,17 @@ function updateSpecSessionField(agentsDir: string, specId: string, sessionFileNa
   }
 }
 
-/** Get session file path (timestamped filename per SPEC-020) */
+/** Get session file path (timestamped filename per SPEC-020, with collision avoidance) */
 function getSessionFilePath(agentsDir: string): string {
-  return join(agentsDir, "sessions", `${getTimestampForFilename()}-session.md`);
+  const sessionsDir = join(agentsDir, "sessions");
+  const base = getTimestampForFilename();
+  let path = join(sessionsDir, `${base}-session.md`);
+  let counter = 1;
+  while (existsSync(path)) {
+    path = join(sessionsDir, `${base}-${counter}-session.md`);
+    counter++;
+  }
+  return path;
 }
 
 /** Get timestamp in filename format: YYYYMMDD-HHMMSS */
@@ -911,13 +919,19 @@ async function appendEntry(
 
     updateFrontmatter(session.data);
 
-    // Blank line before session(resume) entries (visual separation — STOPPED always has trailing blank line)
+    // Blank line rules:
+    // - session(stop) always has one blank line after it
+    // - session(start)/session(resume) always have one blank line before them
+    // trimEnd() strips trailing blank lines, so we reconstruct the separator
     const trimmedContent = session.content.trimEnd();
     const hasNewSession = entryLines.some(line =>
-      /session\(resume\):/.test(line)
+      /session\((resume|start)\):/.test(line)
+    );
+    const endsWithStop = /session\(stop\):/.test(
+      trimmedContent.split('\n').filter(l => l.trim()).pop() || ''
     );
 
-    const separator = hasNewSession ? '\n\n' : '\n';
+    const separator = (hasNewSession || endsWithStop) ? '\n\n' : '\n';
     const newContent = matter.stringify(
       trimmedContent + separator + entryLines.join("\n") + "\n",
       session.data as unknown as Record<string, unknown>
@@ -1209,6 +1223,13 @@ export function registerSessionCommand(program: Command): void {
       const sameConversation = sessionByClaudeId != null;
       const isClearResume = existingSession && hookInput.source === "clear";
 
+      // Determine if this is a new conversation vs same conversation
+      const isNewConversation = existingSession
+        && hookInput.session_id
+        && existingSession.data.claude_session_id
+        && hookInput.session_id !== existingSession.data.claude_session_id
+        && hookInput.source !== "clear";
+
       if (existingSession && sameConversation) {
         // Same claude_session_id — always resume, strongest signal (even from archive)
         sessionFilePath = existingSession.filePath;
@@ -1230,20 +1251,43 @@ export function registerSessionCommand(program: Command): void {
         isResume = true;
 
         console.log(`  ${green("✓")} Resuming existing session (after /clear)`);
+      } else if (isNewConversation) {
+        // Different claude_session_id = new conversation on same branch
+        // Close the stale session and create a fresh file
+        const timestamp = getDateTimeString();
+        await appendEntry(
+          existingSession.filePath,
+          [
+            `[${timestamp}] session(end): closed by new conversation`,
+            `[${timestamp}] session(stop):   === SESSION STOPPED ===`,
+            '',
+          ],
+          (data: SessionFrontmatter) => {
+            data.status = "stopped";
+            data.last_updated = getTimestamp();
+            data.last_entry = getTimestamp();
+          }
+        );
+        console.log(`  ${yellow("!")} Closed stale session (different conversation)`);
+
+        // Create new file directly (getOrCreateSession would find the just-stopped session)
+        sessionFilePath = getSessionFilePath(agentsDir);
+        createSessionFile(sessionFilePath, branch, specInfo, hookInput.session_id);
+        const newSession = readSessionFile(sessionFilePath)!;
+        sessionData = newSession.data;
+        sessionContent = newSession.content;
+
+        console.log(`  ${green("+")} Creating new session file`);
+        if (specInfo) {
+          const sessionFileName = basename(sessionFilePath);
+          updateSpecSessionField(agentsDir, specInfo.id, sessionFileName);
+        }
       } else if (existingSession && (options.resume || existingSession.data.status === "active")) {
-        // --resume flag or session still active
+        // --resume flag or session still active (no session_id available for comparison)
         sessionFilePath = existingSession.filePath;
         sessionData = existingSession.data;
         sessionContent = existingSession.content;
-
-        // Detect new conversation via claude_session_id comparison
-        const storedSessionId = existingSession.data.claude_session_id;
-        if (hookInput.session_id && storedSessionId && hookInput.session_id !== storedSessionId) {
-          // Different session_id = new conversation on same branch
-          isResume = true;
-        } else {
-          isResume = existingSession.data.status !== "active";
-        }
+        isResume = existingSession.data.status !== "active";
 
         console.log(`  ${green("✓")} Resuming existing session`);
       } else {
@@ -1376,7 +1420,8 @@ export function registerSessionCommand(program: Command): void {
     .command("end")
     .description("End session with progress summary")
     .option("--if-active", "Exit successfully when no active session exists")
-    .action(async (options: { ifActive?: boolean }) => {
+    .option("--wrap", "Close session as complete (used after /wrap writes summary)")
+    .action(async (options: { ifActive?: boolean; wrap?: boolean }) => {
       // Parse hook JSON from stdin (when invoked as a hook by Claude Code)
       const hookInput = await parseHookInput();
 
@@ -1444,26 +1489,72 @@ export function registerSessionCommand(program: Command): void {
       if (progressText !== "no activity logged") concludeParts.push(progressText);
       const concludeText = concludeParts.length > 0 ? concludeParts.join(", ") : "session ended";
 
+      const isWrap = !!options.wrap;
+      const endStatus: SessionFrontmatter["status"] = isWrap ? "complete" : "stopped";
+      const endMarker = isWrap ? "SESSION COMPLETE" : "SESSION STOPPED";
+
       const journalLines: string[] = [
         `[${timestamp}] session(end): ${concludeText}`,
-        `[${timestamp}] session(stop):   === SESSION STOPPED ===`,
+        `[${timestamp}] session(stop):   === ${endMarker} ===`,
         '',
       ];
-      console.log(`  ${yellow("?")} Consider adding final entries:`);
-      console.log(`    ${gray("loaf session log \"decision(scope): key decision\"")}`);
-      console.log(`    ${gray("loaf session log \"finding(scope): final notes\"")}`);
-      console.log(`    ${gray("loaf session log \"todo(next): follow-up task\"")}`);
-      console.log();
+
+      if (!isWrap) {
+        console.log(`  ${yellow("?")} Consider adding final entries:`);
+        console.log(`    ${gray("loaf session log \"decision(scope): key decision\"")}`);
+        console.log(`    ${gray("loaf session log \"finding(scope): final notes\"")}`);
+        console.log(`    ${gray("loaf session log \"todo(next): follow-up task\"")}`);
+        console.log();
+      }
 
       await appendEntry(
         existingSession.filePath,
         journalLines,
         (data: SessionFrontmatter) => {
-          data.status = "stopped";
+          data.status = endStatus;
           data.last_updated = getTimestamp();
           data.last_entry = getTimestamp();
         }
       );
+
+      // Wrap-specific: persist decisions to spec changelog and clean up Current State
+      if (isWrap) {
+        // Re-read session content after journal append
+        const freshSession = readSessionFile(existingSession.filePath);
+        const sessionContent = freshSession?.content || existingSession.content;
+
+        // Persist decisions to spec changelog
+        if (existingSession.data.spec) {
+          const decisionEntries = extractDecisionEntries(sessionContent);
+          if (decisionEntries.length > 0) {
+            const result = persistDecisionsToSpec(
+              agentsDir,
+              existingSession.data.spec,
+              decisionEntries,
+              existingSession.data.branch || branch
+            );
+            if (result.success) {
+              console.log(`  ${green("✓")} Decisions persisted: ${result.message}`);
+            } else {
+              console.log(`  ${yellow("⚠")} Could not persist decisions: ${result.message}`);
+            }
+          }
+        }
+
+        // Strip ## Current State if ## Session Wrap-Up exists (wrap summary replaces it)
+        if (sessionContent.includes("## Session Wrap-Up")) {
+          const currentStatePattern = /\n## Current State \([^)]*\)[\s\S]*?(?=\n## |\n*$)/;
+          if (currentStatePattern.test(sessionContent)) {
+            const cleanedContent = sessionContent.replace(currentStatePattern, "");
+            const newFileContent = matter.stringify(
+              cleanedContent,
+              (freshSession?.data || existingSession.data) as unknown as Record<string, unknown>
+            );
+            writeFileAtomic(existingSession.filePath, newFileContent);
+            console.log(`  ${green("✓")} Replaced Current State with wrap summary`);
+          }
+        }
+      }
 
       const knowledgeFiles = consumeKnowledgeNudges(findGitRoot(), branch);
       if (knowledgeFiles.length > 0) {
@@ -1475,7 +1566,8 @@ export function registerSessionCommand(program: Command): void {
         console.log();
       }
 
-      console.log(`  ${green("✓")} Session stopped: ${gray(existingSession.filePath.replace(agentsDir, ".agents"))}`);
+      const statusLabel = isWrap ? "complete" : "stopped";
+      console.log(`  ${green("✓")} Session ${statusLabel}: ${gray(existingSession.filePath.replace(agentsDir, ".agents"))}`);
       console.log();
     });
 

@@ -16745,9 +16745,10 @@ function createPluginJson(config, pluginDir) {
     }));
   }
   if (allSessionHooks.length > 0) {
+    const sessionHooks = {};
     for (const hook of allSessionHooks) {
       const eventName = hook.event;
-      if (!hooks[eventName]) hooks[eventName] = [];
+      if (!sessionHooks[eventName]) sessionHooks[eventName] = [];
       const hookEntry = {
         type: hook.type || "command",
         ...hook.timeout && { timeout: Math.floor((hook.timeout || 6e4) / 1e3) },
@@ -16760,8 +16761,14 @@ function createPluginJson(config, pluginDir) {
         hookEntry.command = getClaudeHookCommand(hook);
         if (hook.failClosed) hookEntry.failClosed = hook.failClosed;
       }
-      hooks[eventName].push({ hooks: [hookEntry] });
+      sessionHooks[eventName].push({ hooks: [hookEntry] });
     }
+    const hooksJsonDir = join7(pluginDir, "hooks");
+    mkdirSync5(hooksJsonDir, { recursive: true });
+    writeFileSync5(
+      join7(hooksJsonDir, "hooks.json"),
+      JSON.stringify({ hooks: sessionHooks }, null, 2)
+    );
   }
   const pluginJsonDir = join7(pluginDir, ".claude-plugin");
   mkdirSync5(pluginJsonDir, { recursive: true });
@@ -25135,7 +25142,15 @@ function updateSpecSessionField(agentsDir, specId, sessionFileName) {
   }
 }
 function getSessionFilePath(agentsDir) {
-  return join40(agentsDir, "sessions", `${getTimestampForFilename()}-session.md`);
+  const sessionsDir = join40(agentsDir, "sessions");
+  const base = getTimestampForFilename();
+  let path = join40(sessionsDir, `${base}-session.md`);
+  let counter = 1;
+  while (existsSync35(path)) {
+    path = join40(sessionsDir, `${base}-${counter}-session.md`);
+    counter++;
+  }
+  return path;
 }
 function getTimestampForFilename() {
   const now = /* @__PURE__ */ new Date();
@@ -25458,9 +25473,12 @@ async function appendEntry(filePath, entryLines, updateFrontmatter) {
     updateFrontmatter(session.data);
     const trimmedContent = session.content.trimEnd();
     const hasNewSession = entryLines.some(
-      (line) => /session\(resume\):/.test(line)
+      (line) => /session\((resume|start)\):/.test(line)
     );
-    const separator = hasNewSession ? "\n\n" : "\n";
+    const endsWithStop = /session\(stop\):/.test(
+      trimmedContent.split("\n").filter((l) => l.trim()).pop() || ""
+    );
+    const separator = hasNewSession || endsWithStop ? "\n\n" : "\n";
     const newContent = import_gray_matter13.default.stringify(
       trimmedContent + separator + entryLines.join("\n") + "\n",
       session.data
@@ -25665,6 +25683,7 @@ function registerSessionCommand(program3) {
     let isResume = false;
     const sameConversation = sessionByClaudeId != null;
     const isClearResume = existingSession && hookInput.source === "clear";
+    const isNewConversation = existingSession && hookInput.session_id && existingSession.data.claude_session_id && hookInput.session_id !== existingSession.data.claude_session_id && hookInput.source !== "clear";
     if (existingSession && sameConversation) {
       sessionFilePath = existingSession.filePath;
       sessionData = existingSession.data;
@@ -25680,16 +25699,37 @@ function registerSessionCommand(program3) {
       sessionContent = existingSession.content;
       isResume = true;
       console.log(`  ${green12("\u2713")} Resuming existing session (after /clear)`);
+    } else if (isNewConversation) {
+      const timestamp2 = getDateTimeString();
+      await appendEntry(
+        existingSession.filePath,
+        [
+          `[${timestamp2}] session(end): closed by new conversation`,
+          `[${timestamp2}] session(stop):   === SESSION STOPPED ===`,
+          ""
+        ],
+        (data) => {
+          data.status = "stopped";
+          data.last_updated = getTimestamp();
+          data.last_entry = getTimestamp();
+        }
+      );
+      console.log(`  ${yellow14("!")} Closed stale session (different conversation)`);
+      sessionFilePath = getSessionFilePath(agentsDir);
+      createSessionFile(sessionFilePath, branch, specInfo, hookInput.session_id);
+      const newSession = readSessionFile(sessionFilePath);
+      sessionData = newSession.data;
+      sessionContent = newSession.content;
+      console.log(`  ${green12("+")} Creating new session file`);
+      if (specInfo) {
+        const sessionFileName = basename5(sessionFilePath);
+        updateSpecSessionField(agentsDir, specInfo.id, sessionFileName);
+      }
     } else if (existingSession && (options2.resume || existingSession.data.status === "active")) {
       sessionFilePath = existingSession.filePath;
       sessionData = existingSession.data;
       sessionContent = existingSession.content;
-      const storedSessionId = existingSession.data.claude_session_id;
-      if (hookInput.session_id && storedSessionId && hookInput.session_id !== storedSessionId) {
-        isResume = true;
-      } else {
-        isResume = existingSession.data.status !== "active";
-      }
+      isResume = existingSession.data.status !== "active";
       console.log(`  ${green12("\u2713")} Resuming existing session`);
     } else {
       if (existingSession) {
@@ -25801,7 +25841,7 @@ function registerSessionCommand(program3) {
     }
     console.log();
   });
-  session.command("end").description("End session with progress summary").option("--if-active", "Exit successfully when no active session exists").action(async (options2) => {
+  session.command("end").description("End session with progress summary").option("--if-active", "Exit successfully when no active session exists").option("--wrap", "Close session as complete (used after /wrap writes summary)").action(async (options2) => {
     const hookInput = await parseHookInput();
     const agentsDir = findAgentsDir();
     if (!agentsDir) {
@@ -25856,25 +25896,62 @@ function registerSessionCommand(program3) {
     if (lastCommit !== "unknown") concludeParts.push(`at commit ${lastCommit}`);
     if (progressText !== "no activity logged") concludeParts.push(progressText);
     const concludeText = concludeParts.length > 0 ? concludeParts.join(", ") : "session ended";
+    const isWrap = !!options2.wrap;
+    const endStatus = isWrap ? "complete" : "stopped";
+    const endMarker = isWrap ? "SESSION COMPLETE" : "SESSION STOPPED";
     const journalLines = [
       `[${timestamp}] session(end): ${concludeText}`,
-      `[${timestamp}] session(stop):   === SESSION STOPPED ===`,
+      `[${timestamp}] session(stop):   === ${endMarker} ===`,
       ""
     ];
-    console.log(`  ${yellow14("?")} Consider adding final entries:`);
-    console.log(`    ${gray14('loaf session log "decision(scope): key decision"')}`);
-    console.log(`    ${gray14('loaf session log "finding(scope): final notes"')}`);
-    console.log(`    ${gray14('loaf session log "todo(next): follow-up task"')}`);
-    console.log();
+    if (!isWrap) {
+      console.log(`  ${yellow14("?")} Consider adding final entries:`);
+      console.log(`    ${gray14('loaf session log "decision(scope): key decision"')}`);
+      console.log(`    ${gray14('loaf session log "finding(scope): final notes"')}`);
+      console.log(`    ${gray14('loaf session log "todo(next): follow-up task"')}`);
+      console.log();
+    }
     await appendEntry(
       existingSession.filePath,
       journalLines,
       (data) => {
-        data.status = "stopped";
+        data.status = endStatus;
         data.last_updated = getTimestamp();
         data.last_entry = getTimestamp();
       }
     );
+    if (isWrap) {
+      const freshSession = readSessionFile(existingSession.filePath);
+      const sessionContent = freshSession?.content || existingSession.content;
+      if (existingSession.data.spec) {
+        const decisionEntries = extractDecisionEntries(sessionContent);
+        if (decisionEntries.length > 0) {
+          const result = persistDecisionsToSpec(
+            agentsDir,
+            existingSession.data.spec,
+            decisionEntries,
+            existingSession.data.branch || branch
+          );
+          if (result.success) {
+            console.log(`  ${green12("\u2713")} Decisions persisted: ${result.message}`);
+          } else {
+            console.log(`  ${yellow14("\u26A0")} Could not persist decisions: ${result.message}`);
+          }
+        }
+      }
+      if (sessionContent.includes("## Session Wrap-Up")) {
+        const currentStatePattern = /\n## Current State \([^)]*\)[\s\S]*?(?=\n## |\n*$)/;
+        if (currentStatePattern.test(sessionContent)) {
+          const cleanedContent = sessionContent.replace(currentStatePattern, "");
+          const newFileContent = import_gray_matter13.default.stringify(
+            cleanedContent,
+            freshSession?.data || existingSession.data
+          );
+          writeFileAtomic(existingSession.filePath, newFileContent);
+          console.log(`  ${green12("\u2713")} Replaced Current State with wrap summary`);
+        }
+      }
+    }
     const knowledgeFiles = consumeKnowledgeNudges(findGitRoot(), branch);
     if (knowledgeFiles.length > 0) {
       console.log(`  ${yellow14("\u26A0")} Knowledge consolidation recommended for ${knowledgeFiles.length} file(s):`);
@@ -25884,7 +25961,8 @@ function registerSessionCommand(program3) {
       console.log(`    ${gray14("Run 'loaf kb review <file>' before ending.")}`);
       console.log();
     }
-    console.log(`  ${green12("\u2713")} Session stopped: ${gray14(existingSession.filePath.replace(agentsDir, ".agents"))}`);
+    const statusLabel = isWrap ? "complete" : "stopped";
+    console.log(`  ${green12("\u2713")} Session ${statusLabel}: ${gray14(existingSession.filePath.replace(agentsDir, ".agents"))}`);
     console.log();
   });
   session.command("log [entry]").description("Log entry to session journal").option("--from-hook", "Parse entry from hook stdin").option("--detect-linear", "Detect Linear magic words in recent commits").action(async (entry, options2) => {
