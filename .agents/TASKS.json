@@ -3,7 +3,7 @@
   "next_id": 104,
   "tasks": {
     "TASK-100": {
-      "title": "JSONL extractor + enrich CLI command + hook isolation + librarian update",
+      "title": "JSONL extractor and .agents/tmp/ infrastructure",
       "slug": "jsonl-reader-summary-extractor",
       "spec": "SPEC-029",
       "status": "todo",
@@ -13,25 +13,25 @@
       "verify": null,
       "done": null,
       "session": null,
-      "created": "2026-04-10T21:12:24.626Z",
-      "updated": "2026-04-10T21:12:24.626Z",
+      "created": "2026-04-10T21:17:39.684Z",
+      "updated": "2026-04-10T21:17:39.684Z",
       "completed_at": null,
       "file": "TASK-100-jsonl-reader-summary-extractor.md"
     },
     "TASK-101": {
-      "title": "(MERGED INTO TASK-100)",
+      "title": "loaf session enrich CLI command + hook isolation + librarian update",
       "slug": "enrich-command",
       "spec": "SPEC-029",
-      "status": "done",
+      "status": "todo",
       "priority": "P1",
       "depends_on": [],
       "files": [],
       "verify": null,
       "done": null,
       "session": null,
-      "created": "2026-04-10T21:12:24.626Z",
-      "updated": "2026-04-10T21:12:24.626Z",
-      "completed_at": "2026-04-10T21:12:24.626Z",
+      "created": "2026-04-10T21:17:39.685Z",
+      "updated": "2026-04-10T21:17:39.685Z",
+      "completed_at": null,
       "file": "TASK-101-enrich-command.md"
     },
     "TASK-102": {
@@ -45,8 +45,8 @@
       "verify": null,
       "done": null,
       "session": null,
-      "created": "2026-04-10T21:12:24.626Z",
-      "updated": "2026-04-10T21:12:24.626Z",
+      "created": "2026-04-10T21:17:39.685Z",
+      "updated": "2026-04-10T21:17:39.685Z",
       "completed_at": null,
       "file": "TASK-102-lifecycle-integration.md"
     },
