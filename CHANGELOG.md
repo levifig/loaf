@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-dev.26] - 2026-04-10
+
+### Added
+- Track 4 — housekeeping command with orphan detection and age-based archival (8711d6d)
+- Wrap skill, session lifecycle fixes, hook registration (f0a5b81)
+- Librarian rename, PostCompact CLI, TaskCompleted event, session consolidation (41bdccf)
+- Keeper agent, task-driven journaling, UserPromptSubmit context injection (f391cdb)
+- SPEC-030 Keeper agent — session lifecycle management via agent hooks (6ea05ce)
+
+### Changed
+- Track 5 — absorb context-archiver into Librarian (40857b1)
+- Consolidate hooks into hooks.json, absorb compact.sh into CLI (5fa8531)
+- Simplify UserPromptSubmit hook to static implementation principles (cbcf63b)
+
+### Fixed
+- TaskCompleted hook logs description instead of subject (d6f81fe)
+- TaskCompleted hook handler, update Implementation Principles (60bf2ec)
+- Prioritize claude_session_id over branch for session lookup (b348d50)
+
 ## [2.0.0-dev.24] - 2026-04-09
 
 ### Changed
