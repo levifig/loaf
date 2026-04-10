@@ -3,7 +3,7 @@ id: SPEC-029
 title: "JSONL-Driven Journal Sync"
 source: "spark — session 20260409-110153"
 created: 2026-04-09T12:30:00Z
-status: implementing
+status: reshaping
 branch: feat/jsonl-journal-sync
 ---
 
