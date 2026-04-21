@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 106,
+  "next_id": 107,
   "tasks": {
     "TASK-103": {
       "title": "Add missing journal entry types for all artifact types",
@@ -38,7 +38,7 @@
       "title": "Linear-native mode: specs local, tasks Linear-only (skill refactor)",
       "slug": "linear-native-mode-specs-local-tasks-linear-only-s",
       "spec": null,
-      "status": "review",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -46,9 +46,25 @@
       "done": null,
       "session": null,
       "created": "2026-04-21T18:49:03.893Z",
-      "updated": "2026-04-21T18:54:35.735Z",
-      "completed_at": null,
+      "updated": "2026-04-21T19:03:36.112Z",
+      "completed_at": "2026-04-21T19:03:36.111Z",
       "file": "TASK-105-linear-native-mode-specs-local-tasks-linear-only-s.md"
+    },
+    "TASK-106": {
+      "title": "/loaf:implement: Linear-native sub-issue routing",
+      "slug": "loaf-implement-linear-native-sub-issue-routing",
+      "spec": null,
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-21T19:10:59.288Z",
+      "updated": "2026-04-21T19:13:49.686Z",
+      "completed_at": "2026-04-21T19:13:49.685Z",
+      "file": "TASK-106-loaf-implement-linear-native-sub-issue-routing.md"
     },
     "TASK-001": {
       "title": "Create verification reference",
