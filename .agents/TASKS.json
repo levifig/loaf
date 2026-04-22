@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 107,
+  "next_id": 109,
   "tasks": {
     "TASK-103": {
       "title": "Add missing journal entry types for all artifact types",
@@ -38,7 +38,7 @@
       "title": "Linear-native mode: specs local, tasks Linear-only (skill refactor)",
       "slug": "linear-native-mode-specs-local-tasks-linear-only-s",
       "spec": null,
-      "status": "done",
+      "status": "review",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -46,8 +46,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-21T18:49:03.893Z",
-      "updated": "2026-04-21T19:03:36.112Z",
-      "completed_at": "2026-04-21T19:03:36.111Z",
+      "updated": "2026-04-21T18:54:35.735Z",
+      "completed_at": null,
       "file": "TASK-105-linear-native-mode-specs-local-tasks-linear-only-s.md"
     },
     "TASK-106": {
@@ -65,6 +65,38 @@
       "updated": "2026-04-21T19:13:49.686Z",
       "completed_at": "2026-04-21T19:13:49.685Z",
       "file": "TASK-106-loaf-implement-linear-native-sub-issue-routing.md"
+    },
+    "TASK-107": {
+      "title": "Branch split: move linear-native + agents-md work off main to feature branches",
+      "slug": "branch-split-move-linear-native-agents-md-work-off",
+      "spec": null,
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-21T22:52:13.070Z",
+      "updated": "2026-04-21T23:18:30.764Z",
+      "completed_at": "2026-04-21T23:18:30.764Z",
+      "file": "TASK-107-branch-split-move-linear-native-agents-md-work-off.md"
+    },
+    "TASK-108": {
+      "title": "Isolate check.test.ts fixtures to eliminate cross-file test pollution",
+      "slug": "isolate-check-test-ts-fixtures-to-eliminate-cross-",
+      "spec": null,
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-22T00:24:18.152Z",
+      "updated": "2026-04-22T00:35:02.488Z",
+      "completed_at": "2026-04-22T00:35:02.488Z",
+      "file": "TASK-108-isolate-check-test-ts-fixtures-to-eliminate-cross-.md"
     },
     "TASK-001": {
       "title": "Create verification reference",
