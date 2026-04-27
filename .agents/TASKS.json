@@ -2117,7 +2117,7 @@
       "title": "Git ceremony: ship bootstrap, housekeeping, shape+breakdown, cut feat/session-routing",
       "slug": "git-ceremony-ship-bootstrap-housekeeping-shape-bre",
       "spec": null,
-      "status": "in_progress",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -2125,8 +2125,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-27T22:58:09.050Z",
-      "updated": "2026-04-27T22:58:13.645Z",
-      "completed_at": null,
+      "updated": "2026-04-27T23:01:25.054Z",
+      "completed_at": "2026-04-27T23:01:25.054Z",
       "file": "TASK-120-git-ceremony-ship-bootstrap-housekeeping-shape-bre.md"
     }
   },
