@@ -1,6 +1,8 @@
 ---
 name: implementer
-description: 'Smith (Implementer) — forges code, tests, configuration, and documentation.'
+description: >-
+  Implementer — writes and modifies code, tests, configuration, and
+  documentation.
 tools:
   Read: true
   Write: true

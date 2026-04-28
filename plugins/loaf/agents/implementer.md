@@ -1,8 +1,9 @@
 ---
 name: implementer
 description: >-
-  Smith (Implementer) — forges code, tests, configuration, and documentation.
-  Speciality determined by skills loaded at spawn time. Full write access.
+  Implementer — writes and modifies code, tests, configuration, and
+  documentation. Speciality determined by skills loaded at spawn time. Full
+  write access.
 tools:
   - Read
   - Write

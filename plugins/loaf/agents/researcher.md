@@ -1,8 +1,8 @@
 ---
 name: researcher
 description: >-
-  Ranger (Researcher) — scouts far and gathers intelligence. Reports findings as
-  structured observations.
+  Researcher — investigates options and gathers external information. Reports
+  findings as structured observations.
 tools:
   - Read
   - Glob

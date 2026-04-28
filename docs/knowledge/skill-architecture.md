@@ -66,17 +66,17 @@ Skill-specific templates live in `content/skills/{name}/templates/` and are not 
 
 ## Agent Profiles
 
-SPEC-014 replaced 8 role-based agents with 3 functional profiles and 2 system profiles, defined in `SOUL.md`:
+SPEC-014 replaced 8 role-based agents with 4 functional profiles and 1 system profile. Each profile is a tool-boundary contract; identity and naming come from the active soul (see [SPEC-033](../../.agents/specs/SPEC-033-configurable-agent-soul.md)).
 
-| Profile | Concept | Tool Access | Purpose |
-|---------|---------|-------------|---------|
-| **implementer** | Smith (Dwarf) | Full write | Code, tests, config, docs — specialty via skills |
-| **reviewer** | Sentinel (Elf) | Read-only | Audits, reviews — mechanical independence |
-| **researcher** | Ranger (Human) | Read + web | Research, comparison — structured reports |
-| **librarian** | Librarian (Ent) | Read + Edit (.agents/) | Session lifecycle, state, wrap, pre-compaction preservation |
-| **background-runner** | System | Read + Edit | Async non-blocking tasks |
+| Profile | Tool Access | Purpose | Fellowship soul name |
+|---------|-------------|---------|----------------------|
+| **implementer** | Full write | Code, tests, config, docs — specialty via skills | Smith (Dwarf) |
+| **reviewer** | Read-only | Audits, reviews — mechanical independence | Sentinel (Elf) |
+| **researcher** | Read + web | Research, comparison — structured reports | Ranger (Human) |
+| **librarian** | Read + Edit (.agents/) | Session lifecycle, state, wrap, pre-compaction preservation | Keeper (Ent) |
+| **background-runner** | Read + Edit | Async non-blocking tasks | — (system) |
 
-Skills load into profiles at spawn time. What an agent *can do* is fixed by profile; what it *knows* comes from skills.
+Skills load into profiles at spawn time. What an agent *can do* is fixed by profile; what it *knows* comes from skills; what it is *called* comes from `.agents/SOUL.md`. The fellowship-soul names in the rightmost column are illustrative — the `none` soul refers to roles by their functional name only.
 
 ## Categories
 
