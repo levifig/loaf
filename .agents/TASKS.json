@@ -146,77 +146,6 @@
       "completed_at": "2026-04-27T22:25:24.546Z",
       "file": "TASK-115-shape-spec-032-session-routing-by-claude-session-i.md"
     },
-    "TASK-116": {
-      "title": "Add parseHookSessionId and resolveCurrentSession helpers",
-      "slug": "add-parsehooksessionid-and-resolvecurrentsession-h",
-      "spec": "SPEC-032",
-      "status": "review",
-      "priority": "P1",
-      "depends_on": [],
-      "files": [],
-      "verify": null,
-      "done": null,
-      "session": "20260427-224828-session.md",
-      "created": "2026-04-27T22:44:55.496Z",
-      "updated": "2026-04-28T08:06:26.857Z",
-      "completed_at": null,
-      "file": "TASK-116-add-parsehooksessionid-and-resolvecurrentsession-h.md"
-    },
-    "TASK-117": {
-      "title": "Migrate loaf session log to resolveCurrentSession + --session-id flag + stderr WARN",
-      "slug": "migrate-loaf-session-log-to-resolvecurrentsession-",
-      "spec": "SPEC-032",
-      "status": "review",
-      "priority": "P1",
-      "depends_on": [
-        "TASK-116"
-      ],
-      "files": [],
-      "verify": null,
-      "done": null,
-      "session": null,
-      "created": "2026-04-27T22:45:01.572Z",
-      "updated": "2026-04-28T08:46:26.769Z",
-      "completed_at": null,
-      "file": "TASK-117-migrate-loaf-session-log-to-resolvecurrentsession-.md"
-    },
-    "TASK-118": {
-      "title": "Migrate loaf session archive and remaining bare-branch call sites",
-      "slug": "migrate-loaf-session-archive-and-remaining-bare-br",
-      "spec": "SPEC-032",
-      "status": "review",
-      "priority": "P1",
-      "depends_on": [
-        "TASK-116"
-      ],
-      "files": [],
-      "verify": null,
-      "done": null,
-      "session": null,
-      "created": "2026-04-27T22:45:03.139Z",
-      "updated": "2026-04-28T08:57:42.179Z",
-      "completed_at": null,
-      "file": "TASK-118-migrate-loaf-session-archive-and-remaining-bare-br.md"
-    },
-    "TASK-119": {
-      "title": "E2E smoke test: dev.30 misrouting repro + stderr WARN assertion",
-      "slug": "e2e-smoke-test-dev-30-misrouting-repro-stderr-warn",
-      "spec": "SPEC-032",
-      "status": "review",
-      "priority": "P2",
-      "depends_on": [
-        "TASK-117",
-        "TASK-118"
-      ],
-      "files": [],
-      "verify": null,
-      "done": null,
-      "session": null,
-      "created": "2026-04-27T22:45:08.084Z",
-      "updated": "2026-04-28T09:25:02.933Z",
-      "completed_at": null,
-      "file": "TASK-119-e2e-smoke-test-dev-30-misrouting-repro-stderr-warn.md"
-    },
     "TASK-120": {
       "title": "Git ceremony: ship bootstrap, housekeeping, shape+breakdown, cut feat/session-routing",
       "slug": "git-ceremony-ship-bootstrap-housekeeping-shape-bre",
@@ -2128,6 +2057,77 @@
       "updated": "2026-04-22T00:35:02.488Z",
       "completed_at": "2026-04-22T00:35:02.488Z",
       "file": "archive/TASK-108-isolate-check-test-ts-fixtures-to-eliminate-cross-.md"
+    },
+    "TASK-116": {
+      "title": "Add parseHookSessionId and resolveCurrentSession helpers",
+      "slug": "add-parsehooksessionid-and-resolvecurrentsession-h",
+      "spec": "SPEC-032",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": "20260427-224828-session.md",
+      "created": "2026-04-27T22:44:55.496Z",
+      "updated": "2026-04-28T09:27:17.493Z",
+      "completed_at": "2026-04-28T09:27:17.492Z",
+      "file": "archive/TASK-116-add-parsehooksessionid-and-resolvecurrentsession-h.md"
+    },
+    "TASK-117": {
+      "title": "Migrate loaf session log to resolveCurrentSession + --session-id flag + stderr WARN",
+      "slug": "migrate-loaf-session-log-to-resolvecurrentsession-",
+      "spec": "SPEC-032",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-116"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-27T22:45:01.572Z",
+      "updated": "2026-04-28T09:27:17.579Z",
+      "completed_at": "2026-04-28T09:27:17.578Z",
+      "file": "archive/TASK-117-migrate-loaf-session-log-to-resolvecurrentsession-.md"
+    },
+    "TASK-118": {
+      "title": "Migrate loaf session archive and remaining bare-branch call sites",
+      "slug": "migrate-loaf-session-archive-and-remaining-bare-br",
+      "spec": "SPEC-032",
+      "status": "done",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-116"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-27T22:45:03.139Z",
+      "updated": "2026-04-28T09:27:17.647Z",
+      "completed_at": "2026-04-28T09:27:17.646Z",
+      "file": "archive/TASK-118-migrate-loaf-session-archive-and-remaining-bare-br.md"
+    },
+    "TASK-119": {
+      "title": "E2E smoke test: dev.30 misrouting repro + stderr WARN assertion",
+      "slug": "e2e-smoke-test-dev-30-misrouting-repro-stderr-warn",
+      "spec": "SPEC-032",
+      "status": "done",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-117",
+        "TASK-118"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-27T22:45:08.084Z",
+      "updated": "2026-04-28T09:27:17.723Z",
+      "completed_at": "2026-04-28T09:27:17.722Z",
+      "file": "archive/TASK-119-e2e-smoke-test-dev-30-misrouting-repro-stderr-warn.md"
     }
   },
   "specs": {
@@ -2189,11 +2189,11 @@
     },
     "SPEC-032": {
       "title": "Session Routing by claude_session_id",
-      "status": "implementing",
+      "status": "complete",
       "requirement": null,
       "source": "direct",
       "created": "2026-04-27T22:55:00.000Z",
-      "file": "SPEC-032-session-routing-by-claude-session-id.md"
+      "file": "archive/SPEC-032-session-routing-by-claude-session-id.md"
     },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",
