@@ -45,6 +45,3 @@ npm-debug.log*
 yarn.lock
 pnpm-lock.yaml
 bun.lockb
-
-# Stakpak session files
-.stakpak/session*
