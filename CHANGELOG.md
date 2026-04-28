@@ -7,16 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
 ## [2.0.0-dev.31] - 2026-04-28
 
 ### Added
-- Complete SPEC-032 chain — fix Tier 1→2 fallthrough, add E2E misrouting gate (763bb393)
-- Route loaf session archive through chain helper, polish TASK-116 review items (cddcfc7c)
-- Route loaf session log through resolveCurrentSession chain (6587043b)
-- Extract session finders + add resolveCurrentSession chain helper (d0610ce4)
+- `--session-id <id>` flag on `loaf session log`, `loaf session archive`, and `loaf session enrich` for explicit session targeting independent of git branch.
 
 ### Fixed
-- Empty-stdin guard must respect --session-id override (611d51db)
+- Session journal misrouting: `loaf session log` now routes by `claude_session_id` first, then hook stdin payload, then branch fallback. Resolves silent corruption observed during the v2.0.0-dev.30 release where post-merge wrap entries landed in stopped sessions instead of the active one.
+- `loaf session log --from-hook --session-id <id>` with empty stdin now honors the explicit `--session-id` override instead of silently no-opping.
+
+### Changed
+- Branch-fallback session routing emits a stderr warning so misroutes are visible instead of silent. Pass `--session-id` to silence the warning.
+
+### Internal
+- Session lookup helpers extracted to a new `cli/lib/session/` module (`store.ts` for persistence primitives, `find.ts` for finders, `resolve.ts` for the 3-tier resolution chain).
 
 ## [2.0.0-dev.30] - 2026-04-24
 
