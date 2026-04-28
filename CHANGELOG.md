@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- _No unreleased changes yet._
+## [2.0.0-dev.31] - 2026-04-28
+
+### Added
+- Complete SPEC-032 chain — fix Tier 1→2 fallthrough, add E2E misrouting gate (763bb393)
+- Route loaf session archive through chain helper, polish TASK-116 review items (cddcfc7c)
+- Route loaf session log through resolveCurrentSession chain (6587043b)
+- Extract session finders + add resolveCurrentSession chain helper (d0610ce4)
+
+### Fixed
+- Empty-stdin guard must respect --session-id override (611d51db)
 
 ## [2.0.0-dev.30] - 2026-04-24
 
