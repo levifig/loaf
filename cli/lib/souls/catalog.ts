@@ -11,15 +11,14 @@
  *
  *   > A neutral, function-only soul — describes the team by role, not by character.
  *
- * The `fellowship` SOUL.md does not include a tagline (it is byte-identical to
- * `content/templates/soul.md`). When no `> tagline` line is present, we fall
- * back to the H1 line itself as the description.
+ * The `fellowship` SOUL.md does not include a tagline. When no `> tagline`
+ * line is present, we fall back to the H1 line itself as the description.
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 
-import { getCatalogDir } from "./paths.js";
+import { getCatalogDir, resolveCatalogDir } from "./paths.js";
 
 export interface SoulEntry {
   /** Catalog name (directory name inside content/souls/) */
@@ -31,6 +30,23 @@ export interface SoulEntry {
 }
 
 /**
+ * Resolve the catalog directory the souls library should read from.
+ *
+ * - Test path: when `loafRoot` is supplied, return `<loafRoot>/content/souls`
+ *   directly (mirrors `getCatalogDir`).
+ * - Production path: return the first existing candidate from
+ *   `resolveCatalogDir()`, which covers the dev tree, the Claude Code
+ *   plugin, and per-tool installed catalogs.
+ * - Fallback: if nothing exists yet (fresh dev tree, missing install), still
+ *   return the dev-tree path so callers get a stable, unsurprising location
+ *   for error messages and `existsSync` probes.
+ */
+function activeCatalogDir(loafRoot?: string): string {
+  if (loafRoot) return join(loafRoot, "content", "souls");
+  return resolveCatalogDir() ?? getCatalogDir();
+}
+
+/**
  * List all souls in the catalog. Each soul is a subdirectory of
  * `content/souls/` containing a `SOUL.md` file. Directories without a
  * `SOUL.md` are skipped silently.
@@ -38,7 +54,7 @@ export interface SoulEntry {
  * Pass `loafRoot` to override the loaf package root (mainly for tests).
  */
 export function listSouls(loafRoot?: string): SoulEntry[] {
-  const catalogDir = getCatalogDir(loafRoot);
+  const catalogDir = activeCatalogDir(loafRoot);
   if (!existsSync(catalogDir)) return [];
 
   const entries: SoulEntry[] = [];
@@ -81,7 +97,7 @@ export function readSoul(name: string, loafRoot?: string): string {
  * Absolute path to a soul's SOUL.md file. Does not check existence.
  */
 export function soulPathFor(name: string, loafRoot?: string): string {
-  return join(getCatalogDir(loafRoot), name, "SOUL.md");
+  return join(activeCatalogDir(loafRoot), name, "SOUL.md");
 }
 
 /**

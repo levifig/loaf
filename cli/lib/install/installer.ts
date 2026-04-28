@@ -194,7 +194,7 @@ function saveHooksJson(path: string, hooks: CodexHooksJson): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function installOpencode(distDir: string, configDir: string, _upgrade: boolean = false): void {
-  const dirs = ["skills", "agents", "commands", "plugins", "templates"];
+  const dirs = ["skills", "agents", "commands", "plugins", "templates", "souls"];
 
   for (const dir of dirs) {
     const src = join(distDir, dir);
@@ -271,6 +271,12 @@ export function installCursor(distDir: string, configDir: string, upgrade: boole
   const templatesSrc = join(distDir, "templates");
   if (existsSync(templatesSrc)) {
     syncDir(templatesSrc, join(configDir, "templates"));
+  }
+
+  // Souls catalog → ~/.cursor/souls/ for SessionStart hook self-healing
+  const soulsSrc = join(distDir, "souls");
+  if (existsSync(soulsSrc)) {
+    syncDir(soulsSrc, join(configDir, "souls"));
   }
 
   writeMarker(configDir);

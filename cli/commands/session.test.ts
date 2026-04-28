@@ -341,6 +341,89 @@ describe("session: start", () => {
   });
 });
 
+// SPEC-033 / TASK-133 — SessionStart restores .agents/SOUL.md from the active
+// soul recorded in loaf.json. Catalog source is content/souls/<name>/SOUL.md;
+// missing soul: field defaults to fellowship for legacy preservation.
+describe("session: SOUL.md restoration", () => {
+  /** Read the catalog SOUL.md for a named soul straight from the repo source. */
+  function readCatalogSoul(name: "fellowship" | "none"): string {
+    return readFileSync(
+      join(process.cwd(), "content", "souls", name, "SOUL.md"),
+      "utf-8"
+    );
+  }
+
+  it("restores .agents/SOUL.md from `none` when soul: none is configured", async () => {
+    const repoPath = createTempRepo("soul-restore-none");
+
+    // Configure loaf.json with soul: none, leave .agents/SOUL.md absent.
+    writeFileSync(
+      join(repoPath, ".agents/loaf.json"),
+      JSON.stringify({ soul: "none" }, null, 2) + "\n",
+      "utf-8"
+    );
+
+    const result = await runLoaf(["start"], { cwd: repoPath });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("SOUL.md was missing — restored from souls catalog");
+
+    const restored = readFileSync(join(repoPath, ".agents/SOUL.md"), "utf-8");
+    expect(restored).toBe(readCatalogSoul("none"));
+  });
+
+  it("restores .agents/SOUL.md from `fellowship` when soul: fellowship is configured", async () => {
+    const repoPath = createTempRepo("soul-restore-fellowship");
+
+    writeFileSync(
+      join(repoPath, ".agents/loaf.json"),
+      JSON.stringify({ soul: "fellowship" }, null, 2) + "\n",
+      "utf-8"
+    );
+
+    const result = await runLoaf(["start"], { cwd: repoPath });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("SOUL.md was missing — restored from souls catalog");
+
+    const restored = readFileSync(join(repoPath, ".agents/SOUL.md"), "utf-8");
+    expect(restored).toBe(readCatalogSoul("fellowship"));
+  });
+
+  it("defaults to `fellowship` when loaf.json is missing the soul field (legacy preservation)", async () => {
+    const repoPath = createTempRepo("soul-restore-default");
+
+    // No loaf.json at all — repo predates SPEC-033.
+    expect(existsSync(join(repoPath, ".agents/loaf.json"))).toBe(false);
+
+    const result = await runLoaf(["start"], { cwd: repoPath });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("SOUL.md was missing — restored from souls catalog");
+
+    const restored = readFileSync(join(repoPath, ".agents/SOUL.md"), "utf-8");
+    expect(restored).toBe(readCatalogSoul("fellowship"));
+  });
+
+  it("does not touch an existing .agents/SOUL.md", async () => {
+    const repoPath = createTempRepo("soul-no-touch");
+
+    const customSoul = "# Custom Soul\n\nUser-modified content — must not be overwritten.\n";
+    writeFileSync(join(repoPath, ".agents/SOUL.md"), customSoul, "utf-8");
+
+    // Even with soul: none in loaf.json, an existing local file wins.
+    writeFileSync(
+      join(repoPath, ".agents/loaf.json"),
+      JSON.stringify({ soul: "none" }, null, 2) + "\n",
+      "utf-8"
+    );
+
+    const result = await runLoaf(["start"], { cwd: repoPath });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).not.toContain("SOUL.md was missing");
+
+    const after = readFileSync(join(repoPath, ".agents/SOUL.md"), "utf-8");
+    expect(after).toBe(customSoul);
+  });
+});
+
 describe("session: log", () => {
   it("hook-safe exit when no active session exists", async () => {
     const repoPath = createTempRepo("no-session-hook-test");

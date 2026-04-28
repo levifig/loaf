@@ -18,10 +18,8 @@ import {
   openSync,
   closeSync,
   statSync,
-  copyFileSync,
 } from "fs";
 import { join, dirname, basename } from "path";
-import { fileURLToPath } from "url";
 import matter from "gray-matter";
 
 import { loadKnowledgeFiles } from "../lib/kb/loader.js";
@@ -30,6 +28,8 @@ import { checkAllStaleness } from "../lib/kb/staleness.js";
 import { findAgentsDir } from "../lib/tasks/resolve.js";
 import { isLinearIntegrationDisabled } from "../lib/detect/mcp.js";
 import { extractSummary } from "../lib/journal/extractor.js";
+import { getActiveSoul } from "../lib/config/agents-config.js";
+import { readSoul } from "../lib/souls/catalog.js";
 import {
   consolidateSession,
   findActiveSessionForBranch,
@@ -209,42 +209,26 @@ function getProjectRoot(agentsDir: string): string {
   return dirname(agentsDir);
 }
 
-function getInstalledTemplateCandidates(): string[] {
-  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-  const configHome = process.env.XDG_CONFIG_HOME || join(homeDir, ".config");
+/**
+ * Soul name written into `loaf.json` for repos that pre-date SPEC-033.
+ *
+ * The fresh-install default in `cli/lib/config/agents-config.ts` is `none`,
+ * but the SessionStart restoration path is *not* a fresh install — it's a
+ * recovery from a missing `.agents/SOUL.md` in a project that already had
+ * one. Defaulting to `fellowship` here preserves the legacy Warden identity
+ * for any repo that somehow lost its `soul:` field along with the file. The
+ * `loaf install` migration (`installSoul`) pins this same default for
+ * pre-existing repos, so in practice this branch is rarely taken.
+ */
+const RESTORATION_DEFAULT_SOUL = "fellowship";
 
-  return [
-    join(configHome, "opencode", "templates", "soul.md"),
-    join(homeDir, ".cursor", "templates", "soul.md"),
-    join(process.env.CODEX_HOME || join(homeDir, ".codex"), "templates", "soul.md"),
-    join(homeDir, ".amp", "templates", "soul.md"),
-    process.env.CLAUDE_PLUGIN_ROOT ? join(process.env.CLAUDE_PLUGIN_ROOT, "templates", "soul.md") : "",
-  ].filter(Boolean);
-}
-
-function resolveSoulTemplate(agentsDir: string): string | null {
-  const projectRoot = getProjectRoot(agentsDir);
-  const moduleDir = dirname(fileURLToPath(import.meta.url));
-
-  for (const candidate of [
-    join(agentsDir, "templates", "soul.md"),
-    join(projectRoot, "templates", "soul.md"),
-    join(projectRoot, "content", "templates", "soul.md"),
-    join(moduleDir, "..", "templates", "soul.md"),
-    join(moduleDir, "..", "..", "templates", "soul.md"),
-    join(moduleDir, "..", "content", "templates", "soul.md"),
-    join(moduleDir, "..", "..", "content", "templates", "soul.md"),
-    join(projectRoot, "SOUL.md"),
-    ...getInstalledTemplateCandidates(),
-  ]) {
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  return null;
-}
-
+/**
+ * Restore `.agents/SOUL.md` from the configured soul catalog when missing.
+ *
+ * Reads `loaf.json` for the active soul (falls back to `fellowship` for
+ * backwards compatibility) and copies `content/souls/<name>/SOUL.md` to
+ * `.agents/SOUL.md`. If the local file already exists, this is a no-op.
+ */
 function validateSoulMd(agentsDir: string): { exists: boolean; restored: boolean } {
   const soulPath = join(agentsDir, "SOUL.md");
 
@@ -252,13 +236,18 @@ function validateSoulMd(agentsDir: string): { exists: boolean; restored: boolean
     return { exists: true, restored: false };
   }
 
-  const templatePath = resolveSoulTemplate(agentsDir);
-  if (!templatePath) {
+  const projectRoot = getProjectRoot(agentsDir);
+  const soulName = getActiveSoul(projectRoot) ?? RESTORATION_DEFAULT_SOUL;
+
+  let content: string;
+  try {
+    content = readSoul(soulName);
+  } catch {
     return { exists: false, restored: false };
   }
 
   try {
-    copyFileSync(templatePath, soulPath);
+    writeFileSync(soulPath, content, "utf-8");
     return { exists: true, restored: true };
   } catch {
     return { exists: false, restored: false };
@@ -1272,7 +1261,7 @@ export function registerSessionCommand(program: Command): void {
 
       const soulStatus = validateSoulMd(agentsDir);
       if (soulStatus.restored) {
-        console.log(`  ${yellow("⚠")} SOUL.md was missing — restored from template`);
+        console.log(`  ${yellow("⚠")} SOUL.md was missing — restored from souls catalog`);
       } else if (!soulStatus.exists) {
         console.log(`  ${yellow("⚠")} SOUL.md not found — run 'loaf install' to set up project`);
       }

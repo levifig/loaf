@@ -101,12 +101,14 @@ export async function build({
   copyHooks(srcDir, hooksDir);
   generateHooksJson(config as HooksConfig, distDir);
 
-  // Copy plugin-root templates (e.g. soul.md for SessionStart hook)
-  const soulTemplateSrc = join(srcDir, "templates", "soul.md");
-  if (existsSync(soulTemplateSrc)) {
-    const templatesDir = join(distDir, "templates");
-    mkdirSync(templatesDir, { recursive: true });
-    cpSync(soulTemplateSrc, join(templatesDir, "soul.md"));
+  // Copy souls catalog so the SessionStart hook can self-heal `.agents/SOUL.md`.
+  // The installer drops `souls/` next to the per-tool config so the bundled CLI
+  // can resolve it via `resolveCatalogDir()` when no loaf package.json is nearby.
+  const soulsSrc = join(srcDir, "souls");
+  if (existsSync(soulsSrc)) {
+    const soulsDest = join(distDir, "souls");
+    mkdirSync(soulsDest, { recursive: true });
+    cpSync(soulsSrc, soulsDest, { recursive: true });
   }
 }
 
