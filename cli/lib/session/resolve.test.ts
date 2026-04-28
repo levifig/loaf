@@ -413,6 +413,129 @@ describe("resolveCurrentSession — Tier 3 (branch fallback)", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// resolveCurrentSession — Tier 2 (stdinSessionIdHint)
+//
+// The hint variant is for callers that have already consumed stdin upstream
+// (e.g., `loaf session log --from-hook` reads stdin once for both routing and
+// entry-text extraction). The chain order — flag → stdin → branch — must be
+// preserved when the hint is supplied; collapsing flag+hint into a single
+// signal silently demoted the chain to 2-tier in TASK-117.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("resolveCurrentSession — Tier 2 (stdinSessionIdHint)", () => {
+  it("uses the hint as Tier 2 when present, no stderr", async () => {
+    writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      claude_session_id: "session-from-hint",
+    });
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(AGENTS_DIR, BRANCH, {
+      stdinSessionIdHint: "session-from-hint",
+    });
+    stderr.restore();
+
+    expect(result).not.toBeNull();
+    expect(result?.data.claude_session_id).toBe("session-from-hint");
+    expect(stderr.lines).toEqual([]);
+  });
+
+  it("flag wins over hint (Tier 1 beats Tier 2), no stderr", async () => {
+    writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      claude_session_id: "session-flag",
+    });
+    writeSessionFile({
+      fileName: "20260427-221000-session.md",
+      claude_session_id: "session-hint",
+    });
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(AGENTS_DIR, BRANCH, {
+      sessionIdFlag: "session-flag",
+      stdinSessionIdHint: "session-hint",
+    });
+    stderr.restore();
+
+    expect(result?.data.claude_session_id).toBe("session-flag");
+    expect(stderr.lines).toEqual([]);
+  });
+
+  it("falls through from bad flag to valid hint (Tier 1 → Tier 2), no WARN", async () => {
+    // The TASK-117 review finding: a present-but-bogus `--session-id` plus a
+    // valid hook stdin id must reach the hint, not collapse to branch routing.
+    writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      claude_session_id: "session-real",
+    });
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(AGENTS_DIR, BRANCH, {
+      sessionIdFlag: "no-such-id",
+      stdinSessionIdHint: "session-real",
+    });
+    stderr.restore();
+
+    expect(result?.data.claude_session_id).toBe("session-real");
+    expect(stderr.lines).toEqual([]);
+  });
+
+  it("falls through bad flag AND bad hint to branch fallback with WARN", async () => {
+    writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      claude_session_id: "branch-only",
+    });
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(AGENTS_DIR, BRANCH, {
+      sessionIdFlag: "no-such-id",
+      stdinSessionIdHint: "also-no-such-id",
+    });
+    stderr.restore();
+
+    expect(result?.data.claude_session_id).toBe("branch-only");
+    expect(stderr.lines).toEqual([WARN_FOR_BRANCH(BRANCH)]);
+  });
+
+  it("treats empty-string hint as no signal (falls through to branch)", async () => {
+    writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      claude_session_id: "branch-only",
+    });
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(AGENTS_DIR, BRANCH, {
+      stdinSessionIdHint: "",
+    });
+    stderr.restore();
+
+    expect(result?.data.claude_session_id).toBe("branch-only");
+    expect(stderr.lines).toEqual([WARN_FOR_BRANCH(BRANCH)]);
+  });
+
+  it("hint wins over parseStdin (no double-read of fd 0)", async () => {
+    writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      claude_session_id: "from-hint",
+    });
+
+    // If parseStdin were honored, fd 0 would be read here. mockStdin throws
+    // on read so the test would fail loudly. Hint must short-circuit.
+    mockStdin(undefined);
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(AGENTS_DIR, BRANCH, {
+      parseStdin: true,
+      stdinSessionIdHint: "from-hint",
+    });
+    stderr.restore();
+
+    expect(result?.data.claude_session_id).toBe("from-hint");
+    expect(stderr.lines).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // resolveCurrentSession — WARN routing
 // ─────────────────────────────────────────────────────────────────────────────
 

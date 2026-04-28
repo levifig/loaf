@@ -1542,18 +1542,30 @@ export function registerSessionCommand(program: Command): void {
         }
       }
 
-      // Compose the Tier 1 session_id signal: explicit flag wins over stdin.
-      // We pass `parseStdin: false` to the chain helper because we've already
-      // consumed stdin here — re-reading via parseHookSessionId() would block
-      // or fail. The helper still emits the Tier-3 WARN when no signal arrives.
+      // No-op exit when --from-hook fires with empty stdin: the hook ran with
+      // no payload, there's nothing to log, and resolving via Tier 3 here
+      // would emit a misleading WARN about a session we never intend to write
+      // to. Exit silently before the chain runs. This is intentionally placed
+      // before any session resolution so it short-circuits cleanly.
+      if (options.fromHook && !hookData && !hookStdinError) {
+        process.exit(0);
+      }
+
+      // SPEC-032 3-tier chain. Pass `options.sessionId` as Tier 1 and the
+      // already-parsed stdin id (if any) as the Tier 2 hint — keeping the
+      // chain inside the helper preserves the spec's documented order:
+      // a present-but-bogus `--session-id` falls through to a valid stdin
+      // id BEFORE collapsing to branch routing. Earlier code coalesced both
+      // into a single `sessionIdFlag`, which silently demoted the chain to
+      // 2-tier (TASK-117 review finding).
       const stdinSessionId =
         hookData && typeof hookData.session_id === "string" && hookData.session_id.length > 0
           ? (hookData.session_id as string)
           : undefined;
-      const resolvedSessionIdFlag = options.sessionId || stdinSessionId;
 
       const existingSession = await resolveCurrentSession(agentsDir, branch, {
-        sessionIdFlag: resolvedSessionIdFlag,
+        sessionIdFlag: options.sessionId,
+        stdinSessionIdHint: stdinSessionId,
         parseStdin: false,
       });
       if (!existingSession) {

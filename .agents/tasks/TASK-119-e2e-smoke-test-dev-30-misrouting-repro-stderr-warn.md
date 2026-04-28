@@ -2,10 +2,10 @@
 id: TASK-119
 title: 'E2E smoke test: dev.30 misrouting repro + stderr WARN assertion'
 spec: SPEC-032
-status: todo
+status: review
 priority: P2
 created: '2026-04-27T22:45:08.084Z'
-updated: '2026-04-27T22:45:08.084Z'
+updated: '2026-04-28T09:12:26.068Z'
 depends_on:
   - TASK-117
   - TASK-118

@@ -69,8 +69,24 @@ export interface ResolveCurrentSessionOptions {
   /**
    * When `true`, parse stdin via `parseHookSessionId`. Caller must opt in
    * (e.g., `--from-hook`) — auto-detection is rejected per SPEC-032 A5.
+   *
+   * Mutually exclusive with `stdinSessionIdHint`: if a caller has already
+   * consumed stdin, it should pass the parsed id via `stdinSessionIdHint`
+   * instead of asking the helper to re-read fd 0.
    */
   parseStdin?: boolean;
+  /**
+   * Pre-parsed `session_id` from hook stdin, supplied by callers that have
+   * already consumed stdin upstream (e.g., `loaf session log` reads stdin
+   * once for both routing and entry-text extraction). When set, the helper
+   * uses this as Tier 2 instead of re-reading fd 0.
+   *
+   * Empty string is treated the same as `undefined` (no signal).
+   *
+   * If both `parseStdin: true` and `stdinSessionIdHint` are passed,
+   * `stdinSessionIdHint` wins (no double-read).
+   */
+  stdinSessionIdHint?: string;
 }
 
 export interface ResolvedSession {
@@ -111,14 +127,28 @@ export async function resolveCurrentSession(
     // Fall through on null — do NOT exit early.
   }
 
-  // Tier 2: hook stdin (only when caller opts in)
-  if (opts.parseStdin === true) {
-    const stdinId = _parseHookSessionId();
-    if (stdinId) {
-      const hit = findSessionByClaudeId(agentsDir, stdinId, branch);
-      if (hit) return hit;
-      // Fall through on null.
-    }
+  // Tier 2: hook stdin
+  //
+  // Two opt-in paths, mutually exclusive (hint wins if both are set):
+  //
+  //  - `stdinSessionIdHint` — caller has already consumed stdin and passes
+  //    the parsed id directly. Use this when the action body needs the rest
+  //    of the hook payload too (e.g., `loaf session log --from-hook` reads
+  //    stdin once for both routing and entry-text extraction).
+  //
+  //  - `parseStdin: true` — helper reads fd 0 itself. Use this from action
+  //    bodies that don't otherwise touch stdin.
+  //
+  // Auto-detection (no opt-in) is rejected per SPEC-032 A5.
+  const stdinId = opts.stdinSessionIdHint
+    ? opts.stdinSessionIdHint
+    : opts.parseStdin === true
+      ? _parseHookSessionId()
+      : undefined;
+  if (stdinId) {
+    const hit = findSessionByClaudeId(agentsDir, stdinId, branch);
+    if (hit) return hit;
+    // Fall through on null.
   }
 
   // Tier 3: branch routing (degraded path — always WARN)

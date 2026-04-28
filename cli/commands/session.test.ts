@@ -70,9 +70,12 @@ async function runLoaf(
 function createTempRepo(name: string): string {
   const repoPath = join(TEST_ROOT, name);
   mkdirSync(repoPath, { recursive: true });
-  
-  // Initialize git repo
-  execFileSync("git", ["init"], { cwd: repoPath });
+
+  // Initialize git repo. `--initial-branch=main` overrides any inherited
+  // `init.defaultBranch` (e.g., a developer with `master` configured globally)
+  // so SPEC-032 tests that assert literal `branch 'main'` in output remain
+  // portable across machines.
+  execFileSync("git", ["init", "--initial-branch=main"], { cwd: repoPath });
   execFileSync("git", ["config", "user.email", "test@test.com"], { cwd: repoPath });
   execFileSync("git", ["config", "user.name", "Test User"], { cwd: repoPath });
   

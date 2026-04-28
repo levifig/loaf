@@ -26434,12 +26434,10 @@ async function resolveCurrentSession(agentsDir, branch, opts = {}) {
     const hit = findSessionByClaudeId(agentsDir, opts.sessionIdFlag, branch);
     if (hit) return hit;
   }
-  if (opts.parseStdin === true) {
-    const stdinId = _parseHookSessionId();
-    if (stdinId) {
-      const hit = findSessionByClaudeId(agentsDir, stdinId, branch);
-      if (hit) return hit;
-    }
+  const stdinId = opts.stdinSessionIdHint ? opts.stdinSessionIdHint : opts.parseStdin === true ? _parseHookSessionId() : void 0;
+  if (stdinId) {
+    const hit = findSessionByClaudeId(agentsDir, stdinId, branch);
+    if (hit) return hit;
   }
   emitBranchFallbackWarning(branch);
   return findActiveSessionForBranch(agentsDir, branch);
@@ -27502,10 +27500,13 @@ function registerSessionCommand(program3) {
         hookStdinError = err;
       }
     }
+    if (options2.fromHook && !hookData && !hookStdinError) {
+      process.exit(0);
+    }
     const stdinSessionId = hookData && typeof hookData.session_id === "string" && hookData.session_id.length > 0 ? hookData.session_id : void 0;
-    const resolvedSessionIdFlag = options2.sessionId || stdinSessionId;
     const existingSession = await resolveCurrentSession(agentsDir, branch, {
-      sessionIdFlag: resolvedSessionIdFlag,
+      sessionIdFlag: options2.sessionId,
+      stdinSessionIdHint: stdinSessionId,
       parseStdin: false
     });
     if (!existingSession) {

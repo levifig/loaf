@@ -202,7 +202,7 @@
       "title": "E2E smoke test: dev.30 misrouting repro + stderr WARN assertion",
       "slug": "e2e-smoke-test-dev-30-misrouting-repro-stderr-warn",
       "spec": "SPEC-032",
-      "status": "todo",
+      "status": "review",
       "priority": "P2",
       "depends_on": [
         "TASK-117",
@@ -213,7 +213,7 @@
       "done": null,
       "session": null,
       "created": "2026-04-27T22:45:08.084Z",
-      "updated": "2026-04-27T22:45:08.084Z",
+      "updated": "2026-04-28T09:12:26.068Z",
       "completed_at": null,
       "file": "TASK-119-e2e-smoke-test-dev-30-misrouting-repro-stderr-warn.md"
     },
