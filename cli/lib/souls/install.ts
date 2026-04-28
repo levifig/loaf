@@ -5,16 +5,22 @@
  * recording the active soul name in `.agents/loaf.json`. This is the file
  * mechanic for `loaf soul use <name>` — divergence checking lives in
  * `divergence.ts` and is enforced by the command layer before calling
- * `installSoul`.
+ * `copySoulToProject`.
  *
- * Schema-level concerns (typed `LoafConfig`, `loaf install` integration)
- * belong to TASK-131; this module performs a minimal read-merge-write that
- * preserves any existing keys in `loaf.json`.
+ * `loaf.json` reads/writes delegate to the typed config layer
+ * (`cli/lib/config/agents-config.ts`) so format conventions and the schema
+ * shape live in one place. The souls library does not open `loaf.json`
+ * directly.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 
+import {
+  getActiveSoul,
+  loafConfigPath as configLoafConfigPath,
+  setActiveSoul,
+} from "../config/agents-config.js";
 import { readSoul } from "./catalog.js";
 
 /** Path of the project's `.agents/SOUL.md` given a project root. */
@@ -22,9 +28,14 @@ export function localSoulPath(projectRoot: string): string {
   return join(projectRoot, ".agents", "SOUL.md");
 }
 
-/** Path of the project's `.agents/loaf.json` given a project root. */
+/**
+ * Path of the project's `.agents/loaf.json` given a project root.
+ *
+ * Re-exported from the typed config layer so existing souls-library
+ * consumers keep importing it from `cli/lib/souls/index.js`.
+ */
 export function loafConfigPath(projectRoot: string): string {
-  return join(projectRoot, ".agents", "loaf.json");
+  return configLoafConfigPath(projectRoot);
 }
 
 /**
@@ -49,49 +60,19 @@ export function copySoulToProject(
 /**
  * Read the `soul` field from `.agents/loaf.json`.
  *
- * Returns `null` when the file is missing, unreadable, or has no `soul:`
- * field. Callers (e.g. `loaf soul current`) are responsible for applying
- * the `none` default.
+ * Thin pass-through to `getActiveSoul` in the typed config layer. Returns
+ * `null` when the file is missing, unreadable, or has no `soul:` field.
+ * Callers (e.g. `loaf soul current`) are responsible for applying the
+ * `none` default.
  */
 export function readActiveSoul(projectRoot: string): string | null {
-  const p = loafConfigPath(projectRoot);
-  if (!existsSync(p)) return null;
-  try {
-    const raw = readFileSync(p, "utf-8");
-    const json = JSON.parse(raw) as Record<string, unknown>;
-    const value = json.soul;
-    return typeof value === "string" && value.length > 0 ? value : null;
-  } catch {
-    return null;
-  }
+  return getActiveSoul(projectRoot);
 }
 
 /**
  * Write `soul: <name>` into `.agents/loaf.json`, preserving any existing
- * keys. Creates the file (and the `.agents/` directory) if missing.
- *
- * Format: 2-space indent, trailing newline — matches the convention used by
- * `cli/lib/config/agents-config.ts`.
+ * keys. Thin pass-through to `setActiveSoul` in the typed config layer.
  */
 export function writeActiveSoul(projectRoot: string, name: string): void {
-  const agentsDir = join(projectRoot, ".agents");
-  const p = loafConfigPath(projectRoot);
-
-  let existing: Record<string, unknown> = {};
-  if (existsSync(p)) {
-    try {
-      existing = JSON.parse(readFileSync(p, "utf-8")) as Record<string, unknown>;
-    } catch {
-      // Corrupt JSON — overwrite rather than crash. Same posture as
-      // `readLoafConfig` in agents-config.ts.
-      existing = {};
-    }
-  }
-
-  const next = { ...existing, soul: name };
-
-  if (!existsSync(agentsDir)) {
-    mkdirSync(agentsDir, { recursive: true });
-  }
-  writeFileSync(p, `${JSON.stringify(next, null, 2)}\n`, "utf-8");
+  setActiveSoul(projectRoot, name);
 }

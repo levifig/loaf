@@ -21,6 +21,8 @@ import { INSTALLERS } from "../lib/install/installer.js";
 import { installFencedSectionsForTargets } from "../lib/install/fenced-section.js";
 import { runMcpRecommendations } from "../lib/install/mcp-recommendations.js";
 import { ensureProjectSymlinks } from "../lib/install/symlinks.js";
+import { installSoul, type InstallSoulResult } from "../lib/install/install-soul.js";
+import { promptAndApplySoul } from "../lib/install/install-soul-prompt.js";
 
 function findProjectRoot(): string {
   try {
@@ -232,11 +234,20 @@ export function registerInstallCommand(program: Command): void {
       "--no-yes",
       "Force interactive prompts even when stdin is not a TTY (testing)",
     )
+    .option(
+      "--interactive",
+      "Force interactive prompts (e.g. soul selection) even when stdin is not a TTY",
+    )
+    .option(
+      "--no-interactive",
+      "Disable interactive prompts unconditionally (CI mode)",
+    )
     .action(
       async (options: {
         to?: string;
         upgrade?: boolean;
         yes?: boolean;
+        interactive?: boolean;
       }) => {
       const rootDir = findRootDir();
       const distDir = join(rootDir, "dist");
@@ -256,6 +267,21 @@ export function registerInstallCommand(program: Command): void {
           : options.yes === false
             ? false
             : !process.stdin.isTTY;
+
+      // Interactive mode for prompts beyond the legacy --yes/--no-yes pair —
+      // currently just the SPEC-033 soul-selection prompt. Resolution order:
+      //   --interactive       → true (forced on, even without a TTY)
+      //   --no-interactive    → false (forced off)
+      //   --yes               → false (assume defaults)
+      //   (unset)             → derive from TTY
+      const interactive =
+        options.interactive === true
+          ? true
+          : options.interactive === false
+            ? false
+            : options.yes === true
+              ? false
+              : !!process.stdin.isTTY && !!process.stdout.isTTY;
 
       console.log(`\n${bold("loaf install")}\n`);
 
@@ -288,6 +314,23 @@ export function registerInstallCommand(program: Command): void {
       if (tools.length === 0 && !hasClaudeCode) {
         console.log(`  ${gray("No AI tools detected")}`);
         console.log();
+        // Even with no targets, run soul setup so a fresh `loaf install`
+        // (e.g. inside a brand-new project) still writes `.agents/SOUL.md`
+        // and records `soul: <name>` in `loaf.json`. The interactive prompt
+        // (TASK-135) wraps the fresh-install path here as well.
+        const soulPromptOutcome = await promptAndApplySoul({
+          projectRoot,
+          interactive,
+        });
+        const soulResult = installSoul(projectRoot);
+        if (soulPromptOutcome.action === "prompted") {
+          console.log(
+            `  ${green("✓")} Soul selected: ${bold(soulPromptOutcome.soul)} ${gray(`→ ${soulResult.soulPath}`)}`,
+          );
+          console.log();
+        } else if (renderSoulResult(soulResult)) {
+          console.log();
+        }
         return;
       }
       console.log();
@@ -558,6 +601,31 @@ export function registerInstallCommand(program: Command): void {
         console.log();
       }
 
+      // Soul integration (SPEC-033, T6/T7). Project-wide step — runs
+      // regardless of which targets were installed. Three paths:
+      //
+      //   - fresh        → write none SOUL.md + soul: none in loaf.json
+      //   - legacy-upgrade → write soul: fellowship (preserve existing SOUL.md)
+      //   - noop         → both already configured, do nothing
+      //
+      // The interactive prompt (SPEC-033 T14, TASK-135) runs *before*
+      // installSoul() so the user's choice can override the fresh-default
+      // `none`. When the prompt fires it pre-writes both files; installSoul
+      // then sees them configured and returns `noop` silently.
+      const soulPromptOutcome = await promptAndApplySoul({
+        projectRoot,
+        interactive,
+      });
+      const soulResult = installSoul(projectRoot);
+      if (soulPromptOutcome.action === "prompted") {
+        console.log(
+          `  ${green("✓")} Soul selected: ${bold(soulPromptOutcome.soul)} ${gray(`→ ${soulResult.soulPath}`)}`,
+        );
+        console.log();
+      } else if (renderSoulResult(soulResult)) {
+        console.log();
+      }
+
       // Collect all available targets for MCP recommendations
       const mcpTargets = [...new Set([
         ...(hasClaudeCode ? ["claude-code"] : []),
@@ -571,4 +639,27 @@ export function registerInstallCommand(program: Command): void {
       });
     },
     );
+}
+
+/**
+ * Render an `installSoul` result in the standard install output style.
+ * Returns true when any line was printed so callers can manage surrounding
+ * blank lines consistently (mirrors `enforceAndReportSymlinks`).
+ */
+function renderSoulResult(result: InstallSoulResult): boolean {
+  switch (result.action) {
+    case "fresh":
+      console.log(
+        `  ${green("✓")} Soul installed: ${bold(result.soul)} ${gray(`→ ${result.soulPath}`)}`,
+      );
+      return true;
+    case "legacy-upgrade":
+      console.log(
+        `  ${green("✓")} Soul pinned: ${bold(result.soul)} ${gray("(preserved existing .agents/SOUL.md)")}`,
+      );
+      return true;
+    case "noop":
+      // Silent — no noise when the soul is already configured.
+      return false;
+  }
 }
