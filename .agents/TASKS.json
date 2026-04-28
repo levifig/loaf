@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 129,
+  "next_id": 136,
   "tasks": {
     "TASK-103": {
       "title": "Add missing journal entry types for all artifact types",
@@ -289,6 +289,132 @@
       "updated": "2026-04-28T14:03:49.649Z",
       "completed_at": "2026-04-28T14:03:49.649Z",
       "file": "TASK-128-reflect-spec-032-release-flow-learnings-into-strat.md"
+    },
+    "TASK-129": {
+      "title": "Build souls catalog (content/souls/{fellowship,none}/SOUL.md)",
+      "slug": "build-souls-catalog-content-souls-fellowship-none-",
+      "spec": "SPEC-033",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-28T22:39:12.399Z",
+      "updated": "2026-04-28T22:39:12.399Z",
+      "completed_at": null,
+      "file": "TASK-129-build-souls-catalog-content-souls-fellowship-none-.md"
+    },
+    "TASK-130": {
+      "title": "Implement loaf soul command + cli/lib/souls library (list/current/show/use)",
+      "slug": "implement-loaf-soul-command-cli-lib-souls-library-",
+      "spec": "SPEC-033",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [
+        "TASK-129"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-28T22:39:12.450Z",
+      "updated": "2026-04-28T22:39:31.130Z",
+      "completed_at": null,
+      "file": "TASK-130-implement-loaf-soul-command-cli-lib-souls-library-.md"
+    },
+    "TASK-131": {
+      "title": "Add soul: field to loaf.json schema and integrate into loaf install",
+      "slug": "add-soul-field-to-loaf-json-schema-and-integrate-i",
+      "spec": "SPEC-033",
+      "status": "todo",
+      "priority": "P0",
+      "depends_on": [
+        "TASK-129",
+        "TASK-130"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-28T22:39:12.502Z",
+      "updated": "2026-04-28T22:39:31.194Z",
+      "completed_at": null,
+      "file": "TASK-131-add-soul-field-to-loaf-json-schema-and-integrate-i.md"
+    },
+    "TASK-132": {
+      "title": "Neutralize agent profile prompts and add SOUL.md-read directive",
+      "slug": "neutralize-agent-profile-prompts-and-add-soul-md-r",
+      "spec": "SPEC-033",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-129"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-28T22:39:12.553Z",
+      "updated": "2026-04-28T22:39:31.254Z",
+      "completed_at": null,
+      "file": "TASK-132-neutralize-agent-profile-prompts-and-add-soul-md-r.md"
+    },
+    "TASK-133": {
+      "title": "Update SessionStart hook to restore .agents/SOUL.md from configured soul",
+      "slug": "update-sessionstart-hook-to-restore-agents-soul-md",
+      "spec": "SPEC-033",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-131",
+        "TASK-132"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-28T22:39:12.619Z",
+      "updated": "2026-04-28T22:39:31.330Z",
+      "completed_at": null,
+      "file": "TASK-133-update-sessionstart-hook-to-restore-agents-soul-md.md"
+    },
+    "TASK-134": {
+      "title": "Skill prose audit + ARCHITECTURE.md rewrite (strip fellowship vocab)",
+      "slug": "skill-prose-audit-architecture-md-rewrite-strip-fe",
+      "spec": "SPEC-033",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-132"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-28T22:39:12.670Z",
+      "updated": "2026-04-28T22:39:31.401Z",
+      "completed_at": null,
+      "file": "TASK-134-skill-prose-audit-architecture-md-rewrite-strip-fe.md"
+    },
+    "TASK-135": {
+      "title": "Add interactive soul selection prompt to loaf install",
+      "slug": "add-interactive-soul-selection-prompt-to-loaf-inst",
+      "spec": "SPEC-033",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-130"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-28T22:39:12.730Z",
+      "updated": "2026-04-28T22:39:31.473Z",
+      "completed_at": null,
+      "file": "TASK-135-add-interactive-soul-selection-prompt-to-loaf-inst.md"
     },
     "TASK-001": {
       "title": "Create verification reference",
