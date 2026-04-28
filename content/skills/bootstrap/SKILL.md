@@ -166,6 +166,7 @@ Follow [templates/brief.md](templates/brief.md) for the full brief template. Fro
 source: file | text | folder | interview
 original_path: ~/Desktop/project-brief.md  # only if copied from external source
 created: 2026-03-27T01:54:00Z              # use actual timestamp
+archived: true                             # always true -- BRIEF is a historical snapshot
 ---
 ```
 
