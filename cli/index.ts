@@ -13,6 +13,7 @@ import { registerCheckCommand } from "./commands/check.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerSessionCommand } from "./commands/session.js";
 import { registerReportCommand } from "./commands/report.js";
+import { registerSoulCommand } from "./commands/soul.js";
 import { LOAF_VERSION } from "./lib/version.js";
 
 const program = new Command();
@@ -34,6 +35,7 @@ registerCheckCommand(program);
 registerDoctorCommand(program);
 registerSessionCommand(program);
 registerReportCommand(program);
+registerSoulCommand(program);
 
 // Check for --agent-help before parsing (needs commands registered first)
 if (process.argv.includes("--agent-help")) {
