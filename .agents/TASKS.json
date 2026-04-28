@@ -294,7 +294,7 @@
       "title": "Build souls catalog (content/souls/{fellowship,none}/SOUL.md)",
       "slug": "build-souls-catalog-content-souls-fellowship-none-",
       "spec": "SPEC-033",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "P0",
       "depends_on": [],
       "files": [],
@@ -302,7 +302,7 @@
       "done": null,
       "session": null,
       "created": "2026-04-28T22:39:12.399Z",
-      "updated": "2026-04-28T22:39:12.399Z",
+      "updated": "2026-04-28T22:51:01.854Z",
       "completed_at": null,
       "file": "TASK-129-build-souls-catalog-content-souls-fellowship-none-.md"
     },
