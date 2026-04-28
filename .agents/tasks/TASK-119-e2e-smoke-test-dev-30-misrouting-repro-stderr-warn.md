@@ -5,7 +5,7 @@ spec: SPEC-032
 status: review
 priority: P2
 created: '2026-04-27T22:45:08.084Z'
-updated: '2026-04-28T09:12:26.068Z'
+updated: '2026-04-28T09:25:02.933Z'
 depends_on:
   - TASK-117
   - TASK-118

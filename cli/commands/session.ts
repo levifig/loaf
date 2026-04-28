@@ -1542,12 +1542,24 @@ export function registerSessionCommand(program: Command): void {
         }
       }
 
-      // No-op exit when --from-hook fires with empty stdin: the hook ran with
-      // no payload, there's nothing to log, and resolving via Tier 3 here
-      // would emit a misleading WARN about a session we never intend to write
-      // to. Exit silently before the chain runs. This is intentionally placed
-      // before any session resolution so it short-circuits cleanly.
-      if (options.fromHook && !hookData && !hookStdinError) {
+      // No-op exit when --from-hook fires with empty stdin AND no explicit
+      // override is set: the hook ran with no payload, there's nothing to
+      // route, and resolving via Tier 3 here would emit a misleading WARN
+      // about a session we never intend to write to. Exit silently before
+      // the chain runs.
+      //
+      // BUT: an explicit `--session-id <id>` is the Tier 1 override the spec
+      // built to protect parallel sessions. If it's set, fall through to the
+      // chain regardless of empty stdin — Tier 1 will resolve cleanly without
+      // a WARN, and the entry-text path below handles the (rare) "flag set,
+      // entry omitted, hook stdin empty" case explicitly. Codex review of
+      // commit 763bb393 caught the unconditional bypass.
+      if (
+        options.fromHook &&
+        !hookData &&
+        !hookStdinError &&
+        !options.sessionId
+      ) {
         process.exit(0);
       }
 
@@ -1578,17 +1590,24 @@ export function registerSessionCommand(program: Command): void {
 
       let entryText = entry;
 
-      // Handle --from-hook: derive entry text from the already-parsed payload
-      if (options.fromHook) {
-        try {
-          if (hookStdinError) {
-            throw hookStdinError;
-          }
-          if (!hookData) {
-            // Empty stdin under --from-hook is a no-op (hook-safe exit)
-            process.exit(0);
-          }
+      // Surface a stdin parse failure now that session resolution has
+      // completed. This was previously deferred until the entry-extraction
+      // try/catch below; pulling it forward keeps error reporting in one
+      // place and lets the extraction block precondition on `hookData`.
+      if (options.fromHook && hookStdinError) {
+        console.error(`  ${red("error:")} Failed to parse stdin JSON: ${hookStdinError}`);
+        process.exit(1);
+      }
 
+      // Handle --from-hook: derive entry text from the already-parsed payload
+      //
+      // Reachable hookData states here:
+      //   - hookData populated → extract entry text below
+      //   - hookData null + no error → only possible when --session-id is
+      //     also set (upstream guard exits otherwise). Skip extraction; the
+      //     `entry` positional argument carries through to validation.
+      if (options.fromHook && hookData) {
+        try {
           // Detect hook event type — TaskCompleted uses hook_event_name, not tool_name
           const hookEventName = hookData.hook_event_name;
           const toolName = hookData.tool_name || hookData.tool?.name;
@@ -1676,7 +1695,10 @@ export function registerSessionCommand(program: Command): void {
             }
           }
         } catch (err) {
-          console.error(`  ${red("error:")} Failed to parse stdin JSON: ${err}`);
+          // Safety net for unexpected failures during entry-text extraction
+          // (e.g., git subprocess failures). Stdin parsing errors are now
+          // surfaced upstream via hookStdinError.
+          console.error(`  ${red("error:")} Failed to derive entry from hook payload: ${err}`);
           process.exit(1);
         }
       }

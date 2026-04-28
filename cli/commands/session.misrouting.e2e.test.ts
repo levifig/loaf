@@ -423,4 +423,50 @@ describe("SPEC-032 dev.30 misrouting regression (TASK-119)", () => {
       expect(hashFile(s.filePath)).toBe(s.initialHash);
     }
   });
+
+  it("--from-hook --session-id <active> with empty stdin still honors Tier 1 (no silent no-op)", async () => {
+    // Codex review of commit 763bb393: the empty-stdin guard fired
+    // unconditionally when --from-hook was set, silently no-opping even
+    // when the caller had supplied an explicit `--session-id` Tier 1
+    // override. That breaks the very invariant SPEC-032 was built to
+    // protect: a present `--session-id` is the strongest signal and must
+    // never be discarded.
+    //
+    // After the fix, the guard checks `!options.sessionId` too — so a
+    // flag-set + empty-stdin call falls through to the chain, Tier 1
+    // wins, and the entry lands in the targeted session with no WARN.
+    const repoPath = createTempRepo("misroute-flag-empty-stdin");
+    const fixture = buildMisroutingFixture(repoPath);
+
+    const result = await runLoaf(
+      [
+        "log",
+        "decision(test): tier1 wins despite empty hook stdin",
+        "--from-hook",
+        "--session-id",
+        fixture.active.claudeSessionId,
+      ],
+      {
+        cwd: repoPath,
+        input: "", // empty stdin — the bug condition
+      }
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+    // Entry lands in the active session targeted by the flag.
+    const activeContent = readFileSync(fixture.active.filePath, "utf-8");
+    expect(activeContent).toContain(
+      "decision(test): tier1 wins despite empty hook stdin"
+    );
+    // Active hash MUST have changed — if the silent no-op regression
+    // returned, the file would be byte-identical to its initial state.
+    expect(hashFile(fixture.active.filePath)).not.toBe(fixture.active.initialHash);
+
+    // Stopped sessions remain untouched.
+    for (const s of fixture.stopped) {
+      expect(hashFile(s.filePath)).toBe(s.initialHash);
+    }
+  });
 });

@@ -27500,7 +27500,7 @@ function registerSessionCommand(program3) {
         hookStdinError = err;
       }
     }
-    if (options2.fromHook && !hookData && !hookStdinError) {
+    if (options2.fromHook && !hookData && !hookStdinError && !options2.sessionId) {
       process.exit(0);
     }
     const stdinSessionId = hookData && typeof hookData.session_id === "string" && hookData.session_id.length > 0 ? hookData.session_id : void 0;
@@ -27517,14 +27517,12 @@ function registerSessionCommand(program3) {
       process.exit(1);
     }
     let entryText = entry;
-    if (options2.fromHook) {
+    if (options2.fromHook && hookStdinError) {
+      console.error(`  ${red11("error:")} Failed to parse stdin JSON: ${hookStdinError}`);
+      process.exit(1);
+    }
+    if (options2.fromHook && hookData) {
       try {
-        if (hookStdinError) {
-          throw hookStdinError;
-        }
-        if (!hookData) {
-          process.exit(0);
-        }
         const hookEventName = hookData.hook_event_name;
         const toolName = hookData.tool_name || hookData.tool?.name;
         if (hookEventName === "TaskCompleted" || toolName === "TaskCompleted") {
@@ -27590,7 +27588,7 @@ function registerSessionCommand(program3) {
           }
         }
       } catch (err) {
-        console.error(`  ${red11("error:")} Failed to parse stdin JSON: ${err}`);
+        console.error(`  ${red11("error:")} Failed to derive entry from hook payload: ${err}`);
         process.exit(1);
       }
     }
