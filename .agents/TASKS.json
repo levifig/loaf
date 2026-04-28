@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 121,
+  "next_id": 123,
   "tasks": {
     "TASK-103": {
       "title": "Add missing journal entry types for all artifact types",
@@ -161,6 +161,38 @@
       "updated": "2026-04-27T23:01:25.054Z",
       "completed_at": "2026-04-27T23:01:25.054Z",
       "file": "TASK-120-git-ceremony-ship-bootstrap-housekeeping-shape-bre.md"
+    },
+    "TASK-121": {
+      "title": "PR #37 fix: migrate loaf session end --wrap to resolveCurrentSession + --session-id flag",
+      "slug": "pr-37-fix-migrate-loaf-session-end-wrap-to-resolve",
+      "spec": null,
+      "status": "review",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-28T13:01:52.619Z",
+      "updated": "2026-04-28T13:14:28.777Z",
+      "completed_at": null,
+      "file": "TASK-121-pr-37-fix-migrate-loaf-session-end-wrap-to-resolve.md"
+    },
+    "TASK-122": {
+      "title": "PR #36 fix: add archived field to bootstrap SKILL.md frontmatter example",
+      "slug": "pr-36-fix-add-archived-field-to-bootstrap-skill-md",
+      "spec": null,
+      "status": "review",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-28T13:01:52.680Z",
+      "updated": "2026-04-28T13:07:04.013Z",
+      "completed_at": null,
+      "file": "TASK-122-pr-36-fix-add-archived-field-to-bootstrap-skill-md.md"
     },
     "TASK-001": {
       "title": "Create verification reference",

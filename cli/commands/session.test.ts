@@ -1289,6 +1289,245 @@ describe("session: end", () => {
     expect(contentAfter).toContain("branch: feat/new-feature");
     expect(contentAfter).toContain("decision(test): testing branch adoption");
   });
+
+  // SPEC-032 / TASK-121 — Tier-based routing for `loaf session end --wrap`.
+  // The `--wrap` invocation is a direct-CLI call from the /wrap skill, NOT
+  // a hook event. It must route through `resolveCurrentSession` so that
+  // --session-id wins (Tier 1) and branch fallback emits the WARN. Hook-driven
+  // `loaf session end` (--from-hook / Stop event) keeps the inline chain.
+  describe("SPEC-032 routing chain", () => {
+    /**
+     * Compute sha256 of file contents — used to assert that other sessions'
+     * files were NOT mutated when `--wrap --session-id <id>` is targeted.
+     */
+    function fileHash(path: string): string {
+      return createHash("sha256").update(readFileSync(path)).digest("hex");
+    }
+
+    it("Tier 1: --wrap --session-id targets the matching session, no WARN", async () => {
+      const repoPath = createTempRepo("spec032-end-wrap-tier1");
+      const sessionsDir = join(repoPath, ".agents/sessions");
+      mkdirSync(sessionsDir, { recursive: true });
+
+      // Two active sessions on main with different claude_session_ids.
+      writeFileSync(
+        join(sessionsDir, "20260101-120000-session.md"),
+        [
+          "---",
+          "branch: main",
+          "status: active",
+          "claude_session_id: claude-aaa",
+          `created: '2026-01-01T12:00:00.000Z'`,
+          `last_updated: '2026-01-01T12:00:00.000Z'`,
+          "---",
+          "# Session: AAA",
+          "",
+          "## Journal",
+          "",
+          "[2026-01-01 12:00] session(start):  === SESSION STARTED ===",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+      writeFileSync(
+        join(sessionsDir, "20260101-130000-session.md"),
+        [
+          "---",
+          "branch: main",
+          "status: active",
+          "claude_session_id: claude-bbb",
+          `created: '2026-01-01T13:00:00.000Z'`,
+          `last_updated: '2026-01-01T13:00:00.000Z'`,
+          "---",
+          "# Session: BBB",
+          "",
+          "## Journal",
+          "",
+          "[2026-01-01 13:00] session(start):  === SESSION STARTED ===",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+
+      const result = await runLoaf(
+        ["end", "--wrap", "--session-id", "claude-bbb"],
+        { cwd: repoPath }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+      // claude-bbb gets the wrap marker and status=done; claude-aaa untouched.
+      const aaa = readFileSync(join(sessionsDir, "20260101-120000-session.md"), "utf-8");
+      const bbb = readFileSync(join(sessionsDir, "20260101-130000-session.md"), "utf-8");
+      expect(bbb).toContain("session(wrap):");
+      expect(bbb).toContain("status: done");
+      expect(aaa).not.toContain("session(wrap):");
+      expect(aaa).toContain("status: active");
+    });
+
+    it("Tier 3: --wrap with no flag falls through to branch routing and emits WARN", async () => {
+      const repoPath = createTempRepo("spec032-end-wrap-tier3");
+
+      await runLoaf(["start"], { cwd: repoPath });
+
+      const result = await runLoaf(["end", "--wrap"], { cwd: repoPath });
+
+      expect(result.exitCode).toBe(0);
+      // Exact WARN text from cli/lib/session/resolve.ts
+      expect(result.stderr).toContain(
+        "WARN: no session_id signal — falling back to branch routing for branch 'main'. Pass --session-id <id> to silence."
+      );
+
+      const sessionFiles = getSessionFiles(repoPath);
+      expect(sessionFiles.length).toBe(1);
+      const content = readFileSync(
+        join(repoPath, ".agents/sessions", sessionFiles[0]),
+        "utf-8"
+      );
+      // Branch fallback resolved to the only active session and wrapped it.
+      expect(content).toContain("session(wrap):");
+      expect(content).toContain("status: done");
+    });
+
+    it("--from-hook (no --wrap) keeps inline chain — silent on no match, no WARN", async () => {
+      const repoPath = createTempRepo("spec032-end-fromhook-silent");
+
+      // No session exists. Inline-chain hook path should exit silently when
+      // combined with --if-active, without emitting a WARN.
+      const result = await runLoaf(
+        ["end", "--if-active", "--from-hook"],
+        { cwd: repoPath, input: JSON.stringify({ session_id: "claude-zzz" }) }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+    });
+
+    it("--from-hook resolves via inline chain when stdin carries session_id, no WARN", async () => {
+      const repoPath = createTempRepo("spec032-end-fromhook-stdin");
+      const sessionsDir = join(repoPath, ".agents/sessions");
+      mkdirSync(sessionsDir, { recursive: true });
+
+      writeFileSync(
+        join(sessionsDir, "20260101-120000-session.md"),
+        [
+          "---",
+          "branch: main",
+          "status: active",
+          "claude_session_id: claude-stop",
+          `created: '2026-01-01T12:00:00.000Z'`,
+          `last_updated: '2026-01-01T12:00:00.000Z'`,
+          "---",
+          "# Session: Stop",
+          "",
+          "## Journal",
+          "",
+          "[2026-01-01 12:00] session(start):  === SESSION STARTED ===",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+
+      const result = await runLoaf(
+        ["end", "--from-hook"],
+        { cwd: repoPath, input: JSON.stringify({ session_id: "claude-stop" }) }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+      const content = readFileSync(
+        join(sessionsDir, "20260101-120000-session.md"),
+        "utf-8"
+      );
+      expect(content).toContain("=== SESSION STOPPED ===");
+      expect(content).toContain("status: stopped");
+    });
+
+    it("multi-session repro: --wrap --session-id ends the active one, leaves stopped untouched", async () => {
+      const repoPath = createTempRepo("spec032-end-wrap-multi");
+      const sessionsDir = join(repoPath, ".agents/sessions");
+      mkdirSync(sessionsDir, { recursive: true });
+
+      // Fixture: 1 active + 4 stopped sessions on main, distinct claude_session_ids.
+      // Mirrors the dev.30 misroute layout. We hash every stopped session's
+      // file contents and assert post-wrap that none of them changed.
+      const stopped = [
+        "20260401-100000-session.md",
+        "20260401-110000-session.md",
+        "20260401-120000-session.md",
+        "20260401-130000-session.md",
+      ];
+      for (let i = 0; i < stopped.length; i++) {
+        writeFileSync(
+          join(sessionsDir, stopped[i]),
+          [
+            "---",
+            "branch: main",
+            "status: stopped",
+            `claude_session_id: claude-stopped-${i}`,
+            `created: '2026-04-01T${10 + i}:00:00.000Z'`,
+            `last_updated: '2026-04-01T${10 + i}:30:00.000Z'`,
+            "---",
+            `# Session: Stopped ${i}`,
+            "",
+            "## Journal",
+            "",
+            `[2026-04-01 ${10 + i}:00] session(start):  === SESSION STARTED ===`,
+            `[2026-04-01 ${10 + i}:30] session(stop):   === SESSION STOPPED ===`,
+            "",
+          ].join("\n"),
+          "utf-8"
+        );
+      }
+
+      const activeFile = "20260401-140000-session.md";
+      writeFileSync(
+        join(sessionsDir, activeFile),
+        [
+          "---",
+          "branch: main",
+          "status: active",
+          "claude_session_id: claude-active",
+          `created: '2026-04-01T14:00:00.000Z'`,
+          `last_updated: '2026-04-01T14:00:00.000Z'`,
+          "---",
+          "# Session: Active",
+          "",
+          "## Journal",
+          "",
+          "[2026-04-01 14:00] session(start):  === SESSION STARTED ===",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+
+      // Snapshot stopped-session file hashes before the wrap.
+      const before = new Map<string, string>();
+      for (const f of stopped) {
+        before.set(f, fileHash(join(sessionsDir, f)));
+      }
+
+      const result = await runLoaf(
+        ["end", "--wrap", "--session-id", "claude-active"],
+        { cwd: repoPath }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+      // Active session got the wrap marker and status=done.
+      const activeContent = readFileSync(join(sessionsDir, activeFile), "utf-8");
+      expect(activeContent).toContain("session(wrap):");
+      expect(activeContent).toContain("status: done");
+
+      // Every stopped session's file content is byte-identical to before.
+      for (const f of stopped) {
+        expect(fileHash(join(sessionsDir, f))).toBe(before.get(f));
+      }
+    });
+  });
 });
 
 describe("session: state", () => {

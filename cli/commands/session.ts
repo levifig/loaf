@@ -607,26 +607,32 @@ function getTimestampForFilename(): string {
 // (TASK-116). They are imported from ../lib/session/index.js at the top of
 // this file.
 //
-// SPEC-032 routing — call-site policy:
+// SPEC-032 routing migration — asymmetric coverage:
 //
-//   User-facing routing paths (`log`, `archive`, `enrich`'s default branch
-//   path) MUST go through `resolveCurrentSession`. The 3-tier chain emits a
-//   stderr WARN on Tier 3 fallback so silent misroutes become visible.
+//   Migrated through resolveCurrentSession (3-tier chain, Tier 3 emits WARN):
+//     - loaf session log            (Tier 1/2/3 — TASK-117)
+//     - loaf session archive        (Tier 1/2/3 — TASK-118)
+//     - loaf session enrich         (default-branch path; Tier 1/2/3 — TASK-118)
+//     - loaf session end --wrap     (direct-CLI path only; Tier 1/3 — TASK-121)
 //
-//   Hook-aware paths (`session start`, `session end`, `state update`,
-//   `context for-resumption`, `context for-compact`) keep the inline
-//   `findSessionByClaudeId(...) || findActiveSessionForBranch(...)` chain.
-//   They:
+//   Intentionally inline-chain (hook-safe, silent on no-match):
+//     - loaf session end (bare / --if-active / --from-hook — Stop event)
+//     - loaf session start                       (SessionStart event)
+//     - loaf session state update                (Stop event)
+//     - loaf session context for-resumption      (PostStart event)
+//     - loaf session context for-compact         (PreCompact event)
+//   These paths:
 //     1. always have parsed `hookInput` already in scope (so the same JSON
 //        feeds both the session_id lookup and any tool-payload extraction),
 //     2. exit silently (hook-safe) when no session is found, NOT with a WARN.
 //   Routing those through `resolveCurrentSession` would either re-read stdin
-//   (consumed already) or emit spurious WARNs on every hook firing. They're
-//   correct as-is; the asymmetry is intentional. See TASK-118 notes.
+//   (already consumed) or emit spurious WARNs on every hook firing. They're
+//   correct as-is; the asymmetry is intentional.
 //
-//   The bare `findActiveSessionForBranch` call inside `getOrCreateSession`
-//   below is a defensive concurrency re-check inside the create lock, NOT
-//   user-facing routing. See the inline comment there.
+//   Defensively bare-branch (concurrency re-check inside create lock):
+//     - getOrCreateSession internal helper (see the inline comment there).
+//
+//   See TASK-118 / TASK-121 notes for the migration history.
 
 /** Atomically get existing session or create new one (prevents concurrent creation) */
 async function getOrCreateSession(
@@ -1325,7 +1331,9 @@ export function registerSessionCommand(program: Command): void {
     .description("End session with progress summary")
     .option("--if-active", "Exit successfully when no active session exists")
     .option("--wrap", "Close session as done (used after /wrap writes summary)")
-    .action(async (options: { ifActive?: boolean; wrap?: boolean }) => {
+    .option("--from-hook", "Invoked from a Stop hook — keep inline chain, silent on no-match")
+    .option("--session-id <id>", "Route to session with this claude_session_id (Tier 1 override)")
+    .action(async (options: { ifActive?: boolean; wrap?: boolean; fromHook?: boolean; sessionId?: string }) => {
       // Parse hook JSON from stdin (when invoked as a hook by Claude Code)
       const hookInput = await parseHookInput();
 
@@ -1346,10 +1354,33 @@ export function registerSessionCommand(program: Command): void {
         process.exit(1);
       }
 
-      // Session ID-first lookup, then branch fallback
-      const existingSession = (hookInput.session_id
-        ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch)
-        : null) || findActiveSessionForBranch(agentsDir, branch);
+      // SPEC-032 routing — `loaf session end` has two sub-paths:
+      //
+      //   1. `--wrap` direct-CLI (from /wrap skill, no --from-hook):
+      //      → use the 3-tier chain helper. Tier 1 honours --session-id;
+      //        Tier 3 emits the stderr WARN that surfaces silent misroutes.
+      //        Tier 2 (parseStdin) is intentionally false: the wrap skill
+      //        invokes from a TTY and parseHookInput() above has already
+      //        consumed any incidental stdin payload.
+      //
+      //   2. Hook-driven path (Stop event, --if-active, --from-hook, or any
+      //      bare `loaf session end` invocation): keep the inline
+      //      findSessionByClaudeId(...) || findActiveSessionForBranch(...)
+      //      chain. Hook-safe: silent on no-match, no WARN.
+      //
+      // The dev.30 misroute (commit 81b1808a, recorded as #misrouted) was a
+      // post-wrap log against the wrong session — exactly the class of bug
+      // SPEC-032 closes. Routing the --wrap path through the chain helper
+      // makes that class of misroute impossible.
+      const useChainHelper = !!options.wrap && !options.fromHook;
+      const existingSession = useChainHelper
+        ? await resolveCurrentSession(agentsDir, branch, {
+            sessionIdFlag: options.sessionId,
+            parseStdin: false,
+          })
+        : (hookInput.session_id
+            ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch)
+            : null) || findActiveSessionForBranch(agentsDir, branch);
       if (!existingSession) {
         if (options.ifActive) {
           process.exit(0);

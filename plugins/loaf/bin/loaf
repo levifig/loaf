@@ -18388,7 +18388,7 @@ import { join as join19, dirname as dirname5, resolve } from "path";
 import { readFileSync as readFileSync11 } from "fs";
 import { dirname as dirname4, join as join18 } from "path";
 import { fileURLToPath as fileURLToPath3 } from "url";
-var LOAF_VERSION = "2.0.0-dev.30" ? "2.0.0-dev.30" : readPackageVersion();
+var LOAF_VERSION = "2.0.0-dev.31" ? "2.0.0-dev.31" : readPackageVersion();
 
 // cli/lib/install/fenced-section.ts
 var FENCED_START = "<!-- loaf:managed:start";
@@ -27335,7 +27335,7 @@ function registerSessionCommand(program3) {
     }
     console.log();
   });
-  session.command("end").description("End session with progress summary").option("--if-active", "Exit successfully when no active session exists").option("--wrap", "Close session as done (used after /wrap writes summary)").action(async (options2) => {
+  session.command("end").description("End session with progress summary").option("--if-active", "Exit successfully when no active session exists").option("--wrap", "Close session as done (used after /wrap writes summary)").option("--from-hook", "Invoked from a Stop hook \u2014 keep inline chain, silent on no-match").option("--session-id <id>", "Route to session with this claude_session_id (Tier 1 override)").action(async (options2) => {
     const hookInput = await parseHookInput();
     if (process.env.LOAF_ENRICHMENT === "1") {
       process.exit(0);
@@ -27350,7 +27350,11 @@ function registerSessionCommand(program3) {
       console.error(`  ${red11("error:")} Not in a git repository`);
       process.exit(1);
     }
-    const existingSession = (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch) : null) || findActiveSessionForBranch(agentsDir, branch);
+    const useChainHelper = !!options2.wrap && !options2.fromHook;
+    const existingSession = useChainHelper ? await resolveCurrentSession(agentsDir, branch, {
+      sessionIdFlag: options2.sessionId,
+      parseStdin: false
+    }) : (hookInput.session_id ? findSessionByClaudeId(agentsDir, hookInput.session_id, branch) : null) || findActiveSessionForBranch(agentsDir, branch);
     if (!existingSession) {
       if (options2.ifActive) {
         process.exit(0);
