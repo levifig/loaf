@@ -785,6 +785,178 @@ describe("session: list", () => {
   });
 });
 
+describe("session: archive", () => {
+  describe("SPEC-032 routing chain", () => {
+    /** Read each session file's frontmatter+content, indexed by claude_session_id (when present). */
+    function readSessionsByClaudeId(
+      repoPath: string,
+      includeArchive = false
+    ): Map<string, { fileName: string; content: string; archived: boolean }> {
+      const out = new Map<string, { fileName: string; content: string; archived: boolean }>();
+      const sessionsDir = join(repoPath, ".agents/sessions");
+      if (!existsSync(sessionsDir)) return out;
+
+      // Active sessions
+      for (const file of getSessionFiles(repoPath)) {
+        const content = readFileSync(join(sessionsDir, file), "utf-8");
+        const m = content.match(/claude_session_id:\s*['"]?([^'"\n]+)['"]?/);
+        if (m) {
+          out.set(m[1].trim(), { fileName: file, content, archived: false });
+        }
+      }
+
+      // Archived sessions
+      if (includeArchive) {
+        const archiveDir = join(sessionsDir, "archive");
+        if (existsSync(archiveDir)) {
+          for (const file of readdirSync(archiveDir).filter(f => f.endsWith(".md"))) {
+            const content = readFileSync(join(archiveDir, file), "utf-8");
+            const m = content.match(/claude_session_id:\s*['"]?([^'"\n]+)['"]?/);
+            if (m) {
+              out.set(m[1].trim(), { fileName: file, content, archived: true });
+            }
+          }
+        }
+      }
+
+      return out;
+    }
+
+    it("--session-id archives the session with that claude_session_id, no WARN", async () => {
+      const repoPath = createTempRepo("spec032-archive-tier1");
+      const sessionsDir = join(repoPath, ".agents/sessions");
+      mkdirSync(sessionsDir, { recursive: true });
+
+      // Two active sessions on main with different claude_session_ids.
+      writeFileSync(
+        join(sessionsDir, "20260101-120000-session.md"),
+        [
+          "---",
+          "branch: main",
+          "status: active",
+          "claude_session_id: claude-aaa",
+          `created: '2026-01-01T12:00:00.000Z'`,
+          `last_updated: '2026-01-01T12:00:00.000Z'`,
+          "---",
+          "# Session: AAA",
+          "",
+          "## Journal",
+          "",
+          "[2026-01-01 12:00] session(start):  === SESSION STARTED ===",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+      writeFileSync(
+        join(sessionsDir, "20260101-130000-session.md"),
+        [
+          "---",
+          "branch: main",
+          "status: active",
+          "claude_session_id: claude-bbb",
+          `created: '2026-01-01T13:00:00.000Z'`,
+          `last_updated: '2026-01-01T13:00:00.000Z'`,
+          "---",
+          "# Session: BBB",
+          "",
+          "## Journal",
+          "",
+          "[2026-01-01 13:00] session(start):  === SESSION STARTED ===",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+
+      const result = await runLoaf(
+        ["archive", "--session-id", "claude-aaa"],
+        { cwd: repoPath }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+      // claude-aaa should be archived; claude-bbb should remain active.
+      const all = readSessionsByClaudeId(repoPath, true);
+      const aaa = all.get("claude-aaa");
+      const bbb = all.get("claude-bbb");
+      expect(aaa).toBeDefined();
+      expect(aaa!.archived).toBe(true);
+      expect(bbb).toBeDefined();
+      expect(bbb!.archived).toBe(false);
+    });
+
+    it("no flag → branch fallback emits WARN, archives most-recent active session", async () => {
+      const repoPath = createTempRepo("spec032-archive-tier3");
+
+      await runLoaf(["start"], { cwd: repoPath });
+
+      const result = await runLoaf(["archive"], { cwd: repoPath });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toContain(
+        "WARN: no session_id signal — falling back to branch routing for branch 'main'. Pass --session-id <id> to silence."
+      );
+
+      // Active directory should be empty; archive directory should have 1 file.
+      const activeFiles = getSessionFiles(repoPath);
+      expect(activeFiles.length).toBe(0);
+      const archiveDir = join(repoPath, ".agents/sessions/archive");
+      expect(existsSync(archiveDir)).toBe(true);
+      const archived = readdirSync(archiveDir).filter(f => f.endsWith(".md"));
+      expect(archived.length).toBe(1);
+    });
+
+    it("multi-session repro: --session-id archives the right one, leaves others untouched", async () => {
+      const repoPath = createTempRepo("spec032-archive-multi");
+      const sessionsDir = join(repoPath, ".agents/sessions");
+      mkdirSync(sessionsDir, { recursive: true });
+
+      // 3 active sessions on main, different claude_session_ids.
+      const ids = ["claude-aaa", "claude-bbb", "claude-ccc"];
+      for (let i = 0; i < ids.length; i++) {
+        writeFileSync(
+          join(sessionsDir, `20260101-${10 + i}0000-session.md`),
+          [
+            "---",
+            "branch: main",
+            "status: active",
+            `claude_session_id: ${ids[i]}`,
+            `created: '2026-01-01T${10 + i}:00:00.000Z'`,
+            `last_updated: '2026-01-01T${10 + i}:00:00.000Z'`,
+            "---",
+            `# Session: ${ids[i]}`,
+            "",
+            "## Journal",
+            "",
+            `[2026-01-01 ${10 + i}:00] session(start):  === SESSION STARTED ===`,
+            "",
+          ].join("\n"),
+          "utf-8"
+        );
+      }
+
+      const result = await runLoaf(
+        ["archive", "--session-id", "claude-bbb"],
+        { cwd: repoPath }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+      const all = readSessionsByClaudeId(repoPath, true);
+      // The targeted session is archived
+      expect(all.get("claude-bbb")?.archived).toBe(true);
+      // The other two remain active
+      expect(all.get("claude-aaa")?.archived).toBe(false);
+      expect(all.get("claude-ccc")?.archived).toBe(false);
+
+      // Active directory should still have 2 files
+      const activeFiles = getSessionFiles(repoPath);
+      expect(activeFiles.length).toBe(2);
+    });
+  });
+});
+
 describe("session: end", () => {
   it("exits successfully with --if-active when no session exists", async () => {
     const repoPath = createTempRepo("if-active-test");

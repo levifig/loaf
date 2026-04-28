@@ -7,10 +7,14 @@
  *     findActiveSessionForBranch,
  *     findSessionByClaudeId,
  *     resolveCurrentSession,
- *     parseHookSessionId,
  *     readSessionFile,
  *     SessionFrontmatter,
  *   } from "../lib/session/index.js";
+ *
+ * Note: `_parseHookSessionId` is intentionally NOT re-exported. Callers must
+ * use `resolveCurrentSession({ parseStdin: true })` to read hook stdin —
+ * direct stdin parsing is an internal concern of the resolution chain.
+ * See SPEC-032 A5.
  */
 
 export {
@@ -27,7 +31,6 @@ export {
 export { findActiveSessionForBranch, findSessionByClaudeId } from "./find.js";
 
 export {
-  parseHookSessionId,
   resolveCurrentSession,
   type ResolveCurrentSessionOptions,
   type ResolvedSession,

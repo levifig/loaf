@@ -184,7 +184,7 @@
       "title": "Migrate loaf session archive and remaining bare-branch call sites",
       "slug": "migrate-loaf-session-archive-and-remaining-bare-br",
       "spec": "SPEC-032",
-      "status": "todo",
+      "status": "review",
       "priority": "P1",
       "depends_on": [
         "TASK-116"
@@ -194,7 +194,7 @@
       "done": null,
       "session": null,
       "created": "2026-04-27T22:45:03.139Z",
-      "updated": "2026-04-27T22:45:03.139Z",
+      "updated": "2026-04-28T08:57:42.179Z",
       "completed_at": null,
       "file": "TASK-118-migrate-loaf-session-archive-and-remaining-bare-br.md"
     },

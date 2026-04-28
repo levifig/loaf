@@ -606,6 +606,27 @@ function getTimestampForFilename(): string {
 // and findActiveSessionForBranch were moved to ../lib/session/ per SPEC-032
 // (TASK-116). They are imported from ../lib/session/index.js at the top of
 // this file.
+//
+// SPEC-032 routing — call-site policy:
+//
+//   User-facing routing paths (`log`, `archive`, `enrich`'s default branch
+//   path) MUST go through `resolveCurrentSession`. The 3-tier chain emits a
+//   stderr WARN on Tier 3 fallback so silent misroutes become visible.
+//
+//   Hook-aware paths (`session start`, `session end`, `state update`,
+//   `context for-resumption`, `context for-compact`) keep the inline
+//   `findSessionByClaudeId(...) || findActiveSessionForBranch(...)` chain.
+//   They:
+//     1. always have parsed `hookInput` already in scope (so the same JSON
+//        feeds both the session_id lookup and any tool-payload extraction),
+//     2. exit silently (hook-safe) when no session is found, NOT with a WARN.
+//   Routing those through `resolveCurrentSession` would either re-read stdin
+//   (consumed already) or emit spurious WARNs on every hook firing. They're
+//   correct as-is; the asymmetry is intentional. See TASK-118 notes.
+//
+//   The bare `findActiveSessionForBranch` call inside `getOrCreateSession`
+//   below is a defensive concurrency re-check inside the create lock, NOT
+//   user-facing routing. See the inline comment there.
 
 /** Atomically get existing session or create new one (prevents concurrent creation) */
 async function getOrCreateSession(
@@ -619,6 +640,14 @@ async function getOrCreateSession(
 
   await acquireLock(lockPath, 100, 50);
   try {
+    // SPEC-032: bare-branch lookup is intentional here. This is a
+    // concurrency-safe re-check inside the create lock, NOT user-facing
+    // routing. The caller (`loaf session start`) has already run the
+    // hook-aware `findSessionByClaudeId(...) || findActiveSessionForBranch(...)`
+    // chain and decided to create. We re-check under lock to handle the
+    // race where another process created a session between the chain check
+    // and the lock acquisition. Routing the chain through `resolveCurrentSession`
+    // here would emit a spurious WARN every time a new session is created.
     const existing = findActiveSessionForBranch(agentsDir, branch);
     if (existing) {
       return { ...existing, isNew: false };
@@ -1723,7 +1752,8 @@ export function registerSessionCommand(program: Command): void {
     .command("archive")
     .description("Archive completed session")
     .option("--branch <branch>", "Archive session for specific branch (default: current)")
-    .action(async (options: { branch?: string }) => {
+    .option("--session-id <id>", "Route to session with this claude_session_id (Tier 1 override)")
+    .action(async (options: { branch?: string; sessionId?: string }) => {
       const agentsDir = findAgentsDir();
       if (!agentsDir) {
         console.error(`  ${red("error:")} Could not find .agents/ directory`);
@@ -1736,9 +1766,16 @@ export function registerSessionCommand(program: Command): void {
         process.exit(1);
       }
 
-      const existingSession = findActiveSessionForBranch(agentsDir, branch);
+      // Route via SPEC-032 chain. `loaf session archive` is invoked from a TTY,
+      // not a hook — `parseStdin` stays false. Tier 3 emits a stderr WARN; pass
+      // `--session-id <id>` to silence it when targeting a specific session.
+      const existingSession = await resolveCurrentSession(agentsDir, branch, {
+        sessionIdFlag: options.sessionId,
+        parseStdin: false,
+      });
       if (!existingSession) {
         console.error(`  ${red("error:")} No active session found for branch ${branch}`);
+        console.error(`  ${gray("Pass --session-id <id> to target a specific session, or run 'loaf session start' to create one.")}`);
         process.exit(1);
       }
 
@@ -2039,7 +2076,8 @@ export function registerSessionCommand(program: Command): void {
     .description("Enrich session journal from JSONL conversation log")
     .option("--dry-run", "Show what would be added without writing")
     .option("--model <model>", "Override model for the librarian call")
-    .action(async (file: string | undefined, options: { dryRun?: boolean; model?: string }) => {
+    .option("--session-id <id>", "Route to session with this claude_session_id (Tier 1 override)")
+    .action(async (file: string | undefined, options: { dryRun?: boolean; model?: string; sessionId?: string }) => {
       const agentsDir = findAgentsDir();
       if (!agentsDir) {
         console.error(`  ${red("error:")} Could not find .agents/ directory`);
@@ -2069,15 +2107,22 @@ export function registerSessionCommand(program: Command): void {
         }
         sessionData = parsed.data;
       } else {
-        // Find active session for current branch
+        // Find active session for current branch via SPEC-032 chain.
+        // `loaf session enrich` is invoked from a TTY, not a hook —
+        // `parseStdin` stays false. Tier 3 emits stderr WARN; pass
+        // `--session-id <id>` to silence and target a specific session.
         const branch = getCurrentBranch();
         if (branch === "unknown") {
           console.error(`  ${red("error:")} Not in a git repository`);
           process.exit(1);
         }
-        const existing = findActiveSessionForBranch(agentsDir, branch);
+        const existing = await resolveCurrentSession(agentsDir, branch, {
+          sessionIdFlag: options.sessionId,
+          parseStdin: false,
+        });
         if (!existing) {
           console.error(`  ${red("error:")} No active session found for branch ${branch}`);
+          console.error(`  ${gray("Pass --session-id <id> to target a specific session, or pass an explicit [file] argument.")}`);
           process.exit(1);
         }
         sessionPath = existing.filePath;

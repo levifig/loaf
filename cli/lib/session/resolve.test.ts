@@ -20,16 +20,21 @@ import {
 
 // Mock fs so we can intercept readFileSync(0, ...) — fd 0 is stdin and the
 // real implementation would block waiting for terminal input. We delegate
-// every other path/fd to the real fs by stashing the actual import inside
-// the factory and falling through to it for non-stdin reads.
+// every other path/fd to the real fs via `vi.importActual` inside the factory
+// and stash the original on the mock itself so the test setup can fall
+// through for non-stdin reads.
 vi.mock("fs", async () => {
   const actual = await vi.importActual<typeof import("fs")>("fs");
+  const realReadFileSync = actual.readFileSync;
   const readFileSync = vi.fn((path: unknown, options?: unknown) => {
-    return actual.readFileSync(
-      path as Parameters<typeof actual.readFileSync>[0],
-      options as Parameters<typeof actual.readFileSync>[1],
+    return realReadFileSync(
+      path as Parameters<typeof realReadFileSync>[0],
+      options as Parameters<typeof realReadFileSync>[1],
     );
   });
+  // Stash the real implementation on the mock so test code can recover it
+  // without re-importing fs (which would re-enter the mock).
+  (readFileSync as unknown as { __real: typeof realReadFileSync }).__real = realReadFileSync;
   return {
     ...actual,
     readFileSync,
@@ -50,20 +55,15 @@ import { tmpdir } from "os";
 import matter from "gray-matter";
 
 import {
-  parseHookSessionId,
+  _parseHookSessionId,
   resolveCurrentSession,
 } from "./resolve.js";
 import type { SessionFrontmatter } from "./store.js";
 
 const mockedReadFileSync = fs.readFileSync as unknown as ReturnType<typeof vi.fn>;
-const realReadFileSync = vi.hoisted(() => {
-  // Capture the real readFileSync once for stdin mocks to fall through.
-  // Using require() is safe in Node test contexts — vi.mock() above shadows
-  // the ESM import for module consumers but this gives us a non-mocked
-  // reference to delegate non-fd-0 reads to.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require("node:fs").readFileSync as typeof fs.readFileSync;
-});
+const realReadFileSync = (mockedReadFileSync as unknown as {
+  __real: typeof fs.readFileSync;
+}).__real;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fixtures
@@ -154,58 +154,59 @@ afterEach(() => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// parseHookSessionId
+// _parseHookSessionId — internal helper; covered here for edge-case
+// completeness. Public callers must go through `resolveCurrentSession`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("parseHookSessionId", () => {
+describe("_parseHookSessionId", () => {
   it("returns session_id from valid hook JSON", () => {
     mockStdin(JSON.stringify({ session_id: "abc-123", other: "field" }));
-    expect(parseHookSessionId()).toBe("abc-123");
+    expect(_parseHookSessionId()).toBe("abc-123");
   });
 
   it("returns undefined for empty stdin", () => {
     mockStdin("");
-    expect(parseHookSessionId()).toBeUndefined();
+    expect(_parseHookSessionId()).toBeUndefined();
   });
 
   it("returns undefined for whitespace-only stdin", () => {
     mockStdin("   \n  ");
-    expect(parseHookSessionId()).toBeUndefined();
+    expect(_parseHookSessionId()).toBeUndefined();
   });
 
   it("returns undefined for malformed JSON", () => {
     mockStdin("{not valid json");
-    expect(parseHookSessionId()).toBeUndefined();
+    expect(_parseHookSessionId()).toBeUndefined();
   });
 
   it("returns undefined when session_id field is missing", () => {
     mockStdin(JSON.stringify({ tool_name: "Bash", cwd: "/tmp" }));
-    expect(parseHookSessionId()).toBeUndefined();
+    expect(_parseHookSessionId()).toBeUndefined();
   });
 
   it("returns undefined when session_id is not a string", () => {
     mockStdin(JSON.stringify({ session_id: 12345 }));
-    expect(parseHookSessionId()).toBeUndefined();
+    expect(_parseHookSessionId()).toBeUndefined();
   });
 
   it("returns undefined when session_id is an empty string", () => {
     mockStdin(JSON.stringify({ session_id: "" }));
-    expect(parseHookSessionId()).toBeUndefined();
+    expect(_parseHookSessionId()).toBeUndefined();
   });
 
   it("returns undefined when stdin read throws", () => {
     mockStdin(undefined);
-    expect(parseHookSessionId()).toBeUndefined();
+    expect(_parseHookSessionId()).toBeUndefined();
   });
 
   it("returns undefined for non-object JSON (array)", () => {
     mockStdin(JSON.stringify(["session_id", "abc"]));
-    expect(parseHookSessionId()).toBeUndefined();
+    expect(_parseHookSessionId()).toBeUndefined();
   });
 
   it("returns undefined for non-object JSON (string)", () => {
     mockStdin(JSON.stringify("just-a-string"));
-    expect(parseHookSessionId()).toBeUndefined();
+    expect(_parseHookSessionId()).toBeUndefined();
   });
 });
 
@@ -369,7 +370,10 @@ describe("resolveCurrentSession — Tier 3 (branch fallback)", () => {
     expect(stderr.lines).toEqual([WARN_FOR_BRANCH(BRANCH)]);
   });
 
-  it("returns null when no session matches the branch (still emits WARN)", async () => {
+  it("adopts a single active session on the wrong branch (heuristic) and emits WARN", async () => {
+    // Seed exactly ONE active session on a different branch — the
+    // findActiveSessionForBranch adoption heuristic re-tags this session to
+    // the requested branch. This test pins that behavior.
     writeSessionFile({
       fileName: "20260427-220000-session.md",
       branch: "other-branch",
@@ -380,13 +384,9 @@ describe("resolveCurrentSession — Tier 3 (branch fallback)", () => {
     const result = await resolveCurrentSession(AGENTS_DIR, "feat/missing", {});
     stderr.restore();
 
-    // findActiveSessionForBranch will adopt the single active session if exactly
-    // one exists — so we seed two to avoid the adoption heuristic.
     expect(stderr.lines).toEqual([WARN_FOR_BRANCH("feat/missing")]);
-    // The result may or may not be null depending on the adoption heuristic;
-    // we only assert the WARN behavior here. (Tier-3 returns whatever
-    // findActiveSessionForBranch returns.)
-    expect(result === null || result !== null).toBe(true);
+    expect(result).not.toBeNull();
+    expect(result?.data.claude_session_id).toBe("session-A");
   });
 
   it("emits WARN even when all tiers fail to resolve (multiple branches, no match)", async () => {

@@ -28,11 +28,15 @@ import type { SessionFrontmatter } from "./store.js";
  * Returns `undefined` for: missing field, malformed JSON, empty stdin,
  * non-string session_id, or any IO error.
  *
- * The caller is responsible for deciding whether to read stdin at all — this
- * helper does not gate on `process.stdin.isTTY`. The opt-in lives at the
- * caller via `--from-hook` / `parseStdin: true`. See SPEC-032 A5.
+ * **Internal helper** — not part of the public session API. Callers must use
+ * `resolveCurrentSession({ parseStdin: true })` instead. See SPEC-032 A5.
+ *
+ * Underscore prefix marks this as module-private; the only legitimate caller
+ * is `resolveCurrentSession` in this same file. The function remains
+ * exported (rather than truly private) so unit tests in `resolve.test.ts`
+ * can reach it without surface area leaking to other modules.
  */
-export function parseHookSessionId(): string | undefined {
+export function _parseHookSessionId(): string | undefined {
   // Read stdin synchronously from fd 0. Synchronous reads are fine here
   // because hook contexts always pipe a small JSON payload and exit; no
   // long-running IO or interactive consumers compete for stdin.
@@ -109,7 +113,7 @@ export async function resolveCurrentSession(
 
   // Tier 2: hook stdin (only when caller opts in)
   if (opts.parseStdin === true) {
-    const stdinId = parseHookSessionId();
+    const stdinId = _parseHookSessionId();
     if (stdinId) {
       const hit = findSessionByClaudeId(agentsDir, stdinId, branch);
       if (hit) return hit;

@@ -26404,7 +26404,7 @@ function findActiveSessionForBranch(agentsDir, branch) {
 
 // cli/lib/session/resolve.ts
 import { readFileSync as readFileSync36 } from "fs";
-function parseHookSessionId() {
+function _parseHookSessionId() {
   let raw;
   try {
     raw = readFileSync36(0, "utf-8");
@@ -26435,7 +26435,7 @@ async function resolveCurrentSession(agentsDir, branch, opts = {}) {
     if (hit) return hit;
   }
   if (opts.parseStdin === true) {
-    const stdinId = parseHookSessionId();
+    const stdinId = _parseHookSessionId();
     if (stdinId) {
       const hit = findSessionByClaudeId(agentsDir, stdinId, branch);
       if (hit) return hit;
@@ -27654,7 +27654,7 @@ function registerSessionCommand(program3) {
     }
     console.log(`  ${green13("\u2713")} Logged: ${cyan10(entryText)}`);
   });
-  session.command("archive").description("Archive completed session").option("--branch <branch>", "Archive session for specific branch (default: current)").action(async (options2) => {
+  session.command("archive").description("Archive completed session").option("--branch <branch>", "Archive session for specific branch (default: current)").option("--session-id <id>", "Route to session with this claude_session_id (Tier 1 override)").action(async (options2) => {
     const agentsDir = findAgentsDir();
     if (!agentsDir) {
       console.error(`  ${red11("error:")} Could not find .agents/ directory`);
@@ -27665,9 +27665,13 @@ function registerSessionCommand(program3) {
       console.error(`  ${red11("error:")} Not in a git repository. Use --branch <branch>`);
       process.exit(1);
     }
-    const existingSession = findActiveSessionForBranch(agentsDir, branch);
+    const existingSession = await resolveCurrentSession(agentsDir, branch, {
+      sessionIdFlag: options2.sessionId,
+      parseStdin: false
+    });
     if (!existingSession) {
       console.error(`  ${red11("error:")} No active session found for branch ${branch}`);
+      console.error(`  ${gray15("Pass --session-id <id> to target a specific session, or run 'loaf session start' to create one.")}`);
       process.exit(1);
     }
     console.log(`
@@ -27915,7 +27919,7 @@ function registerSessionCommand(program3) {
     }
     console.log();
   });
-  session.command("enrich [file]").description("Enrich session journal from JSONL conversation log").option("--dry-run", "Show what would be added without writing").option("--model <model>", "Override model for the librarian call").action(async (file, options2) => {
+  session.command("enrich [file]").description("Enrich session journal from JSONL conversation log").option("--dry-run", "Show what would be added without writing").option("--model <model>", "Override model for the librarian call").option("--session-id <id>", "Route to session with this claude_session_id (Tier 1 override)").action(async (file, options2) => {
     const agentsDir = findAgentsDir();
     if (!agentsDir) {
       console.error(`  ${red11("error:")} Could not find .agents/ directory`);
@@ -27946,9 +27950,13 @@ function registerSessionCommand(program3) {
         console.error(`  ${red11("error:")} Not in a git repository`);
         process.exit(1);
       }
-      const existing = findActiveSessionForBranch(agentsDir, branch);
+      const existing = await resolveCurrentSession(agentsDir, branch, {
+        sessionIdFlag: options2.sessionId,
+        parseStdin: false
+      });
       if (!existing) {
         console.error(`  ${red11("error:")} No active session found for branch ${branch}`);
+        console.error(`  ${gray15("Pass --session-id <id> to target a specific session, or pass an explicit [file] argument.")}`);
         process.exit(1);
       }
       sessionPath = existing.filePath;
