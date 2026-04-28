@@ -37,6 +37,7 @@ import {
   getDateTimeString,
   getTimestamp,
   readSessionFile,
+  resolveCurrentSession,
   writeFileAtomic,
   type SessionFrontmatter,
   type SpecFrontmatterWithBranch,
@@ -1476,8 +1477,9 @@ export function registerSessionCommand(program: Command): void {
     .command("log [entry]")
     .description("Log entry to session journal")
     .option("--from-hook", "Parse entry from hook stdin")
+    .option("--session-id <id>", "Route to session with this claude_session_id (Tier 1 override)")
     .option("--detect-linear", "Detect Linear magic words in recent commits")
-    .action(async (entry: string, options: { fromHook?: boolean; detectLinear?: boolean }) => {
+    .action(async (entry: string, options: { fromHook?: boolean; sessionId?: string; detectLinear?: boolean }) => {
       const agentsDir = findAgentsDir();
       if (!agentsDir) {
         console.error(`  ${red("error:")} Could not find .agents/ directory`);
@@ -1489,12 +1491,42 @@ export function registerSessionCommand(program: Command): void {
         console.error(`  ${red("error:")} Not in a git repository`);
         process.exit(1);
       }
-      
+
       if (branch.startsWith("detached-")) {
         console.error(`  ${yellow("⚠")} Warning: In detached HEAD state (${branch})`);
       }
 
-      const existingSession = findActiveSessionForBranch(agentsDir, branch);
+      // Read stdin once when --from-hook is set, so the same payload feeds
+      // both session resolution (session_id) and entry-text extraction below.
+      // Auto-detection without --from-hook is rejected per SPEC-032 A5.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let hookData: any = null;
+      let hookStdinError: unknown = null;
+      if (options.fromHook) {
+        try {
+          const stdin = await readStdin();
+          if (stdin && stdin.trim()) {
+            hookData = JSON.parse(stdin);
+          }
+        } catch (err) {
+          hookStdinError = err;
+        }
+      }
+
+      // Compose the Tier 1 session_id signal: explicit flag wins over stdin.
+      // We pass `parseStdin: false` to the chain helper because we've already
+      // consumed stdin here — re-reading via parseHookSessionId() would block
+      // or fail. The helper still emits the Tier-3 WARN when no signal arrives.
+      const stdinSessionId =
+        hookData && typeof hookData.session_id === "string" && hookData.session_id.length > 0
+          ? (hookData.session_id as string)
+          : undefined;
+      const resolvedSessionIdFlag = options.sessionId || stdinSessionId;
+
+      const existingSession = await resolveCurrentSession(agentsDir, branch, {
+        sessionIdFlag: resolvedSessionIdFlag,
+        parseStdin: false,
+      });
       if (!existingSession) {
         if (options.fromHook) {
           process.exit(0);
@@ -1505,11 +1537,16 @@ export function registerSessionCommand(program: Command): void {
 
       let entryText = entry;
 
-      // Handle --from-hook: parse JSON from stdin
+      // Handle --from-hook: derive entry text from the already-parsed payload
       if (options.fromHook) {
         try {
-          const stdin = await readStdin(); // Read from fd 0 (stdin)
-          const hookData = JSON.parse(stdin);
+          if (hookStdinError) {
+            throw hookStdinError;
+          }
+          if (!hookData) {
+            // Empty stdin under --from-hook is a no-op (hook-safe exit)
+            process.exit(0);
+          }
 
           // Detect hook event type — TaskCompleted uses hook_event_name, not tool_name
           const hookEventName = hookData.hook_event_name;

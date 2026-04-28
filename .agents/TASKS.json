@@ -166,7 +166,7 @@
       "title": "Migrate loaf session log to resolveCurrentSession + --session-id flag + stderr WARN",
       "slug": "migrate-loaf-session-log-to-resolvecurrentsession-",
       "spec": "SPEC-032",
-      "status": "todo",
+      "status": "review",
       "priority": "P1",
       "depends_on": [
         "TASK-116"
@@ -176,7 +176,7 @@
       "done": null,
       "session": null,
       "created": "2026-04-27T22:45:01.572Z",
-      "updated": "2026-04-27T22:45:01.572Z",
+      "updated": "2026-04-28T08:46:26.769Z",
       "completed_at": null,
       "file": "TASK-117-migrate-loaf-session-log-to-resolvecurrentsession-.md"
     },

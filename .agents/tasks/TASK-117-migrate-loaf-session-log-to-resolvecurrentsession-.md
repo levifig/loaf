@@ -4,10 +4,10 @@ title: >-
   Migrate loaf session log to resolveCurrentSession + --session-id flag + stderr
   WARN
 spec: SPEC-032
-status: todo
+status: review
 priority: P1
 created: '2026-04-27T22:45:01.572Z'
-updated: '2026-04-27T22:45:01.572Z'
+updated: '2026-04-28T08:46:26.769Z'
 depends_on:
   - TASK-116
 ---

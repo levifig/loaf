@@ -438,6 +438,317 @@ describe("session: log", () => {
     expect(existsSync(lockPath)).toBe(false);
     expect(readFileSync(filePath, "utf-8")).toContain("discover(test): recovered from dead lock");
   });
+
+  // SPEC-032 / TASK-117 — Tier-based routing: --session-id, hook stdin, branch fallback + WARN
+  describe("SPEC-032 routing chain", () => {
+    /** Read each session file's frontmatter+content, indexed by claude_session_id (when present). */
+    function readSessionsByClaudeId(repoPath: string): Map<string, { fileName: string; content: string }> {
+      const out = new Map<string, { fileName: string; content: string }>();
+      for (const file of getSessionFiles(repoPath)) {
+        const content = readFileSync(join(repoPath, ".agents/sessions", file), "utf-8");
+        const m = content.match(/claude_session_id:\s*['"]?([^'"\n]+)['"]?/);
+        if (m) {
+          out.set(m[1].trim(), { fileName: file, content });
+        }
+      }
+      return out;
+    }
+
+    it("Tier 1: --session-id routes to the matching session, no WARN", async () => {
+      const repoPath = createTempRepo("spec032-tier1-flag");
+
+      // Create two active sessions on the same branch (main) with different claude_session_ids.
+      // Use `loaf session start` with hook stdin so claude_session_id is recorded in frontmatter.
+      await runLoaf(["start"], { cwd: repoPath, input: JSON.stringify({ session_id: "claude-aaa" }) });
+
+      // End/stop the first one before starting the second, then re-stop second
+      // so we have two on-disk sessions on main with distinct claude_session_ids.
+      await runLoaf(["end"], { cwd: repoPath });
+
+      // Manually mark the stopped one's status so a second start does not archive it.
+      // Simplest path: write a second session file directly.
+      const sessionsDir = join(repoPath, ".agents/sessions");
+      const secondFile = "20260101-120000-session.md";
+      writeFileSync(
+        join(sessionsDir, secondFile),
+        [
+          "---",
+          "branch: main",
+          "status: active",
+          "claude_session_id: claude-bbb",
+          `created: '2026-01-01T12:00:00.000Z'`,
+          `last_updated: '2026-01-01T12:00:00.000Z'`,
+          "---",
+          "# Session: Manual",
+          "",
+          "## Journal",
+          "",
+          "[2026-01-01 12:00] session(start):  === SESSION STARTED ===",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+
+      // Log with --session-id targeting the second session
+      const result = await runLoaf(
+        ["log", "decision(test): tier1 hits bbb", "--session-id", "claude-bbb"],
+        { cwd: repoPath }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+      const byId = readSessionsByClaudeId(repoPath);
+      const bbb = byId.get("claude-bbb");
+      expect(bbb).toBeDefined();
+      expect(bbb!.content).toContain("decision(test): tier1 hits bbb");
+
+      const aaa = byId.get("claude-aaa");
+      if (aaa) {
+        expect(aaa.content).not.toContain("decision(test): tier1 hits bbb");
+      }
+    });
+
+    it("Tier 2: --from-hook reads session_id from stdin JSON, no WARN", async () => {
+      const repoPath = createTempRepo("spec032-tier2-stdin");
+
+      // Start a session with claude-zzz via hook stdin so frontmatter carries it
+      await runLoaf(["start"], { cwd: repoPath, input: JSON.stringify({ session_id: "claude-zzz" }) });
+
+      // Make a real commit so the hook entry-text extraction has a message to grab
+      writeFileSync(join(repoPath, "feature.ts"), "export const x = 1;\n", "utf-8");
+      execFileSync("git", ["add", "."], { cwd: repoPath });
+      execFileSync("git", ["commit", "-m", "feat: tier2 commit"], { cwd: repoPath });
+
+      const result = await runLoaf(["log", "--from-hook"], {
+        cwd: repoPath,
+        input: JSON.stringify({
+          session_id: "claude-zzz",
+          tool_input: { command: "git commit -m 'feat: tier2 commit'" },
+        }),
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+      const byId = readSessionsByClaudeId(repoPath);
+      const zzz = byId.get("claude-zzz");
+      expect(zzz).toBeDefined();
+      expect(zzz!.content).toContain("commit(");
+      expect(zzz!.content).toContain("feat: tier2 commit");
+    });
+
+    it("Tier 3: no flag and no hook → branch fallback emits WARN to stderr", async () => {
+      const repoPath = createTempRepo("spec032-tier3-warn");
+
+      // Start a session (no claude_session_id in frontmatter → branch is the only signal)
+      await runLoaf(["start"], { cwd: repoPath });
+
+      const result = await runLoaf(
+        ["log", "decision(test): tier3 fallback"],
+        { cwd: repoPath }
+      );
+
+      expect(result.exitCode).toBe(0);
+      // Exact WARN text from cli/lib/session/resolve.ts
+      expect(result.stderr).toContain(
+        "WARN: no session_id signal — falling back to branch routing for branch 'main'. Pass --session-id <id> to silence."
+      );
+
+      const sessionFiles = getSessionFiles(repoPath);
+      expect(sessionFiles.length).toBe(1);
+      const content = readFileSync(
+        join(repoPath, ".agents/sessions", sessionFiles[0]),
+        "utf-8"
+      );
+      expect(content).toContain("decision(test): tier3 fallback");
+    });
+
+    it("--from-hook stdin missing session_id → falls through to Tier 3 with WARN, entry still logged", async () => {
+      const repoPath = createTempRepo("spec032-hook-no-sid");
+
+      await runLoaf(["start"], { cwd: repoPath });
+
+      writeFileSync(join(repoPath, "x.ts"), "export const y = 2;\n", "utf-8");
+      execFileSync("git", ["add", "."], { cwd: repoPath });
+      execFileSync("git", ["commit", "-m", "chore: no sid commit"], { cwd: repoPath });
+
+      const result = await runLoaf(["log", "--from-hook"], {
+        cwd: repoPath,
+        // No session_id field — only tool_input for entry extraction
+        input: JSON.stringify({
+          tool_input: { command: "git commit -m 'chore: no sid commit'" },
+        }),
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toContain("WARN: no session_id signal");
+      expect(result.stderr).toContain("branch 'main'");
+
+      const sessionFiles = getSessionFiles(repoPath);
+      expect(sessionFiles.length).toBe(1);
+      const content = readFileSync(
+        join(repoPath, ".agents/sessions", sessionFiles[0]),
+        "utf-8"
+      );
+      expect(content).toContain("chore: no sid commit");
+    });
+
+    it("--from-hook AND --session-id together → flag wins, no WARN", async () => {
+      const repoPath = createTempRepo("spec032-flag-wins");
+
+      // Two sessions on main with different claude_session_ids
+      await runLoaf(["start"], { cwd: repoPath, input: JSON.stringify({ session_id: "claude-flag" }) });
+
+      const sessionsDir = join(repoPath, ".agents/sessions");
+      writeFileSync(
+        join(sessionsDir, "20260101-120000-session.md"),
+        [
+          "---",
+          "branch: main",
+          "status: active",
+          "claude_session_id: claude-stdin",
+          `created: '2026-01-01T12:00:00.000Z'`,
+          `last_updated: '2026-01-01T12:00:00.000Z'`,
+          "---",
+          "# Session: Stdin",
+          "",
+          "## Journal",
+          "",
+          "[2026-01-01 12:00] session(start):  === SESSION STARTED ===",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+
+      const result = await runLoaf(
+        ["log", "decision(test): flag should win", "--from-hook", "--session-id", "claude-flag"],
+        {
+          cwd: repoPath,
+          input: JSON.stringify({ session_id: "claude-stdin" }),
+        }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+      const byId = readSessionsByClaudeId(repoPath);
+      const flagSession = byId.get("claude-flag");
+      const stdinSession = byId.get("claude-stdin");
+      expect(flagSession).toBeDefined();
+      expect(flagSession!.content).toContain("decision(test): flag should win");
+      // Flag wins: stdin's session must NOT contain the entry
+      expect(stdinSession!.content).not.toContain("decision(test): flag should win");
+    });
+
+    it("dev.30 misrouting repro: 1 active + 4 stopped on same branch, hook routes to active by claude_session_id", async () => {
+      const repoPath = createTempRepo("spec032-misroute-repro");
+
+      const sessionsDir = join(repoPath, ".agents/sessions");
+      mkdirSync(sessionsDir, { recursive: true });
+
+      // Build the fixture: 4 stopped sessions on main + 1 active session on main.
+      // The active one carries claude_session_id "claude-active".
+      const stopped = [
+        "20260401-100000-session.md",
+        "20260401-110000-session.md",
+        "20260401-120000-session.md",
+        "20260401-130000-session.md",
+      ];
+      for (let i = 0; i < stopped.length; i++) {
+        writeFileSync(
+          join(sessionsDir, stopped[i]),
+          [
+            "---",
+            "branch: main",
+            "status: stopped",
+            `claude_session_id: claude-stopped-${i}`,
+            `created: '2026-04-01T${10 + i}:00:00.000Z'`,
+            `last_updated: '2026-04-01T${10 + i}:30:00.000Z'`,
+            "---",
+            `# Session: Stopped ${i}`,
+            "",
+            "## Journal",
+            "",
+            `[2026-04-01 ${10 + i}:00] session(start):  === SESSION STARTED ===`,
+            `[2026-04-01 ${10 + i}:30] session(stop):   === SESSION STOPPED ===`,
+            "",
+          ].join("\n"),
+          "utf-8"
+        );
+      }
+
+      const activeFile = "20260401-140000-session.md";
+      writeFileSync(
+        join(sessionsDir, activeFile),
+        [
+          "---",
+          "branch: main",
+          "status: active",
+          "claude_session_id: claude-active",
+          `created: '2026-04-01T14:00:00.000Z'`,
+          `last_updated: '2026-04-01T14:00:00.000Z'`,
+          "---",
+          "# Session: Active",
+          "",
+          "## Journal",
+          "",
+          "[2026-04-01 14:00] session(start):  === SESSION STARTED ===",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+
+      // Hook fires for the active session
+      writeFileSync(join(repoPath, "feat.ts"), "export const z = 3;\n", "utf-8");
+      execFileSync("git", ["add", "."], { cwd: repoPath });
+      execFileSync("git", ["commit", "-m", "feat: misroute repro"], { cwd: repoPath });
+
+      const result = await runLoaf(["log", "--from-hook"], {
+        cwd: repoPath,
+        input: JSON.stringify({
+          session_id: "claude-active",
+          tool_input: { command: "git commit -m 'feat: misroute repro'" },
+        }),
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).not.toContain("WARN: no session_id signal");
+
+      const activeContent = readFileSync(join(sessionsDir, activeFile), "utf-8");
+      expect(activeContent).toContain("feat: misroute repro");
+
+      // None of the stopped sessions should have received the entry
+      for (const f of stopped) {
+        const stoppedContent = readFileSync(join(sessionsDir, f), "utf-8");
+        expect(stoppedContent).not.toContain("feat: misroute repro");
+      }
+    });
+
+    it("does not create a new session file under any routing path", async () => {
+      const repoPath = createTempRepo("spec032-no-new-files");
+
+      await runLoaf(["start"], { cwd: repoPath, input: JSON.stringify({ session_id: "claude-only" }) });
+      const beforeCount = getSessionFiles(repoPath).length;
+      expect(beforeCount).toBe(1);
+
+      // Tier 1
+      await runLoaf(["log", "decision(test): t1", "--session-id", "claude-only"], { cwd: repoPath });
+      // Tier 2
+      await runLoaf(["log", "--from-hook"], {
+        cwd: repoPath,
+        input: JSON.stringify({
+          session_id: "claude-only",
+          tool_input: { command: "git commit -m 'noop'" },
+        }),
+      });
+      // Tier 3
+      await runLoaf(["log", "decision(test): t3"], { cwd: repoPath });
+
+      const afterCount = getSessionFiles(repoPath).length;
+      expect(afterCount).toBe(beforeCount);
+    });
+  });
 });
 
 describe("session: list", () => {
