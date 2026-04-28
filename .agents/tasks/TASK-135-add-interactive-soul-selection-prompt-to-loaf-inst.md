@@ -2,10 +2,10 @@
 id: TASK-135
 title: Add interactive soul selection prompt to loaf install
 spec: SPEC-033
-status: todo
+status: done
 priority: P2
 created: '2026-04-28T22:39:12.730Z'
-updated: '2026-04-28T22:39:31.473Z'
+updated: '2026-04-29T00:25:00.000Z'
 depends_on:
   - TASK-130
 ---
@@ -23,11 +23,11 @@ Droppable per the spec's priority order: tracks 1+2 deliver the mechanism; this 
 
 ## Acceptance Criteria
 
-- [ ] Fresh `loaf install --interactive` (or TTY-detected interactive) prompts for soul choice with catalog listing
-- [ ] User selection persists to `loaf.json` (`soul:` field)
-- [ ] Non-interactive installs (CI, `--yes`, no TTY) default to `none` without prompt
-- [ ] Bootstrap skill (calls `loaf install`) inherits the prompt without separate logic
-- [ ] Unit tests cover prompt logic; manual smoke test of interactive flow in tmpdir
+- [x] Fresh `loaf install --interactive` (or TTY-detected interactive) prompts for soul choice with catalog listing
+- [x] User selection persists to `loaf.json` (`soul:` field)
+- [x] Non-interactive installs (CI, `--yes`, no TTY) default to `none` without prompt
+- [x] Bootstrap skill (calls `loaf install`) inherits the prompt without separate logic
+- [x] Unit tests cover prompt logic; manual smoke test of interactive flow in tmpdir
 
 ## Verification
 
