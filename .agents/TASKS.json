@@ -390,7 +390,7 @@
       "title": "Add loaf release --post-merge flag with 8-point guardrails + light idempotency",
       "slug": "add-loaf-release-post-merge-flag-with-8-point-guar",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-141"
@@ -400,8 +400,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:27:52.150Z",
-      "updated": "2026-04-29T17:27:52.150Z",
-      "completed_at": null,
+      "updated": "2026-04-29T19:43:16.141Z",
+      "completed_at": "2026-04-29T19:43:16.140Z",
       "file": "TASK-142-add-loaf-release-post-merge-flag-with-8-point-guar.md"
     },
     "TASK-143": {
