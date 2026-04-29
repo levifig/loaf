@@ -1,11 +1,11 @@
 ---
 id: TASK-144
 title: Add loaf release --pre-merge flag with 4-step base detection
+spec: SPEC-031
 status: todo
 priority: P2
 created: '2026-04-29T17:28:14.798Z'
 updated: '2026-04-29T17:28:14.798Z'
-spec: SPEC-031
 depends_on:
   - TASK-138
   - TASK-139

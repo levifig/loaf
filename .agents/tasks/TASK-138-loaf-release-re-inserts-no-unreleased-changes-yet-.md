@@ -1,11 +1,11 @@
 ---
 id: TASK-138
 title: 'loaf release re-inserts `_No unreleased changes yet._` stub under [Unreleased]'
+spec: SPEC-031
 status: todo
 priority: P2
 created: '2026-04-29T17:27:51.932Z'
 updated: '2026-04-29T17:27:51.932Z'
-spec: SPEC-031
 ---
 
 # TASK-138: loaf release re-inserts `_No unreleased changes yet._` stub under [Unreleased]

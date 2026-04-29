@@ -3,11 +3,11 @@ id: TASK-140
 title: >-
   Hook shape-validated chore: release escape hatch in workflow-pre-pr +
   validate-push
+spec: SPEC-031
 status: todo
 priority: P1
 created: '2026-04-29T17:27:52.043Z'
 updated: '2026-04-29T17:27:52.043Z'
-spec: SPEC-031
 ---
 
 # TASK-140: Hook shape-validated chore: release escape hatch in workflow-pre-pr + validate-push

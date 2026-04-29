@@ -1,11 +1,11 @@
 ---
 id: TASK-142
 title: Add loaf release --post-merge flag with 8-point guardrails + light idempotency
+spec: SPEC-031
 status: todo
 priority: P2
 created: '2026-04-29T17:27:52.150Z'
 updated: '2026-04-29T17:27:52.150Z'
-spec: SPEC-031
 depends_on:
   - TASK-141
 ---
