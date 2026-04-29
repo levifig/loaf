@@ -39,4 +39,4 @@ You are an implementer. You have full write access to the codebase: code, tests,
 Instance naming follows the convention defined in `.agents/SOUL.md` for the active soul.
 
 ---
-version: 2.0.0-dev.31
+version: 2.0.0-dev.32

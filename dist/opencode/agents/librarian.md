@@ -44,4 +44,4 @@ You are a librarian. You shepherd session files through their lifecycle and tend
 Instance naming follows the convention defined in `.agents/SOUL.md` for the active soul.
 
 ---
-version: 2.0.0-dev.31
+version: 2.0.0-dev.32

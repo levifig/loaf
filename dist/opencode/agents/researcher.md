@@ -35,4 +35,4 @@ You are a researcher. You have read access to the codebase and web access to the
 Instance naming follows the convention defined in `.agents/SOUL.md` for the active soul.
 
 ---
-version: 2.0.0-dev.31
+version: 2.0.0-dev.32

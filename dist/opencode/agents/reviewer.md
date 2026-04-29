@@ -35,4 +35,4 @@ You are a reviewer. You have read-only access to the codebase. This is not a lim
 Instance naming follows the convention defined in `.agents/SOUL.md` for the active soul.
 
 ---
-version: 2.0.0-dev.31
+version: 2.0.0-dev.32

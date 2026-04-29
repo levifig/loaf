@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- _No unreleased changes yet._
+## [2.0.0-dev.32] - 2026-04-29
+
+### Added
+- SessionStart restores SOUL.md from configured soul (f0d55f30)
+- Add interactive soul selection to loaf install (4daf0b04)
+- Add soul field to loaf.json schema and integrate into loaf install (70587cf2)
+- Add loaf soul CLI (list/current/show/use) (b5c25dbd)
+- Neutralize agent profile prompts; agents read SOUL.md for identity (c0b77727)
+- Add fellowship and none souls catalog (68c59c1a)
+
+### Fixed
+- Address SPEC-033 reviewer cleanups (naming, gating, Amp catalog) (0f26b2a1)
 
 ## [2.0.0-dev.31] - 2026-04-28
 
