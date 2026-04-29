@@ -31,6 +31,8 @@ import {
 import type { VersionFile, BumpType } from "../lib/release/version.js";
 import {
   generateChangelogSection,
+  buildChangelogSectionFromEntries,
+  extractUnreleasedEntries,
   insertIntoChangelog,
   createChangelog,
 } from "../lib/release/changelog.js";
@@ -324,7 +326,28 @@ export function registerReleaseCommand(program: Command): void {
       }
 
       const today = new Date().toISOString().slice(0, 10);
-      let changelogSection = generateChangelogSection(newVersion, today, commits);
+
+      // Curated entries vs auto-generation:
+      // If [Unreleased] in the existing CHANGELOG already contains user-written
+      // list items, preserve them verbatim under the new version header. Auto-
+      // generation from commit subjects only runs when [Unreleased] is empty
+      // (or contains only the stub). The stub is always re-inserted after the
+      // move (see insertIntoChangelog).
+      const existingChangelogPath = join(cwd, "CHANGELOG.md");
+      const curatedEntries = existsSync(existingChangelogPath)
+        ? extractUnreleasedEntries(readFileSync(existingChangelogPath, "utf-8"))
+        : [];
+
+      let changelogSection: string;
+      if (curatedEntries.length > 0) {
+        changelogSection = buildChangelogSectionFromEntries(
+          newVersion,
+          today,
+          curatedEntries,
+        );
+      } else {
+        changelogSection = generateChangelogSection(newVersion, today, commits);
+      }
 
       // Editor workflow
       const editor = getEditor();
