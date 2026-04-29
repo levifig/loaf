@@ -520,7 +520,7 @@ export function registerReleaseCommand(program: Command): void {
         });
         execFileSync(
           "git",
-          ["commit", "-m", `release: ${tagName}`],
+          ["commit", "-m", `chore: release ${tagName}`],
           { cwd, stdio: ["ignore", "pipe", "ignore"] },
         );
         console.log(`    ${green("\u2713")} Committed release artifacts`);

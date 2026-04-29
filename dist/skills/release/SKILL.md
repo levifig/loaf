@@ -190,7 +190,7 @@ The pre-PR workflow requires writing CHANGELOG entries before creating a PR. The
    - Convert the `[Unreleased]` header to `## [X.Y.Z] - YYYY-MM-DD` (preserving the curated entries beneath it)
    - Add a fresh empty `## [Unreleased]` section above it
    - Run the project's build command (e.g., `npm run build` or `loaf build`)
-   - Commit: `release: vX.Y.Z`
+   - Commit: `chore: release vX.Y.Z`
 
 ### Generated path (when no entries exist)
 
@@ -223,7 +223,7 @@ When `[Unreleased]` is empty, use `loaf release` to auto-generate changelog entr
    1. Bump version in all detected files (package.json, pyproject.toml, etc.)
    2. Generate and insert changelog section from branch commits (adding fresh `[Unreleased]`)
    3. Run `loaf build` to rebuild all targets with new version
-   4. Commit: `release: vX.Y.Z`
+   4. Commit: `chore: release vX.Y.Z`
 
 ### After either path
 

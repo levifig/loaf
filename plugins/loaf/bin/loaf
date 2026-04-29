@@ -20650,6 +20650,8 @@ var SECTION_ORDER = [
   "Other"
 ];
 var UNRELEASED_RE = /^## \[unreleased\]/i;
+var UNRELEASED_STUB = "- _No unreleased changes yet._";
+var UNRELEASED_STUB_RE = /^[-*]\s+_No unreleased changes.*_\.?\s*$/;
 function groupBySection(commits) {
   const groups = /* @__PURE__ */ new Map();
   for (const commit of commits) {
@@ -20685,6 +20687,46 @@ function generateChangelogSection(version, date, commits) {
   }
   return lines.join("\n");
 }
+function buildChangelogSectionFromEntries(version, date, entries) {
+  const lines = [];
+  lines.push(`## [${version}] - ${date}`);
+  lines.push("");
+  for (const entry of entries) {
+    lines.push(entry);
+  }
+  return lines.join("\n");
+}
+function getUnreleasedBody(existingContent) {
+  const lines = existingContent.split("\n");
+  let unreleasedIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (UNRELEASED_RE.test(lines[i].trim())) {
+      unreleasedIndex = i;
+      break;
+    }
+  }
+  if (unreleasedIndex === -1) return null;
+  let nextReleaseIndex = lines.length;
+  for (let i = unreleasedIndex + 1; i < lines.length; i++) {
+    if (/^## \[/.test(lines[i].trim())) {
+      nextReleaseIndex = i;
+      break;
+    }
+  }
+  return lines.slice(unreleasedIndex + 1, nextReleaseIndex);
+}
+function extractUnreleasedEntries(existingContent) {
+  const body = getUnreleasedBody(existingContent);
+  if (body === null) return [];
+  const entries = [];
+  for (const line of body) {
+    if (UNRELEASED_STUB_RE.test(line)) continue;
+    if (/^[-*]\s/.test(line)) {
+      entries.push(line);
+    }
+  }
+  return entries;
+}
 function insertIntoChangelog(existingContent, newSection) {
   const lines = existingContent.split("\n");
   let unreleasedIndex = -1;
@@ -20707,6 +20749,8 @@ function insertIntoChangelog(existingContent, newSection) {
   const result = [
     ...before,
     "",
+    UNRELEASED_STUB,
+    "",
     newSection,
     "",
     ...after
@@ -20722,6 +20766,8 @@ function createChangelog(releaseSection) {
     "The format is based on [Keep a Changelog](https://keepachangelog.com/).",
     "",
     "## [Unreleased]",
+    "",
+    UNRELEASED_STUB,
     "",
     releaseSection,
     ""
@@ -20976,7 +21022,18 @@ ${bold5("loaf release")}
       process.exit(1);
     }
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    let changelogSection = generateChangelogSection(newVersion, today, commits);
+    const existingChangelogPath = join28(cwd, "CHANGELOG.md");
+    const curatedEntries = existsSync22(existingChangelogPath) ? extractUnreleasedEntries(readFileSync20(existingChangelogPath, "utf-8")) : [];
+    let changelogSection;
+    if (curatedEntries.length > 0) {
+      changelogSection = buildChangelogSectionFromEntries(
+        newVersion,
+        today,
+        curatedEntries
+      );
+    } else {
+      changelogSection = generateChangelogSection(newVersion, today, commits);
+    }
     const editor = getEditor();
     if (editor && process.stdin.isTTY) {
       try {
@@ -21114,7 +21171,7 @@ ${bold5("loaf release")}
       });
       execFileSync8(
         "git",
-        ["commit", "-m", `release: ${tagName}`],
+        ["commit", "-m", `chore: release ${tagName}`],
         { cwd, stdio: ["ignore", "pipe", "ignore"] }
       );
       console.log(`    ${green5("\u2713")} Committed release artifacts`);
@@ -24813,6 +24870,18 @@ async function checkSecrets(context) {
   }
   return result;
 }
+var RELEASE_COMMIT_SUBJECT_REGEX = /^chore: release v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?(?:\s+\(#\d+\))?$/;
+function headSubjectMatchesReleaseShape() {
+  try {
+    const subject = execSync2("git log -1 --pretty=%s", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"]
+    }).trim();
+    return RELEASE_COMMIT_SUBJECT_REGEX.test(subject);
+  } catch {
+    return false;
+  }
+}
 async function validatePush(context) {
   const result = {
     passed: true,
@@ -24888,6 +24957,9 @@ async function validatePush(context) {
       isReleaseCommit = tagSha === headSha;
     }
   } catch {
+  }
+  if (!isReleaseCommit && headSubjectMatchesReleaseShape()) {
+    isReleaseCommit = true;
   }
   if (lastTag && hasPackageJson && !isReleaseCommit) {
     try {
@@ -24978,6 +25050,9 @@ async function workflowPrePr(context) {
             }).trim();
             isRelease = tags.length > 0;
           } catch {
+          }
+          if (!isRelease && headSubjectMatchesReleaseShape()) {
+            isRelease = true;
           }
           if (!isRelease) {
             result.passed = false;
@@ -25082,13 +25157,13 @@ async function validateCommit(context) {
   if (!message) {
     return result;
   }
-  const conventionalCommitRegex = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert|release)!?: .+/;
+  const conventionalCommitRegex = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)!?: .+/;
   if (!conventionalCommitRegex.test(message)) {
     result.passed = false;
     result.blocked = true;
     result.errors.push("Commit message does not follow Conventional Commits format");
     result.errors.push("Expected format: <type>: <description> (scoped commits not allowed)");
-    result.errors.push("Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert, release");
+    result.errors.push("Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert");
     result.errors.push(`Your message: "${message}"`);
   }
   const aiTools = "claude|gpt|copilot|chatgpt|gemini|anthropic|openai";

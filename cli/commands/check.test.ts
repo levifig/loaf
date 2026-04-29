@@ -310,6 +310,38 @@ describe("check: validate-commit", () => {
     expect(result.exitCode).toBe(2);
   });
 
+  it("blocks legacy release: type as an unknown Conventional Commits type", () => {
+    // Post-SPEC-031 cutover: `release` is no longer an accepted type. The
+    // canonical release commit subject is `chore: release v<semver>`.
+    const result = runCheck("validate-commit", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'git commit -m "release: v1.2.3"' },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Conventional Commits");
+    // Error message must NOT advertise `release` as a valid type any longer.
+    expect(result.stderr).not.toMatch(/Valid types:[^\n]*\brelease\b/);
+  });
+
+  it("accepts the canonical chore: release v<semver> commit subject", () => {
+    const result = runCheck("validate-commit", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'git commit -m "chore: release v1.2.3"' },
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("accepts chore: release v<semver> with prerelease tag", () => {
+    const result = runCheck("validate-commit", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'git commit -m "chore: release v2.0.0-dev.30"' },
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
   it("blocks AI attribution in commit messages", () => {
     const result = runCheck("validate-commit", {
       tool: { name: "Bash" },
@@ -737,8 +769,9 @@ describe("check: workflow-pre-pr", () => {
     expect(result.stderr).toContain("empty");
   });
 
-  it("passes when Unreleased is empty but HEAD is tagged (release flow)", () => {
-    // After release skill Step 4: entries moved from [Unreleased] to version header, tag created
+  it("passes when Unreleased is empty but HEAD is tagged (post-merge release flow)", () => {
+    // After release skill Step 6 (post-merge): entries moved from [Unreleased] to version
+    // header, base branch tagged at the squash-merge commit.
     const changelog = `# Changelog
 
 ## [Unreleased]
@@ -754,23 +787,161 @@ describe("check: workflow-pre-pr", () => {
 `;
     writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
 
-    // Create a release commit at HEAD with a tag (as loaf release does)
+    // Create a release commit at HEAD with a tag (post-merge state)
     writeFileSync(join(TEST_ROOT, "file.txt"), "content");
     execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
-    execSync('git commit -m "release: v1.1.0"', { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: release v1.1.0"', { cwd: TEST_ROOT, stdio: "ignore" });
     execSync("git tag v1.1.0", { cwd: TEST_ROOT, stdio: "ignore" });
 
     const result = runCheck("workflow-pre-pr", {
       tool: { name: "Bash" },
-      tool_input: { command: 'gh pr create --title "feat: release v1.1.0" --body "Release"' },
+      tool_input: { command: 'gh pr create --title "chore: release v1.1.0" --body "Release"' },
     });
 
     // Should pass — HEAD is tagged, entries are under the version header
     expect(result.exitCode).toBe(0);
   });
 
-  it("blocks when Unreleased is empty and commit says release but no tag", () => {
-    // A commit message alone shouldn't bypass the check
+  it("passes when Unreleased is empty and HEAD subject matches chore: release shape (pre-merge)", () => {
+    // After release skill Step 4 (pre-merge): entries moved from [Unreleased] to version
+    // header, but no tag yet — tags land on the squash-merge commit on the base branch.
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+## [1.1.0] - 2024-02-01
+
+- Added new feature
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    writeFileSync(join(TEST_ROOT, "file.txt"), "content");
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: release v1.1.0"', { cwd: TEST_ROOT, stdio: "ignore" });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "chore: release v1.1.0" --body "Release"' },
+    });
+
+    // Should pass — HEAD subject matches the pre-merge release shape
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("passes when HEAD subject is chore: release v<semver> with PR-number suffix", () => {
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+## [1.2.3] - 2024-03-01
+
+- New feature
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    writeFileSync(join(TEST_ROOT, "file.txt"), "content");
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: release v1.2.3 (#42)"', { cwd: TEST_ROOT, stdio: "ignore" });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "chore: release v1.2.3" --body "Release"' },
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("passes when HEAD subject is chore: release v<semver> with prerelease tag", () => {
+    // Loaf itself uses prerelease versions like v2.0.0-dev.30
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+## [2.0.0-dev.30] - 2026-04-01
+
+- New feature
+
+## [2.0.0-dev.29] - 2026-03-15
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    writeFileSync(join(TEST_ROOT, "file.txt"), "content");
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: release v2.0.0-dev.30"', { cwd: TEST_ROOT, stdio: "ignore" });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "chore: release v2.0.0-dev.30" --body "Release"' },
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("blocks when HEAD subject is chore: release notes draft (shape, not prefix)", () => {
+    // Shape-validated escape hatch: a `chore: release` prefix without a valid
+    // semver tail must NOT bypass the empty-[Unreleased] gate.
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    writeFileSync(join(TEST_ROOT, "file.txt"), "content");
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: release notes draft"', { cwd: TEST_ROOT, stdio: "ignore" });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "chore: release notes draft" --body "WIP"' },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("empty");
+  });
+
+  it("blocks when HEAD subject has trailing tail beyond version + PR suffix", () => {
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    writeFileSync(join(TEST_ROOT, "file.txt"), "content");
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    // Tail content beyond the optional PR suffix breaks the shape match.
+    execSync('git commit -m "chore: release v1.2.3 - hotfix branch"', { cwd: TEST_ROOT, stdio: "ignore" });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "chore: release v1.2.3" --body "Release"' },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("empty");
+  });
+
+  it("blocks when Unreleased is empty and HEAD subject is the legacy release: prefix (now an unknown type)", () => {
+    // Regression: the legacy `release: ...` shape no longer bypasses anything —
+    // it's an unknown Conventional Commits type post-cutover, and the empty
+    // [Unreleased] gate still catches it at the workflow-pre-pr layer.
     const changelog = `# Changelog
 
 ## [Unreleased]
@@ -787,10 +958,10 @@ describe("check: workflow-pre-pr", () => {
 
     const result = runCheck("workflow-pre-pr", {
       tool: { name: "Bash" },
-      tool_input: { command: 'gh pr create --title "release: prep docs" --body "Prep"' },
+      tool_input: { command: 'gh pr create --title "chore: prep docs" --body "Prep"' },
     });
 
-    // Should block — no tag means this isn't a real release
+    // Should block — `release:` is no longer a recognized escape hatch
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("empty");
   });
@@ -998,7 +1169,7 @@ describe("check: validate-push", () => {
     expect(result.exitCode).toBe(2);
   });
 
-  it("passes when HEAD is the tagged commit (release push)", () => {
+  it("passes when HEAD is the tagged commit (post-merge release push)", () => {
     // Create package.json with matching version
     const pkg = { name: "test", version: "1.1.0" };
     writeFileSync(join(TEST_ROOT, "package.json"), JSON.stringify(pkg, null, 2));
@@ -1015,7 +1186,7 @@ describe("check: validate-push", () => {
     // Create initial commit, then a release commit tagged at HEAD
     writeFileSync(join(TEST_ROOT, "file.txt"), "content");
     execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
-    execSync('git commit -m "release: v1.1.0"', { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: release v1.1.0"', { cwd: TEST_ROOT, stdio: "ignore" });
     execSync("git tag v1.1.0", { cwd: TEST_ROOT, stdio: "ignore" });
 
     const result = runCheck("validate-push", {
@@ -1024,6 +1195,40 @@ describe("check: validate-push", () => {
     });
 
     // Should pass — HEAD is the tag itself, no version/changelog delta expected
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("passes when HEAD subject matches chore: release shape but no tag yet (pre-merge push)", () => {
+    // Pre-merge state: feature branch has the release commit produced by
+    // `loaf release --pre-merge` but the tag hasn't been created yet.
+    const pkg = { name: "test", version: "1.2.0" };
+    writeFileSync(join(TEST_ROOT, "package.json"), JSON.stringify(pkg, null, 2));
+
+    const changelog = `# Changelog
+## [Unreleased]
+## [1.2.0] - 2024-03-01
+- New feature
+## [1.1.0] - 2024-02-01
+- Old feature
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    // Establish a prior tag so validate-push's pre-release checks would otherwise run.
+    writeFileSync(join(TEST_ROOT, "seed.txt"), "seed");
+    execSync("git add seed.txt", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: seed"', { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync("git tag v1.1.0", { cwd: TEST_ROOT, stdio: "ignore" });
+
+    // Now produce the pre-merge release commit (tag v1.2.0 NOT created yet).
+    writeFileSync(join(TEST_ROOT, "file.txt"), "content");
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: release v1.2.0"', { cwd: TEST_ROOT, stdio: "ignore" });
+
+    const result = runCheck("validate-push", {
+      tool: { name: "Bash" },
+      tool_input: { command: "git push origin feat/release" },
+    });
+
     expect(result.exitCode).toBe(0);
   });
 
