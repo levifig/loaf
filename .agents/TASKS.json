@@ -358,7 +358,7 @@
       "title": "Hook shape-validated chore: release escape hatch in workflow-pre-pr + validate-push",
       "slug": "hook-shape-validated-chore-release-escape-hatch-in",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -366,15 +366,15 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:27:52.043Z",
-      "updated": "2026-04-29T17:27:52.043Z",
-      "completed_at": null,
+      "updated": "2026-04-29T19:12:43.506Z",
+      "completed_at": "2026-04-29T19:12:43.506Z",
       "file": "TASK-140-hook-shape-validated-chore-release-escape-hatch-in.md"
     },
     "TASK-141": {
       "title": "Cut over loaf release commit subject release: vX.Y.Z to chore: release vX.Y.Z (atomic with task 4)",
       "slug": "cut-over-loaf-release-commit-subject-release-vx-y-",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -382,8 +382,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:27:52.097Z",
-      "updated": "2026-04-29T17:27:52.097Z",
-      "completed_at": null,
+      "updated": "2026-04-29T19:12:43.587Z",
+      "completed_at": "2026-04-29T19:12:43.587Z",
       "file": "TASK-141-cut-over-loaf-release-commit-subject-release-vx-y-.md"
     },
     "TASK-142": {

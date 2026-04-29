@@ -4,10 +4,11 @@ title: >-
   Cut over loaf release commit subject release: vX.Y.Z to chore: release vX.Y.Z
   (atomic with task 4)
 spec: SPEC-031
-status: todo
+status: done
 priority: P1
 created: '2026-04-29T17:27:52.097Z'
-updated: '2026-04-29T17:27:52.097Z'
+updated: '2026-04-29T19:12:43.587Z'
+completed_at: '2026-04-29T19:12:43.587Z'
 ---
 
 # TASK-141: Cut over loaf release commit subject release: vX.Y.Z to chore: release vX.Y.Z (atomic with task 4)
