@@ -408,7 +408,7 @@
       "title": "Add monorepo version-file discovery (.agents/loaf.json release.versionFiles + --version-file flag)",
       "slug": "add-monorepo-version-file-discovery-agents-loaf-js",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [],
@@ -416,8 +416,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:27:52.204Z",
-      "updated": "2026-04-29T17:27:52.204Z",
-      "completed_at": null,
+      "updated": "2026-04-29T18:50:20.077Z",
+      "completed_at": "2026-04-29T18:50:20.076Z",
       "file": "TASK-143-add-monorepo-version-file-discovery-agents-loaf-js.md"
     },
     "TASK-144": {

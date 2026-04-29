@@ -3,11 +3,12 @@ id: TASK-143
 title: >-
   Add monorepo version-file discovery (.agents/loaf.json release.versionFiles +
   --version-file flag)
-status: todo
+spec: SPEC-031
+status: done
 priority: P2
 created: '2026-04-29T17:27:52.204Z'
-updated: '2026-04-29T17:27:52.204Z'
-spec: SPEC-031
+updated: '2026-04-29T18:50:20.077Z'
+completed_at: '2026-04-29T18:50:20.076Z'
 ---
 
 # TASK-143: Add monorepo version-file discovery (.agents/loaf.json release.versionFiles + --version-file flag)
