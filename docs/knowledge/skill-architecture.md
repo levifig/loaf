@@ -73,7 +73,7 @@ SPEC-014 replaced 8 role-based agents with 4 functional profiles and 1 system pr
 | **implementer** | Full write | Code, tests, config, docs — specialty via skills | Smith (Dwarf) |
 | **reviewer** | Read-only | Audits, reviews — mechanical independence | Sentinel (Elf) |
 | **researcher** | Read + web | Research, comparison — structured reports | Ranger (Human) |
-| **librarian** | Read + Edit (.agents/) | Session lifecycle, state, wrap, pre-compaction preservation | Keeper (Ent) |
+| **librarian** | Read + Edit (.agents/) | Session lifecycle, state, wrap, pre-compaction preservation | Librarian (Ent) |
 | **background-runner** | Read + Edit | Async non-blocking tasks | — (system) |
 
 Skills load into profiles at spawn time. What an agent *can do* is fixed by profile; what it *knows* comes from skills; what it is *called* comes from `.agents/SOUL.md`. The fellowship-soul names in the rightmost column are illustrative — the `none` soul refers to roles by their functional name only.

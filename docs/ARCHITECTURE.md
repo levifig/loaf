@@ -155,7 +155,7 @@ Two souls ship with v1:
 | Soul | Description |
 |------|-------------|
 | `none` | Minimal, function-only. Roles named by what they do. No characters, no metaphor. The default for fresh installs. |
-| `fellowship` | Tolkien-flavoured. The `fellowship` soul names them: the orchestrator is **the Warden** (Wizard); implementers are **Smiths** (Dwarves); reviewers are **Sentinels** (Elves); researchers are **Rangers** (Humans); librarians are **Keepers** (Ents). Race-appropriate instance names (e.g., "Borin — auth API"). Used by legacy installs and projects that want the lore. |
+| `fellowship` | Tolkien-flavoured. The `fellowship` soul names them: the orchestrator is **the Warden** (Wizard); implementers are **Smiths** (Dwarves); reviewers are **Sentinels** (Elves); researchers are **Rangers** (Humans); librarians are **Librarians** (Ents). Race-appropriate instance names (e.g., "Borin — auth API"). Used by legacy installs and projects that want the lore. |
 
 The active soul is recorded in `.agents/loaf.json` as `soul: <name>` and copied to `.agents/SOUL.md` (real file, not a symlink) at install time. The `loaf soul` CLI manages the catalog: `loaf soul list` enumerates available souls; `loaf soul current` reads the active name; `loaf soul show <name>` prints a catalog SOUL.md without writing; `loaf soul use <name>` activates a soul, with divergence detection that requires `--force` to overwrite a locally-edited `.agents/SOUL.md`.
 

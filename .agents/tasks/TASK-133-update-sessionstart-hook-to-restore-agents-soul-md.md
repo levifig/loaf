@@ -2,13 +2,14 @@
 id: TASK-133
 title: Update SessionStart hook to restore .agents/SOUL.md from configured soul
 spec: SPEC-033
-status: todo
+status: done
 priority: P1
 created: '2026-04-28T22:39:12.619Z'
-updated: '2026-04-28T22:39:31.330Z'
+updated: '2026-04-28T23:42:47.792Z'
 depends_on:
   - TASK-131
   - TASK-132
+completed_at: '2026-04-28T23:42:47.792Z'
 ---
 
 # TASK-133: Update SessionStart hook to restore .agents/SOUL.md from configured soul

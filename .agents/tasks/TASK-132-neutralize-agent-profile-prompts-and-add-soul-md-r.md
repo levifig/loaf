@@ -2,12 +2,13 @@
 id: TASK-132
 title: Neutralize agent profile prompts and add SOUL.md-read directive
 spec: SPEC-033
-status: todo
+status: done
 priority: P1
 created: '2026-04-28T22:39:12.553Z'
-updated: '2026-04-28T22:39:31.254Z'
+updated: '2026-04-28T23:05:49.914Z'
 depends_on:
   - TASK-129
+completed_at: '2026-04-28T23:05:49.914Z'
 ---
 
 # TASK-132: Neutralize agent profile prompts and add SOUL.md-read directive

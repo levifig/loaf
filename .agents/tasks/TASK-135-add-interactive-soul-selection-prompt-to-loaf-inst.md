@@ -5,9 +5,10 @@ spec: SPEC-033
 status: done
 priority: P2
 created: '2026-04-28T22:39:12.730Z'
-updated: '2026-04-29T00:25:00.000Z'
+updated: '2026-04-28T23:25:36.461Z'
 depends_on:
   - TASK-130
+completed_at: '2026-04-29T00:25:00.000Z'
 ---
 
 # TASK-135: Add interactive soul selection prompt to loaf install

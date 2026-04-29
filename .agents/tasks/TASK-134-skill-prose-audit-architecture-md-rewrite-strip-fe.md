@@ -2,12 +2,13 @@
 id: TASK-134
 title: Skill prose audit + ARCHITECTURE.md rewrite (strip fellowship vocab)
 spec: SPEC-033
-status: todo
+status: done
 priority: P1
 created: '2026-04-28T22:39:12.670Z'
-updated: '2026-04-28T22:39:31.401Z'
+updated: '2026-04-28T23:25:36.397Z'
 depends_on:
   - TASK-132
+completed_at: '2026-04-28T23:25:36.397Z'
 ---
 
 # TASK-134: Skill prose audit + ARCHITECTURE.md rewrite

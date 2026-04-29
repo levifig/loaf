@@ -389,6 +389,20 @@ export function registerInstallCommand(program: Command): void {
             }
             console.log();
           }
+          // Soul state is project-level; run regardless of tool-install outcome.
+          const soulPromptOutcome = await promptAndApplySoul({
+            projectRoot,
+            interactive,
+          });
+          const soulResult = installSoul(projectRoot);
+          if (soulPromptOutcome.action === "prompted") {
+            console.log(
+              `  ${green("✓")} Soul selected: ${bold(soulPromptOutcome.soul)} ${gray(`→ ${soulResult.soulPath}`)}`,
+            );
+            console.log();
+          } else if (renderSoulResult(soulResult)) {
+            console.log();
+          }
           console.log(`  ${gray("No installed targets to upgrade")}`);
           console.log();
           return;
@@ -437,6 +451,20 @@ export function registerInstallCommand(program: Command): void {
           } else if (fencedResults["claude-code"]?.action === "skipped") {
             console.log(`  ${gray("○")} Claude Code Loaf framework section already current`);
           }
+          console.log();
+        }
+        // Soul state is project-level; run regardless of tool-install outcome.
+        const soulPromptOutcome = await promptAndApplySoul({
+          projectRoot,
+          interactive,
+        });
+        const soulResult = installSoul(projectRoot);
+        if (soulPromptOutcome.action === "prompted") {
+          console.log(
+            `  ${green("✓")} Soul selected: ${bold(soulPromptOutcome.soul)} ${gray(`→ ${soulResult.soulPath}`)}`,
+          );
+          console.log();
+        } else if (renderSoulResult(soulResult)) {
           console.log();
         }
         // UX: skip MCP prompts when the user declined every target interactively.

@@ -8,6 +8,7 @@
  * - Generates runtime plugin at dist/amp/plugins/loaf.js
  */
 
+import { cpSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { resetTargetOutput } from "../lib/target-output.js";
 import { copySkills } from "../lib/skills.js";
@@ -23,6 +24,7 @@ const TARGET_NAME = "amp";
 export async function build({
   config,
   rootDir,
+  srcDir,
   distDir,
   targetsConfig,
 }: BuildContext): Promise<void> {
@@ -51,4 +53,14 @@ export async function build({
     AmpPlatform,
     version,
   );
+
+  // Copy souls catalog so the SessionStart hook can self-heal `.agents/SOUL.md`.
+  // The installer drops `souls/` next to the per-tool config so the bundled CLI
+  // can resolve it via `resolveCatalogDir()` when no loaf package.json is nearby.
+  const soulsSrc = join(srcDir, "souls");
+  if (existsSync(soulsSrc)) {
+    const soulsDest = join(distDir, "souls");
+    mkdirSync(soulsDest, { recursive: true });
+    cpSync(soulsSrc, soulsDest, { recursive: true });
+  }
 }

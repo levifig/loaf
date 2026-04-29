@@ -2,12 +2,13 @@
 id: TASK-130
 title: Implement loaf soul command + cli/lib/souls library (list/current/show/use)
 spec: SPEC-033
-status: todo
+status: done
 priority: P0
 created: '2026-04-28T22:39:12.450Z'
-updated: '2026-04-28T22:39:31.130Z'
+updated: '2026-04-28T23:05:49.836Z'
 depends_on:
   - TASK-129
+completed_at: '2026-04-28T23:05:49.835Z'
 ---
 
 # TASK-130: Implement loaf soul command + cli/lib/souls library

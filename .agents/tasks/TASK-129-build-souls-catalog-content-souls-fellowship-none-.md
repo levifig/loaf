@@ -2,10 +2,11 @@
 id: TASK-129
 title: 'Build souls catalog (content/souls/{fellowship,none}/SOUL.md)'
 spec: SPEC-033
-status: in_progress
+status: done
 priority: P0
 created: '2026-04-28T22:39:12.399Z'
-updated: '2026-04-28T22:51:01.854Z'
+updated: '2026-04-28T22:56:10.943Z'
+completed_at: '2026-04-28T22:56:10.942Z'
 ---
 
 # TASK-129: Build souls catalog (content/souls/{fellowship,none}/SOUL.md)

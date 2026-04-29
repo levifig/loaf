@@ -2,13 +2,14 @@
 id: TASK-131
 title: 'Add soul: field to loaf.json schema and integrate into loaf install'
 spec: SPEC-033
-status: todo
+status: done
 priority: P0
 created: '2026-04-28T22:39:12.502Z'
-updated: '2026-04-28T22:39:31.194Z'
+updated: '2026-04-28T23:25:36.318Z'
 depends_on:
   - TASK-129
   - TASK-130
+completed_at: '2026-04-28T23:25:36.318Z'
 ---
 
 # TASK-131: Add soul: field to loaf.json schema and integrate into loaf install
