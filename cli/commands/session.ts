@@ -28,8 +28,6 @@ import { checkAllStaleness } from "../lib/kb/staleness.js";
 import { findAgentsDir } from "../lib/tasks/resolve.js";
 import { isLinearIntegrationDisabled } from "../lib/detect/mcp.js";
 import { extractSummary } from "../lib/journal/extractor.js";
-import { getActiveSoul } from "../lib/config/agents-config.js";
-import { readSoul } from "../lib/souls/catalog.js";
 import {
   consolidateSession,
   findActiveSessionForBranch,
@@ -204,68 +202,6 @@ function isHousekeepingPending(agentsDir: string): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 // Session Lifecycle Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-function getProjectRoot(agentsDir: string): string {
-  return dirname(agentsDir);
-}
-
-/**
- * Soul name written into `loaf.json` for repos that pre-date SPEC-033.
- *
- * The fresh-install default in `cli/lib/config/agents-config.ts` is `none`,
- * but the SessionStart restoration path is *not* a fresh install — it's a
- * recovery from a missing `.agents/SOUL.md` in a project that already had
- * one. Defaulting to `fellowship` here preserves the legacy Warden identity
- * for any repo that somehow lost its `soul:` field along with the file. The
- * `loaf install` migration (`installSoul`) pins this same default for
- * pre-existing repos, so in practice this branch is rarely taken.
- */
-const RESTORATION_DEFAULT_SOUL = "fellowship";
-
-/**
- * Restore `.agents/SOUL.md` from the configured soul catalog when missing.
- *
- * Reads `loaf.json` for the active soul (falls back to `fellowship` for
- * backwards compatibility) and copies `content/souls/<name>/SOUL.md` to
- * `.agents/SOUL.md`. If the local file already exists, this is a no-op.
- */
-function validateSoulMd(agentsDir: string): { exists: boolean; restored: boolean } {
-  const soulPath = join(agentsDir, "SOUL.md");
-
-  // Fast path: file already there, nothing to do.
-  if (existsSync(soulPath)) {
-    return { exists: true, restored: false };
-  }
-
-  const projectRoot = getProjectRoot(agentsDir);
-  const soulName = getActiveSoul(projectRoot) ?? RESTORATION_DEFAULT_SOUL;
-
-  let content: string;
-  try {
-    content = readSoul(soulName);
-  } catch {
-    return { exists: false, restored: false };
-  }
-
-  // Write atomically via temp + rename. If two SessionStart hooks race on the
-  // same project they will each write their temp file and rename(2) the first
-  // one wins; the second harmlessly replaces with identical content (both
-  // sources are the same catalog soul). Either way, after both rename calls
-  // the destination is present and complete — no truncation, no half-written
-  // SOUL.md visible to readers.
-  try {
-    writeFileAtomic(soulPath, content);
-    return { exists: true, restored: true };
-  } catch {
-    // Even if our write failed, the destination may now exist because another
-    // racer beat us to it. In that case the file is present, which is what we
-    // wanted — just report `exists: true, restored: false`.
-    if (existsSync(soulPath)) {
-      return { exists: true, restored: false };
-    }
-    return { exists: false, restored: false };
-  }
-}
 
 function countStaleKnowledge(): number {
   const gitRoot = findGitRoot();
@@ -1271,13 +1207,6 @@ export function registerSessionCommand(program: Command): void {
       }
 
       console.log(`  ${green("✓")} Session active: ${gray(sessionFilePath.replace(agentsDir, ".agents"))}`);
-
-      const soulStatus = validateSoulMd(agentsDir);
-      if (soulStatus.restored) {
-        console.log(`  ${yellow("⚠")} SOUL.md was missing — restored from souls catalog`);
-      } else if (!soulStatus.exists) {
-        console.log(`  ${yellow("⚠")} SOUL.md not found — run 'loaf install' to set up project`);
-      }
 
       const staleKbCount = countStaleKnowledge();
       if (staleKbCount > 0) {

@@ -194,7 +194,7 @@ function saveHooksJson(path: string, hooks: CodexHooksJson): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function installOpencode(distDir: string, configDir: string, _upgrade: boolean = false): void {
-  const dirs = ["skills", "agents", "commands", "plugins", "templates", "souls"];
+  const dirs = ["skills", "agents", "commands", "plugins", "templates"];
 
   for (const dir of dirs) {
     const src = join(distDir, dir);
@@ -273,12 +273,6 @@ export function installCursor(distDir: string, configDir: string, upgrade: boole
     syncDir(templatesSrc, join(configDir, "templates"));
   }
 
-  // Souls catalog → ~/.cursor/souls/ for SessionStart hook self-healing
-  const soulsSrc = join(distDir, "souls");
-  if (existsSync(soulsSrc)) {
-    syncDir(soulsSrc, join(configDir, "souls"));
-  }
-
   writeMarker(configDir);
 }
 
@@ -354,14 +348,6 @@ export function installAmp(distDir: string, configDir: string, _upgrade: boolean
   if (existsSync(pluginSrc)) {
     mkdirSync(pluginsDest, { recursive: true });
     cpSync(pluginSrc, join(pluginsDest, "loaf.js"));
-  }
-
-  // Souls catalog → ~/.amp/souls/ for SessionStart hook self-healing.
-  // Mirrors installCursor/installOpencode; the candidate at
-  // cli/lib/souls/paths.ts:84 (~/.amp/souls) resolves to this directory.
-  const soulsSrc = join(distDir, "souls");
-  if (existsSync(soulsSrc)) {
-    syncDir(soulsSrc, join(configDir, "souls"));
   }
 
   writeMarker(configDir);

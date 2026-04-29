@@ -119,11 +119,11 @@ Parent-issue completion follows from the same contract: when the last sub-issue 
 
 ### Agent Model: Functional Profiles
 
-Loaf uses **functional profiles** defined by tool access boundaries, not role-based agents defined by domain identity. Skills provide all domain knowledge; profiles provide the tool sandbox; the active soul provides the orchestrator's identity and team vocabulary.
+Loaf uses **functional profiles** defined by tool access boundaries, not role-based agents defined by domain identity. Skills provide all domain knowledge; profiles provide the tool sandbox.
 
 **The Orchestrator:**
 
-The main session is the **orchestrator** — a persistent coordinator identity defined in `.agents/SOUL.md`. The orchestrator coordinates, plans, and delegates but does not directly implement, review, research, or curate session state. The character and vocabulary of the orchestrator and its team are configurable via the soul catalog (see [Soul Catalog](#soul-catalog) below); `SOUL.md` is the single source of that identity. A SessionStart hook validates its presence and restores it from the configured soul (`content/souls/<name>/SOUL.md`) if missing.
+The main session is the **orchestrator** — the coordinator that plans and delegates but does not directly implement, review, research, or curate session state.
 
 **4 Functional Profiles:**
 
@@ -134,7 +134,7 @@ The main session is the **orchestrator** — a persistent coordinator identity d
 | researcher | Read + Web | Investigates options, compares approaches, returns structured reports. No write or execute. |
 | librarian | Read + Edit (.agents/) | Tends session lifecycle, state, wrap summaries. Does not implement or research. |
 
-Each profile is defined in `content/agents/{implementer,reviewer,researcher,librarian}.md` — a minimal behavioral contract and tool boundary, not domain knowledge. A spawned implementer becomes a backend engineer, DBA, or devops engineer depending entirely on the skills loaded at spawn time. Profile prompts are soul-neutral: each agent reads `.agents/SOUL.md` at spawn time to internalize its character and instance-naming convention. Profiles operate even if `SOUL.md` is missing — agents lose personality, not capability.
+Each profile is defined in `content/agents/{implementer,reviewer,researcher,librarian}.md` — a minimal behavioral contract and tool boundary, not domain knowledge. A spawned implementer becomes a backend engineer, DBA, or devops engineer depending entirely on the skills loaded at spawn time.
 
 **1 System Agent:**
 
@@ -145,21 +145,6 @@ Each profile is defined in `content/agents/{implementer,reviewer,researcher,libr
 **Council Composition:**
 
 Councils convene implementers and researchers for deliberation; reviewers join only after, to verify the outcome. The orchestrator runs the council but never votes — the team decides, the orchestrator integrates.
-
-### Soul Catalog
-
-The orchestrator's identity is decoupled from its mechanics. Profile prompts and skill prose are written in functional terms (implementer/reviewer/researcher/librarian/orchestrator); the **soul catalog** at [`content/souls/`](../content/souls/) carries character, naming convention, and team vocabulary as drop-in alternatives.
-
-Two souls ship with v1:
-
-| Soul | Description |
-|------|-------------|
-| `none` | Minimal, function-only. Roles named by what they do. No characters, no metaphor. The default for fresh installs. |
-| `fellowship` | Tolkien-flavoured. The `fellowship` soul names them: the orchestrator is **the Warden** (Wizard); implementers are **Smiths** (Dwarves); reviewers are **Sentinels** (Elves); researchers are **Rangers** (Humans); librarians are **Librarians** (Ents). Race-appropriate instance names (e.g., "Borin — auth API"). Used by legacy installs and projects that want the lore. |
-
-The active soul is recorded in `.agents/loaf.json` as `soul: <name>` and copied to `.agents/SOUL.md` (real file, not a symlink) at install time. The `loaf soul` CLI manages the catalog: `loaf soul list` enumerates available souls; `loaf soul current` reads the active name; `loaf soul show <name>` prints a catalog SOUL.md without writing; `loaf soul use <name>` activates a soul, with divergence detection that requires `--force` to overwrite a locally-edited `.agents/SOUL.md`.
-
-Install behavior: fresh projects default to `none`; existing installs that already have an `.agents/SOUL.md` and no `soul:` field migrate to `soul: fellowship` automatically (preserving the legacy default). The SessionStart hook restores `.agents/SOUL.md` from the configured soul when missing, so deletes self-heal on the next session.
 
 **Skills as Universal Knowledge Layer:**
 
@@ -266,7 +251,7 @@ Hard-won constraints validated during SPEC-030 implementation:
 
 **Instruction hooks** — context injection at tool invocation. Triggered by `matcher` patterns (tool name) and optionally filtered by `if` conditions (tool input). Inject relevant skill instructions or nudges.
 
-**Session lifecycle hooks** — tied to events (`SessionStart`, `SessionEnd`, `PreCompact`, `PostCompact`, `Stop`). Manage session journals, compaction, and SOUL.md validation.
+**Session lifecycle hooks** — tied to events (`SessionStart`, `SessionEnd`, `PreCompact`, `PostCompact`, `Stop`). Manage session journals and compaction.
 
 ### Hook JSON Data Model
 

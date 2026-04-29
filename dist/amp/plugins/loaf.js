@@ -426,21 +426,5 @@ export default {
           }
         }
       }
-    },
-  // Session start handler
-  'session.start': async () => {
-    if (sessionHooks.sessionstart) {
-      for (const hook of sessionHooks.sessionstart) {
-        await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
-      }
     }
-  },
-  // Session end handler
-  'agent.end': async () => {
-    if (sessionHooks.sessionend) {
-      for (const hook of sessionHooks.sessionend) {
-        await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
-      }
-    }
-  }
 };

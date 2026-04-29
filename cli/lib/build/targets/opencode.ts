@@ -63,16 +63,6 @@ export async function build({
     version,
   );
 
-  // Copy souls catalog so the SessionStart hook can self-heal `.agents/SOUL.md`.
-  // The installer drops `souls/` next to the per-tool config so the bundled CLI
-  // can resolve it via `resolveCatalogDir()` when no loaf package.json is nearby.
-  const soulsSrc = join(srcDir, "souls");
-  if (existsSync(soulsSrc)) {
-    const soulsDest = join(distDir, "souls");
-    mkdirSync(soulsDest, { recursive: true });
-    cpSync(soulsSrc, soulsDest, { recursive: true });
-  }
-
   // Copy hooks directory to plugins/hooks/ for script-backed session hooks
   const hooksSrc = join(srcDir, "hooks");
   if (existsSync(hooksSrc)) {
