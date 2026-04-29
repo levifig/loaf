@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No unreleased changes yet._
+
 ## [2.0.0-dev.32] - 2026-04-29
 
 Headline: SPEC-033 ships. Agent personality is now decoupled from agent mechanics — swap soul (Warden/Fellowship lore vs neutral functional model) without changing how agents work. Existing repos with `.agents/SOUL.md` keep Warden lore unchanged.
