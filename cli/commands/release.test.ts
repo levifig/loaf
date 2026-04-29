@@ -251,6 +251,65 @@ describe("--pre-merge flag", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// --post-merge flag wiring (SPEC-031 / TASK-142)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("--post-merge flag", () => {
+  it("rejects combination with --bump", () => {
+    const result = runRelease("--post-merge", "--bump", "patch");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      "--post-merge is incompatible with --bump",
+    );
+  });
+
+  it("rejects combination with --dry-run", () => {
+    const result = runRelease("--post-merge", "--dry-run");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      "--post-merge is incompatible with --dry-run",
+    );
+  });
+
+  it("rejects combination with --no-tag", () => {
+    const result = runRelease("--post-merge", "--no-tag");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--post-merge is incompatible with --no-tag");
+  });
+
+  it("rejects combination with --no-gh", () => {
+    const result = runRelease("--post-merge", "--no-gh");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--post-merge is incompatible with --no-gh");
+  });
+
+  it("rejects combination with --base", () => {
+    const result = runRelease("--post-merge", "--base", "main");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--post-merge is incompatible with --base");
+  });
+
+  it("rejects combination with --pre-merge", () => {
+    const result = runRelease("--post-merge", "--pre-merge");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      "--post-merge is incompatible with --pre-merge",
+    );
+  });
+
+  it("aborts with guardrail failure on the loaf repo (no chore: release HEAD)", () => {
+    // Running on the loaf repo itself: HEAD is not a chore: release commit,
+    // so guardrail 3 (subject shape) should fail. The test asserts that the
+    // guardrail layer runs and surfaces a non-zero exit with a helpful
+    // message — the exact guardrail that trips depends on local git state
+    // (branch, worktree cleanliness), so we accept any guardrail failure.
+    const result = runRelease("--post-merge");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toMatch(/guardrail \d+ failed/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Regression guards
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -27,6 +27,16 @@ export interface ReleaseOptions {
    * Explicit `--tag`, `--gh`, or `--base` overrides the bundled defaults.
    */
   preMerge?: boolean;
+  /**
+   * `--post-merge` finalization flag. Skips the bump+commit flow entirely
+   * and instead runs the 8-point guardrail check + tag/push/release/cleanup
+   * sequence on the just-merged release commit. See
+   * `cli/lib/release/post-merge.ts`.
+   *
+   * Incompatible with --bump, --dry-run, --no-tag, --tag, --no-gh, --gh,
+   * --base, --version-file, --yes (post-merge has no bump and no draft step).
+   */
+  postMerge?: boolean;
 }
 
 export interface NormalizedFlags {
