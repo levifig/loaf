@@ -3,11 +3,12 @@ id: TASK-137
 title: >-
   Add regression tests for validate-commit AI-attribution regex + delete orphan
   workflow-pre-pr.sh
-status: todo
+spec: SPEC-031
+status: done
 priority: P2
 created: '2026-04-29T17:27:51.877Z'
-updated: '2026-04-29T17:27:51.877Z'
-spec: SPEC-031
+updated: '2026-04-29T18:39:41.286Z'
+completed_at: '2026-04-29T18:39:41.285Z'
 ---
 
 # TASK-137: Add regression tests for validate-commit AI-attribution regex + delete orphan workflow-pre-pr.sh

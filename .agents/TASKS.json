@@ -310,7 +310,7 @@
       "title": "Add regression tests for validate-commit AI-attribution regex + delete orphan workflow-pre-pr.sh",
       "slug": "add-regression-tests-for-validate-commit-ai-attrib",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [],
@@ -318,8 +318,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:27:51.877Z",
-      "updated": "2026-04-29T17:27:51.877Z",
-      "completed_at": null,
+      "updated": "2026-04-29T18:39:41.286Z",
+      "completed_at": "2026-04-29T18:39:41.285Z",
       "file": "TASK-137-add-regression-tests-for-validate-commit-ai-attrib.md"
     },
     "TASK-138": {
