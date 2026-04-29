@@ -445,7 +445,7 @@
       "title": "Add release-only PR classifier in workflow-pre-pr (strict diff allowlist)",
       "slug": "add-release-only-pr-classifier-in-workflow-pre-pr-",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-143",
@@ -456,8 +456,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:28:14.853Z",
-      "updated": "2026-04-29T17:28:14.853Z",
-      "completed_at": null,
+      "updated": "2026-04-29T19:55:12.727Z",
+      "completed_at": "2026-04-29T19:55:12.726Z",
       "file": "TASK-145-add-release-only-pr-classifier-in-workflow-pre-pr-.md"
     },
     "TASK-146": {

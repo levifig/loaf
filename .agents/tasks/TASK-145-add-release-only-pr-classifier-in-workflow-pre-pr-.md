@@ -2,13 +2,14 @@
 id: TASK-145
 title: Add release-only PR classifier in workflow-pre-pr (strict diff allowlist)
 spec: SPEC-031
-status: todo
+status: done
 priority: P2
 created: '2026-04-29T17:28:14.853Z'
-updated: '2026-04-29T17:28:14.853Z'
+updated: '2026-04-29T19:55:12.727Z'
 depends_on:
   - TASK-143
   - TASK-144
+completed_at: '2026-04-29T19:55:12.726Z'
 ---
 
 # TASK-145: Add release-only PR classifier in workflow-pre-pr (strict diff allowlist)
