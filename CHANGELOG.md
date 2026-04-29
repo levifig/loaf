@@ -15,7 +15,7 @@ Headline: SPEC-033 ships. Agent personality is now decoupled from agent mechanic
 
 ### Added
 - Souls catalog shipped with Loaf at `content/souls/{fellowship,none}/SOUL.md`. `fellowship` preserves the Warden/Fellowship character vocabulary verbatim; `none` describes the same orchestrator/implementer/reviewer/researcher/librarian roles in neutral, function-first prose for corporate or no-fantasy contexts.
-- `loaf soul` CLI with four subcommands: `list` (catalog with one-line descriptions), `current` (active soul from `loaf.json`), `show <name>` (print catalog content without writing), and `use <name>` (write the catalog soul to `.agents/SOUL.md` and update `loaf.json`). `use` refuses to overwrite a locally diverged `SOUL.md` without `--force` or interactive confirmation.
+- `loaf soul` CLI with four subcommands: `list` (catalog with one-line descriptions), `current` (active soul from `loaf.json`), `show <name>` (print catalog content without writing), and `use <name>` (write the catalog soul to `.agents/SOUL.md` and update `loaf.json`). `use` refuses to overwrite a locally diverged `SOUL.md` without `--force`.
 - `soul:` field in `.agents/loaf.json`. Fresh installs default to `none`. `loaf install` writes the configured soul's content to `.agents/SOUL.md` as a real file (copy semantics, not a symlink), so user edits stay put.
 - `loaf install --interactive` now prompts for a soul on fresh installs and respects the choice. The bootstrap skill surfaces this prompt by calling install rather than asking independently.
 - SessionStart hook restores `.agents/SOUL.md` from the configured soul when the file is missing (previously fell back to a single canonical template).

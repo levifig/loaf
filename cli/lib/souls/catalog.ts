@@ -18,7 +18,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 
-import { getCatalogDir, resolveCatalogDir } from "./paths.js";
+import { resolveCatalogDir } from "./paths.js";
 
 export interface SoulEntry {
   /** Catalog name (directory name inside content/souls/) */
@@ -37,13 +37,13 @@ export interface SoulEntry {
  * - Production path: return the first existing candidate from
  *   `resolveCatalogDir()`, which covers the dev tree, the Claude Code
  *   plugin, and per-tool installed catalogs.
- * - Fallback: if nothing exists yet (fresh dev tree, missing install), still
- *   return the dev-tree path so callers get a stable, unsurprising location
- *   for error messages and `existsSync` probes.
+ * - No catalog reachable: return `null`. Callers must handle this case
+ *   explicitly (`listSouls()` returns `[]`, `readSoul()` throws a clear
+ *   "Unknown soul" error). Mirrors the contract in `paths.resolveCatalogDir`.
  */
-function activeCatalogDir(loafRoot?: string): string {
+function activeCatalogDir(loafRoot?: string): string | null {
   if (loafRoot) return join(loafRoot, "content", "souls");
-  return resolveCatalogDir() ?? getCatalogDir();
+  return resolveCatalogDir();
 }
 
 /**
@@ -55,7 +55,7 @@ function activeCatalogDir(loafRoot?: string): string {
  */
 export function listSouls(loafRoot?: string): SoulEntry[] {
   const catalogDir = activeCatalogDir(loafRoot);
-  if (!existsSync(catalogDir)) return [];
+  if (!catalogDir || !existsSync(catalogDir)) return [];
 
   const entries: SoulEntry[] = [];
   for (const name of readdirSync(catalogDir).sort()) {
@@ -83,10 +83,14 @@ export function listSouls(loafRoot?: string): SoulEntry[] {
 
 /**
  * Read a soul's SOUL.md content by catalog name. Throws if the soul does not
- * exist in the catalog.
+ * exist in the catalog (including the no-catalog-reachable case).
  */
 export function readSoul(name: string, loafRoot?: string): string {
-  const soulPath = soulPathFor(name, loafRoot);
+  const catalogDir = activeCatalogDir(loafRoot);
+  if (!catalogDir) {
+    throw new Error(`Unknown soul: ${name}`);
+  }
+  const soulPath = join(catalogDir, name, "SOUL.md");
   if (!existsSync(soulPath)) {
     throw new Error(`Unknown soul: ${name}`);
   }
@@ -94,10 +98,16 @@ export function readSoul(name: string, loafRoot?: string): string {
 }
 
 /**
- * Absolute path to a soul's SOUL.md file. Does not check existence.
+ * Absolute path to a soul's SOUL.md file. Does not check existence. Throws
+ * when no catalog directory can be resolved — callers expecting a path must
+ * already know a catalog exists (use `listSouls` to check).
  */
 export function soulPathFor(name: string, loafRoot?: string): string {
-  return join(activeCatalogDir(loafRoot), name, "SOUL.md");
+  const catalogDir = activeCatalogDir(loafRoot);
+  if (!catalogDir) {
+    throw new Error(`Souls catalog not found (no candidate directory exists)`);
+  }
+  return join(catalogDir, name, "SOUL.md");
 }
 
 /**

@@ -75,6 +75,11 @@ export const AmpPlatform: RuntimePlatform = {
   events: {
     preTool: "tool.call",
     postTool: "tool.result",
+    // Amp emits these dotted events to the plugin's default-export object.
+    // session.start fires once per Amp session (used for SOUL.md restoration);
+    // agent.end fires when an agent run concludes (used for sessionEnd hooks).
+    sessionStart: "session.start",
+    sessionEnd: "agent.end",
   },
   toolNameAccessor: "call.toolName",
   toolInputAccessor: "call.arguments",

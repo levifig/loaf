@@ -16899,7 +16899,12 @@ var AmpPlatform = {
  */`,
   events: {
     preTool: "tool.call",
-    postTool: "tool.result"
+    postTool: "tool.result",
+    // Amp emits these dotted events to the plugin's default-export object.
+    // session.start fires once per Amp session (used for SOUL.md restoration);
+    // agent.end fires when an agent run concludes (used for sessionEnd hooks).
+    sessionStart: "session.start",
+    sessionEnd: "agent.end"
   },
   toolNameAccessor: "call.toolName",
   toolInputAccessor: "call.arguments",
@@ -19385,9 +19390,6 @@ function findLoafRoot() {
   }
   throw new Error("Could not find loaf root directory (no package.json with name 'loaf')");
 }
-function getCatalogDir(loafRoot) {
-  return join24(loafRoot ?? findLoafRoot(), "content", "souls");
-}
 function findCatalogCandidates() {
   const candidates = [];
   try {
@@ -19425,11 +19427,11 @@ function resolveCatalogDir(loafRoot) {
 // cli/lib/souls/catalog.ts
 function activeCatalogDir(loafRoot) {
   if (loafRoot) return join25(loafRoot, "content", "souls");
-  return resolveCatalogDir() ?? getCatalogDir();
+  return resolveCatalogDir();
 }
 function listSouls(loafRoot) {
   const catalogDir = activeCatalogDir(loafRoot);
-  if (!existsSync20(catalogDir)) return [];
+  if (!catalogDir || !existsSync20(catalogDir)) return [];
   const entries = [];
   for (const name of readdirSync8(catalogDir).sort()) {
     const dir = join25(catalogDir, name);
@@ -19452,14 +19454,15 @@ function listSouls(loafRoot) {
   return entries;
 }
 function readSoul(name, loafRoot) {
-  const soulPath = soulPathFor(name, loafRoot);
+  const catalogDir = activeCatalogDir(loafRoot);
+  if (!catalogDir) {
+    throw new Error(`Unknown soul: ${name}`);
+  }
+  const soulPath = join25(catalogDir, name, "SOUL.md");
   if (!existsSync20(soulPath)) {
     throw new Error(`Unknown soul: ${name}`);
   }
   return readFileSync18(soulPath, "utf-8");
-}
-function soulPathFor(name, loafRoot) {
-  return join25(activeCatalogDir(loafRoot), name, "SOUL.md");
 }
 function extractDescription(content) {
   const lines = content.split(/\r?\n/);
@@ -26944,9 +26947,12 @@ function validateSoulMd(agentsDir) {
     return { exists: false, restored: false };
   }
   try {
-    writeFileSync27(soulPath, content, "utf-8");
+    writeFileAtomic(soulPath, content);
     return { exists: true, restored: true };
   } catch {
+    if (existsSync46(soulPath)) {
+      return { exists: true, restored: false };
+    }
     return { exists: false, restored: false };
   }
 }

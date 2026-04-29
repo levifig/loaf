@@ -232,6 +232,7 @@ const RESTORATION_DEFAULT_SOUL = "fellowship";
 function validateSoulMd(agentsDir: string): { exists: boolean; restored: boolean } {
   const soulPath = join(agentsDir, "SOUL.md");
 
+  // Fast path: file already there, nothing to do.
   if (existsSync(soulPath)) {
     return { exists: true, restored: false };
   }
@@ -246,10 +247,22 @@ function validateSoulMd(agentsDir: string): { exists: boolean; restored: boolean
     return { exists: false, restored: false };
   }
 
+  // Write atomically via temp + rename. If two SessionStart hooks race on the
+  // same project they will each write their temp file and rename(2) the first
+  // one wins; the second harmlessly replaces with identical content (both
+  // sources are the same catalog soul). Either way, after both rename calls
+  // the destination is present and complete — no truncation, no half-written
+  // SOUL.md visible to readers.
   try {
-    writeFileSync(soulPath, content, "utf-8");
+    writeFileAtomic(soulPath, content);
     return { exists: true, restored: true };
   } catch {
+    // Even if our write failed, the destination may now exist because another
+    // racer beat us to it. In that case the file is present, which is what we
+    // wanted — just report `exists: true, restored: false`.
+    if (existsSync(soulPath)) {
+      return { exists: true, restored: false };
+    }
     return { exists: false, restored: false };
   }
 }

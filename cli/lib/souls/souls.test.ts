@@ -38,6 +38,7 @@ import {
   soulPathFor,
   writeActiveSoul,
 } from "./index.js";
+import { resolveCatalogDir } from "./paths.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fixtures
@@ -135,6 +136,86 @@ describe("listSouls", () => {
     } finally {
       rmSync(emptyRoot, { recursive: true, force: true });
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// No-catalog state: paths.ts and catalog.ts share the same null-on-missing
+// contract. When `resolveCatalogDir()` returns null (no candidate reachable),
+// catalog.ts must not throw — `listSouls()` returns [], `readSoul()` and
+// `soulPathFor()` throw a clear "Unknown soul" / "Souls catalog not found".
+//
+// Simulated by routing the env-candidate fallback chain through empty tmp
+// directories *and* running `findLoafRoot` from a synthesised __dirname
+// without any loaf package.json upstream. Since we cannot relocate the test
+// file's __dirname, we cover the contract via env-driven candidates that
+// resolve to nothing, and assert via the public `resolveCatalogDir()` that
+// the dev-tree fallback still wins (returning a real path) — proving the
+// chain is exhaustive when paths exist. The contract for the *missing*
+// path is asserted at the catalog.ts boundary by passing a `loafRoot` that
+// points to a directory with no `content/souls/` subtree.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("no-catalog state (catalog.ts contract)", () => {
+  let savedEnv: Record<string, string | undefined>;
+  let scratchHome: string;
+
+  beforeEach(() => {
+    // Snapshot env keys we may mutate so afterEach can restore them.
+    savedEnv = {
+      HOME: process.env.HOME,
+      USERPROFILE: process.env.USERPROFILE,
+      XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
+      CLAUDE_PLUGIN_ROOT: process.env.CLAUDE_PLUGIN_ROOT,
+      CODEX_HOME: process.env.CODEX_HOME,
+    };
+    scratchHome = mkdtempSync(join(tmpdir(), "loaf-souls-noenv-"));
+    // Point every per-tool candidate at this empty scratch home so the
+    // env-based portion of the candidate chain resolves to nothing.
+    process.env.HOME = scratchHome;
+    process.env.USERPROFILE = scratchHome;
+    process.env.XDG_CONFIG_HOME = join(scratchHome, ".config");
+    process.env.CODEX_HOME = join(scratchHome, ".codex");
+    delete process.env.CLAUDE_PLUGIN_ROOT;
+  });
+
+  afterEach(() => {
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    rmSync(scratchHome, { recursive: true, force: true });
+  });
+
+  it("listSouls returns [] when given a loafRoot with no catalog", () => {
+    // The loafRoot path forces activeCatalogDir to bypass the env chain and
+    // resolve to <loafRoot>/content/souls — which doesn't exist.
+    const noCatalogRoot = mkdtempSync(join(tmpdir(), "loaf-souls-no-catalog-"));
+    try {
+      expect(listSouls(noCatalogRoot)).toEqual([]);
+    } finally {
+      rmSync(noCatalogRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("readSoul throws 'Unknown soul' when given a loafRoot with no catalog", () => {
+    const noCatalogRoot = mkdtempSync(join(tmpdir(), "loaf-souls-no-catalog-"));
+    try {
+      expect(() => readSoul("none", noCatalogRoot)).toThrow(/Unknown soul/);
+    } finally {
+      rmSync(noCatalogRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("does not throw 'Could not find loaf root' through any public surface", () => {
+    // Regression guard for the original bug: catalog.ts used to fall through
+    // to getCatalogDir() (which calls findLoafRoot) when resolveCatalogDir()
+    // returned null. With the env chain pointed at empty scratch dirs the
+    // dev-tree branch still resolves (loaf's own package.json sits above
+    // __dirname), so this asserts the *no exception* outcome on the path
+    // we care about: a real dev tree, no per-tool installs.
+    expect(() => listSouls()).not.toThrow();
+    expect(() => resolveCatalogDir()).not.toThrow();
   });
 });
 
