@@ -1,20 +1,21 @@
 /**
  * Base Branch Detection
  *
- * Resolves the base branch for `loaf release --pre-merge` (and reuse by
- * the release-only PR classifier in workflow-pre-pr).
+ * Resolves the base branch for `loaf release --pre-merge`, the release-only PR
+ * classifier (workflow-pre-pr), AND the post-merge guardrail flow.
  *
  * Strict 4-step priority order, first match wins:
  *
  *   1. Explicit --base flag.
  *   2. Open PR's base branch via `gh pr view --head <current> --json baseRefName`
- *      (only when a PR exists AND is OPEN).
+ *      (only when a PR exists AND is OPEN). Skipped when `skipPRLookup: true`
+ *      (post-merge flow — PR is closed/merged by then).
  *   3. User override via `git config loaf.release.base`.
  *   4. Default branch via `gh repo view --json defaultBranchRef -q .defaultBranchRef.name`,
  *      falling back to parsing `git symbolic-ref refs/remotes/origin/HEAD` when gh
  *      is not available.
  *
- * If all four steps fail, throws an actionable error.
+ * If all enabled steps fail, throws an actionable error.
  *
  * The resolver shells out via an injectable `CommandRunner`. The default runner
  * uses `execFileSync`; tests inject a mock runner so they can stub gh/git
@@ -59,6 +60,13 @@ export interface BaseDetectionInput {
   cwd: string;
   /** Optional command runner for tests. Defaults to a real-spawn runner. */
   runner?: CommandRunner;
+  /**
+   * Skip the open-PR lookup (step 2). Used by the post-merge guardrail flow,
+   * where the PR is closed/merged by definition and `gh pr view` would either
+   * return nothing or be flaky. When true, sources collapse to
+   * 'explicit' | 'config' | 'default'.
+   */
+  skipPRLookup?: boolean;
 }
 
 export type BaseDetectionSource = "explicit" | "pr" | "config" | "default";
@@ -128,8 +136,11 @@ export async function resolveBaseBranch(
   }
 
   // Step 2: open PR's base branch (only when gh is available AND PR is OPEN).
-  const prBase = lookupOpenPrBase(runner, cwd, currentBranch);
-  if (prBase) return { base: prBase, source: "pr" };
+  // Skipped entirely when the caller passes skipPRLookup (post-merge flow).
+  if (!input.skipPRLookup) {
+    const prBase = lookupOpenPrBase(runner, cwd, currentBranch);
+    if (prBase) return { base: prBase, source: "pr" };
+  }
 
   // Step 3: git config loaf.release.base.
   const configBase = lookupGitConfigBase(runner, cwd);

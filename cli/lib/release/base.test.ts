@@ -362,6 +362,89 @@ describe("resolveBaseBranch — all steps fail", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// skipPRLookup option (post-merge flow)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("resolveBaseBranch — skipPRLookup", () => {
+  it("never invokes `gh pr view` when skipPRLookup is true", async () => {
+    // Even with a PR base scripted to win at step 2, the runner should not be
+    // called for `gh pr view` at all. Step 3 (config) wins instead.
+    const { runner, calls } = makeRunner({
+      ghPrView: ok("would-be-pr-base"),
+      gitConfig: ok("config-base"),
+      ghRepoView: ok("default-base"),
+    });
+    const result = await resolveBaseBranch({
+      currentBranch: "feat/x",
+      cwd: "/tmp/repo",
+      runner,
+      skipPRLookup: true,
+    });
+
+    expect(result).toEqual({ base: "config-base", source: "config" });
+    // Critical: `gh pr view` was never invoked.
+    expect(
+      calls.find((c) => c.command === "gh" && c.args[0] === "pr"),
+    ).toBeUndefined();
+  });
+
+  it("falls through PR-tier even when a PR exists; default-branch wins when config is unset", async () => {
+    // Mirrors the post-merge scenario: closed/merged PR yields nothing useful,
+    // config not set, default branch is the answer.
+    const { runner, calls } = makeRunner({
+      ghPrView: ok("would-be-pr-base"), // would have won at step 2 if not skipped
+      gitConfig: exit(1), // not set
+      ghRepoView: ok("main"),
+    });
+    const result = await resolveBaseBranch({
+      currentBranch: "feat/x",
+      cwd: "/tmp/repo",
+      runner,
+      skipPRLookup: true,
+    });
+
+    expect(result).toEqual({ base: "main", source: "default" });
+    expect(
+      calls.find((c) => c.command === "gh" && c.args[0] === "pr"),
+    ).toBeUndefined();
+  });
+
+  it("preserves PR-tier behavior when skipPRLookup is unset (regression)", async () => {
+    // Same fixture as the prior test but without skipPRLookup — PR-tier fires
+    // and wins. Guards against accidental flag inversion.
+    const { runner, calls } = makeRunner({
+      ghPrView: ok("pr-base"),
+      gitConfig: ok("config-base"),
+      ghRepoView: ok("default-base"),
+    });
+    const result = await resolveBaseBranch({
+      currentBranch: "feat/x",
+      cwd: "/tmp/repo",
+      runner,
+    });
+
+    expect(result).toEqual({ base: "pr-base", source: "pr" });
+    expect(
+      calls.find((c) => c.command === "gh" && c.args[0] === "pr"),
+    ).toBeDefined();
+  });
+
+  it("explicit --base still wins when skipPRLookup is true", async () => {
+    const { runner, calls } = makeRunner({});
+    const result = await resolveBaseBranch({
+      explicit: "release/2.0",
+      currentBranch: "feat/x",
+      cwd: "/tmp/repo",
+      runner,
+      skipPRLookup: true,
+    });
+    expect(result).toEqual({ base: "release/2.0", source: "explicit" });
+    // No shell-outs at all when explicit wins, regardless of skipPRLookup.
+    expect(calls).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Combined precedence assertion
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -247,6 +247,29 @@ describe("checkPostMergeGuardrails — guardrail 2 (on base branch)", () => {
   });
   afterEach(() => fixture.cleanup());
 
+  it("never invokes `gh pr view <branch>` for base resolution (uses unified resolver with skipPRLookup)", async () => {
+    // Regression guard for the "two state models" drift: post-merge MUST NOT
+    // shell out to `gh pr view <branch> --json baseRefName,...` because by
+    // post-merge the PR is closed/merged. The unified resolver short-circuits
+    // step 2 when called with skipPRLookup: true.
+    const script = happyPathScript({ version: "1.2.3" });
+    const { runner, calls } = makeRunner(script);
+
+    await checkPostMergeGuardrails({ cwd: fixture.cwd, runner });
+
+    // `gh pr view <branch> --json baseRefName,state ...` is the base-resolution
+    // call signature; `gh pr view <prNumber> --json headRefName ...` is the
+    // separate feature-branch lookup. We forbid the former.
+    const baseLookupCalls = calls.filter(
+      (c) =>
+        c.command === "gh" &&
+        c.args[0] === "pr" &&
+        c.args[1] === "view" &&
+        c.args.includes("baseRefName,state"),
+    );
+    expect(baseLookupCalls).toEqual([]);
+  });
+
   it("aborts when current branch is not the base and not fast-forwardable", async () => {
     const script = happyPathScript({
       version: "1.2.3",

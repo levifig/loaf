@@ -42,6 +42,7 @@ import { join } from "path";
 
 import {
   defaultRunner,
+  resolveBaseBranch,
   type CommandResult,
   type CommandRunner,
 } from "./base.js";
@@ -421,11 +422,10 @@ export async function checkPostMergeGuardrails(
   const dirty = checkCleanWorktree(runner, cwd);
   if (dirty) return { ok: false, guardrail: 1, message: dirty };
 
-  // Guardrail 2: on base branch (or fast-forwardable). Need to resolve the
-  // base first — for post-merge we use the same auto-detection as pre-merge,
-  // but only the explicit-config / default-branch tiers are meaningful here
-  // (a closed/merged PR returns nothing on `gh pr view <branch>` once the
-  // user is back on base, so step 2 of resolveBaseBranch will not find a PR).
+  // Guardrail 2: on base branch (or fast-forwardable). Resolve the base via
+  // the unified resolver, skipping the open-PR tier — by post-merge the PR is
+  // closed/merged and `gh pr view <branch>` would either return nothing or be
+  // flaky. The remaining tiers (explicit / config / default) are sufficient.
   const current = getCurrentBranch(runner, cwd);
   if (!current) {
     return {
@@ -437,12 +437,13 @@ export async function checkPostMergeGuardrails(
 
   let base: string;
   try {
-    const detected = await resolveBaseForPostMerge({
+    const detected = await resolveBaseBranch({
       runner,
       cwd,
       currentBranch: current,
+      skipPRLookup: true,
     });
-    base = detected;
+    base = detected.base;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, guardrail: 2, message };
@@ -523,69 +524,6 @@ export async function checkPostMergeGuardrails(
     changelogBody,
     versionFiles,
   };
-}
-
-/**
- * Resolve the base branch for the post-merge state.
- *
- * Post-merge is on the base branch by definition, so the strict 4-step pre-merge
- * resolver is overkill. We try, in order:
- *   1. `git config loaf.release.base`
- *   2. `gh repo view --json defaultBranchRef`
- *   3. `git symbolic-ref refs/remotes/origin/HEAD`
- *
- * (We deliberately skip the open-PR step from resolveBaseBranch — by post-merge
- * the PR is closed/merged and that lookup would return nothing or be flaky.)
- */
-async function resolveBaseForPostMerge(input: {
-  runner: CommandRunner;
-  cwd: string;
-  currentBranch: string;
-}): Promise<string> {
-  const { runner, cwd } = input;
-
-  // 1. git config.
-  const configResult = run(runner, cwd, "git", [
-    "config",
-    "--get",
-    "loaf.release.base",
-  ]);
-  if (configResult.exitCode === 0) {
-    const value = configResult.stdout.trim();
-    if (value.length > 0) return value;
-  }
-
-  // 2. gh repo view.
-  const ghResult = run(runner, cwd, "gh", [
-    "repo",
-    "view",
-    "--json",
-    "defaultBranchRef",
-    "-q",
-    ".defaultBranchRef.name",
-  ]);
-  if (!ghResult.notFound && ghResult.exitCode === 0) {
-    const value = ghResult.stdout.trim();
-    if (value.length > 0) return value;
-  }
-
-  // 3. origin/HEAD fallback.
-  const symResult = run(runner, cwd, "git", [
-    "symbolic-ref",
-    "refs/remotes/origin/HEAD",
-  ]);
-  if (symResult.exitCode === 0) {
-    const raw = symResult.stdout.trim();
-    const prefix = "refs/remotes/origin/";
-    if (raw.startsWith(prefix)) {
-      const value = raw.slice(prefix.length);
-      if (value.length > 0) return value;
-    }
-  }
-
-  throw new Error(
-    "could not auto-detect base branch — set git config loaf.release.base <ref> and rerun",
-  );
 }
 
 /**
