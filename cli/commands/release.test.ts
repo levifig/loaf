@@ -9,11 +9,22 @@
  * The CLI is built from source in beforeAll, so these tests always
  * exercise current code regardless of dist-cli/ state.
  *
- * All tests use --dry-run, so no files or git state are modified.
+ * Most tests use --dry-run, so no files or git state are modified. The
+ * "release commit subject" suite at the bottom is the lone exception:
+ * it runs against an isolated temp git repo with --no-tag --no-gh and
+ * asserts the actual emitted commit subject — closing the SPEC-031
+ * Test Conditions gate that requires the subject be explicitly tested.
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { execFileSync, spawnSync } from "child_process";
+import {
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
+import { tmpdir } from "os";
 import { join } from "path";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -319,4 +330,147 @@ describe("existing behavior preserved", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("No changes made");
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Release commit subject (SPEC-031 Test Conditions)
+//
+// SPEC-031 line 176 mandates: "loaf release commits with subject
+// `chore: release v<semver>` — explicitly tested, not just observed in
+// fixtures." Earlier tests run with --dry-run and so never exercise the
+// commit code path. This suite runs against a throwaway git repo with
+// --no-tag --no-gh and asserts the produced commit subject directly.
+//
+// Side effect: the release flow's Step 3 (`loaf build`) walks from the
+// CLI bundle's __dirname to find the loaf root, so a real build of the
+// loaf repo runs as part of this test. That's deterministic — `loaf build`
+// is idempotent against the loaf source — but it is NOT a no-op. Hence
+// the longer per-test timeout and the captured stdio.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("release commit subject", () => {
+  it(
+    "commits with subject 'chore: release v<X.Y.Z>' (no --dry-run, real git commit)",
+    () => {
+      // Set up an isolated git repo with package.json + curated CHANGELOG.
+      const repoRoot = realpathSync(
+        mkdtempSync(join(tmpdir(), "loaf-release-subject-")),
+      );
+      try {
+        execFileSync("git", ["init", "-b", "main"], {
+          cwd: repoRoot,
+          stdio: "ignore",
+        });
+        execFileSync("git", ["config", "user.email", "test@test.com"], {
+          cwd: repoRoot,
+          stdio: "ignore",
+        });
+        execFileSync("git", ["config", "user.name", "Test"], {
+          cwd: repoRoot,
+          stdio: "ignore",
+        });
+
+        // Initial state: package.json @ 1.0.0, CHANGELOG with curated
+        // [Unreleased] entries (so auto-generation from commits is bypassed
+        // and the test is independent of which commit subjects we manufacture).
+        writeFileSync(
+          join(repoRoot, "package.json"),
+          JSON.stringify({ name: "fixture", version: "1.0.0" }, null, 2) + "\n",
+        );
+        writeFileSync(
+          join(repoRoot, "CHANGELOG.md"),
+          [
+            "# Changelog",
+            "",
+            "## [Unreleased]",
+            "",
+            "- Added something useful",
+            "- Fixed something annoying",
+            "",
+            "## [1.0.0] - 2024-01-01",
+            "",
+            "- Initial release",
+            "",
+          ].join("\n"),
+        );
+        execFileSync("git", ["add", "."], {
+          cwd: repoRoot,
+          stdio: "ignore",
+        });
+        execFileSync("git", ["commit", "-m", "chore: initial"], {
+          cwd: repoRoot,
+          stdio: "ignore",
+        });
+        const baseSha = execFileSync("git", ["rev-parse", "HEAD"], {
+          cwd: repoRoot,
+          encoding: "utf-8",
+        }).trim();
+
+        // Add at least one commit between base and HEAD so commits.length > 0
+        // (release exits early when there are no commits since the base ref).
+        writeFileSync(join(repoRoot, "src.txt"), "first version\n");
+        execFileSync("git", ["add", "."], {
+          cwd: repoRoot,
+          stdio: "ignore",
+        });
+        execFileSync("git", ["commit", "-m", "feat: add src.txt"], {
+          cwd: repoRoot,
+          stdio: "ignore",
+        });
+
+        // Run a real release. --no-tag --no-gh isolates the assertion to the
+        // commit subject (no tag pushing, no gh release). --yes skips the
+        // confirmation prompt. --base anchors commit detection at the
+        // initial commit.
+        const result = spawnSync(
+          "node",
+          [
+            CLI_PATH,
+            "release",
+            "--bump",
+            "patch",
+            "--yes",
+            "--no-tag",
+            "--no-gh",
+            "--base",
+            baseSha,
+          ],
+          {
+            cwd: repoRoot,
+            encoding: "utf-8",
+            stdio: ["ignore", "pipe", "pipe"],
+            timeout: 60_000,
+          },
+        );
+
+        expect(result.status).toBe(0);
+
+        // The bumped version is 1.0.0 → 1.0.1. The release flow tags the
+        // commit `chore: release v<X.Y.Z>` (with no PR-number suffix —
+        // that suffix is added by GitHub's squash-merge, not by `loaf release`).
+        const subject = execFileSync(
+          "git",
+          ["log", "-1", "--pretty=%s"],
+          {
+            cwd: repoRoot,
+            encoding: "utf-8",
+          },
+        ).trim();
+
+        expect(subject).toBe("chore: release v1.0.1");
+
+        // Bonus: the produced subject must match the chore-shape regex used
+        // by `cli/commands/check.ts` for the workflow-pre-pr escape hatch.
+        // Mirroring the regex inline keeps this test self-contained — if
+        // either the regex or the emitted subject drifts, this assertion
+        // catches it.
+        const RELEASE_COMMIT_SUBJECT_REGEX =
+          /^chore: release v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?(?:\s+\(#\d+\))?$/;
+        expect(RELEASE_COMMIT_SUBJECT_REGEX.test(subject)).toBe(true);
+      } finally {
+        rmSync(repoRoot, { recursive: true, force: true });
+      }
+    },
+    90_000,
+  );
 });
