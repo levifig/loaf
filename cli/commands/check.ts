@@ -20,6 +20,8 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 
+import { isReleaseOnlyPR } from "../lib/release/release-only-pr.js";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -530,6 +532,30 @@ async function workflowPrePr(context: HookContext): Promise<CheckResult> {
           // shape so PR creation isn't blocked by the now-empty `[Unreleased]`.
           if (!isRelease && headSubjectMatchesReleaseShape()) {
             isRelease = true;
+          }
+
+          // Release-only PR escape hatch (TASK-145): branch whose only diff
+          // against the base is a version bump + `[Unreleased]` → `[X.Y.Z]`
+          // move in CHANGELOG.md. Strict diff allowlist + version match.
+          // Errors fall through to existing behavior — never auto-pass.
+          if (!isRelease) {
+            try {
+              const currentBranch = execSync("git branch --show-current", {
+                encoding: "utf-8",
+                stdio: ["pipe", "pipe", "ignore"],
+              }).trim();
+              if (currentBranch.length > 0) {
+                const classified = await isReleaseOnlyPR({
+                  cwd: process.cwd(),
+                  currentBranch,
+                });
+                if (classified) {
+                  isRelease = true;
+                }
+              }
+            } catch {
+              // Classifier-error fallthrough — never falsely allow.
+            }
           }
 
           if (!isRelease) {

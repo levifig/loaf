@@ -1086,6 +1086,528 @@ describe("check: workflow-pre-pr", () => {
 
     expect(result.exitCode).toBe(0);
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Tests: workflow-pre-pr — release-only PR classifier (TASK-145)
+  //
+  // Strict diff allowlist: branch whose only diff vs base is `CHANGELOG.md`
+  // + known version-file paths AND a non-empty `## [<version>]` matching
+  // the version files. Bypasses the empty-`[Unreleased]` block.
+  //
+  // Tests use `git config loaf.release.base main` so base resolution lands
+  // at step 3 (config) without requiring gh.
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * Set up a fixture repo with `main` containing initial CHANGELOG/package.json
+   * and a feature branch whose diff against main matches a chosen shape.
+   * The base is configured via `git config loaf.release.base main` so the
+   * resolver short-circuits at step 3 without needing gh.
+   */
+  function setUpReleaseOnlyFixture(opts: {
+    initialChangelog: string;
+    initialPackageVersion: string;
+    branchPackageVersion: string;
+    branchChangelog: string;
+    extraBranchFile?: { path: string; content: string };
+    skipVersionFileBump?: boolean;
+    loafJson?: string;
+    extraBranchVersionFile?: { path: string; content: string };
+  }): void {
+    // Tests use --initial-branch via `git -c init.defaultBranch=main` was
+    // an option, but we reuse the repo from beforeEach. Rename current branch
+    // to main so the base ref is canonical.
+    try {
+      execSync("git checkout -B main", { cwd: TEST_ROOT, stdio: "ignore" });
+    } catch {
+      /* ignore */
+    }
+
+    // ── main branch state ─────────────────────────────────────────────
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), opts.initialChangelog);
+    writeFileSync(
+      join(TEST_ROOT, "package.json"),
+      JSON.stringify(
+        { name: "fixture", version: opts.initialPackageVersion },
+        null,
+        2,
+      ) + "\n",
+    );
+    if (opts.loafJson) {
+      mkdirSync(join(TEST_ROOT, ".agents"), { recursive: true });
+      writeFileSync(join(TEST_ROOT, ".agents/loaf.json"), opts.loafJson);
+    }
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: initial"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+
+    // ── feature branch state ──────────────────────────────────────────
+    execSync("git checkout -b release/branch", {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), opts.branchChangelog);
+    if (!opts.skipVersionFileBump) {
+      writeFileSync(
+        join(TEST_ROOT, "package.json"),
+        JSON.stringify(
+          { name: "fixture", version: opts.branchPackageVersion },
+          null,
+          2,
+        ) + "\n",
+      );
+    }
+    if (opts.extraBranchFile) {
+      const target = join(TEST_ROOT, opts.extraBranchFile.path);
+      const parent = target.substring(0, target.lastIndexOf("/"));
+      if (parent && parent !== TEST_ROOT) {
+        mkdirSync(parent, { recursive: true });
+      }
+      writeFileSync(target, opts.extraBranchFile.content);
+    }
+    if (opts.extraBranchVersionFile) {
+      const target = join(TEST_ROOT, opts.extraBranchVersionFile.path);
+      mkdirSync(join(target, ".."), { recursive: true });
+      writeFileSync(target, opts.extraBranchVersionFile.content);
+    }
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: release v1.2.3"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+
+    // Configure base resolver to use `main` without gh.
+    execSync("git config loaf.release.base main", {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+  }
+
+  it("release-only PR with chore: release commit passes despite empty [Unreleased]", () => {
+    const initialChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    const branchChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.2.3] - 2026-04-29
+
+- Added new feature
+- Fixed a bug
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    setUpReleaseOnlyFixture({
+      initialChangelog,
+      initialPackageVersion: "1.0.0",
+      branchPackageVersion: "1.2.3",
+      branchChangelog,
+    });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: {
+        command:
+          'gh pr create --title "chore: release v1.2.3" --body "Release"',
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("release-only PR with monorepo .agents/loaf.json declarations passes", () => {
+    const initialChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    const branchChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.2.3] - 2026-04-29
+
+- Bumped backend
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    const loafJson = JSON.stringify(
+      {
+        release: {
+          versionFiles: ["backend/pyproject.toml"],
+        },
+      },
+      null,
+      2,
+    ) + "\n";
+
+    // Initial state: main has `backend/pyproject.toml` at 1.0.0.
+    try {
+      execSync("git checkout -B main", { cwd: TEST_ROOT, stdio: "ignore" });
+    } catch {
+      /* ignore */
+    }
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), initialChangelog);
+    mkdirSync(join(TEST_ROOT, ".agents"), { recursive: true });
+    writeFileSync(join(TEST_ROOT, ".agents/loaf.json"), loafJson);
+    mkdirSync(join(TEST_ROOT, "backend"), { recursive: true });
+    writeFileSync(
+      join(TEST_ROOT, "backend/pyproject.toml"),
+      `[project]\nname = "fixture"\nversion = "1.0.0"\n`,
+    );
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: initial"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+
+    // Branch: bump backend version + move changelog block.
+    execSync("git checkout -b release/backend", {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), branchChangelog);
+    writeFileSync(
+      join(TEST_ROOT, "backend/pyproject.toml"),
+      `[project]\nname = "fixture"\nversion = "1.2.3"\n`,
+    );
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: release v1.2.3"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+    execSync("git config loaf.release.base main", {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: {
+        command:
+          'gh pr create --title "chore: release v1.2.3" --body "Release"',
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("mixed PR with release files + extra source file falls through to empty-[Unreleased] block", () => {
+    const initialChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    const branchChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.2.3] - 2026-04-29
+
+- Added new feature
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    setUpReleaseOnlyFixture({
+      initialChangelog,
+      initialPackageVersion: "1.0.0",
+      branchPackageVersion: "1.2.3",
+      branchChangelog,
+      // Extra non-allowlist file disqualifies the classification.
+      extraBranchFile: { path: "src/foo.ts", content: "export const x = 1;\n" },
+    });
+
+    // The HEAD subject is `chore: release v1.2.3`, which would normally trip
+    // the existing pre-merge escape hatch, so use a different subject for this
+    // test to isolate the classifier path.
+    execSync('git commit --amend -m "chore: bump deps"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: {
+        command:
+          'gh pr create --title "chore: bump deps" --body "Routine bump"',
+      },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("empty");
+  });
+
+  it("PR with diff missing version file falls through (CHANGELOG-only diff)", () => {
+    const initialChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    const branchChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.2.3] - 2026-04-29
+
+- Some entry
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    setUpReleaseOnlyFixture({
+      initialChangelog,
+      initialPackageVersion: "1.0.0",
+      branchPackageVersion: "1.0.0",
+      branchChangelog,
+      skipVersionFileBump: true,
+    });
+
+    // Use a non-release HEAD subject so the existing pre-merge shape escape
+    // hatch doesn't kick in — isolate the classifier path.
+    execSync('git commit --amend -m "docs: update changelog"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: {
+        command:
+          'gh pr create --title "docs: update changelog" --body "Curate"',
+      },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("empty");
+  });
+
+  it("release-only diff with empty [<version>] section falls through to block", () => {
+    const initialChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    // [1.2.3] section exists but contains no list items.
+    const branchChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.2.3] - 2026-04-29
+
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    setUpReleaseOnlyFixture({
+      initialChangelog,
+      initialPackageVersion: "1.0.0",
+      branchPackageVersion: "1.2.3",
+      branchChangelog,
+    });
+
+    // Use a non-release HEAD subject so the existing pre-merge shape escape
+    // hatch doesn't kick in.
+    execSync('git commit --amend -m "chore: prep release"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: {
+        command:
+          'gh pr create --title "chore: prep release" --body "Empty section"',
+      },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("empty");
+  });
+
+  it("release-only diff with version-file mismatch falls through to block", () => {
+    const initialChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    // CHANGELOG declares 1.2.3 but package.json bumps to 1.2.4 → mismatch.
+    const branchChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.2.3] - 2026-04-29
+
+- Some entry
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    setUpReleaseOnlyFixture({
+      initialChangelog,
+      initialPackageVersion: "1.0.0",
+      branchPackageVersion: "1.2.4",
+      branchChangelog,
+    });
+
+    // Non-release subject so the existing chore: release shape escape hatch
+    // doesn't kick in.
+    execSync('git commit --amend -m "chore: cut release"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: {
+        command:
+          'gh pr create --title "chore: cut release" --body "Mismatch"',
+      },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("empty");
+  });
+
+  it("feature PR with curated [Unreleased] entries passes (classifier not consulted)", () => {
+    const initialChangelog = `# Changelog
+
+## [Unreleased]
+
+_No unreleased changes yet._
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    setUpReleaseOnlyFixture({
+      initialChangelog,
+      initialPackageVersion: "1.0.0",
+      branchPackageVersion: "1.0.0",
+      // Curated [Unreleased] entries → existing pass-through path is taken
+      // before the classifier is even relevant.
+      branchChangelog: `# Changelog
+
+## [Unreleased]
+
+- New API for users
+- Fixed pagination bug
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`,
+      skipVersionFileBump: true,
+    });
+
+    execSync('git commit --amend -m "feat: add new API"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: {
+        command: 'gh pr create --title "feat: add new API" --body "Feature work"',
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("classifier-error fallthrough: no base ref configured does not falsely allow", () => {
+    // Empty [Unreleased] block + no chore: release subject + no
+    // loaf.release.base config → base resolution must fall through to gh,
+    // which is not available in the test sandbox. The classifier swallows
+    // the error and returns false; existing block applies.
+    const initialChangelog = `# Changelog
+
+## [Unreleased]
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), initialChangelog);
+    writeFileSync(
+      join(TEST_ROOT, "package.json"),
+      JSON.stringify({ name: "fixture", version: "1.0.0" }, null, 2) + "\n",
+    );
+    execSync("git add .", { cwd: TEST_ROOT, stdio: "ignore" });
+    execSync('git commit -m "chore: initial"', {
+      cwd: TEST_ROOT,
+      stdio: "ignore",
+    });
+    // No second commit, no branch — and no loaf.release.base config. Base
+    // detection has nothing to anchor on.
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: {
+        command:
+          'gh pr create --title "chore: cut release" --body "Try to skip"',
+      },
+    });
+
+    // Expect block — classifier-error path must NOT auto-pass.
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("empty");
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
