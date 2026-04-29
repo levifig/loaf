@@ -21,6 +21,12 @@ export interface ReleaseOptions {
   yes?: boolean;
   /** Repeatable `--version-file <path>` overrides. Replaces declared + auto-detected paths. */
   versionFile?: string[];
+  /**
+   * `--pre-merge` convenience flag. Bundles `--no-tag --no-gh --base <auto>`.
+   * Auto-detection follows a 4-step priority order (see `cli/lib/release/base.ts`).
+   * Explicit `--tag`, `--gh`, or `--base` overrides the bundled defaults.
+   */
+  preMerge?: boolean;
 }
 
 export interface NormalizedFlags {

@@ -42,6 +42,7 @@ import {
   normalizeSkipFlags,
 } from "../lib/release/options.js";
 import type { ReleaseOptions } from "../lib/release/options.js";
+import { resolveBaseBranch } from "../lib/release/base.js";
 import { readLoafConfig } from "../lib/config/agents-config.js";
 
 // ANSI color helpers
@@ -116,6 +117,19 @@ function isGhAvailable(): boolean {
   }
 }
 
+/** Get the current branch name (`git symbolic-ref --short HEAD`) or null if detached. */
+function getCurrentBranch(cwd: string): string | null {
+  try {
+    return execFileSync("git", ["symbolic-ref", "--short", "HEAD"], {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
 interface IncompleteTask {
   filename: string;
   status: string;
@@ -171,21 +185,29 @@ function collect(value: string, previous: string[]): string[] {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function registerReleaseCommand(program: Command): void {
-  program
+  const releaseCmd = program
     .command("release")
     .description("Create a new release with changelog, version bump, and tag")
     .option("--dry-run", "Preview release without making changes")
     .option("--bump <type>", "Skip interactive bump choice (prerelease, release, major, minor, patch)")
     .option("--base <ref>", "Use commits since <ref> instead of last tag (e.g. main)")
     .option("--no-tag", "Skip git tag creation")
+    .option("--tag", "Force git tag creation (overrides --pre-merge default)")
     .option("--no-gh", "Skip GitHub release draft")
+    .option("--gh", "Force GitHub release draft (overrides --pre-merge default)")
     .option(
       "--version-file <path>",
       "Override version file path (repeatable). Replaces .agents/loaf.json release.versionFiles and root auto-detection.",
       collect,
       [] as string[],
     )
-    .option("-y, --yes", "Skip confirmation prompt (for non-interactive use)")
+    .option(
+      "--pre-merge",
+      "Shortcut for --no-tag --no-gh --base <auto-detected>. Auto-detects base via 4-step priority: --base flag > open PR base > git config loaf.release.base > default branch.",
+    )
+    .option("-y, --yes", "Skip confirmation prompt (for non-interactive use)");
+
+  releaseCmd
     .action(async (options: ReleaseOptions) => {
       const cwd = process.cwd();
 
@@ -196,6 +218,68 @@ export function registerReleaseCommand(program: Command): void {
       if (!isGitRepo(cwd)) {
         console.error(`  ${red("error:")} Not a git repository`);
         process.exit(1);
+      }
+
+      // ── --pre-merge handling ──────────────────────────────────────────
+      //
+      // `--pre-merge` bundles `--no-tag --no-gh --base <auto>`. Explicit
+      // overrides win:
+      //   - `--tag` with `--pre-merge`     → warn and tag anyway
+      //   - `--gh` with `--pre-merge`      → warn and create release anyway
+      //   - `--base <ref>` with --pre-merge → use the explicit ref (skip
+      //                                       the auto-detection lookup)
+      //
+      // We use Commander's option-source API to distinguish "user passed
+      // the flag explicitly" from "default value". Without the source check
+      // we can't tell --no-tag from "default tag=true" since both leave
+      // options.tag at a known value.
+      if (options.preMerge) {
+        const tagSource = releaseCmd.getOptionValueSource("tag");
+        const ghSource = releaseCmd.getOptionValueSource("gh");
+        const baseSource = releaseCmd.getOptionValueSource("base");
+
+        if (tagSource === "cli" && options.tag === true) {
+          process.stderr.write(
+            `  ${yellow("warning:")} --tag overrides --pre-merge default (no tag); proceeding with tag enabled\n`,
+          );
+        } else {
+          options.tag = false;
+        }
+
+        if (ghSource === "cli" && options.gh === true) {
+          process.stderr.write(
+            `  ${yellow("warning:")} --gh overrides --pre-merge default (no gh release); proceeding with GitHub release enabled\n`,
+          );
+        } else {
+          options.gh = false;
+        }
+
+        // If user did NOT pass --base explicitly, auto-detect it.
+        if (baseSource !== "cli") {
+          const currentBranch = getCurrentBranch(cwd);
+          if (!currentBranch) {
+            console.error(
+              `  ${red("error:")} --pre-merge requires a named branch ` +
+                `(detached HEAD detected). Pass --base <ref> explicitly.`,
+            );
+            process.exit(1);
+          }
+          try {
+            const detected = await resolveBaseBranch({
+              currentBranch,
+              cwd,
+            });
+            options.base = detected.base;
+            console.log(
+              `  ${cyan("Auto-detected base:")} ${bold(detected.base)} ` +
+                `${gray(`(via ${detected.source})`)}`,
+            );
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error(`  ${red("error:")} ${message}`);
+            process.exit(1);
+          }
+        }
       }
 
       // ── Phase 1: Gather ────────────────────────────────────────────────
