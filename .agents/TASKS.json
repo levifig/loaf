@@ -424,7 +424,7 @@
       "title": "Add loaf release --pre-merge flag with 4-step base detection",
       "slug": "add-loaf-release-pre-merge-flag-with-4-step-base-d",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-138",
@@ -437,8 +437,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:28:14.798Z",
-      "updated": "2026-04-29T17:28:14.798Z",
-      "completed_at": null,
+      "updated": "2026-04-29T19:29:33.989Z",
+      "completed_at": "2026-04-29T19:29:33.988Z",
       "file": "TASK-144-add-loaf-release-pre-merge-flag-with-4-step-base-d.md"
     },
     "TASK-145": {
