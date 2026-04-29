@@ -11,23 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0-dev.32] - 2026-04-29
 
-Headline: SPEC-033 ships. Agent personality is now decoupled from agent mechanics — swap soul (Warden/Fellowship lore vs neutral functional model) without changing how agents work. Existing repos with `.agents/SOUL.md` keep Warden lore unchanged.
-
-### Added
-- Souls catalog shipped with Loaf at `content/souls/{fellowship,none}/SOUL.md`. `fellowship` preserves the Warden/Fellowship character vocabulary verbatim; `none` describes the same orchestrator/implementer/reviewer/researcher/librarian roles in neutral, function-first prose for corporate or no-fantasy contexts.
-- `loaf soul` CLI with four subcommands: `list` (catalog with one-line descriptions), `current` (active soul from `loaf.json`), `show <name>` (print catalog content without writing), and `use <name>` (write the catalog soul to `.agents/SOUL.md` and update `loaf.json`). `use` refuses to overwrite a locally diverged `SOUL.md` without `--force`.
-- `soul:` field in `.agents/loaf.json`. Fresh installs default to `none`. `loaf install` writes the configured soul's content to `.agents/SOUL.md` as a real file (copy semantics, not a symlink), so user edits stay put.
-- `loaf install --interactive` now prompts for a soul on fresh installs and respects the choice. The bootstrap skill surfaces this prompt by calling install rather than asking independently.
-- SessionStart hook restores `.agents/SOUL.md` from the configured soul when the file is missing (previously fell back to a single canonical template).
-- Souls catalog is now distributed alongside skills and agents to claude-code, cursor, opencode, and amp install directories, so `loaf soul show` and `use` work in installed environments.
+Note: An earlier iteration of this release explored a configurable soul catalog with a `loaf soul` CLI; that work was reviewed in-flight and pivoted away from before merge — the lore decoupling stands, the soul layer does not. See the SPEC-033 archive for the full exploration.
 
 ### Changed
-- Agent profile prompts (`implementer`, `reviewer`, `researcher`, `librarian`) no longer carry Tolkien lore. They state their functional contract directly and include a Critical Rule to read `.agents/SOUL.md` at spawn for character and naming convention. Profiles remain operable even if `SOUL.md` is missing — agents lose personality, not capability.
-- `ARCHITECTURE.md` and the agent-facing knowledge docs reframe the agent model around three orthogonal layers: profiles (mechanics), skills (knowledge), and the configured soul (identity). Orchestration council references and skill prose were swept for fellowship vocabulary so subagent-facing content matches the neutral model.
+- Agent profile prompts (`implementer`, `reviewer`, `researcher`, `librarian`) describe themselves functionally — no Warden/Fellowship lore in profile bodies.
+- Council references and skill prose now use profile types (`implementer`/`reviewer`/`researcher`/`librarian`/`orchestrator`); fellowship vocabulary is stripped from agent-facing skill content.
+- `ARCHITECTURE.md` and `docs/knowledge/skill-architecture.md` reframed around the two-layer model: profiles for mechanics, skills for knowledge.
 
-### Migration
-- Existing repos with a pre-existing `.agents/SOUL.md` and no `soul:` field automatically get `soul: fellowship` written to `loaf.json` on next `loaf install`; `SOUL.md` is left untouched. Warden installs continue working with zero configuration.
-- The deprecated `content/templates/soul.md` was removed. The catalog at `content/souls/<name>/SOUL.md` is now canonical.
+### Removed
+- The deprecated `content/templates/soul.md` template.
 
 ## [2.0.0-dev.31] - 2026-04-28
 

@@ -127,3 +127,11 @@ These were settled during shaping:
 1. **Catalog + config + CLI mechanics.** Ship `content/souls/{fellowship,none}/`, the `loaf soul` command, `loaf.json` schema bump, install behavior. Profiles untouched — Warden lore still in profile prompts but souls catalog exists. Go/no-go: T1–T7 pass. Manually verifies the swap mechanism without behavior risk.
 2. **Profile neutralization + skill audit.** Rewrite the four profile prompts; sweep orchestration/councils for fellowship vocab; update ARCHITECTURE.md. This is where behavior changes — agents now defer to SOUL.md for identity. Go/no-go: T8–T11, T13 pass.
 3. **Bootstrap/install prompt.** `loaf install --interactive` asks which soul; bootstrap surfaces the choice via install. Drop if tracks 1+2 deliver value alone — users can run `loaf soul use <name>` post-install. Go/no-go: T14.
+
+## Pivot Note (Post-Implementation)
+
+This spec was implemented in full on branch `feat/configurable-agent-soul` and reviewed twice (Loaf reviewer + two Codex passes — see PR #40 history). During final review, the user (the only Loaf user to date) acknowledged that the Warden/Fellowship lore never landed for them across months of Loaf use. Combined with Codex's findings on SOUL.md as a prompt-injection surface (advisory-only enforcement, brittle by design), the soul layer was assessed as cost > benefit for the current Skills-centered Hooks-assisted iteration.
+
+PR #40 was pivoted in-flight: the catalog, `loaf soul` CLI, install integration, SessionStart restoration, runtime distribution, and SOUL.md-read directive were removed. The agent profile neutralization and skill-prose audit were kept — those stand independently and improved the project regardless of the soul concept.
+
+The lore concept is preserved here as a record of what was tried, and may return as a first-class element in a future Pi-based harness where it can be load-bearing rather than decorative.
