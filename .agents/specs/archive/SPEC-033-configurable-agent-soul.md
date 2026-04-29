@@ -5,7 +5,7 @@ source: >-
   direct — conversation about decoupling Warden lore from agent profile
   mechanics
 created: '2026-04-28T15:30:00.000Z'
-status: implementing
+status: complete
 ---
 
 # SPEC-033: Configurable Agent Soul (Lore Decoupling)
