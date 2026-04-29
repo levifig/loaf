@@ -20474,7 +20474,102 @@ var CANDIDATES = [
     source: { type: "json", versionPath: "metadata.version" }
   }
 ];
-function detectVersionFiles(cwd) {
+function classifyDeclaredPath(relativePath) {
+  const normalized = relativePath.replace(/\\/g, "/");
+  const basename10 = normalized.split("/").pop() ?? normalized;
+  if (basename10 === "package.json") {
+    return { format: "json" };
+  }
+  if (basename10 === "loaf.json") {
+    return { format: "json" };
+  }
+  if (basename10 === "marketplace.json") {
+    return { format: "json", jsonVersionPath: "metadata.version" };
+  }
+  if (basename10 === "pyproject.toml") {
+    return { format: "toml-regex", tomlSection: "project" };
+  }
+  if (basename10 === "Cargo.toml") {
+    return { format: "toml-regex", tomlSection: "package" };
+  }
+  if (basename10.endsWith(".json")) {
+    return { format: "json" };
+  }
+  if (basename10.endsWith(".toml")) {
+    return { format: "toml-regex", tomlSection: "project" };
+  }
+  return null;
+}
+function loadDeclaredVersionFile(cwd, relativePath) {
+  const normalized = relativePath.replace(/\\/g, "/");
+  const absolutePath = join27(cwd, normalized);
+  if (!existsSync21(absolutePath)) {
+    throw new Error(`version file ${normalized} not found`);
+  }
+  const classification = classifyDeclaredPath(normalized);
+  if (!classification) {
+    throw new Error(
+      `version file ${normalized}: unsupported file type (expected .json or .toml)`
+    );
+  }
+  let content;
+  try {
+    content = readFileSync19(absolutePath, "utf-8");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`version file ${normalized}: could not read (${message})`);
+  }
+  let version;
+  if (classification.format === "json") {
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      throw new Error(`version file ${normalized}: could not parse version`);
+    }
+    if (classification.jsonVersionPath) {
+      const segments = classification.jsonVersionPath.split(".");
+      let cursor = parsed;
+      for (const segment of segments) {
+        if (cursor && typeof cursor === "object" && segment in cursor) {
+          cursor = cursor[segment];
+        } else {
+          cursor = void 0;
+          break;
+        }
+      }
+      if (typeof cursor === "string") version = cursor;
+    } else if (parsed && typeof parsed === "object" && "version" in parsed) {
+      const candidate = parsed.version;
+      if (typeof candidate === "string") version = candidate;
+    }
+  } else {
+    const section = classification.tomlSection ?? "project";
+    const result = readTomlVersion(content, section);
+    if (result) version = result;
+  }
+  if (!version) {
+    throw new Error(`version file ${normalized}: could not parse version`);
+  }
+  return {
+    path: absolutePath,
+    relativePath: normalized,
+    format: classification.format,
+    currentVersion: version
+  };
+}
+function detectVersionFiles(cwd, options2 = {}) {
+  const cliOverrides = options2.cliOverrides ?? [];
+  const configOverrides = options2.configOverrides ?? [];
+  if (cliOverrides.length > 0) {
+    return cliOverrides.map((path) => loadDeclaredVersionFile(cwd, path));
+  }
+  if (configOverrides.length > 0) {
+    return configOverrides.map((path) => loadDeclaredVersionFile(cwd, path));
+  }
+  return detectVersionFilesFromRoot(cwd);
+}
+function detectVersionFilesFromRoot(cwd) {
   const ecosystemFiles = [];
   let loafFile = null;
   for (const candidate of CANDIDATES) {
@@ -20540,8 +20635,9 @@ function prepareVersionUpdates(files, newVersion) {
 }
 function tomlSectionForPath(relativePath) {
   const normalized = relativePath.replace(/\\/g, "/");
-  if (normalized === "pyproject.toml") return "project";
-  if (normalized === "Cargo.toml") return "package";
+  const basename10 = normalized.split("/").pop() ?? normalized;
+  if (basename10 === "pyproject.toml") return "project";
+  if (basename10 === "Cargo.toml") return "package";
   return null;
 }
 
@@ -20767,8 +20863,16 @@ function scanIncompleteTasks(cwd) {
 function getEditor() {
   return process.env.VISUAL || process.env.EDITOR || null;
 }
+function collect(value, previous) {
+  return previous.concat([value]);
+}
 function registerReleaseCommand(program3) {
-  program3.command("release").description("Create a new release with changelog, version bump, and tag").option("--dry-run", "Preview release without making changes").option("--bump <type>", "Skip interactive bump choice (prerelease, release, major, minor, patch)").option("--base <ref>", "Use commits since <ref> instead of last tag (e.g. main)").option("--no-tag", "Skip git tag creation").option("--no-gh", "Skip GitHub release draft").option("-y, --yes", "Skip confirmation prompt (for non-interactive use)").action(async (options2) => {
+  program3.command("release").description("Create a new release with changelog, version bump, and tag").option("--dry-run", "Preview release without making changes").option("--bump <type>", "Skip interactive bump choice (prerelease, release, major, minor, patch)").option("--base <ref>", "Use commits since <ref> instead of last tag (e.g. main)").option("--no-tag", "Skip git tag creation").option("--no-gh", "Skip GitHub release draft").option(
+    "--version-file <path>",
+    "Override version file path (repeatable). Replaces .agents/loaf.json release.versionFiles and root auto-detection.",
+    collect,
+    []
+  ).option("-y, --yes", "Skip confirmation prompt (for non-interactive use)").action(async (options2) => {
     const cwd = process.cwd();
     console.log(`
 ${bold5("loaf release")}
@@ -20812,7 +20916,20 @@ ${bold5("loaf release")}
       }
     }
     console.log();
-    const versionFiles = detectVersionFiles(cwd);
+    const cliOverrides = options2.versionFile ?? [];
+    const loafConfig = readLoafConfig(cwd);
+    const configOverrides = Array.isArray(loafConfig.release?.versionFiles) ? loafConfig.release?.versionFiles : [];
+    let versionFiles;
+    try {
+      versionFiles = detectVersionFiles(cwd, {
+        cliOverrides,
+        configOverrides
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  ${red3("error:")} ${message}`);
+      process.exit(1);
+    }
     if (versionFiles.length === 0) {
       console.error(`  ${red3("error:")} No version files found`);
       process.exit(1);

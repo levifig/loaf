@@ -40,6 +40,7 @@ import {
   normalizeSkipFlags,
 } from "../lib/release/options.js";
 import type { ReleaseOptions } from "../lib/release/options.js";
+import { readLoafConfig } from "../lib/config/agents-config.js";
 
 // ANSI color helpers
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
@@ -158,6 +159,11 @@ function getEditor(): string | null {
   return process.env.VISUAL || process.env.EDITOR || null;
 }
 
+/** Commander collector for repeatable string options. */
+function collect(value: string, previous: string[]): string[] {
+  return previous.concat([value]);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Command
 // ─────────────────────────────────────────────────────────────────────────────
@@ -171,6 +177,12 @@ export function registerReleaseCommand(program: Command): void {
     .option("--base <ref>", "Use commits since <ref> instead of last tag (e.g. main)")
     .option("--no-tag", "Skip git tag creation")
     .option("--no-gh", "Skip GitHub release draft")
+    .option(
+      "--version-file <path>",
+      "Override version file path (repeatable). Replaces .agents/loaf.json release.versionFiles and root auto-detection.",
+      collect,
+      [] as string[],
+    )
     .option("-y, --yes", "Skip confirmation prompt (for non-interactive use)")
     .action(async (options: ReleaseOptions) => {
       const cwd = process.cwd();
@@ -229,8 +241,28 @@ export function registerReleaseCommand(program: Command): void {
       }
       console.log();
 
-      // Detect version files
-      const versionFiles = detectVersionFiles(cwd);
+      // Detect version files. Two-tier resolution:
+      //   1. --version-file CLI override (repeatable)
+      //   2. .agents/loaf.json `release.versionFiles`
+      //   3. Root auto-detect (fallback)
+      const cliOverrides = options.versionFile ?? [];
+      const loafConfig = readLoafConfig(cwd);
+      const configOverrides = Array.isArray(loafConfig.release?.versionFiles)
+        ? (loafConfig.release?.versionFiles as string[])
+        : [];
+
+      let versionFiles: VersionFile[];
+      try {
+        versionFiles = detectVersionFiles(cwd, {
+          cliOverrides,
+          configOverrides,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`  ${red("error:")} ${message}`);
+        process.exit(1);
+      }
+
       if (versionFiles.length === 0) {
         console.error(`  ${red("error:")} No version files found`);
         process.exit(1);

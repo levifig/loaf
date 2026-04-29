@@ -19,6 +19,8 @@ export interface ReleaseOptions {
   tag?: boolean;
   gh?: boolean;
   yes?: boolean;
+  /** Repeatable `--version-file <path>` overrides. Replaces declared + auto-detected paths. */
+  versionFile?: string[];
 }
 
 export interface NormalizedFlags {

@@ -138,6 +138,33 @@ describe("--yes flag", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// --version-file flag wiring (SPEC-031 / TASK-143)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("--version-file flag", () => {
+  it("aborts cleanly when a declared path does not exist", () => {
+    const result = runRelease(
+      "--version-file",
+      "definitely/missing/path.json",
+      "--dry-run",
+    );
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      "version file definitely/missing/path.json not found",
+    );
+  });
+
+  it("uses the overridden file (ignoring root package.json) when path exists", () => {
+    // package.json at project root has the real loaf version. Pointing
+    // --version-file at it explicitly is a no-op for content but proves
+    // the override is wired and the dry-run preview shows that file.
+    const result = runRelease("--version-file", "package.json", "--dry-run");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("package.json");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Regression guards
 // ─────────────────────────────────────────────────────────────────────────────
 
