@@ -21,6 +21,7 @@ import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 
 import { isReleaseOnlyPR } from "../lib/release/release-only-pr.js";
+import { UNRELEASED_STUB_RE } from "../lib/release/changelog.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -510,8 +511,16 @@ async function workflowPrePr(context: HookContext): Promise<CheckResult> {
       
       if (unreleasedMatch) {
         const unreleasedSection = unreleasedMatch[1];
-        // Check for list items (lines starting with - or *)
-        const hasEntries = /^[-*]\s/m.test(unreleasedSection);
+        // Check for list items (lines starting with - or *), excluding the
+        // stub line emitted by `loaf release` (`- _No unreleased changes ..._`).
+        // The stub is shaped as a list item so the section is never markdown-
+        // empty between releases (see UNRELEASED_STUB in changelog.ts), but
+        // semantically it is NOT a curated entry — mirror the same
+        // discard-then-detect logic used by `extractUnreleasedEntries`.
+        const hasEntries = unreleasedSection
+          .split("\n")
+          .filter((line) => !UNRELEASED_STUB_RE.test(line))
+          .some((line) => /^[-*]\s/.test(line));
 
         if (!hasEntries) {
           // If HEAD is tagged, entries were moved to a version header by the release flow — OK

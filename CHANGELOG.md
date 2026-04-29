@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- _No unreleased changes since v2.0.0-dev.32._
+### Fixed
+- `loaf check workflow-pre-pr`: empty-section detector under `[Unreleased]` now mirrors `extractUnreleasedEntries` and discards the `- _No unreleased changes ..._` stub before checking for curated entries. Previously, the stub (which is shaped as a markdown list item by design) was treated as a real entry, which would have allowed feature PRs that forget to add changelog entries to silently pass.
 
 ## [2.0.0-dev.32] - 2026-04-29
 

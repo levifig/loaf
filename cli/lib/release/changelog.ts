@@ -30,8 +30,14 @@ const UNRELEASED_RE = /^## \[unreleased\]/i;
  */
 export const UNRELEASED_STUB = "- _No unreleased changes yet._";
 
-/** Matches the stub regardless of the trailing "yet." vs "since vX.Y.Z." form. */
-const UNRELEASED_STUB_RE = /^[-*]\s+_No unreleased changes.*_\.?\s*$/;
+/**
+ * Matches the stub regardless of the trailing "yet." vs "since vX.Y.Z." form.
+ *
+ * Exported so consumers (e.g. workflow-pre-pr's empty-section detector) can
+ * recognize the stub as non-entry content and not mistakenly treat it as a
+ * curated changelog entry just because it happens to be a markdown list item.
+ */
+export const UNRELEASED_STUB_RE = /^[-*]\s+_No unreleased changes.*_\.?\s*$/;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Grouping

@@ -769,6 +769,59 @@ describe("check: workflow-pre-pr", () => {
     expect(result.stderr).toContain("empty");
   });
 
+  it("blocks when Unreleased section contains only the stub (stub != entry)", () => {
+    // The stub line emitted by `loaf release` is shaped as a markdown list
+    // item (`- _No unreleased changes yet._`) so the section is not empty
+    // by raw markdown, but semantically there are no curated entries. The
+    // empty-section detector must mirror `extractUnreleasedEntries` and
+    // discard the stub before checking for entries — otherwise feature
+    // PRs that forget to add changelog entries would silently pass.
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+- _No unreleased changes yet._
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "feat: add new feature" --body "Description"' },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("empty");
+  });
+
+  it("blocks when Unreleased contains the alternate 'since vX.Y.Z' stub form", () => {
+    // The stub regex covers both shapes — `_No unreleased changes yet._`
+    // and `_No unreleased changes since v<version>._` — so the alternate
+    // form must also be discarded before the entry check.
+    const changelog = `# Changelog
+
+## [Unreleased]
+
+- _No unreleased changes since v1.0.0._
+
+## [1.0.0] - 2024-01-01
+
+- Initial release
+`;
+    writeFileSync(join(TEST_ROOT, "CHANGELOG.md"), changelog);
+
+    const result = runCheck("workflow-pre-pr", {
+      tool: { name: "Bash" },
+      tool_input: { command: 'gh pr create --title "feat: add new feature" --body "Description"' },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("empty");
+  });
+
   it("passes when Unreleased is empty but HEAD is tagged (post-merge release flow)", () => {
     // After release skill Step 6 (post-merge): entries moved from [Unreleased] to version
     // header, base branch tagged at the squash-merge commit.
@@ -1190,7 +1243,7 @@ describe("check: workflow-pre-pr", () => {
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.0.0] - 2024-01-01
 
@@ -1200,7 +1253,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.2.3] - 2026-04-29
 
@@ -1234,7 +1287,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.0.0] - 2024-01-01
 
@@ -1244,7 +1297,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.2.3] - 2026-04-29
 
@@ -1320,7 +1373,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.0.0] - 2024-01-01
 
@@ -1330,7 +1383,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.2.3] - 2026-04-29
 
@@ -1374,7 +1427,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.0.0] - 2024-01-01
 
@@ -1384,7 +1437,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.2.3] - 2026-04-29
 
@@ -1426,7 +1479,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.0.0] - 2024-01-01
 
@@ -1437,7 +1490,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.2.3] - 2026-04-29
 
@@ -1477,7 +1530,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.0.0] - 2024-01-01
 
@@ -1488,7 +1541,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.2.3] - 2026-04-29
 
@@ -1529,7 +1582,7 @@ _No unreleased changes yet._
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+- _No unreleased changes yet._
 
 ## [1.0.0] - 2024-01-01
 

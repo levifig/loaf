@@ -20854,8 +20854,10 @@ async function resolveBaseBranch(input) {
   if (explicit && explicit.trim().length > 0) {
     return { base: explicit.trim(), source: "explicit" };
   }
-  const prBase = lookupOpenPrBase(runner, cwd, currentBranch);
-  if (prBase) return { base: prBase, source: "pr" };
+  if (!input.skipPRLookup) {
+    const prBase = lookupOpenPrBase(runner, cwd, currentBranch);
+    if (prBase) return { base: prBase, source: "pr" };
+  }
   const configBase = lookupGitConfigBase(runner, cwd);
   if (configBase) return { base: configBase, source: "config" };
   const defaultBase = lookupDefaultBranch(runner, cwd);
@@ -21100,12 +21102,13 @@ async function checkPostMergeGuardrails(ctx) {
   }
   let base;
   try {
-    const detected = await resolveBaseForPostMerge({
+    const detected = await resolveBaseBranch({
       runner,
       cwd,
-      currentBranch: current
+      currentBranch: current,
+      skipPRLookup: true
     });
-    base = detected;
+    base = detected.base;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, guardrail: 2, message };
@@ -21162,45 +21165,6 @@ async function checkPostMergeGuardrails(ctx) {
     changelogBody,
     versionFiles
   };
-}
-async function resolveBaseForPostMerge(input) {
-  const { runner, cwd } = input;
-  const configResult = run(runner, cwd, "git", [
-    "config",
-    "--get",
-    "loaf.release.base"
-  ]);
-  if (configResult.exitCode === 0) {
-    const value = configResult.stdout.trim();
-    if (value.length > 0) return value;
-  }
-  const ghResult = run(runner, cwd, "gh", [
-    "repo",
-    "view",
-    "--json",
-    "defaultBranchRef",
-    "-q",
-    ".defaultBranchRef.name"
-  ]);
-  if (!ghResult.notFound && ghResult.exitCode === 0) {
-    const value = ghResult.stdout.trim();
-    if (value.length > 0) return value;
-  }
-  const symResult = run(runner, cwd, "git", [
-    "symbolic-ref",
-    "refs/remotes/origin/HEAD"
-  ]);
-  if (symResult.exitCode === 0) {
-    const raw = symResult.stdout.trim();
-    const prefix = "refs/remotes/origin/";
-    if (raw.startsWith(prefix)) {
-      const value = raw.slice(prefix.length);
-      if (value.length > 0) return value;
-    }
-  }
-  throw new Error(
-    "could not auto-detect base branch \u2014 set git config loaf.release.base <ref> and rerun"
-  );
 }
 function lookupFeatureBranchByPr(runner, cwd, prNumber) {
   const result = run(runner, cwd, "gh", [
@@ -25745,7 +25709,7 @@ async function workflowPrePr(context) {
       const unreleasedMatch = changelog.match(/##\s*\[Unreleased\]([\s\S]*?)(?=\n##\s|$)/);
       if (unreleasedMatch) {
         const unreleasedSection = unreleasedMatch[1];
-        const hasEntries = /^[-*]\s/m.test(unreleasedSection);
+        const hasEntries = unreleasedSection.split("\n").filter((line) => !UNRELEASED_STUB_RE.test(line)).some((line) => /^[-*]\s/.test(line));
         if (!hasEntries) {
           let isRelease = false;
           try {
