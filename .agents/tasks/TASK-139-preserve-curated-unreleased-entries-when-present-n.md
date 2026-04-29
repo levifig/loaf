@@ -4,10 +4,11 @@ title: >-
   Preserve curated [Unreleased] entries when present (no auto-generation
   override)
 spec: SPEC-031
-status: todo
+status: done
 priority: P2
 created: '2026-04-29T17:27:51.986Z'
-updated: '2026-04-29T17:27:51.986Z'
+updated: '2026-04-29T19:02:03.536Z'
+completed_at: '2026-04-29T19:02:03.535Z'
 ---
 
 # TASK-139: Preserve curated [Unreleased] entries when present (no auto-generation override)

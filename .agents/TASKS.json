@@ -326,7 +326,7 @@
       "title": "loaf release re-inserts `_No unreleased changes yet._` stub under [Unreleased]",
       "slug": "loaf-release-re-inserts-no-unreleased-changes-yet-",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [],
@@ -334,15 +334,15 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:27:51.932Z",
-      "updated": "2026-04-29T17:27:51.932Z",
-      "completed_at": null,
+      "updated": "2026-04-29T19:02:03.454Z",
+      "completed_at": "2026-04-29T19:02:03.454Z",
       "file": "TASK-138-loaf-release-re-inserts-no-unreleased-changes-yet-.md"
     },
     "TASK-139": {
       "title": "Preserve curated [Unreleased] entries when present (no auto-generation override)",
       "slug": "preserve-curated-unreleased-entries-when-present-n",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [],
@@ -350,8 +350,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:27:51.986Z",
-      "updated": "2026-04-29T17:27:51.986Z",
-      "completed_at": null,
+      "updated": "2026-04-29T19:02:03.536Z",
+      "completed_at": "2026-04-29T19:02:03.535Z",
       "file": "TASK-139-preserve-curated-unreleased-entries-when-present-n.md"
     },
     "TASK-140": {
