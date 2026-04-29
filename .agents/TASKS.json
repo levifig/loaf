@@ -464,7 +464,7 @@
       "title": "Update /loaf:release skill to invoke --pre-merge / --post-merge + chore: release shape",
       "slug": "update-loaf-release-skill-to-invoke-pre-merge-post",
       "spec": "SPEC-031",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-142",
@@ -475,8 +475,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T17:28:14.904Z",
-      "updated": "2026-04-29T17:28:14.904Z",
-      "completed_at": null,
+      "updated": "2026-04-29T19:59:47.615Z",
+      "completed_at": "2026-04-29T19:59:47.614Z",
       "file": "TASK-146-update-loaf-release-skill-to-invoke-pre-merge-post.md"
     },
     "TASK-147": {

@@ -4,13 +4,14 @@ title: >-
   Update /loaf:release skill to invoke --pre-merge / --post-merge + chore:
   release shape
 spec: SPEC-031
-status: todo
+status: done
 priority: P2
 created: '2026-04-29T17:28:14.904Z'
-updated: '2026-04-29T17:28:14.904Z'
+updated: '2026-04-29T19:59:47.615Z'
 depends_on:
   - TASK-142
   - TASK-144
+completed_at: '2026-04-29T19:59:47.614Z'
 ---
 
 # TASK-146: Update /loaf:release skill to invoke --pre-merge / --post-merge + chore: release shape
