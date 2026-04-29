@@ -2441,14 +2441,6 @@
       "created": "2026-04-24T21:30:00.000Z",
       "file": "SPEC-031-release-flow-hardening.md"
     },
-    "SPEC-033": {
-      "title": "Configurable Agent Soul (Lore Decoupling)",
-      "status": "complete",
-      "requirement": null,
-      "source": "direct — conversation about decoupling Warden lore from agent profile mechanics",
-      "created": "2026-04-28T15:30:00.000Z",
-      "file": "archive/SPEC-033-configurable-agent-soul.md"
-    },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",
       "status": "complete",
@@ -2648,6 +2640,14 @@
       "source": "direct",
       "created": "2026-04-27T22:55:00.000Z",
       "file": "archive/SPEC-032-session-routing-by-claude-session-id.md"
+    },
+    "SPEC-033": {
+      "title": "Configurable Agent Soul (Lore Decoupling)",
+      "status": "complete",
+      "requirement": null,
+      "source": "direct — conversation about decoupling Warden lore from agent profile mechanics",
+      "created": "2026-04-28T15:30:00.000Z",
+      "file": "archive/SPEC-033-configurable-agent-soul.md"
     }
   }
 }
