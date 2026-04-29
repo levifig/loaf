@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "next_id": 136,
+  "next_id": 137,
   "tasks": {
     "TASK-103": {
       "title": "Add missing journal entry types for all artifact types",
@@ -289,6 +289,22 @@
       "updated": "2026-04-28T14:03:49.649Z",
       "completed_at": "2026-04-28T14:03:49.649Z",
       "file": "TASK-128-reflect-spec-032-release-flow-learnings-into-strat.md"
+    },
+    "TASK-136": {
+      "title": "Pre-commit guard against bundled build-artifact leakage in unrelated commits",
+      "slug": "pre-commit-guard-against-bundled-build-artifact-le",
+      "spec": null,
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-04-29T15:00:01.123Z",
+      "updated": "2026-04-29T15:00:01.123Z",
+      "completed_at": null,
+      "file": "TASK-136-pre-commit-guard-against-bundled-build-artifact-le.md"
     },
     "TASK-001": {
       "title": "Create verification reference",
