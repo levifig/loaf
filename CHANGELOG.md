@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-dev.34] - 2026-04-30
+
 ### Added
 
 - Pre-commit `validate-commit` guard against bundled build-artifact leakage. Detects when staged paths include `plugins/`, `dist/`, `.claude-plugin/`, or root lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lock`, `bun.lockb`) on commits whose subject does not indicate a build/release/deps/lockfile scope. Block message names the offending paths and shows the exact `git reset` + split-commit recipe. Bypass with `git commit --no-verify` when intentional.
