@@ -18371,7 +18371,7 @@ import { join as join19, dirname as dirname5, resolve } from "path";
 import { readFileSync as readFileSync11 } from "fs";
 import { dirname as dirname4, join as join18 } from "path";
 import { fileURLToPath as fileURLToPath3 } from "url";
-var LOAF_VERSION = "2.0.0-dev.32" ? "2.0.0-dev.32" : readPackageVersion();
+var LOAF_VERSION = "2.0.0-dev.33" ? "2.0.0-dev.33" : readPackageVersion();
 
 // cli/lib/install/fenced-section.ts
 var FENCED_START = "<!-- loaf:managed:start";
