@@ -278,7 +278,7 @@
       "title": "loaf release should run full build (npm run build) not just content build (loaf build) to refresh CLI bundle",
       "slug": "loaf-release-should-run-full-build-npm-run-build-n",
       "spec": null,
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -286,8 +286,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-30T01:01:03.657Z",
-      "updated": "2026-04-30T01:01:03.657Z",
-      "completed_at": null,
+      "updated": "2026-04-30T15:12:41.690Z",
+      "completed_at": "2026-04-30T15:12:41.689Z",
       "file": "TASK-149-loaf-release-should-run-full-build-npm-run-build-n.md"
     },
     "TASK-001": {
