@@ -246,7 +246,7 @@
       "title": "Pre-commit guard against bundled build-artifact leakage in unrelated commits",
       "slug": "pre-commit-guard-against-bundled-build-artifact-le",
       "spec": null,
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [],
       "files": [],
@@ -254,8 +254,8 @@
       "done": null,
       "session": null,
       "created": "2026-04-29T15:00:01.123Z",
-      "updated": "2026-04-29T15:00:01.123Z",
-      "completed_at": null,
+      "updated": "2026-04-30T15:40:25.423Z",
+      "completed_at": "2026-04-30T15:40:25.423Z",
       "file": "TASK-136-pre-commit-guard-against-bundled-build-artifact-le.md"
     },
     "TASK-148": {
