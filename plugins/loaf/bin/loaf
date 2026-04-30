@@ -25565,6 +25565,74 @@ function headSubjectMatchesReleaseShape() {
     return false;
   }
 }
+var BUILD_OUTPUT_PATH_PREFIXES = [
+  "plugins/",
+  "dist/",
+  ".claude-plugin/"
+];
+var ROOT_LOCKFILES = /* @__PURE__ */ new Set([
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  "bun.lock",
+  "bun.lockb"
+]);
+var EXEMPT_BUILD_SUBJECT_PATTERNS = [
+  RELEASE_COMMIT_SUBJECT_REGEX,
+  /^chore(?:\(.+\))?: build\b/,
+  /^chore(?:\(.+\))?: deps\b/,
+  /^chore(?:\(.+\))?: lockfile\b/
+];
+function isBuildOutputPath(path) {
+  if (BUILD_OUTPUT_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+    return true;
+  }
+  return ROOT_LOCKFILES.has(path);
+}
+function getStagedFiles(cwd) {
+  try {
+    const out = execSync2("git diff --cached --name-only", {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"]
+    });
+    return out.split("\n").map((s) => s.trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+function detectBundledArtifactLeak(opts) {
+  const subjectLine = (opts.subject || "").split("\n")[0].trim();
+  if (EXEMPT_BUILD_SUBJECT_PATTERNS.some((re) => re.test(subjectLine))) {
+    return { leaked: false, paths: [] };
+  }
+  const staged = opts.stagedFiles ?? getStagedFiles(opts.cwd);
+  const matched = staged.filter(isBuildOutputPath);
+  if (matched.length === 0) {
+    return { leaked: false, paths: [] };
+  }
+  return { leaked: true, paths: matched };
+}
+function buildLeakBlockMessage(paths) {
+  const list = paths.map((p) => `  - ${p}`).join("\n");
+  const resetArgs = paths.join(" ");
+  return [
+    "Commit includes build-output paths, but subject does not indicate a build/release commit:",
+    list,
+    "",
+    "Build-output paths leak into feature commits when the dev forgets to split. To fix:",
+    "",
+    `  1. Unstage the build outputs:`,
+    `       git reset HEAD ${resetArgs}`,
+    "  2. Commit the source changes alone with the original subject.",
+    "  3. Stage and commit the build outputs separately:",
+    `       git add ${resetArgs}`,
+    `       git commit -m "chore: build update bundled CLI"`,
+    "",
+    "If the leak is intentional (e.g., adding a new file under plugins/), bypass with:",
+    "  git commit --no-verify"
+  ];
+}
 async function validatePush(context) {
   const result = {
     passed: true,
@@ -25887,6 +25955,17 @@ async function validateCommit(context) {
   const subjectLine = message.split("\n")[0];
   if (subjectLine.length > 72) {
     result.warnings.push(`Subject line is ${subjectLine.length} characters (recommended: \u226472)`);
+  }
+  if (!result.blocked) {
+    const leak = detectBundledArtifactLeak({
+      cwd: process.cwd(),
+      subject: subjectLine
+    });
+    if (leak.leaked) {
+      result.passed = false;
+      result.blocked = true;
+      result.errors.push(...buildLeakBlockMessage(leak.paths));
+    }
   }
   return result;
 }
