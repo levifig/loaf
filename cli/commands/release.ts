@@ -32,7 +32,7 @@ import type { VersionFile, BumpType } from "../lib/release/version.js";
 import {
   generateChangelogSection,
   buildChangelogSectionFromEntries,
-  extractUnreleasedEntries,
+  extractUnreleasedBody,
   insertIntoChangelog,
   createChangelog,
 } from "../lib/release/changelog.js";
@@ -509,23 +509,25 @@ export function registerReleaseCommand(program: Command): void {
 
       const today = new Date().toISOString().slice(0, 10);
 
-      // Curated entries vs auto-generation:
+      // Curated body vs auto-generation:
       // If [Unreleased] in the existing CHANGELOG already contains user-written
-      // list items, preserve them verbatim under the new version header. Auto-
-      // generation from commit subjects only runs when [Unreleased] is empty
-      // (or contains only the stub). The stub is always re-inserted after the
-      // move (see insertIntoChangelog).
+      // content (list items, subsection headers like ### Added / ### Changed /
+      // ### Removed / ### Fixed / ### Internal, prose, etc.), preserve it
+      // verbatim under the new version header. Auto-generation from commit
+      // subjects only runs when [Unreleased] is empty (or contains only the
+      // stub). The stub is always re-inserted after the move (see
+      // insertIntoChangelog).
       const existingChangelogPath = join(cwd, "CHANGELOG.md");
-      const curatedEntries = existsSync(existingChangelogPath)
-        ? extractUnreleasedEntries(readFileSync(existingChangelogPath, "utf-8"))
-        : [];
+      const curatedBody = existsSync(existingChangelogPath)
+        ? extractUnreleasedBody(readFileSync(existingChangelogPath, "utf-8"))
+        : null;
 
       let changelogSection: string;
-      if (curatedEntries.length > 0) {
+      if (curatedBody !== null) {
         changelogSection = buildChangelogSectionFromEntries(
           newVersion,
           today,
-          curatedEntries,
+          curatedBody,
         );
       } else {
         changelogSection = generateChangelogSection(newVersion, today, commits);

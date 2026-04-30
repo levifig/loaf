@@ -20674,14 +20674,11 @@ function generateChangelogSection(version, date, commits) {
   }
   return lines.join("\n");
 }
-function buildChangelogSectionFromEntries(version, date, entries) {
-  const lines = [];
-  lines.push(`## [${version}] - ${date}`);
-  lines.push("");
-  for (const entry of entries) {
-    lines.push(entry);
-  }
-  return lines.join("\n");
+function buildChangelogSectionFromEntries(version, date, body) {
+  const trimmed = body.replace(/^(?:[ \t]*\n)+/, "").replace(/(?:\n[ \t]*)+$/, "");
+  return `## [${version}] - ${date}
+
+${trimmed}`;
 }
 function getUnreleasedBody(existingContent) {
   const lines = existingContent.split("\n");
@@ -20702,17 +20699,17 @@ function getUnreleasedBody(existingContent) {
   }
   return lines.slice(unreleasedIndex + 1, nextReleaseIndex);
 }
-function extractUnreleasedEntries(existingContent) {
+function extractUnreleasedBody(existingContent) {
   const body = getUnreleasedBody(existingContent);
-  if (body === null) return [];
-  const entries = [];
-  for (const line of body) {
-    if (UNRELEASED_STUB_RE.test(line)) continue;
-    if (/^[-*]\s/.test(line)) {
-      entries.push(line);
-    }
-  }
-  return entries;
+  if (body === null) return null;
+  const filtered = body.filter((line) => !UNRELEASED_STUB_RE.test(line));
+  const hasContent = filtered.some((line) => line.trim().length > 0);
+  if (!hasContent) return null;
+  let start = 0;
+  let end = filtered.length;
+  while (start < end && filtered[start].trim().length === 0) start++;
+  while (end > start && filtered[end - 1].trim().length === 0) end--;
+  return filtered.slice(start, end).join("\n");
 }
 function insertIntoChangelog(existingContent, newSection) {
   const lines = existingContent.split("\n");
@@ -21600,13 +21597,13 @@ ${bold5("loaf release")}
     }
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const existingChangelogPath = join29(cwd, "CHANGELOG.md");
-    const curatedEntries = existsSync23(existingChangelogPath) ? extractUnreleasedEntries(readFileSync21(existingChangelogPath, "utf-8")) : [];
+    const curatedBody = existsSync23(existingChangelogPath) ? extractUnreleasedBody(readFileSync21(existingChangelogPath, "utf-8")) : null;
     let changelogSection;
-    if (curatedEntries.length > 0) {
+    if (curatedBody !== null) {
       changelogSection = buildChangelogSectionFromEntries(
         newVersion,
         today,
-        curatedEntries
+        curatedBody
       );
     } else {
       changelogSection = generateChangelogSection(newVersion, today, commits);
