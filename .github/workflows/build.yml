@@ -47,6 +47,9 @@ jobs:
             echo "Files affected:"
             git diff --stat -- dist/ plugins/ .claude-plugin/
             echo ""
+            echo "Diff (first 200 lines):"
+            git diff -- dist/ plugins/ .claude-plugin/ | head -200
+            echo ""
             echo "Run 'npm run build' locally and commit the resulting changes alongside"
             echo "the source changes that produced them (per CLAUDE.md convention)."
             exit 1
