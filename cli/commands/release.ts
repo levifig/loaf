@@ -601,9 +601,25 @@ export function registerReleaseCommand(program: Command): void {
       // Action list
       console.log(`  ${bold("Actions:")}`);
       let actionNum = 1;
+      // Detect build command for action-list display. Mirrors the Phase 4
+      // heuristic so the preview matches what executes.
+      const buildPkgPathPreview = join(cwd, "package.json");
+      let buildCommandLabel = "loaf build";
+      if (existsSync(buildPkgPathPreview)) {
+        try {
+          const pkg = JSON.parse(readFileSync(buildPkgPathPreview, "utf-8")) as {
+            scripts?: Record<string, string>;
+          };
+          if (pkg.scripts && typeof pkg.scripts.build === "string") {
+            buildCommandLabel = "npm run build";
+          }
+        } catch {
+          // Malformed package.json — keep default
+        }
+      }
       console.log(`    ${actionNum++}. Update version in ${versionFiles.length} file(s)`);
       console.log(`    ${actionNum++}. Update CHANGELOG.md`);
-      console.log(`    ${actionNum++}. Run loaf build`);
+      console.log(`    ${actionNum++}. Run ${buildCommandLabel}`);
       console.log(`    ${actionNum++}. Commit release artifacts`);
       if (skipTag) {
         console.log(`    ${gray(`${actionNum++}. Create git tag ${tagName} (--no-tag — skipped)`)}`);
@@ -681,13 +697,47 @@ export function registerReleaseCommand(program: Command): void {
         process.exit(1);
       }
 
-      // Step 3: Run loaf build
+      // Step 3: Run build
+      //
+      // Heuristic: if the project has a `package.json` with a `build` script,
+      // invoke `npm run build`. This refreshes the full toolchain (e.g. the
+      // bundled CLI in `plugins/loaf/bin/loaf`), not just the content
+      // artifacts that `loaf build` produces. Without this, projects that
+      // bundle their own CLI (like loaf itself) would commit a stale bundle
+      // with the previous version baked in \u2014 the bug that motivated this
+      // path. See TASK-149.
+      //
+      // For non-Node projects, or Node projects without a `build` script,
+      // fall back to `loaf build` (content-only) \u2014 the prior behavior.
       try {
-        execFileSync(process.execPath, [process.argv[1], "build"], {
-          cwd,
-          stdio: "inherit",
-        });
-        console.log(`    ${green("\u2713")} Built all targets`);
+        const buildPkgPath = join(cwd, "package.json");
+        let useNpmBuild = false;
+        if (existsSync(buildPkgPath)) {
+          try {
+            const pkg = JSON.parse(readFileSync(buildPkgPath, "utf-8")) as {
+              scripts?: Record<string, string>;
+            };
+            if (pkg.scripts && typeof pkg.scripts.build === "string") {
+              useNpmBuild = true;
+            }
+          } catch {
+            // Malformed package.json \u2014 fall back to loaf build
+          }
+        }
+
+        if (useNpmBuild) {
+          execFileSync("npm", ["run", "build"], {
+            cwd,
+            stdio: "inherit",
+          });
+          console.log(`    ${green("\u2713")} Ran npm run build`);
+        } else {
+          execFileSync(process.execPath, [process.argv[1], "build"], {
+            cwd,
+            stdio: "inherit",
+          });
+          console.log(`    ${green("\u2713")} Built all targets`);
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`    ${red("\u2717")} Build failed: ${message}`);

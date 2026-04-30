@@ -21663,9 +21663,20 @@ ${bold5("loaf release")}
     const { skipTag, skipGh } = normalizeSkipFlags(options2);
     console.log(`  ${bold5("Actions:")}`);
     let actionNum = 1;
+    const buildPkgPathPreview = join29(cwd, "package.json");
+    let buildCommandLabel = "loaf build";
+    if (existsSync23(buildPkgPathPreview)) {
+      try {
+        const pkg = JSON.parse(readFileSync21(buildPkgPathPreview, "utf-8"));
+        if (pkg.scripts && typeof pkg.scripts.build === "string") {
+          buildCommandLabel = "npm run build";
+        }
+      } catch {
+      }
+    }
     console.log(`    ${actionNum++}. Update version in ${versionFiles.length} file(s)`);
     console.log(`    ${actionNum++}. Update CHANGELOG.md`);
-    console.log(`    ${actionNum++}. Run loaf build`);
+    console.log(`    ${actionNum++}. Run ${buildCommandLabel}`);
     console.log(`    ${actionNum++}. Commit release artifacts`);
     if (skipTag) {
       console.log(`    ${gray5(`${actionNum++}. Create git tag ${tagName} (--no-tag \u2014 skipped)`)}`);
@@ -21731,11 +21742,30 @@ ${bold5("loaf release")}
       process.exit(1);
     }
     try {
-      execFileSync9(process.execPath, [process.argv[1], "build"], {
-        cwd,
-        stdio: "inherit"
-      });
-      console.log(`    ${green5("\u2713")} Built all targets`);
+      const buildPkgPath = join29(cwd, "package.json");
+      let useNpmBuild = false;
+      if (existsSync23(buildPkgPath)) {
+        try {
+          const pkg = JSON.parse(readFileSync21(buildPkgPath, "utf-8"));
+          if (pkg.scripts && typeof pkg.scripts.build === "string") {
+            useNpmBuild = true;
+          }
+        } catch {
+        }
+      }
+      if (useNpmBuild) {
+        execFileSync9("npm", ["run", "build"], {
+          cwd,
+          stdio: "inherit"
+        });
+        console.log(`    ${green5("\u2713")} Ran npm run build`);
+      } else {
+        execFileSync9(process.execPath, [process.argv[1], "build"], {
+          cwd,
+          stdio: "inherit"
+        });
+        console.log(`    ${green5("\u2713")} Built all targets`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`    ${red3("\u2717")} Build failed: ${message}`);
