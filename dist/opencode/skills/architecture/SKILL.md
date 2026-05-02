@@ -33,47 +33,62 @@ ADRs are reserved for **architecturally significant** decisions — those affect
 - **Interfaces** (public APIs, contracts between teams, cross-system protocols)
 - **Construction techniques** (build system, deployment model, testing strategy at the system level)
 
-…**and** are **difficult to reverse** in the project's current state (would require coordination beyond a single PR — schema migration, contract change, multi-skill update, external-tool retraining).
+…**or** are **difficult to reverse** in the project's current state (would require coordination beyond a single PR — schema migration, contract change, multi-skill update, external-tool retraining).
 
-The bar is constant. **The number of decisions clearing it scales with project maturity.** Early/exploratory projects clear the bar rarely — usually only foundational shape commitments (language/runtime/standard adoption, primary architectural shape). Mature projects clear it more often as cost-of-change rises across the codebase. **When in doubt during early phases, prefer SPEC over ADR** — SPECs evolve, ADRs supersede.
+The bar is a **disjunction**: either canonical-domain effect, or difficulty of reversal, satisfies it (Microsoft Well-Architected). The Triage Gate below operationalizes the bar more strictly — `(Q1 OR Q2) AND Q3` — to keep ADRs rare and binding.
+
+The bar is constant. **The number of decisions clearing it scales with project maturity.** Early/exploratory projects clear the bar rarely — usually only foundational shape commitments (language/runtime/standard adoption, primary architectural shape). Mature projects clear it more often as cost-of-change rises across the codebase. **When in doubt during early phases, prefer SPEC over ADR** — SPECs evolve, ADRs supersede. In early phases, foundational commitments typically pass via Q2's "Later" prong — the future-cost is the reason to record the rationale while it's fresh, not the current-cost.
+
+**An ADR captures a choice.** At least one credible alternative was considered and rejected. Without alternatives, you have a principle, vision, or aspiration — record those in `ARCHITECTURE.md` or `VISION.md` instead. The presence of an "Alternatives Considered" section in the ADR template is structural, not optional.
 
 ### Triage Gate
 
-Before grilling, confirm with the user that the decision passes all three:
+Before grilling, confirm with the user that the decision passes the gate:
 
 1. **Architectural significance** — does it affect *structure, quality attributes, dependencies, interfaces, or construction techniques*?
-2. **Cost of change** — would reversing it require coordination beyond a single PR (schema migration, contract change, multi-skill update, external-tool retraining)?
+2. **Cost of divergence** — if the team casually diverged from this, what's the consequence? Either:
+   - **Now:** multi-PR coordination, security regression, contract or interface break
+   - **Later:** this is a foundational shape commitment (runtime/language/standard adoption, primary boundary) whose future reversal cost is the reason to record the rationale now
 3. **Rationale durability** — when this debate returns in 18 months, would the team need the *why* reconstructed, or is it self-evident from the code?
 
-**All three "yes" → proceed to grilling and ADR.** Any "no" → route per the table below and stop.
+**Gate logic: `(Q1 OR Q2) AND Q3` → proceed to grilling and ADR.**
+
+Q1 and Q2 form a disjunction (matches Microsoft's bar — either canonical-domain effect or difficulty-of-reversal qualifies). Q3 is required regardless: even an architecturally significant or hard-to-reverse decision doesn't need an ADR if its rationale is self-evident from the code itself. Failing the gate → route per the table below and stop.
 
 | Decision shape | Destination |
 |---|---|
-| Architecturally significant + rationale needs preservation | **ADR** (`docs/decisions/`) |
+| Passes the gate | **ADR** (`docs/decisions/`) |
 | Development pattern, direction, implementation evidence | SPEC via `/shape` |
-| Guiding principle, philosophy, operating model | `ARCHITECTURE.md` / `VISION.md` (mutable, `/reflect`-revisable) |
+| Guiding principle, philosophy, operating model (stance, not architectural choice) | `ARCHITECTURE.md` / `VISION.md` (mutable, `/reflect`-revisable) |
 | Workflow convention, skill-specific lore | Owning skill's `SKILL.md` or references |
-| Local choice, single-PR scope, no downstream coordination | Session-log `decision(scope)` + code comment if needed |
+| Local choice, single-PR scope, no consequence to divergence | Session-log `decision(scope)` + code comment if needed |
 
 ### Skip ADR When
 
 - Decision is a convention or naming preference — no measurable effect on architecture (fails the architectural-significance test)
+- Decision is a stance, principle, philosophy, or vision — even if alternatives are named, the choice is being made on philosophical or operational grounds rather than architectural ones (specific quality attributes, dependencies, interfaces, or construction techniques). Record in `ARCHITECTURE.md` or `VISION.md` (strategic), where principles can evolve via `/reflect`. ADRs are immutable post-acceptance and reserved for architectural choices.
 - Decision is workflow lore belonging to a specific skill — document in that skill, not in `docs/decisions/`
-- Decision is a guiding principle or operating philosophy — update `ARCHITECTURE.md` (or `VISION.md` if strategic); principles evolve, ADRs are immutable post-acceptance
 - Decision is exploration of alternatives without a chosen direction — that's a SPEC via `/shape`; the ADR comes after if the chosen direction is architecturally significant
 - Decision can be changed in a single PR with no downstream coordination — session-log `decision(scope)` and a code comment if needed
 - Rationale is aesthetic ("looks/feels better", "scans nicer", "more consistent visually") — never an ADR
 
 ### Lifecycle
 
-ADRs are **append-only post-acceptance**. Don't edit accepted records.
+ADRs are **append-only post-acceptance**. The original `Decision`, `Context`, `Rationale`, and `Consequences` sections are immutable — don't rewrite history.
 
-When circumstances change and the team's answer changes, write a **new ADR that supersedes the old one** — set `supersedes: ADR-NNN` on the new one and `superseded_by: ADR-MMM` on the old one. Both stay in `docs/decisions/`. The old one preserves the historical "_was_ the decision, _no longer_ the decision" record (Nygard).
+What's permitted post-acceptance:
+- **Status transitions:** `Accepted → Deprecated`, `Accepted → Superseded`
+- **Frontmatter additions:** `superseded_by`, `deprecated_date`, `deprecated_reason`, `migrated_to`
+- **Append-only `## Deprecated` or `## Superseded` sections** capturing the lifecycle change
+
+When the team's answer to a decision changes, write a **new ADR that supersedes the old one** — set `supersedes: ADR-NNN` on the new one and `superseded_by: ADR-MMM` on the old one. Both stay in `docs/decisions/`. The old one preserves the historical "_was_ the decision, _no longer_ the decision" record (Nygard).
+
+When a record is **recategorized** (the underlying choice still holds, but the artifact-classification was wrong — e.g., it was actually a principle, convention, or workflow lore), mark it `Deprecated` with a `migrated_to:` field pointing to the new home. The original record is preserved; the active source is the migrated content. This is distinct from supersession: nothing's been *replaced*; only the *classification* changed.
 
 Supersession is healthy. The bar for *writing* an ADR is high; once written, the bar for *quietly diverging from* it is also high (write a superseding ADR instead).
 
 **Always**
-- Run the Triage Gate before grilling. If any of the three questions answers "no", route to the destination in the table and stop — do not produce an ADR.
+- Run the Triage Gate before grilling. If the gate fails — `(Q1 OR Q2) AND Q3` is not satisfied — route to the destination in the table and stop.
 - When a decision is architecturally significant but routes elsewhere (SPEC, ARCHITECTURE.md, owning skill), help the user place it in the right destination. The skill's job is correct routing, not just ADR creation.
 - Read existing VISION.md, ARCHITECTURE.md, and ADRs before proposing changes
 - Read `docs/knowledge/glossary.md` at interview start (via `loaf kb glossary list`); use canonical terms throughout
@@ -86,19 +101,19 @@ Supersession is healthy. The bar for *writing* an ADR is high; once written, the
 **Never**
 - Make architectural decisions without user input
 - Contradict existing decisions without explicitly superseding them
-- Proceed past the Triage Gate when any of the three questions answers "no"
+- Proceed past the Triage Gate when it fails — i.e., when neither Q1 nor Q2 affirms, or when Q3 fails. ADRs require `(Q1 OR Q2) AND Q3`.
 - Create ADRs without user approval, even when the user requests one — if the decision fails the Triage Gate, propose the correct destination and decline the ADR
 - Use the word "irreversible" — software decisions can always be reversed via supersession; the operative criterion is "difficult to reverse"
 - ADR-ify aesthetic preferences, naming conventions, workflow lore, or guiding principles — those have other homes (see Skip ADR When)
-- Edit accepted ADRs to reflect a change of mind — write a new superseding ADR instead
+- Rewrite accepted ADRs' Decision/Context/Rationale/Consequences sections — those are immutable. Status transitions, frontmatter additions, and append-only Deprecated/Superseded sections are how lifecycle is recorded
 - Block ADR creation on glossary state — glossary mutations are additive and opt-in
 - Call `loaf kb glossary propose` (reserved for upstream ambiguity-resolving skills)
 
 ## Verification
 
 After work completes, verify:
-- Triage Gate ran before any grilling; all three questions affirmatively answered before proceeding
-- Decision falls within the five canonical domains (structure, quality attributes, dependencies, interfaces, construction techniques) OR clears the difficult-to-reverse bar
+- Triage Gate ran before any grilling; gate passed `(Q1 OR Q2) AND Q3` before proceeding
+- Decision passes the bar: architecturally significant (canonical domains) OR difficult to reverse (cost of divergence)
 - ADR captures rationale, not exploration (exploration belongs in a SPEC)
 - If the decision supersedes a prior ADR, the new ADR has `supersedes:` and the old one has `superseded_by:`
 - ADR created using template at [templates/adr.md](templates/adr.md)
@@ -113,11 +128,11 @@ After work completes, verify:
 
 | Decision shape | Destination |
 |---|---|
-| Architecturally significant + rationale needs preservation | **ADR** (`docs/decisions/`) |
+| Passes the gate | **ADR** (`docs/decisions/`) |
 | Development pattern, direction, implementation evidence | SPEC via `/shape` |
-| Guiding principle, philosophy, operating model | `ARCHITECTURE.md` / `VISION.md` (mutable, `/reflect`-revisable) |
+| Guiding principle, philosophy, operating model (stance, not architectural choice) | `ARCHITECTURE.md` / `VISION.md` (mutable, `/reflect`-revisable) |
 | Workflow convention, skill-specific lore | Owning skill's `SKILL.md` or references |
-| Local choice, single-PR scope, no downstream coordination | Session-log `decision(scope)` + code comment if needed |
+| Local choice, single-PR scope, no consequence to divergence | Session-log `decision(scope)` + code comment if needed |
 
 ### ADR Numbering
 
