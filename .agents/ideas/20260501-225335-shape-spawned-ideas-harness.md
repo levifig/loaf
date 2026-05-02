@@ -14,7 +14,7 @@ related:
 
 When `/shape` (or `/architecture`, or any deliberation skill) interviews the user, adjacent concepts and tensions frequently surface that don't belong in the current spec but are too important to lose. Today there is no discipline or mechanism to capture them durably with a clear path back to the spec that birthed them and forward to eventual exploration. Add three pieces:
 
-1. **Discipline rule** in `/shape`, `/architecture`, and `/refactor-deepen`: when an in-conversation tension is out-of-scope for the current artifact, capture it as `/idea` immediately with `related: SPEC-NNN` (or `PLAN-NNN`).
+1. **Discipline rule** in `/shape`, `/architecture`, and `/refactor-deepen`: when an in-conversation tension is out-of-scope for the current artifact, capture it as `/idea` immediately with `related: SPEC-NNN` (or the plan filename `YYYYMMDD-HHMMSS-{slug}`).
 2. **Forward link** in spec/plan frontmatter: `spawned_ideas: [...]` listing the idea IDs surfaced during shaping/grilling. The artifact knows what threads it left open.
 3. **Promotion gate** in `/triage` and `/reflect`: ideas with `blocked_by: SPEC-NNN` are surfaced separately ("post-implementation review queue") rather than treated as ready-to-shape. `/reflect` reviews `spawned_ideas` of the just-shipped spec and decides per-idea: promote to spec, defer, or close as no-longer-relevant.
 
@@ -33,7 +33,7 @@ Concrete failure modes today:
 - **Pattern is generic.** Not specific to refactor work. Affects every shaping session, every architecture interview, every deep deliberation. A small spec applied across `/shape`, `/architecture`, `/refactor-deepen`, and any future deliberation skill.
 - **Three concrete changes, narrow surface:**
   - `templates/spec.md` and `templates/plan.md` (when defined): add `spawned_ideas: [list-of-idea-ids]` frontmatter field.
-  - `templates/idea.md`: add optional `blocked_by: SPEC-NNN | PLAN-NNN` frontmatter field, distinct from `related:`.
+  - `templates/idea.md`: add optional `blocked_by:` frontmatter field accepting a SPEC ID (`SPEC-NNN`) or a plan filename (`YYYYMMDD-HHMMSS-{slug}`), distinct from `related:`.
   - `/shape`, `/architecture`, `/refactor-deepen` SKILL.md: add Critical Rule "if an out-of-scope concept surfaces, capture as `/idea` with `blocked_by: <current-artifact>` before continuing" plus a Step in the process for it.
   - `/triage` SKILL.md: surface blocked ideas in a separate "post-implementation review" section, not the main queue.
   - `/reflect` SKILL.md: at start, read `spawned_ideas` of the spec being reflected on; for each, prompt: promote / defer / close.

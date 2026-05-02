@@ -34,7 +34,7 @@ Concrete frictions today:
 ## Initial Context
 
 - **Triggered during SPEC-034 shaping** (port of Matt Pocock's `improve-codebase-architecture`). The deepening skill produces plans, not specs — surfaced the question "what artifact shape?" and exposed that Loaf has no answer for non-feature work.
-- **SPEC-034 ships a minimal PLAN shape** (`.agents/plans/PLAN-NNN-*.md` with candidate / dependency category / proposed deepened module / what survives in tests / rejected alternatives). This is deliberately under-specified — first concrete example informs the abstraction, rather than designing the abstraction first.
+- **SPEC-034 ships a minimal PLAN shape** (`.agents/plans/<YYYYMMDD-HHMMSS>-<slug>.md` with candidate / dependency category / proposed deepened module / what survives in tests / rejected alternatives). Plans use the temporal-record naming convention (same as sessions/ideas/drafts/councils) — write-once snapshots, not sequentially-numbered contracts. This is deliberately under-specified — first concrete example informs the abstraction, rather than designing the abstraction first.
 - **Key tension:** the team-lead persona benefits from Linear (tracker, dashboards, blocking graphs, notifications). The solo persona benefits from local files (no external dependency, git-versioned). Any taxonomy must work in both modes — local-tasks and Linear-native (per ADR-011).
 - **Possible decomposition into shapeable questions:**
   1. What goes in SPEC vs PLAN vs TASKS? (Define each artifact's load-bearing fields and what's allowed to be empty.)
@@ -46,7 +46,7 @@ Concrete frictions today:
 - **Open questions for shaping:**
   - Should plans live in `.agents/plans/` (current SPEC-034 plan) or in `.agents/specs/` with frontmatter discriminator? SPEC-034 chose new dir; the taxonomy spec may revisit.
   - Is "fix" a third sibling artifact (alongside spec/plan), or just a thin plan with extra fields?
-  - When does a PLAN get its own ID space (PLAN-NNN) vs. sub-numbered under a parent SPEC (SPEC-034.1)?
+  - Plans currently identify by filename timestamp (no `id:` frontmatter). Should they ever earn a stable canonical ID — e.g. for cross-referencing from a SPEC's `linked_plans:` field, or for promotion-to-SPEC tracking? Or is the filename-as-identity contract sufficient, mirroring how sessions and ideas are referenced?
   - What does this mean for `/loaf:reflect`? Does it review only specs, or specs+plans+fixes?
 
 - **Sequencing:** wait for SPEC-034 to ship and produce its first real plan in the wild. Use that concrete example (and the friction it surfaces) to inform the taxonomy spec rather than designing in the abstract.

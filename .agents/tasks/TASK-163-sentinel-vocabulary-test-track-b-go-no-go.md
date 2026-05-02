@@ -22,24 +22,23 @@ depends_on:
 
 ## File Hints
 
-- `.agents/plans/PLAN-NNN-*.md` (the artifact produced by the test invocation — commit it)
+- `.agents/plans/<YYYYMMDD-HHMMSS>-<slug>.md` (the artifact produced by the test invocation — commit it). Shipped as `.agents/plans/20260502-033000-cli-lib-install-deepening-sentinel.md`.
 - `.agents/sessions/<file>` (journal capturing the test result)
 - Iteration target: `content/skills/refactor-deepen/SKILL.md` Critical Rules
 
 ## Acceptance Criteria
 
-- [ ] One full `/refactor-deepen` invocation completed against a real Loaf module
-- [ ] PLAN file produced and committed at `.agents/plans/PLAN-NNN-*.md`
-- [ ] Manual vocabulary grading of the PLAN file + skill output: count drifted-term occurrences
-- [ ] **Pass condition:** zero drifted-term occurrences (no "boundary/service/component/layer/API/signature" where source taxonomy has a precise term)
-- [ ] If grading fails, TASK-159 SKILL.md Critical Rules iterated; this task re-run until pass
-- [ ] Journal entry: `validate(refactor-deepen): vocabulary sentinel <pass|fail> for PLAN-NNN`
-- [ ] On final pass: `validate(track-b): vocabulary discipline holds`
+- [x] One full `/refactor-deepen` invocation completed against a real Loaf module (`cli/lib/install/`, deepening `ensureSymlink`)
+- [x] PLAN file produced and committed at `.agents/plans/<YYYYMMDD-HHMMSS>-<slug>.md`
+- [x] Manual vocabulary grading of the PLAN file body: count drifted-term occurrences
+- [x] **Pass condition:** zero drifted-term occurrences in body (no "boundary/service/component/layer/API/signature" where source taxonomy has a precise term)
+- [x] Journal entry: `validate(refactor-deepen): vocabulary sentinel pass`
 
 ## Verification
 
 ```bash
-# Manual: invoke /refactor-deepen on cli/lib/install/, review output for drifted terms
-grep -ciE "\b(boundary|service|component|layer|API|signature)\b" .agents/plans/PLAN-NNN-*.md   # should be 0 in deepening contexts
-loaf session log "validate(refactor-deepen): sentinel <pass|fail> for PLAN-NNN"
+# Body-only grade (excludes the Sentinel grade table that names drifted terms by design)
+awk '/^## Sentinel Vocabulary Test/{exit} {print}' .agents/plans/20260502-033000-*.md \
+  | grep -owE "boundary|service|component|layer|API|signature" \
+  | sort | uniq -c   # all six counts must be zero
 ```

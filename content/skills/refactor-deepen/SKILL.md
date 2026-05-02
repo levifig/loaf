@@ -193,8 +193,9 @@ the existing one. The filename is the identity; PLAN frontmatter does not
 carry an `id` field.
 
 Create `.agents/plans/` lazily — `mkdir -p` immediately before the first
-plan write, never upfront. Concurrent plan creation is naturally race-free
-at second precision.
+plan write, never upfront. The sequential-ID allocation race is gone;
+same-second filename collisions remain theoretically possible at scripted
+speed but are unlikely at human pace.
 
 ### Glossary CLI Cheat Sheet
 
