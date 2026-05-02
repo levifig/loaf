@@ -34,8 +34,10 @@ Needed consistent, readable naming for knowledge directories (`docs/knowledge/`,
 
 ## Deprecated
 
-This ADR was recategorized on 2026-05-02 against the tightened architecture-skill bar. The naming convention concerns aesthetics (visual symmetry, accessibility) without measurable effect on the system's structure, quality attributes, dependencies, interfaces, or construction techniques — it does not clear the architectural-significance threshold (see [content/skills/architecture/SKILL.md](../../content/skills/architecture/SKILL.md#the-bar)).
+This ADR was recategorized on 2026-05-02 against the tightened architecture-skill bar (see [content/skills/architecture/SKILL.md](../../content/skills/architecture/SKILL.md#the-bar)).
 
-**The convention itself remains in force.** Only the *classification* changed: the rationale and ongoing governance now live in [docs/knowledge/knowledge-management-design.md](../knowledge/knowledge-management-design.md#naming-conventions), where they can evolve via `/reflect` rather than via ADR supersession.
+**ADRs capture a *choice* between credible alternatives.** This record describes a naming convention — `knowledge` and `decisions` as full directory/collection names. There was no credible architectural alternative considered; the rationale is purely aesthetic (visual symmetry, accessibility, full-word-storage vs. CLI-shorthand). It's a convention, not a choice between architectural options.
+
+**The convention itself remains in force.** The active source is now [docs/knowledge/knowledge-management-design.md](../knowledge/knowledge-management-design.md#naming-conventions) — where it can evolve via `/reflect`, the appropriate mechanism for project conventions.
 
 This record is retained per the append-only-log discipline ("_was_ the decision, _no longer_ the decision" — Nygard) but is no longer the operative source.

@@ -37,8 +37,12 @@ Traditional documentation is human-authored and agent-consumed. This creates a m
 
 ## Deprecated
 
-This ADR was recategorized on 2026-05-02 against the tightened architecture-skill bar. The "agents create, humans curate" model is a guiding principle / operating philosophy — it doesn't fit the architecturally-significant criteria (structure, quality attributes, dependencies, interfaces, construction techniques), and ADRs are immutable post-acceptance whereas principles evolve over time (see [content/skills/architecture/SKILL.md](../../content/skills/architecture/SKILL.md#the-bar)).
+This ADR was recategorized on 2026-05-02 against the tightened architecture-skill bar (see [content/skills/architecture/SKILL.md](../../content/skills/architecture/SKILL.md#the-bar)).
 
-**The principle itself remains in force.** Only the *classification* changed: the principle now lives in [docs/ARCHITECTURE.md](../ARCHITECTURE.md#authorship-model--agents-create-humans-curate) as an operating principle, where it can evolve via `/reflect`.
+**ADRs capture an architectural *choice* between credible alternatives.** This record names an alternative — the traditional "humans author, agents consume" model — but the rejection is on **philosophical and operational grounds** (maintenance burden, growth loop, "maintenance as side effect of work"), not on architectural ones. No specific quality attribute, dependency, interface, or construction technique is being weighed; the rationale is about *how the team operates*, not *how the system is structured*. That makes ADR-006 a guiding principle / operating model, not an architectural decision.
+
+The principle's downstream *implications* (CLI surface as management-not-authoring, hook timing, review workflow) shape the system; those *implications* could be ADRs in their own right, but the principle itself is not.
+
+**The principle itself remains in force.** The active source is now [docs/ARCHITECTURE.md](../ARCHITECTURE.md#authorship-model--agents-create-humans-curate) under the Operating Principles section — where it can evolve via `/reflect`, the appropriate mechanism for guiding principles (mutable, evolves with project learning; ADRs are immutable post-acceptance).
 
 This record is retained per the append-only-log discipline ("_was_ the decision, _no longer_ the decision" — Nygard) but is no longer the operative source.

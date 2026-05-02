@@ -41,8 +41,10 @@ Brainstorming produces speculative byproducts — ideas that aren't ready for `/
 
 ## Deprecated
 
-This ADR was recategorized on 2026-05-02 against the tightened architecture-skill bar. The Sparks convention is workflow lore for the brainstorm skill — not a structural / quality-attribute / dependency / interface / construction decision (see [content/skills/architecture/SKILL.md](../../content/skills/architecture/SKILL.md#the-bar)). Microsoft Well-Architected: *"avoid making decision records design guides."* The owning skill is the proper home.
+This ADR was recategorized on 2026-05-02 against the tightened architecture-skill bar (see [content/skills/architecture/SKILL.md](../../content/skills/architecture/SKILL.md#the-bar)).
 
-**The convention itself remains in force.** Only the *classification* changed: the canonical source is now [content/skills/brainstorm/SKILL.md](../../content/skills/brainstorm/SKILL.md), where the workflow can evolve alongside the skill.
+**ADRs capture a *choice* between credible architectural alternatives.** This record codifies workflow lore for the brainstorm skill — the `## Sparks` section convention. The original includes alternatives ("standalone SPARKS.md", "individual spark files"), but they were workflow-design alternatives, not architectural ones (no canonical-domain effect, no cost-of-divergence beyond the brainstorm skill). Microsoft Well-Architected: *"avoid making decision records design guides."*
+
+**The convention itself remains in force.** The active source is now [content/skills/brainstorm/SKILL.md](../../content/skills/brainstorm/SKILL.md) — where the workflow can evolve alongside the skill itself, the appropriate mechanism for skill-specific lore.
 
 This record is retained per the append-only-log discipline ("_was_ the decision, _no longer_ the decision" — Nygard) but is no longer the operative source.

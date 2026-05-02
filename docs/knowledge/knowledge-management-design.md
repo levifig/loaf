@@ -204,5 +204,5 @@ QMD works without models (BM25-only):
 - [agent-harness-vision.md](agent-harness-vision.md) — how agents use the knowledge system
 - [cli-design.md](cli-design.md) — the `loaf kb` commands
 - [../decisions/ADR-003-qmd-as-retrieval-backend.md](../decisions/ADR-003-qmd-as-retrieval-backend.md) — QMD decision
-- [../decisions/ADR-006-agent-creates-human-curates.md](../decisions/ADR-006-agent-creates-human-curates.md) — authoring model
+- [../ARCHITECTURE.md#authorship-model--agents-create-humans-curate](../ARCHITECTURE.md#authorship-model--agents-create-humans-curate) — authoring model
 - Full brainstorm: `.agents/drafts/brainstorm-loaf-cli-knowledge-harness.md`
