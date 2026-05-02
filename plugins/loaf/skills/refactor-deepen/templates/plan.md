@@ -91,10 +91,13 @@ date -u +%Y%m%d-%H%M%S | xargs -I{} echo ".agents/plans/{}-${slug}.md"
 
 Example: `.agents/plans/20260502-033000-cli-lib-install-deepening.md`.
 
-Concurrent plan creation is naturally race-free at second precision — the
-timestamp differentiates plans authored within the same minute. The
-broader plan-lifecycle question (list / archive / doctor recognition) is
-tracked separately in idea `20260501-231922`.
+The sequential-ID allocation race that an `id: PLAN-NNN` scheme would carry
+is gone — there is no shared counter to contend over. Same-second filename
+collisions remain theoretically possible if two `/loaf:refactor-deepen` runs
+write within the same UTC second; in practice this is unlikely at human
+typing speed but not impossible at scripted speed. The broader plan-
+lifecycle question (list / archive / doctor recognition) is tracked
+separately in idea `20260501-231922`.
 
 ## Lazy Directory Creation
 
