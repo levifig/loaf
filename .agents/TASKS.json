@@ -22,7 +22,7 @@
       "title": "Glossary file format + lazy creation utility",
       "slug": "glossary-file-format-lazy-creation-utility",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -31,14 +31,14 @@
       "session": null,
       "created": "2026-05-02T01:25:28.874Z",
       "updated": "2026-05-02T01:25:28.874Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-151-glossary-file-format-lazy-creation-utility.md"
     },
     "TASK-152": {
       "title": "loaf kb glossary upsert + check CLI verbs",
       "slug": "loaf-kb-glossary-upsert-check-cli-verbs",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-151"
@@ -49,14 +49,14 @@
       "session": null,
       "created": "2026-05-02T01:25:28.929Z",
       "updated": "2026-05-02T01:25:28.929Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-152-loaf-kb-glossary-upsert-check-cli-verbs.md"
     },
     "TASK-153": {
       "title": "loaf kb glossary list CLI verb",
       "slug": "loaf-kb-glossary-list-cli-verb",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-151"
@@ -67,14 +67,14 @@
       "session": null,
       "created": "2026-05-02T01:25:28.985Z",
       "updated": "2026-05-02T01:25:28.985Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-153-loaf-kb-glossary-list-cli-verb.md"
     },
     "TASK-154": {
       "title": "loaf kb glossary stabilize + propose CLI verbs",
       "slug": "loaf-kb-glossary-stabilize-propose-cli-verbs",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-151",
@@ -86,14 +86,14 @@
       "session": null,
       "created": "2026-05-02T01:25:29.041Z",
       "updated": "2026-05-02T01:25:29.041Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-154-loaf-kb-glossary-stabilize-propose-cli-verbs.md"
     },
     "TASK-155": {
       "title": "Linear-native fail-fast for glossary write commands",
       "slug": "linear-native-fail-fast-for-glossary-write-command",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-152",
@@ -105,14 +105,14 @@
       "session": null,
       "created": "2026-05-02T01:25:29.099Z",
       "updated": "2026-05-02T01:25:29.099Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-155-linear-native-fail-fast-for-glossary-write-command.md"
     },
     "TASK-156": {
       "title": "Shared content/templates/grilling.md + targets.yaml distribution",
       "slug": "shared-content-templates-grilling-md-targets-yaml-",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -121,14 +121,14 @@
       "session": null,
       "created": "2026-05-02T01:25:35.806Z",
       "updated": "2026-05-02T01:25:35.806Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-156-shared-content-templates-grilling-md-targets-yaml-.md"
     },
     "TASK-157": {
       "title": "/architecture skill evolution: glossary integration, ADR template preserved",
       "slug": "architecture-skill-evolution-glossary-integration-",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-152",
@@ -141,14 +141,14 @@
       "session": null,
       "created": "2026-05-02T01:25:35.857Z",
       "updated": "2026-05-02T01:25:35.857Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-157-architecture-skill-evolution-glossary-integration-.md"
     },
     "TASK-158": {
       "title": "Round-trip glossary validation (Track A go/no-go)",
       "slug": "round-trip-glossary-validation-track-a-go-no-go",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-157"
@@ -159,14 +159,14 @@
       "session": null,
       "created": "2026-05-02T01:25:35.911Z",
       "updated": "2026-05-02T01:25:35.911Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-158-round-trip-glossary-validation-track-a-go-no-go.md"
     },
     "TASK-159": {
       "title": "/refactor-deepen SKILL.md (Critical Rules, vocabulary, glossary integration)",
       "slug": "refactor-deepen-skill-md-critical-rules-vocabulary",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-156"
@@ -177,14 +177,14 @@
       "session": null,
       "created": "2026-05-02T01:25:48.983Z",
       "updated": "2026-05-02T01:25:48.983Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-159-refactor-deepen-skill-md-critical-rules-vocabulary.md"
     },
     "TASK-160": {
       "title": "references/language.md + references/deepening.md (port + Loaf mapping)",
       "slug": "references-language-md-references-deepening-md-por",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-159"
@@ -195,14 +195,14 @@
       "session": null,
       "created": "2026-05-02T01:25:49.035Z",
       "updated": "2026-05-02T01:25:49.035Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-160-references-language-md-references-deepening-md-por.md"
     },
     "TASK-161": {
       "title": "references/interface-design.md (original authoring, 3-agent unprimed default)",
       "slug": "references-interface-design-md-original-authoring-",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-159"
@@ -213,14 +213,14 @@
       "session": null,
       "created": "2026-05-02T01:25:49.088Z",
       "updated": "2026-05-02T01:25:49.088Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-161-references-interface-design-md-original-authoring-.md"
     },
     "TASK-162": {
       "title": "templates/plan.md + plan ID generation + .agents/plans/ lazy creation",
       "slug": "templates-plan-md-plan-id-generation-agents-plans-",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-159"
@@ -231,14 +231,14 @@
       "session": null,
       "created": "2026-05-02T01:25:49.154Z",
       "updated": "2026-05-02T01:25:49.154Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-162-templates-plan-md-plan-id-generation-agents-plans-.md"
     },
     "TASK-163": {
       "title": "Sentinel vocabulary test (Track B go/no-go)",
       "slug": "sentinel-vocabulary-test-track-b-go-no-go",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-159",
@@ -252,14 +252,14 @@
       "session": null,
       "created": "2026-05-02T01:25:49.208Z",
       "updated": "2026-05-02T01:25:49.208Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-163-sentinel-vocabulary-test-track-b-go-no-go.md"
     },
     "TASK-164": {
       "title": "Codex review opt-in hook for /refactor-deepen",
       "slug": "codex-review-opt-in-hook-for-refactor-deepen",
       "spec": "SPEC-034",
-      "status": "todo",
+      "status": "done",
       "priority": "P3",
       "depends_on": [
         "TASK-159"
@@ -270,7 +270,7 @@
       "session": null,
       "created": "2026-05-02T01:25:49.274Z",
       "updated": "2026-05-02T01:25:49.274Z",
-      "completed_at": null,
+      "completed_at": "2026-05-02T03:35:00.000Z",
       "file": "TASK-164-codex-review-opt-in-hook-for-refactor-deepen.md"
     },
     "TASK-001": {
@@ -2954,7 +2954,7 @@
     },
     "SPEC-034": {
       "title": "Refactor-deepen skill + grilling protocol + glossary convention",
-      "status": "implementing",
+      "status": "complete",
       "requirement": null,
       "source": "direct",
       "created": "2026-05-01T22:27:43.000Z",

@@ -1,10 +1,11 @@
 ---
 id: TASK-158
 title: Round-trip glossary validation (Track A go/no-go)
-status: todo
+status: done
 priority: P1
 created: '2026-05-02T01:25:35.911Z'
 updated: '2026-05-02T01:25:35.911Z'
+completed_at: '2026-05-02T03:35:00.000Z'
 spec: SPEC-034
 depends_on:
   - TASK-157

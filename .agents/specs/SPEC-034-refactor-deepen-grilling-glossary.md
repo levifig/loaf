@@ -3,8 +3,9 @@ id: SPEC-034
 title: Refactor-deepen skill + grilling protocol + glossary convention
 source: direct
 created: '2026-05-01T22:27:43.000Z'
-status: implementing
+status: done
 branch: feat/refactor-deepen-grilling-glossary
+session: 20260502-025928-session.md
 ---
 
 # SPEC-034: Refactor-deepen skill + grilling protocol + glossary convention
@@ -35,7 +36,7 @@ Matt Pocock's `improve-codebase-architecture` skill ports cleanly into Loaf as a
 
 ## Solution Direction
 
-Port Matt Pocock's `improve-codebase-architecture` skill as `/refactor-deepen` (first member of a `/refactor-{flavor}` family). Extract the grilling-as-interview-protocol from his `grill-with-docs` skill as a Loaf-shared template, distributed to `/architecture`, `/shape`, `/refactor-deepen`, and any future skill that needs it. Add a domain glossary KB convention so vocabulary discipline has a home, with mutation policy encoded in CLI verbs (`propose` / `stabilize` / `upsert`) rather than skill prose. Evolve `/architecture` to absorb the with-docs side-effects (glossary stabilization inline during interviews, not just ADR creation). Output of `/refactor-deepen` is a minimal plan artifact, with the artifact-taxonomy question deliberately deferred and lifecycle infrastructure deferred to a follow-up spec.
+Port Matt Pocock's `improve-codebase-architecture` skill as `/refactor-deepen` (first member of a `/refactor-{flavor}` family). Extract the grilling-as-interview-protocol from his `grill-with-docs` skill as a Loaf-shared template, distributed to `/architecture` and `/refactor-deepen` only. (`/shape` distribution was originally planned but deferred per `20260501-231923-shape-glossary-evolution-deferred` — see Test Conditions.) Add a domain glossary KB convention so vocabulary discipline has a home, with mutation policy encoded in CLI verbs (`propose` / `stabilize` / `upsert`) rather than skill prose. Evolve `/architecture` to absorb the with-docs side-effects (glossary stabilization inline during interviews, not just ADR creation). Output of `/refactor-deepen` is a minimal plan artifact, with the artifact-taxonomy question deliberately deferred and lifecycle infrastructure deferred to a follow-up spec.
 
 The skill preserves Matt's vocabulary discipline (Module, Interface, Implementation, Depth, Seam, Adapter, Leverage, Locality) verbatim — substituting "boundary" or "service" defeats the entire point.
 
@@ -45,7 +46,7 @@ The skill preserves Matt's vocabulary discipline (Module, Interface, Implementat
 
 - **Track A (foundation: grilling + glossary CLI + `/architecture` evolution):**
   - `content/templates/grilling.md` — shared template documenting the interview protocol (relentless interview, walk decision tree, recommend per question, prefer exploration when it can answer). Owns: read existing glossary at start, challenge term drift inline, surface candidate terms during interview. Does **not** own mutation — that's the CLI's job.
-  - `targets.yaml` `shared-templates` registration distributing `grilling.md` to `architecture`, `shape`, `refactor-deepen`
+  - `targets.yaml` `shared-templates` registration distributing `grilling.md` to `architecture` and `refactor-deepen` only (NOT `shape` — see deferral rationale in `20260501-231923-shape-glossary-evolution-deferred`)
   - KB convention: `docs/knowledge/glossary.md` with `type: glossary` frontmatter; lazy creation pattern (CLI creates file on first canonical term, never upfront)
   - Glossary format borrowed from Matt's `CONTEXT-FORMAT.md`: term + definition + `_Avoid_:` aliases + `## Relationships` + `## Flagged ambiguities`. The file also holds a `## Candidates` section for proposed-but-not-yet-canonical terms.
   - `loaf kb glossary {propose, stabilize, upsert, list, check}` subcommand:
@@ -62,10 +63,9 @@ The skill preserves Matt's vocabulary discipline (Module, Interface, Implementat
   - `references/deepening.md` — dependency categories (in-process, local-substitutable, ports-and-adapters, true-external) and seam discipline (verbatim from DEEPENING.md)
   - `references/interface-design.md` — parallel sub-agent design pattern. Default rule: **spawn exactly 3 sub-agents with the same brief** (no opposing-constraint priming) so variety emerges from sampling rather than from manufactured opposition. User can opt to add more agents or to add specific lenses on request, but the default is 3-identical-briefs.
   - `templates/plan.md` — minimal PLAN artifact shape (candidate / dependency category / proposed deepened module / what survives in tests / rejected alternatives)
-  - Plan artifact location: `.agents/plans/PLAN-NNN-*.md`
-  - Sequential plan ID generation pattern matching SPEC numbering
+  - Plan artifact location: `.agents/plans/<YYYYMMDD-HHMMSS>-<slug>.md` (same temporal-record naming as sessions/ideas/drafts/councils — plans are write-once snapshots, not sequentially-numbered contracts; no `id` frontmatter field)
   - `/refactor-deepen` *pressure-tests* terms: uses existing glossary entries via `loaf kb glossary check`; calls `loaf kb glossary upsert` when a deepening clearly names a structural module
-  - Skill terminates with: *"Plan saved to `.agents/plans/PLAN-NNN-*.md`. Workflow handoff is pending the SPEC/PLAN/TASKS artifact taxonomy spec — for now, decide manually."* — no `/breakdown` or `/implement` recommendation, deferring to the taxonomy work.
+  - Skill terminates with: *"Plan saved to `.agents/plans/<filename>.md`. Workflow handoff is pending the SPEC/PLAN/TASKS artifact taxonomy spec — for now, decide manually."* — no `/breakdown` or `/implement` recommendation, deferring to the taxonomy work.
 - **Track C (Codex review opt-in):**
   - `/refactor-deepen` final step: if `codex` plugin detected, offer "Codex review of this deepening before commit?" — opt-in only, plugin-gated.
 
@@ -136,7 +136,7 @@ The skill preserves Matt's vocabulary discipline (Module, Interface, Implementat
 - [ ] `loaf kb glossary upsert/stabilize/propose` fail fast in Linear-native mode with explicit error message; `list/check` work in both modes
 - [ ] `/refactor-deepen` is invokable and produces a numbered candidate list within a single conversation turn
 - [ ] `/refactor-deepen` reads `docs/knowledge/glossary.md`, `docs/decisions/ADR-*.md`, and `ARCHITECTURE.md` before presenting candidates (verifiable via session journal)
-- [ ] `/refactor-deepen`'s grilling loop produces a `.agents/plans/PLAN-NNN-*.md` file with the minimal shape filled out
+- [ ] `/refactor-deepen`'s grilling loop produces a `.agents/plans/<YYYYMMDD-HHMMSS>-*.md` file with the minimal shape filled out
 - [ ] **Sentinel vocabulary test (Track B go/no-go):** Pick one shallow Loaf module, invoke `/refactor-deepen`, manually grade output for vocabulary fidelity. Pass condition: zero drifted-term occurrences (no "boundary/service/component/layer" where the source taxonomy has a precise term). Fail condition triggers Critical Rules iteration before declaring Track B done.
 - [ ] When `/refactor-deepen` introduces a new domain term, it is added via `loaf kb glossary upsert`
 - [ ] `/refactor-deepen`'s INTERFACE-DESIGN phase spawns exactly 3 sub-agents with identical briefs (no priming) and presents three distinct designs

@@ -13,7 +13,7 @@ blocked_by: SPEC-034
 
 ## Nugget
 
-SPEC-034 introduces `.agents/plans/PLAN-NNN-*.md` as the output artifact of `/refactor-deepen`. Specs ship with `loaf spec list` / `archive` / `loaf doctor` checks / housekeeping skill awareness — plans need the same lifecycle infrastructure or they become an orphan artifact class. Codex flagged this during SPEC-034 review: "new artifact-class without lifecycle support is technical debt waiting." The simplest path is parallel CLI surface to specs.
+SPEC-034 introduces `.agents/plans/<YYYYMMDD-HHMMSS>-<slug>.md` as the output artifact of `/refactor-deepen` (timestamp-named, like sessions/ideas/drafts/councils). Sessions and ideas already have list/archive/doctor/housekeeping integration — plans need the equivalent or they become an orphan artifact class. Codex flagged this during SPEC-034 review: "new artifact-class without lifecycle support is technical debt waiting." The simplest path is parallel CLI surface to the temporal-record family.
 
 Three pieces:
 
@@ -36,7 +36,8 @@ The risk is graceful degradation: SPEC-034 ships, plans get created, lifecycle g
 
 - **Originally Track C of SPEC-034.** Removed during shape session — Codex/me/Levi agreed the lifecycle work is its own product surface (listing semantics, archive semantics, doctor checks, housekeeping integration), not refactoring-skill scope.
 - **Sequencing:** blocked-on SPEC-034 — needs at least one real plan in the wild before lifecycle commands can be designed against actual usage. Avoid designing lifecycle for hypothetical artifacts.
-- **Implementation:** mostly parallel to existing spec lifecycle (`cli/commands/spec.ts`, `cli/lib/housekeeping/`). Should reuse rather than duplicate — possible refactor to `cli/lib/lifecycle/` with shared list/archive primitives parameterized by artifact type.
+- **Implementation:** parallel to the temporal-record artifact family (sessions, ideas, drafts, councils). Lifecycle primitives in `cli/lib/housekeeping/` already enumerate plans as a recognized directory; what's missing is `loaf plan list`/`archive` CLI verbs and the doctor/housekeeping checks. Likely refactor opportunity: a shared `cli/lib/lifecycle/` parameterized by artifact type so plans, sessions, ideas, drafts, and councils share list/archive/staleness primitives.
+- **Race conditions on concurrent creation are NOT a concern** — second-precision timestamps (`YYYYMMDD-HHMMSS`) make filename collisions vanishingly unlikely. This was originally flagged as a sequential-ID risk; the temporal-record naming dropped the concern entirely.
 - **Open questions for shaping:**
   - Top-level `loaf plan` vs. nested under existing command (`loaf spec plan list`)? Working assumption: top-level, mirrors `loaf spec`.
   - How does orphan detection differentiate "no related spec" from "spec was archived"? Plans related to archived specs may still be relevant (the spec shipped, the plan tracked the implementation strategy).

@@ -1,10 +1,11 @@
 ---
 id: TASK-161
 title: 'references/interface-design.md (original authoring, 3-agent unprimed default)'
-status: todo
+status: done
 priority: P2
 created: '2026-05-02T01:25:49.088Z'
 updated: '2026-05-02T01:25:49.088Z'
+completed_at: '2026-05-02T03:35:00.000Z'
 spec: SPEC-034
 depends_on:
   - TASK-159

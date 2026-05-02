@@ -1,10 +1,11 @@
 ---
 id: TASK-162
 title: templates/plan.md + plan ID generation + .agents/plans/ lazy creation
-status: todo
+status: done
 priority: P2
 created: '2026-05-02T01:25:49.154Z'
 updated: '2026-05-02T01:25:49.154Z'
+completed_at: '2026-05-02T03:35:00.000Z'
 spec: SPEC-034
 depends_on:
   - TASK-159
