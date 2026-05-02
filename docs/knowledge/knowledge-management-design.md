@@ -15,6 +15,12 @@ last_reviewed: '2026-04-29'
 
 The knowledge management feature: `loaf kb` commands + knowledge-base skill + QMD integration + lifecycle hooks.
 
+## Naming Conventions
+
+Storage uses full words: `docs/knowledge/` and `docs/decisions/` for directories, `{repo-folder}-knowledge` and `{repo-folder}-decisions` for QMD collections. The two names are similar in length and scan well together — `kb` versus `decisions` would create visual asymmetry, and `decisions` is more accessible to non-engineers than `adrs`.
+
+The CLI shorthand is `kb`: `loaf kb check`, not `loaf knowledge check`. The full word is for storage (durable, read by humans and tools); the abbreviation is for typing (ergonomic, used dozens of times a day). ADR files keep the `ADR-XXX` prefix — that's the record format, not the directory name.
+
 ## Knowledge File Schema
 
 ```yaml
