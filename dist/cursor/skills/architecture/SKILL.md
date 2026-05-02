@@ -7,7 +7,7 @@ description: >-
   use X or Y?" Produces ADRs and updates ARCHITECTURE.md with technical
   constraints. Not for strategic direction (use strategy) or multi-perspective
   deliberation (use council).
-version: 2.0.0-dev.36
+version: 2.0.0-dev.37
 ---
 
 # Architecture

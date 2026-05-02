@@ -217,7 +217,7 @@
       "file": "TASK-161-references-interface-design-md-original-authoring-.md"
     },
     "TASK-162": {
-      "title": "templates/plan.md + plan ID generation + .agents/plans/ lazy creation",
+      "title": "templates/plan.md + filename convention + .agents/plans/ lazy creation",
       "slug": "templates-plan-md-plan-id-generation-agents-plans-",
       "spec": "SPEC-034",
       "status": "done",

@@ -8,7 +8,7 @@ description: >-
   constraints. Not for strategic direction (use strategy) or multi-perspective
   deliberation (use council).
 subtask: false
-version: 2.0.0-dev.36
+version: 2.0.0-dev.37
 ---
 
 # Architecture

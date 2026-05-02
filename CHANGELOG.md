@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-dev.37] - 2026-05-02
+
 ### Added
 
 - `/refactor-deepen` skill — surfaces refactoring opportunities through a deepening lens (modules that hide complexity behind narrow interfaces). Vocabulary discipline is load-bearing: the skill uses an eight-term taxonomy (Module, Interface, Implementation, Depth, Seam, Adapter, Leverage, Locality) ported verbatim from Matt Pocock's `improve-codebase-architecture` skill, with `references/language.md`, `references/deepening.md`, and `references/interface-design.md` providing the vocabulary's full semantics. Default INTERFACE-DESIGN phase spawns 3 sub-agents with identical briefs (no opposing-constraint priming) — variety emerges from sampling, not manufactured opposition. Terminates by writing a PLAN file. Not for renames, extractions, or generic restructuring (use `/loaf:implement`).
