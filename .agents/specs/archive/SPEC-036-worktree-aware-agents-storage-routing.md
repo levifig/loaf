@@ -4,6 +4,8 @@ title: Worktree-aware .agents/ storage routing
 source: direct
 created: '2026-05-19T00:30:00Z'
 status: complete
+branch: feat/worktree-storage
+adr: docs/decisions/ADR-013-agentic-state-storage-model.md
 ---
 
 # SPEC-036: Worktree-aware `.agents/` storage routing
@@ -115,7 +117,7 @@ Tracks ship in this order. Each go/no-go gate must pass before the next track st
 
 ## ADR Companion
 
-Implementation should land with an ADR: **"Agentic state is project-scoped, not branch-scoped; the main worktree's `.agents/` is the single store regardless of artifact kind."** Decision is structurally significant and difficult to reverse — meets the ADR bar per the architecture skill.
+Landed as [**ADR-013: Agentic State Is Project-Scoped, Not Branch-Scoped**](../../../docs/decisions/ADR-013-agentic-state-storage-model.md) on 2026-05-19. The ADR captures the decision, the four rejected alternatives (A1, A2, symlinks, `.git/loaf/`), and the consequences.
 
 ## Provenance
 
