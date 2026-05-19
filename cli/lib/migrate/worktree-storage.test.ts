@@ -17,7 +17,7 @@
  *   - Pre-A3 detector: only fires on linked worktrees with unmigrated content.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   existsSync,
   mkdirSync,
@@ -26,6 +26,7 @@ import {
   realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from "fs";
@@ -38,6 +39,7 @@ import {
   buildMainMissingMessage,
   detectMainMissingForRefusal,
   detectPreA3State,
+  formatResult,
   PARTIAL_SUFFIX,
   PRE_A3_REFUSAL_MESSAGE,
   readBackPointer,
@@ -231,6 +233,26 @@ describe("worktreeAgentsHasContent", () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "foo.md"), "x\n", "utf-8");
     expect(worktreeAgentsHasContent(dir)).toBe(true);
+  });
+
+  it("prints read failures when LOAF_DEBUG_RESOLVE is enabled", () => {
+    const filePath = join(TEST_ROOT, "not-a-dir");
+    writeFileSync(filePath, "x\n", "utf-8");
+    const old = process.env.LOAF_DEBUG_RESOLVE;
+    process.env.LOAF_DEBUG_RESOLVE = "1";
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      expect(worktreeAgentsHasContent(filePath)).toBe(false);
+      expect(stderr).toHaveBeenCalledWith(expect.stringContaining("LOAF_DEBUG_RESOLVE: failed to read"));
+      expect(stderr).toHaveBeenCalledWith(expect.stringContaining(filePath));
+    } finally {
+      stderr.mockRestore();
+      if (old === undefined) {
+        delete process.env.LOAF_DEBUG_RESOLVE;
+      } else {
+        process.env.LOAF_DEBUG_RESOLVE = old;
+      }
+    }
   });
 });
 
@@ -468,6 +490,47 @@ describe("runMigration — conflict policy", () => {
     expect(move?.conflict).toBe(true);
     expect(move?.resolution).toBe("keep-worktree");
     expect(move?.resolutionReason).toMatch(/worktree mtime .* > main mtime/);
+  });
+});
+
+describe("formatResult", () => {
+  it("omits ANSI escapes when color is disabled", () => {
+    const main = createMainRepo("fmt-no-color");
+    const linked = addWorktree(main, "feat/fmt-no-color");
+    seedPreA3WorktreeLayout(linked);
+
+    const result = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    const formatted = formatResult(result, { apply: false, color: false });
+
+    expect(formatted).not.toMatch(/\x1b\[[0-9;]*m/);
+    expect(formatted).toContain("loaf migrate worktree-storage");
+  });
+
+  it("emits ANSI escapes when color is explicitly enabled", () => {
+    const main = createMainRepo("fmt-color");
+    const linked = addWorktree(main, "feat/fmt-color");
+    seedPreA3WorktreeLayout(linked);
+
+    const result = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    const formatted = formatResult(result, { apply: false, color: true });
+
+    expect(formatted).toMatch(/\x1b\[[0-9;]*m/);
+  });
+});
+
+describe("runMigration — symlink handling", () => {
+  it("refuses symlinks under worktree-local .agents/ instead of migrating ambiguously", () => {
+    const main = createMainRepo("symlink-refuse");
+    const linked = addWorktree(main, "feat/symlink-refuse");
+    mkdirSync(join(linked, ".agents"), { recursive: true });
+    writeFileSync(join(linked, "target.md"), "target\n", "utf-8");
+    symlinkSync("../target.md", join(linked, ".agents", "linked.md"));
+
+    const result = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+
+    expect(result.status).toBe("symlink-unsupported");
+    expect(result.message).toContain("linked.md");
+    expect(existsSync(join(linked, ".agents", "linked.md"))).toBe(true);
   });
 });
 

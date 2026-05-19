@@ -22736,7 +22736,7 @@ function countSpecs(index) {
 }
 function parseEntryIdNumber(id) {
   const match = id.match(/\d+$/);
-  return match ? parseInt(match[0], 10) : 0;
+  return match ? parseInt(match[0], 10) : null;
 }
 function parseTaskStatusFilter(status) {
   if (status === void 0) return void 0;
@@ -22764,7 +22764,8 @@ function rebuildTaskIndex(agentsDir) {
     const mergedTasks = { ...scannedIndex.tasks };
     for (const [id, entry] of Object.entries(nowIndex.tasks)) {
       if (mergedTasks[id]) continue;
-      if (parseEntryIdNumber(id) >= scanStartNextId) {
+      const idNumber = parseEntryIdNumber(id);
+      if (idNumber !== null && idNumber >= scanStartNextId) {
         mergedTasks[id] = entry;
       }
     }
@@ -22778,7 +22779,7 @@ function rebuildTaskIndex(agentsDir) {
     let maxTaskNum = 0;
     for (const id of Object.keys(mergedTasks)) {
       const n = parseEntryIdNumber(id);
-      if (n > maxTaskNum) maxTaskNum = n;
+      if (n !== null && n > maxTaskNum) maxTaskNum = n;
     }
     const nextId = Math.max(
       scannedIndex.next_id,
@@ -30595,6 +30596,7 @@ import {
   cpSync as cpSync7,
   existsSync as existsSync47,
   mkdirSync as mkdirSync29,
+  lstatSync as lstatSync4,
   readFileSync as readFileSync43,
   readdirSync as readdirSync18,
   renameSync as renameSync10,
@@ -30673,6 +30675,12 @@ function worktreeAgentsHasContent(worktreeAgentsDir) {
   if (!existsSync47(worktreeAgentsDir)) return false;
   return enumerateFiles(worktreeAgentsDir).length > 0;
 }
+function debugResolve(message) {
+  if (isDebugResolveEnabled()) {
+    process.stderr.write(`${DEBUG_RESOLVE_ENV}: ${message}
+`);
+  }
+}
 function detectMainMissingForRefusal(startDir = process.cwd()) {
   const wtRoot = findWorktreeRootForDetection(startDir);
   if (!wtRoot) return null;
@@ -30720,7 +30728,9 @@ function enumerateFiles(dir) {
     let entries;
     try {
       entries = readdirSync18(current, { withFileTypes: true });
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      debugResolve(`failed to read ${current}: ${message}`);
       return;
     }
     for (const entry of entries) {
@@ -30731,6 +30741,41 @@ function enumerateFiles(dir) {
         walk(absPath, relPath);
       } else if (entry.isFile() || entry.isSymbolicLink()) {
         out.push(relPath);
+      }
+    }
+  };
+  walk(dir, "");
+  return out;
+}
+function findSymlinkPaths(dir) {
+  if (!existsSync47(dir)) return [];
+  const out = [];
+  const walk = (current, rel) => {
+    let entries;
+    try {
+      entries = readdirSync18(current, { withFileTypes: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      debugResolve(`failed to read ${current}: ${message}`);
+      return;
+    }
+    for (const entry of entries) {
+      const absPath = join51(current, entry.name);
+      const relPath = rel ? join51(rel, entry.name) : entry.name;
+      if (rel === "" && entry.name === BACK_POINTER_FILE) continue;
+      if (entry.isSymbolicLink()) {
+        out.push(relPath);
+        continue;
+      }
+      if (entry.isDirectory()) {
+        try {
+          if (lstatSync4(absPath).isSymbolicLink()) {
+            out.push(relPath);
+            continue;
+          }
+        } catch {
+        }
+        walk(absPath, relPath);
       }
     }
   };
@@ -30922,6 +30967,18 @@ function runMigration(options2) {
       message: "Nothing to migrate \u2014 worktree has no local .agents/ content."
     };
   }
+  const symlinks = findSymlinkPaths(localAgents);
+  if (symlinks.length > 0) {
+    return {
+      status: "symlink-unsupported",
+      message: [
+        "Refusing to migrate: found symlinks under worktree-local .agents/.",
+        "Handle these paths manually, then re-run the migrate command:",
+        "",
+        ...symlinks.map((p) => `  ${p}`)
+      ].join("\n")
+    };
+  }
   const moves = planMoves(localAgents, mainAgents, conflictPolicy);
   const plan = {
     kind: "plan",
@@ -30968,13 +31025,20 @@ function findWorktreeRoot(startDir) {
     current = parent;
   }
 }
-var bold17 = (s) => `\x1B[1m${s}\x1B[0m`;
-var green16 = (s) => `\x1B[32m${s}\x1B[0m`;
-var yellow18 = (s) => `\x1B[33m${s}\x1B[0m`;
-var gray18 = (s) => `\x1B[90m${s}\x1B[0m`;
-var cyan13 = (s) => `\x1B[36m${s}\x1B[0m`;
+function shouldUseColor() {
+  return process.env.NO_COLOR === void 0 && process.stdout.isTTY === true;
+}
+function color(code, enabled) {
+  return enabled ? (s) => `\x1B[${code}m${s}\x1B[0m` : (s) => s;
+}
 function formatResult(result, opts) {
   const out = [];
+  const colorEnabled = opts.color ?? shouldUseColor();
+  const bold17 = color("1", colorEnabled);
+  const green16 = color("32", colorEnabled);
+  const yellow18 = color("33", colorEnabled);
+  const gray18 = color("90", colorEnabled);
+  const cyan13 = color("36", colorEnabled);
   if (result.plan) {
     const plan = result.plan;
     out.push(`${bold17("loaf migrate worktree-storage")} ${opts.apply ? cyan13("--apply") : gray18("(dry-run)")}
@@ -31010,7 +31074,10 @@ function formatResult(result, opts) {
 }
 
 // cli/commands/migrate.ts
-var red14 = (s) => `\x1B[31m${s}\x1B[0m`;
+function shouldUseErrorColor() {
+  return process.env.NO_COLOR === void 0 && process.stderr.isTTY === true;
+}
+var red14 = (s) => shouldUseErrorColor() ? `\x1B[31m${s}\x1B[0m` : s;
 function registerMigrateCommand(program3) {
   const migrate = program3.command("migrate").description("One-shot migrations for Loaf state and storage layout");
   migrate.command("worktree-storage").description(
@@ -31044,7 +31111,7 @@ function registerMigrateCommand(program3) {
         console.error(`${red14("error:")} ${result.message}`);
         process.exit(1);
       }
-      if (result.status === "partial-leftover") {
+      if (result.status === "partial-leftover" || result.status === "symlink-unsupported") {
         console.error(`${red14("error:")} ${result.message}`);
         process.exit(1);
       }

@@ -193,6 +193,26 @@ describe("rebuildTaskIndex — scan-window-aware union merge", () => {
     expect(result.next_id).toBeGreaterThanOrEqual(12);
   });
 
+  it("DROPS malformed index-only task IDs instead of treating them as fresh", () => {
+    const agentsDir = makeAgentsDir();
+    const seedIndex: TaskIndex = {
+      version: 1,
+      next_id: 1,
+      tasks: {
+        "TASK-ABC": taskEntry("TASK-ABC", { title: "Malformed" }),
+        "TASK-12A": taskEntry("TASK-12A", { title: "Malformed suffix" }),
+      },
+      specs: {},
+    };
+    saveIndex(join(agentsDir, "TASKS.json"), seedIndex);
+
+    const result = rebuildTaskIndex(agentsDir);
+
+    expect(result.tasks["TASK-ABC"]).toBeUndefined();
+    expect(result.tasks["TASK-12A"]).toBeUndefined();
+    expect(result.next_id).toBe(1);
+  });
+
   it("monotonic next_id across scan, snapshot, and merged max id", () => {
     const agentsDir = makeAgentsDir();
     const seedIndex: TaskIndex = {

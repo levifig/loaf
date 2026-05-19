@@ -90,12 +90,13 @@ function countSpecs(index: TaskIndex): { total: number; byStatus: Record<SpecSta
 
 /**
  * Extract the numeric portion of a task/spec ID. "TASK-019" -> 19,
- * "SPEC-010" -> 10. Returns 0 if the id has no trailing digits (defensive
- * fallback — shouldn't happen for valid IDs).
+ * "SPEC-010" -> 10. Returns null when the id has no trailing digits so
+ * corrupt index-only entries cannot be misclassified as fresh scan-window
+ * tasks.
  */
-function parseEntryIdNumber(id: string): number {
+function parseEntryIdNumber(id: string): number | null {
   const match = id.match(/\d+$/);
-  return match ? parseInt(match[0], 10) : 0;
+  return match ? parseInt(match[0], 10) : null;
 }
 
 function parseTaskStatusFilter(status: string | undefined): TaskStatus | undefined {
@@ -176,7 +177,8 @@ export function rebuildTaskIndex(agentsDir: string): TaskIndex {
       if (mergedTasks[id]) continue; // scan already has it
       // Preserve only entries minted DURING the scan window. Pre-scan
       // entries missing from the scan are stale (their .md was deleted).
-      if (parseEntryIdNumber(id) >= scanStartNextId) {
+      const idNumber = parseEntryIdNumber(id);
+      if (idNumber !== null && idNumber >= scanStartNextId) {
         mergedTasks[id] = entry;
       }
     }
@@ -196,7 +198,7 @@ export function rebuildTaskIndex(agentsDir: string): TaskIndex {
     let maxTaskNum = 0;
     for (const id of Object.keys(mergedTasks)) {
       const n = parseEntryIdNumber(id);
-      if (n > maxTaskNum) maxTaskNum = n;
+      if (n !== null && n > maxTaskNum) maxTaskNum = n;
     }
     const nextId = Math.max(
       scannedIndex.next_id,
