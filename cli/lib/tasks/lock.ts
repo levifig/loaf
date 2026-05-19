@@ -61,11 +61,12 @@ export const TASKS_JSON_LOCK_FILE = ".tasks-json.lock";
 /**
  * Foreign-host / malformed-content age fallback (5 seconds).
  *
- * Lock holders complete in milliseconds. Every callback is a prepared
- * read-apply-write barrier — no file scans, no network calls, nothing that
- * could legitimately push a critical section into the seconds. A foreign-host
- * lock older than a few seconds is therefore genuinely stale: the only reason
- * it would still be present is a crash that the dead process never cleaned up.
+ * Lock holders complete in milliseconds. Every callback is either a prepared
+ * read-apply-write barrier or one small task-file create plus an index update:
+ * no file scans, no network calls, nothing that could legitimately push a
+ * critical section into the seconds. A foreign-host lock older than a few
+ * seconds is therefore genuinely stale: the only reason it would still be
+ * present is a crash that the dead process never cleaned up.
  *
  * The PID-liveness check covers same-host crashes authoritatively; this
  * fallback covers the much rarer foreign-host crash on a shared filesystem,

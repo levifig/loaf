@@ -3,16 +3,15 @@
  *
  * The defect: the original SPEC-036 refactor replaced `current.tasks` and
  * `current.specs` with the pre-scan snapshot from disk. If a concurrent
- * `task create` committed its TASKS.json entry INSIDE the lock (the index
- * write happens before the .md file is written, which lands outside the
- * lock), and that index commit happened DURING our outside scan, the fresh
- * entry would be silently dropped at the in-lock swap.
+ * `task create` committed a task DURING our outside scan, the fresh entry
+ * could be in the live index even though the scan did not observe its .md
+ * file, and it would be silently dropped at the in-lock swap.
  *
  * The fix: scan-window-aware union merge.
  *
  *   - Scanned (on-disk) entries are authoritative.
- *   - PLUS entries minted DURING the scan window (preserved even though no
- *     .md exists yet — the .md write hasn't landed).
+ *   - PLUS entries minted DURING the scan window (preserved even if the
+ *     outside scan did not observe their .md file).
  *   - DROP pre-scan entries that aren't on disk (the whole point of
  *     `refresh` is to reconcile with disk truth).
  */
@@ -89,18 +88,16 @@ afterEach(() => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("rebuildTaskIndex — scan-window-aware union merge", () => {
-  it("preserves an in-lock entry minted DURING the scan window (.md not yet on disk)", () => {
+  it("preserves an in-lock entry minted DURING the scan window (scan did not observe its .md)", () => {
     // Seed TASK-001..TASK-010 with matching .md files. We model the race
     // window by placing TASK-011 in the index with `next_id` still at 11
-    // — exactly the state the file would be in BETWEEN our pre-scan
-    // snapshot (which captures `scanStartNextId = 11`) and the in-lock
-    // re-read in the real race:
+    // — the preservation threshold captured by the pre-scan snapshot
+    // (`scanStartNextId = 11`) before a concurrent create commits:
     //
     //   - Real race: pre-scan snapshot reads next_id=11; concurrent
     //     `task create` then commits TASK-011 + sets next_id=12 inside its
-    //     lock; the .md write lands AFTER its lock release; our scan
-    //     misses TASK-011.md; our in-lock read sees next_id=12 with
-    //     TASK-011 present.
+    //     lock; our scan does not observe TASK-011.md; our in-lock read sees
+    //     next_id=12 with TASK-011 present.
     //   - In-process model: snapshot and in-lock read see the same file
     //     content because there's no concurrent writer. Setting next_id=11
     //     ensures `scanStartNextId = 11`, putting TASK-011 (parsed id=11)
@@ -120,8 +117,8 @@ describe("rebuildTaskIndex — scan-window-aware union merge", () => {
       seedIndex.tasks[id] = taskEntry(id);
       writeTaskMd(agentsDir, id);
     }
-    // TASK-011 is in TASKS.json with NO matching .md — the freshly-minted
-    // entry whose .md write hasn't landed yet.
+    // TASK-011 is in TASKS.json with NO matching .md in this in-process
+    // model — the freshly-minted entry the outside scan did not observe.
     seedIndex.tasks["TASK-011"] = taskEntry("TASK-011");
     saveIndex(join(agentsDir, "TASKS.json"), seedIndex);
 
@@ -168,6 +165,32 @@ describe("rebuildTaskIndex — scan-window-aware union merge", () => {
     expect(result.tasks["TASK-042"]).toBeUndefined();
     // The 10 real tasks survive.
     expect(Object.keys(result.tasks).length).toBe(10);
+  });
+
+  it("DROPS an index-only task immediately below next_id (committed before the snapshot, no .md)", () => {
+    // This is the real stale shape that previously looked indistinguishable
+    // from a pending create: TASK-011 is already below scanStartNextId (=12).
+    // `task create` now creates the .md before the locked index commit, so an
+    // index-only entry in this state is not a legitimate fresh task.
+    const agentsDir = makeAgentsDir();
+    const seedIndex: TaskIndex = {
+      version: 1,
+      next_id: 12,
+      tasks: {},
+      specs: {},
+    };
+    for (let i = 1; i <= 10; i++) {
+      const id = `TASK-${String(i).padStart(3, "0")}`;
+      seedIndex.tasks[id] = taskEntry(id);
+      writeTaskMd(agentsDir, id);
+    }
+    seedIndex.tasks["TASK-011"] = taskEntry("TASK-011", { title: "Index only" });
+    saveIndex(join(agentsDir, "TASKS.json"), seedIndex);
+
+    const result = rebuildTaskIndex(agentsDir);
+
+    expect(result.tasks["TASK-011"]).toBeUndefined();
+    expect(result.next_id).toBeGreaterThanOrEqual(12);
   });
 
   it("monotonic next_id across scan, snapshot, and merged max id", () => {

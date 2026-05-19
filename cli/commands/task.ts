@@ -104,9 +104,9 @@ export function rebuildTaskIndex(agentsDir: string): TaskIndex {
   //
   //   1. OUTSIDE the lock: snapshot the current allocator state, then scan
   //      .md files. We need the snapshot BEFORE the scan because `task
-  //      create` writes its TASKS.json entry inside the lock first and the
-  //      .md file AFTER releasing — so a fresh task minted DURING our scan
-  //      window may exist in the live index but not on disk yet.
+  //      create` can commit a fresh task while the scan is running — the
+  //      live index may contain an entry whose .md file was created after
+  //      our scan observed the tasks directory.
   //
   //   2. INSIDE the lock: re-read the current index (`nowIndex`) and merge
   //      using scan-window semantics:
@@ -116,9 +116,9 @@ export function rebuildTaskIndex(agentsDir: string): TaskIndex {
   //        - PLUS: every entry in `nowIndex` that was minted DURING the
   //          scan window (task id >= scanStartNextId, or a spec id we
   //          didn't see at scan start) — these were committed to TASKS.json
-  //          while our scan was running and their .md file may not have
-  //          landed yet. Preserving them prevents `refresh` from silently
-  //          erasing a freshly-created task.
+  //          while our scan was running and their .md file may not have been
+  //          observed by the outside scan. Preserving them prevents `refresh`
+  //          from silently erasing a freshly-created task.
   //        - DROP: every entry that was in the pre-scan snapshot but is
   //          NOT in `scannedIndex` — those are pre-scan entries whose .md
   //          file is gone (the whole point of `refresh` is to reconcile
@@ -489,14 +489,17 @@ export function registerTaskCommand(program: Command): void {
       //
       // All read-modify-write of TASKS.json (validation against specs/tasks
       // AND the ID mint) happens inside the lock to keep cross-worktree
-      // allocations collision-free under contention. The .md file write is
-      // deliberately outside the lock — the ID is already minted and we
-      // don't want to hold the lock during disk IO that doesn't touch
-      // TASKS.json.
+      // allocations collision-free under contention. The .md file is also
+      // created before the index commit is persisted, so a concurrent refresh
+      // never sees a TASKS.json entry whose backing file has not landed yet.
 
       const spec = options.spec || null;
       const slug = generateSlug(options.title);
       const now = new Date().toISOString();
+      const tasksDir = join(agentsDir, "tasks");
+      if (!existsSync(tasksDir)) {
+        mkdirSync(tasksDir, { recursive: true });
+      }
 
       let taskId: string;
       let dependsOn: string[];
@@ -540,39 +543,19 @@ export function registerTaskCommand(program: Command): void {
             file,
           };
 
-          index.tasks[id] = entry;
-          index.next_id = nextId + 1;
+          const frontmatterData: Record<string, unknown> = {
+            id,
+            title: options.title,
+            status: "todo",
+            priority,
+            created: now,
+            updated: now,
+          };
+          if (spec) frontmatterData.spec = spec;
+          if (deps.length > 0) frontmatterData.depends_on = deps;
 
-          return { taskId: id, dependsOn: deps, fileName: file };
-        }));
-      } catch (err) {
-        if (err instanceof TaskCreateError) {
-          console.error(`  ${red("error:")} ${err.message}`);
-          process.exit(1);
-        }
-        throw err;
-      }
-
-      // ── Create .md file (outside the lock — ID is already committed) ────
-
-      const tasksDir = join(agentsDir, "tasks");
-      if (!existsSync(tasksDir)) {
-        mkdirSync(tasksDir, { recursive: true });
-      }
-
-      const frontmatterData: Record<string, unknown> = {
-        id: taskId,
-        title: options.title,
-        status: "todo",
-        priority,
-        created: now,
-        updated: now,
-      };
-      if (spec) frontmatterData.spec = spec;
-      if (dependsOn.length > 0) frontmatterData.depends_on = dependsOn;
-
-      const body = `
-# ${taskId}: ${options.title}
+          const body = `
+# ${id}: ${options.title}
 
 ## Description
 
@@ -589,8 +572,26 @@ export function registerTaskCommand(program: Command): void {
 \`\`\`
 `;
 
-      const mdContent = matter.stringify(body, frontmatterData);
-      writeFileSync(join(tasksDir, fileName), mdContent, "utf-8");
+          const taskPath = join(tasksDir, file);
+          if (existsSync(taskPath)) {
+            throw new TaskCreateError(`Task file already exists: .agents/tasks/${file}. Run "loaf task sync --import" first.`);
+          }
+
+          const mdContent = matter.stringify(body, frontmatterData);
+          writeFileSync(taskPath, mdContent, { encoding: "utf-8", flag: "wx" });
+
+          index.tasks[id] = entry;
+          index.next_id = nextId + 1;
+
+          return { taskId: id, dependsOn: deps, fileName: file };
+        }));
+      } catch (err) {
+        if (err instanceof TaskCreateError) {
+          console.error(`  ${red("error:")} ${err.message}`);
+          process.exit(1);
+        }
+        throw err;
+      }
 
       // ── Print confirmation ──────────────────────────────────────────────
 
