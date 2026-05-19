@@ -19,6 +19,7 @@ import {
   closeSync,
   statSync,
 } from "fs";
+import { hostname } from "os";
 import { join, dirname, basename } from "path";
 import matter from "gray-matter";
 
@@ -249,51 +250,120 @@ function consumeKnowledgeNudges(projectRoot: string, branch: string): string[] {
 // File Locking for Atomic Operations
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Staleness threshold in milliseconds (30 seconds) */
-const LOCK_STALENESS_THRESHOLD = 30000;
+/**
+ * Conservative age fallback (5 minutes). Only kicked in when we cannot do a
+ * meaningful PID-liveness check — i.e. the lock file is empty/malformed (a
+ * pre-fix Loaf orphan) or the holder is on a different host where our local
+ * PID namespace is meaningless. Deliberately long because a valid critical
+ * section under contention can legitimately exceed shorter thresholds; we
+ * accept extra wait on the foreign/malformed paths in exchange for never
+ * evicting a live local holder. The PID-liveness check is the primary signal.
+ *
+ * Mirrors `LOCK_AGE_FALLBACK_THRESHOLD_MS` in `cli/lib/tasks/lock.ts` so both
+ * locks share the same staleness contract.
+ */
+export const LOCK_AGE_FALLBACK_THRESHOLD_MS = 5 * 60 * 1000;
 
-/** Lock file content format: JSON with PID and timestamp */
+/** Lock file content: PID + host + timestamp. Host is required to keep
+ *  PID-liveness checks honest across machines (a "matching" local PID on a
+ *  foreign-host lock is meaningless). */
 interface LockFileContent {
   pid: number;
+  host: string;
   timestamp: number;
 }
 
-/** Check if a process is still running (signal 0 = existence check) */
+/**
+ * Probe whether `pid` is alive on this host.
+ *
+ *   - `process.kill(pid, 0)` does not actually signal — it just performs the
+ *     permission/existence check. Throws ESRCH when no such process exists,
+ *     EPERM when the process exists but we don't have permission to signal.
+ *   - We treat EPERM as alive: a different user owns the process, so we can't
+ *     poke it, but it is definitely running.
+ *   - Any other error (e.g. EINVAL) we conservatively treat as alive too so
+ *     we never force-evict on the basis of an inconclusive probe.
+ */
 function isProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === "ESRCH") return false; // Confirmed dead.
+    // EPERM or anything else: process likely exists, just unreachable. Treat
+    // as alive — we'd rather wait on a live holder than steal from one.
+    return true;
   }
 }
 
-/** Read lock file content safely */
+/** Read lock file content safely. Returns null on missing/malformed input,
+ *  including a missing PID. */
 function readLockContent(lockPath: string): LockFileContent | null {
   try {
-    const raw = readFileSync(lockPath, 'utf-8');
-    return JSON.parse(raw) as LockFileContent;
+    const parsed = JSON.parse(readFileSync(lockPath, "utf-8")) as Partial<LockFileContent>;
+    if (typeof parsed?.pid !== "number") return null;
+    return {
+      pid: parsed.pid,
+      host: typeof parsed.host === "string" ? parsed.host : "",
+      timestamp: typeof parsed.timestamp === "number" ? parsed.timestamp : 0,
+    };
   } catch {
     return null;
   }
 }
 
-/** Check if lock file is stale (older than threshold OR owning process is dead) */
-function isLockStale(lockPath: string): boolean {
+/**
+ * Decide whether an existing lock file is stale.
+ *
+ * Primary signal — PID liveness on the same host. If the lock file records a
+ * PID and a host that matches `os.hostname()`, we trust `process.kill(pid, 0)`
+ * to answer authoritatively. A long-running but live local holder will NOT be
+ * declared stale, no matter the age — that was the original defect this
+ * function fixes (Codex's bonus finding on SPEC-036).
+ *
+ * Fallback — conservative age check (`LOCK_AGE_FALLBACK_THRESHOLD_MS`). Used
+ * only when we genuinely cannot probe liveness:
+ *
+ *   - Lock file content is empty/malformed (pre-fix Loaf orphaned the lock).
+ *   - Lock was written on a different host (PID namespace is theirs, not
+ *     ours; probing a "matching" local PID would be a false signal).
+ *
+ * On the foreign-host path, age is a last-resort heuristic. We accept extra
+ * wait there in exchange for never evicting a live holder elsewhere.
+ *
+ * Mirrors the staleness contract in `cli/lib/tasks/lock.ts`.
+ */
+export function isLockStale(lockPath: string): boolean {
+  let stats;
   try {
-    const stats = statSync(lockPath);
-    const age = Date.now() - stats.mtimeMs;
-    if (age > LOCK_STALENESS_THRESHOLD) return true;
-
-    // Young lock — check if the owning process is still alive
-    const content = readLockContent(lockPath);
-    if (content?.pid && !isProcessAlive(content.pid)) return true;
-
-    return false;
+    stats = statSync(lockPath);
   } catch {
-    // If we can't read the lock file, assume it's stale
+    // Can't stat — likely the file was removed mid-check. Treat as stale so
+    // the caller proceeds to attempt creation; the openSync("wx") will catch
+    // any genuine race.
     return true;
   }
+
+  const content = readLockContent(lockPath);
+  const age = Date.now() - stats.mtimeMs;
+
+  // Empty/malformed payload (pre-fix Loaf or partial write) — we can't probe
+  // liveness. Fall back to the conservative age threshold.
+  if (!content || !content.pid) {
+    return age > LOCK_AGE_FALLBACK_THRESHOLD_MS;
+  }
+
+  // Different host: local PID checks are meaningless against a remote PID
+  // namespace, so the only safe answer is age-based fallback. We mark this
+  // explicitly so future readers understand why we're not calling kill(0).
+  if (content.host && content.host !== hostname()) {
+    return age > LOCK_AGE_FALLBACK_THRESHOLD_MS;
+  }
+
+  // Same host (or unknown host on a legacy lock file written by pre-fix Loaf
+  // before host was stamped — treat as local). PID liveness is the truth.
+  return !isProcessAlive(content.pid);
 }
 
 /** Force-release a stale lock */
@@ -314,11 +384,13 @@ async function acquireLock(lockPath: string, maxRetries = 50, retryDelay = 100):
         forceReleaseLock(lockPath);
       }
 
-      // Try to create lock file atomically with O_EXCL
+      // Try to create lock file atomically with O_EXCL. After openSync("wx")
+      // succeeds we exclusively own the file descriptor — safe to stamp the
+      // holder identity (pid + host) before anyone else can read it.
       const fd = openSync(lockPath, 'wx');
-      // Write PID and timestamp to lock file
       const lockContent: LockFileContent = {
         pid: process.pid,
+        host: hostname(),
         timestamp: Date.now()
       };
       writeFileSync(fd, JSON.stringify(lockContent), 'utf-8');
@@ -356,9 +428,11 @@ async function acquireLock(lockPath: string, maxRetries = 50, retryDelay = 100):
     const content = readLockContent(lockPath);
     const stats = statSync(lockPath);
     const ageSeconds = Math.round((Date.now() - stats.mtimeMs) / 1000);
-    const alive = content?.pid ? isProcessAlive(content.pid) : false;
+    const sameHost = !content?.host || content.host === hostname();
+    const alive = content?.pid && sameHost ? isProcessAlive(content.pid) : 'unknown (foreign host)';
     diagnostic =
-      `\n  Lock age: ${ageSeconds}s, PID: ${content?.pid ?? 'unknown'}, process alive: ${alive}` +
+      `\n  Lock age: ${ageSeconds}s, PID: ${content?.pid ?? 'unknown'}` +
+      `, host: ${content?.host ?? 'unknown'}, process alive: ${alive}` +
       `\n  Remove manually: rm "${lockPath}"`;
   } catch { /* ignore diagnostic failures */ }
 
