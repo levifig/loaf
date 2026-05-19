@@ -22738,6 +22738,20 @@ function parseEntryIdNumber(id) {
   const match = id.match(/\d+$/);
   return match ? parseInt(match[0], 10) : 0;
 }
+function parseTaskStatusFilter(status) {
+  if (status === void 0) return void 0;
+  if (TASK_STATUSES.includes(status)) return status;
+  throw new Error(`Invalid status "${status}". Must be one of: ${TASK_STATUSES.join(", ")}`);
+}
+function filterTaskIndexForList(index, options2) {
+  const tasks = {};
+  for (const [id, entry] of Object.entries(index.tasks)) {
+    if (options2.active && entry.status === "done") continue;
+    if (options2.status && entry.status !== options2.status) continue;
+    tasks[id] = entry;
+  }
+  return { ...index, tasks };
+}
 function rebuildTaskIndex(agentsDir) {
   const indexPath = join33(agentsDir, "TASKS.json");
   const snapshotBefore = loadIndex(indexPath);
@@ -22780,22 +22794,28 @@ function rebuildTaskIndex(agentsDir) {
 }
 function registerTaskCommand(program3) {
   const task = program3.command("task").description("Manage project tasks");
-  task.command("list").description("Show task board grouped by status").option("--json", "Output raw JSON").option("--active", "Hide completed tasks").action(async (options2) => {
+  task.command("list").description("Show task board grouped by status").option("--json", "Output raw JSON").option("--active", "Hide completed tasks").option("--status <status>", `Only show tasks with status: ${TASK_STATUSES.join(", ")}`).action(async (options2) => {
     const agentsDir = findAgentsDir();
     if (!agentsDir) {
       console.error(`  ${red4("error:")} Could not find .agents/ directory`);
       process.exit(1);
     }
+    let statusFilter;
+    try {
+      statusFilter = parseTaskStatusFilter(options2.status);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`  ${red4("error:")} ${message}`);
+      process.exit(1);
+    }
     const index = getOrBuildIndex(agentsDir);
+    const filteredIndex = filterTaskIndexForList(index, {
+      active: options2.active,
+      status: statusFilter
+    });
     if (options2.json) {
-      if (options2.active) {
-        const filtered = { ...index, tasks: {} };
-        for (const [id, entry] of Object.entries(index.tasks)) {
-          if (entry.status !== "done") {
-            filtered.tasks[id] = entry;
-          }
-        }
-        process.stdout.write(JSON.stringify(filtered, null, 2) + "\n");
+      if (options2.active || statusFilter) {
+        process.stdout.write(JSON.stringify(filteredIndex, null, 2) + "\n");
       } else {
         const indexPath = join33(agentsDir, "TASKS.json");
         if (existsSync27(indexPath)) {
@@ -22806,7 +22826,7 @@ function registerTaskCommand(program3) {
       }
       return;
     }
-    const taskEntries = Object.entries(index.tasks);
+    const taskEntries = Object.entries(filteredIndex.tasks);
     if (taskEntries.length === 0) {
       console.log(`
   ${gray7("No tasks found.")}
@@ -22818,7 +22838,7 @@ function registerTaskCommand(program3) {
 `);
     const grouped = groupTasksByStatus(taskEntries);
     const specIds = /* @__PURE__ */ new Set();
-    const displayStatuses = getDisplayStatuses(!!options2.active);
+    const displayStatuses = statusFilter ? [statusFilter] : getDisplayStatuses(!!options2.active);
     for (const status of displayStatuses) {
       const tasks = sortTasks(grouped[status]);
       const colorFn = STATUS_COLORS[status];

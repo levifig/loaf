@@ -98,6 +98,25 @@ function parseEntryIdNumber(id: string): number {
   return match ? parseInt(match[0], 10) : 0;
 }
 
+function parseTaskStatusFilter(status: string | undefined): TaskStatus | undefined {
+  if (status === undefined) return undefined;
+  if (TASK_STATUSES.includes(status as TaskStatus)) return status as TaskStatus;
+  throw new Error(`Invalid status "${status}". Must be one of: ${TASK_STATUSES.join(", ")}`);
+}
+
+export function filterTaskIndexForList(
+  index: TaskIndex,
+  options: { active?: boolean; status?: TaskStatus },
+): TaskIndex {
+  const tasks: Record<string, TaskEntry> = {};
+  for (const [id, entry] of Object.entries(index.tasks)) {
+    if (options.active && entry.status === "done") continue;
+    if (options.status && entry.status !== options.status) continue;
+    tasks[id] = entry;
+  }
+  return { ...index, tasks };
+}
+
 export function rebuildTaskIndex(agentsDir: string): TaskIndex {
   // Critical-section discipline (ms-scale lock holds) AND scan-window-aware
   // union merge (Codex HOLD on PR #49):
@@ -210,26 +229,33 @@ export function registerTaskCommand(program: Command): void {
     .description("Show task board grouped by status")
     .option("--json", "Output raw JSON")
     .option("--active", "Hide completed tasks")
-    .action(async (options: { json?: boolean; active?: boolean }) => {
+    .option("--status <status>", `Only show tasks with status: ${TASK_STATUSES.join(", ")}`)
+    .action(async (options: { json?: boolean; active?: boolean; status?: string }) => {
       const agentsDir = findAgentsDir();
       if (!agentsDir) {
         console.error(`  ${red("error:")} Could not find .agents/ directory`);
         process.exit(1);
       }
 
+      let statusFilter: TaskStatus | undefined;
+      try {
+        statusFilter = parseTaskStatusFilter(options.status);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`  ${red("error:")} ${message}`);
+        process.exit(1);
+      }
+
       const index = getOrBuildIndex(agentsDir);
+      const filteredIndex = filterTaskIndexForList(index, {
+        active: options.active,
+        status: statusFilter,
+      });
 
       // --json: output as JSON and exit
       if (options.json) {
-        if (options.active) {
-          // Filter out done tasks when --active is set
-          const filtered = { ...index, tasks: {} as Record<string, TaskEntry> };
-          for (const [id, entry] of Object.entries(index.tasks)) {
-            if (entry.status !== "done") {
-              filtered.tasks[id] = entry;
-            }
-          }
-          process.stdout.write(JSON.stringify(filtered, null, 2) + "\n");
+        if (options.active || statusFilter) {
+          process.stdout.write(JSON.stringify(filteredIndex, null, 2) + "\n");
         } else {
           const indexPath = join(agentsDir, "TASKS.json");
           if (existsSync(indexPath)) {
@@ -241,7 +267,7 @@ export function registerTaskCommand(program: Command): void {
         return;
       }
 
-      const taskEntries = Object.entries(index.tasks);
+      const taskEntries = Object.entries(filteredIndex.tasks);
 
       if (taskEntries.length === 0) {
         console.log(`\n  ${gray("No tasks found.")}\n`);
@@ -256,8 +282,10 @@ export function registerTaskCommand(program: Command): void {
       // Collect unique spec IDs for the footer
       const specIds = new Set<string>();
 
-      // Filter statuses when --active is set
-      const displayStatuses = getDisplayStatuses(!!options.active);
+      // Filter statuses when --active or --status is set
+      const displayStatuses = statusFilter
+        ? [statusFilter]
+        : getDisplayStatuses(!!options.active);
 
       // Display each status group
       for (const status of displayStatuses) {
