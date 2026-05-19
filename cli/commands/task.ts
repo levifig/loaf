@@ -10,9 +10,9 @@ import { join } from "path";
 import matter from "gray-matter";
 
 import { findAgentsDir, getOrBuildIndex } from "../lib/tasks/resolve.js";
-import { buildIndexFromFiles, syncFrontmatterFromIndex, findOrphans, archiveTasks } from "../lib/tasks/migrate.js";
+import { buildIndexFromFiles, loadIndex, syncFrontmatterFromIndex, findOrphans, archiveTasks } from "../lib/tasks/migrate.js";
 import { withTasksJsonLock } from "../lib/tasks/lock.js";
-import type { TaskIndex, TaskEntry, TaskStatus, TaskPriority, SpecStatus } from "../lib/tasks/types.js";
+import type { TaskIndex, TaskEntry, SpecEntry, TaskStatus, TaskPriority, SpecStatus } from "../lib/tasks/types.js";
 import { TASK_STATUSES, TASK_PRIORITIES } from "../lib/tasks/types.js";
 import { generateSlug } from "../lib/tasks/slug.js";
 import {
@@ -88,36 +88,108 @@ function countSpecs(index: TaskIndex): { total: number; byStatus: Record<SpecSta
   };
 }
 
-function rebuildTaskIndex(agentsDir: string): TaskIndex {
-  // Critical-section discipline (ms-scale lock holds):
-  //
-  //   1. OUTSIDE the lock: scan .md files and parse frontmatter to build the
-  //      candidate index. This is the heavy step (O(.agents/ task+spec count)
-  //      reads + gray-matter parses) and absolutely must not happen while we
-  //      hold the cross-worktree barrier.
-  //
-  //   2. INSIDE the lock: re-read the current index for "refresh" semantics
-  //      (we want to expose any allocation that landed between our outside
-  //      scan and the lock acquisition without losing it on persist). For a
-  //      hard rebuild we still want next_id to advance monotonically, so we
-  //      take the max of the rebuilt next_id and the current one — this
-  //      protects a concurrent `task create` that minted a higher next_id
-  //      after our outside scan started.
-  //
-  //   3. Persist via the lock helper's standard atomic write.
-  //
-  // The result of holding the lock now is a single read + a few field assigns
-  // + a single atomic write — sub-millisecond on any reasonable filesystem.
-  const rebuilt = buildIndexFromFiles(agentsDir);
+/**
+ * Extract the numeric portion of a task/spec ID. "TASK-019" -> 19,
+ * "SPEC-010" -> 10. Returns 0 if the id has no trailing digits (defensive
+ * fallback — shouldn't happen for valid IDs).
+ */
+function parseEntryIdNumber(id: string): number {
+  const match = id.match(/\d+$/);
+  return match ? parseInt(match[0], 10) : 0;
+}
 
-  return withTasksJsonLock(agentsDir, (current) => {
-    current.version = rebuilt.version;
-    // Monotonic next_id: don't roll back if a concurrent allocator already
-    // moved past us between the outside scan and the lock acquisition.
-    current.next_id = Math.max(rebuilt.next_id, current.next_id);
-    current.tasks = rebuilt.tasks;
-    current.specs = rebuilt.specs;
-    return current;
+export function rebuildTaskIndex(agentsDir: string): TaskIndex {
+  // Critical-section discipline (ms-scale lock holds) AND scan-window-aware
+  // union merge (Codex HOLD on PR #49):
+  //
+  //   1. OUTSIDE the lock: snapshot the current allocator state, then scan
+  //      .md files. We need the snapshot BEFORE the scan because `task
+  //      create` writes its TASKS.json entry inside the lock first and the
+  //      .md file AFTER releasing — so a fresh task minted DURING our scan
+  //      window may exist in the live index but not on disk yet.
+  //
+  //   2. INSIDE the lock: re-read the current index (`nowIndex`) and merge
+  //      using scan-window semantics:
+  //
+  //        - Every entry in `scannedIndex` is authoritative (it exists on
+  //          disk right now), and goes into the merged result.
+  //        - PLUS: every entry in `nowIndex` that was minted DURING the
+  //          scan window (task id >= scanStartNextId, or a spec id we
+  //          didn't see at scan start) — these were committed to TASKS.json
+  //          while our scan was running and their .md file may not have
+  //          landed yet. Preserving them prevents `refresh` from silently
+  //          erasing a freshly-created task.
+  //        - DROP: every entry that was in the pre-scan snapshot but is
+  //          NOT in `scannedIndex` — those are pre-scan entries whose .md
+  //          file is gone (the whole point of `refresh` is to reconcile
+  //          to disk truth).
+  //
+  //   3. `next_id` advances monotonically across all three inputs and the
+  //      max parsed id from the merged tasks (+1).
+  //
+  //   4. Persist via the lock helper's standard atomic write.
+  //
+  // The result of holding the lock is a single read + an O(entries) merge
+  // + a single atomic write — sub-millisecond on any reasonable filesystem.
+
+  // Snapshot the allocator + spec ID set BEFORE the file scan. This defines
+  // the "scan window": anything in `nowIndex` past these thresholds was
+  // minted during the scan and must be preserved.
+  //
+  // We use `loadIndex` rather than acquiring the lock here because all
+  // writers use atomic rename — a torn read is not possible. A concurrent
+  // writer landing between this read and our scan is exactly what the
+  // window-aware merge is designed to handle, so we don't need a barrier
+  // for the snapshot itself.
+  const indexPath = join(agentsDir, "TASKS.json");
+  const snapshotBefore = loadIndex(indexPath);
+  const scanStartNextId = snapshotBefore?.next_id ?? 1;
+  const scanStartSpecIds = new Set(
+    snapshotBefore ? Object.keys(snapshotBefore.specs) : [],
+  );
+
+  const scannedIndex = buildIndexFromFiles(agentsDir);
+
+  return withTasksJsonLock(agentsDir, (nowIndex) => {
+    // ── Merge tasks ────────────────────────────────────────────────────
+    const mergedTasks: Record<string, TaskEntry> = { ...scannedIndex.tasks };
+    for (const [id, entry] of Object.entries(nowIndex.tasks)) {
+      if (mergedTasks[id]) continue; // scan already has it
+      // Preserve only entries minted DURING the scan window. Pre-scan
+      // entries missing from the scan are stale (their .md was deleted).
+      if (parseEntryIdNumber(id) >= scanStartNextId) {
+        mergedTasks[id] = entry;
+      }
+    }
+
+    // ── Merge specs ────────────────────────────────────────────────────
+    const mergedSpecs: Record<string, SpecEntry> = { ...scannedIndex.specs };
+    for (const [id, entry] of Object.entries(nowIndex.specs)) {
+      if (mergedSpecs[id]) continue;
+      // Spec window: any ID we didn't see at scan-start was minted during
+      // the scan window. Pre-scan IDs that the scan missed are stale.
+      if (!scanStartSpecIds.has(id)) {
+        mergedSpecs[id] = entry;
+      }
+    }
+
+    // ── Monotonic next_id ──────────────────────────────────────────────
+    let maxTaskNum = 0;
+    for (const id of Object.keys(mergedTasks)) {
+      const n = parseEntryIdNumber(id);
+      if (n > maxTaskNum) maxTaskNum = n;
+    }
+    const nextId = Math.max(
+      scannedIndex.next_id,
+      nowIndex.next_id,
+      maxTaskNum + 1,
+    );
+
+    nowIndex.version = scannedIndex.version;
+    nowIndex.next_id = nextId;
+    nowIndex.tasks = mergedTasks;
+    nowIndex.specs = mergedSpecs;
+    return nowIndex;
   });
 }
 

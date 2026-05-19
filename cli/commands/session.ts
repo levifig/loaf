@@ -363,6 +363,15 @@ export function isLockStale(lockPath: string): boolean {
   // Different host: local PID checks are meaningless against a remote PID
   // namespace, so the only safe answer is age-based fallback. We mark this
   // explicitly so future readers understand why we're not calling kill(0).
+  //
+  // Clock-skew assumption: this age comparison subtracts `stats.mtimeMs`
+  // (recorded by the filesystem) from `Date.now()` (the local machine).
+  // Foreign-host detection assumes the local clock and the filesystem's
+  // recorded `mtime` come from the same time domain (the local machine).
+  // On shared filesystems across hosts with non-trivial NTP clock skew
+  // (>5s), a live foreign-host lock could be incorrectly identified as
+  // stale. This is acceptable for the supported single-host model; cross-
+  // host shared-FS use is not supported.
   if (content.host && content.host !== hostname()) {
     return age > LOCK_AGE_FALLBACK_THRESHOLD_MS;
   }
