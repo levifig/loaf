@@ -3,8 +3,7 @@ id: SPEC-036
 title: Worktree-aware .agents/ storage routing
 source: direct
 created: '2026-05-19T00:30:00Z'
-status: implementing
-branch: feat/worktree-storage
+status: complete
 ---
 
 # SPEC-036: Worktree-aware `.agents/` storage routing
