@@ -4,12 +4,14 @@ title: >-
   loaf migrate worktree-storage command (dry-run default, back-pointer file,
   round-trip test)
 spec: SPEC-036
-status: todo
+status: done
 priority: P2
 created: '2026-05-18T23:58:56.163Z'
-updated: '2026-05-18T23:58:56.163Z'
+updated: '2026-05-19T09:48:46.260Z'
 depends_on:
   - TASK-166
+session: .agents/sessions/20260519-090118-session.md
+completed_at: '2026-05-19T09:48:46.260Z'
 ---
 
 # TASK-170: loaf migrate worktree-storage command (dry-run default, back-pointer file, round-trip test)
