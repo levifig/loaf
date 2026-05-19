@@ -10,7 +10,8 @@ import { join } from "path";
 import matter from "gray-matter";
 
 import { findAgentsDir, getOrBuildIndex } from "../lib/tasks/resolve.js";
-import { buildIndexFromFiles, saveIndex, syncFrontmatterFromIndex, findOrphans, archiveTasks } from "../lib/tasks/migrate.js";
+import { buildIndexFromFiles, syncFrontmatterFromIndex, findOrphans, archiveTasks } from "../lib/tasks/migrate.js";
+import { withTasksJsonLock } from "../lib/tasks/lock.js";
 import type { TaskIndex, TaskEntry, TaskStatus, TaskPriority, SpecStatus } from "../lib/tasks/types.js";
 import { TASK_STATUSES, TASK_PRIORITIES } from "../lib/tasks/types.js";
 import { generateSlug } from "../lib/tasks/slug.js";
@@ -34,6 +35,18 @@ const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Validation error thrown from inside a `withTasksJsonLock` callback to surface
+ * user-facing messages with `process.exit(1)` without leaking other errors.
+ * Caught at the call site of the lock helper.
+ */
+class TaskCreateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TaskCreateError";
+  }
+}
 
 
 /** Color functions for status headers */
@@ -76,10 +89,22 @@ function countSpecs(index: TaskIndex): { total: number; byStatus: Record<SpecSta
 }
 
 function rebuildTaskIndex(agentsDir: string): TaskIndex {
-  const indexPath = join(agentsDir, "TASKS.json");
-  const index = buildIndexFromFiles(agentsDir);
-  saveIndex(indexPath, index);
-  return index;
+  // Acquire the TASKS.json lock around the build-from-files + persist cycle so
+  // a concurrent task-create from another worktree can't interleave between
+  // the in-memory build (which scans .md files) and the write that clobbers
+  // any allocation the other process just minted.
+  return withTasksJsonLock(agentsDir, (current) => {
+    // The lock callback hands us the current index (either loaded or rebuilt
+    // from .md files inside the lock). We then rebuild explicitly to honor
+    // the "refresh" semantics. The result replaces `current` in place so the
+    // lock helper persists it.
+    const rebuilt = buildIndexFromFiles(agentsDir);
+    current.version = rebuilt.version;
+    current.next_id = rebuilt.next_id;
+    current.tasks = rebuilt.tasks;
+    current.specs = rebuilt.specs;
+    return current;
+  });
 }
 
 
@@ -366,10 +391,7 @@ export function registerTaskCommand(program: Command): void {
         process.exit(1);
       }
 
-      const index = getOrBuildIndex(agentsDir);
-      const indexPath = join(agentsDir, "TASKS.json");
-
-      // ── Validate priority ───────────────────────────────────────────────
+      // ── Validate priority (cheap — no index lookup needed) ──────────────
 
       const priority = options.priority as TaskPriority;
       if (!TASK_PRIORITIES.includes(priority)) {
@@ -377,61 +399,75 @@ export function registerTaskCommand(program: Command): void {
         process.exit(1);
       }
 
-      // ── Validate spec exists ────────────────────────────────────────────
+      // ── Allocate the ID under the TASKS.json lock ───────────────────────
+      //
+      // All read-modify-write of TASKS.json (validation against specs/tasks
+      // AND the ID mint) happens inside the lock to keep cross-worktree
+      // allocations collision-free under contention. The .md file write is
+      // deliberately outside the lock — the ID is already minted and we
+      // don't want to hold the lock during disk IO that doesn't touch
+      // TASKS.json.
 
       const spec = options.spec || null;
-      if (spec && !index.specs[spec]) {
-        console.error(`  ${red("error:")} Spec "${spec}" not found in index`);
-        process.exit(1);
-      }
-
-      // ── Validate depends-on IDs exist ───────────────────────────────────
-
-      const dependsOn: string[] = [];
-      if (options.dependsOn) {
-        for (const depId of options.dependsOn.split(",").map((s) => s.trim())) {
-          if (!index.tasks[depId]) {
-            console.error(`  ${red("error:")} Dependency "${depId}" not found in index`);
-            process.exit(1);
-          }
-          dependsOn.push(depId);
-        }
-      }
-
-      // ── Generate ID and slug ────────────────────────────────────────────
-
-      const nextId = index.next_id;
-      const taskId = `TASK-${String(nextId).padStart(3, "0")}`;
       const slug = generateSlug(options.title);
       const now = new Date().toISOString();
 
-      // ── Create TaskEntry ────────────────────────────────────────────────
+      let taskId: string;
+      let dependsOn: string[];
+      let fileName: string;
+      try {
+        ({ taskId, dependsOn, fileName } = withTasksJsonLock(agentsDir, (index) => {
+          // ── Validate spec exists (inside lock — index is fresh) ──────────
+          if (spec && !index.specs[spec]) {
+            throw new TaskCreateError(`Spec "${spec}" not found in index`);
+          }
 
-      const fileName = `${taskId}-${slug}.md`;
-      const entry: TaskEntry = {
-        title: options.title,
-        slug,
-        spec,
-        status: "todo",
-        priority,
-        depends_on: dependsOn,
-        files: [],
-        verify: null,
-        done: null,
-        session: null,
-        created: now,
-        updated: now,
-        completed_at: null,
-        file: fileName,
-      };
+          // ── Validate depends-on IDs exist ────────────────────────────────
+          const deps: string[] = [];
+          if (options.dependsOn) {
+            for (const depId of options.dependsOn.split(",").map((s) => s.trim())) {
+              if (!index.tasks[depId]) {
+                throw new TaskCreateError(`Dependency "${depId}" not found in index`);
+              }
+              deps.push(depId);
+            }
+          }
 
-      // ── Update index ────────────────────────────────────────────────────
+          // ── Mint the ID ──────────────────────────────────────────────────
+          const nextId = index.next_id;
+          const id = `TASK-${String(nextId).padStart(3, "0")}`;
+          const file = `${id}-${slug}.md`;
+          const entry: TaskEntry = {
+            title: options.title,
+            slug,
+            spec,
+            status: "todo",
+            priority,
+            depends_on: deps,
+            files: [],
+            verify: null,
+            done: null,
+            session: null,
+            created: now,
+            updated: now,
+            completed_at: null,
+            file,
+          };
 
-      index.tasks[taskId] = entry;
-      index.next_id = nextId + 1;
-      saveIndex(indexPath, index);
+          index.tasks[id] = entry;
+          index.next_id = nextId + 1;
 
-      // ── Create .md file ─────────────────────────────────────────────────
+          return { taskId: id, dependsOn: deps, fileName: file };
+        }));
+      } catch (err) {
+        if (err instanceof TaskCreateError) {
+          console.error(`  ${red("error:")} ${err.message}`);
+          process.exit(1);
+        }
+        throw err;
+      }
+
+      // ── Create .md file (outside the lock — ID is already committed) ────
 
       const tasksDir = join(agentsDir, "tasks");
       if (!existsSync(tasksDir)) {
@@ -520,97 +556,103 @@ export function registerTaskCommand(program: Command): void {
         process.exit(1);
       }
 
-      const index = getOrBuildIndex(agentsDir);
-
-      // Validate task ID exists
-      const entry = index.tasks[id];
-      if (!entry) {
-        console.error(`  ${red("error:")} ${id} not found in index`);
-        process.exit(1);
-      }
-
       // Track changes for confirmation output
       const changes: Array<{ field: string; from: string; to: string }> = [];
+      let entryAfter: TaskEntry;
 
-      // ── Validate and apply --status ───────────────────────────────────
-      if (options.status !== undefined) {
-        if (!TASK_STATUSES.includes(options.status as TaskStatus)) {
-          console.error(`  ${red("error:")} Invalid status "${options.status}". Valid: ${TASK_STATUSES.join(", ")}`);
-          process.exit(1);
-        }
-
-        const oldStatus = entry.status;
-        const newStatus = options.status as TaskStatus;
-
-        // Handle completed_at transitions
-        if (newStatus === "done" && oldStatus !== "done") {
-          entry.completed_at = new Date().toISOString();
-        } else if (newStatus !== "done" && oldStatus === "done") {
-          entry.completed_at = null;
-        }
-
-        entry.status = newStatus;
-        changes.push({ field: "Status", from: oldStatus, to: newStatus });
-      }
-
-      // ── Validate and apply --priority ─────────────────────────────────
-      if (options.priority !== undefined) {
-        if (!TASK_PRIORITIES.includes(options.priority as TaskPriority)) {
-          console.error(`  ${red("error:")} Invalid priority "${options.priority}". Valid: ${TASK_PRIORITIES.join(", ")}`);
-          process.exit(1);
-        }
-
-        const oldPriority = entry.priority;
-        const newPriority = options.priority as TaskPriority;
-        entry.priority = newPriority;
-        changes.push({ field: "Priority", from: oldPriority, to: newPriority });
-      }
-
-      // ── Validate and apply --depends-on ───────────────────────────────
-      if (options.dependsOn !== undefined) {
-        const newDeps = options.dependsOn
-          .split(",")
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0);
-
-        for (const depId of newDeps) {
-          if (!index.tasks[depId]) {
-            console.error(`  ${red("error:")} Unknown task ID "${depId}" in --depends-on`);
-            process.exit(1);
+      try {
+        entryAfter = withTasksJsonLock(agentsDir, (index) => {
+          // Validate task ID exists (inside lock — fresh index)
+          const entry = index.tasks[id];
+          if (!entry) {
+            throw new TaskCreateError(`${id} not found in index`);
           }
-        }
 
-        const oldDeps = entry.depends_on.length > 0 ? entry.depends_on.join(", ") : "(none)";
-        entry.depends_on = newDeps;
-        changes.push({ field: "Depends on", from: oldDeps, to: newDeps.length > 0 ? newDeps.join(", ") : "(none)" });
-      }
+          // ── Validate and apply --status ─────────────────────────────────
+          if (options.status !== undefined) {
+            if (!TASK_STATUSES.includes(options.status as TaskStatus)) {
+              throw new TaskCreateError(`Invalid status "${options.status}". Valid: ${TASK_STATUSES.join(", ")}`);
+            }
 
-      // ── Apply --session ───────────────────────────────────────────────
-      if (options.session !== undefined) {
-        const oldSession = entry.session || "(none)";
-        const newSession = options.session === "none" ? null : options.session;
-        entry.session = newSession;
-        changes.push({ field: "Session", from: oldSession, to: newSession || "(none)" });
-      }
+            const oldStatus = entry.status;
+            const newStatus = options.status as TaskStatus;
 
-      // ── Apply --spec ──────────────────────────────────────────────────
-      if (options.spec !== undefined) {
-        if (options.spec !== "none" && !index.specs[options.spec]) {
-          console.error(`  ${red("error:")} Unknown spec "${options.spec}". Use \`loaf spec list\` to see valid IDs.`);
+            if (newStatus === "done" && oldStatus !== "done") {
+              entry.completed_at = new Date().toISOString();
+            } else if (newStatus !== "done" && oldStatus === "done") {
+              entry.completed_at = null;
+            }
+
+            entry.status = newStatus;
+            changes.push({ field: "Status", from: oldStatus, to: newStatus });
+          }
+
+          // ── Validate and apply --priority ───────────────────────────────
+          if (options.priority !== undefined) {
+            if (!TASK_PRIORITIES.includes(options.priority as TaskPriority)) {
+              throw new TaskCreateError(`Invalid priority "${options.priority}". Valid: ${TASK_PRIORITIES.join(", ")}`);
+            }
+
+            const oldPriority = entry.priority;
+            const newPriority = options.priority as TaskPriority;
+            entry.priority = newPriority;
+            changes.push({ field: "Priority", from: oldPriority, to: newPriority });
+          }
+
+          // ── Validate and apply --depends-on ─────────────────────────────
+          if (options.dependsOn !== undefined) {
+            const newDeps = options.dependsOn
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0);
+
+            for (const depId of newDeps) {
+              if (!index.tasks[depId]) {
+                throw new TaskCreateError(`Unknown task ID "${depId}" in --depends-on`);
+              }
+            }
+
+            const oldDeps = entry.depends_on.length > 0 ? entry.depends_on.join(", ") : "(none)";
+            entry.depends_on = newDeps;
+            changes.push({ field: "Depends on", from: oldDeps, to: newDeps.length > 0 ? newDeps.join(", ") : "(none)" });
+          }
+
+          // ── Apply --session ─────────────────────────────────────────────
+          if (options.session !== undefined) {
+            const oldSession = entry.session || "(none)";
+            const newSession = options.session === "none" ? null : options.session;
+            entry.session = newSession;
+            changes.push({ field: "Session", from: oldSession, to: newSession || "(none)" });
+          }
+
+          // ── Apply --spec ────────────────────────────────────────────────
+          if (options.spec !== undefined) {
+            if (options.spec !== "none" && !index.specs[options.spec]) {
+              throw new TaskCreateError(`Unknown spec "${options.spec}". Use \`loaf spec list\` to see valid IDs.`);
+            }
+            const oldSpec = entry.spec || "(none)";
+            const newSpec = options.spec === "none" ? null : options.spec;
+            entry.spec = newSpec;
+            changes.push({ field: "Spec", from: oldSpec, to: newSpec || "(none)" });
+          }
+
+          entry.updated = new Date().toISOString();
+          // syncFrontmatterFromIndex below reads files individually — safe to
+          // run outside the lock once the index is persisted.
+          return entry;
+        });
+      } catch (err) {
+        if (err instanceof TaskCreateError) {
+          console.error(`  ${red("error:")} ${err.message}`);
           process.exit(1);
         }
-        const oldSpec = entry.spec || "(none)";
-        const newSpec = options.spec === "none" ? null : options.spec;
-        entry.spec = newSpec;
-        changes.push({ field: "Spec", from: oldSpec, to: newSpec || "(none)" });
+        throw err;
       }
 
-      // ── Update timestamp and persist ──────────────────────────────────
-      entry.updated = new Date().toISOString();
-
-      const indexPath = join(agentsDir, "TASKS.json");
-      saveIndex(indexPath, index);
-      syncFrontmatterFromIndex(agentsDir, index);
+      // Refresh on-disk .md frontmatter from the updated index.
+      const freshIndex = getOrBuildIndex(agentsDir);
+      syncFrontmatterFromIndex(agentsDir, freshIndex);
+      const entry = entryAfter;
 
       // ── Print confirmation ────────────────────────────────────────────
       console.log(`\n  ${bold("loaf task update")}\n`);
@@ -651,60 +693,74 @@ export function registerTaskCommand(program: Command): void {
         process.exit(1);
       }
 
-      const index = getOrBuildIndex(agentsDir);
-      const indexPath = join(agentsDir, "TASKS.json");
-
-      // ── Resolve target task IDs ─────────────────────────────────────────
-
-      let targetIds: string[] = [];
-
-      if (options.spec) {
-        if (!index.specs[options.spec]) {
-          console.error(`  ${red("error:")} Spec "${options.spec}" not found in index`);
-          process.exit(1);
-        }
-
-        targetIds = Object.entries(index.tasks)
-          .filter(([, entry]) => entry.spec === options.spec && entry.status === "done")
-          .map(([id]) => id);
-
-        if (targetIds.length === 0) {
-          console.log(`\n  ${gray("No completed tasks found for")} ${options.spec}\n`);
-          return;
-        }
-      } else if (ids.length > 0) {
-        targetIds = ids;
-      } else {
-        console.error(`  ${red("error:")} Provide task IDs or use --spec <id>`);
-        process.exit(1);
-      }
-
-      // ── Archive ──────────────────────────────────────────────────────────
-
       console.log(`\n  ${bold("loaf task archive")}\n`);
-
-      const results = archiveTasks(agentsDir, index, targetIds);
 
       let archived = 0;
       let skipped = 0;
+      let earlyReturn = false;
 
-      for (const r of results) {
-        if (r.status === "archived") {
-          const entry = index.tasks[r.id];
-          console.log(`  ${green("✓")} ${bold(r.id)}: ${entry.title}`);
-          archived++;
-        } else {
-          const icon = r.reason === "already archived" ? gray("⊘") : yellow("⊘");
-          console.log(`  ${icon} ${bold(r.id)}: ${r.reason}`);
-          skipped++;
+      try {
+        withTasksJsonLock(agentsDir, (index) => {
+          // ── Resolve target task IDs (inside lock — fresh index) ───────────
+
+          let targetIds: string[] = [];
+
+          if (options.spec) {
+            if (!index.specs[options.spec]) {
+              throw new TaskCreateError(`Spec "${options.spec}" not found in index`);
+            }
+
+            targetIds = Object.entries(index.tasks)
+              .filter(([, entry]) => entry.spec === options.spec && entry.status === "done")
+              .map(([id]) => id);
+
+            if (targetIds.length === 0) {
+              earlyReturn = true;
+              return false; // no-write short-circuit inside the lock
+            }
+          } else if (ids.length > 0) {
+            targetIds = ids;
+          } else {
+            throw new TaskCreateError("Provide task IDs or use --spec <id>");
+          }
+
+          // ── Archive (mutates index entries' file paths + renames .md) ─────
+
+          const results = archiveTasks(agentsDir, index, targetIds);
+
+          for (const r of results) {
+            if (r.status === "archived") {
+              const entry = index.tasks[r.id];
+              console.log(`  ${green("✓")} ${bold(r.id)}: ${entry.title}`);
+              archived++;
+            } else {
+              const icon = r.reason === "already archived" ? gray("⊘") : yellow("⊘");
+              console.log(`  ${icon} ${bold(r.id)}: ${r.reason}`);
+              skipped++;
+            }
+          }
+
+          if (archived === 0) {
+            return false; // nothing changed — skip the write
+          }
+          return undefined;
+        });
+      } catch (err) {
+        if (err instanceof TaskCreateError) {
+          console.error(`  ${red("error:")} ${err.message}`);
+          process.exit(1);
         }
+        throw err;
       }
 
-      // ── Persist ─────────────────────────────────────────────────────────
+      if (earlyReturn) {
+        console.log(`\n  ${gray("No completed tasks found for")} ${options.spec}\n`);
+        return;
+      }
 
       if (archived > 0) {
-        saveIndex(indexPath, index);
-        syncFrontmatterFromIndex(agentsDir, index);
+        const freshIndex = getOrBuildIndex(agentsDir);
+        syncFrontmatterFromIndex(agentsDir, freshIndex);
       }
 
       console.log();
@@ -759,8 +815,6 @@ export function registerTaskCommand(program: Command): void {
         process.exit(1);
       }
 
-      const indexPath = join(agentsDir, "TASKS.json");
-
       console.log(`\n  ${bold("loaf task sync")}\n`);
 
       if (options.push) {
@@ -774,54 +828,59 @@ export function registerTaskCommand(program: Command): void {
         console.log(`    Tasks: ${totalTasks}, Specs: ${totalSpecs}`);
         console.log();
       } else if (options.import) {
-        // ── Import mode: find orphans and merge ──────────────────────────
+        // ── Import mode: find orphans and merge under the lock ─────────────
 
-        const index = getOrBuildIndex(agentsDir);
-        const orphans = findOrphans(agentsDir, index);
+        let importedTasks = 0;
+        let importedSpecs = 0;
 
-        const totalOrphans = orphans.tasks.length + orphans.specs.length;
+        withTasksJsonLock(agentsDir, (index) => {
+          const orphans = findOrphans(agentsDir, index);
+          const totalOrphans = orphans.tasks.length + orphans.specs.length;
 
-        if (totalOrphans === 0) {
+          if (totalOrphans === 0) {
+            return false; // no-op write
+          }
+
+          console.log(`  Found ${totalOrphans} orphan file(s):`);
+
+          for (const orphan of orphans.tasks) {
+            console.log(`    ${green("+")} ${orphan.entry.file}`);
+          }
+          for (const orphan of orphans.specs) {
+            console.log(`    ${green("+")} ${orphan.entry.file}`);
+          }
+
+          let maxTaskNum = index.next_id - 1;
+          for (const orphan of orphans.tasks) {
+            index.tasks[orphan.id] = orphan.entry;
+            const num = extractOrphanNumber(orphan.id);
+            if (num > maxTaskNum) maxTaskNum = num;
+          }
+          for (const orphan of orphans.specs) {
+            index.specs[orphan.id] = orphan.entry;
+          }
+
+          if (maxTaskNum >= index.next_id) {
+            index.next_id = maxTaskNum + 1;
+          }
+
+          importedTasks = orphans.tasks.length;
+          importedSpecs = orphans.specs.length;
+          return undefined;
+        });
+
+        if (importedTasks === 0 && importedSpecs === 0) {
           console.log(`  No orphan files found.`);
           console.log();
           return;
         }
 
-        console.log(`  Found ${totalOrphans} orphan file(s):`);
-
-        for (const orphan of orphans.tasks) {
-          console.log(`    ${green("+")} ${orphan.entry.file}`);
-        }
-        for (const orphan of orphans.specs) {
-          console.log(`    ${green("+")} ${orphan.entry.file}`);
-        }
-
-        // Merge orphan tasks into the index
-        let maxTaskNum = index.next_id - 1;
-        for (const orphan of orphans.tasks) {
-          index.tasks[orphan.id] = orphan.entry;
-          const num = extractOrphanNumber(orphan.id);
-          if (num > maxTaskNum) maxTaskNum = num;
-        }
-
-        // Merge orphan specs into the index
-        for (const orphan of orphans.specs) {
-          index.specs[orphan.id] = orphan.entry;
-        }
-
-        // Update next_id if any imported task has a higher number
-        if (maxTaskNum >= index.next_id) {
-          index.next_id = maxTaskNum + 1;
-        }
-
-        saveIndex(indexPath, index);
-
         const importedParts: string[] = [];
-        if (orphans.tasks.length > 0) importedParts.push(`${orphans.tasks.length} task(s)`);
-        if (orphans.specs.length > 0) importedParts.push(`${orphans.specs.length} spec(s)`);
+        if (importedTasks > 0) importedParts.push(`${importedTasks} task(s)`);
+        if (importedSpecs > 0) importedParts.push(`${importedSpecs} spec(s)`);
 
         console.log();
-        console.log(`  ${green("\u2713")} Imported ${importedParts.join(" and ")} into TASKS.json`);
+        console.log(`  ${green("✓")} Imported ${importedParts.join(" and ")} into TASKS.json`);
         console.log();
       } else {
         // ── Full rebuild mode ────────────────────────────────────────────

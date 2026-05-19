@@ -31,7 +31,7 @@ The underlying error was categorical. `.agents/` is not branch content; it's pro
 
 - **A1: sessions-only routing.** Make only `.agents/sessions/` resolve to the main worktree; leave specs/tasks/plans/KB branch-local. Rejected: addresses misrouting but leaves the ID-clash and knowledge-fragmentation fallouts. Partial fix to a categorical bug.
 
-- **A2: per-artifact-kind split.** Sessions, KB, and ID allocators centralized; specs, tasks, and plans branch-local. Rejected: requires per-call-site refactor and dual-view scanning, and the property it buys — specs and tasks visible in feature-branch PR diffs — isn't load-bearing under the squash-merge workflow. Reviewers reach spec/task context via the PR description, not the diff. The split paid in complexity for a benefit that wasn't being collected.
+- **A2: per-artifact-kind split.** Sessions, KB, and ID allocators centralized; specs, tasks, and plans branch-local. Rejected: requires per-call-site refactor and dual-view scanning. The deeper property A2 would buy is that mutations to specs, tasks, and plans would flow through the same git-native gates as code — PR review, conflict resolution via three-way merge, and atomic landing on main. Under A3, those mutations happen out-of-band: they land directly in the main worktree's `.agents/` without traversing a PR, and reviewers won't see them as diff entries. The tradeoff is acknowledged and accepted (see *Consequences → Negative*); under the squash-merge workflow, reviewers reach spec/task context via the PR description and canonical archive paths rather than the diff, and the complexity cost of A2 wasn't being repaid by review value that was actually getting collected.
 
 - **Symlinks.** Symlink each linked worktree's `.agents/` into the main one. Rejected: fragile across `git worktree add` (Git doesn't preserve the link on new worktree creation), gets accidentally committed, confuses contributors, and the failure mode is silent divergence.
 
@@ -50,6 +50,7 @@ The underlying error was categorical. `.agents/` is not branch content; it's pro
 ### Negative
 
 - **Sessions, specs, and tasks no longer appear in PR diffs.** Reviewers see only code changes. Spec and task context is reachable via the PR description and repo paths. Acceptable trade: review attention belongs on code; context is one link away.
+- **Mutations to agentic state bypass git-native review and merge gates.** Changes to specs, tasks, plans, and journal entries land directly in the main worktree's `.agents/` without flowing through PR review or three-way merge resolution. Reviewers encounter them via the canonical archive paths and the PR description, not as diff entries on the feature branch. Concurrent edits to the same `.agents/` content from different worktrees are coordinated at the filesystem layer (lock files + atomic writes), not by Git. Accepted as the cost of treating agentic state as project-scoped working memory rather than branch content.
 - **Pre-existing worktrees require migration.** Anyone using `git worktree add` against a Loaf project on a version that predates this ADR must run `loaf migrate worktree-storage` before their next `loaf` command works.
 - **The "spec on main, tasks+code on branch" convention is retired.** It was a workaround for the bug this ADR fixes. See *Follow-on*.
 

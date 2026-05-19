@@ -29,12 +29,13 @@ import {
   writeFileSync,
 } from "fs";
 import { execFileSync } from "child_process";
-import { join } from "path";
+import { dirname, join } from "path";
 import { tmpdir } from "os";
 
 import {
   BACK_POINTER_FILE,
   detectPreA3State,
+  PARTIAL_SUFFIX,
   PRE_A3_REFUSAL_MESSAGE,
   readBackPointer,
   runMigration,
@@ -476,5 +477,121 @@ describe("runMigration — back-pointer & idempotency", () => {
     // Already-migrated short-circuits before any writes, so the file is
     // byte-and-mtime stable across re-runs.
     expect(t2).toBe(t1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Partial-leftover detection (EXDEV recovery)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The EXDEV path stages `<dst>.partial.loaf-migrate` and atomically renames it
+// onto the final destination. A run that gets interrupted before the rename
+// leaves the partial behind. `runMigration` must refuse on the next run and
+// surface the partial paths so the user can recover deterministically (rather
+// than risk silently picking the staged copy as a conflict winner).
+
+describe("runMigration — partial-leftover detection", () => {
+  it("refuses to run when the destination tree contains a *.partial.loaf-migrate path", () => {
+    const main = createMainRepo("partial-refuse");
+    const linked = addWorktree(main, "feat/partial");
+    seedPreA3WorktreeLayout(linked);
+
+    // Simulate an interrupted EXDEV stage: a half-written partial under the
+    // main worktree's `.agents/`.
+    const partialPath = join(
+      main,
+      ".agents",
+      `kb${PARTIAL_SUFFIX}`,
+    );
+    mkdirSync(dirname(partialPath), { recursive: true });
+    writeFileSync(partialPath, "half-staged content\n", "utf-8");
+
+    const result = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    expect(result.status).toBe("partial-leftover");
+    expect(result.partials).toBeDefined();
+    expect(result.partials).toContain(partialPath);
+    // Message must list the partial path so users can act on it.
+    expect(result.message).toContain(partialPath);
+    // Message must mention the suffix so the user can grep / understand.
+    expect(result.message).toContain(PARTIAL_SUFFIX);
+  });
+
+  it("lists multiple partials in the refusal message", () => {
+    const main = createMainRepo("partial-multi");
+    const linked = addWorktree(main, "feat/multi");
+    seedPreA3WorktreeLayout(linked);
+
+    const paths = [
+      join(main, ".agents", `kb${PARTIAL_SUFFIX}`),
+      join(main, ".agents", `tasks${PARTIAL_SUFFIX}`),
+      join(main, ".agents", "nested", `dir${PARTIAL_SUFFIX}`),
+    ];
+    for (const p of paths) {
+      mkdirSync(dirname(p), { recursive: true });
+      writeFileSync(p, "partial\n", "utf-8");
+    }
+
+    const result = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    expect(result.status).toBe("partial-leftover");
+    for (const p of paths) {
+      expect(result.partials).toContain(p);
+      expect(result.message).toContain(p);
+    }
+  });
+
+  it("after manual cleanup of the partial, re-running migrate completes normally", () => {
+    const main = createMainRepo("partial-cleanup-recovery");
+    const linked = addWorktree(main, "feat/recover");
+    seedPreA3WorktreeLayout(linked);
+
+    const partialPath = join(main, ".agents", `kb${PARTIAL_SUFFIX}`);
+    mkdirSync(dirname(partialPath), { recursive: true });
+    writeFileSync(partialPath, "partial\n", "utf-8");
+
+    // First run: refused.
+    const refused = runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    expect(refused.status).toBe("partial-leftover");
+
+    // Manual cleanup (the user deletes the partial).
+    rmSync(partialPath, { force: true });
+
+    // Re-run: now completes normally.
+    const applied = runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    expect(applied.status).toBe("applied");
+    expect(readBackPointer(join(linked, ".agents"))).toBe(main);
+  });
+
+  it("apply refuses just like dry-run when partials are present", () => {
+    const main = createMainRepo("partial-apply-refuse");
+    const linked = addWorktree(main, "feat/apply-refuse");
+    seedPreA3WorktreeLayout(linked);
+
+    const partialPath = join(main, ".agents", `kb${PARTIAL_SUFFIX}`);
+    mkdirSync(dirname(partialPath), { recursive: true });
+    writeFileSync(partialPath, "partial\n", "utf-8");
+
+    const result = runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    expect(result.status).toBe("partial-leftover");
+    // Worktree-local files MUST still be in place — refusal must not have
+    // mutated anything.
+    expect(existsSync(join(linked, ".agents", "AGENTS.md"))).toBe(true);
+  });
+
+  it("ignores partial-looking paths that don't end in the exact suffix", () => {
+    // Defense against an over-eager prefix match — only the explicit suffix
+    // qualifies as a "partial".
+    const main = createMainRepo("partial-suffix-strict");
+    const linked = addWorktree(main, "feat/strict");
+    seedPreA3WorktreeLayout(linked);
+
+    // A user file that happens to include the prefix but doesn't end with it.
+    writeFileSync(
+      join(main, ".agents", "ideas-2026.partial-thoughts.md"),
+      "not a partial\n",
+      "utf-8",
+    );
+
+    const result = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    expect(result.status).toBe("planned");
   });
 });

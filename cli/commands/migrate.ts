@@ -90,6 +90,14 @@ export function registerMigrateCommand(program: Command): void {
           process.exit(1);
         }
 
+        if (result.status === "partial-leftover") {
+          // Refusal: a previous run was interrupted mid-EXDEV-stage. Print
+          // the formatted output (it lists the leftover paths) to stderr
+          // and exit non-zero so the user notices.
+          console.error(`${red("error:")} ${result.message}`);
+          process.exit(1);
+        }
+
         console.log(output);
         process.exit(0);
       } catch (err) {

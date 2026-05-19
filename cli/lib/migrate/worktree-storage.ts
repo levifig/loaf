@@ -210,12 +210,15 @@ export type MigrationStatus =
   | "no-local-agents"
   | "already-migrated"
   | "planned"
-  | "applied";
+  | "applied"
+  | "partial-leftover";
 
 export interface MigrationResult {
   status: MigrationStatus;
   message: string;
   plan?: MigrationPlan;
+  /** Set when `status === "partial-leftover"`: the leftover staging paths. */
+  partials?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -310,6 +313,13 @@ function planMoves(
 // Apply
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Suffix used to stage cross-filesystem moves before the atomic rename swaps
+ * the staged copy into place. Exposed so the startup partial-detection scan
+ * can identify lingering partials from a previous interrupted run.
+ */
+export const PARTIAL_SUFFIX = ".partial.loaf-migrate";
+
 function applyMove(move: PlannedMove): void {
   if (move.conflict) {
     if (move.resolution === "keep-main") {
@@ -335,18 +345,67 @@ function applyMove(move: PlannedMove): void {
   try {
     renameSync(move.from, move.to);
   } catch (err) {
-    // EXDEV: crossing filesystem boundaries. Fall back to cpSync (preserves
-    // mode bits, mtimes; handles directories) + rmSync. We previously used
-    // readFileSync/writeFileSync, which lost mode bits (executable scripts),
-    // mtimes (matters for future re-migrations), and dereferenced symlinks.
+    // EXDEV: crossing filesystem boundaries. We can't rename across FS
+    // boundaries, so we stage a copy on the destination FS first and then
+    // atomically rename the staged copy into place. The staging buys us:
+    //
+    //   - Atomicity at the rename boundary. A disk-full or Ctrl-C during the
+    //     cpSync leaves only `<dst>.partial.loaf-migrate` — the destination
+    //     itself is never half-written, and the source is still intact.
+    //   - A detectable signal for partial-move recovery. `runMigration`
+    //     refuses to start when it finds any `*.partial.loaf-migrate` paths
+    //     under the destination tree (see `findPartialPaths`).
+    //
+    // We deliberately do NOT auto-recover on next run. The user fixes it
+    // (delete the partial, or rename it into place) and re-runs. This is
+    // a "fail loudly" stance consistent with the spec's hard-cut philosophy.
     const nodeErr = err as NodeJS.ErrnoException;
     if (nodeErr.code === "EXDEV") {
-      cpSync(move.from, move.to, { recursive: true, preserveTimestamps: true });
+      const partial = move.to + PARTIAL_SUFFIX;
+      // Clean up any leftover partial from a prior run BEFORE we stage —
+      // we wouldn't be here on a sane second run because runMigration's
+      // startup check refuses, but be defensive in case the caller bypassed
+      // that check (tests, scripts, etc.).
+      try { rmSync(partial, { recursive: true, force: true }); } catch { /* ignore */ }
+      // Stage onto the destination FS so the subsequent rename is intra-FS.
+      cpSync(move.from, partial, { recursive: true, preserveTimestamps: true });
+      // Atomic swap — at this point either the destination exists in full
+      // or it doesn't exist at all.
+      renameSync(partial, move.to);
+      // Source can go now that the destination is committed.
       rmSync(move.from, { recursive: true, force: true });
     } else {
       throw err;
     }
   }
+}
+
+/**
+ * Walk `dir` recursively and collect all file/directory paths ending in
+ * `PARTIAL_SUFFIX`. Used at the start of `runMigration` to refuse running
+ * when a previous attempt was interrupted mid-EXDEV-stage.
+ */
+function findPartialPaths(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  const walk = (current: string) => {
+    let entries: import("fs").Dirent[];
+    try {
+      entries = readdirSync(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const abs = join(current, entry.name);
+      if (entry.name.endsWith(PARTIAL_SUFFIX)) {
+        out.push(abs);
+        continue; // don't descend into partials themselves
+      }
+      if (entry.isDirectory()) walk(abs);
+    }
+  };
+  walk(dir);
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -384,6 +443,31 @@ export function runMigration(options: MigrationOptions): MigrationResult {
   const wtRoot = findWorktreeRoot(cwd) ?? cwd;
   const localAgents = join(wtRoot, ".agents");
   const mainAgents = join(mainRoot, ".agents");
+
+  // 1b. Partial-leftover detection. A previous EXDEV-staged run that was
+  //     interrupted (Ctrl-C, disk-full, power loss) leaves `*.partial.loaf-migrate`
+  //     paths under the destination tree. We refuse to proceed until the user
+  //     resolves them — auto-recovery would risk silent corruption (the
+  //     conflict policy might prefer the partial main copy over the intact
+  //     worktree copy).
+  const partials = findPartialPaths(mainAgents);
+  if (partials.length > 0) {
+    const lines = [
+      "Refusing to migrate: found leftover staging paths from a previous interrupted run.",
+      "Resolve each path manually (delete it, or rename it into place if you trust the staged copy),",
+      "then re-run the migrate command:",
+      "",
+      ...partials.map((p) => `  ${p}`),
+      "",
+      `These paths end in '${PARTIAL_SUFFIX}' and were created by an EXDEV cross-filesystem`,
+      "stage that did not complete the atomic rename to the final destination.",
+    ];
+    return {
+      status: "partial-leftover",
+      message: lines.join("\n"),
+      partials,
+    };
+  }
 
   // 2. Already migrated?
   const pointer = readBackPointer(localAgents);

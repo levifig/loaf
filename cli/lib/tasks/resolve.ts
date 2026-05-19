@@ -15,10 +15,11 @@
  */
 
 import { execFileSync } from "child_process";
-import { existsSync } from "fs";
+import { existsSync, realpathSync } from "fs";
 import { join, dirname, resolve } from "path";
 
-import { loadIndex, buildIndexFromFiles, saveIndex } from "./migrate.js";
+import { loadIndex, buildIndexFromFiles } from "./migrate.js";
+import { withTasksJsonLock } from "./lock.js";
 import type { TaskIndex } from "./types.js";
 
 /**
@@ -37,6 +38,43 @@ export const DEBUG_RESOLVE_ENV = "LOAF_DEBUG_RESOLVE";
 export function isDebugResolveEnabled(): boolean {
   const v = process.env[DEBUG_RESOLVE_ENV];
   return v !== undefined && /^(1|true|yes|on)$/i.test(v);
+}
+
+/**
+ * Normalize a path for cross-FS-quirk comparison:
+ *
+ *   - Resolve symlinks / junctions via `realpathSync.native` (falls back to
+ *     `realpathSync` on older Node versions or platforms that lack the
+ *     native variant) so two paths that point at the same inode/file compare
+ *     equal even if one was reached through a symlink and the other wasn't.
+ *   - On Windows only, lowercase the result so case-insensitive paths
+ *     compare equal. On POSIX, case matters — we leave the path alone.
+ *
+ * If `realpathSync` itself throws (the path was removed mid-call, the
+ * directory is in a transient state, etc.) we fail open and return the
+ * input unchanged. The downstream comparison then uses raw strings, which
+ * is the pre-fix behavior — strictly never worse than what we had.
+ */
+function normalizePathForComparison(p: string): string {
+  const canonical = realpathOrSelf(p);
+  return process.platform === "win32" ? canonical.toLowerCase() : canonical;
+}
+
+/**
+ * Best-effort `realpathSync.native` with a fall-open to the input on any
+ * filesystem error. Used by `normalizePathForComparison` and by the
+ * worktree-root return value (where we want the canonical path, but we
+ * never want to crash the resolver because realpath failed in a transient
+ * state).
+ */
+function realpathOrSelf(p: string): string {
+  try {
+    const fn = (realpathSync as typeof realpathSync & { native?: typeof realpathSync }).native
+      ?? realpathSync;
+    return fn(p);
+  } catch {
+    return p;
+  }
 }
 
 /**
@@ -76,8 +114,16 @@ export function findMainWorktreeRoot(startDir: string): string | null {
 
     // Belt-and-suspenders: resolve against `startDir` in case an older git
     // ignores `--path-format=absolute` and returns a relative path.
-    const gitDir = resolve(startDir, rawGitDir);
-    const commonDir = resolve(startDir, rawCommonDir);
+    const rawGitAbs = resolve(startDir, rawGitDir);
+    const rawCommonAbs = resolve(startDir, rawCommonDir);
+
+    // Normalize both paths through `realpathSync` (and lowercase on win32)
+    // before comparing — otherwise symlinked CWDs, junctions, and case
+    // differences can make two paths that point at the same FS object
+    // compare unequal. Without this, the comparison disagreed with tests
+    // that pre-`realpathSync()`d their fixture paths.
+    const gitDir = normalizePathForComparison(rawGitAbs);
+    const commonDir = normalizePathForComparison(rawCommonAbs);
 
     if (gitDir === commonDir) return null; // main checkout — caller parent-walks
     // Also covers git submodules: `--git-dir` and `--git-common-dir` resolve
@@ -87,11 +133,16 @@ export function findMainWorktreeRoot(startDir: string): string | null {
 
     // Linked worktree: the common dir is `<main-root>/.git` (or, rarely, a
     // bare-style path that doesn't end in `.git`). Walking up by one segment
-    // when it ends in `.git` lands us at the main worktree root. If the
-    // shared dir doesn't end in `.git` (bare repos, custom layouts), we
-    // can't reliably reconstruct a working-tree root — fail open.
-    if (commonDir.endsWith("/.git") || commonDir.endsWith("\\.git")) {
-      return dirname(commonDir);
+    // when it ends in `.git` lands us at the main worktree root. We use the
+    // pre-lowercase canonical path (`rawCommonAbs` re-resolved through
+    // realpath) for the return value so callers get a usable path on POSIX —
+    // lowercasing was for comparison, not for the on-disk path.
+    const commonCanonical = realpathOrSelf(rawCommonAbs);
+    if (
+      commonCanonical.endsWith("/.git") ||
+      commonCanonical.endsWith("\\.git")
+    ) {
+      return dirname(commonCanonical);
     }
     return null;
   } catch (err) {
@@ -149,11 +200,18 @@ export function getOrBuildIndex(agentsDir: string): TaskIndex {
   if (existsSync(indexPath)) {
     const index = loadIndex(indexPath);
     if (index) return index;
-
-    // Invalid shape — rebuild from files
+    // Invalid shape — fall through to rebuild
   }
 
-  const index = buildIndexFromFiles(agentsDir);
-  saveIndex(indexPath, index);
-  return index;
+  // Cold-start build: do the build-and-persist inside the TASKS.json lock so
+  // concurrent first-touches from multiple worktrees don't clobber each other
+  // (and the result is the same content either way).
+  return withTasksJsonLock(agentsDir, (current) => {
+    const rebuilt = buildIndexFromFiles(agentsDir);
+    current.version = rebuilt.version;
+    current.next_id = rebuilt.next_id;
+    current.tasks = rebuilt.tasks;
+    current.specs = rebuilt.specs;
+    return current;
+  });
 }

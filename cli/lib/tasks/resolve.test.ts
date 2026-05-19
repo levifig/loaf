@@ -21,6 +21,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "fs";
 import { execFileSync } from "child_process";
@@ -62,6 +63,13 @@ function git(args: readonly string[], cwd: string): string {
  */
 function createMainRepo(name: string, opts: { withAgents?: boolean } = {}): string {
   const withAgents = opts.withAgents !== false;
+  // We keep `realpathSync` here because path-equality assertions later compare
+  // against `findAgentsDir`'s output, which canonicalizes internally (see
+  // `normalizePathForComparison` in `cli/lib/tasks/resolve.ts`). The
+  // "symlinked startDir" case the new normalization fixes is covered
+  // explicitly by the `path normalization` describe block below — it builds
+  // a symlink that points at the realpath'd repo and asserts the resolver
+  // produces the same answer regardless of which path is used as input.
   const repoPath = realpathSync(mkdtempSync(join(TEST_ROOT, `${name}-`)));
 
   git(["init", "--initial-branch=main"], repoPath);
@@ -275,11 +283,11 @@ describe("parallel ID allocation across worktrees (A3 single-view scan)", () => 
    * index. The shared-view contract means both views see the same `next_id`
    * counter, and consecutive allocations produce distinct IDs.
    *
-   * Sequential rather than truly parallel: the actual write contention
-   * concern (concurrent saveIndex calls racing on the same file) is a
-   * separate file-locking question outside SPEC-036's scope. What SPEC-036
-   * needs to prove is that *both worktrees see the same index at all*,
-   * which is what this test locks in.
+   * Sequential rather than truly parallel: this test locks in the SPEC-036
+   * "shared view" property only — that both worktrees address the same
+   * TASKS.json. The companion cross-process concurrency test that proves
+   * the lock's read-modify-write barrier under contention lives in
+   * `cli/lib/tasks/lock.test.ts`.
    */
   it("two worktrees allocating against the shared TASKS.json produce distinct IDs", () => {
     const main = createMainRepo("alloc-shared");
@@ -385,4 +393,92 @@ describe("isDebugResolveEnabled — explicit allow-list truthiness", () => {
       expect(isDebugResolveEnabled()).toBe(true);
     },
   );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Path normalization edge cases (Codex finding #3)
+//
+// The original `findMainWorktreeRoot` compared raw `path.resolve()` strings;
+// on case-insensitive filesystems (macOS default, Windows) and through
+// symlinks/junctions, two paths pointing at the same FS object could compare
+// unequal. The fix wraps both sides in `realpathSync.native` (and lowercases
+// on win32) before comparing. These tests exercise the normalization on
+// POSIX via symlinks; the Windows-only case-fold path is covered by the
+// `process.platform === "win32"` gate in the production code.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("findAgentsDir — path normalization edge cases", () => {
+  it("a linked worktree reached through a symlink still resolves to main's .agents/", () => {
+    const main = createMainRepo("norm-wt-symlink");
+    const linked = addWorktree(main, "feat/symlink");
+
+    // Symlink to the linked worktree. Invoking the resolver FROM the symlinked
+    // path must still produce the main worktree's `.agents/`. Without
+    // realpath normalization on `gitDir`/`commonDir`, the comparison in
+    // `findMainWorktreeRoot` could disagree depending on whether git
+    // canonicalized one side and not the other.
+    const wtSymlink = join(TEST_ROOT, "wt-symlink-alias");
+    symlinkSync(linked, wtSymlink, "dir");
+
+    const fromRealpath = findAgentsDir(linked);
+    const fromSymlink = findAgentsDir(wtSymlink);
+
+    expect(fromRealpath).toBe(join(main, ".agents"));
+    expect(fromSymlink).toBe(join(main, ".agents"));
+  });
+
+  it("a main checkout reached through a symlink is still classified as a main checkout", () => {
+    // The actual bug Codex flagged was that two paths pointing at the same
+    // FS object could compare unequal — making a main checkout look like
+    // a linked worktree (gitDir !== commonDir after raw-string compare).
+    //
+    // With realpath normalization, both sides canonicalize to the same
+    // path and the comparison returns "main checkout" — caller parent-walks.
+    //
+    // The parent-walk itself doesn't canonicalize (it's outside the scope
+    // of the path-normalization fix), so the returned path may still
+    // contain the symlinked prefix. We assert via realpathSync to verify
+    // the resolver landed in the right *directory* regardless of which
+    // path string it returned.
+    const main = createMainRepo("norm-main-via-symlink");
+    const symlinkPath = join(TEST_ROOT, "main-alias");
+    symlinkSync(main, symlinkPath, "dir");
+
+    const result = findAgentsDir(symlinkPath);
+    expect(result).not.toBeNull();
+    expect(realpathSync(result!)).toBe(realpathSync(join(main, ".agents")));
+  });
+
+  it("worktrees reached through symlinks land on the same store as the main checkout", () => {
+    // Strongest property: regardless of which path string is used to address
+    // a worktree (main or linked, realpath or symlink), the resolver
+    // produces a path whose realpath points at the SAME store. This is
+    // the cross-worktree continuity guarantee that the Windows
+    // case-fold + symlink normalization is in service of.
+    const main = createMainRepo("norm-symmetry");
+    const linked = addWorktree(main, "feat/sym");
+    const mainAlias = join(TEST_ROOT, "main-alias-sym");
+    const linkedAlias = join(TEST_ROOT, "linked-alias-sym");
+    symlinkSync(main, mainAlias, "dir");
+    symlinkSync(linked, linkedAlias, "dir");
+
+    const candidates = [
+      findAgentsDir(main),
+      findAgentsDir(linked),
+      findAgentsDir(mainAlias),
+      findAgentsDir(linkedAlias),
+    ];
+    expect(candidates.every((c) => c !== null)).toBe(true);
+
+    const canonicals = candidates.map((c) => realpathSync(c!));
+    // All four must land on the SAME .agents/ store.
+    expect(new Set(canonicals).size).toBe(1);
+  });
+
+  // TODO: Windows-only test fixture — verifying that the `process.platform === "win32"`
+  // case-fold path correctly compares `C:\...` and `c:\...` as equal. We
+  // can't simulate Windows-style case-insensitive paths reliably on POSIX
+  // (macOS HFS+ case-insensitivity is opt-in and not the default on APFS).
+  // Cross-platform test rigs (Windows runner in CI) should add coverage
+  // for this path.
 });
