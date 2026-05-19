@@ -22974,6 +22974,10 @@ function registerTaskCommand(program3) {
     const spec = options2.spec || null;
     const slug = generateSlug(options2.title);
     const now = (/* @__PURE__ */ new Date()).toISOString();
+    const tasksDir = join33(agentsDir, "tasks");
+    if (!existsSync27(tasksDir)) {
+      mkdirSync20(tasksDir, { recursive: true });
+    }
     let taskId;
     let dependsOn;
     let fileName;
@@ -23010,33 +23014,18 @@ function registerTaskCommand(program3) {
           completed_at: null,
           file
         };
-        index.tasks[id] = entry;
-        index.next_id = nextId + 1;
-        return { taskId: id, dependsOn: deps, fileName: file };
-      }));
-    } catch (err) {
-      if (err instanceof TaskCreateError) {
-        console.error(`  ${red4("error:")} ${err.message}`);
-        process.exit(1);
-      }
-      throw err;
-    }
-    const tasksDir = join33(agentsDir, "tasks");
-    if (!existsSync27(tasksDir)) {
-      mkdirSync20(tasksDir, { recursive: true });
-    }
-    const frontmatterData = {
-      id: taskId,
-      title: options2.title,
-      status: "todo",
-      priority,
-      created: now,
-      updated: now
-    };
-    if (spec) frontmatterData.spec = spec;
-    if (dependsOn.length > 0) frontmatterData.depends_on = dependsOn;
-    const body = `
-# ${taskId}: ${options2.title}
+        const frontmatterData = {
+          id,
+          title: options2.title,
+          status: "todo",
+          priority,
+          created: now,
+          updated: now
+        };
+        if (spec) frontmatterData.spec = spec;
+        if (deps.length > 0) frontmatterData.depends_on = deps;
+        const body = `
+# ${id}: ${options2.title}
 
 ## Description
 
@@ -23052,8 +23041,23 @@ function registerTaskCommand(program3) {
 # Add verification command
 \`\`\`
 `;
-    const mdContent = import_gray_matter7.default.stringify(body, frontmatterData);
-    writeFileSync19(join33(tasksDir, fileName), mdContent, "utf-8");
+        const taskPath = join33(tasksDir, file);
+        if (existsSync27(taskPath)) {
+          throw new TaskCreateError(`Task file already exists: .agents/tasks/${file}. Run "loaf task sync --import" first.`);
+        }
+        const mdContent = import_gray_matter7.default.stringify(body, frontmatterData);
+        writeFileSync19(taskPath, mdContent, { encoding: "utf-8", flag: "wx" });
+        index.tasks[id] = entry;
+        index.next_id = nextId + 1;
+        return { taskId: id, dependsOn: deps, fileName: file };
+      }));
+    } catch (err) {
+      if (err instanceof TaskCreateError) {
+        console.error(`  ${red4("error:")} ${err.message}`);
+        process.exit(1);
+      }
+      throw err;
+    }
     console.log(`
   ${bold6("loaf task create")}
 `);
