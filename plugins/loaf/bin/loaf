@@ -27718,6 +27718,7 @@ import {
   closeSync as closeSync2,
   statSync as statSync4
 } from "fs";
+import { hostname as hostname2 } from "os";
 import { join as join49, dirname as dirname18, basename as basename8 } from "path";
 
 // cli/lib/journal/extractor.ts
@@ -28396,34 +28397,46 @@ function consumeKnowledgeNudges(projectRoot, branch) {
   unlinkSync5(nudgeFile);
   return [...new Set(files)];
 }
-var LOCK_STALENESS_THRESHOLD = 3e4;
+var LOCK_AGE_FALLBACK_THRESHOLD_MS2 = 5 * 60 * 1e3;
 function isProcessAlive2(pid) {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    const code = err?.code;
+    if (code === "ESRCH") return false;
+    return true;
   }
 }
 function readLockContent2(lockPath) {
   try {
-    const raw = readFileSync41(lockPath, "utf-8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(readFileSync41(lockPath, "utf-8"));
+    if (typeof parsed?.pid !== "number") return null;
+    return {
+      pid: parsed.pid,
+      host: typeof parsed.host === "string" ? parsed.host : "",
+      timestamp: typeof parsed.timestamp === "number" ? parsed.timestamp : 0
+    };
   } catch {
     return null;
   }
 }
 function isLockStale2(lockPath) {
+  let stats;
   try {
-    const stats = statSync4(lockPath);
-    const age = Date.now() - stats.mtimeMs;
-    if (age > LOCK_STALENESS_THRESHOLD) return true;
-    const content = readLockContent2(lockPath);
-    if (content?.pid && !isProcessAlive2(content.pid)) return true;
-    return false;
+    stats = statSync4(lockPath);
   } catch {
     return true;
   }
+  const content = readLockContent2(lockPath);
+  const age = Date.now() - stats.mtimeMs;
+  if (!content || !content.pid) {
+    return age > LOCK_AGE_FALLBACK_THRESHOLD_MS2;
+  }
+  if (content.host && content.host !== hostname2()) {
+    return age > LOCK_AGE_FALLBACK_THRESHOLD_MS2;
+  }
+  return !isProcessAlive2(content.pid);
 }
 function forceReleaseLock(lockPath) {
   try {
@@ -28440,6 +28453,7 @@ async function acquireLock(lockPath, maxRetries = 50, retryDelay = 100) {
       const fd = openSync2(lockPath, "wx");
       const lockContent = {
         pid: process.pid,
+        host: hostname2(),
         timestamp: Date.now()
       };
       writeFileSync28(fd, JSON.stringify(lockContent), "utf-8");
@@ -28471,9 +28485,10 @@ async function acquireLock(lockPath, maxRetries = 50, retryDelay = 100) {
     const content = readLockContent2(lockPath);
     const stats = statSync4(lockPath);
     const ageSeconds = Math.round((Date.now() - stats.mtimeMs) / 1e3);
-    const alive = content?.pid ? isProcessAlive2(content.pid) : false;
+    const sameHost = !content?.host || content.host === hostname2();
+    const alive = content?.pid && sameHost ? isProcessAlive2(content.pid) : "unknown (foreign host)";
     diagnostic = `
-  Lock age: ${ageSeconds}s, PID: ${content?.pid ?? "unknown"}, process alive: ${alive}
+  Lock age: ${ageSeconds}s, PID: ${content?.pid ?? "unknown"}, host: ${content?.host ?? "unknown"}, process alive: ${alive}
   Remove manually: rm "${lockPath}"`;
   } catch {
   }
