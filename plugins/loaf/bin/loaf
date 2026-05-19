@@ -22734,14 +22734,48 @@ function countSpecs(index) {
     byStatus
   };
 }
+function parseEntryIdNumber(id) {
+  const match = id.match(/\d+$/);
+  return match ? parseInt(match[0], 10) : 0;
+}
 function rebuildTaskIndex(agentsDir) {
-  const rebuilt = buildIndexFromFiles(agentsDir);
-  return withTasksJsonLock(agentsDir, (current) => {
-    current.version = rebuilt.version;
-    current.next_id = Math.max(rebuilt.next_id, current.next_id);
-    current.tasks = rebuilt.tasks;
-    current.specs = rebuilt.specs;
-    return current;
+  const indexPath = join33(agentsDir, "TASKS.json");
+  const snapshotBefore = loadIndex(indexPath);
+  const scanStartNextId = snapshotBefore?.next_id ?? 1;
+  const scanStartSpecIds = new Set(
+    snapshotBefore ? Object.keys(snapshotBefore.specs) : []
+  );
+  const scannedIndex = buildIndexFromFiles(agentsDir);
+  return withTasksJsonLock(agentsDir, (nowIndex) => {
+    const mergedTasks = { ...scannedIndex.tasks };
+    for (const [id, entry] of Object.entries(nowIndex.tasks)) {
+      if (mergedTasks[id]) continue;
+      if (parseEntryIdNumber(id) >= scanStartNextId) {
+        mergedTasks[id] = entry;
+      }
+    }
+    const mergedSpecs = { ...scannedIndex.specs };
+    for (const [id, entry] of Object.entries(nowIndex.specs)) {
+      if (mergedSpecs[id]) continue;
+      if (!scanStartSpecIds.has(id)) {
+        mergedSpecs[id] = entry;
+      }
+    }
+    let maxTaskNum = 0;
+    for (const id of Object.keys(mergedTasks)) {
+      const n = parseEntryIdNumber(id);
+      if (n > maxTaskNum) maxTaskNum = n;
+    }
+    const nextId = Math.max(
+      scannedIndex.next_id,
+      nowIndex.next_id,
+      maxTaskNum + 1
+    );
+    nowIndex.version = scannedIndex.version;
+    nowIndex.next_id = nextId;
+    nowIndex.tasks = mergedTasks;
+    nowIndex.specs = mergedSpecs;
+    return nowIndex;
   });
 }
 function registerTaskCommand(program3) {
