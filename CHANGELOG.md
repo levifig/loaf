@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-dev.42] - 2026-05-19
+
 ### Added
 
 - **Worktree-aware `.agents/` storage.** Loaf now treats `.agents/` as project-scoped state rather than branch-scoped content. Running any `loaf` command from a linked git worktree (a `git worktree add`-style checkout) resolves `.agents/` to the **main worktree's directory** instead of the worktree's own copy. Sessions, IDs, knowledge, and ideas converge across all worktrees of a project. Single-checkout repositories see no behavior change. See [ADR-013](docs/decisions/ADR-013-agentic-state-storage-model.md) for the decision rationale and rejected alternatives.
