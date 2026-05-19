@@ -22378,36 +22378,51 @@ import {
   unlinkSync as unlinkSync3,
   writeFileSync as writeFileSync18
 } from "fs";
+import { hostname } from "os";
 import { dirname as dirname9, join as join31 } from "path";
 var TASKS_JSON_LOCK_FILE = ".tasks-json.lock";
-var LOCK_STALENESS_THRESHOLD = 3e4;
+var LOCK_AGE_FALLBACK_THRESHOLD_MS = 5 * 60 * 1e3;
 var DEFAULT_MAX_RETRIES = 100;
 var DEFAULT_RETRY_DELAY_MS = 25;
 function isProcessAlive(pid) {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    const code = err?.code;
+    if (code === "ESRCH") return false;
+    return true;
   }
 }
 function readLockContent(lockPath) {
   try {
-    return JSON.parse(readFileSync23(lockPath, "utf-8"));
+    const parsed = JSON.parse(readFileSync23(lockPath, "utf-8"));
+    if (typeof parsed?.pid !== "number") return null;
+    return {
+      pid: parsed.pid,
+      host: typeof parsed.host === "string" ? parsed.host : "",
+      timestamp: typeof parsed.timestamp === "number" ? parsed.timestamp : 0
+    };
   } catch {
     return null;
   }
 }
 function isLockStale(lockPath) {
+  let stats;
   try {
-    const stats = statSync(lockPath);
-    if (Date.now() - stats.mtimeMs > LOCK_STALENESS_THRESHOLD) return true;
-    const content = readLockContent(lockPath);
-    if (content?.pid && !isProcessAlive(content.pid)) return true;
-    return false;
+    stats = statSync(lockPath);
   } catch {
     return true;
   }
+  const content = readLockContent(lockPath);
+  const age = Date.now() - stats.mtimeMs;
+  if (!content || !content.pid) {
+    return age > LOCK_AGE_FALLBACK_THRESHOLD_MS;
+  }
+  if (content.host && content.host !== hostname()) {
+    return age > LOCK_AGE_FALLBACK_THRESHOLD_MS;
+  }
+  return !isProcessAlive(content.pid);
 }
 function sleepMs(ms) {
   const sab = new Int32Array(new SharedArrayBuffer(4));
@@ -22423,7 +22438,11 @@ function acquireLockSync(lockPath, maxRetries, retryDelayMs) {
         }
       }
       const fd = openSync(lockPath, "wx");
-      const payload = { pid: process.pid, timestamp: Date.now() };
+      const payload = {
+        pid: process.pid,
+        host: hostname(),
+        timestamp: Date.now()
+      };
       writeFileSync18(fd, JSON.stringify(payload), "utf-8");
       closeSync(fd);
       return;
@@ -22448,9 +22467,10 @@ function acquireLockSync(lockPath, maxRetries, retryDelayMs) {
     const content = readLockContent(lockPath);
     const stats = statSync(lockPath);
     const ageSeconds = Math.round((Date.now() - stats.mtimeMs) / 1e3);
-    const alive = content?.pid ? isProcessAlive(content.pid) : false;
+    const sameHost = !content?.host || content.host === hostname();
+    const alive = content?.pid && sameHost ? isProcessAlive(content.pid) : "unknown (foreign host)";
     diagnostic = `
-  Lock age: ${ageSeconds}s, PID: ${content?.pid ?? "unknown"}, process alive: ${alive}
+  Lock age: ${ageSeconds}s, PID: ${content?.pid ?? "unknown"}, host: ${content?.host ?? "unknown"}, process alive: ${alive}
   Remove manually if you're sure no other loaf process is active:
     rm "${lockPath}"`;
   } catch {
@@ -22463,6 +22483,23 @@ function releaseLock(lockPath) {
   try {
     unlinkSync3(lockPath);
   } catch {
+  }
+}
+function awaitTestStartBarrier() {
+  const starter = process.env.LOAF_LOCK_TEST_STARTER;
+  const readyDir = process.env.LOAF_LOCK_TEST_READY;
+  if (!starter) return;
+  if (readyDir) {
+    try {
+      mkdirSync19(readyDir, { recursive: true });
+      writeFileSync18(join31(readyDir, `ready-${process.pid}`), "", "utf-8");
+    } catch {
+    }
+  }
+  const deadline = Date.now() + 5e3;
+  while (!existsSync25(starter)) {
+    if (Date.now() > deadline) return;
+    sleepMs(1);
   }
 }
 function writeJsonAtomic(filePath, content) {
@@ -22485,8 +22522,15 @@ function withTasksJsonLock(agentsDir, fn, options2 = {}) {
   const maxRetries = options2.maxRetries ?? DEFAULT_MAX_RETRIES;
   const retryDelayMs = options2.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS;
   mkdirSync19(agentsDir, { recursive: true });
+  awaitTestStartBarrier();
   acquireLockSync(lockPath, maxRetries, retryDelayMs);
+  if (process.env.LOAF_LOCK_TEST_DELAY_MS) {
+    process.stdout.write(`LOAF_LOCK_TEST_ACQUIRED_AT=${Date.now()}
+`);
+  }
   try {
+    const testDelay = Number(process.env.LOAF_LOCK_TEST_DELAY_MS ?? 0);
+    if (testDelay > 0) sleepMs(testDelay);
     let index;
     if (existsSync25(indexPath)) {
       const loaded = loadIndex(indexPath);
@@ -28352,7 +28396,7 @@ function consumeKnowledgeNudges(projectRoot, branch) {
   unlinkSync5(nudgeFile);
   return [...new Set(files)];
 }
-var LOCK_STALENESS_THRESHOLD2 = 3e4;
+var LOCK_STALENESS_THRESHOLD = 3e4;
 function isProcessAlive2(pid) {
   try {
     process.kill(pid, 0);
@@ -28373,7 +28417,7 @@ function isLockStale2(lockPath) {
   try {
     const stats = statSync4(lockPath);
     const age = Date.now() - stats.mtimeMs;
-    if (age > LOCK_STALENESS_THRESHOLD2) return true;
+    if (age > LOCK_STALENESS_THRESHOLD) return true;
     const content = readLockContent2(lockPath);
     if (content?.pid && !isProcessAlive2(content.pid)) return true;
     return false;
