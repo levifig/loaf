@@ -22371,17 +22371,24 @@ function archiveSpecs(agentsDir, index, specIds) {
 }
 
 // cli/lib/tasks/resolve.ts
+var DEBUG_RESOLVE_ENV = "LOAF_DEBUG_RESOLVE";
+function isDebugResolveEnabled() {
+  const v = process.env[DEBUG_RESOLVE_ENV];
+  return v !== void 0 && /^(1|true|yes|on)$/i.test(v);
+}
 function findMainWorktreeRoot(startDir) {
+  const debug = isDebugResolveEnabled();
+  const stderrMode = debug ? "inherit" : "ignore";
   try {
     const rawGitDir = execFileSync10(
       "git",
       ["rev-parse", "--path-format=absolute", "--git-dir"],
-      { cwd: startDir, stdio: ["ignore", "pipe", "ignore"] }
+      { cwd: startDir, stdio: ["ignore", "pipe", stderrMode] }
     ).toString().trim();
     const rawCommonDir = execFileSync10(
       "git",
       ["rev-parse", "--path-format=absolute", "--git-common-dir"],
-      { cwd: startDir, stdio: ["ignore", "pipe", "ignore"] }
+      { cwd: startDir, stdio: ["ignore", "pipe", stderrMode] }
     ).toString().trim();
     if (!rawGitDir || !rawCommonDir) return null;
     const gitDir = resolve3(startDir, rawGitDir);
@@ -22391,7 +22398,14 @@ function findMainWorktreeRoot(startDir) {
       return dirname9(commonDir);
     }
     return null;
-  } catch {
+  } catch (err) {
+    if (debug) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(
+        `${DEBUG_RESOLVE_ENV}: findMainWorktreeRoot fell back to parent-walk (error: ${msg})
+`
+      );
+    }
     return null;
   }
 }
@@ -30248,6 +30262,325 @@ _Full analysis goes here._
   });
 }
 
+// cli/lib/migrate/worktree-storage.ts
+import {
+  cpSync as cpSync7,
+  existsSync as existsSync46,
+  mkdirSync as mkdirSync28,
+  readFileSync as readFileSync42,
+  readdirSync as readdirSync18,
+  renameSync as renameSync9,
+  rmSync as rmSync8,
+  statSync as statSync4,
+  writeFileSync as writeFileSync29
+} from "fs";
+import { dirname as dirname18, join as join50, relative as relative9 } from "path";
+var PRE_A3_REFUSAL_MESSAGE = [
+  "This worktree has unmigrated agentic state under .agents/.",
+  "SPEC-036 centralizes .agents/ to the main worktree, so this command is refused",
+  "until you run:",
+  "",
+  "    loaf migrate worktree-storage         # dry-run preview",
+  "    loaf migrate worktree-storage --apply # perform the migration",
+  "",
+  `(Tip: set ${DEBUG_RESOLVE_ENV}=1 to see git probe diagnostics if the refusal seems unexpected.)`
+].join("\n");
+var BACK_POINTER_FILE = ".moved-to";
+function readBackPointer(worktreeAgentsDir) {
+  const path = join50(worktreeAgentsDir, BACK_POINTER_FILE);
+  if (!existsSync46(path)) return null;
+  try {
+    const content = readFileSync42(path, "utf-8").trim();
+    return content.length > 0 ? content : null;
+  } catch {
+    return null;
+  }
+}
+function worktreeAgentsHasContent(worktreeAgentsDir) {
+  if (!existsSync46(worktreeAgentsDir)) return false;
+  return enumerateFiles(worktreeAgentsDir).length > 0;
+}
+function detectPreA3State(startDir = process.cwd()) {
+  const wtRoot = findWorktreeRootForDetection(startDir);
+  if (!wtRoot) return false;
+  const localAgents = join50(wtRoot, ".agents");
+  if (!existsSync46(localAgents)) return false;
+  const mainRoot = findMainWorktreeRoot(wtRoot);
+  if (!mainRoot) return false;
+  if (!worktreeAgentsHasContent(localAgents)) return false;
+  const pointer = readBackPointer(localAgents);
+  if (!pointer) return true;
+  if (!existsSync46(pointer)) return true;
+  return pointer !== mainRoot;
+}
+function findWorktreeRootForDetection(startDir) {
+  let current = startDir;
+  while (true) {
+    if (existsSync46(join50(current, ".git"))) return current;
+    const parent = dirname18(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+function enumerateFiles(dir) {
+  const out = [];
+  const walk = (current, rel) => {
+    let entries;
+    try {
+      entries = readdirSync18(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const absPath = join50(current, entry.name);
+      const relPath = rel ? join50(rel, entry.name) : entry.name;
+      if (rel === "" && entry.name === BACK_POINTER_FILE) continue;
+      if (entry.isDirectory()) {
+        walk(absPath, relPath);
+      } else if (entry.isFile() || entry.isSymbolicLink()) {
+        out.push(relPath);
+      }
+    }
+  };
+  walk(dir, "");
+  return out;
+}
+function mtime(path) {
+  try {
+    return statSync4(path).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+function planMoves(worktreeAgents, mainAgents, policy) {
+  const relFiles = enumerateFiles(worktreeAgents);
+  const moves = [];
+  for (const rel of relFiles) {
+    const from = join50(worktreeAgents, rel);
+    const to = join50(mainAgents, rel);
+    const conflict = existsSync46(to);
+    let resolution;
+    let resolutionReason;
+    if (conflict) {
+      switch (policy) {
+        case "worktree":
+          resolution = "keep-worktree";
+          resolutionReason = "forced by --force-from-worktree";
+          break;
+        case "main":
+          resolution = "keep-main";
+          resolutionReason = "forced by --force-from-main";
+          break;
+        case "newer": {
+          const fromMtime = mtime(from);
+          const toMtime = mtime(to);
+          if (fromMtime > toMtime) {
+            resolution = "keep-worktree";
+            resolutionReason = `worktree mtime ${new Date(fromMtime).toISOString()} > main mtime ${new Date(toMtime).toISOString()}`;
+          } else {
+            resolution = "keep-main";
+            resolutionReason = `main mtime ${new Date(toMtime).toISOString()} >= worktree mtime ${new Date(fromMtime).toISOString()}`;
+          }
+          break;
+        }
+      }
+    }
+    moves.push({ from, to, rel, conflict, resolution, resolutionReason });
+  }
+  return moves;
+}
+function applyMove(move) {
+  if (move.conflict) {
+    if (move.resolution === "keep-main") {
+      try {
+        rmSync8(move.from, { force: true });
+      } catch {
+      }
+      return;
+    }
+    try {
+      rmSync8(move.to, { force: true });
+    } catch {
+    }
+  }
+  mkdirSync28(dirname18(move.to), { recursive: true });
+  try {
+    renameSync9(move.from, move.to);
+  } catch (err) {
+    const nodeErr = err;
+    if (nodeErr.code === "EXDEV") {
+      cpSync7(move.from, move.to, { recursive: true, preserveTimestamps: true });
+      rmSync8(move.from, { recursive: true, force: true });
+    } else {
+      throw err;
+    }
+  }
+}
+function runMigration(options2) {
+  const { cwd, apply, conflictPolicy } = options2;
+  const mainRoot = findMainWorktreeRoot(cwd);
+  if (!mainRoot) {
+    if (!isInGitContext(cwd)) {
+      return {
+        status: "not-in-git",
+        message: "loaf migrate worktree-storage: not in a git repository \u2014 this command is only meaningful inside a linked git worktree."
+      };
+    }
+    return {
+      status: "not-in-worktree",
+      message: "Nothing to migrate \u2014 already in the main worktree."
+    };
+  }
+  const wtRoot = findWorktreeRoot(cwd) ?? cwd;
+  const localAgents = join50(wtRoot, ".agents");
+  const mainAgents = join50(mainRoot, ".agents");
+  const pointer = readBackPointer(localAgents);
+  if (pointer === mainRoot && !worktreeAgentsHasContent(localAgents)) {
+    return {
+      status: "already-migrated",
+      message: "Nothing to do \u2014 already migrated."
+    };
+  }
+  if (!existsSync46(localAgents) || !worktreeAgentsHasContent(localAgents)) {
+    if (pointer && pointer === mainRoot) {
+      return {
+        status: "already-migrated",
+        message: "Nothing to do \u2014 already migrated."
+      };
+    }
+    return {
+      status: "no-local-agents",
+      message: "Nothing to migrate \u2014 worktree has no local .agents/ content."
+    };
+  }
+  const moves = planMoves(localAgents, mainAgents, conflictPolicy);
+  const plan = {
+    kind: "plan",
+    worktreeAgents: localAgents,
+    mainAgents,
+    mainRoot,
+    moves,
+    backPointerPath: join50(localAgents, BACK_POINTER_FILE)
+  };
+  if (!apply) {
+    return {
+      status: "planned",
+      message: "Dry run \u2014 re-run with --apply to perform the migration.",
+      plan
+    };
+  }
+  mkdirSync28(mainAgents, { recursive: true });
+  for (const move of plan.moves) {
+    applyMove(move);
+  }
+  writeFileSync29(plan.backPointerPath, `${mainRoot}
+`, "utf-8");
+  return {
+    status: "applied",
+    message: `Migrated ${plan.moves.length} file(s) to ${mainAgents}.`,
+    plan
+  };
+}
+function isInGitContext(startDir) {
+  let current = startDir;
+  while (true) {
+    if (existsSync46(join50(current, ".git"))) return true;
+    const parent = dirname18(current);
+    if (parent === current) return false;
+    current = parent;
+  }
+}
+function findWorktreeRoot(startDir) {
+  let current = startDir;
+  while (true) {
+    if (existsSync46(join50(current, ".git"))) return current;
+    const parent = dirname18(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+var bold17 = (s) => `\x1B[1m${s}\x1B[0m`;
+var green16 = (s) => `\x1B[32m${s}\x1B[0m`;
+var yellow18 = (s) => `\x1B[33m${s}\x1B[0m`;
+var gray18 = (s) => `\x1B[90m${s}\x1B[0m`;
+var cyan13 = (s) => `\x1B[36m${s}\x1B[0m`;
+function formatResult(result, opts) {
+  const out = [];
+  if (result.plan) {
+    const plan = result.plan;
+    out.push(`${bold17("loaf migrate worktree-storage")} ${opts.apply ? cyan13("--apply") : gray18("(dry-run)")}
+`);
+    out.push(`  ${gray18("from")} ${plan.worktreeAgents}`);
+    out.push(`  ${gray18("to  ")} ${plan.mainAgents}`);
+    out.push("");
+    if (plan.moves.length === 0) {
+      out.push(`  ${green16("\u2713")} Nothing to move.`);
+    } else {
+      for (const move of plan.moves) {
+        const arrow = move.conflict ? move.resolution === "keep-main" ? yellow18("[conflict\u2192main]  ") : yellow18("[conflict\u2192worktree]") : cyan13("\u2192");
+        const path = relative9(plan.worktreeAgents, move.from);
+        if (move.conflict) {
+          if (move.resolution === "keep-main") {
+            out.push(`  ${arrow} ${path}`);
+            out.push(`      ${gray18(`keep main; discard worktree (${move.resolutionReason})`)}`);
+          } else {
+            out.push(`  ${arrow} ${path}`);
+            out.push(`      ${gray18(`keep worktree; overwrite main (${move.resolutionReason})`)}`);
+          }
+        } else {
+          out.push(`  ${arrow} ${path}`);
+        }
+      }
+    }
+    out.push("");
+    out.push(`  ${gray18("back-pointer:")} ${plan.backPointerPath}`);
+    out.push("");
+  }
+  out.push(`  ${result.status === "applied" ? green16("\u2713") : cyan13("\u2192")} ${result.message}`);
+  return out.join("\n");
+}
+
+// cli/commands/migrate.ts
+var red14 = (s) => `\x1B[31m${s}\x1B[0m`;
+function registerMigrateCommand(program3) {
+  const migrate = program3.command("migrate").description("One-shot migrations for Loaf state and storage layout");
+  migrate.command("worktree-storage").description(
+    `Move a linked worktree's local .agents/ into the main worktree (SPEC-036). Dry-run by default; pass --apply to mutate. Invoking from the main checkout is a clean no-op. Set ${DEBUG_RESOLVE_ENV}=1 to surface git probe diagnostics if the migration behaves unexpectedly.`
+  ).option("--apply", "Perform the migration (default: dry-run preview only)").option(
+    "--force-from-worktree",
+    "On conflict, always keep the worktree-local copy"
+  ).option(
+    "--force-from-main",
+    "On conflict, always keep the main-worktree copy"
+  ).action((options2) => {
+    if (options2.forceFromWorktree && options2.forceFromMain) {
+      console.error(
+        `${red14("error:")} --force-from-worktree and --force-from-main are mutually exclusive`
+      );
+      process.exit(1);
+    }
+    const conflictPolicy = options2.forceFromWorktree ? "worktree" : options2.forceFromMain ? "main" : "newer";
+    try {
+      const result = runMigration({
+        cwd: process.cwd(),
+        apply: options2.apply ?? false,
+        conflictPolicy
+      });
+      const output = formatResult(result, { apply: options2.apply ?? false });
+      if (result.status === "not-in-git") {
+        console.error(`${red14("error:")} ${result.message}`);
+        process.exit(1);
+      }
+      console.log(output);
+      process.exit(0);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`${red14("error:")} migration failed: ${msg}`);
+      process.exit(1);
+    }
+  });
+}
+
 // cli/index.ts
 var program2 = new Command();
 program2.name("loaf").description("Loaf \u2014 An Opinionated Agentic Framework").version(LOAF_VERSION, "-v, --version");
@@ -30265,6 +30598,7 @@ registerCheckCommand(program2);
 registerDoctorCommand(program2);
 registerSessionCommand(program2);
 registerReportCommand(program2);
+registerMigrateCommand(program2);
 if (process.argv.includes("--agent-help")) {
   const { generateCliJson: generateCliJson2 } = await Promise.resolve().then(() => (init_cli_reference_generator(), cli_reference_generator_exports));
   console.log(generateCliJson2(program2));
@@ -30274,7 +30608,25 @@ if (process.argv.length <= 2) {
   program2.outputHelp();
   process.exit(0);
 }
+if (shouldRefuseCommand(process.argv)) {
+  process.stderr.write(`${PRE_A3_REFUSAL_MESSAGE}
+`);
+  process.exit(2);
+}
 program2.parse();
+function shouldRefuseCommand(argv) {
+  const args = argv.slice(2);
+  if (args.length === 0) return false;
+  for (const a of args) {
+    if (a === "--help" || a === "-h" || a === "--version" || a === "-v") {
+      return false;
+    }
+  }
+  const sub = args[0];
+  if (sub === "migrate") return false;
+  if (sub === "help") return false;
+  return detectPreA3State(process.cwd());
+}
 /*! Bundled license information:
 
 is-extendable/index.js:
