@@ -15,79 +15,77 @@ branch: feat/worktree-storage
 
 1. **Sessions misroute across worktrees.** A session created in worktree A is invisible to worktree B; `claude_session_id` Tier 1/2 routing falls through to branch routing or spawns a duplicate session.
 2. **ID allocation clashes.** Two worktrees can each mint `TASK-166` in parallel, producing collisions at merge.
-3. **Shared knowledge fragments.** KB, ideas, drafts, reports — all branch-scoped today, even though they're project-scoped by intent.
+3. **Project knowledge fragments.** KB, ideas, drafts, reports — branch-scoped by accident, project-scoped by intent.
 
-Underlying category error: `.agents/` mixes **project/process state** (sessions, kb, ideas, drafts, reports, councils, config) with **branch-scoped artifacts** (specs, tasks, plans). Worktrees expose the cost.
+Underlying category error: `.agents/` is treated as branch-scoped content when it's really project/process state — agentic working notes that travel with the human across worktrees, not with the code under review.
 
 ## Strategic Alignment
 
 - **Vision:** No `VISION.md` exists — flagging as a strategic gap (see Strategic Tensions). Working assumption: Loaf optimizes for AI-assisted development workflows where worktrees are a first-class human concurrency tool.
 - **Personas:** Developers running parallel branches via `git worktree add`; AI agents that need stable session continuity regardless of which worktree the human invokes them from.
-- **Architecture:** Introduces a worktree-aware storage layer atop the current single-tree assumption. Warrants an ADR alongside (see ADR Companion).
+- **Architecture:** All agentic state moves out of the per-worktree filesystem and into a single project-scoped location (the main worktree's `.agents/`). Warrants an ADR (see ADR Companion).
 
 ## Solution Direction
 
-Two resolvers replace the single `findAgentsDir()`:
+`findAgentsDir()` becomes worktree-aware:
 
-- **`findSharedAgentsDir()`** — resolves to the **main worktree's `.agents/`** via `dirname(git rev-parse --git-common-dir)`. Falls back to `findAgentsDir()` outside a git context.
-- **`findLocalAgentsDir()`** — the current `findAgentsDir()` behavior, kept for branch-scoped artifacts.
+- In a git worktree, return `dirname(git rev-parse --git-common-dir)/.agents/` — the **main worktree's** `.agents/` directory
+- In a single-checkout git repo, return the same path it returns today (parent-walk for `.agents/`)
+- Outside a git context, preserve current behavior verbatim (parent-walk fallback)
 
-Each call site picks the resolver matching the artifact kind:
+Every call site picks up the new behavior automatically — no per-module refactor. A linked worktree no longer carries its own `.agents/` view; all reads and writes converge on the main worktree's directory.
 
-| Storage | Artifacts |
-|---------|-----------|
-| **Shared** (main worktree's `.agents/`) | `sessions/`, `kb/`, `ideas/`, `drafts/`, `reports/`, `councils/`, `AGENTS.md`, `loaf.json`, `SOUL.md` |
-| **Local** (worktree's own `.agents/`) | `specs/`, `tasks/`, `plans/` |
+This is **A3**: maximum centralization. Considered alternatives:
 
-**ID allocator** scans `max(existing IDs across shared + local views)` at mint time. No counter file — derivable from frontmatter, matches SPEC-035's source-of-truth direction. If performance ever requires a counter, it can be added later as a pure cache without changing the model.
+- **A1** (sessions only) — rejected: leaves ID clashes and knowledge fragmentation
+- **A2** (sessions + ID allocator centralized, specs/tasks branch-local) — rejected: per-call-site refactor, dual-view scanning, and the storage-mode-per-artifact-kind dance buys only "specs/tasks visible in PR diffs," which the squash-merge workflow doesn't load-bear
+- **Symlinks** — rejected: fragile across `git worktree add`, accidentally committed
+- **Storage under `.git/loaf/`** — rejected: not a normal inspectable directory
 
-Storage location for shared artifacts is the **main worktree's existing `.agents/`** — not a new location like `.git/loaf/`. Greppable, inspectable, no behavior change for single-worktree users.
+PR review surface: under A3, specs/tasks no longer appear in feature-branch PR diffs. Reviewers reach them via the PR description + repo paths. Acceptable trade given that review attention belongs on the *code* changes; spec/task context is already linked from the PR.
 
 ## Scope
 
 ### In Scope
 - Worktree probe via `git rev-parse --git-common-dir`
-- Two resolvers (`findSharedAgentsDir`, `findLocalAgentsDir`)
-- Refactor call sites by artifact kind, per the storage table
-- ID allocator scans both shared and local views
-- One-shot migration command: `loaf migrate worktree-storage` (dry-run by default, explicit confirmation to mutate)
-- "Automatically compelled" migration nudge: detect pre-A2 layout on every invocation; commands touching shared artifacts refuse until migration runs; commands touching only local artifacts keep working
-- Tests for worktree creation, parallel ID allocation, cross-worktree session continuity, migration round-trip
+- `findAgentsDir()` redirects to the main worktree's `.agents/` when in a linked worktree
+- One-shot migration command `loaf migrate worktree-storage`: move artifacts from a linked worktree's local `.agents/` to the main worktree's `.agents/` (dry-run default, back-pointer file)
+- "Automatically compelled" migration nudge: detect pre-A3 state on every invocation; refuse loaf commands except `migrate` until the user runs it
+- ADR documenting the agentic state storage model
 
 ### Out of Scope
 - Changes to `TASKS.json`'s existence or shape (SPEC-035 owns that)
-- Counter files (`max()` is sufficient)
 - Cross-machine sync
-- Linear-native mode interactions (Linear-stored artifacts are already cross-tree by definition)
-- Backwards-compatibility or silent fallback to pre-A2 layout
+- Linear-native mode interactions (Linear-stored artifacts are already cross-tree)
+- Updates to `.gitignore` for worktree-local `.agents/` (separate concern)
+- Backwards-compatibility or silent fallback to pre-A3 layout
 
 ### Rabbit Holes
-- Building a cross-worktree lock manager. Resist: append-only journaling + atomic rename is already safe; add a contention test instead.
-- Auto-migrating on first run without consent. Resist: explicit command; nudging is enough.
-- Replacing `findAgentsDir()` globally. Resist: it's correct for branch-local artifacts.
-- Re-litigating `plans/` and `sparks/` classification beyond the documented defaults.
+- Building a cross-worktree lock manager. Resist: append-only journaling + atomic rename is already safe.
+- Auto-migrating on first run without consent. Resist: explicit command.
+- Symlinking the worktree-local `.agents/` to main as a "transparent" alternative. Resist: brittle, see No-Gos.
+- Renaming `findAgentsDir`. Resist: many call sites; surface stability is a feature.
 
 ### No-Gos
 - **Symlinks.** Fragile across `git worktree add`, get accidentally committed, confuse newcomers.
-- **Storing shared state under `.git/`.** Use the main worktree's `.agents/` so it remains a normal, inspectable directory.
-- **Silent fallback** to pre-A2 layout. Migration is a hard cut; un-migrated repos refuse shared-artifact commands.
+- **Storing agentic state under `.git/`.** Use the main worktree's `.agents/` so it remains a normal, inspectable directory.
+- **Silent fallback** to pre-A3 layout. Migration is a hard cut; un-migrated worktrees refuse commands.
 
 ## Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Concurrent journal writes corrupt a session file | Low | Med | Existing atomic-rename pattern; add a cross-worktree contention test |
-| Migration moves files the user didn't expect | Med | High | Dry-run by default + explicit confirmation + back-pointer file in old location |
-| Hooks invoked outside a git context fail to resolve shared dir | Low | Med | Resolver falls back to `findAgentsDir()` transparently |
-| SPEC-035 lands and reshapes `TASKS.json` mid-flight | Med | Low | This spec only touches allocator logic, not the index file |
-| Users expect to commit `.agents/sessions/` for PR review handoff | Med | Med | Document the new model; offer `loaf session export` for ad-hoc sharing |
-| Migration nudge becomes noisy and gets ignored | Med | Med | Refuse shared-artifact commands until migration; nudge text points at exactly one command (`loaf migrate worktree-storage`) |
+| Migration moves files the user didn't expect | Med | High | Dry-run by default + explicit confirmation + back-pointer file in worktree-local location |
+| Hooks invoked outside a git context resolve unexpectedly | Low | Med | Resolver falls back to current parent-walk behavior transparently |
+| Reviewers miss spec/task context now that they're not in the diff | Med | Low | PR template can include "Implements: SPEC-NNN — see .agents/specs/SPEC-NNN" line |
+| Migration nudge becomes noisy and gets ignored | Med | Med | Refuse all non-migrate commands; nudge text points at exactly one command |
 
 ## Open Questions
 
-- [ ] Confirm `sparks/` is journal-only (not a directory). If it exists as a dir somewhere, classify it.
-- [ ] Migration back-pointer format: sentinel file in old shared subdirs (`.migrated → <new-path>`), or a single root-level marker in `.agents/.migration-state`?
-- [ ] Should `loaf migrate worktree-storage` be idempotent (re-run safe), or refuse if already migrated?
+- [ ] Migration back-pointer format: sentinel file in the worktree-local `.agents/` (e.g., `.moved-to` containing the absolute path). Confirm format during implementation.
+- [ ] Should `loaf migrate worktree-storage` be runnable from the main checkout itself (no-op exit) or refused outside a worktree? Decide and document.
+- [ ] Treatment of an emptied worktree-local `.agents/` post-migration: leave the back-pointer + empty dirs, or remove entirely? Default: leave back-pointer, let user clean up.
 
 ## Test Conditions
 
@@ -95,32 +93,31 @@ Storage location for shared artifacts is the **main worktree's existing `.agents
 - [ ] Journal entries appended from any worktree reach the same session file
 - [ ] `loaf task new` invoked concurrently from two worktrees allocates distinct IDs
 - [ ] `loaf spec new` from a worktree allocates a SPEC ID that doesn't collide with the main worktree's draft specs
-- [ ] Un-migrated repos refuse shared-artifact commands with a prompt to run `loaf migrate worktree-storage`
-- [ ] After migration, all shared subdirs live under the main worktree's `.agents/` and worktrees see them transparently
-- [ ] `loaf session log` outside a git repo continues to work using the local `.agents/` resolution
-- [ ] Branch-local artifacts (`specs/`, `tasks/`, `plans/`) remain in the worktree's tree and ship with that branch's PR diff
-- [ ] Removing a worktree (`git worktree remove`) doesn't leave dangling references in the shared store
+- [ ] Un-migrated worktrees refuse loaf commands (except `migrate`) with a clear prompt
+- [ ] After `loaf migrate worktree-storage`, all artifacts live under the main worktree's `.agents/` and any worktree sees them transparently
+- [ ] `loaf session log` outside a git repo continues to work using the original parent-walk resolution
+- [ ] Single-checkout repos (no linked worktrees) see no behavior change
+- [ ] Removing a worktree (`git worktree remove`) doesn't affect the main worktree's `.agents/` content
 - [ ] Migration is dry-run by default and requires explicit confirmation to mutate
 
 ## Priority Order
 
 Tracks ship in this order. Each go/no-go gate must pass before the next track starts.
 
-1. **Track A — Foundation.** Worktree probe, dual resolvers, ID allocator scans both sides. Go/no-go: parallel-ID-allocation test passes; existing test suite green.
-2. **Track B — Session migration.** Route session reads/writes/start hook through the shared resolver. Go/no-go: cross-worktree session continuity test passes; refusal nudge fires correctly in un-migrated state.
-3. **Track C — Other shared artifacts.** KB, ideas, drafts, reports, councils, `AGENTS.md`, `loaf.json`, `SOUL.md` relocate. Go/no-go: each subdir's existing tests pass after relocation.
-4. **Track D — Migration command + nudge.** `loaf migrate worktree-storage` with dry-run + back-pointer; pre-A2 detection wired into the relevant command surfaces. Go/no-go: migration round-trip test passes; nudge fires on every invocation in un-migrated repos and refuses shared-artifact commands until resolved. *Can be dropped from this spec if scope tightens — manual migration with documentation is acceptable for early adopters.*
+1. **Track A — Foundation.** Worktree probe; `findAgentsDir` redirects to main worktree when in a linked worktree; non-git fallback preserved. Go/no-go: single-resolver tests pass; cross-worktree session continuity test passes (since every call site now resolves the same place automatically); parallel ID allocation test passes.
+2. **Track B — Migration + nudge.** `loaf migrate worktree-storage` (dry-run default, back-pointer) and pre-A3 detection wired into the CLI's top-level command dispatcher (single check, refuses every non-migrate command). Go/no-go: round-trip migration test passes; refusal nudge fires correctly in un-migrated state and `migrate` still works.
+3. **Track C — ADR.** Documents the decision with alternatives considered. *Can be dropped if scope tightens — manual ADR write-up is acceptable for early adopters.*
 
 ## Strategic Tensions
 
 1. **Missing strategic docs.** No `VISION.md`, `STRATEGY.md`, or `ARCHITECTURE.md` to evaluate against. This spec is a candidate to seed `ARCHITECTURE.md` with an explicit "agentic state storage model" section via `/loaf:reflect` after shipping.
-2. **Overlap with SPEC-035.** SPEC-035 may eliminate `TASKS.json`; this spec keeps that question open by only touching allocator logic. Sequencing is independent in either direction.
-3. **PR review surface change.** Today `.agents/sessions/` content can appear in PR diffs, giving reviewers context. Post-A2, sessions never appear in PRs. Documented as a trade — `loaf session export` covers the rare "I want to share this session in a review" case.
+2. **Convention retirement.** The "Spec on main, tasks+code on branch" convention becomes obsolete under A3 — all `.agents/` content always lives in the main worktree regardless of which branch's PR is in flight. Update `AGENTS.md` and project memory after the ADR lands.
+3. **PR review surface change.** Sessions/specs/tasks no longer appear in PR diffs at all. Documented as a trade — review attention belongs on the *code* changes; everything else is context reachable via the PR description.
 
 ## ADR Companion
 
-Implementation should land with an ADR: **"Agentic state separates project/process state from branch-scoped artifacts; the main worktree's `.agents/` is the shared store for project/process state."** Decision is structurally significant and difficult to reverse (changes the storage contract and what ships in PRs) — meets the ADR bar per the architecture skill.
+Implementation should land with an ADR: **"Agentic state is project-scoped, not branch-scoped; the main worktree's `.agents/` is the single store regardless of artifact kind."** Decision is structurally significant and difficult to reverse — meets the ADR bar per the architecture skill.
 
 ## Provenance
 
-Originated from a conversation on 2026-05-19 diagnosing session log misrouting in worktrees. Routed through `/loaf:shape` with explicit user approval; "A2" refers to the middle of three options surfaced during the diagnosis (A1 = sessions only; A2 = sessions + ID allocator centralization, files stay branch-local; A3 = all of `.agents/` shared). User selected A2, plus the refinement to scope `plans/` as local alongside `specs/` and `tasks/`, and to make migration "automatically compelled" via per-invocation detection rather than auto-run.
+Originated from a conversation on 2026-05-19 diagnosing session log misrouting in worktrees. Initial shape landed as **A2** (sessions/process-state shared, specs/tasks/plans branch-local) with 7 tasks broken down. During pre-implementation review, the user surfaced that A2's per-artifact-kind split bought only the "specs/tasks visible in PR diffs" property, which the squash-merge workflow doesn't actually need. Pivoted to **A3** (radical centralization) with 3 tasks. The A2 framing and four dropped task files are preserved in git history (commit 92b1b046).
