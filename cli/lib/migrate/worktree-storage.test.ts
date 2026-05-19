@@ -1,0 +1,480 @@
+/**
+ * SPEC-036 / TASK-170 — `loaf migrate worktree-storage` tests
+ *
+ * Uses real `git init` + `git worktree add` against tmp directories (no git
+ * mocking). Mirrors the fixture pattern from
+ * `cli/lib/tasks/resolve.test.ts` and `cli/commands/session.misrouting.e2e.test.ts`.
+ *
+ * Covers:
+ *   - Round-trip: pre-A3 layout → dry-run (no changes) → apply (changes
+ *     correct) → re-apply (no-op).
+ *   - Conflict policy: newer-mtime wins by default; `--force-from-worktree`
+ *     and `--force-from-main` overrides flip the result.
+ *   - Back-pointer behavior: written after --apply, idempotent on re-run.
+ *   - Main-checkout invocation: clean no-op exit.
+ *   - Outside git context: error status.
+ *   - Pre-A3 detector: only fires on linked worktrees with unmigrated content.
+ */
+
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from "fs";
+import { execFileSync } from "child_process";
+import { join } from "path";
+import { tmpdir } from "os";
+
+import {
+  BACK_POINTER_FILE,
+  detectPreA3State,
+  PRE_A3_REFUSAL_MESSAGE,
+  readBackPointer,
+  runMigration,
+  worktreeAgentsHasContent,
+} from "./worktree-storage.js";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scaffolding (mirrors cli/lib/tasks/resolve.test.ts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+let TEST_ROOT: string;
+
+const TEST_IDENTITY = [
+  "-c",
+  "user.name=Test User",
+  "-c",
+  "user.email=test@test.com",
+] as const;
+
+function git(args: readonly string[], cwd: string): string {
+  return execFileSync("git", args as string[], { cwd, stdio: ["ignore", "pipe", "pipe"] })
+    .toString();
+}
+
+function createMainRepo(name: string, opts: { withAgents?: boolean } = {}): string {
+  const withAgents = opts.withAgents !== false;
+  const repoPath = realpathSync(mkdtempSync(join(TEST_ROOT, `${name}-`)));
+
+  git(["init", "--initial-branch=main"], repoPath);
+  writeFileSync(join(repoPath, "README.md"), "# Test\n", "utf-8");
+  git(["add", "."], repoPath);
+  git([...TEST_IDENTITY, "commit", "-m", "Initial commit"], repoPath);
+
+  if (withAgents) {
+    mkdirSync(join(repoPath, ".agents"), { recursive: true });
+    writeFileSync(
+      join(repoPath, ".agents", "AGENTS.md"),
+      "# Project Instructions\n",
+      "utf-8",
+    );
+  }
+  return repoPath;
+}
+
+function addWorktree(repoPath: string, branch: string): string {
+  const wtPath = `${repoPath}-wt-${branch}`;
+  git(["worktree", "add", "-b", branch, wtPath], repoPath);
+  return realpathSync(wtPath);
+}
+
+/**
+ * Populate a linked worktree's `.agents/` with the structure SPEC-036 enumerates
+ * (sessions/, kb/, ideas/, drafts/, reports/, councils/, tasks/, specs/, plans/,
+ * AGENTS.md, loaf.json, SOUL.md, TASKS.json) so tests can assert that the full
+ * surface migrates.
+ */
+function seedPreA3WorktreeLayout(worktreePath: string): {
+  files: string[];
+  agentsDir: string;
+} {
+  const agents = join(worktreePath, ".agents");
+  mkdirSync(agents, { recursive: true });
+
+  const files: string[] = [];
+  const addFile = (rel: string, content: string) => {
+    const abs = join(agents, rel);
+    mkdirSync(join(abs, ".."), { recursive: true });
+    writeFileSync(abs, content, "utf-8");
+    files.push(rel);
+  };
+
+  addFile("AGENTS.md", "# Worktree AGENTS\n");
+  addFile("loaf.json", '{"foo":"bar"}\n');
+  addFile("SOUL.md", "# Soul\n");
+  addFile("TASKS.json", '{"version":1,"next_id":100,"tasks":{},"specs":{}}\n');
+  addFile("sessions/20260519-120000-session.md", "# Session\n");
+  addFile("kb/some-note.md", "# KB Note\n");
+  addFile("ideas/idea-001.md", "# Idea\n");
+  addFile("drafts/draft-001.md", "# Draft\n");
+  addFile("reports/report-001.md", "# Report\n");
+  addFile("councils/council-001.md", "# Council\n");
+  addFile("tasks/TASK-200-example.md", "# Task 200\n");
+  addFile("specs/SPEC-040-example.md", "# Spec 040\n");
+  addFile("plans/PLAN-001.md", "# Plan 001\n");
+
+  return { files, agentsDir: agents };
+}
+
+beforeEach(() => {
+  TEST_ROOT = realpathSync(mkdtempSync(join(tmpdir(), "loaf-migrate-")));
+});
+
+afterEach(() => {
+  rmSync(TEST_ROOT, { recursive: true, force: true });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants & detection
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("PRE_A3_REFUSAL_MESSAGE", () => {
+  it("mentions the migrate command, SPEC-036, and the debug env knob", () => {
+    expect(PRE_A3_REFUSAL_MESSAGE).toContain("loaf migrate worktree-storage");
+    expect(PRE_A3_REFUSAL_MESSAGE).toContain("SPEC-036");
+    expect(PRE_A3_REFUSAL_MESSAGE).toContain("LOAF_DEBUG_RESOLVE");
+  });
+});
+
+describe("detectPreA3State", () => {
+  it("returns false for a main checkout with no linked worktrees", () => {
+    const main = createMainRepo("det-main");
+    expect(detectPreA3State(main)).toBe(false);
+  });
+
+  it("returns false for a linked worktree with no local .agents/", () => {
+    const main = createMainRepo("det-empty");
+    const linked = addWorktree(main, "feat/empty");
+    // No .agents/ created in the linked worktree.
+    expect(detectPreA3State(linked)).toBe(false);
+  });
+
+  it("returns true for a linked worktree with populated .agents/ and no back-pointer", () => {
+    const main = createMainRepo("det-populated");
+    const linked = addWorktree(main, "feat/populated");
+    seedPreA3WorktreeLayout(linked);
+    expect(detectPreA3State(linked)).toBe(true);
+  });
+
+  it("returns false when back-pointer correctly references the current main root", () => {
+    const main = createMainRepo("det-migrated");
+    const linked = addWorktree(main, "feat/migrated");
+    mkdirSync(join(linked, ".agents"), { recursive: true });
+    writeFileSync(
+      join(linked, ".agents", BACK_POINTER_FILE),
+      `${main}\n`,
+      "utf-8",
+    );
+    expect(detectPreA3State(linked)).toBe(false);
+  });
+
+  it("returns true when back-pointer references a stale (nonexistent) path", () => {
+    const main = createMainRepo("det-stale");
+    const linked = addWorktree(main, "feat/stale");
+    seedPreA3WorktreeLayout(linked);
+    writeFileSync(
+      join(linked, ".agents", BACK_POINTER_FILE),
+      "/nonexistent/path\n",
+      "utf-8",
+    );
+    expect(detectPreA3State(linked)).toBe(true);
+  });
+
+  it("returns false for non-git directories", () => {
+    const nonGit = mkdtempSync(join(TEST_ROOT, "no-git-"));
+    mkdirSync(join(nonGit, ".agents"), { recursive: true });
+    writeFileSync(join(nonGit, ".agents", "foo.md"), "x\n", "utf-8");
+    expect(detectPreA3State(nonGit)).toBe(false);
+  });
+
+  it("detects pre-A3 state from a subdirectory of the linked worktree", () => {
+    const main = createMainRepo("det-subdir");
+    const linked = addWorktree(main, "feat/subdir");
+    seedPreA3WorktreeLayout(linked);
+    const sub = join(linked, "src", "deep");
+    mkdirSync(sub, { recursive: true });
+    expect(detectPreA3State(sub)).toBe(true);
+  });
+});
+
+describe("worktreeAgentsHasContent", () => {
+  it("returns false for a missing directory", () => {
+    expect(worktreeAgentsHasContent(join(TEST_ROOT, "nope"))).toBe(false);
+  });
+
+  it("returns false for an empty directory", () => {
+    const dir = join(TEST_ROOT, "empty");
+    mkdirSync(dir, { recursive: true });
+    expect(worktreeAgentsHasContent(dir)).toBe(false);
+  });
+
+  it("returns false when only the back-pointer is present", () => {
+    const dir = join(TEST_ROOT, "ptr-only");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, BACK_POINTER_FILE), "/x\n", "utf-8");
+    expect(worktreeAgentsHasContent(dir)).toBe(false);
+  });
+
+  it("returns true when other content is present", () => {
+    const dir = join(TEST_ROOT, "with-content");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "foo.md"), "x\n", "utf-8");
+    expect(worktreeAgentsHasContent(dir)).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// runMigration — main behaviors
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("runMigration — main checkout & non-git", () => {
+  it("returns 'not-in-worktree' when invoked from the main checkout", () => {
+    const main = createMainRepo("rm-main");
+    const result = runMigration({ cwd: main, apply: false, conflictPolicy: "newer" });
+    expect(result.status).toBe("not-in-worktree");
+    expect(result.message).toContain("main worktree");
+  });
+
+  it("returns 'not-in-git' outside any git context", () => {
+    const nonGit = mkdtempSync(join(TEST_ROOT, "no-git-rm-"));
+    const result = runMigration({
+      cwd: nonGit,
+      apply: false,
+      conflictPolicy: "newer",
+    });
+    expect(result.status).toBe("not-in-git");
+  });
+});
+
+describe("runMigration — round-trip on a populated worktree", () => {
+  it("dry-run reports moves without mutating; --apply moves files and writes back-pointer; re-apply is a no-op", () => {
+    const main = createMainRepo("rt-round");
+    const linked = addWorktree(main, "feat/round");
+    const { files, agentsDir } = seedPreA3WorktreeLayout(linked);
+
+    // ─── Dry-run ────────────────────────────────────────────────────────
+    const dryRun = runMigration({
+      cwd: linked,
+      apply: false,
+      conflictPolicy: "newer",
+    });
+    expect(dryRun.status).toBe("planned");
+    expect(dryRun.plan).toBeDefined();
+    // Every seeded file is in the plan.
+    const planned = dryRun.plan!.moves.map((m) => m.rel).sort();
+    expect(planned).toEqual([...files].sort());
+
+    // Files still in their original location post dry-run.
+    for (const rel of files) {
+      expect(existsSync(join(agentsDir, rel))).toBe(true);
+    }
+    // Main has only AGENTS.md (seeded by createMainRepo); the others are absent.
+    expect(existsSync(join(main, ".agents", "sessions"))).toBe(false);
+    expect(existsSync(join(main, ".agents", "kb"))).toBe(false);
+    // No back-pointer in dry-run.
+    expect(existsSync(join(agentsDir, BACK_POINTER_FILE))).toBe(false);
+
+    // ─── Apply ──────────────────────────────────────────────────────────
+    const applied = runMigration({
+      cwd: linked,
+      apply: true,
+      conflictPolicy: "newer",
+    });
+    expect(applied.status).toBe("applied");
+
+    // Every file is now under main/.agents/ at its expected relative path.
+    for (const rel of files) {
+      const fromMain = join(main, ".agents", rel);
+      expect(existsSync(fromMain)).toBe(true);
+    }
+    // AGENTS.md is a conflict — both sides existed. Default policy is "newer".
+    // The original seeded AGENTS.md in main was written first; the worktree
+    // seeded version is newer (later in the same test). Confirm one of them
+    // resolved — content should be one of the two seed strings.
+    const finalAgents = readFileSync(join(main, ".agents", "AGENTS.md"), "utf-8");
+    expect(["# Project Instructions\n", "# Worktree AGENTS\n"]).toContain(finalAgents);
+
+    // Worktree-local files are gone (renamed away).
+    for (const rel of files) {
+      expect(existsSync(join(agentsDir, rel))).toBe(false);
+    }
+
+    // Back-pointer present and points at main.
+    expect(readBackPointer(agentsDir)).toBe(main);
+
+    // ─── Re-apply ───────────────────────────────────────────────────────
+    const noOp = runMigration({
+      cwd: linked,
+      apply: true,
+      conflictPolicy: "newer",
+    });
+    expect(noOp.status).toBe("already-migrated");
+  });
+
+  it("dry-run twice in a row yields identical plans (no hidden side effects)", () => {
+    const main = createMainRepo("rt-dryrun-twice");
+    const linked = addWorktree(main, "feat/twice");
+    seedPreA3WorktreeLayout(linked);
+
+    const a = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    const b = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    expect(a.plan?.moves.map((m) => m.rel).sort()).toEqual(
+      b.plan?.moves.map((m) => m.rel).sort(),
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Conflict policy
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("runMigration — conflict policy", () => {
+  /**
+   * Set mtimes explicitly with `utimesSync` so the newer-wins logic is
+   * deterministic regardless of filesystem timestamp resolution.
+   */
+  function setMtime(path: string, epochSeconds: number): void {
+    const d = new Date(epochSeconds * 1000);
+    utimesSync(path, d, d);
+  }
+
+  it("default (newer): worktree wins when its mtime is newer than main's", () => {
+    const main = createMainRepo("cp-newer-wt");
+    const linked = addWorktree(main, "feat/newer-wt");
+
+    const mainFile = join(main, ".agents", "AGENTS.md"); // already exists
+    setMtime(mainFile, 1_000_000);
+
+    mkdirSync(join(linked, ".agents"), { recursive: true });
+    const wtFile = join(linked, ".agents", "AGENTS.md");
+    writeFileSync(wtFile, "# from worktree (newer)\n", "utf-8");
+    setMtime(wtFile, 2_000_000);
+
+    const r = runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    expect(r.status).toBe("applied");
+    expect(readFileSync(mainFile, "utf-8")).toBe("# from worktree (newer)\n");
+  });
+
+  it("default (newer): main wins when its mtime is newer than worktree's", () => {
+    const main = createMainRepo("cp-newer-main");
+    const linked = addWorktree(main, "feat/newer-main");
+
+    const mainFile = join(main, ".agents", "AGENTS.md");
+    writeFileSync(mainFile, "# from main (newer)\n", "utf-8");
+    setMtime(mainFile, 3_000_000);
+
+    mkdirSync(join(linked, ".agents"), { recursive: true });
+    const wtFile = join(linked, ".agents", "AGENTS.md");
+    writeFileSync(wtFile, "# from worktree (older)\n", "utf-8");
+    setMtime(wtFile, 1_000_000);
+
+    const r = runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    expect(r.status).toBe("applied");
+    expect(readFileSync(mainFile, "utf-8")).toBe("# from main (newer)\n");
+    // worktree-local copy must be gone (lost the conflict).
+    expect(existsSync(wtFile)).toBe(false);
+  });
+
+  it("--force-from-worktree overrides regardless of mtime", () => {
+    const main = createMainRepo("cp-force-wt");
+    const linked = addWorktree(main, "feat/force-wt");
+
+    const mainFile = join(main, ".agents", "AGENTS.md");
+    writeFileSync(mainFile, "# from main (newer)\n", "utf-8");
+    setMtime(mainFile, 9_000_000); // main is newer
+
+    mkdirSync(join(linked, ".agents"), { recursive: true });
+    const wtFile = join(linked, ".agents", "AGENTS.md");
+    writeFileSync(wtFile, "# from worktree (older)\n", "utf-8");
+    setMtime(wtFile, 1_000_000);
+
+    const r = runMigration({ cwd: linked, apply: true, conflictPolicy: "worktree" });
+    expect(r.status).toBe("applied");
+    // Worktree wins despite older mtime.
+    expect(readFileSync(mainFile, "utf-8")).toBe("# from worktree (older)\n");
+  });
+
+  it("--force-from-main overrides regardless of mtime", () => {
+    const main = createMainRepo("cp-force-main");
+    const linked = addWorktree(main, "feat/force-main");
+
+    const mainFile = join(main, ".agents", "AGENTS.md");
+    writeFileSync(mainFile, "# from main (older)\n", "utf-8");
+    setMtime(mainFile, 1_000_000); // main is older
+
+    mkdirSync(join(linked, ".agents"), { recursive: true });
+    const wtFile = join(linked, ".agents", "AGENTS.md");
+    writeFileSync(wtFile, "# from worktree (newer)\n", "utf-8");
+    setMtime(wtFile, 9_000_000);
+
+    const r = runMigration({ cwd: linked, apply: true, conflictPolicy: "main" });
+    expect(r.status).toBe("applied");
+    expect(readFileSync(mainFile, "utf-8")).toBe("# from main (older)\n");
+    // worktree-local copy must be removed.
+    expect(existsSync(wtFile)).toBe(false);
+  });
+
+  it("conflict plans include a resolution string in dry-run", () => {
+    const main = createMainRepo("cp-plan");
+    const linked = addWorktree(main, "feat/plan");
+
+    const mainFile = join(main, ".agents", "AGENTS.md");
+    setMtime(mainFile, 1_000_000);
+    mkdirSync(join(linked, ".agents"), { recursive: true });
+    const wtFile = join(linked, ".agents", "AGENTS.md");
+    writeFileSync(wtFile, "x\n", "utf-8");
+    setMtime(wtFile, 2_000_000);
+
+    const r = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    const move = r.plan!.moves.find((m) => m.rel === "AGENTS.md");
+    expect(move?.conflict).toBe(true);
+    expect(move?.resolution).toBe("keep-worktree");
+    expect(move?.resolutionReason).toMatch(/worktree mtime .* > main mtime/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Back-pointer & idempotency edge cases
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("runMigration — back-pointer & idempotency", () => {
+  it("writes the back-pointer with a single trailing newline", () => {
+    const main = createMainRepo("bp-format");
+    const linked = addWorktree(main, "feat/bp");
+    seedPreA3WorktreeLayout(linked);
+
+    runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    const raw = readFileSync(join(linked, ".agents", BACK_POINTER_FILE), "utf-8");
+    expect(raw).toBe(`${main}\n`);
+  });
+
+  it("dry-run on an already-migrated worktree reports already-migrated, not planned", () => {
+    const main = createMainRepo("bp-dry-after-apply");
+    const linked = addWorktree(main, "feat/dry-after");
+    seedPreA3WorktreeLayout(linked);
+
+    runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    const dry = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    expect(dry.status).toBe("already-migrated");
+  });
+
+  it("re-apply doesn't change the back-pointer mtime when nothing moves", () => {
+    const main = createMainRepo("bp-stable");
+    const linked = addWorktree(main, "feat/stable");
+    seedPreA3WorktreeLayout(linked);
+    runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    const t1 = statSync(join(linked, ".agents", BACK_POINTER_FILE)).mtimeMs;
+    runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    const t2 = statSync(join(linked, ".agents", BACK_POINTER_FILE)).mtimeMs;
+    // Already-migrated short-circuits before any writes, so the file is
+    // byte-and-mtime stable across re-runs.
+    expect(t2).toBe(t1);
+  });
+});

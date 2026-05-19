@@ -27,7 +27,12 @@ import { execFileSync } from "child_process";
 import { join } from "path";
 import { tmpdir } from "os";
 
-import { findAgentsDir, getOrBuildIndex } from "./resolve.js";
+import {
+  DEBUG_RESOLVE_ENV,
+  findAgentsDir,
+  getOrBuildIndex,
+  isDebugResolveEnabled,
+} from "./resolve.js";
 import { saveIndex } from "./migrate.js";
 import type { TaskIndex } from "./types.js";
 
@@ -314,4 +319,70 @@ describe("parallel ID allocation across worktrees (A3 single-view scan)", () => 
     expect(finalFromMain.next_id).toBe(102);
     expect(finalFromLinked.next_id).toBe(102);
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// isDebugResolveEnabled — env-var truthiness allow-list
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("isDebugResolveEnabled — explicit allow-list truthiness", () => {
+  let original: string | undefined;
+
+  beforeEach(() => {
+    original = process.env[DEBUG_RESOLVE_ENV];
+  });
+
+  afterEach(() => {
+    if (original === undefined) {
+      delete process.env[DEBUG_RESOLVE_ENV];
+    } else {
+      process.env[DEBUG_RESOLVE_ENV] = original;
+    }
+  });
+
+  function set(value: string | undefined): void {
+    if (value === undefined) {
+      delete process.env[DEBUG_RESOLVE_ENV];
+    } else {
+      process.env[DEBUG_RESOLVE_ENV] = value;
+    }
+  }
+
+  it("returns false when unset", () => {
+    set(undefined);
+    expect(isDebugResolveEnabled()).toBe(false);
+  });
+
+  it("returns false for empty string", () => {
+    set("");
+    expect(isDebugResolveEnabled()).toBe(false);
+  });
+
+  it("returns false for '0'", () => {
+    set("0");
+    expect(isDebugResolveEnabled()).toBe(false);
+  });
+
+  it("returns false for 'false'", () => {
+    set("false");
+    expect(isDebugResolveEnabled()).toBe(false);
+  });
+
+  it("returns false for 'no'", () => {
+    set("no");
+    expect(isDebugResolveEnabled()).toBe(false);
+  });
+
+  it("returns false for arbitrary non-allow-listed strings", () => {
+    set("enabled");
+    expect(isDebugResolveEnabled()).toBe(false);
+  });
+
+  it.each(["1", "true", "yes", "on", "TRUE", "Yes", "ON"])(
+    "returns true for %s",
+    (value) => {
+      set(value);
+      expect(isDebugResolveEnabled()).toBe(true);
+    },
+  );
 });
