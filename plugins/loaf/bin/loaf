@@ -18788,10 +18788,10 @@ function ask(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve5) => {
+  return new Promise((resolve6) => {
     rl.question(question, (answer) => {
       rl.close();
-      resolve5(answer.trim().toLowerCase());
+      resolve6(answer.trim().toLowerCase());
     });
   });
 }
@@ -19402,12 +19402,12 @@ function askYesNo(question, defaultYes = false) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve5) => {
+  return new Promise((resolve6) => {
     rl.question(question, (answer) => {
       rl.close();
       const a = answer.trim().toLowerCase();
-      if (!a) resolve5(defaultYes);
-      else resolve5(a.startsWith("y"));
+      if (!a) resolve6(defaultYes);
+      else resolve6(a.startsWith("y"));
     });
   });
 }
@@ -20053,18 +20053,18 @@ function askYesNo2(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve5) => {
+  return new Promise((resolve6) => {
     let resolved = false;
     rl.on("close", () => {
       if (!resolved) {
         resolved = true;
-        resolve5(false);
+        resolve6(false);
       }
     });
     rl.question(question, (answer) => {
       resolved = true;
       rl.close();
-      resolve5(answer.trim().toLowerCase().startsWith("y"));
+      resolve6(answer.trim().toLowerCase().startsWith("y"));
     });
   });
 }
@@ -20282,18 +20282,18 @@ function askYesNo3(question) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve5) => {
+  return new Promise((resolve6) => {
     let resolved = false;
     rl.on("close", () => {
       if (!resolved) {
         resolved = true;
-        resolve5(false);
+        resolve6(false);
       }
     });
     rl.question(question, (answer) => {
       resolved = true;
       rl.close();
-      resolve5(answer.trim().toLowerCase().startsWith("y"));
+      resolve6(answer.trim().toLowerCase().startsWith("y"));
     });
   });
 }
@@ -21352,12 +21352,12 @@ async function askChoice(question, options2, defaultChoice) {
     input: process.stdin,
     output: process.stdout
   });
-  return new Promise((resolve5) => {
+  return new Promise((resolve6) => {
     let resolved = false;
     rl.on("close", () => {
       if (!resolved) {
         resolved = true;
-        resolve5(defaultChoice);
+        resolve6(defaultChoice);
       }
     });
     rl.question(question, (answer) => {
@@ -21365,9 +21365,9 @@ async function askChoice(question, options2, defaultChoice) {
       rl.close();
       const num = parseInt(answer.trim(), 10);
       if (num >= 1 && num <= options2.length) {
-        resolve5(options2[num - 1]);
+        resolve6(options2[num - 1]);
       } else {
-        resolve5(defaultChoice);
+        resolve6(defaultChoice);
       }
     });
   });
@@ -21936,8 +21936,9 @@ import { existsSync as existsSync26, mkdirSync as mkdirSync19, readFileSync as r
 import { join as join32 } from "path";
 
 // cli/lib/tasks/resolve.ts
+import { execFileSync as execFileSync10 } from "child_process";
 import { existsSync as existsSync25 } from "fs";
-import { join as join31, dirname as dirname9 } from "path";
+import { join as join31, dirname as dirname9, resolve as resolve3 } from "path";
 
 // cli/lib/tasks/migrate.ts
 var import_gray_matter6 = __toESM(require_gray_matter(), 1);
@@ -22370,7 +22371,36 @@ function archiveSpecs(agentsDir, index, specIds) {
 }
 
 // cli/lib/tasks/resolve.ts
+function findMainWorktreeRoot(startDir) {
+  try {
+    const rawGitDir = execFileSync10(
+      "git",
+      ["rev-parse", "--path-format=absolute", "--git-dir"],
+      { cwd: startDir, stdio: ["ignore", "pipe", "ignore"] }
+    ).toString().trim();
+    const rawCommonDir = execFileSync10(
+      "git",
+      ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+      { cwd: startDir, stdio: ["ignore", "pipe", "ignore"] }
+    ).toString().trim();
+    if (!rawGitDir || !rawCommonDir) return null;
+    const gitDir = resolve3(startDir, rawGitDir);
+    const commonDir = resolve3(startDir, rawCommonDir);
+    if (gitDir === commonDir) return null;
+    if (commonDir.endsWith("/.git") || commonDir.endsWith("\\.git")) {
+      return dirname9(commonDir);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 function findAgentsDir(startDir = process.cwd()) {
+  const mainRoot = findMainWorktreeRoot(startDir);
+  if (mainRoot) {
+    const candidate = join31(mainRoot, ".agents");
+    return existsSync25(candidate) ? candidate : null;
+  }
   let current = startDir;
   while (true) {
     const candidate = join31(current, ".agents");
@@ -23192,7 +23222,7 @@ import { existsSync as existsSync33, mkdirSync as mkdirSync21, readFileSync as r
 import { join as join38, basename as basename4, relative as relative7, isAbsolute as isAbsolute2 } from "path";
 
 // cli/lib/kb/resolve.ts
-import { execFileSync as execFileSync10 } from "child_process";
+import { execFileSync as execFileSync11 } from "child_process";
 import { existsSync as existsSync28, readFileSync as readFileSync24 } from "fs";
 import { join as join34 } from "path";
 var DEFAULT_KB_CONFIG = {
@@ -23202,7 +23232,7 @@ var DEFAULT_KB_CONFIG = {
 };
 function findGitRoot() {
   try {
-    const result = execFileSync10("git", ["rev-parse", "--show-toplevel"], {
+    const result = execFileSync11("git", ["rev-parse", "--show-toplevel"], {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"]
     });
@@ -23312,7 +23342,7 @@ function normalizeImplementationStatus(value) {
 
 // cli/lib/kb/validate.ts
 var import_gray_matter9 = __toESM(require_gray_matter(), 1);
-import { execFileSync as execFileSync11 } from "child_process";
+import { execFileSync as execFileSync12 } from "child_process";
 import { existsSync as existsSync30, readdirSync as readdirSync11, readFileSync as readFileSync26 } from "fs";
 import { dirname as dirname10, join as join36, relative as relative6 } from "path";
 
@@ -23446,7 +23476,7 @@ function validateLoadedFile(gitRoot, file) {
 }
 function globMatchesTrackedFiles(gitRoot, glob) {
   try {
-    const result = execFileSync11("git", ["ls-files", "--", glob], {
+    const result = execFileSync12("git", ["ls-files", "--", glob], {
       cwd: gitRoot,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"]
@@ -23459,7 +23489,7 @@ function globMatchesTrackedFiles(gitRoot, glob) {
 
 // cli/lib/kb/staleness.ts
 var import_picomatch = __toESM(require_picomatch2(), 1);
-import { execFileSync as execFileSync12 } from "child_process";
+import { execFileSync as execFileSync13 } from "child_process";
 function checkStaleness(gitRoot, file, _config) {
   const covers = file.frontmatter.covers;
   if (!covers || covers.length === 0) {
@@ -23486,7 +23516,7 @@ function checkStaleness(gitRoot, file, _config) {
     };
   }
   try {
-    const output = execFileSync12(
+    const output = execFileSync13(
       "git",
       [
         "log",
@@ -23560,10 +23590,10 @@ function parseGitLogOutput(output) {
 }
 
 // cli/lib/kb/qmd.ts
-import { execFileSync as execFileSync13 } from "child_process";
+import { execFileSync as execFileSync14 } from "child_process";
 function isQmdAvailable() {
   try {
-    execFileSync13("which", ["qmd"], { stdio: "pipe" });
+    execFileSync14("which", ["qmd"], { stdio: "pipe" });
     return true;
   } catch {
     return false;
@@ -23571,7 +23601,7 @@ function isQmdAvailable() {
 }
 function registerCollection(name, path) {
   try {
-    execFileSync13("qmd", ["collection", "add", path, "--name", name], {
+    execFileSync14("qmd", ["collection", "add", path, "--name", name], {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"]
     });
@@ -23582,7 +23612,7 @@ function registerCollection(name, path) {
 }
 function listCollections() {
   try {
-    const output = execFileSync13("qmd", ["collection", "list"], {
+    const output = execFileSync14("qmd", ["collection", "list"], {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"]
     });
@@ -24581,7 +24611,7 @@ import {
   statSync,
   writeFileSync as writeFileSync21
 } from "fs";
-import { join as join39, dirname as dirname12, resolve as resolve3 } from "path";
+import { join as join39, dirname as dirname12, resolve as resolve4 } from "path";
 import { fileURLToPath as fileURLToPath5 } from "url";
 var __dirname3 = dirname12(fileURLToPath5(import.meta.url));
 var bold10 = (s) => `\x1B[1m${s}\x1B[0m`;
@@ -24857,7 +24887,7 @@ function registerSetupCommand(program3) {
 ${bold10("loaf setup")}
 `);
     if (pathArg) {
-      const targetDir = resolve3(pathArg);
+      const targetDir = resolve4(pathArg);
       if (existsSync34(targetDir)) {
         const stat = statSync(targetDir);
         if (!stat.isDirectory()) {
@@ -26015,20 +26045,20 @@ var red10 = (s) => `\x1B[31m${s}\x1B[0m`;
 var yellow14 = (s) => `\x1B[33m${s}\x1B[0m`;
 var gray14 = (s) => `\x1B[90m${s}\x1B[0m`;
 async function readStdin() {
-  return new Promise((resolve5, reject) => {
+  return new Promise((resolve6, reject) => {
     let data = "";
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk) => {
       data += chunk;
     });
     process.stdin.on("end", () => {
-      resolve5(data);
+      resolve6(data);
     });
     process.stdin.on("error", (err) => {
       reject(err);
     });
     if (process.stdin.isTTY) {
-      resolve5("");
+      resolve6("");
     }
   });
 }
@@ -28011,7 +28041,7 @@ var gray16 = (s) => `\x1B[90m${s}\x1B[0m`;
 async function parseHookInput() {
   if (process.stdin.isTTY) return {};
   let data = "";
-  return new Promise((resolve5) => {
+  return new Promise((resolve6) => {
     const timer = setTimeout(() => {
       finish({});
     }, 100);
@@ -28038,7 +28068,7 @@ async function parseHookInput() {
       process.stdin.removeListener("end", onEnd);
       process.stdin.removeListener("error", onError);
       if (typeof process.stdin.unref === "function") process.stdin.unref();
-      resolve5(result);
+      resolve6(result);
     }
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", onData);
@@ -28157,7 +28187,7 @@ async function acquireLock(lockPath, maxRetries = 50, retryDelay = 100) {
     } catch (err) {
       const code = err?.code;
       if (code === "EEXIST") {
-        await new Promise((resolve5) => setTimeout(resolve5, retryDelay));
+        await new Promise((resolve6) => setTimeout(resolve6, retryDelay));
         continue;
       }
       if (code === "ENOENT") {
@@ -29549,7 +29579,7 @@ function registerSessionCommand(program3) {
       agentArgs.push("--disallowedTools", "Edit,Write");
     }
     console.log(`  ${gray16("Spawning librarian agent...")}`);
-    const exitCode = await new Promise((resolve5) => {
+    const exitCode = await new Promise((resolve6) => {
       const childEnv = { ...process.env, LOAF_ENRICHMENT: "1" };
       const childStdio = [
         "pipe",
@@ -29582,7 +29612,7 @@ function registerSessionCommand(program3) {
             }
           }
         }
-        resolve5(code ?? 1);
+        resolve6(code ?? 1);
       });
       child.on("error", (err) => {
         if (err.code === "ENOENT") {
@@ -29590,7 +29620,7 @@ function registerSessionCommand(program3) {
         } else {
           console.error(`  ${red12("error:")} Failed to spawn librarian agent: ${err.message}`);
         }
-        resolve5(1);
+        resolve6(1);
       });
     });
     if (exitCode !== 0) {
@@ -29887,7 +29917,7 @@ import {
   readdirSync as readdirSync17,
   unlinkSync as unlinkSync5
 } from "fs";
-import { join as join49, basename as basename9, resolve as resolve4 } from "path";
+import { join as join49, basename as basename9, resolve as resolve5 } from "path";
 var bold16 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green15 = (s) => `\x1B[32m${s}\x1B[0m`;
 var red13 = (s) => `\x1B[31m${s}\x1B[0m`;
@@ -29911,8 +29941,8 @@ function sanitizePathSegment(input) {
   return input.replace(/[/\\:*?"<>|]/g, "-").replace(/^\.+/, "");
 }
 function isInsideDir(filePath, dir) {
-  const resolved = resolve4(filePath);
-  const resolvedDir = resolve4(dir);
+  const resolved = resolve5(filePath);
+  const resolvedDir = resolve5(dir);
   return resolved.startsWith(resolvedDir + "/") || resolved === resolvedDir;
 }
 function resolveReportFile(reportsDir, fileArg) {
