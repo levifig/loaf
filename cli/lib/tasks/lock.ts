@@ -9,8 +9,10 @@
  *
  *   - Acquired by `openSync(lockPath, "wx")` — atomic on POSIX and Windows.
  *   - Bounded retry/backoff on `EEXIST`.
- *   - Staleness detection: locks older than `LOCK_STALENESS_THRESHOLD` OR owned
- *     by a dead PID are force-released.
+ *   - Staleness detection: PID-liveness on the same host (authoritative)
+ *     with a conservative age fallback only when the lock content is missing/
+ *     malformed or written by a foreign host. Long-lived but live local
+ *     critical sections are NEVER evicted on age alone.
  *   - Released via `unlinkSync` in a `finally` block.
  *
  * The lock file is `<agentsDir>/.tasks-json.lock`. We always re-read TASKS.json
@@ -43,6 +45,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "fs";
+import { hostname } from "os";
 import { dirname, join } from "path";
 
 import { buildIndexFromFiles, loadIndex } from "./migrate.js";
@@ -55,8 +58,17 @@ import type { TaskIndex } from "./types.js";
 /** Lock file name relative to the .agents/ directory. */
 export const TASKS_JSON_LOCK_FILE = ".tasks-json.lock";
 
-/** Staleness threshold (30 seconds — same as session lock). */
-const LOCK_STALENESS_THRESHOLD = 30000;
+/**
+ * Conservative age fallback (5 minutes). Only kicked in when we cannot do a
+ * meaningful PID-liveness check — i.e. the lock file is empty/malformed (a
+ * pre-fix Loaf left it behind) or the holder is on a different host where
+ * our local PID namespace is meaningless. Deliberately long because a valid
+ * critical section under contention (slow `task sync --import` over a large
+ * TASKS.json, etc.) can legitimately exceed shorter thresholds; we accept
+ * extra wait on the foreign/malformed paths in exchange for never evicting a
+ * live local holder. The PID-liveness check is the primary signal.
+ */
+const LOCK_AGE_FALLBACK_THRESHOLD_MS = 5 * 60 * 1000;
 
 /**
  * Default retry budget. 100 retries × 25ms ≈ 2.5s ceiling — long enough to
@@ -68,38 +80,100 @@ const DEFAULT_RETRY_DELAY_MS = 25;
 
 interface LockFileContent {
   pid: number;
+  /** Hostname of the machine that wrote the lock. PID liveness is only
+   *  meaningful on the same machine — we read this back to avoid checking a
+   *  local PID against a remote process' PID space. */
+  host: string;
   timestamp: number;
 }
 
+/**
+ * Probe whether `pid` is alive on this host.
+ *
+ *   - `process.kill(pid, 0)` does not actually signal — it just performs the
+ *     permission/existence check. Throws ESRCH when no such process exists,
+ *     EPERM when the process exists but we don't have permission to signal.
+ *   - We treat EPERM as alive: a different user owns the process, so we can't
+ *     poke it, but it is definitely running.
+ *   - Any other error (e.g. EINVAL) we conservatively treat as alive too so
+ *     we never force-evict on the basis of an inconclusive probe.
+ */
 function isProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === "ESRCH") return false; // Confirmed dead.
+    // EPERM or anything else: process likely exists, just unreachable. Treat
+    // as alive — we'd rather wait on a live holder than steal from one.
+    return true;
   }
 }
 
 function readLockContent(lockPath: string): LockFileContent | null {
   try {
-    return JSON.parse(readFileSync(lockPath, "utf-8")) as LockFileContent;
+    const parsed = JSON.parse(readFileSync(lockPath, "utf-8")) as Partial<LockFileContent>;
+    if (typeof parsed?.pid !== "number") return null;
+    return {
+      pid: parsed.pid,
+      host: typeof parsed.host === "string" ? parsed.host : "",
+      timestamp: typeof parsed.timestamp === "number" ? parsed.timestamp : 0,
+    };
   } catch {
     return null;
   }
 }
 
-/** Stale if older than threshold OR owned by a dead PID. */
+/**
+ * Decide whether an existing lock file is stale.
+ *
+ * Primary signal — PID liveness on the same host. If the lock file records a
+ * PID and a host that matches `os.hostname()`, we trust `process.kill(pid, 0)`
+ * to answer authoritatively. A long-running but live local holder will NOT be
+ * declared stale, no matter the age — that was the original defect this
+ * function fixes.
+ *
+ * Fallback — conservative age check (`LOCK_AGE_FALLBACK_THRESHOLD_MS`). Used
+ * only when we genuinely cannot probe liveness:
+ *
+ *   - Lock file content is empty/malformed (pre-fix Loaf orphaned the lock).
+ *   - Lock was written on a different host (PID namespace is theirs, not
+ *     ours; probing a "matching" local PID would be a false signal).
+ *
+ * On the foreign-host path, age is a last-resort heuristic. We accept extra
+ * wait there in exchange for never evicting a live holder elsewhere.
+ */
 function isLockStale(lockPath: string): boolean {
+  let stats;
   try {
-    const stats = statSync(lockPath);
-    if (Date.now() - stats.mtimeMs > LOCK_STALENESS_THRESHOLD) return true;
-    const content = readLockContent(lockPath);
-    if (content?.pid && !isProcessAlive(content.pid)) return true;
-    return false;
+    stats = statSync(lockPath);
   } catch {
-    // Can't stat — treat as stale (the file may have been removed mid-check).
+    // Can't stat — likely the file was removed mid-check. Treat as stale so
+    // the caller proceeds to attempt creation; the openSync("wx") will catch
+    // any genuine race.
     return true;
   }
+
+  const content = readLockContent(lockPath);
+  const age = Date.now() - stats.mtimeMs;
+
+  // Empty/malformed payload (pre-fix Loaf or partial write) — we can't probe
+  // liveness. Fall back to the conservative age threshold.
+  if (!content || !content.pid) {
+    return age > LOCK_AGE_FALLBACK_THRESHOLD_MS;
+  }
+
+  // Different host: local PID checks are meaningless against a remote PID
+  // namespace, so the only safe answer is age-based fallback. We mark this
+  // explicitly so future readers understand why we're not calling kill(0).
+  if (content.host && content.host !== hostname()) {
+    return age > LOCK_AGE_FALLBACK_THRESHOLD_MS;
+  }
+
+  // Same host (or unknown host on a legacy lock file written by this fix
+  // before host was stamped — treat as local). PID liveness is the truth.
+  return !isProcessAlive(content.pid);
 }
 
 /** Synchronous millisecond sleep — used inside the retry loop. */
@@ -120,9 +194,15 @@ function acquireLockSync(
       if (existsSync(lockPath) && isLockStale(lockPath)) {
         try { unlinkSync(lockPath); } catch { /* race: another process won the cleanup */ }
       }
-      // Atomic create-or-fail.
+      // Atomic create-or-fail. After openSync("wx") succeeds we exclusively
+      // own the file descriptor — safe to stamp the holder identity (pid +
+      // host) before anyone else can read it.
       const fd = openSync(lockPath, "wx");
-      const payload: LockFileContent = { pid: process.pid, timestamp: Date.now() };
+      const payload: LockFileContent = {
+        pid: process.pid,
+        host: hostname(),
+        timestamp: Date.now(),
+      };
       writeFileSync(fd, JSON.stringify(payload), "utf-8");
       closeSync(fd);
       return;
@@ -147,9 +227,11 @@ function acquireLockSync(
     const content = readLockContent(lockPath);
     const stats = statSync(lockPath);
     const ageSeconds = Math.round((Date.now() - stats.mtimeMs) / 1000);
-    const alive = content?.pid ? isProcessAlive(content.pid) : false;
+    const sameHost = !content?.host || content.host === hostname();
+    const alive = content?.pid && sameHost ? isProcessAlive(content.pid) : "unknown (foreign host)";
     diagnostic =
-      `\n  Lock age: ${ageSeconds}s, PID: ${content?.pid ?? "unknown"}, process alive: ${alive}` +
+      `\n  Lock age: ${ageSeconds}s, PID: ${content?.pid ?? "unknown"}` +
+      `, host: ${content?.host ?? "unknown"}, process alive: ${alive}` +
       `\n  Remove manually if you're sure no other loaf process is active:` +
       `\n    rm "${lockPath}"`;
   } catch { /* best-effort diagnostic */ }
@@ -161,6 +243,35 @@ function acquireLockSync(
 
 function releaseLock(lockPath: string): void {
   try { unlinkSync(lockPath); } catch { /* idempotent — already gone is fine */ }
+}
+
+/**
+ * Test-only start barrier. When `LOAF_LOCK_TEST_STARTER` is set, the worker:
+ *   1. Writes a `ready-${pid}` marker next to the starter path so the parent
+ *      can count how many workers are queued up.
+ *   2. Busy-polls (1ms sleep) for the starter file to exist.
+ *   3. Proceeds to acquire the lock.
+ *
+ * Hard cap of 5s to prevent runaway test hangs. No effect when the env var
+ * is unset — production callers never touch this path.
+ */
+function awaitTestStartBarrier(): void {
+  const starter = process.env.LOAF_LOCK_TEST_STARTER;
+  const readyDir = process.env.LOAF_LOCK_TEST_READY;
+  if (!starter) return;
+
+  if (readyDir) {
+    try {
+      mkdirSync(readyDir, { recursive: true });
+      writeFileSync(join(readyDir, `ready-${process.pid}`), "", "utf-8");
+    } catch { /* best-effort */ }
+  }
+
+  const deadline = Date.now() + 5000;
+  while (!existsSync(starter)) {
+    if (Date.now() > deadline) return; // Fail-open: don't hang the test runner.
+    sleepMs(1);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -222,8 +333,27 @@ export function withTasksJsonLock<T>(
   // Ensure the agents directory exists before we try to create the lock there.
   mkdirSync(agentsDir, { recursive: true });
 
+  // Test-only: start barrier. Each worker writes a ready marker, then waits
+  // for the parent to flip the starter file. Guarantees all workers race for
+  // the lock at the same instant, making the concurrency test deterministic.
+  // Zero effect on production (no env vars set).
+  awaitTestStartBarrier();
+
   acquireLockSync(lockPath, maxRetries, retryDelayMs);
+
+  // Test-only: emit acquired-at timestamp so the test can assert genuine
+  // overlap across workers rather than accidental serialization.
+  if (process.env.LOAF_LOCK_TEST_DELAY_MS) {
+    process.stdout.write(`LOAF_LOCK_TEST_ACQUIRED_AT=${Date.now()}\n`);
+  }
+
   try {
+    // Test-only: artificially extend the critical section to force
+    // contention in the cross-process concurrency test. Guarded by an env
+    // var so it has zero effect on production callers. See lock.test.ts.
+    const testDelay = Number(process.env.LOAF_LOCK_TEST_DELAY_MS ?? 0);
+    if (testDelay > 0) sleepMs(testDelay);
+
     // Read inside the lock: never trust a stale in-memory copy across the
     // barrier. loadIndex returns null on invalid shape — rebuild then.
     let index: TaskIndex;

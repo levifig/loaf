@@ -29,11 +29,12 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  utimesSync,
   writeFileSync,
 } from "fs";
 import { spawn } from "child_process";
 import { join } from "path";
-import { tmpdir } from "os";
+import { hostname, tmpdir } from "os";
 
 import { SKIP_WRITE, TASKS_JSON_LOCK_FILE, withTasksJsonLock } from "./lock.js";
 import { saveIndex } from "./migrate.js";
@@ -200,6 +201,190 @@ describe("withTasksJsonLock — sequential behavior", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Staleness — PID-liveness, dead-PID eviction, malformed-content fallback
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// These tests exercise the `isLockStale()` heuristic indirectly through
+// `withTasksJsonLock`. We hand-craft a `.tasks-json.lock` file with controlled
+// contents, then attempt to acquire — observing whether the lock helper
+// retries (live holder) or steals (dead holder / malformed content past
+// fallback threshold).
+
+function writeLockFile(
+  agentsDir: string,
+  payload: unknown,
+  mtimeMs?: number,
+): string {
+  const lockPath = join(agentsDir, TASKS_JSON_LOCK_FILE);
+  writeFileSync(lockPath, typeof payload === "string" ? payload : JSON.stringify(payload), "utf-8");
+  if (mtimeMs !== undefined) {
+    // Backdate mtime to age the lock. utimesSync takes seconds.
+    const t = mtimeMs / 1000;
+    utimesSync(lockPath, t, t);
+  }
+  return lockPath;
+}
+
+/**
+ * Find a PID that is guaranteed dead on this host. We scan from 99999
+ * downward; any PID that `process.kill(pid, 0)` reports as ESRCH is fair
+ * game. If we somehow can't find one in 200 attempts (astronomically
+ * unlikely), we fall back to 99999 and document the assumption.
+ */
+function findDeadPid(): number {
+  for (let pid = 99999; pid > 99800; pid--) {
+    try {
+      process.kill(pid, 0);
+      // Alive — keep scanning.
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code;
+      if (code === "ESRCH") return pid;
+      // EPERM means alive-but-unreachable — skip.
+    }
+  }
+  return 99999;
+}
+
+describe("withTasksJsonLock — staleness (PID liveness)", () => {
+  it("does NOT steal a lock held by a live local process (same host, current PID)", () => {
+    const agentsDir = makeAgentsDir("stale-live");
+    // The current Node process is, definitionally, alive. Stamp its PID +
+    // hostname into the lock and confirm acquisition retries until exhausted
+    // (we use a tight retry budget here so the test doesn't hang).
+    writeLockFile(agentsDir, {
+      pid: process.pid,
+      host: hostname(),
+      timestamp: Date.now(),
+    });
+
+    expect(() =>
+      withTasksJsonLock(
+        agentsDir,
+        () => {
+          throw new Error("must not reach the callback — lock is held");
+        },
+        { maxRetries: 5, retryDelayMs: 5 },
+      ),
+    ).toThrow(/Could not acquire TASKS.json lock/);
+
+    // The original lock must still be there — never evicted.
+    expect(existsSync(join(agentsDir, TASKS_JSON_LOCK_FILE))).toBe(true);
+  });
+
+  it("does NOT steal a recent live-PID lock even when the age is enormous", () => {
+    const agentsDir = makeAgentsDir("stale-live-old");
+    // Old mtime (1 hour back) — beyond any conceivable age threshold. Yet
+    // the holding PID is alive (us), so the lock must NOT be stolen. This
+    // is the regression test for the original "age alone evicts long-running
+    // critical sections" defect.
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    writeLockFile(
+      agentsDir,
+      { pid: process.pid, host: hostname(), timestamp: oneHourAgo },
+      oneHourAgo,
+    );
+
+    expect(() =>
+      withTasksJsonLock(agentsDir, () => undefined, {
+        maxRetries: 5,
+        retryDelayMs: 5,
+      }),
+    ).toThrow(/Could not acquire TASKS.json lock/);
+
+    expect(existsSync(join(agentsDir, TASKS_JSON_LOCK_FILE))).toBe(true);
+  });
+
+  it("steals a lock owned by a dead PID (same host)", () => {
+    const agentsDir = makeAgentsDir("stale-dead");
+    const deadPid = findDeadPid();
+    writeLockFile(agentsDir, {
+      pid: deadPid,
+      host: hostname(),
+      timestamp: Date.now(),
+    });
+
+    // Should acquire on the first retry — the lock helper detects the dead
+    // PID and unlinks it.
+    let entered = false;
+    withTasksJsonLock(
+      agentsDir,
+      (index) => {
+        entered = true;
+        index.next_id = 999;
+      },
+      { maxRetries: 5, retryDelayMs: 5 },
+    );
+    expect(entered).toBe(true);
+
+    // Lock cleaned up after the successful callback.
+    expect(existsSync(join(agentsDir, TASKS_JSON_LOCK_FILE))).toBe(false);
+    const reloaded = JSON.parse(
+      readFileSync(join(agentsDir, "TASKS.json"), "utf-8"),
+    ) as TaskIndex;
+    expect(reloaded.next_id).toBe(999);
+  });
+
+  it("falls back to age when the lock file has malformed content", () => {
+    const agentsDir = makeAgentsDir("stale-malformed-young");
+    // Garbage payload, fresh mtime: liveness cannot be probed, but the lock
+    // is well under the age fallback threshold, so the helper conservatively
+    // treats it as live and retries (then exhausts).
+    writeLockFile(agentsDir, "this-is-not-json{");
+
+    expect(() =>
+      withTasksJsonLock(agentsDir, () => undefined, {
+        maxRetries: 3,
+        retryDelayMs: 5,
+      }),
+    ).toThrow(/Could not acquire TASKS.json lock/);
+
+    // The malformed lock is still there — we did not steal a young
+    // unreadable lock.
+    expect(existsSync(join(agentsDir, TASKS_JSON_LOCK_FILE))).toBe(true);
+  });
+
+  it("steals a malformed lock that is older than the age fallback threshold", () => {
+    const agentsDir = makeAgentsDir("stale-malformed-old");
+    // Garbage payload + ancient mtime — pre-fix Loaf orphan. Age fallback
+    // kicks in, lock is stolen, we proceed.
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    writeLockFile(agentsDir, "{ partial", oneHourAgo);
+
+    let entered = false;
+    withTasksJsonLock(
+      agentsDir,
+      () => {
+        entered = true;
+      },
+      { maxRetries: 5, retryDelayMs: 5 },
+    );
+    expect(entered).toBe(true);
+    expect(existsSync(join(agentsDir, TASKS_JSON_LOCK_FILE))).toBe(false);
+  });
+
+  it("does NOT steal a young lock written by a different host (foreign PID space)", () => {
+    const agentsDir = makeAgentsDir("stale-foreign-young");
+    // Different host — local PID liveness checks are meaningless. With a
+    // young mtime, age fallback says "still live", we must NOT steal even
+    // though the recorded PID (current pid) would otherwise look "alive"
+    // locally.
+    writeLockFile(agentsDir, {
+      pid: process.pid,
+      host: `not-${hostname()}`,
+      timestamp: Date.now(),
+    });
+
+    expect(() =>
+      withTasksJsonLock(agentsDir, () => undefined, {
+        maxRetries: 3,
+        retryDelayMs: 5,
+      }),
+    ).toThrow(/Could not acquire TASKS.json lock/);
+    expect(existsSync(join(agentsDir, TASKS_JSON_LOCK_FILE))).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Cross-process concurrency: N spawned `loaf task create` against the same lock
 // ─────────────────────────────────────────────────────────────────────────────
 //
@@ -209,10 +394,18 @@ describe("withTasksJsonLock — sequential behavior", () => {
 
 const CLI_PATH = join(process.cwd(), "dist-cli/index.js");
 
+interface SpawnResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  acquiredAt: number | null;
+}
+
 function spawnTaskCreate(
   agentsDir: string,
   title: string,
-): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  options: { starterPath: string; readyPath: string; delayMs: number },
+): Promise<SpawnResult> {
   return new Promise((resolve) => {
     // We point cwd at the agentsDir's parent (so findAgentsDir() locates the
     // fixture, not the surrounding loaf repo's .agents/).
@@ -225,9 +418,18 @@ function spawnTaskCreate(
         stdio: ["ignore", "pipe", "pipe"],
         env: {
           ...process.env,
-          // Prevent any session-side journal nudges from interfering — we
-          // only care about the task index write here.
           LOAF_TASK_TEST: "1",
+          // Start-barrier env vars consumed by the test wrapper below. The
+          // child runs the bundled CLI directly, so we plumb the barrier
+          // through a tiny preload shim — wait until the starter file
+          // exists, then proceed. (See LOAF_LOCK_TEST_BARRIER handling
+          // in cli/lib/tasks/lock.ts / index.ts.)
+          LOAF_LOCK_TEST_STARTER: options.starterPath,
+          LOAF_LOCK_TEST_READY: options.readyPath,
+          // Inside the lock, sleep this many ms to force genuine concurrent
+          // contention on the critical section — guarantees the test is
+          // deterministically adversarial across all 8 workers.
+          LOAF_LOCK_TEST_DELAY_MS: String(options.delayMs),
         },
       },
     );
@@ -235,10 +437,31 @@ function spawnTaskCreate(
     let stderr = "";
     child.stdout.on("data", (d) => (stdout += d.toString()));
     child.stderr.on("data", (d) => (stderr += d.toString()));
-    child.on("close", (code) =>
-      resolve({ exitCode: code ?? 0, stdout, stderr }),
-    );
+    child.on("close", (code) => {
+      // Parse the "acquired-at" timestamp from the lock test instrumentation
+      // (printed to stdout by the CLI when LOAF_LOCK_TEST_DELAY_MS is set).
+      // We use this to assert real overlap rather than serialization.
+      const m = stdout.match(/LOAF_LOCK_TEST_ACQUIRED_AT=(\d+)/);
+      const acquiredAt = m ? Number(m[1]) : null;
+      resolve({ exitCode: code ?? 0, stdout, stderr, acquiredAt });
+    });
   });
+}
+
+/**
+ * Wait (busy poll with 1ms sleep) until `predicate` returns true or
+ * `timeoutMs` elapses. Used by the start barrier.
+ */
+async function pollUntil(
+  predicate: () => boolean,
+  timeoutMs: number,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return true;
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  return predicate();
 }
 
 function extractTaskIdFromStdout(stdout: string): string | null {
@@ -252,12 +475,36 @@ function extractTaskIdFromStdout(stdout: string): string | null {
 describe("withTasksJsonLock — cross-process concurrency", () => {
   it("N concurrent `loaf task create` invocations each mint a distinct TASK ID", async () => {
     const N = 8;
+    // Forcing 25ms inside the lock makes the critical section unambiguously
+    // wider than process startup jitter (~5-15ms locally). Combined with the
+    // start barrier, all 8 workers genuinely race for the lock — proving the
+    // test would fail without the lock being load-bearing.
+    const DELAY_MS = 25;
     const agentsDir = makeAgentsDir("concurrent", 100);
+    const barrierDir = realpathSync(mkdtempSync(join(TEST_ROOT, "barrier-")));
+    const starterPath = join(barrierDir, "go");
+    const readyDir = join(barrierDir, "ready");
 
-    // Spawn all task-create invocations at once.
+    // Spawn all task-create invocations. Each child writes a ready-${pid}
+    // marker, then busy-waits for `go` to appear.
     const promises = Array.from({ length: N }, (_, i) =>
-      spawnTaskCreate(agentsDir, `Concurrent task ${i}`),
+      spawnTaskCreate(agentsDir, `Concurrent task ${i}`, {
+        starterPath,
+        readyPath: readyDir,
+        delayMs: DELAY_MS,
+      }),
     );
+
+    // Wait until all N workers have signaled ready, then flip the starter.
+    const allReady = await pollUntil(
+      () => existsSync(readyDir) && readdirSync(readyDir).filter((f) => f.startsWith("ready-")).length === N,
+      10000,
+    );
+    expect(allReady).toBe(true);
+
+    // Release all workers atomically.
+    writeFileSync(starterPath, String(Date.now()), "utf-8");
+
     const results = await Promise.all(promises);
 
     // Every spawn must have exited 0. If a lock acquisition failed, stderr
@@ -299,5 +546,27 @@ describe("withTasksJsonLock — cross-process concurrency", () => {
     const tasksDir = join(agentsDir, "tasks");
     const taskFiles = readdirSync(tasksDir).filter((f) => f.startsWith("TASK-"));
     expect(taskFiles).toHaveLength(N);
+
+    // ── Contention assertion ────────────────────────────────────────────
+    //
+    // Each worker holds the lock for ~DELAY_MS, then releases. The spread
+    // between the first and last acquisition timestamps must be at least
+    // (N-1) * DELAY_MS — that's how long it takes the workers to drain
+    // through a strictly-serialized critical section. If the test
+    // accidentally ran sequentially (e.g. lock not load-bearing, or all
+    // workers started so far apart that they never overlapped), the spread
+    // would be roughly N * (startup_time + DELAY_MS), which is larger; but
+    // crucially, the spread must be NONZERO and at least the floor — proving
+    // genuine queueing on the lock.
+    const acquiredAts = results
+      .map((r) => r.acquiredAt)
+      .filter((t): t is number => t !== null);
+    expect(acquiredAts).toHaveLength(N);
+
+    const spread = Math.max(...acquiredAts) - Math.min(...acquiredAts);
+    // Lower bound: serialized critical sections take (N-1) * DELAY_MS.
+    // We use a generous 50% margin to absorb timer noise on slow CI.
+    const minExpectedSpread = Math.floor((N - 1) * DELAY_MS * 0.5);
+    expect(spread).toBeGreaterThanOrEqual(minExpectedSpread);
   }, 30000);
 });
