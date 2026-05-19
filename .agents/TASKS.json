@@ -1,7 +1,150 @@
 {
   "version": 1,
-  "next_id": 165,
+  "next_id": 173,
   "tasks": {
+    "TASK-165": {
+      "title": "loaf release --post-merge should use git tag -s (signed) explicitly",
+      "slug": "loaf-release-post-merge-should-use-git-tag-s-signe",
+      "spec": null,
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-05-16T18:24:55.387Z",
+      "updated": "2026-05-16T18:24:55.387Z",
+      "completed_at": null,
+      "file": "TASK-165-loaf-release-post-merge-should-use-git-tag-s-signe.md"
+    },
+    "TASK-166": {
+      "title": "Foundation: worktree probe + dual resolvers + ID allocator scans both views",
+      "slug": "foundation-worktree-probe-dual-resolvers-id-alloca",
+      "spec": "SPEC-036",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-05-18T23:58:39.458Z",
+      "updated": "2026-05-18T23:58:39.458Z",
+      "completed_at": null,
+      "file": "TASK-166-foundation-worktree-probe-dual-resolvers-id-alloca.md"
+    },
+    "TASK-167": {
+      "title": "Route session storage through findSharedAgentsDir",
+      "slug": "route-session-storage-through-findsharedagentsdir",
+      "spec": "SPEC-036",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-166"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-05-18T23:58:56.003Z",
+      "updated": "2026-05-18T23:58:56.003Z",
+      "completed_at": null,
+      "file": "TASK-167-route-session-storage-through-findsharedagentsdir.md"
+    },
+    "TASK-168": {
+      "title": "Route user-content artifacts (kb/ideas/drafts/reports/councils) through findSharedAgentsDir",
+      "slug": "route-user-content-artifacts-kb-ideas-drafts-repor",
+      "spec": "SPEC-036",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-166"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-05-18T23:58:56.055Z",
+      "updated": "2026-05-18T23:58:56.055Z",
+      "completed_at": null,
+      "file": "TASK-168-route-user-content-artifacts-kb-ideas-drafts-repor.md"
+    },
+    "TASK-169": {
+      "title": "Route config artifacts (AGENTS.md, loaf.json, SOUL.md) through findSharedAgentsDir",
+      "slug": "route-config-artifacts-agents-md-loaf-json-soul-md",
+      "spec": "SPEC-036",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-166"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-05-18T23:58:56.109Z",
+      "updated": "2026-05-18T23:58:56.109Z",
+      "completed_at": null,
+      "file": "TASK-169-route-config-artifacts-agents-md-loaf-json-soul-md.md"
+    },
+    "TASK-170": {
+      "title": "loaf migrate worktree-storage command (dry-run default, back-pointer file, round-trip test)",
+      "slug": "loaf-migrate-worktree-storage-command-dry-run-defa",
+      "spec": "SPEC-036",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-166"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-05-18T23:58:56.163Z",
+      "updated": "2026-05-18T23:58:56.163Z",
+      "completed_at": null,
+      "file": "TASK-170-loaf-migrate-worktree-storage-command-dry-run-defa.md"
+    },
+    "TASK-171": {
+      "title": "Pre-A2 layout detection + refusal nudge in shared-artifact commands",
+      "slug": "pre-a2-layout-detection-refusal-nudge-in-shared-ar",
+      "spec": "SPEC-036",
+      "status": "todo",
+      "priority": "P2",
+      "depends_on": [
+        "TASK-170"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-05-18T23:59:01.486Z",
+      "updated": "2026-05-18T23:59:01.486Z",
+      "completed_at": null,
+      "file": "TASK-171-pre-a2-layout-detection-refusal-nudge-in-shared-ar.md"
+    },
+    "TASK-172": {
+      "title": "ADR: agentic state storage model (shared vs branch-local)",
+      "slug": "adr-agentic-state-storage-model-shared-vs-branch-l",
+      "spec": "SPEC-036",
+      "status": "todo",
+      "priority": "P3",
+      "depends_on": [
+        "TASK-167",
+        "TASK-168",
+        "TASK-169",
+        "TASK-171"
+      ],
+      "files": [],
+      "verify": null,
+      "done": null,
+      "session": null,
+      "created": "2026-05-18T23:59:01.537Z",
+      "updated": "2026-05-18T23:59:01.537Z",
+      "completed_at": null,
+      "file": "TASK-172-adr-agentic-state-storage-model-shared-vs-branch-l.md"
+    },
     "TASK-001": {
       "title": "Create verification reference",
       "slug": "verification-reference",
@@ -2959,6 +3102,14 @@
       "source": "ideas/20260325-012120-task-staleness-prevention.md, ideas/20260410-221800-revisit-tasks-json.md",
       "created": "2026-05-01T23:46:45.000Z",
       "file": "SPEC-035-tasks-json-staleness-housekeeping-sweep.md"
+    },
+    "SPEC-036": {
+      "title": "Worktree-aware .agents/ storage routing",
+      "status": "implementing",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-05-19T00:30:00Z",
+      "file": "SPEC-036-worktree-aware-agents-storage-routing.md"
     },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",
