@@ -89,18 +89,32 @@ function countSpecs(index: TaskIndex): { total: number; byStatus: Record<SpecSta
 }
 
 function rebuildTaskIndex(agentsDir: string): TaskIndex {
-  // Acquire the TASKS.json lock around the build-from-files + persist cycle so
-  // a concurrent task-create from another worktree can't interleave between
-  // the in-memory build (which scans .md files) and the write that clobbers
-  // any allocation the other process just minted.
+  // Critical-section discipline (ms-scale lock holds):
+  //
+  //   1. OUTSIDE the lock: scan .md files and parse frontmatter to build the
+  //      candidate index. This is the heavy step (O(.agents/ task+spec count)
+  //      reads + gray-matter parses) and absolutely must not happen while we
+  //      hold the cross-worktree barrier.
+  //
+  //   2. INSIDE the lock: re-read the current index for "refresh" semantics
+  //      (we want to expose any allocation that landed between our outside
+  //      scan and the lock acquisition without losing it on persist). For a
+  //      hard rebuild we still want next_id to advance monotonically, so we
+  //      take the max of the rebuilt next_id and the current one — this
+  //      protects a concurrent `task create` that minted a higher next_id
+  //      after our outside scan started.
+  //
+  //   3. Persist via the lock helper's standard atomic write.
+  //
+  // The result of holding the lock now is a single read + a few field assigns
+  // + a single atomic write — sub-millisecond on any reasonable filesystem.
+  const rebuilt = buildIndexFromFiles(agentsDir);
+
   return withTasksJsonLock(agentsDir, (current) => {
-    // The lock callback hands us the current index (either loaded or rebuilt
-    // from .md files inside the lock). We then rebuild explicitly to honor
-    // the "refresh" semantics. The result replaces `current` in place so the
-    // lock helper persists it.
-    const rebuilt = buildIndexFromFiles(agentsDir);
     current.version = rebuilt.version;
-    current.next_id = rebuilt.next_id;
+    // Monotonic next_id: don't roll back if a concurrent allocator already
+    // moved past us between the outside scan and the lock acquisition.
+    current.next_id = Math.max(rebuilt.next_id, current.next_id);
     current.tasks = rebuilt.tasks;
     current.specs = rebuilt.specs;
     return current;
@@ -828,45 +842,68 @@ export function registerTaskCommand(program: Command): void {
         console.log(`    Tasks: ${totalTasks}, Specs: ${totalSpecs}`);
         console.log();
       } else if (options.import) {
-        // ── Import mode: find orphans and merge under the lock ─────────────
+        // ── Import mode: scan for orphans outside the lock, merge under it ─
+        //
+        // Critical-section discipline (ms-scale lock holds):
+        //
+        //   1. OUTSIDE the lock: snapshot the current index, scan tasks/ and
+        //      specs/ (and their archives) for orphan .md files, parse their
+        //      frontmatter. This is the heavy step.
+        //
+        //   2. INSIDE the lock: re-check each candidate against the fresh
+        //      index (a concurrent worktree may have just imported the same
+        //      file or minted a colliding ID), then merge.
+        //
+        // We don't need to re-parse files inside the lock — orphan entries
+        // are pure data once parsed; the lock only protects the merge.
+
+        const snapshot = getOrBuildIndex(agentsDir);
+        const orphans = findOrphans(agentsDir, snapshot);
+        const totalOrphans = orphans.tasks.length + orphans.specs.length;
+
+        if (totalOrphans > 0) {
+          console.log(`  Found ${totalOrphans} orphan file(s):`);
+          for (const orphan of orphans.tasks) {
+            console.log(`    ${green("+")} ${orphan.entry.file}`);
+          }
+          for (const orphan of orphans.specs) {
+            console.log(`    ${green("+")} ${orphan.entry.file}`);
+          }
+        }
 
         let importedTasks = 0;
         let importedSpecs = 0;
 
         withTasksJsonLock(agentsDir, (index) => {
-          const orphans = findOrphans(agentsDir, index);
-          const totalOrphans = orphans.tasks.length + orphans.specs.length;
-
           if (totalOrphans === 0) {
             return false; // no-op write
           }
 
-          console.log(`  Found ${totalOrphans} orphan file(s):`);
-
-          for (const orphan of orphans.tasks) {
-            console.log(`    ${green("+")} ${orphan.entry.file}`);
-          }
-          for (const orphan of orphans.specs) {
-            console.log(`    ${green("+")} ${orphan.entry.file}`);
-          }
-
           let maxTaskNum = index.next_id - 1;
+          let merged = false;
           for (const orphan of orphans.tasks) {
+            // Re-check against the fresh index — a concurrent process may
+            // have already imported this orphan ID between our scan and our
+            // lock acquisition.
+            if (index.tasks[orphan.id]) continue;
             index.tasks[orphan.id] = orphan.entry;
             const num = extractOrphanNumber(orphan.id);
             if (num > maxTaskNum) maxTaskNum = num;
+            importedTasks++;
+            merged = true;
           }
           for (const orphan of orphans.specs) {
+            if (index.specs[orphan.id]) continue;
             index.specs[orphan.id] = orphan.entry;
+            importedSpecs++;
+            merged = true;
           }
 
           if (maxTaskNum >= index.next_id) {
             index.next_id = maxTaskNum + 1;
           }
 
-          importedTasks = orphans.tasks.length;
-          importedSpecs = orphans.specs.length;
-          return undefined;
+          return merged ? undefined : false;
         });
 
         if (importedTasks === 0 && importedSpecs === 0) {

@@ -34,6 +34,8 @@ import { tmpdir } from "os";
 
 import {
   BACK_POINTER_FILE,
+  buildMainMissingMessage,
+  detectMainMissingForRefusal,
   detectPreA3State,
   PARTIAL_SUFFIX,
   PRE_A3_REFUSAL_MESSAGE,
@@ -593,5 +595,107 @@ describe("runMigration — partial-leftover detection", () => {
 
     const result = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
     expect(result.status).toBe("planned");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main-worktree-missing detection (final pre-merge polish)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// `findMainWorktreeRoot` resolves via git rev-parse — it cheerfully returns
+// the path recorded in `.git/worktrees/<name>/commondir`, even if that path
+// no longer exists. Migrating into a non-existent target is worse than useless:
+// it would silently mkdir a stale tree, or fail late with a confusing
+// filesystem error. The fix surfaces this case before any mutation.
+
+describe("runMigration — main worktree target missing", () => {
+  it("errors with main-missing status when the main worktree directory has been deleted", () => {
+    const main = createMainRepo("mm-deleted");
+    const linked = addWorktree(main, "feat/deleted");
+    seedPreA3WorktreeLayout(linked);
+
+    // Delete the main worktree root after the linked worktree was created.
+    // git still reports the main path via rev-parse, but the directory is gone.
+    rmSync(main, { recursive: true, force: true });
+
+    const result = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    expect(result.status).toBe("main-missing");
+    expect(result.message).toContain(main);
+    expect(result.message).toContain("not found");
+    expect(result.message).toContain("git worktree list");
+  });
+
+  it("errors with main-missing status when the main worktree path is a file (not a directory)", () => {
+    const main = createMainRepo("mm-file");
+    const linked = addWorktree(main, "feat/file");
+    seedPreA3WorktreeLayout(linked);
+
+    // Replace the main worktree with a regular file.
+    rmSync(main, { recursive: true, force: true });
+    writeFileSync(main, "not a directory\n", "utf-8");
+
+    const result = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    expect(result.status).toBe("main-missing");
+    expect(result.message).toContain("is not a directory");
+  });
+
+  it("apply does not mutate anything when the main worktree is missing", () => {
+    const main = createMainRepo("mm-no-mutate");
+    const linked = addWorktree(main, "feat/no-mutate");
+    seedPreA3WorktreeLayout(linked);
+    rmSync(main, { recursive: true, force: true });
+
+    const before = readFileSync(join(linked, ".agents", "AGENTS.md"), "utf-8");
+    const result = runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    expect(result.status).toBe("main-missing");
+    // Worktree-local files must still be there, unmodified.
+    expect(readFileSync(join(linked, ".agents", "AGENTS.md"), "utf-8")).toBe(before);
+  });
+});
+
+describe("buildMainMissingMessage", () => {
+  it("uses 'not found' wording when the path does not exist", () => {
+    const msg = buildMainMissingMessage("/some/path", false);
+    expect(msg).toContain("/some/path");
+    expect(msg).toContain("not found");
+    expect(msg).not.toContain("is not a directory");
+  });
+
+  it("uses 'is not a directory' wording when the path exists but isn't a dir", () => {
+    const msg = buildMainMissingMessage("/some/path", true);
+    expect(msg).toContain("/some/path");
+    expect(msg).toContain("is not a directory");
+    expect(msg).not.toContain("not found");
+  });
+});
+
+describe("detectMainMissingForRefusal — refusal-nudge integration", () => {
+  it("returns null in a healthy linked worktree", () => {
+    const main = createMainRepo("dm-healthy");
+    const linked = addWorktree(main, "feat/healthy");
+    seedPreA3WorktreeLayout(linked);
+    expect(detectMainMissingForRefusal(linked)).toBeNull();
+  });
+
+  it("returns the missing-target message when the main worktree directory is gone", () => {
+    const main = createMainRepo("dm-gone");
+    const linked = addWorktree(main, "feat/gone");
+    seedPreA3WorktreeLayout(linked);
+    rmSync(main, { recursive: true, force: true });
+
+    const msg = detectMainMissingForRefusal(linked);
+    expect(msg).not.toBeNull();
+    expect(msg).toContain(main);
+    expect(msg).toContain("not found");
+  });
+
+  it("returns null in a main checkout (no linked worktree to be missing)", () => {
+    const main = createMainRepo("dm-main-only");
+    expect(detectMainMissingForRefusal(main)).toBeNull();
+  });
+
+  it("returns null outside a git context", () => {
+    const nonGit = mkdtempSync(join(TEST_ROOT, "dm-no-git-"));
+    expect(detectMainMissingForRefusal(nonGit)).toBeNull();
   });
 });

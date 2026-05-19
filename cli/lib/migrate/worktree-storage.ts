@@ -37,6 +37,96 @@ import { dirname, join, relative } from "path";
 
 import { DEBUG_RESOLVE_ENV, findMainWorktreeRoot } from "../tasks/resolve.js";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Missing-target error
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Build the error message shown when `findMainWorktreeRoot` returned a path
+ * but that path does not exist (or is not a directory). This happens when the
+ * main worktree was removed via `git worktree remove`, deleted manually, or
+ * is on an unmounted filesystem. Used by both `runMigration` and the
+ * top-level refusal nudge in `cli/index.ts`.
+ *
+ * Exported so the refusal nudge can produce an identical message — the only
+ * variable is the actual path, which is interpolated.
+ *
+ * @param mainPath  Absolute path the resolver returned for the main worktree.
+ * @param exists    Whether the path exists on disk. False → "not found".
+ *                  True (with `!isDirectory`) → "is not a directory".
+ */
+export function buildMainMissingMessage(mainPath: string, exists: boolean): string {
+  const cause = exists
+    ? `Main worktree at ${mainPath} is not a directory.`
+    : `Main worktree at ${mainPath} not found.`;
+  return [
+    cause,
+    "",
+    "The .agents/ migration target is unreachable. This usually means the main",
+    "worktree was removed (`git worktree remove`) or its directory was deleted.",
+    "Migration cannot proceed without a valid target.",
+    "",
+    "To resolve:",
+    "- Restore the main worktree, OR",
+    "- Check `git worktree list` and re-initialize the project layout you expect",
+  ].join("\n");
+}
+
+/**
+ * Inspect a path; return whether it exists and whether it's a directory.
+ * Used by both `runMigration` and the top-level refusal nudge.
+ */
+export function probeMainWorktreeTarget(path: string): { exists: boolean; isDirectory: boolean } {
+  if (!existsSync(path)) return { exists: false, isDirectory: false };
+  try {
+    return { exists: true, isDirectory: statSync(path).isDirectory() };
+  } catch {
+    // The path showed up in existsSync but stat failed — treat as
+    // not-a-directory for messaging. We surface the same error class.
+    return { exists: true, isDirectory: false };
+  }
+}
+
+/**
+ * In a linked git worktree, `.git` is a FILE (not a directory) containing a
+ * `gitdir: <path>` line that points at `<main>/.git/worktrees/<name>`. When
+ * the main worktree's directory has been deleted, `git rev-parse` no longer
+ * works (it has nothing to resolve against) — but the linked worktree's
+ * `.git` file is still on disk, and we can read it to recover the recorded
+ * main path. This lets us produce a clear error instead of the misleading
+ * "not in a worktree" outcome.
+ *
+ * Returns the absolute path to the main worktree's root as recorded in the
+ * gitdir pointer, or null if the worktree is actually a main checkout, the
+ * `.git` file is missing, or the pointer can't be parsed.
+ */
+function readGitdirPointerMainRoot(wtRoot: string): string | null {
+  const dotGit = join(wtRoot, ".git");
+  if (!existsSync(dotGit)) return null;
+  let stat;
+  try {
+    stat = statSync(dotGit);
+  } catch {
+    return null;
+  }
+  // Main checkout has .git as a directory; linked worktree has it as a file.
+  if (stat.isDirectory()) return null;
+  let raw: string;
+  try {
+    raw = readFileSync(dotGit, "utf-8");
+  } catch {
+    return null;
+  }
+  const match = raw.match(/^gitdir:\s*(.+?)\s*$/m);
+  if (!match) return null;
+  const gitdir = match[1];
+  // Pattern: <main>/.git/worktrees/<wt-name>
+  // Strip the trailing /.git/worktrees/<name> to recover <main>.
+  const m2 = gitdir.match(/^(.*)\/\.git\/worktrees\/[^/]+$/);
+  if (!m2) return null;
+  return m2[1];
+}
+
 // SYMLINK BEHAVIOR (current, intentional but not fully specified):
 //   - Same-FS moves preserve the link itself (renameSync moves the symlink)
 //   - EXDEV fallback dereferences (cpSync follows symlinks unless verbatimSymlinks is set)
@@ -102,6 +192,44 @@ export function readBackPointer(worktreeAgentsDir: string): string | null {
 export function worktreeAgentsHasContent(worktreeAgentsDir: string): boolean {
   if (!existsSync(worktreeAgentsDir)) return false;
   return enumerateFiles(worktreeAgentsDir).length > 0;
+}
+
+/**
+ * Diagnostic for the top-level refusal nudge when the main worktree target
+ * is unreachable. The CLI dispatcher checks this BEFORE telling the user to
+ * run `loaf migrate worktree-storage` — because that command can't complete
+ * if the target is gone, telling the user to run it would be cheerful
+ * misdirection.
+ *
+ * Returns the formatted error message if the main worktree path resolved but
+ * does not exist (or is not a directory). Returns null when the target is
+ * fine or when there's no resolvable main worktree at all (the caller's
+ * normal refusal path applies in that case).
+ */
+export function detectMainMissingForRefusal(startDir: string = process.cwd()): string | null {
+  const wtRoot = findWorktreeRootForDetection(startDir);
+  if (!wtRoot) return null;
+
+  const mainRoot = findMainWorktreeRoot(wtRoot);
+  if (mainRoot) {
+    const probe = probeMainWorktreeTarget(mainRoot);
+    if (!probe.exists || !probe.isDirectory) {
+      return buildMainMissingMessage(mainRoot, probe.exists);
+    }
+    return null;
+  }
+
+  // `git rev-parse` couldn't resolve — could be a main checkout (no
+  // diagnostic needed) or a linked worktree whose main was deleted. The
+  // `.git` file in a linked worktree still encodes the main path even when
+  // git's own probe fails; read it directly to distinguish.
+  const pointerMainRoot = readGitdirPointerMainRoot(wtRoot);
+  if (!pointerMainRoot) return null;
+  const probe = probeMainWorktreeTarget(pointerMainRoot);
+  if (!probe.exists || !probe.isDirectory) {
+    return buildMainMissingMessage(pointerMainRoot, probe.exists);
+  }
+  return null;
 }
 
 /**
@@ -211,7 +339,8 @@ export type MigrationStatus =
   | "already-migrated"
   | "planned"
   | "applied"
-  | "partial-leftover";
+  | "partial-leftover"
+  | "main-missing";
 
 export interface MigrationResult {
   status: MigrationStatus;
@@ -422,8 +551,26 @@ export function runMigration(options: MigrationOptions): MigrationResult {
   const mainRoot = findMainWorktreeRoot(cwd);
 
   if (!mainRoot) {
-    // Either: (a) main checkout (clean no-op) or (b) outside git (error).
-    // Distinguish by probing for any `.git` along the parent chain.
+    // Either: (a) main checkout (clean no-op), (b) outside git (error), or
+    // (c) we ARE in a linked worktree but the main worktree directory has
+    // been deleted — `git rev-parse` can't resolve in that case, so the
+    // resolver came back null. Distinguish (c) by reading the linked
+    // worktree's `.git` file directly: it's a `gitdir: <path>` pointer that
+    // still encodes the recorded main path on disk.
+    const wtRootForPointer = findWorktreeRoot(cwd) ?? cwd;
+    const pointerMainRoot = readGitdirPointerMainRoot(wtRootForPointer);
+    if (pointerMainRoot) {
+      const pointerProbe = probeMainWorktreeTarget(pointerMainRoot);
+      if (!pointerProbe.exists || !pointerProbe.isDirectory) {
+        return {
+          status: "main-missing",
+          message: buildMainMissingMessage(pointerMainRoot, pointerProbe.exists),
+        };
+      }
+      // Pointer resolved AND the main path exists — but `git rev-parse` still
+      // failed for some other reason. Fall through to the same diagnostic
+      // path below; the user can re-run with LOAF_DEBUG_RESOLVE=1 to inspect.
+    }
     if (!isInGitContext(cwd)) {
       return {
         status: "not-in-git",
@@ -434,6 +581,22 @@ export function runMigration(options: MigrationOptions): MigrationResult {
     return {
       status: "not-in-worktree",
       message: "Nothing to migrate — already in the main worktree.",
+    };
+  }
+
+  // 1a. Main worktree target must exist and be a directory.
+  //     `findMainWorktreeRoot` resolves via `git rev-parse --git-common-dir`,
+  //     which reads `.git/worktrees/<name>/commondir` for linked worktrees and
+  //     will happily return a path that no longer exists on disk in some git
+  //     versions or repo states. Migrating into a non-existent target would
+  //     either fail late with a confusing filesystem error or silently mkdir
+  //     its way into a half-migrated state under a stale path. Surface the
+  //     problem before we touch anything.
+  const mainProbe = probeMainWorktreeTarget(mainRoot);
+  if (!mainProbe.exists || !mainProbe.isDirectory) {
+    return {
+      status: "main-missing",
+      message: buildMainMissingMessage(mainRoot, mainProbe.exists),
     };
   }
 

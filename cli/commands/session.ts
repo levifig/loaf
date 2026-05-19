@@ -251,18 +251,24 @@ function consumeKnowledgeNudges(projectRoot: string, branch: string): string[] {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Conservative age fallback (5 minutes). Only kicked in when we cannot do a
- * meaningful PID-liveness check — i.e. the lock file is empty/malformed (a
- * pre-fix Loaf orphan) or the holder is on a different host where our local
- * PID namespace is meaningless. Deliberately long because a valid critical
- * section under contention can legitimately exceed shorter thresholds; we
- * accept extra wait on the foreign/malformed paths in exchange for never
- * evicting a live local holder. The PID-liveness check is the primary signal.
+ * Foreign-host / malformed-content age fallback (5 seconds).
+ *
+ * Lock holders complete in milliseconds. Every callback is a prepared
+ * read-apply-write barrier — no file scans, no network calls, nothing that
+ * could legitimately push a critical section into the seconds. A foreign-host
+ * lock older than a few seconds is therefore genuinely stale: the only reason
+ * it would still be present is a crash that the dead process never cleaned up.
+ *
+ * The PID-liveness check covers same-host crashes authoritatively; this
+ * fallback covers the much rarer foreign-host crash on a shared filesystem,
+ * and the (impossible-on-current-Loaf) case where a lock file is missing the
+ * `host` field entirely. Long-lived but live local holders are protected by
+ * PID liveness, NOT by this age threshold.
  *
  * Mirrors `LOCK_AGE_FALLBACK_THRESHOLD_MS` in `cli/lib/tasks/lock.ts` so both
  * locks share the same staleness contract.
  */
-export const LOCK_AGE_FALLBACK_THRESHOLD_MS = 5 * 60 * 1000;
+export const LOCK_AGE_FALLBACK_THRESHOLD_MS = 5 * 1000;
 
 /** Lock file content: PID + host + timestamp. Host is required to keep
  *  PID-liveness checks honest across machines (a "matching" local PID on a

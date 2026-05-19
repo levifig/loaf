@@ -16,6 +16,7 @@ import { registerReportCommand } from "./commands/report.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
 import { LOAF_VERSION } from "./lib/version.js";
 import {
+  detectMainMissingForRefusal,
   detectPreA3State,
   PRE_A3_REFUSAL_MESSAGE,
 } from "./lib/migrate/worktree-storage.js";
@@ -64,8 +65,19 @@ if (process.argv.length <= 2) {
 //
 // Single-checkout repos and main worktrees never trigger this (the detector
 // short-circuits on the cheapest signal first).
+//
+// When the refusal would fire BUT the main worktree's target path no longer
+// exists (or is not a directory), telling the user to run `loaf migrate
+// worktree-storage` is cheerful misdirection — the migrate command itself
+// can't complete because its target is gone. Surface the actual problem
+// instead.
 if (shouldRefuseCommand(process.argv)) {
-  process.stderr.write(`${PRE_A3_REFUSAL_MESSAGE}\n`);
+  const mainMissing = detectMainMissingForRefusal(process.cwd());
+  if (mainMissing) {
+    process.stderr.write(`${mainMissing}\n`);
+  } else {
+    process.stderr.write(`${PRE_A3_REFUSAL_MESSAGE}\n`);
+  }
   process.exit(2);
 }
 

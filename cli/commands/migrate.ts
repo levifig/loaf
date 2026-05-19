@@ -90,6 +90,14 @@ export function registerMigrateCommand(program: Command): void {
           process.exit(1);
         }
 
+        if (result.status === "main-missing") {
+          // The main worktree's path resolved but does not exist on disk (or
+          // is not a directory). Surface the full diagnostic and exit
+          // non-zero — there's no safe action we can take here.
+          console.error(`${red("error:")} ${result.message}`);
+          process.exit(1);
+        }
+
         if (result.status === "partial-leftover") {
           // Refusal: a previous run was interrupted mid-EXDEV-stage. Print
           // the formatted output (it lists the leftover paths) to stderr
