@@ -22381,7 +22381,7 @@ import {
 import { hostname } from "os";
 import { dirname as dirname9, join as join31 } from "path";
 var TASKS_JSON_LOCK_FILE = ".tasks-json.lock";
-var LOCK_AGE_FALLBACK_THRESHOLD_MS = 5 * 60 * 1e3;
+var LOCK_AGE_FALLBACK_THRESHOLD_MS = 5 * 1e3;
 var DEFAULT_MAX_RETRIES = 100;
 var DEFAULT_RETRY_DELAY_MS = 25;
 function isProcessAlive(pid) {
@@ -22735,10 +22735,10 @@ function countSpecs(index) {
   };
 }
 function rebuildTaskIndex(agentsDir) {
+  const rebuilt = buildIndexFromFiles(agentsDir);
   return withTasksJsonLock(agentsDir, (current) => {
-    const rebuilt = buildIndexFromFiles(agentsDir);
     current.version = rebuilt.version;
-    current.next_id = rebuilt.next_id;
+    current.next_id = Math.max(rebuilt.next_id, current.next_id);
     current.tasks = rebuilt.tasks;
     current.specs = rebuilt.specs;
     return current;
@@ -23244,14 +23244,10 @@ function registerTaskCommand(program3) {
       console.log(`    Tasks: ${totalTasks}, Specs: ${totalSpecs}`);
       console.log();
     } else if (options2.import) {
-      let importedTasks = 0;
-      let importedSpecs = 0;
-      withTasksJsonLock(agentsDir, (index) => {
-        const orphans = findOrphans(agentsDir, index);
-        const totalOrphans = orphans.tasks.length + orphans.specs.length;
-        if (totalOrphans === 0) {
-          return false;
-        }
+      const snapshot = getOrBuildIndex(agentsDir);
+      const orphans = findOrphans(agentsDir, snapshot);
+      const totalOrphans = orphans.tasks.length + orphans.specs.length;
+      if (totalOrphans > 0) {
         console.log(`  Found ${totalOrphans} orphan file(s):`);
         for (const orphan of orphans.tasks) {
           console.log(`    ${green6("+")} ${orphan.entry.file}`);
@@ -23259,21 +23255,33 @@ function registerTaskCommand(program3) {
         for (const orphan of orphans.specs) {
           console.log(`    ${green6("+")} ${orphan.entry.file}`);
         }
+      }
+      let importedTasks = 0;
+      let importedSpecs = 0;
+      withTasksJsonLock(agentsDir, (index) => {
+        if (totalOrphans === 0) {
+          return false;
+        }
         let maxTaskNum = index.next_id - 1;
+        let merged = false;
         for (const orphan of orphans.tasks) {
+          if (index.tasks[orphan.id]) continue;
           index.tasks[orphan.id] = orphan.entry;
           const num = extractOrphanNumber(orphan.id);
           if (num > maxTaskNum) maxTaskNum = num;
+          importedTasks++;
+          merged = true;
         }
         for (const orphan of orphans.specs) {
+          if (index.specs[orphan.id]) continue;
           index.specs[orphan.id] = orphan.entry;
+          importedSpecs++;
+          merged = true;
         }
         if (maxTaskNum >= index.next_id) {
           index.next_id = maxTaskNum + 1;
         }
-        importedTasks = orphans.tasks.length;
-        importedSpecs = orphans.specs.length;
-        return void 0;
+        return merged ? void 0 : false;
       });
       if (importedTasks === 0 && importedSpecs === 0) {
         console.log(`  No orphan files found.`);
@@ -28397,7 +28405,7 @@ function consumeKnowledgeNudges(projectRoot, branch) {
   unlinkSync5(nudgeFile);
   return [...new Set(files)];
 }
-var LOCK_AGE_FALLBACK_THRESHOLD_MS2 = 5 * 60 * 1e3;
+var LOCK_AGE_FALLBACK_THRESHOLD_MS2 = 5 * 1e3;
 function isProcessAlive2(pid) {
   try {
     process.kill(pid, 0);
@@ -30537,6 +30545,51 @@ import {
   writeFileSync as writeFileSync30
 } from "fs";
 import { dirname as dirname19, join as join51, relative as relative9 } from "path";
+function buildMainMissingMessage(mainPath, exists) {
+  const cause = exists ? `Main worktree at ${mainPath} is not a directory.` : `Main worktree at ${mainPath} not found.`;
+  return [
+    cause,
+    "",
+    "The .agents/ migration target is unreachable. This usually means the main",
+    "worktree was removed (`git worktree remove`) or its directory was deleted.",
+    "Migration cannot proceed without a valid target.",
+    "",
+    "To resolve:",
+    "- Restore the main worktree, OR",
+    "- Check `git worktree list` and re-initialize the project layout you expect"
+  ].join("\n");
+}
+function probeMainWorktreeTarget(path) {
+  if (!existsSync47(path)) return { exists: false, isDirectory: false };
+  try {
+    return { exists: true, isDirectory: statSync5(path).isDirectory() };
+  } catch {
+    return { exists: true, isDirectory: false };
+  }
+}
+function readGitdirPointerMainRoot(wtRoot) {
+  const dotGit = join51(wtRoot, ".git");
+  if (!existsSync47(dotGit)) return null;
+  let stat;
+  try {
+    stat = statSync5(dotGit);
+  } catch {
+    return null;
+  }
+  if (stat.isDirectory()) return null;
+  let raw;
+  try {
+    raw = readFileSync43(dotGit, "utf-8");
+  } catch {
+    return null;
+  }
+  const match = raw.match(/^gitdir:\s*(.+?)\s*$/m);
+  if (!match) return null;
+  const gitdir = match[1];
+  const m2 = gitdir.match(/^(.*)\/\.git\/worktrees\/[^/]+$/);
+  if (!m2) return null;
+  return m2[1];
+}
 var PRE_A3_REFUSAL_MESSAGE = [
   "This worktree has unmigrated agentic state under .agents/.",
   "SPEC-036 centralizes .agents/ to the main worktree, so this command is refused",
@@ -30561,6 +30614,25 @@ function readBackPointer(worktreeAgentsDir) {
 function worktreeAgentsHasContent(worktreeAgentsDir) {
   if (!existsSync47(worktreeAgentsDir)) return false;
   return enumerateFiles(worktreeAgentsDir).length > 0;
+}
+function detectMainMissingForRefusal(startDir = process.cwd()) {
+  const wtRoot = findWorktreeRootForDetection(startDir);
+  if (!wtRoot) return null;
+  const mainRoot = findMainWorktreeRoot(wtRoot);
+  if (mainRoot) {
+    const probe2 = probeMainWorktreeTarget(mainRoot);
+    if (!probe2.exists || !probe2.isDirectory) {
+      return buildMainMissingMessage(mainRoot, probe2.exists);
+    }
+    return null;
+  }
+  const pointerMainRoot = readGitdirPointerMainRoot(wtRoot);
+  if (!pointerMainRoot) return null;
+  const probe = probeMainWorktreeTarget(pointerMainRoot);
+  if (!probe.exists || !probe.isDirectory) {
+    return buildMainMissingMessage(pointerMainRoot, probe.exists);
+  }
+  return null;
 }
 function detectPreA3State(startDir = process.cwd()) {
   const wtRoot = findWorktreeRootForDetection(startDir);
@@ -30711,6 +30783,17 @@ function runMigration(options2) {
   const { cwd, apply, conflictPolicy } = options2;
   const mainRoot = findMainWorktreeRoot(cwd);
   if (!mainRoot) {
+    const wtRootForPointer = findWorktreeRoot(cwd) ?? cwd;
+    const pointerMainRoot = readGitdirPointerMainRoot(wtRootForPointer);
+    if (pointerMainRoot) {
+      const pointerProbe = probeMainWorktreeTarget(pointerMainRoot);
+      if (!pointerProbe.exists || !pointerProbe.isDirectory) {
+        return {
+          status: "main-missing",
+          message: buildMainMissingMessage(pointerMainRoot, pointerProbe.exists)
+        };
+      }
+    }
     if (!isInGitContext(cwd)) {
       return {
         status: "not-in-git",
@@ -30720,6 +30803,13 @@ function runMigration(options2) {
     return {
       status: "not-in-worktree",
       message: "Nothing to migrate \u2014 already in the main worktree."
+    };
+  }
+  const mainProbe = probeMainWorktreeTarget(mainRoot);
+  if (!mainProbe.exists || !mainProbe.isDirectory) {
+    return {
+      status: "main-missing",
+      message: buildMainMissingMessage(mainRoot, mainProbe.exists)
     };
   }
   const wtRoot = findWorktreeRoot(cwd) ?? cwd;
@@ -30880,6 +30970,10 @@ function registerMigrateCommand(program3) {
         console.error(`${red14("error:")} ${result.message}`);
         process.exit(1);
       }
+      if (result.status === "main-missing") {
+        console.error(`${red14("error:")} ${result.message}`);
+        process.exit(1);
+      }
       if (result.status === "partial-leftover") {
         console.error(`${red14("error:")} ${result.message}`);
         process.exit(1);
@@ -30922,8 +31016,14 @@ if (process.argv.length <= 2) {
   process.exit(0);
 }
 if (shouldRefuseCommand(process.argv)) {
-  process.stderr.write(`${PRE_A3_REFUSAL_MESSAGE}
+  const mainMissing = detectMainMissingForRefusal(process.cwd());
+  if (mainMissing) {
+    process.stderr.write(`${mainMissing}
 `);
+  } else {
+    process.stderr.write(`${PRE_A3_REFUSAL_MESSAGE}
+`);
+  }
   process.exit(2);
 }
 program2.parse();
