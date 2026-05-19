@@ -177,7 +177,7 @@ function happyPathScript(opts: {
     "git ls-remote": ok(""),
     "gh release view": exit(1),
     "gh repo view": ok(base),
-    "git tag -a": ok(""),
+    "git tag -s": ok(""),
     "git push": ok(""),
     "gh release create": ok(""),
     "git pull": ok(""),
@@ -656,7 +656,7 @@ describe("executePostMergeActions", () => {
 
   it("happy path: tag, push, release, pull, delete (local + remote) all succeed", async () => {
     const script = happyPathScript({ version: "1.2.3" });
-    const { runner } = makeRunner(script);
+    const { runner, calls } = makeRunner(script);
 
     const result = await executePostMergeActions(
       { cwd: fixture.cwd, runner },
@@ -676,6 +676,10 @@ describe("executePostMergeActions", () => {
     expect(result.pulled).toBe(true);
     expect(result.deleted.local).toBe(true);
     expect(result.deleted.remote).toBe(true);
+    expect(calls).toContainEqual({
+      command: "git",
+      args: ["tag", "-s", "v1.2.3", "-m", "Release 1.2.3"],
+    });
   });
 
   it("local branch delete fails → remote delete still attempted, deleted.local=false", async () => {

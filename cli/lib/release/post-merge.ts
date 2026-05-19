@@ -25,7 +25,7 @@
  *
  *   1. Capture feature branch name (best-effort, from `gh pr view <PR#>` if
  *      HEAD subject carries a `(#N)` suffix; otherwise undefined).
- *   2. `git tag -a v<version> -m "Release <version>"`
+ *   2. `git tag -s v<version> -m "Release <version>"`
  *   3. `git push origin v<version>` (explicit, before `gh release create`).
  *   4. `gh release create v<version> --title "v<version>" --notes "<body>"`.
  *   5. `git pull --rebase origin <base>` (best-effort).
@@ -602,7 +602,7 @@ export async function executePostMergeActions(
   // Step 2: tag locally.
   const tagResult = run(runner, cwd, "git", [
     "tag",
-    "-a",
+    "-s",
     tag,
     "-m",
     `Release ${ready.version}`,

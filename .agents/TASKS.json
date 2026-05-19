@@ -6,7 +6,7 @@
       "title": "loaf release --post-merge should use git tag -s (signed) explicitly",
       "slug": "loaf-release-post-merge-should-use-git-tag-s-signe",
       "spec": null,
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [],
@@ -14,8 +14,8 @@
       "done": null,
       "session": null,
       "created": "2026-05-16T18:24:55.387Z",
-      "updated": "2026-05-16T18:24:55.387Z",
-      "completed_at": null,
+      "updated": "2026-05-19T17:57:58.720Z",
+      "completed_at": "2026-05-19T17:57:58.719Z",
       "file": "TASK-165-loaf-release-post-merge-should-use-git-tag-s-signe.md"
     },
     "TASK-001": {
