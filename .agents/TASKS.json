@@ -3029,14 +3029,6 @@
       "created": "2026-05-01T23:46:45.000Z",
       "file": "SPEC-035-tasks-json-staleness-housekeeping-sweep.md"
     },
-    "SPEC-036": {
-      "title": "Worktree-aware .agents/ storage routing",
-      "status": "complete",
-      "requirement": null,
-      "source": "direct",
-      "created": "2026-05-19T00:30:00Z",
-      "file": "archive/SPEC-036-worktree-aware-agents-storage-routing.md"
-    },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",
       "status": "complete",
@@ -3260,6 +3252,14 @@
       "source": "direct",
       "created": "2026-05-01T22:27:43.000Z",
       "file": "archive/SPEC-034-refactor-deepen-grilling-glossary.md"
+    },
+    "SPEC-036": {
+      "title": "Worktree-aware .agents/ storage routing",
+      "status": "complete",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-05-19T00:30:00Z",
+      "file": "archive/SPEC-036-worktree-aware-agents-storage-routing.md"
     }
   }
 }
