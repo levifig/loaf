@@ -702,13 +702,6 @@ export function runMigration(options: MigrationOptions): MigrationResult {
 
   // 3. No local `.agents/` at all? Edge case — treat as nothing to migrate.
   if (!existsSync(localAgents) || !worktreeAgentsHasContent(localAgents)) {
-    // If the back-pointer is set but stale, fall through to a clean plan.
-    if (pointer && pointer === mainRoot) {
-      return {
-        status: "already-migrated",
-        message: "Nothing to do — already migrated.",
-      };
-    }
     return {
       status: "no-local-agents",
       message: "Nothing to migrate — worktree has no local .agents/ content.",

@@ -20984,7 +20984,7 @@ function lookupDefaultBranch(runner, cwd) {
 // cli/lib/release/post-merge.ts
 import { existsSync as existsSync22, readFileSync as readFileSync20 } from "fs";
 import { join as join28 } from "path";
-var RELEASE_SUBJECT_RE = /^chore: release v(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?)(?:\s+\(#(\d+)\))?$/;
+var PR_SUFFIX_RE = /\(#(\d+)\)\s*$/;
 function run(runner, cwd, command, args) {
   return runner(command, args, { cwd });
 }
@@ -21015,31 +21015,34 @@ function checkOnBaseBranch(runner, cwd, base, current) {
   if (ffResult.exitCode === 0) return null;
   return `current branch ${current} is not the base branch ${base} \u2014 checkout ${base} and rerun`;
 }
-function checkSubjectShape(runner, cwd) {
+function readHeadSubjectMetadata(runner, cwd) {
   const result = run(runner, cwd, "git", ["log", "-1", "--pretty=%s"]);
   if (result.exitCode !== 0) {
     return "could not read HEAD subject";
   }
   const subject = result.stdout.trim();
-  const match = subject.match(RELEASE_SUBJECT_RE);
-  if (!match) {
-    return `HEAD subject ${JSON.stringify(subject)} does not match \`chore: release v<semver>\` shape \u2014 this is not a post-merge release commit`;
-  }
+  const match = subject.match(PR_SUFFIX_RE);
   return {
-    version: match[1],
-    ...match[2] ? { prNumber: match[2] } : {}
+    ...match?.[1] ? { prNumber: match[1] } : {}
   };
 }
-function checkVersionFilesMatch(files, version) {
+function detectConsistentVersion(files) {
   if (files.length === 0) {
-    return "no version files detected at HEAD \u2014 cannot verify version match";
+    return {
+      message: "no version files detected at HEAD \u2014 cannot verify version match"
+    };
   }
-  const mismatches = files.filter((f) => f.currentVersion !== version).map((f) => `${f.relativePath} reports ${f.currentVersion}, expected ${version}`);
+  const version = files[0].currentVersion;
+  const mismatches = files.filter((f) => f.currentVersion !== version).map(
+    (f) => `${f.relativePath} reports ${f.currentVersion}, expected ${version} from ${files[0].relativePath}`
+  );
   if (mismatches.length > 0) {
-    return `version mismatch in version file(s):
-    ${mismatches.join("\n    ")}`;
+    return {
+      message: `version mismatch in version file(s):
+    ${mismatches.join("\n    ")}`
+    };
   }
-  return null;
+  return version;
 }
 function checkDiffFiles(runner, cwd, versionFiles) {
   const result = run(runner, cwd, "git", [
@@ -21176,11 +21179,11 @@ async function checkPostMergeGuardrails(ctx) {
   if (branchAbort) {
     return { ok: false, guardrail: 2, message: branchAbort };
   }
-  const subjectResult = checkSubjectShape(runner, cwd);
+  const subjectResult = readHeadSubjectMetadata(runner, cwd);
   if (typeof subjectResult === "string") {
     return { ok: false, guardrail: 3, message: subjectResult };
   }
-  const { version, prNumber } = subjectResult;
+  const { prNumber } = subjectResult;
   let versionFiles;
   try {
     const cliOverrides = ctx.cliVersionFileOverrides ?? [];
@@ -21194,10 +21197,11 @@ async function checkPostMergeGuardrails(ctx) {
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, guardrail: 4, message };
   }
-  const versionAbort = checkVersionFilesMatch(versionFiles, version);
-  if (versionAbort) {
-    return { ok: false, guardrail: 4, message: versionAbort };
+  const versionResult = detectConsistentVersion(versionFiles);
+  if (typeof versionResult !== "string") {
+    return { ok: false, guardrail: 4, message: versionResult.message };
   }
+  const version = versionResult;
   const diffAbort = checkDiffFiles(runner, cwd, versionFiles);
   if (diffAbort) {
     return { ok: false, guardrail: 5, message: diffAbort };
@@ -30956,12 +30960,6 @@ function runMigration(options2) {
     };
   }
   if (!existsSync47(localAgents) || !worktreeAgentsHasContent(localAgents)) {
-    if (pointer && pointer === mainRoot) {
-      return {
-        status: "already-migrated",
-        message: "Nothing to do \u2014 already migrated."
-      };
-    }
     return {
       status: "no-local-agents",
       message: "Nothing to migrate \u2014 worktree has no local .agents/ content."
@@ -31153,6 +31151,12 @@ if (process.argv.length <= 2) {
   process.exit(0);
 }
 if (shouldRefuseCommand(process.argv)) {
+  const unknown = unknownTopLevelCommand(process.argv);
+  if (unknown) {
+    process.stderr.write(`error: unknown command '${unknown}'
+
+`);
+  }
   const mainMissing = detectMainMissingForRefusal(process.cwd());
   if (mainMissing) {
     process.stderr.write(`${mainMissing}
@@ -31176,6 +31180,16 @@ function shouldRefuseCommand(argv) {
   if (sub === "migrate") return false;
   if (sub === "help") return false;
   return detectPreA3State(process.cwd());
+}
+function unknownTopLevelCommand(argv) {
+  const sub = argv.slice(2)[0];
+  if (!sub || sub.startsWith("-")) return null;
+  if (sub === "help") return null;
+  const known = program2.commands.some((cmd) => {
+    if (cmd.name() === sub) return true;
+    return cmd.aliases().includes(sub);
+  });
+  return known ? null : sub;
 }
 /*! Bundled license information:
 
