@@ -8,8 +8,9 @@
  * Covers:
  *   - Round-trip: pre-A3 layout → dry-run (no changes) → apply (changes
  *     correct) → re-apply (no-op).
- *   - Conflict policy: newer-mtime wins by default; `--force-from-worktree`
- *     and `--force-from-main` overrides flip the result.
+ *   - Conflict policy: identical content dedupes before overwrite decisions;
+ *     otherwise newer-mtime wins by default; `--force-from-worktree` and
+ *     `--force-from-main` overrides flip the result.
  *   - Back-pointer behavior: written after --apply, idempotent on re-run.
  *   - Main-checkout invocation: clean no-op exit.
  *   - Outside git context: error status.
@@ -363,6 +364,33 @@ describe("runMigration — conflict policy", () => {
     const r = runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
     expect(r.status).toBe("applied");
     expect(readFileSync(mainFile, "utf-8")).toBe("# from worktree (newer)\n");
+  });
+
+  it("default (newer): identical content keeps main even when worktree mtime is newer", () => {
+    const main = createMainRepo("cp-same-content");
+    const linked = addWorktree(main, "feat/same-content");
+
+    const mainFile = join(main, ".agents", "AGENTS.md");
+    writeFileSync(mainFile, "# same content\n", "utf-8");
+    setMtime(mainFile, 1_000_000);
+    const mainMtimeBefore = statSync(mainFile).mtimeMs;
+
+    mkdirSync(join(linked, ".agents"), { recursive: true });
+    const wtFile = join(linked, ".agents", "AGENTS.md");
+    writeFileSync(wtFile, "# same content\n", "utf-8");
+    setMtime(wtFile, 2_000_000);
+
+    const dry = runMigration({ cwd: linked, apply: false, conflictPolicy: "newer" });
+    const move = dry.plan!.moves.find((m) => m.rel === "AGENTS.md");
+    expect(move?.conflict).toBe(true);
+    expect(move?.resolution).toBe("keep-main");
+    expect(move?.resolutionReason).toBe("identical content");
+
+    const r = runMigration({ cwd: linked, apply: true, conflictPolicy: "newer" });
+    expect(r.status).toBe("applied");
+    expect(readFileSync(mainFile, "utf-8")).toBe("# same content\n");
+    expect(statSync(mainFile).mtimeMs).toBe(mainMtimeBefore);
+    expect(existsSync(wtFile)).toBe(false);
   });
 
   it("default (newer): main wins when its mtime is newer than worktree's", () => {

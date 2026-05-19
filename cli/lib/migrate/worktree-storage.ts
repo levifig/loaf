@@ -13,8 +13,8 @@
  *
  * Behavior summary:
  *   - Dry-run by default; `--apply` mutates.
- *   - Conflict policy: newest mtime wins, with `--force-from-worktree` /
- *     `--force-from-main` overrides.
+ *   - Conflict policy: identical content is deduplicated; otherwise newest
+ *     mtime wins, with `--force-from-worktree` / `--force-from-main` overrides.
  *   - After a successful `--apply`, writes a `.moved-to` back-pointer in the
  *     worktree-local `.agents/` so the refusal nudge can detect post-A3 state.
  *   - Idempotent: re-running on a migrated worktree is a no-op.
@@ -392,6 +392,14 @@ function mtime(path: string): number {
   }
 }
 
+function hasSameContent(a: string, b: string): boolean {
+  try {
+    return readFileSync(a).equals(readFileSync(b));
+  } catch {
+    return false;
+  }
+}
+
 function planMoves(
   worktreeAgents: string,
   mainAgents: string,
@@ -408,27 +416,32 @@ function planMoves(
     let resolutionReason: string | undefined;
 
     if (conflict) {
-      switch (policy) {
-        case "worktree":
-          resolution = "keep-worktree";
-          resolutionReason = "forced by --force-from-worktree";
-          break;
-        case "main":
-          resolution = "keep-main";
-          resolutionReason = "forced by --force-from-main";
-          break;
-        case "newer": {
-          // Ties resolve to "keep-main" (intentional: prefer the canonical store on no-signal).
-          const fromMtime = mtime(from);
-          const toMtime = mtime(to);
-          if (fromMtime > toMtime) {
+      if (hasSameContent(from, to)) {
+        resolution = "keep-main";
+        resolutionReason = "identical content";
+      } else {
+        switch (policy) {
+          case "worktree":
             resolution = "keep-worktree";
-            resolutionReason = `worktree mtime ${new Date(fromMtime).toISOString()} > main mtime ${new Date(toMtime).toISOString()}`;
-          } else {
+            resolutionReason = "forced by --force-from-worktree";
+            break;
+          case "main":
             resolution = "keep-main";
-            resolutionReason = `main mtime ${new Date(toMtime).toISOString()} >= worktree mtime ${new Date(fromMtime).toISOString()}`;
+            resolutionReason = "forced by --force-from-main";
+            break;
+          case "newer": {
+            // Ties resolve to "keep-main" (intentional: prefer the canonical store on no-signal).
+            const fromMtime = mtime(from);
+            const toMtime = mtime(to);
+            if (fromMtime > toMtime) {
+              resolution = "keep-worktree";
+              resolutionReason = `worktree mtime ${new Date(fromMtime).toISOString()} > main mtime ${new Date(toMtime).toISOString()}`;
+            } else {
+              resolution = "keep-main";
+              resolutionReason = `main mtime ${new Date(toMtime).toISOString()} >= worktree mtime ${new Date(fromMtime).toISOString()}`;
+            }
+            break;
           }
-          break;
         }
       }
     }

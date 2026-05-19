@@ -30724,6 +30724,13 @@ function mtime(path) {
     return 0;
   }
 }
+function hasSameContent(a, b) {
+  try {
+    return readFileSync43(a).equals(readFileSync43(b));
+  } catch {
+    return false;
+  }
+}
 function planMoves(worktreeAgents, mainAgents, policy) {
   const relFiles = enumerateFiles(worktreeAgents);
   const moves = [];
@@ -30734,26 +30741,31 @@ function planMoves(worktreeAgents, mainAgents, policy) {
     let resolution;
     let resolutionReason;
     if (conflict) {
-      switch (policy) {
-        case "worktree":
-          resolution = "keep-worktree";
-          resolutionReason = "forced by --force-from-worktree";
-          break;
-        case "main":
-          resolution = "keep-main";
-          resolutionReason = "forced by --force-from-main";
-          break;
-        case "newer": {
-          const fromMtime = mtime(from);
-          const toMtime = mtime(to);
-          if (fromMtime > toMtime) {
+      if (hasSameContent(from, to)) {
+        resolution = "keep-main";
+        resolutionReason = "identical content";
+      } else {
+        switch (policy) {
+          case "worktree":
             resolution = "keep-worktree";
-            resolutionReason = `worktree mtime ${new Date(fromMtime).toISOString()} > main mtime ${new Date(toMtime).toISOString()}`;
-          } else {
+            resolutionReason = "forced by --force-from-worktree";
+            break;
+          case "main":
             resolution = "keep-main";
-            resolutionReason = `main mtime ${new Date(toMtime).toISOString()} >= worktree mtime ${new Date(fromMtime).toISOString()}`;
+            resolutionReason = "forced by --force-from-main";
+            break;
+          case "newer": {
+            const fromMtime = mtime(from);
+            const toMtime = mtime(to);
+            if (fromMtime > toMtime) {
+              resolution = "keep-worktree";
+              resolutionReason = `worktree mtime ${new Date(fromMtime).toISOString()} > main mtime ${new Date(toMtime).toISOString()}`;
+            } else {
+              resolution = "keep-main";
+              resolutionReason = `main mtime ${new Date(toMtime).toISOString()} >= worktree mtime ${new Date(fromMtime).toISOString()}`;
+            }
+            break;
           }
-          break;
         }
       }
     }
