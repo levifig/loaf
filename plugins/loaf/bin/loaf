@@ -18603,11 +18603,6 @@ function getTargetMcpConfig(target) {
   return TARGET_MCP_CONFIGS[target];
 }
 var SERENA_BASE_ARGS = [
-  "uvx",
-  "-p",
-  "3.13",
-  "--from",
-  "git+https://github.com/oraios/serena",
   "serena",
   "start-mcp-server"
 ];
@@ -18626,9 +18621,10 @@ var MCP_REGISTRY = [
     defaultArgs: [...SERENA_BASE_ARGS, "--project-from-cwd"],
     targetArgs: {
       "claude-code": [...SERENA_BASE_ARGS, "--context", "claude-code", "--project-from-cwd"],
-      cursor: [...SERENA_BASE_ARGS, "--context", "cursor", "--project-from-cwd"]
+      cursor: [...SERENA_BASE_ARGS, "--context", "ide", "--project-from-cwd"],
+      codex: [...SERENA_BASE_ARGS, "--context", "codex", "--project-from-cwd"]
     },
-    manualHint: "uvx -p 3.13 --from git+https://github.com/oraios/serena serena start-mcp-server --project-from-cwd"
+    manualHint: "uv tool install -p 3.13 serena-agent@latest --prerelease=allow && serena init"
   }
 ];
 function blobMatchesLinear(blob) {
@@ -18804,6 +18800,74 @@ function parseScope(answer) {
   if (answer.startsWith("p")) return "project";
   return "no";
 }
+var SERENA_INSTALL_COMMAND = [
+  "tool",
+  "install",
+  "-p",
+  "3.13",
+  "serena-agent@latest",
+  "--prerelease=allow"
+];
+function commandExists(command) {
+  try {
+    execFileSync4("which", [command], {
+      stdio: ["ignore", "ignore", "ignore"]
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function printSerenaNativeInstructions(log) {
+  log(`    ${yellow("\u26A0")} Serena must be installed natively before Loaf can add MCP entries.`);
+  log(`    ${gray2("Run:")} uv tool install -p 3.13 serena-agent@latest --prerelease=allow`);
+  log(`    ${gray2("Then:")} serena init`);
+}
+async function ensureSerenaNativeInstall(deps = {
+  commandExists,
+  ask,
+  run: (command, args) => execFileSync4(command, args, { stdio: "inherit" }),
+  log: (message) => console.log(message)
+}) {
+  if (deps.commandExists("serena")) {
+    return { ok: true, message: "Serena native CLI found" };
+  }
+  printSerenaNativeInstructions(deps.log);
+  if (!deps.commandExists("uv")) {
+    return {
+      ok: false,
+      message: "uv not found; install uv, run the Serena setup commands above, then rerun loaf install."
+    };
+  }
+  const answer = await deps.ask(
+    `    Run Serena native install now? [y/N] `
+  );
+  if (!answer.startsWith("y")) {
+    return {
+      ok: false,
+      message: "Skipped native Serena setup; MCP config not written."
+    };
+  }
+  try {
+    deps.run("uv", SERENA_INSTALL_COMMAND);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, message: `Serena install failed: ${msg}` };
+  }
+  if (!deps.commandExists("serena")) {
+    return {
+      ok: false,
+      message: "Serena installed, but `serena` is not on PATH. Add uv's tool bin directory to PATH, then rerun loaf install."
+    };
+  }
+  try {
+    deps.run("serena", ["init"]);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, message: `serena init failed: ${msg}` };
+  }
+  return { ok: true, message: "Serena native CLI installed" };
+}
 function installViaClaude(def, scope) {
   const scopeFlag = scope === "global" ? "user" : "project";
   const args = getMcpArgs(def, "claude-code");
@@ -18967,6 +19031,17 @@ ${bold2("Recommended MCP servers")}
       console.log(`    ${gray2("\u25CB")} Skipped \u2014 recorded in .agents/loaf.json`);
       console.log();
       continue;
+    }
+    if (def.id === "serena") {
+      const nativeSerena = await ensureSerenaNativeInstall();
+      if (!nativeSerena.ok) {
+        mergeLoafConfigIntegrations(projectRoot, {
+          [def.id]: { enabled: false }
+        });
+        console.log(`    ${yellow("\u26A0")} ${nativeSerena.message}`);
+        console.log();
+        continue;
+      }
     }
     const unconfigured = availableTargets.filter(
       (t) => !st.targets[t]?.configured
