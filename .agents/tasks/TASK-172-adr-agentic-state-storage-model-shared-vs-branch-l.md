@@ -1,11 +1,11 @@
 ---
 id: TASK-172
 title: 'ADR: agentic state storage model (shared vs branch-local)'
+spec: SPEC-036
 status: todo
 priority: P3
 created: '2026-05-18T23:59:01.537Z'
 updated: '2026-05-18T23:59:01.537Z'
-spec: SPEC-036
 depends_on:
   - TASK-166
   - TASK-170

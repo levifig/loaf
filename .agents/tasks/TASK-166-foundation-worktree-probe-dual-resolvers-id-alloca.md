@@ -1,11 +1,13 @@
 ---
 id: TASK-166
 title: 'Foundation: worktree probe + dual resolvers + ID allocator scans both views'
-status: todo
+spec: SPEC-036
+status: done
 priority: P1
 created: '2026-05-18T23:58:39.458Z'
-updated: '2026-05-18T23:58:39.458Z'
-spec: SPEC-036
+updated: '2026-05-19T08:56:34.313Z'
+session: .agents/sessions/20260519-004429-session.md
+completed_at: '2026-05-19T08:56:34.312Z'
 ---
 
 # TASK-166: Foundation: worktree probe + dual resolvers + ID allocator scans both views

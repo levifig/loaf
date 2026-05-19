@@ -3,11 +3,11 @@ id: TASK-170
 title: >-
   loaf migrate worktree-storage command (dry-run default, back-pointer file,
   round-trip test)
+spec: SPEC-036
 status: todo
 priority: P2
 created: '2026-05-18T23:58:56.163Z'
 updated: '2026-05-18T23:58:56.163Z'
-spec: SPEC-036
 depends_on:
   - TASK-166
 ---
@@ -31,6 +31,11 @@ Implement `loaf migrate worktree-storage` **and** the pre-A3 refusal nudge in on
 - Pre-A3 detection signal: in a linked worktree where the worktree-local `.agents/` contains content AND the back-pointer file is absent (or its target is missing)
 - When pre-A3 detected: refuse every loaf command except `loaf migrate worktree-storage` with a clear message pointing to that command
 - Single-checkout repos and the main worktree itself never trigger the refusal
+
+**Observability (from TASK-166 review, Q3):**
+- The `findMainWorktreeRoot` probe in `cli/lib/tasks/resolve.ts` silently swallows all git failures (no git installed, corrupted repo, "not a git repository", etc.) and falls through to parent-walk. This is correct on the hot path but masks diagnostics when the refusal nudge misfires or fails to fire.
+- Add a debug knob (env var `LOAF_DEBUG_RESOLVE=1`) that, when set, writes the git invocation's stderr to `process.stderr` instead of suppressing it. Wire this through `findMainWorktreeRoot` (small change to its `try/catch`) and surface it in the migrate command's help/docs as the recommended way to diagnose "why did the nudge fire?" / "why didn't the nudge fire?"
+- Single source of truth: the env var name lives in one constant referenced by both `resolve.ts` and the migrate command.
 
 ## Acceptance Criteria
 
