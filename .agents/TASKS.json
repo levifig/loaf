@@ -16,7 +16,7 @@
       "created": "2026-05-16T18:24:55.387Z",
       "updated": "2026-05-19T17:57:58.720Z",
       "completed_at": "2026-05-19T17:57:58.719Z",
-      "file": "TASK-165-loaf-release-post-merge-should-use-git-tag-s-signe.md"
+      "file": "archive/TASK-165-loaf-release-post-merge-should-use-git-tag-s-signe.md"
     },
     "TASK-001": {
       "title": "Create verification reference",
@@ -2985,7 +2985,7 @@
       "created": "2026-05-19T18:15:06.781Z",
       "updated": "2026-05-19T18:26:07.373Z",
       "completed_at": "2026-05-19T18:26:07.372Z",
-      "file": "TASK-173-tighten-malformed-task-id-handling-in-rebuild-merg.md"
+      "file": "archive/TASK-173-tighten-malformed-task-id-handling-in-rebuild-merg.md"
     },
     "TASK-174": {
       "title": "Make check.test git fixtures independent of global identity",
@@ -3001,7 +3001,7 @@
       "created": "2026-05-19T18:15:06.782Z",
       "updated": "2026-05-19T18:26:07.833Z",
       "completed_at": "2026-05-19T18:26:07.832Z",
-      "file": "TASK-174-make-check-test-git-fixtures-independent-of-global.md"
+      "file": "archive/TASK-174-make-check-test-git-fixtures-independent-of-global.md"
     },
     "TASK-175": {
       "title": "Surface migration directory-read failures under LOAF_DEBUG_RESOLVE",
@@ -3017,7 +3017,7 @@
       "created": "2026-05-19T18:15:07.085Z",
       "updated": "2026-05-19T18:26:08.272Z",
       "completed_at": "2026-05-19T18:26:08.271Z",
-      "file": "TASK-175-surface-migration-directory-read-failures-under-lo.md"
+      "file": "archive/TASK-175-surface-migration-directory-read-failures-under-lo.md"
     },
     "TASK-176": {
       "title": "Respect NO_COLOR and non-TTY output in worktree migration formatting",
@@ -3033,7 +3033,7 @@
       "created": "2026-05-19T18:15:07.085Z",
       "updated": "2026-05-19T18:26:08.720Z",
       "completed_at": "2026-05-19T18:26:08.719Z",
-      "file": "TASK-176-respect-no-color-and-non-tty-output-in-worktree-mi.md"
+      "file": "archive/TASK-176-respect-no-color-and-non-tty-output-in-worktree-mi.md"
     },
     "TASK-177": {
       "title": "Pin worktree migration symlink handling policy",
@@ -3049,7 +3049,7 @@
       "created": "2026-05-19T18:15:15.669Z",
       "updated": "2026-05-19T18:26:09.157Z",
       "completed_at": "2026-05-19T18:26:09.156Z",
-      "file": "TASK-177-pin-worktree-migration-symlink-handling-policy.md"
+      "file": "archive/TASK-177-pin-worktree-migration-symlink-handling-policy.md"
     },
     "TASK-178": {
       "title": "Fix release post-merge guardrail to accept real squash subjects",
@@ -3065,7 +3065,7 @@
       "created": "2026-05-19T18:55:58.924Z",
       "updated": "2026-05-19T19:02:44.430Z",
       "completed_at": "2026-05-19T19:02:44.429Z",
-      "file": "TASK-178-fix-release-post-merge-guardrail-to-accept-real-sq.md"
+      "file": "archive/TASK-178-fix-release-post-merge-guardrail-to-accept-real-sq.md"
     },
     "TASK-179": {
       "title": "Preserve unknown-command feedback when pre-A3 refusal fires",
@@ -3081,7 +3081,7 @@
       "created": "2026-05-19T18:55:59.371Z",
       "updated": "2026-05-19T19:02:44.909Z",
       "completed_at": "2026-05-19T19:02:44.908Z",
-      "file": "TASK-179-preserve-unknown-command-feedback-when-pre-a3-refu.md"
+      "file": "archive/TASK-179-preserve-unknown-command-feedback-when-pre-a3-refu.md"
     },
     "TASK-180": {
       "title": "Simplify worktree migration no-local-agents control flow",
@@ -3097,7 +3097,7 @@
       "created": "2026-05-19T18:55:59.829Z",
       "updated": "2026-05-19T19:02:45.361Z",
       "completed_at": "2026-05-19T19:02:45.360Z",
-      "file": "TASK-180-simplify-worktree-migration-no-local-agents-contro.md"
+      "file": "archive/TASK-180-simplify-worktree-migration-no-local-agents-contro.md"
     },
     "TASK-181": {
       "title": "Isolate resolver parent-walk tests from host HOME and TMPDIR",
@@ -3113,7 +3113,7 @@
       "created": "2026-05-19T18:56:00.287Z",
       "updated": "2026-05-19T19:02:45.800Z",
       "completed_at": "2026-05-19T19:02:45.799Z",
-      "file": "TASK-181-isolate-resolver-parent-walk-tests-from-host-home-.md"
+      "file": "archive/TASK-181-isolate-resolver-parent-walk-tests-from-host-home-.md"
     },
     "TASK-182": {
       "title": "Verify release build artifacts after post-bump commits",
@@ -3129,7 +3129,7 @@
       "created": "2026-05-19T18:56:00.763Z",
       "updated": "2026-05-19T19:02:46.238Z",
       "completed_at": "2026-05-19T19:02:46.237Z",
-      "file": "TASK-182-verify-release-build-artifacts-after-post-bump-com.md"
+      "file": "archive/TASK-182-verify-release-build-artifacts-after-post-bump-com.md"
     },
     "TASK-183": {
       "title": "Close triage bookkeeping for solved worktree-storage follow-ups",
@@ -3145,7 +3145,7 @@
       "created": "2026-05-19T18:56:01.237Z",
       "updated": "2026-05-19T19:02:46.677Z",
       "completed_at": "2026-05-19T19:02:46.676Z",
-      "file": "TASK-183-close-triage-bookkeeping-for-solved-worktree-stora.md"
+      "file": "archive/TASK-183-close-triage-bookkeeping-for-solved-worktree-stora.md"
     },
     "TASK-184": {
       "title": "Preserve unknown task and spec frontmatter during metadata sync",
@@ -3161,7 +3161,7 @@
       "created": "2026-05-19T19:11:07.751Z",
       "updated": "2026-05-19T19:19:55.198Z",
       "completed_at": "2026-05-19T19:19:55.197Z",
-      "file": "TASK-184-preserve-unknown-task-and-spec-frontmatter-during-.md"
+      "file": "archive/TASK-184-preserve-unknown-task-and-spec-frontmatter-during-.md"
     },
     "TASK-185": {
       "title": "Share lock staleness primitives across task and session locks",
@@ -3177,7 +3177,7 @@
       "created": "2026-05-19T19:11:08.159Z",
       "updated": "2026-05-19T19:19:55.582Z",
       "completed_at": "2026-05-19T19:19:55.581Z",
-      "file": "TASK-185-share-lock-staleness-primitives-across-task-and-se.md"
+      "file": "archive/TASK-185-share-lock-staleness-primitives-across-task-and-se.md"
     },
     "TASK-186": {
       "title": "Strengthen git workflow changelog discipline guidance",
@@ -3193,7 +3193,7 @@
       "created": "2026-05-19T19:11:08.566Z",
       "updated": "2026-05-19T19:19:55.937Z",
       "completed_at": "2026-05-19T19:19:55.937Z",
-      "file": "TASK-186-strengthen-git-workflow-changelog-discipline-guida.md"
+      "file": "archive/TASK-186-strengthen-git-workflow-changelog-discipline-guida.md"
     },
     "TASK-187": {
       "title": "Archive release follow-up ideas implemented by this branch",
@@ -3209,7 +3209,7 @@
       "created": "2026-05-19T19:11:09.003Z",
       "updated": "2026-05-19T19:19:56.286Z",
       "completed_at": "2026-05-19T19:19:56.286Z",
-      "file": "TASK-187-archive-release-follow-up-ideas-implemented-by-thi.md"
+      "file": "archive/TASK-187-archive-release-follow-up-ideas-implemented-by-thi.md"
     }
   },
   "specs": {
