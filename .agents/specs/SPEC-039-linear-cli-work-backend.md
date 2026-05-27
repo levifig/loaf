@@ -138,6 +138,8 @@ This spec should produce payloads that pass SPEC-038 validators by construction.
 - Add Linear GraphQL client/adaptor in the CLI.
 - Create/update Linear mirror issues for specs using outcome titles.
 - Create/update Linear child issues for tasks using native relationships.
+- Starting a Linear child issue also promotes its parent mirror issue from
+  `backlog`/`unstarted` to the team's `started`/In Progress state.
 - Use Linear native relationships instead of duplicating relationships in issue bodies.
 - Update skills to route Linear workflow through CLI commands.
 - Preserve local mode as a first-class backend.
@@ -197,6 +199,14 @@ This spec should produce payloads that pass SPEC-038 validators by construction.
 - [ ] Expired access tokens refresh mechanically.
 - [ ] `loaf spec sync SPEC-XXX --backend linear` creates a Linear mirror issue with no internal Loaf IDs or `.agents/` paths.
 - [ ] Child tasks are created with native `parentId` relationship to the mirror issue.
+- [ ] Starting a child issue moves the child to the team's `started` state and
+      promotes a `backlog`/`unstarted` parent to `started`; already-active
+      parents are left unchanged.
+- [ ] Starting a child issue fails before moving the child when the parent is
+      `completed`, `canceled`, or archived unless the caller explicitly
+      overrides the protected parent state.
+- [ ] If child start succeeds but parent promotion fails, the command exits
+      non-zero and reports a reconciliation error with the parent issue ID.
 - [ ] Blocking relationships use Linear native fields where available.
 - [ ] Linear issue bodies do not duplicate parent/child/blocking relationships already represented by fields.
 - [ ] Loaf local state records `SPEC-*` to Linear ID mappings.
