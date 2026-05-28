@@ -11,6 +11,10 @@ is a Loaf workflow staging section for curated entries before release.
 - Adopt Common Changelog as Loaf's changelog writing standard ([Common Changelog](https://common-changelog.org/))
 - Let council workflows state the selected composition and spawn directly, while still reserving the final decision for the user
 
+### Fixed
+
+- `.agents/loaf.json` reads and writes from a linked git worktree now follow the SPEC-036 centralization to the main worktree, so `loaf release --pre-merge` (and other consumers of `loaf.json`) no longer fail with "No version files found" when invoked from a migrated linked worktree.
+
 ## [2.0.0-dev.45] - 2026-05-27
 
 ### Fixed
