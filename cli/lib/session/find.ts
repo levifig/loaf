@@ -310,7 +310,13 @@ export function findActiveSessionForBranch(
       a.data.last_updated || a.data.last_entry || a.data.created || "0";
     const bTime =
       b.data.last_updated || b.data.last_entry || b.data.created || "0";
-    return bTime.localeCompare(aTime); // descending — newest first
+    const cmp = bTime.localeCompare(aTime); // descending — newest first
+    if (cmp !== 0) return cmp;
+    // Deterministic tiebreaker: alphabetical filePath. Session filenames are
+    // `YYYYMMDD-HHMMSS-…md`, so this still favors the more recent file when
+    // every timestamp field is byte-identical, and removes the dependency on
+    // `readdirSync` collection order (filesystem-/platform-dependent).
+    return a.filePath.localeCompare(b.filePath);
   });
 
   const winner = activeSessions[0];
