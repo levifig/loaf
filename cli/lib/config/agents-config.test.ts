@@ -221,3 +221,74 @@ describe("agents-config — defensive fallback", () => {
     expect(cfg.release?.versionFiles).toEqual(["pyproject.toml"]);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Linked worktree with unreachable main
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// When the main worktree directory has been removed, `git rev-parse
+// --git-common-dir` fails and `findMainWorktreeRoot` returns null — the same
+// signal a single-checkout repo produces. The previous fallback wrote a
+// stale `loaf.json` into the linked worktree's `.agents/`, invisible to
+// every other tool that resolves via `findAgentsDir`. The helper now detects
+// the linked-worktree state from the `.git` pointer file and refuses to
+// write a shadow config, throwing the same actionable message the migrate
+// command surfaces.
+
+describe("agents-config — linked worktree with main removed", () => {
+  it("readLoafConfig throws when the main worktree directory has been deleted", () => {
+    const main = createMainRepo("mm-read");
+    const linked = addWorktree(main, "feat/mm-read");
+    rmSync(main, { recursive: true, force: true });
+
+    expect(() => readLoafConfig(linked)).toThrow(/Main worktree at .+ not found/);
+  });
+
+  it("loafConfigPath throws when the main worktree directory has been deleted", () => {
+    const main = createMainRepo("mm-path");
+    const linked = addWorktree(main, "feat/mm-path");
+    rmSync(main, { recursive: true, force: true });
+
+    expect(() => loafConfigPath(linked)).toThrow(/Main worktree at .+ not found/);
+  });
+
+  it("mergeLoafConfigIntegrations throws AND does not create loaf.json under the linked worktree", () => {
+    const main = createMainRepo("mm-write");
+    const linked = addWorktree(main, "feat/mm-write");
+    rmSync(main, { recursive: true, force: true });
+
+    expect(() =>
+      mergeLoafConfigIntegrations(linked, { linear: { enabled: true } }),
+    ).toThrow(/Main worktree at .+ not found/);
+
+    // Critical guarantee of the fix: no stray loaf.json was created next to
+    // the back-pointer (or anywhere else in the linked worktree's .agents/).
+    expect(existsSync(join(linked, ".agents", "loaf.json"))).toBe(false);
+  });
+
+  it("error message points at the recorded main path and suggests recovery", () => {
+    const main = createMainRepo("mm-msg");
+    const linked = addWorktree(main, "feat/mm-msg");
+    rmSync(main, { recursive: true, force: true });
+
+    let captured: Error | null = null;
+    try {
+      readLoafConfig(linked);
+    } catch (err) {
+      captured = err as Error;
+    }
+    expect(captured).not.toBeNull();
+    expect(captured!.message).toContain(main);
+    expect(captured!.message).toContain("git worktree list");
+  });
+
+  it("throws when the recorded main path is a file (not a directory)", () => {
+    const main = createMainRepo("mm-isfile");
+    const linked = addWorktree(main, "feat/mm-isfile");
+    rmSync(main, { recursive: true, force: true });
+    writeFileSync(main, "not a directory\n", "utf-8");
+
+    expect(() => readLoafConfig(linked)).toThrow(/is not a directory/);
+    expect(existsSync(join(linked, ".agents", "loaf.json"))).toBe(false);
+  });
+});
