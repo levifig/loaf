@@ -1,7 +1,51 @@
 {
   "version": 1,
-  "next_id": 188,
+  "next_id": 190,
   "tasks": {
+    "TASK-188": {
+      "title": "Make agents-config.ts worktree-aware (follow .moved-to back-pointer)",
+      "slug": "worktree-aware-loaf-config-resolution",
+      "spec": "SPEC-042",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [],
+      "files": [
+        "cli/lib/config/agents-config.ts",
+        "cli/lib/config/agents-config.test.ts",
+        "cli/lib/tasks/resolve.ts",
+        "cli/commands/release.test.ts"
+      ],
+      "verify": "npm run typecheck && npm run test -- cli/lib/config/agents-config.test.ts cli/commands/release.test.ts",
+      "done": "readLoafConfig and writeLoafConfigRaw follow .moved-to back-pointer to the main worktree's .agents/loaf.json; loaf release --pre-merge succeeds in a migrated linked worktree without --version-file",
+      "session": null,
+      "created": "2026-05-28T01:17:26.543Z",
+      "updated": "2026-05-28T01:17:26.543Z",
+      "completed_at": null,
+      "file": "TASK-188-worktree-aware-loaf-config-resolution.md"
+    },
+    "TASK-189": {
+      "title": "Stop destructive branch-rewrite and extend Tier 3 session fallback to most-recent-active",
+      "slug": "ephemeral-branch-session-fallback",
+      "spec": "SPEC-042",
+      "status": "todo",
+      "priority": "P1",
+      "depends_on": [
+        "TASK-188"
+      ],
+      "files": [
+        "cli/lib/session/find.ts",
+        "cli/lib/session/resolve.ts",
+        "cli/lib/session/find.test.ts",
+        "cli/lib/session/resolve.test.ts"
+      ],
+      "verify": "npm run typecheck && npm run test -- cli/lib/session/find.test.ts cli/lib/session/resolve.test.ts",
+      "done": "findActiveSessionForBranch never mutates session branch frontmatter; multi-active fallback returns most-recent-active with loud WARN; loaf session log on release/v* lands in orchestrator's session without rewriting its origin branch",
+      "session": null,
+      "created": "2026-05-28T01:17:26.544Z",
+      "updated": "2026-05-28T01:17:26.544Z",
+      "completed_at": null,
+      "file": "TASK-189-ephemeral-branch-session-fallback.md"
+    },
     "TASK-001": {
       "title": "Create verification reference",
       "slug": "verification-reference",
@@ -3268,6 +3312,54 @@
       "source": "ideas/20260325-012120-task-staleness-prevention.md, ideas/20260410-221800-revisit-tasks-json.md",
       "created": "2026-05-01T23:46:45.000Z",
       "file": "SPEC-035-tasks-json-staleness-housekeeping-sweep.md"
+    },
+    "SPEC-037": {
+      "title": "Mutable spec work definitions",
+      "status": "drafting",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-05-22T10:17:33Z",
+      "file": "SPEC-037-mutable-spec-work-definitions.md"
+    },
+    "SPEC-038": {
+      "title": "External artifact boundary enforcement",
+      "status": "drafting",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-05-22T10:17:33Z",
+      "file": "SPEC-038-external-artifact-boundary-enforcement.md"
+    },
+    "SPEC-039": {
+      "title": "Linear CLI work backend and OAuth",
+      "status": "drafting",
+      "requirement": null,
+      "source": "direct",
+      "created": "2026-05-22T10:17:33Z",
+      "file": "SPEC-039-linear-cli-work-backend.md"
+    },
+    "SPEC-040": {
+      "title": "SQLite-backed Loaf operational state",
+      "status": "drafting",
+      "requirement": null,
+      "source": "shaped from raw ideas 20260522-101624-sqlite-backed-operational-state, 20260522-101625-loaf-cli-tui-state-workbench, 20260522-101626-generated-markdown-review-exports, 20260522-101627-structured-session-transcripts-and-reports, and 20260522-101628-triage-resolution-graph\n",
+      "created": "2026-05-23T01:10:29Z",
+      "file": "SPEC-040-sqlite-backed-loaf-operational-state.md"
+    },
+    "SPEC-041": {
+      "title": "Brief-shaped specs and optional implementation plans",
+      "status": "drafting",
+      "requirement": null,
+      "source": "direct -- conversation about NotebookLM research, SPEC-040 SQLite state, and Loaf artifact taxonomy",
+      "created": "2026-05-26T16:11:55Z",
+      "file": "SPEC-041-brief-shaped-specs-and-optional-implementation-plans.md"
+    },
+    "SPEC-042": {
+      "title": "Worktree-aware config resolution and ephemeral-branch session fallback",
+      "status": "implementing",
+      "requirement": null,
+      "source": "direct — bug reports from GridSight release-agent flows (v0.16.0)",
+      "created": "2026-05-28T00:18:00Z",
+      "file": "SPEC-042-worktree-aware-config-and-session-fallback.md"
     },
     "SPEC-001": {
       "title": "Loaf Self-Sufficiency",
