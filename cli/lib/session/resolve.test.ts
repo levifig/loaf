@@ -46,11 +46,13 @@ import * as fs from "fs";
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
   rmSync,
   writeFileSync,
 } from "fs";
-import { join } from "path";
+import { createHash } from "crypto";
+import { basename, join } from "path";
 import { tmpdir } from "os";
 import matter from "gray-matter";
 
@@ -78,6 +80,14 @@ const BRANCH = "feat/example";
 const WARN_FOR_BRANCH = (branch: string) =>
   `WARN: no session_id signal — falling back to branch routing for branch '${branch}'. Pass --session-id <id> to silence.\n`;
 
+/** Adoption WARN — fires when fallback resolves to a session on a different branch. */
+const WARN_ADOPTION = (branch: string, filePath: string, originBranch: string) =>
+  `WARN: no session for branch '${branch}'; logging to most-recent active session '${basename(filePath)}' (origin branch '${originBranch}'). Pass --session-id <id> to silence.\n`;
+
+/** Zero-active WARN — fires when fallback finds nothing. */
+const WARN_NO_ACTIVE = (branch: string) =>
+  `WARN: no session for branch '${branch}'; no active sessions to fall back to. Pass --session-id <id> to silence.\n`;
+
 interface SessionSeed {
   fileName: string;
   branch?: string;
@@ -85,6 +95,10 @@ interface SessionSeed {
   claude_session_id?: string;
   last_updated?: string;
   last_entry?: string;
+}
+
+function fileHash(path: string): string {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
 function writeSessionFile(seed: SessionSeed): string {
@@ -370,34 +384,76 @@ describe("resolveCurrentSession — Tier 3 (branch fallback)", () => {
     expect(stderr.lines).toEqual([WARN_FOR_BRANCH(BRANCH)]);
   });
 
-  it("adopts a single active session on the wrong branch (heuristic) and emits WARN", async () => {
-    // Seed exactly ONE active session on a different branch — the
-    // findActiveSessionForBranch adoption heuristic re-tags this session to
-    // the requested branch. This test pins that behavior.
-    writeSessionFile({
+  it("adopts a lone active session on a different branch and emits adoption WARN (SPEC-042 Track B)", async () => {
+    // Seed exactly ONE active session on a different branch. Under SPEC-042
+    // Track B the finder no longer re-tags the session — it returns the
+    // session as-is and the resolver emits an adoption WARN naming both the
+    // requested branch and the session's origin branch.
+    const filePath = writeSessionFile({
       fileName: "20260427-220000-session.md",
       branch: "other-branch",
       claude_session_id: "session-A",
     });
+    const before = fileHash(filePath);
 
     const stderr = captureStderr();
     const result = await resolveCurrentSession(AGENTS_DIR, "feat/missing", {});
     stderr.restore();
 
-    expect(stderr.lines).toEqual([WARN_FOR_BRANCH("feat/missing")]);
     expect(result).not.toBeNull();
     expect(result?.data.claude_session_id).toBe("session-A");
+    // Origin branch preserved — no mutation.
+    expect(result?.data.branch).toBe("other-branch");
+    expect(fileHash(filePath)).toBe(before);
+    expect(stderr.lines).toEqual([
+      WARN_ADOPTION("feat/missing", filePath, "other-branch"),
+    ]);
   });
 
-  it("emits WARN even when all tiers fail to resolve (multiple branches, no match)", async () => {
+  it("adopts the most-recent active session when multiple are active on different branches (SPEC-042 Track B)", async () => {
+    // Multi-worktree case: more than one active session, none matching the
+    // requested branch. The finder must adopt the most-recent-by-last_updated
+    // rather than returning null. This pins SPEC-042 Track B Bug B2.
+    const olderPath = writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      branch: "branch-a",
+      claude_session_id: "session-A",
+      last_updated: "2026-04-27T22:00:00.000Z",
+    });
+    const newerPath = writeSessionFile({
+      fileName: "20260427-221000-session.md",
+      branch: "branch-b",
+      claude_session_id: "session-B",
+      last_updated: "2026-04-27T22:30:00.000Z",
+    });
+    const olderBefore = fileHash(olderPath);
+    const newerBefore = fileHash(newerPath);
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(AGENTS_DIR, "branch-c", {});
+    stderr.restore();
+
+    expect(result?.data.claude_session_id).toBe("session-B");
+    expect(result?.data.branch).toBe("branch-b"); // unchanged
+    // Neither file mutated.
+    expect(fileHash(olderPath)).toBe(olderBefore);
+    expect(fileHash(newerPath)).toBe(newerBefore);
+    expect(stderr.lines).toEqual([
+      WARN_ADOPTION("branch-c", newerPath, "branch-b"),
+    ]);
+  });
+
+  it("emits distinct WARN and returns null when no active sessions exist (SPEC-042 Track B)", async () => {
     writeSessionFile({
       fileName: "20260427-220000-session.md",
       branch: "branch-a",
+      status: "stopped",
       claude_session_id: "session-A",
     });
     writeSessionFile({
       fileName: "20260427-221000-session.md",
       branch: "branch-b",
+      status: "done",
       claude_session_id: "session-B",
     });
 
@@ -405,10 +461,50 @@ describe("resolveCurrentSession — Tier 3 (branch fallback)", () => {
     const result = await resolveCurrentSession(AGENTS_DIR, "branch-c", {});
     stderr.restore();
 
-    // With multiple active sessions and no branch match, the adoption heuristic
-    // doesn't fire (it requires exactly one active session) — so result is null.
     expect(result).toBeNull();
-    expect(stderr.lines).toEqual([WARN_FOR_BRANCH("branch-c")]);
+    expect(stderr.lines).toEqual([WARN_NO_ACTIVE("branch-c")]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPEC-042 Track B integration — release-agent scenario
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("resolveCurrentSession — SPEC-042 release agent scenario", () => {
+  it("release-agent branch with orchestrator session active: routes to orchestrator, no mutation, names both branches in WARN", async () => {
+    // Simulates a release agent running in a worktree on `release/v0.16.0`
+    // while an orchestrator session is active on `cwt/foo`. Before SPEC-042
+    // Track B this either silently dropped logs (multi-active) or rewrote
+    // the orchestrator's `branch:` to `release/v0.16.0` (single-active).
+    // Now: orchestrator session is returned, frontmatter untouched, and WARN
+    // names both branches.
+    const orchestratorPath = writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      branch: "cwt/foo",
+      claude_session_id: "orchestrator",
+      last_updated: "2026-04-27T22:30:00.000Z",
+    });
+    const before = fileHash(orchestratorPath);
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(
+      AGENTS_DIR,
+      "release/v0.16.0",
+      {}
+    );
+    stderr.restore();
+
+    expect(result).not.toBeNull();
+    expect(result?.data.claude_session_id).toBe("orchestrator");
+    expect(result?.data.branch).toBe("cwt/foo"); // origin unchanged
+    expect(fileHash(orchestratorPath)).toBe(before);
+    expect(stderr.lines).toEqual([
+      WARN_ADOPTION("release/v0.16.0", orchestratorPath, "cwt/foo"),
+    ]);
+    // WARN names both branches.
+    const line = stderr.lines[0];
+    expect(line).toContain("release/v0.16.0");
+    expect(line).toContain("cwt/foo");
   });
 });
 
@@ -564,20 +660,62 @@ describe("resolveCurrentSession — WARN routing", () => {
     stdoutSpy.mockRestore();
   });
 
-  it("WARN message contains exact literal text", async () => {
+  it("branch-match WARN contains exact literal text", async () => {
+    // Session is on BRANCH ('feat/example') and the request matches it →
+    // direct branch-match path → original WARN text.
     writeSessionFile({
       fileName: "20260427-220000-session.md",
       claude_session_id: "session-A",
     });
 
     const stderr = captureStderr();
-    await resolveCurrentSession(AGENTS_DIR, "feat/exact-test", {});
+    await resolveCurrentSession(AGENTS_DIR, BRANCH, {});
     stderr.restore();
 
     expect(stderr.lines).toHaveLength(1);
     const line = stderr.lines[0];
     expect(line).toContain("WARN: no session_id signal");
-    expect(line).toContain("falling back to branch routing for branch 'feat/exact-test'");
+    expect(line).toContain(`falling back to branch routing for branch '${BRANCH}'`);
+    expect(line).toContain("Pass --session-id <id> to silence.");
+  });
+
+  it("adoption WARN contains target file and origin branch (SPEC-042 Track B)", async () => {
+    // Session is on `cwt/foo`; request is on `release/v0.16.0` → adoption
+    // path → richer WARN naming both branches and the resolved file.
+    const filePath = writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      branch: "cwt/foo",
+      claude_session_id: "session-A",
+    });
+
+    const stderr = captureStderr();
+    await resolveCurrentSession(AGENTS_DIR, "release/v0.16.0", {});
+    stderr.restore();
+
+    expect(stderr.lines).toHaveLength(1);
+    const line = stderr.lines[0];
+    expect(line).toContain("WARN: no session for branch 'release/v0.16.0'");
+    expect(line).toContain(`'${basename(filePath)}'`);
+    expect(line).toContain("origin branch 'cwt/foo'");
+    expect(line).toContain("Pass --session-id <id> to silence.");
+  });
+
+  it("zero-active WARN is distinct from adoption WARN (SPEC-042 Track B)", async () => {
+    writeSessionFile({
+      fileName: "20260427-220000-session.md",
+      status: "stopped",
+      claude_session_id: "session-A",
+    });
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(AGENTS_DIR, "release/v0.16.0", {});
+    stderr.restore();
+
+    expect(result).toBeNull();
+    expect(stderr.lines).toHaveLength(1);
+    const line = stderr.lines[0];
+    expect(line).toContain("WARN: no session for branch 'release/v0.16.0'");
+    expect(line).toContain("no active sessions to fall back to");
     expect(line).toContain("Pass --session-id <id> to silence.");
   });
 });
