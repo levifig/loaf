@@ -1,9 +1,8 @@
 # Changelog
 
 This project follows [Common Changelog](https://common-changelog.org/) and
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html). The
-`[Unreleased]` section is a Loaf workflow staging area for curated entries
-before release.
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html). `## [Unreleased]`
+is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
