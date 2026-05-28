@@ -21786,26 +21786,26 @@ var CANDIDATES = [
 ];
 function classifyDeclaredPath(relativePath) {
   const normalized = relativePath.replace(/\\/g, "/");
-  const basename10 = normalized.split("/").pop() ?? normalized;
-  if (basename10 === "package.json") {
+  const basename11 = normalized.split("/").pop() ?? normalized;
+  if (basename11 === "package.json") {
     return { format: "json" };
   }
-  if (basename10 === "loaf.json") {
+  if (basename11 === "loaf.json") {
     return { format: "json" };
   }
-  if (basename10 === "marketplace.json") {
+  if (basename11 === "marketplace.json") {
     return { format: "json", jsonVersionPath: "metadata.version" };
   }
-  if (basename10 === "pyproject.toml") {
+  if (basename11 === "pyproject.toml") {
     return { format: "toml-regex", tomlSection: "project" };
   }
-  if (basename10 === "Cargo.toml") {
+  if (basename11 === "Cargo.toml") {
     return { format: "toml-regex", tomlSection: "package" };
   }
-  if (basename10.endsWith(".json")) {
+  if (basename11.endsWith(".json")) {
     return { format: "json" };
   }
-  if (basename10.endsWith(".toml")) {
+  if (basename11.endsWith(".toml")) {
     return { format: "toml-regex", tomlSection: "project" };
   }
   return null;
@@ -21945,9 +21945,9 @@ function prepareVersionUpdates(files, newVersion) {
 }
 function tomlSectionForPath(relativePath) {
   const normalized = relativePath.replace(/\\/g, "/");
-  const basename10 = normalized.split("/").pop() ?? normalized;
-  if (basename10 === "pyproject.toml") return "project";
-  if (basename10 === "Cargo.toml") return "package";
+  const basename11 = normalized.split("/").pop() ?? normalized;
+  if (basename11 === "pyproject.toml") return "project";
+  if (basename11 === "Cargo.toml") return "package";
   return null;
 }
 
@@ -28479,13 +28479,13 @@ import {
   mkdirSync as mkdirSync28,
   readdirSync as readdirSync17,
   readFileSync as readFileSync42,
-  writeFileSync as writeFileSync29,
+  writeFileSync as writeFileSync28,
   renameSync as renameSync9,
   unlinkSync as unlinkSync5,
   openSync as openSync2,
   closeSync as closeSync2
 } from "fs";
-import { join as join50, dirname as dirname20, basename as basename8 } from "path";
+import { join as join50, dirname as dirname20, basename as basename9 } from "path";
 
 // cli/lib/journal/extractor.ts
 import { readFileSync as readFileSync38, writeFileSync as writeFileSync26, existsSync as existsSync43, mkdirSync as mkdirSync27, readdirSync as readdirSync15 } from "fs";
@@ -28826,7 +28826,6 @@ import {
   existsSync as existsSync45,
   readdirSync as readdirSync16,
   readFileSync as readFileSync40,
-  writeFileSync as writeFileSync28,
   renameSync as renameSync8
 } from "fs";
 import { basename as basename7, join as join49 } from "path";
@@ -28920,106 +28919,92 @@ function findActiveSessionForBranch(agentsDir, branch) {
       candidates.push({ filePath, data: session.data, content: session.content });
     }
   }
-  if (candidates.length === 0) {
-    let parentBranch = null;
-    try {
-      const reflogOutput = execSync3(
-        `git reflog show --format='%H %gs' ${branch} 2>/dev/null | head -10`,
-        { encoding: "utf-8" }
-      );
-      const renamedMatch = reflogOutput.match(
-        /Branch: renamed refs\/heads\/([^\s]+) to/
-      );
-      if (renamedMatch) {
-        parentBranch = renamedMatch[1];
-      }
-    } catch {
+  if (candidates.length > 0) {
+    const winner2 = pickCandidate(candidates);
+    return { ...winner2, adoption: "branch-match" };
+  }
+  let parentBranch = null;
+  try {
+    const reflogOutput = execSync3(
+      `git reflog show --format='%H %gs' ${branch} 2>/dev/null | head -10`,
+      { encoding: "utf-8" }
+    );
+    const renamedMatch = reflogOutput.match(
+      /Branch: renamed refs\/heads\/([^\s]+) to/
+    );
+    if (renamedMatch) {
+      parentBranch = renamedMatch[1];
     }
-    if (parentBranch) {
-      const specsDir = join49(agentsDir, "specs");
-      if (existsSync45(specsDir)) {
-        const specFiles = readdirSync16(specsDir).filter((f) => f.endsWith(".md"));
-        for (const specFile of specFiles) {
-          try {
-            const specPath = join49(specsDir, specFile);
-            const specContent = readFileSync40(specPath, "utf-8");
-            const specParsed = (0, import_gray_matter15.default)(specContent);
-            const specFm = specParsed.data;
-            if (specFm.branch === parentBranch && specFm.session) {
-              const sessionPath = join49(agentsDir, "sessions", specFm.session);
-              if (existsSync45(sessionPath)) {
-                const session = readSessionFile(sessionPath);
-                if (session && session.data.branch === parentBranch && session.data.status !== "archived") {
-                  session.data.branch = branch;
-                  const newSessionContent = import_gray_matter15.default.stringify(
-                    session.content,
-                    session.data
-                  );
-                  writeFileSync28(sessionPath, newSessionContent, "utf-8");
-                  specFm.branch = branch;
-                  const newSpecContent = import_gray_matter15.default.stringify(
-                    specParsed.content,
-                    specFm
-                  );
-                  writeFileSync28(specPath, newSpecContent, "utf-8");
-                  candidates.push({
-                    filePath: sessionPath,
-                    data: session.data,
-                    content: session.content
-                  });
-                  break;
-                }
+  } catch {
+  }
+  if (parentBranch) {
+    const specsDir = join49(agentsDir, "specs");
+    if (existsSync45(specsDir)) {
+      const specFiles = readdirSync16(specsDir).filter((f) => f.endsWith(".md"));
+      for (const specFile of specFiles) {
+        try {
+          const specPath = join49(specsDir, specFile);
+          const specContent = readFileSync40(specPath, "utf-8");
+          const specParsed = (0, import_gray_matter15.default)(specContent);
+          const specFm = specParsed.data;
+          if (specFm.branch === parentBranch && specFm.session) {
+            const sessionPath = join49(agentsDir, "sessions", specFm.session);
+            if (existsSync45(sessionPath)) {
+              const session = readSessionFile(sessionPath);
+              if (session && session.data.branch === parentBranch && session.data.status !== "archived") {
+                return {
+                  filePath: sessionPath,
+                  data: session.data,
+                  content: session.content,
+                  adoption: "rename-link"
+                };
               }
             }
-          } catch {
-            continue;
           }
+        } catch {
+          continue;
         }
       }
     }
   }
-  if (candidates.length === 0) {
-    const allSessions = [];
-    for (const file of files) {
-      const filePath = join49(sessionsDir, file);
-      const session = readSessionFile(filePath);
-      if (session && session.data.status === "active") {
-        allSessions.push({ filePath, data: session.data, content: session.content });
-      }
-    }
-    if (allSessions.length === 1) {
-      const session = allSessions[0];
-      session.data.branch = branch;
-      const newContent = import_gray_matter15.default.stringify(
-        session.content,
-        session.data
-      );
-      writeFileSync28(session.filePath, newContent, "utf-8");
-      candidates.push(session);
+  const activeSessions = [];
+  for (const file of files) {
+    const filePath = join49(sessionsDir, file);
+    const session = readSessionFile(filePath);
+    if (session && session.data.status === "active") {
+      activeSessions.push({ filePath, data: session.data, content: session.content });
     }
   }
-  if (candidates.length === 0) return null;
+  if (activeSessions.length === 0) return null;
+  activeSessions.sort((a, b) => {
+    const aTime = a.data.last_updated || a.data.last_entry || a.data.created || "0";
+    const bTime = b.data.last_updated || b.data.last_entry || b.data.created || "0";
+    return bTime.localeCompare(aTime);
+  });
+  const winner = activeSessions[0];
+  return { ...winner, adoption: "most-recent-active" };
+}
+function pickCandidate(candidates) {
   const statusPriority = {
     active: 1,
     stopped: 2,
     blocked: 2,
     done: 2
   };
-  candidates.sort((a, b) => {
+  const sorted = [...candidates].sort((a, b) => {
     const priorityA = statusPriority[a.data.status] ?? 3;
     const priorityB = statusPriority[b.data.status] ?? 3;
-    if (priorityA !== priorityB) {
-      return priorityA - priorityB;
-    }
+    if (priorityA !== priorityB) return priorityA - priorityB;
     const timeA = a.data.last_updated || a.data.last_entry || "0";
     const timeB = b.data.last_updated || b.data.last_entry || "0";
     return timeB.localeCompare(timeA);
   });
-  return candidates[0];
+  return sorted[0];
 }
 
 // cli/lib/session/resolve.ts
 import { readFileSync as readFileSync41 } from "fs";
+import { basename as basename8 } from "path";
 function _parseHookSessionId() {
   let raw;
   try {
@@ -29045,6 +29030,18 @@ function emitBranchFallbackWarning(branch) {
 `
   );
 }
+function emitAdoptionWarning(branch, originBranch, filePath) {
+  process.stderr.write(
+    `WARN: no session for branch '${branch}'; logging to most-recent active session '${basename8(filePath)}' (origin branch '${originBranch}'). Pass --session-id <id> to silence.
+`
+  );
+}
+function emitNoActiveSessionsWarning(branch) {
+  process.stderr.write(
+    `WARN: no session for branch '${branch}'; no active sessions to fall back to. Pass --session-id <id> to silence.
+`
+  );
+}
 async function resolveCurrentSession(agentsDir, branch, opts = {}) {
   if (opts.sessionIdFlag) {
     const hit = findSessionByClaudeId(agentsDir, opts.sessionIdFlag, branch);
@@ -29055,8 +29052,21 @@ async function resolveCurrentSession(agentsDir, branch, opts = {}) {
     const hit = findSessionByClaudeId(agentsDir, stdinId, branch);
     if (hit) return hit;
   }
-  emitBranchFallbackWarning(branch);
-  return findActiveSessionForBranch(agentsDir, branch);
+  const found = findActiveSessionForBranch(agentsDir, branch);
+  if (!found) {
+    emitNoActiveSessionsWarning(branch);
+    return null;
+  }
+  if (found.adoption === "branch-match") {
+    emitBranchFallbackWarning(branch);
+  } else {
+    emitAdoptionWarning(branch, found.data.branch, found.filePath);
+  }
+  return {
+    filePath: found.filePath,
+    data: found.data,
+    content: found.content
+  };
 }
 
 // cli/commands/session.ts
@@ -29118,7 +29128,7 @@ function readLoafState(agentsDir) {
   }
 }
 function writeLoafState(agentsDir, state) {
-  writeFileSync29(getLoafStatePath(agentsDir), JSON.stringify(state, null, 2) + "\n", "utf-8");
+  writeFileSync28(getLoafStatePath(agentsDir), JSON.stringify(state, null, 2) + "\n", "utf-8");
 }
 function checkHousekeepingDue(agentsDir) {
   const state = readLoafState(agentsDir);
@@ -29176,7 +29186,7 @@ async function acquireLock(lockPath, maxRetries = 50, retryDelay = 100) {
         forceReleaseLock(lockPath);
       }
       const fd = openSync2(lockPath, "wx");
-      writeFileSync29(fd, JSON.stringify(createLockFileContent()), "utf-8");
+      writeFileSync28(fd, JSON.stringify(createLockFileContent()), "utf-8");
       closeSync2(fd);
       return;
     } catch (err) {
@@ -29307,7 +29317,7 @@ function updateSpecSessionField(agentsDir, specId, sessionFileName) {
         if (parsed.data.session !== sessionFileName) {
           parsed.data.session = sessionFileName;
           const newContent = import_gray_matter16.default.stringify(parsed.content, parsed.data);
-          writeFileSync29(filePath, newContent, "utf-8");
+          writeFileSync28(filePath, newContent, "utf-8");
         }
       } catch {
       }
@@ -29428,7 +29438,7 @@ ${entry}
   const content = import_gray_matter16.default.stringify(body, frontmatter);
   try {
     const fd = openSync2(filePath, "wx");
-    writeFileSync29(fd, content, "utf-8");
+    writeFileSync28(fd, content, "utf-8");
     closeSync2(fd);
   } catch {
     return null;
@@ -29524,7 +29534,7 @@ ${decisionsList}
 `;
     updatedContent = specContent + entry;
   }
-  writeFileSync29(specPath, updatedContent, "utf-8");
+  writeFileSync28(specPath, updatedContent, "utf-8");
   return { success: true, message: `Appended to ${specFile}` };
 }
 function countTasksInSession(content) {
@@ -29622,9 +29632,9 @@ function quickArchiveSession(filePath, agentsDir) {
       session.data.status = "archived";
       session.data.archived_at = getTimestamp();
       const content = import_gray_matter16.default.stringify(session.content, session.data);
-      writeFileSync29(filePath, content, "utf-8");
+      writeFileSync28(filePath, content, "utf-8");
     }
-    renameSync9(filePath, join50(archiveDir, basename8(filePath)));
+    renameSync9(filePath, join50(archiveDir, basename9(filePath)));
   } catch {
   }
 }
@@ -29743,7 +29753,7 @@ function registerSessionCommand(program3) {
       sessionContent = newSession.content;
       console.log(`  ${green14("+")} Creating new session file`);
       if (specInfo) {
-        const sessionFileName = basename8(sessionFilePath);
+        const sessionFileName = basename9(sessionFilePath);
         updateSpecSessionField(agentsDir, specInfo.id, sessionFileName);
       }
     } else if (existingSession && (options2.resume || existingSession.data.status === "active")) {
@@ -29764,7 +29774,7 @@ function registerSessionCommand(program3) {
       if (result.isNew) {
         console.log(`  ${green14("+")} Creating new session file`);
         if (specInfo) {
-          const sessionFileName = basename8(sessionFilePath);
+          const sessionFileName = basename9(sessionFilePath);
           updateSpecSessionField(agentsDir, specInfo.id, sessionFileName);
         }
       } else {
@@ -29816,7 +29826,7 @@ function registerSessionCommand(program3) {
         sessionData.claude_session_id = hookInput.session_id;
       }
       const newContent = import_gray_matter16.default.stringify(sessionContent, sessionData);
-      writeFileSync29(sessionFilePath, newContent, "utf-8");
+      writeFileSync28(sessionFilePath, newContent, "utf-8");
     }
     console.log(`  ${green14("\u2713")} Session active: ${gray16(sessionFilePath.replace(agentsDir, ".agents"))}`);
     const staleKbCount = countStaleKnowledge();
@@ -30241,7 +30251,7 @@ function registerSessionCommand(program3) {
       } catch {
       }
     }
-    const archivePath = join50(archiveDir, basename8(existingSession.filePath));
+    const archivePath = join50(archiveDir, basename9(existingSession.filePath));
     try {
       renameSync9(existingSession.filePath, archivePath);
     } catch (err) {
@@ -30258,7 +30268,7 @@ function registerSessionCommand(program3) {
         archivedSession.content,
         archivedSession.data
       );
-      writeFileSync29(archivePath, newContent, "utf-8");
+      writeFileSync28(archivePath, newContent, "utf-8");
     }
     console.log(`  ${green14("\u2713")} Archived: ${gray16(archivePath.replace(agentsDir, ".agents"))}`);
     console.log();
@@ -30406,11 +30416,11 @@ function registerSessionCommand(program3) {
                 (s) => s.data.spec === specFm.id || s.data.branch === specFm.branch
               );
               if (matchingSession) {
-                const correctFileName = basename8(matchingSession.filePath);
+                const correctFileName = basename9(matchingSession.filePath);
                 if (!dryRun) {
                   specFm.session = correctFileName;
                   const newContent = import_gray_matter16.default.stringify(specParsed.content, specFm);
-                  writeFileSync29(specPath, newContent, "utf-8");
+                  writeFileSync28(specPath, newContent, "utf-8");
                 }
                 console.log(`    ${yellow16("\u2192")} Fixed: ${specFile} \u2192 ${correctFileName}`);
                 linkageFixed++;
@@ -30899,11 +30909,11 @@ import {
   existsSync as existsSync47,
   mkdirSync as mkdirSync29,
   readFileSync as readFileSync43,
-  writeFileSync as writeFileSync30,
+  writeFileSync as writeFileSync29,
   readdirSync as readdirSync18,
   unlinkSync as unlinkSync6
 } from "fs";
-import { join as join51, basename as basename9, resolve as resolve5 } from "path";
+import { join as join51, basename as basename10, resolve as resolve5 } from "path";
 var bold16 = (s) => `\x1B[1m${s}\x1B[0m`;
 var green15 = (s) => `\x1B[32m${s}\x1B[0m`;
 var red13 = (s) => `\x1B[31m${s}\x1B[0m`;
@@ -31138,7 +31148,7 @@ _Full analysis goes here._
       body,
       frontmatter
     );
-    writeFileSync30(filePath, content, "utf-8");
+    writeFileSync29(filePath, content, "utf-8");
     console.log(`
   ${bold16("loaf report create")}
 `);
@@ -31177,12 +31187,12 @@ _Full analysis goes here._
       parsed.content,
       data
     );
-    writeFileSync30(filePath, updated, "utf-8");
+    writeFileSync29(filePath, updated, "utf-8");
     console.log(`
   ${bold16("loaf report finalize")}
 `);
     console.log(
-      `  ${green15("+")} Finalized: ${cyan12(basename9(filePath))}`
+      `  ${green15("+")} Finalized: ${cyan12(basename10(filePath))}`
     );
     console.log();
   });
@@ -31220,14 +31230,14 @@ _Full analysis goes here._
       parsed.content,
       data
     );
-    const archivePath = join51(archiveDir, basename9(filePath));
-    writeFileSync30(archivePath, updated, "utf-8");
+    const archivePath = join51(archiveDir, basename10(filePath));
+    writeFileSync29(archivePath, updated, "utf-8");
     unlinkSync6(filePath);
     console.log(`
   ${bold16("loaf report archive")}
 `);
     console.log(
-      `  ${green15("+")} Archived: ${cyan12(basename9(filePath))}`
+      `  ${green15("+")} Archived: ${cyan12(basename10(filePath))}`
     );
     console.log(`  Path: ${gray17(archivePath)}`);
     console.log();
