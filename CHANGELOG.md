@@ -6,6 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-dev.47] - 2026-05-28
+
 ### Fixed
 
 - Branch-fallback session routing no longer rewrites the adopted session's `branch:` frontmatter. Previously, every `loaf session log` against a branch with no dedicated session would overwrite the resolved session's origin branch, breaking subsequent routing. The session's origin is now preserved across every adoption.
