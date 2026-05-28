@@ -29030,9 +29030,17 @@ function emitBranchFallbackWarning(branch) {
 `
   );
 }
-function emitAdoptionWarning(branch, originBranch, filePath) {
+function emitAdoptionWarning(branch, originBranch, filePath, adoption) {
+  const file = basename8(filePath);
+  if (adoption === "rename-link") {
+    process.stderr.write(
+      `WARN: branch '${branch}' appears to be a rename of '${originBranch}'; logging to its session '${file}'. Pass --session-id <id> to silence.
+`
+    );
+    return;
+  }
   process.stderr.write(
-    `WARN: no session for branch '${branch}'; logging to most-recent active session '${basename8(filePath)}' (origin branch '${originBranch}'). Pass --session-id <id> to silence.
+    `WARN: no session for branch '${branch}'; logging to most-recent active session '${file}' (origin branch '${originBranch}'). Pass --session-id <id> to silence.
 `
   );
 }
@@ -29060,7 +29068,12 @@ async function resolveCurrentSession(agentsDir, branch, opts = {}) {
   if (found.adoption === "branch-match") {
     emitBranchFallbackWarning(branch);
   } else {
-    emitAdoptionWarning(branch, found.data.branch, found.filePath);
+    emitAdoptionWarning(
+      branch,
+      found.data.branch,
+      found.filePath,
+      found.adoption
+    );
   }
   return {
     filePath: found.filePath,
