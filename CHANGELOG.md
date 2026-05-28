@@ -6,7 +6,11 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
-- _No unreleased changes yet._
+### Fixed
+
+- Branch-fallback session routing no longer rewrites the adopted session's `branch:` frontmatter. Previously, every `loaf session log` against a branch with no dedicated session would overwrite the resolved session's origin branch, breaking subsequent routing. The session's origin is now preserved across every adoption.
+- Multi-worktree branch routing now resolves correctly. When several sessions are active simultaneously (orchestrator on one branch, agents on others) and the current branch has no dedicated session, `loaf session log` adopts the most-recently-updated active session instead of dropping the entry. Previous behavior only fell back when exactly one active session existed.
+- Branch-fallback WARN now names the resolved session file and its origin branch (e.g., `WARN: no session for branch 'release/v0.16.0'; logging to most-recent active session '20260101-120000-session.md' (origin branch 'cwt/foo'). Pass --session-id <id> to silence.`), so misroutes are visible at a glance. A distinct WARN fires when no active session exists to fall back to.
 
 ## [2.0.0-dev.46] - 2026-05-28
 
