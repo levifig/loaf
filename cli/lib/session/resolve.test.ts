@@ -51,6 +51,7 @@ import {
   rmSync,
   writeFileSync,
 } from "fs";
+import { execFileSync } from "child_process";
 import { createHash } from "crypto";
 import { basename, join } from "path";
 import { tmpdir } from "os";
@@ -80,9 +81,26 @@ const BRANCH = "feat/example";
 const WARN_FOR_BRANCH = (branch: string) =>
   `WARN: no session_id signal — falling back to branch routing for branch '${branch}'. Pass --session-id <id> to silence.\n`;
 
-/** Adoption WARN — fires when fallback resolves to a session on a different branch. */
-const WARN_ADOPTION = (branch: string, filePath: string, originBranch: string) =>
+/**
+ * Adoption WARN — fires when fallback resolves to a session on a different
+ * branch. The wording depends on how the finder resolved:
+ *   - `most-recent-active`: heuristic adoption across all active sessions.
+ *   - `rename-link`: the current branch is a `git branch -m` rename of the
+ *     session's origin branch (detected via reflog).
+ */
+const WARN_ADOPTION_MOST_RECENT = (
+  branch: string,
+  filePath: string,
+  originBranch: string
+) =>
   `WARN: no session for branch '${branch}'; logging to most-recent active session '${basename(filePath)}' (origin branch '${originBranch}'). Pass --session-id <id> to silence.\n`;
+
+const WARN_ADOPTION_RENAME_LINK = (
+  branch: string,
+  filePath: string,
+  originBranch: string
+) =>
+  `WARN: branch '${branch}' appears to be a rename of '${originBranch}'; logging to its session '${basename(filePath)}'. Pass --session-id <id> to silence.\n`;
 
 /** Zero-active WARN — fires when fallback finds nothing. */
 const WARN_NO_ACTIVE = (branch: string) =>
@@ -406,7 +424,7 @@ describe("resolveCurrentSession — Tier 3 (branch fallback)", () => {
     expect(result?.data.branch).toBe("other-branch");
     expect(fileHash(filePath)).toBe(before);
     expect(stderr.lines).toEqual([
-      WARN_ADOPTION("feat/missing", filePath, "other-branch"),
+      WARN_ADOPTION_MOST_RECENT("feat/missing", filePath, "other-branch"),
     ]);
   });
 
@@ -439,7 +457,7 @@ describe("resolveCurrentSession — Tier 3 (branch fallback)", () => {
     expect(fileHash(olderPath)).toBe(olderBefore);
     expect(fileHash(newerPath)).toBe(newerBefore);
     expect(stderr.lines).toEqual([
-      WARN_ADOPTION("branch-c", newerPath, "branch-b"),
+      WARN_ADOPTION_MOST_RECENT("branch-c", newerPath, "branch-b"),
     ]);
   });
 
@@ -499,12 +517,106 @@ describe("resolveCurrentSession — SPEC-042 release agent scenario", () => {
     expect(result?.data.branch).toBe("cwt/foo"); // origin unchanged
     expect(fileHash(orchestratorPath)).toBe(before);
     expect(stderr.lines).toEqual([
-      WARN_ADOPTION("release/v0.16.0", orchestratorPath, "cwt/foo"),
+      WARN_ADOPTION_MOST_RECENT(
+        "release/v0.16.0",
+        orchestratorPath,
+        "cwt/foo"
+      ),
     ]);
     // WARN names both branches.
     const line = stderr.lines[0];
     expect(line).toContain("release/v0.16.0");
     expect(line).toContain("cwt/foo");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveCurrentSession — rename-link WARN (SPEC-042 Track B)
+//
+// The finder detects `git branch -m old new` via the current branch's reflog
+// and resolves through the spec linked to the old branch name. The resulting
+// WARN must say "appears to be a rename of <old>" — "most-recent active" is
+// factually wrong here because the lookup never consulted recency.
+//
+// Fixture: real on-disk git repo created in beforeEach so `git reflog` returns
+// a real "Branch: renamed" line. `process.chdir` because find.ts execs git
+// without an explicit cwd.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("resolveCurrentSession — rename-link WARN", () => {
+  let originalCwd: string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    // Init a fresh repo inside TEST_ROOT so reflog is unpolluted by the
+    // host worktree's history. Configure user.* locally to avoid global
+    // git config noise on CI.
+    execFileSync("git", ["init", "-q", "--initial-branch=feat/old"], {
+      cwd: TEST_ROOT,
+    });
+    execFileSync("git", ["config", "user.email", "test@example.com"], {
+      cwd: TEST_ROOT,
+    });
+    execFileSync("git", ["config", "user.name", "Test"], { cwd: TEST_ROOT });
+    execFileSync("git", ["commit", "--allow-empty", "-q", "-m", "init"], {
+      cwd: TEST_ROOT,
+    });
+    // The rename `feat/old -> feat/new` shows up in the *new* branch's reflog,
+    // which is what find.ts greps for.
+    execFileSync("git", ["branch", "-m", "feat/old", "feat/new"], {
+      cwd: TEST_ROOT,
+    });
+    process.chdir(TEST_ROOT);
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+  });
+
+  it("rename-link adoption emits 'appears to be a rename of' WARN, not 'most-recent active'", async () => {
+    // Seed a session on the OLD branch and a spec that links it. The finder
+    // walks: branch lookup fails → reflog match (feat/new from feat/old) →
+    // find spec where branch=feat/old → follow spec.session pointer.
+    const sessionFile = "20260427-220000-session.md";
+    const sessionPath = writeSessionFile({
+      fileName: sessionFile,
+      branch: "feat/old",
+      claude_session_id: "session-pre-rename",
+    });
+
+    const specsDir = join(AGENTS_DIR, "specs");
+    mkdirSync(specsDir, { recursive: true });
+    const specContent = matter.stringify(
+      "# Spec body\n",
+      {
+        id: "SPEC-TEST",
+        title: "Rename-link fixture",
+        branch: "feat/old",
+        session: sessionFile,
+      } as unknown as Record<string, unknown>
+    );
+    writeFileSync(join(specsDir, "SPEC-TEST.md"), specContent, "utf-8");
+
+    const beforeHash = fileHash(sessionPath);
+
+    const stderr = captureStderr();
+    const result = await resolveCurrentSession(AGENTS_DIR, "feat/new", {});
+    stderr.restore();
+
+    // Routed to the pre-rename session, frontmatter untouched.
+    expect(result).not.toBeNull();
+    expect(result?.data.claude_session_id).toBe("session-pre-rename");
+    expect(result?.data.branch).toBe("feat/old");
+    expect(fileHash(sessionPath)).toBe(beforeHash);
+
+    // The WARN matches the rename-link wording exactly — not the
+    // most-recent-active wording.
+    expect(stderr.lines).toEqual([
+      WARN_ADOPTION_RENAME_LINK("feat/new", sessionPath, "feat/old"),
+    ]);
+    const line = stderr.lines[0];
+    expect(line).toContain("appears to be a rename of 'feat/old'");
+    expect(line).not.toContain("most-recent active session");
   });
 });
 

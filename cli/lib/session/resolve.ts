@@ -20,6 +20,7 @@ import {
   findActiveSessionForBranch,
   findSessionByClaudeId,
 } from "./find.js";
+import type { SessionAdoption } from "./find.js";
 import type { SessionFrontmatter } from "./store.js";
 
 /**
@@ -110,18 +111,35 @@ function emitBranchFallbackWarning(branch: string): void {
 
 /**
  * Emit WARN when Tier 3 adopts a session whose origin branch differs from the
- * requested branch (rename-link or most-recent-active). Names both branches
- * and the resolved file so operators can spot misrouting at a glance.
+ * requested branch. Names both branches and the resolved file so operators can
+ * spot misrouting at a glance.
+ *
+ * The wording is shaped by the `adoption` discriminator:
+ *
+ *   - `rename-link`: the session was located via git reflog detection of a
+ *     `git branch -m` rename. "Most-recent" would be factually wrong here, so
+ *     the WARN reads "appears to be a rename of <other-branch>".
+ *   - `most-recent-active`: the session was the most-recently-updated active
+ *     session across all branches. The WARN names this lookup heuristic
+ *     directly so operators can tell why their command landed where it did.
  *
  * SPEC-042 Track B.
  */
 function emitAdoptionWarning(
   branch: string,
   originBranch: string,
-  filePath: string
+  filePath: string,
+  adoption: Extract<SessionAdoption, "rename-link" | "most-recent-active">
 ): void {
+  const file = basename(filePath);
+  if (adoption === "rename-link") {
+    process.stderr.write(
+      `WARN: branch '${branch}' appears to be a rename of '${originBranch}'; logging to its session '${file}'. Pass --session-id <id> to silence.\n`
+    );
+    return;
+  }
   process.stderr.write(
-    `WARN: no session for branch '${branch}'; logging to most-recent active session '${basename(filePath)}' (origin branch '${originBranch}'). Pass --session-id <id> to silence.\n`
+    `WARN: no session for branch '${branch}'; logging to most-recent active session '${file}' (origin branch '${originBranch}'). Pass --session-id <id> to silence.\n`
   );
 }
 
@@ -147,8 +165,8 @@ function emitNoActiveSessionsWarning(branch: string): void {
  * - Tier 3 → `findActiveSessionForBranch`. Always emits stderr WARN; the
  *   shape of the WARN depends on how the finder resolved:
  *     - branch match: generic "falling back to branch routing"
- *     - adopted (rename-link or most-recent-active): names the target file
- *       and origin branch
+ *     - rename-link: "branch appears to be a rename of <other-branch>"
+ *     - most-recent-active: "logging to most-recent active session ..."
  *     - null: "no active sessions to fall back to"
  *
  * Returns the resolved session (active or stopped — caller decides what to do
@@ -194,8 +212,8 @@ export async function resolveCurrentSession(
   //
   // The WARN is shaped by how the finder resolved:
   //   - branch-match        → generic "falling back to branch routing"
-  //   - rename-link or
-  //     most-recent-active  → name target file + origin branch (SPEC-042)
+  //   - rename-link         → "appears to be a rename of <other-branch>" (SPEC-042)
+  //   - most-recent-active  → name target file + origin branch (SPEC-042)
   //   - null                → "no active sessions to fall back to" (SPEC-042)
   const found = findActiveSessionForBranch(agentsDir, branch);
   if (!found) {
@@ -205,7 +223,12 @@ export async function resolveCurrentSession(
   if (found.adoption === "branch-match") {
     emitBranchFallbackWarning(branch);
   } else {
-    emitAdoptionWarning(branch, found.data.branch, found.filePath);
+    emitAdoptionWarning(
+      branch,
+      found.data.branch,
+      found.filePath,
+      found.adoption
+    );
   }
   // Strip the adoption discriminator before returning — callers of
   // `resolveCurrentSession` see the original `ResolvedSession` shape.
