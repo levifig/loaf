@@ -6,6 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-dev.46] - 2026-05-28
+
 ### Changed
 
 - Adopt Common Changelog as Loaf's changelog writing standard ([Common Changelog](https://common-changelog.org/))
