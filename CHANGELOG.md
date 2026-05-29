@@ -6,12 +6,17 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-dev.48] - 2026-05-29
+
 ### Changed
 
 - Document Go as the accepted runtime direction for Loaf's stateful core and shape SQLite work around that runtime foundation.
 - Add the initial dependency-free Go runtime skeleton for future state commands without changing the shipped TypeScript CLI.
 - Add Go-native `loaf state path` dispatch with XDG-backed, hashed project-state paths shared by main and linked Git worktrees.
 - Add a transitional Go-to-TypeScript legacy delegation bridge so unmigrated commands keep using the bundled CLI while `state` commands remain Go-native.
+- Use a portable `bin/loaf` launcher with native runtime lookup under `bin/native/<platform>-<arch>/`, keeping legacy TypeScript delegation installable on unsupported native platforms during the Go port.
 - Select `github.com/ncruces/go-sqlite3/driver` as the SQLite driver, with cgo-free, dependency, vulnerability, and testability guardrails documented before adding the dependency.
 - Package the Go front controller as the public `loaf` command while bundling TypeScript fallback assets for delegated commands.
 - Define the initial SQLite operational-state schema as Go-owned migration metadata with dependency-free guardrail tests.
@@ -57,6 +62,13 @@ is a Loaf workflow staging section for curated entries before release.
 - Add public binary bridge coverage proving one packaged `loaf` command can run Go-native state commands and delegate unmigrated commands to the TypeScript fallback.
 - Add public CLI dry-run coverage proving markdown migration previews all required counts and leaves SQLite state uncreated.
 - Add SQLite secret-boundary coverage proving backend mappings store only external identity metadata and native state code does not introduce token or credential storage.
+- Harden Go artifact verification so release builds compare the launcher, platform native runtime, plugin mirror, and TypeScript fallback layout.
+
+### Fixed
+
+- Return clear SQLite initialization errors for Go-only commands in Markdown-only projects instead of delegating to missing TypeScript commands.
+- Resolve installed TypeScript fallback assets from the namespaced `~/.local/share/loaf/dist-cli` layout used by `loaf install`.
+- Keep SQLite writes transactional for tag creation and apply per-connection SQLite pragmas for foreign keys, WAL journaling, and busy timeout handling.
 
 ## [2.0.0-dev.47] - 2026-05-28
 
