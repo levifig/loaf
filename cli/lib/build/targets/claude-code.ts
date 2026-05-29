@@ -238,14 +238,21 @@ function buildUnifiedPlugin(
     cpSync(setupSrc, join(pluginDir, "SETUP.md"));
   }
 
-  // Copy CLI binary to plugin bin/ directory for enforcement hooks
+  // Copy Go front controller and TypeScript fallback assets for enforcement hooks.
   const binDir = join(pluginDir, "bin");
   mkdirSync(binDir, { recursive: true });
-  const cliSource = join(rootDir, "dist-cli", "index.js");
-  if (existsSync(cliSource)) {
-    copyFileSync(cliSource, join(binDir, "loaf"));
-    chmodSync(join(binDir, "loaf"), 0o755);
+  const goSource = join(rootDir, "bin", "loaf");
+  if (!existsSync(goSource)) {
+    throw new Error("Go front controller not found at bin/loaf. Run npm run build:go first.");
   }
+  copyFileSync(goSource, join(binDir, "loaf"));
+  chmodSync(join(binDir, "loaf"), 0o755);
+
+  const fallbackSource = join(rootDir, "dist-cli");
+  if (!existsSync(fallbackSource)) {
+    throw new Error("TypeScript fallback assets not found at dist-cli/. Run npm run build:cli first.");
+  }
+  cpSync(fallbackSource, join(pluginDir, "dist-cli"), { recursive: true });
   
   // Write minimal package.json so the binary can find its version
   const pluginPackageJson = {
