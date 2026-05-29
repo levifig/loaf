@@ -11238,12 +11238,18 @@ function buildUnifiedPlugin(config, rootDir, srcDir, pluginsDir, targetsConfig) 
   }
   const binDir = join7(pluginDir, "bin");
   mkdirSync5(binDir, { recursive: true });
-  const goSource = join7(rootDir, "bin", "loaf");
-  if (!existsSync6(goSource)) {
-    throw new Error("Go front controller not found at bin/loaf. Run npm run build:go first.");
+  const launcherSource = join7(rootDir, "bin", "loaf");
+  if (!existsSync6(launcherSource)) {
+    throw new Error("Loaf launcher not found at bin/loaf. Run npm run build:go first.");
   }
-  copyFileSync(goSource, join7(binDir, "loaf"));
+  copyFileSync(launcherSource, join7(binDir, "loaf"));
   chmodSync(join7(binDir, "loaf"), 493);
+  copyFileSync(join7(rootDir, "bin", "package.json"), join7(binDir, "package.json"));
+  const nativeSource = join7(rootDir, "bin", "native");
+  if (!existsSync6(nativeSource)) {
+    throw new Error("Native Loaf runtime not found at bin/native/. Run npm run build:go first.");
+  }
+  cpSync3(nativeSource, join7(binDir, "native"), { recursive: true });
   const fallbackSource = join7(rootDir, "dist-cli");
   if (!existsSync6(fallbackSource)) {
     throw new Error("TypeScript fallback assets not found at dist-cli/. Run npm run build:cli first.");

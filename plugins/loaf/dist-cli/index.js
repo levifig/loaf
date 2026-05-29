@@ -16732,12 +16732,18 @@ function buildUnifiedPlugin(config, rootDir, srcDir, pluginsDir, targetsConfig) 
   }
   const binDir = join7(pluginDir, "bin");
   mkdirSync5(binDir, { recursive: true });
-  const goSource = join7(rootDir, "bin", "loaf");
-  if (!existsSync6(goSource)) {
-    throw new Error("Go front controller not found at bin/loaf. Run npm run build:go first.");
+  const launcherSource = join7(rootDir, "bin", "loaf");
+  if (!existsSync6(launcherSource)) {
+    throw new Error("Loaf launcher not found at bin/loaf. Run npm run build:go first.");
   }
-  copyFileSync(goSource, join7(binDir, "loaf"));
+  copyFileSync(launcherSource, join7(binDir, "loaf"));
   chmodSync(join7(binDir, "loaf"), 493);
+  copyFileSync(join7(rootDir, "bin", "package.json"), join7(binDir, "package.json"));
+  const nativeSource = join7(rootDir, "bin", "native");
+  if (!existsSync6(nativeSource)) {
+    throw new Error("Native Loaf runtime not found at bin/native/. Run npm run build:go first.");
+  }
+  cpSync3(nativeSource, join7(binDir, "native"), { recursive: true });
   const fallbackSource = join7(rootDir, "dist-cli");
   if (!existsSync6(fallbackSource)) {
     throw new Error("TypeScript fallback assets not found at dist-cli/. Run npm run build:cli first.");
@@ -20797,8 +20803,10 @@ async function installLoafBinary(rootDir) {
   const localBinDir = join28(process.env.HOME || "~", ".local", "bin");
   const localShareDir = join28(process.env.HOME || "~", ".local", "share", "loaf");
   const sourceBinary = join28(rootDir, "bin", "loaf");
+  const sourceNative = join28(rootDir, "bin", "native");
   const sourceFallback = join28(rootDir, "dist-cli");
   const targetBinary = join28(localBinDir, "loaf");
+  const targetNative = join28(localBinDir, "native");
   const targetFallback = join28(localShareDir, "dist-cli");
   if (!existsSync22(sourceBinary)) {
     console.log(`  ${red2("\u2717")} CLI binary not found at ${sourceBinary}`);
@@ -20807,6 +20815,11 @@ async function installLoafBinary(rootDir) {
   }
   if (!existsSync22(sourceFallback)) {
     console.log(`  ${red2("\u2717")} TypeScript fallback not found at ${sourceFallback}`);
+    console.log(`  ${gray4("Run 'npm run build' first.")}`);
+    return false;
+  }
+  if (!existsSync22(sourceNative)) {
+    console.log(`  ${red2("\u2717")} Native runtime artifacts not found at ${sourceNative}`);
     console.log(`  ${gray4("Run 'npm run build' first.")}`);
     return false;
   }
@@ -20828,6 +20841,8 @@ async function installLoafBinary(rootDir) {
   try {
     copyFileSync2(sourceBinary, targetBinary);
     chmodSync2(targetBinary, 493);
+    rmSync7(targetNative, { recursive: true, force: true });
+    cpSync8(sourceNative, targetNative, { recursive: true });
     mkdirSync19(localShareDir, { recursive: true });
     rmSync7(targetFallback, { recursive: true, force: true });
     cpSync8(sourceFallback, targetFallback, { recursive: true });

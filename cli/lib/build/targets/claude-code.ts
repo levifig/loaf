@@ -238,15 +238,22 @@ function buildUnifiedPlugin(
     cpSync(setupSrc, join(pluginDir, "SETUP.md"));
   }
 
-  // Copy Go front controller and TypeScript fallback assets for enforcement hooks.
+  // Copy portable launcher, native Go runtime, and TypeScript fallback assets for enforcement hooks.
   const binDir = join(pluginDir, "bin");
   mkdirSync(binDir, { recursive: true });
-  const goSource = join(rootDir, "bin", "loaf");
-  if (!existsSync(goSource)) {
-    throw new Error("Go front controller not found at bin/loaf. Run npm run build:go first.");
+  const launcherSource = join(rootDir, "bin", "loaf");
+  if (!existsSync(launcherSource)) {
+    throw new Error("Loaf launcher not found at bin/loaf. Run npm run build:go first.");
   }
-  copyFileSync(goSource, join(binDir, "loaf"));
+  copyFileSync(launcherSource, join(binDir, "loaf"));
   chmodSync(join(binDir, "loaf"), 0o755);
+  copyFileSync(join(rootDir, "bin", "package.json"), join(binDir, "package.json"));
+
+  const nativeSource = join(rootDir, "bin", "native");
+  if (!existsSync(nativeSource)) {
+    throw new Error("Native Loaf runtime not found at bin/native/. Run npm run build:go first.");
+  }
+  cpSync(nativeSource, join(binDir, "native"), { recursive: true });
 
   const fallbackSource = join(rootDir, "dist-cli");
   if (!existsSync(fallbackSource)) {

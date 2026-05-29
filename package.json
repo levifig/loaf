@@ -6,12 +6,6 @@
   "bin": {
     "loaf": "bin/loaf"
   },
-  "os": [
-    "darwin"
-  ],
-  "cpu": [
-    "arm64"
-  ],
   "exports": {
     ".": {
       "import": "./dist-cli/index.js"

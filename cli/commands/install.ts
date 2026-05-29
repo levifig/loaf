@@ -104,8 +104,10 @@ async function installLoafBinary(rootDir: string): Promise<boolean> {
   const localBinDir = join(process.env.HOME || "~", ".local", "bin");
   const localShareDir = join(process.env.HOME || "~", ".local", "share", "loaf");
   const sourceBinary = join(rootDir, "bin", "loaf");
+  const sourceNative = join(rootDir, "bin", "native");
   const sourceFallback = join(rootDir, "dist-cli");
   const targetBinary = join(localBinDir, "loaf");
+  const targetNative = join(localBinDir, "native");
   const targetFallback = join(localShareDir, "dist-cli");
   
   if (!existsSync(sourceBinary)) {
@@ -116,6 +118,12 @@ async function installLoafBinary(rootDir: string): Promise<boolean> {
 
   if (!existsSync(sourceFallback)) {
     console.log(`  ${red("✗")} TypeScript fallback not found at ${sourceFallback}`);
+    console.log(`  ${gray("Run 'npm run build' first.")}`);
+    return false;
+  }
+
+  if (!existsSync(sourceNative)) {
+    console.log(`  ${red("✗")} Native runtime artifacts not found at ${sourceNative}`);
     console.log(`  ${gray("Run 'npm run build' first.")}`);
     return false;
   }
@@ -144,6 +152,8 @@ async function installLoafBinary(rootDir: string): Promise<boolean> {
   try {
     copyFileSync(sourceBinary, targetBinary);
     chmodSync(targetBinary, 0o755);
+    rmSync(targetNative, { recursive: true, force: true });
+    cpSync(sourceNative, targetNative, { recursive: true });
     mkdirSync(localShareDir, { recursive: true });
     rmSync(targetFallback, { recursive: true, force: true });
     cpSync(sourceFallback, targetFallback, { recursive: true });

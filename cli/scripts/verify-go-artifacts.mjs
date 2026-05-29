@@ -13,9 +13,14 @@ const rootDir = process.cwd();
 const packageJSON = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 
 const requiredFiles = [
+  "cli/runtime/loaf-launcher.cjs",
   "bin/loaf",
+  "bin/package.json",
+  currentNativeArtifact("bin"),
   "dist-cli/index.js",
   "plugins/loaf/bin/loaf",
+  "plugins/loaf/bin/package.json",
+  currentNativeArtifact("plugins/loaf/bin"),
   "plugins/loaf/dist-cli/index.js",
 ];
 
@@ -26,7 +31,12 @@ for (const file of requiredFiles) {
 }
 
 assertSinglePublicCommand(packageJSON);
+assertPortablePackage(packageJSON);
+assertSame("cli/runtime/loaf-launcher.cjs", "bin/loaf");
+assertSame("cli/runtime/loaf-launcher.cjs", "plugins/loaf/bin/loaf");
 assertSame("bin/loaf", "plugins/loaf/bin/loaf");
+assertSame("bin/package.json", "plugins/loaf/bin/package.json");
+assertSame(currentNativeArtifact("bin"), currentNativeArtifact("plugins/loaf/bin"));
 assertSame("dist-cli/index.js", "plugins/loaf/dist-cli/index.js");
 assertReproducibleGoBinary();
 
@@ -43,6 +53,12 @@ function assertSinglePublicCommand(manifest) {
   }
 }
 
+function assertPortablePackage(manifest) {
+  if ("os" in manifest || "cpu" in manifest) {
+    fail("package.json must not restrict os/cpu while bin/loaf is a portable launcher");
+  }
+}
+
 function assertSame(left, right) {
   const leftBytes = readFileSync(join(rootDir, left));
   const rightBytes = readFileSync(join(rootDir, right));
@@ -53,7 +69,7 @@ function assertSame(left, right) {
 
 function assertReproducibleGoBinary() {
   const tempDir = mkdtempSync(join(tmpdir(), "loaf-go-verify-"));
-  const tempBinary = join(tempDir, process.platform === "win32" ? "loaf.exe" : "loaf");
+  const tempBinary = join(tempDir, nativeBinaryName());
   try {
     const result = spawnSync("go", ["build", "-trimpath", "-o", tempBinary, "./cmd/loaf"], {
       cwd: rootDir,
@@ -63,14 +79,22 @@ function assertReproducibleGoBinary() {
     if (result.status !== 0) {
       fail(`go rebuild failed with exit code ${result.status ?? 1}`);
     }
-    const committed = readFileSync(join(rootDir, "bin/loaf"));
+    const committed = readFileSync(join(rootDir, currentNativeArtifact("bin")));
     const rebuilt = readFileSync(tempBinary);
     if (!committed.equals(rebuilt)) {
-      fail("bin/loaf is stale; run npm run build:go");
+      fail(`${currentNativeArtifact("bin")} is stale; run npm run build:go`);
     }
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
+}
+
+function currentNativeArtifact(binRoot) {
+  return join(binRoot, "native", `${process.platform}-${process.arch}`, nativeBinaryName());
+}
+
+function nativeBinaryName() {
+  return process.platform === "win32" ? "loaf.exe" : "loaf";
 }
 
 function fail(message) {
