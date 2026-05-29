@@ -8,11 +8,11 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
-- Document Go as the accepted runtime direction for Loaf's stateful core and reshape SPEC-040 so SQLite work starts with a Go runtime foundation.
+- Document Go as the accepted runtime direction for Loaf's stateful core and shape SQLite work around that runtime foundation.
 - Add the initial dependency-free Go runtime skeleton for future state commands without changing the shipped TypeScript CLI.
 - Add Go-native `loaf state path` dispatch with XDG-backed, hashed project-state paths shared by main and linked Git worktrees.
 - Add a transitional Go-to-TypeScript legacy delegation bridge so unmigrated commands keep using the bundled CLI while `state` commands remain Go-native.
-- Select `github.com/ncruces/go-sqlite3/driver` as the planned SQLite driver for SPEC-040 Track A, with cgo-free, dependency, vulnerability, and testability guardrails documented before adding the dependency.
+- Select `github.com/ncruces/go-sqlite3/driver` as the SQLite driver, with cgo-free, dependency, vulnerability, and testability guardrails documented before adding the dependency.
 - Package the Go front controller as the public `loaf` command while bundling TypeScript fallback assets for delegated commands.
 - Define the initial SQLite operational-state schema as Go-owned migration metadata with dependency-free guardrail tests.
 - Add the approved cgo-free SQLite driver and Go-native `state init/status/doctor` storage lifecycle commands.

@@ -178,22 +178,31 @@ func (s *Store) AddTag(ctx context.Context, root project.Root, ref string, name 
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	tagID := stableMigrationID("tag", projectID, tagName)
-	_, err = s.db.ExecContext(ctx, `
-INSERT INTO tags (id, project_id, name, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?)
-ON CONFLICT(project_id, name) DO UPDATE SET updated_at = excluded.updated_at
-`, tagID, projectID, tagName, now, now)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return TagMutationResult{}, fmt.Errorf("begin tag transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, `
+	INSERT INTO tags (id, project_id, name, created_at, updated_at)
+	VALUES (?, ?, ?, ?, ?)
+	ON CONFLICT(project_id, name) DO UPDATE SET updated_at = excluded.updated_at
+	`, tagID, projectID, tagName, now, now)
 	if err != nil {
 		return TagMutationResult{}, fmt.Errorf("upsert tag %s: %w", tagName, err)
 	}
 	memberID := stableMigrationID("entity_tag", projectID, tagName, entity.Kind, entity.ID)
-	_, err = s.db.ExecContext(ctx, `
-INSERT INTO entity_tags (id, project_id, tag_id, entity_kind, entity_id, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(project_id, tag_id, entity_kind, entity_id) DO UPDATE SET updated_at = excluded.updated_at
-`, memberID, projectID, tagID, entity.Kind, entity.ID, now, now)
+	_, err = tx.ExecContext(ctx, `
+	INSERT INTO entity_tags (id, project_id, tag_id, entity_kind, entity_id, created_at, updated_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?)
+	ON CONFLICT(project_id, tag_id, entity_kind, entity_id) DO UPDATE SET updated_at = excluded.updated_at
+	`, memberID, projectID, tagID, entity.Kind, entity.ID, now, now)
 	if err != nil {
 		return TagMutationResult{}, fmt.Errorf("add tag membership: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return TagMutationResult{}, fmt.Errorf("commit tag transaction: %w", err)
 	}
 	return TagMutationResult{Name: tagName, Entity: entity}, nil
 }

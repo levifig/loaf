@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -85,6 +86,22 @@ func TestApplyMarkdownMigrationImportsArtifactsAndPreservesSources(t *testing.T)
 	assertTableCount(t, store, "specs", 1)
 	assertTableCount(t, store, "tasks", 1)
 	assertTableCount(t, store, "relationships", 2)
+}
+
+func TestFrontmatterListItemsPreserveCommas(t *testing.T) {
+	frontmatter := parseFrontmatterMap([]byte(`---
+implements:
+  - .agents/specs/SPEC-000-target, with comma.md
+  - SPEC-001
+---
+# Source Spec
+`))
+
+	got := splitFrontmatterList(frontmatter["implements"])
+	want := []string{".agents/specs/SPEC-000-target, with comma.md", "SPEC-001"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("splitFrontmatterList() = %#v, want %#v", got, want)
+	}
 }
 
 func writeMarkdownImportFixture(t *testing.T, root string, taskBody string) {

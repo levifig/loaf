@@ -12,8 +12,14 @@ const output = join(rootDir, "bin", "loaf");
 
 mkdirSync(dirname(output), { recursive: true });
 
-const result = spawnSync("go", ["build", "-o", output, "./cmd/loaf"], {
+const env = {
+  ...process.env,
+  CGO_ENABLED: "0",
+};
+
+const result = spawnSync("go", ["build", "-trimpath", "-o", output, "./cmd/loaf"], {
   cwd: rootDir,
+  env,
   stdio: "inherit",
 });
 

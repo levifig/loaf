@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -236,5 +237,5 @@ FROM exports JOIN journal_entries ON exports.source_entity_kind = 'journal_entry
 }
 
 func errorsIsNoRows(err error) bool {
-	return err == sql.ErrNoRows
+	return errors.Is(err, sql.ErrNoRows)
 }

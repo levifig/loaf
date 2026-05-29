@@ -20795,11 +20795,11 @@ function isLoafOnPath() {
 }
 async function installLoafBinary(rootDir) {
   const localBinDir = join28(process.env.HOME || "~", ".local", "bin");
-  const localRootDir = join28(process.env.HOME || "~", ".local");
+  const localShareDir = join28(process.env.HOME || "~", ".local", "share", "loaf");
   const sourceBinary = join28(rootDir, "bin", "loaf");
   const sourceFallback = join28(rootDir, "dist-cli");
   const targetBinary = join28(localBinDir, "loaf");
-  const targetFallback = join28(localRootDir, "dist-cli");
+  const targetFallback = join28(localShareDir, "dist-cli");
   if (!existsSync22(sourceBinary)) {
     console.log(`  ${red2("\u2717")} CLI binary not found at ${sourceBinary}`);
     console.log(`  ${gray4("Run 'npm run build' first.")}`);
@@ -20828,6 +20828,7 @@ async function installLoafBinary(rootDir) {
   try {
     copyFileSync2(sourceBinary, targetBinary);
     chmodSync2(targetBinary, 493);
+    mkdirSync19(localShareDir, { recursive: true });
     rmSync7(targetFallback, { recursive: true, force: true });
     cpSync8(sourceFallback, targetFallback, { recursive: true });
     console.log(`  ${green3("\u2713")} Installed loaf binary to ${targetBinary}`);

@@ -32,6 +32,8 @@ type taskIndexEntry struct {
 	File      string   `json:"file"`
 }
 
+const frontmatterListSeparator = "\x1f"
+
 type markdownImporter struct {
 	tx           *sql.Tx
 	root         project.Root
@@ -746,7 +748,7 @@ func parseFrontmatterMap(content []byte) map[string]string {
 			item := strings.TrimSpace(strings.TrimPrefix(trimmed, "-"))
 			if item != "" {
 				if values[currentListKey] != "" {
-					values[currentListKey] += ","
+					values[currentListKey] += frontmatterListSeparator
 				}
 				values[currentListKey] += strings.Trim(item, `"'`)
 			}
@@ -890,8 +892,12 @@ func splitFrontmatterList(value string) []string {
 	if value == "" {
 		return nil
 	}
+	separator := ","
+	if strings.Contains(value, frontmatterListSeparator) {
+		separator = frontmatterListSeparator
+	}
 	var values []string
-	for _, part := range strings.Split(value, ",") {
+	for _, part := range strings.Split(value, separator) {
 		trimmed := strings.TrimSpace(part)
 		if trimmed != "" {
 			values = append(values, trimmed)

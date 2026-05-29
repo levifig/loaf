@@ -63,6 +63,31 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	}
 }
 
+func TestExportTableValidationRejectsUnfilteredProjectTables(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	if _, err := store.db.ExecContext(context.Background(), `CREATE TABLE leaky_export (id TEXT PRIMARY KEY, project_id TEXT NOT NULL)`); err != nil {
+		t.Fatalf("create leaky_export error = %v", err)
+	}
+
+	err = store.validateExportTableFilters(context.Background(), []exportTable{{Name: "leaky_export", OrderBy: "id"}})
+	if err == nil {
+		t.Fatal("validateExportTableFilters() error = nil, want missing filter rejection")
+	}
+	if !strings.Contains(err.Error(), "has project_id but no filter column") {
+		t.Fatalf("error = %v, want missing filter column rejection", err)
+	}
+}
+
 func TestExportAllJSONDoesNotMutateDatabase(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

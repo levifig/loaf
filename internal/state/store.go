@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,20 +25,28 @@ type Store struct {
 
 // OpenStore opens an existing SQLite database path.
 func OpenStore(path string) (*Store, error) {
-	db, err := sql.Open(sqliteDriverName, path)
+	db, err := sql.Open(sqliteDriverName, sqliteDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("open state database: %w", err)
 	}
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("enable foreign keys: %w", err)
-	}
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("ping state database: %w", err)
 	}
 	return &Store{db: db, path: path}, nil
+}
+
+func sqliteDSN(path string) string {
+	values := url.Values{}
+	values.Add("_pragma", "busy_timeout(5000)")
+	values.Add("_pragma", "journal_mode(wal)")
+	values.Add("_pragma", "foreign_keys(on)")
+	return (&url.URL{
+		Scheme:   "file",
+		Path:     filepath.ToSlash(path),
+		RawQuery: values.Encode(),
+	}).String()
 }
 
 // Close closes the database connection.

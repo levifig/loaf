@@ -87,7 +87,7 @@ func TestInspectReportsInvalidWhenDatabaseFileIsNotSQLite(t *testing.T) {
 	if status.Mode != ModeInvalid {
 		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
 	}
-	assertDiagnostic(t, status.Diagnostics, "schema-version-unreadable")
+	assertDiagnostic(t, status.Diagnostics, "database-open-failed")
 }
 
 func TestInspectReportsInvalidSchemaVersionMismatch(t *testing.T) {

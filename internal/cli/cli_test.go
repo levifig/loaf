@@ -149,6 +149,21 @@ func TestRunnerHousekeepingReportsInvalidSQLiteState(t *testing.T) {
 	}
 }
 
+func assertSQLiteRequired(t *testing.T, args ...string) {
+	t.Helper()
+	err := Runner{
+		Stdout:     &bytes.Buffer{},
+		WorkingDir: realpath(t, t.TempDir()),
+		StateHome:  t.TempDir(),
+	}.Run(args)
+	if err == nil {
+		t.Fatalf("Run(%v) error = nil, want SQLite state required error", args)
+	}
+	if !strings.Contains(err.Error(), "requires initialized SQLite state") {
+		t.Fatalf("Run(%v) error = %v, want SQLite state required error", args, err)
+	}
+}
+
 func TestRunnerTaskRefreshUsesSQLiteStateWhenInitialized(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -2285,6 +2300,10 @@ func TestRunnerTaskCreateReportsValidationAndInvalidSQLiteState(t *testing.T) {
 		t.Fatalf("error = %v, want invalid priority", err)
 	}
 
+	if _, err := parseTaskCreateArgs([]string{"--title", "--json"}); err == nil || !strings.Contains(err.Error(), "--title requires a value") {
+		t.Fatalf("parseTaskCreateArgs flag value error = %v, want --title requires a value", err)
+	}
+
 	root, err := project.ResolveRoot(workingDir)
 	if err != nil {
 		t.Fatalf("ResolveRoot() error = %v", err)
@@ -2896,28 +2915,8 @@ status: archived
 	}
 }
 
-func TestRunnerBrainstormListDelegatesWhenMarkdownOnly(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture is POSIX-only")
-	}
-
-	workingDir := realpath(t, t.TempDir())
-	var stdout bytes.Buffer
-	err := Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"brainstorm", "list", "--all", "--json"})
-	if err != nil {
-		t.Fatalf("brainstorm list markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=brainstorm list --all --json") {
-		t.Fatalf("stdout = %q, want delegated brainstorm list", stdout.String())
-	}
+func TestRunnerBrainstormListRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
+	assertSQLiteRequired(t, "brainstorm", "list", "--all", "--json")
 }
 
 func TestRunnerBrainstormListReportsInvalidSQLiteState(t *testing.T) {
@@ -3014,28 +3013,8 @@ status: open
 	}
 }
 
-func TestRunnerBrainstormShowDelegatesWhenMarkdownOnly(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture is POSIX-only")
-	}
-
-	workingDir := realpath(t, t.TempDir())
-	var stdout bytes.Buffer
-	err := Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"brainstorm", "show", "20260528-brainstorm-sqlite", "--json"})
-	if err != nil {
-		t.Fatalf("brainstorm show markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=brainstorm show 20260528-brainstorm-sqlite --json") {
-		t.Fatalf("stdout = %q, want delegated brainstorm show", stdout.String())
-	}
+func TestRunnerBrainstormShowRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
+	assertSQLiteRequired(t, "brainstorm", "show", "20260528-brainstorm-sqlite", "--json")
 }
 
 func TestRunnerBrainstormShowReportsInvalidSQLiteState(t *testing.T) {
@@ -3162,28 +3141,8 @@ status: open
 	}
 }
 
-func TestRunnerBrainstormPromoteDelegatesWhenMarkdownOnly(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture is POSIX-only")
-	}
-
-	workingDir := realpath(t, t.TempDir())
-	var stdout bytes.Buffer
-	err := Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"brainstorm", "promote", "20260528-brainstorm-sqlite", "--to-idea", "20260528-target-idea", "--json"})
-	if err != nil {
-		t.Fatalf("brainstorm promote markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=brainstorm promote 20260528-brainstorm-sqlite --to-idea 20260528-target-idea --json") {
-		t.Fatalf("stdout = %q, want delegated brainstorm promote", stdout.String())
-	}
+func TestRunnerBrainstormPromoteRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
+	assertSQLiteRequired(t, "brainstorm", "promote", "20260528-brainstorm-sqlite", "--to-idea", "20260528-target-idea", "--json")
 }
 
 func TestRunnerBrainstormPromoteReportsInvalidSQLiteState(t *testing.T) {
@@ -3326,28 +3285,8 @@ status: archived
 	}
 }
 
-func TestRunnerBrainstormArchiveDelegatesWhenMarkdownOnly(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture is POSIX-only")
-	}
-
-	workingDir := realpath(t, t.TempDir())
-	var stdout bytes.Buffer
-	err := Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"brainstorm", "archive", "20260528-brainstorm-open", "--reason", "done", "--json"})
-	if err != nil {
-		t.Fatalf("brainstorm archive markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=brainstorm archive 20260528-brainstorm-open --reason done --json") {
-		t.Fatalf("stdout = %q, want delegated brainstorm archive", stdout.String())
-	}
+func TestRunnerBrainstormArchiveRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
+	assertSQLiteRequired(t, "brainstorm", "archive", "20260528-brainstorm-open", "--reason", "done", "--json")
 }
 
 func TestRunnerBrainstormArchiveReportsInvalidSQLiteState(t *testing.T) {
@@ -3800,96 +3739,12 @@ status: archived
 	}
 }
 
-func TestRunnerIdeaCommandDelegatesWhenMarkdownOnly(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture is POSIX-only")
-	}
-
-	workingDir := realpath(t, t.TempDir())
-	var stdout bytes.Buffer
-	err := Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"idea", "resolve", "20260528-sqlite-state", "--by", "SPEC-001"})
-	if err != nil {
-		t.Fatalf("idea resolve markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=idea resolve 20260528-sqlite-state --by SPEC-001") {
-		t.Fatalf("stdout = %q, want delegated idea resolve", stdout.String())
-	}
-
-	stdout.Reset()
-	err = Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"idea", "show", "20260528-sqlite-state", "--json"})
-	if err != nil {
-		t.Fatalf("idea show markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=idea show 20260528-sqlite-state --json") {
-		t.Fatalf("stdout = %q, want delegated idea show", stdout.String())
-	}
-
-	stdout.Reset()
-	err = Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"idea", "promote", "20260528-sqlite-state", "--to-spec", "SPEC-001"})
-	if err != nil {
-		t.Fatalf("idea promote markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=idea promote 20260528-sqlite-state --to-spec SPEC-001") {
-		t.Fatalf("stdout = %q, want delegated idea promote", stdout.String())
-	}
-
-	stdout.Reset()
-	err = Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"idea", "capture", "--title", "Smoke Idea"})
-	if err != nil {
-		t.Fatalf("idea capture markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=idea capture --title Smoke Idea") {
-		t.Fatalf("stdout = %q, want delegated idea capture", stdout.String())
-	}
-
-	stdout.Reset()
-	err = Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"idea", "archive", "20260528-sqlite-state", "--reason", "covered"})
-	if err != nil {
-		t.Fatalf("idea archive markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=idea archive 20260528-sqlite-state --reason covered") {
-		t.Fatalf("stdout = %q, want delegated idea archive", stdout.String())
-	}
+func TestRunnerIdeaCommandRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
+	assertSQLiteRequired(t, "idea", "resolve", "20260528-sqlite-state", "--by", "SPEC-001")
+	assertSQLiteRequired(t, "idea", "show", "20260528-sqlite-state", "--json")
+	assertSQLiteRequired(t, "idea", "promote", "20260528-sqlite-state", "--to-spec", "SPEC-001")
+	assertSQLiteRequired(t, "idea", "capture", "--title", "Smoke Idea")
+	assertSQLiteRequired(t, "idea", "archive", "20260528-sqlite-state", "--reason", "covered")
 }
 
 func TestRunnerIdeaCommandReportsInvalidSQLiteState(t *testing.T) {
@@ -4238,79 +4093,11 @@ func TestRunnerSparkCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 	}
 }
 
-func TestRunnerSparkCommandDelegatesWhenMarkdownOnly(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture is POSIX-only")
-	}
-
-	workingDir := realpath(t, t.TempDir())
-	var stdout bytes.Buffer
-	err := Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"spark", "resolve", "SPARK-smoke", "--by", "20260528-target-idea", "--reason", "covered"})
-	if err != nil {
-		t.Fatalf("spark resolve markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=spark resolve SPARK-smoke --by 20260528-target-idea --reason covered") {
-		t.Fatalf("stdout = %q, want delegated spark resolve", stdout.String())
-	}
-
-	stdout.Reset()
-	err = Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"spark", "show", "SPARK-smoke", "--json"})
-	if err != nil {
-		t.Fatalf("spark show markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=spark show SPARK-smoke --json") {
-		t.Fatalf("stdout = %q, want delegated spark show", stdout.String())
-	}
-
-	stdout.Reset()
-	err = Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"spark", "capture", "--scope", "architecture", "--text", "Smoke Spark"})
-	if err != nil {
-		t.Fatalf("spark capture markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=spark capture --scope architecture --text Smoke Spark") {
-		t.Fatalf("stdout = %q, want delegated spark capture", stdout.String())
-	}
-
-	stdout.Reset()
-	err = Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"spark", "promote", "SPARK-smoke", "--to-idea", "20260528-target-idea"})
-	if err != nil {
-		t.Fatalf("spark promote markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=spark promote SPARK-smoke --to-idea 20260528-target-idea") {
-		t.Fatalf("stdout = %q, want delegated spark promote", stdout.String())
-	}
+func TestRunnerSparkCommandRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
+	assertSQLiteRequired(t, "spark", "resolve", "SPARK-smoke", "--by", "20260528-target-idea", "--reason", "covered")
+	assertSQLiteRequired(t, "spark", "show", "SPARK-smoke", "--json")
+	assertSQLiteRequired(t, "spark", "capture", "--scope", "architecture", "--text", "Smoke Spark")
+	assertSQLiteRequired(t, "spark", "promote", "SPARK-smoke", "--to-idea", "20260528-target-idea")
 }
 
 func TestRunnerSparkCommandReportsInvalidSQLiteState(t *testing.T) {
@@ -4462,28 +4249,8 @@ func TestRunnerTagCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	}
 }
 
-func TestRunnerTagCommandDelegatesWhenMarkdownOnly(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture is POSIX-only")
-	}
-
-	workingDir := realpath(t, t.TempDir())
-	var stdout bytes.Buffer
-	err := Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"tag", "add", "SPEC-001", "sqlite"})
-	if err != nil {
-		t.Fatalf("tag add markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=tag add SPEC-001 sqlite") {
-		t.Fatalf("stdout = %q, want delegated tag add", stdout.String())
-	}
+func TestRunnerTagCommandRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
+	assertSQLiteRequired(t, "tag", "add", "SPEC-001", "sqlite")
 }
 
 func TestRunnerTagCommandReportsInvalidSQLiteState(t *testing.T) {
@@ -4620,39 +4387,9 @@ func TestRunnerBundleCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	}
 }
 
-func TestRunnerBundleCommandDelegatesWhenMarkdownOnly(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture is POSIX-only")
-	}
-
-	workingDir := realpath(t, t.TempDir())
-	var stdout bytes.Buffer
-	runner := Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}
-
-	err := runner.Run([]string{"bundle", "list", "--json"})
-	if err != nil {
-		t.Fatalf("bundle list markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=bundle list --json") {
-		t.Fatalf("stdout = %q, want delegated bundle list", stdout.String())
-	}
-
-	stdout.Reset()
-	err = runner.Run([]string{"bundle", "update", "sqlite-backend", "--title", "SQLite Backend"})
-	if err != nil {
-		t.Fatalf("bundle update markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=bundle update sqlite-backend --title SQLite Backend") {
-		t.Fatalf("stdout = %q, want delegated bundle update", stdout.String())
-	}
+func TestRunnerBundleCommandRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
+	assertSQLiteRequired(t, "bundle", "list", "--json")
+	assertSQLiteRequired(t, "bundle", "update", "sqlite-backend", "--title", "SQLite Backend")
 }
 
 func TestRunnerBundleCommandReportsInvalidSQLiteState(t *testing.T) {
@@ -4765,28 +4502,8 @@ func TestRunnerLinkCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	}
 }
 
-func TestRunnerLinkCommandDelegatesWhenMarkdownOnly(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture is POSIX-only")
-	}
-
-	workingDir := realpath(t, t.TempDir())
-	var stdout bytes.Buffer
-	err := Runner{
-		Stdout:     &stdout,
-		WorkingDir: workingDir,
-		StateHome:  t.TempDir(),
-		Legacy: legacy.Runner{
-			ScriptPath: writeLegacyScript(t),
-			NodePath:   writeFakeNode(t),
-		},
-	}.Run([]string{"link", "create", "20260528-link-idea", "SPEC-001", "--type", "resolved_by"})
-	if err != nil {
-		t.Fatalf("link create markdown fallback error = %v", err)
-	}
-	if !strings.Contains(stdout.String(), "args=link create 20260528-link-idea SPEC-001 --type resolved_by") {
-		t.Fatalf("stdout = %q, want delegated link create", stdout.String())
-	}
+func TestRunnerLinkCommandRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
+	assertSQLiteRequired(t, "link", "create", "20260528-link-idea", "SPEC-001", "--type", "resolved_by")
 }
 
 func TestRunnerLinkCommandReportsInvalidSQLiteState(t *testing.T) {
@@ -6411,11 +6128,17 @@ func realpath(t *testing.T, path string) string {
 }
 
 func containsCwd(output string, cwd string) bool {
-	if strings.Contains(output, "cwd="+cwd) {
-		return true
+	candidates := []string{cwd}
+	if realpath, err := filepath.EvalSymlinks(cwd); err == nil && realpath != cwd {
+		candidates = append(candidates, realpath)
 	}
-	if strings.HasPrefix(cwd, "/var/") {
-		return strings.Contains(output, "cwd=/private"+cwd)
+	if strings.HasPrefix(cwd, "/var/") || strings.HasPrefix(cwd, "/tmp/") {
+		candidates = append(candidates, "/private"+cwd)
+	}
+	for _, candidate := range candidates {
+		if strings.Contains(output, "cwd="+candidate) {
+			return true
+		}
 	}
 	return false
 }

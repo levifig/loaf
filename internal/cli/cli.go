@@ -133,6 +133,18 @@ func (r Runner) stateMode(runtime state.Runtime) (project.Root, string, error) {
 	return projectRoot, status.Mode, nil
 }
 
+func sqliteStateRequiredError(command string) error {
+	return fmt.Errorf("loaf %s requires initialized SQLite state; run `loaf state init` or `loaf state migrate markdown --apply` first", command)
+}
+
+func missingSubcommandError(command string) error {
+	return fmt.Errorf("loaf %s requires a subcommand", command)
+}
+
+func unknownSubcommandError(command string, subcommand string) error {
+	return fmt.Errorf("unknown loaf %s subcommand %q", command, subcommand)
+}
+
 func writeHousekeepingSummary(out io.Writer, result state.HousekeepingSummary, options housekeepingOptions) {
 	if options.dryRun {
 		fmt.Fprint(out, "\n  loaf housekeeping (SQLite state, dry run)\n\n")
@@ -207,7 +219,7 @@ func housekeepingSignalsFromSections(sections map[string]state.HousekeepingSecti
 
 func (r Runner) runBrainstorm(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 {
-		return r.runLegacy(append([]string{"brainstorm"}, args...), runtime.RootPath(), out)
+		return missingSubcommandError("brainstorm")
 	}
 	switch args[0] {
 	case "list":
@@ -219,7 +231,7 @@ func (r Runner) runBrainstorm(args []string, out io.Writer, runtime state.Runtim
 	case "archive":
 		return r.runBrainstormArchive(args[1:], out, runtime)
 	default:
-		return r.runLegacy(append([]string{"brainstorm"}, args...), runtime.RootPath(), out)
+		return unknownSubcommandError("brainstorm", args[0])
 	}
 }
 
@@ -238,7 +250,7 @@ func (r Runner) runBrainstormList(args []string, out io.Writer, runtime state.Ru
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"brainstorm", "list"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("brainstorm list")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -265,7 +277,7 @@ func (r Runner) runBrainstormShow(args []string, out io.Writer, runtime state.Ru
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"brainstorm", "show"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("brainstorm show")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -296,7 +308,7 @@ func (r Runner) runBrainstormPromote(args []string, out io.Writer, runtime state
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"brainstorm", "promote"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("brainstorm promote")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -328,7 +340,7 @@ func (r Runner) runBrainstormArchive(args []string, out io.Writer, runtime state
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"brainstorm", "archive"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("brainstorm archive")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1159,7 +1171,7 @@ func writeTaskList(out io.Writer, tasks state.TaskList, filters state.TaskListOp
 
 func (r Runner) runIdea(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 {
-		return r.runLegacy(append([]string{"idea"}, args...), runtime.RootPath(), out)
+		return missingSubcommandError("idea")
 	}
 	switch args[0] {
 	case "list":
@@ -1175,7 +1187,7 @@ func (r Runner) runIdea(args []string, out io.Writer, runtime state.Runtime) err
 	case "archive":
 		return r.runIdeaArchive(args[1:], out, runtime)
 	default:
-		return r.runLegacy(append([]string{"idea"}, args...), runtime.RootPath(), out)
+		return unknownSubcommandError("idea", args[0])
 	}
 }
 
@@ -1194,7 +1206,7 @@ func (r Runner) runIdeaList(args []string, out io.Writer, runtime state.Runtime)
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"idea", "list"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("idea list")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1221,7 +1233,7 @@ func (r Runner) runIdeaShow(args []string, out io.Writer, runtime state.Runtime)
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"idea", "show"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("idea show")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1252,7 +1264,7 @@ func (r Runner) runIdeaCapture(args []string, out io.Writer, runtime state.Runti
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"idea", "capture"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("idea capture")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1287,7 +1299,7 @@ func (r Runner) runIdeaPromote(args []string, out io.Writer, runtime state.Runti
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"idea", "promote"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("idea promote")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1323,7 +1335,7 @@ func (r Runner) runIdeaResolve(args []string, out io.Writer, runtime state.Runti
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"idea", "resolve"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("idea resolve")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1350,7 +1362,7 @@ func (r Runner) runIdeaArchive(args []string, out io.Writer, runtime state.Runti
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"idea", "archive"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("idea archive")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1457,7 +1469,7 @@ func writeIdeaArchive(out io.Writer, result state.IdeaArchiveResult) {
 
 func (r Runner) runSpark(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 {
-		return r.runLegacy(append([]string{"spark"}, args...), runtime.RootPath(), out)
+		return missingSubcommandError("spark")
 	}
 	switch args[0] {
 	case "list":
@@ -1471,7 +1483,7 @@ func (r Runner) runSpark(args []string, out io.Writer, runtime state.Runtime) er
 	case "promote":
 		return r.runSparkPromote(args[1:], out, runtime)
 	default:
-		return r.runLegacy(append([]string{"spark"}, args...), runtime.RootPath(), out)
+		return unknownSubcommandError("spark", args[0])
 	}
 }
 
@@ -1490,7 +1502,7 @@ func (r Runner) runSparkList(args []string, out io.Writer, runtime state.Runtime
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"spark", "list"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("spark list")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1517,7 +1529,7 @@ func (r Runner) runSparkShow(args []string, out io.Writer, runtime state.Runtime
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"spark", "show"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("spark show")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1548,7 +1560,7 @@ func (r Runner) runSparkCapture(args []string, out io.Writer, runtime state.Runt
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"spark", "capture"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("spark capture")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1590,7 +1602,7 @@ func (r Runner) runSparkResolve(args []string, out io.Writer, runtime state.Runt
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"spark", "resolve"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("spark resolve")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1617,7 +1629,7 @@ func (r Runner) runSparkPromote(args []string, out io.Writer, runtime state.Runt
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"spark", "promote"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("spark promote")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1693,7 +1705,7 @@ func writeSparkShow(out io.Writer, result state.SparkShow) {
 
 func (r Runner) runTag(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 {
-		return r.runLegacy(append([]string{"tag"}, args...), runtime.RootPath(), out)
+		return missingSubcommandError("tag")
 	}
 	switch args[0] {
 	case "list":
@@ -1705,7 +1717,7 @@ func (r Runner) runTag(args []string, out io.Writer, runtime state.Runtime) erro
 	case "remove":
 		return r.runTagRemove(args[1:], out, runtime)
 	default:
-		return r.runLegacy(append([]string{"tag"}, args...), runtime.RootPath(), out)
+		return unknownSubcommandError("tag", args[0])
 	}
 }
 
@@ -1720,7 +1732,7 @@ func (r Runner) runTagList(args []string, out io.Writer, runtime state.Runtime) 
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"tag", "list"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("tag list")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1746,7 +1758,7 @@ func (r Runner) runTagShow(args []string, out io.Writer, runtime state.Runtime) 
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"tag", "show"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("tag show")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1772,7 +1784,7 @@ func (r Runner) runTagAdd(args []string, out io.Writer, runtime state.Runtime) e
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"tag", "add"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("tag add")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1798,7 +1810,7 @@ func (r Runner) runTagRemove(args []string, out io.Writer, runtime state.Runtime
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"tag", "remove"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("tag remove")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1856,7 +1868,7 @@ func writeTagShow(out io.Writer, result state.TagShowResult) {
 
 func (r Runner) runBundle(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 {
-		return r.runLegacy(append([]string{"bundle"}, args...), runtime.RootPath(), out)
+		return missingSubcommandError("bundle")
 	}
 	switch args[0] {
 	case "list":
@@ -1872,7 +1884,7 @@ func (r Runner) runBundle(args []string, out io.Writer, runtime state.Runtime) e
 	case "remove":
 		return r.runBundleRemove(args[1:], out, runtime)
 	default:
-		return r.runLegacy(append([]string{"bundle"}, args...), runtime.RootPath(), out)
+		return unknownSubcommandError("bundle", args[0])
 	}
 }
 
@@ -1887,7 +1899,7 @@ func (r Runner) runBundleList(args []string, out io.Writer, runtime state.Runtim
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"bundle", "list"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("bundle list")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1913,7 +1925,7 @@ func (r Runner) runBundleCreate(args []string, out io.Writer, runtime state.Runt
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"bundle", "create"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("bundle create")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1943,7 +1955,7 @@ func (r Runner) runBundleUpdate(args []string, out io.Writer, runtime state.Runt
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"bundle", "update"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("bundle update")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -1983,7 +1995,7 @@ func (r Runner) runBundleShow(args []string, out io.Writer, runtime state.Runtim
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"bundle", "show"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("bundle show")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -2009,7 +2021,7 @@ func (r Runner) runBundleAdd(args []string, out io.Writer, runtime state.Runtime
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"bundle", "add"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("bundle add")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -2035,7 +2047,7 @@ func (r Runner) runBundleRemove(args []string, out io.Writer, runtime state.Runt
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"bundle", "remove"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("bundle remove")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -2145,7 +2157,7 @@ func housekeepingSectionLabel(name string) string {
 
 func (r Runner) runLink(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 {
-		return r.runLegacy(append([]string{"link"}, args...), runtime.RootPath(), out)
+		return missingSubcommandError("link")
 	}
 	switch args[0] {
 	case "create":
@@ -2155,7 +2167,7 @@ func (r Runner) runLink(args []string, out io.Writer, runtime state.Runtime) err
 	case "remove":
 		return r.runLinkRemove(args[1:], out, runtime)
 	default:
-		return r.runLegacy(append([]string{"link"}, args...), runtime.RootPath(), out)
+		return unknownSubcommandError("link", args[0])
 	}
 }
 
@@ -2170,7 +2182,7 @@ func (r Runner) runLinkCreate(args []string, out io.Writer, runtime state.Runtim
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"link", "create"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("link create")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -2201,7 +2213,7 @@ func (r Runner) runLinkList(args []string, out io.Writer, runtime state.Runtime)
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"link", "list"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("link list")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -2227,7 +2239,7 @@ func (r Runner) runLinkRemove(args []string, out io.Writer, runtime state.Runtim
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
-		return r.runLegacy(append([]string{"link", "remove"}, args...), runtime.RootPath(), out)
+		return sqliteStateRequiredError("link remove")
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
@@ -2997,9 +3009,8 @@ func parseCompatibilityCommandArgs(command string, args []string, allowedFlags m
 			if command != "session enrich" {
 				return compatibilityCommandOptions{}, fmt.Errorf("%s does not support %s", command, arg)
 			}
-			i++
-			if i >= len(args) {
-				return compatibilityCommandOptions{}, fmt.Errorf("%s requires a value", arg)
+			if _, err := consumeFlagValue(args, &i, arg); err != nil {
+				return compatibilityCommandOptions{}, err
 			}
 		default:
 			if strings.HasPrefix(arg, "--") {
@@ -3068,11 +3079,11 @@ func parseStateExportArgs(args []string) (stateExportOptions, error) {
 		arg := args[i]
 		switch {
 		case arg == "--format":
-			i++
-			if i >= len(args) {
-				return stateExportOptions{}, fmt.Errorf("state export --format requires a value")
+			value, err := consumeFlagValue(args, &i, "state export --format")
+			if err != nil {
+				return stateExportOptions{}, err
 			}
-			options.format = args[i]
+			options.format = value
 		case strings.HasPrefix(arg, "--format="):
 			options.format = strings.TrimPrefix(arg, "--format=")
 		default:
@@ -3146,6 +3157,9 @@ func parseTraceArgs(args []string) (string, bool, error) {
 		case "--json":
 			jsonOutput = true
 		default:
+			if strings.HasPrefix(arg, "-") {
+				return "", false, fmt.Errorf("unknown option %q", arg)
+			}
 			if ref != "" {
 				return "", false, fmt.Errorf("trace accepts exactly one id")
 			}
@@ -3310,14 +3324,14 @@ func parseTaskListArgs(args []string) (taskListOptions, error) {
 		case "--active":
 			options.filters.Active = true
 		case "--status":
-			if i+1 >= len(args) {
-				return taskListOptions{}, fmt.Errorf("--status requires a value")
+			value, err := consumeFlagValue(args, &i, "--status")
+			if err != nil {
+				return taskListOptions{}, err
 			}
-			i++
-			if !state.ValidTaskListStatus(args[i]) {
-				return taskListOptions{}, fmt.Errorf("invalid status %q", args[i])
+			if !state.ValidTaskListStatus(value) {
+				return taskListOptions{}, fmt.Errorf("invalid status %q", value)
 			}
-			options.filters.Status = args[i]
+			options.filters.Status = value
 		default:
 			return taskListOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -3332,32 +3346,32 @@ func parseTaskCreateArgs(args []string) (taskCreateOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--title":
-			if i+1 >= len(args) {
-				return taskCreateOptions{}, fmt.Errorf("--title requires a value")
+			value, err := consumeFlagValue(args, &i, "--title")
+			if err != nil {
+				return taskCreateOptions{}, err
 			}
-			i++
-			options.create.Title = args[i]
+			options.create.Title = value
 		case "--spec":
-			if i+1 >= len(args) {
-				return taskCreateOptions{}, fmt.Errorf("--spec requires a value")
+			value, err := consumeFlagValue(args, &i, "--spec")
+			if err != nil {
+				return taskCreateOptions{}, err
 			}
-			i++
-			options.create.Spec = args[i]
+			options.create.Spec = value
 		case "--priority":
-			if i+1 >= len(args) {
-				return taskCreateOptions{}, fmt.Errorf("--priority requires a value")
+			value, err := consumeFlagValue(args, &i, "--priority")
+			if err != nil {
+				return taskCreateOptions{}, err
 			}
-			i++
-			if !state.ValidTaskPriority(args[i]) {
-				return taskCreateOptions{}, fmt.Errorf("invalid priority %q", args[i])
+			if !state.ValidTaskPriority(value) {
+				return taskCreateOptions{}, fmt.Errorf("invalid priority %q", value)
 			}
-			options.create.Priority = args[i]
+			options.create.Priority = value
 		case "--depends-on":
-			if i+1 >= len(args) {
-				return taskCreateOptions{}, fmt.Errorf("--depends-on requires a value")
+			value, err := consumeFlagValue(args, &i, "--depends-on")
+			if err != nil {
+				return taskCreateOptions{}, err
 			}
-			i++
-			options.create.DependsOn = splitCommaList(args[i])
+			options.create.DependsOn = splitCommaList(value)
 		default:
 			return taskCreateOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -3376,49 +3390,49 @@ func parseTaskUpdateArgs(args []string) (taskUpdateOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--status":
-			if i+1 >= len(args) {
-				return taskUpdateOptions{}, fmt.Errorf("--status requires a value")
+			value, err := consumeFlagValue(args, &i, "--status")
+			if err != nil {
+				return taskUpdateOptions{}, err
 			}
-			i++
-			if !state.ValidTaskStatus(args[i]) {
-				return taskUpdateOptions{}, fmt.Errorf("invalid status %q", args[i])
+			if !state.ValidTaskStatus(value) {
+				return taskUpdateOptions{}, fmt.Errorf("invalid status %q", value)
 			}
-			options.update.Status = args[i]
+			options.update.Status = value
 			options.update.SetStatus = true
 		case "--priority":
-			if i+1 >= len(args) {
-				return taskUpdateOptions{}, fmt.Errorf("--priority requires a value")
+			value, err := consumeFlagValue(args, &i, "--priority")
+			if err != nil {
+				return taskUpdateOptions{}, err
 			}
-			i++
-			if !state.ValidTaskPriority(args[i]) {
-				return taskUpdateOptions{}, fmt.Errorf("invalid priority %q", args[i])
+			if !state.ValidTaskPriority(value) {
+				return taskUpdateOptions{}, fmt.Errorf("invalid priority %q", value)
 			}
-			options.update.Priority = args[i]
+			options.update.Priority = value
 			options.update.SetPriority = true
 		case "--spec":
-			if i+1 >= len(args) {
-				return taskUpdateOptions{}, fmt.Errorf("--spec requires a value")
+			value, err := consumeFlagValue(args, &i, "--spec")
+			if err != nil {
+				return taskUpdateOptions{}, err
 			}
-			i++
-			options.update.Spec = args[i]
+			options.update.Spec = value
 			options.update.SetSpec = true
 		case "--depends-on":
-			if i+1 >= len(args) {
-				return taskUpdateOptions{}, fmt.Errorf("--depends-on requires a value")
+			value, err := consumeFlagValue(args, &i, "--depends-on")
+			if err != nil {
+				return taskUpdateOptions{}, err
 			}
-			i++
-			if strings.EqualFold(strings.TrimSpace(args[i]), "none") {
+			if strings.EqualFold(strings.TrimSpace(value), "none") {
 				options.update.DependsOn = nil
 			} else {
-				options.update.DependsOn = splitCommaList(args[i])
+				options.update.DependsOn = splitCommaList(value)
 			}
 			options.update.SetDependsOn = true
 		case "--session":
-			if i+1 >= len(args) {
-				return taskUpdateOptions{}, fmt.Errorf("--session requires a value")
+			value, err := consumeFlagValue(args, &i, "--session")
+			if err != nil {
+				return taskUpdateOptions{}, err
 			}
-			i++
-			options.update.Session = args[i]
+			options.update.Session = value
 			options.update.SetSession = true
 		default:
 			if strings.HasPrefix(args[i], "-") {
@@ -3444,11 +3458,11 @@ func parseTaskArchiveArgs(args []string) (taskArchiveOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--spec":
-			if i+1 >= len(args) {
-				return taskArchiveOptions{}, fmt.Errorf("--spec requires a value")
+			value, err := consumeFlagValue(args, &i, "--spec")
+			if err != nil {
+				return taskArchiveOptions{}, err
 			}
-			i++
-			options.archive.Spec = args[i]
+			options.archive.Spec = value
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return taskArchiveOptions{}, fmt.Errorf("unknown option %q", args[i])
@@ -3475,6 +3489,15 @@ func splitCommaList(value string) []string {
 	return values
 }
 
+func consumeFlagValue(args []string, index *int, flag string) (string, error) {
+	next := *index + 1
+	if next >= len(args) || strings.HasPrefix(args[next], "--") {
+		return "", fmt.Errorf("%s requires a value", flag)
+	}
+	*index = next
+	return args[next], nil
+}
+
 func parseIdeaListArgs(args []string) (ideaListOptions, error) {
 	var options ideaListOptions
 	for i := 0; i < len(args); i++ {
@@ -3484,11 +3507,11 @@ func parseIdeaListArgs(args []string) (ideaListOptions, error) {
 		case "--all":
 			options.filters.All = true
 		case "--status":
-			if i+1 >= len(args) {
-				return ideaListOptions{}, fmt.Errorf("--status requires a value")
+			value, err := consumeFlagValue(args, &i, "--status")
+			if err != nil {
+				return ideaListOptions{}, err
 			}
-			i++
-			options.filters.Status = args[i]
+			options.filters.Status = value
 		default:
 			return ideaListOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -3505,11 +3528,11 @@ func parseBrainstormListArgs(args []string) (brainstormListOptions, error) {
 		case "--all":
 			options.filters.All = true
 		case "--status":
-			if i+1 >= len(args) {
-				return brainstormListOptions{}, fmt.Errorf("--status requires a value")
+			value, err := consumeFlagValue(args, &i, "--status")
+			if err != nil {
+				return brainstormListOptions{}, err
 			}
-			i++
-			options.filters.Status = args[i]
+			options.filters.Status = value
 		default:
 			return brainstormListOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -3524,11 +3547,11 @@ func parseBrainstormPromoteArgs(args []string) (brainstormPromoteOptions, error)
 		case "--json":
 			options.jsonOutput = true
 		case "--to-idea":
-			if i+1 >= len(args) {
-				return brainstormPromoteOptions{}, fmt.Errorf("--to-idea requires a value")
+			value, err := consumeFlagValue(args, &i, "--to-idea")
+			if err != nil {
+				return brainstormPromoteOptions{}, err
 			}
-			i++
-			options.promote.ToIdea = args[i]
+			options.promote.ToIdea = value
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return brainstormPromoteOptions{}, fmt.Errorf("unknown option %q", args[i])
@@ -3555,11 +3578,11 @@ func parseBrainstormArchiveArgs(args []string) (brainstormArchiveOptions, error)
 		case "--json":
 			options.jsonOutput = true
 		case "--reason":
-			if i+1 >= len(args) {
-				return brainstormArchiveOptions{}, fmt.Errorf("--reason requires a value")
+			value, err := consumeFlagValue(args, &i, "--reason")
+			if err != nil {
+				return brainstormArchiveOptions{}, err
 			}
-			i++
-			options.archive.Reason = args[i]
+			options.archive.Reason = value
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return brainstormArchiveOptions{}, fmt.Errorf("unknown option %q", args[i])
@@ -3580,11 +3603,11 @@ func parseIdeaCaptureArgs(args []string) (ideaCaptureOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--title":
-			if i+1 >= len(args) {
-				return ideaCaptureOptions{}, fmt.Errorf("--title requires a value")
+			value, err := consumeFlagValue(args, &i, "--title")
+			if err != nil {
+				return ideaCaptureOptions{}, err
 			}
-			i++
-			options.capture.Title = args[i]
+			options.capture.Title = value
 		default:
 			return ideaCaptureOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -3602,12 +3625,15 @@ func parseIdeaResolveArgs(args []string) (ideaResolveOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--by":
-			if i+1 >= len(args) {
-				return ideaResolveOptions{}, fmt.Errorf("--by requires a value")
+			value, err := consumeFlagValue(args, &i, "--by")
+			if err != nil {
+				return ideaResolveOptions{}, err
 			}
-			i++
-			options.by = args[i]
+			options.by = value
 		default:
+			if strings.HasPrefix(args[i], "-") {
+				return ideaResolveOptions{}, fmt.Errorf("unknown option %q", args[i])
+			}
 			if options.idea != "" {
 				return ideaResolveOptions{}, fmt.Errorf("idea resolve accepts exactly one idea")
 			}
@@ -3630,11 +3656,11 @@ func parseIdeaPromoteArgs(args []string) (ideaPromoteOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--to-spec":
-			if i+1 >= len(args) {
-				return ideaPromoteOptions{}, fmt.Errorf("--to-spec requires a value")
+			value, err := consumeFlagValue(args, &i, "--to-spec")
+			if err != nil {
+				return ideaPromoteOptions{}, err
 			}
-			i++
-			options.promote.ToSpec = args[i]
+			options.promote.ToSpec = value
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return ideaPromoteOptions{}, fmt.Errorf("unknown option %q", args[i])
@@ -3661,11 +3687,11 @@ func parseIdeaArchiveArgs(args []string) (ideaArchiveOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--reason":
-			if i+1 >= len(args) {
-				return ideaArchiveOptions{}, fmt.Errorf("--reason requires a value")
+			value, err := consumeFlagValue(args, &i, "--reason")
+			if err != nil {
+				return ideaArchiveOptions{}, err
 			}
-			i++
-			options.archive.Reason = args[i]
+			options.archive.Reason = value
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return ideaArchiveOptions{}, fmt.Errorf("unknown option %q", args[i])
@@ -3688,11 +3714,11 @@ func parseSparkListArgs(args []string) (sparkListOptions, error) {
 		case "--all":
 			options.filters.All = true
 		case "--status":
-			if i+1 >= len(args) {
-				return sparkListOptions{}, fmt.Errorf("--status requires a value")
+			value, err := consumeFlagValue(args, &i, "--status")
+			if err != nil {
+				return sparkListOptions{}, err
 			}
-			i++
-			options.filters.Status = args[i]
+			options.filters.Status = value
 		default:
 			return sparkListOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -3707,17 +3733,17 @@ func parseSparkCaptureArgs(args []string) (sparkCaptureOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--scope":
-			if i+1 >= len(args) {
-				return sparkCaptureOptions{}, fmt.Errorf("--scope requires a value")
+			value, err := consumeFlagValue(args, &i, "--scope")
+			if err != nil {
+				return sparkCaptureOptions{}, err
 			}
-			i++
-			options.capture.Scope = args[i]
+			options.capture.Scope = value
 		case "--text":
-			if i+1 >= len(args) {
-				return sparkCaptureOptions{}, fmt.Errorf("--text requires a value")
+			value, err := consumeFlagValue(args, &i, "--text")
+			if err != nil {
+				return sparkCaptureOptions{}, err
 			}
-			i++
-			options.capture.Text = args[i]
+			options.capture.Text = value
 		default:
 			return sparkCaptureOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -3735,18 +3761,21 @@ func parseSparkResolveArgs(args []string) (sparkResolveOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--by":
-			if i+1 >= len(args) {
-				return sparkResolveOptions{}, fmt.Errorf("--by requires a value")
+			value, err := consumeFlagValue(args, &i, "--by")
+			if err != nil {
+				return sparkResolveOptions{}, err
 			}
-			i++
-			options.resolve.By = args[i]
+			options.resolve.By = value
 		case "--reason":
-			if i+1 >= len(args) {
-				return sparkResolveOptions{}, fmt.Errorf("--reason requires a value")
+			value, err := consumeFlagValue(args, &i, "--reason")
+			if err != nil {
+				return sparkResolveOptions{}, err
 			}
-			i++
-			options.resolve.Reason = args[i]
+			options.resolve.Reason = value
 		default:
+			if strings.HasPrefix(args[i], "-") {
+				return sparkResolveOptions{}, fmt.Errorf("unknown option %q", args[i])
+			}
 			if options.resolve.Spark != "" {
 				return sparkResolveOptions{}, fmt.Errorf("spark resolve accepts exactly one spark")
 			}
@@ -3769,11 +3798,11 @@ func parseSparkPromoteArgs(args []string) (sparkPromoteOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--to-idea":
-			if i+1 >= len(args) {
-				return sparkPromoteOptions{}, fmt.Errorf("--to-idea requires a value")
+			value, err := consumeFlagValue(args, &i, "--to-idea")
+			if err != nil {
+				return sparkPromoteOptions{}, err
 			}
-			i++
-			options.promote.ToIdea = args[i]
+			options.promote.ToIdea = value
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return sparkPromoteOptions{}, fmt.Errorf("unknown option %q", args[i])
@@ -3801,6 +3830,9 @@ func parseSingleRefArgs(command string, args []string) (string, bool, error) {
 		case "--json":
 			jsonOutput = true
 		default:
+			if strings.HasPrefix(arg, "-") {
+				return "", false, fmt.Errorf("unknown option %q", arg)
+			}
 			if ref != "" {
 				return "", false, fmt.Errorf("%s accepts exactly one argument", command)
 			}
@@ -3859,18 +3891,21 @@ func parseBundleCreateArgs(args []string) (bundleCreateOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--title":
-			if i+1 >= len(args) {
-				return bundleCreateOptions{}, fmt.Errorf("--title requires a value")
+			value, err := consumeFlagValue(args, &i, "--title")
+			if err != nil {
+				return bundleCreateOptions{}, err
 			}
-			i++
-			options.title = args[i]
+			options.title = value
 		case "--tag":
-			if i+1 >= len(args) {
-				return bundleCreateOptions{}, fmt.Errorf("--tag requires a value")
+			value, err := consumeFlagValue(args, &i, "--tag")
+			if err != nil {
+				return bundleCreateOptions{}, err
 			}
-			i++
-			options.tags = append(options.tags, args[i])
+			options.tags = append(options.tags, value)
 		default:
+			if strings.HasPrefix(args[i], "-") {
+				return bundleCreateOptions{}, fmt.Errorf("unknown option %q", args[i])
+			}
 			if options.slug != "" {
 				return bundleCreateOptions{}, fmt.Errorf("bundle create accepts exactly one slug")
 			}
@@ -3890,18 +3925,18 @@ func parseBundleUpdateArgs(args []string) (bundleUpdateOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--title":
-			if i+1 >= len(args) {
-				return bundleUpdateOptions{}, fmt.Errorf("--title requires a value")
+			value, err := consumeFlagValue(args, &i, "--title")
+			if err != nil {
+				return bundleUpdateOptions{}, err
 			}
-			i++
-			options.title = args[i]
+			options.title = value
 			options.setTitle = true
 		case "--tag":
-			if i+1 >= len(args) {
-				return bundleUpdateOptions{}, fmt.Errorf("--tag requires a value")
+			value, err := consumeFlagValue(args, &i, "--tag")
+			if err != nil {
+				return bundleUpdateOptions{}, err
 			}
-			i++
-			options.tags = append(options.tags, args[i])
+			options.tags = append(options.tags, value)
 			options.setTags = true
 		case "--clear-tags":
 			options.tags = nil
@@ -3952,18 +3987,21 @@ func parseLinkMutationArgs(command string, args []string) (linkMutationOptions, 
 		case "--json":
 			options.jsonOutput = true
 		case "--type":
-			if i+1 >= len(args) {
-				return linkMutationOptions{}, fmt.Errorf("--type requires a value")
+			value, err := consumeFlagValue(args, &i, "--type")
+			if err != nil {
+				return linkMutationOptions{}, err
 			}
-			i++
-			options.relationshipType = args[i]
+			options.relationshipType = value
 		case "--reason":
-			if i+1 >= len(args) {
-				return linkMutationOptions{}, fmt.Errorf("--reason requires a value")
+			value, err := consumeFlagValue(args, &i, "--reason")
+			if err != nil {
+				return linkMutationOptions{}, err
 			}
-			i++
-			options.reason = args[i]
+			options.reason = value
 		default:
+			if strings.HasPrefix(args[i], "-") {
+				return linkMutationOptions{}, fmt.Errorf("unknown option %q", args[i])
+			}
 			positional = append(positional, args[i])
 		}
 	}
@@ -4001,11 +4039,11 @@ func parseSessionLogArgs(args []string) (sessionLogOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--session-id", "--harness-session-id":
-			if i+1 >= len(args) {
-				return sessionLogOptions{}, fmt.Errorf("%s requires a value", args[i])
+			value, err := consumeFlagValue(args, &i, args[i])
+			if err != nil {
+				return sessionLogOptions{}, err
 			}
-			i++
-			options.harnessSessionID = args[i]
+			options.harnessSessionID = value
 		default:
 			entryParts = append(entryParts, args[i])
 		}
@@ -4024,17 +4062,17 @@ func parseReportListArgs(args []string) (reportListOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--type":
-			if i+1 >= len(args) {
-				return reportListOptions{}, fmt.Errorf("--type requires a value")
+			value, err := consumeFlagValue(args, &i, "--type")
+			if err != nil {
+				return reportListOptions{}, err
 			}
-			i++
-			options.filters.Type = args[i]
+			options.filters.Type = value
 		case "--status":
-			if i+1 >= len(args) {
-				return reportListOptions{}, fmt.Errorf("--status requires a value")
+			value, err := consumeFlagValue(args, &i, "--status")
+			if err != nil {
+				return reportListOptions{}, err
 			}
-			i++
-			options.filters.Status = args[i]
+			options.filters.Status = value
 		default:
 			return reportListOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
@@ -4050,17 +4088,17 @@ func parseReportCreateArgs(args []string) (reportCreateOptions, error) {
 		case "--json":
 			options.jsonOutput = true
 		case "--type":
-			if i+1 >= len(args) {
-				return reportCreateOptions{}, fmt.Errorf("--type requires a value")
+			value, err := consumeFlagValue(args, &i, "--type")
+			if err != nil {
+				return reportCreateOptions{}, err
 			}
-			i++
-			options.create.Kind = args[i]
+			options.create.Kind = value
 		case "--source":
-			if i+1 >= len(args) {
-				return reportCreateOptions{}, fmt.Errorf("--source requires a value")
+			value, err := consumeFlagValue(args, &i, "--source")
+			if err != nil {
+				return reportCreateOptions{}, err
 			}
-			i++
-			options.create.Source = args[i]
+			options.create.Source = value
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return reportCreateOptions{}, fmt.Errorf("unknown option %q", args[i])

@@ -269,6 +269,9 @@ func (s *Store) ResolveIdea(ctx context.Context, root project.Root, ideaRef stri
 	if err != nil {
 		return IdeaResolveResult{}, err
 	}
+	if err := validateResolutionTargetKind(target.Kind, byRef); err != nil {
+		return IdeaResolveResult{}, err
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -76,6 +77,28 @@ depends_on:
 	}
 	if plan.SkippedFiles == nil {
 		t.Fatal("SkippedFiles = nil, want empty slice")
+	}
+}
+
+func TestPreviewMarkdownMigrationWarnsOnMalformedTasksJSON(t *testing.T) {
+	root := projectRoot(t)
+	writeAgentsFile(t, root.Path(), "TASKS.json", `{not json`)
+	writeAgentsFile(t, root.Path(), "tasks/TASK-001-example.md", `---
+spec: SPEC-001
+---
+# Task
+`)
+
+	plan, err := PreviewMarkdownMigration(root)
+	if err != nil {
+		t.Fatalf("PreviewMarkdownMigration() error = %v", err)
+	}
+
+	if plan.Relationships != 1 {
+		t.Fatalf("Relationships = %d, want fallback frontmatter relationship", plan.Relationships)
+	}
+	if len(plan.Warnings) != 1 || !strings.Contains(plan.Warnings[0], "could not parse .agents/TASKS.json") {
+		t.Fatalf("Warnings = %#v, want malformed TASKS.json warning", plan.Warnings)
 	}
 }
 

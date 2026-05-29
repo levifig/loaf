@@ -56,7 +56,7 @@ func PreviewMarkdownMigration(root project.Root) (MarkdownMigrationPlan, error) 
 	countBrainstorms(agentsPath, &plan.Brainstorms)
 	countShapingDrafts(agentsPath, &plan.ShapingDrafts)
 	countSparks(agentsPath, &plan.Sparks)
-	countRelationships(agentsPath, &plan.Relationships)
+	countRelationships(agentsPath, &plan.Relationships, &plan.Warnings)
 
 	skipped, err := skippedFiles(agentsPath)
 	if err != nil {
@@ -127,7 +127,7 @@ func countSparks(agentsPath string, count *int) {
 	}
 }
 
-func countRelationships(agentsPath string, count *int) {
+func countRelationships(agentsPath string, count *int, warnings *[]string) {
 	indexPath := filepath.Join(agentsPath, "TASKS.json")
 	content, err := os.ReadFile(indexPath)
 	if err != nil {
@@ -143,6 +143,7 @@ func countRelationships(agentsPath string, count *int) {
 		} `json:"tasks"`
 	}
 	if err := json.Unmarshal(content, &index); err != nil {
+		*warnings = append(*warnings, fmt.Sprintf("could not parse .agents/TASKS.json: %v", err))
 		*count += countTaskDependencyLines(agentsPath)
 		*count += countArtifactFrontmatterRelationships(agentsPath)
 		return

@@ -126,6 +126,42 @@ func TestRunnerFindsFallbackByWalkingUpFromCwd(t *testing.T) {
 	}
 }
 
+func TestRunnerFindsFallbackInInstalledShareLayout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell fixture is POSIX-only")
+	}
+
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatalf("Executable() error = %v", err)
+	}
+	executableDir := filepath.Dir(executable)
+	scriptPath := filepath.Clean(filepath.Join(executableDir, "..", "share", "loaf", legacyScriptRelative))
+	if err := os.MkdirAll(filepath.Dir(scriptPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(installed fallback) error = %v", err)
+	}
+	if err := os.WriteFile(scriptPath, []byte("#!/bin/sh\nprintf 'installed-share %s\\n' \"$*\"\n"), 0o755); err != nil {
+		t.Fatalf("WriteFile(installed fallback) error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Remove(scriptPath)
+	})
+
+	var stdout bytes.Buffer
+	err = Runner{
+		NodePath: writeFakeNode(t),
+		Stdout:   &stdout,
+		Stderr:   &bytes.Buffer{},
+		Cwd:      realpath(t, t.TempDir()),
+	}.Run([]string{"task", "list"})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if !strings.Contains(stdout.String(), "installed-share task list") {
+		t.Fatalf("stdout = %q, want installed share fallback", stdout.String())
+	}
+}
+
 func TestWalkUpScriptCandidatesIncludesAncestorsBeforeProjectRootFallback(t *testing.T) {
 	got := walkUpScriptCandidates(filepath.Join("repo", "nested"))
 	wantFirst := filepath.Join("repo", "nested", legacyScriptRelative)

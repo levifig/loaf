@@ -102,11 +102,11 @@ function isLoafOnPath(): boolean {
 /** Install loaf binary to ~/.local/bin/ */
 async function installLoafBinary(rootDir: string): Promise<boolean> {
   const localBinDir = join(process.env.HOME || "~", ".local", "bin");
-  const localRootDir = join(process.env.HOME || "~", ".local");
+  const localShareDir = join(process.env.HOME || "~", ".local", "share", "loaf");
   const sourceBinary = join(rootDir, "bin", "loaf");
   const sourceFallback = join(rootDir, "dist-cli");
   const targetBinary = join(localBinDir, "loaf");
-  const targetFallback = join(localRootDir, "dist-cli");
+  const targetFallback = join(localShareDir, "dist-cli");
   
   if (!existsSync(sourceBinary)) {
     console.log(`  ${red("✗")} CLI binary not found at ${sourceBinary}`);
@@ -144,6 +144,7 @@ async function installLoafBinary(rootDir: string): Promise<boolean> {
   try {
     copyFileSync(sourceBinary, targetBinary);
     chmodSync(targetBinary, 0o755);
+    mkdirSync(localShareDir, { recursive: true });
     rmSync(targetFallback, { recursive: true, force: true });
     cpSync(sourceFallback, targetFallback, { recursive: true });
     console.log(`  ${green("✓")} Installed loaf binary to ${targetBinary}`);

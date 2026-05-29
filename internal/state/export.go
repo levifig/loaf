@@ -140,6 +140,9 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 
 	tables := make(map[string][]map[string]any, len(exportAllTables))
 	projectID := ProjectID(root)
+	if err := store.validateExportTableFilters(ctx, exportAllTables); err != nil {
+		return ExportSnapshot{}, err
+	}
 	for _, table := range exportAllTables {
 		rows, err := store.exportRows(ctx, table, projectID)
 		if err != nil {
@@ -463,6 +466,53 @@ LIMIT 5
 		return nil, fmt.Errorf("iterate release recent sessions: %w", err)
 	}
 	return sessions, nil
+}
+
+func (s *Store) validateExportTableFilters(ctx context.Context, tables []exportTable) error {
+	for _, table := range tables {
+		hasProjectID, hasFilterColumn, err := s.exportTableColumnCoverage(ctx, table.Name, table.FilterColumn)
+		if err != nil {
+			return err
+		}
+		if hasProjectID && table.FilterColumn == "" {
+			return fmt.Errorf("export table %s has project_id but no filter column", table.Name)
+		}
+		if table.FilterColumn != "" && !hasFilterColumn {
+			return fmt.Errorf("export table %s filter column %s does not exist", table.Name, table.FilterColumn)
+		}
+	}
+	return nil
+}
+
+func (s *Store) exportTableColumnCoverage(ctx context.Context, tableName string, filterColumn string) (bool, bool, error) {
+	rows, err := s.db.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", tableName))
+	if err != nil {
+		return false, false, fmt.Errorf("inspect export table %s: %w", tableName, err)
+	}
+	defer rows.Close()
+
+	hasProjectID := false
+	hasFilterColumn := filterColumn == ""
+	for rows.Next() {
+		var cid int
+		var name, columnType string
+		var notNull int
+		var defaultValue any
+		var pk int
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &pk); err != nil {
+			return false, false, fmt.Errorf("scan export table %s columns: %w", tableName, err)
+		}
+		if name == "project_id" {
+			hasProjectID = true
+		}
+		if name == filterColumn {
+			hasFilterColumn = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return false, false, fmt.Errorf("iterate export table %s columns: %w", tableName, err)
+	}
+	return hasProjectID, hasFilterColumn, nil
 }
 
 func (s *Store) exportRows(ctx context.Context, table exportTable, projectID string) ([]map[string]any, error) {

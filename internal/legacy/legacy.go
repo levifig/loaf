@@ -116,6 +116,7 @@ func (r Runner) candidateScriptPaths() []string {
 		candidates = append(candidates,
 			filepath.Join(executableDir, legacyScriptRelative),
 			filepath.Join(executableDir, "..", legacyScriptRelative),
+			filepath.Join(executableDir, "..", "share", "loaf", legacyScriptRelative),
 		)
 	}
 

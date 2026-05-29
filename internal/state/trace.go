@@ -42,6 +42,15 @@ type TraceRelationship struct {
 	Reason    string      `json:"reason,omitempty"`
 }
 
+func validateResolutionTargetKind(kind string, ref string) error {
+	switch kind {
+	case "spec", "task", "idea", "brainstorm", "shaping_draft", "session", "report":
+		return nil
+	default:
+		return fmt.Errorf("%q resolves to %s, which cannot resolve another entity", ref, kind)
+	}
+}
+
 // Trace resolves a human-facing alias or internal row ID from initialized SQLite state.
 func Trace(ctx context.Context, root project.Root, resolver PathResolver, ref string) (TraceResult, error) {
 	databasePath, err := resolver.DatabasePath(root)

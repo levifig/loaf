@@ -376,6 +376,9 @@ func (s *Store) ResolveSparkWithOptions(ctx context.Context, root project.Root, 
 	if err != nil {
 		return SparkResolveResult{}, err
 	}
+	if err := validateResolutionTargetKind(target.Kind, options.By); err != nil {
+		return SparkResolveResult{}, err
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
