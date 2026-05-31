@@ -381,6 +381,39 @@ describe("findActiveSessionForBranch — deterministic tiebreaker", () => {
     expect(r1?.filePath).toBe(expected);
     expect(r1?.adoption).toBe("most-recent-active");
   });
+
+  it("returns the same branch-matched session across repeated calls when all timestamps tie", () => {
+    const aaaPath = writeSessionFile({
+      fileName: "20260101-100000-aaa-session.md",
+      branch: "feat/foo",
+      claude_session_id: "aaa",
+      created: "2026-01-01T10:00:00.000Z",
+      last_updated: "2026-01-01T10:00:00.000Z",
+      last_entry: "2026-01-01T10:00:00.000Z",
+    });
+    const bbbPath = writeSessionFile({
+      fileName: "20260101-100000-bbb-session.md",
+      branch: "feat/foo",
+      claude_session_id: "bbb",
+      created: "2026-01-01T10:00:00.000Z",
+      last_updated: "2026-01-01T10:00:00.000Z",
+      last_entry: "2026-01-01T10:00:00.000Z",
+    });
+
+    const r1 = findActiveSessionForBranch(AGENTS_DIR, "feat/foo");
+    const r2 = findActiveSessionForBranch(AGENTS_DIR, "feat/foo");
+    const r3 = findActiveSessionForBranch(AGENTS_DIR, "feat/foo");
+
+    expect(r1?.filePath).toBe(r2?.filePath);
+    expect(r2?.filePath).toBe(r3?.filePath);
+
+    // Pin the actual behavior: alphabetically-first filePath wins on the
+    // branch-match path too (pickCandidate tiebreaker).
+    const expected =
+      aaaPath.localeCompare(bbbPath) <= 0 ? aaaPath : bbbPath;
+    expect(r1?.filePath).toBe(expected);
+    expect(r1?.adoption).toBe("branch-match");
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
