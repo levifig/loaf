@@ -3,7 +3,6 @@ package state
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -84,17 +83,25 @@ func ApplyStorageHomeMigration(ctx context.Context, root project.Root, resolver 
 		return StorageHomeMigrationPlan{}, fmt.Errorf("open legacy state database: %w", err)
 	}
 	if _, err := legacyStore.SchemaVersion(ctx); err != nil {
-		legacyStore.Close()
+		if closeErr := legacyStore.Close(); closeErr != nil {
+			return StorageHomeMigrationPlan{}, fmt.Errorf("read legacy state database schema: %w; close legacy state database: %v", err, closeErr)
+		}
 		return StorageHomeMigrationPlan{}, fmt.Errorf("read legacy state database schema: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(plan.DatabasePath), 0o700); err != nil {
+		if closeErr := legacyStore.Close(); closeErr != nil {
+			return StorageHomeMigrationPlan{}, fmt.Errorf("create data state directory: %w; close legacy state database: %v", err, closeErr)
+		}
+		return StorageHomeMigrationPlan{}, fmt.Errorf("create data state directory: %w", err)
+	}
+	if err := copySQLiteDatabase(ctx, legacyStore, plan.DatabasePath, 0o600); err != nil {
+		if closeErr := legacyStore.Close(); closeErr != nil {
+			return StorageHomeMigrationPlan{}, fmt.Errorf("%w; close legacy state database: %v", err, closeErr)
+		}
+		return StorageHomeMigrationPlan{}, err
 	}
 	if err := legacyStore.Close(); err != nil {
 		return StorageHomeMigrationPlan{}, fmt.Errorf("close legacy state database: %w", err)
-	}
-	if err := os.MkdirAll(filepath.Dir(plan.DatabasePath), 0o700); err != nil {
-		return StorageHomeMigrationPlan{}, fmt.Errorf("create data state directory: %w", err)
-	}
-	if err := copyFileExclusive(plan.LegacyDatabasePath, plan.DatabasePath, 0o600); err != nil {
-		return StorageHomeMigrationPlan{}, err
 	}
 
 	status, err := Inspect(root, resolver)
@@ -117,29 +124,24 @@ func regularFileExists(path string) bool {
 	return err == nil && !info.IsDir()
 }
 
-func copyFileExclusive(source string, destination string, mode os.FileMode) error {
-	input, err := os.Open(source)
-	if err != nil {
-		return fmt.Errorf("open source state database: %w", err)
+func copySQLiteDatabase(ctx context.Context, source *Store, destination string, mode os.FileMode) error {
+	if _, err := os.Stat(destination); err == nil {
+		return fmt.Errorf("create destination state database: %s already exists", destination)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat destination state database: %w", err)
 	}
-	defer input.Close()
 
-	output, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
-	if err != nil {
-		return fmt.Errorf("create destination state database: %w", err)
-	}
 	copied := false
 	defer func() {
-		output.Close()
 		if !copied {
 			_ = os.Remove(destination)
 		}
 	}()
-	if _, err := io.Copy(output, input); err != nil {
+	if _, err := source.db.ExecContext(ctx, `VACUUM INTO ?`, destination); err != nil {
 		return fmt.Errorf("copy state database: %w", err)
 	}
-	if err := output.Sync(); err != nil {
-		return fmt.Errorf("sync destination state database: %w", err)
+	if err := os.Chmod(destination, mode); err != nil {
+		return fmt.Errorf("set destination state database permissions: %w", err)
 	}
 	copied = true
 	return nil

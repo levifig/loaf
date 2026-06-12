@@ -14,6 +14,7 @@ const packageJSON = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8
 const baseEnv = {
   ...process.env,
   CGO_ENABLED: "0",
+  ...pinnedGoToolchainEnv(),
 };
 const supportedTargets = {
   "darwin-arm64": { goos: "darwin", goarch: "arm64" },
@@ -112,6 +113,12 @@ function assertReproducibleGoBinary(target) {
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
+}
+
+function pinnedGoToolchainEnv() {
+  const goMod = readFileSync(join(rootDir, "go.mod"), "utf8");
+  const match = goMod.match(/^toolchain\s+(\S+)\s*$/m);
+  return match ? { GOTOOLCHAIN: match[1] } : {};
 }
 
 function nativeArtifact(binRoot, target) {

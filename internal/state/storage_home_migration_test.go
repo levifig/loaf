@@ -3,8 +3,6 @@ package state
 import (
 	"context"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -133,21 +131,55 @@ func TestApplyStorageHomeMigrationDoesNotOverwriteExistingDataHomeDatabase(t *te
 	}
 }
 
-func TestCopyFileExclusiveRemovesPartialDestinationOnCopyFailure(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("reading a directory as a file is platform-specific")
-	}
-	sourceDir := filepath.Join(t.TempDir(), "source-dir")
-	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
-		t.Fatalf("MkdirAll(source-dir) error = %v", err)
-	}
-	destination := filepath.Join(t.TempDir(), "state.db")
+func TestApplyStorageHomeMigrationIncludesPendingWALFrames(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
 
-	err := copyFileExclusive(sourceDir, destination, 0o600)
-	if err == nil {
-		t.Fatal("copyFileExclusive() error = nil, want copy failure")
+	legacyStatus, err := Initialize(ctx, root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize(legacy) error = %v", err)
 	}
-	if _, statErr := os.Stat(destination); !os.IsNotExist(statErr) {
-		t.Fatalf("destination stat error = %v, want partial destination removed", statErr)
+	legacyStore, err := OpenStore(legacyStatus.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore(legacy) error = %v", err)
+	}
+	defer legacyStore.Close()
+
+	if _, err := legacyStore.db.ExecContext(ctx, `PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
+		t.Fatalf("wal checkpoint error = %v", err)
+	}
+	wantProjectID := "pending-wal-project"
+	if _, err := legacyStore.db.ExecContext(ctx, `
+INSERT INTO projects (id, identity_hash, created_at, updated_at)
+VALUES (?, ?, ?, ?)
+`, wantProjectID, wantProjectID, "2026-06-12T00:00:00Z", "2026-06-12T00:00:00Z"); err != nil {
+		t.Fatalf("insert WAL-backed project error = %v", err)
+	}
+	if info, err := os.Stat(legacyStatus.DatabasePath + "-wal"); err != nil {
+		t.Fatalf("legacy WAL stat error = %v", err)
+	} else if info.Size() == 0 {
+		t.Fatal("legacy WAL is empty, want pending frames before migration")
+	}
+
+	plan, err := ApplyStorageHomeMigration(ctx, root, PathResolver{})
+	if err != nil {
+		t.Fatalf("ApplyStorageHomeMigration() error = %v", err)
+	}
+
+	dataStore, err := OpenStore(plan.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore(data) error = %v", err)
+	}
+	defer dataStore.Close()
+	var count int
+	if err := dataStore.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM projects WHERE id = ?`, wantProjectID).Scan(&count); err != nil {
+		t.Fatalf("query migrated project error = %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("migrated project count = %d, want 1", count)
 	}
 }

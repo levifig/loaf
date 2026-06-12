@@ -4,7 +4,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { chmodSync, copyFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 const rootDir = process.cwd();
@@ -14,6 +14,7 @@ const launcherOutput = join(rootDir, "bin", "loaf");
 const baseEnv = {
   ...process.env,
   CGO_ENABLED: "0",
+  ...pinnedGoToolchainEnv(),
 };
 const supportedTargets = {
   "darwin-arm64": { goos: "darwin", goarch: "arm64" },
@@ -74,6 +75,12 @@ function readBuildTargets(goEnv) {
   }
   const current = readCurrentGoTarget(goEnv);
   return [{ ...current, runtimeID: `${nodePlatform(current.goos)}-${nodeArch(current.goarch)}` }];
+}
+
+function pinnedGoToolchainEnv() {
+  const goMod = readFileSync(join(rootDir, "go.mod"), "utf8");
+  const match = goMod.match(/^toolchain\s+(\S+)\s*$/m);
+  return match ? { GOTOOLCHAIN: match[1] } : {};
 }
 
 function targetListFromEnv(goEnv) {
