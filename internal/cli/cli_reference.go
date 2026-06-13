@@ -123,7 +123,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--json", Description: "Output migration details as JSON"},
 				}},
 				{Name: "backup", Description: "Create a SQLite database backup", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup details as JSON"}}},
-				{Name: "export", Description: "Export SQLite state for review or migration"},
+				{Name: "export", Description: "Export SQLite state for review or migration", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format for the selected export kind"}}},
 				{Name: "export all", Description: "Export a complete project-scoped SQLite snapshot", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: json"}}},
 				{Name: "export triage", Description: "Export a triage summary from SQLite state", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
 				{Name: "export session", Description: "Export one session from SQLite state", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},

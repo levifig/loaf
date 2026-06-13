@@ -83,7 +83,7 @@ func agentHelpCommands() []agentHelpCommand {
 				{Name: "repair relationship-origin", Description: "Backfill missing relationship provenance", Options: []agentHelpOption{{Flags: "--origin <imported|manual>", Description: "Provenance value to set"}, {Flags: "--dry-run", Description: "Preview affected rows without writing"}, {Flags: "--apply", Description: "Apply the backfill"}, {Flags: "--json", Description: "Output raw JSON"}}},
 				{Name: "migrate", Description: "Run state migrations"},
 				{Name: "backup", Description: "Create a SQLite database backup", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
-				{Name: "export", Description: "Export state data"},
+				{Name: "export", Description: "Export state data", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format for the selected export kind"}}},
 				{Name: "export all", Description: "Export a complete project-scoped SQLite snapshot", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format: json"}}},
 				{Name: "export triage", Description: "Export a triage summary from SQLite state", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
 				{Name: "export session", Description: "Export one session from SQLite state", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},

@@ -33,6 +33,8 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		"`--dry-run` - Preview archive paths without writing",
 		"`loaf state repair relationship-origin`",
 		"`--origin <imported|manual>` - Provenance value to backfill",
+		"`loaf state export`",
+		"`--format <format>` - Output format for the selected export kind",
 		"`loaf state export all`",
 		"`--format <format>` - Output format: json",
 		"`loaf state export release-readiness`",

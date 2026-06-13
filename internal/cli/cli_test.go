@@ -11378,6 +11378,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
 		}
 	}
+	if got := commands["state"].optionDescriptions["state export --format <format>"]; !strings.Contains(got, "selected export kind") {
+		t.Fatalf("state export format description = %q, want generic export format guidance", got)
+	}
 	if got := commands["state"].optionDescriptions["state repair legacy-project-database --dry-run"]; !strings.Contains(got, "without writing") {
 		t.Fatalf("legacy repair dry-run description = %q, want non-mutating preview", got)
 	}

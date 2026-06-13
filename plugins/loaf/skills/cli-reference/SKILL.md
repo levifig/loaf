@@ -186,6 +186,9 @@ without rewriting the source Markdown files.
 - `loaf state backup`:
   - `--json` - Output backup details as JSON
 
+- `loaf state export`:
+  - `--format <format>` - Output format for the selected export kind
+
 - `loaf state export all`:
   - `--format <format>` - Output format: json
 
