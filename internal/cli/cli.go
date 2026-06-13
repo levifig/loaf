@@ -892,12 +892,13 @@ func writeStateStatusHelp(out io.Writer) {
 }
 
 func writeStateDoctorHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf state doctor [--fix] [--json]")
+	fmt.Fprintln(out, "Usage: loaf state doctor [--fix] [--dry-run] [--json]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Diagnose SQLite state health.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  --fix        Initialize missing SQLite state when safe")
+	fmt.Fprintln(out, "  --dry-run    Show repair plan without applying fixes")
 	fmt.Fprintln(out, "  --json       Output JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
@@ -1245,7 +1246,7 @@ func (r Runner) runStateStatus(args []string, out io.Writer, runtime state.Runti
 }
 
 func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runtime) error {
-	jsonOutput, fix, err := parseDoctorArgs(args)
+	jsonOutput, fix, dryRun, err := parseDoctorArgs(args)
 	if err != nil {
 		return err
 	}
@@ -1253,16 +1254,30 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 	if err != nil {
 		return err
 	}
+	if dryRun {
+		status.RepairPlan = state.RepairPlanForStatus(status)
+	}
 	if fix && status.Mode == state.ModeMarkdownOnly {
-		status, err = r.initializeState(runtime)
-		if err != nil {
-			return err
+		if !dryRun {
+			status, err = r.initializeState(runtime)
+			if err != nil {
+				return err
+			}
+			status.Diagnostics = append([]state.Diagnostic{{
+				Severity: "info",
+				Code:     "database-initialized",
+				Message:  "SQLite state database initialized",
+			}}, status.Diagnostics...)
+			status.RepairPlan = []state.RepairAction{{
+				Code:           "initialize-database",
+				DiagnosticCode: "database-missing",
+				Description:    "Initialized the global SQLite database for this project.",
+				Command:        "loaf state doctor --fix",
+				Path:           status.DatabasePath,
+				Safe:           true,
+				Applied:        true,
+			}}
 		}
-		status.Diagnostics = append([]state.Diagnostic{{
-			Severity: "info",
-			Code:     "database-initialized",
-			Message:  "SQLite state database initialized",
-		}}, status.Diagnostics...)
 	}
 	if jsonOutput {
 		return writeJSON(out, status)
@@ -1274,6 +1289,24 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 	fmt.Fprintf(out, "mode: %s\n", status.Mode)
 	for _, diagnostic := range status.Diagnostics {
 		fmt.Fprintf(out, "%s: %s\n", diagnostic.Severity, diagnostic.Message)
+	}
+	if len(status.RepairPlan) > 0 {
+		fmt.Fprintln(out, "repair plan:")
+		for _, action := range status.RepairPlan {
+			stateLabel := "manual"
+			if action.Applied {
+				stateLabel = "applied"
+			} else if action.Safe {
+				stateLabel = "safe"
+			}
+			fmt.Fprintf(out, "- %s [%s]: %s\n", action.Code, stateLabel, action.Description)
+			if action.Command != "" {
+				fmt.Fprintf(out, "  command: %s\n", action.Command)
+			}
+			if action.Path != "" {
+				fmt.Fprintf(out, "  path: %s\n", action.Path)
+			}
+		}
 	}
 	if status.Mode == state.ModeInvalid {
 		return fmt.Errorf("state doctor found errors")
@@ -8790,20 +8823,23 @@ func parseStateExportArgs(args []string) (stateExportOptions, error) {
 	}
 }
 
-func parseDoctorArgs(args []string) (bool, bool, error) {
+func parseDoctorArgs(args []string) (bool, bool, bool, error) {
 	jsonOutput := false
 	fix := false
+	dryRun := false
 	for _, arg := range args {
 		switch arg {
 		case "--json":
 			jsonOutput = true
 		case "--fix":
 			fix = true
+		case "--dry-run":
+			dryRun = true
 		default:
-			return false, false, fmt.Errorf("unknown option %q", arg)
+			return false, false, false, fmt.Errorf("unknown option %q", arg)
 		}
 	}
-	return jsonOutput, fix, nil
+	return jsonOutput, fix, dryRun, nil
 }
 
 func parseTraceArgs(args []string) (string, bool, error) {

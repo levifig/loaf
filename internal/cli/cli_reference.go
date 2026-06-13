@@ -97,6 +97,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 				}},
 				{Name: "doctor", Description: "Diagnose SQLite state health", Options: []cliReferenceOption{
 					{Flags: "--fix", Description: "Initialize missing SQLite state when safe"},
+					{Flags: "--dry-run", Description: "Show the repair plan without applying fixes"},
 					{Flags: "--json", Description: "Output diagnostics as JSON"},
 				}},
 				{Name: "migrate markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{

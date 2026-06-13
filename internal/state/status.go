@@ -24,20 +24,32 @@ type Diagnostic struct {
 	Message  string `json:"message"`
 }
 
+// RepairAction describes an explicit repair recommendation from diagnostics.
+type RepairAction struct {
+	Code           string `json:"code"`
+	DiagnosticCode string `json:"diagnostic_code"`
+	Description    string `json:"description"`
+	Command        string `json:"command,omitempty"`
+	Path           string `json:"path,omitempty"`
+	Safe           bool   `json:"safe"`
+	Applied        bool   `json:"applied"`
+}
+
 // Status is the pre-init state view exposed by `loaf state status`.
 type Status struct {
-	ProjectRoot          string       `json:"project_root"`
-	ProjectID            string       `json:"project_id"`
-	ProjectName          string       `json:"project_name,omitempty"`
-	ProjectCurrentPath   string       `json:"project_current_path,omitempty"`
-	DatabasePath         string       `json:"database_path"`
-	LegacyDatabasePath   string       `json:"legacy_database_path,omitempty"`
-	DatabaseExists       bool         `json:"database_exists"`
-	LegacyDatabaseExists bool         `json:"legacy_database_exists"`
-	DatabaseParentExists bool         `json:"database_parent_exists"`
-	SchemaVersion        int          `json:"schema_version"`
-	Mode                 string       `json:"mode"`
-	Diagnostics          []Diagnostic `json:"diagnostics"`
+	ProjectRoot          string         `json:"project_root"`
+	ProjectID            string         `json:"project_id"`
+	ProjectName          string         `json:"project_name,omitempty"`
+	ProjectCurrentPath   string         `json:"project_current_path,omitempty"`
+	DatabasePath         string         `json:"database_path"`
+	LegacyDatabasePath   string         `json:"legacy_database_path,omitempty"`
+	DatabaseExists       bool           `json:"database_exists"`
+	LegacyDatabaseExists bool           `json:"legacy_database_exists"`
+	DatabaseParentExists bool           `json:"database_parent_exists"`
+	SchemaVersion        int            `json:"schema_version"`
+	Mode                 string         `json:"mode"`
+	Diagnostics          []Diagnostic   `json:"diagnostics"`
+	RepairPlan           []RepairAction `json:"repair_plan,omitempty"`
 }
 
 // Inspect returns the current state-runtime status without creating files.
@@ -172,6 +184,59 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 	}
 
 	return status, nil
+}
+
+// RepairPlanForStatus turns diagnostics into explicit, non-surprising repair actions.
+func RepairPlanForStatus(status Status) []RepairAction {
+	actions := []RepairAction{}
+	for _, diagnostic := range status.Diagnostics {
+		switch diagnostic.Code {
+		case "database-missing":
+			actions = append(actions, RepairAction{
+				Code:           "initialize-database",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Initialize the global SQLite database for this project.",
+				Command:        "loaf state doctor --fix",
+				Path:           status.DatabasePath,
+				Safe:           true,
+			})
+		case "legacy-state-database-detected":
+			actions = append(actions, RepairAction{
+				Code:           "migrate-storage-home",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Preview and then apply storage-home migration to copy legacy state into the global database.",
+				Command:        "loaf state migrate storage-home --dry-run",
+				Path:           status.LegacyDatabasePath,
+				Safe:           false,
+			})
+		case "legacy-project-database-leftover":
+			actions = append(actions, RepairAction{
+				Code:           "review-legacy-project-database",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Review the leftover legacy project database and remove it manually only after verifying the global database.",
+				Command:        "loaf state migrate storage-home --dry-run",
+				Path:           status.LegacyDatabasePath,
+				Safe:           false,
+			})
+		case "schema-version-mismatch", "schema-checksum-mismatch", "schema-migration-missing":
+			actions = append(actions, RepairAction{
+				Code:           "inspect-schema-migrations",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Inspect schema migration drift before applying any repair.",
+				Command:        "loaf state doctor --json",
+				Path:           status.DatabasePath,
+				Safe:           false,
+			})
+		case "stale-compatibility-export":
+			actions = append(actions, RepairAction{
+				Code:           "regenerate-export",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Regenerate the stale compatibility export from SQLite state.",
+				Safe:           false,
+			})
+		}
+	}
+	return actions
 }
 
 func inspectSchemaMigrations(ctx context.Context, store *Store, version int) ([]Diagnostic, bool) {

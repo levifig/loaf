@@ -2175,7 +2175,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 	}{
 		{name: "state", args: []string{"state", "--help"}, want: "Usage: loaf state <command> [options]"},
 		{name: "state init", args: []string{"state", "init", "--help"}, want: "Usage: loaf state init [--json]"},
-		{name: "state doctor", args: []string{"state", "doctor", "--help"}, want: "Usage: loaf state doctor [--fix] [--json]"},
+		{name: "state doctor", args: []string{"state", "doctor", "--help"}, want: "Usage: loaf state doctor [--fix] [--dry-run] [--json]"},
 		{name: "state migrate", args: []string{"state", "migrate", "--help"}, want: "Usage: loaf state migrate <source> [options]"},
 		{name: "project list", args: []string{"project", "list", "--help"}, want: "Usage: loaf project list [--json]"},
 	}
@@ -2267,6 +2267,80 @@ func TestRunnerStateDoctorFixInitializesMissingDatabase(t *testing.T) {
 	}
 	if !hasDiagnostic(status.Diagnostics, "database-initialized") {
 		t.Fatalf("diagnostics = %#v, want database-initialized", status.Diagnostics)
+	}
+}
+
+func TestRunnerStateDoctorDryRunShowsRepairPlanWithoutCreatingDatabase(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	for _, args := range [][]string{
+		{"state", "doctor", "--dry-run", "--json"},
+		{"state", "doctor", "--fix", "--dry-run", "--json"},
+	} {
+		t.Run(strings.Join(args, "_"), func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}.Run(args)
+			if err != nil {
+				t.Fatalf("%v error = %v", args, err)
+			}
+			status := decodeStateStatus(t, stdout.Bytes())
+			if status.Mode != state.ModeMarkdownOnly {
+				t.Fatalf("Mode = %q, want %q", status.Mode, state.ModeMarkdownOnly)
+			}
+			action := findStateRepairAction(t, status.RepairPlan, "initialize-database")
+			if !action.Safe || action.Applied {
+				t.Fatalf("repair action = %#v, want safe unapplied initialization", action)
+			}
+			if action.Path != status.DatabasePath {
+				t.Fatalf("repair action path = %q, want %q", action.Path, status.DatabasePath)
+			}
+			assertNoStateDatabase(t, workingDir, stateHome)
+		})
+	}
+}
+
+func TestRunnerStateDoctorDryRunShowsLegacyLeftoverManualAction(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+
+	root, err := project.ResolveRoot(workingDir)
+	if err != nil {
+		t.Fatalf("ResolveRoot() error = %v", err)
+	}
+	legacyPath := initializeCLILegacyStateDatabase(t, root)
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	err = Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+	}.Run([]string{"state", "doctor", "--dry-run", "--json"})
+	if err != nil {
+		t.Fatalf("state doctor --dry-run --json error = %v", err)
+	}
+	status := decodeStateStatus(t, stdout.Bytes())
+	if !hasDiagnostic(status.Diagnostics, "legacy-project-database-leftover") {
+		t.Fatalf("diagnostics = %#v, want legacy leftover", status.Diagnostics)
+	}
+	action := findStateRepairAction(t, status.RepairPlan, "review-legacy-project-database")
+	if action.Safe || action.Applied {
+		t.Fatalf("repair action = %#v, want manual unapplied legacy review", action)
+	}
+	if action.Path != legacyPath {
+		t.Fatalf("repair action path = %q, want %q", action.Path, legacyPath)
+	}
+	if _, err := os.Stat(legacyPath); err != nil {
+		t.Fatalf("legacy database was removed during dry-run: %v", err)
 	}
 }
 
@@ -9756,6 +9830,17 @@ func hasDiagnostic(diagnostics []state.Diagnostic, code string) bool {
 		}
 	}
 	return false
+}
+
+func findStateRepairAction(t *testing.T, actions []state.RepairAction, code string) state.RepairAction {
+	t.Helper()
+	for _, action := range actions {
+		if action.Code == code {
+			return action
+		}
+	}
+	t.Fatalf("repair action %q not found in %#v", code, actions)
+	return state.RepairAction{}
 }
 
 func sqliteCount(t *testing.T, db *sql.DB, query string, args ...any) int {

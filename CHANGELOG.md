@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state doctor --dry-run` now reports an explicit repair plan in human and JSON output without mutating SQLite state or legacy databases.
 - `loaf project list` now shows registered projects from the global SQLite database with stable IDs, friendly names, current paths, and JSON output.
 - Native Go is now the shipped Loaf runtime, with cross-platform binaries replacing the transitional TypeScript delegation path.
 - Existing Markdown-only Loaf projects now have a documented dry-run and apply path for adopting SQLite-backed state without rewriting source artifacts.

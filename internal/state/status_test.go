@@ -67,6 +67,59 @@ func TestInspectReportsLegacyStateDatabaseWhenDataHomeIsMissing(t *testing.T) {
 	assertDiagnostic(t, status.Diagnostics, "legacy-state-database-detected")
 }
 
+func TestRepairPlanRecommendsSafeInitializationForMissingDatabase(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+
+	plan := RepairPlanForStatus(status)
+	action := findRepairAction(t, plan, "initialize-database")
+	if !action.Safe {
+		t.Fatalf("initialize action Safe = false, want true")
+	}
+	if action.Applied {
+		t.Fatalf("initialize action Applied = true, want false for dry-run plan")
+	}
+	if action.Command != "loaf state doctor --fix" {
+		t.Fatalf("initialize action Command = %q, want doctor --fix", action.Command)
+	}
+	if action.Path != status.DatabasePath {
+		t.Fatalf("initialize action Path = %q, want %q", action.Path, status.DatabasePath)
+	}
+}
+
+func TestRepairPlanTreatsLegacyLeftoverAsManualReview(t *testing.T) {
+	root := projectRoot(t)
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+
+	legacyPath := initializeLegacyStateDatabase(t, root, PathResolver{})
+	if _, err := Initialize(context.Background(), root, PathResolver{}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	status, err := Inspect(root, PathResolver{})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	assertDiagnostic(t, status.Diagnostics, "legacy-project-database-leftover")
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "review-legacy-project-database")
+	if action.Safe {
+		t.Fatal("legacy leftover action Safe = true, want manual review")
+	}
+	if action.Applied {
+		t.Fatal("legacy leftover action Applied = true, want false")
+	}
+	if action.Path != legacyPath {
+		t.Fatalf("legacy leftover action Path = %q, want %q", action.Path, legacyPath)
+	}
+}
+
 func TestInspectReportsSQLiteReadyWhenDatabaseIsInitialized(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
@@ -309,4 +362,15 @@ func assertDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) {
 		}
 	}
 	t.Fatalf("diagnostic %q not found in %#v", code, diagnostics)
+}
+
+func findRepairAction(t *testing.T, actions []RepairAction, code string) RepairAction {
+	t.Helper()
+	for _, action := range actions {
+		if action.Code == code {
+			return action
+		}
+	}
+	t.Fatalf("repair action %q not found in %#v", code, actions)
+	return RepairAction{}
 }
