@@ -51,6 +51,7 @@ type compatibilityCommandOptions struct {
 type projectMoveOptions struct {
 	fromPath   string
 	toPath     string
+	dryRun     bool
 	jsonOutput bool
 }
 
@@ -1065,13 +1066,14 @@ func writeProjectRenameHelp(out io.Writer) {
 }
 
 func writeProjectMoveHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf project move --from <path> [--to <path>] [--json]")
+	fmt.Fprintln(out, "Usage: loaf project move --from <path> [--to <path>] [--dry-run] [--json]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Record a checkout move without changing the project ID. --to defaults to the current project root.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  --from       Previous absolute project path")
 	fmt.Fprintln(out, "  --to         New absolute project path")
+	fmt.Fprintln(out, "  --dry-run    Validate and preview without writing")
 	fmt.Fprintln(out, "  --json       Output JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
@@ -1150,14 +1152,24 @@ func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runti
 		return err
 	}
 	defer store.Close()
-	result, err := store.MoveProject(context.Background(), projectRoot, options.fromPath, options.toPath)
+	var result state.ProjectMoveResult
+	if options.dryRun {
+		result, err = store.PreviewMoveProject(context.Background(), projectRoot, options.fromPath, options.toPath)
+	} else {
+		result, err = store.MoveProject(context.Background(), projectRoot, options.fromPath, options.toPath)
+	}
 	if err != nil {
 		return err
 	}
 	if options.jsonOutput {
 		return writeJSON(out, result)
 	}
-	fmt.Fprintln(out, "Moved project path")
+	if options.dryRun {
+		fmt.Fprintln(out, "Project move dry run")
+		fmt.Fprintln(out, "  no changes written")
+	} else {
+		fmt.Fprintln(out, "Moved project path")
+	}
 	fmt.Fprintf(out, "  from: %s\n", result.FromPath)
 	fmt.Fprintf(out, "  to:   %s\n\n", result.ToPath)
 	writeProjectIdentity(out, result.Project)
@@ -10504,6 +10516,8 @@ func parseProjectMoveArgs(args []string, currentPath string) (projectMoveOptions
 		switch arg {
 		case "--json":
 			options.jsonOutput = true
+		case "--dry-run":
+			options.dryRun = true
 		case "--from":
 			i++
 			if i >= len(args) {

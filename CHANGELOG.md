@@ -12,6 +12,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf state doctor` now validates backend mapping drift for Linear and other external integrations, including orphaned local entities, unknown entity kinds, and ambiguous local-to-external mappings.
 - `loaf state doctor` repair plans now deduplicate repeated repair actions while preserving distinct diagnostic causes.
 - `loaf state backup` now verifies backup integrity, schema version, and project identity before returning, and reports those checks in JSON and human output.
+- `loaf project move` now supports `--dry-run` for validated path-move previews without mutating the global project identity index.
 - State doctor and repair JSON now keeps empty repair/archive fields as arrays instead of omitting them or returning `null`.
 - `loaf state repair legacy-project-database` now previews and archives migrated per-project SQLite leftovers without deleting them.
 - `loaf state repair relationship-origin` now previews and applies guarded relationship provenance backfills, creating a SQLite backup before writes.

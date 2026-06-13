@@ -2091,6 +2091,53 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectMoveDryRunDoesNotWrite(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	movedDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var showOut bytes.Buffer
+	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show --json error = %v", err)
+	}
+	var shown state.ProjectIdentity
+	if err := json.Unmarshal(showOut.Bytes(), &shown); err != nil {
+		t.Fatalf("json.Unmarshal(show) error = %v\n%s", err, showOut.String())
+	}
+
+	var dryRunOut bytes.Buffer
+	if err := (Runner{Stdout: &dryRunOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", workingDir, "--dry-run", "--json"}); err != nil {
+		t.Fatalf("project move --dry-run --json error = %v", err)
+	}
+	var preview state.ProjectMoveResult
+	if err := json.Unmarshal(dryRunOut.Bytes(), &preview); err != nil {
+		t.Fatalf("json.Unmarshal(dry-run move) error = %v\n%s", err, dryRunOut.String())
+	}
+	if preview.Action != "dry-run" || preview.Project.ID != shown.ID || preview.Project.CurrentPath != movedDir {
+		t.Fatalf("preview = %#v, want dry-run with same ID %q and target path %s", preview, shown.ID, movedDir)
+	}
+
+	var afterOut bytes.Buffer
+	if err := (Runner{Stdout: &afterOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show after dry-run --json error = %v", err)
+	}
+	var after state.ProjectIdentity
+	if err := json.Unmarshal(afterOut.Bytes(), &after); err != nil {
+		t.Fatalf("json.Unmarshal(after dry-run show) error = %v\n%s", err, afterOut.String())
+	}
+	if after.ID != shown.ID || after.CurrentPath != workingDir {
+		t.Fatalf("after dry-run = %#v, want unchanged current path %s", after, workingDir)
+	}
+
+	var humanOut bytes.Buffer
+	if err := (Runner{Stdout: &humanOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", workingDir, "--dry-run"}); err != nil {
+		t.Fatalf("project move --dry-run error = %v", err)
+	}
+	if !strings.Contains(humanOut.String(), "Project move dry run") || !strings.Contains(humanOut.String(), "no changes written") {
+		t.Fatalf("human dry-run output = %q, want explicit preview wording", humanOut.String())
+	}
+}
+
 func TestRunnerProjectMoveUnknownFromDoesNotCreateProject(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -2181,6 +2228,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		{name: "state repair relationship-origin", args: []string{"state", "repair", "relationship-origin", "--help"}, want: "Usage: loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]"},
 		{name: "state migrate", args: []string{"state", "migrate", "--help"}, want: "Usage: loaf state migrate <source> [options]"},
 		{name: "project list", args: []string{"project", "list", "--help"}, want: "Usage: loaf project list [--json]"},
+		{name: "project move", args: []string{"project", "move", "--help"}, want: "Usage: loaf project move --from <path> [--to <path>] [--dry-run] [--json]"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

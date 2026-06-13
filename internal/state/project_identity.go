@@ -182,6 +182,15 @@ WHERE id = ?
 
 // MoveProject changes the current path mapping with safeguards against collisions.
 func (s *Store) MoveProject(ctx context.Context, root project.Root, fromPath string, toPath string) (ProjectMoveResult, error) {
+	return s.moveProject(ctx, root, fromPath, toPath, false)
+}
+
+// PreviewMoveProject validates a path remapping without mutating project identity rows.
+func (s *Store) PreviewMoveProject(ctx context.Context, root project.Root, fromPath string, toPath string) (ProjectMoveResult, error) {
+	return s.moveProject(ctx, root, fromPath, toPath, true)
+}
+
+func (s *Store) moveProject(ctx context.Context, root project.Root, fromPath string, toPath string, dryRun bool) (ProjectMoveResult, error) {
 	fromPath = filepath.Clean(fromPath)
 	toPath = filepath.Clean(toPath)
 	if fromPath == "." || toPath == "." || fromPath == "" || toPath == "" {
@@ -219,6 +228,20 @@ func (s *Store) MoveProject(ctx context.Context, root project.Root, fromPath str
 	}
 	if existingProjectID != "" && existingProjectID != projectID {
 		return ProjectMoveResult{}, fmt.Errorf("target path %s is already registered to project %s", toPath, existingProjectID)
+	}
+
+	if dryRun {
+		identity, err := s.projectIdentity(ctx, projectID)
+		if err != nil {
+			return ProjectMoveResult{}, err
+		}
+		identity.CurrentPath = toPath
+		return ProjectMoveResult{
+			Project:  identity,
+			FromPath: fromPath,
+			ToPath:   toPath,
+			Action:   "dry-run",
+		}, nil
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)

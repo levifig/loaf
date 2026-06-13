@@ -133,6 +133,49 @@ func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
 	}
 }
 
+func TestPreviewMoveProjectValidatesWithoutWriting(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+
+	identity, err := store.ProjectIdentityForRoot(context.Background(), root)
+	if err != nil {
+		t.Fatalf("ProjectIdentityForRoot() error = %v", err)
+	}
+	newRoot, err := project.ResolveRoot(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveRoot(new) error = %v", err)
+	}
+	preview, err := store.PreviewMoveProject(context.Background(), newRoot, root.Path(), newRoot.Path())
+	if err != nil {
+		t.Fatalf("PreviewMoveProject() error = %v", err)
+	}
+	if preview.Action != "dry-run" {
+		t.Fatalf("Action = %q, want dry-run", preview.Action)
+	}
+	if preview.Project.ID != identity.ID || preview.Project.CurrentPath != newRoot.Path() {
+		t.Fatalf("preview project = %#v, want same ID %q previewing %s", preview.Project, identity.ID, newRoot.Path())
+	}
+	after, err := store.LookupProjectIdentityForRoot(context.Background(), root)
+	if err != nil {
+		t.Fatalf("LookupProjectIdentityForRoot(root) error = %v", err)
+	}
+	if after.CurrentPath != root.Path() {
+		t.Fatalf("CurrentPath after preview = %q, want original %q", after.CurrentPath, root.Path())
+	}
+	if got := countCurrentProjectPaths(t, store, identity.ID); got != 1 {
+		t.Fatalf("current project paths after preview = %d, want 1", got)
+	}
+}
+
 func TestListProjectsReturnsRegisteredIdentities(t *testing.T) {
 	root := projectRoot(t)
 	otherRoot, err := project.ResolveRoot(t.TempDir())
@@ -479,4 +522,13 @@ func TestApplyMigrationsRollsBackFailedMigrationBatch(t *testing.T) {
 	if !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("schema_migrations lookup error = %v, want no table after rollback", err)
 	}
+}
+
+func countCurrentProjectPaths(t *testing.T, store *Store, projectID string) int {
+	t.Helper()
+	var count int
+	if err := store.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM project_paths WHERE project_id = ? AND is_current = 1`, projectID).Scan(&count); err != nil {
+		t.Fatalf("count current project paths error = %v", err)
+	}
+	return count
 }
