@@ -2538,6 +2538,59 @@ func TestRunnerTaskPriorityErrorsNameValidPriorities(t *testing.T) {
 	}
 }
 
+func TestRunnerTaskJSONValidationErrorsAreMachineReadable(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		command string
+		want    string
+	}{
+		{
+			name:    "list invalid status",
+			args:    []string{"task", "list", "--json", "--status", "open"},
+			command: "task list",
+			want:    `invalid status "open"`,
+		},
+		{
+			name:    "create invalid priority",
+			args:    []string{"task", "create", "--title", "Bad", "--priority", "P9", "--json"},
+			command: "task create",
+			want:    `invalid priority "P9"`,
+		},
+		{
+			name:    "update invalid status",
+			args:    []string{"task", "update", "TASK-001", "--status", "archived", "--json"},
+			command: "task update",
+			want:    `invalid status "archived"`,
+		},
+		{
+			name:    "update invalid priority",
+			args:    []string{"task", "update", "TASK-001", "--priority", "P9", "--json"},
+			command: "task update",
+			want:    `invalid priority "P9"`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: realpath(t, t.TempDir()),
+				StateHome:  t.TempDir(),
+			}.Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON validation error", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != tc.command || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want command %q and error containing %q", output, tc.command, tc.want)
+			}
+		})
+	}
+}
+
 func TestRunnerStateInitHumanOutputPrintsRepositoryExternalDatabaseWithoutSecrets(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()

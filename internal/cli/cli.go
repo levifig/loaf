@@ -2128,18 +2128,28 @@ func (r Runner) runTaskSync(args []string, out io.Writer, runtime state.Runtime)
 }
 
 func (r Runner) runTaskCreate(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	projectRoot, mode, err := r.taskStateMode(runtime)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "task create", err)
+		}
 		return err
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
 		options, err := parseTaskCreateArgs(args)
 		if err != nil {
+			if jsonRequested {
+				return writeJSONCommandError(out, "task create", err)
+			}
 			return err
 		}
 		result, err := markdownTaskCreate(projectRoot.Path(), options.create)
 		if err != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, "task create", err)
+			}
 			return err
 		}
 		if options.jsonOutput {
@@ -2148,15 +2158,25 @@ func (r Runner) runTaskCreate(args []string, out io.Writer, runtime state.Runtim
 		writeTaskCreate(out, result)
 		return nil
 	case state.ModeInvalid:
-		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+		err := fmt.Errorf("state database is invalid; run `loaf state doctor`")
+		if jsonRequested {
+			return writeJSONCommandError(out, "task create", err)
+		}
+		return err
 	}
 
 	options, err := parseTaskCreateArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "task create", err)
+		}
 		return err
 	}
 	result, err := state.CreateTask(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.create)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "task create", err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -2202,18 +2222,28 @@ func (r Runner) runTaskShow(args []string, out io.Writer, runtime state.Runtime)
 }
 
 func (r Runner) runTaskList(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	options, err := parseTaskListArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "task list", err)
+		}
 		return err
 	}
 	projectRoot, mode, err := r.taskStateMode(runtime)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "task list", err)
+		}
 		return err
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
 		tasks, err := markdownTaskList(projectRoot.Path(), options.filters)
 		if err != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, "task list", err)
+			}
 			return err
 		}
 		if options.jsonOutput {
@@ -2222,11 +2252,18 @@ func (r Runner) runTaskList(args []string, out io.Writer, runtime state.Runtime)
 		writeTaskList(out, tasks, options.filters)
 		return nil
 	case state.ModeInvalid:
-		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+		err := fmt.Errorf("state database is invalid; run `loaf state doctor`")
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "task list", err)
+		}
+		return err
 	}
 
 	tasks, err := state.ListTasks(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.filters)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "task list", err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -2272,18 +2309,28 @@ func (r Runner) runTaskStatus(args []string, out io.Writer, runtime state.Runtim
 }
 
 func (r Runner) runTaskUpdate(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	projectRoot, mode, err := r.taskStateMode(runtime)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "task update", err)
+		}
 		return err
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
 		options, err := parseTaskUpdateArgs(args)
 		if err != nil {
+			if jsonRequested {
+				return writeJSONCommandError(out, "task update", err)
+			}
 			return err
 		}
 		result, err := markdownTaskUpdate(projectRoot.Path(), options.update)
 		if err != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, "task update", err)
+			}
 			return err
 		}
 		if options.jsonOutput {
@@ -2292,15 +2339,25 @@ func (r Runner) runTaskUpdate(args []string, out io.Writer, runtime state.Runtim
 		writeTaskUpdate(out, result)
 		return nil
 	case state.ModeInvalid:
-		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+		err := fmt.Errorf("state database is invalid; run `loaf state doctor`")
+		if jsonRequested {
+			return writeJSONCommandError(out, "task update", err)
+		}
+		return err
 	}
 
 	options, err := parseTaskUpdateArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "task update", err)
+		}
 		return err
 	}
 	result, err := state.UpdateTask(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.update)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "task update", err)
+		}
 		return err
 	}
 	if options.jsonOutput {

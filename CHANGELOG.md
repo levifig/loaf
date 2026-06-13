@@ -15,6 +15,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf state init|status|doctor --json` validation failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf state migrate|repair --json` validation and safeguard failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf state backup --json` and `loaf state export all --format json` failures now return machine-readable JSON error payloads instead of plain text.
+- `loaf task create|list|update --json` validation failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
 - `loaf task create|update` help, invalid-priority errors, and agent help now name the valid task priorities.
 - The generated `cli-reference` skill now uses the same task status and priority values as the native CLI help and agent help.
