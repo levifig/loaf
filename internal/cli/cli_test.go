@@ -11314,6 +11314,19 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if !stringSliceContains(commands["task"].options, "task sync --import") || !stringSliceContains(commands["task"].options, "task sync --push") {
 		t.Fatalf("task options = %#v, want sync import/push options", commands["task"].options)
 	}
+	for _, want := range []string{
+		"task list --json",
+		"task show --json",
+		"task create --json",
+		"task update --json",
+		"task archive --json",
+		"task refresh --json",
+		"task sync --json",
+	} {
+		if !stringSliceContains(commands["task"].options, want) {
+			t.Fatalf("task options = %#v, want agent help to include %q", commands["task"].options, want)
+		}
+	}
 	if got := commands["task"].optionDescriptions["task list --status <status>"]; !strings.Contains(got, "in_progress, blocked, todo, review, done, archived") {
 		t.Fatalf("task list status description = %q, want valid list statuses", got)
 	}

@@ -284,6 +284,7 @@ artifacts during migration; do not edit them directly for lifecycle changes.
   - `--spec <id>` - Associated spec ID (e.g., SPEC-010)
   - `--priority <level>` - Priority level: P0, P1, P2, P3
   - `--depends-on <ids>` - Comma-separated task IDs
+  - `--json` - Output created task as JSON
 
 - `loaf task update`:
   - `--status <status>` - New status: in_progress, blocked, todo, review, done
@@ -291,13 +292,19 @@ artifacts during migration; do not edit them directly for lifecycle changes.
   - `--depends-on <ids>` - Replace depends_on (comma-separated task IDs)
   - `--session <file>` - Set or clear session reference (use "none" to clear)
   - `--spec <id>` - Set or change associated spec
+  - `--json` - Output updated task as JSON
 
 - `loaf task archive`:
   - `--spec <id>` - Archive all done tasks for a spec
+  - `--json` - Output archive result as JSON
+
+- `loaf task refresh`:
+  - `--json` - Output compatibility summary as JSON
 
 - `loaf task sync`:
   - `--import` - Import orphan .md files not in the index
   - `--push` - Push compatibility index metadata into .md frontmatter
+  - `--json` - Output compatibility summary as JSON
 
 **Usage:**
 ```bash

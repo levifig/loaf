@@ -18,6 +18,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf trace --json` and `loaf idea capture --json` validation failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf link create|remove` now accepts the documented `--from` and `--to` flags, and `--json` validation failures return machine-readable JSON error payloads.
 - `loaf --json` command paths now apply a central fallback so unwrapped validation failures still return machine-readable JSON error payloads.
+- `--agent-help` and the generated `cli-reference` skill now document task mutation and compatibility `--json` options.
 - `loaf task create|list|update --json` validation failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
 - `loaf task create|update` help, invalid-priority errors, and agent help now name the valid task priorities.

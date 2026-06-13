@@ -184,6 +184,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--spec <id>", Description: "Associated spec ID (e.g., SPEC-010)"},
 					{Flags: "--priority <level>", Description: "Priority level: " + validTaskPriorityText()},
 					{Flags: "--depends-on <ids>", Description: "Comma-separated task IDs"},
+					{Flags: "--json", Description: "Output created task as JSON"},
 				}},
 				{Name: "update", Description: "Update a task's metadata", Options: []cliReferenceOption{
 					{Flags: "--status <status>", Description: "New status: " + validTaskStatusText()},
@@ -191,14 +192,19 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--depends-on <ids>", Description: "Replace depends_on (comma-separated task IDs)"},
 					{Flags: "--session <file>", Description: `Set or clear session reference (use "none" to clear)`},
 					{Flags: "--spec <id>", Description: "Set or change associated spec"},
+					{Flags: "--json", Description: "Output updated task as JSON"},
 				}},
 				{Name: "archive", Description: "Archive completed tasks through the task lifecycle", Options: []cliReferenceOption{
 					{Flags: "--spec <id>", Description: "Archive all done tasks for a spec"},
+					{Flags: "--json", Description: "Output archive result as JSON"},
 				}},
-				{Name: "refresh", Description: "Compatibility: rebuild the Markdown task index from task/spec files"},
+				{Name: "refresh", Description: "Compatibility: rebuild the Markdown task index from task/spec files", Options: []cliReferenceOption{
+					{Flags: "--json", Description: "Output compatibility summary as JSON"},
+				}},
 				{Name: "sync", Description: "Compatibility: sync the Markdown task index and task files", Options: []cliReferenceOption{
 					{Flags: "--import", Description: "Import orphan .md files not in the index"},
 					{Flags: "--push", Description: "Push compatibility index metadata into .md frontmatter"},
+					{Flags: "--json", Description: "Output compatibility summary as JSON"},
 				}},
 			},
 		},
