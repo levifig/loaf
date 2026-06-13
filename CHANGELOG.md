@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state repair legacy-project-database` now previews and archives migrated per-project SQLite leftovers without deleting them.
 - `loaf state repair relationship-origin` now previews and applies guarded relationship provenance backfills, creating a SQLite backup before writes.
 - `loaf state doctor` now checks operational SQLite invariants for project path identity and relationship provenance, with manual repair guidance for unsafe drift.
 - `loaf state doctor --dry-run` now reports an explicit repair plan in human and JSON output without mutating SQLite state or legacy databases.

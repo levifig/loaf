@@ -3,6 +3,8 @@ package state
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -93,6 +95,116 @@ func TestRepairMissingRelationshipOriginsRejectsUnknownOrigin(t *testing.T) {
 	_, err := RepairMissingRelationshipOrigins(context.Background(), root, PathResolver{StateHome: stateHome}, RelationshipOriginRepairOptions{Origin: "guessed", Apply: true})
 	if err == nil {
 		t.Fatal("RepairMissingRelationshipOrigins() error = nil, want invalid origin error")
+	}
+}
+
+func TestArchiveLegacyProjectDatabaseDryRunDoesNotMoveFiles(t *testing.T) {
+	root := projectRoot(t)
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+
+	legacyPath := initializeLegacyStateDatabase(t, root, PathResolver{})
+	if _, err := ApplyStorageHomeMigration(context.Background(), root, PathResolver{}); err != nil {
+		t.Fatalf("ApplyStorageHomeMigration() error = %v", err)
+	}
+
+	result, err := ArchiveLegacyProjectDatabase(root, PathResolver{}, false)
+	if err != nil {
+		t.Fatalf("ArchiveLegacyProjectDatabase() error = %v", err)
+	}
+	if result.Applied {
+		t.Fatal("Applied = true, want dry-run")
+	}
+	if result.Action != LegacyProjectDatabaseArchiveAction {
+		t.Fatalf("Action = %q, want %q", result.Action, LegacyProjectDatabaseArchiveAction)
+	}
+	if len(result.MatchedPaths) != 1 || result.MatchedPaths[0] != legacyPath {
+		t.Fatalf("MatchedPaths = %#v, want legacy path %q", result.MatchedPaths, legacyPath)
+	}
+	if _, err := os.Stat(legacyPath); err != nil {
+		t.Fatalf("legacy database moved during dry-run: %v", err)
+	}
+	if result.ArchivePath == "" {
+		t.Fatal("ArchivePath is empty")
+	}
+	if _, err := os.Stat(result.ArchivePath); !os.IsNotExist(err) {
+		t.Fatalf("archive path exists during dry-run; err = %v", err)
+	}
+}
+
+func TestArchiveLegacyProjectDatabaseApplyMovesDatabaseAndSidecars(t *testing.T) {
+	root := projectRoot(t)
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+
+	legacyPath := initializeLegacyStateDatabase(t, root, PathResolver{})
+	sidecarPath := legacyPath + "-wal"
+	if _, err := ApplyStorageHomeMigration(context.Background(), root, PathResolver{}); err != nil {
+		t.Fatalf("ApplyStorageHomeMigration() error = %v", err)
+	}
+	if err := os.WriteFile(sidecarPath, []byte("sidecar"), 0o600); err != nil {
+		t.Fatalf("write legacy sidecar error = %v", err)
+	}
+
+	result, err := ArchiveLegacyProjectDatabase(root, PathResolver{}, true)
+	if err != nil {
+		t.Fatalf("ArchiveLegacyProjectDatabase() error = %v", err)
+	}
+	if !result.Applied {
+		t.Fatal("Applied = false, want true")
+	}
+	if len(result.ArchivedPaths) != 2 {
+		t.Fatalf("ArchivedPaths = %#v, want database and sidecar", result.ArchivedPaths)
+	}
+	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+		t.Fatalf("legacy database still exists after archive; err = %v", err)
+	}
+	if _, err := os.Stat(sidecarPath); !os.IsNotExist(err) {
+		t.Fatalf("legacy sidecar still exists after archive; err = %v", err)
+	}
+	for _, path := range result.ArchivedPaths {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("archived path %q missing: %v", path, err)
+		}
+	}
+}
+
+func TestArchiveLegacyProjectDatabaseRejectsPendingMigration(t *testing.T) {
+	root := projectRoot(t)
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+
+	initializeLegacyStateDatabase(t, root, PathResolver{})
+	databasePath, err := (PathResolver{}).DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0o700); err != nil {
+		t.Fatalf("create global database dir error = %v", err)
+	}
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore(global) error = %v", err)
+	}
+	if err := store.ApplyMigrations(context.Background()); err != nil {
+		t.Fatalf("ApplyMigrations(global) error = %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close(global) error = %v", err)
+	}
+
+	_, err = ArchiveLegacyProjectDatabase(root, PathResolver{}, true)
+	if err == nil {
+		t.Fatal("ArchiveLegacyProjectDatabase() error = nil, want pending migration error")
+	}
+	if !strings.Contains(err.Error(), "legacy project database still needs migration") {
+		t.Fatalf("error = %v, want pending migration error", err)
 	}
 }
 

@@ -3,9 +3,16 @@ package state
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/levifig/loaf/internal/project"
+)
+
+const (
+	LegacyProjectDatabaseArchiveAction = "archive-legacy-project-database"
+	LegacyProjectDatabaseNoopAction    = "no-legacy-project-database"
 )
 
 // RelationshipOriginRepairOptions controls a guarded relationship provenance backfill.
@@ -24,6 +31,20 @@ type RelationshipOriginRepairResult struct {
 	Updated      int    `json:"updated"`
 	Applied      bool   `json:"applied"`
 	GeneratedAt  string `json:"generated_at"`
+}
+
+// LegacyProjectDatabaseArchiveResult describes a guarded legacy project database archive.
+type LegacyProjectDatabaseArchiveResult struct {
+	ProjectRoot        string   `json:"project_root"`
+	DatabasePath       string   `json:"database_path"`
+	LegacyDatabasePath string   `json:"legacy_database_path"`
+	ArchivePath        string   `json:"archive_path,omitempty"`
+	Action             string   `json:"action"`
+	MatchedPaths       []string `json:"matched_paths"`
+	ArchivedPaths      []string `json:"archived_paths,omitempty"`
+	Applied            bool     `json:"applied"`
+	GeneratedAt        string   `json:"generated_at"`
+	Warnings           []string `json:"warnings,omitempty"`
 }
 
 // RepairMissingRelationshipOrigins backfills missing relationship origin values
@@ -85,6 +106,74 @@ func RepairMissingRelationshipOrigins(ctx context.Context, root project.Root, re
 	return result, nil
 }
 
+// ArchiveLegacyProjectDatabase moves a migrated per-project SQLite database out
+// of the legacy project path. It refuses to archive when migration is still due.
+func ArchiveLegacyProjectDatabase(root project.Root, resolver PathResolver, apply bool) (LegacyProjectDatabaseArchiveResult, error) {
+	status, err := Inspect(root, resolver)
+	if err != nil {
+		return LegacyProjectDatabaseArchiveResult{}, err
+	}
+	switch status.Mode {
+	case ModeMarkdownOnly:
+		return LegacyProjectDatabaseArchiveResult{}, fmt.Errorf("SQLite state database is not initialized; run `loaf state init` or `loaf state migrate markdown --apply` first")
+	case ModeInvalid:
+		return LegacyProjectDatabaseArchiveResult{}, fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+
+	plan, err := PreviewStorageHomeMigration(root, resolver)
+	if err != nil {
+		return LegacyProjectDatabaseArchiveResult{}, err
+	}
+	now := time.Now().UTC()
+	result := LegacyProjectDatabaseArchiveResult{
+		ProjectRoot:        root.Path(),
+		DatabasePath:       plan.DatabasePath,
+		LegacyDatabasePath: plan.LegacyDatabasePath,
+		Applied:            apply,
+		GeneratedAt:        now.Format(time.RFC3339Nano),
+	}
+	if plan.DatabasePath == plan.LegacyDatabasePath || !plan.LegacyDatabaseExists {
+		result.Action = LegacyProjectDatabaseNoopAction
+		return result, nil
+	}
+	if plan.Action != StorageHomeActionAlreadyMigrated || !plan.DatabaseExists {
+		return LegacyProjectDatabaseArchiveResult{}, fmt.Errorf("legacy project database still needs migration; run `loaf state migrate storage-home --dry-run`")
+	}
+
+	archiveDir := filepath.Join(filepath.Dir(plan.DatabasePath), "legacy-archives")
+	if isWithinRoot(archiveDir, root.Path()) {
+		return LegacyProjectDatabaseArchiveResult{}, fmt.Errorf("legacy archive directory must be outside project root")
+	}
+	archivePath, err := nextLegacyProjectArchivePath(archiveDir, ProjectID(root), now)
+	if err != nil {
+		return LegacyProjectDatabaseArchiveResult{}, err
+	}
+	result.Action = LegacyProjectDatabaseArchiveAction
+	result.ArchivePath = archivePath
+	result.MatchedPaths = existingSQLiteFileSet(plan.LegacyDatabasePath)
+	if len(result.MatchedPaths) == 0 {
+		result.Action = LegacyProjectDatabaseNoopAction
+		return result, nil
+	}
+	if !apply {
+		result.Applied = false
+		return result, nil
+	}
+
+	if err := os.MkdirAll(archiveDir, 0o700); err != nil {
+		return LegacyProjectDatabaseArchiveResult{}, fmt.Errorf("create legacy archive directory: %w", err)
+	}
+	for _, sourcePath := range result.MatchedPaths {
+		targetPath := archiveTargetPath(plan.LegacyDatabasePath, archivePath, sourcePath)
+		if err := os.Rename(sourcePath, targetPath); err != nil {
+			return LegacyProjectDatabaseArchiveResult{}, fmt.Errorf("archive legacy state file %s: %w", sourcePath, err)
+		}
+		result.ArchivedPaths = append(result.ArchivedPaths, targetPath)
+	}
+	result.Warnings = append(result.Warnings, "legacy database archived, not deleted")
+	return result, nil
+}
+
 func (s *Store) countMissingRelationshipOrigins(ctx context.Context, projectID string) (int, error) {
 	var count int
 	if err := s.db.QueryRowContext(ctx, `
@@ -114,4 +203,42 @@ WHERE project_id = ?
 		return 0, fmt.Errorf("count backfilled relationship origins: %w", err)
 	}
 	return int(rows), nil
+}
+
+func existingSQLiteFileSet(databasePath string) []string {
+	paths := []string{}
+	for _, path := range []string{databasePath, databasePath + "-wal", databasePath + "-shm"} {
+		if regularFileExists(path) {
+			paths = append(paths, path)
+		}
+	}
+	return paths
+}
+
+func archiveTargetPath(sourceDatabasePath string, archiveDatabasePath string, sourcePath string) string {
+	switch sourcePath {
+	case sourceDatabasePath + "-wal":
+		return archiveDatabasePath + "-wal"
+	case sourceDatabasePath + "-shm":
+		return archiveDatabasePath + "-shm"
+	default:
+		return archiveDatabasePath
+	}
+}
+
+func nextLegacyProjectArchivePath(archiveDir string, projectID string, now time.Time) (string, error) {
+	stamp := fmt.Sprintf("%s-%09d", now.Format("20060102-150405"), now.Nanosecond())
+	for i := 0; i < 1000; i++ {
+		suffix := ""
+		if i > 0 {
+			suffix = fmt.Sprintf("-%03d", i)
+		}
+		path := filepath.Join(archiveDir, fmt.Sprintf("legacy-project-%s-%s%s.sqlite", projectID, stamp, suffix))
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return path, nil
+		} else if err != nil {
+			return "", fmt.Errorf("check legacy archive path: %w", err)
+		}
+	}
+	return "", fmt.Errorf("allocate legacy archive path: too many archives for timestamp %s", stamp)
 }

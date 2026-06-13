@@ -227,8 +227,8 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = append(actions, RepairAction{
 				Code:           "review-legacy-project-database",
 				DiagnosticCode: diagnostic.Code,
-				Description:    "Review the leftover legacy project database and remove it manually only after verifying the global database.",
-				Command:        "loaf state migrate storage-home --dry-run",
+				Description:    "Preview archiving the leftover legacy project database after verifying the global database.",
+				Command:        "loaf state repair legacy-project-database --dry-run --json",
 				Path:           status.LegacyDatabasePath,
 				Safe:           false,
 			})

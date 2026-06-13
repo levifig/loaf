@@ -115,6 +115,9 @@ func TestRepairPlanTreatsLegacyLeftoverAsManualReview(t *testing.T) {
 	if action.Applied {
 		t.Fatal("legacy leftover action Applied = true, want false")
 	}
+	if action.Command != "loaf state repair legacy-project-database --dry-run --json" {
+		t.Fatalf("legacy leftover action Command = %q, want legacy archive dry-run", action.Command)
+	}
 	if action.Path != legacyPath {
 		t.Fatalf("legacy leftover action Path = %q, want %q", action.Path, legacyPath)
 	}

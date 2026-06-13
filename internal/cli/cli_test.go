@@ -2177,6 +2177,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		{name: "state init", args: []string{"state", "init", "--help"}, want: "Usage: loaf state init [--json]"},
 		{name: "state doctor", args: []string{"state", "doctor", "--help"}, want: "Usage: loaf state doctor [--fix] [--dry-run] [--json]"},
 		{name: "state repair", args: []string{"state", "repair", "--help"}, want: "Usage: loaf state repair <target> [options]"},
+		{name: "state repair legacy-project-database", args: []string{"state", "repair", "legacy-project-database", "--help"}, want: "Usage: loaf state repair legacy-project-database [--dry-run|--apply] [--json]"},
 		{name: "state repair relationship-origin", args: []string{"state", "repair", "relationship-origin", "--help"}, want: "Usage: loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]"},
 		{name: "state migrate", args: []string{"state", "migrate", "--help"}, want: "Usage: loaf state migrate <source> [options]"},
 		{name: "project list", args: []string{"project", "list", "--help"}, want: "Usage: loaf project list [--json]"},
@@ -2338,6 +2339,9 @@ func TestRunnerStateDoctorDryRunShowsLegacyLeftoverManualAction(t *testing.T) {
 	if action.Safe || action.Applied {
 		t.Fatalf("repair action = %#v, want manual unapplied legacy review", action)
 	}
+	if action.Command != "loaf state repair legacy-project-database --dry-run --json" {
+		t.Fatalf("repair action command = %q, want legacy archive dry-run", action.Command)
+	}
 	if action.Path != legacyPath {
 		t.Fatalf("repair action path = %q, want %q", action.Path, legacyPath)
 	}
@@ -2460,6 +2464,80 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	}
 	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM relationships WHERE origin = 'imported'`); got != 1 {
 		t.Fatalf("relationships with imported origin = %d, want 1", got)
+	}
+}
+
+func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+
+	root, err := project.ResolveRoot(workingDir)
+	if err != nil {
+		t.Fatalf("ResolveRoot() error = %v", err)
+	}
+	legacyPath := initializeCLILegacyStateDatabase(t, root)
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+
+	var dryRunOut bytes.Buffer
+	err = Runner{
+		Stdout:     &dryRunOut,
+		WorkingDir: workingDir,
+	}.Run([]string{"state", "repair", "legacy-project-database", "--dry-run", "--json"})
+	if err != nil {
+		t.Fatalf("state repair legacy-project-database --dry-run error = %v", err)
+	}
+	dryRun := decodeLegacyProjectDatabaseArchiveResult(t, dryRunOut.Bytes())
+	if dryRun.Applied {
+		t.Fatal("dry-run Applied = true, want false")
+	}
+	if dryRun.Action != state.LegacyProjectDatabaseArchiveAction {
+		t.Fatalf("dry-run Action = %q, want archive action", dryRun.Action)
+	}
+	if len(dryRun.MatchedPaths) != 1 || dryRun.MatchedPaths[0] != legacyPath {
+		t.Fatalf("dry-run MatchedPaths = %#v, want legacy path %q", dryRun.MatchedPaths, legacyPath)
+	}
+	if _, err := os.Stat(legacyPath); err != nil {
+		t.Fatalf("legacy database moved during dry-run: %v", err)
+	}
+
+	var applyOut bytes.Buffer
+	err = Runner{
+		Stdout:     &applyOut,
+		WorkingDir: workingDir,
+	}.Run([]string{"state", "repair", "legacy-project-database", "--apply", "--json"})
+	if err != nil {
+		t.Fatalf("state repair legacy-project-database --apply error = %v", err)
+	}
+	applied := decodeLegacyProjectDatabaseArchiveResult(t, applyOut.Bytes())
+	if !applied.Applied {
+		t.Fatal("apply Applied = false, want true")
+	}
+	if len(applied.ArchivedPaths) != 1 {
+		t.Fatalf("ArchivedPaths = %#v, want one archived database", applied.ArchivedPaths)
+	}
+	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+		t.Fatalf("legacy database still exists after apply; err = %v", err)
+	}
+	if _, err := os.Stat(applied.ArchivedPaths[0]); err != nil {
+		t.Fatalf("archived legacy database missing: %v", err)
+	}
+
+	var doctorOut bytes.Buffer
+	err = Runner{
+		Stdout:     &doctorOut,
+		WorkingDir: workingDir,
+	}.Run([]string{"state", "doctor", "--dry-run", "--json"})
+	if err != nil {
+		t.Fatalf("state doctor after legacy archive error = %v", err)
+	}
+	status := decodeStateStatus(t, doctorOut.Bytes())
+	if hasDiagnostic(status.Diagnostics, "legacy-project-database-leftover") {
+		t.Fatalf("diagnostics = %#v, want legacy leftover resolved", status.Diagnostics)
 	}
 }
 
@@ -9467,6 +9545,15 @@ func decodeStateBackupResult(t *testing.T, data []byte) state.BackupResult {
 func decodeRelationshipOriginRepairResult(t *testing.T, data []byte) state.RelationshipOriginRepairResult {
 	t.Helper()
 	var result state.RelationshipOriginRepairResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return result
+}
+
+func decodeLegacyProjectDatabaseArchiveResult(t *testing.T, data []byte) state.LegacyProjectDatabaseArchiveResult {
+	t.Helper()
+	var result state.LegacyProjectDatabaseArchiveResult
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}

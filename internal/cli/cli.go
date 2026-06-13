@@ -916,6 +916,7 @@ func writeStateRepairHelp(out io.Writer) {
 	fmt.Fprintln(out, "Repair guarded SQLite data drift.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Targets:")
+	fmt.Fprintln(out, "  legacy-project-database  Archive migrated per-project SQLite leftovers")
 	fmt.Fprintln(out, "  relationship-origin  Backfill missing relationship provenance")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
@@ -1338,11 +1339,14 @@ func (r Runner) runStateRepair(args []string, out io.Writer, runtime state.Runti
 		return fmt.Errorf("state repair requires a target")
 	}
 	if writeNestedHelp(out, args, map[string]func(io.Writer){
-		"relationship-origin": writeStateRepairRelationshipOriginHelp,
+		"legacy-project-database": writeStateRepairLegacyProjectDatabaseHelp,
+		"relationship-origin":     writeStateRepairRelationshipOriginHelp,
 	}) {
 		return nil
 	}
 	switch args[0] {
+	case "legacy-project-database":
+		return r.runStateRepairLegacyProjectDatabase(args[1:], out, runtime)
 	case "relationship-origin":
 		return r.runStateRepairRelationshipOrigin(args[1:], out, runtime)
 	default:
@@ -1350,8 +1354,48 @@ func (r Runner) runStateRepair(args []string, out io.Writer, runtime state.Runti
 	}
 }
 
+func writeStateRepairLegacyProjectDatabaseHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state repair legacy-project-database [--dry-run|--apply] [--json]", "Archive migrated legacy per-project SQLite files without deleting them.", "--dry-run    Preview archive paths without writing", "--apply      Move legacy SQLite files into the archive directory", "--json       Output JSON")
+}
+
 func writeStateRepairRelationshipOriginHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]", "Backfill missing relationship provenance for the current project.", "--origin     Provenance value to set: imported or manual", "--dry-run    Preview affected rows without writing", "--apply      Apply the backfill", "--json       Output JSON")
+}
+
+func (r Runner) runStateRepairLegacyProjectDatabase(args []string, out io.Writer, runtime state.Runtime) error {
+	options, err := parseLegacyProjectDatabaseRepairArgs(args)
+	if err != nil {
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return err
+	}
+	result, err := state.ArchiveLegacyProjectDatabase(projectRoot, state.PathResolver{StateHome: r.StateHome}, options.apply)
+	if err != nil {
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+
+	fmt.Fprintln(out, "loaf state repair legacy-project-database")
+	fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
+	fmt.Fprintf(out, "legacy database: %s\n", result.LegacyDatabasePath)
+	fmt.Fprintf(out, "action: %s\n", result.Action)
+	if result.ArchivePath != "" {
+		fmt.Fprintf(out, "archive: %s\n", result.ArchivePath)
+	}
+	fmt.Fprintf(out, "matched files: %d\n", len(result.MatchedPaths))
+	fmt.Fprintf(out, "archived files: %d\n", len(result.ArchivedPaths))
+	fmt.Fprintf(out, "applied: %t\n", result.Applied)
+	for _, warning := range result.Warnings {
+		fmt.Fprintf(out, "warn: %s\n", warning)
+	}
+	if !result.Applied && len(result.MatchedPaths) > 0 {
+		fmt.Fprintln(out, "next: rerun with --apply after verifying the global database")
+	}
+	return nil
 }
 
 func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, runtime state.Runtime) error {
@@ -10322,6 +10366,12 @@ type relationshipOriginRepairOptions struct {
 	origin     string
 }
 
+type legacyProjectDatabaseRepairOptions struct {
+	jsonOutput bool
+	apply      bool
+	dryRun     bool
+}
+
 func parseMarkdownMigrationArgs(args []string) (markdownMigrationOptions, error) {
 	var options markdownMigrationOptions
 	for _, arg := range args {
@@ -10366,6 +10416,26 @@ func parseStorageHomeMigrationArgs(args []string) (storageHomeMigrationOptions, 
 	}
 	if options.apply && options.dryRun {
 		return storageHomeMigrationOptions{}, fmt.Errorf("state migrate storage-home cannot combine --apply and --dry-run")
+	}
+	return options, nil
+}
+
+func parseLegacyProjectDatabaseRepairArgs(args []string) (legacyProjectDatabaseRepairOptions, error) {
+	var options legacyProjectDatabaseRepairOptions
+	for _, arg := range args {
+		switch arg {
+		case "--dry-run":
+			options.dryRun = true
+		case "--json":
+			options.jsonOutput = true
+		case "--apply":
+			options.apply = true
+		default:
+			return legacyProjectDatabaseRepairOptions{}, fmt.Errorf("unknown option %q", arg)
+		}
+	}
+	if options.apply && options.dryRun {
+		return legacyProjectDatabaseRepairOptions{}, fmt.Errorf("state repair legacy-project-database cannot combine --apply and --dry-run")
 	}
 	return options, nil
 }
