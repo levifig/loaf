@@ -438,14 +438,10 @@ func inspectSQLiteIntegrity(ctx context.Context, store *Store) ([]Diagnostic, bo
 			return nil, false, fmt.Errorf("scan SQLite foreign_key_check: %w", err)
 		}
 		valid = false
-		rowLabel := "unknown row"
-		if rowID.Valid {
-			rowLabel = fmt.Sprintf("rowid %d", rowID.Int64)
-		}
 		diagnostics = append(diagnostics, Diagnostic{
 			Severity: "error",
 			Code:     "sqlite-foreign-key-violation",
-			Message:  fmt.Sprintf("SQLite foreign key violation in %s %s referencing %s constraint %d", tableName, rowLabel, parentTable, foreignKeyID),
+			Message:  formatSQLiteForeignKeyViolation(tableName, rowID, parentTable, foreignKeyID),
 		})
 	}
 	if err := foreignKeyRows.Err(); err != nil {

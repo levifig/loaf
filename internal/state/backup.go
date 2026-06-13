@@ -2,6 +2,8 @@ package state
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -145,12 +147,26 @@ func verifyNoForeignKeyViolations(ctx context.Context, store *Store) (string, er
 	}
 	defer rows.Close()
 	if rows.Next() {
-		return "", fmt.Errorf("violation detected")
+		var tableName, parentTable string
+		var rowID sql.NullInt64
+		var foreignKeyID int
+		if err := rows.Scan(&tableName, &rowID, &parentTable, &foreignKeyID); err != nil {
+			return "", err
+		}
+		return "", errors.New(formatSQLiteForeignKeyViolation(tableName, rowID, parentTable, foreignKeyID))
 	}
 	if err := rows.Err(); err != nil {
 		return "", err
 	}
 	return "ok", nil
+}
+
+func formatSQLiteForeignKeyViolation(tableName string, rowID sql.NullInt64, parentTable string, foreignKeyID int) string {
+	rowLabel := "unknown row"
+	if rowID.Valid {
+		rowLabel = fmt.Sprintf("rowid %d", rowID.Int64)
+	}
+	return fmt.Sprintf("SQLite foreign key violation in %s %s referencing %s constraint %d", tableName, rowLabel, parentTable, foreignKeyID)
 }
 
 func nextBackupPath(backupDir string, now time.Time) (string, error) {

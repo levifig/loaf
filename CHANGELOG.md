@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- SQLite backup and export verification errors now include the first foreign-key violation's table, row, parent table, and constraint details.
 - `loaf state export all --format json` manifest now reports SQLite integrity and foreign-key verification checks.
 - `loaf state backup` now verifies and reports backup foreign-key integrity alongside SQLite integrity checks.
 - `loaf state doctor` now reports SQLite `quick_check` failures and foreign-key violations as explicit invalid-state diagnostics.

@@ -150,6 +150,34 @@ func TestBackupRejectsInvalidSQLiteState(t *testing.T) {
 	}
 }
 
+func TestVerifyNoForeignKeyViolationsReportsDetails(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	if _, err := store.db.ExecContext(context.Background(), `PRAGMA foreign_keys = OFF`); err != nil {
+		t.Fatalf("disable foreign keys error = %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO aliases (id, project_id, entity_kind, entity_id, namespace, alias, created_at, updated_at)
+VALUES ('alias-orphaned-project', 'project-missing', 'task', 'task-missing', 'task', 'TASK-MISSING', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`); err != nil {
+		t.Fatalf("insert orphaned alias fixture error = %v", err)
+	}
+
+	_, err := verifyNoForeignKeyViolations(context.Background(), store)
+	if err == nil {
+		t.Fatal("verifyNoForeignKeyViolations() error = nil, want detailed violation")
+	}
+	for _, want := range []string{"SQLite foreign key violation", "aliases", "projects", "constraint"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %v, want %q", err, want)
+		}
+	}
+}
+
 func assertNoSQLiteSidecars(t *testing.T, path string) {
 	t.Helper()
 	for _, suffix := range []string{"-wal", "-shm"} {
