@@ -39,7 +39,8 @@ type RepairAction struct {
 // Status is the pre-init state view exposed by `loaf state status`.
 type Status struct {
 	ProjectRoot          string         `json:"project_root"`
-	ProjectID            string         `json:"project_id"`
+	ProjectID            string         `json:"project_id,omitempty"`
+	LegacyProjectKey     string         `json:"legacy_project_key,omitempty"`
 	ProjectName          string         `json:"project_name,omitempty"`
 	ProjectCurrentPath   string         `json:"project_current_path,omitempty"`
 	DatabasePath         string         `json:"database_path"`
@@ -61,11 +62,11 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 	}
 
 	status := Status{
-		ProjectRoot:  root.Path(),
-		ProjectID:    ProjectID(root),
-		DatabasePath: databasePath,
-		Diagnostics:  []Diagnostic{},
-		RepairPlan:   []RepairAction{},
+		ProjectRoot:      root.Path(),
+		LegacyProjectKey: ProjectID(root),
+		DatabasePath:     databasePath,
+		Diagnostics:      []Diagnostic{},
+		RepairPlan:       []RepairAction{},
 	}
 	if legacyPath, err := migrationSourceDatabasePath(root, resolver); err == nil && legacyPath != databasePath {
 		status.LegacyDatabasePath = legacyPath

@@ -28,6 +28,12 @@ func TestInspectReportsMarkdownOnlyWithoutCreatingFiles(t *testing.T) {
 	if status.DatabaseParentExists {
 		t.Fatal("DatabaseParentExists = true, want false before init")
 	}
+	if status.ProjectID != "" {
+		t.Fatalf("ProjectID = %q, want empty before SQLite records durable identity", status.ProjectID)
+	}
+	if status.LegacyProjectKey != ProjectID(root) {
+		t.Fatalf("LegacyProjectKey = %q, want %q", status.LegacyProjectKey, ProjectID(root))
+	}
 	if _, err := os.Stat(filepath.Dir(status.DatabasePath)); !os.IsNotExist(err) {
 		t.Fatalf("database parent exists after Inspect(); err = %v", err)
 	}
@@ -186,6 +192,21 @@ func TestInspectReportsSQLiteReadyWhenDatabaseIsInitialized(t *testing.T) {
 	}
 	if status.SchemaVersion != CurrentSchemaVersion() {
 		t.Fatalf("SchemaVersion = %d, want %d", status.SchemaVersion, CurrentSchemaVersion())
+	}
+	if status.ProjectID == "" {
+		t.Fatal("ProjectID is empty after SQLite records durable identity")
+	}
+	if status.ProjectID == ProjectID(root) {
+		t.Fatalf("ProjectID = legacy path key %q, want generated durable identity", status.ProjectID)
+	}
+	if status.LegacyProjectKey != ProjectID(root) {
+		t.Fatalf("LegacyProjectKey = %q, want %q", status.LegacyProjectKey, ProjectID(root))
+	}
+	if status.ProjectName != filepath.Base(root.Path()) {
+		t.Fatalf("ProjectName = %q, want folder name", status.ProjectName)
+	}
+	if status.ProjectCurrentPath != root.Path() {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", status.ProjectCurrentPath, root.Path())
 	}
 	assertDiagnostic(t, status.Diagnostics, "sqlite-ready")
 }

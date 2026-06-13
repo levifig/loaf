@@ -2370,6 +2370,14 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 	if before.DatabaseExists {
 		t.Fatal("before.DatabaseExists = true, want false")
 	}
+	if before.ProjectID != "" {
+		t.Fatalf("before.ProjectID = %q, want empty before SQLite records durable identity", before.ProjectID)
+	}
+	if before.LegacyProjectKey == "" {
+		t.Fatal("before.LegacyProjectKey is empty")
+	}
+	assertJSONFieldAbsent(t, statusBefore.Bytes(), "project_id")
+	assertJSONFieldPresent(t, statusBefore.Bytes(), "legacy_project_key")
 
 	var initOut bytes.Buffer
 	err = Runner{
@@ -2387,6 +2395,14 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 	if initialized.SchemaVersion != state.CurrentSchemaVersion() {
 		t.Fatalf("initialized.SchemaVersion = %d, want %d", initialized.SchemaVersion, state.CurrentSchemaVersion())
 	}
+	if initialized.ProjectID == "" {
+		t.Fatal("initialized.ProjectID is empty after SQLite records durable identity")
+	}
+	if initialized.ProjectID == initialized.LegacyProjectKey {
+		t.Fatalf("initialized.ProjectID = legacy key %q, want generated durable identity", initialized.ProjectID)
+	}
+	assertJSONFieldPresent(t, initOut.Bytes(), "project_id")
+	assertJSONFieldPresent(t, initOut.Bytes(), "legacy_project_key")
 	if _, err := os.Stat(initialized.DatabasePath); err != nil {
 		t.Fatalf("state init did not create database: %v", err)
 	}
@@ -10450,6 +10466,28 @@ func assertJSONArrayLength(t *testing.T, data []byte, field string, want int) {
 	}
 	if len(items) != want {
 		t.Fatalf("JSON field %q length = %d, want %d", field, len(items), want)
+	}
+}
+
+func assertJSONFieldPresent(t *testing.T, data []byte, field string) {
+	t.Helper()
+	var payload map[string]any
+	if err := json.Unmarshal(data, &payload); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	if _, ok := payload[field]; !ok {
+		t.Fatalf("JSON field %q missing in %s", field, string(data))
+	}
+}
+
+func assertJSONFieldAbsent(t *testing.T, data []byte, field string) {
+	t.Helper()
+	var payload map[string]any
+	if err := json.Unmarshal(data, &payload); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	if _, ok := payload[field]; ok {
+		t.Fatalf("JSON field %q present in %s", field, string(data))
 	}
 }
 

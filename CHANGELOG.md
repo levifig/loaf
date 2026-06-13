@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state status` now distinguishes durable SQLite `project_id` from the path-derived `legacy_project_key`, avoiding pre-init identity confusion.
 - `--agent-help` and the generated `cli-reference` skill now document the generic `loaf state export --format <format>` contract.
 - `--agent-help` now documents `loaf build`/`install` short aliases and non-interactive install confirmation flags consistently with native help.
 - `--agent-help` now documents housekeeping's legacy-compatible `--plans` and `--handoffs` filters.

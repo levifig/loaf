@@ -1417,6 +1417,14 @@ func (r Runner) runStateStatus(args []string, out io.Writer, runtime state.Runti
 	}
 	fmt.Fprintln(out, "loaf state status")
 	fmt.Fprintf(out, "project root: %s\n", status.ProjectRoot)
+	if status.ProjectName != "" {
+		fmt.Fprintf(out, "project: %s\n", status.ProjectName)
+	}
+	if status.ProjectID != "" {
+		fmt.Fprintf(out, "project id: %s\n", status.ProjectID)
+	} else if status.LegacyProjectKey != "" {
+		fmt.Fprintf(out, "legacy project key: %s\n", status.LegacyProjectKey)
+	}
 	fmt.Fprintf(out, "database: %s\n", status.DatabasePath)
 	fmt.Fprintf(out, "database exists: %t\n", status.DatabaseExists)
 	fmt.Fprintf(out, "mode: %s\n", status.Mode)
