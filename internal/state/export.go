@@ -26,29 +26,33 @@ const (
 
 // ExportSnapshot is a complete internal JSON view of current SQLite state.
 type ExportSnapshot struct {
-	ExportKind    string                      `json:"export_kind"`
-	Format        string                      `json:"format"`
-	Audience      string                      `json:"audience"`
-	GeneratedAt   string                      `json:"generated_at"`
-	ProjectID     string                      `json:"project_id"`
-	DatabasePath  string                      `json:"database_path"`
-	SchemaVersion int                         `json:"schema_version"`
-	Manifest      ExportManifest              `json:"manifest"`
-	Tables        map[string][]map[string]any `json:"tables"`
+	ExportKind         string                      `json:"export_kind"`
+	Format             string                      `json:"format"`
+	Audience           string                      `json:"audience"`
+	GeneratedAt        string                      `json:"generated_at"`
+	ProjectID          string                      `json:"project_id"`
+	ProjectName        string                      `json:"project_name"`
+	ProjectCurrentPath string                      `json:"project_current_path"`
+	DatabasePath       string                      `json:"database_path"`
+	SchemaVersion      int                         `json:"schema_version"`
+	Manifest           ExportManifest              `json:"manifest"`
+	Tables             map[string][]map[string]any `json:"tables"`
 }
 
 // ExportManifest is a compact, agent-friendly summary of an export snapshot.
 type ExportManifest struct {
-	Verified        bool           `json:"verified"`
-	SchemaVersion   int            `json:"schema_version"`
-	ProjectID       string         `json:"project_id"`
-	IntegrityCheck  string         `json:"integrity_check"`
-	ForeignKeyCheck string         `json:"foreign_key_check"`
-	TableCount      int            `json:"table_count"`
-	TableOrder      []string       `json:"table_order"`
-	RowCounts       map[string]int `json:"row_counts"`
-	TotalRows       int            `json:"total_rows"`
-	GeneratedAt     string         `json:"generated_at"`
+	Verified           bool           `json:"verified"`
+	SchemaVersion      int            `json:"schema_version"`
+	ProjectID          string         `json:"project_id"`
+	ProjectName        string         `json:"project_name"`
+	ProjectCurrentPath string         `json:"project_current_path"`
+	IntegrityCheck     string         `json:"integrity_check"`
+	ForeignKeyCheck    string         `json:"foreign_key_check"`
+	TableCount         int            `json:"table_count"`
+	TableOrder         []string       `json:"table_order"`
+	RowCounts          map[string]int `json:"row_counts"`
+	TotalRows          int            `json:"total_rows"`
+	GeneratedAt        string         `json:"generated_at"`
 }
 
 // MarkdownExport is a generated Markdown view of SQLite state.
@@ -187,24 +191,28 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 	generatedAt := time.Now().UTC().Format(time.RFC3339Nano)
 
 	return ExportSnapshot{
-		ExportKind:    ExportKindAll,
-		Format:        ExportFormatJSON,
-		Audience:      ExportAudienceLocal,
-		GeneratedAt:   generatedAt,
-		ProjectID:     projectID,
-		DatabasePath:  status.DatabasePath,
-		SchemaVersion: status.SchemaVersion,
+		ExportKind:         ExportKindAll,
+		Format:             ExportFormatJSON,
+		Audience:           ExportAudienceLocal,
+		GeneratedAt:        generatedAt,
+		ProjectID:          projectID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		DatabasePath:       status.DatabasePath,
+		SchemaVersion:      status.SchemaVersion,
 		Manifest: ExportManifest{
-			Verified:        true,
-			SchemaVersion:   status.SchemaVersion,
-			ProjectID:       projectID,
-			IntegrityCheck:  integrityCheck,
-			ForeignKeyCheck: foreignKeyCheck,
-			TableCount:      len(tableOrder),
-			TableOrder:      tableOrder,
-			RowCounts:       rowCounts,
-			TotalRows:       totalRows,
-			GeneratedAt:     generatedAt,
+			Verified:           true,
+			SchemaVersion:      status.SchemaVersion,
+			ProjectID:          projectID,
+			ProjectName:        identity.FriendlyName,
+			ProjectCurrentPath: identity.CurrentPath,
+			IntegrityCheck:     integrityCheck,
+			ForeignKeyCheck:    foreignKeyCheck,
+			TableCount:         len(tableOrder),
+			TableOrder:         tableOrder,
+			RowCounts:          rowCounts,
+			TotalRows:          totalRows,
+			GeneratedAt:        generatedAt,
 		},
 		Tables: tables,
 	}, nil

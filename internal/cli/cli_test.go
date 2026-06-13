@@ -3263,6 +3263,12 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	if result.ProjectID == "" {
 		t.Fatal("ProjectID is empty")
 	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
+	}
 	if result.IntegrityCheck != "ok" {
 		t.Fatalf("IntegrityCheck = %q, want ok", result.IntegrityCheck)
 	}
@@ -3309,7 +3315,7 @@ func TestRunnerStateBackupHumanOutput(t *testing.T) {
 	}
 
 	output := stdout.String()
-	for _, want := range []string{"loaf state backup", "database:", "backup:", "bytes:", "verified: true", "schema version:", "project:", "integrity: ok", "foreign keys: ok", "created at:"} {
+	for _, want := range []string{"loaf state backup", "database:", "backup:", "bytes:", "verified: true", "schema version:", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "created at:"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -3447,6 +3453,18 @@ status: implementing
 	}
 	if snapshot.Manifest.ProjectID != snapshot.ProjectID {
 		t.Fatalf("Manifest.ProjectID = %q, want %q", snapshot.Manifest.ProjectID, snapshot.ProjectID)
+	}
+	if snapshot.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", snapshot.ProjectName, filepath.Base(workingDir))
+	}
+	if snapshot.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", snapshot.ProjectCurrentPath, workingDir)
+	}
+	if snapshot.Manifest.ProjectName != snapshot.ProjectName {
+		t.Fatalf("Manifest.ProjectName = %q, want %q", snapshot.Manifest.ProjectName, snapshot.ProjectName)
+	}
+	if snapshot.Manifest.ProjectCurrentPath != snapshot.ProjectCurrentPath {
+		t.Fatalf("Manifest.ProjectCurrentPath = %q, want %q", snapshot.Manifest.ProjectCurrentPath, snapshot.ProjectCurrentPath)
 	}
 	if snapshot.Manifest.IntegrityCheck != "ok" {
 		t.Fatalf("Manifest.IntegrityCheck = %q, want ok", snapshot.Manifest.IntegrityCheck)

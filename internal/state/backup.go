@@ -14,15 +14,17 @@ import (
 
 // BackupResult describes a repository-external SQLite database backup.
 type BackupResult struct {
-	DatabasePath    string `json:"database_path"`
-	BackupPath      string `json:"backup_path"`
-	Bytes           int64  `json:"bytes"`
-	CreatedAt       string `json:"created_at"`
-	Verified        bool   `json:"verified"`
-	SchemaVersion   int    `json:"schema_version"`
-	ProjectID       string `json:"project_id"`
-	IntegrityCheck  string `json:"integrity_check"`
-	ForeignKeyCheck string `json:"foreign_key_check"`
+	DatabasePath       string `json:"database_path"`
+	BackupPath         string `json:"backup_path"`
+	Bytes              int64  `json:"bytes"`
+	CreatedAt          string `json:"created_at"`
+	Verified           bool   `json:"verified"`
+	SchemaVersion      int    `json:"schema_version"`
+	ProjectID          string `json:"project_id"`
+	ProjectName        string `json:"project_name"`
+	ProjectCurrentPath string `json:"project_current_path"`
+	IntegrityCheck     string `json:"integrity_check"`
+	ForeignKeyCheck    string `json:"foreign_key_check"`
 }
 
 // Backup creates a timestamped SQLite backup under the project's state directory.
@@ -73,23 +75,27 @@ func Backup(ctx context.Context, root project.Root, resolver PathResolver) (Back
 	}
 
 	return BackupResult{
-		DatabasePath:    status.DatabasePath,
-		BackupPath:      backupPath,
-		Bytes:           info.Size(),
-		CreatedAt:       now.Format(time.RFC3339Nano),
-		Verified:        true,
-		SchemaVersion:   verification.schemaVersion,
-		ProjectID:       verification.projectID,
-		IntegrityCheck:  verification.integrityCheck,
-		ForeignKeyCheck: verification.foreignKeyCheck,
+		DatabasePath:       status.DatabasePath,
+		BackupPath:         backupPath,
+		Bytes:              info.Size(),
+		CreatedAt:          now.Format(time.RFC3339Nano),
+		Verified:           true,
+		SchemaVersion:      verification.schemaVersion,
+		ProjectID:          verification.projectID,
+		ProjectName:        verification.projectName,
+		ProjectCurrentPath: verification.projectCurrentPath,
+		IntegrityCheck:     verification.integrityCheck,
+		ForeignKeyCheck:    verification.foreignKeyCheck,
 	}, nil
 }
 
 type backupVerification struct {
-	schemaVersion   int
-	projectID       string
-	integrityCheck  string
-	foreignKeyCheck string
+	schemaVersion      int
+	projectID          string
+	projectName        string
+	projectCurrentPath string
+	integrityCheck     string
+	foreignKeyCheck    string
 }
 
 func verifyBackup(ctx context.Context, backupPath string, root project.Root) (backupVerification, error) {
@@ -122,10 +128,12 @@ func verifyBackup(ctx context.Context, backupPath string, root project.Root) (ba
 		return backupVerification{}, fmt.Errorf("verify state backup project identity: empty project id")
 	}
 	return backupVerification{
-		schemaVersion:   version,
-		projectID:       identity.ID,
-		integrityCheck:  integrityCheck,
-		foreignKeyCheck: foreignKeyCheck,
+		schemaVersion:      version,
+		projectID:          identity.ID,
+		projectName:        identity.FriendlyName,
+		projectCurrentPath: identity.CurrentPath,
+		integrityCheck:     integrityCheck,
+		foreignKeyCheck:    foreignKeyCheck,
 	}, nil
 }
 

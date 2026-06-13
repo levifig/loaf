@@ -42,6 +42,16 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if snapshot.ProjectID != projectIDForTest(t, store, root) {
 		t.Fatalf("ProjectID = %q, want project id", snapshot.ProjectID)
 	}
+	identity, err := store.LookupProjectIdentityForRoot(context.Background(), root)
+	if err != nil {
+		t.Fatalf("LookupProjectIdentityForRoot() error = %v", err)
+	}
+	if snapshot.ProjectName != identity.FriendlyName {
+		t.Fatalf("ProjectName = %q, want %q", snapshot.ProjectName, identity.FriendlyName)
+	}
+	if snapshot.ProjectCurrentPath != identity.CurrentPath {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", snapshot.ProjectCurrentPath, identity.CurrentPath)
+	}
 	if snapshot.DatabasePath == "" {
 		t.Fatal("DatabasePath is empty")
 	}
@@ -59,6 +69,12 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	}
 	if snapshot.Manifest.ProjectID != snapshot.ProjectID {
 		t.Fatalf("Manifest.ProjectID = %q, want %q", snapshot.Manifest.ProjectID, snapshot.ProjectID)
+	}
+	if snapshot.Manifest.ProjectName != snapshot.ProjectName {
+		t.Fatalf("Manifest.ProjectName = %q, want %q", snapshot.Manifest.ProjectName, snapshot.ProjectName)
+	}
+	if snapshot.Manifest.ProjectCurrentPath != snapshot.ProjectCurrentPath {
+		t.Fatalf("Manifest.ProjectCurrentPath = %q, want %q", snapshot.Manifest.ProjectCurrentPath, snapshot.ProjectCurrentPath)
 	}
 	if snapshot.Manifest.IntegrityCheck != "ok" {
 		t.Fatalf("Manifest.IntegrityCheck = %q, want ok", snapshot.Manifest.IntegrityCheck)

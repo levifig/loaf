@@ -59,6 +59,12 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	if result.ProjectID != status.ProjectID {
 		t.Fatalf("ProjectID = %q, want %q", result.ProjectID, status.ProjectID)
 	}
+	if result.ProjectName != status.ProjectName {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, status.ProjectName)
+	}
+	if result.ProjectCurrentPath != status.ProjectCurrentPath {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, status.ProjectCurrentPath)
+	}
 	if result.IntegrityCheck != "ok" {
 		t.Fatalf("IntegrityCheck = %q, want ok", result.IntegrityCheck)
 	}
