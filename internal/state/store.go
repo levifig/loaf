@@ -38,10 +38,36 @@ func OpenStore(path string) (*Store, error) {
 	return &Store{db: db, path: path}, nil
 }
 
+// OpenStoreReadOnly opens an existing SQLite database without creating or mutating it.
+func OpenStoreReadOnly(path string) (*Store, error) {
+	db, err := sql.Open(sqliteDriverName, sqliteReadOnlyDSN(path))
+	if err != nil {
+		return nil, fmt.Errorf("open state database read-only: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("ping state database read-only: %w", err)
+	}
+	return &Store{db: db, path: path}, nil
+}
+
 func sqliteDSN(path string) string {
 	values := url.Values{}
 	values.Add("_pragma", "busy_timeout(5000)")
 	values.Add("_pragma", "journal_mode(wal)")
+	values.Add("_pragma", "foreign_keys(on)")
+	return (&url.URL{
+		Scheme:   "file",
+		Path:     filepath.ToSlash(path),
+		RawQuery: values.Encode(),
+	}).String()
+}
+
+func sqliteReadOnlyDSN(path string) string {
+	values := url.Values{}
+	values.Add("mode", "ro")
+	values.Add("_pragma", "busy_timeout(5000)")
 	values.Add("_pragma", "foreign_keys(on)")
 	return (&url.URL{
 		Scheme:   "file",

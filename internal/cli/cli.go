@@ -48,6 +48,12 @@ type compatibilityCommandOptions struct {
 	jsonOutput bool
 }
 
+type projectRenameOptions struct {
+	name       string
+	dryRun     bool
+	jsonOutput bool
+}
+
 type projectMoveOptions struct {
 	fromPath   string
 	toPath     string
@@ -1056,11 +1062,12 @@ func writeProjectShowHelp(out io.Writer) {
 }
 
 func writeProjectRenameHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf project rename <name> [--json]")
+	fmt.Fprintln(out, "Usage: loaf project rename <name> [--dry-run] [--json]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Rename the friendly project name without changing its ID.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --dry-run    Validate and preview without writing")
 	fmt.Fprintln(out, "  --json       Output JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
@@ -1121,20 +1128,41 @@ func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runti
 }
 
 func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Runtime) error {
-	name, jsonOutput, err := parseProjectRenameArgs(args)
+	options, err := parseProjectRenameArgs(args)
 	if err != nil {
 		return err
 	}
-	projectRoot, store, err := r.openProjectIdentityStore(runtime)
+	var projectRoot project.Root
+	var store *state.Store
+	if options.dryRun {
+		projectRoot, store, err = r.openProjectStoreReadOnly(runtime)
+	} else {
+		projectRoot, store, err = r.openProjectIdentityStore(runtime)
+	}
 	if err != nil {
 		return err
 	}
 	defer store.Close()
-	identity, err := store.RenameProject(context.Background(), projectRoot, name)
+	if options.dryRun {
+		result, err := store.PreviewRenameProject(context.Background(), projectRoot, options.name)
+		if err != nil {
+			return err
+		}
+		if options.jsonOutput {
+			return writeJSON(out, result)
+		}
+		fmt.Fprintln(out, "Project rename dry run")
+		fmt.Fprintln(out, "  no changes written")
+		fmt.Fprintf(out, "  from: %s\n", result.FromName)
+		fmt.Fprintf(out, "  to:   %s\n\n", result.ToName)
+		writeProjectIdentity(out, result.Project)
+		return nil
+	}
+	identity, err := store.RenameProject(context.Background(), projectRoot, options.name)
 	if err != nil {
 		return err
 	}
-	if jsonOutput {
+	if options.jsonOutput {
 		return writeJSON(out, identity)
 	}
 	fmt.Fprintf(out, "Renamed project to %q\n\n", identity.FriendlyName)
@@ -1147,7 +1175,13 @@ func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runti
 	if err != nil {
 		return err
 	}
-	projectRoot, store, err := r.openProjectStore(runtime)
+	var projectRoot project.Root
+	var store *state.Store
+	if options.dryRun {
+		projectRoot, store, err = r.openProjectStoreReadOnly(runtime)
+	} else {
+		projectRoot, store, err = r.openProjectStore(runtime)
+	}
 	if err != nil {
 		return err
 	}
@@ -1184,6 +1218,40 @@ func (r Runner) openProjectIdentityStore(runtime state.Runtime) (project.Root, *
 	if err := store.UpsertProject(context.Background(), projectRoot); err != nil {
 		store.Close()
 		return project.Root{}, nil, err
+	}
+	return projectRoot, store, nil
+}
+
+func (r Runner) openProjectStoreReadOnly(runtime state.Runtime) (project.Root, *state.Store, error) {
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	resolver := state.PathResolver{StateHome: r.StateHome}
+	databasePath, err := resolver.DatabasePath(projectRoot)
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	if info, err := os.Stat(databasePath); err != nil {
+		if os.IsNotExist(err) {
+			return project.Root{}, nil, fmt.Errorf("state database does not exist; run `loaf state init` before previewing project changes")
+		}
+		return project.Root{}, nil, fmt.Errorf("stat state database: %w", err)
+	} else if info.IsDir() {
+		return project.Root{}, nil, fmt.Errorf("state database path is a directory: %s", databasePath)
+	}
+	store, err := state.OpenStoreReadOnly(databasePath)
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	version, err := store.SchemaVersion(context.Background())
+	if err != nil {
+		store.Close()
+		return project.Root{}, nil, err
+	}
+	if version != state.CurrentSchemaVersion() {
+		store.Close()
+		return project.Root{}, nil, fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
 	return projectRoot, store, nil
 }
@@ -10489,24 +10557,27 @@ func parseRelationshipOriginRepairArgs(args []string) (relationshipOriginRepairO
 	return options, nil
 }
 
-func parseProjectRenameArgs(args []string) (string, bool, error) {
-	jsonOutput := false
+func parseProjectRenameArgs(args []string) (projectRenameOptions, error) {
+	options := projectRenameOptions{}
 	values := []string{}
 	for _, arg := range args {
 		switch arg {
 		case "--json":
-			jsonOutput = true
+			options.jsonOutput = true
+		case "--dry-run":
+			options.dryRun = true
 		default:
 			values = append(values, arg)
 		}
 	}
 	if len(values) == 0 {
-		return "", false, fmt.Errorf("project rename requires a name")
+		return projectRenameOptions{}, fmt.Errorf("project rename requires a name")
 	}
 	if len(values) > 1 {
-		return "", false, fmt.Errorf("project rename accepts exactly one name")
+		return projectRenameOptions{}, fmt.Errorf("project rename accepts exactly one name")
 	}
-	return values[0], jsonOutput, nil
+	options.name = values[0]
+	return options, nil
 }
 
 func parseProjectMoveArgs(args []string, currentPath string) (projectMoveOptions, error) {

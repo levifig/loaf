@@ -471,7 +471,7 @@ func cliReferenceCommandGuidance(commandName string) string {
 	case "state":
 		return "Existing TypeScript-era projects can keep running supported commands in\nmarkdown-only compatibility mode until SQLite is initialized. Use\n`loaf state migrate markdown --apply` to import `.agents/` Markdown into SQLite\nwithout rewriting the source Markdown files."
 	case "project":
-		return "Project IDs are stable SQLite identities, not path or name hashes. Use\n`loaf project rename` for display-name changes and `loaf project move --dry-run`\nbefore recording checkout path moves."
+		return "Project IDs are stable SQLite identities, not path or name hashes. Use\n`loaf project rename --dry-run` for display-name previews and\n`loaf project move --dry-run` before recording checkout path moves."
 	case "migrate":
 		return "`loaf migrate markdown` is the upgrade path for existing `.agents/`\nprojects with no SQLite database. Start with `--dry-run`, then use `--apply`\nwhen the artifact counts and skipped files look right."
 	default:
@@ -491,6 +491,7 @@ func cliReferenceCommandUsageExamples(commandName string) []string {
 	case "project":
 		return []string{
 			"loaf project show",
+			"loaf project rename \"Loaf\" --dry-run",
 			"loaf project rename \"Loaf\"",
 			"loaf project move --from /old/path/to/loaf --dry-run",
 			"loaf project move --from /old/path/to/loaf",

@@ -82,6 +82,16 @@ func TestInitializeIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestOpenStoreReadOnlyDoesNotCreateMissingDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing.sqlite")
+	if _, err := OpenStoreReadOnly(path); err == nil {
+		t.Fatal("OpenStoreReadOnly() error = nil, want missing database error")
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("Stat(%s) error = %v, want missing database to stay missing", path, err)
+	}
+}
+
 func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
@@ -173,6 +183,42 @@ func TestPreviewMoveProjectValidatesWithoutWriting(t *testing.T) {
 	}
 	if got := countCurrentProjectPaths(t, store, identity.ID); got != 1 {
 		t.Fatalf("current project paths after preview = %d, want 1", got)
+	}
+}
+
+func TestPreviewRenameProjectValidatesWithoutWriting(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+
+	identity, err := store.ProjectIdentityForRoot(context.Background(), root)
+	if err != nil {
+		t.Fatalf("ProjectIdentityForRoot() error = %v", err)
+	}
+	preview, err := store.PreviewRenameProject(context.Background(), root, "Preview Loaf")
+	if err != nil {
+		t.Fatalf("PreviewRenameProject() error = %v", err)
+	}
+	if preview.Action != "dry-run" || preview.FromName != identity.FriendlyName || preview.ToName != "Preview Loaf" {
+		t.Fatalf("preview = %#v, want dry-run from %q to Preview Loaf", preview, identity.FriendlyName)
+	}
+	if preview.Project.ID != identity.ID || preview.Project.FriendlyName != "Preview Loaf" {
+		t.Fatalf("preview project = %#v, want same ID %q with preview name", preview.Project, identity.ID)
+	}
+	after, err := store.LookupProjectIdentityForRoot(context.Background(), root)
+	if err != nil {
+		t.Fatalf("LookupProjectIdentityForRoot(root) error = %v", err)
+	}
+	if after.FriendlyName != identity.FriendlyName {
+		t.Fatalf("FriendlyName after preview = %q, want original %q", after.FriendlyName, identity.FriendlyName)
 	}
 }
 

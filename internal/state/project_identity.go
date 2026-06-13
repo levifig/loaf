@@ -38,6 +38,14 @@ type ProjectMoveResult struct {
 	Action   string          `json:"action"`
 }
 
+// ProjectRenameResult describes a friendly-name change preview.
+type ProjectRenameResult struct {
+	Project  ProjectIdentity `json:"project"`
+	FromName string          `json:"from_name"`
+	ToName   string          `json:"to_name"`
+	Action   string          `json:"action"`
+}
+
 // ProjectIdentityForRoot returns and refreshes the DB-backed project identity.
 func (s *Store) ProjectIdentityForRoot(ctx context.Context, root project.Root) (ProjectIdentity, error) {
 	return s.EnsureProject(ctx, root)
@@ -178,6 +186,26 @@ WHERE id = ?
 		return ProjectIdentity{}, fmt.Errorf("rename project: %w", err)
 	}
 	return s.projectIdentity(ctx, identity.ID)
+}
+
+// PreviewRenameProject validates a friendly-name change without mutating project identity rows.
+func (s *Store) PreviewRenameProject(ctx context.Context, root project.Root, friendlyName string) (ProjectRenameResult, error) {
+	friendlyName = strings.TrimSpace(friendlyName)
+	if friendlyName == "" {
+		return ProjectRenameResult{}, fmt.Errorf("project name cannot be empty")
+	}
+	identity, err := s.LookupProjectIdentityForRoot(ctx, root)
+	if err != nil {
+		return ProjectRenameResult{}, err
+	}
+	fromName := identity.FriendlyName
+	identity.FriendlyName = friendlyName
+	return ProjectRenameResult{
+		Project:  identity,
+		FromName: fromName,
+		ToName:   friendlyName,
+		Action:   "dry-run",
+	}, nil
 }
 
 // MoveProject changes the current path mapping with safeguards against collisions.

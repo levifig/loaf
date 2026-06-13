@@ -2091,6 +2091,55 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectRenameDryRunDoesNotWrite(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var showOut bytes.Buffer
+	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show --json error = %v", err)
+	}
+	var shown state.ProjectIdentity
+	if err := json.Unmarshal(showOut.Bytes(), &shown); err != nil {
+		t.Fatalf("json.Unmarshal(show) error = %v\n%s", err, showOut.String())
+	}
+
+	var dryRunOut bytes.Buffer
+	if err := (Runner{Stdout: &dryRunOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Preview Loaf", "--dry-run", "--json"}); err != nil {
+		t.Fatalf("project rename --dry-run --json error = %v", err)
+	}
+	var preview state.ProjectRenameResult
+	if err := json.Unmarshal(dryRunOut.Bytes(), &preview); err != nil {
+		t.Fatalf("json.Unmarshal(dry-run rename) error = %v\n%s", err, dryRunOut.String())
+	}
+	if preview.Action != "dry-run" || preview.Project.ID != shown.ID || preview.FromName != shown.FriendlyName || preview.ToName != "Preview Loaf" {
+		t.Fatalf("preview = %#v, want dry-run rename from %q to Preview Loaf", preview, shown.FriendlyName)
+	}
+	if preview.Project.FriendlyName != "Preview Loaf" {
+		t.Fatalf("preview project friendly name = %q, want Preview Loaf", preview.Project.FriendlyName)
+	}
+
+	var afterOut bytes.Buffer
+	if err := (Runner{Stdout: &afterOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show after dry-run --json error = %v", err)
+	}
+	var after state.ProjectIdentity
+	if err := json.Unmarshal(afterOut.Bytes(), &after); err != nil {
+		t.Fatalf("json.Unmarshal(after dry-run show) error = %v\n%s", err, afterOut.String())
+	}
+	if after.ID != shown.ID || after.FriendlyName != shown.FriendlyName {
+		t.Fatalf("after dry-run = %#v, want unchanged friendly name %q", after, shown.FriendlyName)
+	}
+
+	var humanOut bytes.Buffer
+	if err := (Runner{Stdout: &humanOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Preview Loaf", "--dry-run"}); err != nil {
+		t.Fatalf("project rename --dry-run error = %v", err)
+	}
+	if !strings.Contains(humanOut.String(), "Project rename dry run") || !strings.Contains(humanOut.String(), "no changes written") {
+		t.Fatalf("human dry-run output = %q, want explicit preview wording", humanOut.String())
+	}
+}
+
 func TestRunnerProjectMoveDryRunDoesNotWrite(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	movedDir := realpath(t, t.TempDir())
@@ -2135,6 +2184,27 @@ func TestRunnerProjectMoveDryRunDoesNotWrite(t *testing.T) {
 	}
 	if !strings.Contains(humanOut.String(), "Project move dry run") || !strings.Contains(humanOut.String(), "no changes written") {
 		t.Fatalf("human dry-run output = %q, want explicit preview wording", humanOut.String())
+	}
+}
+
+func TestRunnerProjectDryRunsDoNotCreateMissingDatabase(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	for _, args := range [][]string{
+		{"project", "rename", "Preview Loaf", "--dry-run", "--json"},
+		{"project", "move", "--from", workingDir, "--dry-run", "--json"},
+	} {
+		err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run(args)
+		if err == nil {
+			t.Fatalf("Run(%v) error = nil, want missing database error", args)
+		}
+		if !strings.Contains(err.Error(), "state database does not exist") {
+			t.Fatalf("Run(%v) error = %v, want missing database message", args, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(stateHome, "loaf", "loaf.sqlite")); !os.IsNotExist(err) {
+		t.Fatalf("state database stat error = %v, want project dry-runs not to create database", err)
 	}
 }
 
@@ -2228,6 +2298,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		{name: "state repair relationship-origin", args: []string{"state", "repair", "relationship-origin", "--help"}, want: "Usage: loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]"},
 		{name: "state migrate", args: []string{"state", "migrate", "--help"}, want: "Usage: loaf state migrate <source> [options]"},
 		{name: "project list", args: []string{"project", "list", "--help"}, want: "Usage: loaf project list [--json]"},
+		{name: "project rename", args: []string{"project", "rename", "--help"}, want: "Usage: loaf project rename <name> [--dry-run] [--json]"},
 		{name: "project move", args: []string{"project", "move", "--help"}, want: "Usage: loaf project move --from <path> [--to <path>] [--dry-run] [--json]"},
 	}
 	for _, tt := range tests {
