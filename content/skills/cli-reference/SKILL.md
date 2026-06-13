@@ -288,6 +288,11 @@ when the artifact counts and skipped files look right.
   - `--apply` - Copy the legacy database without deleting it
   - `--json` - Output migration details as JSON
 
+- `loaf migrate worktree-storage`:
+  - `--apply` - Perform the migration; dry-run is the default
+  - `--force-from-worktree` - On conflict, keep the worktree-local copy
+  - `--force-from-main` - On conflict, keep the main-worktree copy
+
 **Usage:**
 ```bash
 loaf migrate markdown --dry-run

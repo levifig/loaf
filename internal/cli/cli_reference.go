@@ -168,7 +168,11 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
 					{Flags: "--json", Description: "Output migration details as JSON"},
 				}},
-				{Name: "worktree-storage", Description: "Move linked-worktree .agents state to the main worktree"},
+				{Name: "worktree-storage", Description: "Move linked-worktree .agents state to the main worktree", Options: []cliReferenceOption{
+					{Flags: "--apply", Description: "Perform the migration; dry-run is the default"},
+					{Flags: "--force-from-worktree", Description: "On conflict, keep the worktree-local copy"},
+					{Flags: "--force-from-main", Description: "On conflict, keep the main-worktree copy"},
+				}},
 			},
 		},
 		{
