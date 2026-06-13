@@ -85,4 +85,7 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 	if !strings.Contains(stdout.String(), outputPath) {
 		t.Fatalf("stdout = %q, want generated path %q", stdout.String(), outputPath)
 	}
+	if !strings.Contains(content, "- `loaf report generate`:\n  - `--format <format>` - Output format: markdown") {
+		t.Fatalf("generated CLI reference missing report generate markdown format guidance\n%s", content)
+	}
 }

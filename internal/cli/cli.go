@@ -8518,7 +8518,7 @@ func writeReportListHelp(out io.Writer) {
 }
 
 func writeReportGenerateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report generate <kind> [ref] --format markdown", "Generate a read-only markdown report.", "--format     Output format")
+	writeUsageHelp(out, "loaf report generate <kind> [ref] --format markdown", "Generate a read-only markdown report.", "--format     Output format: markdown")
 }
 
 func writeReportCreateHelp(out io.Writer) {

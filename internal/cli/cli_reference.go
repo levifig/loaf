@@ -231,7 +231,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--status <status>", Description: "Filter by status"},
 					{Flags: "--json", Description: "Output as JSON"},
 				}},
-				{Name: "generate", Description: "Generate a report from state", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format"}}},
+				{Name: "generate", Description: "Generate a report from state", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
 				{Name: "create", Description: "Create a report draft", Options: []cliReferenceOption{
 					{Flags: "--type <type>", Description: "Report type"},
 					{Flags: "--source <source>", Description: "Report source"},

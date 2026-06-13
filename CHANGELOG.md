@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf report generate --help`, `--agent-help`, and the generated `cli-reference` skill now state that `--format` expects Markdown output.
 - `--agent-help` and the generated `cli-reference` skill now document concrete `loaf state export` subcommands and required `--format` contracts.
 - `loaf state export all --format json` now includes a verified manifest with table order, per-table row counts, and total exported rows.
 - `loaf state export all --format json` manifest now includes an explicit `table_count` for agentic consumers.

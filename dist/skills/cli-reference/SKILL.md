@@ -428,7 +428,7 @@ only when a durable prose artifact is explicitly needed.
   - `--json` - Output as JSON
 
 - `loaf report generate`:
-  - `--format <format>` - Output format
+  - `--format <format>` - Output format: markdown
 
 - `loaf report create`:
   - `--type <type>` - Report type

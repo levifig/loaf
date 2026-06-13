@@ -11224,6 +11224,25 @@ func TestRunnerUnknownTopLevelCommandIsNative(t *testing.T) {
 	}
 }
 
+func TestRunnerReportGenerateHelpNamesMarkdownFormat(t *testing.T) {
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: t.TempDir(),
+	}.Run([]string{"report", "generate", "--help"})
+	if err != nil {
+		t.Fatalf("Run(report generate --help) error = %v", err)
+	}
+	for _, want := range []string{
+		"Usage: loaf report generate <kind> [ref] --format markdown",
+		"--format     Output format: markdown",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+}
+
 func TestRunnerAgentHelpIsNative(t *testing.T) {
 	var stdout bytes.Buffer
 	err := Runner{
@@ -11329,6 +11348,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["state"].optionDescriptions["state export release-readiness --format <format>"]; !strings.Contains(got, "markdown") {
 		t.Fatalf("state export release-readiness format description = %q, want Markdown guidance", got)
+	}
+	if got := commands["report"].optionDescriptions["report generate --format <format>"]; !strings.Contains(got, "markdown") {
+		t.Fatalf("report generate format description = %q, want Markdown guidance", got)
 	}
 	for _, want := range []string{"refresh", "sync"} {
 		if !stringSliceContains(commands["task"].subcommands, want) {
