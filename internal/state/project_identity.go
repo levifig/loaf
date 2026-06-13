@@ -17,33 +17,37 @@ import (
 // ProjectIdentity is the durable database identity for one working project.
 // ID is intentionally independent of the current path and friendly name.
 type ProjectIdentity struct {
-	ID           string `json:"id"`
-	FriendlyName string `json:"friendly_name"`
-	CurrentPath  string `json:"current_path"`
-	LastSeenAt   string `json:"last_seen_at"`
-	DatabasePath string `json:"database_path,omitempty"`
+	ContractVersion int    `json:"contract_version"`
+	ID              string `json:"id"`
+	FriendlyName    string `json:"friendly_name"`
+	CurrentPath     string `json:"current_path"`
+	LastSeenAt      string `json:"last_seen_at"`
+	DatabasePath    string `json:"database_path,omitempty"`
 }
 
 // ProjectList is the global project identity index.
 type ProjectList struct {
-	DatabasePath string            `json:"database_path"`
-	Projects     []ProjectIdentity `json:"projects"`
+	ContractVersion int               `json:"contract_version"`
+	DatabasePath    string            `json:"database_path"`
+	Projects        []ProjectIdentity `json:"projects"`
 }
 
 // ProjectMoveResult describes a safe path remapping for a project.
 type ProjectMoveResult struct {
-	Project  ProjectIdentity `json:"project"`
-	FromPath string          `json:"from_path"`
-	ToPath   string          `json:"to_path"`
-	Action   string          `json:"action"`
+	ContractVersion int             `json:"contract_version"`
+	Project         ProjectIdentity `json:"project"`
+	FromPath        string          `json:"from_path"`
+	ToPath          string          `json:"to_path"`
+	Action          string          `json:"action"`
 }
 
 // ProjectRenameResult describes a friendly-name change preview.
 type ProjectRenameResult struct {
-	Project  ProjectIdentity `json:"project"`
-	FromName string          `json:"from_name"`
-	ToName   string          `json:"to_name"`
-	Action   string          `json:"action"`
+	ContractVersion int             `json:"contract_version"`
+	Project         ProjectIdentity `json:"project"`
+	FromName        string          `json:"from_name"`
+	ToName          string          `json:"to_name"`
+	Action          string          `json:"action"`
 }
 
 // ProjectIdentityForRoot returns the DB-backed project identity.
@@ -88,11 +92,12 @@ ORDER BY lower(COALESCE(NULLIF(projects.friendly_name, ''), projects.id)), proje
 	defer rows.Close()
 
 	list := ProjectList{
-		DatabasePath: s.path,
-		Projects:     []ProjectIdentity{},
+		ContractVersion: StateJSONContractVersion,
+		DatabasePath:    s.path,
+		Projects:        []ProjectIdentity{},
 	}
 	for rows.Next() {
-		var identity ProjectIdentity
+		identity := ProjectIdentity{ContractVersion: StateJSONContractVersion}
 		if err := rows.Scan(&identity.ID, &identity.FriendlyName, &identity.CurrentPath, &identity.LastSeenAt); err != nil {
 			return ProjectList{}, fmt.Errorf("scan project identity: %w", err)
 		}
@@ -206,10 +211,11 @@ func (s *Store) PreviewRenameProject(ctx context.Context, root project.Root, fri
 	fromName := identity.FriendlyName
 	identity.FriendlyName = friendlyName
 	return ProjectRenameResult{
-		Project:  identity,
-		FromName: fromName,
-		ToName:   friendlyName,
-		Action:   "dry-run",
+		ContractVersion: StateJSONContractVersion,
+		Project:         identity,
+		FromName:        fromName,
+		ToName:          friendlyName,
+		Action:          "dry-run",
 	}, nil
 }
 
@@ -270,10 +276,11 @@ func (s *Store) moveProject(ctx context.Context, root project.Root, fromPath str
 		}
 		identity.CurrentPath = toPath
 		return ProjectMoveResult{
-			Project:  identity,
-			FromPath: fromPath,
-			ToPath:   toPath,
-			Action:   "dry-run",
+			ContractVersion: StateJSONContractVersion,
+			Project:         identity,
+			FromPath:        fromPath,
+			ToPath:          toPath,
+			Action:          "dry-run",
 		}, nil
 	}
 
@@ -316,10 +323,11 @@ WHERE id = ?
 		return ProjectMoveResult{}, err
 	}
 	return ProjectMoveResult{
-		Project:  identity,
-		FromPath: fromPath,
-		ToPath:   toPath,
-		Action:   "moved",
+		ContractVersion: StateJSONContractVersion,
+		Project:         identity,
+		FromPath:        fromPath,
+		ToPath:          toPath,
+		Action:          "moved",
 	}, nil
 }
 
@@ -332,7 +340,7 @@ func (s *Store) projectID(ctx context.Context, root project.Root) (string, error
 }
 
 func (s *Store) projectIdentity(ctx context.Context, projectID string) (ProjectIdentity, error) {
-	var identity ProjectIdentity
+	identity := ProjectIdentity{ContractVersion: StateJSONContractVersion}
 	var friendlyName sql.NullString
 	var currentPath sql.NullString
 	var lastSeenAt sql.NullString

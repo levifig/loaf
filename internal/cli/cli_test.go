@@ -2033,6 +2033,9 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if err := json.Unmarshal(showOut.Bytes(), &shown); err != nil {
 		t.Fatalf("json.Unmarshal(show) error = %v\n%s", err, showOut.String())
 	}
+	if shown.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("shown.ContractVersion = %d, want %d", shown.ContractVersion, state.StateJSONContractVersion)
+	}
 	if shown.ID == "" || shown.CurrentPath != workingDir || shown.FriendlyName != filepath.Base(workingDir) {
 		t.Fatalf("shown project = %#v, want generated identity for %s", shown, workingDir)
 	}
@@ -2044,6 +2047,9 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	var renamed state.ProjectIdentity
 	if err := json.Unmarshal(renameOut.Bytes(), &renamed); err != nil {
 		t.Fatalf("json.Unmarshal(rename) error = %v\n%s", err, renameOut.String())
+	}
+	if renamed.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("renamed.ContractVersion = %d, want %d", renamed.ContractVersion, state.StateJSONContractVersion)
 	}
 	if renamed.ID != shown.ID || renamed.FriendlyName != "Friendly Loaf" {
 		t.Fatalf("renamed project = %#v, want same ID %q and friendly name", renamed, shown.ID)
@@ -2057,6 +2063,9 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if err := json.Unmarshal(moveOut.Bytes(), &moved); err != nil {
 		t.Fatalf("json.Unmarshal(move) error = %v\n%s", err, moveOut.String())
 	}
+	if moved.ContractVersion != state.StateJSONContractVersion || moved.Project.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("moved contract versions = %d/%d, want %d", moved.ContractVersion, moved.Project.ContractVersion, state.StateJSONContractVersion)
+	}
 	if moved.Project.ID != shown.ID || moved.Project.CurrentPath != movedDir {
 		t.Fatalf("moved project = %#v, want same ID %q at %s", moved.Project, shown.ID, movedDir)
 	}
@@ -2068,6 +2077,9 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	var movedShown state.ProjectIdentity
 	if err := json.Unmarshal(movedShowOut.Bytes(), &movedShown); err != nil {
 		t.Fatalf("json.Unmarshal(moved show) error = %v\n%s", err, movedShowOut.String())
+	}
+	if movedShown.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("movedShown.ContractVersion = %d, want %d", movedShown.ContractVersion, state.StateJSONContractVersion)
 	}
 	if movedShown.ID != shown.ID || movedShown.FriendlyName != "Friendly Loaf" {
 		t.Fatalf("moved show = %#v, want same renamed project", movedShown)
@@ -2081,8 +2093,14 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if err := json.Unmarshal(listOut.Bytes(), &listed); err != nil {
 		t.Fatalf("json.Unmarshal(list) error = %v\n%s", err, listOut.String())
 	}
+	if listed.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("listed.ContractVersion = %d, want %d", listed.ContractVersion, state.StateJSONContractVersion)
+	}
 	if len(listed.Projects) != 1 {
 		t.Fatalf("listed projects = %#v, want one stable project", listed.Projects)
+	}
+	if listed.Projects[0].ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("listed project ContractVersion = %d, want %d", listed.Projects[0].ContractVersion, state.StateJSONContractVersion)
 	}
 	if listed.Projects[0].ID != shown.ID || listed.Projects[0].FriendlyName != "Friendly Loaf" || listed.Projects[0].CurrentPath != movedDir {
 		t.Fatalf("listed project = %#v, want renamed moved project", listed.Projects[0])
@@ -2240,6 +2258,9 @@ func TestRunnerProjectRenameDryRunDoesNotWrite(t *testing.T) {
 	if err := json.Unmarshal(dryRunOut.Bytes(), &preview); err != nil {
 		t.Fatalf("json.Unmarshal(dry-run rename) error = %v\n%s", err, dryRunOut.String())
 	}
+	if preview.ContractVersion != state.StateJSONContractVersion || preview.Project.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("preview contract versions = %d/%d, want %d", preview.ContractVersion, preview.Project.ContractVersion, state.StateJSONContractVersion)
+	}
 	if preview.Action != "dry-run" || preview.Project.ID != shown.ID || preview.FromName != shown.FriendlyName || preview.ToName != "Preview Loaf" {
 		t.Fatalf("preview = %#v, want dry-run rename from %q to Preview Loaf", preview, shown.FriendlyName)
 	}
@@ -2293,6 +2314,9 @@ func TestRunnerProjectMoveDryRunDoesNotWrite(t *testing.T) {
 	var preview state.ProjectMoveResult
 	if err := json.Unmarshal(dryRunOut.Bytes(), &preview); err != nil {
 		t.Fatalf("json.Unmarshal(dry-run move) error = %v\n%s", err, dryRunOut.String())
+	}
+	if preview.ContractVersion != state.StateJSONContractVersion || preview.Project.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("preview contract versions = %d/%d, want %d", preview.ContractVersion, preview.Project.ContractVersion, state.StateJSONContractVersion)
 	}
 	if preview.Action != "dry-run" || preview.Project.ID != shown.ID || preview.Project.CurrentPath != movedDir {
 		t.Fatalf("preview = %#v, want dry-run with same ID %q and target path %s", preview, shown.ID, movedDir)

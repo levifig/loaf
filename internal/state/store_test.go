@@ -125,6 +125,9 @@ func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
 	if identity.ID == ProjectID(root) {
 		t.Fatalf("project ID = legacy path hash %q, want path-independent generated ID", identity.ID)
 	}
+	if identity.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", identity.ContractVersion, StateJSONContractVersion)
+	}
 	if identity.FriendlyName != filepath.Base(root.Path()) {
 		t.Fatalf("FriendlyName = %q, want folder name", identity.FriendlyName)
 	}
@@ -292,6 +295,9 @@ func TestListProjectsReturnsRegisteredIdentities(t *testing.T) {
 	}
 	if projects.DatabasePath != status.DatabasePath {
 		t.Fatalf("DatabasePath = %q, want %q", projects.DatabasePath, status.DatabasePath)
+	}
+	if projects.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("projects ContractVersion = %d, want %d", projects.ContractVersion, StateJSONContractVersion)
 	}
 	if len(projects.Projects) != 2 {
 		t.Fatalf("projects = %#v, want two registered identities", projects.Projects)

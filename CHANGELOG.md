@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf project show|list|rename|move --json` now include `contract_version` for agentic consumers.
 - `loaf state init|status|doctor --json` now include `contract_version` for agentic consumers.
 - JSON error payloads now include `contract_version` for agentic consumers.
 - `loaf state backup --json` and `loaf state export all --format json` now include `contract_version` for agentic JSON consumers.
