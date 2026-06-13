@@ -163,6 +163,17 @@ func (r Runner) runKb(args []string, out io.Writer, runtimeRoot string) error {
 		writeKbHelp(out)
 		return nil
 	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"status":   writeKbStatusHelp,
+		"validate": writeKbValidateHelp,
+		"check":    writeKbCheckHelp,
+		"review":   writeKbReviewHelp,
+		"init":     writeKbInitHelp,
+		"import":   writeKbImportHelp,
+		"glossary": writeKbGlossaryHelp,
+	}) {
+		return nil
+	}
 	switch args[0] {
 	case "check":
 		stderr := r.Stderr
@@ -212,7 +223,82 @@ func writeKbHelp(out io.Writer) {
 	}, "\n"))
 }
 
+func writeKbStatusHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb status [--json]", "Show knowledge base overview.", "--json       Output JSON")
+}
+
+func writeKbValidateHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb validate [--json]", "Validate knowledge file frontmatter.", "--json       Output JSON")
+}
+
+func writeKbCheckHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb check [--file <path>] [--json]", "Check knowledge file staleness against git history.", "--file       Reverse lookup: find knowledge files covering this path", "--json       Output JSON")
+}
+
+func writeKbReviewHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb review <file> [--json]", "Mark a knowledge file as reviewed today.", "--json       Output JSON")
+}
+
+func writeKbInitHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb init [--json]", "Initialize knowledge base directories and QMD collections.", "--json       Output JSON")
+}
+
+func writeKbImportHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb import <name> --path <path> [--json]", "Register an external QMD collection as a knowledge source.", "--path       Path to the external project's knowledge directory", "--json       Output JSON")
+}
+
+func writeKbGlossaryHelp(out io.Writer) {
+	fmt.Fprintln(out, strings.Join([]string{
+		"Usage: loaf kb glossary <subcommand> [options]",
+		"",
+		"Domain glossary mutation and lookup.",
+		"",
+		"Subcommands:",
+		"  upsert     Create or update a canonical term",
+		"  propose    Create or update a candidate term",
+		"  check      Check one term",
+		"  list       List glossary terms",
+		"  stabilize  Promote a candidate term to canonical",
+		"",
+		"Options:",
+		"  -h, --help  Show help",
+	}, "\n"))
+}
+
+func writeKbGlossaryUpsertHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb glossary upsert <term> --definition <text> [--avoid <terms>]", "Create or update a canonical glossary term.", "--definition  Canonical definition", "--avoid       Comma-separated discouraged alternatives")
+}
+
+func writeKbGlossaryProposeHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb glossary propose <term> --definition <text> [--avoid <terms>]", "Create or update a candidate glossary term.", "--definition  Candidate definition", "--avoid       Comma-separated discouraged alternatives")
+}
+
+func writeKbGlossaryCheckHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb glossary check <term>", "Check one glossary term.")
+}
+
+func writeKbGlossaryListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb glossary list [--canonical|--candidates|--all]", "List glossary terms.", "--canonical   Show canonical terms", "--candidates  Show candidate terms", "--all         Show canonical and candidate terms")
+}
+
+func writeKbGlossaryStabilizeHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf kb glossary stabilize <term> --definition <text>", "Promote a candidate glossary term to canonical.", "--definition  Canonical definition")
+}
+
 func (r Runner) runKbGlossary(args []string, out io.Writer, runtimeRoot string) error {
+	if len(args) == 0 || isHelpArg(args) {
+		writeKbGlossaryHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"upsert":    writeKbGlossaryUpsertHelp,
+		"propose":   writeKbGlossaryProposeHelp,
+		"check":     writeKbGlossaryCheckHelp,
+		"list":      writeKbGlossaryListHelp,
+		"stabilize": writeKbGlossaryStabilizeHelp,
+	}) {
+		return nil
+	}
 	options, err := parseKbGlossaryArgs(args)
 	if err != nil {
 		return err

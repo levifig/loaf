@@ -917,6 +917,41 @@ func TestRunnerKbHelpAndUnknownSubcommandAreNative(t *testing.T) {
 	}
 }
 
+func TestRunnerKbSubcommandHelpIsNative(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "status", args: []string{"kb", "status", "--help"}, want: "Usage: loaf kb status [--json]"},
+		{name: "validate", args: []string{"kb", "validate", "--help"}, want: "Usage: loaf kb validate [--json]"},
+		{name: "check", args: []string{"kb", "check", "--help"}, want: "Usage: loaf kb check [--file <path>] [--json]"},
+		{name: "review", args: []string{"kb", "review", "--help"}, want: "Usage: loaf kb review <file> [--json]"},
+		{name: "init", args: []string{"kb", "init", "--help"}, want: "Usage: loaf kb init [--json]"},
+		{name: "import", args: []string{"kb", "import", "--help"}, want: "Usage: loaf kb import <name> --path <path> [--json]"},
+		{name: "glossary", args: []string{"kb", "glossary", "--help"}, want: "Usage: loaf kb glossary <subcommand> [options]"},
+		{name: "glossary list", args: []string{"kb", "glossary", "list", "--help"}, want: "Usage: loaf kb glossary list [--canonical|--candidates|--all]"},
+		{name: "glossary upsert", args: []string{"kb", "glossary", "upsert", "--help"}, want: "Usage: loaf kb glossary upsert <term> --definition <text> [--avoid <terms>]"},
+		{name: "glossary stabilize", args: []string{"kb", "glossary", "stabilize", "--help"}, want: "Usage: loaf kb glossary stabilize <term> --definition <text>"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stdout := bytes.Buffer{}
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+			}.Run(tc.args)
+			if err != nil {
+				t.Fatalf("Run(%v) error = %v", tc.args, err)
+			}
+			if !strings.Contains(stdout.String(), tc.want) {
+				t.Fatalf("stdout = %q, want %q", stdout.String(), tc.want)
+			}
+		})
+	}
+}
+
 func withNativeQMD(t *testing.T, available bool, existing []string, register func(name string, path string) error) {
 	t.Helper()
 	oldLookPath := qmdLookPath

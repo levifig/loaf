@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf kb ... --help` now works for knowledge-base subcommands and `--agent-help` documents KB JSON/path options for agentic use.
 - `loaf report list --help`, `--agent-help`, and the generated `cli-reference` skill now document Loaf's report lifecycle statuses for `--status` filters.
 - `loaf report generate --help`, `--agent-help`, and the generated `cli-reference` skill now state that `--format` expects Markdown output.
 - `--agent-help` and the generated `cli-reference` skill now document concrete `loaf state export` subcommands and required `--format` contracts.

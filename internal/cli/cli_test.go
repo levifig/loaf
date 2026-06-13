@@ -11370,6 +11370,20 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["report"].optionDescriptions["report list --status <status>"]; !strings.Contains(got, "draft, final, archived") {
 		t.Fatalf("report list status description = %q, want lifecycle status guidance", got)
 	}
+	for _, want := range []string{
+		"kb status --json",
+		"kb validate --json",
+		"kb check --file <path>",
+		"kb check --json",
+		"kb review --json",
+		"kb init --json",
+		"kb import --path <path>",
+		"kb import --json",
+	} {
+		if !stringSliceContains(commands["kb"].options, want) {
+			t.Fatalf("kb options = %#v, want agent help to include %q", commands["kb"].options, want)
+		}
+	}
 	for _, want := range []string{"refresh", "sync"} {
 		if !stringSliceContains(commands["task"].subcommands, want) {
 			t.Fatalf("task subcommands = %#v, want %q", commands["task"].subcommands, want)
