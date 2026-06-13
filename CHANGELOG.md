@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf project move` now rejects missing or non-directory target paths before previewing or recording a checkout move.
 - `loaf state doctor` now flags backend mapping rows with empty backend, local entity, external entity, or sync-status fields.
 - `loaf state repair ...` human output now shows `--dry-run` or `--apply` in the command header and suppresses apply guidance when no rows or files match.
 - `loaf migrate markdown --json`, `loaf migrate storage-home --json`, and `loaf state repair ... --json` success payloads now include `contract_version`.

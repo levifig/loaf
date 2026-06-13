@@ -2428,6 +2428,39 @@ func TestRunnerProjectMoveUnknownFromDoesNotCreateProject(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectMoveRejectsMissingTargetPath(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+
+	missingTarget := filepath.Join(t.TempDir(), "missing-target")
+	var stdout bytes.Buffer
+	err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", workingDir, "--to", missingTarget, "--dry-run", "--json"})
+	if err == nil {
+		t.Fatal("project move missing --to error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, stdout.Bytes())
+	if output.Command != "project move" || !strings.Contains(output.Error, "target path does not exist") {
+		t.Fatalf("project move JSON error = %#v, want missing target path rejection", output)
+	}
+
+	var showOut bytes.Buffer
+	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show after rejected move --json error = %v", err)
+	}
+	var shown state.ProjectIdentity
+	if err := json.Unmarshal(showOut.Bytes(), &shown); err != nil {
+		t.Fatalf("json.Unmarshal(show) error = %v\n%s", err, showOut.String())
+	}
+	if shown.CurrentPath != workingDir {
+		t.Fatalf("CurrentPath = %q, want unchanged %q", shown.CurrentPath, workingDir)
+	}
+}
+
 func TestRunnerProjectJSONValidationErrorsAreMachineReadable(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()

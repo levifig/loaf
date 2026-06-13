@@ -393,6 +393,40 @@ func TestMoveProjectUnknownFromPathDoesNotCreateProject(t *testing.T) {
 	}
 }
 
+func TestMoveProjectRequiresExistingTargetDirectory(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+
+	missingTarget := filepath.Join(t.TempDir(), "missing-target")
+	if _, err := store.PreviewMoveProject(context.Background(), root, root.Path(), missingTarget); err == nil {
+		t.Fatal("PreviewMoveProject() error = nil, want missing target rejection")
+	} else if !strings.Contains(err.Error(), "target path does not exist") {
+		t.Fatalf("PreviewMoveProject() error = %q, want missing target path rejection", err)
+	}
+	if _, err := store.MoveProject(context.Background(), root, root.Path(), missingTarget); err == nil {
+		t.Fatal("MoveProject() error = nil, want missing target rejection")
+	} else if !strings.Contains(err.Error(), "target path does not exist") {
+		t.Fatalf("MoveProject() error = %q, want missing target path rejection", err)
+	}
+
+	identity, err := store.LookupProjectIdentityForRoot(context.Background(), root)
+	if err != nil {
+		t.Fatalf("LookupProjectIdentityForRoot() error = %v", err)
+	}
+	if identity.CurrentPath != root.Path() {
+		t.Fatalf("CurrentPath = %q, want unchanged %q", identity.CurrentPath, root.Path())
+	}
+}
+
 func TestProjectIdentityRekeysLegacyPathHashRows(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -240,6 +241,14 @@ func (s *Store) moveProject(ctx context.Context, root project.Root, fromPath str
 	}
 	if fromPath == toPath {
 		return ProjectMoveResult{}, fmt.Errorf("project move requires distinct --from and --to paths")
+	}
+	if info, err := os.Stat(toPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ProjectMoveResult{}, fmt.Errorf("project move target path does not exist: %s", toPath)
+		}
+		return ProjectMoveResult{}, fmt.Errorf("inspect project move target path %s: %w", toPath, err)
+	} else if !info.IsDir() {
+		return ProjectMoveResult{}, fmt.Errorf("project move target path is not a directory: %s", toPath)
 	}
 
 	projectID, err := s.projectIDByPath(ctx, fromPath)
