@@ -60,6 +60,12 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if snapshot.Manifest.ProjectID != snapshot.ProjectID {
 		t.Fatalf("Manifest.ProjectID = %q, want %q", snapshot.Manifest.ProjectID, snapshot.ProjectID)
 	}
+	if snapshot.Manifest.IntegrityCheck != "ok" {
+		t.Fatalf("Manifest.IntegrityCheck = %q, want ok", snapshot.Manifest.IntegrityCheck)
+	}
+	if snapshot.Manifest.ForeignKeyCheck != "ok" {
+		t.Fatalf("Manifest.ForeignKeyCheck = %q, want ok", snapshot.Manifest.ForeignKeyCheck)
+	}
 	if snapshot.Manifest.GeneratedAt != snapshot.GeneratedAt {
 		t.Fatalf("Manifest.GeneratedAt = %q, want %q", snapshot.Manifest.GeneratedAt, snapshot.GeneratedAt)
 	}

@@ -3448,6 +3448,12 @@ status: implementing
 	if snapshot.Manifest.ProjectID != snapshot.ProjectID {
 		t.Fatalf("Manifest.ProjectID = %q, want %q", snapshot.Manifest.ProjectID, snapshot.ProjectID)
 	}
+	if snapshot.Manifest.IntegrityCheck != "ok" {
+		t.Fatalf("Manifest.IntegrityCheck = %q, want ok", snapshot.Manifest.IntegrityCheck)
+	}
+	if snapshot.Manifest.ForeignKeyCheck != "ok" {
+		t.Fatalf("Manifest.ForeignKeyCheck = %q, want ok", snapshot.Manifest.ForeignKeyCheck)
+	}
 	if snapshot.Manifest.RowCounts["specs"] != 1 || snapshot.Manifest.RowCounts["tasks"] != 1 {
 		t.Fatalf("manifest row counts = %#v, want exported spec and task counts", snapshot.Manifest.RowCounts)
 	}

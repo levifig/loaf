@@ -39,14 +39,16 @@ type ExportSnapshot struct {
 
 // ExportManifest is a compact, agent-friendly summary of an export snapshot.
 type ExportManifest struct {
-	Verified      bool           `json:"verified"`
-	SchemaVersion int            `json:"schema_version"`
-	ProjectID     string         `json:"project_id"`
-	TableCount    int            `json:"table_count"`
-	TableOrder    []string       `json:"table_order"`
-	RowCounts     map[string]int `json:"row_counts"`
-	TotalRows     int            `json:"total_rows"`
-	GeneratedAt   string         `json:"generated_at"`
+	Verified        bool           `json:"verified"`
+	SchemaVersion   int            `json:"schema_version"`
+	ProjectID       string         `json:"project_id"`
+	IntegrityCheck  string         `json:"integrity_check"`
+	ForeignKeyCheck string         `json:"foreign_key_check"`
+	TableCount      int            `json:"table_count"`
+	TableOrder      []string       `json:"table_order"`
+	RowCounts       map[string]int `json:"row_counts"`
+	TotalRows       int            `json:"total_rows"`
+	GeneratedAt     string         `json:"generated_at"`
 }
 
 // MarkdownExport is a generated Markdown view of SQLite state.
@@ -161,6 +163,14 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 		return ExportSnapshot{}, err
 	}
 	projectID := identity.ID
+	integrityCheck, err := verifySQLiteIntegrity(ctx, store)
+	if err != nil {
+		return ExportSnapshot{}, fmt.Errorf("verify export integrity: %w", err)
+	}
+	foreignKeyCheck, err := verifyNoForeignKeyViolations(ctx, store)
+	if err != nil {
+		return ExportSnapshot{}, fmt.Errorf("verify export foreign keys: %w", err)
+	}
 	if err := store.validateExportTableFilters(ctx, exportAllTables); err != nil {
 		return ExportSnapshot{}, err
 	}
@@ -185,14 +195,16 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 		DatabasePath:  status.DatabasePath,
 		SchemaVersion: status.SchemaVersion,
 		Manifest: ExportManifest{
-			Verified:      true,
-			SchemaVersion: status.SchemaVersion,
-			ProjectID:     projectID,
-			TableCount:    len(tableOrder),
-			TableOrder:    tableOrder,
-			RowCounts:     rowCounts,
-			TotalRows:     totalRows,
-			GeneratedAt:   generatedAt,
+			Verified:        true,
+			SchemaVersion:   status.SchemaVersion,
+			ProjectID:       projectID,
+			IntegrityCheck:  integrityCheck,
+			ForeignKeyCheck: foreignKeyCheck,
+			TableCount:      len(tableOrder),
+			TableOrder:      tableOrder,
+			RowCounts:       rowCounts,
+			TotalRows:       totalRows,
+			GeneratedAt:     generatedAt,
 		},
 		Tables: tables,
 	}, nil

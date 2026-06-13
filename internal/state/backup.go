@@ -97,12 +97,9 @@ func verifyBackup(ctx context.Context, backupPath string, root project.Root) (ba
 	}
 	defer store.Close()
 
-	var integrityCheck string
-	if err := store.db.QueryRowContext(ctx, `PRAGMA integrity_check`).Scan(&integrityCheck); err != nil {
+	integrityCheck, err := verifySQLiteIntegrity(ctx, store)
+	if err != nil {
 		return backupVerification{}, fmt.Errorf("verify state backup integrity: %w", err)
-	}
-	if integrityCheck != "ok" {
-		return backupVerification{}, fmt.Errorf("verify state backup integrity: %s", integrityCheck)
 	}
 	foreignKeyCheck, err := verifyNoForeignKeyViolations(ctx, store)
 	if err != nil {
@@ -128,6 +125,17 @@ func verifyBackup(ctx context.Context, backupPath string, root project.Root) (ba
 		integrityCheck:  integrityCheck,
 		foreignKeyCheck: foreignKeyCheck,
 	}, nil
+}
+
+func verifySQLiteIntegrity(ctx context.Context, store *Store) (string, error) {
+	var integrityCheck string
+	if err := store.db.QueryRowContext(ctx, `PRAGMA integrity_check`).Scan(&integrityCheck); err != nil {
+		return "", err
+	}
+	if integrityCheck != "ok" {
+		return "", fmt.Errorf("%s", integrityCheck)
+	}
+	return integrityCheck, nil
 }
 
 func verifyNoForeignKeyViolations(ctx context.Context, store *Store) (string, error) {
