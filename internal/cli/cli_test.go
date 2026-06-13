@@ -8547,6 +8547,101 @@ func TestRunnerLinkCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	}
 }
 
+func TestRunnerLinkMutationCommandsAcceptDocumentedFlags(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	writeCLIAgentsFile(t, workingDir, "specs/SPEC-001-link.md", "# Link Spec\n")
+	writeCLIAgentsFile(t, workingDir, "ideas/20260528-link-idea.md", "# Link Idea\n")
+	writeCLIAgentsFile(t, workingDir, "TASKS.json", `{"tasks":{}}`)
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "migrate", "markdown", "--apply"}); err != nil {
+		t.Fatalf("state migrate markdown --apply error = %v", err)
+	}
+
+	var createOut bytes.Buffer
+	err := Runner{
+		Stdout:     &createOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"link", "create", "--from", "20260528-link-idea", "--to", "SPEC-001", "--type", "resolved_by", "--reason", "flag cli test", "--json"})
+	if err != nil {
+		t.Fatalf("link create flags error = %v", err)
+	}
+	created := decodeLinkMutationResult(t, createOut.Bytes())
+	if created.Type != "resolved_by" || created.From.Alias != "20260528-link-idea" || created.To.Alias != "SPEC-001" || created.Reason != "flag cli test" {
+		t.Fatalf("created = %#v, want idea resolved_by SPEC-001 from documented flags", created)
+	}
+
+	var removeOut bytes.Buffer
+	err = Runner{
+		Stdout:     &removeOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"link", "remove", "--from", "20260528-link-idea", "--to", "SPEC-001", "--type", "resolved_by", "--json"})
+	if err != nil {
+		t.Fatalf("link remove flags error = %v", err)
+	}
+	removed := decodeLinkMutationResult(t, removeOut.Bytes())
+	if removed.Type != "resolved_by" || removed.From.Alias != "20260528-link-idea" || removed.To.Alias != "SPEC-001" || removed.Reason != "flag cli test" {
+		t.Fatalf("removed = %#v, want documented flags to remove relationship", removed)
+	}
+}
+
+func TestRunnerLinkMutationJSONErrorsAreMachineReadable(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	tests := []struct {
+		name    string
+		args    []string
+		command string
+		want    string
+	}{
+		{
+			name:    "create missing target",
+			args:    []string{"link", "create", "--from", "TASK-001", "--type", "related_to", "--json"},
+			command: "link create",
+			want:    "requires a source entity and target entity",
+		},
+		{
+			name:    "create missing type",
+			args:    []string{"link", "create", "--from", "TASK-001", "--to", "SPEC-001", "--json"},
+			command: "link create",
+			want:    "requires --type",
+		},
+		{
+			name:    "create mixed entity forms",
+			args:    []string{"link", "create", "--from", "TASK-001", "SPEC-001", "--type", "related_to", "--json"},
+			command: "link create",
+			want:    "cannot mix positional entities",
+		},
+		{
+			name:    "remove missing source",
+			args:    []string{"link", "remove", "--to", "SPEC-001", "--type", "related_to", "--json"},
+			command: "link remove",
+			want:    "requires a source entity and target entity",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}.Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON validation error", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != tc.command || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want command %q and error containing %q", output, tc.command, tc.want)
+			}
+		})
+	}
+}
+
 func TestRunnerLinkCommandRequiresSQLiteWhenMarkdownOnly(t *testing.T) {
 	assertSQLiteRequired(t, "link", "create", "20260528-link-idea", "SPEC-001", "--type", "resolved_by")
 }

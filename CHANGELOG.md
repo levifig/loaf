@@ -16,6 +16,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf state migrate|repair --json` validation and safeguard failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf state backup --json` and `loaf state export all --format json` failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf trace --json` and `loaf idea capture --json` validation failures now return machine-readable JSON error payloads instead of plain text.
+- `loaf link create|remove` now accepts the documented `--from` and `--to` flags, and `--json` validation failures return machine-readable JSON error payloads.
 - `loaf task create|list|update --json` validation failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
 - `loaf task create|update` help, invalid-priority errors, and agent help now name the valid task priorities.

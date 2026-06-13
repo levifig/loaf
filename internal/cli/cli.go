@@ -5114,18 +5114,31 @@ func writeLinkRemoveHelp(out io.Writer) {
 }
 
 func (r Runner) runLinkCreate(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	options, err := parseLinkMutationArgs("link create", args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "link create", err)
+		}
 		return err
 	}
 	projectRoot, mode, err := r.linkStateMode(runtime)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "link create", err)
+		}
 		return err
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
+		if jsonRequested {
+			return writeJSONCommandError(out, "link create", sqliteStateRequiredError("link create"))
+		}
 		return sqliteStateRequiredError("link create")
 	case state.ModeInvalid:
+		if jsonRequested {
+			return writeJSONCommandError(out, "link create", fmt.Errorf("state database is invalid; run `loaf state doctor`"))
+		}
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
 	result, err := state.CreateLink(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.LinkMutationOptions{
@@ -5135,6 +5148,9 @@ func (r Runner) runLinkCreate(args []string, out io.Writer, runtime state.Runtim
 		Reason: options.reason,
 	})
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "link create", err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -5171,18 +5187,31 @@ func (r Runner) runLinkList(args []string, out io.Writer, runtime state.Runtime)
 }
 
 func (r Runner) runLinkRemove(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	options, err := parseLinkMutationArgs("link remove", args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "link remove", err)
+		}
 		return err
 	}
 	projectRoot, mode, err := r.linkStateMode(runtime)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "link remove", err)
+		}
 		return err
 	}
 	switch mode {
 	case state.ModeMarkdownOnly:
+		if jsonRequested {
+			return writeJSONCommandError(out, "link remove", sqliteStateRequiredError("link remove"))
+		}
 		return sqliteStateRequiredError("link remove")
 	case state.ModeInvalid:
+		if jsonRequested {
+			return writeJSONCommandError(out, "link remove", fmt.Errorf("state database is invalid; run `loaf state doctor`"))
+		}
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
 	result, err := state.RemoveLink(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.LinkMutationOptions{
@@ -5192,6 +5221,9 @@ func (r Runner) runLinkRemove(args []string, out io.Writer, runtime state.Runtim
 		Reason: options.reason,
 	})
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "link remove", err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -10145,6 +10177,18 @@ func parseLinkMutationArgs(command string, args []string) (linkMutationOptions, 
 				return linkMutationOptions{}, err
 			}
 			options.reason = value
+		case "--from":
+			value, err := consumeFlagValue(args, &i, "--from")
+			if err != nil {
+				return linkMutationOptions{}, err
+			}
+			options.from = value
+		case "--to":
+			value, err := consumeFlagValue(args, &i, "--to")
+			if err != nil {
+				return linkMutationOptions{}, err
+			}
+			options.to = value
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return linkMutationOptions{}, fmt.Errorf("unknown option %q", args[i])
@@ -10152,14 +10196,22 @@ func parseLinkMutationArgs(command string, args []string) (linkMutationOptions, 
 			positional = append(positional, args[i])
 		}
 	}
-	if len(positional) != 2 {
+	if len(positional) > 0 {
+		if options.from != "" || options.to != "" {
+			return linkMutationOptions{}, fmt.Errorf("%s cannot mix positional entities with --from or --to", command)
+		}
+		if len(positional) != 2 {
+			return linkMutationOptions{}, fmt.Errorf("%s requires a source entity and target entity", command)
+		}
+		options.from = positional[0]
+		options.to = positional[1]
+	}
+	if options.from == "" || options.to == "" {
 		return linkMutationOptions{}, fmt.Errorf("%s requires a source entity and target entity", command)
 	}
 	if options.relationshipType == "" {
 		return linkMutationOptions{}, fmt.Errorf("%s requires --type", command)
 	}
-	options.from = positional[0]
-	options.to = positional[1]
 	return options, nil
 }
 
