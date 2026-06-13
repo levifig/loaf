@@ -1762,9 +1762,23 @@ func writeStateMigrateStorageHomeHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf state migrate storage-home [--dry-run|--apply] [--json]", "Copy legacy per-project state into the global XDG data-home SQLite database.", "--dry-run     Preview migration work", "--apply       Apply the migration", "--json        Output JSON")
 }
 
+func writeMigrateMarkdownHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf migrate markdown [--dry-run|--apply|--resume] [--json]", "Import .agents Markdown artifacts into SQLite without mutating Markdown.", "--dry-run     Preview import work", "--apply       Apply the import", "--resume      Resume an interrupted import", "--json        Output JSON")
+}
+
+func writeMigrateStorageHomeHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf migrate storage-home [--dry-run|--apply] [--json]", "Copy legacy per-project state into the global XDG data-home SQLite database.", "--dry-run     Preview migration work", "--apply       Apply the migration", "--json        Output JSON")
+}
+
 func (r Runner) runMigrate(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 {
 		return fmt.Errorf("migrate requires a source")
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"markdown":     writeMigrateMarkdownHelp,
+		"storage-home": writeMigrateStorageHomeHelp,
+	}) {
+		return nil
 	}
 	switch args[0] {
 	case "markdown":

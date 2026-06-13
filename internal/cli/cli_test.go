@@ -11148,6 +11148,8 @@ func TestRunnerNestedStateBackedHelpDoesNotParseAsOption(t *testing.T) {
 	}{
 		{name: "state migrate markdown", args: []string{"state", "migrate", "markdown", "--help"}, want: "Usage: loaf state migrate markdown"},
 		{name: "state migrate storage-home", args: []string{"state", "migrate", "storage-home", "--help"}, want: "Usage: loaf state migrate storage-home"},
+		{name: "migrate markdown", args: []string{"migrate", "markdown", "--help"}, want: "Usage: loaf migrate markdown"},
+		{name: "migrate storage-home", args: []string{"migrate", "storage-home", "--help"}, want: "Usage: loaf migrate storage-home"},
 		{name: "state export all", args: []string{"state", "export", "all", "--help"}, want: "Usage: loaf state export all"},
 		{name: "task update", args: []string{"task", "update", "--help"}, want: "Usage: loaf task update <task>"},
 		{name: "task create", args: []string{"task", "create", "--help"}, want: "Usage: loaf task create --title <title>"},

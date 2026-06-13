@@ -99,8 +99,8 @@ func agentHelpCommands() []agentHelpCommand {
 			Name:        "migrate",
 			Description: "Run migration workflows",
 			Subcommands: []agentHelpSubcommand{
-				{Name: "markdown", Description: "Import markdown artifacts into native SQLite state"},
-				{Name: "storage-home", Description: "Move durable SQLite state to XDG_DATA_HOME"},
+				{Name: "markdown", Description: "Import markdown artifacts into native SQLite state", Options: []agentHelpOption{{Flags: "--dry-run", Description: "Preview import work"}, {Flags: "--apply", Description: "Apply the import"}, {Flags: "--resume", Description: "Resume an interrupted import"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "storage-home", Description: "Move durable SQLite state to XDG_DATA_HOME", Options: []agentHelpOption{{Flags: "--dry-run", Description: "Preview migration work"}, {Flags: "--apply", Description: "Apply the migration"}, {Flags: "--json", Description: "Output raw JSON"}}},
 				{Name: "worktree-storage", Description: "Move linked-worktree .agents content to the main checkout"},
 			},
 		},
