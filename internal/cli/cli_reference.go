@@ -277,6 +277,136 @@ func cliReferenceCommands() []cliReferenceCommand {
 			},
 		},
 		{
+			Name:        "trace",
+			Description: "Trace relationships for one state entity",
+			Options: []cliReferenceOption{
+				{Flags: "--json", Description: "Output relationship trace as JSON"},
+			},
+		},
+		{
+			Name:        "brainstorm",
+			Description: "Manage brainstorms in native SQLite state",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "list", Description: "List brainstorms from SQLite state", Options: []cliReferenceOption{
+					{Flags: "--all", Description: "Include archived brainstorms"},
+					{Flags: "--status <status>", Description: "Filter by status"},
+					{Flags: "--json", Description: "Output brainstorms as JSON"},
+				}},
+				{Name: "show", Description: "Show one brainstorm from SQLite state", Options: []cliReferenceOption{{Flags: "--json", Description: "Output brainstorm details as JSON"}}},
+				{Name: "promote", Description: "Record brainstorm-to-idea promotion", Options: []cliReferenceOption{
+					{Flags: "--to-idea <idea>", Description: "Target idea"},
+					{Flags: "--json", Description: "Output promotion result as JSON"},
+				}},
+				{Name: "archive", Description: "Archive one or more brainstorms", Options: []cliReferenceOption{
+					{Flags: "--reason <text>", Description: "Archive reason"},
+					{Flags: "--json", Description: "Output archive result as JSON"},
+				}},
+			},
+		},
+		{
+			Name:        "idea",
+			Description: "Manage ideas in native SQLite state",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "list", Description: "List ideas from SQLite state", Options: []cliReferenceOption{
+					{Flags: "--all", Description: "Include resolved and archived ideas"},
+					{Flags: "--status <status>", Description: "Filter by status"},
+					{Flags: "--json", Description: "Output ideas as JSON"},
+				}},
+				{Name: "show", Description: "Show one idea from SQLite state", Options: []cliReferenceOption{{Flags: "--json", Description: "Output idea details as JSON"}}},
+				{Name: "capture", Description: "Capture an idea in SQLite state", Options: []cliReferenceOption{
+					{Flags: "--title <title>", Description: "Idea title"},
+					{Flags: "--json", Description: "Output created idea as JSON"},
+				}},
+				{Name: "promote", Description: "Record idea-to-spec promotion", Options: []cliReferenceOption{
+					{Flags: "--to-spec <spec>", Description: "Target spec"},
+					{Flags: "--json", Description: "Output promotion result as JSON"},
+				}},
+				{Name: "resolve", Description: "Resolve an idea by linking it to another entity", Options: []cliReferenceOption{
+					{Flags: "--by <entity>", Description: "Resolving entity"},
+					{Flags: "--json", Description: "Output resolution result as JSON"},
+				}},
+				{Name: "archive", Description: "Archive one or more ideas", Options: []cliReferenceOption{
+					{Flags: "--reason <text>", Description: "Archive reason"},
+					{Flags: "--json", Description: "Output archive result as JSON"},
+				}},
+			},
+		},
+		{
+			Name:        "spark",
+			Description: "Manage sparks in native SQLite state",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "list", Description: "List sparks from SQLite state", Options: []cliReferenceOption{
+					{Flags: "--all", Description: "Include resolved sparks"},
+					{Flags: "--status <status>", Description: "Filter by status"},
+					{Flags: "--json", Description: "Output sparks as JSON"},
+				}},
+				{Name: "show", Description: "Show one spark from SQLite state", Options: []cliReferenceOption{{Flags: "--json", Description: "Output spark details as JSON"}}},
+				{Name: "capture", Description: "Capture a spark in SQLite state", Options: []cliReferenceOption{
+					{Flags: "--scope <scope>", Description: "Spark scope"},
+					{Flags: "--text <text>", Description: "Spark text"},
+					{Flags: "--json", Description: "Output created spark as JSON"},
+				}},
+				{Name: "resolve", Description: "Resolve a spark", Options: []cliReferenceOption{
+					{Flags: "--reason <text>", Description: "Resolution reason"},
+					{Flags: "--json", Description: "Output resolution result as JSON"},
+				}},
+				{Name: "promote", Description: "Record spark-to-idea promotion", Options: []cliReferenceOption{
+					{Flags: "--to-idea <idea>", Description: "Target idea"},
+					{Flags: "--json", Description: "Output promotion result as JSON"},
+				}},
+			},
+		},
+		{
+			Name:        "tag",
+			Description: "Manage tags in native SQLite state",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "list", Description: "List tags from SQLite state", Options: []cliReferenceOption{{Flags: "--json", Description: "Output tags as JSON"}}},
+				{Name: "show", Description: "Show entities with a tag", Options: []cliReferenceOption{{Flags: "--json", Description: "Output tag details as JSON"}}},
+				{Name: "add", Description: "Add a tag to an entity", Options: []cliReferenceOption{{Flags: "--json", Description: "Output tag mutation as JSON"}}},
+				{Name: "remove", Description: "Remove a tag from an entity", Options: []cliReferenceOption{{Flags: "--json", Description: "Output tag mutation as JSON"}}},
+			},
+		},
+		{
+			Name:        "bundle",
+			Description: "Manage bundles in native SQLite state",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "list", Description: "List bundles from SQLite state", Options: []cliReferenceOption{{Flags: "--json", Description: "Output bundles as JSON"}}},
+				{Name: "create", Description: "Create a bundle", Options: []cliReferenceOption{
+					{Flags: "--title <title>", Description: "Bundle title"},
+					{Flags: "--tags <tags>", Description: "Comma-separated tag query"},
+					{Flags: "--json", Description: "Output created bundle as JSON"},
+				}},
+				{Name: "update", Description: "Update a bundle", Options: []cliReferenceOption{
+					{Flags: "--title <title>", Description: "Bundle title"},
+					{Flags: "--tags <tags>", Description: "Comma-separated tag query"},
+					{Flags: "--json", Description: "Output updated bundle as JSON"},
+				}},
+				{Name: "show", Description: "Show one bundle", Options: []cliReferenceOption{{Flags: "--json", Description: "Output bundle details as JSON"}}},
+				{Name: "add", Description: "Add an entity to a bundle", Options: []cliReferenceOption{{Flags: "--json", Description: "Output bundle membership as JSON"}}},
+				{Name: "remove", Description: "Remove an entity from a bundle", Options: []cliReferenceOption{{Flags: "--json", Description: "Output bundle membership as JSON"}}},
+			},
+		},
+		{
+			Name:        "link",
+			Description: "Manage explicit relationships in native SQLite state",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "create", Description: "Create an explicit relationship", Options: []cliReferenceOption{
+					{Flags: "--from <entity>", Description: "Source entity"},
+					{Flags: "--to <entity>", Description: "Target entity"},
+					{Flags: "--type <type>", Description: "Relationship type"},
+					{Flags: "--reason <text>", Description: "Relationship reason"},
+					{Flags: "--json", Description: "Output created relationship as JSON"},
+				}},
+				{Name: "list", Description: "List relationships for one entity", Options: []cliReferenceOption{{Flags: "--json", Description: "Output relationships as JSON"}}},
+				{Name: "remove", Description: "Remove an explicit relationship", Options: []cliReferenceOption{
+					{Flags: "--from <entity>", Description: "Source entity"},
+					{Flags: "--to <entity>", Description: "Target entity"},
+					{Flags: "--type <type>", Description: "Relationship type"},
+					{Flags: "--json", Description: "Output removed relationship as JSON"},
+				}},
+			},
+		},
+		{
 			Name:        "check",
 			Description: "Run enforcement hook checks",
 			Options: []cliReferenceOption{
@@ -416,6 +546,14 @@ func generateCLIReferenceCommandSection(cmd cliReferenceCommand) string {
 				parts = append(parts, "")
 			}
 		}
+	}
+
+	if len(cmd.Options) > 0 {
+		parts = append(parts, "**Options:**", "")
+		for _, opt := range cmd.Options {
+			parts = append(parts, fmt.Sprintf("- `%s` - %s", opt.Flags, opt.Description))
+		}
+		parts = append(parts, "")
 	}
 
 	parts = append(parts, "**Usage:**", "```bash")

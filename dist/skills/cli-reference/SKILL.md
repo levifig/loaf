@@ -44,6 +44,10 @@ Coordinates multi-agent work: agent delegation, session management, Linear integ
 ### `loaf build`
 Build skill distributions for agent harnesses
 
+**Options:**
+
+- `-t, --target <name>` - Build a specific target only
+
 **Usage:**
 ```bash
 loaf build
@@ -55,6 +59,13 @@ loaf build
 
 ### `loaf install`
 Install Loaf to detected AI tool configurations
+
+**Options:**
+
+- `--to <target>` - Target to install to (or "all")
+- `--upgrade` - Update only already-installed targets
+- `-y, --yes` - Assume 'yes' to safe migrations (merge content, back up, and replace real files with symlinks)
+- `--no-yes` - Force interactive prompts even when stdin is not a TTY (testing)
 
 **Usage:**
 ```bash
@@ -68,6 +79,10 @@ loaf install
 ### `loaf init`
 Initialize a project with Loaf structure
 
+**Options:**
+
+- `--no-symlinks` - Skip symlink creation prompts
+
 **Usage:**
 ```bash
 loaf init
@@ -79,6 +94,20 @@ loaf init
 
 ### `loaf release`
 Create a new release with changelog, version bump, and tag
+
+**Options:**
+
+- `--dry-run` - Preview release without making changes
+- `--bump <type>` - Skip interactive bump choice (prerelease, release, major, minor, patch)
+- `--base <ref>` - Use commits since <ref> instead of last tag (e.g. main)
+- `--tag` - Force git tag creation (overrides --pre-merge default)
+- `--no-tag` - Skip git tag creation
+- `--gh` - Force GitHub release draft (overrides --pre-merge default)
+- `--no-gh` - Skip GitHub release draft
+- `--pre-merge` - Shortcut for --no-tag --no-gh --base <auto-detected>
+- `--post-merge` - Finalize release after squash-merge
+- `--version-file <path>` - Override version file path (repeatable). Replaces configured version files and root auto-detection.
+- `-y, --yes` - Skip confirmation prompt
 
 **Usage:**
 ```bash
@@ -480,9 +509,300 @@ loaf version
 ### `loaf housekeeping`
 Scan project artifacts and recommend housekeeping actions
 
+**Options:**
+
+- `--dry-run` - Show recommendations without prompting for actions
+- `--json` - Output as JSON
+- `--sessions` - Only review sessions
+- `--specs` - Only review specs
+- `--plans` - Only review plans
+- `--drafts` - Only review drafts
+- `--handoffs` - Only review handoffs
+
 **Usage:**
 ```bash
 loaf housekeeping
+```
+
+---
+
+## Trace Management
+
+### `loaf trace`
+Trace relationships for one state entity
+
+**Options:**
+
+- `--json` - Output relationship trace as JSON
+
+**Usage:**
+```bash
+loaf trace
+```
+
+---
+
+## Brainstorm Management
+
+### `loaf brainstorm`
+Manage brainstorms in native SQLite state
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf brainstorm list` | List brainstorms from SQLite state |
+| `loaf brainstorm show` | Show one brainstorm from SQLite state |
+| `loaf brainstorm promote` | Record brainstorm-to-idea promotion |
+| `loaf brainstorm archive` | Archive one or more brainstorms |
+
+**Options:**
+
+- `loaf brainstorm list`:
+  - `--all` - Include archived brainstorms
+  - `--status <status>` - Filter by status
+  - `--json` - Output brainstorms as JSON
+
+- `loaf brainstorm show`:
+  - `--json` - Output brainstorm details as JSON
+
+- `loaf brainstorm promote`:
+  - `--to-idea <idea>` - Target idea
+  - `--json` - Output promotion result as JSON
+
+- `loaf brainstorm archive`:
+  - `--reason <text>` - Archive reason
+  - `--json` - Output archive result as JSON
+
+**Usage:**
+```bash
+loaf brainstorm list
+loaf brainstorm show
+loaf brainstorm promote
+```
+
+---
+
+## Idea Management
+
+### `loaf idea`
+Manage ideas in native SQLite state
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf idea list` | List ideas from SQLite state |
+| `loaf idea show` | Show one idea from SQLite state |
+| `loaf idea capture` | Capture an idea in SQLite state |
+| `loaf idea promote` | Record idea-to-spec promotion |
+| `loaf idea resolve` | Resolve an idea by linking it to another entity |
+| `loaf idea archive` | Archive one or more ideas |
+
+**Options:**
+
+- `loaf idea list`:
+  - `--all` - Include resolved and archived ideas
+  - `--status <status>` - Filter by status
+  - `--json` - Output ideas as JSON
+
+- `loaf idea show`:
+  - `--json` - Output idea details as JSON
+
+- `loaf idea capture`:
+  - `--title <title>` - Idea title
+  - `--json` - Output created idea as JSON
+
+- `loaf idea promote`:
+  - `--to-spec <spec>` - Target spec
+  - `--json` - Output promotion result as JSON
+
+- `loaf idea resolve`:
+  - `--by <entity>` - Resolving entity
+  - `--json` - Output resolution result as JSON
+
+- `loaf idea archive`:
+  - `--reason <text>` - Archive reason
+  - `--json` - Output archive result as JSON
+
+**Usage:**
+```bash
+loaf idea list
+loaf idea show
+loaf idea capture
+```
+
+---
+
+## Spark Management
+
+### `loaf spark`
+Manage sparks in native SQLite state
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf spark list` | List sparks from SQLite state |
+| `loaf spark show` | Show one spark from SQLite state |
+| `loaf spark capture` | Capture a spark in SQLite state |
+| `loaf spark resolve` | Resolve a spark |
+| `loaf spark promote` | Record spark-to-idea promotion |
+
+**Options:**
+
+- `loaf spark list`:
+  - `--all` - Include resolved sparks
+  - `--status <status>` - Filter by status
+  - `--json` - Output sparks as JSON
+
+- `loaf spark show`:
+  - `--json` - Output spark details as JSON
+
+- `loaf spark capture`:
+  - `--scope <scope>` - Spark scope
+  - `--text <text>` - Spark text
+  - `--json` - Output created spark as JSON
+
+- `loaf spark resolve`:
+  - `--reason <text>` - Resolution reason
+  - `--json` - Output resolution result as JSON
+
+- `loaf spark promote`:
+  - `--to-idea <idea>` - Target idea
+  - `--json` - Output promotion result as JSON
+
+**Usage:**
+```bash
+loaf spark list
+loaf spark show
+loaf spark capture
+```
+
+---
+
+## Tag Management
+
+### `loaf tag`
+Manage tags in native SQLite state
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf tag list` | List tags from SQLite state |
+| `loaf tag show` | Show entities with a tag |
+| `loaf tag add` | Add a tag to an entity |
+| `loaf tag remove` | Remove a tag from an entity |
+
+**Options:**
+
+- `loaf tag list`:
+  - `--json` - Output tags as JSON
+
+- `loaf tag show`:
+  - `--json` - Output tag details as JSON
+
+- `loaf tag add`:
+  - `--json` - Output tag mutation as JSON
+
+- `loaf tag remove`:
+  - `--json` - Output tag mutation as JSON
+
+**Usage:**
+```bash
+loaf tag list
+loaf tag show
+loaf tag add
+```
+
+---
+
+## Bundle Management
+
+### `loaf bundle`
+Manage bundles in native SQLite state
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf bundle list` | List bundles from SQLite state |
+| `loaf bundle create` | Create a bundle |
+| `loaf bundle update` | Update a bundle |
+| `loaf bundle show` | Show one bundle |
+| `loaf bundle add` | Add an entity to a bundle |
+| `loaf bundle remove` | Remove an entity from a bundle |
+
+**Options:**
+
+- `loaf bundle list`:
+  - `--json` - Output bundles as JSON
+
+- `loaf bundle create`:
+  - `--title <title>` - Bundle title
+  - `--tags <tags>` - Comma-separated tag query
+  - `--json` - Output created bundle as JSON
+
+- `loaf bundle update`:
+  - `--title <title>` - Bundle title
+  - `--tags <tags>` - Comma-separated tag query
+  - `--json` - Output updated bundle as JSON
+
+- `loaf bundle show`:
+  - `--json` - Output bundle details as JSON
+
+- `loaf bundle add`:
+  - `--json` - Output bundle membership as JSON
+
+- `loaf bundle remove`:
+  - `--json` - Output bundle membership as JSON
+
+**Usage:**
+```bash
+loaf bundle list
+loaf bundle create
+loaf bundle update
+```
+
+---
+
+## Link Management
+
+### `loaf link`
+Manage explicit relationships in native SQLite state
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf link create` | Create an explicit relationship |
+| `loaf link list` | List relationships for one entity |
+| `loaf link remove` | Remove an explicit relationship |
+
+**Options:**
+
+- `loaf link create`:
+  - `--from <entity>` - Source entity
+  - `--to <entity>` - Target entity
+  - `--type <type>` - Relationship type
+  - `--reason <text>` - Relationship reason
+  - `--json` - Output created relationship as JSON
+
+- `loaf link list`:
+  - `--json` - Output relationships as JSON
+
+- `loaf link remove`:
+  - `--from <entity>` - Source entity
+  - `--to <entity>` - Target entity
+  - `--type <type>` - Relationship type
+  - `--json` - Output removed relationship as JSON
+
+**Usage:**
+```bash
+loaf link create
+loaf link list
+loaf link remove
 ```
 
 ---
@@ -491,6 +811,11 @@ loaf housekeeping
 
 ### `loaf check`
 Run enforcement hook checks
+
+**Options:**
+
+- `--hook <id>` - Registered hook ID to run
+- `--json` - Output JSON format
 
 **Usage:**
 ```bash
