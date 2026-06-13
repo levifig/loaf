@@ -12,10 +12,14 @@ import (
 
 // BackupResult describes a repository-external SQLite database backup.
 type BackupResult struct {
-	DatabasePath string `json:"database_path"`
-	BackupPath   string `json:"backup_path"`
-	Bytes        int64  `json:"bytes"`
-	CreatedAt    string `json:"created_at"`
+	DatabasePath   string `json:"database_path"`
+	BackupPath     string `json:"backup_path"`
+	Bytes          int64  `json:"bytes"`
+	CreatedAt      string `json:"created_at"`
+	Verified       bool   `json:"verified"`
+	SchemaVersion  int    `json:"schema_version"`
+	ProjectID      string `json:"project_id"`
+	IntegrityCheck string `json:"integrity_check"`
 }
 
 // Backup creates a timestamped SQLite backup under the project's state directory.
@@ -60,12 +64,61 @@ func Backup(ctx context.Context, root project.Root, resolver PathResolver) (Back
 	if err != nil {
 		return BackupResult{}, fmt.Errorf("stat state backup: %w", err)
 	}
+	verification, err := verifyBackup(ctx, backupPath, root)
+	if err != nil {
+		return BackupResult{}, err
+	}
 
 	return BackupResult{
-		DatabasePath: status.DatabasePath,
-		BackupPath:   backupPath,
-		Bytes:        info.Size(),
-		CreatedAt:    now.Format(time.RFC3339Nano),
+		DatabasePath:   status.DatabasePath,
+		BackupPath:     backupPath,
+		Bytes:          info.Size(),
+		CreatedAt:      now.Format(time.RFC3339Nano),
+		Verified:       true,
+		SchemaVersion:  verification.schemaVersion,
+		ProjectID:      verification.projectID,
+		IntegrityCheck: verification.integrityCheck,
+	}, nil
+}
+
+type backupVerification struct {
+	schemaVersion  int
+	projectID      string
+	integrityCheck string
+}
+
+func verifyBackup(ctx context.Context, backupPath string, root project.Root) (backupVerification, error) {
+	store, err := OpenStore(backupPath)
+	if err != nil {
+		return backupVerification{}, fmt.Errorf("open state backup for verification: %w", err)
+	}
+	defer store.Close()
+
+	var integrityCheck string
+	if err := store.db.QueryRowContext(ctx, `PRAGMA integrity_check`).Scan(&integrityCheck); err != nil {
+		return backupVerification{}, fmt.Errorf("verify state backup integrity: %w", err)
+	}
+	if integrityCheck != "ok" {
+		return backupVerification{}, fmt.Errorf("verify state backup integrity: %s", integrityCheck)
+	}
+	version, err := store.SchemaVersion(ctx)
+	if err != nil {
+		return backupVerification{}, fmt.Errorf("verify state backup schema version: %w", err)
+	}
+	if version != CurrentSchemaVersion() {
+		return backupVerification{}, fmt.Errorf("verify state backup schema version: got %d, want %d", version, CurrentSchemaVersion())
+	}
+	identity, err := store.LookupProjectIdentityForRoot(ctx, root)
+	if err != nil {
+		return backupVerification{}, fmt.Errorf("verify state backup project identity: %w", err)
+	}
+	if identity.ID == "" {
+		return backupVerification{}, fmt.Errorf("verify state backup project identity: empty project id")
+	}
+	return backupVerification{
+		schemaVersion:  version,
+		projectID:      identity.ID,
+		integrityCheck: integrityCheck,
 	}, nil
 }
 

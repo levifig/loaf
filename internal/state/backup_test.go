@@ -50,6 +50,18 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	if result.CreatedAt == "" {
 		t.Fatal("CreatedAt is empty")
 	}
+	if !result.Verified {
+		t.Fatal("Verified = false, want true")
+	}
+	if result.SchemaVersion != CurrentSchemaVersion() {
+		t.Fatalf("SchemaVersion = %d, want %d", result.SchemaVersion, CurrentSchemaVersion())
+	}
+	if result.ProjectID != status.ProjectID {
+		t.Fatalf("ProjectID = %q, want %q", result.ProjectID, status.ProjectID)
+	}
+	if result.IntegrityCheck != "ok" {
+		t.Fatalf("IntegrityCheck = %q, want ok", result.IntegrityCheck)
+	}
 
 	backupStore, err := OpenStore(result.BackupPath)
 	if err != nil {

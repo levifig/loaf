@@ -2639,6 +2639,18 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	if result.CreatedAt == "" {
 		t.Fatal("CreatedAt is empty")
 	}
+	if !result.Verified {
+		t.Fatal("Verified = false, want true")
+	}
+	if result.SchemaVersion != state.CurrentSchemaVersion() {
+		t.Fatalf("SchemaVersion = %d, want %d", result.SchemaVersion, state.CurrentSchemaVersion())
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.IntegrityCheck != "ok" {
+		t.Fatalf("IntegrityCheck = %q, want ok", result.IntegrityCheck)
+	}
 	if strings.HasPrefix(result.BackupPath, workingDir+string(filepath.Separator)) {
 		t.Fatalf("BackupPath = %q, want outside working dir %q", result.BackupPath, workingDir)
 	}
@@ -2677,7 +2689,7 @@ func TestRunnerStateBackupHumanOutput(t *testing.T) {
 	}
 
 	output := stdout.String()
-	for _, want := range []string{"loaf state backup", "database:", "backup:", "bytes:", "created at:"} {
+	for _, want := range []string{"loaf state backup", "database:", "backup:", "bytes:", "verified: true", "schema version:", "project:", "integrity: ok", "created at:"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}

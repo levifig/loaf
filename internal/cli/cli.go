@@ -1454,6 +1454,10 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 	fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
 	fmt.Fprintf(out, "backup: %s\n", result.BackupPath)
 	fmt.Fprintf(out, "bytes: %d\n", result.Bytes)
+	fmt.Fprintf(out, "verified: %t\n", result.Verified)
+	fmt.Fprintf(out, "schema version: %d\n", result.SchemaVersion)
+	fmt.Fprintf(out, "project: %s\n", result.ProjectID)
+	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
 	fmt.Fprintf(out, "created at: %s\n", result.CreatedAt)
 	return nil
 }
