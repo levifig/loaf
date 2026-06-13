@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf project rename --json` now requires an existing registered project identity and no longer initializes missing SQLite state as a side effect.
 - `loaf project move --json` now validates against an existing SQLite database before opening a writable handle, so rejected moves no longer create empty state.
 - `loaf project show|list` now open the global SQLite database read-only and no longer initialize missing state as a side effect.
 - `loaf state status` now distinguishes durable SQLite `project_id` from the path-derived `legacy_project_key`, avoiding pre-init identity confusion.

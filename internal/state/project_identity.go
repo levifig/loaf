@@ -178,7 +178,7 @@ func (s *Store) RenameProject(ctx context.Context, root project.Root, friendlyNa
 	if friendlyName == "" {
 		return ProjectIdentity{}, fmt.Errorf("project name cannot be empty")
 	}
-	identity, err := s.EnsureProject(ctx, root)
+	identity, err := s.LookupProjectIdentityForRoot(ctx, root)
 	if err != nil {
 		return ProjectIdentity{}, err
 	}

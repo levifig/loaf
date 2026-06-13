@@ -2161,6 +2161,58 @@ func TestRunnerProjectShowDoesNotRegisterUnknownPath(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectRenameDoesNotCreateMissingDatabase(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var stdout bytes.Buffer
+	err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "New Name", "--json"})
+	if err == nil {
+		t.Fatal("project rename missing database error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, stdout.Bytes())
+	if output.Command != "project rename" || !strings.Contains(output.Error, "state database does not exist") {
+		t.Fatalf("project rename JSON error = %#v, want machine-readable missing database rejection", output)
+	}
+	if _, err := os.Stat(filepath.Join(stateHome, "loaf", "loaf.sqlite")); !os.IsNotExist(err) {
+		t.Fatalf("state database stat error = %v, want rejected project rename not to create database", err)
+	}
+}
+
+func TestRunnerProjectRenameUnknownPathDoesNotRegisterProject(t *testing.T) {
+	registeredDir := realpath(t, t.TempDir())
+	unknownDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: registeredDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	err := (Runner{Stdout: &stdout, WorkingDir: unknownDir, StateHome: stateHome}).Run([]string{"project", "rename", "Unknown", "--json"})
+	if err == nil {
+		t.Fatal("project rename unknown path error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, stdout.Bytes())
+	if output.Command != "project rename" || !strings.Contains(output.Error, "project identity is not registered") {
+		t.Fatalf("JSON error = %#v, want project rename not registered error", output)
+	}
+
+	var listOut bytes.Buffer
+	if err := (Runner{Stdout: &listOut, WorkingDir: registeredDir, StateHome: stateHome}).Run([]string{"project", "list", "--json"}); err != nil {
+		t.Fatalf("project list --json error = %v", err)
+	}
+	var listed state.ProjectList
+	if err := json.Unmarshal(listOut.Bytes(), &listed); err != nil {
+		t.Fatalf("json.Unmarshal(list) error = %v\n%s", err, listOut.String())
+	}
+	if len(listed.Projects) != 1 || listed.Projects[0].CurrentPath != registeredDir {
+		t.Fatalf("listed projects = %#v, want only registered path %s", listed.Projects, registeredDir)
+	}
+}
+
 func TestRunnerProjectRenameDryRunDoesNotWrite(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()

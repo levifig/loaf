@@ -1182,23 +1182,24 @@ func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Run
 		}
 		return err
 	}
-	var projectRoot project.Root
-	var store *state.Store
-	if options.dryRun {
-		projectRoot, store, err = r.openProjectStoreReadOnly(runtime)
-	} else {
-		projectRoot, store, err = r.openProjectIdentityStore(runtime)
-	}
+	projectRoot, store, err := r.openProjectStoreReadOnly(runtime)
 	if err != nil {
 		if options.jsonOutput {
 			return writeJSONCommandError(out, "project rename", err)
 		}
 		return err
 	}
-	defer store.Close()
+	defer func() {
+		if store != nil {
+			store.Close()
+		}
+	}()
 	if options.dryRun {
 		result, err := store.PreviewRenameProject(context.Background(), projectRoot, options.name)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				err = fmt.Errorf("project identity is not registered for %s; run `loaf state init` to register this checkout or `loaf project move --from <old-path>` after moving a registered checkout", projectRoot.Path())
+			}
 			if options.jsonOutput {
 				return writeJSONCommandError(out, "project rename", err)
 			}
@@ -1213,6 +1214,24 @@ func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Run
 		fmt.Fprintf(out, "  to:   %s\n\n", result.ToName)
 		writeProjectIdentity(out, result.Project)
 		return nil
+	}
+	if _, err := store.PreviewRenameProject(context.Background(), projectRoot, options.name); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			err = fmt.Errorf("project identity is not registered for %s; run `loaf state init` to register this checkout or `loaf project move --from <old-path>` after moving a registered checkout", projectRoot.Path())
+		}
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "project rename", err)
+		}
+		return err
+	}
+	store.Close()
+	store = nil
+	projectRoot, store, err = r.openProjectStore(runtime)
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "project rename", err)
+		}
+		return err
 	}
 	identity, err := store.RenameProject(context.Background(), projectRoot, options.name)
 	if err != nil {

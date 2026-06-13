@@ -222,6 +222,31 @@ func TestPreviewRenameProjectValidatesWithoutWriting(t *testing.T) {
 	}
 }
 
+func TestRenameProjectRequiresRegisteredIdentity(t *testing.T) {
+	root := projectRoot(t)
+	unknownRoot, err := project.ResolveRoot(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveRoot(unknown) error = %v", err)
+	}
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+
+	if _, err := store.RenameProject(context.Background(), unknownRoot, "Unknown"); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("RenameProject(unknown) error = %v, want sql.ErrNoRows", err)
+	}
+	if got := countRows(t, store, `SELECT COUNT(*) FROM projects`); got != 1 {
+		t.Fatalf("projects = %d, want only initialized project row", got)
+	}
+}
+
 func TestListProjectsReturnsRegisteredIdentities(t *testing.T) {
 	root := projectRoot(t)
 	otherRoot, err := project.ResolveRoot(t.TempDir())
