@@ -64,8 +64,9 @@ type projectMoveOptions struct {
 }
 
 type commandErrorJSON struct {
-	Command string `json:"command"`
-	Error   string `json:"error"`
+	ContractVersion int    `json:"contract_version"`
+	Command         string `json:"command"`
+	Error           string `json:"error"`
 }
 
 // Run dispatches a loaf command.
@@ -11025,7 +11026,11 @@ func writeJSON(out io.Writer, value any) error {
 }
 
 func writeJSONCommandError(out io.Writer, command string, err error) error {
-	if writeErr := writeJSON(out, commandErrorJSON{Command: command, Error: err.Error()}); writeErr != nil {
+	if writeErr := writeJSON(out, commandErrorJSON{
+		ContractVersion: state.StateJSONContractVersion,
+		Command:         command,
+		Error:           err.Error(),
+	}); writeErr != nil {
 		return writeErr
 	}
 	return ExitError{Code: 1}

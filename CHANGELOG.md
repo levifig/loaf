@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- JSON error payloads now include `contract_version` for agentic consumers.
 - `loaf state backup --json` and `loaf state export all --format json` now include `contract_version` for agentic JSON consumers.
 - `loaf state backup --json` and human output now include the backup file's SHA-256 digest for artifact verification.
 - `loaf state backup --json` and `loaf state export all --format json` now surface project name and current project path alongside the durable project ID.
