@@ -1876,7 +1876,7 @@ func writeTaskHelp(out io.Writer) {
 }
 
 func writeTaskCreateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task create --title <title> [options]", "Create a task.", "--title      Task title", "--spec       Associated spec", "--priority   P0, P1, P2, or P3", "--depends-on Comma-separated task refs", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task create --title <title> [options]", "Create a task.", "--title      Task title", "--spec       Associated spec", "--priority   Task priority: "+validTaskPriorityText(), "--depends-on Comma-separated task refs", "--json       Output JSON")
 }
 
 func writeTaskListHelp(out io.Writer) {
@@ -1892,7 +1892,7 @@ func writeTaskStatusHelp(out io.Writer) {
 }
 
 func writeTaskUpdateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task update <task> [options]", "Update task metadata.", "--status     New task status: "+validTaskStatusText(), "--priority   P0, P1, P2, or P3", "--spec       Associated spec", "--depends-on Comma-separated task refs or none", "--session    Session ref or none", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task update <task> [options]", "Update task metadata.", "--status     New task status: "+validTaskStatusText(), "--priority   New task priority: "+validTaskPriorityText(), "--spec       Associated spec", "--depends-on Comma-separated task refs or none", "--session    Session ref or none", "--json       Output JSON")
 }
 
 func writeTaskArchiveHelp(out io.Writer) {
@@ -2475,7 +2475,7 @@ func markdownTaskCreate(rootPath string, options state.TaskCreateOptions) (state
 		priority = "P2"
 	}
 	if !state.ValidTaskPriority(priority) {
-		return state.TaskCreateResult{}, fmt.Errorf("invalid priority %q", priority)
+		return state.TaskCreateResult{}, fmt.Errorf("invalid priority %q (valid: %s)", priority, validTaskPriorityText())
 	}
 	agentsDir := filepath.Join(rootPath, ".agents")
 	tasksDir := filepath.Join(agentsDir, "tasks")
@@ -2612,7 +2612,7 @@ func markdownTaskUpdate(rootPath string, options state.TaskUpdateOptions) (state
 		return state.TaskStatusUpdateResult{}, fmt.Errorf("invalid status %q", options.Status)
 	}
 	if options.SetPriority && !state.ValidTaskPriority(options.Priority) {
-		return state.TaskStatusUpdateResult{}, fmt.Errorf("invalid priority %q", options.Priority)
+		return state.TaskStatusUpdateResult{}, fmt.Errorf("invalid priority %q (valid: %s)", options.Priority, validTaskPriorityText())
 	}
 	indexPath := filepath.Join(rootPath, ".agents", "TASKS.json")
 	index, err := loadMarkdownTaskIndexObject(indexPath)
@@ -9282,7 +9282,7 @@ func parseTaskCreateArgs(args []string) (taskCreateOptions, error) {
 				return taskCreateOptions{}, err
 			}
 			if !state.ValidTaskPriority(value) {
-				return taskCreateOptions{}, fmt.Errorf("invalid priority %q", value)
+				return taskCreateOptions{}, fmt.Errorf("invalid priority %q (valid: %s)", value, validTaskPriorityText())
 			}
 			options.create.Priority = value
 		case "--depends-on":
@@ -9324,7 +9324,7 @@ func parseTaskUpdateArgs(args []string) (taskUpdateOptions, error) {
 				return taskUpdateOptions{}, err
 			}
 			if !state.ValidTaskPriority(value) {
-				return taskUpdateOptions{}, fmt.Errorf("invalid priority %q", value)
+				return taskUpdateOptions{}, fmt.Errorf("invalid priority %q (valid: %s)", value, validTaskPriorityText())
 			}
 			options.update.Priority = value
 			options.update.SetPriority = true
@@ -10154,6 +10154,10 @@ func validTaskStatusText() string {
 
 func validTaskListStatusText() string {
 	return strings.Join(state.TaskListStatuses(), ", ")
+}
+
+func validTaskPriorityText() string {
+	return strings.Join(state.TaskPriorities(), ", ")
 }
 
 func sortedTasksByStatus(tasks state.TaskList, status string) []string {

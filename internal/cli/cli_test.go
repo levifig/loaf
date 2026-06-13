@@ -2375,6 +2375,62 @@ func TestRunnerTaskStatusErrorsNameValidStatuses(t *testing.T) {
 	}
 }
 
+func TestRunnerTaskPriorityHelpNamesValidPriorities(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "task create", args: []string{"task", "create", "--help"}, want: "--priority   Task priority: P0, P1, P2, P3"},
+		{name: "task update", args: []string{"task", "update", "--help"}, want: "--priority   New task priority: P0, P1, P2, P3"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}.Run(tt.args)
+			if err != nil {
+				t.Fatalf("Run(%v) error = %v", tt.args, err)
+			}
+			if !strings.Contains(stdout.String(), tt.want) {
+				t.Fatalf("output = %q, want %q", stdout.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestRunnerTaskPriorityErrorsNameValidPriorities(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "task create", args: []string{"task", "create", "--title", "Bad", "--priority", "P9"}, want: `invalid priority "P9" (valid: P0, P1, P2, P3)`},
+		{name: "task update", args: []string{"task", "update", "TASK-001", "--priority", "P9"}, want: `invalid priority "P9" (valid: P0, P1, P2, P3)`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Runner{
+				Stdout:     &bytes.Buffer{},
+				WorkingDir: realpath(t, t.TempDir()),
+				StateHome:  t.TempDir(),
+			}.Run(tt.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want invalid priority error", tt.args)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %q, want %q", err.Error(), tt.want)
+			}
+		})
+	}
+}
+
 func TestRunnerStateInitHumanOutputPrintsRepositoryExternalDatabaseWithoutSecrets(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -10636,6 +10692,12 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["task"].optionDescriptions["task update --status <status>"]; !strings.Contains(got, "in_progress, blocked, todo, review, done") {
 		t.Fatalf("task update status description = %q, want valid update statuses", got)
+	}
+	if got := commands["task"].optionDescriptions["task create --priority <level>"]; !strings.Contains(got, "P0, P1, P2, P3") {
+		t.Fatalf("task create priority description = %q, want valid priorities", got)
+	}
+	if got := commands["task"].optionDescriptions["task update --priority <level>"]; !strings.Contains(got, "P0, P1, P2, P3") {
+		t.Fatalf("task update priority description = %q, want valid priorities", got)
 	}
 }
 

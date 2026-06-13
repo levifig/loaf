@@ -12,6 +12,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf state export all --format json` manifest now includes an explicit `table_count` for agentic consumers.
 - `loaf state export ...` generation now reads SQLite through read-only connections.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
+- `loaf task create|update` help, invalid-priority errors, and agent help now name the valid task priorities.
 - `loaf state doctor` now validates backend mapping drift for Linear and other external integrations, including orphaned local entities, unknown entity kinds, and ambiguous local-to-external mappings.
 - `loaf state doctor` repair plans now deduplicate repeated repair actions while preserving distinct diagnostic causes.
 - `loaf state backup` now verifies backup integrity, schema version, and project identity before returning, and reports those checks in JSON and human output.

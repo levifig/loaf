@@ -14,6 +14,7 @@ import (
 )
 
 var taskAliasPattern = regexp.MustCompile(`^TASK-(\d+)$`)
+var taskPriorityOrder = []string{"P0", "P1", "P2", "P3"}
 
 // TaskCreateOptions describes a SQLite-backed task creation request.
 type TaskCreateOptions struct {
@@ -57,7 +58,7 @@ func (s *Store) CreateTask(ctx context.Context, root project.Root, options TaskC
 		priority = "P2"
 	}
 	if !ValidTaskPriority(priority) {
-		return TaskCreateResult{}, fmt.Errorf("invalid priority %q", priority)
+		return TaskCreateResult{}, fmt.Errorf("invalid priority %q (valid: %s)", priority, taskPriorityText())
 	}
 
 	var spec TraceEntity
@@ -215,10 +216,19 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 
 // ValidTaskPriority reports whether priority is a known task priority.
 func ValidTaskPriority(priority string) bool {
-	switch priority {
-	case "P0", "P1", "P2", "P3":
-		return true
-	default:
-		return false
+	for _, valid := range taskPriorityOrder {
+		if priority == valid {
+			return true
+		}
 	}
+	return false
+}
+
+// TaskPriorities returns valid task priorities in display order.
+func TaskPriorities() []string {
+	return append([]string(nil), taskPriorityOrder...)
+}
+
+func taskPriorityText() string {
+	return strings.Join(TaskPriorities(), ", ")
 }

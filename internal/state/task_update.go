@@ -71,7 +71,7 @@ func (s *Store) UpdateTask(ctx context.Context, root project.Root, options TaskU
 		return TaskStatusUpdateResult{}, fmt.Errorf("invalid task status %q", options.Status)
 	}
 	if options.SetPriority && !ValidTaskPriority(options.Priority) {
-		return TaskStatusUpdateResult{}, fmt.Errorf("invalid priority %q", options.Priority)
+		return TaskStatusUpdateResult{}, fmt.Errorf("invalid priority %q (valid: %s)", options.Priority, taskPriorityText())
 	}
 	task, err := s.resolveTraceEntity(ctx, projectID, options.Ref)
 	if err != nil {
