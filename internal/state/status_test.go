@@ -619,6 +619,51 @@ VALUES
 	}
 }
 
+func TestInspectWarnsOnUnknownBackendMappingSyncStatus(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO tasks (id, project_id, spec_id, title, status, priority, body_source_id, created_at, updated_at)
+VALUES
+  ('task-linear-linked', ?, NULL, 'Linear linked task', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z'),
+  ('task-linear-typo', ?, NULL, 'Linear typo task', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID, projectID); err != nil {
+		t.Fatalf("insert task fixtures error = %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES
+  ('backend-mapping-linear-linked', ?, 'linear', 'task', 'task-linear-linked', 'issue', 'ENG-125', 'https://linear.app/workspace/issue/ENG-125', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z'),
+  ('backend-mapping-linear-typo', ?, 'linear', 'task', 'task-linear-typo', 'issue', 'ENG-126', 'https://linear.app/workspace/issue/ENG-126', 'lnked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID, projectID); err != nil {
+		t.Fatalf("insert backend mapping fixtures error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeSQLiteReady {
+		t.Fatalf("Mode = %q, want %q for unknown sync status warning", status.Mode, ModeSQLiteReady)
+	}
+	diagnostic := findDiagnostic(t, status.Diagnostics, "backend-mapping-sync-status-unknown")
+	if !strings.Contains(diagnostic.Message, "lnked") {
+		t.Fatalf("diagnostic Message = %q, want unknown status value", diagnostic.Message)
+	}
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
+	}
+}
+
 func TestInspectWarnsOnUnmappedLocalTasksWhenLinearEnabled(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

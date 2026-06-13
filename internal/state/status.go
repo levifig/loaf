@@ -284,7 +284,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
-		case "backend-mapping-field-empty", "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing", "backend-mapping-entity-ambiguous", "linear-mode-local-task-unmapped":
+		case "backend-mapping-field-empty", "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing", "backend-mapping-entity-ambiguous", "backend-mapping-sync-status-unknown", "linear-mode-local-task-unmapped":
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "audit-backend-mappings",
 				DiagnosticCode: diagnostic.Code,
@@ -672,6 +672,34 @@ ORDER BY entity_kind
 	}
 	if err := unknownRows.Err(); err != nil {
 		return nil, false, fmt.Errorf("iterate unknown backend mapping entity kinds: %w", err)
+	}
+
+	unknownStatusRows, err := store.db.QueryContext(ctx, `
+SELECT sync_status, COUNT(*)
+FROM backend_mappings
+WHERE TRIM(sync_status) <> ''
+  AND sync_status NOT IN ('linked', 'pending', 'stale', 'conflict', 'error')
+GROUP BY sync_status
+ORDER BY sync_status
+`)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect unknown backend mapping sync statuses: %w", err)
+	}
+	defer unknownStatusRows.Close()
+	for unknownStatusRows.Next() {
+		var syncStatus string
+		var count int
+		if err := unknownStatusRows.Scan(&syncStatus, &count); err != nil {
+			return nil, false, fmt.Errorf("scan unknown backend mapping sync status: %w", err)
+		}
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "warn",
+			Code:     "backend-mapping-sync-status-unknown",
+			Message:  fmt.Sprintf("%d backend mapping row(s) have unknown sync_status %q", count, syncStatus),
+		})
+	}
+	if err := unknownStatusRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate unknown backend mapping sync statuses: %w", err)
 	}
 
 	missingRows, err := store.db.QueryContext(ctx, `
