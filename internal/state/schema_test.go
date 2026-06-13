@@ -38,8 +38,8 @@ var requiredInitialTables = []string{
 
 func TestSchemaMigrationsAreOrderedAndChecksummed(t *testing.T) {
 	migrations := SchemaMigrations()
-	if len(migrations) != 3 {
-		t.Fatalf("len(SchemaMigrations()) = %d, want 3", len(migrations))
+	if len(migrations) != 4 {
+		t.Fatalf("len(SchemaMigrations()) = %d, want 4", len(migrations))
 	}
 
 	for i, migration := range migrations {
@@ -55,6 +55,9 @@ func TestSchemaMigrationsAreOrderedAndChecksummed(t *testing.T) {
 	}
 	if migrations[2].Name != "project_identity_and_relationship_origin" {
 		t.Fatalf("migration[2].Name = %q, want project_identity_and_relationship_origin", migrations[2].Name)
+	}
+	if migrations[3].Name != "project_path_current_uniqueness" {
+		t.Fatalf("migration[3].Name = %q, want project_path_current_uniqueness", migrations[3].Name)
 	}
 	for _, migration := range migrations {
 		if strings.TrimSpace(migration.SQL) == "" {
@@ -186,6 +189,10 @@ func TestSchemaDocumentationMirrorsExecutableMigration(t *testing.T) {
 	sqlDoc = readRepoFile(t, "docs", "schema", "0003_project_identity_and_relationship_origin.sql")
 	if sqlDoc != SchemaMigrations()[2].SQL {
 		t.Fatal("docs/schema/0003_project_identity_and_relationship_origin.sql must match embedded migration 0003 exactly")
+	}
+	sqlDoc = readRepoFile(t, "docs", "schema", "0004_project_path_current_uniqueness.sql")
+	if sqlDoc != SchemaMigrations()[3].SQL {
+		t.Fatal("docs/schema/0004_project_path_current_uniqueness.sql must match embedded migration 0004 exactly")
 	}
 
 	dbmlDoc := readRepoFile(t, "docs", "schema", "operational-state.dbml")

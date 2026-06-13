@@ -133,6 +133,61 @@ func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
 	}
 }
 
+func TestProjectPathsAllowOnlyOneCurrentPath(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	projectID := projectIDForTest(t, store, root)
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = store.db.ExecContext(context.Background(), `
+INSERT INTO project_paths (id, project_id, path, is_current, first_seen_at, last_seen_at, created_at, updated_at)
+VALUES ('duplicate-current-path', ?, ?, 1, ?, ?, ?, ?)
+`, projectID, filepath.Join(root.Path(), "other"), now, now, now, now)
+	if err == nil {
+		t.Fatal("insert duplicate current project path error = nil, want unique constraint failure")
+	}
+}
+
+func TestMoveProjectUnknownFromPathDoesNotCreateProject(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	databasePath, err := (PathResolver{StateHome: stateHome}).DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0o700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	if err := store.ApplyMigrations(context.Background()); err != nil {
+		t.Fatalf("ApplyMigrations() error = %v", err)
+	}
+
+	_, err = store.MoveProject(context.Background(), root, filepath.Join(t.TempDir(), "missing"), root.Path())
+	if err == nil {
+		t.Fatal("MoveProject() error = nil, want unknown --from rejection")
+	}
+	var count int
+	if err := store.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM projects`).Scan(&count); err != nil {
+		t.Fatalf("count projects error = %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("projects = %d, want no row after rejected move", count)
+	}
+}
+
 func TestProjectIdentityRekeysLegacyPathHashRows(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

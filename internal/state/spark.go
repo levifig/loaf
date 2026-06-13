@@ -403,10 +403,11 @@ func (s *Store) ResolveSparkWithOptions(ctx context.Context, root project.Root, 
 	reason := firstNonEmpty(strings.TrimSpace(options.Reason), "recorded by spark resolve")
 	relationshipID := stableMigrationID("relationship", projectID, "spark", spark.ID, "resolved_by", target.Kind, target.ID)
 	_, err = tx.ExecContext(ctx, `
-INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'command', ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   reason = excluded.reason,
+  origin = excluded.origin,
   updated_at = excluded.updated_at
 `, relationshipID, projectID, "spark", spark.ID, target.Kind, target.ID, "resolved_by", reason, now, now)
 	if err != nil {
@@ -471,10 +472,11 @@ func (s *Store) PromoteSpark(ctx context.Context, root project.Root, options Spa
 	now := time.Now().UTC().Format(time.RFC3339)
 	relationshipID := stableMigrationID("relationship", projectID, "spark", spark.ID, "promoted_to", "idea", idea.ID)
 	_, err = s.db.ExecContext(ctx, `
-INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'command', ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   reason = excluded.reason,
+  origin = excluded.origin,
   updated_at = excluded.updated_at
 `, relationshipID, projectID, "spark", spark.ID, "idea", idea.ID, "promoted_to", "recorded by spark promote", now, now)
 	if err != nil {

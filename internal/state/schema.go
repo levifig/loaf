@@ -16,6 +16,9 @@ var sessionStateSnapshotsSQL string
 //go:embed migrations/0003_project_identity_and_relationship_origin.sql
 var projectIdentityAndRelationshipOriginSQL string
 
+//go:embed migrations/0004_project_path_current_uniqueness.sql
+var projectPathCurrentUniquenessSQL string
+
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
@@ -48,6 +51,11 @@ func SchemaMigrations() []SchemaMigration {
 			Version: 3,
 			Name:    "project_identity_and_relationship_origin",
 			SQL:     normalizeMigrationSQL(projectIdentityAndRelationshipOriginSQL),
+		},
+		{
+			Version: 4,
+			Name:    "project_path_current_uniqueness",
+			SQL:     normalizeMigrationSQL(projectPathCurrentUniquenessSQL),
 		},
 	}
 }

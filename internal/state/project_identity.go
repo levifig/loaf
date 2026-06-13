@@ -164,14 +164,18 @@ func (s *Store) MoveProject(ctx context.Context, root project.Root, fromPath str
 		return ProjectMoveResult{}, err
 	}
 	if projectID == "" {
-		current, err := s.EnsureProject(ctx, root)
-		if err != nil {
-			return ProjectMoveResult{}, err
+		if fromPath == root.Path() {
+			current, err := s.LookupProjectIdentityForRoot(ctx, root)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return ProjectMoveResult{}, err
+			}
+			if err == nil && current.CurrentPath == fromPath {
+				projectID = current.ID
+			}
 		}
-		if current.CurrentPath != fromPath {
+		if projectID == "" {
 			return ProjectMoveResult{}, fmt.Errorf("project path %s is not registered; run from the old checkout or initialize it first", fromPath)
 		}
-		projectID = current.ID
 	}
 
 	existingProjectID, err := s.projectIDByPath(ctx, toPath)

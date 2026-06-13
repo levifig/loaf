@@ -2068,6 +2068,24 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectMoveUnknownFromDoesNotCreateProject(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", filepath.Join(t.TempDir(), "missing"), "--json"})
+	if err == nil {
+		t.Fatal("project move unknown --from error = nil, want rejection")
+	}
+	db, openErr := sql.Open("sqlite3", filepath.Join(stateHome, "loaf", "loaf.sqlite"))
+	if openErr != nil {
+		t.Fatalf("sql.Open() error = %v", openErr)
+	}
+	defer db.Close()
+	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM projects`); got != 0 {
+		t.Fatalf("projects = %d, want no project row after rejected move", got)
+	}
+}
+
 func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -4188,6 +4206,9 @@ status: open
 	}
 	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM relationships WHERE relationship_type = ? AND reason = ?`, "resolved_by", "matrix link"); got != 0 {
 		t.Fatalf("matrix resolved_by link count = %d, want 0 after link remove", got)
+	}
+	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM relationships WHERE origin IS NULL OR origin = ''`); got != 0 {
+		t.Fatalf("relationships without origin = %d, want 0", got)
 	}
 }
 

@@ -52,10 +52,11 @@ func (s *Store) PromoteBrainstorm(ctx context.Context, root project.Root, option
 	now := time.Now().UTC().Format(time.RFC3339)
 	relationshipID := stableMigrationID("relationship", projectID, "brainstorm", brainstorm.ID, "promoted_to", "idea", idea.ID)
 	_, err = s.db.ExecContext(ctx, `
-INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'command', ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   reason = excluded.reason,
+  origin = excluded.origin,
   updated_at = excluded.updated_at
 `, relationshipID, projectID, "brainstorm", brainstorm.ID, "idea", idea.ID, "promoted_to", "recorded by brainstorm promote", now, now)
 	if err != nil {

@@ -295,10 +295,11 @@ func (s *Store) ResolveIdea(ctx context.Context, root project.Root, ideaRef stri
 
 	relationshipID := stableMigrationID("relationship", projectID, "idea", idea.ID, "resolved_by", target.Kind, target.ID)
 	_, err = tx.ExecContext(ctx, `
-INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'command', ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   reason = excluded.reason,
+  origin = excluded.origin,
   updated_at = excluded.updated_at
 `, relationshipID, projectID, "idea", idea.ID, target.Kind, target.ID, "resolved_by", "recorded by idea resolve", now, now)
 	if err != nil {
@@ -362,10 +363,11 @@ func (s *Store) PromoteIdea(ctx context.Context, root project.Root, options Idea
 	now := time.Now().UTC().Format(time.RFC3339)
 	relationshipID := stableMigrationID("relationship", projectID, "idea", idea.ID, "promoted_to", "spec", spec.ID)
 	_, err = s.db.ExecContext(ctx, `
-INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'command', ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   reason = excluded.reason,
+  origin = excluded.origin,
   updated_at = excluded.updated_at
 `, relationshipID, projectID, "idea", idea.ID, "spec", spec.ID, "promoted_to", "recorded by idea promote", now, now)
 	if err != nil {

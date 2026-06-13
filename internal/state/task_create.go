@@ -114,8 +114,8 @@ VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)
 	if spec.ID != "" {
 		relationshipID := stableMigrationID("relationship", projectID, "task", taskID, "implements", "spec", spec.ID)
 		if _, err := tx.ExecContext(ctx, `
-INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
-VALUES (?, ?, 'task', ?, 'spec', ?, 'implements', 'recorded by task create', ?, ?)
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, 'task', ?, 'spec', ?, 'implements', 'recorded by task create', 'command', ?, ?)
 `, relationshipID, projectID, taskID, spec.ID, now, now); err != nil {
 			return TaskCreateResult{}, fmt.Errorf("record task spec relationship: %w", err)
 		}
@@ -123,8 +123,8 @@ VALUES (?, ?, 'task', ?, 'spec', ?, 'implements', 'recorded by task create', ?, 
 	for _, dependency := range dependencies {
 		relationshipID := stableMigrationID("relationship", projectID, "task", taskID, "blocked_by", "task", dependency.ID)
 		if _, err := tx.ExecContext(ctx, `
-INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
-VALUES (?, ?, 'task', ?, 'task', ?, 'blocked_by', 'recorded by task create', ?, ?)
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, 'task', ?, 'task', ?, 'blocked_by', 'recorded by task create', 'command', ?, ?)
 `, relationshipID, projectID, taskID, dependency.ID, now, now); err != nil {
 			return TaskCreateResult{}, fmt.Errorf("record task dependency relationship: %w", err)
 		}

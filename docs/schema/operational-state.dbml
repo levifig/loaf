@@ -30,6 +30,7 @@ Table project_paths {
   updated_at text [not null]
   indexes {
     (project_id, is_current)
+    (project_id) [unique, note: 'where is_current = 1']
   }
 }
 

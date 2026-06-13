@@ -18,6 +18,7 @@ is a Loaf workflow staging section for curated entries before release.
 - Storage-home migration now preserves pending SQLite writes when copying legacy state into XDG data-home storage.
 - Markdown migration relationship imports now ignore empty dependency arrays, prune stale imported links by structured origin, and record imported/manual relationship provenance.
 - Storage-home migration now upgrades copied legacy databases before readiness checks and rekeys legacy path-hash project rows into generated stable identities in the global database.
+- Project path moves now reject unknown source paths without creating a stray project row, and SQLite enforces one current path per project.
 
 ### Removed
 

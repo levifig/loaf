@@ -250,10 +250,11 @@ WHERE project_id = ?
 func insertTaskRelationship(ctx context.Context, tx *sql.Tx, projectID string, taskID string, relationshipType string, targetKind string, targetID string, reason string, now string) error {
 	relationshipID := stableMigrationID("relationship", projectID, "task", taskID, relationshipType, targetKind, targetID)
 	_, err := tx.ExecContext(ctx, `
-INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
-VALUES (?, ?, 'task', ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, 'task', ?, ?, ?, ?, ?, 'command', ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   reason = excluded.reason,
+  origin = excluded.origin,
   updated_at = excluded.updated_at
 `, relationshipID, projectID, taskID, targetKind, targetID, relationshipType, reason, now, now)
 	if err != nil {
