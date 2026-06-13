@@ -100,6 +100,17 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--dry-run", Description: "Show the repair plan without applying fixes"},
 					{Flags: "--json", Description: "Output diagnostics as JSON"},
 				}},
+				{Name: "repair legacy-project-database", Description: "Archive migrated per-project SQLite leftovers", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview archive paths without writing"},
+					{Flags: "--apply", Description: "Move legacy SQLite files into the archive directory"},
+					{Flags: "--json", Description: "Output archive details as JSON"},
+				}},
+				{Name: "repair relationship-origin", Description: "Preview or apply guarded relationship provenance backfills", Options: []cliReferenceOption{
+					{Flags: "--origin <imported|manual>", Description: "Provenance value to backfill"},
+					{Flags: "--dry-run", Description: "Preview affected rows without writing"},
+					{Flags: "--apply", Description: "Backfill missing origins after creating a SQLite backup"},
+					{Flags: "--json", Description: "Output repair details as JSON"},
+				}},
 				{Name: "migrate markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
 					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},

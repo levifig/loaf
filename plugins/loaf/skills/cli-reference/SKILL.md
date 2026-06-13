@@ -107,6 +107,8 @@ without rewriting the source Markdown files.
 | `loaf state status` | Show SQLite readiness and markdown-only compatibility status |
 | `loaf state init` | Initialize an empty SQLite state database |
 | `loaf state doctor` | Diagnose SQLite state health |
+| `loaf state repair legacy-project-database` | Archive migrated per-project SQLite leftovers |
+| `loaf state repair relationship-origin` | Preview or apply guarded relationship provenance backfills |
 | `loaf state migrate markdown` | Import existing .agents Markdown artifacts into SQLite |
 | `loaf state migrate storage-home` | Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME |
 | `loaf state backup` | Create a SQLite database backup |
@@ -124,6 +126,17 @@ without rewriting the source Markdown files.
   - `--fix` - Initialize missing SQLite state when safe
   - `--dry-run` - Show the repair plan without applying fixes
   - `--json` - Output diagnostics as JSON
+
+- `loaf state repair legacy-project-database`:
+  - `--dry-run` - Preview archive paths without writing
+  - `--apply` - Move legacy SQLite files into the archive directory
+  - `--json` - Output archive details as JSON
+
+- `loaf state repair relationship-origin`:
+  - `--origin <imported|manual>` - Provenance value to backfill
+  - `--dry-run` - Preview affected rows without writing
+  - `--apply` - Backfill missing origins after creating a SQLite backup
+  - `--json` - Output repair details as JSON
 
 - `loaf state migrate markdown`:
   - `--dry-run` - Preview import counts without creating a database

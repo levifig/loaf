@@ -10679,6 +10679,23 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if len(doc.Commands) < 15 {
 		t.Fatalf("agent help commands = %d, want full native surface rather than stale release-only JSON", len(doc.Commands))
 	}
+	for _, want := range []string{"repair", "repair legacy-project-database", "repair relationship-origin"} {
+		if !stringSliceContains(commands["state"].subcommands, want) {
+			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
+		}
+	}
+	if got := commands["state"].optionDescriptions["state repair legacy-project-database --dry-run"]; !strings.Contains(got, "without writing") {
+		t.Fatalf("legacy repair dry-run description = %q, want non-mutating preview", got)
+	}
+	if got := commands["state"].optionDescriptions["state repair legacy-project-database --apply"]; !strings.Contains(got, "Move legacy SQLite files") {
+		t.Fatalf("legacy repair apply description = %q, want apply action", got)
+	}
+	if got := commands["state"].optionDescriptions["state repair relationship-origin --origin <imported|manual>"]; !strings.Contains(got, "Provenance value") {
+		t.Fatalf("relationship repair origin description = %q, want provenance guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state repair relationship-origin --dry-run"]; !strings.Contains(got, "without writing") {
+		t.Fatalf("relationship repair dry-run description = %q, want non-mutating preview", got)
+	}
 	for _, want := range []string{"refresh", "sync"} {
 		if !stringSliceContains(commands["task"].subcommands, want) {
 			t.Fatalf("task subcommands = %#v, want %q", commands["task"].subcommands, want)
