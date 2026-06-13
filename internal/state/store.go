@@ -50,6 +50,11 @@ func OpenStoreReadOnly(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("ping state database read-only: %w", err)
 	}
+	var schemaVersion int
+	if err := db.QueryRow(`PRAGMA schema_version`).Scan(&schemaVersion); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("validate state database read-only: %w", err)
+	}
 	return &Store{db: db, path: path, readOnly: true}, nil
 }
 

@@ -100,7 +100,7 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 		})
 	case err == nil:
 		status.DatabaseExists = true
-		store, err := OpenStore(databasePath)
+		store, err := OpenStoreReadOnly(databasePath)
 		if err != nil {
 			status.Mode = ModeInvalid
 			status.Diagnostics = append(status.Diagnostics, Diagnostic{

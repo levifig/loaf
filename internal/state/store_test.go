@@ -92,6 +92,19 @@ func TestOpenStoreReadOnlyDoesNotCreateMissingDatabase(t *testing.T) {
 	}
 }
 
+func TestOpenStoreReadOnlyRejectsInvalidDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "invalid.sqlite")
+	if err := os.WriteFile(path, []byte("not sqlite"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	if _, err := OpenStoreReadOnly(path); err == nil {
+		t.Fatal("OpenStoreReadOnly() error = nil, want invalid database error")
+	} else if !strings.Contains(err.Error(), "validate state database read-only") {
+		t.Fatalf("OpenStoreReadOnly() error = %v, want validation context", err)
+	}
+}
+
 func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

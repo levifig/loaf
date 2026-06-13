@@ -399,6 +399,41 @@ VALUES ('alias-orphaned-project', 'project-missing', 'task', 'task-missing', 'ta
 	}
 }
 
+func TestInspectUsesReadOnlyConnection(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	var journalMode string
+	if err := store.db.QueryRowContext(context.Background(), `PRAGMA journal_mode = DELETE`).Scan(&journalMode); err != nil {
+		t.Fatalf("set rollback journal mode error = %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	removeSQLiteSidecars(t, status.DatabasePath)
+	if err := os.Chmod(status.DatabasePath, 0o400); err != nil {
+		t.Fatalf("chmod database read-only error = %v", err)
+	}
+	defer os.Chmod(status.DatabasePath, 0o600)
+	databaseDir := filepath.Dir(status.DatabasePath)
+	if err := os.Chmod(databaseDir, 0o500); err != nil {
+		t.Fatalf("chmod database directory read-only error = %v", err)
+	}
+	defer os.Chmod(databaseDir, 0o700)
+
+	inspected, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if inspected.Mode != ModeSQLiteReady {
+		t.Fatalf("Mode = %q, want %q", inspected.Mode, ModeSQLiteReady)
+	}
+}
+
 func TestInspectReportsMissingRelationshipOriginAsWarning(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
@@ -731,6 +766,16 @@ func assertNoDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) {
 	for _, diagnostic := range diagnostics {
 		if diagnostic.Code == code {
 			t.Fatalf("diagnostic %q found in %#v", code, diagnostics)
+		}
+	}
+}
+
+func removeSQLiteSidecars(t *testing.T, path string) {
+	t.Helper()
+	for _, suffix := range []string{"-wal", "-shm"} {
+		sidecar := path + suffix
+		if err := os.Remove(sidecar); err != nil && !os.IsNotExist(err) {
+			t.Fatalf("remove SQLite sidecar %s error = %v", sidecar, err)
 		}
 	}
 }
