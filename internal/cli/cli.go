@@ -1701,6 +1701,7 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 	fmt.Fprintf(out, "schema version: %d\n", result.SchemaVersion)
 	fmt.Fprintf(out, "project: %s\n", result.ProjectID)
 	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
+	fmt.Fprintf(out, "foreign keys: %s\n", result.ForeignKeyCheck)
 	fmt.Fprintf(out, "created at: %s\n", result.CreatedAt)
 	return nil
 }

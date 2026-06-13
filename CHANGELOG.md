@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state backup` now verifies and reports backup foreign-key integrity alongside SQLite integrity checks.
 - `loaf state doctor` now reports SQLite `quick_check` failures and foreign-key violations as explicit invalid-state diagnostics.
 - `loaf project rename --json` now requires an existing registered project identity and no longer initializes missing SQLite state as a side effect.
 - `loaf project move --json` now validates against an existing SQLite database before opening a writable handle, so rejected moves no longer create empty state.

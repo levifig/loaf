@@ -62,6 +62,9 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	if result.IntegrityCheck != "ok" {
 		t.Fatalf("IntegrityCheck = %q, want ok", result.IntegrityCheck)
 	}
+	if result.ForeignKeyCheck != "ok" {
+		t.Fatalf("ForeignKeyCheck = %q, want ok", result.ForeignKeyCheck)
+	}
 	assertNoSQLiteSidecars(t, result.BackupPath)
 
 	backupStore, err := OpenStoreReadOnly(result.BackupPath)

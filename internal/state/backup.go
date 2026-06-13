@@ -12,14 +12,15 @@ import (
 
 // BackupResult describes a repository-external SQLite database backup.
 type BackupResult struct {
-	DatabasePath   string `json:"database_path"`
-	BackupPath     string `json:"backup_path"`
-	Bytes          int64  `json:"bytes"`
-	CreatedAt      string `json:"created_at"`
-	Verified       bool   `json:"verified"`
-	SchemaVersion  int    `json:"schema_version"`
-	ProjectID      string `json:"project_id"`
-	IntegrityCheck string `json:"integrity_check"`
+	DatabasePath    string `json:"database_path"`
+	BackupPath      string `json:"backup_path"`
+	Bytes           int64  `json:"bytes"`
+	CreatedAt       string `json:"created_at"`
+	Verified        bool   `json:"verified"`
+	SchemaVersion   int    `json:"schema_version"`
+	ProjectID       string `json:"project_id"`
+	IntegrityCheck  string `json:"integrity_check"`
+	ForeignKeyCheck string `json:"foreign_key_check"`
 }
 
 // Backup creates a timestamped SQLite backup under the project's state directory.
@@ -70,21 +71,23 @@ func Backup(ctx context.Context, root project.Root, resolver PathResolver) (Back
 	}
 
 	return BackupResult{
-		DatabasePath:   status.DatabasePath,
-		BackupPath:     backupPath,
-		Bytes:          info.Size(),
-		CreatedAt:      now.Format(time.RFC3339Nano),
-		Verified:       true,
-		SchemaVersion:  verification.schemaVersion,
-		ProjectID:      verification.projectID,
-		IntegrityCheck: verification.integrityCheck,
+		DatabasePath:    status.DatabasePath,
+		BackupPath:      backupPath,
+		Bytes:           info.Size(),
+		CreatedAt:       now.Format(time.RFC3339Nano),
+		Verified:        true,
+		SchemaVersion:   verification.schemaVersion,
+		ProjectID:       verification.projectID,
+		IntegrityCheck:  verification.integrityCheck,
+		ForeignKeyCheck: verification.foreignKeyCheck,
 	}, nil
 }
 
 type backupVerification struct {
-	schemaVersion  int
-	projectID      string
-	integrityCheck string
+	schemaVersion   int
+	projectID       string
+	integrityCheck  string
+	foreignKeyCheck string
 }
 
 func verifyBackup(ctx context.Context, backupPath string, root project.Root) (backupVerification, error) {
@@ -101,6 +104,10 @@ func verifyBackup(ctx context.Context, backupPath string, root project.Root) (ba
 	if integrityCheck != "ok" {
 		return backupVerification{}, fmt.Errorf("verify state backup integrity: %s", integrityCheck)
 	}
+	foreignKeyCheck, err := verifyNoForeignKeyViolations(ctx, store)
+	if err != nil {
+		return backupVerification{}, fmt.Errorf("verify state backup foreign keys: %w", err)
+	}
 	version, err := store.SchemaVersion(ctx)
 	if err != nil {
 		return backupVerification{}, fmt.Errorf("verify state backup schema version: %w", err)
@@ -116,10 +123,26 @@ func verifyBackup(ctx context.Context, backupPath string, root project.Root) (ba
 		return backupVerification{}, fmt.Errorf("verify state backup project identity: empty project id")
 	}
 	return backupVerification{
-		schemaVersion:  version,
-		projectID:      identity.ID,
-		integrityCheck: integrityCheck,
+		schemaVersion:   version,
+		projectID:       identity.ID,
+		integrityCheck:  integrityCheck,
+		foreignKeyCheck: foreignKeyCheck,
 	}, nil
+}
+
+func verifyNoForeignKeyViolations(ctx context.Context, store *Store) (string, error) {
+	rows, err := store.db.QueryContext(ctx, `PRAGMA foreign_key_check`)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	if rows.Next() {
+		return "", fmt.Errorf("violation detected")
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	return "ok", nil
 }
 
 func nextBackupPath(backupDir string, now time.Time) (string, error) {

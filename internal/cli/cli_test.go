@@ -3266,6 +3266,9 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	if result.IntegrityCheck != "ok" {
 		t.Fatalf("IntegrityCheck = %q, want ok", result.IntegrityCheck)
 	}
+	if result.ForeignKeyCheck != "ok" {
+		t.Fatalf("ForeignKeyCheck = %q, want ok", result.ForeignKeyCheck)
+	}
 	if strings.HasPrefix(result.BackupPath, workingDir+string(filepath.Separator)) {
 		t.Fatalf("BackupPath = %q, want outside working dir %q", result.BackupPath, workingDir)
 	}
@@ -3306,7 +3309,7 @@ func TestRunnerStateBackupHumanOutput(t *testing.T) {
 	}
 
 	output := stdout.String()
-	for _, want := range []string{"loaf state backup", "database:", "backup:", "bytes:", "verified: true", "schema version:", "project:", "integrity: ok", "created at:"} {
+	for _, want := range []string{"loaf state backup", "database:", "backup:", "bytes:", "verified: true", "schema version:", "project:", "integrity: ok", "foreign keys: ok", "created at:"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
