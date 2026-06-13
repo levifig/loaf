@@ -26,6 +26,7 @@ type BackupResult struct {
 	CreatedAt          string `json:"created_at"`
 	Verified           bool   `json:"verified"`
 	SchemaVersion      int    `json:"schema_version"`
+	ProjectCount       int    `json:"project_count"`
 	ProjectID          string `json:"project_id"`
 	ProjectName        string `json:"project_name"`
 	ProjectCurrentPath string `json:"project_current_path"`
@@ -94,6 +95,7 @@ func Backup(ctx context.Context, root project.Root, resolver PathResolver) (Back
 		CreatedAt:          now.Format(time.RFC3339Nano),
 		Verified:           true,
 		SchemaVersion:      verification.schemaVersion,
+		ProjectCount:       verification.projectCount,
 		ProjectID:          verification.projectID,
 		ProjectName:        verification.projectName,
 		ProjectCurrentPath: verification.projectCurrentPath,
@@ -118,6 +120,7 @@ func fileSHA256(path string) (string, error) {
 
 type backupVerification struct {
 	schemaVersion      int
+	projectCount       int
 	projectID          string
 	projectName        string
 	projectCurrentPath string
@@ -147,6 +150,13 @@ func verifyBackup(ctx context.Context, backupPath string, root project.Root) (ba
 	if version != CurrentSchemaVersion() {
 		return backupVerification{}, fmt.Errorf("verify state backup schema version: got %d, want %d", version, CurrentSchemaVersion())
 	}
+	var projectCount int
+	if err := store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM projects`).Scan(&projectCount); err != nil {
+		return backupVerification{}, fmt.Errorf("verify state backup project count: %w", err)
+	}
+	if projectCount <= 0 {
+		return backupVerification{}, fmt.Errorf("verify state backup project count: empty projects table")
+	}
 	identity, err := store.LookupProjectIdentityForRoot(ctx, root)
 	if err != nil {
 		return backupVerification{}, fmt.Errorf("verify state backup project identity: %w", err)
@@ -156,6 +166,7 @@ func verifyBackup(ctx context.Context, backupPath string, root project.Root) (ba
 	}
 	return backupVerification{
 		schemaVersion:      version,
+		projectCount:       projectCount,
 		projectID:          identity.ID,
 		projectName:        identity.FriendlyName,
 		projectCurrentPath: identity.CurrentPath,

@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state backup` JSON and human output now report the number of project identities captured in the global database backup.
 - `loaf state backup` JSON and human output now identify backups as global database backups.
 - `loaf project move` now rejects missing or non-directory target paths before previewing or recording a checkout move.
 - `loaf state doctor` now flags backend mapping rows with empty backend, local entity, external entity, or sync-status fields.

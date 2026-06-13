@@ -3417,6 +3417,9 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	if result.SchemaVersion != state.CurrentSchemaVersion() {
 		t.Fatalf("SchemaVersion = %d, want %d", result.SchemaVersion, state.CurrentSchemaVersion())
 	}
+	if result.ProjectCount != 1 {
+		t.Fatalf("ProjectCount = %d, want 1", result.ProjectCount)
+	}
 	if result.ProjectID == "" {
 		t.Fatal("ProjectID is empty")
 	}
@@ -3475,7 +3478,7 @@ func TestRunnerStateBackupHumanOutput(t *testing.T) {
 	}
 
 	output := stdout.String()
-	for _, want := range []string{"loaf state backup", "scope: global database", "database:", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "created at:"} {
+	for _, want := range []string{"loaf state backup", "scope: global database", "database:", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 1", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "created at:"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}

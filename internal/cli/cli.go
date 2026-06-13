@@ -1710,6 +1710,7 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 	fmt.Fprintf(out, "sha256: %s\n", result.SHA256)
 	fmt.Fprintf(out, "verified: %t\n", result.Verified)
 	fmt.Fprintf(out, "schema version: %d\n", result.SchemaVersion)
+	fmt.Fprintf(out, "projects: %d\n", result.ProjectCount)
 	fmt.Fprintf(out, "project: %s\n", result.ProjectID)
 	fmt.Fprintf(out, "project name: %s\n", result.ProjectName)
 	fmt.Fprintf(out, "project path: %s\n", result.ProjectCurrentPath)

@@ -67,6 +67,9 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	if result.SchemaVersion != CurrentSchemaVersion() {
 		t.Fatalf("SchemaVersion = %d, want %d", result.SchemaVersion, CurrentSchemaVersion())
 	}
+	if result.ProjectCount != 1 {
+		t.Fatalf("ProjectCount = %d, want 1", result.ProjectCount)
+	}
 	if result.ProjectID != status.ProjectID {
 		t.Fatalf("ProjectID = %q, want %q", result.ProjectID, status.ProjectID)
 	}
@@ -97,6 +100,30 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 		t.Fatalf("backup schema version = %d, want %d", version, CurrentSchemaVersion())
 	}
 	assertNoSQLiteSidecars(t, result.BackupPath)
+}
+
+func TestBackupReportsGlobalProjectCount(t *testing.T) {
+	firstRoot := projectRoot(t)
+	secondRoot := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), firstRoot, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize(firstRoot) error = %v", err)
+	}
+	if _, err := Initialize(context.Background(), secondRoot, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize(secondRoot) error = %v", err)
+	}
+
+	result, err := Backup(context.Background(), firstRoot, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.ProjectCount != 2 {
+		t.Fatalf("ProjectCount = %d, want 2", result.ProjectCount)
+	}
 }
 
 func TestBackupCreatesTimestampedFilesWithoutOverwriting(t *testing.T) {
