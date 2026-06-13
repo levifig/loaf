@@ -181,6 +181,9 @@ func TestInspectReportsSQLiteReadyWhenDatabaseIsInitialized(t *testing.T) {
 	if status.Mode != ModeSQLiteReady {
 		t.Fatalf("Mode = %q, want %q", status.Mode, ModeSQLiteReady)
 	}
+	if status.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", status.ContractVersion, StateJSONContractVersion)
+	}
 	if status.DatabasePath != initialized.DatabasePath {
 		t.Fatalf("DatabasePath = %q, want %q", status.DatabasePath, initialized.DatabasePath)
 	}

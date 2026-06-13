@@ -10615,6 +10615,9 @@ func decodeStateStatus(t *testing.T, data []byte) state.Status {
 	if err := json.Unmarshal(data, &status); err != nil {
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}
+	if status.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d in %s", status.ContractVersion, state.StateJSONContractVersion, string(data))
+	}
 	return status
 }
 
