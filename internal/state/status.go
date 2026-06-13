@@ -284,7 +284,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
-		case "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing", "backend-mapping-entity-ambiguous", "linear-mode-local-task-unmapped":
+		case "backend-mapping-field-empty", "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing", "backend-mapping-entity-ambiguous", "linear-mode-local-task-unmapped":
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "audit-backend-mappings",
 				DiagnosticCode: diagnostic.Code,
@@ -591,6 +591,40 @@ ORDER BY origin
 func inspectBackendMappingInvariants(ctx context.Context, store *Store) ([]Diagnostic, bool, error) {
 	diagnostics := []Diagnostic{}
 	valid := true
+
+	blankRows, err := store.db.QueryContext(ctx, `
+SELECT field, COUNT(*)
+FROM (
+  SELECT 'backend' AS field FROM backend_mappings WHERE TRIM(backend) = ''
+  UNION ALL SELECT 'entity_kind' FROM backend_mappings WHERE TRIM(entity_kind) = ''
+  UNION ALL SELECT 'entity_id' FROM backend_mappings WHERE TRIM(entity_id) = ''
+  UNION ALL SELECT 'external_kind' FROM backend_mappings WHERE TRIM(external_kind) = ''
+  UNION ALL SELECT 'external_id' FROM backend_mappings WHERE TRIM(external_id) = ''
+  UNION ALL SELECT 'sync_status' FROM backend_mappings WHERE TRIM(sync_status) = ''
+)
+GROUP BY field
+ORDER BY field
+`)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect blank backend mapping fields: %w", err)
+	}
+	defer blankRows.Close()
+	for blankRows.Next() {
+		var field string
+		var count int
+		if err := blankRows.Scan(&field, &count); err != nil {
+			return nil, false, fmt.Errorf("scan blank backend mapping field: %w", err)
+		}
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "backend-mapping-field-empty",
+			Message:  fmt.Sprintf("%d backend mapping row(s) have an empty %s field", count, field),
+		})
+	}
+	if err := blankRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate blank backend mapping fields: %w", err)
+	}
 
 	unknownRows, err := store.db.QueryContext(ctx, `
 SELECT entity_kind, COUNT(*)

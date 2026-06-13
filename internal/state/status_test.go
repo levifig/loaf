@@ -507,6 +507,50 @@ VALUES ('backend-mapping-orphaned', ?, 'linear', 'task', 'task-missing', 'issue'
 	}
 }
 
+func TestInspectReportsInvalidBackendMappingEmptyFields(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO tasks (id, project_id, spec_id, title, status, priority, body_source_id, created_at, updated_at)
+VALUES ('task-linear-empty-field', ?, NULL, 'Linear task with empty mapping field', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert task fixture error = %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-empty-field', ?, 'linear', 'task', 'task-linear-empty-field', 'issue', '   ', NULL, 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert empty-field backend mapping error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeInvalid {
+		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
+	}
+	diagnostic := findDiagnostic(t, status.Diagnostics, "backend-mapping-field-empty")
+	if !strings.Contains(diagnostic.Message, "external_id") {
+		t.Fatalf("diagnostic Message = %q, want field name", diagnostic.Message)
+	}
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
+	}
+	if action.Command != "loaf state export all --format json" {
+		t.Fatalf("repair action Command = %q, want export all JSON", action.Command)
+	}
+}
+
 func TestInspectReportsUnknownBackendMappingEntityKind(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
