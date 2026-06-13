@@ -106,8 +106,6 @@ without rewriting the source Markdown files.
 | `loaf state status` | Show SQLite readiness and markdown-only compatibility status |
 | `loaf state init` | Initialize an empty SQLite state database |
 | `loaf state doctor` | Diagnose SQLite state health |
-| `loaf state repair legacy-project-database` | Archive migrated per-project SQLite leftovers |
-| `loaf state repair relationship-origin` | Preview or apply guarded relationship provenance backfills |
 | `loaf state migrate markdown` | Import existing .agents Markdown artifacts into SQLite |
 | `loaf state migrate storage-home` | Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME |
 | `loaf state backup` | Create a SQLite database backup |
@@ -123,19 +121,8 @@ without rewriting the source Markdown files.
 
 - `loaf state doctor`:
   - `--fix` - Initialize missing SQLite state when safe
-  - `--dry-run` - Show repair guidance without writing
+  - `--dry-run` - Show the repair plan without applying fixes
   - `--json` - Output diagnostics as JSON
-
-- `loaf state repair legacy-project-database`:
-  - `--dry-run` - Preview archive paths without writing
-  - `--apply` - Move migrated legacy SQLite files into the archive directory
-  - `--json` - Output archive details as JSON
-
-- `loaf state repair relationship-origin`:
-  - `--origin <imported|manual>` - Provenance value to backfill
-  - `--dry-run` - Preview affected rows without writing
-  - `--apply` - Backfill missing origins after creating a SQLite backup
-  - `--json` - Output repair details as JSON
 
 - `loaf state migrate markdown`:
   - `--dry-run` - Preview import counts without creating a database
@@ -154,12 +141,51 @@ without rewriting the source Markdown files.
 **Usage:**
 ```bash
 loaf state status
-loaf state doctor --dry-run
-loaf state repair legacy-project-database --dry-run
-loaf state repair relationship-origin --origin imported --dry-run
 loaf state migrate markdown --dry-run
 loaf state migrate markdown --apply
 loaf state status
+```
+
+---
+
+## Project Management
+
+### `loaf project`
+Manage durable project identity
+
+Project IDs are stable SQLite identities, not path or name hashes. Use
+`loaf project rename --dry-run` for display-name previews and
+`loaf project move --dry-run` before recording checkout path moves.
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf project show` | Show the current project identity |
+| `loaf project rename` | Rename the friendly project name |
+| `loaf project move` | Record a checkout path move |
+
+**Options:**
+
+- `loaf project show`:
+  - `--json` - Output identity details as JSON
+
+- `loaf project rename`:
+  - `--json` - Output updated identity as JSON
+
+- `loaf project move`:
+  - `--from <path>` - Previous absolute project path
+  - `--to <path>` - New absolute project path; defaults to the current project root
+  - `--json` - Output move details as JSON
+
+**Usage:**
+```bash
+loaf project show
+loaf project rename "Loaf" --dry-run
+loaf project rename "Loaf"
+loaf project move --from /old/path/to/loaf --dry-run
+loaf project move --from /old/path/to/loaf
+loaf project show --json
 ```
 
 ---
@@ -230,7 +256,7 @@ artifacts during migration; do not edit them directly for lifecycle changes.
 - `loaf task list`:
   - `--json` - Output raw JSON
   - `--active` - Hide completed tasks
-  - `--status <status>` - Only show tasks with status: in_progress, blocked, todo, review, done
+  - `--status <status>` - Only show tasks with status: in_progress, blocked, todo, review, done, archived
 
 - `loaf task show`:
   - `--json` - Output task entry as JSON
@@ -238,11 +264,11 @@ artifacts during migration; do not edit them directly for lifecycle changes.
 - `loaf task create`:
   - `--title <title>` - Task title
   - `--spec <id>` - Associated spec ID (e.g., SPEC-010)
-  - `--priority <level>` - Priority level (P0/P1/P2/P3)
+  - `--priority <level>` - Priority level: P0, P1, P2, P3
   - `--depends-on <ids>` - Comma-separated task IDs
 
 - `loaf task update`:
-  - `--status <status>` - New status: todo, in_progress, blocked, review, done
+  - `--status <status>` - New status: in_progress, blocked, todo, review, done
   - `--priority <level>` - New priority: P0, P1, P2, P3
   - `--depends-on <ids>` - Replace depends_on (comma-separated task IDs)
   - `--session <file>` - Set or clear session reference (use "none" to clear)

@@ -157,7 +157,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 				{Name: "list", Description: "Show task board grouped by status", Options: []cliReferenceOption{
 					{Flags: "--json", Description: "Output raw JSON"},
 					{Flags: "--active", Description: "Hide completed tasks"},
-					{Flags: "--status <status>", Description: "Only show tasks with status: in_progress, blocked, todo, review, done"},
+					{Flags: "--status <status>", Description: "Only show tasks with status: " + validTaskListStatusText()},
 				}},
 				{Name: "show", Description: "Display a single task's details", Options: []cliReferenceOption{
 					{Flags: "--json", Description: "Output task entry as JSON"},
@@ -166,12 +166,12 @@ func cliReferenceCommands() []cliReferenceCommand {
 				{Name: "create", Description: "Create a new task", Options: []cliReferenceOption{
 					{Flags: "--title <title>", Description: "Task title"},
 					{Flags: "--spec <id>", Description: "Associated spec ID (e.g., SPEC-010)"},
-					{Flags: "--priority <level>", Description: "Priority level (P0/P1/P2/P3)"},
+					{Flags: "--priority <level>", Description: "Priority level: " + validTaskPriorityText()},
 					{Flags: "--depends-on <ids>", Description: "Comma-separated task IDs"},
 				}},
 				{Name: "update", Description: "Update a task's metadata", Options: []cliReferenceOption{
-					{Flags: "--status <status>", Description: "New status: todo, in_progress, blocked, review, done"},
-					{Flags: "--priority <level>", Description: "New priority: P0, P1, P2, P3"},
+					{Flags: "--status <status>", Description: "New status: " + validTaskStatusText()},
+					{Flags: "--priority <level>", Description: "New priority: " + validTaskPriorityText()},
 					{Flags: "--depends-on <ids>", Description: "Replace depends_on (comma-separated task IDs)"},
 					{Flags: "--session <file>", Description: `Set or clear session reference (use "none" to clear)`},
 					{Flags: "--spec <id>", Description: "Set or change associated spec"},
