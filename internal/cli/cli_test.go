@@ -2019,6 +2019,10 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	movedDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
 
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+
 	var showOut bytes.Buffer
 	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
 		t.Fatalf("project show --json error = %v", err)
@@ -2100,9 +2104,70 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectReadsDoNotCreateMissingDatabase(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	for _, args := range [][]string{
+		{"project", "show", "--json"},
+		{"project", "list", "--json"},
+	} {
+		var stdout bytes.Buffer
+		err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run(args)
+		if err == nil {
+			t.Fatalf("Run(%v) error = nil, want missing database error", args)
+		}
+		assertSilentExitCode(t, err, 1)
+		output := decodeCommandError(t, stdout.Bytes())
+		if !strings.Contains(output.Error, "state database does not exist") {
+			t.Fatalf("Run(%v) JSON error = %#v, want missing database message", args, output)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(stateHome, "loaf", "loaf.sqlite")); !os.IsNotExist(err) {
+		t.Fatalf("state database stat error = %v, want project reads not to create database", err)
+	}
+}
+
+func TestRunnerProjectShowDoesNotRegisterUnknownPath(t *testing.T) {
+	registeredDir := realpath(t, t.TempDir())
+	unknownDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: registeredDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	err := (Runner{Stdout: &stdout, WorkingDir: unknownDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"})
+	if err == nil {
+		t.Fatal("project show unknown path error = nil, want not registered error")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, stdout.Bytes())
+	if output.Command != "project show" || !strings.Contains(output.Error, "project identity is not registered") {
+		t.Fatalf("JSON error = %#v, want project show not registered error", output)
+	}
+
+	var listOut bytes.Buffer
+	if err := (Runner{Stdout: &listOut, WorkingDir: registeredDir, StateHome: stateHome}).Run([]string{"project", "list", "--json"}); err != nil {
+		t.Fatalf("project list --json error = %v", err)
+	}
+	var listed state.ProjectList
+	if err := json.Unmarshal(listOut.Bytes(), &listed); err != nil {
+		t.Fatalf("json.Unmarshal(list) error = %v\n%s", err, listOut.String())
+	}
+	if len(listed.Projects) != 1 || listed.Projects[0].CurrentPath != registeredDir {
+		t.Fatalf("listed projects = %#v, want only registered path %s", listed.Projects, registeredDir)
+	}
+}
+
 func TestRunnerProjectRenameDryRunDoesNotWrite(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
 
 	var showOut bytes.Buffer
 	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
@@ -2153,6 +2218,10 @@ func TestRunnerProjectMoveDryRunDoesNotWrite(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	movedDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
 
 	var showOut bytes.Buffer
 	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
@@ -2249,8 +2318,8 @@ func TestRunnerProjectJSONValidationErrorsAreMachineReadable(t *testing.T) {
 	stateHome := t.TempDir()
 
 	var initOut bytes.Buffer
-	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
-		t.Fatalf("project show --json error = %v", err)
+	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
 	}
 
 	tests := []struct {

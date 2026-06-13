@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -1132,7 +1133,7 @@ func (r Runner) runProjectList(args []string, out io.Writer, runtime state.Runti
 	if err != nil {
 		return err
 	}
-	_, store, err := r.openProjectStore(runtime)
+	_, store, err := r.openProjectStoreReadOnly(runtime)
 	if err != nil {
 		return err
 	}
@@ -1153,13 +1154,16 @@ func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runti
 	if err != nil {
 		return err
 	}
-	projectRoot, store, err := r.openProjectIdentityStore(runtime)
+	projectRoot, store, err := r.openProjectStoreReadOnly(runtime)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
-	identity, err := store.ProjectIdentityForRoot(context.Background(), projectRoot)
+	identity, err := store.LookupProjectIdentityForRoot(context.Background(), projectRoot)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("project identity is not registered for %s; run `loaf state init` to register this checkout or `loaf project move --from <old-path>` after moving a registered checkout", projectRoot.Path())
+		}
 		return err
 	}
 	if jsonOutput {
@@ -1299,7 +1303,7 @@ func (r Runner) openProjectStoreReadOnly(runtime state.Runtime) (project.Root, *
 	}
 	if info, err := os.Stat(databasePath); err != nil {
 		if os.IsNotExist(err) {
-			return project.Root{}, nil, fmt.Errorf("state database does not exist; run `loaf state init` before previewing project changes")
+			return project.Root{}, nil, fmt.Errorf("state database does not exist; run `loaf state init` first")
 		}
 		return project.Root{}, nil, fmt.Errorf("stat state database: %w", err)
 	} else if info.IsDir() {
