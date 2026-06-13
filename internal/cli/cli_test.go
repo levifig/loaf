@@ -2039,6 +2039,17 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if shown.ID == "" || shown.CurrentPath != workingDir || shown.FriendlyName != filepath.Base(workingDir) {
 		t.Fatalf("shown project = %#v, want generated identity for %s", shown, workingDir)
 	}
+	var identityOut bytes.Buffer
+	if err := (Runner{Stdout: &identityOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "identity", "--json"}); err != nil {
+		t.Fatalf("project identity --json error = %v", err)
+	}
+	var aliasShown state.ProjectIdentity
+	if err := json.Unmarshal(identityOut.Bytes(), &aliasShown); err != nil {
+		t.Fatalf("json.Unmarshal(identity alias) error = %v\n%s", err, identityOut.String())
+	}
+	if aliasShown != shown {
+		t.Fatalf("project identity alias = %#v, want project show result %#v", aliasShown, shown)
+	}
 
 	var renameOut bytes.Buffer
 	if err := (Runner{Stdout: &renameOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Friendly Loaf", "--json"}); err != nil {
@@ -2655,6 +2666,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		{name: "state repair relationship-origin", args: []string{"state", "repair", "relationship-origin", "--help"}, want: "Usage: loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]"},
 		{name: "state migrate", args: []string{"state", "migrate", "--help"}, want: "Usage: loaf state migrate <source> [options]"},
 		{name: "project list", args: []string{"project", "list", "--help"}, want: "Usage: loaf project list [--json]"},
+		{name: "project identity", args: []string{"project", "identity", "--help"}, want: "Usage: loaf project show|identity [--json]"},
 		{name: "project rename", args: []string{"project", "rename", "--help"}, want: "Usage: loaf project rename <name> [--dry-run] [--json]"},
 		{name: "project move", args: []string{"project", "move", "--help"}, want: "Usage: loaf project move --from <path> [--to <path>] [--dry-run] [--json]"},
 	}
@@ -11728,7 +11740,7 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["task"].optionDescriptions["task update --priority <level>"]; !strings.Contains(got, "P0, P1, P2, P3") {
 		t.Fatalf("task update priority description = %q, want valid priorities", got)
 	}
-	for _, want := range []string{"list", "show", "rename", "move"} {
+	for _, want := range []string{"list", "show", "identity", "rename", "move"} {
 		if !stringSliceContains(commands["project"].subcommands, want) {
 			t.Fatalf("project subcommands = %#v, want %q", commands["project"].subcommands, want)
 		}

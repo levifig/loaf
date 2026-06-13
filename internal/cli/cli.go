@@ -1047,7 +1047,7 @@ func (r Runner) runProject(args []string, out io.Writer, runtime state.Runtime) 
 			return nil
 		}
 		return r.runProjectList(args[1:], out, runtime)
-	case "show":
+	case "show", "identity":
 		if isHelpArg(args[1:]) {
 			writeProjectShowHelp(out)
 			return nil
@@ -1078,6 +1078,7 @@ func writeProjectHelp(out io.Writer) {
 	fmt.Fprintln(out, "Commands:")
 	fmt.Fprintln(out, "  list      List registered projects")
 	fmt.Fprintln(out, "  show      Show the current project identity")
+	fmt.Fprintln(out, "  identity  Alias for show")
 	fmt.Fprintln(out, "  rename    Rename the friendly project name")
 	fmt.Fprintln(out, "  move      Record a project path move")
 	fmt.Fprintln(out)
@@ -1096,7 +1097,7 @@ func writeProjectListHelp(out io.Writer) {
 }
 
 func writeProjectShowHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf project show [--json]")
+	fmt.Fprintln(out, "Usage: loaf project show|identity [--json]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Show the current durable project identity.")
 	fmt.Fprintln(out)

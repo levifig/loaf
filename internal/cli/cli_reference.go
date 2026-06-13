@@ -141,6 +141,9 @@ func cliReferenceCommands() []cliReferenceCommand {
 				{Name: "show", Description: "Show the current project identity", Options: []cliReferenceOption{
 					{Flags: "--json", Description: "Output identity details as JSON"},
 				}},
+				{Name: "identity", Description: "Alias for project show", Options: []cliReferenceOption{
+					{Flags: "--json", Description: "Output identity details as JSON"},
+				}},
 				{Name: "rename", Description: "Rename the friendly project name", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Validate and preview without writing"},
 					{Flags: "--json", Description: "Output updated identity as JSON"},
@@ -660,6 +663,7 @@ func cliReferenceCommandUsageExamples(commandName string) []string {
 	case "project":
 		return []string{
 			"loaf project show",
+			"loaf project identity --json",
 			"loaf project rename \"Loaf\" --dry-run",
 			"loaf project rename \"Loaf\"",
 			"loaf project move --from /old/path/to/loaf --dry-run",
