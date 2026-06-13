@@ -9,6 +9,7 @@ is a Loaf workflow staging section for curated entries before release.
 ### Changed
 
 - `loaf state export all --format json` now includes a verified manifest with table order, per-table row counts, and total exported rows.
+- `loaf state doctor` now validates backend mapping drift for Linear and other external integrations, including orphaned local entities, unknown entity kinds, and ambiguous local-to-external mappings.
 - `loaf state backup` now verifies backup integrity, schema version, and project identity before returning, and reports those checks in JSON and human output.
 - State doctor and repair JSON now keeps empty repair/archive fields as arrays instead of omitting them or returning `null`.
 - `loaf state repair legacy-project-database` now previews and archives migrated per-project SQLite leftovers without deleting them.

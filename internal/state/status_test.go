@@ -339,6 +339,109 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	}
 }
 
+func TestInspectReportsInvalidBackendMappingMissingEntity(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-orphaned', ?, 'linear', 'task', 'task-missing', 'issue', 'ENG-123', 'https://linear.app/workspace/issue/ENG-123', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert orphaned backend mapping error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeInvalid {
+		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
+	}
+	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
+	}
+	if action.Command != "loaf state export all --format json" {
+		t.Fatalf("repair action Command = %q, want export all JSON", action.Command)
+	}
+}
+
+func TestInspectReportsUnknownBackendMappingEntityKind(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-unknown-kind', ?, 'linear', 'milestone', 'milestone-one', 'project_milestone', 'milestone-123', NULL, 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert unknown-kind backend mapping error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeInvalid {
+		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
+	}
+	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-kind-unknown")
+	assertNoDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
+}
+
+func TestInspectReportsAmbiguousBackendMappingAsWarning(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO tasks (id, project_id, spec_id, title, status, priority, body_source_id, created_at, updated_at)
+VALUES ('task-linear', ?, NULL, 'Linear-backed task', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert task fixture error = %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES
+  ('backend-mapping-linear-one', ?, 'linear', 'task', 'task-linear', 'issue', 'ENG-123', 'https://linear.app/workspace/issue/ENG-123', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z'),
+  ('backend-mapping-linear-two', ?, 'linear', 'task', 'task-linear', 'issue', 'ENG-124', 'https://linear.app/workspace/issue/ENG-124', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID, projectID); err != nil {
+		t.Fatalf("insert ambiguous backend mapping fixtures error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeSQLiteReady {
+		t.Fatalf("Mode = %q, want %q for ambiguous backend mapping warning", status.Mode, ModeSQLiteReady)
+	}
+	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-ambiguous")
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
+	}
+}
+
 func TestInspectReportsInvalidWhenOperationalInvariantsAreUnreadable(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
@@ -467,6 +570,15 @@ func assertDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) {
 		}
 	}
 	t.Fatalf("diagnostic %q not found in %#v", code, diagnostics)
+}
+
+func assertNoDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) {
+	t.Helper()
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == code {
+			t.Fatalf("diagnostic %q found in %#v", code, diagnostics)
+		}
+	}
 }
 
 func findRepairAction(t *testing.T, actions []RepairAction, code string) RepairAction {

@@ -270,6 +270,15 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
+		case "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing", "backend-mapping-entity-ambiguous":
+			actions = append(actions, RepairAction{
+				Code:           "audit-backend-mappings",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Audit external backend mappings before pruning or reconnecting integration rows.",
+				Command:        "loaf state export all --format json",
+				Path:           status.DatabasePath,
+				Safe:           false,
+			})
 		case "stale-compatibility-export":
 			actions = append(actions, RepairAction{
 				Code:           "regenerate-export",
@@ -343,6 +352,15 @@ func inspectOperationalInvariants(ctx context.Context, store *Store) ([]Diagnost
 		return nil, false, err
 	}
 	diagnostics = append(diagnostics, relationshipDiagnostics...)
+
+	backendDiagnostics, backendMappingsValid, err := inspectBackendMappingInvariants(ctx, store)
+	if err != nil {
+		return nil, false, err
+	}
+	diagnostics = append(diagnostics, backendDiagnostics...)
+	if !backendMappingsValid {
+		valid = false
+	}
 
 	return diagnostics, valid, nil
 }
@@ -480,6 +498,160 @@ ORDER BY origin
 		return nil, fmt.Errorf("iterate unknown relationship origins: %w", err)
 	}
 	return diagnostics, nil
+}
+
+func inspectBackendMappingInvariants(ctx context.Context, store *Store) ([]Diagnostic, bool, error) {
+	diagnostics := []Diagnostic{}
+	valid := true
+
+	unknownRows, err := store.db.QueryContext(ctx, `
+SELECT entity_kind, COUNT(*)
+FROM backend_mappings
+WHERE entity_kind NOT IN (
+  'alias',
+  'spec',
+  'task',
+  'idea',
+  'spark',
+  'brainstorm',
+  'shaping_draft',
+  'session',
+  'report',
+  'journal_entry',
+  'event',
+  'relationship',
+  'tag',
+  'entity_tag',
+  'bundle',
+  'bundle_member',
+  'source',
+  'hook_event',
+  'export'
+)
+GROUP BY entity_kind
+ORDER BY entity_kind
+`)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect unknown backend mapping entity kinds: %w", err)
+	}
+	defer unknownRows.Close()
+	for unknownRows.Next() {
+		var entityKind string
+		var count int
+		if err := unknownRows.Scan(&entityKind, &count); err != nil {
+			return nil, false, fmt.Errorf("scan unknown backend mapping entity kind: %w", err)
+		}
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "backend-mapping-entity-kind-unknown",
+			Message:  fmt.Sprintf("%d backend mapping row(s) reference unknown entity kind %q", count, entityKind),
+		})
+	}
+	if err := unknownRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate unknown backend mapping entity kinds: %w", err)
+	}
+
+	missingRows, err := store.db.QueryContext(ctx, `
+WITH local_entities(entity_kind, project_id, entity_id) AS (
+  SELECT 'alias', project_id, id FROM aliases
+  UNION ALL SELECT 'spec', project_id, id FROM specs
+  UNION ALL SELECT 'task', project_id, id FROM tasks
+  UNION ALL SELECT 'idea', project_id, id FROM ideas
+  UNION ALL SELECT 'spark', project_id, id FROM sparks
+  UNION ALL SELECT 'brainstorm', project_id, id FROM brainstorms
+  UNION ALL SELECT 'shaping_draft', project_id, id FROM shaping_drafts
+  UNION ALL SELECT 'session', project_id, id FROM sessions
+  UNION ALL SELECT 'report', project_id, id FROM reports
+  UNION ALL SELECT 'journal_entry', project_id, id FROM journal_entries
+  UNION ALL SELECT 'event', project_id, id FROM events
+  UNION ALL SELECT 'relationship', project_id, id FROM relationships
+  UNION ALL SELECT 'tag', project_id, id FROM tags
+  UNION ALL SELECT 'entity_tag', project_id, id FROM entity_tags
+  UNION ALL SELECT 'bundle', project_id, id FROM bundles
+  UNION ALL SELECT 'bundle_member', project_id, id FROM bundle_members
+  UNION ALL SELECT 'source', project_id, id FROM sources
+  UNION ALL SELECT 'hook_event', project_id, id FROM hook_events
+  UNION ALL SELECT 'export', project_id, id FROM exports
+)
+SELECT backend_mappings.id, backend_mappings.backend, backend_mappings.entity_kind, backend_mappings.entity_id, backend_mappings.external_kind, backend_mappings.external_id
+FROM backend_mappings
+LEFT JOIN local_entities
+  ON local_entities.project_id = backend_mappings.project_id
+ AND local_entities.entity_kind = backend_mappings.entity_kind
+ AND local_entities.entity_id = backend_mappings.entity_id
+WHERE local_entities.entity_id IS NULL
+  AND backend_mappings.entity_kind IN (
+    'alias',
+    'spec',
+    'task',
+    'idea',
+    'spark',
+    'brainstorm',
+    'shaping_draft',
+    'session',
+    'report',
+    'journal_entry',
+    'event',
+    'relationship',
+    'tag',
+    'entity_tag',
+    'bundle',
+    'bundle_member',
+    'source',
+    'hook_event',
+    'export'
+  )
+ORDER BY backend_mappings.id
+`)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect orphaned backend mappings: %w", err)
+	}
+	defer missingRows.Close()
+	for missingRows.Next() {
+		var mappingID, backend, entityKind, entityID, externalKind, externalID string
+		if err := missingRows.Scan(&mappingID, &backend, &entityKind, &entityID, &externalKind, &externalID); err != nil {
+			return nil, false, fmt.Errorf("scan orphaned backend mapping: %w", err)
+		}
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "backend-mapping-entity-missing",
+			Message:  fmt.Sprintf("backend mapping %s links %s %s to %s %s:%s, but the local entity is missing", mappingID, entityKind, entityID, backend, externalKind, externalID),
+		})
+	}
+	if err := missingRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate orphaned backend mappings: %w", err)
+	}
+
+	ambiguousRows, err := store.db.QueryContext(ctx, `
+SELECT project_id, backend, entity_kind, entity_id, external_kind, COUNT(DISTINCT external_id)
+FROM backend_mappings
+GROUP BY project_id, backend, entity_kind, entity_id, external_kind
+HAVING COUNT(DISTINCT external_id) > 1
+ORDER BY project_id, backend, entity_kind, entity_id, external_kind
+`)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect ambiguous backend mappings: %w", err)
+	}
+	defer ambiguousRows.Close()
+	for ambiguousRows.Next() {
+		var projectID, backend, entityKind, entityID, externalKind string
+		var count int
+		if err := ambiguousRows.Scan(&projectID, &backend, &entityKind, &entityID, &externalKind, &count); err != nil {
+			return nil, false, fmt.Errorf("scan ambiguous backend mapping: %w", err)
+		}
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "warn",
+			Code:     "backend-mapping-entity-ambiguous",
+			Message:  fmt.Sprintf("%s %s in project %s maps to %d %s %s records", entityKind, entityID, projectID, count, backend, externalKind),
+		})
+	}
+	if err := ambiguousRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate ambiguous backend mappings: %w", err)
+	}
+
+	return diagnostics, valid, nil
 }
 
 func inspectStaleExports(ctx context.Context, store *Store) ([]Diagnostic, error) {
