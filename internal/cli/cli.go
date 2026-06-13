@@ -1604,7 +1604,7 @@ func (r Runner) runStateRepairLegacyProjectDatabase(args []string, out io.Writer
 		return writeJSON(out, result)
 	}
 
-	fmt.Fprintln(out, "loaf state repair legacy-project-database")
+	fmt.Fprintf(out, "loaf state repair legacy-project-database %s\n", repairModeFlag(options.apply))
 	fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
 	fmt.Fprintf(out, "legacy database: %s\n", result.LegacyDatabasePath)
 	fmt.Fprintf(out, "action: %s\n", result.Action)
@@ -1653,7 +1653,7 @@ func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, r
 		return writeJSON(out, result)
 	}
 
-	fmt.Fprintln(out, "loaf state repair relationship-origin")
+	fmt.Fprintf(out, "loaf state repair relationship-origin %s\n", repairModeFlag(options.apply))
 	fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
 	if result.BackupPath != "" {
 		fmt.Fprintf(out, "backup: %s\n", result.BackupPath)
@@ -1663,10 +1663,17 @@ func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, r
 	fmt.Fprintf(out, "matched: %d\n", result.Matched)
 	fmt.Fprintf(out, "updated: %d\n", result.Updated)
 	fmt.Fprintf(out, "applied: %t\n", result.Applied)
-	if !result.Applied {
+	if !result.Applied && result.Matched > 0 {
 		fmt.Fprintln(out, "next: rerun with --apply after reviewing the selected origin")
 	}
 	return nil
+}
+
+func repairModeFlag(apply bool) string {
+	if apply {
+		return "--apply"
+	}
+	return "--dry-run"
 }
 
 func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runtime) error {

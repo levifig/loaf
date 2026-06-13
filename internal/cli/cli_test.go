@@ -3092,6 +3092,22 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 		t.Fatalf("insert relationship without origin error = %v", err)
 	}
 
+	var humanDryRunOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanDryRunOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "repair", "relationship-origin", "--origin", "imported", "--dry-run"})
+	if err != nil {
+		t.Fatalf("state repair relationship-origin human dry-run error = %v", err)
+	}
+	if !strings.Contains(humanDryRunOut.String(), "loaf state repair relationship-origin --dry-run") {
+		t.Fatalf("human dry-run output = %q, want explicit --dry-run header", humanDryRunOut.String())
+	}
+	if !strings.Contains(humanDryRunOut.String(), "next: rerun with --apply") {
+		t.Fatalf("human dry-run output = %q, want apply guidance when rows match", humanDryRunOut.String())
+	}
+
 	var dryRunOut bytes.Buffer
 	err = Runner{
 		Stdout:     &dryRunOut,
@@ -3146,6 +3162,22 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM relationships WHERE origin = 'imported'`); got != 1 {
 		t.Fatalf("relationships with imported origin = %d, want 1", got)
 	}
+
+	var noopHumanOut bytes.Buffer
+	err = Runner{
+		Stdout:     &noopHumanOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "repair", "relationship-origin", "--origin", "imported", "--dry-run"})
+	if err != nil {
+		t.Fatalf("state repair relationship-origin no-op human dry-run error = %v", err)
+	}
+	if !strings.Contains(noopHumanOut.String(), "loaf state repair relationship-origin --dry-run") {
+		t.Fatalf("no-op human output = %q, want explicit --dry-run header", noopHumanOut.String())
+	}
+	if strings.Contains(noopHumanOut.String(), "next: rerun with --apply") {
+		t.Fatalf("no-op human output = %q, want no apply guidance when no rows match", noopHumanOut.String())
+	}
 }
 
 func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
@@ -3162,6 +3194,21 @@ func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
 	legacyPath := initializeCLILegacyStateDatabase(t, root)
 	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir}).Run([]string{"state", "init"}); err != nil {
 		t.Fatalf("state init error = %v", err)
+	}
+
+	var humanDryRunOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanDryRunOut,
+		WorkingDir: workingDir,
+	}.Run([]string{"state", "repair", "legacy-project-database", "--dry-run"})
+	if err != nil {
+		t.Fatalf("state repair legacy-project-database human dry-run error = %v", err)
+	}
+	if !strings.Contains(humanDryRunOut.String(), "loaf state repair legacy-project-database --dry-run") {
+		t.Fatalf("human dry-run output = %q, want explicit --dry-run header", humanDryRunOut.String())
+	}
+	if !strings.Contains(humanDryRunOut.String(), "next: rerun with --apply") {
+		t.Fatalf("human dry-run output = %q, want apply guidance when legacy files match", humanDryRunOut.String())
 	}
 
 	var dryRunOut bytes.Buffer
@@ -3238,6 +3285,21 @@ func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
 	assertJSONArrayLength(t, noopOut.Bytes(), "matched_paths", 0)
 	assertJSONArrayLength(t, noopOut.Bytes(), "archived_paths", 0)
 	assertJSONArrayLength(t, noopOut.Bytes(), "warnings", 0)
+
+	var noopHumanOut bytes.Buffer
+	err = Runner{
+		Stdout:     &noopHumanOut,
+		WorkingDir: workingDir,
+	}.Run([]string{"state", "repair", "legacy-project-database", "--dry-run"})
+	if err != nil {
+		t.Fatalf("state repair legacy-project-database no-op human dry-run error = %v", err)
+	}
+	if !strings.Contains(noopHumanOut.String(), "loaf state repair legacy-project-database --dry-run") {
+		t.Fatalf("no-op human output = %q, want explicit --dry-run header", noopHumanOut.String())
+	}
+	if strings.Contains(noopHumanOut.String(), "next: rerun with --apply") {
+		t.Fatalf("no-op human output = %q, want no apply guidance when no files match", noopHumanOut.String())
+	}
 }
 
 func TestRunnerStateDoctorReportsSchemaMismatch(t *testing.T) {
