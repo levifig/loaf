@@ -31,6 +31,8 @@ type ExportSnapshot struct {
 	ExportKind         string                      `json:"export_kind"`
 	Format             string                      `json:"format"`
 	Audience           string                      `json:"audience"`
+	DatabaseScope      string                      `json:"database_scope"`
+	ExportScope        string                      `json:"export_scope"`
 	GeneratedAt        string                      `json:"generated_at"`
 	ProjectID          string                      `json:"project_id"`
 	ProjectName        string                      `json:"project_name"`
@@ -45,6 +47,8 @@ type ExportSnapshot struct {
 type ExportManifest struct {
 	ContractVersion    int            `json:"contract_version"`
 	Verified           bool           `json:"verified"`
+	DatabaseScope      string         `json:"database_scope"`
+	ExportScope        string         `json:"export_scope"`
 	SchemaVersion      int            `json:"schema_version"`
 	ProjectID          string         `json:"project_id"`
 	ProjectName        string         `json:"project_name"`
@@ -198,6 +202,8 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 		ExportKind:         ExportKindAll,
 		Format:             ExportFormatJSON,
 		Audience:           ExportAudienceLocal,
+		DatabaseScope:      "global",
+		ExportScope:        "project",
 		GeneratedAt:        generatedAt,
 		ProjectID:          projectID,
 		ProjectName:        identity.FriendlyName,
@@ -207,6 +213,8 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 		Manifest: ExportManifest{
 			ContractVersion:    StateJSONContractVersion,
 			Verified:           true,
+			DatabaseScope:      "global",
+			ExportScope:        "project",
 			SchemaVersion:      status.SchemaVersion,
 			ProjectID:          projectID,
 			ProjectName:        identity.FriendlyName,

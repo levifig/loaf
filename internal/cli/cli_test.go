@@ -3608,6 +3608,12 @@ status: implementing
 	if snapshot.Audience != state.ExportAudienceLocal {
 		t.Fatalf("Audience = %q, want internal marker", snapshot.Audience)
 	}
+	if snapshot.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", snapshot.DatabaseScope)
+	}
+	if snapshot.ExportScope != "project" {
+		t.Fatalf("ExportScope = %q, want project", snapshot.ExportScope)
+	}
 	if snapshot.SchemaVersion != state.CurrentSchemaVersion() {
 		t.Fatalf("SchemaVersion = %d, want %d", snapshot.SchemaVersion, state.CurrentSchemaVersion())
 	}
@@ -3616,6 +3622,12 @@ status: implementing
 	}
 	if snapshot.Manifest.ContractVersion != snapshot.ContractVersion {
 		t.Fatalf("Manifest.ContractVersion = %d, want %d", snapshot.Manifest.ContractVersion, snapshot.ContractVersion)
+	}
+	if snapshot.Manifest.DatabaseScope != snapshot.DatabaseScope {
+		t.Fatalf("Manifest.DatabaseScope = %q, want %q", snapshot.Manifest.DatabaseScope, snapshot.DatabaseScope)
+	}
+	if snapshot.Manifest.ExportScope != snapshot.ExportScope {
+		t.Fatalf("Manifest.ExportScope = %q, want %q", snapshot.Manifest.ExportScope, snapshot.ExportScope)
 	}
 	if snapshot.Manifest.SchemaVersion != snapshot.SchemaVersion {
 		t.Fatalf("Manifest.SchemaVersion = %d, want %d", snapshot.Manifest.SchemaVersion, snapshot.SchemaVersion)

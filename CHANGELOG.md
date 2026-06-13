@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state export all --format json` now reports `database_scope` and `export_scope` in the snapshot and manifest, making project-scoped exports from the global database explicit.
 - `loaf state backup` JSON and human output now report the number of project identities captured in the global database backup.
 - `loaf state backup` JSON and human output now identify backups as global database backups.
 - `loaf project move` now rejects missing or non-directory target paths before previewing or recording a checkout move.

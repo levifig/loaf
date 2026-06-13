@@ -37,6 +37,12 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if snapshot.Audience != ExportAudienceLocal {
 		t.Fatalf("Audience = %q, want %q", snapshot.Audience, ExportAudienceLocal)
 	}
+	if snapshot.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", snapshot.DatabaseScope)
+	}
+	if snapshot.ExportScope != "project" {
+		t.Fatalf("ExportScope = %q, want project", snapshot.ExportScope)
+	}
 	store, err := OpenStoreReadOnly(snapshot.DatabasePath)
 	if err != nil {
 		t.Fatalf("OpenStoreReadOnly() error = %v", err)
@@ -66,6 +72,12 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	}
 	if !snapshot.Manifest.Verified {
 		t.Fatal("Manifest.Verified = false, want true")
+	}
+	if snapshot.Manifest.DatabaseScope != snapshot.DatabaseScope {
+		t.Fatalf("Manifest.DatabaseScope = %q, want %q", snapshot.Manifest.DatabaseScope, snapshot.DatabaseScope)
+	}
+	if snapshot.Manifest.ExportScope != snapshot.ExportScope {
+		t.Fatalf("Manifest.ExportScope = %q, want %q", snapshot.Manifest.ExportScope, snapshot.ExportScope)
 	}
 	if snapshot.Manifest.ContractVersion != snapshot.ContractVersion {
 		t.Fatalf("Manifest.ContractVersion = %d, want %d", snapshot.Manifest.ContractVersion, snapshot.ContractVersion)
