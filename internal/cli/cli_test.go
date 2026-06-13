@@ -3393,6 +3393,9 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	if result.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
 	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
 	if result.DatabasePath == "" {
 		t.Fatal("DatabasePath is empty")
 	}
@@ -3472,7 +3475,7 @@ func TestRunnerStateBackupHumanOutput(t *testing.T) {
 	}
 
 	output := stdout.String()
-	for _, want := range []string{"loaf state backup", "database:", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "created at:"} {
+	for _, want := range []string{"loaf state backup", "scope: global database", "database:", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "created at:"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}

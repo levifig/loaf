@@ -1703,6 +1703,7 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 		return writeJSON(out, result)
 	}
 	fmt.Fprintln(out, "loaf state backup")
+	fmt.Fprintf(out, "scope: %s database\n", result.DatabaseScope)
 	fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
 	fmt.Fprintf(out, "backup: %s\n", result.BackupPath)
 	fmt.Fprintf(out, "bytes: %d\n", result.Bytes)
