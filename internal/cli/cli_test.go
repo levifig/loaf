@@ -2289,9 +2289,32 @@ func TestRunnerProjectDryRunsDoNotCreateMissingDatabase(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectMoveDoesNotCreateMissingDatabase(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var stdout bytes.Buffer
+	err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", filepath.Join(t.TempDir(), "missing"), "--json"})
+	if err == nil {
+		t.Fatal("project move unknown --from error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, stdout.Bytes())
+	if output.Command != "project move" || !strings.Contains(output.Error, "state database does not exist") {
+		t.Fatalf("project move JSON error = %#v, want machine-readable missing database rejection", output)
+	}
+	if _, err := os.Stat(filepath.Join(stateHome, "loaf", "loaf.sqlite")); !os.IsNotExist(err) {
+		t.Fatalf("state database stat error = %v, want rejected project move not to create database", err)
+	}
+}
+
 func TestRunnerProjectMoveUnknownFromDoesNotCreateProject(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
 
 	var stdout bytes.Buffer
 	err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", filepath.Join(t.TempDir(), "missing"), "--json"})
@@ -2308,8 +2331,8 @@ func TestRunnerProjectMoveUnknownFromDoesNotCreateProject(t *testing.T) {
 		t.Fatalf("sql.Open() error = %v", openErr)
 	}
 	defer db.Close()
-	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM projects`); got != 0 {
-		t.Fatalf("projects = %d, want no project row after rejected move", got)
+	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM projects`); got != 1 {
+		t.Fatalf("projects = %d, want only initialized project row after rejected move", got)
 	}
 }
 

@@ -1238,24 +1238,37 @@ func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runti
 		}
 		return err
 	}
-	var projectRoot project.Root
-	var store *state.Store
-	if options.dryRun {
-		projectRoot, store, err = r.openProjectStoreReadOnly(runtime)
-	} else {
-		projectRoot, store, err = r.openProjectStore(runtime)
-	}
+	projectRoot, store, err := r.openProjectStoreReadOnly(runtime)
 	if err != nil {
 		if options.jsonOutput {
 			return writeJSONCommandError(out, "project move", err)
 		}
 		return err
 	}
-	defer store.Close()
+	defer func() {
+		if store != nil {
+			store.Close()
+		}
+	}()
 	var result state.ProjectMoveResult
 	if options.dryRun {
 		result, err = store.PreviewMoveProject(context.Background(), projectRoot, options.fromPath, options.toPath)
 	} else {
+		if _, err = store.PreviewMoveProject(context.Background(), projectRoot, options.fromPath, options.toPath); err != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, "project move", err)
+			}
+			return err
+		}
+		store.Close()
+		store = nil
+		projectRoot, store, err = r.openProjectStore(runtime)
+		if err != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, "project move", err)
+			}
+			return err
+		}
 		result, err = store.MoveProject(context.Background(), projectRoot, options.fromPath, options.toPath)
 	}
 	if err != nil {

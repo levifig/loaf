@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf project move --json` now validates against an existing SQLite database before opening a writable handle, so rejected moves no longer create empty state.
 - `loaf project show|list` now open the global SQLite database read-only and no longer initialize missing state as a side effect.
 - `loaf state status` now distinguishes durable SQLite `project_id` from the path-derived `legacy_project_key`, avoiding pre-init identity confusion.
 - `--agent-help` and the generated `cli-reference` skill now document the generic `loaf state export --format <format>` contract.
