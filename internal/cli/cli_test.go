@@ -2176,6 +2176,8 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		{name: "state", args: []string{"state", "--help"}, want: "Usage: loaf state <command> [options]"},
 		{name: "state init", args: []string{"state", "init", "--help"}, want: "Usage: loaf state init [--json]"},
 		{name: "state doctor", args: []string{"state", "doctor", "--help"}, want: "Usage: loaf state doctor [--fix] [--dry-run] [--json]"},
+		{name: "state repair", args: []string{"state", "repair", "--help"}, want: "Usage: loaf state repair <target> [options]"},
+		{name: "state repair relationship-origin", args: []string{"state", "repair", "relationship-origin", "--help"}, want: "Usage: loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]"},
 		{name: "state migrate", args: []string{"state", "migrate", "--help"}, want: "Usage: loaf state migrate <source> [options]"},
 		{name: "project list", args: []string{"project", "list", "--help"}, want: "Usage: loaf project list [--json]"},
 	}
@@ -2385,8 +2387,79 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	if action.Safe || action.Applied {
 		t.Fatalf("repair action = %#v, want manual unapplied relationship audit", action)
 	}
-	if action.Command != "loaf state export all --format json" {
-		t.Fatalf("repair action command = %q, want state export all JSON command", action.Command)
+	if action.Command != "loaf state repair relationship-origin --origin imported --dry-run --json" {
+		t.Fatalf("repair action command = %q, want guarded relationship origin repair command", action.Command)
+	}
+}
+
+func TestRunnerStateRepairRelationshipOriginDryRunAndApply(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var initOut bytes.Buffer
+	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	initialized := decodeStateStatus(t, initOut.Bytes())
+	db, err := sql.Open("sqlite3", initialized.DatabasePath)
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
+VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one', 'implements', 'legacy row', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+		t.Fatalf("insert relationship without origin error = %v", err)
+	}
+
+	var dryRunOut bytes.Buffer
+	err = Runner{
+		Stdout:     &dryRunOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "repair", "relationship-origin", "--origin", "imported", "--dry-run", "--json"})
+	if err != nil {
+		t.Fatalf("state repair relationship-origin --dry-run error = %v", err)
+	}
+	dryRun := decodeRelationshipOriginRepairResult(t, dryRunOut.Bytes())
+	if dryRun.Applied {
+		t.Fatal("dry-run Applied = true, want false")
+	}
+	if dryRun.Matched != 1 || dryRun.Updated != 0 {
+		t.Fatalf("dry-run result = %#v, want matched 1 updated 0", dryRun)
+	}
+	if dryRun.BackupPath != "" {
+		t.Fatalf("dry-run BackupPath = %q, want empty", dryRun.BackupPath)
+	}
+	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM relationships WHERE origin IS NULL OR TRIM(origin) = ''`); got != 1 {
+		t.Fatalf("relationships without origin after dry-run = %d, want 1", got)
+	}
+
+	var applyOut bytes.Buffer
+	err = Runner{
+		Stdout:     &applyOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "repair", "relationship-origin", "--origin", "imported", "--apply", "--json"})
+	if err != nil {
+		t.Fatalf("state repair relationship-origin --apply error = %v", err)
+	}
+	applied := decodeRelationshipOriginRepairResult(t, applyOut.Bytes())
+	if !applied.Applied {
+		t.Fatal("apply Applied = false, want true")
+	}
+	if applied.Matched != 1 || applied.Updated != 1 {
+		t.Fatalf("apply result = %#v, want matched 1 updated 1", applied)
+	}
+	if applied.BackupPath == "" {
+		t.Fatal("apply BackupPath is empty")
+	}
+	if _, err := os.Stat(applied.BackupPath); err != nil {
+		t.Fatalf("apply backup does not exist: %v", err)
+	}
+	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM relationships WHERE origin = 'imported'`); got != 1 {
+		t.Fatalf("relationships with imported origin = %d, want 1", got)
 	}
 }
 
@@ -9385,6 +9458,15 @@ func decodeStateStatus(t *testing.T, data []byte) state.Status {
 func decodeStateBackupResult(t *testing.T, data []byte) state.BackupResult {
 	t.Helper()
 	var result state.BackupResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return result
+}
+
+func decodeRelationshipOriginRepairResult(t *testing.T, data []byte) state.RelationshipOriginRepairResult {
+	t.Helper()
+	var result state.RelationshipOriginRepairResult
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}

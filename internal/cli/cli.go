@@ -824,6 +824,12 @@ func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) er
 			return nil
 		}
 		return r.runStateDoctor(args[1:], out, runtime)
+	case "repair":
+		if len(args) == 1 || isHelpArg(args[1:]) {
+			writeStateRepairHelp(out)
+			return nil
+		}
+		return r.runStateRepair(args[1:], out, runtime)
 	case "migrate":
 		if len(args) == 1 || isHelpArg(args[1:]) {
 			writeStateMigrateHelp(out)
@@ -857,6 +863,7 @@ func writeStateHelp(out io.Writer) {
 	fmt.Fprintln(out, "  status        Show SQLite readiness and markdown compatibility status")
 	fmt.Fprintln(out, "  init          Initialize native SQLite state")
 	fmt.Fprintln(out, "  doctor        Diagnose SQLite state health")
+	fmt.Fprintln(out, "  repair        Repair guarded SQLite data drift")
 	fmt.Fprintln(out, "  migrate       Run state migrations")
 	fmt.Fprintln(out, "  backup        Create a SQLite database backup")
 	fmt.Fprintln(out, "  export        Export SQLite state")
@@ -901,6 +908,18 @@ func writeStateDoctorHelp(out io.Writer) {
 	fmt.Fprintln(out, "  --dry-run    Show repair plan without applying fixes")
 	fmt.Fprintln(out, "  --json       Output JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func writeStateRepairHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf state repair <target> [options]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Repair guarded SQLite data drift.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Targets:")
+	fmt.Fprintln(out, "  relationship-origin  Backfill missing relationship provenance")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  -h, --help           Show help")
 }
 
 func writeStateMigrateHelp(out io.Writer) {
@@ -1310,6 +1329,63 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 	}
 	if status.Mode == state.ModeInvalid {
 		return fmt.Errorf("state doctor found errors")
+	}
+	return nil
+}
+
+func (r Runner) runStateRepair(args []string, out io.Writer, runtime state.Runtime) error {
+	if len(args) == 0 {
+		return fmt.Errorf("state repair requires a target")
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"relationship-origin": writeStateRepairRelationshipOriginHelp,
+	}) {
+		return nil
+	}
+	switch args[0] {
+	case "relationship-origin":
+		return r.runStateRepairRelationshipOrigin(args[1:], out, runtime)
+	default:
+		return fmt.Errorf("state repair target %q is not implemented yet", args[0])
+	}
+}
+
+func writeStateRepairRelationshipOriginHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]", "Backfill missing relationship provenance for the current project.", "--origin     Provenance value to set: imported or manual", "--dry-run    Preview affected rows without writing", "--apply      Apply the backfill", "--json       Output JSON")
+}
+
+func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, runtime state.Runtime) error {
+	options, err := parseRelationshipOriginRepairArgs(args)
+	if err != nil {
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return err
+	}
+	result, err := state.RepairMissingRelationshipOrigins(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.RelationshipOriginRepairOptions{
+		Origin: options.origin,
+		Apply:  options.apply,
+	})
+	if err != nil {
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+
+	fmt.Fprintln(out, "loaf state repair relationship-origin")
+	fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
+	if result.BackupPath != "" {
+		fmt.Fprintf(out, "backup: %s\n", result.BackupPath)
+	}
+	fmt.Fprintf(out, "project: %s\n", result.ProjectID)
+	fmt.Fprintf(out, "origin: %s\n", result.Origin)
+	fmt.Fprintf(out, "matched: %d\n", result.Matched)
+	fmt.Fprintf(out, "updated: %d\n", result.Updated)
+	fmt.Fprintf(out, "applied: %t\n", result.Applied)
+	if !result.Applied {
+		fmt.Fprintln(out, "next: rerun with --apply after reviewing the selected origin")
 	}
 	return nil
 }
@@ -10239,6 +10315,13 @@ type storageHomeMigrationOptions struct {
 	dryRun     bool
 }
 
+type relationshipOriginRepairOptions struct {
+	jsonOutput bool
+	apply      bool
+	dryRun     bool
+	origin     string
+}
+
 func parseMarkdownMigrationArgs(args []string) (markdownMigrationOptions, error) {
 	var options markdownMigrationOptions
 	for _, arg := range args {
@@ -10283,6 +10366,39 @@ func parseStorageHomeMigrationArgs(args []string) (storageHomeMigrationOptions, 
 	}
 	if options.apply && options.dryRun {
 		return storageHomeMigrationOptions{}, fmt.Errorf("state migrate storage-home cannot combine --apply and --dry-run")
+	}
+	return options, nil
+}
+
+func parseRelationshipOriginRepairArgs(args []string) (relationshipOriginRepairOptions, error) {
+	var options relationshipOriginRepairOptions
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--dry-run":
+			options.dryRun = true
+		case "--json":
+			options.jsonOutput = true
+		case "--apply":
+			options.apply = true
+		case "--origin":
+			value, err := consumeFlagValue(args, &i, arg)
+			if err != nil {
+				return relationshipOriginRepairOptions{}, err
+			}
+			options.origin = value
+		default:
+			return relationshipOriginRepairOptions{}, fmt.Errorf("unknown option %q", arg)
+		}
+	}
+	if options.apply && options.dryRun {
+		return relationshipOriginRepairOptions{}, fmt.Errorf("state repair relationship-origin cannot combine --apply and --dry-run")
+	}
+	if options.origin == "" {
+		return relationshipOriginRepairOptions{}, fmt.Errorf("state repair relationship-origin requires --origin imported|manual")
+	}
+	if options.origin != "imported" && options.origin != "manual" {
+		return relationshipOriginRepairOptions{}, fmt.Errorf("relationship origin must be imported or manual")
 	}
 	return options, nil
 }

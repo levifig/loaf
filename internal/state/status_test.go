@@ -331,8 +331,8 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	if action.Safe {
 		t.Fatalf("repair action Safe = true, want manual relationship audit")
 	}
-	if action.Command != "loaf state export all --format json" {
-		t.Fatalf("repair action Command = %q, want state export all", action.Command)
+	if action.Command != "loaf state repair relationship-origin --origin imported --dry-run --json" {
+		t.Fatalf("repair action Command = %q, want relationship origin repair dry-run", action.Command)
 	}
 }
 

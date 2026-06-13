@@ -264,7 +264,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Code:           "audit-relationship-origin",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Audit relationship provenance before backfilling or pruning relationship rows.",
-				Command:        "loaf state export all --format json",
+				Command:        "loaf state repair relationship-origin --origin imported --dry-run --json",
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
