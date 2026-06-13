@@ -11289,6 +11289,16 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if len(doc.Commands) < 15 {
 		t.Fatalf("agent help commands = %d, want full native surface rather than stale release-only JSON", len(doc.Commands))
 	}
+	for _, command := range doc.Commands {
+		if len(command.Subcommands) == 0 {
+			assertAgentHelpJSONMatchesLiveHelp(t, []string{command.Name}, commands[command.Name].options, command.Name+" --json")
+			continue
+		}
+		for _, subcommand := range command.Subcommands {
+			args := append([]string{command.Name}, strings.Fields(subcommand.Name)...)
+			assertAgentHelpJSONMatchesLiveHelp(t, args, commands[command.Name].options, command.Name+" "+subcommand.Name+" --json")
+		}
+	}
 	for _, want := range []string{"repair", "repair legacy-project-database", "repair relationship-origin"} {
 		if !stringSliceContains(commands["state"].subcommands, want) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
@@ -11352,6 +11362,24 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["project"].optionDescriptions["project list --json"]; !strings.Contains(got, "database path") || !strings.Contains(got, "friendly names") || !strings.Contains(got, "current paths") {
 		t.Fatalf("project list json description = %q, want global project identity fields", got)
+	}
+}
+
+func assertAgentHelpJSONMatchesLiveHelp(t *testing.T, commandArgs []string, agentOptions []string, jsonOption string) {
+	t.Helper()
+	helpArgs := append(append([]string{}, commandArgs...), "--help")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		Stderr:     &stderr,
+		WorkingDir: t.TempDir(),
+	}.Run(helpArgs)
+	if err != nil {
+		return
+	}
+	if strings.Contains(stdout.String(), "--json") && !stringSliceContains(agentOptions, jsonOption) {
+		t.Fatalf("live help for %q includes --json, but agent help options = %#v missing %q", strings.Join(commandArgs, " "), agentOptions, jsonOption)
 	}
 }
 
