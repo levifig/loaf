@@ -3032,6 +3032,47 @@ func TestRunnerStateBackupRejectsMissingAndInvalidState(t *testing.T) {
 	}
 }
 
+func TestRunnerStateBackupJSONErrorsAreMachineReadable(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "unknown option",
+			args: []string{"state", "backup", "--json", "--bogus"},
+			want: "unknown option",
+		},
+		{
+			name: "missing state",
+			args: []string{"state", "backup", "--json"},
+			want: "SQLite state database is not initialized",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}.Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON error", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != "state backup" || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want state backup error containing %q", output, tc.want)
+			}
+		})
+	}
+}
+
 func TestRunnerStateExportAllJSON(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -3876,16 +3917,19 @@ func TestRunnerStateExportTriageMarkdownDoesNotCreateRepoFiles(t *testing.T) {
 func TestRunnerStateExportRejectsMissingInvalidUnsupportedState(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
+	var missingOut bytes.Buffer
 	err := Runner{
-		Stdout:     &bytes.Buffer{},
+		Stdout:     &missingOut,
 		WorkingDir: workingDir,
 		StateHome:  stateHome,
 	}.Run([]string{"state", "export", "all", "--format", "json"})
 	if err == nil {
 		t.Fatal("state export missing-state error = nil, want rejection")
 	}
-	if !strings.Contains(err.Error(), "SQLite state database is not initialized") {
-		t.Fatalf("error = %v, want initialization message", err)
+	assertSilentExitCode(t, err, 1)
+	missingOutput := decodeCommandError(t, missingOut.Bytes())
+	if missingOutput.Command != "state export" || !strings.Contains(missingOutput.Error, "SQLite state database is not initialized") {
+		t.Fatalf("JSON error = %#v, want initialization message", missingOutput)
 	}
 
 	err = Runner{
@@ -3951,16 +3995,95 @@ func TestRunnerStateExportRejectsMissingInvalidUnsupportedState(t *testing.T) {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
+	var invalidOut bytes.Buffer
 	err = Runner{
-		Stdout:     &bytes.Buffer{},
+		Stdout:     &invalidOut,
 		WorkingDir: workingDir,
 		StateHome:  stateHome,
 	}.Run([]string{"state", "export", "all", "--format", "json"})
 	if err == nil {
 		t.Fatal("state export invalid-state error = nil, want rejection")
 	}
-	if !strings.Contains(err.Error(), "state database is invalid; run `loaf state doctor`") {
-		t.Fatalf("error = %v, want doctor message", err)
+	assertSilentExitCode(t, err, 1)
+	invalidOutput := decodeCommandError(t, invalidOut.Bytes())
+	if invalidOutput.Command != "state export" || !strings.Contains(invalidOutput.Error, "state database is invalid; run `loaf state doctor`") {
+		t.Fatalf("JSON error = %#v, want doctor message", invalidOutput)
+	}
+}
+
+func TestRunnerStateExportJSONErrorsAreMachineReadable(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "missing state",
+			args: []string{"state", "export", "all", "--format", "json"},
+			want: "SQLite state database is not initialized",
+		},
+		{
+			name: "unknown option",
+			args: []string{"state", "export", "all", "--format=json", "--bogus"},
+			want: "unknown option",
+		},
+		{
+			name: "unsupported json export kind",
+			args: []string{"state", "export", "spec", "SPEC-001", "--format", "json"},
+			want: "state export format \"json\" is not implemented yet",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}.Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON error", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != "state export" || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want state export error containing %q", output, tc.want)
+			}
+		})
+	}
+
+	root, err := project.ResolveRoot(workingDir)
+	if err != nil {
+		t.Fatalf("ResolveRoot() error = %v", err)
+	}
+	databasePath, err := (state.PathResolver{StateHome: stateHome}).DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0o700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(databasePath, []byte("not sqlite"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	err = Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "export", "all", "--format", "json"})
+	if err == nil {
+		t.Fatal("state export invalid-state error = nil, want JSON rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, stdout.Bytes())
+	if output.Command != "state export" || !strings.Contains(output.Error, "state database is invalid; run `loaf state doctor`") {
+		t.Fatalf("JSON error = %#v, want invalid database message", output)
 	}
 }
 

@@ -1563,16 +1563,26 @@ func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, r
 }
 
 func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	jsonOutput, err := parseJSONOnly(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state backup", err)
+		}
 		return err
 	}
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
+		if jsonOutput {
+			return writeJSONCommandError(out, "state backup", err)
+		}
 		return err
 	}
 	result, err := state.Backup(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
 	if err != nil {
+		if jsonOutput {
+			return writeJSONCommandError(out, "state backup", err)
+		}
 		return err
 	}
 	if jsonOutput {
@@ -1591,6 +1601,7 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 }
 
 func (r Runner) runStateExport(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := stateExportJSONRequested(args)
 	if writeNestedHelp(out, args, map[string]func(io.Writer){
 		"all":               writeStateExportAllHelp,
 		"release-readiness": writeStateExportReleaseReadinessHelp,
@@ -1602,16 +1613,26 @@ func (r Runner) runStateExport(args []string, out io.Writer, runtime state.Runti
 	}
 	options, err := parseStateExportArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state export", err)
+		}
 		return err
 	}
+	jsonOutput := options.format == state.ExportFormatJSON
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
+		if jsonOutput {
+			return writeJSONCommandError(out, "state export", err)
+		}
 		return err
 	}
 	switch {
 	case options.kind == state.ExportKindAll && options.format == state.ExportFormatJSON:
 		result, err := state.ExportAllJSON(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
 		if err != nil {
+			if jsonOutput {
+				return writeJSONCommandError(out, "state export", err)
+			}
 			return err
 		}
 		return writeJSON(out, result)
@@ -1644,7 +1665,11 @@ func (r Runner) runStateExport(args []string, out io.Writer, runtime state.Runti
 		fmt.Fprint(out, result.Content)
 		return nil
 	default:
-		return fmt.Errorf("state export %s --format %s is not implemented yet", options.kind, options.format)
+		err := fmt.Errorf("state export %s --format %s is not implemented yet", options.kind, options.format)
+		if jsonOutput {
+			return writeJSONCommandError(out, "state export", err)
+		}
+		return err
 	}
 }
 
@@ -9098,6 +9123,24 @@ func parseStateExportArgs(args []string) (stateExportOptions, error) {
 	default:
 		return stateExportOptions{}, fmt.Errorf("state export format %q is not implemented yet", options.format)
 	}
+}
+
+func stateExportJSONRequested(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--format":
+			if i+1 < len(args) && args[i+1] == state.ExportFormatJSON {
+				return true
+			}
+			i++
+		case strings.HasPrefix(arg, "--format="):
+			if strings.TrimPrefix(arg, "--format=") == state.ExportFormatJSON {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func parseDoctorArgs(args []string) (bool, bool, bool, error) {
