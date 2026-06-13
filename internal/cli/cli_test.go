@@ -11358,6 +11358,16 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			assertAgentHelpJSONMatchesLiveHelp(t, args, commands[command.Name].options, command.Name+" "+subcommand.Name+" --json")
 		}
 	}
+	for _, want := range []string{
+		"build -t, --target <name>",
+		"install -y, --yes",
+		"install --no-yes",
+	} {
+		commandName := strings.Fields(want)[0]
+		if !stringSliceContains(commands[commandName].options, want) {
+			t.Fatalf("%s options = %#v, want agent help to include %q", commandName, commands[commandName].options, want)
+		}
+	}
 	for _, want := range []string{"repair", "repair legacy-project-database", "repair relationship-origin"} {
 		if !stringSliceContains(commands["state"].subcommands, want) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)

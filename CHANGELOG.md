@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `--agent-help` now documents `loaf build`/`install` short aliases and non-interactive install confirmation flags consistently with native help.
 - `--agent-help` now documents housekeeping's legacy-compatible `--plans` and `--handoffs` filters.
 - `loaf report create --help` now matches the parser by documenting `--source` and no longer advertising unsupported `--title`.
 - `--agent-help` and the generated `cli-reference` skill now document `loaf migrate worktree-storage` dry-run/apply and conflict-resolution flags.

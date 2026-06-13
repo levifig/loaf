@@ -46,7 +46,7 @@ func agentHelpCommands() []agentHelpCommand {
 			Name:        "build",
 			Description: "Build Loaf content targets",
 			Options: []agentHelpOption{
-				{Flags: "--target <target>", Description: "Build only one target"},
+				{Flags: "-t, --target <name>", Description: "Build a specific target only"},
 			},
 		},
 		{
@@ -60,9 +60,10 @@ func agentHelpCommands() []agentHelpCommand {
 			Name:        "install",
 			Description: "Install Loaf into detected or selected agent tools",
 			Options: []agentHelpOption{
-				{Flags: "--to <targets>", Description: "Comma-separated target tools or all"},
+				{Flags: "--to <target>", Description: "Target to install to, or all"},
 				{Flags: "--upgrade", Description: "Upgrade already-installed targets"},
-				{Flags: "--yes", Description: "Skip confirmation prompts"},
+				{Flags: "-y, --yes", Description: "Assume yes to safe project-file symlink migrations"},
+				{Flags: "--no-yes", Description: "Force prompt-style declines in non-interactive mode"},
 			},
 		},
 		{
