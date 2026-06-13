@@ -123,6 +123,42 @@ func TestRepairPlanTreatsLegacyLeftoverAsManualReview(t *testing.T) {
 	}
 }
 
+func TestRepairPlanDeduplicatesRepeatedActions(t *testing.T) {
+	status := Status{
+		DatabasePath: "/tmp/loaf.sqlite",
+		Diagnostics: []Diagnostic{
+			{Severity: "error", Code: "backend-mapping-entity-missing", Message: "first missing backend mapping"},
+			{Severity: "error", Code: "backend-mapping-entity-missing", Message: "second missing backend mapping"},
+		},
+	}
+
+	actions := RepairPlanForStatus(status)
+	if len(actions) != 1 {
+		t.Fatalf("len(actions) = %d, want 1: %#v", len(actions), actions)
+	}
+	if actions[0].Code != "audit-backend-mappings" {
+		t.Fatalf("action Code = %q, want audit-backend-mappings", actions[0].Code)
+	}
+}
+
+func TestRepairPlanPreservesDistinctDiagnosticActions(t *testing.T) {
+	status := Status{
+		DatabasePath: "/tmp/loaf.sqlite",
+		Diagnostics: []Diagnostic{
+			{Severity: "error", Code: "backend-mapping-entity-missing", Message: "missing backend mapping"},
+			{Severity: "warn", Code: "backend-mapping-entity-ambiguous", Message: "ambiguous backend mapping"},
+		},
+	}
+
+	actions := RepairPlanForStatus(status)
+	if len(actions) != 2 {
+		t.Fatalf("len(actions) = %d, want 2: %#v", len(actions), actions)
+	}
+	if actions[0].DiagnosticCode == actions[1].DiagnosticCode {
+		t.Fatalf("diagnostic codes should remain distinct: %#v", actions)
+	}
+}
+
 func TestInspectReportsSQLiteReadyWhenDatabaseIsInitialized(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

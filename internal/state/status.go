@@ -208,7 +208,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 	for _, diagnostic := range status.Diagnostics {
 		switch diagnostic.Code {
 		case "database-missing":
-			actions = append(actions, RepairAction{
+			actions = appendRepairAction(actions, RepairAction{
 				Code:           "initialize-database",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Initialize the global SQLite database for this project.",
@@ -217,7 +217,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Safe:           true,
 			})
 		case "legacy-state-database-detected":
-			actions = append(actions, RepairAction{
+			actions = appendRepairAction(actions, RepairAction{
 				Code:           "migrate-storage-home",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Preview and then apply storage-home migration to copy legacy state into the global database.",
@@ -226,7 +226,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Safe:           false,
 			})
 		case "legacy-project-database-leftover":
-			actions = append(actions, RepairAction{
+			actions = appendRepairAction(actions, RepairAction{
 				Code:           "review-legacy-project-database",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Preview archiving the leftover legacy project database after verifying the global database.",
@@ -235,7 +235,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Safe:           false,
 			})
 		case "schema-version-mismatch", "schema-checksum-mismatch", "schema-migration-missing":
-			actions = append(actions, RepairAction{
+			actions = appendRepairAction(actions, RepairAction{
 				Code:           "inspect-schema-migrations",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Inspect schema migration drift before applying any repair.",
@@ -244,7 +244,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Safe:           false,
 			})
 		case "state-invariants-unreadable":
-			actions = append(actions, RepairAction{
+			actions = appendRepairAction(actions, RepairAction{
 				Code:           "inspect-state-invariants",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Inspect SQLite table integrity before applying any state repair.",
@@ -253,7 +253,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Safe:           false,
 			})
 		case "project-current-path-missing", "project-current-path-mismatch", "orphaned-project-path":
-			actions = append(actions, RepairAction{
+			actions = appendRepairAction(actions, RepairAction{
 				Code:           "repair-project-path-invariants",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Inspect project identity and path history before repairing project path invariants.",
@@ -262,7 +262,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Safe:           false,
 			})
 		case "relationship-origin-missing", "relationship-origin-unknown":
-			actions = append(actions, RepairAction{
+			actions = appendRepairAction(actions, RepairAction{
 				Code:           "audit-relationship-origin",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Audit relationship provenance before backfilling or pruning relationship rows.",
@@ -271,7 +271,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Safe:           false,
 			})
 		case "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing", "backend-mapping-entity-ambiguous":
-			actions = append(actions, RepairAction{
+			actions = appendRepairAction(actions, RepairAction{
 				Code:           "audit-backend-mappings",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Audit external backend mappings before pruning or reconnecting integration rows.",
@@ -280,7 +280,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Safe:           false,
 			})
 		case "stale-compatibility-export":
-			actions = append(actions, RepairAction{
+			actions = appendRepairAction(actions, RepairAction{
 				Code:           "regenerate-export",
 				DiagnosticCode: diagnostic.Code,
 				Description:    "Regenerate the stale compatibility export from SQLite state.",
@@ -289,6 +289,18 @@ func RepairPlanForStatus(status Status) []RepairAction {
 		}
 	}
 	return actions
+}
+
+func appendRepairAction(actions []RepairAction, action RepairAction) []RepairAction {
+	for _, existing := range actions {
+		if existing.Code == action.Code &&
+			existing.DiagnosticCode == action.DiagnosticCode &&
+			existing.Command == action.Command &&
+			existing.Path == action.Path {
+			return actions
+		}
+	}
+	return append(actions, action)
 }
 
 func inspectSchemaMigrations(ctx context.Context, store *Store, version int) ([]Diagnostic, bool) {
