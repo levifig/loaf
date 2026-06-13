@@ -44,6 +44,7 @@ var projectScopedMergeTables = []string{
 
 // StorageHomeMigrationPlan describes the XDG_STATE_HOME to XDG_DATA_HOME move.
 type StorageHomeMigrationPlan struct {
+	ContractVersion      int      `json:"contract_version"`
 	Version              int      `json:"version"`
 	ProjectRoot          string   `json:"project_root"`
 	DatabasePath         string   `json:"database_path"`
@@ -68,6 +69,7 @@ func PreviewStorageHomeMigration(root project.Root, resolver PathResolver) (Stor
 	}
 
 	plan := StorageHomeMigrationPlan{
+		ContractVersion:    StateJSONContractVersion,
 		Version:            1,
 		ProjectRoot:        root.Path(),
 		DatabasePath:       databasePath,

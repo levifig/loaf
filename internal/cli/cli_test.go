@@ -190,6 +190,9 @@ func TestRunnerStateMigrateStorageHomeCopiesLegacyDatabase(t *testing.T) {
 	if err := json.Unmarshal(dryRun.Bytes(), &preview); err != nil {
 		t.Fatalf("Unmarshal(preview) error = %v\n%s", err, dryRun.String())
 	}
+	if preview.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("preview ContractVersion = %d, want %d", preview.ContractVersion, state.StateJSONContractVersion)
+	}
 	if preview.Action != state.StorageHomeActionCopy || preview.Applied {
 		t.Fatalf("preview = %#v, want copy dry-run", preview)
 	}
@@ -3099,6 +3102,9 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 		t.Fatalf("state repair relationship-origin --dry-run error = %v", err)
 	}
 	dryRun := decodeRelationshipOriginRepairResult(t, dryRunOut.Bytes())
+	if dryRun.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("dry-run ContractVersion = %d, want %d", dryRun.ContractVersion, state.StateJSONContractVersion)
+	}
 	if dryRun.Applied {
 		t.Fatal("dry-run Applied = true, want false")
 	}
@@ -3122,6 +3128,9 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 		t.Fatalf("state repair relationship-origin --apply error = %v", err)
 	}
 	applied := decodeRelationshipOriginRepairResult(t, applyOut.Bytes())
+	if applied.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("applied ContractVersion = %d, want %d", applied.ContractVersion, state.StateJSONContractVersion)
+	}
 	if !applied.Applied {
 		t.Fatal("apply Applied = false, want true")
 	}
@@ -3164,6 +3173,9 @@ func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
 		t.Fatalf("state repair legacy-project-database --dry-run error = %v", err)
 	}
 	dryRun := decodeLegacyProjectDatabaseArchiveResult(t, dryRunOut.Bytes())
+	if dryRun.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("dry-run ContractVersion = %d, want %d", dryRun.ContractVersion, state.StateJSONContractVersion)
+	}
 	if dryRun.Applied {
 		t.Fatal("dry-run Applied = true, want false")
 	}
@@ -3186,6 +3198,9 @@ func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
 		t.Fatalf("state repair legacy-project-database --apply error = %v", err)
 	}
 	applied := decodeLegacyProjectDatabaseArchiveResult(t, applyOut.Bytes())
+	if applied.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("applied ContractVersion = %d, want %d", applied.ContractVersion, state.StateJSONContractVersion)
+	}
 	if !applied.Applied {
 		t.Fatal("apply Applied = false, want true")
 	}
@@ -5196,6 +5211,9 @@ func TestRunnerStateMigrateMarkdownJSONDryRunDoesNotCreateDatabase(t *testing.T)
 	}
 
 	plan := decodeMarkdownMigrationPlan(t, stdout.Bytes())
+	if plan.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", plan.ContractVersion, state.StateJSONContractVersion)
+	}
 	if plan.Specs != 1 ||
 		plan.Tasks != 1 ||
 		plan.Ideas != 1 ||
@@ -5403,6 +5421,9 @@ func TestRunnerStateMigrateMarkdownApplyJSON(t *testing.T) {
 	}
 
 	result := decodeMarkdownMigrationResult(t, stdout.Bytes())
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
 	if !result.Applied {
 		t.Fatal("Applied = false, want true")
 	}
@@ -5442,6 +5463,9 @@ depends_on: []
 	}
 
 	result := decodeMarkdownMigrationResult(t, stdout.Bytes())
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
 	if !result.Applied || result.Tasks != 1 || result.Relationships != 0 {
 		t.Fatalf("result = %#v, want one markdown-only task with no relationships", result)
 	}

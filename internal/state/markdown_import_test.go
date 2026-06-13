@@ -22,6 +22,9 @@ func TestApplyMarkdownMigrationImportsArtifactsAndPreservesSources(t *testing.T)
 		t.Fatalf("ApplyMarkdownMigration() error = %v", err)
 	}
 
+	if result.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
+	}
 	if !result.Applied {
 		t.Fatal("Applied = false, want true")
 	}
@@ -105,6 +108,9 @@ depends_on: []
 	result, err := ApplyMarkdownMigration(context.Background(), root, PathResolver{StateHome: stateHome})
 	if err != nil {
 		t.Fatalf("ApplyMarkdownMigration() error = %v", err)
+	}
+	if result.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
 	}
 	if !result.Applied || result.Tasks != 1 {
 		t.Fatalf("result = %#v, want one applied markdown task", result)

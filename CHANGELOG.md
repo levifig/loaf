@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf migrate markdown --json`, `loaf migrate storage-home --json`, and `loaf state repair ... --json` success payloads now include `contract_version`.
 - `loaf project identity` now works as a discoverable alias for `loaf project show`.
 - `loaf project show|list|rename|move --json` now include `contract_version` for agentic consumers.
 - `loaf state init|status|doctor --json` now include `contract_version` for agentic consumers.

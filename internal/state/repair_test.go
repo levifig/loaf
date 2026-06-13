@@ -25,6 +25,9 @@ func TestRepairMissingRelationshipOriginsDryRunDoesNotWrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RepairMissingRelationshipOrigins() error = %v", err)
 	}
+	if result.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
+	}
 	if result.Applied {
 		t.Fatal("Applied = true, want dry-run")
 	}
@@ -56,6 +59,9 @@ func TestRepairMissingRelationshipOriginsApplyBackfillsCurrentProject(t *testing
 	result, err := RepairMissingRelationshipOrigins(context.Background(), root, PathResolver{StateHome: stateHome}, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
 	if err != nil {
 		t.Fatalf("RepairMissingRelationshipOrigins() error = %v", err)
+	}
+	if result.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
 	}
 	if !result.Applied {
 		t.Fatal("Applied = false, want true")
@@ -113,6 +119,9 @@ func TestArchiveLegacyProjectDatabaseDryRunDoesNotMoveFiles(t *testing.T) {
 	result, err := ArchiveLegacyProjectDatabase(root, PathResolver{}, false)
 	if err != nil {
 		t.Fatalf("ArchiveLegacyProjectDatabase() error = %v", err)
+	}
+	if result.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
 	}
 	if result.Applied {
 		t.Fatal("Applied = true, want dry-run")

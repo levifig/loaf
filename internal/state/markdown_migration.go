@@ -13,27 +13,29 @@ import (
 
 // MarkdownMigrationPlan is the read-only preview for importing .agents files.
 type MarkdownMigrationPlan struct {
-	AgentsPath    string   `json:"agents_path"`
-	Specs         int      `json:"specs"`
-	Tasks         int      `json:"tasks"`
-	Ideas         int      `json:"ideas"`
-	Sparks        int      `json:"sparks"`
-	Brainstorms   int      `json:"brainstorms"`
-	ShapingDrafts int      `json:"shaping_drafts"`
-	Sessions      int      `json:"sessions"`
-	Reports       int      `json:"reports"`
-	Relationships int      `json:"relationships"`
-	SkippedFiles  []string `json:"skipped_files"`
-	Warnings      []string `json:"warnings"`
+	ContractVersion int      `json:"contract_version"`
+	AgentsPath      string   `json:"agents_path"`
+	Specs           int      `json:"specs"`
+	Tasks           int      `json:"tasks"`
+	Ideas           int      `json:"ideas"`
+	Sparks          int      `json:"sparks"`
+	Brainstorms     int      `json:"brainstorms"`
+	ShapingDrafts   int      `json:"shaping_drafts"`
+	Sessions        int      `json:"sessions"`
+	Reports         int      `json:"reports"`
+	Relationships   int      `json:"relationships"`
+	SkippedFiles    []string `json:"skipped_files"`
+	Warnings        []string `json:"warnings"`
 }
 
 // PreviewMarkdownMigration inspects .agents without mutating files or SQLite state.
 func PreviewMarkdownMigration(root project.Root) (MarkdownMigrationPlan, error) {
 	agentsPath := filepath.Join(root.Path(), ".agents")
 	plan := MarkdownMigrationPlan{
-		AgentsPath:   agentsPath,
-		SkippedFiles: []string{},
-		Warnings:     []string{},
+		ContractVersion: StateJSONContractVersion,
+		AgentsPath:      agentsPath,
+		SkippedFiles:    []string{},
+		Warnings:        []string{},
 	}
 
 	info, err := os.Stat(agentsPath)

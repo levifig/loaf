@@ -24,6 +24,9 @@ func TestPreviewStorageHomeMigrationPlansLegacyCopy(t *testing.T) {
 		t.Fatalf("PreviewStorageHomeMigration() error = %v", err)
 	}
 
+	if plan.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", plan.ContractVersion, StateJSONContractVersion)
+	}
 	if plan.Action != StorageHomeActionCopy {
 		t.Fatalf("Action = %q, want %q", plan.Action, StorageHomeActionCopy)
 	}
@@ -58,6 +61,9 @@ func TestApplyStorageHomeMigrationCopiesLegacyDatabaseWithoutDeletingIt(t *testi
 		t.Fatalf("ApplyStorageHomeMigration() error = %v", err)
 	}
 
+	if plan.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", plan.ContractVersion, StateJSONContractVersion)
+	}
 	if !plan.Applied {
 		t.Fatal("Applied = false, want true")
 	}
