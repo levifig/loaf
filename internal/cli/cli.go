@@ -61,6 +61,11 @@ type projectMoveOptions struct {
 	jsonOutput bool
 }
 
+type commandErrorJSON struct {
+	Command string `json:"command"`
+	Error   string `json:"error"`
+}
+
 // Run dispatches a loaf command.
 func (r Runner) Run(args []string) error {
 	out := r.Stdout
@@ -1128,8 +1133,12 @@ func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runti
 }
 
 func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	options, err := parseProjectRenameArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "project rename", err)
+		}
 		return err
 	}
 	var projectRoot project.Root
@@ -1140,12 +1149,18 @@ func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Run
 		projectRoot, store, err = r.openProjectIdentityStore(runtime)
 	}
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "project rename", err)
+		}
 		return err
 	}
 	defer store.Close()
 	if options.dryRun {
 		result, err := store.PreviewRenameProject(context.Background(), projectRoot, options.name)
 		if err != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, "project rename", err)
+			}
 			return err
 		}
 		if options.jsonOutput {
@@ -1160,6 +1175,9 @@ func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Run
 	}
 	identity, err := store.RenameProject(context.Background(), projectRoot, options.name)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "project rename", err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -1171,8 +1189,12 @@ func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Run
 }
 
 func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	options, err := parseProjectMoveArgs(args, runtime.RootPath())
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "project move", err)
+		}
 		return err
 	}
 	var projectRoot project.Root
@@ -1183,6 +1205,9 @@ func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runti
 		projectRoot, store, err = r.openProjectStore(runtime)
 	}
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "project move", err)
+		}
 		return err
 	}
 	defer store.Close()
@@ -1193,6 +1218,9 @@ func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runti
 		result, err = store.MoveProject(context.Background(), projectRoot, options.fromPath, options.toPath)
 	}
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "project move", err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -10635,6 +10663,13 @@ func writeJSON(out io.Writer, value any) error {
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(value)
+}
+
+func writeJSONCommandError(out io.Writer, command string, err error) error {
+	if writeErr := writeJSON(out, commandErrorJSON{Command: command, Error: err.Error()}); writeErr != nil {
+		return writeErr
+	}
+	return ExitError{Code: 1}
 }
 
 func firstNonEmpty(values ...string) string {

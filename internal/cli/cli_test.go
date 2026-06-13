@@ -2195,12 +2195,15 @@ func TestRunnerProjectDryRunsDoNotCreateMissingDatabase(t *testing.T) {
 		{"project", "rename", "Preview Loaf", "--dry-run", "--json"},
 		{"project", "move", "--from", workingDir, "--dry-run", "--json"},
 	} {
-		err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run(args)
+		var stdout bytes.Buffer
+		err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run(args)
 		if err == nil {
 			t.Fatalf("Run(%v) error = nil, want missing database error", args)
 		}
-		if !strings.Contains(err.Error(), "state database does not exist") {
-			t.Fatalf("Run(%v) error = %v, want missing database message", args, err)
+		assertSilentExitCode(t, err, 1)
+		output := decodeCommandError(t, stdout.Bytes())
+		if !strings.Contains(output.Error, "state database does not exist") {
+			t.Fatalf("Run(%v) JSON error = %#v, want missing database message", args, output)
 		}
 	}
 	if _, err := os.Stat(filepath.Join(stateHome, "loaf", "loaf.sqlite")); !os.IsNotExist(err) {
@@ -2212,9 +2215,15 @@ func TestRunnerProjectMoveUnknownFromDoesNotCreateProject(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
 
-	err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", filepath.Join(t.TempDir(), "missing"), "--json"})
+	var stdout bytes.Buffer
+	err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", filepath.Join(t.TempDir(), "missing"), "--json"})
 	if err == nil {
 		t.Fatal("project move unknown --from error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, stdout.Bytes())
+	if output.Command != "project move" || !strings.Contains(output.Error, "not registered") {
+		t.Fatalf("project move JSON error = %#v, want machine-readable unknown path rejection", output)
 	}
 	db, openErr := sql.Open("sqlite3", filepath.Join(stateHome, "loaf", "loaf.sqlite"))
 	if openErr != nil {
@@ -2223,6 +2232,57 @@ func TestRunnerProjectMoveUnknownFromDoesNotCreateProject(t *testing.T) {
 	defer db.Close()
 	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM projects`); got != 0 {
 		t.Fatalf("projects = %d, want no project row after rejected move", got)
+	}
+}
+
+func TestRunnerProjectJSONValidationErrorsAreMachineReadable(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var initOut bytes.Buffer
+	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show --json error = %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		args    []string
+		command string
+		want    string
+	}{
+		{
+			name:    "rename parse error",
+			args:    []string{"project", "rename", "--json"},
+			command: "project rename",
+			want:    "requires a name",
+		},
+		{
+			name:    "rename store validation error",
+			args:    []string{"project", "rename", "   ", "--dry-run", "--json"},
+			command: "project rename",
+			want:    "project name cannot be empty",
+		},
+		{
+			name:    "move parse error",
+			args:    []string{"project", "move", "--from", "relative/path", "--json"},
+			command: "project move",
+			want:    "requires absolute",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON validation error", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != tc.command || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want command %q and error containing %q", output, tc.command, tc.want)
+			}
+		})
 	}
 }
 
@@ -9822,6 +9882,26 @@ func decodeStateStatus(t *testing.T, data []byte) state.Status {
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}
 	return status
+}
+
+func decodeCommandError(t *testing.T, data []byte) commandErrorJSON {
+	t.Helper()
+	var output commandErrorJSON
+	if err := json.Unmarshal(data, &output); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return output
+}
+
+func assertSilentExitCode(t *testing.T, err error, want int) {
+	t.Helper()
+	exitErr, ok := err.(interface {
+		ExitCode() int
+		Silent() bool
+	})
+	if !ok || exitErr.ExitCode() != want || !exitErr.Silent() {
+		t.Fatalf("error = %#v, want silent exit code %d", err, want)
+	}
 }
 
 func assertJSONArrayLength(t *testing.T, data []byte, field string, want int) {

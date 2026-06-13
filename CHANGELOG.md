@@ -11,6 +11,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf state export all --format json` now includes a verified manifest with table order, per-table row counts, and total exported rows.
 - `loaf state export all --format json` manifest now includes an explicit `table_count` for agentic consumers.
 - `loaf state export ...` generation now reads SQLite through read-only connections.
+- `loaf project rename|move --json` validation and safeguard failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
 - `loaf task create|update` help, invalid-priority errors, and agent help now name the valid task priorities.
 - The generated `cli-reference` skill now uses the same task status and priority values as the native CLI help and agent help.
