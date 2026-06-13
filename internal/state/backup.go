@@ -88,7 +88,7 @@ type backupVerification struct {
 }
 
 func verifyBackup(ctx context.Context, backupPath string, root project.Root) (backupVerification, error) {
-	store, err := OpenStore(backupPath)
+	store, err := OpenStoreReadOnly(backupPath)
 	if err != nil {
 		return backupVerification{}, fmt.Errorf("open state backup for verification: %w", err)
 	}

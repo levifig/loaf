@@ -62,10 +62,11 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	if result.IntegrityCheck != "ok" {
 		t.Fatalf("IntegrityCheck = %q, want ok", result.IntegrityCheck)
 	}
+	assertNoSQLiteSidecars(t, result.BackupPath)
 
-	backupStore, err := OpenStore(result.BackupPath)
+	backupStore, err := OpenStoreReadOnly(result.BackupPath)
 	if err != nil {
-		t.Fatalf("OpenStore(backup) error = %v", err)
+		t.Fatalf("OpenStoreReadOnly(backup) error = %v", err)
 	}
 	defer backupStore.Close()
 	version, err := backupStore.SchemaVersion(context.Background())
@@ -75,6 +76,7 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	if version != CurrentSchemaVersion() {
 		t.Fatalf("backup schema version = %d, want %d", version, CurrentSchemaVersion())
 	}
+	assertNoSQLiteSidecars(t, result.BackupPath)
 }
 
 func TestBackupCreatesTimestampedFilesWithoutOverwriting(t *testing.T) {
@@ -142,5 +144,15 @@ func TestBackupRejectsInvalidSQLiteState(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "state database is invalid; run `loaf state doctor`") {
 		t.Fatalf("error = %v, want doctor message", err)
+	}
+}
+
+func assertNoSQLiteSidecars(t *testing.T, path string) {
+	t.Helper()
+	for _, suffix := range []string{"-wal", "-shm"} {
+		sidecar := path + suffix
+		if _, err := os.Stat(sidecar); !os.IsNotExist(err) {
+			t.Fatalf("backup sidecar %s exists or stat failed: %v", sidecar, err)
+		}
 	}
 }

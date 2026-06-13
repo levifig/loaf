@@ -2776,9 +2776,10 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	if _, err := os.Stat(result.BackupPath); err != nil {
 		t.Fatalf("backup file missing: %v", err)
 	}
-	store, err := state.OpenStore(result.BackupPath)
+	assertNoSQLiteSidecars(t, result.BackupPath)
+	store, err := state.OpenStoreReadOnly(result.BackupPath)
 	if err != nil {
-		t.Fatalf("OpenStore(backup) error = %v", err)
+		t.Fatalf("OpenStoreReadOnly(backup) error = %v", err)
 	}
 	defer store.Close()
 	version, err := store.SchemaVersion(t.Context())
@@ -2788,6 +2789,7 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	if version != state.CurrentSchemaVersion() {
 		t.Fatalf("backup schema version = %d, want %d", version, state.CurrentSchemaVersion())
 	}
+	assertNoSQLiteSidecars(t, result.BackupPath)
 }
 
 func TestRunnerStateBackupHumanOutput(t *testing.T) {
@@ -9736,6 +9738,16 @@ func decodeStateBackupResult(t *testing.T, data []byte) state.BackupResult {
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}
 	return result
+}
+
+func assertNoSQLiteSidecars(t *testing.T, path string) {
+	t.Helper()
+	for _, suffix := range []string{"-wal", "-shm"} {
+		sidecar := path + suffix
+		if _, err := os.Stat(sidecar); !os.IsNotExist(err) {
+			t.Fatalf("SQLite sidecar %s exists or stat failed: %v", sidecar, err)
+		}
+	}
 }
 
 func decodeRelationshipOriginRepairResult(t *testing.T, data []byte) state.RelationshipOriginRepairResult {
