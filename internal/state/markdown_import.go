@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -387,7 +388,7 @@ func (m markdownImporter) importReports(ctx context.Context, agentsPath string) 
 
 func (m markdownImporter) importJSONSource(ctx context.Context, path string) error {
 	artifact, err := readSourceArtifact(m.root.Path(), path)
-	if os.IsNotExist(err) {
+	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 	if err != nil {

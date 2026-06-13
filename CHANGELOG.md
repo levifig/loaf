@@ -77,6 +77,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Fixed
 
+- Markdown migration apply no longer requires legacy `.agents/TASKS.json` when importing Markdown-only task files.
 - State-backed CLI commands now handle parent and nested `--help` consistently before parsing options or opening SQLite state.
 - SQLite-backed state commands now fail on project identity mapping errors instead of silently falling back to path-derived legacy project IDs.
 - Storage-home migration now preserves pending SQLite writes when copying legacy state into XDG data-home storage.

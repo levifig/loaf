@@ -5417,6 +5417,39 @@ func TestRunnerStateMigrateMarkdownApplyJSON(t *testing.T) {
 	}
 }
 
+func TestRunnerStateMigrateMarkdownApplyJSONDoesNotRequireTasksJSON(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	writeCLIAgentsFile(t, workingDir, "tasks/TASK-001-markdown-only.md", `---
+id: TASK-001
+title: Markdown Only Task
+status: todo
+priority: P2
+depends_on: []
+---
+
+# Markdown Only Task
+`)
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"migrate", "markdown", "--apply", "--json"})
+	if err != nil {
+		t.Fatalf("migrate markdown --apply --json error = %v", err)
+	}
+
+	result := decodeMarkdownMigrationResult(t, stdout.Bytes())
+	if !result.Applied || result.Tasks != 1 || result.Relationships != 0 {
+		t.Fatalf("result = %#v, want one markdown-only task with no relationships", result)
+	}
+	if _, err := os.Stat(result.DatabasePath); err != nil {
+		t.Fatalf("database was not created: %v", err)
+	}
+}
+
 func TestRunnerStateMigrateMarkdownResumeJSON(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
