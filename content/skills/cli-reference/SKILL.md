@@ -228,6 +228,7 @@ Project IDs are stable SQLite identities, not path or name hashes. Use
 |------------|---------|
 | `loaf project list` | List registered projects in the global SQLite database |
 | `loaf project show` | Show the current project identity |
+| `loaf project identity` | Alias for project show |
 | `loaf project rename` | Rename the friendly project name |
 | `loaf project move` | Record a checkout path move |
 
@@ -237,6 +238,9 @@ Project IDs are stable SQLite identities, not path or name hashes. Use
   - `--json` - Output database path, project IDs, friendly names, and current paths as JSON
 
 - `loaf project show`:
+  - `--json` - Output identity details as JSON
+
+- `loaf project identity`:
   - `--json` - Output identity details as JSON
 
 - `loaf project rename`:
@@ -252,6 +256,7 @@ Project IDs are stable SQLite identities, not path or name hashes. Use
 **Usage:**
 ```bash
 loaf project show
+loaf project identity --json
 loaf project rename "Loaf" --dry-run
 loaf project rename "Loaf"
 loaf project move --from /old/path/to/loaf --dry-run
