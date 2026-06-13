@@ -49,7 +49,7 @@ type Status struct {
 	SchemaVersion        int            `json:"schema_version"`
 	Mode                 string         `json:"mode"`
 	Diagnostics          []Diagnostic   `json:"diagnostics"`
-	RepairPlan           []RepairAction `json:"repair_plan,omitempty"`
+	RepairPlan           []RepairAction `json:"repair_plan"`
 }
 
 // Inspect returns the current state-runtime status without creating files.
@@ -63,6 +63,8 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 		ProjectRoot:  root.Path(),
 		ProjectID:    ProjectID(root),
 		DatabasePath: databasePath,
+		Diagnostics:  []Diagnostic{},
+		RepairPlan:   []RepairAction{},
 	}
 	if legacyPath, err := migrationSourceDatabasePath(root, resolver); err == nil && legacyPath != databasePath {
 		status.LegacyDatabasePath = legacyPath

@@ -41,10 +41,10 @@ type LegacyProjectDatabaseArchiveResult struct {
 	ArchivePath        string   `json:"archive_path,omitempty"`
 	Action             string   `json:"action"`
 	MatchedPaths       []string `json:"matched_paths"`
-	ArchivedPaths      []string `json:"archived_paths,omitempty"`
+	ArchivedPaths      []string `json:"archived_paths"`
 	Applied            bool     `json:"applied"`
 	GeneratedAt        string   `json:"generated_at"`
-	Warnings           []string `json:"warnings,omitempty"`
+	Warnings           []string `json:"warnings"`
 }
 
 // RepairMissingRelationshipOrigins backfills missing relationship origin values
@@ -129,8 +129,11 @@ func ArchiveLegacyProjectDatabase(root project.Root, resolver PathResolver, appl
 		ProjectRoot:        root.Path(),
 		DatabasePath:       plan.DatabasePath,
 		LegacyDatabasePath: plan.LegacyDatabasePath,
+		MatchedPaths:       []string{},
+		ArchivedPaths:      []string{},
 		Applied:            apply,
 		GeneratedAt:        now.Format(time.RFC3339Nano),
+		Warnings:           []string{},
 	}
 	if plan.DatabasePath == plan.LegacyDatabasePath || !plan.LegacyDatabaseExists {
 		result.Action = LegacyProjectDatabaseNoopAction

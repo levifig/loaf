@@ -2307,6 +2307,25 @@ func TestRunnerStateDoctorDryRunShowsRepairPlanWithoutCreatingDatabase(t *testin
 	}
 }
 
+func TestRunnerStateDoctorDryRunJSONUsesStableEmptyRepairPlan(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "doctor", "--dry-run", "--json"})
+	if err != nil {
+		t.Fatalf("state doctor --dry-run --json error = %v", err)
+	}
+	assertJSONArrayLength(t, stdout.Bytes(), "repair_plan", 0)
+}
+
 func TestRunnerStateDoctorDryRunShowsLegacyLeftoverManualAction(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	dataHome := t.TempDir()
@@ -2539,6 +2558,18 @@ func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
 	if hasDiagnostic(status.Diagnostics, "legacy-project-database-leftover") {
 		t.Fatalf("diagnostics = %#v, want legacy leftover resolved", status.Diagnostics)
 	}
+
+	var noopOut bytes.Buffer
+	err = Runner{
+		Stdout:     &noopOut,
+		WorkingDir: workingDir,
+	}.Run([]string{"state", "repair", "legacy-project-database", "--dry-run", "--json"})
+	if err != nil {
+		t.Fatalf("state repair legacy-project-database no-op dry-run error = %v", err)
+	}
+	assertJSONArrayLength(t, noopOut.Bytes(), "matched_paths", 0)
+	assertJSONArrayLength(t, noopOut.Bytes(), "archived_paths", 0)
+	assertJSONArrayLength(t, noopOut.Bytes(), "warnings", 0)
 }
 
 func TestRunnerStateDoctorReportsSchemaMismatch(t *testing.T) {
@@ -9531,6 +9562,25 @@ func decodeStateStatus(t *testing.T, data []byte) state.Status {
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}
 	return status
+}
+
+func assertJSONArrayLength(t *testing.T, data []byte, field string, want int) {
+	t.Helper()
+	var payload map[string]any
+	if err := json.Unmarshal(data, &payload); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	value, ok := payload[field]
+	if !ok {
+		t.Fatalf("JSON field %q missing in %s", field, string(data))
+	}
+	items, ok := value.([]any)
+	if !ok {
+		t.Fatalf("JSON field %q = %#v, want array", field, value)
+	}
+	if len(items) != want {
+		t.Fatalf("JSON field %q length = %d, want %d", field, len(items), want)
+	}
 }
 
 func decodeStateBackupResult(t *testing.T, data []byte) state.BackupResult {
