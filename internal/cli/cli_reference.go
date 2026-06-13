@@ -228,7 +228,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "list", Description: "List reports", Options: []cliReferenceOption{
 					{Flags: "--type <type>", Description: "Filter by report type"},
-					{Flags: "--status <status>", Description: "Filter by status"},
+					{Flags: "--status <status>", Description: "Filter by status; Loaf lifecycle statuses: draft, final, archived"},
 					{Flags: "--json", Description: "Output as JSON"},
 				}},
 				{Name: "generate", Description: "Generate a report from state", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},

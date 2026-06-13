@@ -153,7 +153,7 @@ func agentHelpCommands() []agentHelpCommand {
 			Name:        "report",
 			Description: "Manage durable reports",
 			Subcommands: []agentHelpSubcommand{
-				{Name: "list", Description: "List reports", Options: []agentHelpOption{{Flags: "--type <type>", Description: "Filter by report type"}, {Flags: "--status <status>", Description: "Filter by status"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "list", Description: "List reports", Options: []agentHelpOption{{Flags: "--type <type>", Description: "Filter by report type"}, {Flags: "--status <status>", Description: "Filter by status; Loaf lifecycle statuses: draft, final, archived"}, {Flags: "--json", Description: "Output raw JSON"}}},
 				{Name: "generate", Description: "Generate a report from state", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
 				{Name: "create", Description: "Create a report draft", Options: []agentHelpOption{{Flags: "--type <type>", Description: "Report type"}, {Flags: "--source <source>", Description: "Report source"}, {Flags: "--json", Description: "Output raw JSON"}}},
 				{Name: "finalize", Description: "Mark a report draft as final", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},

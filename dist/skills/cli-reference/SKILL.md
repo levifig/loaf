@@ -424,7 +424,7 @@ only when a durable prose artifact is explicitly needed.
 
 - `loaf report list`:
   - `--type <type>` - Filter by report type
-  - `--status <status>` - Filter by status
+  - `--status <status>` - Filter by status; Loaf lifecycle statuses: draft, final, archived
   - `--json` - Output as JSON
 
 - `loaf report generate`:

@@ -8514,7 +8514,7 @@ func writeReportHelp(out io.Writer) {
 }
 
 func writeReportListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report list [--type <type>|--status <status>] [--json]", "List reports.", "--type       Filter by report type", "--status     Filter by status", "--json       Output JSON")
+	writeUsageHelp(out, "loaf report list [--type <type>|--status <status>] [--json]", "List reports.", "--type       Filter by report type", "--status     Filter by status; Loaf lifecycle statuses: draft, final, archived", "--json       Output JSON")
 }
 
 func writeReportGenerateHelp(out io.Writer) {

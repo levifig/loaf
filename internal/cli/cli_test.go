@@ -11243,6 +11243,21 @@ func TestRunnerReportGenerateHelpNamesMarkdownFormat(t *testing.T) {
 	}
 }
 
+func TestRunnerReportListHelpNamesLifecycleStatuses(t *testing.T) {
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: t.TempDir(),
+	}.Run([]string{"report", "list", "--help"})
+	if err != nil {
+		t.Fatalf("Run(report list --help) error = %v", err)
+	}
+	want := "--status     Filter by status; Loaf lifecycle statuses: draft, final, archived"
+	if !strings.Contains(stdout.String(), want) {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
 func TestRunnerAgentHelpIsNative(t *testing.T) {
 	var stdout bytes.Buffer
 	err := Runner{
@@ -11351,6 +11366,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["report"].optionDescriptions["report generate --format <format>"]; !strings.Contains(got, "markdown") {
 		t.Fatalf("report generate format description = %q, want Markdown guidance", got)
+	}
+	if got := commands["report"].optionDescriptions["report list --status <status>"]; !strings.Contains(got, "draft, final, archived") {
+		t.Fatalf("report list status description = %q, want lifecycle status guidance", got)
 	}
 	for _, want := range []string{"refresh", "sync"} {
 		if !stringSliceContains(commands["task"].subcommands, want) {
