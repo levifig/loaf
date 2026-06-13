@@ -42,6 +42,7 @@ type ExportManifest struct {
 	Verified      bool           `json:"verified"`
 	SchemaVersion int            `json:"schema_version"`
 	ProjectID     string         `json:"project_id"`
+	TableCount    int            `json:"table_count"`
 	TableOrder    []string       `json:"table_order"`
 	RowCounts     map[string]int `json:"row_counts"`
 	TotalRows     int            `json:"total_rows"`
@@ -187,6 +188,7 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 			Verified:      true,
 			SchemaVersion: status.SchemaVersion,
 			ProjectID:     projectID,
+			TableCount:    len(tableOrder),
 			TableOrder:    tableOrder,
 			RowCounts:     rowCounts,
 			TotalRows:     totalRows,

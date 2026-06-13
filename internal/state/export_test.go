@@ -63,6 +63,9 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if snapshot.Manifest.GeneratedAt != snapshot.GeneratedAt {
 		t.Fatalf("Manifest.GeneratedAt = %q, want %q", snapshot.Manifest.GeneratedAt, snapshot.GeneratedAt)
 	}
+	if snapshot.Manifest.TableCount != len(exportAllTables) {
+		t.Fatalf("Manifest.TableCount = %d, want %d", snapshot.Manifest.TableCount, len(exportAllTables))
+	}
 	if len(snapshot.Manifest.TableOrder) != len(exportAllTables) {
 		t.Fatalf("Manifest.TableOrder length = %d, want %d", len(snapshot.Manifest.TableOrder), len(exportAllTables))
 	}
@@ -683,6 +686,12 @@ VALUES ('alias-brainstorm-export', ?, 'brainstorm', 'brainstorm-export', 'brains
 
 func assertExportManifestCounts(t *testing.T, snapshot ExportSnapshot) {
 	t.Helper()
+	if snapshot.Manifest.TableCount != len(snapshot.Manifest.TableOrder) {
+		t.Fatalf("manifest table count = %d, want table order length %d", snapshot.Manifest.TableCount, len(snapshot.Manifest.TableOrder))
+	}
+	if snapshot.Manifest.TableCount != len(snapshot.Tables) {
+		t.Fatalf("manifest table count = %d, want snapshot table map length %d", snapshot.Manifest.TableCount, len(snapshot.Tables))
+	}
 	total := 0
 	for _, tableName := range snapshot.Manifest.TableOrder {
 		rows, ok := snapshot.Tables[tableName]
