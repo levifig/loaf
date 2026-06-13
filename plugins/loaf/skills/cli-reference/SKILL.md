@@ -142,6 +142,11 @@ without rewriting the source Markdown files.
 | `loaf state migrate storage-home` | Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME |
 | `loaf state backup` | Create a SQLite database backup |
 | `loaf state export` | Export SQLite state for review or migration |
+| `loaf state export all` | Export a complete project-scoped SQLite snapshot |
+| `loaf state export triage` | Export a triage summary from SQLite state |
+| `loaf state export session` | Export one session from SQLite state |
+| `loaf state export spec` | Export one spec from SQLite state |
+| `loaf state export release-readiness` | Export a release-readiness report from SQLite state |
 
 **Options:**
 
@@ -180,6 +185,21 @@ without rewriting the source Markdown files.
 
 - `loaf state backup`:
   - `--json` - Output backup details as JSON
+
+- `loaf state export all`:
+  - `--format <format>` - Output format: json
+
+- `loaf state export triage`:
+  - `--format <format>` - Output format: markdown
+
+- `loaf state export session`:
+  - `--format <format>` - Output format: markdown
+
+- `loaf state export spec`:
+  - `--format <format>` - Output format: markdown
+
+- `loaf state export release-readiness`:
+  - `--format <format>` - Output format: markdown
 
 **Usage:**
 ```bash

@@ -11307,6 +11307,11 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
 		}
 	}
+	for _, want := range []string{"export all", "export triage", "export session", "export spec", "export release-readiness"} {
+		if !stringSliceContains(commands["state"].subcommands, want) {
+			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
+		}
+	}
 	if got := commands["state"].optionDescriptions["state repair legacy-project-database --dry-run"]; !strings.Contains(got, "without writing") {
 		t.Fatalf("legacy repair dry-run description = %q, want non-mutating preview", got)
 	}
@@ -11318,6 +11323,12 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["state"].optionDescriptions["state repair relationship-origin --dry-run"]; !strings.Contains(got, "without writing") {
 		t.Fatalf("relationship repair dry-run description = %q, want non-mutating preview", got)
+	}
+	if got := commands["state"].optionDescriptions["state export all --format <format>"]; !strings.Contains(got, "json") {
+		t.Fatalf("state export all format description = %q, want JSON guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state export release-readiness --format <format>"]; !strings.Contains(got, "markdown") {
+		t.Fatalf("state export release-readiness format description = %q, want Markdown guidance", got)
 	}
 	for _, want := range []string{"refresh", "sync"} {
 		if !stringSliceContains(commands["task"].subcommands, want) {

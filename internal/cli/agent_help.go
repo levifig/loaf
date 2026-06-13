@@ -83,6 +83,11 @@ func agentHelpCommands() []agentHelpCommand {
 				{Name: "migrate", Description: "Run state migrations"},
 				{Name: "backup", Description: "Create a SQLite database backup", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
 				{Name: "export", Description: "Export state data"},
+				{Name: "export all", Description: "Export a complete project-scoped SQLite snapshot", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format: json"}}},
+				{Name: "export triage", Description: "Export a triage summary from SQLite state", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
+				{Name: "export session", Description: "Export one session from SQLite state", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
+				{Name: "export spec", Description: "Export one spec from SQLite state", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
+				{Name: "export release-readiness", Description: "Export a release-readiness report from SQLite state", Options: []agentHelpOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
 			},
 		},
 		{
