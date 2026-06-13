@@ -146,7 +146,7 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 		return ExportSnapshot{}, fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
 
-	store, err := OpenStore(status.DatabasePath)
+	store, err := OpenStoreReadOnly(status.DatabasePath)
 	if err != nil {
 		return ExportSnapshot{}, fmt.Errorf("open state database for export: %w", err)
 	}
@@ -211,7 +211,7 @@ func ExportTriageMarkdown(ctx context.Context, root project.Root, resolver PathR
 		return MarkdownExport{}, fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
 
-	store, err := OpenStore(status.DatabasePath)
+	store, err := OpenStoreReadOnly(status.DatabasePath)
 	if err != nil {
 		return MarkdownExport{}, fmt.Errorf("open state database for export: %w", err)
 	}
@@ -255,7 +255,7 @@ func ExportReleaseReadinessMarkdown(ctx context.Context, root project.Root, reso
 		return MarkdownExport{}, fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
 
-	store, err := OpenStore(status.DatabasePath)
+	store, err := OpenStoreReadOnly(status.DatabasePath)
 	if err != nil {
 		return MarkdownExport{}, fmt.Errorf("open state database for export: %w", err)
 	}
@@ -290,7 +290,7 @@ func ExportSpecMarkdown(ctx context.Context, root project.Root, resolver PathRes
 		return MarkdownExport{}, fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
 
-	store, err := OpenStore(status.DatabasePath)
+	store, err := OpenStoreReadOnly(status.DatabasePath)
 	if err != nil {
 		return MarkdownExport{}, fmt.Errorf("open state database for export: %w", err)
 	}
@@ -321,7 +321,7 @@ func ExportSessionMarkdown(ctx context.Context, root project.Root, resolver Path
 		return MarkdownExport{}, fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
 
-	store, err := OpenStore(status.DatabasePath)
+	store, err := OpenStoreReadOnly(status.DatabasePath)
 	if err != nil {
 		return MarkdownExport{}, fmt.Errorf("open state database for export: %w", err)
 	}

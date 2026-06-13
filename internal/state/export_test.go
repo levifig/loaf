@@ -34,9 +34,9 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if snapshot.Audience != ExportAudienceLocal {
 		t.Fatalf("Audience = %q, want %q", snapshot.Audience, ExportAudienceLocal)
 	}
-	store, err := OpenStore(snapshot.DatabasePath)
+	store, err := OpenStoreReadOnly(snapshot.DatabasePath)
 	if err != nil {
-		t.Fatalf("OpenStore() error = %v", err)
+		t.Fatalf("OpenStoreReadOnly() error = %v", err)
 	}
 	defer store.Close()
 	if snapshot.ProjectID != projectIDForTest(t, store, root) {

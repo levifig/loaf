@@ -46,8 +46,13 @@ type ProjectRenameResult struct {
 	Action   string          `json:"action"`
 }
 
-// ProjectIdentityForRoot returns and refreshes the DB-backed project identity.
+// ProjectIdentityForRoot returns the DB-backed project identity.
+// Writable stores refresh current path metadata; read-only stores only look up
+// an existing mapping.
 func (s *Store) ProjectIdentityForRoot(ctx context.Context, root project.Root) (ProjectIdentity, error) {
+	if s.readOnly {
+		return s.LookupProjectIdentityForRoot(ctx, root)
+	}
 	return s.EnsureProject(ctx, root)
 }
 
@@ -319,7 +324,7 @@ WHERE id = ?
 }
 
 func (s *Store) projectID(ctx context.Context, root project.Root) (string, error) {
-	identity, err := s.EnsureProject(ctx, root)
+	identity, err := s.ProjectIdentityForRoot(ctx, root)
 	if err != nil {
 		return "", err
 	}

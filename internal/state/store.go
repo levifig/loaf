@@ -20,8 +20,9 @@ const sqliteDriverName = "sqlite3"
 
 // Store owns a SQLite connection for Loaf operational state.
 type Store struct {
-	db   *sql.DB
-	path string
+	db       *sql.DB
+	path     string
+	readOnly bool
 }
 
 // OpenStore opens an existing SQLite database path.
@@ -49,7 +50,7 @@ func OpenStoreReadOnly(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("ping state database read-only: %w", err)
 	}
-	return &Store{db: db, path: path}, nil
+	return &Store{db: db, path: path, readOnly: true}, nil
 }
 
 func sqliteDSN(path string) string {
