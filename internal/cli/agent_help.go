@@ -86,10 +86,10 @@ func agentHelpCommands() []agentHelpCommand {
 			Name:        "project",
 			Description: "Manage durable project identity",
 			Subcommands: []agentHelpSubcommand{
-				{Name: "list", Description: "List registered projects", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
-				{Name: "show", Description: "Show the current project identity", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
-				{Name: "rename", Description: "Rename the friendly project name", Options: []agentHelpOption{{Flags: "--dry-run", Description: "Validate and preview without writing"}, {Flags: "--json", Description: "Output raw JSON"}}},
-				{Name: "move", Description: "Record a checkout path move", Options: []agentHelpOption{{Flags: "--from <path>", Description: "Previous absolute project path"}, {Flags: "--to <path>", Description: "New absolute project path; defaults to the current project root"}, {Flags: "--dry-run", Description: "Validate and preview without writing"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "list", Description: "List registered projects in the global SQLite database", Options: []agentHelpOption{{Flags: "--json", Description: "Output database path, project IDs, friendly names, and current paths as JSON"}}},
+				{Name: "show", Description: "Show the current project identity", Options: []agentHelpOption{{Flags: "--json", Description: "Output project ID, friendly name, current path, and database path as JSON"}}},
+				{Name: "rename", Description: "Rename the friendly project name", Options: []agentHelpOption{{Flags: "--dry-run", Description: "Validate and preview without writing"}, {Flags: "--json", Description: "Output project ID, friendly name, current path, and database path as JSON"}}},
+				{Name: "move", Description: "Record a checkout path move", Options: []agentHelpOption{{Flags: "--from <path>", Description: "Previous absolute project path"}, {Flags: "--to <path>", Description: "New absolute project path; defaults to the current project root"}, {Flags: "--dry-run", Description: "Validate and preview without writing"}, {Flags: "--json", Description: "Output project ID, friendly name, current path, and database path as JSON"}}},
 			},
 		},
 		{

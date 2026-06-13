@@ -119,6 +119,9 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Name:        "project",
 			Description: "Manage durable project identity",
 			Subcommands: []cliReferenceSubcommand{
+				{Name: "list", Description: "List registered projects in the global SQLite database", Options: []cliReferenceOption{
+					{Flags: "--json", Description: "Output database path, project IDs, friendly names, and current paths as JSON"},
+				}},
 				{Name: "show", Description: "Show the current project identity", Options: []cliReferenceOption{
 					{Flags: "--json", Description: "Output identity details as JSON"},
 				}},

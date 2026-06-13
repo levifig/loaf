@@ -29,6 +29,8 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 	for _, want := range []string{
 		"**Note:** This file is auto-generated from native CLI reference metadata.",
 		"## Project Management",
+		"`loaf project list`",
+		"`--json` - Output database path, project IDs, friendly names, and current paths as JSON",
 		"`loaf project rename`",
 		"`--dry-run` - Validate and preview without writing",
 		"`loaf project move`",

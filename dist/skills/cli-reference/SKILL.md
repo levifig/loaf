@@ -160,11 +160,15 @@ Project IDs are stable SQLite identities, not path or name hashes. Use
 
 | Subcommand | Purpose |
 |------------|---------|
+| `loaf project list` | List registered projects in the global SQLite database |
 | `loaf project show` | Show the current project identity |
 | `loaf project rename` | Rename the friendly project name |
 | `loaf project move` | Record a checkout path move |
 
 **Options:**
+
+- `loaf project list`:
+  - `--json` - Output database path, project IDs, friendly names, and current paths as JSON
 
 - `loaf project show`:
   - `--json` - Output identity details as JSON

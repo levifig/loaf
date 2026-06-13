@@ -10710,6 +10710,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["project"].optionDescriptions["project move --dry-run"]; !strings.Contains(got, "preview without writing") {
 		t.Fatalf("project move dry-run description = %q, want preview safeguard", got)
 	}
+	if got := commands["project"].optionDescriptions["project list --json"]; !strings.Contains(got, "database path") || !strings.Contains(got, "friendly names") || !strings.Contains(got, "current paths") {
+		t.Fatalf("project list json description = %q, want global project identity fields", got)
+	}
 }
 
 func realpath(t *testing.T, path string) string {
