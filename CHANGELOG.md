@@ -23,6 +23,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf trace --help` now shows trace usage instead of reporting `--help` as an unknown option, and `--agent-help` documents trace JSON output.
 - `loaf check --help` now shows registered hook usage instead of reporting `--help` as an unknown option.
 - `loaf migrate markdown|storage-home --help` now shows top-level migration usage instead of reporting `--help` as an unknown option, and `--agent-help` documents their migration options.
+- `loaf state doctor` now warns when Linear integration is enabled but active local task rows have no Linear backend mapping.
 - `loaf task create|list|update --json` validation failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
 - `loaf task create|update` help, invalid-priority errors, and agent help now name the valid task priorities.

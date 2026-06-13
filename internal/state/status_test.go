@@ -478,6 +478,59 @@ VALUES
 	}
 }
 
+func TestInspectWarnsOnUnmappedLocalTasksWhenLinearEnabled(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root.Path(), ".agents"), 0o755); err != nil {
+		t.Fatalf("MkdirAll(.agents) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root.Path(), ".agents", "loaf.json"), []byte(`{"integrations":{"linear":{"enabled":true}}}`+"\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile(loaf.json) error = %v", err)
+	}
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO tasks (id, project_id, spec_id, title, status, priority, body_source_id, created_at, updated_at)
+VALUES
+  ('task-active-unmapped', ?, NULL, 'Active unmapped task', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z'),
+  ('task-archived-unmapped', ?, NULL, 'Archived unmapped task', 'archived', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z'),
+  ('task-active-mapped', ?, NULL, 'Active mapped task', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID, projectID, projectID); err != nil {
+		t.Fatalf("insert task fixtures error = %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-linear-task', ?, 'linear', 'task', 'task-active-mapped', 'issue', 'ENG-125', 'https://linear.app/workspace/issue/ENG-125', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert mapped task backend fixture error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeSQLiteReady {
+		t.Fatalf("Mode = %q, want %q for Linear-mode local task warning", status.Mode, ModeSQLiteReady)
+	}
+	diagnostic := findDiagnostic(t, status.Diagnostics, "linear-mode-local-task-unmapped")
+	if !strings.Contains(diagnostic.Message, "1 active local task row") {
+		t.Fatalf("diagnostic Message = %q, want count of only active unmapped tasks", diagnostic.Message)
+	}
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
+	}
+	if action.Command != "loaf state export all --format json" {
+		t.Fatalf("repair action Command = %q, want export all JSON", action.Command)
+	}
+}
+
 func TestInspectReportsInvalidWhenOperationalInvariantsAreUnreadable(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
@@ -600,12 +653,18 @@ func projectIDForTest(t *testing.T, store *Store, root project.Root) string {
 
 func assertDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) {
 	t.Helper()
+	_ = findDiagnostic(t, diagnostics, code)
+}
+
+func findDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) Diagnostic {
+	t.Helper()
 	for _, diagnostic := range diagnostics {
 		if diagnostic.Code == code {
-			return
+			return diagnostic
 		}
 	}
 	t.Fatalf("diagnostic %q not found in %#v", code, diagnostics)
+	return Diagnostic{}
 }
 
 func assertNoDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) {

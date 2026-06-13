@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -164,6 +165,16 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 				Message:  fmt.Sprintf("legacy project database remains at %s after global DB initialization", status.LegacyDatabasePath),
 			})
 		}
+		linearDiagnostics, err := inspectLinearModeTaskMappings(context.Background(), root, store, status.ProjectID)
+		if err != nil {
+			status.Diagnostics = append(status.Diagnostics, Diagnostic{
+				Severity: "warn",
+				Code:     "linear-mode-task-mappings-unreadable",
+				Message:  err.Error(),
+			})
+		} else {
+			status.Diagnostics = append(status.Diagnostics, linearDiagnostics...)
+		}
 		exportDiagnostics, err := inspectStaleExports(context.Background(), store)
 		if err != nil {
 			status.Diagnostics = append(status.Diagnostics, Diagnostic{
@@ -270,7 +281,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
-		case "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing", "backend-mapping-entity-ambiguous":
+		case "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing", "backend-mapping-entity-ambiguous", "linear-mode-local-task-unmapped":
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "audit-backend-mappings",
 				DiagnosticCode: diagnostic.Code,
@@ -664,6 +675,58 @@ ORDER BY project_id, backend, entity_kind, entity_id, external_kind
 	}
 
 	return diagnostics, valid, nil
+}
+
+func inspectLinearModeTaskMappings(ctx context.Context, root project.Root, store *Store, projectID string) ([]Diagnostic, error) {
+	enabled, err := linearIntegrationEnabled(root.Path())
+	if err != nil || !enabled {
+		return nil, err
+	}
+
+	var unmappedCount int
+	if err := store.db.QueryRowContext(ctx, `
+SELECT COUNT(*)
+FROM tasks
+LEFT JOIN backend_mappings
+  ON backend_mappings.project_id = tasks.project_id
+ AND backend_mappings.backend = 'linear'
+ AND backend_mappings.entity_kind = 'task'
+ AND backend_mappings.entity_id = tasks.id
+WHERE tasks.project_id = ?
+  AND tasks.status <> 'archived'
+  AND backend_mappings.id IS NULL
+`, projectID).Scan(&unmappedCount); err != nil {
+		return nil, fmt.Errorf("inspect Linear-mode task backend mappings: %w", err)
+	}
+	if unmappedCount == 0 {
+		return nil, nil
+	}
+	return []Diagnostic{{
+		Severity: "warn",
+		Code:     "linear-mode-local-task-unmapped",
+		Message:  fmt.Sprintf("Linear integration is enabled, but %d active local task row(s) have no Linear backend mapping", unmappedCount),
+	}}, nil
+}
+
+func linearIntegrationEnabled(rootPath string) (bool, error) {
+	data, err := os.ReadFile(filepath.Join(rootPath, ".agents", "loaf.json"))
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("read .agents/loaf.json: %w", err)
+	}
+	var config struct {
+		Integrations struct {
+			Linear struct {
+				Enabled *bool `json:"enabled"`
+			} `json:"linear"`
+		} `json:"integrations"`
+	}
+	if err := json.Unmarshal(data, &config); err != nil {
+		return false, fmt.Errorf("parse .agents/loaf.json: %w", err)
+	}
+	return config.Integrations.Linear.Enabled != nil && *config.Integrations.Linear.Enabled, nil
 }
 
 func inspectStaleExports(ctx context.Context, store *Store) ([]Diagnostic, error) {
