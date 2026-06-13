@@ -24,6 +24,12 @@ type ProjectIdentity struct {
 	DatabasePath string `json:"database_path,omitempty"`
 }
 
+// ProjectList is the global project identity index.
+type ProjectList struct {
+	DatabasePath string            `json:"database_path"`
+	Projects     []ProjectIdentity `json:"projects"`
+}
+
 // ProjectMoveResult describes a safe path remapping for a project.
 type ProjectMoveResult struct {
 	Project  ProjectIdentity `json:"project"`
@@ -47,6 +53,43 @@ func (s *Store) LookupProjectIdentityForRoot(ctx context.Context, root project.R
 		return ProjectIdentity{}, sql.ErrNoRows
 	}
 	return s.projectIdentity(ctx, projectID)
+}
+
+// ListProjects returns all durable project identities without refreshing any path.
+func (s *Store) ListProjects(ctx context.Context) (ProjectList, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT
+  projects.id,
+  COALESCE(NULLIF(projects.friendly_name, ''), projects.id),
+  COALESCE(current_path.path, projects.current_path, ''),
+  COALESCE(projects.last_seen_at, '')
+FROM projects
+LEFT JOIN project_paths AS current_path
+  ON current_path.project_id = projects.id
+ AND current_path.is_current = 1
+ORDER BY lower(COALESCE(NULLIF(projects.friendly_name, ''), projects.id)), projects.id
+`)
+	if err != nil {
+		return ProjectList{}, fmt.Errorf("list projects: %w", err)
+	}
+	defer rows.Close()
+
+	list := ProjectList{
+		DatabasePath: s.path,
+		Projects:     []ProjectIdentity{},
+	}
+	for rows.Next() {
+		var identity ProjectIdentity
+		if err := rows.Scan(&identity.ID, &identity.FriendlyName, &identity.CurrentPath, &identity.LastSeenAt); err != nil {
+			return ProjectList{}, fmt.Errorf("scan project identity: %w", err)
+		}
+		identity.DatabasePath = s.path
+		list.Projects = append(list.Projects, identity)
+	}
+	if err := rows.Err(); err != nil {
+		return ProjectList{}, fmt.Errorf("iterate project identities: %w", err)
+	}
+	return list, nil
 }
 
 // EnsureProject records the current path and returns the durable project identity.

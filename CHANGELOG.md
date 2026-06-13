@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf project list` now shows registered projects from the global SQLite database with stable IDs, friendly names, current paths, and JSON output.
 - Native Go is now the shipped Loaf runtime, with cross-platform binaries replacing the transitional TypeScript delegation path.
 - Existing Markdown-only Loaf projects now have a documented dry-run and apply path for adopting SQLite-backed state without rewriting source artifacts.
 - SQLite project identity now uses generated stable project IDs in one global database, plus friendly names and path mappings managed by `loaf project show|rename|move`.

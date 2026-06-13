@@ -133,6 +133,54 @@ func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
 	}
 }
 
+func TestListProjectsReturnsRegisteredIdentities(t *testing.T) {
+	root := projectRoot(t)
+	otherRoot, err := project.ResolveRoot(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveRoot(other) error = %v", err)
+	}
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+
+	loafIdentity, err := store.RenameProject(context.Background(), root, "Loaf")
+	if err != nil {
+		t.Fatalf("RenameProject() error = %v", err)
+	}
+	otherIdentity, err := store.EnsureProject(context.Background(), otherRoot)
+	if err != nil {
+		t.Fatalf("EnsureProject(other) error = %v", err)
+	}
+
+	projects, err := store.ListProjects(context.Background())
+	if err != nil {
+		t.Fatalf("ListProjects() error = %v", err)
+	}
+	if projects.DatabasePath != status.DatabasePath {
+		t.Fatalf("DatabasePath = %q, want %q", projects.DatabasePath, status.DatabasePath)
+	}
+	if len(projects.Projects) != 2 {
+		t.Fatalf("projects = %#v, want two registered identities", projects.Projects)
+	}
+	byID := map[string]ProjectIdentity{}
+	for _, project := range projects.Projects {
+		byID[project.ID] = project
+	}
+	if byID[loafIdentity.ID].FriendlyName != "Loaf" || byID[loafIdentity.ID].CurrentPath != root.Path() {
+		t.Fatalf("loaf project = %#v, want renamed identity at %s", byID[loafIdentity.ID], root.Path())
+	}
+	if byID[otherIdentity.ID].CurrentPath != otherRoot.Path() {
+		t.Fatalf("other project = %#v, want path %s", byID[otherIdentity.ID], otherRoot.Path())
+	}
+}
+
 func TestProjectPathsAllowOnlyOneCurrentPath(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

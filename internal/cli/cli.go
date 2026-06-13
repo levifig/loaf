@@ -969,6 +969,12 @@ func (r Runner) runProject(args []string, out io.Writer, runtime state.Runtime) 
 	}
 
 	switch args[0] {
+	case "list":
+		if isHelpArg(args[1:]) {
+			writeProjectListHelp(out)
+			return nil
+		}
+		return r.runProjectList(args[1:], out, runtime)
 	case "show":
 		if isHelpArg(args[1:]) {
 			writeProjectShowHelp(out)
@@ -998,12 +1004,23 @@ func writeProjectHelp(out io.Writer) {
 	fmt.Fprintln(out, "Manage durable project identity in the global SQLite database.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Commands:")
+	fmt.Fprintln(out, "  list      List registered projects")
 	fmt.Fprintln(out, "  show      Show the current project identity")
 	fmt.Fprintln(out, "  rename    Rename the friendly project name")
 	fmt.Fprintln(out, "  move      Record a project path move")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  -h, --help    Show help")
+}
+
+func writeProjectListHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf project list [--json]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "List registered projects in the global SQLite database.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
 func writeProjectShowHelp(out io.Writer) {
@@ -1036,6 +1053,27 @@ func writeProjectMoveHelp(out io.Writer) {
 	fmt.Fprintln(out, "  --to         New absolute project path")
 	fmt.Fprintln(out, "  --json       Output JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func (r Runner) runProjectList(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonOutput, err := parseJSONOnly(args)
+	if err != nil {
+		return err
+	}
+	_, store, err := r.openProjectStore(runtime)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	projects, err := store.ListProjects(context.Background())
+	if err != nil {
+		return err
+	}
+	if jsonOutput {
+		return writeJSON(out, projects)
+	}
+	writeProjectList(out, projects)
+	return nil
 }
 
 func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runtime) error {
@@ -1146,6 +1184,23 @@ func writeProjectIdentity(out io.Writer, identity state.ProjectIdentity) {
 	fmt.Fprintf(out, "  id:   %s\n", identity.ID)
 	fmt.Fprintf(out, "  path: %s\n", identity.CurrentPath)
 	fmt.Fprintf(out, "  db:   %s\n", identity.DatabasePath)
+}
+
+func writeProjectList(out io.Writer, result state.ProjectList) {
+	fmt.Fprintln(out, "loaf project list")
+	fmt.Fprintf(out, "database: %s\n\n", result.DatabasePath)
+	if len(result.Projects) == 0 {
+		fmt.Fprintln(out, "No projects registered.")
+		return
+	}
+	for _, project := range result.Projects {
+		fmt.Fprintf(out, "%s\n", firstNonEmpty(project.FriendlyName, "(unnamed)"))
+		fmt.Fprintf(out, "  id:   %s\n", project.ID)
+		fmt.Fprintf(out, "  path: %s\n", firstNonEmpty(project.CurrentPath, "(none)"))
+		if project.LastSeenAt != "" {
+			fmt.Fprintf(out, "  seen: %s\n", project.LastSeenAt)
+		}
+	}
 }
 
 func (r Runner) runStateInit(args []string, out io.Writer, runtime state.Runtime) error {

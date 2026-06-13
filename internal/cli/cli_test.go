@@ -2058,6 +2058,29 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 		t.Fatalf("moved show = %#v, want same renamed project", movedShown)
 	}
 
+	var listOut bytes.Buffer
+	if err := (Runner{Stdout: &listOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "list", "--json"}); err != nil {
+		t.Fatalf("project list --json error = %v", err)
+	}
+	var listed state.ProjectList
+	if err := json.Unmarshal(listOut.Bytes(), &listed); err != nil {
+		t.Fatalf("json.Unmarshal(list) error = %v\n%s", err, listOut.String())
+	}
+	if len(listed.Projects) != 1 {
+		t.Fatalf("listed projects = %#v, want one stable project", listed.Projects)
+	}
+	if listed.Projects[0].ID != shown.ID || listed.Projects[0].FriendlyName != "Friendly Loaf" || listed.Projects[0].CurrentPath != movedDir {
+		t.Fatalf("listed project = %#v, want renamed moved project", listed.Projects[0])
+	}
+
+	var humanListOut bytes.Buffer
+	if err := (Runner{Stdout: &humanListOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "list"}); err != nil {
+		t.Fatalf("project list error = %v", err)
+	}
+	if !strings.Contains(humanListOut.String(), "Friendly Loaf") || !strings.Contains(humanListOut.String(), shown.ID) || !strings.Contains(humanListOut.String(), movedDir) {
+		t.Fatalf("project list output = %q, want friendly name, id, and current path", humanListOut.String())
+	}
+
 	db, err := sql.Open("sqlite3", filepath.Join(stateHome, "loaf", "loaf.sqlite"))
 	if err != nil {
 		t.Fatalf("sql.Open() error = %v", err)
@@ -2154,6 +2177,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		{name: "state init", args: []string{"state", "init", "--help"}, want: "Usage: loaf state init [--json]"},
 		{name: "state doctor", args: []string{"state", "doctor", "--help"}, want: "Usage: loaf state doctor [--fix] [--json]"},
 		{name: "state migrate", args: []string{"state", "migrate", "--help"}, want: "Usage: loaf state migrate <source> [options]"},
+		{name: "project list", args: []string{"project", "list", "--help"}, want: "Usage: loaf project list [--json]"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
