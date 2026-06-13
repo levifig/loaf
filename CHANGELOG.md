@@ -14,6 +14,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
 - `loaf task create|update` help, invalid-priority errors, and agent help now name the valid task priorities.
 - The generated `cli-reference` skill now uses the same task status and priority values as the native CLI help and agent help.
+- `--agent-help` and the generated `cli-reference` skill now document `loaf project` identity commands and their dry-run safeguards.
 - `loaf state doctor` now validates backend mapping drift for Linear and other external integrations, including orphaned local entities, unknown entity kinds, and ambiguous local-to-external mappings.
 - `loaf state doctor` repair plans now deduplicate repeated repair actions while preserving distinct diagnostic causes.
 - `loaf state backup` now verifies backup integrity, schema version, and project identity before returning, and reports those checks in JSON and human output.

@@ -28,6 +28,10 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 	content := string(data)
 	for _, want := range []string{
 		"**Note:** This file is auto-generated from native CLI reference metadata.",
+		"## Project Management",
+		"`loaf project rename`",
+		"`--dry-run` - Validate and preview without writing",
+		"`loaf project move`",
 		"## Task Management",
 		"`loaf task create`",
 		"`--status <status>` - Only show tasks with status: in_progress, blocked, todo, review, done, archived",

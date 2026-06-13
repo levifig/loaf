@@ -10671,7 +10671,7 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 		}
 		commands[command.Name] = entry
 	}
-	for _, want := range []string{"build", "session", "task", "spec", "report", "kb", "release", "version"} {
+	for _, want := range []string{"build", "state", "project", "session", "task", "spec", "report", "kb", "release", "version"} {
 		if _, ok := commands[want]; !ok {
 			t.Fatalf("agent help commands missing %q: %#v", want, commands)
 		}
@@ -10698,6 +10698,17 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["task"].optionDescriptions["task update --priority <level>"]; !strings.Contains(got, "P0, P1, P2, P3") {
 		t.Fatalf("task update priority description = %q, want valid priorities", got)
+	}
+	for _, want := range []string{"list", "show", "rename", "move"} {
+		if !stringSliceContains(commands["project"].subcommands, want) {
+			t.Fatalf("project subcommands = %#v, want %q", commands["project"].subcommands, want)
+		}
+	}
+	if got := commands["project"].optionDescriptions["project rename --dry-run"]; !strings.Contains(got, "preview without writing") {
+		t.Fatalf("project rename dry-run description = %q, want preview safeguard", got)
+	}
+	if got := commands["project"].optionDescriptions["project move --dry-run"]; !strings.Contains(got, "preview without writing") {
+		t.Fatalf("project move dry-run description = %q, want preview safeguard", got)
 	}
 }
 

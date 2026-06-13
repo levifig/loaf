@@ -170,11 +170,13 @@ Project IDs are stable SQLite identities, not path or name hashes. Use
   - `--json` - Output identity details as JSON
 
 - `loaf project rename`:
+  - `--dry-run` - Validate and preview without writing
   - `--json` - Output updated identity as JSON
 
 - `loaf project move`:
   - `--from <path>` - Previous absolute project path
   - `--to <path>` - New absolute project path; defaults to the current project root
+  - `--dry-run` - Validate and preview without writing
   - `--json` - Output move details as JSON
 
 **Usage:**

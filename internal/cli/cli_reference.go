@@ -123,11 +123,13 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--json", Description: "Output identity details as JSON"},
 				}},
 				{Name: "rename", Description: "Rename the friendly project name", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Validate and preview without writing"},
 					{Flags: "--json", Description: "Output updated identity as JSON"},
 				}},
 				{Name: "move", Description: "Record a checkout path move", Options: []cliReferenceOption{
 					{Flags: "--from <path>", Description: "Previous absolute project path"},
 					{Flags: "--to <path>", Description: "New absolute project path; defaults to the current project root"},
+					{Flags: "--dry-run", Description: "Validate and preview without writing"},
 					{Flags: "--json", Description: "Output move details as JSON"},
 				}},
 			},

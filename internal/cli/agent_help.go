@@ -83,6 +83,16 @@ func agentHelpCommands() []agentHelpCommand {
 			},
 		},
 		{
+			Name:        "project",
+			Description: "Manage durable project identity",
+			Subcommands: []agentHelpSubcommand{
+				{Name: "list", Description: "List registered projects", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "show", Description: "Show the current project identity", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "rename", Description: "Rename the friendly project name", Options: []agentHelpOption{{Flags: "--dry-run", Description: "Validate and preview without writing"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "move", Description: "Record a checkout path move", Options: []agentHelpOption{{Flags: "--from <path>", Description: "Previous absolute project path"}, {Flags: "--to <path>", Description: "New absolute project path; defaults to the current project root"}, {Flags: "--dry-run", Description: "Validate and preview without writing"}, {Flags: "--json", Description: "Output raw JSON"}}},
+			},
+		},
+		{
 			Name:        "migrate",
 			Description: "Run migration workflows",
 			Subcommands: []agentHelpSubcommand{
