@@ -21,6 +21,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `--agent-help` and the generated `cli-reference` skill now document task mutation and compatibility `--json` options.
 - `--agent-help` now has a regression guard against live help drift for documented `--json` options, and documents state/session/housekeeping JSON output options consistently.
 - `loaf trace --help` now shows trace usage instead of reporting `--help` as an unknown option, and `--agent-help` documents trace JSON output.
+- `loaf check --help` now shows registered hook usage instead of reporting `--help` as an unknown option.
 - `loaf task create|list|update --json` validation failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
 - `loaf task create|update` help, invalid-priority errors, and agent help now name the valid task priorities.
