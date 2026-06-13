@@ -11418,6 +11418,14 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["migrate"].optionDescriptions["migrate worktree-storage --apply"]; !strings.Contains(got, "dry-run") {
 		t.Fatalf("worktree-storage apply description = %q, want dry-run guidance", got)
 	}
+	for _, want := range []string{
+		"housekeeping --plans",
+		"housekeeping --handoffs",
+	} {
+		if !stringSliceContains(commands["housekeeping"].options, want) {
+			t.Fatalf("housekeeping options = %#v, want agent help to include %q", commands["housekeeping"].options, want)
+		}
+	}
 	for _, want := range []string{"refresh", "sync"} {
 		if !stringSliceContains(commands["task"].subcommands, want) {
 			t.Fatalf("task subcommands = %#v, want %q", commands["task"].subcommands, want)
