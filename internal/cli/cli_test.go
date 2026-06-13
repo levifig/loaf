@@ -2778,6 +2778,21 @@ status: implementing
 	if snapshot.SchemaVersion != state.CurrentSchemaVersion() {
 		t.Fatalf("SchemaVersion = %d, want %d", snapshot.SchemaVersion, state.CurrentSchemaVersion())
 	}
+	if !snapshot.Manifest.Verified {
+		t.Fatal("Manifest.Verified = false, want true")
+	}
+	if snapshot.Manifest.SchemaVersion != snapshot.SchemaVersion {
+		t.Fatalf("Manifest.SchemaVersion = %d, want %d", snapshot.Manifest.SchemaVersion, snapshot.SchemaVersion)
+	}
+	if snapshot.Manifest.ProjectID != snapshot.ProjectID {
+		t.Fatalf("Manifest.ProjectID = %q, want %q", snapshot.Manifest.ProjectID, snapshot.ProjectID)
+	}
+	if snapshot.Manifest.RowCounts["specs"] != 1 || snapshot.Manifest.RowCounts["tasks"] != 1 {
+		t.Fatalf("manifest row counts = %#v, want exported spec and task counts", snapshot.Manifest.RowCounts)
+	}
+	if snapshot.Manifest.TotalRows == 0 {
+		t.Fatal("Manifest.TotalRows = 0, want exported row count")
+	}
 	if len(snapshot.Tables["specs"]) != 1 || len(snapshot.Tables["tasks"]) != 1 {
 		t.Fatalf("tables = %#v, want exported spec and task rows", snapshot.Tables)
 	}

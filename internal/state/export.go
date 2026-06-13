@@ -33,7 +33,19 @@ type ExportSnapshot struct {
 	ProjectID     string                      `json:"project_id"`
 	DatabasePath  string                      `json:"database_path"`
 	SchemaVersion int                         `json:"schema_version"`
+	Manifest      ExportManifest              `json:"manifest"`
 	Tables        map[string][]map[string]any `json:"tables"`
+}
+
+// ExportManifest is a compact, agent-friendly summary of an export snapshot.
+type ExportManifest struct {
+	Verified      bool           `json:"verified"`
+	SchemaVersion int            `json:"schema_version"`
+	ProjectID     string         `json:"project_id"`
+	TableOrder    []string       `json:"table_order"`
+	RowCounts     map[string]int `json:"row_counts"`
+	TotalRows     int            `json:"total_rows"`
+	GeneratedAt   string         `json:"generated_at"`
 }
 
 // MarkdownExport is a generated Markdown view of SQLite state.
@@ -140,6 +152,9 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 	defer store.Close()
 
 	tables := make(map[string][]map[string]any, len(exportAllTables))
+	tableOrder := make([]string, 0, len(exportAllTables))
+	rowCounts := make(map[string]int, len(exportAllTables))
+	totalRows := 0
 	identity, err := store.LookupProjectIdentityForRoot(ctx, root)
 	if err != nil {
 		return ExportSnapshot{}, err
@@ -154,17 +169,30 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 			return ExportSnapshot{}, err
 		}
 		tables[table.Name] = rows
+		tableOrder = append(tableOrder, table.Name)
+		rowCounts[table.Name] = len(rows)
+		totalRows += len(rows)
 	}
+	generatedAt := time.Now().UTC().Format(time.RFC3339Nano)
 
 	return ExportSnapshot{
 		ExportKind:    ExportKindAll,
 		Format:        ExportFormatJSON,
 		Audience:      ExportAudienceLocal,
-		GeneratedAt:   time.Now().UTC().Format(time.RFC3339Nano),
+		GeneratedAt:   generatedAt,
 		ProjectID:     projectID,
 		DatabasePath:  status.DatabasePath,
 		SchemaVersion: status.SchemaVersion,
-		Tables:        tables,
+		Manifest: ExportManifest{
+			Verified:      true,
+			SchemaVersion: status.SchemaVersion,
+			ProjectID:     projectID,
+			TableOrder:    tableOrder,
+			RowCounts:     rowCounts,
+			TotalRows:     totalRows,
+			GeneratedAt:   generatedAt,
+		},
+		Tables: tables,
 	}, nil
 }
 

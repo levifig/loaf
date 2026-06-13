@@ -51,6 +51,21 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if snapshot.GeneratedAt == "" {
 		t.Fatal("GeneratedAt is empty")
 	}
+	if !snapshot.Manifest.Verified {
+		t.Fatal("Manifest.Verified = false, want true")
+	}
+	if snapshot.Manifest.SchemaVersion != snapshot.SchemaVersion {
+		t.Fatalf("Manifest.SchemaVersion = %d, want %d", snapshot.Manifest.SchemaVersion, snapshot.SchemaVersion)
+	}
+	if snapshot.Manifest.ProjectID != snapshot.ProjectID {
+		t.Fatalf("Manifest.ProjectID = %q, want %q", snapshot.Manifest.ProjectID, snapshot.ProjectID)
+	}
+	if snapshot.Manifest.GeneratedAt != snapshot.GeneratedAt {
+		t.Fatalf("Manifest.GeneratedAt = %q, want %q", snapshot.Manifest.GeneratedAt, snapshot.GeneratedAt)
+	}
+	if len(snapshot.Manifest.TableOrder) != len(exportAllTables) {
+		t.Fatalf("Manifest.TableOrder length = %d, want %d", len(snapshot.Manifest.TableOrder), len(exportAllTables))
+	}
 	if len(snapshot.Tables["schema_migrations"]) != len(SchemaMigrations()) {
 		t.Fatalf("schema_migrations rows = %d, want %d", len(snapshot.Tables["schema_migrations"]), len(SchemaMigrations()))
 	}
@@ -66,6 +81,7 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if snapshot.Tables["tasks"][0]["title"] != "Example Task" {
 		t.Fatalf("task title = %#v, want imported title", snapshot.Tables["tasks"][0]["title"])
 	}
+	assertExportManifestCounts(t, snapshot)
 }
 
 func TestExportTableValidationRejectsUnfilteredProjectTables(t *testing.T) {
@@ -662,6 +678,24 @@ VALUES ('alias-brainstorm-export', ?, 'brainstorm', 'brainstorm-export', 'brains
 `, projectID, now, now)
 	if err != nil {
 		t.Fatalf("insert brainstorm alias error = %v", err)
+	}
+}
+
+func assertExportManifestCounts(t *testing.T, snapshot ExportSnapshot) {
+	t.Helper()
+	total := 0
+	for _, tableName := range snapshot.Manifest.TableOrder {
+		rows, ok := snapshot.Tables[tableName]
+		if !ok {
+			t.Fatalf("manifest table %q missing from snapshot tables", tableName)
+		}
+		total += len(rows)
+		if got := snapshot.Manifest.RowCounts[tableName]; got != len(rows) {
+			t.Fatalf("manifest row count for %s = %d, want %d", tableName, got, len(rows))
+		}
+	}
+	if snapshot.Manifest.TotalRows != total {
+		t.Fatalf("manifest total rows = %d, want %d", snapshot.Manifest.TotalRows, total)
 	}
 }
 
