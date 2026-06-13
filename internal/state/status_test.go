@@ -361,6 +361,44 @@ WHERE id = ?
 	}
 }
 
+func TestInspectReportsSQLiteForeignKeyViolations(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	if _, err := store.db.ExecContext(context.Background(), `PRAGMA foreign_keys = OFF`); err != nil {
+		t.Fatalf("disable foreign keys error = %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO aliases (id, project_id, entity_kind, entity_id, namespace, alias, created_at, updated_at)
+VALUES ('alias-orphaned-project', 'project-missing', 'task', 'task-missing', 'task', 'TASK-MISSING', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`); err != nil {
+		t.Fatalf("insert orphaned alias fixture error = %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeInvalid {
+		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
+	}
+	assertDiagnostic(t, status.Diagnostics, "sqlite-foreign-key-violation")
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-state-invariants")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual integrity inspection")
+	}
+	if action.Command != "loaf state doctor --json" {
+		t.Fatalf("repair action Command = %q, want state doctor JSON inspection", action.Command)
+	}
+}
+
 func TestInspectReportsMissingRelationshipOriginAsWarning(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

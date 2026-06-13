@@ -255,7 +255,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
-		case "state-invariants-unreadable":
+		case "state-invariants-unreadable", "sqlite-integrity-check-failed", "sqlite-foreign-key-violation":
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "inspect-state-invariants",
 				DiagnosticCode: diagnostic.Code,
@@ -362,6 +362,15 @@ func inspectOperationalInvariants(ctx context.Context, store *Store) ([]Diagnost
 	diagnostics := []Diagnostic{}
 	valid := true
 
+	sqliteDiagnostics, sqliteValid, err := inspectSQLiteIntegrity(ctx, store)
+	if err != nil {
+		return nil, false, err
+	}
+	diagnostics = append(diagnostics, sqliteDiagnostics...)
+	if !sqliteValid {
+		valid = false
+	}
+
 	projectPathDiagnostics, projectPathsValid, err := inspectProjectPathInvariants(ctx, store)
 	if err != nil {
 		return nil, false, err
@@ -384,6 +393,63 @@ func inspectOperationalInvariants(ctx context.Context, store *Store) ([]Diagnost
 	diagnostics = append(diagnostics, backendDiagnostics...)
 	if !backendMappingsValid {
 		valid = false
+	}
+
+	return diagnostics, valid, nil
+}
+
+func inspectSQLiteIntegrity(ctx context.Context, store *Store) ([]Diagnostic, bool, error) {
+	diagnostics := []Diagnostic{}
+	valid := true
+
+	checkRows, err := store.db.QueryContext(ctx, `PRAGMA quick_check`)
+	if err != nil {
+		return nil, false, fmt.Errorf("run SQLite quick_check: %w", err)
+	}
+	defer checkRows.Close()
+	for checkRows.Next() {
+		var result string
+		if err := checkRows.Scan(&result); err != nil {
+			return nil, false, fmt.Errorf("scan SQLite quick_check: %w", err)
+		}
+		if result != "ok" {
+			valid = false
+			diagnostics = append(diagnostics, Diagnostic{
+				Severity: "error",
+				Code:     "sqlite-integrity-check-failed",
+				Message:  fmt.Sprintf("SQLite quick_check reported: %s", result),
+			})
+		}
+	}
+	if err := checkRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate SQLite quick_check: %w", err)
+	}
+
+	foreignKeyRows, err := store.db.QueryContext(ctx, `PRAGMA foreign_key_check`)
+	if err != nil {
+		return nil, false, fmt.Errorf("run SQLite foreign_key_check: %w", err)
+	}
+	defer foreignKeyRows.Close()
+	for foreignKeyRows.Next() {
+		var tableName, parentTable string
+		var rowID sql.NullInt64
+		var foreignKeyID int
+		if err := foreignKeyRows.Scan(&tableName, &rowID, &parentTable, &foreignKeyID); err != nil {
+			return nil, false, fmt.Errorf("scan SQLite foreign_key_check: %w", err)
+		}
+		valid = false
+		rowLabel := "unknown row"
+		if rowID.Valid {
+			rowLabel = fmt.Sprintf("rowid %d", rowID.Int64)
+		}
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "sqlite-foreign-key-violation",
+			Message:  fmt.Sprintf("SQLite foreign key violation in %s %s referencing %s constraint %d", tableName, rowLabel, parentTable, foreignKeyID),
+		})
+	}
+	if err := foreignKeyRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate SQLite foreign_key_check: %w", err)
 	}
 
 	return diagnostics, valid, nil
