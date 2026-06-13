@@ -5354,6 +5354,44 @@ func TestRunnerTraceHumanMissingDatabase(t *testing.T) {
 	}
 }
 
+func TestRunnerTraceJSONErrorsAreMachineReadable(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "missing ref",
+			args: []string{"trace", "--json"},
+			want: "trace requires an id",
+		},
+		{
+			name: "extra ref",
+			args: []string{"trace", "TASK-001", "TASK-002", "--json"},
+			want: "trace accepts exactly one id",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: realpath(t, t.TempDir()),
+				StateHome:  t.TempDir(),
+			}.Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON validation error", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != "trace" || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want trace error containing %q", output, tc.want)
+			}
+		})
+	}
+}
+
 func TestRunnerTaskListJSONUsesSQLiteStateWhenInitialized(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -7603,6 +7641,51 @@ func TestRunnerIdeaCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
+	}
+}
+
+func TestRunnerIdeaCaptureJSONErrorsAreMachineReadable(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	writeCLIAgentsFile(t, workingDir, "TASKS.json", `{"tasks":{}}`)
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "migrate", "markdown", "--apply"}); err != nil {
+		t.Fatalf("state migrate markdown --apply error = %v", err)
+	}
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "missing title",
+			args: []string{"idea", "capture", "--json"},
+			want: "idea capture requires --title",
+		},
+		{
+			name: "unknown option",
+			args: []string{"idea", "capture", "--json", "--bogus"},
+			want: "unknown option",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}.Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON validation error", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != "idea capture" || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want idea capture error containing %q", output, tc.want)
+			}
+		})
 	}
 }
 

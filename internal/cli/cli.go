@@ -1894,16 +1894,26 @@ func (r Runner) initializeState(runtime state.Runtime) (state.Status, error) {
 }
 
 func (r Runner) runTrace(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	ref, jsonOutput, err := parseTraceArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "trace", err)
+		}
 		return err
 	}
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
+		if jsonOutput {
+			return writeJSONCommandError(out, "trace", err)
+		}
 		return err
 	}
 	result, err := state.Trace(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, ref)
 	if err != nil {
+		if jsonOutput {
+			return writeJSONCommandError(out, "trace", err)
+		}
 		return err
 	}
 	if jsonOutput {
@@ -4017,27 +4027,48 @@ func (r Runner) runIdeaShow(args []string, out io.Writer, runtime state.Runtime)
 }
 
 func (r Runner) runIdeaCapture(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "idea capture", err)
+		}
 		return err
 	}
 	status, err := state.Inspect(projectRoot, state.PathResolver{StateHome: r.StateHome})
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "idea capture", err)
+		}
 		return err
 	}
 	switch status.Mode {
 	case state.ModeMarkdownOnly:
-		return sqliteStateRequiredError("idea capture")
+		err := sqliteStateRequiredError("idea capture")
+		if jsonRequested {
+			return writeJSONCommandError(out, "idea capture", err)
+		}
+		return err
 	case state.ModeInvalid:
-		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+		err := fmt.Errorf("state database is invalid; run `loaf state doctor`")
+		if jsonRequested {
+			return writeJSONCommandError(out, "idea capture", err)
+		}
+		return err
 	}
 
 	options, err := parseIdeaCaptureArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "idea capture", err)
+		}
 		return err
 	}
 	result, err := state.CaptureIdea(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.capture)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "idea capture", err)
+		}
 		return err
 	}
 	if options.jsonOutput {
