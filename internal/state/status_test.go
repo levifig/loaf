@@ -42,10 +42,7 @@ func TestInspectReportsLegacyStateDatabaseWhenDataHomeIsMissing(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", dataHome)
 	t.Setenv("XDG_STATE_HOME", stateHome)
 
-	legacyStatus, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
-	if err != nil {
-		t.Fatalf("Initialize(legacy) error = %v", err)
-	}
+	legacyPath := initializeLegacyStateDatabase(t, root, PathResolver{})
 
 	status, err := Inspect(root, PathResolver{})
 	if err != nil {
@@ -61,8 +58,8 @@ func TestInspectReportsLegacyStateDatabaseWhenDataHomeIsMissing(t *testing.T) {
 	if !status.LegacyDatabaseExists {
 		t.Fatal("LegacyDatabaseExists = false, want true")
 	}
-	if status.LegacyDatabasePath != legacyStatus.DatabasePath {
-		t.Fatalf("LegacyDatabasePath = %q, want %q", status.LegacyDatabasePath, legacyStatus.DatabasePath)
+	if status.LegacyDatabasePath != legacyPath {
+		t.Fatalf("LegacyDatabasePath = %q, want %q", status.LegacyDatabasePath, legacyPath)
 	}
 	if !strings.HasPrefix(status.DatabasePath, dataHome+string(filepath.Separator)) {
 		t.Fatalf("DatabasePath = %q, want under XDG_DATA_HOME %q", status.DatabasePath, dataHome)
@@ -187,7 +184,7 @@ func TestInspectReportsStaleCompatibilityExportsAsWarnings(t *testing.T) {
 	store := openTestStore(t, root, stateHome)
 	defer store.Close()
 
-	projectID := ProjectID(root)
+	projectID := projectIDForTest(t, store, root)
 	_, err := store.db.ExecContext(context.Background(), `
 INSERT INTO ideas (id, project_id, title, status, created_at, updated_at)
 VALUES ('idea-stale-export', ?, 'Stale Export Idea', 'open', '2026-05-28T10:00:00Z', '2026-05-28T12:00:00Z');
@@ -293,6 +290,15 @@ func openTestStore(t *testing.T, root project.Root, stateHome string) *Store {
 		t.Fatalf("OpenStore() error = %v", err)
 	}
 	return store
+}
+
+func projectIDForTest(t *testing.T, store *Store, root project.Root) string {
+	t.Helper()
+	identity, err := store.ProjectIdentityForRoot(context.Background(), root)
+	if err != nil {
+		t.Fatalf("ProjectIdentityForRoot() error = %v", err)
+	}
+	return identity.ID
 }
 
 func assertDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) {

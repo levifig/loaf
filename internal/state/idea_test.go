@@ -83,7 +83,7 @@ status: open
 SELECT COUNT(*)
 FROM events
 WHERE project_id = ? AND entity_kind = 'idea' AND event_type = 'status_changed' AND from_status = 'open' AND to_status = 'resolved'
-`, ProjectID(root)).Scan(&events)
+`, projectIDForTest(t, store, root)).Scan(&events)
 	if err != nil {
 		t.Fatalf("count events error = %v", err)
 	}
@@ -394,7 +394,7 @@ func TestCaptureIdeaCreatesOpenIdeaWithAliasAndEvent(t *testing.T) {
 SELECT COUNT(*)
 FROM events
 WHERE project_id = ? AND entity_kind = 'idea' AND event_type = 'status_changed' AND from_status IS NULL AND to_status = 'open'
-`, ProjectID(root)).Scan(&events)
+`, projectIDForTest(t, store, root)).Scan(&events)
 	if err != nil {
 		t.Fatalf("count capture events error = %v", err)
 	}
@@ -476,7 +476,7 @@ status: archived
 SELECT COUNT(*), COALESCE(MAX(note), '')
 FROM events
 WHERE project_id = ? AND entity_kind = 'idea' AND event_type = 'status_changed' AND from_status = 'open' AND to_status = 'archived'
-`, ProjectID(root)).Scan(&events, &note)
+`, projectIDForTest(t, store, root)).Scan(&events, &note)
 	if err != nil {
 		t.Fatalf("count archive events error = %v", err)
 	}

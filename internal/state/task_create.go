@@ -44,7 +44,7 @@ func CreateTask(ctx context.Context, root project.Root, resolver PathResolver, o
 
 // CreateTask creates a task in an open store.
 func (s *Store) CreateTask(ctx context.Context, root project.Root, options TaskCreateOptions) (TaskCreateResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	title := strings.TrimSpace(options.Title)
 	if title == "" {
 		return TaskCreateResult{}, fmt.Errorf("task create requires --title")

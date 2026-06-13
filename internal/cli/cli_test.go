@@ -44,7 +44,7 @@ func TestRunnerDispatchesStatePathNatively(t *testing.T) {
 	if got != want {
 		t.Fatalf("stdout = %q, want %q", got, want)
 	}
-	if !strings.HasPrefix(got, filepath.Join(stateHome, "loaf", "projects")+string(filepath.Separator)) {
+	if got != filepath.Join(stateHome, "loaf", "loaf.sqlite") {
 		t.Fatalf("stdout = %q, want state path under %q", got, stateHome)
 	}
 }
@@ -174,10 +174,7 @@ func TestRunnerStateMigrateStorageHomeCopiesLegacyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveRoot() error = %v", err)
 	}
-	legacyStatus, err := state.Initialize(t.Context(), root, state.PathResolver{StateHome: stateHome})
-	if err != nil {
-		t.Fatalf("Initialize(legacy) error = %v", err)
-	}
+	legacyPath := initializeCLILegacyStateDatabase(t, root)
 
 	var dryRun bytes.Buffer
 	err = Runner{
@@ -208,7 +205,7 @@ func TestRunnerStateMigrateStorageHomeCopiesLegacyDatabase(t *testing.T) {
 			t.Fatalf("stdout = %q, want %q", applyOut.String(), want)
 		}
 	}
-	if _, err := os.Stat(legacyStatus.DatabasePath); err != nil {
+	if _, err := os.Stat(legacyPath); err != nil {
 		t.Fatalf("legacy database stat error = %v, want legacy preserved", err)
 	}
 
@@ -240,9 +237,7 @@ func TestRunnerMigrateStorageHomeUsesNativeAlias(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveRoot() error = %v", err)
 	}
-	if _, err := state.Initialize(t.Context(), root, state.PathResolver{StateHome: stateHome}); err != nil {
-		t.Fatalf("Initialize(legacy) error = %v", err)
-	}
+	initializeCLILegacyStateDatabase(t, root)
 
 	var stdout bytes.Buffer
 	err = Runner{
@@ -271,10 +266,12 @@ func TestRunnerMigrateMarkdownUsesNativeAlias(t *testing.T) {
 		"# Demo task",
 	}, "\n"))
 
+	stateHome := t.TempDir()
 	var stdout bytes.Buffer
 	err := Runner{
 		Stdout:     &stdout,
 		WorkingDir: repo,
+		StateHome:  stateHome,
 	}.Run([]string{"migrate", "markdown"})
 	if err != nil {
 		t.Fatalf("migrate markdown error = %v", err)
@@ -288,7 +285,7 @@ func TestRunnerMigrateMarkdownUsesNativeAlias(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveRoot() error = %v", err)
 	}
-	databasePath, err := state.PathResolver{}.DatabasePath(root)
+	databasePath, err := state.PathResolver{StateHome: stateHome}.DatabasePath(root)
 	if err != nil {
 		t.Fatalf("DatabasePath() error = %v", err)
 	}
@@ -1899,6 +1896,32 @@ last_entry: 2026-06-10T10:05:00Z
 	}
 }
 
+func initializeCLILegacyStateDatabase(t *testing.T, root project.Root) string {
+	t.Helper()
+	resolver := state.PathResolver{}
+	legacyPath, err := resolver.LegacyDatabasePath(root)
+	if err != nil {
+		t.Fatalf("LegacyDatabasePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o700); err != nil {
+		t.Fatalf("create legacy database dir error = %v", err)
+	}
+	store, err := state.OpenStore(legacyPath)
+	if err != nil {
+		t.Fatalf("OpenStore(legacy) error = %v", err)
+	}
+	if err := store.ApplyMigrations(t.Context()); err != nil {
+		t.Fatalf("ApplyMigrations(legacy) error = %v", err)
+	}
+	if err := store.UpsertProject(t.Context(), root); err != nil {
+		t.Fatalf("UpsertProject(legacy) error = %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close(legacy) error = %v", err)
+	}
+	return legacyPath
+}
+
 func TestRunnerSessionContextForResumptionWarnsWithoutMarkdownSession(t *testing.T) {
 	requireCLIGit(t)
 	workingDir := initCLIGitRepo(t)
@@ -1940,8 +1963,8 @@ func TestRunnerLinkedWorktreesShareSQLiteState(t *testing.T) {
 	if mainPath != linkedPath {
 		t.Fatalf("linked state path = %q, want main path %q", linkedPath, mainPath)
 	}
-	if !strings.HasPrefix(mainPath, filepath.Join(stateHome, "loaf", "projects")+string(filepath.Separator)) {
-		t.Fatalf("state path = %q, want under state home %q", mainPath, stateHome)
+	if mainPath != filepath.Join(stateHome, "loaf", "loaf.sqlite") {
+		t.Fatalf("state path = %q, want global database under state home %q", mainPath, stateHome)
 	}
 
 	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: main, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
@@ -1979,6 +2002,69 @@ func TestRunnerLinkedWorktreesShareSQLiteState(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(dir, ".agents")); !os.IsNotExist(err) {
 			t.Fatalf("state commands created repository .agents directory in %q; err = %v", dir, err)
 		}
+	}
+}
+
+func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	movedDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var showOut bytes.Buffer
+	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show --json error = %v", err)
+	}
+	var shown state.ProjectIdentity
+	if err := json.Unmarshal(showOut.Bytes(), &shown); err != nil {
+		t.Fatalf("json.Unmarshal(show) error = %v\n%s", err, showOut.String())
+	}
+	if shown.ID == "" || shown.CurrentPath != workingDir || shown.FriendlyName != filepath.Base(workingDir) {
+		t.Fatalf("shown project = %#v, want generated identity for %s", shown, workingDir)
+	}
+
+	var renameOut bytes.Buffer
+	if err := (Runner{Stdout: &renameOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Friendly Loaf", "--json"}); err != nil {
+		t.Fatalf("project rename --json error = %v", err)
+	}
+	var renamed state.ProjectIdentity
+	if err := json.Unmarshal(renameOut.Bytes(), &renamed); err != nil {
+		t.Fatalf("json.Unmarshal(rename) error = %v\n%s", err, renameOut.String())
+	}
+	if renamed.ID != shown.ID || renamed.FriendlyName != "Friendly Loaf" {
+		t.Fatalf("renamed project = %#v, want same ID %q and friendly name", renamed, shown.ID)
+	}
+
+	var moveOut bytes.Buffer
+	if err := (Runner{Stdout: &moveOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", workingDir, "--json"}); err != nil {
+		t.Fatalf("project move --json error = %v", err)
+	}
+	var moved state.ProjectMoveResult
+	if err := json.Unmarshal(moveOut.Bytes(), &moved); err != nil {
+		t.Fatalf("json.Unmarshal(move) error = %v\n%s", err, moveOut.String())
+	}
+	if moved.Project.ID != shown.ID || moved.Project.CurrentPath != movedDir {
+		t.Fatalf("moved project = %#v, want same ID %q at %s", moved.Project, shown.ID, movedDir)
+	}
+
+	var movedShowOut bytes.Buffer
+	if err := (Runner{Stdout: &movedShowOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show after move --json error = %v", err)
+	}
+	var movedShown state.ProjectIdentity
+	if err := json.Unmarshal(movedShowOut.Bytes(), &movedShown); err != nil {
+		t.Fatalf("json.Unmarshal(moved show) error = %v\n%s", err, movedShowOut.String())
+	}
+	if movedShown.ID != shown.ID || movedShown.FriendlyName != "Friendly Loaf" {
+		t.Fatalf("moved show = %#v, want same renamed project", movedShown)
+	}
+
+	db, err := sql.Open("sqlite3", filepath.Join(stateHome, "loaf", "loaf.sqlite"))
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	defer db.Close()
+	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM projects`); got != 1 {
+		t.Fatalf("projects = %d, want one stable project row", got)
 	}
 }
 
@@ -2037,6 +2123,38 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 	}
 }
 
+func TestRunnerStateHelpIsNative(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "state", args: []string{"state", "--help"}, want: "Usage: loaf state <command> [options]"},
+		{name: "state init", args: []string{"state", "init", "--help"}, want: "Usage: loaf state init [--json]"},
+		{name: "state doctor", args: []string{"state", "doctor", "--help"}, want: "Usage: loaf state doctor [--fix] [--json]"},
+		{name: "state migrate", args: []string{"state", "migrate", "--help"}, want: "Usage: loaf state migrate <source> [options]"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}.Run(tt.args)
+			if err != nil {
+				t.Fatalf("Run(%v) error = %v", tt.args, err)
+			}
+			if !strings.Contains(stdout.String(), tt.want) {
+				t.Fatalf("output = %q, want %q", stdout.String(), tt.want)
+			}
+		})
+	}
+}
+
 func TestRunnerStateInitHumanOutputPrintsRepositoryExternalDatabaseWithoutSecrets(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -2065,7 +2183,7 @@ func TestRunnerStateInitHumanOutputPrintsRepositoryExternalDatabaseWithoutSecret
 	if !filepath.IsAbs(databasePath) {
 		t.Fatalf("database path = %q, want absolute path", databasePath)
 	}
-	if !strings.HasPrefix(databasePath, filepath.Join(stateHome, "loaf", "projects")+string(filepath.Separator)) {
+	if databasePath != filepath.Join(stateHome, "loaf", "loaf.sqlite") {
 		t.Fatalf("database path = %q, want under state home %q", databasePath, stateHome)
 	}
 	if strings.HasPrefix(databasePath, workingDir+string(filepath.Separator)) {

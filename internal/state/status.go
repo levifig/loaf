@@ -28,6 +28,8 @@ type Diagnostic struct {
 type Status struct {
 	ProjectRoot          string       `json:"project_root"`
 	ProjectID            string       `json:"project_id"`
+	ProjectName          string       `json:"project_name,omitempty"`
+	ProjectCurrentPath   string       `json:"project_current_path,omitempty"`
 	DatabasePath         string       `json:"database_path"`
 	LegacyDatabasePath   string       `json:"legacy_database_path,omitempty"`
 	DatabaseExists       bool         `json:"database_exists"`
@@ -50,7 +52,7 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 		ProjectID:    ProjectID(root),
 		DatabasePath: databasePath,
 	}
-	if legacyPath, err := resolver.LegacyDatabasePath(root); err == nil && legacyPath != databasePath {
+	if legacyPath, err := migrationSourceDatabasePath(root, resolver); err == nil && legacyPath != databasePath {
 		status.LegacyDatabasePath = legacyPath
 		if info, err := os.Stat(legacyPath); err == nil && !info.IsDir() {
 			status.LegacyDatabaseExists = true
@@ -111,11 +113,29 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 			return status, nil
 		}
 		status.Mode = ModeSQLiteReady
+		if identity, err := store.LookupProjectIdentityForRoot(context.Background(), root); err == nil {
+			status.ProjectID = identity.ID
+			status.ProjectName = identity.FriendlyName
+			status.ProjectCurrentPath = identity.CurrentPath
+		} else {
+			status.Diagnostics = append(status.Diagnostics, Diagnostic{
+				Severity: "warn",
+				Code:     "project-identity-unreadable",
+				Message:  err.Error(),
+			})
+		}
 		status.Diagnostics = append(status.Diagnostics, Diagnostic{
 			Severity: "info",
 			Code:     "sqlite-ready",
 			Message:  fmt.Sprintf("SQLite state database is ready at schema version %d", version),
 		})
+		if status.LegacyDatabaseExists {
+			status.Diagnostics = append(status.Diagnostics, Diagnostic{
+				Severity: "warn",
+				Code:     "legacy-project-database-leftover",
+				Message:  fmt.Sprintf("legacy project database remains at %s after global DB initialization", status.LegacyDatabasePath),
+			})
+		}
 		exportDiagnostics, err := inspectStaleExports(context.Background(), store)
 		if err != nil {
 			status.Diagnostics = append(status.Diagnostics, Diagnostic{

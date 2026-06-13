@@ -33,7 +33,7 @@ func PromoteBrainstorm(ctx context.Context, root project.Root, resolver PathReso
 
 // PromoteBrainstorm records that a brainstorm promoted to an idea in an open store.
 func (s *Store) PromoteBrainstorm(ctx context.Context, root project.Root, options BrainstormPromoteOptions) (BrainstormPromoteResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	brainstorm, err := s.resolveTraceEntity(ctx, projectID, options.Brainstorm)
 	if err != nil {
 		return BrainstormPromoteResult{}, err

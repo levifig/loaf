@@ -62,7 +62,7 @@ func TestLinksCreateListRemoveAndTraceRelationships(t *testing.T) {
 	}
 	defer store.Close()
 	var relationshipRows int
-	if err := store.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM relationships WHERE project_id = ?`, ProjectID(root)).Scan(&relationshipRows); err != nil {
+	if err := store.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM relationships WHERE project_id = ?`, projectIDForTest(t, store, root)).Scan(&relationshipRows); err != nil {
 		t.Fatalf("count relationships error = %v", err)
 	}
 	if relationshipRows != 2 {

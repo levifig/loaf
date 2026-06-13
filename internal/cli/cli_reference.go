@@ -115,6 +115,23 @@ func cliReferenceCommands() []cliReferenceCommand {
 			},
 		},
 		{
+			Name:        "project",
+			Description: "Manage durable project identity",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "show", Description: "Show the current project identity", Options: []cliReferenceOption{
+					{Flags: "--json", Description: "Output identity details as JSON"},
+				}},
+				{Name: "rename", Description: "Rename the friendly project name", Options: []cliReferenceOption{
+					{Flags: "--json", Description: "Output updated identity as JSON"},
+				}},
+				{Name: "move", Description: "Record a checkout path move", Options: []cliReferenceOption{
+					{Flags: "--from <path>", Description: "Previous absolute project path"},
+					{Flags: "--to <path>", Description: "New absolute project path; defaults to the current project root"},
+					{Flags: "--json", Description: "Output move details as JSON"},
+				}},
+			},
+		},
+		{
 			Name:        "migrate",
 			Description: "Run native migration workflows",
 			Subcommands: []cliReferenceSubcommand{
@@ -452,6 +469,8 @@ func cliReferenceCommandGuidance(commandName string) string {
 		return "In SQLite-backed projects, report lifecycle state is stored in SQLite. Use\ngenerated report commands for review output; create authored Markdown reports\nonly when a durable prose artifact is explicitly needed."
 	case "state":
 		return "Existing TypeScript-era projects can keep running supported commands in\nmarkdown-only compatibility mode until SQLite is initialized. Use\n`loaf state migrate markdown --apply` to import `.agents/` Markdown into SQLite\nwithout rewriting the source Markdown files."
+	case "project":
+		return "Project IDs are stable SQLite identities, not path or name hashes. Use\n`loaf project rename` for display-name changes and `loaf project move` after\nmoving a checkout path."
 	case "migrate":
 		return "`loaf migrate markdown` is the upgrade path for existing `.agents/`\nprojects with no SQLite database. Start with `--dry-run`, then use `--apply`\nwhen the artifact counts and skipped files look right."
 	default:
@@ -467,6 +486,13 @@ func cliReferenceCommandUsageExamples(commandName string) []string {
 			"loaf state migrate markdown --dry-run",
 			"loaf state migrate markdown --apply",
 			"loaf state status",
+		}
+	case "project":
+		return []string{
+			"loaf project show",
+			"loaf project rename \"Loaf\"",
+			"loaf project move --from /old/path/to/loaf",
+			"loaf project show --json",
 		}
 	case "migrate":
 		return []string{

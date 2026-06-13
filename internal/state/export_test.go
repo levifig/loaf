@@ -34,7 +34,12 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if snapshot.Audience != ExportAudienceLocal {
 		t.Fatalf("Audience = %q, want %q", snapshot.Audience, ExportAudienceLocal)
 	}
-	if snapshot.ProjectID != ProjectID(root) {
+	store, err := OpenStore(snapshot.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	if snapshot.ProjectID != projectIDForTest(t, store, root) {
 		t.Fatalf("ProjectID = %q, want project id", snapshot.ProjectID)
 	}
 	if snapshot.DatabasePath == "" {
@@ -643,7 +648,7 @@ func insertBrainstormForExport(t *testing.T, root project.Root, stateHome string
 	}
 	defer store.Close()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	projectID := ProjectID(root)
+	projectID := projectIDForTest(t, store, root)
 	_, err = store.db.ExecContext(context.Background(), `
 INSERT INTO brainstorms (id, project_id, title, status, created_at, updated_at)
 VALUES ('brainstorm-export', ?, ?, 'open', ?, ?)
@@ -668,7 +673,7 @@ func insertGeneratedExportForReadiness(t *testing.T, root project.Root, stateHom
 	}
 	defer store.Close()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	projectID := ProjectID(root)
+	projectID := projectIDForTest(t, store, root)
 	_, err = store.db.ExecContext(context.Background(), `
 INSERT INTO exports (id, project_id, export_kind, format, path, state_version, generated_at, created_at, updated_at)
 VALUES ('export-release-readiness', ?, 'release-readiness', 'markdown', '.agents/reports/SPEC-001-release.md', 1, ?, ?, ?)

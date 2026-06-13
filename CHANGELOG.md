@@ -10,11 +10,14 @@ is a Loaf workflow staging section for curated entries before release.
 
 - Native Go is now the shipped Loaf runtime, with cross-platform binaries replacing the transitional TypeScript delegation path.
 - Existing Markdown-only Loaf projects now have a documented dry-run and apply path for adopting SQLite-backed state without rewriting source artifacts.
+- SQLite project identity now uses generated stable project IDs in one global database, plus friendly names and path mappings managed by `loaf project show|rename|move`.
 - `agents-config` now documents and pins the fall-back-to-`projectRoot` behavior when a linked worktree's `.git` pointer file is malformed (missing `gitdir:` line or non-matching shape). This is the deliberate Case-4 fallback in `resolveEffectiveRoot` — distinct from the "main removed" case fixed in #53, which still throws. Closes a Codex review follow-up on #53.
 
 ### Fixed
 
 - Storage-home migration now preserves pending SQLite writes when copying legacy state into XDG data-home storage.
+- Markdown migration relationship imports now ignore empty dependency arrays, prune stale imported links by structured origin, and record imported/manual relationship provenance.
+- Storage-home migration now upgrades copied legacy databases before readiness checks and rekeys legacy path-hash project rows into generated stable identities in the global database.
 
 ### Removed
 

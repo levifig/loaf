@@ -56,7 +56,7 @@ func StartSession(ctx context.Context, root project.Root, resolver PathResolver,
 
 // StartSession creates or resumes a session in an open store.
 func (s *Store) StartSession(ctx context.Context, root project.Root, options SessionStartOptions) (SessionStartResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	branch := strings.TrimSpace(options.Branch)
 	if branch == "" {
 		return SessionStartResult{}, fmt.Errorf("session start requires a git branch")

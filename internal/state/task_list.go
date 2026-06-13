@@ -55,7 +55,7 @@ func ListTasks(ctx context.Context, root project.Root, resolver PathResolver, op
 
 // ListTasks returns imported tasks from an open store.
 func (s *Store) ListTasks(ctx context.Context, root project.Root, options TaskListOptions) (TaskList, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	rows, err := s.db.QueryContext(ctx, `
 SELECT
   task_alias.alias,

@@ -67,7 +67,7 @@ func TestStartSessionResumesSameHarnessSessionWithoutCreatingDuplicate(t *testin
 
 	store := openTestStore(t, root, stateHome)
 	defer store.Close()
-	if got := countRows(t, store, `SELECT COUNT(*) FROM sessions WHERE project_id = ?`, ProjectID(root)); got != 1 {
+	if got := countRows(t, store, `SELECT COUNT(*) FROM sessions WHERE project_id = ?`, projectIDForTest(t, store, root)); got != 1 {
 		t.Fatalf("session rows = %d, want 1", got)
 	}
 	show, err := ShowSession(context.Background(), root, PathResolver{StateHome: stateHome}, first.Session.Alias)

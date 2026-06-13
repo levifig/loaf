@@ -8,8 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
+
+	"github.com/levifig/loaf/internal/project"
 )
 
 func TestInitializeAppliesMigrationsAndRecordsProject(t *testing.T) {
@@ -52,7 +55,7 @@ func TestInitializeAppliesMigrationsAndRecordsProject(t *testing.T) {
 	}
 
 	var projectID string
-	err = store.db.QueryRowContext(context.Background(), `SELECT id FROM projects WHERE id = ?`, ProjectID(root)).Scan(&projectID)
+	err = store.db.QueryRowContext(context.Background(), `SELECT id FROM projects WHERE id = ?`, projectIDForTest(t, store, root)).Scan(&projectID)
 	if err != nil {
 		t.Fatalf("project row missing: %v", err)
 	}
@@ -76,6 +79,107 @@ func TestInitializeIsIdempotent(t *testing.T) {
 	}
 	if second.SchemaVersion != CurrentSchemaVersion() {
 		t.Fatalf("SchemaVersion = %d, want %d", second.SchemaVersion, CurrentSchemaVersion())
+	}
+}
+
+func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+
+	identity, err := store.ProjectIdentityForRoot(context.Background(), root)
+	if err != nil {
+		t.Fatalf("ProjectIdentityForRoot() error = %v", err)
+	}
+	if identity.ID == ProjectID(root) {
+		t.Fatalf("project ID = legacy path hash %q, want path-independent generated ID", identity.ID)
+	}
+	if identity.FriendlyName != filepath.Base(root.Path()) {
+		t.Fatalf("FriendlyName = %q, want folder name", identity.FriendlyName)
+	}
+
+	renamed, err := store.RenameProject(context.Background(), root, "Friendly Loaf")
+	if err != nil {
+		t.Fatalf("RenameProject() error = %v", err)
+	}
+	if renamed.ID != identity.ID {
+		t.Fatalf("rename changed project ID: %q -> %q", identity.ID, renamed.ID)
+	}
+	if renamed.FriendlyName != "Friendly Loaf" {
+		t.Fatalf("FriendlyName = %q, want Friendly Loaf", renamed.FriendlyName)
+	}
+
+	newRoot, err := project.ResolveRoot(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveRoot(new) error = %v", err)
+	}
+	moved, err := store.MoveProject(context.Background(), newRoot, root.Path(), newRoot.Path())
+	if err != nil {
+		t.Fatalf("MoveProject() error = %v", err)
+	}
+	if moved.Project.ID != identity.ID {
+		t.Fatalf("move changed project ID: %q -> %q", identity.ID, moved.Project.ID)
+	}
+	if moved.Project.CurrentPath != newRoot.Path() {
+		t.Fatalf("CurrentPath = %q, want %q", moved.Project.CurrentPath, newRoot.Path())
+	}
+}
+
+func TestProjectIdentityRekeysLegacyPathHashRows(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	databasePath, err := (PathResolver{StateHome: stateHome}).DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0o700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	if err := store.ApplyMigrations(context.Background()); err != nil {
+		t.Fatalf("ApplyMigrations() error = %v", err)
+	}
+
+	legacyID := ProjectID(root)
+	now := time.Now().UTC().Format(time.RFC3339)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO projects (id, identity_hash, created_at, updated_at)
+VALUES (?, ?, ?, ?)
+`, legacyID, legacyID, now, now); err != nil {
+		t.Fatalf("insert legacy project error = %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO ideas (id, project_id, title, status, created_at, updated_at)
+VALUES ('idea-legacy', ?, 'Legacy Idea', 'open', ?, ?)
+`, legacyID, now, now); err != nil {
+		t.Fatalf("insert legacy idea error = %v", err)
+	}
+
+	identity, err := store.ProjectIdentityForRoot(context.Background(), root)
+	if err != nil {
+		t.Fatalf("ProjectIdentityForRoot() error = %v", err)
+	}
+	if identity.ID == legacyID {
+		t.Fatalf("identity ID = legacy path hash %q, want generated ID", identity.ID)
+	}
+	var ideaProjectID string
+	if err := store.db.QueryRowContext(context.Background(), `SELECT project_id FROM ideas WHERE id = 'idea-legacy'`).Scan(&ideaProjectID); err != nil {
+		t.Fatalf("read rekeyed idea error = %v", err)
+	}
+	if ideaProjectID != identity.ID {
+		t.Fatalf("idea project_id = %q, want %q", ideaProjectID, identity.ID)
 	}
 }
 

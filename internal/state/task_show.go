@@ -55,7 +55,7 @@ func ShowTask(ctx context.Context, root project.Root, resolver PathResolver, ref
 
 // ShowTask returns one imported task from an open store.
 func (s *Store) ShowTask(ctx context.Context, root project.Root, ref string) (TaskShow, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	entity, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return TaskShow{}, err

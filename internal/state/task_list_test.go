@@ -57,6 +57,70 @@ func TestListTasksReadsImportedSQLiteTasks(t *testing.T) {
 	}
 }
 
+func TestListTasksIgnoresEmptyFrontmatterDependencyList(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	writeAgentsFile(t, root.Path(), "TASKS.json", `{"tasks":{}}`)
+	writeAgentsFile(t, root.Path(), "tasks/TASK-001-empty-deps.md", `---
+id: TASK-001
+title: Empty Dependencies
+depends_on: []
+---
+# Empty Dependencies
+`)
+
+	if _, err := ApplyMarkdownMigration(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("ApplyMarkdownMigration() error = %v", err)
+	}
+
+	tasks, err := ListTasks(context.Background(), root, PathResolver{StateHome: stateHome}, TaskListOptions{})
+	if err != nil {
+		t.Fatalf("ListTasks() error = %v", err)
+	}
+	task := tasks.Tasks["TASK-001"]
+	if task.DependsOn == nil || len(task.DependsOn) != 0 {
+		t.Fatalf("DependsOn = %#v, want empty dependency list", task.DependsOn)
+	}
+}
+
+func TestApplyMarkdownMigrationPrunesStaleImportedDependencies(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	writeAgentsFile(t, root.Path(), "TASKS.json", `{"tasks":{}}`)
+	writeAgentsFile(t, root.Path(), "tasks/TASK-001-changing-deps.md", `---
+id: TASK-001
+title: Changing Dependencies
+depends_on:
+  - TASK-002
+---
+# Changing Dependencies
+`)
+
+	if _, err := ApplyMarkdownMigration(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("ApplyMarkdownMigration() error = %v", err)
+	}
+
+	writeAgentsFile(t, root.Path(), "tasks/TASK-001-changing-deps.md", `---
+id: TASK-001
+title: Changing Dependencies
+depends_on: []
+---
+# Changing Dependencies
+`)
+	if _, err := ApplyMarkdownMigration(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("second ApplyMarkdownMigration() error = %v", err)
+	}
+
+	tasks, err := ListTasks(context.Background(), root, PathResolver{StateHome: stateHome}, TaskListOptions{})
+	if err != nil {
+		t.Fatalf("ListTasks() error = %v", err)
+	}
+	task := tasks.Tasks["TASK-001"]
+	if task.DependsOn == nil || len(task.DependsOn) != 0 {
+		t.Fatalf("DependsOn = %#v, want stale dependency pruned", task.DependsOn)
+	}
+}
+
 func TestListTasksFiltersActiveAndStatus(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

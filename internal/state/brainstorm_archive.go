@@ -49,7 +49,7 @@ func (s *Store) ArchiveBrainstorms(ctx context.Context, root project.Root, optio
 	if len(options.Refs) == 0 {
 		return BrainstormArchiveResult{}, fmt.Errorf("brainstorm archive requires at least one brainstorm")
 	}
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	result := BrainstormArchiveResult{
 		Archived: []BrainstormArchiveItem{},
 		Skipped:  []BrainstormArchiveItem{},

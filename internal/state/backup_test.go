@@ -31,7 +31,7 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	if isWithinRoot(result.BackupPath, root.Path()) {
 		t.Fatalf("BackupPath = %q, want outside repository %q", result.BackupPath, root.Path())
 	}
-	if !strings.HasPrefix(result.BackupPath, filepath.Join(stateHome, "loaf", "projects")+string(filepath.Separator)) {
+	if !strings.HasPrefix(result.BackupPath, filepath.Join(stateHome, "loaf", "backups")+string(filepath.Separator)) {
 		t.Fatalf("BackupPath = %q, want under state home %q", result.BackupPath, stateHome)
 	}
 	if !strings.HasSuffix(result.BackupPath, ".sqlite") {

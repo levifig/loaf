@@ -140,7 +140,7 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 	defer store.Close()
 
 	tables := make(map[string][]map[string]any, len(exportAllTables))
-	projectID := ProjectID(root)
+	projectID := store.projectIDOrLegacy(ctx, root)
 	if err := store.validateExportTableFilters(ctx, exportAllTables); err != nil {
 		return ExportSnapshot{}, err
 	}
@@ -322,7 +322,7 @@ func (s *Store) releaseReadinessExportData(ctx context.Context, root project.Roo
 	if err != nil {
 		return releaseReadinessExportData{}, err
 	}
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	sourceCoverage, err := s.releaseReadinessSourceCoverage(ctx, projectID)
 	if err != nil {
 		return releaseReadinessExportData{}, err

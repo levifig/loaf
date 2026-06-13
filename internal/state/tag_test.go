@@ -81,7 +81,7 @@ SELECT COUNT(*)
 FROM entity_tags
 JOIN tags ON tags.id = entity_tags.tag_id AND tags.project_id = entity_tags.project_id
 WHERE entity_tags.project_id = ? AND tags.name = 'sqlite'
-`, ProjectID(root)).Scan(&memberships)
+`, projectIDForTest(t, store, root)).Scan(&memberships)
 	if err != nil {
 		t.Fatalf("count memberships error = %v", err)
 	}

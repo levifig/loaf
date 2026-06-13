@@ -63,7 +63,7 @@ func (s *Store) Path() string {
 	return s.path
 }
 
-// Initialize creates the project database, applies migrations, and records the project row.
+// Initialize creates the global database, applies migrations, and records the project row.
 func Initialize(ctx context.Context, root project.Root, resolver PathResolver) (Status, error) {
 	path, err := resolver.DatabasePath(root)
 	if err != nil {
@@ -91,23 +91,6 @@ func Initialize(ctx context.Context, root project.Root, resolver PathResolver) (
 // ApplyMigrations applies all Go-owned schema migrations.
 func (s *Store) ApplyMigrations(ctx context.Context) error {
 	return ApplyMigrations(ctx, s.db, SchemaMigrations())
-}
-
-// UpsertProject records the project identity row after migrations are applied.
-func (s *Store) UpsertProject(ctx context.Context, root project.Root) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	projectID := ProjectID(root)
-	_, err := s.db.ExecContext(ctx, `
-INSERT INTO projects (id, identity_hash, created_at, updated_at)
-VALUES (?, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET
-  identity_hash = excluded.identity_hash,
-  updated_at = excluded.updated_at
-`, projectID, projectID, now, now)
-	if err != nil {
-		return fmt.Errorf("upsert project: %w", err)
-	}
-	return nil
 }
 
 // SchemaVersion returns the highest applied migration version.

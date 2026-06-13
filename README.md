@@ -86,6 +86,7 @@ CLI commands that support the workflow pipeline:
 | `loaf build` | Build all targets after modifying skills/agents |
 | `loaf install` | Install to detected AI tools |
 | `loaf check` | Run enforcement hooks manually |
+| `loaf project` | Manage durable project identity (show, rename, move) |
 | `loaf task` | Manage project tasks (list, show, update, archive) |
 | `loaf spec` | Manage spec lifecycle |
 | `loaf kb` | Knowledge base management |
@@ -214,7 +215,7 @@ loaf migrate markdown --apply
 loaf state status
 ```
 
-The dry run counts importable artifacts and skipped files without creating a database. The apply step imports `.agents/` Markdown into the XDG data-home SQLite database without rewriting the source Markdown files. Newer graph-oriented commands such as `loaf idea`, `loaf spark`, `loaf tag`, `loaf bundle`, and `loaf link` require initialized SQLite state; run `loaf state init` for a fresh project or `loaf migrate markdown --apply` for an existing Markdown project.
+The dry run counts importable artifacts and skipped files without creating a database. The apply step imports `.agents/` Markdown into the XDG data-home SQLite database without rewriting the source Markdown files. Loaf uses one global SQLite file and partitions rows by stable project ID, so multiple projects share the same database path while project queries stay isolated. Project IDs are not bound to the checkout path or friendly name; use `loaf project rename <name>` for display names and `loaf project move --from <old-path>` after moving a checkout. Newer graph-oriented commands such as `loaf idea`, `loaf spark`, `loaf tag`, `loaf bundle`, and `loaf link` require initialized SQLite state; run `loaf state init` for a fresh project or `loaf migrate markdown --apply` for an existing Markdown project.
 
 **Install locations:**
 

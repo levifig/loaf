@@ -69,7 +69,7 @@ func ArchiveReport(ctx context.Context, root project.Root, resolver PathResolver
 
 // CreateReport creates a draft report in an open store.
 func (s *Store) CreateReport(ctx context.Context, root project.Root, options ReportCreateOptions) (ReportCreateResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	slug := normalizeReportSlug(options.Slug)
 	if slug == "" {
 		return ReportCreateResult{}, fmt.Errorf("report create requires a slug")
@@ -139,7 +139,7 @@ func (s *Store) ArchiveReport(ctx context.Context, root project.Root, ref string
 }
 
 func (s *Store) updateReportStatus(ctx context.Context, root project.Root, ref string, requiredStatus string, nextStatus string, command string) (ReportStatusResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	report, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return ReportStatusResult{}, err

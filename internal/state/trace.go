@@ -73,7 +73,7 @@ func Trace(ctx context.Context, root project.Root, resolver PathResolver, ref st
 
 // Trace resolves a human-facing alias or internal row ID from an open store.
 func (s *Store) Trace(ctx context.Context, root project.Root, ref string) (TraceResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	entity, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return TraceResult{}, err

@@ -48,6 +48,12 @@ type compatibilityCommandOptions struct {
 	jsonOutput bool
 }
 
+type projectMoveOptions struct {
+	fromPath   string
+	toPath     string
+	jsonOutput bool
+}
+
 // Run dispatches a loaf command.
 func (r Runner) Run(args []string) error {
 	out := r.Stdout
@@ -107,6 +113,8 @@ func (r Runner) Run(args []string) error {
 		return r.runSetup(args[1:], out, runtime.RootPath())
 	case "state":
 		return r.runState(args[1:], out, runtime)
+	case "project":
+		return r.runProject(args[1:], out, runtime)
 	case "trace":
 		return r.runTrace(args[1:], out, runtime)
 	case "brainstorm":
@@ -157,6 +165,7 @@ func writeRootHelp(out io.Writer) {
 	fmt.Fprintln(out, "  install       Install Loaf into agent tools")
 	fmt.Fprintln(out, "  setup         Initialize, build, and install")
 	fmt.Fprintln(out, "  state         Manage native SQLite state")
+	fmt.Fprintln(out, "  project       Manage project identity")
 	fmt.Fprintln(out, "  migrate       Run migration workflows")
 	fmt.Fprintln(out, "  session       Manage sessions")
 	fmt.Fprintln(out, "  task          Manage tasks")
@@ -252,6 +261,10 @@ func missingSubcommandError(command string) error {
 
 func unknownSubcommandError(command string, subcommand string) error {
 	return fmt.Errorf("unknown loaf %s subcommand %q", command, subcommand)
+}
+
+func isHelpArg(args []string) bool {
+	return len(args) == 1 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help")
 }
 
 func writeHousekeepingSummary(out io.Writer, result state.HousekeepingSummary, options housekeepingOptions) {
@@ -692,13 +705,20 @@ func writeBrainstormArchive(out io.Writer, result state.BrainstormArchiveResult)
 }
 
 func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
-		fmt.Fprintln(out, runtime.Name())
+	if len(args) == 0 || isHelpArg(args) {
+		writeStateHelp(out)
 		return nil
 	}
 
 	switch args[0] {
 	case "path":
+		if isHelpArg(args[1:]) {
+			writeStatePathHelp(out)
+			return nil
+		}
+		if len(args) > 1 {
+			return fmt.Errorf("state path accepts no arguments")
+		}
 		projectRoot, err := project.ResolveRoot(runtime.RootPath())
 		if err != nil {
 			return err
@@ -710,20 +730,325 @@ func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) er
 		fmt.Fprintln(out, path)
 		return nil
 	case "init":
+		if isHelpArg(args[1:]) {
+			writeStateInitHelp(out)
+			return nil
+		}
 		return r.runStateInit(args[1:], out, runtime)
 	case "status":
+		if isHelpArg(args[1:]) {
+			writeStateStatusHelp(out)
+			return nil
+		}
 		return r.runStateStatus(args[1:], out, runtime)
 	case "doctor":
+		if isHelpArg(args[1:]) {
+			writeStateDoctorHelp(out)
+			return nil
+		}
 		return r.runStateDoctor(args[1:], out, runtime)
 	case "migrate":
+		if len(args) == 1 || isHelpArg(args[1:]) {
+			writeStateMigrateHelp(out)
+			return nil
+		}
 		return r.runStateMigrate(args[1:], out, runtime)
 	case "backup":
+		if isHelpArg(args[1:]) {
+			writeStateBackupHelp(out)
+			return nil
+		}
 		return r.runStateBackup(args[1:], out, runtime)
 	case "export":
+		if len(args) == 1 || isHelpArg(args[1:]) {
+			writeStateExportHelp(out)
+			return nil
+		}
 		return r.runStateExport(args[1:], out, runtime)
 	default:
 		return fmt.Errorf("state subcommand %q is not implemented yet", args[0])
 	}
+}
+
+func writeStateHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf state <command> [options]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Manage native SQLite state.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Commands:")
+	fmt.Fprintln(out, "  path          Print the resolved SQLite database path")
+	fmt.Fprintln(out, "  status        Show SQLite readiness and markdown compatibility status")
+	fmt.Fprintln(out, "  init          Initialize native SQLite state")
+	fmt.Fprintln(out, "  doctor        Diagnose SQLite state health")
+	fmt.Fprintln(out, "  migrate       Run state migrations")
+	fmt.Fprintln(out, "  backup        Create a SQLite database backup")
+	fmt.Fprintln(out, "  export        Export SQLite state")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  -h, --help    Show help")
+}
+
+func writeStatePathHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf state path")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Print the resolved native SQLite database path.")
+}
+
+func writeStateInitHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf state init [--json]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Initialize the native SQLite state database.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func writeStateStatusHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf state status [--json]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Show SQLite readiness and markdown-only compatibility status.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func writeStateDoctorHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf state doctor [--fix] [--json]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Diagnose SQLite state health.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --fix        Initialize missing SQLite state when safe")
+	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func writeStateMigrateHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf state migrate <source> [options]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Run state migrations.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Sources:")
+	fmt.Fprintln(out, "  markdown      Import .agents Markdown artifacts into SQLite")
+	fmt.Fprintln(out, "  storage-home  Copy legacy XDG_STATE_HOME state into XDG_DATA_HOME")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  -h, --help    Show help")
+}
+
+func writeStateBackupHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf state backup [--json]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Create a SQLite database backup.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func writeStateExportHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf state export <kind> --format <format>")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Export SQLite state.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Kinds:")
+	fmt.Fprintln(out, "  all")
+	fmt.Fprintln(out, "  release-readiness")
+	fmt.Fprintln(out, "  spec <spec>")
+	fmt.Fprintln(out, "  session <session>")
+	fmt.Fprintln(out, "  triage")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --format     Output format")
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func (r Runner) runProject(args []string, out io.Writer, runtime state.Runtime) error {
+	if len(args) == 0 || isHelpArg(args) {
+		writeProjectHelp(out)
+		return nil
+	}
+
+	switch args[0] {
+	case "show":
+		if isHelpArg(args[1:]) {
+			writeProjectShowHelp(out)
+			return nil
+		}
+		return r.runProjectShow(args[1:], out, runtime)
+	case "rename":
+		if isHelpArg(args[1:]) {
+			writeProjectRenameHelp(out)
+			return nil
+		}
+		return r.runProjectRename(args[1:], out, runtime)
+	case "move":
+		if isHelpArg(args[1:]) {
+			writeProjectMoveHelp(out)
+			return nil
+		}
+		return r.runProjectMove(args[1:], out, runtime)
+	default:
+		return fmt.Errorf("project subcommand %q is not implemented yet", args[0])
+	}
+}
+
+func writeProjectHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf project <command> [options]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Manage durable project identity in the global SQLite database.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Commands:")
+	fmt.Fprintln(out, "  show      Show the current project identity")
+	fmt.Fprintln(out, "  rename    Rename the friendly project name")
+	fmt.Fprintln(out, "  move      Record a project path move")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  -h, --help    Show help")
+}
+
+func writeProjectShowHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf project show [--json]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Show the current durable project identity.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func writeProjectRenameHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf project rename <name> [--json]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Rename the friendly project name without changing its ID.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func writeProjectMoveHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf project move --from <path> [--to <path>] [--json]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Record a checkout move without changing the project ID. --to defaults to the current project root.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --from       Previous absolute project path")
+	fmt.Fprintln(out, "  --to         New absolute project path")
+	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonOutput, err := parseJSONOnly(args)
+	if err != nil {
+		return err
+	}
+	projectRoot, store, err := r.openProjectIdentityStore(runtime)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	identity, err := store.ProjectIdentityForRoot(context.Background(), projectRoot)
+	if err != nil {
+		return err
+	}
+	if jsonOutput {
+		return writeJSON(out, identity)
+	}
+	writeProjectIdentity(out, identity)
+	return nil
+}
+
+func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Runtime) error {
+	name, jsonOutput, err := parseProjectRenameArgs(args)
+	if err != nil {
+		return err
+	}
+	projectRoot, store, err := r.openProjectIdentityStore(runtime)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	identity, err := store.RenameProject(context.Background(), projectRoot, name)
+	if err != nil {
+		return err
+	}
+	if jsonOutput {
+		return writeJSON(out, identity)
+	}
+	fmt.Fprintf(out, "Renamed project to %q\n\n", identity.FriendlyName)
+	writeProjectIdentity(out, identity)
+	return nil
+}
+
+func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runtime) error {
+	options, err := parseProjectMoveArgs(args, runtime.RootPath())
+	if err != nil {
+		return err
+	}
+	projectRoot, store, err := r.openProjectStore(runtime)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	result, err := store.MoveProject(context.Background(), projectRoot, options.fromPath, options.toPath)
+	if err != nil {
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	fmt.Fprintln(out, "Moved project path")
+	fmt.Fprintf(out, "  from: %s\n", result.FromPath)
+	fmt.Fprintf(out, "  to:   %s\n\n", result.ToPath)
+	writeProjectIdentity(out, result.Project)
+	return nil
+}
+
+func (r Runner) openProjectIdentityStore(runtime state.Runtime) (project.Root, *state.Store, error) {
+	projectRoot, store, err := r.openProjectStore(runtime)
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	if err := store.UpsertProject(context.Background(), projectRoot); err != nil {
+		store.Close()
+		return project.Root{}, nil, err
+	}
+	return projectRoot, store, nil
+}
+
+func (r Runner) openProjectStore(runtime state.Runtime) (project.Root, *state.Store, error) {
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	resolver := state.PathResolver{StateHome: r.StateHome}
+	databasePath, err := resolver.DatabasePath(projectRoot)
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0o700); err != nil {
+		return project.Root{}, nil, fmt.Errorf("create state database directory: %w", err)
+	}
+	store, err := state.OpenStore(databasePath)
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	if err := store.ApplyMigrations(context.Background()); err != nil {
+		store.Close()
+		return project.Root{}, nil, err
+	}
+	return projectRoot, store, nil
+}
+
+func writeProjectIdentity(out io.Writer, identity state.ProjectIdentity) {
+	fmt.Fprintf(out, "Project: %s\n", firstNonEmpty(identity.FriendlyName, "(unnamed)"))
+	fmt.Fprintf(out, "  id:   %s\n", identity.ID)
+	fmt.Fprintf(out, "  path: %s\n", identity.CurrentPath)
+	fmt.Fprintf(out, "  db:   %s\n", identity.DatabasePath)
 }
 
 func (r Runner) runStateInit(args []string, out io.Writer, runtime state.Runtime) error {
@@ -9429,6 +9754,63 @@ func parseStorageHomeMigrationArgs(args []string) (storageHomeMigrationOptions, 
 	if options.apply && options.dryRun {
 		return storageHomeMigrationOptions{}, fmt.Errorf("state migrate storage-home cannot combine --apply and --dry-run")
 	}
+	return options, nil
+}
+
+func parseProjectRenameArgs(args []string) (string, bool, error) {
+	jsonOutput := false
+	values := []string{}
+	for _, arg := range args {
+		switch arg {
+		case "--json":
+			jsonOutput = true
+		default:
+			values = append(values, arg)
+		}
+	}
+	if len(values) == 0 {
+		return "", false, fmt.Errorf("project rename requires a name")
+	}
+	if len(values) > 1 {
+		return "", false, fmt.Errorf("project rename accepts exactly one name")
+	}
+	return values[0], jsonOutput, nil
+}
+
+func parseProjectMoveArgs(args []string, currentPath string) (projectMoveOptions, error) {
+	options := projectMoveOptions{toPath: currentPath}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--json":
+			options.jsonOutput = true
+		case "--from":
+			i++
+			if i >= len(args) {
+				return projectMoveOptions{}, fmt.Errorf("--from requires a value")
+			}
+			options.fromPath = args[i]
+		case "--to":
+			i++
+			if i >= len(args) {
+				return projectMoveOptions{}, fmt.Errorf("--to requires a value")
+			}
+			options.toPath = args[i]
+		default:
+			return projectMoveOptions{}, fmt.Errorf("unknown option %q", arg)
+		}
+	}
+	if options.fromPath == "" {
+		return projectMoveOptions{}, fmt.Errorf("project move requires --from")
+	}
+	if options.toPath == "" {
+		return projectMoveOptions{}, fmt.Errorf("project move requires --to or a current project root")
+	}
+	if !filepath.IsAbs(options.fromPath) || !filepath.IsAbs(options.toPath) {
+		return projectMoveOptions{}, fmt.Errorf("project move requires absolute --from and --to paths")
+	}
+	options.fromPath = filepath.Clean(options.fromPath)
+	options.toPath = filepath.Clean(options.toPath)
 	return options, nil
 }
 

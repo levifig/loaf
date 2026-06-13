@@ -41,7 +41,7 @@ func ShowIdea(ctx context.Context, root project.Root, resolver PathResolver, ref
 
 // ShowIdea returns one idea from an open store.
 func (s *Store) ShowIdea(ctx context.Context, root project.Root, ref string) (IdeaShow, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	entity, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return IdeaShow{}, err

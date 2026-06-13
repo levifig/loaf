@@ -42,7 +42,7 @@ func ShowSpec(ctx context.Context, root project.Root, resolver PathResolver, ref
 
 // ShowSpec returns one spec from an open store.
 func (s *Store) ShowSpec(ctx context.Context, root project.Root, ref string) (SpecShow, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	entity, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return SpecShow{}, err

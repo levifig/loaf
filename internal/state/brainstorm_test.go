@@ -306,7 +306,7 @@ status: archived
 SELECT COUNT(*), COALESCE(MAX(note), '')
 FROM events
 WHERE project_id = ? AND entity_kind = 'brainstorm' AND event_type = 'status_changed' AND from_status = 'open' AND to_status = 'archived'
-`, ProjectID(root)).Scan(&events, &note)
+`, projectIDForTest(t, store, root)).Scan(&events, &note)
 	if err != nil {
 		t.Fatalf("count archive events error = %v", err)
 	}

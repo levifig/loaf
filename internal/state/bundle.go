@@ -125,7 +125,7 @@ func RemoveBundleMember(ctx context.Context, root project.Root, resolver PathRes
 
 // CreateBundle creates or updates a bundle in an open store.
 func (s *Store) CreateBundle(ctx context.Context, root project.Root, options BundleCreateOptions) (BundleMutationResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	slug, err := normalizeBundleSlug(options.Slug)
 	if err != nil {
 		return BundleMutationResult{}, err
@@ -156,7 +156,7 @@ ON CONFLICT(project_id, slug) DO UPDATE SET
 
 // ListBundles returns all bundles in an open store.
 func (s *Store) ListBundles(ctx context.Context, root project.Root) (BundleList, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	rows, err := s.db.QueryContext(ctx, `
 	SELECT id, slug, title, COALESCE(tag_query, ''), created_at, updated_at
 FROM bundles
@@ -221,7 +221,7 @@ ORDER BY slug
 
 // ShowBundle returns a bundle and its full related set from an open store.
 func (s *Store) ShowBundle(ctx context.Context, root project.Root, slugValue string) (BundleShowResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	bundleID, slug, title, tags, err := s.resolveBundle(ctx, projectID, slugValue)
 	if err != nil {
 		return BundleShowResult{}, err
@@ -247,7 +247,7 @@ func (s *Store) ShowBundle(ctx context.Context, root project.Root, slugValue str
 
 // UpdateBundle updates an existing bundle in an open store.
 func (s *Store) UpdateBundle(ctx context.Context, root project.Root, options BundleUpdateOptions) (BundleMutationResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	bundleID, slug, currentTitle, currentTags, err := s.resolveBundle(ctx, projectID, options.Slug)
 	if err != nil {
 		return BundleMutationResult{}, err
@@ -285,7 +285,7 @@ WHERE project_id = ? AND id = ?
 
 // AddBundleMember adds an explicit member in an open store.
 func (s *Store) AddBundleMember(ctx context.Context, root project.Root, slugValue string, ref string) (BundleMutationResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	bundleID, slug, title, _, err := s.resolveBundle(ctx, projectID, slugValue)
 	if err != nil {
 		return BundleMutationResult{}, err
@@ -309,7 +309,7 @@ ON CONFLICT(project_id, bundle_id, entity_kind, entity_id) DO UPDATE SET updated
 
 // RemoveBundleMember removes an explicit member in an open store.
 func (s *Store) RemoveBundleMember(ctx context.Context, root project.Root, slugValue string, ref string) (BundleMutationResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	bundleID, slug, title, _, err := s.resolveBundle(ctx, projectID, slugValue)
 	if err != nil {
 		return BundleMutationResult{}, err

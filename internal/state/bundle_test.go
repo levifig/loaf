@@ -102,7 +102,7 @@ SELECT COUNT(*)
 FROM bundle_members
 JOIN bundles ON bundles.id = bundle_members.bundle_id AND bundles.project_id = bundle_members.project_id
 WHERE bundle_members.project_id = ? AND bundles.slug = 'sqlite-backend'
-`, ProjectID(root)).Scan(&explicit)
+`, projectIDForTest(t, store, root)).Scan(&explicit)
 	if err != nil {
 		t.Fatalf("count explicit bundle members error = %v", err)
 	}

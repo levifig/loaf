@@ -107,7 +107,7 @@ func ListIdeas(ctx context.Context, root project.Root, resolver PathResolver, op
 
 // ListIdeas returns imported ideas from an open store.
 func (s *Store) ListIdeas(ctx context.Context, root project.Root, options IdeaListOptions) (IdeaList, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	rows, err := s.db.QueryContext(ctx, `
 SELECT
   idea_alias.alias,
@@ -165,7 +165,7 @@ func CaptureIdea(ctx context.Context, root project.Root, resolver PathResolver, 
 
 // CaptureIdea captures an idea in an open store.
 func (s *Store) CaptureIdea(ctx context.Context, root project.Root, options IdeaCaptureOptions) (IdeaCaptureResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	title := strings.TrimSpace(options.Title)
 	if title == "" {
 		return IdeaCaptureResult{}, fmt.Errorf("idea capture requires --title")
@@ -257,7 +257,7 @@ func ResolveIdea(ctx context.Context, root project.Root, resolver PathResolver, 
 
 // ResolveIdea marks an idea resolved in an open store.
 func (s *Store) ResolveIdea(ctx context.Context, root project.Root, ideaRef string, byRef string) (IdeaResolveResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	idea, err := s.resolveTraceEntity(ctx, projectID, ideaRef)
 	if err != nil {
 		return IdeaResolveResult{}, err
@@ -343,7 +343,7 @@ func PromoteIdea(ctx context.Context, root project.Root, resolver PathResolver, 
 
 // PromoteIdea records that an idea promoted to a spec in an open store.
 func (s *Store) PromoteIdea(ctx context.Context, root project.Root, options IdeaPromoteOptions) (IdeaPromoteResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	idea, err := s.resolveTraceEntity(ctx, projectID, options.Idea)
 	if err != nil {
 		return IdeaPromoteResult{}, err
@@ -394,7 +394,7 @@ func (s *Store) ArchiveIdeas(ctx context.Context, root project.Root, options Ide
 	if len(options.Refs) == 0 {
 		return IdeaArchiveResult{}, fmt.Errorf("idea archive requires at least one idea")
 	}
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	result := IdeaArchiveResult{
 		Archived: []IdeaArchiveItem{},
 		Skipped:  []IdeaArchiveItem{},

@@ -62,7 +62,7 @@ func TestUpdateTaskStatusMutatesTaskAndRecordsEvent(t *testing.T) {
 SELECT COUNT(*)
 FROM events
 WHERE project_id = ? AND entity_kind = 'task' AND event_type = 'status_changed' AND from_status = 'todo' AND to_status = 'in_progress'
-`, ProjectID(root)).Scan(&events); err != nil {
+`, projectIDForTest(t, store, root)).Scan(&events); err != nil {
 		t.Fatalf("count task status events error = %v", err)
 	}
 	if events != 1 {

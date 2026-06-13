@@ -38,7 +38,7 @@ func Housekeeping(ctx context.Context, root project.Root, resolver PathResolver)
 
 // Housekeeping returns lifecycle and cleanup signals from an open store.
 func (s *Store) Housekeeping(ctx context.Context, root project.Root, databasePath string) (HousekeepingSummary, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	sections := map[string]HousekeepingSection{}
 	specs, err := s.housekeepingStatusSection(ctx, "specs", projectID, "complete", "archived")
 	if err != nil {

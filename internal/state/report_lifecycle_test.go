@@ -143,7 +143,7 @@ func assertReportEvent(t *testing.T, root project.Root, stateHome string, report
 SELECT COUNT(*), COALESCE(MAX(note), '')
 FROM events
 WHERE project_id = ? AND entity_kind = 'report' AND entity_id = ? AND COALESCE(from_status, '') = ? AND to_status = ?
-`, ProjectID(root), reportID, fromStatus, toStatus).Scan(&count, &note)
+`, projectIDForTest(t, store, root), reportID, fromStatus, toStatus).Scan(&count, &note)
 	if err != nil {
 		t.Fatalf("read report event error = %v", err)
 	}

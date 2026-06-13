@@ -83,7 +83,7 @@ func TestResolveSparkMarksResolvedAndRecordsRelationshipEvent(t *testing.T) {
 SELECT COUNT(*), COALESCE(MAX(note), '')
 FROM events
 WHERE project_id = ? AND entity_kind = 'spark' AND event_type = 'status_changed' AND from_status = 'open' AND to_status = 'resolved'
-`, ProjectID(root)).Scan(&events, &eventNote)
+`, projectIDForTest(t, store, root)).Scan(&events, &eventNote)
 	if err != nil {
 		t.Fatalf("count events error = %v", err)
 	}
@@ -109,7 +109,7 @@ WHERE project_id = ? AND entity_kind = 'spark' AND event_type = 'status_changed'
 SELECT COUNT(*)
 FROM events
 WHERE project_id = ? AND entity_kind = 'spark' AND event_type = 'status_changed' AND from_status = 'open' AND to_status = 'resolved'
-`, ProjectID(root)).Scan(&events)
+`, projectIDForTest(t, store, root)).Scan(&events)
 	if err != nil {
 		t.Fatalf("count events after repeat error = %v", err)
 	}
@@ -378,7 +378,7 @@ func TestCaptureSparkCreatesOpenSparkWithAliasAndEvent(t *testing.T) {
 SELECT COUNT(*)
 FROM events
 WHERE project_id = ? AND entity_kind = 'spark' AND event_type = 'status_changed' AND from_status IS NULL AND to_status = 'open'
-`, ProjectID(root)).Scan(&events)
+`, projectIDForTest(t, store, root)).Scan(&events)
 	if err != nil {
 		t.Fatalf("count capture events error = %v", err)
 	}

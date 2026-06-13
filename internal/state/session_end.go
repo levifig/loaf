@@ -49,7 +49,7 @@ func EndSession(ctx context.Context, root project.Root, resolver PathResolver, o
 
 // EndSession ends, wraps, or clears a session in an open store.
 func (s *Store) EndSession(ctx context.Context, root project.Root, options SessionEndOptions) (SessionEndResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	branch := strings.TrimSpace(options.Branch)
 	harnessSessionID := strings.TrimSpace(options.HarnessSessionID)
 	if harnessSessionID == "" && branch == "" {

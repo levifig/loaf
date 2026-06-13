@@ -18,7 +18,7 @@ func TestHousekeepingSummarizesSQLiteLifecycleState(t *testing.T) {
 	}
 	defer store.Close()
 
-	projectID := ProjectID(root)
+	projectID := projectIDForTest(t, store, root)
 	now := "2026-05-28T23:25:55Z"
 	insertHousekeepingEntity(t, store, "specs", projectID, "spec-complete", "Complete Spec", "complete", now)
 	insertHousekeepingEntity(t, store, "tasks", projectID, "task-done", "Done Task", "done", now)

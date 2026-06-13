@@ -76,7 +76,7 @@ func RemoveTag(ctx context.Context, root project.Root, resolver PathResolver, re
 
 // ListTags returns tags from an open store.
 func (s *Store) ListTags(ctx context.Context, root project.Root) (TagList, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	rows, err := s.db.QueryContext(ctx, `
 SELECT tags.name, COUNT(entity_tags.id)
 FROM tags
@@ -109,7 +109,7 @@ ORDER BY tags.name
 
 // ShowTag returns members for one tag from an open store.
 func (s *Store) ShowTag(ctx context.Context, root project.Root, name string) (TagShowResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	tagName, err := normalizeTagName(name)
 	if err != nil {
 		return TagShowResult{}, err
@@ -167,7 +167,7 @@ ORDER BY entity_tags.entity_kind, entity_tags.entity_id
 
 // AddTag adds a tag membership in an open store.
 func (s *Store) AddTag(ctx context.Context, root project.Root, ref string, name string) (TagMutationResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	tagName, err := normalizeTagName(name)
 	if err != nil {
 		return TagMutationResult{}, err
@@ -209,7 +209,7 @@ func (s *Store) AddTag(ctx context.Context, root project.Root, ref string, name 
 
 // RemoveTag removes a tag membership in an open store.
 func (s *Store) RemoveTag(ctx context.Context, root project.Root, ref string, name string) (TagMutationResult, error) {
-	projectID := ProjectID(root)
+	projectID := s.projectIDOrLegacy(ctx, root)
 	tagName, err := normalizeTagName(name)
 	if err != nil {
 		return TagMutationResult{}, err
@@ -248,6 +248,14 @@ func openInitializedStore(root project.Root, resolver PathResolver) (*Store, err
 	}
 	store, err := OpenStore(databasePath)
 	if err != nil {
+		return nil, err
+	}
+	if err := store.ApplyMigrations(context.Background()); err != nil {
+		store.Close()
+		return nil, err
+	}
+	if err := store.UpsertProject(context.Background(), root); err != nil {
+		store.Close()
 		return nil, err
 	}
 	return store, nil
