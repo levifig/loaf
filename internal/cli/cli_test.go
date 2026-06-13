@@ -2344,6 +2344,52 @@ func TestRunnerStateDoctorDryRunShowsLegacyLeftoverManualAction(t *testing.T) {
 	}
 }
 
+func TestRunnerStateDoctorDryRunShowsRelationshipOriginAuditAction(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var initOut bytes.Buffer
+	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	initialized := decodeStateStatus(t, initOut.Bytes())
+	db, err := sql.Open("sqlite3", initialized.DatabasePath)
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
+VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one', 'implements', 'legacy row', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+		t.Fatalf("insert relationship without origin error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	err = Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "doctor", "--dry-run", "--json"})
+	if err != nil {
+		t.Fatalf("state doctor --dry-run --json error = %v", err)
+	}
+	status := decodeStateStatus(t, stdout.Bytes())
+	if status.Mode != state.ModeSQLiteReady {
+		t.Fatalf("Mode = %q, want %q for relationship provenance warning", status.Mode, state.ModeSQLiteReady)
+	}
+	if !hasDiagnostic(status.Diagnostics, "relationship-origin-missing") {
+		t.Fatalf("diagnostics = %#v, want relationship-origin-missing", status.Diagnostics)
+	}
+	action := findStateRepairAction(t, status.RepairPlan, "audit-relationship-origin")
+	if action.Safe || action.Applied {
+		t.Fatalf("repair action = %#v, want manual unapplied relationship audit", action)
+	}
+	if action.Command != "loaf state export all --format json" {
+		t.Fatalf("repair action command = %q, want state export all JSON command", action.Command)
+	}
+}
+
 func TestRunnerStateDoctorReportsSchemaMismatch(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()

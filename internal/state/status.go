@@ -124,6 +124,20 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 			status.Mode = ModeInvalid
 			return status, nil
 		}
+		invariantDiagnostics, invariantValid, err := inspectOperationalInvariants(context.Background(), store)
+		if err != nil {
+			status.Diagnostics = append(status.Diagnostics, Diagnostic{
+				Severity: "error",
+				Code:     "state-invariants-unreadable",
+				Message:  err.Error(),
+			})
+		} else {
+			status.Diagnostics = append(status.Diagnostics, invariantDiagnostics...)
+		}
+		if !invariantValid {
+			status.Mode = ModeInvalid
+			return status, nil
+		}
 		status.Mode = ModeSQLiteReady
 		if identity, err := store.LookupProjectIdentityForRoot(context.Background(), root); err == nil {
 			status.ProjectID = identity.ID
@@ -227,6 +241,33 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
+		case "state-invariants-unreadable":
+			actions = append(actions, RepairAction{
+				Code:           "inspect-state-invariants",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Inspect SQLite table integrity before applying any state repair.",
+				Command:        "loaf state doctor --json",
+				Path:           status.DatabasePath,
+				Safe:           false,
+			})
+		case "project-current-path-missing", "project-current-path-mismatch", "orphaned-project-path":
+			actions = append(actions, RepairAction{
+				Code:           "repair-project-path-invariants",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Inspect project identity and path history before repairing project path invariants.",
+				Command:        "loaf project list --json",
+				Path:           status.DatabasePath,
+				Safe:           false,
+			})
+		case "relationship-origin-missing", "relationship-origin-unknown":
+			actions = append(actions, RepairAction{
+				Code:           "audit-relationship-origin",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Audit relationship provenance before backfilling or pruning relationship rows.",
+				Command:        "loaf state export all --format json",
+				Path:           status.DatabasePath,
+				Safe:           false,
+			})
 		case "stale-compatibility-export":
 			actions = append(actions, RepairAction{
 				Code:           "regenerate-export",
@@ -280,6 +321,163 @@ func inspectSchemaMigrations(ctx context.Context, store *Store, version int) ([]
 		}
 	}
 	return diagnostics, valid
+}
+
+func inspectOperationalInvariants(ctx context.Context, store *Store) ([]Diagnostic, bool, error) {
+	diagnostics := []Diagnostic{}
+	valid := true
+
+	projectPathDiagnostics, projectPathsValid, err := inspectProjectPathInvariants(ctx, store)
+	if err != nil {
+		return nil, false, err
+	}
+	diagnostics = append(diagnostics, projectPathDiagnostics...)
+	if !projectPathsValid {
+		valid = false
+	}
+
+	relationshipDiagnostics, err := inspectRelationshipOriginInvariants(ctx, store)
+	if err != nil {
+		return nil, false, err
+	}
+	diagnostics = append(diagnostics, relationshipDiagnostics...)
+
+	return diagnostics, valid, nil
+}
+
+func inspectProjectPathInvariants(ctx context.Context, store *Store) ([]Diagnostic, bool, error) {
+	diagnostics := []Diagnostic{}
+	valid := true
+
+	missingRows, err := store.db.QueryContext(ctx, `
+SELECT projects.id
+FROM projects
+LEFT JOIN project_paths ON project_paths.project_id = projects.id AND project_paths.is_current = 1
+WHERE project_paths.id IS NULL
+ORDER BY projects.id
+`)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect missing current project paths: %w", err)
+	}
+	defer missingRows.Close()
+	for missingRows.Next() {
+		var projectID string
+		if err := missingRows.Scan(&projectID); err != nil {
+			return nil, false, fmt.Errorf("scan missing current project path: %w", err)
+		}
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "project-current-path-missing",
+			Message:  fmt.Sprintf("project %s has no current project_paths row", projectID),
+		})
+	}
+	if err := missingRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate missing current project paths: %w", err)
+	}
+
+	mismatchRows, err := store.db.QueryContext(ctx, `
+SELECT projects.id, COALESCE(projects.current_path, ''), project_paths.path
+FROM projects
+JOIN project_paths ON project_paths.project_id = projects.id AND project_paths.is_current = 1
+WHERE COALESCE(projects.current_path, '') <> project_paths.path
+ORDER BY projects.id
+`)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect current project path mismatches: %w", err)
+	}
+	defer mismatchRows.Close()
+	for mismatchRows.Next() {
+		var projectID, projectCurrentPath, currentPathRow string
+		if err := mismatchRows.Scan(&projectID, &projectCurrentPath, &currentPathRow); err != nil {
+			return nil, false, fmt.Errorf("scan current project path mismatch: %w", err)
+		}
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "project-current-path-mismatch",
+			Message:  fmt.Sprintf("project %s current_path %q does not match current project_paths row %q", projectID, projectCurrentPath, currentPathRow),
+		})
+	}
+	if err := mismatchRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate current project path mismatches: %w", err)
+	}
+
+	orphanRows, err := store.db.QueryContext(ctx, `
+SELECT project_paths.id, project_paths.path
+FROM project_paths
+LEFT JOIN projects ON projects.id = project_paths.project_id
+WHERE projects.id IS NULL
+ORDER BY project_paths.id
+`)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect orphaned project paths: %w", err)
+	}
+	defer orphanRows.Close()
+	for orphanRows.Next() {
+		var pathID, path string
+		if err := orphanRows.Scan(&pathID, &path); err != nil {
+			return nil, false, fmt.Errorf("scan orphaned project path: %w", err)
+		}
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "orphaned-project-path",
+			Message:  fmt.Sprintf("project path %s at %s references a missing project", pathID, path),
+		})
+	}
+	if err := orphanRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate orphaned project paths: %w", err)
+	}
+
+	return diagnostics, valid, nil
+}
+
+func inspectRelationshipOriginInvariants(ctx context.Context, store *Store) ([]Diagnostic, error) {
+	diagnostics := []Diagnostic{}
+	var missingCount int
+	if err := store.db.QueryRowContext(ctx, `
+SELECT COUNT(*)
+FROM relationships
+WHERE origin IS NULL OR TRIM(origin) = ''
+`).Scan(&missingCount); err != nil {
+		return nil, fmt.Errorf("inspect missing relationship origins: %w", err)
+	}
+	if missingCount > 0 {
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "warn",
+			Code:     "relationship-origin-missing",
+			Message:  fmt.Sprintf("%d relationship row(s) are missing provenance origin", missingCount),
+		})
+	}
+
+	unknownRows, err := store.db.QueryContext(ctx, `
+SELECT origin, COUNT(*)
+FROM relationships
+WHERE origin IS NOT NULL AND TRIM(origin) != '' AND origin NOT IN ('imported', 'manual')
+GROUP BY origin
+ORDER BY origin
+`)
+	if err != nil {
+		return nil, fmt.Errorf("inspect unknown relationship origins: %w", err)
+	}
+	defer unknownRows.Close()
+	for unknownRows.Next() {
+		var origin string
+		var count int
+		if err := unknownRows.Scan(&origin, &count); err != nil {
+			return nil, fmt.Errorf("scan unknown relationship origin: %w", err)
+		}
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "warn",
+			Code:     "relationship-origin-unknown",
+			Message:  fmt.Sprintf("%d relationship row(s) have unknown provenance origin %q", count, origin),
+		})
+	}
+	if err := unknownRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate unknown relationship origins: %w", err)
+	}
+	return diagnostics, nil
 }
 
 func inspectStaleExports(ctx context.Context, store *Store) ([]Diagnostic, error) {

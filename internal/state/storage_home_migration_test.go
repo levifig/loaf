@@ -235,11 +235,18 @@ func TestApplyStorageHomeMigrationIncludesPendingWALFrames(t *testing.T) {
 		t.Fatalf("wal checkpoint error = %v", err)
 	}
 	wantProjectID := "pending-wal-project"
+	wantProjectPath := filepath.Join(root.Path(), "pending-wal-project")
 	if _, err := legacyStore.db.ExecContext(ctx, `
-INSERT INTO projects (id, identity_hash, created_at, updated_at)
-VALUES (?, ?, ?, ?)
-`, wantProjectID, wantProjectID, "2026-06-12T00:00:00Z", "2026-06-12T00:00:00Z"); err != nil {
+INSERT INTO projects (id, identity_hash, friendly_name, current_path, last_seen_at, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+`, wantProjectID, wantProjectID, "Pending WAL Project", wantProjectPath, "2026-06-12T00:00:00Z", "2026-06-12T00:00:00Z", "2026-06-12T00:00:00Z"); err != nil {
 		t.Fatalf("insert WAL-backed project error = %v", err)
+	}
+	if _, err := legacyStore.db.ExecContext(ctx, `
+INSERT INTO project_paths (id, project_id, path, is_current, first_seen_at, last_seen_at, created_at, updated_at)
+VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+`, "pending-wal-project-path", wantProjectID, wantProjectPath, "2026-06-12T00:00:00Z", "2026-06-12T00:00:00Z", "2026-06-12T00:00:00Z", "2026-06-12T00:00:00Z"); err != nil {
+		t.Fatalf("insert WAL-backed project path error = %v", err)
 	}
 	if info, err := os.Stat(legacyPath + "-wal"); err != nil {
 		t.Fatalf("legacy WAL stat error = %v", err)

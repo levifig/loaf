@@ -265,6 +265,108 @@ VALUES ('export-stale', ?, 'triage', 'markdown', '.agents/exports/triage.md', 1,
 	assertDiagnostic(t, status.Diagnostics, "stale-compatibility-export")
 }
 
+func TestInspectReportsInvalidProjectPathInvariants(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+UPDATE projects
+SET current_path = ?
+WHERE id = ?
+`, filepath.Join(root.Path(), "stale"), projectID); err != nil {
+		t.Fatalf("drift project current_path error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeInvalid {
+		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
+	}
+	assertDiagnostic(t, status.Diagnostics, "project-current-path-mismatch")
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "repair-project-path-invariants")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual project path repair")
+	}
+	if action.Command != "loaf project list --json" {
+		t.Fatalf("repair action Command = %q, want project list", action.Command)
+	}
+}
+
+func TestInspectReportsMissingRelationshipOriginAsWarning(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
+VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one', 'implements', 'legacy row', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert relationship without origin error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeSQLiteReady {
+		t.Fatalf("Mode = %q, want %q for relationship provenance warning", status.Mode, ModeSQLiteReady)
+	}
+	assertDiagnostic(t, status.Diagnostics, "relationship-origin-missing")
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "audit-relationship-origin")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual relationship audit")
+	}
+	if action.Command != "loaf state export all --format json" {
+		t.Fatalf("repair action Command = %q, want state export all", action.Command)
+	}
+}
+
+func TestInspectReportsInvalidWhenOperationalInvariantsAreUnreadable(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	if _, err := store.db.ExecContext(context.Background(), `DROP TABLE relationships`); err != nil {
+		t.Fatalf("drop relationships error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeInvalid {
+		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
+	}
+	assertDiagnostic(t, status.Diagnostics, "state-invariants-unreadable")
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-state-invariants")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual invariant inspection")
+	}
+	if action.Command != "loaf state doctor --json" {
+		t.Fatalf("repair action Command = %q, want state doctor JSON inspection", action.Command)
+	}
+}
+
 func TestInspectReportsInvalidEmptyFileWithoutOpeningSQLite(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
