@@ -2,6 +2,8 @@ package state
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,6 +48,9 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	}
 	if result.Bytes != info.Size() {
 		t.Fatalf("Bytes = %d, want %d", result.Bytes, info.Size())
+	}
+	if result.SHA256 != testFileSHA256(t, result.BackupPath) {
+		t.Fatalf("SHA256 = %q, want actual backup digest", result.SHA256)
 	}
 	if result.CreatedAt == "" {
 		t.Fatal("CreatedAt is empty")
@@ -192,4 +197,14 @@ func assertNoSQLiteSidecars(t *testing.T, path string) {
 			t.Fatalf("backup sidecar %s exists or stat failed: %v", sidecar, err)
 		}
 	}
+}
+
+func testFileSHA256(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", path, err)
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }

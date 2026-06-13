@@ -2,7 +2,9 @@ package cli
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -3251,6 +3253,9 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	if result.Bytes <= 0 {
 		t.Fatalf("Bytes = %d, want > 0", result.Bytes)
 	}
+	if result.SHA256 == "" {
+		t.Fatal("SHA256 is empty")
+	}
 	if result.CreatedAt == "" {
 		t.Fatal("CreatedAt is empty")
 	}
@@ -3280,6 +3285,9 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	}
 	if _, err := os.Stat(result.BackupPath); err != nil {
 		t.Fatalf("backup file missing: %v", err)
+	}
+	if result.SHA256 != testFileSHA256(t, result.BackupPath) {
+		t.Fatalf("SHA256 = %q, want actual backup digest", result.SHA256)
 	}
 	assertNoSQLiteSidecars(t, result.BackupPath)
 	store, err := state.OpenStoreReadOnly(result.BackupPath)
@@ -3315,7 +3323,7 @@ func TestRunnerStateBackupHumanOutput(t *testing.T) {
 	}
 
 	output := stdout.String()
-	for _, want := range []string{"loaf state backup", "database:", "backup:", "bytes:", "verified: true", "schema version:", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "created at:"} {
+	for _, want := range []string{"loaf state backup", "database:", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "created at:"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -11751,6 +11759,16 @@ func realpath(t *testing.T, path string) string {
 		t.Fatalf("EvalSymlinks() error = %v", err)
 	}
 	return realpath
+}
+
+func testFileSHA256(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", path, err)
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
 
 func assertNoStateDatabase(t *testing.T, workingDir string, stateHome string) {

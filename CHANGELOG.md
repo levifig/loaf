@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state backup --json` and human output now include the backup file's SHA-256 digest for artifact verification.
 - `loaf state backup --json` and `loaf state export all --format json` now surface project name and current project path alongside the durable project ID.
 - `loaf state status` and `loaf state doctor` now inspect existing SQLite databases through read-only connections.
 - SQLite backup and export verification errors now include the first foreign-key violation's table, row, parent table, and constraint details.

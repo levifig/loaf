@@ -2,9 +2,12 @@ package state
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,6 +20,7 @@ type BackupResult struct {
 	DatabasePath       string `json:"database_path"`
 	BackupPath         string `json:"backup_path"`
 	Bytes              int64  `json:"bytes"`
+	SHA256             string `json:"sha256"`
 	CreatedAt          string `json:"created_at"`
 	Verified           bool   `json:"verified"`
 	SchemaVersion      int    `json:"schema_version"`
@@ -69,6 +73,10 @@ func Backup(ctx context.Context, root project.Root, resolver PathResolver) (Back
 	if err != nil {
 		return BackupResult{}, fmt.Errorf("stat state backup: %w", err)
 	}
+	sha256Sum, err := fileSHA256(backupPath)
+	if err != nil {
+		return BackupResult{}, fmt.Errorf("checksum state backup: %w", err)
+	}
 	verification, err := verifyBackup(ctx, backupPath, root)
 	if err != nil {
 		return BackupResult{}, err
@@ -78,6 +86,7 @@ func Backup(ctx context.Context, root project.Root, resolver PathResolver) (Back
 		DatabasePath:       status.DatabasePath,
 		BackupPath:         backupPath,
 		Bytes:              info.Size(),
+		SHA256:             sha256Sum,
 		CreatedAt:          now.Format(time.RFC3339Nano),
 		Verified:           true,
 		SchemaVersion:      verification.schemaVersion,
@@ -87,6 +96,20 @@ func Backup(ctx context.Context, root project.Root, resolver PathResolver) (Back
 		IntegrityCheck:     verification.integrityCheck,
 		ForeignKeyCheck:    verification.foreignKeyCheck,
 	}, nil
+}
+
+func fileSHA256(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 type backupVerification struct {
