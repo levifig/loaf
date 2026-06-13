@@ -2319,6 +2319,62 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 	}
 }
 
+func TestRunnerTaskStatusHelpNamesValidStatuses(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "task list", args: []string{"task", "list", "--help"}, want: "--status     Filter by status: in_progress, blocked, todo, review, done, archived"},
+		{name: "task update", args: []string{"task", "update", "--help"}, want: "--status     New task status: in_progress, blocked, todo, review, done"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}.Run(tt.args)
+			if err != nil {
+				t.Fatalf("Run(%v) error = %v", tt.args, err)
+			}
+			if !strings.Contains(stdout.String(), tt.want) {
+				t.Fatalf("output = %q, want %q", stdout.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestRunnerTaskStatusErrorsNameValidStatuses(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "task list", args: []string{"task", "list", "--status", "open"}, want: `invalid status "open" (valid: in_progress, blocked, todo, review, done, archived)`},
+		{name: "task update", args: []string{"task", "update", "TASK-001", "--status", "archived"}, want: `invalid status "archived" (valid: in_progress, blocked, todo, review, done)`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Runner{
+				Stdout:     &bytes.Buffer{},
+				WorkingDir: realpath(t, t.TempDir()),
+				StateHome:  t.TempDir(),
+			}.Run(tt.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want invalid status error", tt.args)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %q, want %q", err.Error(), tt.want)
+			}
+		})
+	}
+}
+
 func TestRunnerStateInitHumanOutputPrintsRepositoryExternalDatabaseWithoutSecrets(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -10535,19 +10591,27 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 		t.Fatalf("agent help root = %#v, want loaf metadata", doc)
 	}
 	commands := map[string]struct {
-		subcommands []string
-		options     []string
+		subcommands        []string
+		options            []string
+		optionDescriptions map[string]string
 	}{}
 	for _, command := range doc.Commands {
 		entry := commands[command.Name]
+		if entry.optionDescriptions == nil {
+			entry.optionDescriptions = map[string]string{}
+		}
 		for _, subcommand := range command.Subcommands {
 			entry.subcommands = append(entry.subcommands, subcommand.Name)
 			for _, option := range subcommand.Options {
-				entry.options = append(entry.options, command.Name+" "+subcommand.Name+" "+option.Flags)
+				key := command.Name + " " + subcommand.Name + " " + option.Flags
+				entry.options = append(entry.options, key)
+				entry.optionDescriptions[key] = option.Description
 			}
 		}
 		for _, option := range command.Options {
-			entry.options = append(entry.options, command.Name+" "+option.Flags)
+			key := command.Name + " " + option.Flags
+			entry.options = append(entry.options, key)
+			entry.optionDescriptions[key] = option.Description
 		}
 		commands[command.Name] = entry
 	}
@@ -10566,6 +10630,12 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if !stringSliceContains(commands["task"].options, "task sync --import") || !stringSliceContains(commands["task"].options, "task sync --push") {
 		t.Fatalf("task options = %#v, want sync import/push options", commands["task"].options)
+	}
+	if got := commands["task"].optionDescriptions["task list --status <status>"]; !strings.Contains(got, "in_progress, blocked, todo, review, done, archived") {
+		t.Fatalf("task list status description = %q, want valid list statuses", got)
+	}
+	if got := commands["task"].optionDescriptions["task update --status <status>"]; !strings.Contains(got, "in_progress, blocked, todo, review, done") {
+		t.Fatalf("task update status description = %q, want valid update statuses", got)
 	}
 }
 

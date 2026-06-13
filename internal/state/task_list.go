@@ -184,6 +184,11 @@ func ValidTaskStatus(status string) bool {
 	return false
 }
 
+// TaskStatuses returns valid direct task statuses in display order.
+func TaskStatuses() []string {
+	return append([]string(nil), taskStatusOrder...)
+}
+
 // ValidTaskListStatus reports whether status is a known task-list filter status.
 func ValidTaskListStatus(status string) bool {
 	for _, valid := range taskListStatusOrder {
@@ -192,4 +197,9 @@ func ValidTaskListStatus(status string) bool {
 		}
 	}
 	return false
+}
+
+// TaskListStatuses returns valid task-list filter statuses in display order.
+func TaskListStatuses() []string {
+	return append([]string(nil), taskListStatusOrder...)
 }

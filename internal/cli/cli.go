@@ -1880,7 +1880,7 @@ func writeTaskCreateHelp(out io.Writer) {
 }
 
 func writeTaskListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task list [--active|--status <status>] [--json]", "List tasks.", "--active     Hide completed tasks", "--status     Filter by status", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task list [--active|--status <status>] [--json]", "List tasks.", "--active     Hide completed tasks", "--status     Filter by status: "+validTaskListStatusText(), "--json       Output JSON")
 }
 
 func writeTaskShowHelp(out io.Writer) {
@@ -1892,7 +1892,7 @@ func writeTaskStatusHelp(out io.Writer) {
 }
 
 func writeTaskUpdateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task update <task> [options]", "Update task metadata.", "--status     New task status", "--priority   P0, P1, P2, or P3", "--spec       Associated spec", "--depends-on Comma-separated task refs or none", "--session    Session ref or none", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task update <task> [options]", "Update task metadata.", "--status     New task status: "+validTaskStatusText(), "--priority   P0, P1, P2, or P3", "--spec       Associated spec", "--depends-on Comma-separated task refs or none", "--session    Session ref or none", "--json       Output JSON")
 }
 
 func writeTaskArchiveHelp(out io.Writer) {
@@ -9248,7 +9248,7 @@ func parseTaskListArgs(args []string) (taskListOptions, error) {
 				return taskListOptions{}, err
 			}
 			if !state.ValidTaskListStatus(value) {
-				return taskListOptions{}, fmt.Errorf("invalid status %q", value)
+				return taskListOptions{}, fmt.Errorf("invalid status %q (valid: %s)", value, validTaskListStatusText())
 			}
 			options.filters.Status = value
 		default:
@@ -9314,7 +9314,7 @@ func parseTaskUpdateArgs(args []string) (taskUpdateOptions, error) {
 				return taskUpdateOptions{}, err
 			}
 			if !state.ValidTaskStatus(value) {
-				return taskUpdateOptions{}, fmt.Errorf("invalid status %q", value)
+				return taskUpdateOptions{}, fmt.Errorf("invalid status %q (valid: %s)", value, validTaskStatusText())
 			}
 			options.update.Status = value
 			options.update.SetStatus = true
@@ -10141,11 +10141,19 @@ func taskStatusDisplayOrder(filters state.TaskListOptions) []string {
 	if filters.Status != "" {
 		return []string{filters.Status}
 	}
-	statuses := []string{"in_progress", "blocked", "todo", "review", "done", "archived"}
+	statuses := state.TaskListStatuses()
 	if !filters.Active {
 		return statuses
 	}
 	return statuses[:len(statuses)-2]
+}
+
+func validTaskStatusText() string {
+	return strings.Join(state.TaskStatuses(), ", ")
+}
+
+func validTaskListStatusText() string {
+	return strings.Join(state.TaskListStatuses(), ", ")
 }
 
 func sortedTasksByStatus(tasks state.TaskList, status string) []string {

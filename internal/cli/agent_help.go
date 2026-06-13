@@ -1,6 +1,11 @@
 package cli
 
-import "io"
+import (
+	"io"
+	"strings"
+
+	"github.com/levifig/loaf/internal/state"
+)
 
 type agentHelpOption struct {
 	Flags        string `json:"flags"`
@@ -107,11 +112,11 @@ func agentHelpCommands() []agentHelpCommand {
 			Name:        "task",
 			Description: "Manage project tasks",
 			Subcommands: []agentHelpSubcommand{
-				{Name: "list", Description: "Show task board grouped by status", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}, {Flags: "--active", Description: "Hide completed tasks"}, {Flags: "--status <status>", Description: "Filter by task status"}}},
+				{Name: "list", Description: "Show task board grouped by status", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}, {Flags: "--active", Description: "Hide completed tasks"}, {Flags: "--status <status>", Description: "Filter by task status: " + strings.Join(state.TaskListStatuses(), ", ")}}},
 				{Name: "show", Description: "Display a single task's details", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
 				{Name: "status", Description: "Show task summary counts"},
 				{Name: "create", Description: "Create a new task", Options: []agentHelpOption{{Flags: "--title <title>", Description: "Task title"}, {Flags: "--spec <id>", Description: "Associated spec ID"}, {Flags: "--priority <level>", Description: "Priority level"}, {Flags: "--depends-on <ids>", Description: "Comma-separated dependency task IDs"}}},
-				{Name: "update", Description: "Update a task's metadata", Options: []agentHelpOption{{Flags: "--status <status>", Description: "New task status"}, {Flags: "--priority <level>", Description: "New task priority"}, {Flags: "--spec <id>", Description: "Set or clear associated spec"}, {Flags: "--depends-on <ids>", Description: "Replace dependencies"}, {Flags: "--session <file>", Description: "Set or clear session reference"}}},
+				{Name: "update", Description: "Update a task's metadata", Options: []agentHelpOption{{Flags: "--status <status>", Description: "New task status: " + strings.Join(state.TaskStatuses(), ", ")}, {Flags: "--priority <level>", Description: "New task priority"}, {Flags: "--spec <id>", Description: "Set or clear associated spec"}, {Flags: "--depends-on <ids>", Description: "Replace dependencies"}, {Flags: "--session <file>", Description: "Set or clear session reference"}}},
 				{Name: "archive", Description: "Archive completed tasks", Options: []agentHelpOption{{Flags: "--spec <id>", Description: "Archive done tasks for a spec"}}},
 				{Name: "refresh", Description: "Rebuild the Markdown task index from task/spec files"},
 				{Name: "sync", Description: "Sync the Markdown task index and task files", Options: []agentHelpOption{{Flags: "--import", Description: "Import orphan markdown files"}, {Flags: "--push", Description: "Push index metadata into markdown frontmatter"}}},
