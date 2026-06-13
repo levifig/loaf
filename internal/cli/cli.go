@@ -1333,12 +1333,19 @@ func writeProjectList(out io.Writer, result state.ProjectList) {
 }
 
 func (r Runner) runStateInit(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	jsonOutput, err := parseJSONOnly(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state init", err)
+		}
 		return err
 	}
 	status, err := r.initializeState(runtime)
 	if err != nil {
+		if jsonOutput {
+			return writeJSONCommandError(out, "state init", err)
+		}
 		return err
 	}
 	if jsonOutput {
@@ -1353,12 +1360,19 @@ func (r Runner) runStateInit(args []string, out io.Writer, runtime state.Runtime
 }
 
 func (r Runner) runStateStatus(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	jsonOutput, err := parseJSONOnly(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state status", err)
+		}
 		return err
 	}
 	status, err := r.inspectState(runtime)
 	if err != nil {
+		if jsonOutput {
+			return writeJSONCommandError(out, "state status", err)
+		}
 		return err
 	}
 	if jsonOutput {
@@ -1374,12 +1388,19 @@ func (r Runner) runStateStatus(args []string, out io.Writer, runtime state.Runti
 }
 
 func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	jsonOutput, fix, dryRun, err := parseDoctorArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state doctor", err)
+		}
 		return err
 	}
 	status, err := r.inspectState(runtime)
 	if err != nil {
+		if jsonOutput {
+			return writeJSONCommandError(out, "state doctor", err)
+		}
 		return err
 	}
 	if dryRun {
@@ -1389,6 +1410,9 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 		if !dryRun {
 			status, err = r.initializeState(runtime)
 			if err != nil {
+				if jsonOutput {
+					return writeJSONCommandError(out, "state doctor", err)
+				}
 				return err
 			}
 			status.Diagnostics = append([]state.Diagnostic{{

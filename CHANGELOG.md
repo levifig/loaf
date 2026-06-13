@@ -12,6 +12,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf state export all --format json` manifest now includes an explicit `table_count` for agentic consumers.
 - `loaf state export ...` generation now reads SQLite through read-only connections.
 - `loaf project rename|move --json` validation and safeguard failures now return machine-readable JSON error payloads instead of plain text.
+- `loaf state init|status|doctor --json` validation failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf state migrate|repair --json` validation and safeguard failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf state backup --json` and `loaf state export all --format json` failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
