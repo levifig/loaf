@@ -88,6 +88,104 @@ loaf release
 
 ---
 
+## State Management
+
+### `loaf state`
+Manage native SQLite state
+
+Existing TypeScript-era projects can keep running supported commands in
+markdown-only compatibility mode until SQLite is initialized. Use
+`loaf state migrate markdown --apply` to import `.agents/` Markdown into SQLite
+without rewriting the source Markdown files.
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf state path` | Print the resolved SQLite database path |
+| `loaf state status` | Show SQLite readiness and markdown-only compatibility status |
+| `loaf state init` | Initialize an empty SQLite state database |
+| `loaf state doctor` | Diagnose SQLite state health |
+| `loaf state migrate markdown` | Import existing .agents Markdown artifacts into SQLite |
+| `loaf state migrate storage-home` | Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME |
+| `loaf state backup` | Create a SQLite database backup |
+| `loaf state export` | Export SQLite state for review or migration |
+
+**Options:**
+
+- `loaf state status`:
+  - `--json` - Output status as JSON
+
+- `loaf state init`:
+  - `--json` - Output initialized status as JSON
+
+- `loaf state doctor`:
+  - `--fix` - Initialize missing SQLite state when safe
+  - `--json` - Output diagnostics as JSON
+
+- `loaf state migrate markdown`:
+  - `--dry-run` - Preview import counts without creating a database
+  - `--apply` - Initialize SQLite and import Markdown artifacts
+  - `--resume` - Resume the Markdown import after an interrupted attempt
+  - `--json` - Output migration details as JSON
+
+- `loaf state migrate storage-home`:
+  - `--dry-run` - Preview the storage-home migration
+  - `--apply` - Copy the legacy database without deleting it
+  - `--json` - Output migration details as JSON
+
+- `loaf state backup`:
+  - `--json` - Output backup details as JSON
+
+**Usage:**
+```bash
+loaf state status
+loaf state migrate markdown --dry-run
+loaf state migrate markdown --apply
+loaf state status
+```
+
+---
+
+## Migrate Management
+
+### `loaf migrate`
+Run native migration workflows
+
+`loaf migrate markdown` is the upgrade path for existing `.agents/`
+projects with no SQLite database. Start with `--dry-run`, then use `--apply`
+when the artifact counts and skipped files look right.
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf migrate markdown` | Import existing .agents Markdown artifacts into SQLite |
+| `loaf migrate storage-home` | Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME |
+| `loaf migrate worktree-storage` | Move linked-worktree .agents state to the main worktree |
+
+**Options:**
+
+- `loaf migrate markdown`:
+  - `--dry-run` - Preview import counts without creating a database
+  - `--apply` - Initialize SQLite and import Markdown artifacts
+  - `--resume` - Resume the Markdown import after an interrupted attempt
+  - `--json` - Output migration details as JSON
+
+- `loaf migrate storage-home`:
+  - `--dry-run` - Preview the storage-home migration
+  - `--apply` - Copy the legacy database without deleting it
+  - `--json` - Output migration details as JSON
+
+**Usage:**
+```bash
+loaf migrate markdown --dry-run
+loaf migrate markdown --apply
+loaf migrate storage-home --dry-run
+```
+
+---
+
 ## Task Management
 
 ### `loaf task`

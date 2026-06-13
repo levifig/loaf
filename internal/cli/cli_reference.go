@@ -85,6 +85,54 @@ func cliReferenceCommands() []cliReferenceCommand {
 			},
 		},
 		{
+			Name:        "state",
+			Description: "Manage native SQLite state",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "path", Description: "Print the resolved SQLite database path"},
+				{Name: "status", Description: "Show SQLite readiness and markdown-only compatibility status", Options: []cliReferenceOption{
+					{Flags: "--json", Description: "Output status as JSON"},
+				}},
+				{Name: "init", Description: "Initialize an empty SQLite state database", Options: []cliReferenceOption{
+					{Flags: "--json", Description: "Output initialized status as JSON"},
+				}},
+				{Name: "doctor", Description: "Diagnose SQLite state health", Options: []cliReferenceOption{
+					{Flags: "--fix", Description: "Initialize missing SQLite state when safe"},
+					{Flags: "--json", Description: "Output diagnostics as JSON"},
+				}},
+				{Name: "migrate markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
+					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},
+					{Flags: "--resume", Description: "Resume the Markdown import after an interrupted attempt"},
+					{Flags: "--json", Description: "Output migration details as JSON"},
+				}},
+				{Name: "migrate storage-home", Description: "Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview the storage-home migration"},
+					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
+					{Flags: "--json", Description: "Output migration details as JSON"},
+				}},
+				{Name: "backup", Description: "Create a SQLite database backup", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup details as JSON"}}},
+				{Name: "export", Description: "Export SQLite state for review or migration"},
+			},
+		},
+		{
+			Name:        "migrate",
+			Description: "Run native migration workflows",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
+					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},
+					{Flags: "--resume", Description: "Resume the Markdown import after an interrupted attempt"},
+					{Flags: "--json", Description: "Output migration details as JSON"},
+				}},
+				{Name: "storage-home", Description: "Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview the storage-home migration"},
+					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
+					{Flags: "--json", Description: "Output migration details as JSON"},
+				}},
+				{Name: "worktree-storage", Description: "Move linked-worktree .agents state to the main worktree"},
+			},
+		},
+		{
 			Name:        "task",
 			Description: "Manage project tasks",
 			Subcommands: []cliReferenceSubcommand{
@@ -402,21 +450,40 @@ func cliReferenceCommandGuidance(commandName string) string {
 		return "Session list/show/log/report commands are SQLite-aware. Prefer these commands\nover manual session frontmatter edits when changing lifecycle or journal state."
 	case "report":
 		return "In SQLite-backed projects, report lifecycle state is stored in SQLite. Use\ngenerated report commands for review output; create authored Markdown reports\nonly when a durable prose artifact is explicitly needed."
+	case "state":
+		return "Existing TypeScript-era projects can keep running supported commands in\nmarkdown-only compatibility mode until SQLite is initialized. Use\n`loaf state migrate markdown --apply` to import `.agents/` Markdown into SQLite\nwithout rewriting the source Markdown files."
+	case "migrate":
+		return "`loaf migrate markdown` is the upgrade path for existing `.agents/`\nprojects with no SQLite database. Start with `--dry-run`, then use `--apply`\nwhen the artifact counts and skipped files look right."
 	default:
 		return ""
 	}
 }
 
 func cliReferenceCommandUsageExamples(commandName string) []string {
-	if commandName != "report" {
+	switch commandName {
+	case "state":
+		return []string{
+			"loaf state status",
+			"loaf state migrate markdown --dry-run",
+			"loaf state migrate markdown --apply",
+			"loaf state status",
+		}
+	case "migrate":
+		return []string{
+			"loaf migrate markdown --dry-run",
+			"loaf migrate markdown --apply",
+			"loaf migrate storage-home --dry-run",
+		}
+	case "report":
+		return []string{
+			"loaf report list",
+			"loaf report create release-readiness --type audit --source manual",
+			"loaf report finalize report-release-readiness",
+			"loaf report archive report-release-readiness",
+			"loaf report generate release-readiness",
+		}
+	default:
 		return nil
-	}
-	return []string{
-		"loaf report list",
-		"loaf report create release-readiness --type audit --source manual",
-		"loaf report finalize report-release-readiness",
-		"loaf report archive report-release-readiness",
-		"loaf report generate release-readiness",
 	}
 }
 
