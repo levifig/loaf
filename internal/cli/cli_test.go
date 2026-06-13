@@ -11366,6 +11366,35 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["project"].optionDescriptions["project list --json"]; !strings.Contains(got, "database path") || !strings.Contains(got, "friendly names") || !strings.Contains(got, "current paths") {
 		t.Fatalf("project list json description = %q, want global project identity fields", got)
 	}
+	for command, wants := range map[string][]string{
+		"brainstorm": {"list", "show", "promote", "archive"},
+		"idea":       {"list", "show", "capture", "promote", "resolve", "archive"},
+		"spark":      {"list", "show", "capture", "resolve", "promote"},
+		"tag":        {"list", "show", "add", "remove"},
+		"bundle":     {"list", "create", "update", "show", "add", "remove"},
+		"link":       {"create", "list", "remove"},
+	} {
+		for _, want := range wants {
+			if !stringSliceContains(commands[command].subcommands, want) {
+				t.Fatalf("%s subcommands = %#v, want %q", command, commands[command].subcommands, want)
+			}
+		}
+	}
+	for _, want := range []string{
+		"idea capture --title <title>",
+		"idea resolve --by <entity>",
+		"spark capture --scope <scope>",
+		"spark capture --text <text>",
+		"bundle create --tags <tags>",
+		"bundle update --title <title>",
+		"link create --from <entity>",
+		"link create --to <entity>",
+		"link remove --type <type>",
+	} {
+		if !stringSliceContains(commands[strings.Fields(want)[0]].options, want) {
+			t.Fatalf("agent help options missing %q", want)
+		}
+	}
 }
 
 func assertAgentHelpJSONMatchesLiveHelp(t *testing.T, commandArgs []string, agentOptions []string, jsonOption string) {

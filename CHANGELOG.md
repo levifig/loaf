@@ -24,6 +24,7 @@ is a Loaf workflow staging section for curated entries before release.
 - `loaf check --help` now shows registered hook usage instead of reporting `--help` as an unknown option.
 - `loaf migrate markdown|storage-home --help` now shows top-level migration usage instead of reporting `--help` as an unknown option, and `--agent-help` documents their migration options.
 - `loaf state doctor` now warns when Linear integration is enabled but active local task rows have no Linear backend mapping.
+- `--agent-help` now documents state-backed brainstorm, idea, spark, tag, bundle, and link subcommands instead of exposing them as bare top-level command names.
 - `loaf task create|list|update --json` validation failures now return machine-readable JSON error payloads instead of plain text.
 - `loaf task list|update` help, invalid-status errors, and agent help now name the valid task statuses.
 - `loaf task create|update` help, invalid-priority errors, and agent help now name the valid task priorities.

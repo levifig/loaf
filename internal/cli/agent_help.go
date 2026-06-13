@@ -197,11 +197,69 @@ func agentHelpCommands() []agentHelpCommand {
 		{Name: "version", Description: "Show version and content counts"},
 		{Name: "housekeeping", Description: "Scan agent artifacts and summarize housekeeping recommendations", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}, {Flags: "--dry-run", Description: "Show recommendations without applying actions"}, {Flags: "--sessions", Description: "Only review sessions"}, {Flags: "--specs", Description: "Only review specs"}, {Flags: "--drafts", Description: "Only review shaping drafts"}}},
 		{Name: "trace", Description: "Trace relationships for an entity", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
-		{Name: "brainstorm", Description: "Manage brainstorm artifacts"},
-		{Name: "idea", Description: "Manage ideas"},
-		{Name: "spark", Description: "Manage sparks"},
-		{Name: "tag", Description: "Manage tags"},
-		{Name: "bundle", Description: "Manage bundles"},
-		{Name: "link", Description: "Manage entity relationships"},
+		{
+			Name:        "brainstorm",
+			Description: "Manage brainstorm artifacts",
+			Subcommands: []agentHelpSubcommand{
+				{Name: "list", Description: "List brainstorms from SQLite state", Options: []agentHelpOption{{Flags: "--all", Description: "Include archived brainstorms"}, {Flags: "--status <status>", Description: "Filter by status"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "show", Description: "Show one brainstorm from SQLite state", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "promote", Description: "Record brainstorm-to-idea promotion", Options: []agentHelpOption{{Flags: "--to-idea <idea>", Description: "Target idea"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "archive", Description: "Archive one or more brainstorms", Options: []agentHelpOption{{Flags: "--reason <text>", Description: "Archive reason"}, {Flags: "--json", Description: "Output raw JSON"}}},
+			},
+		},
+		{
+			Name:        "idea",
+			Description: "Manage ideas",
+			Subcommands: []agentHelpSubcommand{
+				{Name: "list", Description: "List ideas from SQLite state", Options: []agentHelpOption{{Flags: "--all", Description: "Include resolved and archived ideas"}, {Flags: "--status <status>", Description: "Filter by status"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "show", Description: "Show one idea from SQLite state", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "capture", Description: "Capture an idea in SQLite state", Options: []agentHelpOption{{Flags: "--title <title>", Description: "Idea title"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "promote", Description: "Record idea-to-spec promotion", Options: []agentHelpOption{{Flags: "--to-spec <spec>", Description: "Target spec"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "resolve", Description: "Resolve an idea by linking it to another entity", Options: []agentHelpOption{{Flags: "--by <entity>", Description: "Resolving entity"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "archive", Description: "Archive one or more ideas", Options: []agentHelpOption{{Flags: "--reason <text>", Description: "Archive reason"}, {Flags: "--json", Description: "Output raw JSON"}}},
+			},
+		},
+		{
+			Name:        "spark",
+			Description: "Manage sparks",
+			Subcommands: []agentHelpSubcommand{
+				{Name: "list", Description: "List sparks from SQLite state", Options: []agentHelpOption{{Flags: "--all", Description: "Include resolved sparks"}, {Flags: "--status <status>", Description: "Filter by status"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "show", Description: "Show one spark from SQLite state", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "capture", Description: "Capture a spark in SQLite state", Options: []agentHelpOption{{Flags: "--scope <scope>", Description: "Spark scope"}, {Flags: "--text <text>", Description: "Spark text"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "resolve", Description: "Resolve a spark", Options: []agentHelpOption{{Flags: "--reason <text>", Description: "Resolution reason"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "promote", Description: "Record spark-to-idea promotion", Options: []agentHelpOption{{Flags: "--to-idea <idea>", Description: "Target idea"}, {Flags: "--json", Description: "Output raw JSON"}}},
+			},
+		},
+		{
+			Name:        "tag",
+			Description: "Manage tags",
+			Subcommands: []agentHelpSubcommand{
+				{Name: "list", Description: "List tags from SQLite state", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "show", Description: "Show entities with a tag", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "add", Description: "Add a tag to an entity", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "remove", Description: "Remove a tag from an entity", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+			},
+		},
+		{
+			Name:        "bundle",
+			Description: "Manage bundles",
+			Subcommands: []agentHelpSubcommand{
+				{Name: "list", Description: "List bundles from SQLite state", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "create", Description: "Create a bundle", Options: []agentHelpOption{{Flags: "--title <title>", Description: "Bundle title"}, {Flags: "--tags <tags>", Description: "Comma-separated tag query"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "update", Description: "Update a bundle", Options: []agentHelpOption{{Flags: "--title <title>", Description: "Bundle title"}, {Flags: "--tags <tags>", Description: "Comma-separated tag query"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "show", Description: "Show one bundle", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "add", Description: "Add an entity to a bundle", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "remove", Description: "Remove an entity from a bundle", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+			},
+		},
+		{
+			Name:        "link",
+			Description: "Manage entity relationships",
+			Subcommands: []agentHelpSubcommand{
+				{Name: "create", Description: "Create an explicit relationship", Options: []agentHelpOption{{Flags: "--from <entity>", Description: "Source entity"}, {Flags: "--to <entity>", Description: "Target entity"}, {Flags: "--type <type>", Description: "Relationship type"}, {Flags: "--reason <text>", Description: "Relationship reason"}, {Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "list", Description: "List relationships for one entity", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "remove", Description: "Remove an explicit relationship", Options: []agentHelpOption{{Flags: "--from <entity>", Description: "Source entity"}, {Flags: "--to <entity>", Description: "Target entity"}, {Flags: "--type <type>", Description: "Relationship type"}, {Flags: "--json", Description: "Output raw JSON"}}},
+			},
+		},
 	}
 }
