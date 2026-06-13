@@ -11258,6 +11258,28 @@ func TestRunnerReportListHelpNamesLifecycleStatuses(t *testing.T) {
 	}
 }
 
+func TestRunnerReportCreateHelpMatchesParser(t *testing.T) {
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: t.TempDir(),
+	}.Run([]string{"report", "create", "--help"})
+	if err != nil {
+		t.Fatalf("Run(report create --help) error = %v", err)
+	}
+	for _, want := range []string{
+		"Usage: loaf report create <slug> [--type <type>] [--source <source>] [--json]",
+		"--source     Report source",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+	if strings.Contains(stdout.String(), "--title") {
+		t.Fatalf("stdout = %q, want help to omit unsupported --title flag", stdout.String())
+	}
+}
+
 func TestRunnerAgentHelpIsNative(t *testing.T) {
 	var stdout bytes.Buffer
 	err := Runner{

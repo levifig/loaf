@@ -8522,7 +8522,7 @@ func writeReportGenerateHelp(out io.Writer) {
 }
 
 func writeReportCreateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report create <slug> --title <title> [--type <type>] [--json]", "Create a report.", "--title      Report title", "--type       Report type", "--json       Output JSON")
+	writeUsageHelp(out, "loaf report create <slug> [--type <type>] [--source <source>] [--json]", "Create a report.", "--type       Report type", "--source     Report source", "--json       Output JSON")
 }
 
 func writeReportFinalizeHelp(out io.Writer) {
