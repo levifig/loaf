@@ -41,7 +41,10 @@ func ArchiveSession(ctx context.Context, root project.Root, resolver PathResolve
 
 // ArchiveSession marks a session archived in an open store.
 func (s *Store) ArchiveSession(ctx context.Context, root project.Root, options SessionArchiveOptions) (SessionArchiveResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SessionArchiveResult{}, err
+	}
 	branch := strings.TrimSpace(options.Branch)
 	harnessSessionID := strings.TrimSpace(options.HarnessSessionID)
 	if branch == "" && harnessSessionID == "" {

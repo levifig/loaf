@@ -61,7 +61,10 @@ func (s *Store) LogJournal(ctx context.Context, root project.Root, options Journ
 		return JournalLogResult{}, err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return JournalLogResult{}, err
+	}
 	var session sessionRow
 	if options.LinkSession {
 		tx, err := s.db.BeginTx(ctx, nil)

@@ -115,7 +115,10 @@ func ListSparks(ctx context.Context, root project.Root, resolver PathResolver, o
 
 // ListSparks returns imported sparks from an open store.
 func (s *Store) ListSparks(ctx context.Context, root project.Root, options SparkListOptions) (SparkList, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SparkList{}, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 SELECT
   spark_alias.alias,
@@ -175,7 +178,10 @@ func ShowSpark(ctx context.Context, root project.Root, resolver PathResolver, re
 
 // ShowSpark returns one spark from an open store.
 func (s *Store) ShowSpark(ctx context.Context, root project.Root, ref string) (SparkShow, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SparkShow{}, err
+	}
 	entity, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return SparkShow{}, err
@@ -262,7 +268,10 @@ func CaptureSpark(ctx context.Context, root project.Root, resolver PathResolver,
 
 // CaptureSpark captures a spark in an open store.
 func (s *Store) CaptureSpark(ctx context.Context, root project.Root, options SparkCaptureOptions) (SparkCaptureResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SparkCaptureResult{}, err
+	}
 	text := strings.TrimSpace(options.Text)
 	if text == "" {
 		return SparkCaptureResult{}, fmt.Errorf("spark capture requires --text")
@@ -364,7 +373,10 @@ func (s *Store) ResolveSpark(ctx context.Context, root project.Root, sparkRef st
 
 // ResolveSparkWithOptions marks a spark resolved in an open store.
 func (s *Store) ResolveSparkWithOptions(ctx context.Context, root project.Root, options SparkResolveOptions) (SparkResolveResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SparkResolveResult{}, err
+	}
 	spark, err := s.resolveTraceEntity(ctx, projectID, options.Spark)
 	if err != nil {
 		return SparkResolveResult{}, err
@@ -453,7 +465,10 @@ func PromoteSpark(ctx context.Context, root project.Root, resolver PathResolver,
 
 // PromoteSpark records that a spark promoted to an idea in an open store.
 func (s *Store) PromoteSpark(ctx context.Context, root project.Root, options SparkPromoteOptions) (SparkPromoteResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SparkPromoteResult{}, err
+	}
 	spark, err := s.resolveTraceEntity(ctx, projectID, options.Spark)
 	if err != nil {
 		return SparkPromoteResult{}, err

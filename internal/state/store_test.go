@@ -156,6 +156,30 @@ VALUES ('duplicate-current-path', ?, ?, 1, ?, ?, ?, ?)
 	}
 }
 
+func TestStateCommandsFailWhenProjectIdentityMappingIsMissing(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+
+	if _, err := store.db.ExecContext(context.Background(), `DROP TABLE project_paths`); err != nil {
+		t.Fatalf("drop project_paths error = %v", err)
+	}
+
+	if _, err := store.ListTasks(context.Background(), root, TaskListOptions{}); err == nil {
+		t.Fatal("ListTasks() error = nil, want project identity mapping error")
+	} else if !strings.Contains(err.Error(), "read project path mapping") {
+		t.Fatalf("ListTasks() error = %q, want project identity mapping error", err)
+	}
+}
+
 func TestMoveProjectUnknownFromPathDoesNotCreateProject(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
@@ -235,6 +259,39 @@ VALUES ('idea-legacy', ?, 'Legacy Idea', 'open', ?, ?)
 	}
 	if ideaProjectID != identity.ID {
 		t.Fatalf("idea project_id = %q, want %q", ideaProjectID, identity.ID)
+	}
+}
+
+func TestLookupProjectIdentityDoesNotFallBackToLegacyPathHash(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	databasePath, err := (PathResolver{StateHome: stateHome}).DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0o700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	if err := store.ApplyMigrations(context.Background()); err != nil {
+		t.Fatalf("ApplyMigrations() error = %v", err)
+	}
+
+	legacyID := ProjectID(root)
+	now := time.Now().UTC().Format(time.RFC3339)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO projects (id, identity_hash, created_at, updated_at)
+VALUES (?, ?, ?, ?)
+`, legacyID, legacyID, now, now); err != nil {
+		t.Fatalf("insert legacy project error = %v", err)
+	}
+
+	if _, err := store.LookupProjectIdentityForRoot(context.Background(), root); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("LookupProjectIdentityForRoot() error = %v, want sql.ErrNoRows", err)
 	}
 }
 

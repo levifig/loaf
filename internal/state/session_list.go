@@ -49,7 +49,10 @@ func ListSessions(ctx context.Context, root project.Root, resolver PathResolver,
 
 // ListSessions returns imported sessions from an open store.
 func (s *Store) ListSessions(ctx context.Context, root project.Root, options SessionListOptions) (SessionList, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SessionList{}, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 SELECT
   session_alias.alias,

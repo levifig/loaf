@@ -73,7 +73,10 @@ func ApplyMarkdownMigration(ctx context.Context, root project.Root, resolver Pat
 
 // ImportMarkdown imports .agents artifacts into an initialized state database.
 func (s *Store) ImportMarkdown(ctx context.Context, root project.Root) error {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return err
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin markdown import transaction: %w", err)

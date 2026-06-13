@@ -49,7 +49,10 @@ func ListReports(ctx context.Context, root project.Root, resolver PathResolver, 
 
 // ListReports returns imported reports from an open store.
 func (s *Store) ListReports(ctx context.Context, root project.Root, options ReportListOptions) (ReportList, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return ReportList{}, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 SELECT
   report_alias.alias,

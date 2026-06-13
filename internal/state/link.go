@@ -67,7 +67,10 @@ func RemoveLink(ctx context.Context, root project.Root, resolver PathResolver, o
 
 // CreateLink writes an explicit relationship in an open store.
 func (s *Store) CreateLink(ctx context.Context, root project.Root, options LinkMutationOptions) (LinkMutationResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return LinkMutationResult{}, err
+	}
 	from, to, relationshipType, reason, err := s.resolveLinkOptions(ctx, projectID, options)
 	if err != nil {
 		return LinkMutationResult{}, err
@@ -96,7 +99,10 @@ ON CONFLICT(id) DO UPDATE SET
 
 // ListLinks returns immediate relationships for one entity from an open store.
 func (s *Store) ListLinks(ctx context.Context, root project.Root, ref string) (LinkListResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return LinkListResult{}, err
+	}
 	entity, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return LinkListResult{}, err
@@ -114,7 +120,10 @@ func (s *Store) ListLinks(ctx context.Context, root project.Root, ref string) (L
 
 // RemoveLink removes one explicit relationship from an open store.
 func (s *Store) RemoveLink(ctx context.Context, root project.Root, options LinkMutationOptions) (LinkMutationResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return LinkMutationResult{}, err
+	}
 	from, to, relationshipType, _, err := s.resolveLinkOptions(ctx, projectID, options)
 	if err != nil {
 		return LinkMutationResult{}, err

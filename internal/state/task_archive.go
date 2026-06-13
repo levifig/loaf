@@ -45,7 +45,10 @@ func ArchiveTasks(ctx context.Context, root project.Root, resolver PathResolver,
 
 // ArchiveTasks archives done tasks in an open store.
 func (s *Store) ArchiveTasks(ctx context.Context, root project.Root, options TaskArchiveOptions) (TaskArchiveResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TaskArchiveResult{}, err
+	}
 	if options.Spec != "" && len(options.Refs) > 0 {
 		return TaskArchiveResult{}, fmt.Errorf("task archive accepts task ids or --spec, not both")
 	}

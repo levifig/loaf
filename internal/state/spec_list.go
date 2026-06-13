@@ -52,7 +52,10 @@ func ListSpecs(ctx context.Context, root project.Root, resolver PathResolver) (S
 
 // ListSpecs returns imported specs from an open store.
 func (s *Store) ListSpecs(ctx context.Context, root project.Root) (SpecList, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SpecList{}, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 SELECT
   spec_alias.alias,

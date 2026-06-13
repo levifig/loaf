@@ -60,7 +60,10 @@ func (s *Store) UpdateTaskStatus(ctx context.Context, root project.Root, ref str
 
 // UpdateTask updates a task in an open store.
 func (s *Store) UpdateTask(ctx context.Context, root project.Root, options TaskUpdateOptions) (TaskStatusUpdateResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TaskStatusUpdateResult{}, err
+	}
 	if !options.SetStatus && !options.SetPriority && !options.SetSpec && !options.SetDependsOn && !options.SetSession {
 		return TaskStatusUpdateResult{}, fmt.Errorf("task update requires at least one update")
 	}

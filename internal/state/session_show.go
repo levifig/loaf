@@ -52,7 +52,10 @@ func ShowSession(ctx context.Context, root project.Root, resolver PathResolver, 
 
 // ShowSession returns one session from an open store.
 func (s *Store) ShowSession(ctx context.Context, root project.Root, ref string) (SessionShow, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SessionShow{}, err
+	}
 	entity, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return SessionShow{}, err

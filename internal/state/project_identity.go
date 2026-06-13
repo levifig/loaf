@@ -44,15 +44,7 @@ func (s *Store) LookupProjectIdentityForRoot(ctx context.Context, root project.R
 		return ProjectIdentity{}, err
 	}
 	if projectID == "" {
-		legacyID := ProjectID(root)
-		exists, err := s.projectExists(ctx, legacyID)
-		if err != nil {
-			return ProjectIdentity{}, err
-		}
-		if !exists {
-			return ProjectIdentity{}, sql.ErrNoRows
-		}
-		projectID = legacyID
+		return ProjectIdentity{}, sql.ErrNoRows
 	}
 	return s.projectIdentity(ctx, projectID)
 }
@@ -238,14 +230,6 @@ func (s *Store) projectID(ctx context.Context, root project.Root) (string, error
 		return "", err
 	}
 	return identity.ID, nil
-}
-
-func (s *Store) projectIDOrLegacy(ctx context.Context, root project.Root) string {
-	projectID, err := s.projectID(ctx, root)
-	if err != nil {
-		return ProjectID(root)
-	}
-	return projectID
 }
 
 func (s *Store) projectIdentity(ctx context.Context, projectID string) (ProjectIdentity, error) {

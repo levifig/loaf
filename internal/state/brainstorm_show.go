@@ -41,7 +41,10 @@ func ShowBrainstorm(ctx context.Context, root project.Root, resolver PathResolve
 
 // ShowBrainstorm returns one brainstorm from an open store.
 func (s *Store) ShowBrainstorm(ctx context.Context, root project.Root, ref string) (BrainstormShow, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return BrainstormShow{}, err
+	}
 	entity, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return BrainstormShow{}, err

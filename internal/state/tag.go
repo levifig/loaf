@@ -76,7 +76,10 @@ func RemoveTag(ctx context.Context, root project.Root, resolver PathResolver, re
 
 // ListTags returns tags from an open store.
 func (s *Store) ListTags(ctx context.Context, root project.Root) (TagList, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TagList{}, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 SELECT tags.name, COUNT(entity_tags.id)
 FROM tags
@@ -109,7 +112,10 @@ ORDER BY tags.name
 
 // ShowTag returns members for one tag from an open store.
 func (s *Store) ShowTag(ctx context.Context, root project.Root, name string) (TagShowResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TagShowResult{}, err
+	}
 	tagName, err := normalizeTagName(name)
 	if err != nil {
 		return TagShowResult{}, err
@@ -167,7 +173,10 @@ ORDER BY entity_tags.entity_kind, entity_tags.entity_id
 
 // AddTag adds a tag membership in an open store.
 func (s *Store) AddTag(ctx context.Context, root project.Root, ref string, name string) (TagMutationResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TagMutationResult{}, err
+	}
 	tagName, err := normalizeTagName(name)
 	if err != nil {
 		return TagMutationResult{}, err
@@ -209,7 +218,10 @@ func (s *Store) AddTag(ctx context.Context, root project.Root, ref string, name 
 
 // RemoveTag removes a tag membership in an open store.
 func (s *Store) RemoveTag(ctx context.Context, root project.Root, ref string, name string) (TagMutationResult, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TagMutationResult{}, err
+	}
 	tagName, err := normalizeTagName(name)
 	if err != nil {
 		return TagMutationResult{}, err

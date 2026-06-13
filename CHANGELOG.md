@@ -15,6 +15,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Fixed
 
+- SQLite-backed state commands now fail on project identity mapping errors instead of silently falling back to path-derived legacy project IDs.
 - Storage-home migration now preserves pending SQLite writes when copying legacy state into XDG data-home storage.
 - Markdown migration relationship imports now ignore empty dependency arrays, prune stale imported links by structured origin, and record imported/manual relationship provenance.
 - Storage-home migration now upgrades copied legacy databases before readiness checks and rekeys legacy path-hash project rows into generated stable identities in the global database.

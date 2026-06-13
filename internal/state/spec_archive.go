@@ -51,7 +51,10 @@ func (s *Store) ArchiveSpecs(ctx context.Context, root project.Root, refs []stri
 	if len(refs) == 0 {
 		return SpecArchiveResult{}, fmt.Errorf("spec archive requires at least one spec")
 	}
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return SpecArchiveResult{}, err
+	}
 	result := SpecArchiveResult{
 		Archived: []SpecArchiveItem{},
 		Skipped:  []SpecArchiveItem{},

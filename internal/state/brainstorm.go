@@ -38,7 +38,10 @@ func ListBrainstorms(ctx context.Context, root project.Root, resolver PathResolv
 
 // ListBrainstorms returns imported brainstorms from an open store.
 func (s *Store) ListBrainstorms(ctx context.Context, root project.Root, options BrainstormListOptions) (BrainstormList, error) {
-	projectID := s.projectIDOrLegacy(ctx, root)
+	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return BrainstormList{}, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 SELECT
   brainstorm_alias.alias,
