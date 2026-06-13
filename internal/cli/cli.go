@@ -1471,16 +1471,26 @@ func writeStateRepairRelationshipOriginHelp(out io.Writer) {
 }
 
 func (r Runner) runStateRepairLegacyProjectDatabase(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	options, err := parseLegacyProjectDatabaseRepairArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state repair legacy-project-database", err)
+		}
 		return err
 	}
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state repair legacy-project-database", err)
+		}
 		return err
 	}
 	result, err := state.ArchiveLegacyProjectDatabase(projectRoot, state.PathResolver{StateHome: r.StateHome}, options.apply)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state repair legacy-project-database", err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -1507,12 +1517,19 @@ func (r Runner) runStateRepairLegacyProjectDatabase(args []string, out io.Writer
 }
 
 func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
 	options, err := parseRelationshipOriginRepairArgs(args)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state repair relationship-origin", err)
+		}
 		return err
 	}
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state repair relationship-origin", err)
+		}
 		return err
 	}
 	result, err := state.RepairMissingRelationshipOrigins(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.RelationshipOriginRepairOptions{
@@ -1520,6 +1537,9 @@ func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, r
 		Apply:  options.apply,
 	})
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state repair relationship-origin", err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -1677,12 +1697,20 @@ func (r Runner) runStateMigrateStorageHome(args []string, out io.Writer, runtime
 }
 
 func (r Runner) runStorageHomeMigration(args []string, out io.Writer, runtime state.Runtime, displayCommand string) error {
-	options, err := parseStorageHomeMigrationArgs(args)
+	command := strings.TrimPrefix(displayCommand, "loaf ")
+	jsonRequested := hasFlag(args, "--json")
+	options, err := parseStorageHomeMigrationArgs(args, command)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, command, err)
+		}
 		return err
 	}
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, command, err)
+		}
 		return err
 	}
 	resolver := state.PathResolver{StateHome: r.StateHome}
@@ -1693,6 +1721,9 @@ func (r Runner) runStorageHomeMigration(args []string, out io.Writer, runtime st
 		plan, err = state.PreviewStorageHomeMigration(projectRoot, resolver)
 	}
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, command, err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -1712,17 +1743,28 @@ func (r Runner) runStateMigrateMarkdown(args []string, out io.Writer, runtime st
 }
 
 func (r Runner) runMarkdownMigration(args []string, out io.Writer, runtime state.Runtime, displayCommand string) error {
-	options, err := parseMarkdownMigrationArgs(args)
+	command := strings.TrimPrefix(displayCommand, "loaf ")
+	jsonRequested := hasFlag(args, "--json")
+	options, err := parseMarkdownMigrationArgs(args, command)
 	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, command, err)
+		}
 		return err
 	}
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, command, err)
+		}
 		return err
 	}
 	if options.apply || options.resume {
 		result, err := state.ApplyMarkdownMigration(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
 		if err != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, command, err)
+			}
 			return err
 		}
 		if options.jsonOutput {
@@ -1740,6 +1782,9 @@ func (r Runner) runMarkdownMigration(args []string, out io.Writer, runtime state
 
 	plan, err := state.PreviewMarkdownMigration(projectRoot)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, command, err)
+		}
 		return err
 	}
 	if options.jsonOutput {
@@ -10496,7 +10541,7 @@ type legacyProjectDatabaseRepairOptions struct {
 	dryRun     bool
 }
 
-func parseMarkdownMigrationArgs(args []string) (markdownMigrationOptions, error) {
+func parseMarkdownMigrationArgs(args []string, command string) (markdownMigrationOptions, error) {
 	var options markdownMigrationOptions
 	for _, arg := range args {
 		switch arg {
@@ -10513,18 +10558,18 @@ func parseMarkdownMigrationArgs(args []string) (markdownMigrationOptions, error)
 		}
 	}
 	if options.apply && options.dryRun {
-		return markdownMigrationOptions{}, fmt.Errorf("state migrate markdown cannot combine --apply and --dry-run")
+		return markdownMigrationOptions{}, fmt.Errorf("%s cannot combine --apply and --dry-run", command)
 	}
 	if options.resume && options.dryRun {
-		return markdownMigrationOptions{}, fmt.Errorf("state migrate markdown cannot combine --resume and --dry-run")
+		return markdownMigrationOptions{}, fmt.Errorf("%s cannot combine --resume and --dry-run", command)
 	}
 	if options.resume && options.apply {
-		return markdownMigrationOptions{}, fmt.Errorf("state migrate markdown cannot combine --resume and --apply")
+		return markdownMigrationOptions{}, fmt.Errorf("%s cannot combine --resume and --apply", command)
 	}
 	return options, nil
 }
 
-func parseStorageHomeMigrationArgs(args []string) (storageHomeMigrationOptions, error) {
+func parseStorageHomeMigrationArgs(args []string, command string) (storageHomeMigrationOptions, error) {
 	var options storageHomeMigrationOptions
 	for _, arg := range args {
 		switch arg {
@@ -10539,7 +10584,7 @@ func parseStorageHomeMigrationArgs(args []string) (storageHomeMigrationOptions, 
 		}
 	}
 	if options.apply && options.dryRun {
-		return storageHomeMigrationOptions{}, fmt.Errorf("state migrate storage-home cannot combine --apply and --dry-run")
+		return storageHomeMigrationOptions{}, fmt.Errorf("%s cannot combine --apply and --dry-run", command)
 	}
 	return options, nil
 }

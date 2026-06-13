@@ -5014,6 +5014,71 @@ func TestRunnerStateMigrateMarkdownResumeRejectsFlagCombinations(t *testing.T) {
 	}
 }
 
+func TestRunnerStateJSONValidationErrorsAreMachineReadable(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		command string
+		want    string
+	}{
+		{
+			name:    "state markdown conflicting flags",
+			args:    []string{"state", "migrate", "markdown", "--apply", "--dry-run", "--json"},
+			command: "state migrate markdown",
+			want:    "cannot combine --apply and --dry-run",
+		},
+		{
+			name:    "top-level markdown conflicting flags",
+			args:    []string{"migrate", "markdown", "--resume", "--apply", "--json"},
+			command: "migrate markdown",
+			want:    "migrate markdown cannot combine --resume and --apply",
+		},
+		{
+			name:    "storage-home conflicting flags",
+			args:    []string{"state", "migrate", "storage-home", "--apply", "--dry-run", "--json"},
+			command: "state migrate storage-home",
+			want:    "cannot combine --apply and --dry-run",
+		},
+		{
+			name:    "legacy repair conflicting flags",
+			args:    []string{"state", "repair", "legacy-project-database", "--apply", "--dry-run", "--json"},
+			command: "state repair legacy-project-database",
+			want:    "cannot combine --apply and --dry-run",
+		},
+		{
+			name:    "relationship repair missing origin",
+			args:    []string{"state", "repair", "relationship-origin", "--dry-run", "--json"},
+			command: "state repair relationship-origin",
+			want:    "requires --origin",
+		},
+		{
+			name:    "relationship repair invalid origin",
+			args:    []string{"state", "repair", "relationship-origin", "--origin", "external", "--json"},
+			command: "state repair relationship-origin",
+			want:    "must be imported or manual",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := (Runner{
+				Stdout:     &stdout,
+				WorkingDir: realpath(t, t.TempDir()),
+				StateHome:  t.TempDir(),
+			}).Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON validation error", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != tc.command || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want command %q and error containing %q", output, tc.command, tc.want)
+			}
+		})
+	}
+}
+
 func TestRunnerTraceJSONUsesSQLiteState(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
