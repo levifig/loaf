@@ -267,6 +267,49 @@ func isHelpArg(args []string) bool {
 	return len(args) == 1 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help")
 }
 
+func writeNestedHelp(out io.Writer, args []string, writers map[string]func(io.Writer)) bool {
+	if len(args) != 2 || !isHelpArg(args[1:]) {
+		return false
+	}
+	writeHelp, ok := writers[args[0]]
+	if !ok {
+		return false
+	}
+	writeHelp(out)
+	return true
+}
+
+func writeUsageHelp(out io.Writer, usage string, summary string, options ...string) {
+	fmt.Fprintf(out, "Usage: %s\n", usage)
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, summary)
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	for _, option := range options {
+		fmt.Fprintf(out, "  %s\n", option)
+	}
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+type subcommandHelpItem struct {
+	Name    string
+	Summary string
+}
+
+func writeCommandGroupHelp(out io.Writer, usage string, summary string, items []subcommandHelpItem) {
+	fmt.Fprintf(out, "Usage: %s\n", usage)
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, summary)
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Subcommands:")
+	for _, item := range items {
+		fmt.Fprintf(out, "  %-10s%s\n", item.Name, item.Summary)
+	}
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
 func writeHousekeepingSummary(out io.Writer, result state.HousekeepingSummary, options housekeepingOptions) {
 	if options.dryRun {
 		fmt.Fprint(out, "\n  loaf housekeeping (SQLite state, dry run)\n\n")
@@ -477,8 +520,17 @@ func housekeepingSignalsFromSections(sections map[string]state.HousekeepingSecti
 }
 
 func (r Runner) runBrainstorm(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
-		return missingSubcommandError("brainstorm")
+	if len(args) == 0 || isHelpArg(args) {
+		writeBrainstormHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"list":    writeBrainstormListHelp,
+		"show":    writeBrainstormShowHelp,
+		"promote": writeBrainstormPromoteHelp,
+		"archive": writeBrainstormArchiveHelp,
+	}) {
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -492,6 +544,31 @@ func (r Runner) runBrainstorm(args []string, out io.Writer, runtime state.Runtim
 	default:
 		return unknownSubcommandError("brainstorm", args[0])
 	}
+}
+
+func writeBrainstormHelp(out io.Writer) {
+	writeCommandGroupHelp(out, "loaf brainstorm <subcommand> [options]", "Manage brainstorms in native SQLite state.", []subcommandHelpItem{
+		{Name: "list", Summary: "List brainstorms"},
+		{Name: "show", Summary: "Show one brainstorm"},
+		{Name: "promote", Summary: "Promote a brainstorm to an idea"},
+		{Name: "archive", Summary: "Archive brainstorms"},
+	})
+}
+
+func writeBrainstormListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf brainstorm list [--all|--status <status>] [--json]", "List brainstorms from SQLite state.", "--all        Include archived brainstorms", "--status     Filter by status", "--json       Output JSON")
+}
+
+func writeBrainstormShowHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf brainstorm show <brainstorm> [--json]", "Show one brainstorm from SQLite state.", "--json       Output JSON")
+}
+
+func writeBrainstormPromoteHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf brainstorm promote <brainstorm> --to-idea <idea> [--json]", "Record brainstorm-to-idea promotion.", "--to-idea    Target idea", "--json       Output JSON")
+}
+
+func writeBrainstormArchiveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf brainstorm archive <brainstorm...> [--reason <text>] [--json]", "Archive one or more brainstorms.", "--reason     Archive reason", "--json       Output JSON")
 }
 
 func (r Runner) runBrainstormList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -865,6 +942,26 @@ func writeStateExportHelp(out io.Writer) {
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
+func writeStateExportAllHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state export all --format json", "Export a complete project-scoped SQLite snapshot.", "--format     Output format")
+}
+
+func writeStateExportReleaseReadinessHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state export release-readiness --format markdown", "Export a release-readiness report from SQLite state.", "--format     Output format")
+}
+
+func writeStateExportSpecHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state export spec <spec> --format markdown", "Export one spec from SQLite state.", "--format     Output format")
+}
+
+func writeStateExportSessionHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state export session <session> --format markdown", "Export one session from SQLite state.", "--format     Output format")
+}
+
+func writeStateExportTriageHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state export triage --format markdown", "Export a triage summary from SQLite state.", "--format     Output format")
+}
+
 func (r Runner) runProject(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 || isHelpArg(args) {
 		writeProjectHelp(out)
@@ -1154,6 +1251,15 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 }
 
 func (r Runner) runStateExport(args []string, out io.Writer, runtime state.Runtime) error {
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"all":               writeStateExportAllHelp,
+		"release-readiness": writeStateExportReleaseReadinessHelp,
+		"spec":              writeStateExportSpecHelp,
+		"session":           writeStateExportSessionHelp,
+		"triage":            writeStateExportTriageHelp,
+	}) {
+		return nil
+	}
 	options, err := parseStateExportArgs(args)
 	if err != nil {
 		return err
@@ -1206,6 +1312,12 @@ func (r Runner) runStateMigrate(args []string, out io.Writer, runtime state.Runt
 	if len(args) == 0 {
 		return fmt.Errorf("state migrate requires a source")
 	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"markdown":     writeStateMigrateMarkdownHelp,
+		"storage-home": writeStateMigrateStorageHomeHelp,
+	}) {
+		return nil
+	}
 	switch args[0] {
 	case "markdown":
 		return r.runStateMigrateMarkdown(args[1:], out, runtime)
@@ -1214,6 +1326,14 @@ func (r Runner) runStateMigrate(args []string, out io.Writer, runtime state.Runt
 	default:
 		return fmt.Errorf("state migrate source %q is not implemented yet", args[0])
 	}
+}
+
+func writeStateMigrateMarkdownHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state migrate markdown [--dry-run|--apply|--resume] [--json]", "Import .agents Markdown artifacts into SQLite without mutating Markdown.", "--dry-run     Preview import work", "--apply       Apply the import", "--resume      Resume an interrupted import", "--json        Output JSON")
+}
+
+func writeStateMigrateStorageHomeHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state migrate storage-home [--dry-run|--apply] [--json]", "Copy legacy per-project state into the global XDG data-home SQLite database.", "--dry-run     Preview migration work", "--apply       Apply the migration", "--json        Output JSON")
 }
 
 func (r Runner) runMigrate(args []string, out io.Writer, runtime state.Runtime) error {
@@ -1406,12 +1526,20 @@ func (r Runner) runTrace(args []string, out io.Writer, runtime state.Runtime) er
 }
 
 func (r Runner) runTask(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
+	if len(args) == 0 || isHelpArg(args) {
 		writeTaskHelp(out)
 		return nil
 	}
-	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help") {
-		writeTaskHelp(out)
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"create":  writeTaskCreateHelp,
+		"list":    writeTaskListHelp,
+		"show":    writeTaskShowHelp,
+		"status":  writeTaskStatusHelp,
+		"update":  writeTaskUpdateHelp,
+		"archive": writeTaskArchiveHelp,
+		"refresh": writeTaskRefreshHelp,
+		"sync":    writeTaskSyncHelp,
+	}) {
 		return nil
 	}
 	switch args[0] {
@@ -1453,6 +1581,38 @@ func writeTaskHelp(out io.Writer) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  -h, --help  Show help")
+}
+
+func writeTaskCreateHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf task create --title <title> [options]", "Create a task.", "--title      Task title", "--spec       Associated spec", "--priority   P0, P1, P2, or P3", "--depends-on Comma-separated task refs", "--json       Output JSON")
+}
+
+func writeTaskListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf task list [--active|--status <status>] [--json]", "List tasks.", "--active     Hide completed tasks", "--status     Filter by status", "--json       Output JSON")
+}
+
+func writeTaskShowHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf task show <task> [--json]", "Show one task.", "--json       Output JSON")
+}
+
+func writeTaskStatusHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf task status", "Summarize task and spec statuses.")
+}
+
+func writeTaskUpdateHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf task update <task> [options]", "Update task metadata.", "--status     New task status", "--priority   P0, P1, P2, or P3", "--spec       Associated spec", "--depends-on Comma-separated task refs or none", "--session    Session ref or none", "--json       Output JSON")
+}
+
+func writeTaskArchiveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf task archive (<task...>|--spec <spec>) [--json]", "Archive done tasks.", "--spec       Archive done tasks for one spec", "--json       Output JSON")
+}
+
+func writeTaskRefreshHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf task refresh [--json]", "Summarize task refresh compatibility.", "--json       Output JSON")
+}
+
+func writeTaskSyncHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf task sync [--import|--push] [--json]", "Summarize task sync compatibility.", "--import     Import orphan Markdown tasks", "--push       Push index metadata to Markdown", "--json       Output JSON")
 }
 
 func (r Runner) runTaskRefresh(args []string, out io.Writer, runtime state.Runtime) error {
@@ -3256,8 +3416,19 @@ func formatStatusCounts(counts map[string]int, order []string) string {
 }
 
 func (r Runner) runIdea(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
-		return missingSubcommandError("idea")
+	if len(args) == 0 || isHelpArg(args) {
+		writeIdeaHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"list":    writeIdeaListHelp,
+		"show":    writeIdeaShowHelp,
+		"capture": writeIdeaCaptureHelp,
+		"promote": writeIdeaPromoteHelp,
+		"resolve": writeIdeaResolveHelp,
+		"archive": writeIdeaArchiveHelp,
+	}) {
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -3275,6 +3446,41 @@ func (r Runner) runIdea(args []string, out io.Writer, runtime state.Runtime) err
 	default:
 		return unknownSubcommandError("idea", args[0])
 	}
+}
+
+func writeIdeaHelp(out io.Writer) {
+	writeCommandGroupHelp(out, "loaf idea <subcommand> [options]", "Manage ideas in native SQLite state.", []subcommandHelpItem{
+		{Name: "list", Summary: "List ideas"},
+		{Name: "show", Summary: "Show one idea"},
+		{Name: "capture", Summary: "Capture an idea"},
+		{Name: "promote", Summary: "Promote an idea to a spec"},
+		{Name: "resolve", Summary: "Resolve an idea by another entity"},
+		{Name: "archive", Summary: "Archive ideas"},
+	})
+}
+
+func writeIdeaListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf idea list [--all|--status <status>] [--json]", "List ideas from SQLite state.", "--all        Include resolved and archived ideas", "--status     Filter by status", "--json       Output JSON")
+}
+
+func writeIdeaShowHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf idea show <idea> [--json]", "Show one idea from SQLite state.", "--json       Output JSON")
+}
+
+func writeIdeaCaptureHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf idea capture --title <title> [--json]", "Capture an idea in SQLite state.", "--title      Idea title", "--json       Output JSON")
+}
+
+func writeIdeaPromoteHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf idea promote <idea> --to-spec <spec> [--json]", "Record idea-to-spec promotion.", "--to-spec    Target spec", "--json       Output JSON")
+}
+
+func writeIdeaResolveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf idea resolve <idea> --by <entity> [--json]", "Resolve an idea by linking it to another entity.", "--by         Resolving entity", "--json       Output JSON")
+}
+
+func writeIdeaArchiveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf idea archive <idea...> [--reason <text>] [--json]", "Archive one or more ideas.", "--reason     Archive reason", "--json       Output JSON")
 }
 
 func (r Runner) runIdeaList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -3554,8 +3760,18 @@ func writeIdeaArchive(out io.Writer, result state.IdeaArchiveResult) {
 }
 
 func (r Runner) runSpark(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
-		return missingSubcommandError("spark")
+	if len(args) == 0 || isHelpArg(args) {
+		writeSparkHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"list":    writeSparkListHelp,
+		"show":    writeSparkShowHelp,
+		"capture": writeSparkCaptureHelp,
+		"resolve": writeSparkResolveHelp,
+		"promote": writeSparkPromoteHelp,
+	}) {
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -3571,6 +3787,36 @@ func (r Runner) runSpark(args []string, out io.Writer, runtime state.Runtime) er
 	default:
 		return unknownSubcommandError("spark", args[0])
 	}
+}
+
+func writeSparkHelp(out io.Writer) {
+	writeCommandGroupHelp(out, "loaf spark <subcommand> [options]", "Manage sparks in native SQLite state.", []subcommandHelpItem{
+		{Name: "list", Summary: "List sparks"},
+		{Name: "show", Summary: "Show one spark"},
+		{Name: "capture", Summary: "Capture a spark"},
+		{Name: "resolve", Summary: "Resolve a spark"},
+		{Name: "promote", Summary: "Promote a spark to an idea"},
+	})
+}
+
+func writeSparkListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spark list [--all|--status <status>] [--json]", "List sparks from SQLite state.", "--all        Include resolved sparks", "--status     Filter by status", "--json       Output JSON")
+}
+
+func writeSparkShowHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spark show <spark> [--json]", "Show one spark from SQLite state.", "--json       Output JSON")
+}
+
+func writeSparkCaptureHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spark capture --scope <scope> --text <text> [--json]", "Capture a spark in SQLite state.", "--scope      Spark scope", "--text       Spark text", "--json       Output JSON")
+}
+
+func writeSparkResolveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spark resolve <spark> [--reason <text>] [--json]", "Resolve a spark.", "--reason     Resolution reason", "--json       Output JSON")
+}
+
+func writeSparkPromoteHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spark promote <spark> --to-idea <idea> [--json]", "Record spark-to-idea promotion.", "--to-idea    Target idea", "--json       Output JSON")
 }
 
 func (r Runner) runSparkList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -3790,8 +4036,17 @@ func writeSparkShow(out io.Writer, result state.SparkShow) {
 }
 
 func (r Runner) runTag(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
-		return missingSubcommandError("tag")
+	if len(args) == 0 || isHelpArg(args) {
+		writeTagHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"list":   writeTagListHelp,
+		"show":   writeTagShowHelp,
+		"add":    writeTagAddHelp,
+		"remove": writeTagRemoveHelp,
+	}) {
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -3805,6 +4060,31 @@ func (r Runner) runTag(args []string, out io.Writer, runtime state.Runtime) erro
 	default:
 		return unknownSubcommandError("tag", args[0])
 	}
+}
+
+func writeTagHelp(out io.Writer) {
+	writeCommandGroupHelp(out, "loaf tag <subcommand> [options]", "Manage tags in native SQLite state.", []subcommandHelpItem{
+		{Name: "list", Summary: "List tags"},
+		{Name: "show", Summary: "Show tagged entities"},
+		{Name: "add", Summary: "Add a tag to an entity"},
+		{Name: "remove", Summary: "Remove a tag from an entity"},
+	})
+}
+
+func writeTagListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf tag list [--json]", "List tags from SQLite state.", "--json       Output JSON")
+}
+
+func writeTagShowHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf tag show <tag> [--json]", "Show entities with a tag.", "--json       Output JSON")
+}
+
+func writeTagAddHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf tag add <entity> <tag> [--json]", "Add a tag to an entity.", "--json       Output JSON")
+}
+
+func writeTagRemoveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf tag remove <entity> <tag> [--json]", "Remove a tag from an entity.", "--json       Output JSON")
 }
 
 func (r Runner) runTagList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -3953,8 +4233,19 @@ func writeTagShow(out io.Writer, result state.TagShowResult) {
 }
 
 func (r Runner) runBundle(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
-		return missingSubcommandError("bundle")
+	if len(args) == 0 || isHelpArg(args) {
+		writeBundleHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"list":   writeBundleListHelp,
+		"create": writeBundleCreateHelp,
+		"update": writeBundleUpdateHelp,
+		"show":   writeBundleShowHelp,
+		"add":    writeBundleAddHelp,
+		"remove": writeBundleRemoveHelp,
+	}) {
+		return nil
 	}
 	switch args[0] {
 	case "list":
@@ -3972,6 +4263,41 @@ func (r Runner) runBundle(args []string, out io.Writer, runtime state.Runtime) e
 	default:
 		return unknownSubcommandError("bundle", args[0])
 	}
+}
+
+func writeBundleHelp(out io.Writer) {
+	writeCommandGroupHelp(out, "loaf bundle <subcommand> [options]", "Manage bundles in native SQLite state.", []subcommandHelpItem{
+		{Name: "list", Summary: "List bundles"},
+		{Name: "create", Summary: "Create a bundle"},
+		{Name: "update", Summary: "Update a bundle"},
+		{Name: "show", Summary: "Show a bundle"},
+		{Name: "add", Summary: "Add an entity to a bundle"},
+		{Name: "remove", Summary: "Remove an entity from a bundle"},
+	})
+}
+
+func writeBundleListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf bundle list [--json]", "List bundles from SQLite state.", "--json       Output JSON")
+}
+
+func writeBundleCreateHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf bundle create <slug> [--title <title>] [--tags <tags>] [--json]", "Create a bundle.", "--title      Bundle title", "--tags       Comma-separated tag query", "--json       Output JSON")
+}
+
+func writeBundleUpdateHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf bundle update <slug> [--title <title>] [--tags <tags>] [--json]", "Update a bundle.", "--title      Bundle title", "--tags       Comma-separated tag query", "--json       Output JSON")
+}
+
+func writeBundleShowHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf bundle show <bundle> [--json]", "Show one bundle.", "--json       Output JSON")
+}
+
+func writeBundleAddHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf bundle add <bundle> <entity> [--json]", "Add an entity to a bundle.", "--json       Output JSON")
+}
+
+func writeBundleRemoveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf bundle remove <bundle> <entity> [--json]", "Remove an entity from a bundle.", "--json       Output JSON")
 }
 
 func (r Runner) runBundleList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -4242,8 +4568,16 @@ func housekeepingSectionLabel(name string) string {
 }
 
 func (r Runner) runLink(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
-		return missingSubcommandError("link")
+	if len(args) == 0 || isHelpArg(args) {
+		writeLinkHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"create": writeLinkCreateHelp,
+		"list":   writeLinkListHelp,
+		"remove": writeLinkRemoveHelp,
+	}) {
+		return nil
 	}
 	switch args[0] {
 	case "create":
@@ -4255,6 +4589,26 @@ func (r Runner) runLink(args []string, out io.Writer, runtime state.Runtime) err
 	default:
 		return unknownSubcommandError("link", args[0])
 	}
+}
+
+func writeLinkHelp(out io.Writer) {
+	writeCommandGroupHelp(out, "loaf link <subcommand> [options]", "Manage explicit relationships in native SQLite state.", []subcommandHelpItem{
+		{Name: "create", Summary: "Create a relationship"},
+		{Name: "list", Summary: "List relationships for an entity"},
+		{Name: "remove", Summary: "Remove a relationship"},
+	})
+}
+
+func writeLinkCreateHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf link create --from <entity> --to <entity> [--type <type>] [--reason <text>] [--json]", "Create an explicit relationship.", "--from       Source entity", "--to         Target entity", "--type       Relationship type", "--reason     Relationship reason", "--json       Output JSON")
+}
+
+func writeLinkListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf link list <entity> [--json]", "List relationships for one entity.", "--json       Output JSON")
+}
+
+func writeLinkRemoveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf link remove --from <entity> --to <entity> [--type <type>] [--json]", "Remove an explicit relationship.", "--from       Source entity", "--to         Target entity", "--type       Relationship type", "--json       Output JSON")
 }
 
 func (r Runner) runLinkCreate(args []string, out io.Writer, runtime state.Runtime) error {
@@ -4375,12 +4729,15 @@ func writeLinkList(out io.Writer, result state.LinkListResult) {
 }
 
 func (r Runner) runSpec(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
+	if len(args) == 0 || isHelpArg(args) {
 		writeSpecHelp(out)
 		return nil
 	}
-	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help") {
-		writeSpecHelp(out)
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"list":    writeSpecListHelp,
+		"show":    writeSpecShowHelp,
+		"archive": writeSpecArchiveHelp,
+	}) {
 		return nil
 	}
 	switch args[0] {
@@ -4407,6 +4764,18 @@ func writeSpecHelp(out io.Writer) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  -h, --help  Show help")
+}
+
+func writeSpecListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spec list [--json]", "List specs.", "--json       Output JSON")
+}
+
+func writeSpecShowHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spec show <spec> [--json]", "Show one spec.", "--json       Output JSON")
+}
+
+func writeSpecArchiveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spec archive <spec...> [--json]", "Archive completed specs.", "--json       Output JSON")
 }
 
 func (r Runner) runSpecList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -5116,12 +5485,21 @@ func writeSpecArchive(out io.Writer, result state.SpecArchiveResult) {
 }
 
 func (r Runner) runSession(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
+	if len(args) == 0 || isHelpArg(args) {
 		writeSessionHelp(out)
 		return nil
 	}
-	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help") {
-		writeSessionHelp(out)
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"start":        writeSessionStartHelp,
+		"end":          writeSessionEndHelp,
+		"archive":      writeSessionArchiveHelp,
+		"list":         writeSessionListHelp,
+		"show":         writeSessionShowHelp,
+		"log":          writeSessionLogHelp,
+		"enrich":       writeSessionEnrichHelp,
+		"housekeeping": writeSessionHousekeepingHelp,
+		"report":       writeSessionReportHelp,
+	}) {
 		return nil
 	}
 	switch args[0] {
@@ -5172,6 +5550,42 @@ func writeSessionHelp(out io.Writer) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  -h, --help    Show help")
+}
+
+func writeSessionStartHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf session start [--resume] [--session-id <id>] [--force] [--json]", "Start or resume session state.", "--resume      Resume if possible", "--session-id  Harness session ID", "--force       Ignore hook agent adoption guard", "--json        Output JSON")
+}
+
+func writeSessionEndHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf session end [--if-active] [--wrap] [--from-hook] [--session-id <id>] [--json]", "End, wrap, or clear a session.", "--if-active   No-op when no active session exists", "--wrap        Mark as wrapped", "--from-hook   Read hook input", "--session-id  Harness session ID", "--json        Output JSON")
+}
+
+func writeSessionArchiveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf session archive [--branch <branch>] [--session-id <id>] [--json]", "Archive a stopped or targeted session.", "--branch      Branch to archive", "--session-id  Harness session ID", "--json        Output JSON")
+}
+
+func writeSessionListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf session list [--all] [--json]", "List sessions.", "--all         Include archived sessions", "--json        Output JSON")
+}
+
+func writeSessionShowHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf session show <session> [--json]", "Show one session.", "--json        Output JSON")
+}
+
+func writeSessionLogHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf session log <entry> [--from-hook] [--session-id <id>] [--json]", "Append a session journal entry.", "--from-hook   Read hook input", "--session-id  Harness session ID", "--json        Output JSON")
+}
+
+func writeSessionEnrichHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf session enrich [--json]", "Summarize markdown enrichment compatibility.", "--json        Output JSON")
+}
+
+func writeSessionHousekeepingHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf session housekeeping [--json]", "Summarize markdown housekeeping compatibility.", "--json        Output JSON")
+}
+
+func writeSessionReportHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf session report <session> [--json]", "Export a session report.", "--json        Output JSON")
 }
 
 func (r Runner) runSessionStart(args []string, out io.Writer, runtime state.Runtime) error {
@@ -7461,12 +7875,17 @@ func writeSessionShow(out io.Writer, result state.SessionShow) {
 }
 
 func (r Runner) runReport(args []string, out io.Writer, runtime state.Runtime) error {
-	if len(args) == 0 {
+	if len(args) == 0 || isHelpArg(args) {
 		writeReportHelp(out)
 		return nil
 	}
-	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help") {
-		writeReportHelp(out)
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"list":     writeReportListHelp,
+		"generate": writeReportGenerateHelp,
+		"create":   writeReportCreateHelp,
+		"finalize": writeReportFinalizeHelp,
+		"archive":  writeReportArchiveHelp,
+	}) {
 		return nil
 	}
 	switch args[0] {
@@ -7499,6 +7918,26 @@ func writeReportHelp(out io.Writer) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  -h, --help  Show help")
+}
+
+func writeReportListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf report list [--type <type>|--status <status>] [--json]", "List reports.", "--type       Filter by report type", "--status     Filter by status", "--json       Output JSON")
+}
+
+func writeReportGenerateHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf report generate <kind> [ref] --format markdown", "Generate a read-only markdown report.", "--format     Output format")
+}
+
+func writeReportCreateHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf report create <slug> --title <title> [--type <type>] [--json]", "Create a report.", "--title      Report title", "--type       Report type", "--json       Output JSON")
+}
+
+func writeReportFinalizeHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf report finalize <report> [--json]", "Finalize a report.", "--json       Output JSON")
+}
+
+func writeReportArchiveHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf report archive <report> [--json]", "Archive a report.", "--json       Output JSON")
 }
 
 func (r Runner) runReportList(args []string, out io.Writer, runtime state.Runtime) error {

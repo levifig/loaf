@@ -9854,6 +9854,76 @@ func gitCLI(t *testing.T, dir string, args ...string) {
 	}
 }
 
+func TestRunnerStateBackedCommandHelpDoesNotRequireState(t *testing.T) {
+	parentCases := []struct {
+		command        string
+		wantHelp       string
+		wantSubcommand string
+	}{
+		{command: "brainstorm", wantHelp: "Usage: loaf brainstorm <subcommand>", wantSubcommand: "promote"},
+		{command: "idea", wantHelp: "Usage: loaf idea <subcommand>", wantSubcommand: "capture"},
+		{command: "spark", wantHelp: "Usage: loaf spark <subcommand>", wantSubcommand: "capture"},
+		{command: "tag", wantHelp: "Usage: loaf tag <subcommand>", wantSubcommand: "add"},
+		{command: "bundle", wantHelp: "Usage: loaf bundle <subcommand>", wantSubcommand: "create"},
+		{command: "link", wantHelp: "Usage: loaf link <subcommand>", wantSubcommand: "create"},
+	}
+	for _, tc := range parentCases {
+		t.Run(tc.command, func(t *testing.T) {
+			for _, args := range [][]string{{tc.command}, {tc.command, "--help"}, {tc.command, "help"}} {
+				var stdout bytes.Buffer
+				err := Runner{
+					Stdout:     &stdout,
+					WorkingDir: t.TempDir(),
+				}.Run(args)
+				if err != nil {
+					t.Fatalf("%v error = %v", args, err)
+				}
+				if !strings.Contains(stdout.String(), tc.wantHelp) || !strings.Contains(stdout.String(), tc.wantSubcommand) {
+					t.Fatalf("stdout = %q, want %q and %q", stdout.String(), tc.wantHelp, tc.wantSubcommand)
+				}
+			}
+		})
+	}
+}
+
+func TestRunnerNestedStateBackedHelpDoesNotParseAsOption(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "state migrate markdown", args: []string{"state", "migrate", "markdown", "--help"}, want: "Usage: loaf state migrate markdown"},
+		{name: "state migrate storage-home", args: []string{"state", "migrate", "storage-home", "--help"}, want: "Usage: loaf state migrate storage-home"},
+		{name: "state export all", args: []string{"state", "export", "all", "--help"}, want: "Usage: loaf state export all"},
+		{name: "task update", args: []string{"task", "update", "--help"}, want: "Usage: loaf task update <task>"},
+		{name: "task create", args: []string{"task", "create", "--help"}, want: "Usage: loaf task create --title <title>"},
+		{name: "spec show", args: []string{"spec", "show", "--help"}, want: "Usage: loaf spec show <spec>"},
+		{name: "session log", args: []string{"session", "log", "--help"}, want: "Usage: loaf session log <entry>"},
+		{name: "report create", args: []string{"report", "create", "--help"}, want: "Usage: loaf report create <slug>"},
+		{name: "brainstorm archive", args: []string{"brainstorm", "archive", "--help"}, want: "Usage: loaf brainstorm archive <brainstorm...>"},
+		{name: "idea capture", args: []string{"idea", "capture", "--help"}, want: "Usage: loaf idea capture --title <title>"},
+		{name: "spark promote", args: []string{"spark", "promote", "--help"}, want: "Usage: loaf spark promote <spark>"},
+		{name: "tag add", args: []string{"tag", "add", "--help"}, want: "Usage: loaf tag add <entity> <tag>"},
+		{name: "bundle update", args: []string{"bundle", "update", "--help"}, want: "Usage: loaf bundle update <slug>"},
+		{name: "link create", args: []string{"link", "create", "--help"}, want: "Usage: loaf link create --from <entity>"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: t.TempDir(),
+			}.Run(tc.args)
+			if err != nil {
+				t.Fatalf("%v error = %v", tc.args, err)
+			}
+			if !strings.Contains(stdout.String(), tc.want) {
+				t.Fatalf("stdout = %q, want %q", stdout.String(), tc.want)
+			}
+		})
+	}
+}
+
 func TestRunnerRootHelpIsNative(t *testing.T) {
 	for _, args := range [][]string{{}, {"--help"}, {"-h"}, {"help"}} {
 		var stdout bytes.Buffer
