@@ -1931,6 +1931,10 @@ func (r Runner) initializeState(runtime state.Runtime) (state.Status, error) {
 }
 
 func (r Runner) runTrace(args []string, out io.Writer, runtime state.Runtime) error {
+	if isHelpArg(args) {
+		writeTraceHelp(out)
+		return nil
+	}
 	jsonRequested := hasFlag(args, "--json")
 	ref, jsonOutput, err := parseTraceArgs(args)
 	if err != nil {
@@ -1984,6 +1988,10 @@ func (r Runner) runTrace(args []string, out io.Writer, runtime state.Runtime) er
 		fmt.Fprintln(out)
 	}
 	return nil
+}
+
+func writeTraceHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf trace <entity> [--json]", "Trace relationships for one entity.", "--json       Output JSON")
 }
 
 func (r Runner) runTask(args []string, out io.Writer, runtime state.Runtime) error {

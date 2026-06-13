@@ -196,7 +196,7 @@ func agentHelpCommands() []agentHelpCommand {
 		},
 		{Name: "version", Description: "Show version and content counts"},
 		{Name: "housekeeping", Description: "Scan agent artifacts and summarize housekeeping recommendations", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}, {Flags: "--dry-run", Description: "Show recommendations without applying actions"}, {Flags: "--sessions", Description: "Only review sessions"}, {Flags: "--specs", Description: "Only review specs"}, {Flags: "--drafts", Description: "Only review shaping drafts"}}},
-		{Name: "trace", Description: "Trace relationships for an entity"},
+		{Name: "trace", Description: "Trace relationships for an entity", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
 		{Name: "brainstorm", Description: "Manage brainstorm artifacts"},
 		{Name: "idea", Description: "Manage ideas"},
 		{Name: "spark", Description: "Manage sparks"},

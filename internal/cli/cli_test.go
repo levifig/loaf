@@ -11160,6 +11160,7 @@ func TestRunnerNestedStateBackedHelpDoesNotParseAsOption(t *testing.T) {
 		{name: "tag add", args: []string{"tag", "add", "--help"}, want: "Usage: loaf tag add <entity> <tag>"},
 		{name: "bundle update", args: []string{"bundle", "update", "--help"}, want: "Usage: loaf bundle update <slug>"},
 		{name: "link create", args: []string{"link", "create", "--help"}, want: "Usage: loaf link create --from <entity>"},
+		{name: "trace", args: []string{"trace", "--help"}, want: "Usage: loaf trace <entity>"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
