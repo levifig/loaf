@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -103,67 +104,103 @@ func (r Runner) Run(args []string) error {
 		return nil
 	}
 
+	var dispatchErr error
 	switch args[0] {
 	case "--help", "-h", "help":
 		writeRootHelp(out)
 		return nil
 	case "--agent-help":
-		return writeAgentHelpJSON(out)
+		dispatchErr = writeAgentHelpJSON(out)
 	case "--version", "-v":
-		return r.runVersion(out, runtime.RootPath())
+		dispatchErr = r.runVersion(out, runtime.RootPath())
 	case "build":
-		return r.runBuild(args[1:], out, runtime.RootPath())
+		dispatchErr = r.runBuild(args[1:], out, runtime.RootPath())
 	case "init":
-		return r.runInit(args[1:], out, runtime.RootPath())
+		dispatchErr = r.runInit(args[1:], out, runtime.RootPath())
 	case "install":
-		return r.runInstall(args[1:], out, runtime.RootPath())
+		dispatchErr = r.runInstall(args[1:], out, runtime.RootPath())
 	case "migrate":
-		return r.runMigrate(args[1:], out, runtime)
+		dispatchErr = r.runMigrate(args[1:], out, runtime)
 	case "release":
-		return r.runRelease(args[1:], out, runtime.RootPath())
+		dispatchErr = r.runRelease(args[1:], out, runtime.RootPath())
 	case "setup":
-		return r.runSetup(args[1:], out, runtime.RootPath())
+		dispatchErr = r.runSetup(args[1:], out, runtime.RootPath())
 	case "state":
-		return r.runState(args[1:], out, runtime)
+		dispatchErr = r.runState(args[1:], out, runtime)
 	case "project":
-		return r.runProject(args[1:], out, runtime)
+		dispatchErr = r.runProject(args[1:], out, runtime)
 	case "trace":
-		return r.runTrace(args[1:], out, runtime)
+		dispatchErr = r.runTrace(args[1:], out, runtime)
 	case "brainstorm":
-		return r.runBrainstorm(args[1:], out, runtime)
+		dispatchErr = r.runBrainstorm(args[1:], out, runtime)
 	case "idea":
-		return r.runIdea(args[1:], out, runtime)
+		dispatchErr = r.runIdea(args[1:], out, runtime)
 	case "spark":
-		return r.runSpark(args[1:], out, runtime)
+		dispatchErr = r.runSpark(args[1:], out, runtime)
 	case "tag":
-		return r.runTag(args[1:], out, runtime)
+		dispatchErr = r.runTag(args[1:], out, runtime)
 	case "bundle":
-		return r.runBundle(args[1:], out, runtime)
+		dispatchErr = r.runBundle(args[1:], out, runtime)
 	case "check":
-		return r.runCheck(args[1:], out, runtime.RootPath())
+		dispatchErr = r.runCheck(args[1:], out, runtime.RootPath())
 	case "doctor":
-		return r.runDoctor(args[1:], out, runtime.RootPath())
+		dispatchErr = r.runDoctor(args[1:], out, runtime.RootPath())
 	case "link":
-		return r.runLink(args[1:], out, runtime)
+		dispatchErr = r.runLink(args[1:], out, runtime)
 	case "report":
-		return r.runReport(args[1:], out, runtime)
+		dispatchErr = r.runReport(args[1:], out, runtime)
 	case "spec":
-		return r.runSpec(args[1:], out, runtime)
+		dispatchErr = r.runSpec(args[1:], out, runtime)
 	case "session":
-		return r.runSession(args[1:], out, runtime)
+		dispatchErr = r.runSession(args[1:], out, runtime)
 	case "task":
-		return r.runTask(args[1:], out, runtime)
+		dispatchErr = r.runTask(args[1:], out, runtime)
 	case "housekeeping":
-		return r.runHousekeeping(args[1:], out, runtime)
+		dispatchErr = r.runHousekeeping(args[1:], out, runtime)
 	case "kb":
-		return r.runKb(args[1:], out, runtime.RootPath())
+		dispatchErr = r.runKb(args[1:], out, runtime.RootPath())
 	case "version":
-		return r.runVersion(out, runtime.RootPath())
+		dispatchErr = r.runVersion(out, runtime.RootPath())
 	default:
 		fmt.Fprintf(errOut, "error: unknown command '%s'\n\n", args[0])
 		writeRootHelp(errOut)
 		return ExitError{Code: 1}
 	}
+	return writeJSONCommandErrorFallback(out, args, dispatchErr)
+}
+
+func writeJSONCommandErrorFallback(out io.Writer, args []string, err error) error {
+	if err == nil {
+		return nil
+	}
+	var silent interface {
+		ExitCode() int
+		Silent() bool
+	}
+	if errors.As(err, &silent) && silent.Silent() {
+		return err
+	}
+	if !hasFlag(args, "--json") {
+		return err
+	}
+	return writeJSONCommandError(out, jsonErrorCommand(args), err)
+}
+
+func jsonErrorCommand(args []string) string {
+	if len(args) == 0 {
+		return "loaf"
+	}
+	parts := []string{args[0]}
+	for _, arg := range args[1:] {
+		if strings.HasPrefix(arg, "-") || arg == "help" {
+			break
+		}
+		parts = append(parts, arg)
+		if len(parts) == 3 {
+			break
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 func writeRootHelp(out io.Writer) {

@@ -663,13 +663,22 @@ func TestRunnerHousekeepingReportsInvalidSQLiteState(t *testing.T) {
 
 func assertSQLiteRequired(t *testing.T, args ...string) {
 	t.Helper()
+	var stdout bytes.Buffer
 	err := Runner{
-		Stdout:     &bytes.Buffer{},
+		Stdout:     &stdout,
 		WorkingDir: realpath(t, t.TempDir()),
 		StateHome:  t.TempDir(),
 	}.Run(args)
 	if err == nil {
 		t.Fatalf("Run(%v) error = nil, want SQLite state required error", args)
+	}
+	if hasFlag(args, "--json") {
+		assertSilentExitCode(t, err, 1)
+		output := decodeCommandError(t, stdout.Bytes())
+		if !strings.Contains(output.Error, "requires initialized SQLite state") {
+			t.Fatalf("Run(%v) JSON error = %#v, want SQLite state required error", args, output)
+		}
+		return
 	}
 	if !strings.Contains(err.Error(), "requires initialized SQLite state") {
 		t.Fatalf("Run(%v) error = %v, want SQLite state required error", args, err)
@@ -2267,6 +2276,61 @@ func TestRunnerProjectJSONValidationErrorsAreMachineReadable(t *testing.T) {
 			args:    []string{"project", "move", "--from", "relative/path", "--json"},
 			command: "project move",
 			want:    "requires absolute",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON validation error", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != tc.command || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want command %q and error containing %q", output, tc.command, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunnerJSONErrorFallbackWrapsUnownedErrors(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		args    []string
+		command string
+		want    string
+	}{
+		{
+			name:    "idea promote parse error",
+			args:    []string{"idea", "promote", "--json"},
+			command: "idea promote",
+			want:    "requires an idea",
+		},
+		{
+			name:    "idea resolve parse error",
+			args:    []string{"idea", "resolve", "--json"},
+			command: "idea resolve",
+			want:    "requires an idea",
+		},
+		{
+			name:    "spark capture parse error",
+			args:    []string{"spark", "capture", "--json"},
+			command: "spark capture",
+			want:    "requires --text",
+		},
+		{
+			name:    "unknown nested subcommand",
+			args:    []string{"idea", "nope", "--json"},
+			command: "idea nope",
+			want:    "unknown loaf idea subcommand",
 		},
 	}
 

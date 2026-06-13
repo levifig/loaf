@@ -64,8 +64,13 @@ func TestRunnerKbStatusRequiresGitRepository(t *testing.T) {
 		Stdout:     &stdout,
 		WorkingDir: t.TempDir(),
 	}.Run([]string{"kb", "status", "--json"})
-	if err == nil || !strings.Contains(err.Error(), "not inside a git repository") {
-		t.Fatalf("kb status error = %v, want git repository error", err)
+	if err == nil {
+		t.Fatal("kb status error = nil, want git repository error")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, stdout.Bytes())
+	if output.Command != "kb status" || !strings.Contains(output.Error, "not inside a git repository") {
+		t.Fatalf("kb status JSON error = %#v, want git repository error", output)
 	}
 }
 
@@ -124,9 +129,10 @@ func TestRunnerKbValidateJSONReportsErrorsAndWarnings(t *testing.T) {
 		Stdout:     &stdout,
 		WorkingDir: repo,
 	}.Run([]string{"kb", "validate", "--json"})
-	if err == nil || !strings.Contains(err.Error(), "kb validation failed") {
-		t.Fatalf("kb validate error = %v, want validation failure", err)
+	if err == nil {
+		t.Fatal("kb validate error = nil, want validation failure")
 	}
+	assertSilentExitCode(t, err, 1)
 
 	var results []kbValidationResult
 	if err := json.Unmarshal(stdout.Bytes(), &results); err != nil {
@@ -316,9 +322,10 @@ func TestRunnerKbReviewRejectsNonKnowledgeFile(t *testing.T) {
 		Stdout:     &stdout,
 		WorkingDir: repo,
 	}.Run([]string{"kb", "review", "docs/note.md", "--json"})
-	if err == nil || !strings.Contains(err.Error(), "Not a knowledge file") {
-		t.Fatalf("kb review error = %v, want non-knowledge error", err)
+	if err == nil {
+		t.Fatal("kb review error = nil, want non-knowledge error")
 	}
+	assertSilentExitCode(t, err, 1)
 
 	var output map[string]string
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
@@ -461,9 +468,10 @@ func TestRunnerKbImportRequiresQMDNatively(t *testing.T) {
 		Stdout:     &stdout,
 		WorkingDir: t.TempDir(),
 	}.Run([]string{"kb", "import", "other", "--json"})
-	if err == nil || !strings.Contains(err.Error(), "QMD is required") {
-		t.Fatalf("kb import error = %v, want QMD required", err)
+	if err == nil {
+		t.Fatal("kb import error = nil, want QMD required")
 	}
+	assertSilentExitCode(t, err, 1)
 
 	var result kbImportResult
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
@@ -489,9 +497,10 @@ func TestRunnerKbImportRejectsMalformedConfigBeforeRegistering(t *testing.T) {
 		Stdout:     &stdout,
 		WorkingDir: repo,
 	}.Run([]string{"kb", "import", "other", "--json"})
-	if err == nil || !strings.Contains(err.Error(), "Cannot parse .agents/loaf.json") {
-		t.Fatalf("kb import error = %v, want malformed config error", err)
+	if err == nil {
+		t.Fatal("kb import error = nil, want malformed config error")
 	}
+	assertSilentExitCode(t, err, 1)
 	if registered {
 		t.Fatalf("qmd register was called before config validation")
 	}
@@ -893,12 +902,18 @@ func TestRunnerKbHelpAndUnknownSubcommandAreNative(t *testing.T) {
 		}
 	}
 
+	stdout.Reset()
 	err = Runner{
-		Stdout:     &bytes.Buffer{},
+		Stdout:     &stdout,
 		WorkingDir: workingDir,
 	}.Run([]string{"kb", "legacy-tail", "--json"})
-	if err == nil || !strings.Contains(err.Error(), `unknown loaf kb subcommand "legacy-tail"`) {
-		t.Fatalf("kb unknown error = %v, want native unknown subcommand", err)
+	if err == nil {
+		t.Fatal("kb unknown error = nil, want native unknown subcommand")
+	}
+	assertSilentExitCode(t, err, 1)
+	unknown := decodeCommandError(t, stdout.Bytes())
+	if unknown.Command != "kb legacy-tail" || !strings.Contains(unknown.Error, `unknown loaf kb subcommand "legacy-tail"`) {
+		t.Fatalf("kb unknown JSON error = %#v, want native unknown subcommand", unknown)
 	}
 }
 

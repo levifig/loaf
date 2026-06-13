@@ -297,6 +297,7 @@ func (r Runner) runKbImport(args []string, out io.Writer, runtimeRoot string) er
 			if err := writeJSON(out, kbImportResult{Error: message}); err != nil {
 				return err
 			}
+			return ExitError{Code: 1}
 		}
 		return fmt.Errorf("%s", message)
 	}
@@ -317,6 +318,9 @@ func (r Runner) runKbImport(args []string, out io.Writer, runtimeRoot string) er
 		}
 	}
 	if err != nil {
+		if options.jsonOutput && result.Error != "" {
+			return ExitError{Code: 1}
+		}
 		return err
 	}
 	if !options.jsonOutput {
@@ -403,6 +407,9 @@ func (r Runner) runKbValidate(args []string, out io.Writer, errOut io.Writer, ru
 		writeKbValidation(out, results)
 	}
 	if countValidationErrors(results) > 0 {
+		if jsonOutput {
+			return ExitError{Code: 1}
+		}
 		return fmt.Errorf("kb validation failed: %d error(s)", countValidationErrors(results))
 	}
 	return nil
@@ -432,6 +439,7 @@ func (r Runner) runKbReview(args []string, out io.Writer, runtimeRoot string) er
 			if err := writeJSON(out, map[string]string{"error": message}); err != nil {
 				return err
 			}
+			return ExitError{Code: 1}
 		}
 		return fmt.Errorf("%s", message)
 	}
