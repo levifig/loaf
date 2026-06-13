@@ -17,6 +17,7 @@ import (
 
 // BackupResult describes a repository-external SQLite database backup.
 type BackupResult struct {
+	ContractVersion    int    `json:"contract_version"`
 	DatabasePath       string `json:"database_path"`
 	BackupPath         string `json:"backup_path"`
 	Bytes              int64  `json:"bytes"`
@@ -83,6 +84,7 @@ func Backup(ctx context.Context, root project.Root, resolver PathResolver) (Back
 	}
 
 	return BackupResult{
+		ContractVersion:    StateJSONContractVersion,
 		DatabasePath:       status.DatabasePath,
 		BackupPath:         backupPath,
 		Bytes:              info.Size(),

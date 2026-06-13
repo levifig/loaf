@@ -28,6 +28,9 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if snapshot.ExportKind != ExportKindAll {
 		t.Fatalf("ExportKind = %q, want %q", snapshot.ExportKind, ExportKindAll)
 	}
+	if snapshot.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", snapshot.ContractVersion, StateJSONContractVersion)
+	}
 	if snapshot.Format != ExportFormatJSON {
 		t.Fatalf("Format = %q, want %q", snapshot.Format, ExportFormatJSON)
 	}
@@ -63,6 +66,9 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	}
 	if !snapshot.Manifest.Verified {
 		t.Fatal("Manifest.Verified = false, want true")
+	}
+	if snapshot.Manifest.ContractVersion != snapshot.ContractVersion {
+		t.Fatalf("Manifest.ContractVersion = %d, want %d", snapshot.Manifest.ContractVersion, snapshot.ContractVersion)
 	}
 	if snapshot.Manifest.SchemaVersion != snapshot.SchemaVersion {
 		t.Fatalf("Manifest.SchemaVersion = %d, want %d", snapshot.Manifest.SchemaVersion, snapshot.SchemaVersion)

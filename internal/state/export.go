@@ -22,10 +22,12 @@ const (
 	ExportFormatMarkdown       = "markdown"
 	ExportAudienceLocal        = "internal"
 	ExportAudienceExternal     = "external"
+	StateJSONContractVersion   = 1
 )
 
 // ExportSnapshot is a complete internal JSON view of current SQLite state.
 type ExportSnapshot struct {
+	ContractVersion    int                         `json:"contract_version"`
 	ExportKind         string                      `json:"export_kind"`
 	Format             string                      `json:"format"`
 	Audience           string                      `json:"audience"`
@@ -41,6 +43,7 @@ type ExportSnapshot struct {
 
 // ExportManifest is a compact, agent-friendly summary of an export snapshot.
 type ExportManifest struct {
+	ContractVersion    int            `json:"contract_version"`
 	Verified           bool           `json:"verified"`
 	SchemaVersion      int            `json:"schema_version"`
 	ProjectID          string         `json:"project_id"`
@@ -191,6 +194,7 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 	generatedAt := time.Now().UTC().Format(time.RFC3339Nano)
 
 	return ExportSnapshot{
+		ContractVersion:    StateJSONContractVersion,
 		ExportKind:         ExportKindAll,
 		Format:             ExportFormatJSON,
 		Audience:           ExportAudienceLocal,
@@ -201,6 +205,7 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 		DatabasePath:       status.DatabasePath,
 		SchemaVersion:      status.SchemaVersion,
 		Manifest: ExportManifest{
+			ContractVersion:    StateJSONContractVersion,
 			Verified:           true,
 			SchemaVersion:      status.SchemaVersion,
 			ProjectID:          projectID,

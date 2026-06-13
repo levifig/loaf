@@ -3244,6 +3244,9 @@ func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	}
 
 	result := decodeStateBackupResult(t, stdout.Bytes())
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
 	if result.DatabasePath == "" {
 		t.Fatal("DatabasePath is empty")
 	}
@@ -3441,6 +3444,9 @@ status: implementing
 	}
 
 	snapshot := decodeStateExportSnapshot(t, stdout.Bytes())
+	if snapshot.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", snapshot.ContractVersion, state.StateJSONContractVersion)
+	}
 	if snapshot.ExportKind != state.ExportKindAll {
 		t.Fatalf("ExportKind = %q, want %q", snapshot.ExportKind, state.ExportKindAll)
 	}
@@ -3455,6 +3461,9 @@ status: implementing
 	}
 	if !snapshot.Manifest.Verified {
 		t.Fatal("Manifest.Verified = false, want true")
+	}
+	if snapshot.Manifest.ContractVersion != snapshot.ContractVersion {
+		t.Fatalf("Manifest.ContractVersion = %d, want %d", snapshot.Manifest.ContractVersion, snapshot.ContractVersion)
 	}
 	if snapshot.Manifest.SchemaVersion != snapshot.SchemaVersion {
 		t.Fatalf("Manifest.SchemaVersion = %d, want %d", snapshot.Manifest.SchemaVersion, snapshot.SchemaVersion)

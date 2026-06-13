@@ -27,6 +27,9 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	if result.DatabasePath != status.DatabasePath {
 		t.Fatalf("DatabasePath = %q, want %q", result.DatabasePath, status.DatabasePath)
 	}
+	if result.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
+	}
 	if result.BackupPath == "" {
 		t.Fatal("BackupPath is empty")
 	}
