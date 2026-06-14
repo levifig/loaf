@@ -6803,9 +6803,22 @@ func TestRunnerStateMigrateMarkdownJSONDryRunDoesNotCreateDatabase(t *testing.T)
 		t.Fatalf("state migrate markdown --dry-run --json error = %v", err)
 	}
 
-	plan := decodeMarkdownMigrationPlan(t, stdout.Bytes())
+	preview := decodeMarkdownMigrationPreviewResult(t, stdout.Bytes())
+	plan := preview.MarkdownMigrationPlan
 	if plan.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", plan.ContractVersion, state.StateJSONContractVersion)
+	}
+	if preview.DatabaseScope != "global" || preview.ImportScope != "project" {
+		t.Fatalf("preview = %#v, want global database project import scope", preview)
+	}
+	if preview.DatabasePath != databasePath {
+		t.Fatalf("DatabasePath = %q, want %q", preview.DatabasePath, databasePath)
+	}
+	if preview.ProjectName != filepath.Base(workingDir) || preview.ProjectCurrentPath != workingDir {
+		t.Fatalf("preview = %#v, want project name %q and path %s", preview, filepath.Base(workingDir), workingDir)
+	}
+	if preview.Applied {
+		t.Fatal("Applied = true, want false for dry-run")
 	}
 	if plan.Specs != 1 ||
 		plan.Tasks != 1 ||
@@ -7623,9 +7636,13 @@ func TestRunnerStateControlPlaneJSONSuccessMatrix(t *testing.T) {
 		if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "migrate", "markdown", "--dry-run", "--json"}); err != nil {
 			t.Fatalf("state migrate markdown --dry-run --json error = %v", err)
 		}
-		plan := decodeMarkdownMigrationPlan(t, stdout.Bytes())
+		preview := decodeMarkdownMigrationPreviewResult(t, stdout.Bytes())
+		plan := preview.MarkdownMigrationPlan
 		if plan.ContractVersion != state.StateJSONContractVersion || plan.AgentsPath != filepath.Join(workingDir, ".agents") {
 			t.Fatalf("markdown migration plan = %#v, want contract version and agents path for dry-run", plan)
+		}
+		if preview.DatabaseScope != "global" || preview.ImportScope != "project" || preview.DatabasePath == "" || preview.Applied {
+			t.Fatalf("markdown migration preview = %#v, want non-mutating global project preview", preview)
 		}
 		if plan.Specs != 1 || plan.Tasks != 1 {
 			t.Fatalf("markdown migration plan = %#v, want one spec and one task", plan)
@@ -13845,6 +13862,15 @@ func decodeMarkdownMigrationPlan(t *testing.T, data []byte) state.MarkdownMigrat
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}
 	return plan
+}
+
+func decodeMarkdownMigrationPreviewResult(t *testing.T, data []byte) state.MarkdownMigrationPreviewResult {
+	t.Helper()
+	var result state.MarkdownMigrationPreviewResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return result
 }
 
 func decodeMarkdownMigrationResult(t *testing.T, data []byte) state.MarkdownMigrationResult {

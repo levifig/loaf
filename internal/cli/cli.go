@@ -2212,7 +2212,11 @@ func (r Runner) runMarkdownMigration(args []string, out io.Writer, runtime state
 		return err
 	}
 	if options.jsonOutput {
-		return writeJSON(out, plan)
+		databasePath, err := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(projectRoot)
+		if err != nil {
+			return writeJSONCommandError(out, command, err)
+		}
+		return writeJSON(out, state.NewMarkdownMigrationPreviewResult(plan, projectRoot, databasePath))
 	}
 
 	databasePath, err := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(projectRoot)

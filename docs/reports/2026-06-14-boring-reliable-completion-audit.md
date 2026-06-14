@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 19:06
+Date: 2026-06-14 19:11
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest warning follow-up pass dogfooded a temp project from the primary checkout with isolated XDG homes. `state doctor --json` and `state export all --format json` preserved local Markdown import and stale compatibility export warnings, but those diagnostics had no category, policy, or details.
+The latest backup/export/import contract pass dogfooded a temp project from the primary checkout with isolated XDG homes. Backup, backup verify, export all, and Markdown apply JSON already carried global/project context, but `state migrate markdown --dry-run --json` only returned artifact counts.
 
-This checkpoint classifies `local-markdown-not-imported` as `markdown-import/import-pending` with importable artifact counts and preview/apply commands, and `stale-compatibility-export` as `compatibility-export/stale-export` with export/source identifiers and timestamps. State and CLI regression tests now prove those structured details survive through doctor, report warnings, and export snapshots.
+This checkpoint adds a non-mutating `MarkdownMigrationPreviewResult` envelope for dry-run JSON, including global database scope, target database path, project import scope, project name/path, and `applied: false`. Dogfood confirmed the dry-run still leaves the SQLite database missing.
 
 ## Next Review Target
 
-Continue the completion-audit pass by auditing backup/export/import command output against the full reliability contract, looking for any remaining mismatch between docs, tests, JSON payloads, human output, and dogfood evidence.
+Continue the completion-audit pass by auditing human output and JSON failures for backup/export/import command surfaces against the reliability contract, looking for any remaining mismatch between docs, tests, and dogfood evidence.
