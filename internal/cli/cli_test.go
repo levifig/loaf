@@ -3161,6 +3161,9 @@ VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missin
 	if action.Command != "loaf state doctor --json" {
 		t.Fatalf("invalid repair action command = %q, want state doctor JSON", action.Command)
 	}
+	if action.Category != state.RepairCategoryBackendMapping || action.RequiresExternalSync {
+		t.Fatalf("invalid repair action = %#v, want local backend mapping inspection", action)
+	}
 }
 
 func TestRunnerStateDoctorDryRunJSONUsesStableEmptyRepairPlan(t *testing.T) {

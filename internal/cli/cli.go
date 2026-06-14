@@ -1566,6 +1566,7 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 			status.RepairPlan = []state.RepairAction{{
 				Code:           "initialize-database",
 				DiagnosticCode: "database-missing",
+				Category:       state.RepairCategoryLocalDatabase,
 				Description:    "Initialized the global SQLite database for this project.",
 				Command:        "loaf state doctor --fix",
 				Path:           status.DatabasePath,
@@ -1603,7 +1604,14 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 			} else if action.Safe {
 				stateLabel = "safe"
 			}
-			fmt.Fprintf(out, "- %s [%s]: %s\n", action.Code, stateLabel, action.Description)
+			if action.Category != "" {
+				fmt.Fprintf(out, "- %s [%s/%s]: %s\n", action.Code, stateLabel, action.Category, action.Description)
+			} else {
+				fmt.Fprintf(out, "- %s [%s]: %s\n", action.Code, stateLabel, action.Description)
+			}
+			if action.RequiresExternalSync {
+				fmt.Fprintln(out, "  external sync: required")
+			}
 			if action.Command != "" {
 				fmt.Fprintf(out, "  command: %s\n", action.Command)
 			}

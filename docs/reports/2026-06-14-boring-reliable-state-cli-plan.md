@@ -185,6 +185,10 @@ Go/no-go: a user can recover from a bad global DB using a verified backup withou
 
 Audit every `RepairAction` and human repair-plan line. Repair commands should be executable in the current state mode, dry-run first unless explicitly safe, and clear about whether they inspect, preview, apply, or require external sync.
 
+Progress:
+
+- 2026-06-14: Repair actions now expose a `category` and `requires_external_sync` policy in JSON, while human `state doctor` output labels the action category. Backend mapping diagnostics are split between local backend-mapping audit work and Linear/external sync reconciliation, with `TestRepairPlanClassifiesBackendAndExternalSyncActions` proving that invalid local mappings do not masquerade as external sync and Linear-unmapped tasks are marked as external sync work.
+
 Go/no-go: no repair plan points to a command that immediately fails for the same diagnostic state.
 
 ### Track 4: Backend/Linear Policy
@@ -217,4 +221,4 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 
 ## Next Best Commit
 
-The next implementation commit should start Gate 3 by auditing repair-plan and backend/Linear diagnostics. First target: ensure every doctor repair action clearly distinguishes local repair, manual audit, and future backend sync work, then add or update tests for any repair-plan command that could be misleading in an invalid-state or warning-only mode.
+The next implementation commit should continue Gate 3 by proving repair-plan command executability across diagnostic modes. First target: add a focused test harness that creates each repair-plan diagnostic state, runs or validates the suggested command in that same state mode, and flags any command that refuses the condition that recommended it.

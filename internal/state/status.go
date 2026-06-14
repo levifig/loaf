@@ -18,6 +18,17 @@ const (
 	ModeInvalid      = "invalid"
 )
 
+const (
+	RepairCategoryLocalDatabase          = "local-database"
+	RepairCategoryStorageMigration       = "storage-migration"
+	RepairCategoryProjectIdentity        = "project-identity"
+	RepairCategoryRelationshipProvenance = "relationship-provenance"
+	RepairCategoryBackendMapping         = "backend-mapping"
+	RepairCategoryExternalSync           = "external-sync"
+	RepairCategoryMarkdownImport         = "markdown-import"
+	RepairCategoryCompatibilityExport    = "compatibility-export"
+)
+
 // Diagnostic describes a state-runtime observation without mutating state.
 type Diagnostic struct {
 	Severity string `json:"severity"`
@@ -27,13 +38,15 @@ type Diagnostic struct {
 
 // RepairAction describes an explicit repair recommendation from diagnostics.
 type RepairAction struct {
-	Code           string `json:"code"`
-	DiagnosticCode string `json:"diagnostic_code"`
-	Description    string `json:"description"`
-	Command        string `json:"command,omitempty"`
-	Path           string `json:"path,omitempty"`
-	Safe           bool   `json:"safe"`
-	Applied        bool   `json:"applied"`
+	Code                 string `json:"code"`
+	DiagnosticCode       string `json:"diagnostic_code"`
+	Category             string `json:"category"`
+	Description          string `json:"description"`
+	Command              string `json:"command,omitempty"`
+	Path                 string `json:"path,omitempty"`
+	Safe                 bool   `json:"safe"`
+	Applied              bool   `json:"applied"`
+	RequiresExternalSync bool   `json:"requires_external_sync"`
 }
 
 // Status is the pre-init state view exposed by `loaf state status`.
@@ -237,6 +250,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "initialize-database",
 				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryLocalDatabase,
 				Description:    "Initialize the global SQLite database for this project.",
 				Command:        "loaf state doctor --fix",
 				Path:           status.DatabasePath,
@@ -246,6 +260,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "migrate-storage-home",
 				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryStorageMigration,
 				Description:    "Preview and then apply storage-home migration to copy legacy state into the global database.",
 				Command:        "loaf state migrate storage-home --dry-run",
 				Path:           status.LegacyDatabasePath,
@@ -255,6 +270,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "review-legacy-project-database",
 				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryLocalDatabase,
 				Description:    "Preview archiving the leftover legacy project database after verifying the global database.",
 				Command:        "loaf state repair legacy-project-database --dry-run --json",
 				Path:           status.LegacyDatabasePath,
@@ -264,6 +280,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "inspect-schema-migrations",
 				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryLocalDatabase,
 				Description:    "Inspect schema migration drift before applying any repair.",
 				Command:        "loaf state doctor --json",
 				Path:           status.DatabasePath,
@@ -273,6 +290,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "inspect-state-invariants",
 				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryLocalDatabase,
 				Description:    "Inspect SQLite table integrity before applying any state repair.",
 				Command:        "loaf state doctor --json",
 				Path:           status.DatabasePath,
@@ -282,6 +300,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "repair-project-path-invariants",
 				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryProjectIdentity,
 				Description:    "Inspect project identity and path history before repairing project path invariants.",
 				Command:        "loaf project list --json",
 				Path:           status.DatabasePath,
@@ -291,6 +310,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "audit-relationship-origin",
 				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryRelationshipProvenance,
 				Description:    "Audit relationship provenance before backfilling or pruning relationship rows.",
 				Command:        "loaf state repair relationship-origin --origin imported --dry-run --json",
 				Path:           status.DatabasePath,
@@ -300,24 +320,38 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "inspect-backend-mappings",
 				DiagnosticCode: diagnostic.Code,
-				Description:    "Inspect backend mapping diagnostics before pruning or reconnecting invalid integration rows.",
+				Category:       RepairCategoryBackendMapping,
+				Description:    "Inspect invalid local backend mapping rows before pruning or reconnecting integration metadata.",
 				Command:        "loaf state doctor --json",
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
-		case "backend-mapping-entity-ambiguous", "backend-mapping-sync-status-unknown", "linear-mode-local-task-unmapped":
+		case "backend-mapping-entity-ambiguous", "backend-mapping-sync-status-unknown":
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "audit-backend-mappings",
 				DiagnosticCode: diagnostic.Code,
-				Description:    "Audit external backend mappings before pruning or reconnecting integration rows.",
+				Category:       RepairCategoryBackendMapping,
+				Description:    "Audit local backend mapping drift before pruning or reconnecting integration metadata.",
 				Command:        "loaf state export all --format json",
 				Path:           status.DatabasePath,
 				Safe:           false,
+			})
+		case "linear-mode-local-task-unmapped":
+			actions = appendRepairAction(actions, RepairAction{
+				Code:                 "reconcile-linear-task-mappings",
+				DiagnosticCode:       diagnostic.Code,
+				Category:             RepairCategoryExternalSync,
+				Description:          "Export local task state, then reconcile active local tasks with Linear or future backend sync tooling.",
+				Command:              "loaf state export all --format json",
+				Path:                 status.DatabasePath,
+				Safe:                 false,
+				RequiresExternalSync: true,
 			})
 		case "stale-compatibility-export":
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "regenerate-export",
 				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryCompatibilityExport,
 				Description:    "Regenerate the stale compatibility export from SQLite state.",
 				Safe:           false,
 			})
@@ -325,6 +359,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "migrate-current-project-markdown",
 				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryMarkdownImport,
 				Description:    "Preview importing this project's local .agents Markdown artifacts into the global SQLite database.",
 				Command:        "loaf state migrate markdown --dry-run",
 				Path:           status.ProjectRoot,

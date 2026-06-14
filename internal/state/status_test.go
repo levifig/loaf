@@ -98,6 +98,9 @@ func TestRepairPlanRecommendsSafeInitializationForMissingDatabase(t *testing.T) 
 	if action.Command != "loaf state doctor --fix" {
 		t.Fatalf("initialize action Command = %q, want doctor --fix", action.Command)
 	}
+	if action.Category != RepairCategoryLocalDatabase {
+		t.Fatalf("initialize action Category = %q, want %q", action.Category, RepairCategoryLocalDatabase)
+	}
 	if action.Path != status.DatabasePath {
 		t.Fatalf("initialize action Path = %q, want %q", action.Path, status.DatabasePath)
 	}
@@ -130,6 +133,9 @@ func TestRepairPlanTreatsLegacyLeftoverAsManualReview(t *testing.T) {
 	if action.Command != "loaf state repair legacy-project-database --dry-run --json" {
 		t.Fatalf("legacy leftover action Command = %q, want legacy archive dry-run", action.Command)
 	}
+	if action.Category != RepairCategoryLocalDatabase {
+		t.Fatalf("legacy leftover action Category = %q, want %q", action.Category, RepairCategoryLocalDatabase)
+	}
 	if action.Path != legacyPath {
 		t.Fatalf("legacy leftover action Path = %q, want %q", action.Path, legacyPath)
 	}
@@ -151,6 +157,9 @@ func TestRepairPlanDeduplicatesRepeatedActions(t *testing.T) {
 	if actions[0].Code != "inspect-backend-mappings" {
 		t.Fatalf("action Code = %q, want inspect-backend-mappings", actions[0].Code)
 	}
+	if actions[0].Category != RepairCategoryBackendMapping {
+		t.Fatalf("action Category = %q, want %q", actions[0].Category, RepairCategoryBackendMapping)
+	}
 }
 
 func TestRepairPlanPreservesDistinctDiagnosticActions(t *testing.T) {
@@ -168,6 +177,31 @@ func TestRepairPlanPreservesDistinctDiagnosticActions(t *testing.T) {
 	}
 	if actions[0].DiagnosticCode == actions[1].DiagnosticCode {
 		t.Fatalf("diagnostic codes should remain distinct: %#v", actions)
+	}
+}
+
+func TestRepairPlanClassifiesBackendAndExternalSyncActions(t *testing.T) {
+	status := Status{
+		DatabasePath: "/tmp/loaf.sqlite",
+		Diagnostics: []Diagnostic{
+			{Severity: "error", Code: "backend-mapping-entity-missing", Message: "missing backend mapping"},
+			{Severity: "warn", Code: "backend-mapping-sync-status-unknown", Message: "unknown sync status"},
+			{Severity: "warn", Code: "linear-mode-local-task-unmapped", Message: "unmapped local task"},
+		},
+	}
+
+	actions := RepairPlanForStatus(status)
+	invalidMapping := findRepairAction(t, actions, "inspect-backend-mappings")
+	if invalidMapping.Category != RepairCategoryBackendMapping || invalidMapping.RequiresExternalSync {
+		t.Fatalf("invalid mapping action = %#v, want local backend-mapping audit", invalidMapping)
+	}
+	driftMapping := findRepairAction(t, actions, "audit-backend-mappings")
+	if driftMapping.Category != RepairCategoryBackendMapping || driftMapping.RequiresExternalSync {
+		t.Fatalf("drift mapping action = %#v, want local backend-mapping audit", driftMapping)
+	}
+	linearSync := findRepairAction(t, actions, "reconcile-linear-task-mappings")
+	if linearSync.Category != RepairCategoryExternalSync || !linearSync.RequiresExternalSync {
+		t.Fatalf("linear sync action = %#v, want external sync requirement", linearSync)
 	}
 }
 
@@ -577,6 +611,9 @@ VALUES ('backend-mapping-orphaned', ?, 'linear', 'task', 'task-missing', 'issue'
 	if action.Command != "loaf state doctor --json" {
 		t.Fatalf("repair action Command = %q, want state doctor JSON", action.Command)
 	}
+	if action.Category != RepairCategoryBackendMapping || action.RequiresExternalSync {
+		t.Fatalf("repair action = %#v, want local backend mapping inspection", action)
+	}
 }
 
 func TestInspectReportsInvalidBackendMappingEmptyFields(t *testing.T) {
@@ -620,6 +657,9 @@ VALUES ('backend-mapping-empty-field', ?, 'linear', 'task', 'task-linear-empty-f
 	}
 	if action.Command != "loaf state doctor --json" {
 		t.Fatalf("repair action Command = %q, want state doctor JSON", action.Command)
+	}
+	if action.Category != RepairCategoryBackendMapping || action.RequiresExternalSync {
+		t.Fatalf("repair action = %#v, want local backend mapping inspection", action)
 	}
 }
 
@@ -747,6 +787,9 @@ VALUES
 	if action.Safe {
 		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
 	}
+	if action.Category != RepairCategoryBackendMapping || action.RequiresExternalSync {
+		t.Fatalf("repair action = %#v, want local backend mapping audit", action)
+	}
 }
 
 func TestInspectWarnsOnUnknownBackendMappingSyncStatus(t *testing.T) {
@@ -791,6 +834,9 @@ VALUES
 	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
 	if action.Safe {
 		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
+	}
+	if action.Category != RepairCategoryBackendMapping || action.RequiresExternalSync {
+		t.Fatalf("repair action = %#v, want local backend mapping audit", action)
 	}
 }
 
@@ -838,12 +884,15 @@ VALUES ('backend-mapping-linear-task', ?, 'linear', 'task', 'task-active-mapped'
 		t.Fatalf("diagnostic Message = %q, want count of only active unmapped tasks", diagnostic.Message)
 	}
 
-	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
+	action := findRepairAction(t, RepairPlanForStatus(status), "reconcile-linear-task-mappings")
 	if action.Safe {
-		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
+		t.Fatalf("repair action Safe = true, want manual Linear mapping reconciliation")
 	}
 	if action.Command != "loaf state export all --format json" {
 		t.Fatalf("repair action Command = %q, want export all JSON", action.Command)
+	}
+	if action.Category != RepairCategoryExternalSync || !action.RequiresExternalSync {
+		t.Fatalf("repair action = %#v, want external Linear sync requirement", action)
 	}
 }
 
