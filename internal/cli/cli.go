@@ -2581,7 +2581,7 @@ func (r Runner) runTaskArchive(args []string, out io.Writer, runtime state.Runti
 
 func writeTaskCreate(out io.Writer, result state.TaskCreateResult) {
 	fmt.Fprintf(out, "created task %s: %s\n", firstNonEmpty(result.Task.Alias, result.Task.ID), result.Task.Title)
-	writeTaskMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "status: %s\n", result.Task.Status)
 	if result.Priority != "" {
 		fmt.Fprintf(out, "priority: %s\n", result.Priority)
@@ -2603,7 +2603,7 @@ func writeTaskCreate(out io.Writer, result state.TaskCreateResult) {
 
 func writeTaskUpdate(out io.Writer, result state.TaskStatusUpdateResult) {
 	fmt.Fprintf(out, "updated task %s\n", firstNonEmpty(result.Task.Alias, result.Task.ID))
-	writeTaskMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	if result.Previous != result.Status {
 		fmt.Fprintf(out, "status: %s -> %s\n", result.Previous, result.Status)
 	} else if result.Status != "" {
@@ -2632,7 +2632,7 @@ func writeTaskUpdate(out io.Writer, result state.TaskStatusUpdateResult) {
 
 func writeTaskArchive(out io.Writer, result state.TaskArchiveResult) {
 	fmt.Fprint(out, "\n  loaf task archive\n\n")
-	writeTaskMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	if result.Spec != nil && len(result.Archived) == 0 && len(result.Skipped) == 0 {
 		fmt.Fprintf(out, "  No completed tasks found for %s\n\n", firstNonEmpty(result.Spec.Alias, result.Spec.ID))
 		return
@@ -2667,7 +2667,7 @@ func writeTaskArchive(out io.Writer, result state.TaskArchiveResult) {
 	fmt.Fprintln(out)
 }
 
-func writeTaskMutationContext(out io.Writer, prefix string, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string) {
+func writeProjectMutationContext(out io.Writer, prefix string, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string) {
 	if databaseScope == "" {
 		return
 	}
@@ -5811,7 +5811,7 @@ func markdownSpecArchive(rootPath string, refs []string) (state.SpecArchiveResul
 		return state.SpecArchiveResult{}, fmt.Errorf("TASKS.json specs must be an object")
 	}
 
-	result := state.SpecArchiveResult{Archived: []state.SpecArchiveItem{}, Skipped: []state.SpecArchiveItem{}}
+	result := state.SpecArchiveResult{ContractVersion: state.StateJSONContractVersion, Archived: []state.SpecArchiveItem{}, Skipped: []state.SpecArchiveItem{}}
 	changed := false
 	for _, ref := range refs {
 		entryValue, ok := specs[ref]
@@ -6175,6 +6175,7 @@ func writeSpecShow(out io.Writer, result state.SpecShow) {
 
 func writeSpecArchive(out io.Writer, result state.SpecArchiveResult) {
 	fmt.Fprint(out, "\n  loaf spec archive\n\n")
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	for _, item := range result.Archived {
 		spec := item.Ref
 		title := ""

@@ -9770,6 +9770,24 @@ status: drafting
 	if len(archive.Archived) != 1 || archive.Archived[0].Spec == nil || archive.Archived[0].Spec.Alias != "SPEC-001" || archive.Archived[0].EventID == "" {
 		t.Fatalf("Archived = %#v, want SPEC-001 archived with event", archive.Archived)
 	}
+	if archive.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("archive ContractVersion = %d, want %d", archive.ContractVersion, state.StateJSONContractVersion)
+	}
+	if archive.DatabaseScope != "global" {
+		t.Fatalf("archive DatabaseScope = %q, want global", archive.DatabaseScope)
+	}
+	if archive.DatabasePath == "" {
+		t.Fatal("archive DatabasePath is empty")
+	}
+	if archive.ProjectID == "" {
+		t.Fatal("archive ProjectID is empty")
+	}
+	if archive.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("archive ProjectName = %q, want %q", archive.ProjectName, filepath.Base(workingDir))
+	}
+	if archive.ProjectCurrentPath != workingDir {
+		t.Fatalf("archive ProjectCurrentPath = %q, want %q", archive.ProjectCurrentPath, workingDir)
+	}
 	if len(archive.Skipped) != 3 {
 		t.Fatalf("Skipped = %#v, want three skipped specs", archive.Skipped)
 	}
@@ -9812,8 +9830,10 @@ status: drafting
 		t.Fatalf("spec archive human error = %v", err)
 	}
 	output := humanOut.String()
-	if !strings.Contains(output, "loaf spec archive") || !strings.Contains(output, "skipped SPEC-001: already archived") || !strings.Contains(output, "Skipped 1 spec(s)") {
-		t.Fatalf("output = %q, want already-archived human summary", output)
+	for _, want := range []string{"loaf spec archive", "scope: global database", "database:", "project:", "project name:", "project path:", "skipped SPEC-001: already archived", "Skipped 1 spec(s)"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
 	}
 }
 
@@ -9875,6 +9895,12 @@ status: drafting
 	}
 	if len(archive.Skipped) != 2 || archive.Skipped[0].Ref != "SPEC-002" || !strings.Contains(archive.Skipped[0].Reason, "status is drafting") || archive.Skipped[1].Ref != "SPEC-999" || archive.Skipped[1].Reason != "not found in index" {
 		t.Fatalf("Skipped = %#v, want draft and missing skips", archive.Skipped)
+	}
+	if archive.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("archive ContractVersion = %d, want %d", archive.ContractVersion, state.StateJSONContractVersion)
+	}
+	if archive.DatabaseScope != "" || archive.DatabasePath != "" || archive.ProjectID != "" || archive.ProjectName != "" || archive.ProjectCurrentPath != "" {
+		t.Fatalf("archive database context = %#v, want empty for markdown fallback", archive)
 	}
 	if _, err := os.Stat(filepath.Join(workingDir, ".agents", "specs", "SPEC-001-complete.md")); !os.IsNotExist(err) {
 		t.Fatalf("active spec still exists or stat failed: %v", err)
