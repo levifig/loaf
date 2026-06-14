@@ -1873,6 +1873,7 @@ func (r Runner) runStateBackupVerify(args []string, out io.Writer) error {
 	}
 	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
 	fmt.Fprintf(out, "foreign keys: %s\n", result.ForeignKeyCheck)
+	fmt.Fprintln(out, "next: preserve current database, copy this verified backup to `loaf state path`, then run `loaf state doctor` and `loaf state status`")
 	return nil
 }
 

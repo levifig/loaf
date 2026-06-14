@@ -3816,7 +3816,7 @@ func TestRunnerStateBackupVerifyReportsGlobalProjects(t *testing.T) {
 	if err != nil {
 		t.Fatalf("state backup verify error = %v", err)
 	}
-	for _, want := range []string{"loaf state backup verify", "scope: global backup", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 2", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok"} {
+	for _, want := range []string{"loaf state backup verify", "scope: global backup", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 2", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "next: preserve current database"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Fatalf("output = %q, want %q", humanOut.String(), want)
 		}

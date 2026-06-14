@@ -129,7 +129,7 @@ Exit criteria:
 
 ### Gate 2: Make Recovery Boring
 
-Status: In progress. Manual restore is now documented and covered by `TestRunnerStateBackupManualRestoreProcedure`; one remaining Gate 2 decision is whether this is pleasant enough or should become a guarded `state restore` command.
+Status: Complete as of 2026-06-14. Manual restore is acceptable for pre-release because it is documented, covered by `TestRunnerStateBackupManualRestoreProcedure`, dogfooded against an isolated XDG data home from the primary checkout, and reinforced by `state backup verify` next-action guidance. A guarded `state restore` command can wait until repeated use proves the manual flow too clumsy.
 
 Close the restore-confidence gap before polishing lower-risk CLI surfaces. Start with a documented manual restore procedure unless command-level restore proves necessary.
 
@@ -176,6 +176,8 @@ Recommendation: start with documented manual restore plus tests around backup ve
 Progress:
 
 - 2026-06-14: README and generated CLI reference guidance document the manual restore flow: verify the backup, preserve the current global DB, copy the verified backup into the XDG data-home DB path, then run `state doctor` and `state status`. `TestRunnerStateBackupManualRestoreProcedure` backs the flow by verifying a backup, preserving a changed live DB, copying the backup into the global path, and proving doctor/status report the restored project identity.
+- 2026-06-14: Dogfooded the documented restore flow from the primary checkout with isolated `XDG_DATA_HOME`/`XDG_STATE_HOME`: `state backup verify` returned `verified: true`, `integrity_check: ok`, and `foreign_key_check: ok`; the live DB was preserved as `.before-restore`; copying the backup into the global DB path restored the baseline project identity; and both `state doctor --json` and `state status --json` returned `sqlite-ready`.
+- 2026-06-14: Human `state backup verify` output now includes the safe restore next action: preserve the current database, copy the verified backup to `loaf state path`, then run `state doctor` and `state status`.
 
 Go/no-go: a user can recover from a bad global DB using a verified backup without guessing which files to copy or which checks to run.
 
@@ -215,4 +217,4 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 
 ## Next Best Commit
 
-The next implementation commit should finish the Gate 2 decision: dogfood the documented manual restore flow against an isolated data home from the primary checkout, then either record that manual restore is acceptable for pre-release or add a guarded `state restore <backup> --dry-run|--apply` command if the manual flow is too clumsy or error-prone.
+The next implementation commit should start Gate 3 by auditing repair-plan and backend/Linear diagnostics. First target: ensure every doctor repair action clearly distinguishes local repair, manual audit, and future backend sync work, then add or update tests for any repair-plan command that could be misleading in an invalid-state or warning-only mode.
