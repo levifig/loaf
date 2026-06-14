@@ -8650,6 +8650,7 @@ func TestRunnerSparkListAndResolveUseSQLiteStateWhenInitialized(t *testing.T) {
 	if before.Sparks["SPARK-smoke"].Status != "open" {
 		t.Fatalf("before.Sparks = %#v, want open imported spark", before.Sparks)
 	}
+	assertCLISparkContext(t, before.ContractVersion, before.DatabaseScope, before.DatabasePath, before.ProjectID, before.ProjectName, before.ProjectCurrentPath, workingDir)
 
 	var resolveOut bytes.Buffer
 	err = Runner{
@@ -8664,6 +8665,7 @@ func TestRunnerSparkListAndResolveUseSQLiteStateWhenInitialized(t *testing.T) {
 	if result.Spark.Status != "resolved" || result.ResolvedBy.Alias != "20260528-target-idea" || result.EventID == "" || result.Reason != "triaged into target idea" {
 		t.Fatalf("result = %#v, want resolved spark by target idea with event", result)
 	}
+	assertCLISparkContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
 
 	var afterOut bytes.Buffer
 	err = Runner{
@@ -8678,6 +8680,7 @@ func TestRunnerSparkListAndResolveUseSQLiteStateWhenInitialized(t *testing.T) {
 	if _, ok := after.Sparks["SPARK-smoke"]; ok {
 		t.Fatalf("after.Sparks = %#v, want resolved spark omitted by default", after.Sparks)
 	}
+	assertCLISparkContext(t, after.ContractVersion, after.DatabaseScope, after.DatabasePath, after.ProjectID, after.ProjectName, after.ProjectCurrentPath, workingDir)
 
 	var allOut bytes.Buffer
 	err = Runner{
@@ -8692,6 +8695,7 @@ func TestRunnerSparkListAndResolveUseSQLiteStateWhenInitialized(t *testing.T) {
 	if all.Sparks["SPARK-smoke"].Status != "resolved" {
 		t.Fatalf("all.Sparks = %#v, want resolved spark included with --all", all.Sparks)
 	}
+	assertCLISparkContext(t, all.ContractVersion, all.DatabaseScope, all.DatabasePath, all.ProjectID, all.ProjectName, all.ProjectCurrentPath, workingDir)
 }
 
 func TestRunnerSparkPromoteUsesSQLiteStateWhenInitialized(t *testing.T) {
@@ -8717,6 +8721,7 @@ func TestRunnerSparkPromoteUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if result.Spark.Alias != "SPARK-smoke" || result.Spark.Status != "open" || result.Idea.Alias != "20260528-target-idea" || result.Relationship == "" {
 		t.Fatalf("result = %#v, want open spark promoted to target idea with relationship", result)
 	}
+	assertCLISparkContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
 
 	var traceOut bytes.Buffer
 	err = Runner{
@@ -8756,7 +8761,7 @@ func TestRunnerSparkPromoteUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("spark promote human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"promoted spark SPARK-smoke to idea 20260528-target-idea", "relationship:"} {
+	for _, want := range []string{"promoted spark SPARK-smoke to idea 20260528-target-idea", "scope: global database", "database:", "project:", "project name:", "project path:", "relationship:"} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -8789,6 +8794,7 @@ func TestRunnerSparkShowUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if show.Spark.Alias != "SPARK-smoke" || show.Spark.Text != "smoke spark" || show.Spark.Scope != "sqlite" || show.Spark.Status != "open" {
 		t.Fatalf("show = %#v, want imported spark metadata", show)
 	}
+	assertCLISparkContext(t, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath, workingDir)
 	if len(show.Spark.Sources) != 1 || show.Spark.Sources[0].Path != ".agents/sessions/20260528-session.md" || show.Spark.Sources[0].Hash == "" {
 		t.Fatalf("Sources = %#v, want session source with hash", show.Spark.Sources)
 	}
@@ -8806,7 +8812,7 @@ func TestRunnerSparkShowUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("spark show human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"spark SPARK-smoke", "scope: sqlite", "status: open", "text: smoke spark", "source: .agents/sessions/20260528-session.md", "outbound promoted_to idea 20260528-target-idea"} {
+	for _, want := range []string{"spark SPARK-smoke", "scope: global database", "database:", "project:", "project name:", "project path:", "scope: sqlite", "status: open", "text: smoke spark", "source: .agents/sessions/20260528-session.md", "outbound promoted_to idea 20260528-target-idea"} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -8834,6 +8840,7 @@ func TestRunnerSparkCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if result.Spark.Alias != "SPARK-repeat-spark" || result.Spark.Status != "open" || result.Scope != "architecture" || result.EventID == "" {
 		t.Fatalf("result = %#v, want captured spark with alias, scope, and event", result)
 	}
+	assertCLISparkContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
 
 	var secondOut bytes.Buffer
 	err = Runner{
@@ -8848,6 +8855,7 @@ func TestRunnerSparkCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if second.Spark.Alias != "SPARK-repeat-spark-2" {
 		t.Fatalf("second alias = %q, want collision suffix", second.Spark.Alias)
 	}
+	assertCLISparkContext(t, second.ContractVersion, second.DatabaseScope, second.DatabasePath, second.ProjectID, second.ProjectName, second.ProjectCurrentPath, workingDir)
 
 	var listOut bytes.Buffer
 	err = Runner{
@@ -8862,6 +8870,7 @@ func TestRunnerSparkCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if sparks.Sparks["SPARK-repeat-spark"].Status != "open" || sparks.Sparks["SPARK-repeat-spark"].Scope != "architecture" {
 		t.Fatalf("sparks = %#v, want captured spark in list", sparks.Sparks)
 	}
+	assertCLISparkContext(t, sparks.ContractVersion, sparks.DatabaseScope, sparks.DatabasePath, sparks.ProjectID, sparks.ProjectName, sparks.ProjectCurrentPath, workingDir)
 
 	var traceOut bytes.Buffer
 	err = Runner{
@@ -8887,10 +8896,32 @@ func TestRunnerSparkCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("spark capture human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"captured spark SPARK-human-spark", "scope: ops", "text: Human Spark", "event:"} {
+	for _, want := range []string{"captured spark SPARK-human-spark", "scope: global database", "database:", "project:", "project name:", "project path:", "scope: ops", "text: Human Spark", "event:"} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
+	}
+}
+
+func assertCLISparkContext(t *testing.T, contractVersion int, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string, workingDir string) {
+	t.Helper()
+	if contractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", contractVersion, state.StateJSONContractVersion)
+	}
+	if databaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", databaseScope)
+	}
+	if databasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if projectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if projectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", projectName, filepath.Base(workingDir))
+	}
+	if projectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", projectCurrentPath, workingDir)
 	}
 }
 

@@ -4613,6 +4613,7 @@ func (r Runner) runSparkCapture(args []string, out io.Writer, runtime state.Runt
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "captured spark %s\n", firstNonEmpty(result.Spark.Alias, result.Spark.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	if result.Scope != "" {
 		fmt.Fprintf(out, "scope: %s\n", result.Scope)
 	}
@@ -4651,6 +4652,7 @@ func (r Runner) runSparkResolve(args []string, out io.Writer, runtime state.Runt
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "resolved spark %s by %s\n", firstNonEmpty(result.Spark.Alias, result.Spark.ID), firstNonEmpty(result.ResolvedBy.Alias, result.ResolvedBy.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -4682,17 +4684,25 @@ func (r Runner) runSparkPromote(args []string, out io.Writer, runtime state.Runt
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "promoted spark %s to idea %s\n", firstNonEmpty(result.Spark.Alias, result.Spark.ID), firstNonEmpty(result.Idea.Alias, result.Idea.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "relationship: %s\n", result.Relationship)
 	return nil
 }
 
 func writeSparkList(out io.Writer, sparks state.SparkList, filters state.SparkListOptions) {
+	fmt.Fprint(out, "\n  loaf spark list\n\n")
+	writeProjectMutationContext(out, "  ", sparks.DatabaseScope, sparks.DatabasePath, sparks.ProjectID, sparks.ProjectName, sparks.ProjectCurrentPath)
 	if len(sparks.Sparks) == 0 {
-		fmt.Fprint(out, "\n  No sparks found.\n\n")
+		if sparks.DatabaseScope != "" || sparks.DatabasePath != "" || sparks.ProjectID != "" || sparks.ProjectName != "" || sparks.ProjectCurrentPath != "" {
+			fmt.Fprintln(out)
+		}
+		fmt.Fprint(out, "  No sparks found.\n\n")
 		return
 	}
 
-	fmt.Fprint(out, "\n  loaf spark list\n\n")
+	if sparks.DatabaseScope != "" || sparks.DatabasePath != "" || sparks.ProjectID != "" || sparks.ProjectName != "" || sparks.ProjectCurrentPath != "" {
+		fmt.Fprintln(out)
+	}
 	for _, alias := range sortedSparks(sparks) {
 		spark := sparks.Sparks[alias]
 		fmt.Fprintf(out, "    %-24s%s", alias, spark.Text)
@@ -4713,6 +4723,7 @@ func writeSparkList(out io.Writer, sparks state.SparkList, filters state.SparkLi
 func writeSparkShow(out io.Writer, result state.SparkShow) {
 	spark := result.Spark
 	fmt.Fprintf(out, "spark %s\n", firstNonEmpty(spark.Alias, spark.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	if spark.Scope != "" {
 		fmt.Fprintf(out, "scope: %s\n", spark.Scope)
 	}
