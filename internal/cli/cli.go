@@ -5344,6 +5344,7 @@ func (r Runner) runLinkCreate(args []string, out io.Writer, runtime state.Runtim
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "linked %s %s %s %s %s\n", result.From.Kind, firstNonEmpty(result.From.Alias, result.From.ID), result.Type, result.To.Kind, firstNonEmpty(result.To.Alias, result.To.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -5417,6 +5418,7 @@ func (r Runner) runLinkRemove(args []string, out io.Writer, runtime state.Runtim
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "removed link %s %s %s %s %s\n", result.From.Kind, firstNonEmpty(result.From.Alias, result.From.ID), result.Type, result.To.Kind, firstNonEmpty(result.To.Alias, result.To.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -5434,6 +5436,10 @@ func (r Runner) linkStateMode(runtime state.Runtime) (project.Root, string, erro
 
 func writeLinkList(out io.Writer, result state.LinkListResult) {
 	fmt.Fprintf(out, "\n  links for %s %s\n\n", result.Entity.Kind, firstNonEmpty(result.Entity.Alias, result.Entity.ID))
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.DatabaseScope != "" {
+		fmt.Fprintln(out)
+	}
 	if len(result.Relationships) == 0 {
 		fmt.Fprint(out, "  No links found.\n\n")
 		return

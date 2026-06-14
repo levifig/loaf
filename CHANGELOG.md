@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf link create|remove|list` JSON and human output now report global database scope and durable project identity details.
 - `loaf spec archive` JSON and human output now report global database scope and durable project identity details when backed by SQLite, while Markdown fallback JSON includes the contract version without database context.
 - `loaf task create|update|archive` JSON and human output now report global database scope and durable project identity details when backed by SQLite, while Markdown fallback JSON includes the contract version without database context.
 - `loaf project show|list|rename|move` JSON and human output now identify project metadata as global database state.

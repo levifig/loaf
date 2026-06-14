@@ -9220,6 +9220,7 @@ func TestRunnerLinkCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	if created.Type != "resolved_by" || created.From.Alias != "20260528-link-idea" || created.To.Alias != "SPEC-001" || created.Reason != "from cli test" {
 		t.Fatalf("created = %#v, want idea resolved_by SPEC-001", created)
 	}
+	assertCLILinkMutationContext(t, created, workingDir)
 
 	var listOut bytes.Buffer
 	err = Runner{
@@ -9234,6 +9235,22 @@ func TestRunnerLinkCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	if len(list.Relationships) != 1 || !hasTraceRelationship(list.Relationships, "inbound", "resolved_by", "idea", "20260528-link-idea") {
 		t.Fatalf("list = %#v, want inbound idea relationship", list)
 	}
+	assertCLILinkListContext(t, list, workingDir)
+
+	var humanListOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanListOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"link", "list", "SPEC-001"})
+	if err != nil {
+		t.Fatalf("link list human error = %v", err)
+	}
+	for _, want := range []string{"links for spec SPEC-001", "scope: global database", "database:", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanListOut.String(), want) {
+			t.Fatalf("human link list output = %q, want %q", humanListOut.String(), want)
+		}
+	}
 
 	var removeOut bytes.Buffer
 	err = Runner{
@@ -9247,6 +9264,37 @@ func TestRunnerLinkCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	removed := decodeLinkMutationResult(t, removeOut.Bytes())
 	if removed.Type != "resolved_by" || removed.From.Alias != "20260528-link-idea" || removed.To.Alias != "SPEC-001" || removed.Reason != "from cli test" {
 		t.Fatalf("removed = %#v, want removed relationship", removed)
+	}
+	assertCLILinkMutationContext(t, removed, workingDir)
+
+	var humanCreateOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanCreateOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"link", "create", "20260528-link-idea", "SPEC-001", "--type", "resolved_by", "--reason", "human cli test"})
+	if err != nil {
+		t.Fatalf("link create human error = %v", err)
+	}
+	for _, want := range []string{"linked idea 20260528-link-idea resolved_by spec SPEC-001", "scope: global database", "database:", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanCreateOut.String(), want) {
+			t.Fatalf("human link create output = %q, want %q", humanCreateOut.String(), want)
+		}
+	}
+
+	var humanRemoveOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanRemoveOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"link", "remove", "20260528-link-idea", "SPEC-001", "--type", "resolved_by"})
+	if err != nil {
+		t.Fatalf("link remove human error = %v", err)
+	}
+	for _, want := range []string{"removed link idea 20260528-link-idea resolved_by spec SPEC-001", "scope: global database", "database:", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanRemoveOut.String(), want) {
+			t.Fatalf("human link remove output = %q, want %q", humanRemoveOut.String(), want)
+		}
 	}
 
 	var listAfterRemove bytes.Buffer
@@ -9300,6 +9348,50 @@ func TestRunnerLinkMutationCommandsAcceptDocumentedFlags(t *testing.T) {
 	removed := decodeLinkMutationResult(t, removeOut.Bytes())
 	if removed.Type != "resolved_by" || removed.From.Alias != "20260528-link-idea" || removed.To.Alias != "SPEC-001" || removed.Reason != "flag cli test" {
 		t.Fatalf("removed = %#v, want documented flags to remove relationship", removed)
+	}
+}
+
+func assertCLILinkMutationContext(t *testing.T, result state.LinkMutationResult, workingDir string) {
+	t.Helper()
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.DatabasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
+	}
+}
+
+func assertCLILinkListContext(t *testing.T, result state.LinkListResult, workingDir string) {
+	t.Helper()
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.DatabasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
 	}
 }
 
