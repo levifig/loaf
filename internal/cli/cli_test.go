@@ -4170,6 +4170,7 @@ func TestRunnerReportLifecycleUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if created.Report.Alias != "report-release-readiness" || created.Report.Status != "draft" || created.Kind != "audit" || created.Source != "manual" {
 		t.Fatalf("created = %#v, want draft report", created)
 	}
+	assertCLIReportContext(t, created.ContractVersion, created.DatabaseScope, created.DatabasePath, created.ProjectID, created.ProjectName, created.ProjectCurrentPath, workingDir)
 
 	var draftListOut bytes.Buffer
 	if err := (Runner{Stdout: &draftListOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "list", "--json"}); err != nil {
@@ -4179,6 +4180,7 @@ func TestRunnerReportLifecycleUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if draftReports.Reports["report-release-readiness"].Status != "draft" {
 		t.Fatalf("draft reports = %#v, want draft report", draftReports.Reports)
 	}
+	assertCLIReportContext(t, draftReports.ContractVersion, draftReports.DatabaseScope, draftReports.DatabasePath, draftReports.ProjectID, draftReports.ProjectName, draftReports.ProjectCurrentPath, workingDir)
 
 	var finalizeOut bytes.Buffer
 	if err := (Runner{Stdout: &finalizeOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "finalize", "report-release-readiness", "--json"}); err != nil {
@@ -4188,6 +4190,7 @@ func TestRunnerReportLifecycleUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if finalized.Previous != "draft" || finalized.Status != "final" {
 		t.Fatalf("finalized = %#v, want final transition", finalized)
 	}
+	assertCLIReportContext(t, finalized.ContractVersion, finalized.DatabaseScope, finalized.DatabasePath, finalized.ProjectID, finalized.ProjectName, finalized.ProjectCurrentPath, workingDir)
 
 	var archiveOut bytes.Buffer
 	if err := (Runner{Stdout: &archiveOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "archive", "report-release-readiness", "--json"}); err != nil {
@@ -4197,6 +4200,7 @@ func TestRunnerReportLifecycleUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if archived.Previous != "final" || archived.Status != "archived" {
 		t.Fatalf("archived = %#v, want archived transition", archived)
 	}
+	assertCLIReportContext(t, archived.ContractVersion, archived.DatabaseScope, archived.DatabasePath, archived.ProjectID, archived.ProjectName, archived.ProjectCurrentPath, workingDir)
 
 	var archivedListOut bytes.Buffer
 	if err := (Runner{Stdout: &archivedListOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "list", "--json", "--status", "archived"}); err != nil {
@@ -4206,6 +4210,7 @@ func TestRunnerReportLifecycleUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if archivedReports.Reports["report-release-readiness"].Status != "archived" {
 		t.Fatalf("archived reports = %#v, want archived report", archivedReports.Reports)
 	}
+	assertCLIReportContext(t, archivedReports.ContractVersion, archivedReports.DatabaseScope, archivedReports.DatabasePath, archivedReports.ProjectID, archivedReports.ProjectName, archivedReports.ProjectCurrentPath, workingDir)
 
 	afterFiles := repoFileList(t, workingDir)
 	if strings.Join(afterFiles, "\n") != strings.Join(beforeFiles, "\n") {
@@ -4229,6 +4234,9 @@ func TestRunnerReportLifecycleUsesMarkdownFilesWhenMarkdownOnly(t *testing.T) {
 	created := decodeReportCreateResult(t, createOut.Bytes())
 	if created.Report.Status != "draft" || created.Kind != "audit" || created.Source != "manual" || !strings.HasSuffix(created.Report.Alias, "-audit-release-readiness") {
 		t.Fatalf("created = %#v, want markdown draft report", created)
+	}
+	if created.ContractVersion != 0 || created.DatabaseScope != "" || created.DatabasePath != "" || created.ProjectID != "" || created.ProjectName != "" || created.ProjectCurrentPath != "" {
+		t.Fatalf("created markdown context = %#v, want no SQLite context", created)
 	}
 	reportFile := filepath.Join(workingDir, ".agents", "reports", created.Report.Alias+".md")
 	reportRaw, err := os.ReadFile(reportFile)
@@ -4263,6 +4271,9 @@ func TestRunnerReportLifecycleUsesMarkdownFilesWhenMarkdownOnly(t *testing.T) {
 	if listed.Reports[created.Report.Alias].Status != "draft" || listed.Reports[created.Report.Alias].Kind != "audit" {
 		t.Fatalf("reports = %#v, want created markdown report", listed.Reports)
 	}
+	if listed.ContractVersion != 0 || listed.DatabaseScope != "" || listed.DatabasePath != "" || listed.ProjectID != "" || listed.ProjectName != "" || listed.ProjectCurrentPath != "" {
+		t.Fatalf("listed markdown context = %#v, want no SQLite context", listed)
+	}
 
 	var finalizeOut bytes.Buffer
 	err = Runner{
@@ -4276,6 +4287,9 @@ func TestRunnerReportLifecycleUsesMarkdownFilesWhenMarkdownOnly(t *testing.T) {
 	finalized := decodeReportStatusResult(t, finalizeOut.Bytes())
 	if finalized.Previous != "draft" || finalized.Status != "final" || finalized.Report.Alias != created.Report.Alias {
 		t.Fatalf("finalized = %#v, want draft to final", finalized)
+	}
+	if finalized.ContractVersion != 0 || finalized.DatabaseScope != "" || finalized.DatabasePath != "" || finalized.ProjectID != "" || finalized.ProjectName != "" || finalized.ProjectCurrentPath != "" {
+		t.Fatalf("finalized markdown context = %#v, want no SQLite context", finalized)
 	}
 	reportRaw, err = os.ReadFile(reportFile)
 	if err != nil {
@@ -4301,6 +4315,9 @@ func TestRunnerReportLifecycleUsesMarkdownFilesWhenMarkdownOnly(t *testing.T) {
 	archived := decodeReportStatusResult(t, archiveOut.Bytes())
 	if archived.Previous != "final" || archived.Status != "archived" || archived.Report.Alias != created.Report.Alias {
 		t.Fatalf("archived = %#v, want final to archived", archived)
+	}
+	if archived.ContractVersion != 0 || archived.DatabaseScope != "" || archived.DatabasePath != "" || archived.ProjectID != "" || archived.ProjectName != "" || archived.ProjectCurrentPath != "" {
+		t.Fatalf("archived markdown context = %#v, want no SQLite context", archived)
 	}
 	if _, err := os.Stat(reportFile); !os.IsNotExist(err) {
 		t.Fatalf("active report stat error = %v, want removed", err)
@@ -11417,6 +11434,7 @@ source: old
 	if archived.Status != "archived" || archived.SourcePath != ".agents/reports/archive/old.md" {
 		t.Fatalf("archived report = %#v, want archive-location status", archived)
 	}
+	assertCLIReportContext(t, reports.ContractVersion, reports.DatabaseScope, reports.DatabasePath, reports.ProjectID, reports.ProjectName, reports.ProjectCurrentPath, workingDir)
 }
 
 func TestRunnerReportListHumanUsesSQLiteStateWhenInitialized(t *testing.T) {
@@ -11454,7 +11472,7 @@ source: SPEC-001
 		t.Fatalf("report list --status final error = %v", err)
 	}
 	output := stdout.String()
-	for _, want := range []string{"loaf report list", "Final:", "Final Report", "[audit]", ".agents/reports/final.md", "1 report(s) total"} {
+	for _, want := range []string{"loaf report list", "scope: global database", "database:", "project:", "project name:", "project path:", "Final:", "Final Report", "[audit]", ".agents/reports/final.md", "1 report(s) total"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -11513,6 +11531,9 @@ source: old
 	if archived.Title != "Old Report" || archived.Kind != "research" || archived.Status != "archived" || archived.SourcePath != ".agents/reports/archive/old.md" {
 		t.Fatalf("archived report = %#v, want archive-location status", archived)
 	}
+	if reports.ContractVersion != 0 || reports.DatabaseScope != "" || reports.DatabasePath != "" || reports.ProjectID != "" || reports.ProjectName != "" || reports.ProjectCurrentPath != "" {
+		t.Fatalf("markdown report list context = %#v, want no SQLite context", reports)
+	}
 
 	var humanOut bytes.Buffer
 	err = Runner{
@@ -11532,7 +11553,32 @@ source: old
 	if strings.Contains(output, "Draft Report") || strings.Contains(output, "Old Report") {
 		t.Fatalf("output = %q, want status filter to hide non-final reports", output)
 	}
+	if strings.Contains(output, "scope: global database") || strings.Contains(output, "project name:") {
+		t.Fatalf("output = %q, want markdown fallback without SQLite context", output)
+	}
 	assertNoStateDatabase(t, workingDir, stateHome)
+}
+
+func assertCLIReportContext(t *testing.T, contractVersion int, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string, workingDir string) {
+	t.Helper()
+	if contractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", contractVersion, state.StateJSONContractVersion)
+	}
+	if databaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", databaseScope)
+	}
+	if databasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if projectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if projectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", projectName, filepath.Base(workingDir))
+	}
+	if projectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", projectCurrentPath, workingDir)
+	}
 }
 
 func TestRunnerReportListReportsInvalidSQLiteState(t *testing.T) {

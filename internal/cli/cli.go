@@ -8929,6 +8929,7 @@ func (r Runner) reportStateMode(runtime state.Runtime) (project.Root, string, er
 
 func writeReportCreate(out io.Writer, result state.ReportCreateResult) {
 	fmt.Fprintf(out, "created report %s: %s\n", firstNonEmpty(result.Report.Alias, result.Report.ID), result.Report.Title)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "status: %s\n", result.Report.Status)
 	fmt.Fprintf(out, "type: %s\n", result.Kind)
 	fmt.Fprintf(out, "source: %s\n", result.Source)
@@ -8939,6 +8940,7 @@ func writeReportCreate(out io.Writer, result state.ReportCreateResult) {
 
 func writeReportStatus(out io.Writer, action string, result state.ReportStatusResult) {
 	fmt.Fprintf(out, "%s report %s: %s\n", action, firstNonEmpty(result.Report.Alias, result.Report.ID), result.Report.Title)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "previous: %s\n", result.Previous)
 	fmt.Fprintf(out, "status: %s\n", result.Status)
 	if result.EventID != "" {
@@ -8947,12 +8949,20 @@ func writeReportStatus(out io.Writer, action string, result state.ReportStatusRe
 }
 
 func writeReportList(out io.Writer, reports state.ReportList) {
+	fmt.Fprint(out, "\n  loaf report list\n\n")
+	writeProjectMutationContext(out, "  ", reports.DatabaseScope, reports.DatabasePath, reports.ProjectID, reports.ProjectName, reports.ProjectCurrentPath)
+
 	if len(reports.Reports) == 0 {
-		fmt.Fprint(out, "\n  No reports found.\n\n")
+		if reports.DatabaseScope != "" || reports.DatabasePath != "" || reports.ProjectID != "" || reports.ProjectName != "" || reports.ProjectCurrentPath != "" {
+			fmt.Fprintln(out)
+		}
+		fmt.Fprint(out, "  No reports found.\n\n")
 		return
 	}
 
-	fmt.Fprint(out, "\n  loaf report list\n\n")
+	if reports.DatabaseScope != "" || reports.DatabasePath != "" || reports.ProjectID != "" || reports.ProjectName != "" || reports.ProjectCurrentPath != "" {
+		fmt.Fprintln(out)
+	}
 	for _, status := range reportStatusDisplayOrder(reports) {
 		group := sortedReportsByStatus(reports, status)
 		if len(group) == 0 {
