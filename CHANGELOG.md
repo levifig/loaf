@@ -6,6 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-pre.20260614235428] - 2026-06-14
+
 ### Changed
 
 - Added Homebrew-ready release packaging and CI/CD so tagged Loaf releases can build native archives, upload checksummed assets, and update `levifig/homebrew-tap`.
