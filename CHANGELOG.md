@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf idea capture|promote|resolve|archive|list|show` JSON and human output now report global database scope and durable project identity details.
 - `loaf bundle create|update|add|remove|list|show` JSON and human output now report global database scope and durable project identity details.
 - `loaf tag add|remove|list|show` JSON and human output now report global database scope and durable project identity details.
 - `loaf link create|remove|list` JSON and human output now report global database scope and durable project identity details.

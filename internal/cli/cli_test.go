@@ -8065,6 +8065,7 @@ status: open
 	if before.Ideas["20260528-sqlite-state"].Status != "open" {
 		t.Fatalf("before.Ideas = %#v, want open imported idea", before.Ideas)
 	}
+	assertCLIIdeaContext(t, before.ContractVersion, before.DatabaseScope, before.DatabasePath, before.ProjectID, before.ProjectName, before.ProjectCurrentPath, workingDir)
 
 	var resolveOut bytes.Buffer
 	err = Runner{
@@ -8079,6 +8080,7 @@ status: open
 	if result.Idea.Status != "resolved" || result.ResolvedBy.Alias != "SPEC-001" || result.EventID == "" {
 		t.Fatalf("result = %#v, want resolved idea by SPEC-001 with event", result)
 	}
+	assertCLIIdeaContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
 
 	var afterOut bytes.Buffer
 	err = Runner{
@@ -8093,6 +8095,7 @@ status: open
 	if _, ok := after.Ideas["20260528-sqlite-state"]; ok {
 		t.Fatalf("after.Ideas = %#v, want resolved idea omitted by default", after.Ideas)
 	}
+	assertCLIIdeaContext(t, after.ContractVersion, after.DatabaseScope, after.DatabasePath, after.ProjectID, after.ProjectName, after.ProjectCurrentPath, workingDir)
 
 	var allOut bytes.Buffer
 	err = Runner{
@@ -8107,6 +8110,7 @@ status: open
 	if all.Ideas["20260528-sqlite-state"].Status != "resolved" {
 		t.Fatalf("all.Ideas = %#v, want resolved idea included with --all", all.Ideas)
 	}
+	assertCLIIdeaContext(t, all.ContractVersion, all.DatabaseScope, all.DatabasePath, all.ProjectID, all.ProjectName, all.ProjectCurrentPath, workingDir)
 }
 
 func TestRunnerIdeaShowUsesSQLiteStateWhenInitialized(t *testing.T) {
@@ -8141,6 +8145,7 @@ Imported idea prose.
 	if show.Idea.Alias != "20260528-sqlite-state" || show.Idea.Title != "SQLite State" || show.Idea.Status != "open" {
 		t.Fatalf("show = %#v, want imported idea metadata", show)
 	}
+	assertCLIIdeaContext(t, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath, workingDir)
 	if len(show.Idea.Sources) != 1 || show.Idea.Sources[0].Path != ".agents/ideas/20260528-sqlite-state.md" || show.Idea.Sources[0].Hash == "" {
 		t.Fatalf("Sources = %#v, want imported idea source", show.Idea.Sources)
 	}
@@ -8161,7 +8166,7 @@ Imported idea prose.
 		t.Fatalf("idea show human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"idea 20260528-sqlite-state", "title: SQLite State", "status: open", "source: .agents/ideas/20260528-sqlite-state.md", "outbound resolved_by spec SPEC-001", "Imported idea prose."} {
+	for _, want := range []string{"idea 20260528-sqlite-state", "title: SQLite State", "status: open", "scope: global database", "database:", "project:", "project name:", "project path:", "source: .agents/ideas/20260528-sqlite-state.md", "outbound resolved_by spec SPEC-001", "Imported idea prose."} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -8177,6 +8182,7 @@ Imported idea prose.
 		t.Fatalf("idea capture --json error = %v", err)
 	}
 	captured := decodeIdeaCaptureResult(t, captureOut.Bytes())
+	assertCLIIdeaContext(t, captured.ContractVersion, captured.DatabaseScope, captured.DatabasePath, captured.ProjectID, captured.ProjectName, captured.ProjectCurrentPath, workingDir)
 	var capturedShowOut bytes.Buffer
 	err = Runner{
 		Stdout:     &capturedShowOut,
@@ -8190,6 +8196,7 @@ Imported idea prose.
 	if capturedShow.Idea.Alias != captured.Idea.Alias || capturedShow.Idea.Title != "Captured Idea" || len(capturedShow.Idea.Sources) != 0 || capturedShow.Idea.Body != "" {
 		t.Fatalf("capturedShow = %#v, want captured idea without source/body", capturedShow)
 	}
+	assertCLIIdeaContext(t, capturedShow.ContractVersion, capturedShow.DatabaseScope, capturedShow.DatabasePath, capturedShow.ProjectID, capturedShow.ProjectName, capturedShow.ProjectCurrentPath, workingDir)
 }
 
 func TestRunnerIdeaPromoteUsesSQLiteStateWhenInitialized(t *testing.T) {
@@ -8220,6 +8227,7 @@ status: open
 	if result.Idea.Alias != "20260528-sqlite-state" || result.Idea.Status != "open" || result.Spec.Alias != "SPEC-001" || result.Relationship == "" {
 		t.Fatalf("result = %#v, want open idea promoted to target spec with relationship", result)
 	}
+	assertCLIIdeaContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
 
 	var traceOut bytes.Buffer
 	err = Runner{
@@ -8248,6 +8256,7 @@ status: open
 	if !hasTraceRelationship(show.Idea.Relationships, "outbound", "promoted_to", "spec", "SPEC-001") {
 		t.Fatalf("show relationships = %#v, want promoted_to target spec", show.Idea.Relationships)
 	}
+	assertCLIIdeaContext(t, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath, workingDir)
 
 	var linkOut bytes.Buffer
 	err = Runner{
@@ -8273,7 +8282,7 @@ status: open
 		t.Fatalf("idea promote human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"promoted idea 20260528-sqlite-state to spec SPEC-001", "relationship:"} {
+	for _, want := range []string{"promoted idea 20260528-sqlite-state to spec SPEC-001", "scope: global database", "database:", "project:", "project name:", "project path:", "relationship:"} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -8301,6 +8310,7 @@ func TestRunnerIdeaCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if result.Idea.Status != "open" || result.Idea.Title != "Repeat Idea" || !strings.HasPrefix(result.Idea.Alias, "IDEA-") || !strings.Contains(result.Idea.Alias, "repeat-idea") || result.EventID == "" {
 		t.Fatalf("result = %#v, want captured idea with alias and event", result)
 	}
+	assertCLIIdeaContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
 
 	var secondOut bytes.Buffer
 	err = Runner{
@@ -8315,6 +8325,7 @@ func TestRunnerIdeaCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if second.Idea.Alias != result.Idea.Alias+"-2" {
 		t.Fatalf("second alias = %q, want collision suffix after %q", second.Idea.Alias, result.Idea.Alias)
 	}
+	assertCLIIdeaContext(t, second.ContractVersion, second.DatabaseScope, second.DatabasePath, second.ProjectID, second.ProjectName, second.ProjectCurrentPath, workingDir)
 
 	var listOut bytes.Buffer
 	err = Runner{
@@ -8329,6 +8340,7 @@ func TestRunnerIdeaCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if ideas.Ideas[result.Idea.Alias].Status != "open" || ideas.Ideas[result.Idea.Alias].Title != "Repeat Idea" {
 		t.Fatalf("ideas = %#v, want captured idea in list", ideas.Ideas)
 	}
+	assertCLIIdeaContext(t, ideas.ContractVersion, ideas.DatabaseScope, ideas.DatabasePath, ideas.ProjectID, ideas.ProjectName, ideas.ProjectCurrentPath, workingDir)
 
 	var traceOut bytes.Buffer
 	err = Runner{
@@ -8354,7 +8366,7 @@ func TestRunnerIdeaCaptureUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("idea capture human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"captured idea IDEA-", "human-idea", "title: Human Idea", "event:"} {
+	for _, want := range []string{"captured idea IDEA-", "human-idea", "scope: global database", "database:", "project:", "project name:", "project path:", "title: Human Idea", "event:"} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -8440,6 +8452,7 @@ status: archived
 	if len(archive.Archived) != 1 || archive.Archived[0].Idea == nil || archive.Archived[0].Idea.Alias != "20260528-open-idea" || archive.Archived[0].EventID == "" || archive.Archived[0].Note != "covered by SPEC-001" {
 		t.Fatalf("Archived = %#v, want open idea archived with event", archive.Archived)
 	}
+	assertCLIIdeaContext(t, archive.ContractVersion, archive.DatabaseScope, archive.DatabasePath, archive.ProjectID, archive.ProjectName, archive.ProjectCurrentPath, workingDir)
 	if len(archive.Skipped) != 3 {
 		t.Fatalf("Skipped = %#v, want three skipped refs", archive.Skipped)
 	}
@@ -8457,6 +8470,7 @@ status: archived
 	if _, ok := defaultList.Ideas["20260528-open-idea"]; ok {
 		t.Fatalf("defaultList.Ideas = %#v, want archived idea hidden", defaultList.Ideas)
 	}
+	assertCLIIdeaContext(t, defaultList.ContractVersion, defaultList.DatabaseScope, defaultList.DatabasePath, defaultList.ProjectID, defaultList.ProjectName, defaultList.ProjectCurrentPath, workingDir)
 
 	var archivedOut bytes.Buffer
 	err = Runner{
@@ -8471,6 +8485,7 @@ status: archived
 	if archived.Ideas["20260528-open-idea"].Status != "archived" || archived.Ideas["20260528-archived-idea"].Status != "archived" {
 		t.Fatalf("archived.Ideas = %#v, want both archived ideas", archived.Ideas)
 	}
+	assertCLIIdeaContext(t, archived.ContractVersion, archived.DatabaseScope, archived.DatabasePath, archived.ProjectID, archived.ProjectName, archived.ProjectCurrentPath, workingDir)
 
 	var traceOut bytes.Buffer
 	err = Runner{
@@ -8496,8 +8511,32 @@ status: archived
 		t.Fatalf("idea archive human error = %v", err)
 	}
 	output := humanOut.String()
-	if !strings.Contains(output, "loaf idea archive") || !strings.Contains(output, "skipped 20260528-open-idea: already archived") || !strings.Contains(output, "Skipped 1 idea(s)") {
-		t.Fatalf("output = %q, want already-archived human summary", output)
+	for _, want := range []string{"loaf idea archive", "scope: global database", "database:", "project:", "project name:", "project path:", "skipped 20260528-open-idea: already archived", "Skipped 1 idea(s)"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
+	}
+}
+
+func assertCLIIdeaContext(t *testing.T, contractVersion int, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string, workingDir string) {
+	t.Helper()
+	if contractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", contractVersion, state.StateJSONContractVersion)
+	}
+	if databaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", databaseScope)
+	}
+	if databasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if projectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if projectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", projectName, filepath.Base(workingDir))
+	}
+	if projectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", projectCurrentPath, workingDir)
 	}
 }
 

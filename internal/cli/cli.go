@@ -4262,6 +4262,7 @@ func (r Runner) runIdeaCapture(args []string, out io.Writer, runtime state.Runti
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "captured idea %s\n", firstNonEmpty(result.Idea.Alias, result.Idea.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "title: %s\n", result.Idea.Title)
 	if result.EventID != "" {
 		fmt.Fprintf(out, "event: %s\n", result.EventID)
@@ -4297,6 +4298,7 @@ func (r Runner) runIdeaPromote(args []string, out io.Writer, runtime state.Runti
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "promoted idea %s to spec %s\n", firstNonEmpty(result.Idea.Alias, result.Idea.ID), firstNonEmpty(result.Spec.Alias, result.Spec.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "relationship: %s\n", result.Relationship)
 	return nil
 }
@@ -4329,6 +4331,7 @@ func (r Runner) runIdeaResolve(args []string, out io.Writer, runtime state.Runti
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "resolved idea %s by %s\n", firstNonEmpty(result.Idea.Alias, result.Idea.ID), firstNonEmpty(result.ResolvedBy.Alias, result.ResolvedBy.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -4364,12 +4367,19 @@ func (r Runner) runIdeaArchive(args []string, out io.Writer, runtime state.Runti
 }
 
 func writeIdeaList(out io.Writer, ideas state.IdeaList, filters state.IdeaListOptions) {
+	fmt.Fprint(out, "\n  loaf idea list\n\n")
+	writeProjectMutationContext(out, "  ", ideas.DatabaseScope, ideas.DatabasePath, ideas.ProjectID, ideas.ProjectName, ideas.ProjectCurrentPath)
 	if len(ideas.Ideas) == 0 {
-		fmt.Fprint(out, "\n  No ideas found.\n\n")
+		if ideas.DatabaseScope != "" || ideas.DatabasePath != "" || ideas.ProjectID != "" || ideas.ProjectName != "" || ideas.ProjectCurrentPath != "" {
+			fmt.Fprintln(out)
+		}
+		fmt.Fprint(out, "  No ideas found.\n\n")
 		return
 	}
 
-	fmt.Fprint(out, "\n  loaf idea list\n\n")
+	if ideas.DatabaseScope != "" || ideas.DatabasePath != "" || ideas.ProjectID != "" || ideas.ProjectName != "" || ideas.ProjectCurrentPath != "" {
+		fmt.Fprintln(out)
+	}
 	for _, alias := range sortedIdeas(ideas) {
 		idea := ideas.Ideas[alias]
 		fmt.Fprintf(out, "    %-24s%s", alias, idea.Title)
@@ -4389,6 +4399,7 @@ func writeIdeaShow(out io.Writer, result state.IdeaShow) {
 	fmt.Fprintf(out, "idea %s\n", firstNonEmpty(idea.Alias, idea.ID))
 	fmt.Fprintf(out, "title: %s\n", idea.Title)
 	fmt.Fprintf(out, "status: %s\n", idea.Status)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	for _, source := range idea.Sources {
 		fmt.Fprintf(out, "source: %s\n", source.Path)
 		if source.Hash != "" {
@@ -4418,6 +4429,10 @@ func writeIdeaShow(out io.Writer, result state.IdeaShow) {
 
 func writeIdeaArchive(out io.Writer, result state.IdeaArchiveResult) {
 	fmt.Fprint(out, "\n  loaf idea archive\n\n")
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.DatabaseScope != "" || result.DatabasePath != "" || result.ProjectID != "" || result.ProjectName != "" || result.ProjectCurrentPath != "" {
+		fmt.Fprintln(out)
+	}
 	for _, item := range result.Archived {
 		idea := item.Ref
 		title := ""
