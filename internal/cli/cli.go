@@ -1269,14 +1269,11 @@ func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Run
 		if options.jsonOutput {
 			return writeJSON(out, result)
 		}
-		fmt.Fprintln(out, "Project rename dry run")
-		fmt.Fprintln(out, "  no changes written")
-		fmt.Fprintf(out, "  from: %s\n", result.FromName)
-		fmt.Fprintf(out, "  to:   %s\n\n", result.ToName)
-		writeProjectIdentity(out, result.Project)
+		writeProjectRenameHuman(out, result, false)
 		return nil
 	}
-	if _, err := store.PreviewRenameProject(context.Background(), projectRoot, options.name); err != nil {
+	preview, err := store.PreviewRenameProject(context.Background(), projectRoot, options.name)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = fmt.Errorf("project identity is not registered for %s; run `loaf state init` to register this checkout or `loaf project move --from <old-path>` after moving a registered checkout", projectRoot.Path())
 		}
@@ -1304,8 +1301,14 @@ func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Run
 	if options.jsonOutput {
 		return writeJSON(out, identity)
 	}
-	fmt.Fprintf(out, "Renamed project to %q\n\n", identity.FriendlyName)
-	writeProjectIdentity(out, identity)
+	writeProjectRenameHuman(out, state.ProjectRenameResult{
+		ContractVersion: state.StateJSONContractVersion,
+		DatabaseScope:   identity.DatabaseScope,
+		Project:         identity,
+		FromName:        preview.FromName,
+		ToName:          identity.FriendlyName,
+		Action:          "renamed",
+	}, true)
 	return nil
 }
 
@@ -1360,15 +1363,7 @@ func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runti
 	if options.jsonOutput {
 		return writeJSON(out, result)
 	}
-	if options.dryRun {
-		fmt.Fprintln(out, "Project move dry run")
-		fmt.Fprintln(out, "  no changes written")
-	} else {
-		fmt.Fprintln(out, "Moved project path")
-	}
-	fmt.Fprintf(out, "  from: %s\n", result.FromPath)
-	fmt.Fprintf(out, "  to:   %s\n\n", result.ToPath)
-	writeProjectIdentity(out, result.Project)
+	writeProjectMoveHuman(out, result, !options.dryRun)
 	return nil
 }
 
@@ -1448,6 +1443,44 @@ func writeProjectIdentity(out io.Writer, identity state.ProjectIdentity) {
 	fmt.Fprintf(out, "  id:   %s\n", identity.ID)
 	fmt.Fprintf(out, "  path: %s\n", identity.CurrentPath)
 	fmt.Fprintf(out, "  db:   %s\n", identity.DatabasePath)
+}
+
+func writeProjectRenameHuman(out io.Writer, result state.ProjectRenameResult, applied bool) {
+	command := "loaf project rename"
+	if !applied {
+		command += " --dry-run"
+	}
+	fmt.Fprintln(out, command)
+	writeProjectMutationHuman(out, result.DatabaseScope, result.Project)
+	fmt.Fprintf(out, "from name: %s\n", result.FromName)
+	fmt.Fprintf(out, "to name: %s\n", result.ToName)
+	fmt.Fprintf(out, "applied: %t\n", applied)
+	if !applied {
+		fmt.Fprintln(out, "next: rerun without --dry-run to apply the friendly name change")
+	}
+}
+
+func writeProjectMoveHuman(out io.Writer, result state.ProjectMoveResult, applied bool) {
+	command := "loaf project move"
+	if !applied {
+		command += " --dry-run"
+	}
+	fmt.Fprintln(out, command)
+	writeProjectMutationHuman(out, result.DatabaseScope, result.Project)
+	fmt.Fprintf(out, "from path: %s\n", result.FromPath)
+	fmt.Fprintf(out, "to path: %s\n", result.ToPath)
+	fmt.Fprintf(out, "applied: %t\n", applied)
+	if !applied {
+		fmt.Fprintln(out, "next: rerun without --dry-run to record the path move")
+	}
+}
+
+func writeProjectMutationHuman(out io.Writer, databaseScope string, identity state.ProjectIdentity) {
+	fmt.Fprintf(out, "scope: %s database\n", databaseScope)
+	fmt.Fprintf(out, "database: %s\n", identity.DatabasePath)
+	fmt.Fprintf(out, "project: %s\n", identity.ID)
+	fmt.Fprintf(out, "project name: %s\n", firstNonEmpty(identity.FriendlyName, "(unnamed)"))
+	fmt.Fprintf(out, "project path: %s\n", firstNonEmpty(identity.CurrentPath, "(none)"))
 }
 
 func writeProjectList(out io.Writer, result state.ProjectList) {

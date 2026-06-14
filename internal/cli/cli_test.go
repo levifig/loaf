@@ -2360,11 +2360,21 @@ func TestRunnerProjectRenameDryRunDoesNotWrite(t *testing.T) {
 	if err := (Runner{Stdout: &humanOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Preview Loaf", "--dry-run"}); err != nil {
 		t.Fatalf("project rename --dry-run error = %v", err)
 	}
-	if !strings.Contains(humanOut.String(), "Project rename dry run") || !strings.Contains(humanOut.String(), "no changes written") {
-		t.Fatalf("human dry-run output = %q, want explicit preview wording", humanOut.String())
-	}
-	if !strings.Contains(humanOut.String(), "scope: global database") {
-		t.Fatalf("human dry-run output = %q, want global scope", humanOut.String())
+	for _, want := range []string{
+		"loaf project rename --dry-run",
+		"scope: global database",
+		"database:",
+		"project: " + shown.ID,
+		"project name: Preview Loaf",
+		"project path: " + workingDir,
+		"from name: " + shown.FriendlyName,
+		"to name: Preview Loaf",
+		"applied: false",
+		"next: rerun without --dry-run",
+	} {
+		if !strings.Contains(humanOut.String(), want) {
+			t.Fatalf("human dry-run output = %q, want %q", humanOut.String(), want)
+		}
 	}
 }
 
@@ -2420,11 +2430,75 @@ func TestRunnerProjectMoveDryRunDoesNotWrite(t *testing.T) {
 	if err := (Runner{Stdout: &humanOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", workingDir, "--dry-run"}); err != nil {
 		t.Fatalf("project move --dry-run error = %v", err)
 	}
-	if !strings.Contains(humanOut.String(), "Project move dry run") || !strings.Contains(humanOut.String(), "no changes written") {
-		t.Fatalf("human dry-run output = %q, want explicit preview wording", humanOut.String())
+	for _, want := range []string{
+		"loaf project move --dry-run",
+		"scope: global database",
+		"database:",
+		"project: " + shown.ID,
+		"project name: " + shown.FriendlyName,
+		"project path: " + movedDir,
+		"from path: " + workingDir,
+		"to path: " + movedDir,
+		"applied: false",
+		"next: rerun without --dry-run",
+	} {
+		if !strings.Contains(humanOut.String(), want) {
+			t.Fatalf("human dry-run output = %q, want %q", humanOut.String(), want)
+		}
 	}
-	if !strings.Contains(humanOut.String(), "scope: global database") {
-		t.Fatalf("human dry-run output = %q, want global scope", humanOut.String())
+}
+
+func TestRunnerProjectRenameAndMoveHumanApplyOutput(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	movedDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+
+	identity := projectIdentityForCLI(t, workingDir, stateHome)
+	var renameOut bytes.Buffer
+	if err := (Runner{Stdout: &renameOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Friendly Loaf"}); err != nil {
+		t.Fatalf("project rename human error = %v", err)
+	}
+	for _, want := range []string{
+		"loaf project rename",
+		"scope: global database",
+		"database:",
+		"project: " + identity.ID,
+		"project name: Friendly Loaf",
+		"project path: " + workingDir,
+		"from name: " + identity.FriendlyName,
+		"to name: Friendly Loaf",
+		"applied: true",
+	} {
+		if !strings.Contains(renameOut.String(), want) {
+			t.Fatalf("rename output = %q, want %q", renameOut.String(), want)
+		}
+	}
+
+	var moveOut bytes.Buffer
+	if err := (Runner{Stdout: &moveOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", workingDir}); err != nil {
+		t.Fatalf("project move human error = %v", err)
+	}
+	for _, want := range []string{
+		"loaf project move",
+		"scope: global database",
+		"database:",
+		"project: " + identity.ID,
+		"project name: Friendly Loaf",
+		"project path: " + movedDir,
+		"from path: " + workingDir,
+		"to path: " + movedDir,
+		"applied: true",
+	} {
+		if !strings.Contains(moveOut.String(), want) {
+			t.Fatalf("move output = %q, want %q", moveOut.String(), want)
+		}
+	}
+	if strings.Contains(renameOut.String(), "next:") || strings.Contains(moveOut.String(), "next:") {
+		t.Fatalf("apply outputs should not include dry-run next action:\nrename=%q\nmove=%q", renameOut.String(), moveOut.String())
 	}
 }
 

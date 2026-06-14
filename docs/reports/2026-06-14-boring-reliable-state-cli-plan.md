@@ -211,6 +211,10 @@ Go/no-go: doctor diagnostics and repair/export guidance make it obvious whether 
 
 Run the human form of the command matrix and normalize output shape. Prefer terse blocks with command name, scope, project, path, status, and next action. Avoid feature explanations and avoid presenting dangerous operations as casual fixes.
 
+Progress:
+
+- 2026-06-14: `loaf project rename` and `loaf project move` human output now use the same high-risk mutation shape: command header, global database scope, database path, durable project ID, friendly name, current path, from/to values, and `applied: true|false`. Dry-run output includes a next action; apply output does not. `TestRunnerProjectRenameDryRunDoesNotWrite`, `TestRunnerProjectMoveDryRunDoesNotWrite`, and `TestRunnerProjectRenameAndMoveHumanApplyOutput` cover the new shape.
+
 Go/no-go: a user can run the state/project/migration commands without reading docs and understand whether anything changed.
 
 ### Track 6: Completion Audit
@@ -226,4 +230,4 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 
 ## Next Best Commit
 
-The next implementation commit should continue Gate 3 with the human-output pass across the state/project/migration command matrix. First target: normalize concise command, scope, project, path, mutation status, and next-action lines for the highest-risk human paths.
+The next implementation commit should continue Track 5 by normalizing migration human output for `state migrate markdown` and `state migrate storage-home`, especially dry-run/apply mutation status and next-action guidance.

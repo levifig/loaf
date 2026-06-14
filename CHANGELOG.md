@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf project rename|move` human output now reports command, scope, database, project identity, from/to values, applied status, and dry-run next actions consistently.
 - `loaf state doctor` diagnostics now label backend mapping and Linear sync findings by policy so local data fixes, drift audits, and external sync work are easier to distinguish.
 - `loaf state doctor` repair-plan commands now have regression coverage proving suggested follow-up commands run in the diagnostic mode that produced them.
 - `loaf state doctor` repair plans now classify local database, backend mapping, and external sync actions for clearer human and agent follow-up.
