@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- Added Homebrew-ready release packaging and CI/CD so tagged Loaf releases can build native archives, upload checksummed assets, and update `levifig/homebrew-tap`.
 - Completed the boring-reliable state/CLI audit, tying the single global SQLite database contract, durable project identity, repair guidance, backup/export/restore evidence, backend/Linear diagnostics, human help, and agent JSON surfaces to tests, docs, SPEC-040, native cutover guardrails, and live primary-checkout dogfood.
 - State, project, repair, backup, and migration terminal help now names the JSON contract fields instead of using generic `Output JSON`, including readiness, diagnostics, repair plans, backup restore guidance, migration context, durable project identity, and applied status.
 - Utility and knowledge-base help surfaces now describe `kb`, `check`, `housekeeping`, and `trace` JSON output in terms of knowledge metadata, hook results, cleanup sections/signals, traced entities, global database scope, and project identity across agent help, command help, and generated CLI reference output.

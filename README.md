@@ -186,6 +186,15 @@ Build once, deploy everywhere. Skills are the universal layer; profiles and hook
 
 ## Getting Started
 
+### Homebrew
+
+```bash
+brew tap levifig/tap
+brew install loaf
+```
+
+Homebrew installs the native `loaf` binary plus Loaf's packaged content under the tap-managed prefix. Use `brew upgrade loaf` after releases.
+
 ### Claude Code
 
 ```bash

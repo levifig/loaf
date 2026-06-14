@@ -14,6 +14,7 @@
   "scripts": {
     "build:go": "node cli/scripts/build-go.mjs",
     "build:release": "node cli/scripts/build-release.mjs",
+    "package:release": "node cli/scripts/package-release.mjs",
     "verify:go-artifacts": "node cli/scripts/verify-go-artifacts.mjs",
     "build:cli-ref": "bin/loaf __generate-cli-ref",
     "build:content": "bin/loaf build",
