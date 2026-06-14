@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- Added a focused boring-reliable state/CLI plan that turns the remaining SQLite hardening work into an explicit reliability contract, command matrix, and prioritized audit tracks.
 - `loaf state export all --json` is now accepted as an agent-friendly alias for `loaf state export all --format json`, while markdown export kinds continue to require explicit `--format markdown`.
 - `loaf state doctor` repair plans now route invalid backend-mapping diagnostics to `loaf state doctor --json` instead of suggesting `state export`, which refuses to run while state is invalid.
 - `loaf state doctor --json` now includes non-mutating repair plans whenever diagnostics are present, even without `--dry-run`, so agents receive next actions alongside health failures.
