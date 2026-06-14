@@ -110,6 +110,42 @@ This is the focused audit set for the next iteration. Each row should eventually
 | `project move --dry-run/apply` | Covered | Covered | Covered for missing DB, unknown from, missing target | Preserves project ID; one current path | Critical |
 | Backend mapping diagnostics | Human via doctor | JSON via doctor | Invalid state returns JSON payload | Diagnostics only | Critical |
 
+## Focused Execution Plan
+
+The previous shape was directionally right but broad enough to invite edge chasing. From here, use three gates and avoid starting later work until the current gate has evidence.
+
+### Gate 1: Prove The Control Plane
+
+Finish the command matrix for the commands that can damage trust fastest: `state status`, `state doctor`, `state export all`, `state backup verify`, `project show/list`, `project rename/move`, `migrate markdown --dry-run`, and `migrate storage-home --dry-run`.
+
+Exit criteria:
+
+- JSON failures are covered for validation errors, invalid state, and missing-state cases.
+- JSON successes are covered for read-only and dry-run paths.
+- Read-only and dry-run commands prove they do not create databases, project identities, sidecars, or repo files.
+- Each failure includes `contract_version`, `command`, deterministic exit code, and useful error text.
+
+### Gate 2: Make Recovery Boring
+
+Close the restore-confidence gap before polishing lower-risk CLI surfaces. Start with a documented manual restore procedure unless command-level restore proves necessary.
+
+Exit criteria:
+
+- A user can verify a backup, preserve the current global DB, restore the verified backup into the XDG data-home path, and run doctor/status checks without guessing.
+- The procedure is backed by tests where practical and by dogfood output from the primary checkout.
+- Restore guidance is visible from backup/doctor docs or output when state is unhealthy.
+
+### Gate 3: Normalize Repair, Backend, And Human UX
+
+Only after the core control plane and recovery path are proven, run the UX/policy pass across repair plans, backend/Linear diagnostics, and human output.
+
+Exit criteria:
+
+- Every repair-plan command is executable in the state mode that suggested it.
+- Backend diagnostics clearly separate invalid local data, warning-only drift, and future Linear sync work.
+- Human output consistently names scope, database path, project name, project ID, project path, mutation status, and next action when relevant.
+- The completion audit maps each reliability-contract bullet to current tests, docs, or dogfood output.
+
 ## Remaining Work Tracks
 
 ### Track 1: Prove The Matrix
