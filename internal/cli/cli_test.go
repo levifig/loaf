@@ -3154,12 +3154,12 @@ VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missin
 	if invalid.Mode != state.ModeInvalid {
 		t.Fatalf("invalid Mode = %q, want %q", invalid.Mode, state.ModeInvalid)
 	}
-	action = findStateRepairAction(t, invalid.RepairPlan, "audit-backend-mappings")
+	action = findStateRepairAction(t, invalid.RepairPlan, "inspect-backend-mappings")
 	if action.Safe || action.Applied {
 		t.Fatalf("invalid repair action = %#v, want manual unapplied audit", action)
 	}
-	if action.Command != "loaf state export all --format json" {
-		t.Fatalf("invalid repair action command = %q, want state export all JSON", action.Command)
+	if action.Command != "loaf state doctor --json" {
+		t.Fatalf("invalid repair action command = %q, want state doctor JSON", action.Command)
 	}
 }
 

@@ -148,8 +148,8 @@ func TestRepairPlanDeduplicatesRepeatedActions(t *testing.T) {
 	if len(actions) != 1 {
 		t.Fatalf("len(actions) = %d, want 1: %#v", len(actions), actions)
 	}
-	if actions[0].Code != "audit-backend-mappings" {
-		t.Fatalf("action Code = %q, want audit-backend-mappings", actions[0].Code)
+	if actions[0].Code != "inspect-backend-mappings" {
+		t.Fatalf("action Code = %q, want inspect-backend-mappings", actions[0].Code)
 	}
 }
 
@@ -570,12 +570,12 @@ VALUES ('backend-mapping-orphaned', ?, 'linear', 'task', 'task-missing', 'issue'
 	}
 	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
 
-	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
+	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-backend-mappings")
 	if action.Safe {
 		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
 	}
-	if action.Command != "loaf state export all --format json" {
-		t.Fatalf("repair action Command = %q, want export all JSON", action.Command)
+	if action.Command != "loaf state doctor --json" {
+		t.Fatalf("repair action Command = %q, want state doctor JSON", action.Command)
 	}
 }
 
@@ -614,12 +614,12 @@ VALUES ('backend-mapping-empty-field', ?, 'linear', 'task', 'task-linear-empty-f
 		t.Fatalf("diagnostic Message = %q, want field name", diagnostic.Message)
 	}
 
-	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
+	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-backend-mappings")
 	if action.Safe {
 		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
 	}
-	if action.Command != "loaf state export all --format json" {
-		t.Fatalf("repair action Command = %q, want export all JSON", action.Command)
+	if action.Command != "loaf state doctor --json" {
+		t.Fatalf("repair action Command = %q, want state doctor JSON", action.Command)
 	}
 }
 

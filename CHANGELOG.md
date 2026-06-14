@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state doctor` repair plans now route invalid backend-mapping diagnostics to `loaf state doctor --json` instead of suggesting `state export`, which refuses to run while state is invalid.
 - `loaf state doctor --json` now includes non-mutating repair plans whenever diagnostics are present, even without `--dry-run`, so agents receive next actions alongside health failures.
 - `loaf state backup verify --json` now includes `backup_path` in verification failure payloads after a path has been parsed, making invalid-backup diagnostics easier for agents to correlate.
 - `loaf state path --json` now reports the resolved global SQLite path with contract version, project root, and database scope without creating the database.

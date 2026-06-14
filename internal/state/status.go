@@ -296,7 +296,16 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
-		case "backend-mapping-field-empty", "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing", "backend-mapping-entity-ambiguous", "backend-mapping-sync-status-unknown", "linear-mode-local-task-unmapped":
+		case "backend-mapping-field-empty", "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing":
+			actions = appendRepairAction(actions, RepairAction{
+				Code:           "inspect-backend-mappings",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Inspect backend mapping diagnostics before pruning or reconnecting invalid integration rows.",
+				Command:        "loaf state doctor --json",
+				Path:           status.DatabasePath,
+				Safe:           false,
+			})
+		case "backend-mapping-entity-ambiguous", "backend-mapping-sync-status-unknown", "linear-mode-local-task-unmapped":
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "audit-backend-mappings",
 				DiagnosticCode: diagnostic.Code,
