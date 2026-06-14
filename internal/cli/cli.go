@@ -712,6 +712,7 @@ func (r Runner) runBrainstormPromote(args []string, out io.Writer, runtime state
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "promoted brainstorm %s to idea %s\n", firstNonEmpty(result.Brainstorm.Alias, result.Brainstorm.ID), firstNonEmpty(result.Idea.Alias, result.Idea.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "relationship: %s\n", result.Relationship)
 	return nil
 }
@@ -748,12 +749,19 @@ func (r Runner) runBrainstormArchive(args []string, out io.Writer, runtime state
 }
 
 func writeBrainstormList(out io.Writer, brainstorms state.BrainstormList, filters state.BrainstormListOptions) {
+	fmt.Fprint(out, "\n  loaf brainstorm list\n\n")
+	writeProjectMutationContext(out, "  ", brainstorms.DatabaseScope, brainstorms.DatabasePath, brainstorms.ProjectID, brainstorms.ProjectName, brainstorms.ProjectCurrentPath)
 	if len(brainstorms.Brainstorms) == 0 {
-		fmt.Fprint(out, "\n  No brainstorms found.\n\n")
+		if brainstorms.DatabaseScope != "" || brainstorms.DatabasePath != "" || brainstorms.ProjectID != "" || brainstorms.ProjectName != "" || brainstorms.ProjectCurrentPath != "" {
+			fmt.Fprintln(out)
+		}
+		fmt.Fprint(out, "  No brainstorms found.\n\n")
 		return
 	}
 
-	fmt.Fprint(out, "\n  loaf brainstorm list\n\n")
+	if brainstorms.DatabaseScope != "" || brainstorms.DatabasePath != "" || brainstorms.ProjectID != "" || brainstorms.ProjectName != "" || brainstorms.ProjectCurrentPath != "" {
+		fmt.Fprintln(out)
+	}
 	for _, alias := range sortedBrainstorms(brainstorms) {
 		brainstorm := brainstorms.Brainstorms[alias]
 		fmt.Fprintf(out, "    %-32s%s", alias, brainstorm.Title)
@@ -773,6 +781,7 @@ func writeBrainstormShow(out io.Writer, result state.BrainstormShow) {
 	fmt.Fprintf(out, "brainstorm %s\n", firstNonEmpty(brainstorm.Alias, brainstorm.ID))
 	fmt.Fprintf(out, "title: %s\n", brainstorm.Title)
 	fmt.Fprintf(out, "status: %s\n", brainstorm.Status)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	for _, source := range brainstorm.Sources {
 		fmt.Fprintf(out, "source: %s\n", source.Path)
 		if source.Hash != "" {
@@ -802,6 +811,10 @@ func writeBrainstormShow(out io.Writer, result state.BrainstormShow) {
 
 func writeBrainstormArchive(out io.Writer, result state.BrainstormArchiveResult) {
 	fmt.Fprint(out, "\n  loaf brainstorm archive\n\n")
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.DatabaseScope != "" || result.DatabasePath != "" || result.ProjectID != "" || result.ProjectName != "" || result.ProjectCurrentPath != "" {
+		fmt.Fprintln(out)
+	}
 	for _, item := range result.Archived {
 		brainstorm := item.Ref
 		title := ""

@@ -16,9 +16,15 @@ type BrainstormPromoteOptions struct {
 
 // BrainstormPromoteResult describes a state-backed brainstorm promotion mutation.
 type BrainstormPromoteResult struct {
-	Brainstorm   TraceEntity `json:"brainstorm"`
-	Idea         TraceEntity `json:"idea"`
-	Relationship string      `json:"relationship"`
+	ContractVersion    int         `json:"contract_version,omitempty"`
+	DatabaseScope      string      `json:"database_scope,omitempty"`
+	DatabasePath       string      `json:"database_path,omitempty"`
+	ProjectID          string      `json:"project_id,omitempty"`
+	ProjectName        string      `json:"project_name,omitempty"`
+	ProjectCurrentPath string      `json:"project_current_path,omitempty"`
+	Brainstorm         TraceEntity `json:"brainstorm"`
+	Idea               TraceEntity `json:"idea"`
+	Relationship       string      `json:"relationship"`
 }
 
 // PromoteBrainstorm records that a brainstorm promoted to an idea in initialized SQLite state.
@@ -34,6 +40,10 @@ func PromoteBrainstorm(ctx context.Context, root project.Root, resolver PathReso
 // PromoteBrainstorm records that a brainstorm promoted to an idea in an open store.
 func (s *Store) PromoteBrainstorm(ctx context.Context, root project.Root, options BrainstormPromoteOptions) (BrainstormPromoteResult, error) {
 	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return BrainstormPromoteResult{}, err
+	}
+	identity, err := s.projectIdentity(ctx, projectID)
 	if err != nil {
 		return BrainstormPromoteResult{}, err
 	}
@@ -67,8 +77,14 @@ ON CONFLICT(id) DO UPDATE SET
 	}
 
 	return BrainstormPromoteResult{
-		Brainstorm:   brainstorm,
-		Idea:         idea,
-		Relationship: relationshipID,
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      identity.DatabaseScope,
+		DatabasePath:       identity.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Brainstorm:         brainstorm,
+		Idea:               idea,
+		Relationship:       relationshipID,
 	}, nil
 }

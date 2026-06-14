@@ -7586,6 +7586,7 @@ status: archived
 	if open.Title != "Open Brainstorm" || open.SourcePath != ".agents/drafts/20260528-brainstorm-open.md" {
 		t.Fatalf("open = %#v, want imported title and source", open)
 	}
+	assertCLIBrainstormContext(t, defaultList.ContractVersion, defaultList.DatabaseScope, defaultList.DatabasePath, defaultList.ProjectID, defaultList.ProjectName, defaultList.ProjectCurrentPath, workingDir)
 
 	var allOut bytes.Buffer
 	err = Runner{
@@ -7600,6 +7601,7 @@ status: archived
 	if len(all.Brainstorms) != 3 || all.Brainstorms["20260528-brainstorm-resolved"].Status != "resolved" {
 		t.Fatalf("all = %#v, want all brainstorms", all.Brainstorms)
 	}
+	assertCLIBrainstormContext(t, all.ContractVersion, all.DatabaseScope, all.DatabasePath, all.ProjectID, all.ProjectName, all.ProjectCurrentPath, workingDir)
 
 	var archivedOut bytes.Buffer
 	err = Runner{
@@ -7614,6 +7616,7 @@ status: archived
 	if len(archived.Brainstorms) != 1 || archived.Brainstorms["20260528-brainstorm-archived"].Status != "archived" {
 		t.Fatalf("archived = %#v, want archived brainstorm only", archived.Brainstorms)
 	}
+	assertCLIBrainstormContext(t, archived.ContractVersion, archived.DatabaseScope, archived.DatabasePath, archived.ProjectID, archived.ProjectName, archived.ProjectCurrentPath, workingDir)
 
 	var humanOut bytes.Buffer
 	err = Runner{
@@ -7625,7 +7628,7 @@ status: archived
 		t.Fatalf("brainstorm list human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"loaf brainstorm list", "20260528-brainstorm-open", "Open Brainstorm", "[resolved]", ".agents/drafts/20260528-brainstorm-open.md"} {
+	for _, want := range []string{"loaf brainstorm list", "scope: global database", "database:", "project:", "project name:", "project path:", "20260528-brainstorm-open", "Open Brainstorm", "[resolved]", ".agents/drafts/20260528-brainstorm-open.md"} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -7703,6 +7706,7 @@ status: open
 	if show.Brainstorm.Alias != "20260528-brainstorm-sqlite" || show.Brainstorm.Title != "SQLite Brainstorm" || show.Brainstorm.Status != "open" {
 		t.Fatalf("show = %#v, want imported brainstorm metadata", show)
 	}
+	assertCLIBrainstormContext(t, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath, workingDir)
 	if len(show.Brainstorm.Sources) != 1 || show.Brainstorm.Sources[0].Path != ".agents/drafts/20260528-brainstorm-sqlite.md" || show.Brainstorm.Sources[0].Hash == "" {
 		t.Fatalf("Sources = %#v, want imported brainstorm source", show.Brainstorm.Sources)
 	}
@@ -7723,7 +7727,7 @@ status: open
 		t.Fatalf("brainstorm show human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"brainstorm 20260528-brainstorm-sqlite", "title: SQLite Brainstorm", "status: open", "source: .agents/drafts/20260528-brainstorm-sqlite.md", "outbound promoted_to idea 20260528-target-idea", "Imported brainstorm prose."} {
+	for _, want := range []string{"brainstorm 20260528-brainstorm-sqlite", "title: SQLite Brainstorm", "status: open", "scope: global database", "database:", "project:", "project name:", "project path:", "source: .agents/drafts/20260528-brainstorm-sqlite.md", "outbound promoted_to idea 20260528-target-idea", "Imported brainstorm prose."} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -7798,6 +7802,7 @@ status: open
 	if result.Brainstorm.Alias != "20260528-brainstorm-sqlite" || result.Idea.Alias != "20260528-target-idea" || result.Relationship == "" {
 		t.Fatalf("result = %#v, want brainstorm promoted to target idea with relationship", result)
 	}
+	assertCLIBrainstormContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
 
 	var traceOut bytes.Buffer
 	err = Runner{
@@ -7826,6 +7831,7 @@ status: open
 	if !hasTraceRelationship(show.Brainstorm.Relationships, "outbound", "promoted_to", "idea", "20260528-target-idea") {
 		t.Fatalf("show relationships = %#v, want promoted_to target idea", show.Brainstorm.Relationships)
 	}
+	assertCLIBrainstormContext(t, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath, workingDir)
 
 	var linkOut bytes.Buffer
 	err = Runner{
@@ -7851,7 +7857,7 @@ status: open
 		t.Fatalf("brainstorm promote human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"promoted brainstorm 20260528-brainstorm-sqlite to idea 20260528-target-idea", "relationship:"} {
+	for _, want := range []string{"promoted brainstorm 20260528-brainstorm-sqlite to idea 20260528-target-idea", "scope: global database", "database:", "project:", "project name:", "project path:", "relationship:"} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -7927,6 +7933,7 @@ status: archived
 	if len(archive.Archived) != 1 || archive.Archived[0].Brainstorm == nil || archive.Archived[0].Brainstorm.Alias != "20260528-brainstorm-open" || archive.Archived[0].EventID == "" || archive.Archived[0].Note != "promoted to idea" {
 		t.Fatalf("Archived = %#v, want open brainstorm archived with event", archive.Archived)
 	}
+	assertCLIBrainstormContext(t, archive.ContractVersion, archive.DatabaseScope, archive.DatabasePath, archive.ProjectID, archive.ProjectName, archive.ProjectCurrentPath, workingDir)
 	if len(archive.Skipped) != 3 {
 		t.Fatalf("Skipped = %#v, want three skipped refs", archive.Skipped)
 	}
@@ -7944,6 +7951,7 @@ status: archived
 	if _, ok := defaultList.Brainstorms["20260528-brainstorm-open"]; ok {
 		t.Fatalf("defaultList.Brainstorms = %#v, want archived brainstorm hidden", defaultList.Brainstorms)
 	}
+	assertCLIBrainstormContext(t, defaultList.ContractVersion, defaultList.DatabaseScope, defaultList.DatabasePath, defaultList.ProjectID, defaultList.ProjectName, defaultList.ProjectCurrentPath, workingDir)
 
 	var archivedOut bytes.Buffer
 	err = Runner{
@@ -7958,6 +7966,7 @@ status: archived
 	if archived.Brainstorms["20260528-brainstorm-open"].Status != "archived" || archived.Brainstorms["20260528-brainstorm-archived"].Status != "archived" {
 		t.Fatalf("archived.Brainstorms = %#v, want both archived brainstorms", archived.Brainstorms)
 	}
+	assertCLIBrainstormContext(t, archived.ContractVersion, archived.DatabaseScope, archived.DatabasePath, archived.ProjectID, archived.ProjectName, archived.ProjectCurrentPath, workingDir)
 
 	var traceOut bytes.Buffer
 	err = Runner{
@@ -7986,6 +7995,7 @@ status: archived
 	if show.Brainstorm.Status != "archived" {
 		t.Fatalf("show status = %q, want archived", show.Brainstorm.Status)
 	}
+	assertCLIBrainstormContext(t, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath, workingDir)
 
 	var humanOut bytes.Buffer
 	err = Runner{
@@ -7997,8 +8007,32 @@ status: archived
 		t.Fatalf("brainstorm archive human error = %v", err)
 	}
 	output := humanOut.String()
-	if !strings.Contains(output, "loaf brainstorm archive") || !strings.Contains(output, "skipped 20260528-brainstorm-open: already archived") || !strings.Contains(output, "Skipped 1 brainstorm(s)") {
-		t.Fatalf("output = %q, want already-archived human summary", output)
+	for _, want := range []string{"loaf brainstorm archive", "scope: global database", "database:", "project:", "project name:", "project path:", "skipped 20260528-brainstorm-open: already archived", "Skipped 1 brainstorm(s)"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
+	}
+}
+
+func assertCLIBrainstormContext(t *testing.T, contractVersion int, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string, workingDir string) {
+	t.Helper()
+	if contractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", contractVersion, state.StateJSONContractVersion)
+	}
+	if databaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", databaseScope)
+	}
+	if databasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if projectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if projectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", projectName, filepath.Base(workingDir))
+	}
+	if projectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", projectCurrentPath, workingDir)
 	}
 }
 
