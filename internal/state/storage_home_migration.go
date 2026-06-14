@@ -89,6 +89,11 @@ func PreviewStorageHomeMigration(root project.Root, resolver PathResolver) (Stor
 
 	plan.DatabaseExists = regularFileExists(databasePath)
 	plan.LegacyDatabaseExists = regularFileExists(legacyPath)
+	if plan.DatabaseExists {
+		if status, err := Inspect(root, resolver); err == nil && status.Mode == ModeSQLiteReady {
+			plan.recordVerifiedProject(status)
+		}
+	}
 	switch {
 	case plan.DatabaseExists && plan.LegacyDatabaseExists:
 		if databaseContainsRootProject(databasePath, root) {

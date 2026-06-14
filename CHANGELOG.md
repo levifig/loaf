@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state migrate storage-home --dry-run --json` now includes the durable project ID, friendly project name, and current project path when the global data-home database already contains the current project.
 - `loaf report generate ... --json` success payloads now include the JSON contract version, report command, global database scope, project export scope, and durable project identity; external reports omit local database and project paths while internal session reports retain them for agent routing.
 - Human missing-state errors from `loaf state backup` and Markdown `loaf state export ...` commands now include the global database scope, target database path, and safe next actions while preserving concise JSON errors for agents.
 - `loaf state migrate markdown --dry-run --json` now includes the global database scope, target database path, project import scope, project name/path, and `applied: false` without creating SQLite state.

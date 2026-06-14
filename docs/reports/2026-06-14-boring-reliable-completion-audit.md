@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 19:24
+Date: 2026-06-14 19:28
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest report-alias pass dogfooded release-readiness, triage, and session report generation from the primary checkout with isolated XDG homes. Markdown output and report/state-export alias equality were stable, but `loaf report generate ... --json` success wrappers did not carry contract version, command, global/project scope, or durable project identity.
+The latest migration/repair JSON pass dogfooded storage-home migration, Markdown migration, and repair envelopes from the primary checkout with isolated XDG homes. Markdown migration and repair envelopes carried contract/scope/project context where available, but `loaf state migrate storage-home --dry-run --json` did not include project identity after the global data-home database already contained the current project.
 
-This checkpoint enriches the `MarkdownExport` JSON wrapper with contract version, command, global database scope, project export scope, and durable project identity. External report JSON keeps the local path boundary by omitting project/database paths, while internal session report JSON includes them for agent routing. Human report-generation missing-state errors now include the global database path and safe next actions; JSON error payloads remain concise.
+This checkpoint makes storage-home preview perform a read-only status inspection when the destination DB exists and records the verified durable project ID, friendly name, and current path when the DB is ready. The command remains non-mutating.
 
 ## Next Review Target
 
-Continue the completion-audit pass by auditing remaining JSON success envelopes for contract/context drift, starting with migration and repair commands that emit operation-specific wrappers.
+Continue the completion-audit pass by auditing command aliases and generated reference/help output for drift against the newly tightened JSON contracts.

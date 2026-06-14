@@ -296,6 +296,23 @@ func TestRunnerStateMigrateStorageHomeCopiesLegacyDatabase(t *testing.T) {
 	if !strings.HasPrefix(status.DatabasePath, dataHome+string(filepath.Separator)) {
 		t.Fatalf("DatabasePath = %q, want under data home %q", status.DatabasePath, dataHome)
 	}
+
+	var migratedPreviewOut bytes.Buffer
+	err = Runner{
+		Stdout:     &migratedPreviewOut,
+		WorkingDir: workingDir,
+	}.Run([]string{"state", "migrate", "storage-home", "--dry-run", "--json"})
+	if err != nil {
+		t.Fatalf("state migrate storage-home --dry-run --json after apply error = %v", err)
+	}
+	var migratedPreview state.StorageHomeMigrationPlan
+	if err := json.Unmarshal(migratedPreviewOut.Bytes(), &migratedPreview); err != nil {
+		t.Fatalf("Unmarshal(migratedPreview) error = %v\n%s", err, migratedPreviewOut.String())
+	}
+	if migratedPreview.Action != state.StorageHomeActionAlreadyMigrated || migratedPreview.Applied {
+		t.Fatalf("migrated preview = %#v, want already-migrated dry-run", migratedPreview)
+	}
+	assertCLIProjectContext(t, workingDir, migratedPreview.ContractVersion, migratedPreview.DatabaseScope, migratedPreview.DatabasePath, migratedPreview.ProjectID, migratedPreview.ProjectName, migratedPreview.ProjectCurrentPath)
 }
 
 func TestRunnerMigrateStorageHomeUsesNativeAlias(t *testing.T) {
