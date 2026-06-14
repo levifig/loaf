@@ -116,6 +116,10 @@ This is the focused audit set for the next iteration. Each row should eventually
 
 Add a focused regression harness or table-driven CLI test that runs the critical command matrix against temporary state. It should assert JSON parseability, command names, contract version, scope fields, exit codes, and no repo mutation for read-only commands.
 
+Progress:
+
+- 2026-06-14: `TestRunnerStateControlPlaneJSONFailureMatrix` covers sampled JSON failure contracts across `state`, `state repair`, `state backup verify`, `state export`, `project`, and `migrate` control-plane commands, including contract version, command name, error text, silent exit code, and no state database creation for pre-open/read-only failures.
+
 Go/no-go: the matrix can be re-run with one command and failures identify the exact command contract that regressed.
 
 ### Track 2: Restore Confidence
@@ -165,4 +169,4 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 
 ## Next Best Commit
 
-The next implementation commit should be Track 1: a focused command-matrix regression test for the state/project/migration control plane. This is higher leverage than another single-edge fix because it will turn future rough edges into explicit failures and keep human/agent UX improvements aligned with the broad goal.
+The next implementation commit should continue Track 1 by extending the command matrix from JSON failure contracts into success/no-mutation contracts for the highest-risk read-only surfaces: `state status`, `state doctor`, `state export all`, `project show/list`, and migration dry-runs. This keeps future fixes anchored in the broad reliability contract instead of isolated edge chasing.

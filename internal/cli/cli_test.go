@@ -6247,6 +6247,146 @@ func TestRunnerStateJSONValidationErrorsAreMachineReadable(t *testing.T) {
 	}
 }
 
+func TestRunnerStateControlPlaneJSONFailureMatrix(t *testing.T) {
+	tests := []struct {
+		name               string
+		args               []string
+		command            string
+		want               string
+		wantMissingStateDB bool
+	}{
+		{
+			name:               "state path parse failure",
+			args:               []string{"state", "path", "--json", "--bogus"},
+			command:            "state path",
+			want:               "unknown option",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state status parse failure",
+			args:               []string{"state", "status", "--json", "--bogus"},
+			command:            "state status",
+			want:               "unknown option",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state doctor parse failure",
+			args:               []string{"state", "doctor", "--json", "--bogus"},
+			command:            "state doctor",
+			want:               "unknown option",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state backup parse failure",
+			args:               []string{"state", "backup", "--json", "--bogus"},
+			command:            "state backup",
+			want:               "unknown option",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state backup verify missing path",
+			args:               []string{"state", "backup", "verify", "--json"},
+			command:            "state backup verify",
+			want:               "requires a backup path",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state export missing database",
+			args:               []string{"state", "export", "all", "--json"},
+			command:            "state export",
+			want:               "SQLite state database is not initialized",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state export markdown json misuse",
+			args:               []string{"state", "export", "triage", "--json"},
+			command:            "state export",
+			want:               "--json is only supported for state export all",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state repair conflicting flags",
+			args:               []string{"state", "repair", "legacy-project-database", "--dry-run", "--apply", "--json"},
+			command:            "state repair legacy-project-database",
+			want:               "cannot combine --apply and --dry-run",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "project show missing database",
+			args:               []string{"project", "show", "--json"},
+			command:            "project show",
+			want:               "state database does not exist",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "project list parse failure",
+			args:               []string{"project", "list", "--json", "--bogus"},
+			command:            "project list",
+			want:               "unknown option",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "project rename parse failure",
+			args:               []string{"project", "rename", "--json"},
+			command:            "project rename",
+			want:               "requires a name",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "project move parse failure",
+			args:               []string{"project", "move", "--from", "relative/path", "--json"},
+			command:            "project move",
+			want:               "requires absolute",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state migrate markdown conflicting flags",
+			args:               []string{"state", "migrate", "markdown", "--apply", "--dry-run", "--json"},
+			command:            "state migrate markdown",
+			want:               "cannot combine --apply and --dry-run",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "top-level migrate markdown conflicting flags",
+			args:               []string{"migrate", "markdown", "--resume", "--apply", "--json"},
+			command:            "migrate markdown",
+			want:               "cannot combine --resume and --apply",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state migrate storage-home conflicting flags",
+			args:               []string{"state", "migrate", "storage-home", "--apply", "--dry-run", "--json"},
+			command:            "state migrate storage-home",
+			want:               "cannot combine --apply and --dry-run",
+			wantMissingStateDB: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			workingDir := realpath(t, t.TempDir())
+			stateHome := t.TempDir()
+			var stdout bytes.Buffer
+			err := (Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}).Run(tc.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want JSON failure", tc.args)
+			}
+			assertSilentExitCode(t, err, 1)
+			output := decodeCommandError(t, stdout.Bytes())
+			if output.Command != tc.command || !strings.Contains(output.Error, tc.want) {
+				t.Fatalf("JSON error = %#v, want command %q and error containing %q", output, tc.command, tc.want)
+			}
+			if tc.wantMissingStateDB {
+				assertNoStateDatabase(t, workingDir, stateHome)
+			}
+		})
+	}
+}
+
 func TestRunnerTraceJSONUsesSQLiteState(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
