@@ -264,6 +264,7 @@ Project IDs are stable SQLite identities, not path or name hashes. Use
   - `--json` - Output updated identity as JSON
 
 - `loaf project move`:
+  - `<from> [to]` - Previous and optional new absolute project paths
   - `--from <path>` - Previous absolute project path
   - `--to <path>` - New absolute project path; defaults to the current project root
   - `--dry-run` - Validate and preview without writing
@@ -275,6 +276,7 @@ loaf project show
 loaf project identity --json
 loaf project rename "Loaf" --dry-run
 loaf project rename "Loaf"
+loaf project move /old/path/to/loaf /new/path/to/loaf --dry-run
 loaf project move --from /old/path/to/loaf --dry-run
 loaf project move --from /old/path/to/loaf
 loaf project show --json

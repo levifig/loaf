@@ -153,6 +153,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--json", Description: "Output updated identity as JSON"},
 				}},
 				{Name: "move", Description: "Record a checkout path move", Options: []cliReferenceOption{
+					{Flags: "<from> [to]", Description: "Previous and optional new absolute project paths"},
 					{Flags: "--from <path>", Description: "Previous absolute project path"},
 					{Flags: "--to <path>", Description: "New absolute project path; defaults to the current project root"},
 					{Flags: "--dry-run", Description: "Validate and preview without writing"},
@@ -676,6 +677,7 @@ func cliReferenceCommandUsageExamples(commandName string) []string {
 			"loaf project identity --json",
 			"loaf project rename \"Loaf\" --dry-run",
 			"loaf project rename \"Loaf\"",
+			"loaf project move /old/path/to/loaf /new/path/to/loaf --dry-run",
 			"loaf project move --from /old/path/to/loaf --dry-run",
 			"loaf project move --from /old/path/to/loaf",
 			"loaf project show --json",

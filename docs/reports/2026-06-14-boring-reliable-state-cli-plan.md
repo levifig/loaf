@@ -239,7 +239,8 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 Progress:
 
 - 2026-06-14: Started the completion audit in `docs/reports/2026-06-14-boring-reliable-completion-audit.md`, mapping the reliability contract to current tests, docs, and dogfood evidence. The first weak proof point was the backend mapping sensitive-value boundary: schema tests proved Loaf does not define dedicated sensitive storage columns, but doctor did not reject sensitive-looking values inside external identity fields. `backend-mapping-sensitive-value` now classifies those rows as invalid local backend-mapping data, and `TestInspectReportsSensitiveBackendMappingValues` covers the repair policy.
+- 2026-06-14: Continued human-output dogfood from the primary checkout with isolated XDG homes. Missing and initialized state surfaces were readable, but a natural `loaf project move <from> <to> --dry-run` invocation failed as an unknown option because absolute paths were not accepted positionally. `loaf project move` now accepts positional absolute paths in addition to `--from/--to`, with the same preview/apply safeguards and JSON contracts. `TestRunnerProjectMoveAcceptsPositionalPaths` covers the new shape.
 
 ## Next Best Commit
 
-The next implementation commit should continue the completion-audit pass by dogfooding the subjective human-output contract against primary-checkout command output and tightening the first command surface whose actual output is less clear than the documented reliability contract.
+The next implementation commit should continue the completion-audit pass by sampling human failure output for missing/invalid project state, especially read-only project commands, and tightening the first error path whose next action or context is less clear than the documented reliability contract.

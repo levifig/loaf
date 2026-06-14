@@ -1191,9 +1191,10 @@ func writeProjectRenameHelp(out io.Writer) {
 }
 
 func writeProjectMoveHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf project move --from <path> [--to <path>] [--dry-run] [--json]")
+	fmt.Fprintln(out, "Usage: loaf project move <from> [to] [--dry-run] [--json]")
+	fmt.Fprintln(out, "       loaf project move --from <path> [--to <path>] [--dry-run] [--json]")
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, "Record a checkout move without changing the project ID. --to defaults to the current project root.")
+	fmt.Fprintln(out, "Record a checkout move without changing the project ID. The target path defaults to the current project root.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  --from       Previous absolute project path")
@@ -11554,6 +11555,9 @@ func parseProjectRenameArgs(args []string) (projectRenameOptions, error) {
 
 func parseProjectMoveArgs(args []string, currentPath string) (projectMoveOptions, error) {
 	options := projectMoveOptions{toPath: currentPath}
+	positionals := []string{}
+	fromFlagSet := false
+	toFlagSet := false
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch arg {
@@ -11567,24 +11571,41 @@ func parseProjectMoveArgs(args []string, currentPath string) (projectMoveOptions
 				return projectMoveOptions{}, fmt.Errorf("--from requires a value")
 			}
 			options.fromPath = args[i]
+			fromFlagSet = true
 		case "--to":
 			i++
 			if i >= len(args) {
 				return projectMoveOptions{}, fmt.Errorf("--to requires a value")
 			}
 			options.toPath = args[i]
+			toFlagSet = true
 		default:
-			return projectMoveOptions{}, fmt.Errorf("unknown option %q", arg)
+			if strings.HasPrefix(arg, "-") {
+				return projectMoveOptions{}, fmt.Errorf("unknown option %q", arg)
+			}
+			positionals = append(positionals, arg)
+		}
+	}
+	if len(positionals) > 0 {
+		if fromFlagSet || toFlagSet {
+			return projectMoveOptions{}, fmt.Errorf("project move cannot mix positional paths with --from or --to")
+		}
+		if len(positionals) > 2 {
+			return projectMoveOptions{}, fmt.Errorf("project move accepts at most <from> and [to] paths")
+		}
+		options.fromPath = positionals[0]
+		if len(positionals) == 2 {
+			options.toPath = positionals[1]
 		}
 	}
 	if options.fromPath == "" {
-		return projectMoveOptions{}, fmt.Errorf("project move requires --from")
+		return projectMoveOptions{}, fmt.Errorf("project move requires <from> or --from")
 	}
 	if options.toPath == "" {
-		return projectMoveOptions{}, fmt.Errorf("project move requires --to or a current project root")
+		return projectMoveOptions{}, fmt.Errorf("project move requires [to], --to, or a current project root")
 	}
 	if !filepath.IsAbs(options.fromPath) || !filepath.IsAbs(options.toPath) {
-		return projectMoveOptions{}, fmt.Errorf("project move requires absolute --from and --to paths")
+		return projectMoveOptions{}, fmt.Errorf("project move requires absolute from and to paths")
 	}
 	options.fromPath = filepath.Clean(options.fromPath)
 	options.toPath = filepath.Clean(options.toPath)

@@ -2562,6 +2562,52 @@ func TestRunnerProjectMoveDryRunDoesNotWrite(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectMoveAcceptsPositionalPaths(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	movedDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+
+	var showOut bytes.Buffer
+	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show --json error = %v", err)
+	}
+	var shown state.ProjectIdentity
+	if err := json.Unmarshal(showOut.Bytes(), &shown); err != nil {
+		t.Fatalf("json.Unmarshal(show) error = %v\n%s", err, showOut.String())
+	}
+
+	var dryRunOut bytes.Buffer
+	if err := (Runner{Stdout: &dryRunOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "move", workingDir, movedDir, "--dry-run", "--json"}); err != nil {
+		t.Fatalf("project move positional --dry-run --json error = %v", err)
+	}
+	var preview state.ProjectMoveResult
+	if err := json.Unmarshal(dryRunOut.Bytes(), &preview); err != nil {
+		t.Fatalf("json.Unmarshal(positional dry-run move) error = %v\n%s", err, dryRunOut.String())
+	}
+	if preview.Action != "dry-run" || preview.FromPath != workingDir || preview.ToPath != movedDir || preview.Project.ID != shown.ID {
+		t.Fatalf("preview = %#v, want positional dry-run from %s to %s with project ID %s", preview, workingDir, movedDir, shown.ID)
+	}
+
+	var humanOut bytes.Buffer
+	if err := (Runner{Stdout: &humanOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "move", workingDir, movedDir, "--dry-run"}); err != nil {
+		t.Fatalf("project move positional --dry-run error = %v", err)
+	}
+	for _, want := range []string{
+		"loaf project move --dry-run",
+		"from path: " + workingDir,
+		"to path: " + movedDir,
+		"applied: false",
+	} {
+		if !strings.Contains(humanOut.String(), want) {
+			t.Fatalf("human positional dry-run output = %q, want %q", humanOut.String(), want)
+		}
+	}
+}
+
 func TestRunnerProjectRenameAndMoveHumanApplyOutput(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	movedDir := realpath(t, t.TempDir())
@@ -2997,7 +3043,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		{name: "project list", args: []string{"project", "list", "--help"}, want: "Usage: loaf project list [--json]"},
 		{name: "project identity", args: []string{"project", "identity", "--help"}, want: "Usage: loaf project show|identity [--json]"},
 		{name: "project rename", args: []string{"project", "rename", "--help"}, want: "Usage: loaf project rename <name> [--dry-run] [--json]"},
-		{name: "project move", args: []string{"project", "move", "--help"}, want: "Usage: loaf project move --from <path> [--to <path>] [--dry-run] [--json]"},
+		{name: "project move", args: []string{"project", "move", "--help"}, want: "Usage: loaf project move <from> [to] [--dry-run] [--json]"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
