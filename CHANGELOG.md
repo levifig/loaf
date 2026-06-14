@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- Human missing-state errors from `loaf state backup` and Markdown `loaf state export ...` commands now include the global database scope, target database path, and safe next actions while preserving concise JSON errors for agents.
 - `loaf state migrate markdown --dry-run --json` now includes the global database scope, target database path, project import scope, project name/path, and `applied: false` without creating SQLite state.
 - `loaf state doctor --json` and exported state snapshots now classify local Markdown import and stale compatibility export warnings with structured category, policy, and details fields for safer agent routing.
 - `loaf state export all --format json` now carries current state diagnostics and repair-plan actions alongside the raw project tables, so backend/Linear repair follow-up exports preserve the reason and policy that led to the export.

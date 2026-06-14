@@ -4821,6 +4821,17 @@ func TestRunnerStateBackupRejectsMissingAndInvalidState(t *testing.T) {
 	if !strings.Contains(err.Error(), "SQLite state database is not initialized") {
 		t.Fatalf("error = %v, want initialization message", err)
 	}
+	for _, want := range []string{
+		"scope: global database",
+		"database:",
+		filepath.Join(stateHome, "loaf", "loaf.sqlite"),
+		"next: run `loaf state status`",
+		"loaf state migrate markdown --apply",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %v, want %q", err, want)
+		}
+	}
 
 	root, err := project.ResolveRoot(workingDir)
 	if err != nil {
@@ -5891,8 +5902,30 @@ func TestRunnerStateExportTriageMarkdownDoesNotCreateRepoFiles(t *testing.T) {
 func TestRunnerStateExportRejectsMissingInvalidUnsupportedState(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
-	var missingOut bytes.Buffer
+
 	err := Runner{
+		Stdout:     &bytes.Buffer{},
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "export", "triage", "--format", "markdown"})
+	if err == nil {
+		t.Fatal("state export triage missing-state error = nil, want rejection")
+	}
+	for _, want := range []string{
+		"SQLite state database is not initialized",
+		"scope: global database",
+		"database:",
+		filepath.Join(stateHome, "loaf", "loaf.sqlite"),
+		"next: run `loaf state status`",
+		"loaf state migrate markdown --apply",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %v, want %q", err, want)
+		}
+	}
+
+	var missingOut bytes.Buffer
+	err = Runner{
 		Stdout:     &missingOut,
 		WorkingDir: workingDir,
 		StateHome:  stateHome,

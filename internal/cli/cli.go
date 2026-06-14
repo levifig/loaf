@@ -1704,6 +1704,17 @@ func writeStateProjectIdentity(out io.Writer, status state.Status) {
 	}
 }
 
+func (r Runner) withStateMissingContext(err error, root project.Root) error {
+	if err == nil || !strings.Contains(err.Error(), "SQLite state database is not initialized") {
+		return err
+	}
+	databasePath, pathErr := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(root)
+	if pathErr != nil {
+		return err
+	}
+	return fmt.Errorf("%v\nscope: global database\ndatabase: %s\nnext: run `loaf state status` to inspect state, or `loaf state migrate markdown --apply` to import local .agents Markdown", err, databasePath)
+}
+
 func writeStateDiagnostics(out io.Writer, indent string, diagnostics []state.Diagnostic) {
 	for _, diagnostic := range diagnostics {
 		fmt.Fprintf(out, "%s\n", formatStateDiagnosticLine(indent, diagnostic))
@@ -1902,7 +1913,7 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 		if jsonOutput {
 			return writeJSONCommandError(out, "state backup", err)
 		}
-		return err
+		return r.withStateMissingContext(err, projectRoot)
 	}
 	if jsonOutput {
 		return writeJSON(out, result)
@@ -2028,28 +2039,28 @@ func (r Runner) runStateExport(args []string, out io.Writer, runtime state.Runti
 	case options.kind == state.ExportKindSpec && options.format == state.ExportFormatMarkdown:
 		result, err := state.ExportSpecMarkdown(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.ref)
 		if err != nil {
-			return err
+			return r.withStateMissingContext(err, projectRoot)
 		}
 		fmt.Fprint(out, result.Content)
 		return nil
 	case options.kind == state.ExportKindReleaseReadiness && options.format == state.ExportFormatMarkdown:
 		result, err := state.ExportReleaseReadinessMarkdown(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
 		if err != nil {
-			return err
+			return r.withStateMissingContext(err, projectRoot)
 		}
 		fmt.Fprint(out, result.Content)
 		return nil
 	case options.kind == state.ExportKindSession && options.format == state.ExportFormatMarkdown:
 		result, err := state.ExportSessionMarkdown(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.ref)
 		if err != nil {
-			return err
+			return r.withStateMissingContext(err, projectRoot)
 		}
 		fmt.Fprint(out, result.Content)
 		return nil
 	case options.kind == state.ExportKindTriage && options.format == state.ExportFormatMarkdown:
 		result, err := state.ExportTriageMarkdown(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
 		if err != nil {
-			return err
+			return r.withStateMissingContext(err, projectRoot)
 		}
 		fmt.Fprint(out, result.Content)
 		return nil

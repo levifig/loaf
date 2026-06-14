@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 19:11
+Date: 2026-06-14 19:16
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest backup/export/import contract pass dogfooded a temp project from the primary checkout with isolated XDG homes. Backup, backup verify, export all, and Markdown apply JSON already carried global/project context, but `state migrate markdown --dry-run --json` only returned artifact counts.
+The latest human/JSON failure pass dogfooded backup/export/import command surfaces from the primary checkout with isolated XDG homes. JSON failures remained concise and machine-readable, but human missing-state errors from `state backup` and Markdown `state export ...` commands did not show the global DB target.
 
-This checkpoint adds a non-mutating `MarkdownMigrationPreviewResult` envelope for dry-run JSON, including global database scope, target database path, project import scope, project name/path, and `applied: false`. Dogfood confirmed the dry-run still leaves the SQLite database missing.
+This checkpoint adds human missing-state context for those commands: global database scope, target database path, and safe next actions to inspect state or import local Markdown. JSON error payloads are unchanged.
 
 ## Next Review Target
 
-Continue the completion-audit pass by auditing human output and JSON failures for backup/export/import command surfaces against the reliability contract, looking for any remaining mismatch between docs, tests, and dogfood evidence.
+Continue the completion-audit pass by auditing release-readiness/spec/session/triage export human output and report-generation aliases against the reliability contract, looking for any remaining mismatch between docs, tests, and dogfood evidence.
