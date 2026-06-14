@@ -5738,6 +5738,16 @@ func TestRunnerStateExportJSONErrorsAreMachineReadable(t *testing.T) {
 			args: []string{"state", "export", "spec", "SPEC-001", "--format", "json"},
 			want: "state export format \"json\" is not implemented yet",
 		},
+		{
+			name: "json alias after markdown format",
+			args: []string{"state", "export", "all", "--format", "markdown", "--json"},
+			want: "cannot combine --json with --format markdown",
+		},
+		{
+			name: "json alias before markdown format",
+			args: []string{"state", "export", "all", "--json", "--format", "markdown"},
+			want: "cannot combine --json with --format markdown",
+		},
 	}
 
 	for _, tc := range tests {

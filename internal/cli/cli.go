@@ -9850,6 +9850,7 @@ func parseStateExportArgs(args []string) (stateExportOptions, error) {
 		return stateExportOptions{}, fmt.Errorf("state export requires a kind")
 	}
 	options := stateExportOptions{kind: args[0]}
+	jsonAliasRequested := false
 	var positional []string
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
@@ -9859,10 +9860,18 @@ func parseStateExportArgs(args []string) (stateExportOptions, error) {
 			if err != nil {
 				return stateExportOptions{}, err
 			}
+			if jsonAliasRequested && value != state.ExportFormatJSON {
+				return stateExportOptions{}, fmt.Errorf("state export all cannot combine --json with --format %s", value)
+			}
 			options.format = value
 		case strings.HasPrefix(arg, "--format="):
-			options.format = strings.TrimPrefix(arg, "--format=")
+			value := strings.TrimPrefix(arg, "--format=")
+			if jsonAliasRequested && value != state.ExportFormatJSON {
+				return stateExportOptions{}, fmt.Errorf("state export all cannot combine --json with --format %s", value)
+			}
+			options.format = value
 		case arg == "--json":
+			jsonAliasRequested = true
 			if options.kind != state.ExportKindAll {
 				return stateExportOptions{}, fmt.Errorf("state export %s uses --format markdown; --json is only supported for state export all", options.kind)
 			}
