@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- Agent help and generated CLI reference output now describe critical state JSON contracts precisely for `state path|init|status|doctor`, guarded repairs, backups, top-level migration aliases, restore guidance, global database scope, and project identity instead of using generic raw/details wording.
 - Agent help, command help, and generated CLI reference output now describe migration/report JSON contracts consistently, including state migration aliases, project context, global database paths, and report command metadata.
 - `loaf state migrate storage-home --dry-run --json` now includes the durable project ID, friendly project name, and current project path when the global data-home database already contains the current project.
 - `loaf report generate ... --json` success payloads now include the JSON contract version, report command, global database scope, project export scope, and durable project identity; external reports omit local database and project paths while internal session reports retain them for agent routing.

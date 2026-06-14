@@ -89,30 +89,30 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Manage native SQLite state",
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "path", Description: "Print the resolved SQLite database path", Options: []cliReferenceOption{
-					{Flags: "--json", Description: "Output database path and scope as JSON"},
+					{Flags: "--json", Description: "Output contract version, database path, scope, and project root as JSON"},
 					{Flags: "--verbose", Description: "Output command, scope, project root, and database path"},
 				}},
 				{Name: "status", Description: "Show SQLite readiness and markdown-only compatibility status", Options: []cliReferenceOption{
-					{Flags: "--json", Description: "Output status as JSON"},
+					{Flags: "--json", Description: "Output readiness mode, diagnostics, global database scope, and project identity as JSON"},
 				}},
 				{Name: "init", Description: "Initialize an empty SQLite state database", Options: []cliReferenceOption{
-					{Flags: "--json", Description: "Output initialized status as JSON"},
+					{Flags: "--json", Description: "Output initialized status, global database scope, and project identity as JSON"},
 				}},
 				{Name: "doctor", Description: "Diagnose SQLite state health", Options: []cliReferenceOption{
 					{Flags: "--fix", Description: "Initialize missing SQLite state when safe"},
 					{Flags: "--dry-run", Description: "Show the repair plan without applying fixes"},
-					{Flags: "--json", Description: "Output diagnostics as JSON"},
+					{Flags: "--json", Description: "Output diagnostics, repair plan, global database scope, and project identity as JSON"},
 				}},
 				{Name: "repair legacy-project-database", Description: "Archive migrated per-project SQLite leftovers", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview archive paths without writing"},
 					{Flags: "--apply", Description: "Move legacy SQLite files into the archive directory"},
-					{Flags: "--json", Description: "Output archive details as JSON"},
+					{Flags: "--json", Description: "Output archive plan/result, global database scope, and project identity as JSON"},
 				}},
 				{Name: "repair relationship-origin", Description: "Preview or apply guarded relationship provenance backfills", Options: []cliReferenceOption{
 					{Flags: "--origin <imported|manual>", Description: "Provenance value to backfill"},
 					{Flags: "--dry-run", Description: "Preview affected rows without writing"},
 					{Flags: "--apply", Description: "Backfill missing origins after creating a SQLite backup"},
-					{Flags: "--json", Description: "Output repair details as JSON"},
+					{Flags: "--json", Description: "Output repair plan/result, global database scope, and project identity as JSON"},
 				}},
 				{Name: "migrate markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
@@ -125,8 +125,8 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
 					{Flags: "--json", Description: "Output migration contract, global database paths, action, and project identity when available"},
 				}},
-				{Name: "backup", Description: "Create a SQLite database backup under the global data-home backups directory", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup details as JSON"}}},
-				{Name: "backup verify", Description: "Verify an existing SQLite database backup", Options: []cliReferenceOption{{Flags: "--json", Description: "Output verification details as JSON"}}},
+				{Name: "backup", Description: "Create a SQLite database backup under the global data-home backups directory", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup verification, checksum, schema version, project count, and current project identity as JSON"}}},
+				{Name: "backup verify", Description: "Verify an existing SQLite database backup", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup verification, restore guidance, schema version, and captured project identities as JSON"}}},
 				{Name: "export", Description: "Export SQLite state for review or migration", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format for the selected export kind"}}},
 				{Name: "export all", Description: "Export a complete project-scoped SQLite snapshot", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: json"}, {Flags: "--json", Description: "Alias for --format json"}}},
 				{Name: "export triage", Description: "Export a triage summary from SQLite state", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
@@ -169,12 +169,12 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
 					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},
 					{Flags: "--resume", Description: "Resume the Markdown import after an interrupted attempt"},
-					{Flags: "--json", Description: "Output migration details as JSON"},
+					{Flags: "--json", Description: "Output migration contract, scope, project context, and counts as JSON"},
 				}},
 				{Name: "storage-home", Description: "Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview the storage-home migration"},
 					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
-					{Flags: "--json", Description: "Output migration details as JSON"},
+					{Flags: "--json", Description: "Output migration contract, global database paths, action, and project identity when available"},
 				}},
 				{Name: "worktree-storage", Description: "Move linked-worktree .agents state to the main worktree", Options: []cliReferenceOption{
 					{Flags: "--apply", Description: "Perform the migration; dry-run is the default"},

@@ -14946,6 +14946,18 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["state"].optionDescriptions["state path --verbose"]; !strings.Contains(got, "scope") || !strings.Contains(got, "database path") {
 		t.Fatalf("state path verbose description = %q, want human context guidance", got)
 	}
+	if got := commands["state"].optionDescriptions["state path --json"]; !strings.Contains(got, "contract version") || !strings.Contains(got, "database path") {
+		t.Fatalf("state path json description = %q, want contract/database path guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state init --json"]; !strings.Contains(got, "global database scope") || !strings.Contains(got, "project identity") {
+		t.Fatalf("state init json description = %q, want scope/project identity guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state status --json"]; !strings.Contains(got, "readiness mode") || !strings.Contains(got, "diagnostics") || !strings.Contains(got, "project identity") {
+		t.Fatalf("state status json description = %q, want readiness/diagnostics/project identity guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state doctor --json"]; !strings.Contains(got, "diagnostics") || !strings.Contains(got, "repair plan") || !strings.Contains(got, "global database scope") {
+		t.Fatalf("state doctor json description = %q, want diagnostics/repair/scope guidance", got)
+	}
 	for _, subcommand := range []string{"backup"} {
 		if !stringSliceContains(commands["state"].subcommands, subcommand) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, subcommand)
@@ -14965,11 +14977,17 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["state"].optionDescriptions["state repair legacy-project-database --apply"]; !strings.Contains(got, "Move legacy SQLite files") {
 		t.Fatalf("legacy repair apply description = %q, want apply action", got)
 	}
+	if got := commands["state"].optionDescriptions["state repair legacy-project-database --json"]; !strings.Contains(got, "archive plan/result") || !strings.Contains(got, "project identity") {
+		t.Fatalf("legacy repair json description = %q, want archive/project identity guidance", got)
+	}
 	if got := commands["state"].optionDescriptions["state repair relationship-origin --origin <imported|manual>"]; !strings.Contains(got, "Provenance value") {
 		t.Fatalf("relationship repair origin description = %q, want provenance guidance", got)
 	}
 	if got := commands["state"].optionDescriptions["state repair relationship-origin --dry-run"]; !strings.Contains(got, "without writing") {
 		t.Fatalf("relationship repair dry-run description = %q, want non-mutating preview", got)
+	}
+	if got := commands["state"].optionDescriptions["state repair relationship-origin --json"]; !strings.Contains(got, "repair plan/result") || !strings.Contains(got, "global database scope") {
+		t.Fatalf("relationship repair json description = %q, want repair/scope guidance", got)
 	}
 	if got := commands["state"].optionDescriptions["state migrate markdown --json"]; !strings.Contains(got, "migration contract") || !strings.Contains(got, "project context") {
 		t.Fatalf("state migrate markdown json description = %q, want contract/project context guidance", got)
@@ -14977,8 +14995,11 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["state"].optionDescriptions["state migrate storage-home --json"]; !strings.Contains(got, "global database paths") || !strings.Contains(got, "project identity") {
 		t.Fatalf("state migrate storage-home json description = %q, want global path/project identity guidance", got)
 	}
-	if got := commands["state"].optionDescriptions["state backup verify --json"]; !strings.Contains(got, "raw JSON") {
-		t.Fatalf("state backup verify json description = %q, want JSON guidance", got)
+	if got := commands["state"].optionDescriptions["state backup --json"]; !strings.Contains(got, "checksum") || !strings.Contains(got, "current project identity") {
+		t.Fatalf("state backup json description = %q, want checksum/current project identity guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state backup verify --json"]; !strings.Contains(got, "restore guidance") || !strings.Contains(got, "captured project identities") {
+		t.Fatalf("state backup verify json description = %q, want restore/project identity guidance", got)
 	}
 	if got := commands["state"].optionDescriptions["state export all --format <format>"]; !strings.Contains(got, "json") {
 		t.Fatalf("state export all format description = %q, want JSON guidance", got)

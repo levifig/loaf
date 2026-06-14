@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest alias/help/reference pass audited command aliases, `--agent-help`, command help, and generated CLI reference output against the tightened JSON contracts. Runtime state/top-level migration aliases returned consistent JSON envelopes, but `--agent-help` only exposed top-level migration leaf commands and report/migration JSON descriptions did not name contract/project-context fields.
+The latest generated-artifact/install-facing audit compared runtime metadata, `--agent-help`, generated CLI reference content, distributed `dist/` skills, and the plugin skill copy against the tightened JSON contracts. The pass found two stale agent-facing surfaces: top-level `loaf migrate markdown|storage-home --json` reference text still said "Output migration details as JSON", and critical `loaf state ... --json` agent-help/reference text still used generic raw/details wording for path, init, status, doctor, repair, backup, and backup verification.
 
-This checkpoint adds `state migrate markdown` and `state migrate storage-home` leaf commands to agent help, clarifies migration/report JSON descriptions across agent help, command help, and generated CLI reference output, and adds duplicate command/subcommand guards for the agent-help JSON surface.
+This checkpoint aligns those surfaces with the actual contracts: migration aliases now name contract, scope, project context, global database paths, action, and project identity; critical state JSON help now names contract version, diagnostics, repair plans, restore guidance, schema/checksum details, global database scope, and project identity. `npm run build` regenerated `content/skills/cli-reference`, every distributed `dist/*/skills/cli-reference` copy, and `plugins/loaf/skills/cli-reference`, while `TestRunnerAgentHelpIsNative` and `TestRunnerGenerateCLIReferenceWritesSkillNatively` now guard the precise descriptions.
 
 ## Next Review Target
 
-Continue the completion-audit pass by auditing generated `dist/` and plugin artifacts plus install-facing surfaces for stale state-command descriptions.
+Continue the completion-audit pass by auditing the remaining non-control-plane `--agent-help` raw JSON descriptions, prioritizing SQLite-backed task/spec/session/report surfaces where contract fields are already stable.

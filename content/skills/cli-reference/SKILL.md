@@ -159,30 +159,30 @@ For agents, `loaf state backup verify <backup> --json` also returns
 **Options:**
 
 - `loaf state path`:
-  - `--json` - Output database path and scope as JSON
+  - `--json` - Output contract version, database path, scope, and project root as JSON
   - `--verbose` - Output command, scope, project root, and database path
 
 - `loaf state status`:
-  - `--json` - Output status as JSON
+  - `--json` - Output readiness mode, diagnostics, global database scope, and project identity as JSON
 
 - `loaf state init`:
-  - `--json` - Output initialized status as JSON
+  - `--json` - Output initialized status, global database scope, and project identity as JSON
 
 - `loaf state doctor`:
   - `--fix` - Initialize missing SQLite state when safe
   - `--dry-run` - Show the repair plan without applying fixes
-  - `--json` - Output diagnostics as JSON
+  - `--json` - Output diagnostics, repair plan, global database scope, and project identity as JSON
 
 - `loaf state repair legacy-project-database`:
   - `--dry-run` - Preview archive paths without writing
   - `--apply` - Move legacy SQLite files into the archive directory
-  - `--json` - Output archive details as JSON
+  - `--json` - Output archive plan/result, global database scope, and project identity as JSON
 
 - `loaf state repair relationship-origin`:
   - `--origin <imported|manual>` - Provenance value to backfill
   - `--dry-run` - Preview affected rows without writing
   - `--apply` - Backfill missing origins after creating a SQLite backup
-  - `--json` - Output repair details as JSON
+  - `--json` - Output repair plan/result, global database scope, and project identity as JSON
 
 - `loaf state migrate markdown`:
   - `--dry-run` - Preview import counts without creating a database
@@ -196,10 +196,10 @@ For agents, `loaf state backup verify <backup> --json` also returns
   - `--json` - Output migration contract, global database paths, action, and project identity when available
 
 - `loaf state backup`:
-  - `--json` - Output backup details as JSON
+  - `--json` - Output backup verification, checksum, schema version, project count, and current project identity as JSON
 
 - `loaf state backup verify`:
-  - `--json` - Output verification details as JSON
+  - `--json` - Output backup verification, restore guidance, schema version, and captured project identities as JSON
 
 - `loaf state export`:
   - `--format <format>` - Output format for the selected export kind
@@ -310,12 +310,12 @@ when the artifact counts and skipped files look right.
   - `--dry-run` - Preview import counts without creating a database
   - `--apply` - Initialize SQLite and import Markdown artifacts
   - `--resume` - Resume the Markdown import after an interrupted attempt
-  - `--json` - Output migration details as JSON
+  - `--json` - Output migration contract, scope, project context, and counts as JSON
 
 - `loaf migrate storage-home`:
   - `--dry-run` - Preview the storage-home migration
   - `--apply` - Copy the legacy database without deleting it
-  - `--json` - Output migration details as JSON
+  - `--json` - Output migration contract, global database paths, action, and project identity when available
 
 - `loaf migrate worktree-storage`:
   - `--apply` - Perform the migration; dry-run is the default
