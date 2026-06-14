@@ -2102,12 +2102,7 @@ func (r Runner) runStorageHomeMigration(args []string, out io.Writer, runtime st
 	if options.jsonOutput {
 		return writeJSON(out, plan)
 	}
-	if options.apply {
-		fmt.Fprintf(out, "%s --apply\n", displayCommand)
-	} else {
-		fmt.Fprintf(out, "%s --dry-run\n", displayCommand)
-	}
-	writeStorageHomeMigrationPlan(out, plan)
+	writeStorageHomeMigrationHuman(out, displayCommand, plan)
 	return nil
 }
 
@@ -2144,16 +2139,10 @@ func (r Runner) runMarkdownMigration(args []string, out io.Writer, runtime state
 			return writeJSON(out, result)
 		}
 		if options.resume {
-			fmt.Fprintf(out, "%s --resume\n", displayCommand)
+			writeMarkdownMigrationResultHuman(out, displayCommand+" --resume", result)
 		} else {
-			fmt.Fprintf(out, "%s --apply\n", displayCommand)
+			writeMarkdownMigrationResultHuman(out, displayCommand+" --apply", result)
 		}
-		fmt.Fprintf(out, "scope: %s database, %s import\n", result.DatabaseScope, result.ImportScope)
-		fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
-		fmt.Fprintf(out, "project: %s\n", result.ProjectID)
-		fmt.Fprintf(out, "project name: %s\n", result.ProjectName)
-		fmt.Fprintf(out, "project path: %s\n", result.ProjectCurrentPath)
-		writeMarkdownMigrationPlan(out, result.MarkdownMigrationPlan)
 		return nil
 	}
 
@@ -2168,9 +2157,35 @@ func (r Runner) runMarkdownMigration(args []string, out io.Writer, runtime state
 		return writeJSON(out, plan)
 	}
 
-	fmt.Fprintf(out, "%s --dry-run\n", displayCommand)
-	writeMarkdownMigrationPlan(out, plan)
+	databasePath, err := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(projectRoot)
+	if err != nil {
+		return err
+	}
+	writeMarkdownMigrationPreviewHuman(out, displayCommand+" --dry-run", projectRoot, databasePath, plan)
 	return nil
+}
+
+func writeMarkdownMigrationPreviewHuman(out io.Writer, command string, root project.Root, databasePath string, plan state.MarkdownMigrationPlan) {
+	fmt.Fprintln(out, command)
+	fmt.Fprintln(out, "scope: global database, project import")
+	fmt.Fprintf(out, "database: %s\n", databasePath)
+	fmt.Fprintln(out, "project: (not initialized)")
+	fmt.Fprintf(out, "project name: %s\n", filepath.Base(root.Path()))
+	fmt.Fprintf(out, "project path: %s\n", root.Path())
+	fmt.Fprintln(out, "applied: false")
+	writeMarkdownMigrationPlan(out, plan)
+	fmt.Fprintln(out, "next: rerun with --apply to import Markdown into the global database")
+}
+
+func writeMarkdownMigrationResultHuman(out io.Writer, command string, result state.MarkdownMigrationResult) {
+	fmt.Fprintln(out, command)
+	fmt.Fprintf(out, "scope: %s database, %s import\n", result.DatabaseScope, result.ImportScope)
+	fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
+	fmt.Fprintf(out, "project: %s\n", result.ProjectID)
+	fmt.Fprintf(out, "project name: %s\n", result.ProjectName)
+	fmt.Fprintf(out, "project path: %s\n", result.ProjectCurrentPath)
+	fmt.Fprintf(out, "applied: %t\n", result.Applied)
+	writeMarkdownMigrationPlan(out, result.MarkdownMigrationPlan)
 }
 
 func writeMarkdownMigrationPlan(out io.Writer, plan state.MarkdownMigrationPlan) {
@@ -2193,16 +2208,41 @@ func writeMarkdownMigrationPlan(out io.Writer, plan state.MarkdownMigrationPlan)
 	}
 }
 
+func writeStorageHomeMigrationHuman(out io.Writer, displayCommand string, plan state.StorageHomeMigrationPlan) {
+	if plan.Applied {
+		fmt.Fprintf(out, "%s --apply\n", displayCommand)
+	} else {
+		fmt.Fprintf(out, "%s --dry-run\n", displayCommand)
+	}
+	writeStorageHomeMigrationPlan(out, plan)
+	if !plan.Applied {
+		switch plan.Action {
+		case state.StorageHomeActionCopy, state.StorageHomeActionMerge:
+			fmt.Fprintln(out, "next: rerun with --apply to copy eligible legacy state into the global database")
+		case state.StorageHomeActionAlreadyMigrated:
+			fmt.Fprintln(out, "next: no storage-home migration is needed; run `loaf state status` to inspect current state")
+		case state.StorageHomeActionNoLegacyState:
+			fmt.Fprintln(out, "next: no legacy state was found; run `loaf state init` or `loaf state migrate markdown --apply` if this project still needs SQLite state")
+		}
+	}
+}
+
 func writeStorageHomeMigrationPlan(out io.Writer, plan state.StorageHomeMigrationPlan) {
 	fmt.Fprintf(out, "scope: %s database, %s migration\n", plan.DatabaseScope, plan.MigrationScope)
 	if plan.ProjectID != "" {
 		fmt.Fprintf(out, "project: %s\n", plan.ProjectID)
+	} else {
+		fmt.Fprintln(out, "project: (not initialized)")
 	}
 	if plan.ProjectName != "" {
 		fmt.Fprintf(out, "project name: %s\n", plan.ProjectName)
+	} else if plan.ProjectRoot != "" {
+		fmt.Fprintf(out, "project name: %s\n", filepath.Base(plan.ProjectRoot))
 	}
 	if plan.ProjectCurrentPath != "" {
 		fmt.Fprintf(out, "project path: %s\n", plan.ProjectCurrentPath)
+	} else if plan.ProjectRoot != "" {
+		fmt.Fprintf(out, "project path: %s\n", plan.ProjectRoot)
 	}
 	fmt.Fprintf(out, "database: %s\n", plan.DatabasePath)
 	fmt.Fprintf(out, "legacy database: %s\n", plan.LegacyDatabasePath)

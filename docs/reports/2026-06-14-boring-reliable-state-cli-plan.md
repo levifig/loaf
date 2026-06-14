@@ -214,6 +214,7 @@ Run the human form of the command matrix and normalize output shape. Prefer ters
 Progress:
 
 - 2026-06-14: `loaf project rename` and `loaf project move` human output now use the same high-risk mutation shape: command header, global database scope, database path, durable project ID, friendly name, current path, from/to values, and `applied: true|false`. Dry-run output includes a next action; apply output does not. `TestRunnerProjectRenameDryRunDoesNotWrite`, `TestRunnerProjectMoveDryRunDoesNotWrite`, and `TestRunnerProjectRenameAndMoveHumanApplyOutput` cover the new shape.
+- 2026-06-14: `loaf state migrate markdown` and `loaf state migrate storage-home` human output now use the same migration shape: command header, global database scope, project import/migration scope, database path, project context, `applied: true|false`, and dry-run next actions. `TestRunnerStateMigrateMarkdownHumanDryRun`, `TestRunnerStateMigrateMarkdownApplyHuman`, `TestRunnerStateMigrateMarkdownResumeHuman`, `TestRunnerMigrateMarkdownUsesNativeAlias`, `TestRunnerStateMigrateStorageHomeCopiesLegacyDatabase`, and `TestRunnerMigrateStorageHomeUsesNativeAlias` cover the shape.
 
 Go/no-go: a user can run the state/project/migration commands without reading docs and understand whether anything changed.
 
@@ -230,4 +231,4 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 
 ## Next Best Commit
 
-The next implementation commit should continue Track 5 by normalizing migration human output for `state migrate markdown` and `state migrate storage-home`, especially dry-run/apply mutation status and next-action guidance.
+The next implementation commit should run a dogfood human-output matrix across the remaining state/project/migration surfaces, then normalize the first inconsistent high-risk command family it finds instead of guessing from the plan.

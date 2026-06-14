@@ -248,6 +248,9 @@ func TestRunnerStateMigrateStorageHomeCopiesLegacyDatabase(t *testing.T) {
 			t.Fatalf("stdout = %q, want %q", applyOut.String(), want)
 		}
 	}
+	if strings.Contains(applyOut.String(), "next:") {
+		t.Fatalf("stdout = %q, did not want dry-run next action after apply", applyOut.String())
+	}
 	if _, err := os.Stat(legacyPath); err != nil {
 		t.Fatalf("legacy database stat error = %v, want legacy preserved", err)
 	}
@@ -293,10 +296,49 @@ func TestRunnerMigrateStorageHomeUsesNativeAlias(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate storage-home error = %v", err)
 	}
-	for _, want := range []string{"loaf migrate storage-home --dry-run", "scope: global database, project migration", "action: copy"} {
+	for _, want := range []string{
+		"loaf migrate storage-home --dry-run",
+		"scope: global database, project migration",
+		"project: (not initialized)",
+		"project name:",
+		"project path:",
+		"action: copy",
+		"applied: false",
+		"next: rerun with --apply to copy eligible legacy state into the global database",
+	} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 		}
+	}
+}
+
+func TestRunnerMigrateStorageHomeNoLegacyHumanDryRun(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+	}.Run([]string{"state", "migrate", "storage-home", "--dry-run"})
+	if err != nil {
+		t.Fatalf("state migrate storage-home --dry-run error = %v", err)
+	}
+	for _, want := range []string{
+		"loaf state migrate storage-home --dry-run",
+		"action: no-legacy-state",
+		"applied: false",
+		"next: no legacy state was found; run `loaf state init` or `loaf state migrate markdown --apply` if this project still needs SQLite state",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+	if strings.Contains(stdout.String(), "rerun with --apply") {
+		t.Fatalf("stdout = %q, did not want apply guidance when no legacy source exists", stdout.String())
 	}
 }
 
@@ -322,7 +364,17 @@ func TestRunnerMigrateMarkdownUsesNativeAlias(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate markdown error = %v", err)
 	}
-	for _, want := range []string{"loaf migrate markdown --dry-run", "tasks: 1"} {
+	for _, want := range []string{
+		"loaf migrate markdown --dry-run",
+		"scope: global database, project import",
+		"database:",
+		"project: (not initialized)",
+		"project name:",
+		"project path:",
+		"applied: false",
+		"tasks: 1",
+		"next: rerun with --apply to import Markdown into the global database",
+	} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 		}
@@ -6344,8 +6396,19 @@ func TestRunnerStateMigrateMarkdownHumanDryRun(t *testing.T) {
 	if !strings.Contains(output, "loaf state migrate markdown --dry-run") {
 		t.Fatalf("output = %q, want dry-run heading", output)
 	}
-	if !strings.Contains(output, "ideas: 1") {
-		t.Fatalf("output = %q, want idea count", output)
+	for _, want := range []string{
+		"scope: global database, project import",
+		"database:",
+		"project: (not initialized)",
+		"project name:",
+		"project path:",
+		"applied: false",
+		"ideas: 1",
+		"next: rerun with --apply to import Markdown into the global database",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
 	}
 }
 
@@ -6545,6 +6608,41 @@ func TestRunnerStateMigrateMarkdownApplyJSON(t *testing.T) {
 	}
 }
 
+func TestRunnerStateMigrateMarkdownApplyHuman(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	writeCLIAgentsFile(t, workingDir, "ideas/20260528-apply-idea.md", "# Apply Idea\n")
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "migrate", "markdown", "--apply"})
+	if err != nil {
+		t.Fatalf("state migrate markdown --apply error = %v", err)
+	}
+
+	output := stdout.String()
+	for _, want := range []string{
+		"loaf state migrate markdown --apply",
+		"scope: global database, project import",
+		"database:",
+		"project:",
+		"project name:",
+		"project path:",
+		"applied: true",
+		"ideas: 1",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
+	}
+	if strings.Contains(output, "next:") {
+		t.Fatalf("output = %q, did not want dry-run next action after apply", output)
+	}
+}
+
 func TestRunnerStateMigrateMarkdownApplyJSONDoesNotRequireTasksJSON(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -6656,8 +6754,13 @@ func TestRunnerStateMigrateMarkdownResumeHuman(t *testing.T) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
 	}
-	if !strings.Contains(output, "ideas: 1") {
-		t.Fatalf("output = %q, want idea count", output)
+	for _, want := range []string{"applied: true", "ideas: 1"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
+	}
+	if strings.Contains(output, "next:") {
+		t.Fatalf("output = %q, did not want dry-run next action after resume", output)
 	}
 }
 
