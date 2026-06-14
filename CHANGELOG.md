@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- Added command-matrix regression coverage for critical state/project/migration JSON success contracts, including read-only no-mutation checks, migration dry-run no-copy/no-database checks, and backup verification without live state access.
 - Refocused the boring-reliable state/CLI plan into gated execution criteria so future work progresses through control-plane proof, recovery confidence, and UX/policy normalization instead of broad edge chasing.
 - Added command-matrix regression coverage for critical state/project/migration JSON failure contracts, including contract version, command name, silent exit code, and no database creation for pre-open failures.
 - Added a focused boring-reliable state/CLI plan that turns the remaining SQLite hardening work into an explicit reliability contract, command matrix, and prioritized audit tracks.

@@ -6387,6 +6387,197 @@ func TestRunnerStateControlPlaneJSONFailureMatrix(t *testing.T) {
 	}
 }
 
+func TestRunnerStateControlPlaneJSONSuccessMatrix(t *testing.T) {
+	t.Run("initialized read-only commands preserve SQLite rows and repo files", func(t *testing.T) {
+		tests := []struct {
+			name   string
+			args   []string
+			verify func(t *testing.T, data []byte, workingDir string)
+		}{
+			{
+				name: "state status",
+				args: []string{"state", "status", "--json"},
+				verify: func(t *testing.T, data []byte, workingDir string) {
+					t.Helper()
+					status := decodeStateStatus(t, data)
+					assertCLIProjectContext(t, workingDir, status.ContractVersion, status.DatabaseScope, status.DatabasePath, status.ProjectID, status.ProjectName, status.ProjectCurrentPath)
+					if status.Mode != state.ModeSQLiteReady {
+						t.Fatalf("Mode = %q, want %q", status.Mode, state.ModeSQLiteReady)
+					}
+				},
+			},
+			{
+				name: "state doctor",
+				args: []string{"state", "doctor", "--json"},
+				verify: func(t *testing.T, data []byte, workingDir string) {
+					t.Helper()
+					status := decodeStateStatus(t, data)
+					assertCLIProjectContext(t, workingDir, status.ContractVersion, status.DatabaseScope, status.DatabasePath, status.ProjectID, status.ProjectName, status.ProjectCurrentPath)
+					if status.Mode != state.ModeSQLiteReady {
+						t.Fatalf("Mode = %q, want %q", status.Mode, state.ModeSQLiteReady)
+					}
+					assertJSONArrayLength(t, data, "repair_plan", 0)
+				},
+			},
+			{
+				name: "state export all",
+				args: []string{"state", "export", "all", "--json"},
+				verify: func(t *testing.T, data []byte, workingDir string) {
+					t.Helper()
+					snapshot := decodeStateExportSnapshot(t, data)
+					assertCLIProjectContext(t, workingDir, snapshot.ContractVersion, snapshot.DatabaseScope, snapshot.DatabasePath, snapshot.ProjectID, snapshot.ProjectName, snapshot.ProjectCurrentPath)
+					if snapshot.ExportKind != state.ExportKindAll || snapshot.Format != state.ExportFormatJSON || snapshot.ExportScope != "project" {
+						t.Fatalf("snapshot = %#v, want all/json project export", snapshot)
+					}
+					if !snapshot.Manifest.Verified {
+						t.Fatal("Manifest.Verified = false, want true")
+					}
+				},
+			},
+			{
+				name: "project show",
+				args: []string{"project", "show", "--json"},
+				verify: func(t *testing.T, data []byte, workingDir string) {
+					t.Helper()
+					var shown state.ProjectIdentity
+					if err := json.Unmarshal(data, &shown); err != nil {
+						t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+					}
+					if shown.ContractVersion != state.StateJSONContractVersion || shown.DatabaseScope != "global" || shown.ID == "" || shown.FriendlyName != filepath.Base(workingDir) || shown.CurrentPath != workingDir {
+						t.Fatalf("project show = %#v, want stable initialized project identity for %s", shown, workingDir)
+					}
+				},
+			},
+			{
+				name: "project list",
+				args: []string{"project", "list", "--json"},
+				verify: func(t *testing.T, data []byte, workingDir string) {
+					t.Helper()
+					var listed state.ProjectList
+					if err := json.Unmarshal(data, &listed); err != nil {
+						t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+					}
+					if listed.ContractVersion != state.StateJSONContractVersion || listed.DatabaseScope != "global" || len(listed.Projects) != 1 {
+						t.Fatalf("project list = %#v, want one initialized global project", listed)
+					}
+					project := listed.Projects[0]
+					if project.ContractVersion != state.StateJSONContractVersion || project.DatabaseScope != "global" || project.ID == "" || project.FriendlyName != filepath.Base(workingDir) || project.CurrentPath != workingDir {
+						t.Fatalf("listed project = %#v, want stable initialized project identity for %s", project, workingDir)
+					}
+				},
+			},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				workingDir := realpath(t, t.TempDir())
+				stateHome := t.TempDir()
+				if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+					t.Fatalf("state init --json error = %v", err)
+				}
+
+				before := exportAllTablesForCLI(t, workingDir, stateHome)
+				var stdout bytes.Buffer
+				if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run(tc.args); err != nil {
+					t.Fatalf("Run(%v) error = %v\nstdout:\n%s", tc.args, err, stdout.String())
+				}
+				tc.verify(t, stdout.Bytes(), workingDir)
+				after := exportAllTablesForCLI(t, workingDir, stateHome)
+				if !reflect.DeepEqual(before, after) {
+					t.Fatalf("Run(%v) mutated exported tables:\nbefore=%#v\nafter=%#v", tc.args, before, after)
+				}
+				assertNoRepositoryAgentsDir(t, workingDir)
+			})
+		}
+	})
+
+	t.Run("markdown dry-run returns JSON without creating SQLite state", func(t *testing.T) {
+		workingDir := realpath(t, t.TempDir())
+		stateHome := t.TempDir()
+		writeCLIAgentsFile(t, workingDir, "specs/SPEC-001-example.md", "# Spec\n")
+		writeCLIAgentsFile(t, workingDir, "tasks/TASK-001-example.md", "# Task\n")
+
+		var stdout bytes.Buffer
+		if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "migrate", "markdown", "--dry-run", "--json"}); err != nil {
+			t.Fatalf("state migrate markdown --dry-run --json error = %v", err)
+		}
+		plan := decodeMarkdownMigrationPlan(t, stdout.Bytes())
+		if plan.ContractVersion != state.StateJSONContractVersion || plan.AgentsPath != filepath.Join(workingDir, ".agents") {
+			t.Fatalf("markdown migration plan = %#v, want contract version and agents path for dry-run", plan)
+		}
+		if plan.Specs != 1 || plan.Tasks != 1 {
+			t.Fatalf("markdown migration plan = %#v, want one spec and one task", plan)
+		}
+		assertNoStateDatabase(t, workingDir, stateHome)
+	})
+
+	t.Run("storage-home dry-run returns JSON without copying destination", func(t *testing.T) {
+		workingDir := realpath(t, t.TempDir())
+		dataHome := t.TempDir()
+		stateHome := t.TempDir()
+		t.Setenv("XDG_DATA_HOME", dataHome)
+		t.Setenv("XDG_STATE_HOME", stateHome)
+		root, err := project.ResolveRoot(workingDir)
+		if err != nil {
+			t.Fatalf("ResolveRoot() error = %v", err)
+		}
+		legacyPath := initializeCLILegacyStateDatabase(t, root)
+		destination, err := state.PathResolver{}.DatabasePath(root)
+		if err != nil {
+			t.Fatalf("DatabasePath() error = %v", err)
+		}
+
+		var stdout bytes.Buffer
+		if err := (Runner{Stdout: &stdout, WorkingDir: workingDir}).Run([]string{"state", "migrate", "storage-home", "--dry-run", "--json"}); err != nil {
+			t.Fatalf("state migrate storage-home --dry-run --json error = %v", err)
+		}
+		var plan state.StorageHomeMigrationPlan
+		if err := json.Unmarshal(stdout.Bytes(), &plan); err != nil {
+			t.Fatalf("json.Unmarshal(%q) error = %v", stdout.String(), err)
+		}
+		if plan.ContractVersion != state.StateJSONContractVersion || plan.DatabaseScope != "global" || plan.MigrationScope != "project" || plan.Action != state.StorageHomeActionCopy || plan.Applied {
+			t.Fatalf("storage-home plan = %#v, want unapplied global/project copy dry-run", plan)
+		}
+		if plan.LegacyDatabasePath != legacyPath || plan.DatabasePath != destination {
+			t.Fatalf("storage-home paths = %q -> %q, want %q -> %q", plan.LegacyDatabasePath, plan.DatabasePath, legacyPath, destination)
+		}
+		if _, err := os.Stat(destination); !os.IsNotExist(err) {
+			t.Fatalf("destination stat error = %v, want storage-home dry-run not to copy %s", err, destination)
+		}
+		if _, err := os.Stat(legacyPath); err != nil {
+			t.Fatalf("legacy source stat error = %v, want preserved source %s", err, legacyPath)
+		}
+	})
+
+	t.Run("backup verify reads backup without live state", func(t *testing.T) {
+		workingDir := realpath(t, t.TempDir())
+		stateHome := t.TempDir()
+		if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+			t.Fatalf("state init --json error = %v", err)
+		}
+		var backupOut bytes.Buffer
+		if err := (Runner{Stdout: &backupOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "--json"}); err != nil {
+			t.Fatalf("state backup --json error = %v", err)
+		}
+		backup := decodeStateBackupResult(t, backupOut.Bytes())
+
+		var verifyOut bytes.Buffer
+		otherWorkingDir := realpath(t, t.TempDir())
+		otherStateHome := t.TempDir()
+		if err := (Runner{Stdout: &verifyOut, WorkingDir: otherWorkingDir, StateHome: otherStateHome}).Run([]string{"state", "backup", "verify", backup.BackupPath, "--json"}); err != nil {
+			t.Fatalf("state backup verify --json error = %v", err)
+		}
+		verified := decodeStateBackupVerificationResult(t, verifyOut.Bytes())
+		if verified.ContractVersion != state.StateJSONContractVersion || !verified.Verified || verified.BackupPath != backup.BackupPath {
+			t.Fatalf("backup verification = %#v, want verified backup %s for project %s", verified, backup.BackupPath, backup.ProjectID)
+		}
+		if len(verified.Projects) != 1 || verified.Projects[0].ID != backup.ProjectID {
+			t.Fatalf("backup verification projects = %#v, want backed-up project %s", verified.Projects, backup.ProjectID)
+		}
+		assertNoStateDatabase(t, otherWorkingDir, otherStateHome)
+	})
+}
+
 func TestRunnerTraceJSONUsesSQLiteState(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -12324,6 +12515,15 @@ func decodeStateExportSnapshot(t *testing.T, data []byte) state.ExportSnapshot {
 	return snapshot
 }
 
+func exportAllTablesForCLI(t *testing.T, workingDir string, stateHome string) map[string][]map[string]any {
+	t.Helper()
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "export", "all", "--json"}); err != nil {
+		t.Fatalf("state export all --json error = %v", err)
+	}
+	return decodeStateExportSnapshot(t, stdout.Bytes()).Tables
+}
+
 func decodeMarkdownMigrationPlan(t *testing.T, data []byte) state.MarkdownMigrationPlan {
 	t.Helper()
 	var plan state.MarkdownMigrationPlan
@@ -13423,5 +13623,12 @@ func assertNoStateDatabase(t *testing.T, workingDir string, stateHome string) {
 	}
 	if _, err := os.Stat(databasePath); !os.IsNotExist(err) {
 		t.Fatalf("state database stat error = %v, want missing database at %s", err, databasePath)
+	}
+}
+
+func assertNoRepositoryAgentsDir(t *testing.T, workingDir string) {
+	t.Helper()
+	if _, err := os.Stat(filepath.Join(workingDir, ".agents")); !os.IsNotExist(err) {
+		t.Fatalf("repository .agents directory exists or stat failed after read-only command; err = %v", err)
 	}
 }

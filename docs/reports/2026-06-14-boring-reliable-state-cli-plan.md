@@ -155,6 +155,7 @@ Add a focused regression harness or table-driven CLI test that runs the critical
 Progress:
 
 - 2026-06-14: `TestRunnerStateControlPlaneJSONFailureMatrix` covers sampled JSON failure contracts across `state`, `state repair`, `state backup verify`, `state export`, `project`, and `migrate` control-plane commands, including contract version, command name, error text, silent exit code, and no state database creation for pre-open/read-only failures.
+- 2026-06-14: `TestRunnerStateControlPlaneJSONSuccessMatrix` covers JSON success and no-mutation contracts for initialized read-only surfaces (`state status`, `state doctor`, `state export all`, `project show`, `project list`), migration dry-runs (`state migrate markdown --dry-run`, `state migrate storage-home --dry-run`), and `state backup verify` without live state access.
 
 Go/no-go: the matrix can be re-run with one command and failures identify the exact command contract that regressed.
 
@@ -205,4 +206,4 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 
 ## Next Best Commit
 
-The next implementation commit should continue Track 1 by extending the command matrix from JSON failure contracts into success/no-mutation contracts for the highest-risk read-only surfaces: `state status`, `state doctor`, `state export all`, `project show/list`, and migration dry-runs. This keeps future fixes anchored in the broad reliability contract instead of isolated edge chasing.
+The next implementation commit should finish Gate 1 by mapping the remaining project mutation safeguards (`project rename/move` dry-run and apply paths) and repair dry-runs into the command-matrix evidence, then update this report to state whether Gate 1 is complete or exactly which command still lacks proof. After that, move to Gate 2 restore confidence instead of continuing to polish low-risk surfaces.
