@@ -99,6 +99,9 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 	if !strings.Contains(content, "- `loaf report generate`:\n  - `--format <format>` - Output format: markdown") {
 		t.Fatalf("generated CLI reference missing report generate markdown format guidance\n%s", content)
 	}
+	if !strings.Contains(content, "  - `--json` - Output JSON wrapper with markdown content") {
+		t.Fatalf("generated CLI reference missing report generate JSON guidance\n%s", content)
+	}
 	if !strings.Contains(content, "- `loaf report list`:\n  - `--type <type>` - Filter by report type\n  - `--status <status>` - Filter by status; Loaf lifecycle statuses: draft, final, archived") {
 		t.Fatalf("generated CLI reference missing report list status guidance\n%s", content)
 	}

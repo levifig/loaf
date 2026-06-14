@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf report generate` now accepts its documented `--format markdown` option and supports `--json`, returning the same markdown export wrapper used by state exports with machine-readable errors for unsupported formats and missing state.
 - Markdown exports from `loaf state export triage|release-readiness|spec|session` now include explicit project context; external-safe exports name the global/project scope, stable project ID, and friendly project name without exposing local paths, while internal exports also include project and database paths.
 - `loaf state init|status|doctor` human output now uses the same durable project identity labels as the rest of the SQLite CLI: `project` for ID and `project name` for the friendly name.
 - `loaf state backup` human output now ends with a concrete `state backup verify <backup>` next action, and backup help/reference text names the global data-home backups directory.

@@ -242,7 +242,10 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--status <status>", Description: "Filter by status; Loaf lifecycle statuses: draft, final, archived"},
 					{Flags: "--json", Description: "Output as JSON"},
 				}},
-				{Name: "generate", Description: "Generate a report from state", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
+				{Name: "generate", Description: "Generate a report from state", Options: []cliReferenceOption{
+					{Flags: "--format <format>", Description: "Output format: markdown"},
+					{Flags: "--json", Description: "Output JSON wrapper with markdown content"},
+				}},
 				{Name: "create", Description: "Create a report draft", Options: []cliReferenceOption{
 					{Flags: "--type <type>", Description: "Report type"},
 					{Flags: "--source <source>", Description: "Report source"},

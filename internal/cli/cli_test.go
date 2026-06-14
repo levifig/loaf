@@ -5022,6 +5022,13 @@ func TestRunnerReportGenerateTriageAndReleaseReadinessMatchStateExports(t *testi
 	if triageReport.String() != triageExport.String() {
 		t.Fatalf("triage report output differs from state export:\nreport=%s\nexport=%s", triageReport.String(), triageExport.String())
 	}
+	var triageReportFormat bytes.Buffer
+	if err := (Runner{Stdout: &triageReportFormat, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "generate", "triage", "--format", "markdown"}); err != nil {
+		t.Fatalf("report generate triage --format markdown error = %v", err)
+	}
+	if triageReportFormat.String() != triageExport.String() {
+		t.Fatalf("triage report --format output differs from state export:\nreport=%s\nexport=%s", triageReportFormat.String(), triageExport.String())
+	}
 
 	var releaseExport bytes.Buffer
 	if err := (Runner{Stdout: &releaseExport, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "export", "release-readiness", "--format", "markdown"}); err != nil {
@@ -5036,6 +5043,54 @@ func TestRunnerReportGenerateTriageAndReleaseReadinessMatchStateExports(t *testi
 	}
 	if !strings.Contains(releaseReport.String(), "# Release Readiness Export") {
 		t.Fatalf("release report output = %q, want release readiness markdown", releaseReport.String())
+	}
+}
+
+func TestRunnerReportGenerateJSONContracts(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"idea", "capture", "--title", "JSON report follow-up"}); err != nil {
+		t.Fatalf("idea capture error = %v", err)
+	}
+
+	var jsonOut bytes.Buffer
+	if err := (Runner{Stdout: &jsonOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "generate", "triage", "--format", "markdown", "--json"}); err != nil {
+		t.Fatalf("report generate triage --format markdown --json error = %v", err)
+	}
+	var export state.MarkdownExport
+	if err := json.Unmarshal(jsonOut.Bytes(), &export); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", jsonOut.String(), err)
+	}
+	if export.ExportKind != state.ExportKindTriage || export.Format != state.ExportFormatMarkdown || export.Audience != state.ExportAudienceExternal {
+		t.Fatalf("export wrapper = %#v, want triage markdown external", export)
+	}
+	if !strings.Contains(export.Content, "# Triage Export") || !strings.Contains(export.Content, "## Project Context") {
+		t.Fatalf("export content = %q, want triage markdown with project context", export.Content)
+	}
+
+	var formatErrorOut bytes.Buffer
+	err := (Runner{Stdout: &formatErrorOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "generate", "triage", "--format", "json", "--json"})
+	if err == nil {
+		t.Fatal("report generate triage --format json --json error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	formatError := decodeCommandError(t, formatErrorOut.Bytes())
+	if formatError.Command != "report generate triage" || !strings.Contains(formatError.Error, "supports only --format markdown") {
+		t.Fatalf("JSON error = %#v, want unsupported-format report generate error", formatError)
+	}
+
+	var missingOut bytes.Buffer
+	err = (Runner{Stdout: &missingOut, WorkingDir: realpath(t, t.TempDir()), StateHome: t.TempDir()}).Run([]string{"report", "generate", "triage", "--json"})
+	if err == nil {
+		t.Fatal("report generate triage --json missing-state error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	missingError := decodeCommandError(t, missingOut.Bytes())
+	if missingError.Command != "report generate triage" || !strings.Contains(missingError.Error, "SQLite state database is not initialized") {
+		t.Fatalf("JSON error = %#v, want missing-state report generate error", missingError)
 	}
 }
 
@@ -14280,8 +14335,9 @@ func TestRunnerReportGenerateHelpNamesMarkdownFormat(t *testing.T) {
 		t.Fatalf("Run(report generate --help) error = %v", err)
 	}
 	for _, want := range []string{
-		"Usage: loaf report generate <kind> [ref] --format markdown",
+		"Usage: loaf report generate <kind> [ref] [--format markdown] [--json]",
 		"--format     Output format: markdown",
+		"--json       Output JSON wrapper with markdown content",
 	} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
@@ -14461,6 +14517,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["report"].optionDescriptions["report generate --format <format>"]; !strings.Contains(got, "markdown") {
 		t.Fatalf("report generate format description = %q, want Markdown guidance", got)
+	}
+	if got := commands["report"].optionDescriptions["report generate --json"]; !strings.Contains(got, "markdown content") {
+		t.Fatalf("report generate json description = %q, want Markdown content guidance", got)
 	}
 	if got := commands["report"].optionDescriptions["report list --status <status>"]; !strings.Contains(got, "draft, final, archived") {
 		t.Fatalf("report list status description = %q, want lifecycle status guidance", got)

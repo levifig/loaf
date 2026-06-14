@@ -126,6 +126,11 @@ markdown-only compatibility mode until SQLite is initialized. Use
 `loaf state migrate markdown --apply` to import `.agents/` Markdown into SQLite
 without rewriting the source Markdown files.
 
+Manual restore from a backup is explicit until a guarded restore command exists:
+verify the backup with `loaf state backup verify <backup>`, preserve the current
+`$(loaf state path)` file, copy the verified backup to that path, then run
+`loaf state doctor` and `loaf state status`.
+
 **Subcommands:**
 
 | Subcommand | Purpose |
@@ -138,7 +143,7 @@ without rewriting the source Markdown files.
 | `loaf state repair relationship-origin` | Preview or apply guarded relationship provenance backfills |
 | `loaf state migrate markdown` | Import existing .agents Markdown artifacts into SQLite |
 | `loaf state migrate storage-home` | Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME |
-| `loaf state backup` | Create a SQLite database backup |
+| `loaf state backup` | Create a SQLite database backup under the global data-home backups directory |
 | `loaf state backup verify` | Verify an existing SQLite database backup |
 | `loaf state export` | Export SQLite state for review or migration |
 | `loaf state export all` | Export a complete project-scoped SQLite snapshot |
@@ -151,6 +156,7 @@ without rewriting the source Markdown files.
 
 - `loaf state path`:
   - `--json` - Output database path and scope as JSON
+  - `--verbose` - Output command, scope, project root, and database path
 
 - `loaf state status`:
   - `--json` - Output status as JSON
@@ -215,6 +221,8 @@ without rewriting the source Markdown files.
 loaf state status
 loaf state migrate markdown --dry-run
 loaf state migrate markdown --apply
+loaf state backup
+loaf state backup verify /path/to/backup.sqlite
 loaf state status
 ```
 
@@ -450,6 +458,7 @@ only when a durable prose artifact is explicitly needed.
 
 - `loaf report generate`:
   - `--format <format>` - Output format: markdown
+  - `--json` - Output JSON wrapper with markdown content
 
 - `loaf report create`:
   - `--type <type>` - Report type

@@ -9035,7 +9035,7 @@ func writeReportListHelp(out io.Writer) {
 }
 
 func writeReportGenerateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report generate <kind> [ref] --format markdown", "Generate a read-only markdown report.", "--format     Output format: markdown")
+	writeUsageHelp(out, "loaf report generate <kind> [ref] [--format markdown] [--json]", "Generate a read-only markdown report.", "--format     Output format: markdown", "--json       Output JSON wrapper with markdown content")
 }
 
 func writeReportCreateHelp(out io.Writer) {
@@ -9113,6 +9113,9 @@ func (r Runner) runReportGenerate(args []string, out io.Writer, runtime state.Ru
 	}
 	if err != nil {
 		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
 	}
 	fmt.Fprint(out, result.Content)
 	return nil
@@ -10137,8 +10140,10 @@ type reportCreateOptions struct {
 }
 
 type reportGenerateOptions struct {
-	kind string
-	ref  string
+	kind       string
+	ref        string
+	format     string
+	jsonOutput bool
 }
 
 func parseTaskListArgs(args []string) (taskListOptions, error) {
@@ -11038,24 +11043,43 @@ func parseReportCreateArgs(args []string) (reportCreateOptions, error) {
 }
 
 func parseReportGenerateArgs(args []string) (reportGenerateOptions, error) {
-	if len(args) == 0 {
+	options := reportGenerateOptions{format: state.ExportFormatMarkdown}
+	positional := []string{}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--json":
+			options.jsonOutput = true
+		case arg == "--format":
+			value, err := consumeFlagValue(args, &i, "--format")
+			if err != nil {
+				return reportGenerateOptions{}, err
+			}
+			options.format = value
+		case strings.HasPrefix(arg, "--format="):
+			options.format = strings.TrimPrefix(arg, "--format=")
+		case strings.HasPrefix(arg, "-"):
+			return reportGenerateOptions{}, fmt.Errorf("unknown option %q", arg)
+		default:
+			positional = append(positional, arg)
+		}
+	}
+	if len(positional) == 0 {
 		return reportGenerateOptions{}, fmt.Errorf("report generate requires a kind")
 	}
-	options := reportGenerateOptions{kind: args[0]}
-	positional := args[1:]
-	for _, arg := range positional {
-		if strings.HasPrefix(arg, "-") {
-			return reportGenerateOptions{}, fmt.Errorf("unknown option %q", arg)
-		}
+	if options.format != state.ExportFormatMarkdown {
+		return reportGenerateOptions{}, fmt.Errorf("report generate supports only --format markdown")
 	}
+	options.kind = positional[0]
+	refs := positional[1:]
 	switch options.kind {
 	case state.ExportKindSession:
-		if len(positional) != 1 {
+		if len(refs) != 1 {
 			return reportGenerateOptions{}, fmt.Errorf("report generate session requires exactly one session")
 		}
-		options.ref = positional[0]
+		options.ref = refs[0]
 	case state.ExportKindTriage, state.ExportKindReleaseReadiness:
-		if len(positional) != 0 {
+		if len(refs) != 0 {
 			return reportGenerateOptions{}, fmt.Errorf("report generate %s does not accept positional arguments", options.kind)
 		}
 	default:
