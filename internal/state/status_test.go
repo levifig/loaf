@@ -22,6 +22,9 @@ func TestInspectReportsMarkdownOnlyWithoutCreatingFiles(t *testing.T) {
 	if status.Mode != ModeMarkdownOnly {
 		t.Fatalf("Mode = %q, want %q", status.Mode, ModeMarkdownOnly)
 	}
+	if status.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", status.DatabaseScope)
+	}
 	if status.DatabaseExists {
 		t.Fatal("DatabaseExists = true, want false")
 	}
@@ -57,6 +60,9 @@ func TestInspectReportsLegacyStateDatabaseWhenDataHomeIsMissing(t *testing.T) {
 
 	if status.Mode != ModeMarkdownOnly {
 		t.Fatalf("Mode = %q, want %q before storage-home migration", status.Mode, ModeMarkdownOnly)
+	}
+	if status.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", status.DatabaseScope)
 	}
 	if status.DatabaseExists {
 		t.Fatal("DatabaseExists = true, want false for new data home before migration")
@@ -183,6 +189,9 @@ func TestInspectReportsSQLiteReadyWhenDatabaseIsInitialized(t *testing.T) {
 	}
 	if status.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", status.ContractVersion, StateJSONContractVersion)
+	}
+	if status.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", status.DatabaseScope)
 	}
 	if status.DatabasePath != initialized.DatabasePath {
 		t.Fatalf("DatabasePath = %q, want %q", status.DatabasePath, initialized.DatabasePath)

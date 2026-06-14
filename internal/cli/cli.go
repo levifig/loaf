@@ -1428,6 +1428,8 @@ func (r Runner) runStateInit(args []string, out io.Writer, runtime state.Runtime
 	}
 	fmt.Fprintln(out, "loaf state init")
 	fmt.Fprintf(out, "project root: %s\n", status.ProjectRoot)
+	writeStateProjectIdentity(out, status)
+	fmt.Fprintf(out, "scope: %s database\n", status.DatabaseScope)
 	fmt.Fprintf(out, "database: %s\n", status.DatabasePath)
 	fmt.Fprintf(out, "mode: %s\n", status.Mode)
 	fmt.Fprintf(out, "schema version: %d\n", status.SchemaVersion)
@@ -1455,14 +1457,11 @@ func (r Runner) runStateStatus(args []string, out io.Writer, runtime state.Runti
 	}
 	fmt.Fprintln(out, "loaf state status")
 	fmt.Fprintf(out, "project root: %s\n", status.ProjectRoot)
-	if status.ProjectName != "" {
-		fmt.Fprintf(out, "project: %s\n", status.ProjectName)
-	}
-	if status.ProjectID != "" {
-		fmt.Fprintf(out, "project id: %s\n", status.ProjectID)
-	} else if status.LegacyProjectKey != "" {
+	writeStateProjectIdentity(out, status)
+	if status.ProjectID == "" && status.LegacyProjectKey != "" {
 		fmt.Fprintf(out, "legacy project key: %s\n", status.LegacyProjectKey)
 	}
+	fmt.Fprintf(out, "scope: %s database\n", status.DatabaseScope)
 	fmt.Fprintf(out, "database: %s\n", status.DatabasePath)
 	fmt.Fprintf(out, "database exists: %t\n", status.DatabaseExists)
 	fmt.Fprintf(out, "mode: %s\n", status.Mode)
@@ -1520,8 +1519,11 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 
 	fmt.Fprintln(out, "loaf state doctor")
 	fmt.Fprintf(out, "project root: %s\n", status.ProjectRoot)
+	writeStateProjectIdentity(out, status)
+	fmt.Fprintf(out, "scope: %s database\n", status.DatabaseScope)
 	fmt.Fprintf(out, "database: %s\n", status.DatabasePath)
 	fmt.Fprintf(out, "mode: %s\n", status.Mode)
+	fmt.Fprintf(out, "schema version: %d\n", status.SchemaVersion)
 	for _, diagnostic := range status.Diagnostics {
 		fmt.Fprintf(out, "%s: %s\n", diagnostic.Severity, diagnostic.Message)
 	}
@@ -1547,6 +1549,18 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 		return fmt.Errorf("state doctor found errors")
 	}
 	return nil
+}
+
+func writeStateProjectIdentity(out io.Writer, status state.Status) {
+	if status.ProjectName != "" {
+		fmt.Fprintf(out, "project: %s\n", status.ProjectName)
+	}
+	if status.ProjectID != "" {
+		fmt.Fprintf(out, "project id: %s\n", status.ProjectID)
+	}
+	if status.ProjectCurrentPath != "" {
+		fmt.Fprintf(out, "project path: %s\n", status.ProjectCurrentPath)
+	}
 }
 
 func (r Runner) runStateRepair(args []string, out io.Writer, runtime state.Runtime) error {

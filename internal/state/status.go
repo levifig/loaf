@@ -39,6 +39,7 @@ type RepairAction struct {
 // Status is the pre-init state view exposed by `loaf state status`.
 type Status struct {
 	ContractVersion      int            `json:"contract_version"`
+	DatabaseScope        string         `json:"database_scope"`
 	ProjectRoot          string         `json:"project_root"`
 	ProjectID            string         `json:"project_id,omitempty"`
 	LegacyProjectKey     string         `json:"legacy_project_key,omitempty"`
@@ -64,6 +65,7 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 
 	status := Status{
 		ContractVersion:  StateJSONContractVersion,
+		DatabaseScope:    "global",
 		ProjectRoot:      root.Path(),
 		LegacyProjectKey: ProjectID(root),
 		DatabasePath:     databasePath,

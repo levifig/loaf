@@ -2590,6 +2590,9 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 	if before.Mode != state.ModeMarkdownOnly {
 		t.Fatalf("before.Mode = %q, want %q", before.Mode, state.ModeMarkdownOnly)
 	}
+	if before.DatabaseScope != "global" {
+		t.Fatalf("before.DatabaseScope = %q, want global", before.DatabaseScope)
+	}
 	if before.DatabaseExists {
 		t.Fatal("before.DatabaseExists = true, want false")
 	}
@@ -2600,6 +2603,7 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 		t.Fatal("before.LegacyProjectKey is empty")
 	}
 	assertJSONFieldAbsent(t, statusBefore.Bytes(), "project_id")
+	assertJSONFieldPresent(t, statusBefore.Bytes(), "database_scope")
 	assertJSONFieldPresent(t, statusBefore.Bytes(), "legacy_project_key")
 
 	var initOut bytes.Buffer
@@ -2614,6 +2618,9 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 	initialized := decodeStateStatus(t, initOut.Bytes())
 	if initialized.Mode != state.ModeSQLiteReady {
 		t.Fatalf("initialized.Mode = %q, want %q", initialized.Mode, state.ModeSQLiteReady)
+	}
+	if initialized.DatabaseScope != "global" {
+		t.Fatalf("initialized.DatabaseScope = %q, want global", initialized.DatabaseScope)
 	}
 	if initialized.SchemaVersion != state.CurrentSchemaVersion() {
 		t.Fatalf("initialized.SchemaVersion = %d, want %d", initialized.SchemaVersion, state.CurrentSchemaVersion())
@@ -2630,6 +2637,21 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 		t.Fatalf("state init did not create database: %v", err)
 	}
 
+	var humanStatusOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanStatusOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "status"})
+	if err != nil {
+		t.Fatalf("state status error = %v", err)
+	}
+	for _, want := range []string{"loaf state status", "scope: global database", "project:", "project id:", "project path:", "mode: " + state.ModeSQLiteReady} {
+		if !strings.Contains(humanStatusOut.String(), want) {
+			t.Fatalf("state status output = %q, want %q", humanStatusOut.String(), want)
+		}
+	}
+
 	var doctorOut bytes.Buffer
 	err = Runner{
 		Stdout:     &doctorOut,
@@ -2641,6 +2663,11 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 	}
 	if !strings.Contains(doctorOut.String(), "mode: "+state.ModeSQLiteReady) {
 		t.Fatalf("doctor output = %q, want sqlite-ready mode", doctorOut.String())
+	}
+	for _, want := range []string{"scope: global database", "project:", "project id:", "project path:", "schema version:"} {
+		if !strings.Contains(doctorOut.String(), want) {
+			t.Fatalf("doctor output = %q, want %q", doctorOut.String(), want)
+		}
 	}
 }
 
@@ -2910,6 +2937,11 @@ func TestRunnerStateInitHumanOutputPrintsRepositoryExternalDatabaseWithoutSecret
 	}
 
 	output := stdout.String()
+	for _, want := range []string{"scope: global database", "project:", "project id:", "project path:"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
+	}
 	databasePath := ""
 	for _, line := range strings.Split(output, "\n") {
 		if strings.HasPrefix(line, "database: ") {
