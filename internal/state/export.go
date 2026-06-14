@@ -89,6 +89,16 @@ type releaseReadinessExportData struct {
 	RecentSessions     []releaseReadinessSession
 }
 
+type markdownExportContext struct {
+	Audience           string
+	DatabaseScope      string
+	ExportScope        string
+	ProjectID          string
+	ProjectName        string
+	ProjectCurrentPath string
+	DatabasePath       string
+}
+
 type releaseReadinessSourceCoverage struct {
 	Label string
 	With  int
@@ -264,7 +274,7 @@ func ExportTriageMarkdown(ctx context.Context, root project.Root, resolver PathR
 		return MarkdownExport{}, err
 	}
 
-	content := renderTriageMarkdown(ideas, sparks, brainstorms)
+	content := renderTriageMarkdown(markdownExportContextFromStatus(status, ExportAudienceExternal), ideas, sparks, brainstorms)
 	if err := ValidateExternalMarkdownExport(content); err != nil {
 		return MarkdownExport{}, err
 	}
@@ -299,7 +309,7 @@ func ExportReleaseReadinessMarkdown(ctx context.Context, root project.Root, reso
 	if err != nil {
 		return MarkdownExport{}, err
 	}
-	content := renderReleaseReadinessMarkdown(data)
+	content := renderReleaseReadinessMarkdown(markdownExportContextFromStatus(status, ExportAudienceExternal), data)
 	if err := ValidateExternalMarkdownExport(content); err != nil {
 		return MarkdownExport{}, err
 	}
@@ -338,7 +348,7 @@ func ExportSpecMarkdown(ctx context.Context, root project.Root, resolver PathRes
 		ExportKind: ExportKindSpec,
 		Format:     ExportFormatMarkdown,
 		Audience:   ExportAudienceLocal,
-		Content:    renderSpecMarkdown(show.Spec),
+		Content:    renderSpecMarkdown(markdownExportContextFromStatus(status, ExportAudienceLocal), show.Spec),
 	}, nil
 }
 
@@ -369,7 +379,7 @@ func ExportSessionMarkdown(ctx context.Context, root project.Root, resolver Path
 		ExportKind: ExportKindSession,
 		Format:     ExportFormatMarkdown,
 		Audience:   ExportAudienceLocal,
-		Content:    renderSessionMarkdown(show.Session),
+		Content:    renderSessionMarkdown(markdownExportContextFromStatus(status, ExportAudienceLocal), show.Session),
 	}, nil
 }
 
@@ -660,18 +670,55 @@ func ValidateExternalMarkdownExport(content string) error {
 	return nil
 }
 
-func renderTriageMarkdown(ideas IdeaList, sparks SparkList, brainstorms BrainstormList) string {
+func markdownExportContextFromStatus(status Status, audience string) markdownExportContext {
+	return markdownExportContext{
+		Audience:           audience,
+		DatabaseScope:      firstNonEmpty(status.DatabaseScope, "global"),
+		ExportScope:        "project",
+		ProjectID:          status.ProjectID,
+		ProjectName:        status.ProjectName,
+		ProjectCurrentPath: status.ProjectCurrentPath,
+		DatabasePath:       status.DatabasePath,
+	}
+}
+
+func renderMarkdownExportContext(b *strings.Builder, ctx markdownExportContext) {
+	b.WriteString("## Project Context\n\n")
+	fmt.Fprintf(b, "- Scope: %s database, %s export\n", firstNonEmpty(ctx.DatabaseScope, "global"), firstNonEmpty(ctx.ExportScope, "project"))
+	if ctx.ProjectID != "" {
+		fmt.Fprintf(b, "- Project: `%s`\n", ctx.ProjectID)
+	}
+	if ctx.ProjectName != "" {
+		projectName := ctx.ProjectName
+		if ctx.Audience == ExportAudienceExternal {
+			projectName = sanitizeExternalText(projectName)
+		}
+		fmt.Fprintf(b, "- Project name: %s\n", projectName)
+	}
+	if ctx.Audience == ExportAudienceLocal {
+		if ctx.ProjectCurrentPath != "" {
+			fmt.Fprintf(b, "- Project path: `%s`\n", ctx.ProjectCurrentPath)
+		}
+		if ctx.DatabasePath != "" {
+			fmt.Fprintf(b, "- Database: `%s`\n", ctx.DatabasePath)
+		}
+	}
+	b.WriteString("\n")
+}
+
+func renderTriageMarkdown(ctx markdownExportContext, ideas IdeaList, sparks SparkList, brainstorms BrainstormList) string {
 	var b strings.Builder
 	b.WriteString("# Triage Export\n\n")
 	b.WriteString("Audience: external\n")
 	b.WriteString("Source: Loaf SQLite state\n\n")
+	renderMarkdownExportContext(&b, ctx)
 	renderIdeaExportSection(&b, ideas)
 	renderSparkExportSection(&b, sparks)
 	renderBrainstormExportSection(&b, brainstorms)
 	return b.String()
 }
 
-func renderReleaseReadinessMarkdown(data releaseReadinessExportData) string {
+func renderReleaseReadinessMarkdown(ctx markdownExportContext, data releaseReadinessExportData) string {
 	specActive, specComplete, specArchived := releaseSpecStatusCounts(data.Specs)
 	taskUnresolved, taskDone, taskArchived := releaseTaskStatusCounts(data.Tasks)
 	activeSessions := releaseSessionStatusCount(data.Sessions, "active")
@@ -683,6 +730,7 @@ func renderReleaseReadinessMarkdown(data releaseReadinessExportData) string {
 	b.WriteString("# Release Readiness Export\n\n")
 	b.WriteString("Audience: external\n")
 	b.WriteString("Source: Loaf SQLite state\n\n")
+	renderMarkdownExportContext(&b, ctx)
 
 	b.WriteString("## State\n\n")
 	b.WriteString("- SQLite state: ready\n")
@@ -766,11 +814,12 @@ func renderReleaseReadinessMarkdown(data releaseReadinessExportData) string {
 	return b.String()
 }
 
-func renderSpecMarkdown(spec SpecDetail) string {
+func renderSpecMarkdown(ctx markdownExportContext, spec SpecDetail) string {
 	var b strings.Builder
 	b.WriteString("# Spec Export\n\n")
 	b.WriteString("Audience: internal\n")
 	b.WriteString("Source: Loaf SQLite state\n\n")
+	renderMarkdownExportContext(&b, ctx)
 	b.WriteString("## Spec\n\n")
 	fmt.Fprintf(&b, "- Spec: `%s`\n", firstNonEmpty(spec.Alias, spec.ID))
 	fmt.Fprintf(&b, "- Title: %s\n", spec.Title)
@@ -823,11 +872,12 @@ func renderSpecMarkdown(spec SpecDetail) string {
 	return b.String()
 }
 
-func renderSessionMarkdown(session SessionDetail) string {
+func renderSessionMarkdown(ctx markdownExportContext, session SessionDetail) string {
 	var b strings.Builder
 	b.WriteString("# Session Export\n\n")
 	b.WriteString("Audience: internal\n")
 	b.WriteString("Source: Loaf SQLite state\n\n")
+	renderMarkdownExportContext(&b, ctx)
 	b.WriteString("## Session\n\n")
 	fmt.Fprintf(&b, "- Session: `%s`\n", firstNonEmpty(session.Alias, session.ID))
 	fmt.Fprintf(&b, "- Status: %s\n", session.Status)

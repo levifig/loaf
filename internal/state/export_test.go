@@ -300,6 +300,7 @@ func TestExportTriageMarkdownReturnsExternalSafeSummary(t *testing.T) {
 			t.Fatalf("content = %q, want %q", export.Content, want)
 		}
 	}
+	assertExternalMarkdownProjectContext(t, root, stateHome, export.Content)
 	for _, banned := range []string{"SPEC-001", "TASK-002", ".agents/", "Track A", "Phase 2"} {
 		if strings.Contains(export.Content, banned) {
 			t.Fatalf("content leaked %q:\n%s", banned, export.Content)
@@ -461,6 +462,7 @@ status: final
 			t.Fatalf("content = %q, want %q", export.Content, want)
 		}
 	}
+	assertExternalMarkdownProjectContext(t, root, stateHome, export.Content)
 	for _, banned := range []string{"SPEC-001", "TASK-001", ".agents/", "Track A", "Phase 2"} {
 		if strings.Contains(export.Content, banned) {
 			t.Fatalf("content leaked %q:\n%s", banned, export.Content)
@@ -581,6 +583,7 @@ Imported spec prose.
 			t.Fatalf("content = %q, want %q", export.Content, want)
 		}
 	}
+	assertInternalMarkdownProjectContext(t, root, stateHome, export.Content)
 	if strings.Contains(export.Content, "status: implementing") || strings.Contains(export.Content, "---") {
 		t.Fatalf("content = %q, want stripped frontmatter", export.Content)
 	}
@@ -701,6 +704,7 @@ claude_session_id: harness-export
 			t.Fatalf("content = %q, want %q", export.Content, want)
 		}
 	}
+	assertInternalMarkdownProjectContext(t, root, stateHome, export.Content)
 }
 
 func TestExportSessionMarkdownIsDeterministicAndDoesNotMutateDatabase(t *testing.T) {
@@ -786,6 +790,54 @@ VALUES ('alias-brainstorm-export', ?, 'brainstorm', 'brainstorm-export', 'brains
 `, projectID, now, now)
 	if err != nil {
 		t.Fatalf("insert brainstorm alias error = %v", err)
+	}
+}
+
+func assertExternalMarkdownProjectContext(t *testing.T, root project.Root, stateHome string, content string) {
+	t.Helper()
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	for _, want := range []string{
+		"## Project Context",
+		"- Scope: global database, project export",
+		"- Project: `" + status.ProjectID + "`",
+		"- Project name: " + status.ProjectName,
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("content = %q, want project context %q", content, want)
+		}
+	}
+	for _, banned := range []string{
+		"Project path:",
+		"Database:",
+		root.Path(),
+		status.DatabasePath,
+	} {
+		if strings.Contains(content, banned) {
+			t.Fatalf("external content leaked %q:\n%s", banned, content)
+		}
+	}
+}
+
+func assertInternalMarkdownProjectContext(t *testing.T, root project.Root, stateHome string, content string) {
+	t.Helper()
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	for _, want := range []string{
+		"## Project Context",
+		"- Scope: global database, project export",
+		"- Project: `" + status.ProjectID + "`",
+		"- Project name: " + status.ProjectName,
+		"- Project path: `" + status.ProjectCurrentPath + "`",
+		"- Database: `" + status.DatabasePath + "`",
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("content = %q, want project context %q", content, want)
+		}
 	}
 }
 

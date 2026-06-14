@@ -4748,12 +4748,23 @@ func TestRunnerStateExportTriageMarkdown(t *testing.T) {
 	}
 
 	output := stdout.String()
-	for _, want := range []string{"# Triage Export", "Audience: external", "## Ideas", "## Sparks", "## Brainstorms", "internal reference"} {
+	for _, want := range []string{
+		"# Triage Export",
+		"Audience: external",
+		"## Project Context",
+		"- Scope: global database, project export",
+		"- Project: `proj_",
+		"- Project name: " + filepath.Base(workingDir),
+		"## Ideas",
+		"## Sparks",
+		"## Brainstorms",
+		"internal reference",
+	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
 	}
-	for _, banned := range []string{"SPEC-001", "TASK-002", ".agents/", "Track A", "Phase 2"} {
+	for _, banned := range []string{"SPEC-001", "TASK-002", ".agents/", "Track A", "Phase 2", "Project path:", "Database:"} {
 		if strings.Contains(output, banned) {
 			t.Fatalf("output leaked %q:\n%s", banned, output)
 		}
@@ -4808,6 +4819,10 @@ status: final
 	for _, want := range []string{
 		"# Release Readiness Export",
 		"Audience: external",
+		"## Project Context",
+		"- Scope: global database, project export",
+		"- Project: `proj_",
+		"- Project name: " + filepath.Base(workingDir),
 		"Release readiness: not ready",
 		"Specs: 1 active, 0 complete, 0 archived",
 		"Tasks: 1 unresolved, 0 done, 0 archived",
@@ -4821,7 +4836,7 @@ status: final
 			t.Fatalf("output = %q, want %q", output, want)
 		}
 	}
-	for _, banned := range []string{"SPEC-001", "TASK-001", ".agents/", "Track A", "Phase 2"} {
+	for _, banned := range []string{"SPEC-001", "TASK-001", ".agents/", "Track A", "Phase 2", "Project path:", "Database:"} {
 		if strings.Contains(output, banned) {
 			t.Fatalf("output leaked %q:\n%s", banned, output)
 		}
@@ -4869,6 +4884,12 @@ Imported spec prose.
 	for _, want := range []string{
 		"# Spec Export",
 		"Audience: internal",
+		"## Project Context",
+		"- Scope: global database, project export",
+		"- Project: `proj_",
+		"- Project name: " + filepath.Base(workingDir),
+		"- Project path: `" + workingDir + "`",
+		"- Database: `" + filepath.Join(stateHome, "loaf", "loaf.sqlite") + "`",
 		"Spec: `SPEC-001`",
 		"Title: Example Spec",
 		"Status: implementing",
@@ -4922,6 +4943,12 @@ claude_session_id: harness-export
 	for _, want := range []string{
 		"# Session Export",
 		"Audience: internal",
+		"## Project Context",
+		"- Scope: global database, project export",
+		"- Project: `proj_",
+		"- Project name: " + filepath.Base(workingDir),
+		"- Project path: `" + workingDir + "`",
+		"- Database: `" + filepath.Join(stateHome, "loaf", "loaf.sqlite") + "`",
 		"Session: `20260528-session`",
 		"Branch: `feature/session-export`",
 		"Harness session: `harness-export`",
