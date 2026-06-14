@@ -3859,11 +3859,17 @@ status: implementing
 	if snapshot.Manifest.ForeignKeyCheck != "ok" {
 		t.Fatalf("Manifest.ForeignKeyCheck = %q, want ok", snapshot.Manifest.ForeignKeyCheck)
 	}
-	if snapshot.Manifest.RowCounts["specs"] != 1 || snapshot.Manifest.RowCounts["tasks"] != 1 {
-		t.Fatalf("manifest row counts = %#v, want exported spec and task counts", snapshot.Manifest.RowCounts)
+	if snapshot.Manifest.RowCounts["project_paths"] != 1 || snapshot.Manifest.RowCounts["specs"] != 1 || snapshot.Manifest.RowCounts["tasks"] != 1 {
+		t.Fatalf("manifest row counts = %#v, want exported project path, spec, and task counts", snapshot.Manifest.RowCounts)
 	}
 	if snapshot.Manifest.TotalRows == 0 {
 		t.Fatal("Manifest.TotalRows = 0, want exported row count")
+	}
+	if len(snapshot.Tables["project_paths"]) != 1 {
+		t.Fatalf("project_paths rows = %#v, want exported project path row", snapshot.Tables["project_paths"])
+	}
+	if snapshot.Tables["project_paths"][0]["path"] != workingDir {
+		t.Fatalf("project path row = %#v, want path %q", snapshot.Tables["project_paths"][0], workingDir)
 	}
 	if len(snapshot.Tables["specs"]) != 1 || len(snapshot.Tables["tasks"]) != 1 {
 		t.Fatalf("tables = %#v, want exported spec and task rows", snapshot.Tables)

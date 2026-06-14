@@ -123,6 +123,7 @@ var externalLeakPatterns = []*regexp.Regexp{
 var exportAllTables = []exportTable{
 	{Name: "schema_migrations", OrderBy: "version"},
 	{Name: "projects", OrderBy: "id", FilterColumn: "id"},
+	{Name: "project_paths", OrderBy: "id", FilterColumn: "project_id"},
 	{Name: "aliases", OrderBy: "id", FilterColumn: "project_id"},
 	{Name: "specs", OrderBy: "id", FilterColumn: "project_id"},
 	{Name: "tasks", OrderBy: "id", FilterColumn: "project_id"},

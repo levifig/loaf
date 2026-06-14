@@ -115,6 +115,12 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	if len(snapshot.Tables["projects"]) != 1 {
 		t.Fatalf("projects rows = %d, want 1", len(snapshot.Tables["projects"]))
 	}
+	if len(snapshot.Tables["project_paths"]) != 1 {
+		t.Fatalf("project_paths rows = %d, want 1", len(snapshot.Tables["project_paths"]))
+	}
+	if snapshot.Tables["project_paths"][0]["path"] != identity.CurrentPath {
+		t.Fatalf("project_paths path = %#v, want %q", snapshot.Tables["project_paths"][0]["path"], identity.CurrentPath)
+	}
 	if len(snapshot.Tables["tasks"]) != 1 {
 		t.Fatalf("tasks rows = %d, want 1", len(snapshot.Tables["tasks"]))
 	}
@@ -123,6 +129,65 @@ func TestExportAllJSONReturnsInternalSnapshot(t *testing.T) {
 	}
 	if snapshot.Tables["tasks"][0]["title"] != "Example Task" {
 		t.Fatalf("task title = %#v, want imported title", snapshot.Tables["tasks"][0]["title"])
+	}
+	assertExportManifestCounts(t, snapshot)
+}
+
+func TestExportAllJSONIncludesProjectPathHistory(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	status, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	movedRoot := projectRoot(t)
+	movedPath := movedRoot.Path()
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	if _, err := store.MoveProject(context.Background(), root, root.Path(), movedPath); err != nil {
+		t.Fatalf("MoveProject() error = %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	snapshot, err := ExportAllJSON(context.Background(), root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("ExportAllJSON() error = %v", err)
+	}
+
+	if snapshot.ProjectID != status.ProjectID {
+		t.Fatalf("ProjectID = %q, want %q", snapshot.ProjectID, status.ProjectID)
+	}
+	if snapshot.ProjectCurrentPath != movedPath {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", snapshot.ProjectCurrentPath, movedPath)
+	}
+	paths := snapshot.Tables["project_paths"]
+	if len(paths) != 2 {
+		t.Fatalf("project_paths rows = %#v, want old and current paths", paths)
+	}
+	currentPaths := 0
+	seen := map[string]bool{}
+	for _, row := range paths {
+		path, _ := row["path"].(string)
+		seen[path] = true
+		if row["is_current"] == int64(1) || row["is_current"] == 1 {
+			currentPaths++
+			if path != movedPath {
+				t.Fatalf("current project path = %q, want %q", path, movedPath)
+			}
+		}
+	}
+	if !seen[root.Path()] || !seen[movedPath] {
+		t.Fatalf("project_paths = %#v, want %q and %q", paths, root.Path(), movedPath)
+	}
+	if currentPaths != 1 {
+		t.Fatalf("current project paths = %d, want 1", currentPaths)
+	}
+	if snapshot.Manifest.RowCounts["project_paths"] != 2 {
+		t.Fatalf("manifest project_paths count = %d, want 2", snapshot.Manifest.RowCounts["project_paths"])
 	}
 	assertExportManifestCounts(t, snapshot)
 }

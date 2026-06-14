@@ -8,6 +8,8 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state export all --format json` now includes `project_paths` rows so project-scoped snapshots preserve checkout path history alongside durable project identity.
+- `npm run build` now rebuilds the Go CLI before regenerating the CLI reference so agent-facing docs do not lag behind command metadata changes.
 - `loaf state backup verify <backup> [--json]` now verifies existing SQLite backups without live-state access and reports all project identities captured in the global backup.
 - `loaf task refresh|sync --json` and `loaf session enrich|housekeeping --json` compatibility summaries now include `contract_version` for agentic consumers.
 - `loaf housekeeping` JSON and human output now report global database scope and durable project identity details when backed by SQLite, while Markdown fallback output keeps repository-local artifact context.

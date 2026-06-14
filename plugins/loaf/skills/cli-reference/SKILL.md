@@ -141,6 +141,7 @@ without rewriting the source Markdown files.
 | `loaf state migrate markdown` | Import existing .agents Markdown artifacts into SQLite |
 | `loaf state migrate storage-home` | Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME |
 | `loaf state backup` | Create a SQLite database backup |
+| `loaf state backup verify` | Verify an existing SQLite database backup |
 | `loaf state export` | Export SQLite state for review or migration |
 | `loaf state export all` | Export a complete project-scoped SQLite snapshot |
 | `loaf state export triage` | Export a triage summary from SQLite state |
@@ -185,6 +186,9 @@ without rewriting the source Markdown files.
 
 - `loaf state backup`:
   - `--json` - Output backup details as JSON
+
+- `loaf state backup verify`:
+  - `--json` - Output verification details as JSON
 
 - `loaf state export`:
   - `--format <format>` - Output format for the selected export kind
