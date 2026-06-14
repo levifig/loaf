@@ -9197,6 +9197,22 @@ func TestRunnerBundleCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	if created.Entity != nil {
 		t.Fatalf("created.Entity = %#v, want nil for bundle create", created.Entity)
 	}
+	assertCLIBundleMutationContext(t, created, workingDir)
+
+	var humanCreateOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanCreateOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"bundle", "create", "sqlite-backend", "--tag", "sqlite", "--title", "SQLite Backend"})
+	if err != nil {
+		t.Fatalf("bundle create human error = %v", err)
+	}
+	for _, want := range []string{"created bundle sqlite-backend", "scope: global database", "database:", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanCreateOut.String(), want) {
+			t.Fatalf("human bundle create output = %q, want %q", humanCreateOut.String(), want)
+		}
+	}
 
 	var listOut bytes.Buffer
 	err = Runner{
@@ -9212,6 +9228,22 @@ func TestRunnerBundleCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	if listed.Title != "SQLite Backend" || listed.TagMatchedCount != 1 || listed.MemberCount != 1 {
 		t.Fatalf("list = %#v, want sqlite-backend bundle with tag-matched spec", list)
 	}
+	assertCLIBundleListContext(t, list, workingDir)
+
+	var humanListOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanListOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"bundle", "list"})
+	if err != nil {
+		t.Fatalf("bundle list human error = %v", err)
+	}
+	for _, want := range []string{"loaf bundle list", "scope: global database", "database:", "project:", "project name:", "project path:", "sqlite-backend"} {
+		if !strings.Contains(humanListOut.String(), want) {
+			t.Fatalf("human bundle list output = %q, want %q", humanListOut.String(), want)
+		}
+	}
 
 	var updateOut bytes.Buffer
 	err = Runner{
@@ -9225,6 +9257,22 @@ func TestRunnerBundleCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	updated := decodeBundleMutationResult(t, updateOut.Bytes())
 	if updated.Title != "SQLite Runtime" || len(updated.Tags) != 2 || updated.Tags[0] != "sqlite" || updated.Tags[1] != "state" {
 		t.Fatalf("updated = %#v, want replaced title and tags", updated)
+	}
+	assertCLIBundleMutationContext(t, updated, workingDir)
+
+	var humanUpdateOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanUpdateOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"bundle", "update", "sqlite-backend", "--title", "SQLite Runtime", "--tag", "sqlite", "--tag", "state"})
+	if err != nil {
+		t.Fatalf("bundle update human error = %v", err)
+	}
+	for _, want := range []string{"updated bundle sqlite-backend", "scope: global database", "database:", "project:", "project name:", "project path:", "title: SQLite Runtime", "tags: sqlite, state"} {
+		if !strings.Contains(humanUpdateOut.String(), want) {
+			t.Fatalf("human bundle update output = %q, want %q", humanUpdateOut.String(), want)
+		}
 	}
 
 	var addOut bytes.Buffer
@@ -9240,6 +9288,22 @@ func TestRunnerBundleCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	if added.Entity == nil || added.Entity.Kind != "task" || added.Entity.Alias != "TASK-001" {
 		t.Fatalf("added = %#v, want TASK-001 explicit member", added)
 	}
+	assertCLIBundleMutationContext(t, added, workingDir)
+
+	var humanAddOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanAddOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"bundle", "add", "sqlite-backend", "TASK-001"})
+	if err != nil {
+		t.Fatalf("bundle add human error = %v", err)
+	}
+	for _, want := range []string{"added task TASK-001 to bundle sqlite-backend", "scope: global database", "database:", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanAddOut.String(), want) {
+			t.Fatalf("human bundle add output = %q, want %q", humanAddOut.String(), want)
+		}
+	}
 
 	var showOut bytes.Buffer
 	err = Runner{
@@ -9254,6 +9318,22 @@ func TestRunnerBundleCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	if show.Title != "SQLite Runtime" || len(show.TagQuery) != 2 || len(show.TagMatched) != 1 || len(show.Explicit) != 1 || len(show.Members) != 2 {
 		t.Fatalf("show = %#v, want updated bundle with tag-matched spec and explicit task", show)
 	}
+	assertCLIBundleShowContext(t, show, workingDir)
+
+	var humanShowOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanShowOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"bundle", "show", "sqlite-backend"})
+	if err != nil {
+		t.Fatalf("bundle show human error = %v", err)
+	}
+	for _, want := range []string{"bundle sqlite-backend", "scope: global database", "database:", "project:", "project name:", "project path:", "SPEC-001", "TASK-001"} {
+		if !strings.Contains(humanShowOut.String(), want) {
+			t.Fatalf("human bundle show output = %q, want %q", humanShowOut.String(), want)
+		}
+	}
 
 	var removeOut bytes.Buffer
 	err = Runner{
@@ -9267,6 +9347,91 @@ func TestRunnerBundleCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	removed := decodeBundleMutationResult(t, removeOut.Bytes())
 	if removed.Entity == nil || removed.Entity.Alias != "TASK-001" {
 		t.Fatalf("removed = %#v, want TASK-001 removed", removed)
+	}
+	assertCLIBundleMutationContext(t, removed, workingDir)
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"bundle", "add", "sqlite-backend", "TASK-001"}); err != nil {
+		t.Fatalf("bundle add before human remove error = %v", err)
+	}
+	var humanRemoveOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanRemoveOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"bundle", "remove", "sqlite-backend", "TASK-001"})
+	if err != nil {
+		t.Fatalf("bundle remove human error = %v", err)
+	}
+	for _, want := range []string{"removed task TASK-001 from bundle sqlite-backend", "scope: global database", "database:", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanRemoveOut.String(), want) {
+			t.Fatalf("human bundle remove output = %q, want %q", humanRemoveOut.String(), want)
+		}
+	}
+}
+
+func assertCLIBundleMutationContext(t *testing.T, result state.BundleMutationResult, workingDir string) {
+	t.Helper()
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.DatabasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
+	}
+}
+
+func assertCLIBundleListContext(t *testing.T, result state.BundleList, workingDir string) {
+	t.Helper()
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.DatabasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
+	}
+}
+
+func assertCLIBundleShowContext(t *testing.T, result state.BundleShowResult, workingDir string) {
+	t.Helper()
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.DatabasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
 	}
 }
 

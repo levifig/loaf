@@ -5057,6 +5057,7 @@ func (r Runner) runBundleCreate(args []string, out io.Writer, runtime state.Runt
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "created bundle %s\n", result.Slug)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -5089,6 +5090,7 @@ func (r Runner) runBundleUpdate(args []string, out io.Writer, runtime state.Runt
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "updated bundle %s\n", result.Slug)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	if result.Title != "" {
 		fmt.Fprintf(out, "title: %s\n", result.Title)
 	}
@@ -5149,6 +5151,7 @@ func (r Runner) runBundleAdd(args []string, out io.Writer, runtime state.Runtime
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "added %s %s to bundle %s\n", result.Entity.Kind, firstNonEmpty(result.Entity.Alias, result.Entity.ID), result.Slug)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -5175,6 +5178,7 @@ func (r Runner) runBundleRemove(args []string, out io.Writer, runtime state.Runt
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "removed %s %s from bundle %s\n", result.Entity.Kind, firstNonEmpty(result.Entity.Alias, result.Entity.ID), result.Slug)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -5192,10 +5196,19 @@ func (r Runner) bundleStateMode(runtime state.Runtime) (project.Root, string, er
 
 func writeBundleList(out io.Writer, result state.BundleList) {
 	if len(result.Bundles) == 0 {
-		fmt.Fprint(out, "\n  No bundles found.\n\n")
+		fmt.Fprint(out, "\n  loaf bundle list\n\n")
+		writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+		if result.DatabaseScope != "" {
+			fmt.Fprintln(out)
+		}
+		fmt.Fprint(out, "  No bundles found.\n\n")
 		return
 	}
 	fmt.Fprint(out, "\n  loaf bundle list\n\n")
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.DatabaseScope != "" {
+		fmt.Fprintln(out)
+	}
 	for _, slug := range sortedBundleSlugs(result) {
 		bundle := result.Bundles[slug]
 		fmt.Fprintf(out, "    %-24s%s", slug, bundle.Title)
@@ -5216,6 +5229,10 @@ func writeBundleShow(out io.Writer, result state.BundleShowResult) {
 		fmt.Fprintf(out, "  tags: %s\n", strings.Join(result.TagQuery, ", "))
 	}
 	fmt.Fprintln(out)
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.DatabaseScope != "" {
+		fmt.Fprintln(out)
+	}
 	if len(result.Members) == 0 {
 		fmt.Fprint(out, "  No bundled rows found.\n\n")
 		return
