@@ -26,8 +26,14 @@ type MarkdownMigrationResult struct {
 	ProjectID          string `json:"project_id"`
 	ProjectName        string `json:"project_name"`
 	ProjectCurrentPath string `json:"project_current_path"`
+	Action             string `json:"action"`
 	Applied            bool   `json:"applied"`
 }
+
+const (
+	MarkdownMigrationActionApply  = "apply"
+	MarkdownMigrationActionResume = "resume"
+)
 
 type taskIndexEntry struct {
 	Title     string   `json:"title"`
@@ -78,6 +84,7 @@ func ApplyMarkdownMigration(ctx context.Context, root project.Root, resolver Pat
 		ProjectID:             status.ProjectID,
 		ProjectName:           status.ProjectName,
 		ProjectCurrentPath:    status.ProjectCurrentPath,
+		Action:                MarkdownMigrationActionApply,
 		Applied:               true,
 	}, nil
 }

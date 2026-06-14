@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state migrate markdown --apply|--resume --json` now includes an explicit `action` field, and human output prints the same action so agents and humans can distinguish fresh imports from resumed imports without relying on argv context.
 - `loaf state backup verify --json` now includes the current checkout's restore target, preserve path, and validation commands without reading or recreating live SQLite state; human verify output prints the same concrete restore paths.
 - `loaf state doctor --json` backend and Linear diagnostics now include structured `details` fields, so agents can route invalid local backend rows, drift warnings, and external sync gaps without parsing prose.
 - Project-specific commands now reject invalid project path invariants before showing or mutating one identity, while `project list --json` remains available for doctor-recommended inspection.

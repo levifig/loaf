@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 18:43
+Date: 2026-06-14 18:53
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest restore-edge pass found that `state backup verify --json` proved backup integrity but did not tell an agent where to restore the verified backup for the current checkout. The human output had a generic `loaf state path` next action, but the JSON required an extra command and manual stitching.
+The latest Markdown import apply/resume pass dogfooded a temp project from the primary checkout with isolated XDG homes. Dry-run did not create the global database, apply and repeated resume stayed idempotent at one spec/task/idea/relationship row each, and source `.agents` file hashes were unchanged.
 
-This checkpoint keeps backup verification read-only while enriching the CLI result with `restore_database_path`, `restore_preserve_path`, and `restore_validation_commands`. Live dogfood verified a backup after deleting the isolated live database; verification still succeeded, did not recreate live state, and returned the concrete restore target.
+The weak point was agentic clarity: apply and resume JSON results were indistinguishable once separated from argv context. This checkpoint adds `action: "apply"` or `action: "resume"` to `MarkdownMigrationResult`, prints the same action in human output, and adds CLI regression coverage for action reporting plus source preservation through repeated resume.
 
 ## Next Review Target
 
-Continue the completion-audit pass against Markdown import apply/resume behavior. The next useful check is an interrupted or resumed import from the primary checkout with isolated XDG homes, looking for unclear idempotency, source-preservation, JSON, or human-output contracts.
+Continue the completion-audit pass against backend/Linear export and repair follow-up paths from the primary checkout with isolated XDG homes, looking for unclear policy, JSON, or human-output contracts.

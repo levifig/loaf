@@ -6960,6 +6960,9 @@ func TestRunnerStateMigrateMarkdownApplyJSON(t *testing.T) {
 	if !result.Applied {
 		t.Fatal("Applied = false, want true")
 	}
+	if result.Action != state.MarkdownMigrationActionApply {
+		t.Fatalf("Action = %q, want %q", result.Action, state.MarkdownMigrationActionApply)
+	}
 	if result.DatabaseScope != "global" {
 		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
 	}
@@ -7009,6 +7012,7 @@ func TestRunnerStateMigrateMarkdownApplyHuman(t *testing.T) {
 		"project:",
 		"project name:",
 		"project path:",
+		"action: apply",
 		"applied: true",
 		"ideas: 1",
 	} {
@@ -7063,6 +7067,19 @@ func TestRunnerStateMigrateMarkdownResumeJSON(t *testing.T) {
 	writeCLIAgentsFile(t, workingDir, "specs/SPEC-001-resume.md", "# Resume Spec\n")
 	writeCLIAgentsFile(t, workingDir, "tasks/TASK-001-resume.md", "# Resume Task\n")
 	writeCLIAgentsFile(t, workingDir, "TASKS.json", `{"tasks":{"TASK-001":{"spec":"SPEC-001"}}}`)
+	sourcePaths := []string{
+		filepath.Join(workingDir, ".agents", "specs", "SPEC-001-resume.md"),
+		filepath.Join(workingDir, ".agents", "tasks", "TASK-001-resume.md"),
+		filepath.Join(workingDir, ".agents", "TASKS.json"),
+	}
+	sourceBytes := map[string][]byte{}
+	for _, path := range sourcePaths {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read source %s: %v", path, err)
+		}
+		sourceBytes[path] = content
+	}
 
 	var firstStdout bytes.Buffer
 	err := Runner{
@@ -7077,6 +7094,9 @@ func TestRunnerStateMigrateMarkdownResumeJSON(t *testing.T) {
 	firstResult := decodeMarkdownMigrationResult(t, firstStdout.Bytes())
 	if !firstResult.Applied {
 		t.Fatal("Applied = false, want true")
+	}
+	if firstResult.Action != state.MarkdownMigrationActionResume {
+		t.Fatalf("first Action = %q, want %q", firstResult.Action, state.MarkdownMigrationActionResume)
 	}
 	if firstResult.DatabasePath == "" {
 		t.Fatal("DatabasePath is empty")
@@ -7096,11 +7116,23 @@ func TestRunnerStateMigrateMarkdownResumeJSON(t *testing.T) {
 	}
 
 	secondResult := decodeMarkdownMigrationResult(t, secondStdout.Bytes())
+	if secondResult.Action != state.MarkdownMigrationActionResume {
+		t.Fatalf("second Action = %q, want %q", secondResult.Action, state.MarkdownMigrationActionResume)
+	}
 	if secondResult.DatabasePath != firstResult.DatabasePath {
 		t.Fatalf("DatabasePath = %q, want %q", secondResult.DatabasePath, firstResult.DatabasePath)
 	}
 	if secondResult.Specs != 1 || secondResult.Tasks != 1 || secondResult.Relationships != 1 {
 		t.Fatalf("second result = %#v, want idempotent imported counts", secondResult)
+	}
+	for _, path := range sourcePaths {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read source after resume %s: %v", path, err)
+		}
+		if !bytes.Equal(content, sourceBytes[path]) {
+			t.Fatalf("source %s changed after repeated resume", path)
+		}
 	}
 }
 
@@ -7136,6 +7168,9 @@ func TestRunnerStateMigrateMarkdownResumeHuman(t *testing.T) {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
+	}
+	if !strings.Contains(output, "action: resume") {
+		t.Fatalf("output = %q, want resume action", output)
 	}
 	if strings.Contains(output, "next:") {
 		t.Fatalf("output = %q, did not want dry-run next action after resume", output)

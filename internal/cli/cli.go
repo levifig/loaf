@@ -2190,6 +2190,9 @@ func (r Runner) runMarkdownMigration(args []string, out io.Writer, runtime state
 			}
 			return err
 		}
+		if options.resume {
+			result.Action = state.MarkdownMigrationActionResume
+		}
 		if options.jsonOutput {
 			return writeJSON(out, result)
 		}
@@ -2239,6 +2242,7 @@ func writeMarkdownMigrationResultHuman(out io.Writer, command string, result sta
 	fmt.Fprintf(out, "project: %s\n", result.ProjectID)
 	fmt.Fprintf(out, "project name: %s\n", result.ProjectName)
 	fmt.Fprintf(out, "project path: %s\n", result.ProjectCurrentPath)
+	fmt.Fprintf(out, "action: %s\n", result.Action)
 	fmt.Fprintf(out, "applied: %t\n", result.Applied)
 	writeMarkdownMigrationPlan(out, result.MarkdownMigrationPlan)
 }
