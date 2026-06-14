@@ -36,17 +36,20 @@ type BackupResult struct {
 
 // BackupVerificationResult describes a read-only verification of an existing SQLite backup.
 type BackupVerificationResult struct {
-	ContractVersion int               `json:"contract_version"`
-	DatabaseScope   string            `json:"database_scope"`
-	BackupPath      string            `json:"backup_path"`
-	Bytes           int64             `json:"bytes"`
-	SHA256          string            `json:"sha256"`
-	Verified        bool              `json:"verified"`
-	SchemaVersion   int               `json:"schema_version"`
-	ProjectCount    int               `json:"project_count"`
-	Projects        []ProjectIdentity `json:"projects"`
-	IntegrityCheck  string            `json:"integrity_check"`
-	ForeignKeyCheck string            `json:"foreign_key_check"`
+	ContractVersion           int               `json:"contract_version"`
+	DatabaseScope             string            `json:"database_scope"`
+	BackupPath                string            `json:"backup_path"`
+	Bytes                     int64             `json:"bytes"`
+	SHA256                    string            `json:"sha256"`
+	Verified                  bool              `json:"verified"`
+	SchemaVersion             int               `json:"schema_version"`
+	ProjectCount              int               `json:"project_count"`
+	Projects                  []ProjectIdentity `json:"projects"`
+	IntegrityCheck            string            `json:"integrity_check"`
+	ForeignKeyCheck           string            `json:"foreign_key_check"`
+	RestoreDatabasePath       string            `json:"restore_database_path,omitempty"`
+	RestorePreservePath       string            `json:"restore_preserve_path,omitempty"`
+	RestoreValidationCommands []string          `json:"restore_validation_commands,omitempty"`
 }
 
 // Backup creates a timestamped SQLite backup under the project's state directory.

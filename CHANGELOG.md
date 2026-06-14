@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state backup verify --json` now includes the current checkout's restore target, preserve path, and validation commands without reading or recreating live SQLite state; human verify output prints the same concrete restore paths.
 - `loaf state doctor --json` backend and Linear diagnostics now include structured `details` fields, so agents can route invalid local backend rows, drift warnings, and external sync gaps without parsing prose.
 - Project-specific commands now reject invalid project path invariants before showing or mutating one identity, while `project list --json` remains available for doctor-recommended inspection.
 - Project commands now reject schema checksum drift before reading identity state, matching `state doctor` invalid-state behavior and pointing users at the affected global database path.

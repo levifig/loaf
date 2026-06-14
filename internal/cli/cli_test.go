@@ -4581,6 +4581,18 @@ func TestRunnerStateBackupVerifyReportsGlobalProjects(t *testing.T) {
 	if result.ProjectCount != 2 || len(result.Projects) != 2 {
 		t.Fatalf("projects = %d/%d, want two projects", result.ProjectCount, len(result.Projects))
 	}
+	if result.RestoreDatabasePath != backup.DatabasePath {
+		t.Fatalf("RestoreDatabasePath = %q, want live target %q", result.RestoreDatabasePath, backup.DatabasePath)
+	}
+	if result.RestorePreservePath != backup.DatabasePath+".before-restore" {
+		t.Fatalf("RestorePreservePath = %q, want preserve path for live target", result.RestorePreservePath)
+	}
+	if strings.Join(result.RestoreValidationCommands, ",") != "loaf state doctor,loaf state status" {
+		t.Fatalf("RestoreValidationCommands = %#v, want doctor/status checks", result.RestoreValidationCommands)
+	}
+	if _, err := os.Stat(backup.DatabasePath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("state backup verify recreated live database; stat err = %v", err)
+	}
 	for _, project := range result.Projects {
 		if project.DatabasePath != backup.BackupPath {
 			t.Fatalf("project DatabasePath = %q, want backup path %q", project.DatabasePath, backup.BackupPath)
@@ -4596,7 +4608,7 @@ func TestRunnerStateBackupVerifyReportsGlobalProjects(t *testing.T) {
 	if err != nil {
 		t.Fatalf("state backup verify error = %v", err)
 	}
-	for _, want := range []string{"loaf state backup verify", "scope: global backup", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 2", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "next: preserve current database"} {
+	for _, want := range []string{"loaf state backup verify", "scope: global backup", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 2", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "restore target:", "preserve as:", "next: if present, preserve current database as"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Fatalf("output = %q, want %q", humanOut.String(), want)
 		}
@@ -4627,6 +4639,9 @@ func TestRunnerStateBackupManualRestoreProcedure(t *testing.T) {
 	verified := decodeStateBackupVerificationResult(t, verifyOut.Bytes())
 	if !verified.Verified || verified.BackupPath != backup.BackupPath || verified.SHA256 != backup.SHA256 {
 		t.Fatalf("backup verification = %#v, want verified backup %s", verified, backup.BackupPath)
+	}
+	if verified.RestoreDatabasePath != backup.DatabasePath {
+		t.Fatalf("verified RestoreDatabasePath = %q, want %q", verified.RestoreDatabasePath, backup.DatabasePath)
 	}
 
 	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Changed After Backup", "--json"}); err != nil {
@@ -7574,6 +7589,17 @@ func TestRunnerStateControlPlaneJSONSuccessMatrix(t *testing.T) {
 		}
 		if len(verified.Projects) != 1 || verified.Projects[0].ID != backup.ProjectID {
 			t.Fatalf("backup verification projects = %#v, want backed-up project %s", verified.Projects, backup.ProjectID)
+		}
+		otherRoot, err := project.ResolveRoot(otherWorkingDir)
+		if err != nil {
+			t.Fatalf("ResolveRoot(otherWorkingDir) error = %v", err)
+		}
+		otherDatabasePath, err := state.PathResolver{StateHome: otherStateHome}.DatabasePath(otherRoot)
+		if err != nil {
+			t.Fatalf("DatabasePath(otherWorkingDir) error = %v", err)
+		}
+		if verified.RestoreDatabasePath != otherDatabasePath {
+			t.Fatalf("RestoreDatabasePath = %q, want verifier target %q", verified.RestoreDatabasePath, otherDatabasePath)
 		}
 		assertNoStateDatabase(t, otherWorkingDir, otherStateHome)
 	})

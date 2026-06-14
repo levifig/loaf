@@ -650,7 +650,8 @@ func cliReferenceCommandGuidance(commandName string) string {
 		return "In SQLite-backed projects, report lifecycle state is stored in SQLite. Use\ngenerated report commands for review output; create authored Markdown reports\nonly when a durable prose artifact is explicitly needed."
 	case "state":
 		return "Existing TypeScript-era projects can keep running supported commands in\nmarkdown-only compatibility mode until SQLite is initialized. Use\n`loaf state migrate markdown --apply` to import `.agents/` Markdown into SQLite\nwithout rewriting the source Markdown files." +
-			"\n\nManual restore from a backup is explicit until a guarded restore command exists:\nverify the backup with `loaf state backup verify <backup>`, preserve the current\n`$(loaf state path)` file, copy the verified backup to that path, then run\n`loaf state doctor` and `loaf state status`."
+			"\n\nManual restore from a backup is explicit until a guarded restore command exists:\nverify the backup with `loaf state backup verify <backup>`, preserve the current\n`$(loaf state path)` file, copy the verified backup to that path, then run\n`loaf state doctor` and `loaf state status`." +
+			"\nFor agents, `loaf state backup verify <backup> --json` also returns\n`restore_database_path`, `restore_preserve_path`, and\n`restore_validation_commands` for the current checkout."
 	case "project":
 		return "Project IDs are stable SQLite identities, not path or name hashes. Use\n`loaf project rename --dry-run` for display-name previews and\n`loaf project move --dry-run` before recording checkout path moves."
 	case "migrate":

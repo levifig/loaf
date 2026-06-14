@@ -1880,7 +1880,7 @@ func repairModeFlag(apply bool) string {
 
 func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) > 0 && args[0] == "verify" {
-		return r.runStateBackupVerify(args[1:], out)
+		return r.runStateBackupVerify(args[1:], out, runtime)
 	}
 	jsonRequested := hasFlag(args, "--json")
 	jsonOutput, err := parseJSONOnly(args)
@@ -1926,7 +1926,7 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 	return nil
 }
 
-func (r Runner) runStateBackupVerify(args []string, out io.Writer) error {
+func (r Runner) runStateBackupVerify(args []string, out io.Writer, runtime state.Runtime) error {
 	jsonRequested := hasFlag(args, "--json")
 	options, err := parseStateBackupVerifyArgs(args)
 	if err != nil {
@@ -1942,6 +1942,7 @@ func (r Runner) runStateBackupVerify(args []string, out io.Writer) error {
 		}
 		return err
 	}
+	r.addBackupRestoreTargets(&result, runtime)
 	if options.jsonOutput {
 		return writeJSON(out, result)
 	}
@@ -1964,8 +1965,28 @@ func (r Runner) runStateBackupVerify(args []string, out io.Writer) error {
 	}
 	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
 	fmt.Fprintf(out, "foreign keys: %s\n", result.ForeignKeyCheck)
-	fmt.Fprintln(out, "next: preserve current database, copy this verified backup to `loaf state path`, then run `loaf state doctor` and `loaf state status`")
+	if result.RestoreDatabasePath != "" {
+		fmt.Fprintf(out, "restore target: %s\n", result.RestoreDatabasePath)
+		fmt.Fprintf(out, "preserve as: %s\n", result.RestorePreservePath)
+		fmt.Fprintf(out, "next: if present, preserve current database as %s, copy this verified backup to %s, then run `loaf state doctor` and `loaf state status`\n", result.RestorePreservePath, result.RestoreDatabasePath)
+	} else {
+		fmt.Fprintln(out, "next: if present, preserve current database, copy this verified backup to `loaf state path`, then run `loaf state doctor` and `loaf state status`")
+	}
 	return nil
+}
+
+func (r Runner) addBackupRestoreTargets(result *state.BackupVerificationResult, runtime state.Runtime) {
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return
+	}
+	databasePath, err := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(projectRoot)
+	if err != nil {
+		return
+	}
+	result.RestoreDatabasePath = databasePath
+	result.RestorePreservePath = databasePath + ".before-restore"
+	result.RestoreValidationCommands = []string{"loaf state doctor", "loaf state status"}
 }
 
 func (r Runner) runStateExport(args []string, out io.Writer, runtime state.Runtime) error {

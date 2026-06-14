@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 18:36
+Date: 2026-06-14 18:43
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -47,6 +47,7 @@ This audit maps the reliability contract to current evidence and calls out the f
 | JSON export snapshots include table order, row counts, identity, scope, and verification manifest | export tests in `internal/state/export_test.go` and CLI matrix tests | Proven |
 | Markdown exports are deterministic and boundary-validated when external-safe | markdown export tests in `internal/state/export_test.go` and CLI export tests | Proven |
 | Restore has documented manual procedure with validation commands | `README.md`; `TestRunnerStateBackupManualRestoreProcedure`; dogfood notes in the plan | Proven for manual restore |
+| Backup verification exposes concrete restore targets without live DB access | `BackupVerificationResult` restore fields; `TestRunnerStateBackupVerifyReportsGlobalProjects`; `TestRunnerStateControlPlaneJSONSuccessMatrix`; live isolated `state backup verify --json` dogfood after removing the live DB | Proven |
 
 ## Backend And Linear Consistency
 
@@ -88,12 +89,18 @@ The first weak item was the backend policy requirement that mappings store only 
 
 This checkpoint adds a non-mutating doctor diagnostic, `backend-mapping-sensitive-value`, classifies it as `backend-mapping` / `invalid-local-data`, and keeps the repair guidance as a manual local backend-mapping audit rather than external sync work.
 
-## Latest Checkpoint
+## Backend/Linear Checkpoint
 
 The latest backend/Linear sampling pass found that human output and repair plans already separated invalid local backend data from external sync work, but JSON consumers still had to parse diagnostic prose to identify affected rows or counts.
 
 This checkpoint adds structured diagnostic `details` for backend mapping and Linear sync findings, covering affected fields, row counts, mapping IDs, local entity identifiers, external identifiers, and unmapped task counts. Live dogfood through the rebuilt `bin/loaf` confirmed those details appear in `state doctor --json` for both invalid backend mapping rows and Linear-unmapped local tasks.
 
+## Latest Checkpoint
+
+The latest restore-edge pass found that `state backup verify --json` proved backup integrity but did not tell an agent where to restore the verified backup for the current checkout. The human output had a generic `loaf state path` next action, but the JSON required an extra command and manual stitching.
+
+This checkpoint keeps backup verification read-only while enriching the CLI result with `restore_database_path`, `restore_preserve_path`, and `restore_validation_commands`. Live dogfood verified a backup after deleting the isolated live database; verification still succeeded, did not recreate live state, and returned the concrete restore target.
+
 ## Next Review Target
 
-Continue the completion-audit pass against backup/export/import restore edges. The manual restore story is documented and tested, but it should keep being dogfooded from the primary checkout with isolated XDG homes to find the next unclear safety, JSON, or human-output contract.
+Continue the completion-audit pass against Markdown import apply/resume behavior. The next useful check is an interrupted or resumed import from the primary checkout with isolated XDG homes, looking for unclear idempotency, source-preservation, JSON, or human-output contracts.

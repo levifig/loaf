@@ -230,7 +230,7 @@ loaf state doctor
 loaf state status
 ```
 
-Only copy a backup after `loaf state backup verify` reports `verified: true`, `integrity: ok`, `foreign keys: ok`, and the expected project identities. Preserve the current global database first so a bad restore can be reversed. After copying the backup into `$XDG_DATA_HOME/loaf/loaf.sqlite`, run `loaf state doctor` and `loaf state status` from the affected checkout before continuing work.
+Only copy a backup after `loaf state backup verify` reports `verified: true`, `integrity: ok`, `foreign keys: ok`, and the expected project identities. Preserve the current global database first so a bad restore can be reversed. For agentic restore flows, `loaf state backup verify --json` includes `restore_database_path`, `restore_preserve_path`, and `restore_validation_commands` for the current checkout. After copying the backup into `$XDG_DATA_HOME/loaf/loaf.sqlite`, run `loaf state doctor` and `loaf state status` from the affected checkout before continuing work.
 
 **Install locations:**
 
