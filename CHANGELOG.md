@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf project show|identity` and `loaf project list` human output now use the same command, scope, database, project ID, friendly name, and project path labels as project identity mutations.
 - `loaf state migrate markdown` and `loaf state migrate storage-home` human output now report command, global database scope, project import/migration scope, database path, project context, applied status, and dry-run next actions consistently.
 - `loaf project rename|move` human output now reports command, scope, database, project identity, from/to values, applied status, and dry-run next actions consistently.
 - `loaf state doctor` diagnostics now label backend mapping and Linear sync findings by policy so local data fixes, drift audits, and external sync work are easier to distinguish.

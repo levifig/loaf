@@ -1111,7 +1111,7 @@ func (r Runner) runProject(args []string, out io.Writer, runtime state.Runtime) 
 			writeProjectShowHelp(out)
 			return nil
 		}
-		return r.runProjectShow(args[1:], out, runtime)
+		return r.runProjectShow(args[1:], out, runtime, "loaf project "+args[0])
 	case "rename":
 		if isHelpArg(args[1:]) {
 			writeProjectRenameHelp(out)
@@ -1210,7 +1210,7 @@ func (r Runner) runProjectList(args []string, out io.Writer, runtime state.Runti
 	return nil
 }
 
-func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runtime) error {
+func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runtime, displayCommand string) error {
 	jsonOutput, err := parseJSONOnly(args)
 	if err != nil {
 		return err
@@ -1230,7 +1230,7 @@ func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runti
 	if jsonOutput {
 		return writeJSON(out, identity)
 	}
-	writeProjectIdentity(out, identity)
+	writeProjectIdentity(out, displayCommand, identity)
 	return nil
 }
 
@@ -1437,12 +1437,9 @@ func (r Runner) openProjectStore(runtime state.Runtime) (project.Root, *state.St
 	return projectRoot, store, nil
 }
 
-func writeProjectIdentity(out io.Writer, identity state.ProjectIdentity) {
-	fmt.Fprintf(out, "Project: %s\n", firstNonEmpty(identity.FriendlyName, "(unnamed)"))
-	fmt.Fprintf(out, "  scope: %s database\n", identity.DatabaseScope)
-	fmt.Fprintf(out, "  id:   %s\n", identity.ID)
-	fmt.Fprintf(out, "  path: %s\n", identity.CurrentPath)
-	fmt.Fprintf(out, "  db:   %s\n", identity.DatabasePath)
+func writeProjectIdentity(out io.Writer, command string, identity state.ProjectIdentity) {
+	fmt.Fprintln(out, command)
+	writeProjectMutationHuman(out, identity.DatabaseScope, identity)
 }
 
 func writeProjectRenameHuman(out io.Writer, result state.ProjectRenameResult, applied bool) {
@@ -1492,11 +1489,11 @@ func writeProjectList(out io.Writer, result state.ProjectList) {
 		return
 	}
 	for _, project := range result.Projects {
-		fmt.Fprintf(out, "%s\n", firstNonEmpty(project.FriendlyName, "(unnamed)"))
-		fmt.Fprintf(out, "  id:   %s\n", project.ID)
-		fmt.Fprintf(out, "  path: %s\n", firstNonEmpty(project.CurrentPath, "(none)"))
+		fmt.Fprintf(out, "project: %s\n", project.ID)
+		fmt.Fprintf(out, "project name: %s\n", firstNonEmpty(project.FriendlyName, "(unnamed)"))
+		fmt.Fprintf(out, "project path: %s\n", firstNonEmpty(project.CurrentPath, "(none)"))
 		if project.LastSeenAt != "" {
-			fmt.Fprintf(out, "  seen: %s\n", project.LastSeenAt)
+			fmt.Fprintf(out, "last seen: %s\n", project.LastSeenAt)
 		}
 	}
 }

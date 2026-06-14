@@ -2149,6 +2149,32 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if aliasShown != shown {
 		t.Fatalf("project identity alias = %#v, want project show result %#v", aliasShown, shown)
 	}
+	var humanShowOut bytes.Buffer
+	if err := (Runner{Stdout: &humanShowOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show"}); err != nil {
+		t.Fatalf("project show error = %v", err)
+	}
+	for _, want := range []string{
+		"loaf project show",
+		"scope: global database",
+		"database:",
+		"project: " + shown.ID,
+		"project name: " + filepath.Base(workingDir),
+		"project path: " + workingDir,
+	} {
+		if !strings.Contains(humanShowOut.String(), want) {
+			t.Fatalf("project show output = %q, want %q", humanShowOut.String(), want)
+		}
+	}
+	if strings.Contains(humanShowOut.String(), "Project:") || strings.Contains(humanShowOut.String(), "db:") {
+		t.Fatalf("project show output = %q, want normalized identity labels", humanShowOut.String())
+	}
+	var humanIdentityOut bytes.Buffer
+	if err := (Runner{Stdout: &humanIdentityOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "identity"}); err != nil {
+		t.Fatalf("project identity error = %v", err)
+	}
+	if !strings.Contains(humanIdentityOut.String(), "loaf project identity") || !strings.Contains(humanIdentityOut.String(), "project: "+shown.ID) {
+		t.Fatalf("project identity output = %q, want alias command header and project ID", humanIdentityOut.String())
+	}
 
 	var renameOut bytes.Buffer
 	if err := (Runner{Stdout: &renameOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Friendly Loaf", "--json"}); err != nil {
@@ -2235,8 +2261,21 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if err := (Runner{Stdout: &humanListOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "list"}); err != nil {
 		t.Fatalf("project list error = %v", err)
 	}
-	if !strings.Contains(humanListOut.String(), "scope: global database") || !strings.Contains(humanListOut.String(), "Friendly Loaf") || !strings.Contains(humanListOut.String(), shown.ID) || !strings.Contains(humanListOut.String(), movedDir) {
-		t.Fatalf("project list output = %q, want global scope, friendly name, id, and current path", humanListOut.String())
+	for _, want := range []string{
+		"loaf project list",
+		"scope: global database",
+		"database:",
+		"project: " + shown.ID,
+		"project name: Friendly Loaf",
+		"project path: " + movedDir,
+		"last seen:",
+	} {
+		if !strings.Contains(humanListOut.String(), want) {
+			t.Fatalf("project list output = %q, want %q", humanListOut.String(), want)
+		}
+	}
+	if strings.Contains(humanListOut.String(), "  id:") || strings.Contains(humanListOut.String(), "  path:") || strings.Contains(humanListOut.String(), "  seen:") {
+		t.Fatalf("project list output = %q, want normalized identity labels", humanListOut.String())
 	}
 
 	db, err := sql.Open("sqlite3", filepath.Join(stateHome, "loaf", "loaf.sqlite"))
