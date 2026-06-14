@@ -46,7 +46,12 @@ var projectScopedMergeTables = []string{
 type StorageHomeMigrationPlan struct {
 	ContractVersion      int      `json:"contract_version"`
 	Version              int      `json:"version"`
+	DatabaseScope        string   `json:"database_scope"`
+	MigrationScope       string   `json:"migration_scope"`
 	ProjectRoot          string   `json:"project_root"`
+	ProjectID            string   `json:"project_id,omitempty"`
+	ProjectName          string   `json:"project_name,omitempty"`
+	ProjectCurrentPath   string   `json:"project_current_path,omitempty"`
 	DatabasePath         string   `json:"database_path"`
 	LegacyDatabasePath   string   `json:"legacy_database_path"`
 	DatabaseExists       bool     `json:"database_exists"`
@@ -71,6 +76,8 @@ func PreviewStorageHomeMigration(root project.Root, resolver PathResolver) (Stor
 	plan := StorageHomeMigrationPlan{
 		ContractVersion:    StateJSONContractVersion,
 		Version:            1,
+		DatabaseScope:      "global",
+		MigrationScope:     "project",
 		ProjectRoot:        root.Path(),
 		DatabasePath:       databasePath,
 		LegacyDatabasePath: legacyPath,
@@ -174,6 +181,7 @@ func ApplyStorageHomeMigration(ctx context.Context, root project.Root, resolver 
 		return StorageHomeMigrationPlan{}, fmt.Errorf("copied state database is not ready: %s", status.Mode)
 	}
 	copiedReady = true
+	plan.recordVerifiedProject(status)
 	plan.Applied = true
 	plan.DatabaseExists = true
 	plan.LegacyDatabaseExists = true
@@ -207,12 +215,19 @@ func ApplyProjectDatabaseMerge(ctx context.Context, root project.Root, resolver 
 	if status.Mode != ModeSQLiteReady {
 		return StorageHomeMigrationPlan{}, fmt.Errorf("global state database is not ready: %s", status.Mode)
 	}
+	plan.recordVerifiedProject(status)
 	plan.Applied = true
 	plan.DatabaseExists = true
 	plan.LegacyDatabaseExists = true
 	plan.Action = StorageHomeActionAlreadyMigrated
 	plan.Warnings = append(plan.Warnings, "legacy project database left untouched; remove it manually after verifying the global database")
 	return plan, nil
+}
+
+func (p *StorageHomeMigrationPlan) recordVerifiedProject(status Status) {
+	p.ProjectID = status.ProjectID
+	p.ProjectName = status.ProjectName
+	p.ProjectCurrentPath = status.ProjectCurrentPath
 }
 
 func (s *Store) mergeProjectDatabase(ctx context.Context, sourcePath string, projectID string) error {

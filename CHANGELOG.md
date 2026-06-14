@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf migrate storage-home --json` and human output now report global database scope, project migration scope, and applied project identity details.
 - `loaf migrate markdown --apply|--resume --json` now reports global database scope, project import scope, and durable project identity details.
 - `loaf state doctor` now warns when backend mapping rows use an unknown `sync_status`, helping catch misspelled integration state without invalidating the database.
 - `loaf state export all --format json` now reports `database_scope` and `export_scope` in the snapshot and manifest, making project-scoped exports from the global database explicit.

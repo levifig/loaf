@@ -1980,6 +1980,16 @@ func writeMarkdownMigrationPlan(out io.Writer, plan state.MarkdownMigrationPlan)
 }
 
 func writeStorageHomeMigrationPlan(out io.Writer, plan state.StorageHomeMigrationPlan) {
+	fmt.Fprintf(out, "scope: %s database, %s migration\n", plan.DatabaseScope, plan.MigrationScope)
+	if plan.ProjectID != "" {
+		fmt.Fprintf(out, "project: %s\n", plan.ProjectID)
+	}
+	if plan.ProjectName != "" {
+		fmt.Fprintf(out, "project name: %s\n", plan.ProjectName)
+	}
+	if plan.ProjectCurrentPath != "" {
+		fmt.Fprintf(out, "project path: %s\n", plan.ProjectCurrentPath)
+	}
 	fmt.Fprintf(out, "database: %s\n", plan.DatabasePath)
 	fmt.Fprintf(out, "legacy database: %s\n", plan.LegacyDatabasePath)
 	fmt.Fprintf(out, "database exists: %t\n", plan.DatabaseExists)

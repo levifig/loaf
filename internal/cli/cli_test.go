@@ -193,6 +193,9 @@ func TestRunnerStateMigrateStorageHomeCopiesLegacyDatabase(t *testing.T) {
 	if preview.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("preview ContractVersion = %d, want %d", preview.ContractVersion, state.StateJSONContractVersion)
 	}
+	if preview.DatabaseScope != "global" || preview.MigrationScope != "project" {
+		t.Fatalf("preview scopes = %q/%q, want global/project", preview.DatabaseScope, preview.MigrationScope)
+	}
 	if preview.Action != state.StorageHomeActionCopy || preview.Applied {
 		t.Fatalf("preview = %#v, want copy dry-run", preview)
 	}
@@ -205,7 +208,7 @@ func TestRunnerStateMigrateStorageHomeCopiesLegacyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("state migrate storage-home --apply error = %v", err)
 	}
-	for _, want := range []string{"loaf state migrate storage-home --apply", "action: already-migrated", "applied: true"} {
+	for _, want := range []string{"loaf state migrate storage-home --apply", "scope: global database, project migration", "project:", "project name:", "project path:", "action: already-migrated", "applied: true"} {
 		if !strings.Contains(applyOut.String(), want) {
 			t.Fatalf("stdout = %q, want %q", applyOut.String(), want)
 		}
@@ -225,6 +228,9 @@ func TestRunnerStateMigrateStorageHomeCopiesLegacyDatabase(t *testing.T) {
 	status := decodeStateStatus(t, statusOut.Bytes())
 	if status.Mode != state.ModeSQLiteReady {
 		t.Fatalf("Mode = %q, want %q", status.Mode, state.ModeSQLiteReady)
+	}
+	if status.ProjectID == "" {
+		t.Fatal("ProjectID is empty after storage-home migration")
 	}
 	if !strings.HasPrefix(status.DatabasePath, dataHome+string(filepath.Separator)) {
 		t.Fatalf("DatabasePath = %q, want under data home %q", status.DatabasePath, dataHome)
@@ -252,7 +258,7 @@ func TestRunnerMigrateStorageHomeUsesNativeAlias(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate storage-home error = %v", err)
 	}
-	for _, want := range []string{"loaf migrate storage-home --dry-run", "action: copy"} {
+	for _, want := range []string{"loaf migrate storage-home --dry-run", "scope: global database, project migration", "action: copy"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 		}

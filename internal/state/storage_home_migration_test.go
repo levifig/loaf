@@ -27,6 +27,15 @@ func TestPreviewStorageHomeMigrationPlansLegacyCopy(t *testing.T) {
 	if plan.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", plan.ContractVersion, StateJSONContractVersion)
 	}
+	if plan.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", plan.DatabaseScope)
+	}
+	if plan.MigrationScope != "project" {
+		t.Fatalf("MigrationScope = %q, want project", plan.MigrationScope)
+	}
+	if plan.ProjectID != "" {
+		t.Fatalf("ProjectID = %q, want empty before apply", plan.ProjectID)
+	}
 	if plan.Action != StorageHomeActionCopy {
 		t.Fatalf("Action = %q, want %q", plan.Action, StorageHomeActionCopy)
 	}
@@ -64,6 +73,21 @@ func TestApplyStorageHomeMigrationCopiesLegacyDatabaseWithoutDeletingIt(t *testi
 	if plan.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", plan.ContractVersion, StateJSONContractVersion)
 	}
+	if plan.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", plan.DatabaseScope)
+	}
+	if plan.MigrationScope != "project" {
+		t.Fatalf("MigrationScope = %q, want project", plan.MigrationScope)
+	}
+	if plan.ProjectID == "" {
+		t.Fatal("ProjectID is empty after apply")
+	}
+	if plan.ProjectName != filepath.Base(root.Path()) {
+		t.Fatalf("ProjectName = %q, want %q", plan.ProjectName, filepath.Base(root.Path()))
+	}
+	if plan.ProjectCurrentPath != root.Path() {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", plan.ProjectCurrentPath, root.Path())
+	}
 	if !plan.Applied {
 		t.Fatal("Applied = false, want true")
 	}
@@ -98,6 +122,9 @@ func TestApplyStorageHomeMigrationCopiesLegacyDatabaseWithoutDeletingIt(t *testi
 	if second.Action != StorageHomeActionAlreadyMigrated {
 		t.Fatalf("second Action = %q, want %q", second.Action, StorageHomeActionAlreadyMigrated)
 	}
+	if second.DatabaseScope != "global" || second.MigrationScope != "project" {
+		t.Fatalf("second scopes = %q/%q, want global/project", second.DatabaseScope, second.MigrationScope)
+	}
 }
 
 func TestStorageHomeMigrationUsesProjectDataDatabaseBeforeStateHome(t *testing.T) {
@@ -117,6 +144,9 @@ func TestStorageHomeMigrationUsesProjectDataDatabaseBeforeStateHome(t *testing.T
 	if plan.Action != StorageHomeActionCopy {
 		t.Fatalf("Action = %q, want %q", plan.Action, StorageHomeActionCopy)
 	}
+	if plan.DatabaseScope != "global" || plan.MigrationScope != "project" {
+		t.Fatalf("scopes = %q/%q, want global/project", plan.DatabaseScope, plan.MigrationScope)
+	}
 	if plan.LegacyDatabasePath != projectPath {
 		t.Fatalf("LegacyDatabasePath = %q, want project data path %q", plan.LegacyDatabasePath, projectPath)
 	}
@@ -127,6 +157,12 @@ func TestStorageHomeMigrationUsesProjectDataDatabaseBeforeStateHome(t *testing.T
 	}
 	if !applied.Applied {
 		t.Fatal("Applied = false, want true")
+	}
+	if applied.ProjectID == "" {
+		t.Fatal("ProjectID is empty after project database migration")
+	}
+	if applied.ProjectCurrentPath != root.Path() {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", applied.ProjectCurrentPath, root.Path())
 	}
 	if applied.DatabasePath == projectPath {
 		t.Fatalf("DatabasePath = %q, want global path distinct from project path", applied.DatabasePath)
