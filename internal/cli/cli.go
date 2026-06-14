@@ -2469,15 +2469,15 @@ func writeTaskHelp(out io.Writer) {
 }
 
 func writeTaskCreateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task create --title <title> [options]", "Create a task.", "--title      Task title", "--spec       Associated spec", "--priority   Task priority: "+validTaskPriorityText(), "--depends-on Comma-separated task refs", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task create --title <title> [options]", "Create a task.", "--title      Task title", "--spec       Associated spec", "--priority   Task priority: "+validTaskPriorityText(), "--depends-on Comma-separated task refs", "--json       Output created task, event, global database scope, and project identity as JSON")
 }
 
 func writeTaskListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task list [--active|--status <status>] [--json]", "List tasks.", "--active     Hide completed tasks", "--status     Filter by status: "+validTaskListStatusText(), "--json       Output JSON")
+	writeUsageHelp(out, "loaf task list [--active|--status <status>] [--json]", "List tasks.", "--active     Hide completed tasks", "--status     Filter by status: "+validTaskListStatusText(), "--json       Output tasks, diagnostics, global database scope, and project identity as JSON")
 }
 
 func writeTaskShowHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task show <task> [--json]", "Show one task.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task show <task> [--json]", "Show one task.", "--json       Output task details, relationships, global database scope, and project identity as JSON")
 }
 
 func writeTaskStatusHelp(out io.Writer) {
@@ -2485,19 +2485,19 @@ func writeTaskStatusHelp(out io.Writer) {
 }
 
 func writeTaskUpdateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task update <task> [options]", "Update task metadata.", "--status     New task status: "+validTaskStatusText(), "--priority   New task priority: "+validTaskPriorityText(), "--spec       Associated spec", "--depends-on Comma-separated task refs or none", "--session    Session ref or none", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task update <task> [options]", "Update task metadata.", "--status     New task status: "+validTaskStatusText(), "--priority   New task priority: "+validTaskPriorityText(), "--spec       Associated spec", "--depends-on Comma-separated task refs or none", "--session    Session ref or none", "--json       Output updated task, event, global database scope, and project identity as JSON")
 }
 
 func writeTaskArchiveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task archive (<task...>|--spec <spec>) [--json]", "Archive done tasks.", "--spec       Archive done tasks for one spec", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task archive (<task...>|--spec <spec>) [--json]", "Archive done tasks.", "--spec       Archive done tasks for one spec", "--json       Output archive result, archived tasks, global database scope, and project identity as JSON")
 }
 
 func writeTaskRefreshHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task refresh [--json]", "Summarize task refresh compatibility.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task refresh [--json]", "Summarize task refresh compatibility.", "--json       Output compatibility mode, action, reason, and counts as JSON")
 }
 
 func writeTaskSyncHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf task sync [--import|--push] [--json]", "Summarize task sync compatibility.", "--import     Import orphan Markdown tasks", "--push       Push index metadata to Markdown", "--json       Output JSON")
+	writeUsageHelp(out, "loaf task sync [--import|--push] [--json]", "Summarize task sync compatibility.", "--import     Import orphan Markdown tasks", "--push       Push index metadata to Markdown", "--json       Output compatibility mode, action, reason, and counts as JSON")
 }
 
 func (r Runner) runTaskRefresh(args []string, out io.Writer, runtime state.Runtime) error {
@@ -5889,15 +5889,15 @@ func writeSpecHelp(out io.Writer) {
 }
 
 func writeSpecListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spec list [--json]", "List specs.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf spec list [--json]", "List specs.", "--json       Output specs, diagnostics, task counts, global database scope, and project identity as JSON")
 }
 
 func writeSpecShowHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spec show <spec> [--json]", "Show one spec.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf spec show <spec> [--json]", "Show one spec.", "--json       Output spec details, task counts, relationships, global database scope, and project identity as JSON")
 }
 
 func writeSpecArchiveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spec archive <spec...> [--json]", "Archive completed specs.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf spec archive <spec...> [--json]", "Archive completed specs.", "--json       Output archive result, archived specs, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runSpecList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -6693,39 +6693,39 @@ func writeSessionHelp(out io.Writer) {
 }
 
 func writeSessionStartHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session start [--resume] [--session-id <id>] [--force] [--json]", "Start or resume session state.", "--resume      Resume if possible", "--session-id  Harness session ID", "--force       Ignore hook agent adoption guard", "--json        Output JSON")
+	writeUsageHelp(out, "loaf session start [--resume] [--session-id <id>] [--force] [--json]", "Start or resume session state.", "--resume      Resume if possible", "--session-id  Harness session ID", "--force       Ignore hook agent adoption guard", "--json        Output action, session, journal IDs, global database scope, and project identity as JSON")
 }
 
 func writeSessionEndHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session end [--if-active] [--wrap] [--from-hook] [--session-id <id>] [--json]", "End, wrap, or clear a session.", "--if-active   No-op when no active session exists", "--wrap        Mark as wrapped", "--from-hook   Read hook input", "--session-id  Harness session ID", "--json        Output JSON")
+	writeUsageHelp(out, "loaf session end [--if-active] [--wrap] [--from-hook] [--session-id <id>] [--json]", "End, wrap, or clear a session.", "--if-active   No-op when no active session exists", "--wrap        Mark as wrapped", "--from-hook   Read hook input", "--session-id  Harness session ID", "--json        Output action/noop, session, journal IDs, global database scope, and project identity as JSON")
 }
 
 func writeSessionArchiveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session archive [--branch <branch>] [--session-id <id>] [--json]", "Archive a stopped or targeted session.", "--branch      Branch to archive", "--session-id  Harness session ID", "--json        Output JSON")
+	writeUsageHelp(out, "loaf session archive [--branch <branch>] [--session-id <id>] [--json]", "Archive a stopped or targeted session.", "--branch      Branch to archive", "--session-id  Harness session ID", "--json        Output archive result, affected sessions, global database scope, and project identity as JSON")
 }
 
 func writeSessionListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session list [--all] [--json]", "List sessions.", "--all         Include archived sessions", "--json        Output JSON")
+	writeUsageHelp(out, "loaf session list [--all] [--json]", "List sessions.", "--all         Include archived sessions", "--json        Output sessions, diagnostics, global database scope, and project identity as JSON")
 }
 
 func writeSessionShowHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session show <session> [--json]", "Show one session.", "--json        Output JSON")
+	writeUsageHelp(out, "loaf session show <session> [--json]", "Show one session.", "--json        Output session details, journal entries, relationships, global database scope, and project identity as JSON")
 }
 
 func writeSessionLogHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session log <entry> [--from-hook] [--session-id <id>] [--json]", "Append a session journal entry.", "--from-hook   Read hook input", "--session-id  Harness session ID", "--json        Output JSON")
+	writeUsageHelp(out, "loaf session log <entry> [--from-hook] [--session-id <id>] [--json]", "Append a session journal entry.", "--from-hook   Read hook input", "--session-id  Harness session ID", "--json        Output journal entry, linked session, global database scope, and project identity as JSON")
 }
 
 func writeSessionEnrichHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session enrich [--json]", "Summarize markdown enrichment compatibility.", "--json        Output JSON")
+	writeUsageHelp(out, "loaf session enrich [--json]", "Summarize markdown enrichment compatibility.", "--json        Output compatibility mode, action, reason, and counts as JSON")
 }
 
 func writeSessionHousekeepingHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session housekeeping [--json]", "Summarize markdown housekeeping compatibility.", "--json        Output JSON")
+	writeUsageHelp(out, "loaf session housekeeping [--json]", "Summarize markdown housekeeping compatibility.", "--json        Output compatibility mode, action, reason, and counts as JSON")
 }
 
 func writeSessionReportHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session report <session> [--json]", "Export a session report.", "--json        Output JSON")
+	writeUsageHelp(out, "loaf session report <session> [--json]", "Export a session report.", "--json        Output export contract, command, project context, and markdown content as JSON")
 }
 
 func (r Runner) runSessionStart(args []string, out io.Writer, runtime state.Runtime) error {
@@ -8728,9 +8728,6 @@ func (r Runner) runSessionReport(args []string, out io.Writer, runtime state.Run
 	if err != nil {
 		return err
 	}
-	if jsonOutput {
-		return fmt.Errorf("session report does not support --json")
-	}
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
 		return err
@@ -8738,6 +8735,10 @@ func (r Runner) runSessionReport(args []string, out io.Writer, runtime state.Run
 	result, err := state.ExportSessionMarkdown(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, ref)
 	if err != nil {
 		return err
+	}
+	if jsonOutput {
+		result.Command = "session report"
+		return writeJSON(out, result)
 	}
 	fmt.Fprint(out, result.Content)
 	return nil
@@ -9093,7 +9094,7 @@ func writeReportHelp(out io.Writer) {
 }
 
 func writeReportListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report list [--type <type>|--status <status>] [--json]", "List reports.", "--type       Filter by report type", "--status     Filter by status; Loaf lifecycle statuses: draft, final, archived", "--json       Output JSON")
+	writeUsageHelp(out, "loaf report list [--type <type>|--status <status>] [--json]", "List reports.", "--type       Filter by report type", "--status     Filter by status; Loaf lifecycle statuses: draft, final, archived", "--json       Output reports, diagnostics, global database scope, and project identity as JSON")
 }
 
 func writeReportGenerateHelp(out io.Writer) {
@@ -9101,15 +9102,15 @@ func writeReportGenerateHelp(out io.Writer) {
 }
 
 func writeReportCreateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report create <slug> [--type <type>] [--source <source>] [--json]", "Create a report.", "--type       Report type", "--source     Report source", "--json       Output JSON")
+	writeUsageHelp(out, "loaf report create <slug> [--type <type>] [--source <source>] [--json]", "Create a report.", "--type       Report type", "--source     Report source", "--json       Output created report, event, global database scope, and project identity as JSON")
 }
 
 func writeReportFinalizeHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report finalize <report> [--json]", "Finalize a report.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf report finalize <report> [--json]", "Finalize a report.", "--json       Output report status transition, event, global database scope, and project identity as JSON")
 }
 
 func writeReportArchiveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report archive <report> [--json]", "Archive a report.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf report archive <report> [--json]", "Archive a report.", "--json       Output report status transition, event, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runReportList(args []string, out io.Writer, runtime state.Runtime) error {

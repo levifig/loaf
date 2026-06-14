@@ -188,12 +188,12 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Manage project tasks",
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "list", Description: "Show task board grouped by status", Options: []cliReferenceOption{
-					{Flags: "--json", Description: "Output raw JSON"},
+					{Flags: "--json", Description: "Output tasks, diagnostics, global database scope, and project identity as JSON"},
 					{Flags: "--active", Description: "Hide completed tasks"},
 					{Flags: "--status <status>", Description: "Only show tasks with status: " + validTaskListStatusText()},
 				}},
 				{Name: "show", Description: "Display a single task's details", Options: []cliReferenceOption{
-					{Flags: "--json", Description: "Output task entry as JSON"},
+					{Flags: "--json", Description: "Output task details, relationships, global database scope, and project identity as JSON"},
 				}},
 				{Name: "status", Description: "Show task summary counts"},
 				{Name: "create", Description: "Create a new task", Options: []cliReferenceOption{
@@ -201,7 +201,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--spec <id>", Description: "Associated spec ID (e.g., SPEC-010)"},
 					{Flags: "--priority <level>", Description: "Priority level: " + validTaskPriorityText()},
 					{Flags: "--depends-on <ids>", Description: "Comma-separated task IDs"},
-					{Flags: "--json", Description: "Output created task as JSON"},
+					{Flags: "--json", Description: "Output created task, event, global database scope, and project identity as JSON"},
 				}},
 				{Name: "update", Description: "Update a task's metadata", Options: []cliReferenceOption{
 					{Flags: "--status <status>", Description: "New status: " + validTaskStatusText()},
@@ -209,11 +209,11 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--depends-on <ids>", Description: "Replace depends_on (comma-separated task IDs)"},
 					{Flags: "--session <file>", Description: `Set or clear session reference (use "none" to clear)`},
 					{Flags: "--spec <id>", Description: "Set or change associated spec"},
-					{Flags: "--json", Description: "Output updated task as JSON"},
+					{Flags: "--json", Description: "Output updated task, event, global database scope, and project identity as JSON"},
 				}},
 				{Name: "archive", Description: "Archive completed tasks through the task lifecycle", Options: []cliReferenceOption{
 					{Flags: "--spec <id>", Description: "Archive all done tasks for a spec"},
-					{Flags: "--json", Description: "Output archive result as JSON"},
+					{Flags: "--json", Description: "Output archive result, archived tasks, global database scope, and project identity as JSON"},
 				}},
 				{Name: "refresh", Description: "Compatibility: rebuild the Markdown task index from task/spec files", Options: []cliReferenceOption{
 					{Flags: "--json", Description: "Output compatibility summary as JSON"},
@@ -229,9 +229,9 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Name:        "spec",
 			Description: "Manage project specs",
 			Subcommands: []cliReferenceSubcommand{
-				{Name: "list", Description: "Show specs with status and task counts", Options: []cliReferenceOption{{Flags: "--json", Description: "Output raw JSON"}}},
-				{Name: "show", Description: "Show spec details", Options: []cliReferenceOption{{Flags: "--json", Description: "Output raw JSON"}}},
-				{Name: "archive", Description: "Archive a completed spec", Options: []cliReferenceOption{{Flags: "--json", Description: "Output raw JSON"}}},
+				{Name: "list", Description: "Show specs with status and task counts", Options: []cliReferenceOption{{Flags: "--json", Description: "Output specs, diagnostics, task counts, global database scope, and project identity as JSON"}}},
+				{Name: "show", Description: "Show spec details", Options: []cliReferenceOption{{Flags: "--json", Description: "Output spec details, task counts, relationships, global database scope, and project identity as JSON"}}},
+				{Name: "archive", Description: "Archive a completed spec", Options: []cliReferenceOption{{Flags: "--json", Description: "Output archive result, archived specs, global database scope, and project identity as JSON"}}},
 			},
 		},
 		{
@@ -241,7 +241,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 				{Name: "list", Description: "List reports", Options: []cliReferenceOption{
 					{Flags: "--type <type>", Description: "Filter by report type"},
 					{Flags: "--status <status>", Description: "Filter by status; Loaf lifecycle statuses: draft, final, archived"},
-					{Flags: "--json", Description: "Output as JSON"},
+					{Flags: "--json", Description: "Output reports, diagnostics, global database scope, and project identity as JSON"},
 				}},
 				{Name: "generate", Description: "Generate a report from state", Options: []cliReferenceOption{
 					{Flags: "--format <format>", Description: "Output format: markdown"},
@@ -250,10 +250,10 @@ func cliReferenceCommands() []cliReferenceCommand {
 				{Name: "create", Description: "Create a report draft", Options: []cliReferenceOption{
 					{Flags: "--type <type>", Description: "Report type"},
 					{Flags: "--source <source>", Description: "Report source"},
-					{Flags: "--json", Description: "Output as JSON"},
+					{Flags: "--json", Description: "Output created report, event, global database scope, and project identity as JSON"},
 				}},
-				{Name: "finalize", Description: "Mark a report draft as final", Options: []cliReferenceOption{{Flags: "--json", Description: "Output as JSON"}}},
-				{Name: "archive", Description: "Archive a finalized report", Options: []cliReferenceOption{{Flags: "--json", Description: "Output as JSON"}}},
+				{Name: "finalize", Description: "Mark a report draft as final", Options: []cliReferenceOption{{Flags: "--json", Description: "Output report status transition, event, global database scope, and project identity as JSON"}}},
+				{Name: "archive", Description: "Archive a finalized report", Options: []cliReferenceOption{{Flags: "--json", Description: "Output report status transition, event, global database scope, and project identity as JSON"}}},
 			},
 		},
 		{

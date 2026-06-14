@@ -5326,6 +5326,19 @@ status: active
 		t.Fatalf("session JSON wrapper = %#v, want session report command and local audience", sessionJSON)
 	}
 	assertCLIProjectContext(t, workingDir, sessionJSON.ContractVersion, sessionJSON.DatabaseScope, sessionJSON.DatabasePath, sessionJSON.ProjectID, sessionJSON.ProjectName, sessionJSON.ProjectCurrentPath)
+
+	var sessionReportJSONOut bytes.Buffer
+	if err := (Runner{Stdout: &sessionReportJSONOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"session", "report", "20260528-session", "--json"}); err != nil {
+		t.Fatalf("session report --json error = %v", err)
+	}
+	var sessionReportJSON state.MarkdownExport
+	if err := json.Unmarshal(sessionReportJSONOut.Bytes(), &sessionReportJSON); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", sessionReportJSONOut.String(), err)
+	}
+	if sessionReportJSON.Command != "session report" || sessionReportJSON.ExportKind != state.ExportKindSession || sessionReportJSON.Content != sessionJSON.Content {
+		t.Fatalf("session report JSON wrapper = %#v, want session report command and export content parity", sessionReportJSON)
+	}
+	assertCLIProjectContext(t, workingDir, sessionReportJSON.ContractVersion, sessionReportJSON.DatabaseScope, sessionReportJSON.DatabasePath, sessionReportJSON.ProjectID, sessionReportJSON.ProjectName, sessionReportJSON.ProjectCurrentPath)
 }
 
 func TestRunnerReportGenerateTriageAndReleaseReadinessMatchStateExports(t *testing.T) {
@@ -15045,6 +15058,21 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["migrate"].optionDescriptions["migrate worktree-storage --apply"]; !strings.Contains(got, "dry-run") {
 		t.Fatalf("worktree-storage apply description = %q, want dry-run guidance", got)
 	}
+	if got := commands["session"].optionDescriptions["session start --json"]; !strings.Contains(got, "action") || !strings.Contains(got, "journal IDs") || !strings.Contains(got, "project identity") {
+		t.Fatalf("session start json description = %q, want action/journal/project identity guidance", got)
+	}
+	if got := commands["session"].optionDescriptions["session list --json"]; !strings.Contains(got, "sessions") || !strings.Contains(got, "diagnostics") || !strings.Contains(got, "global database scope") {
+		t.Fatalf("session list json description = %q, want sessions/diagnostics/scope guidance", got)
+	}
+	if got := commands["session"].optionDescriptions["session show --json"]; !strings.Contains(got, "journal entries") || !strings.Contains(got, "relationships") || !strings.Contains(got, "project identity") {
+		t.Fatalf("session show json description = %q, want journal/relationship/project identity guidance", got)
+	}
+	if got := commands["session"].optionDescriptions["session report --json"]; !strings.Contains(got, "export contract") || !strings.Contains(got, "markdown content") {
+		t.Fatalf("session report json description = %q, want export/markdown guidance", got)
+	}
+	if got := commands["session"].optionDescriptions["session enrich --json"]; !strings.Contains(got, "compatibility mode") || !strings.Contains(got, "counts") {
+		t.Fatalf("session enrich json description = %q, want compatibility/count guidance", got)
+	}
 	for _, want := range []string{
 		"housekeeping --plans",
 		"housekeeping --handoffs",
@@ -15085,6 +15113,30 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["task"].optionDescriptions["task update --priority <level>"]; !strings.Contains(got, "P0, P1, P2, P3") {
 		t.Fatalf("task update priority description = %q, want valid priorities", got)
+	}
+	if got := commands["task"].optionDescriptions["task list --json"]; !strings.Contains(got, "tasks") || !strings.Contains(got, "diagnostics") || !strings.Contains(got, "project identity") {
+		t.Fatalf("task list json description = %q, want tasks/diagnostics/project identity guidance", got)
+	}
+	if got := commands["task"].optionDescriptions["task create --json"]; !strings.Contains(got, "created task") || !strings.Contains(got, "event") || !strings.Contains(got, "global database scope") {
+		t.Fatalf("task create json description = %q, want created/event/scope guidance", got)
+	}
+	if got := commands["task"].optionDescriptions["task refresh --json"]; !strings.Contains(got, "compatibility mode") || !strings.Contains(got, "counts") {
+		t.Fatalf("task refresh json description = %q, want compatibility/count guidance", got)
+	}
+	if got := commands["spec"].optionDescriptions["spec list --json"]; !strings.Contains(got, "specs") || !strings.Contains(got, "task counts") || !strings.Contains(got, "project identity") {
+		t.Fatalf("spec list json description = %q, want specs/task counts/project identity guidance", got)
+	}
+	if got := commands["spec"].optionDescriptions["spec show --json"]; !strings.Contains(got, "relationships") || !strings.Contains(got, "global database scope") {
+		t.Fatalf("spec show json description = %q, want relationship/scope guidance", got)
+	}
+	if got := commands["report"].optionDescriptions["report list --json"]; !strings.Contains(got, "reports") || !strings.Contains(got, "diagnostics") || !strings.Contains(got, "project identity") {
+		t.Fatalf("report list json description = %q, want reports/diagnostics/project identity guidance", got)
+	}
+	if got := commands["report"].optionDescriptions["report create --json"]; !strings.Contains(got, "created report") || !strings.Contains(got, "event") || !strings.Contains(got, "global database scope") {
+		t.Fatalf("report create json description = %q, want created/event/scope guidance", got)
+	}
+	if got := commands["report"].optionDescriptions["report finalize --json"]; !strings.Contains(got, "status transition") || !strings.Contains(got, "project identity") {
+		t.Fatalf("report finalize json description = %q, want status transition/project identity guidance", got)
 	}
 	for _, want := range []string{"list", "show", "identity", "rename", "move"} {
 		if !stringSliceContains(commands["project"].subcommands, want) {

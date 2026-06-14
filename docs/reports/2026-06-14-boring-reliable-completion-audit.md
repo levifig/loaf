@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest generated-artifact/install-facing audit compared runtime metadata, `--agent-help`, generated CLI reference content, distributed `dist/` skills, and the plugin skill copy against the tightened JSON contracts. The pass found two stale agent-facing surfaces: top-level `loaf migrate markdown|storage-home --json` reference text still said "Output migration details as JSON", and critical `loaf state ... --json` agent-help/reference text still used generic raw/details wording for path, init, status, doctor, repair, backup, and backup verification.
+The latest non-control-plane agent-help pass focused on SQLite-backed session, task, spec, and report surfaces whose JSON structs already expose stable contract fields. The pass found the expected generic wording, plus one behavioral bug: `loaf session report --json` was advertised in help/agent-help but rejected by the runner.
 
-This checkpoint aligns those surfaces with the actual contracts: migration aliases now name contract, scope, project context, global database paths, action, and project identity; critical state JSON help now names contract version, diagnostics, repair plans, restore guidance, schema/checksum details, global database scope, and project identity. `npm run build` regenerated `content/skills/cli-reference`, every distributed `dist/*/skills/cli-reference` copy, and `plugins/loaf/skills/cli-reference`, while `TestRunnerAgentHelpIsNative` and `TestRunnerGenerateCLIReferenceWritesSkillNatively` now guard the precise descriptions.
+This checkpoint makes `session report --json` return the same local `MarkdownExport` contract as the state/report-generation session export path, with `command: session report`. Agent help, command help, and generated CLI reference output now describe session/task/spec/report JSON payloads in terms of global database scope, project identity, diagnostics, journal entries, relationships, events, compatibility counts, status transitions, and Markdown export content. `TestRunnerReportGenerateSessionAndSessionReportMatchStateExport`, `TestRunnerAgentHelpIsNative`, and `TestRunnerGenerateCLIReferenceWritesSkillNatively` guard the behavior and descriptions.
 
 ## Next Review Target
 
-Continue the completion-audit pass by auditing the remaining non-control-plane `--agent-help` raw JSON descriptions, prioritizing SQLite-backed task/spec/session/report surfaces where contract fields are already stable.
+Continue the completion-audit pass by auditing the remaining `--agent-help` raw JSON descriptions for KB/check/housekeeping/trace and entity families such as brainstorm, idea, spark, tag, bundle, and link.

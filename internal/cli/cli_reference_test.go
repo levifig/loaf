@@ -56,13 +56,13 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		"`loaf project move`",
 		"## Task Management",
 		"`loaf task create`",
-		"`--json` - Output created task as JSON",
+		"`--json` - Output created task, event, global database scope, and project identity as JSON",
 		"`--status <status>` - Only show tasks with status: in_progress, blocked, todo, review, done, archived",
 		"`--priority <level>` - Priority level: P0, P1, P2, P3",
 		"`--status <status>` - New status: in_progress, blocked, todo, review, done",
 		"`--priority <level>` - New priority: P0, P1, P2, P3",
-		"`--json` - Output updated task as JSON",
-		"`--json` - Output archive result as JSON",
+		"`--json` - Output updated task, event, global database scope, and project identity as JSON",
+		"`--json` - Output archive result, archived tasks, global database scope, and project identity as JSON",
 		"`--json` - Output compatibility summary as JSON",
 		"## Trace Management",
 		"`loaf trace`",
@@ -116,5 +116,14 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 	}
 	if !strings.Contains(content, "- `loaf report list`:\n  - `--type <type>` - Filter by report type\n  - `--status <status>` - Filter by status; Loaf lifecycle statuses: draft, final, archived") {
 		t.Fatalf("generated CLI reference missing report list status guidance\n%s", content)
+	}
+	if !strings.Contains(content, "- `loaf task list`:\n  - `--json` - Output tasks, diagnostics, global database scope, and project identity as JSON") {
+		t.Fatalf("generated CLI reference missing task list JSON contract guidance\n%s", content)
+	}
+	if !strings.Contains(content, "- `loaf spec list`:\n  - `--json` - Output specs, diagnostics, task counts, global database scope, and project identity as JSON") {
+		t.Fatalf("generated CLI reference missing spec list JSON contract guidance\n%s", content)
+	}
+	if !strings.Contains(content, "- `loaf report list`:\n  - `--type <type>` - Filter by report type\n  - `--status <status>` - Filter by status; Loaf lifecycle statuses: draft, final, archived\n  - `--json` - Output reports, diagnostics, global database scope, and project identity as JSON") {
+		t.Fatalf("generated CLI reference missing report list JSON contract guidance\n%s", content)
 	}
 }

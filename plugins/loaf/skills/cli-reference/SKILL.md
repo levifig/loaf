@@ -357,19 +357,19 @@ artifacts during migration; do not edit them directly for lifecycle changes.
 **Options:**
 
 - `loaf task list`:
-  - `--json` - Output raw JSON
+  - `--json` - Output tasks, diagnostics, global database scope, and project identity as JSON
   - `--active` - Hide completed tasks
   - `--status <status>` - Only show tasks with status: in_progress, blocked, todo, review, done, archived
 
 - `loaf task show`:
-  - `--json` - Output task entry as JSON
+  - `--json` - Output task details, relationships, global database scope, and project identity as JSON
 
 - `loaf task create`:
   - `--title <title>` - Task title
   - `--spec <id>` - Associated spec ID (e.g., SPEC-010)
   - `--priority <level>` - Priority level: P0, P1, P2, P3
   - `--depends-on <ids>` - Comma-separated task IDs
-  - `--json` - Output created task as JSON
+  - `--json` - Output created task, event, global database scope, and project identity as JSON
 
 - `loaf task update`:
   - `--status <status>` - New status: in_progress, blocked, todo, review, done
@@ -377,11 +377,11 @@ artifacts during migration; do not edit them directly for lifecycle changes.
   - `--depends-on <ids>` - Replace depends_on (comma-separated task IDs)
   - `--session <file>` - Set or clear session reference (use "none" to clear)
   - `--spec <id>` - Set or change associated spec
-  - `--json` - Output updated task as JSON
+  - `--json` - Output updated task, event, global database scope, and project identity as JSON
 
 - `loaf task archive`:
   - `--spec <id>` - Archive all done tasks for a spec
-  - `--json` - Output archive result as JSON
+  - `--json` - Output archive result, archived tasks, global database scope, and project identity as JSON
 
 - `loaf task refresh`:
   - `--json` - Output compatibility summary as JSON
@@ -420,13 +420,13 @@ status and relationship data when initialized.
 **Options:**
 
 - `loaf spec list`:
-  - `--json` - Output raw JSON
+  - `--json` - Output specs, diagnostics, task counts, global database scope, and project identity as JSON
 
 - `loaf spec show`:
-  - `--json` - Output raw JSON
+  - `--json` - Output spec details, task counts, relationships, global database scope, and project identity as JSON
 
 - `loaf spec archive`:
-  - `--json` - Output raw JSON
+  - `--json` - Output archive result, archived specs, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash
@@ -461,7 +461,7 @@ only when a durable prose artifact is explicitly needed.
 - `loaf report list`:
   - `--type <type>` - Filter by report type
   - `--status <status>` - Filter by status; Loaf lifecycle statuses: draft, final, archived
-  - `--json` - Output as JSON
+  - `--json` - Output reports, diagnostics, global database scope, and project identity as JSON
 
 - `loaf report generate`:
   - `--format <format>` - Output format: markdown
@@ -470,13 +470,13 @@ only when a durable prose artifact is explicitly needed.
 - `loaf report create`:
   - `--type <type>` - Report type
   - `--source <source>` - Report source
-  - `--json` - Output as JSON
+  - `--json` - Output created report, event, global database scope, and project identity as JSON
 
 - `loaf report finalize`:
-  - `--json` - Output as JSON
+  - `--json` - Output report status transition, event, global database scope, and project identity as JSON
 
 - `loaf report archive`:
-  - `--json` - Output as JSON
+  - `--json` - Output report status transition, event, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash
