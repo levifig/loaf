@@ -77,6 +77,29 @@ func TestRunnerDispatchesStatePathNatively(t *testing.T) {
 	if _, err := os.Stat(want); !os.IsNotExist(err) {
 		t.Fatalf("state path --json database stat = %v, want command not to create database", err)
 	}
+
+	var verboseOut bytes.Buffer
+	err = Runner{
+		Stdout:     &verboseOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "path", "--verbose"})
+	if err != nil {
+		t.Fatalf("Run(--verbose) error = %v", err)
+	}
+	for _, wantLine := range []string{
+		"loaf state path",
+		"scope: global database",
+		"project root: " + root.Path(),
+		"database: " + want,
+	} {
+		if !strings.Contains(verboseOut.String(), wantLine) {
+			t.Fatalf("state path --verbose stdout = %q, want %q", verboseOut.String(), wantLine)
+		}
+	}
+	if _, err := os.Stat(want); !os.IsNotExist(err) {
+		t.Fatalf("state path --verbose database stat = %v, want command not to create database", err)
+	}
 }
 
 func TestRunnerHousekeepingUsesSQLiteStateWhenInitialized(t *testing.T) {
@@ -2958,7 +2981,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		want string
 	}{
 		{name: "state", args: []string{"state", "--help"}, want: "Usage: loaf state <command> [options]"},
-		{name: "state path", args: []string{"state", "path", "--help"}, want: "Usage: loaf state path [--json]"},
+		{name: "state path", args: []string{"state", "path", "--help"}, want: "Usage: loaf state path [--json|--verbose]"},
 		{name: "state init", args: []string{"state", "init", "--help"}, want: "Usage: loaf state init [--json]"},
 		{name: "state doctor", args: []string{"state", "doctor", "--help"}, want: "Usage: loaf state doctor [--fix] [--dry-run] [--json]"},
 		{name: "state repair", args: []string{"state", "repair", "--help"}, want: "Usage: loaf state repair <target> [options]"},
@@ -6930,6 +6953,13 @@ func TestRunnerStateControlPlaneJSONFailureMatrix(t *testing.T) {
 			args:               []string{"state", "path", "--json", "--bogus"},
 			command:            "state path",
 			want:               "unknown option",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state path json verbose conflict",
+			args:               []string{"state", "path", "--json", "--verbose"},
+			command:            "state path",
+			want:               "cannot combine --json and --verbose",
 			wantMissingStateDB: true,
 		},
 		{
@@ -14351,6 +14381,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 		if !stringSliceContains(commands["state"].subcommands, want) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
 		}
+	}
+	if got := commands["state"].optionDescriptions["state path --verbose"]; !strings.Contains(got, "scope") || !strings.Contains(got, "database path") {
+		t.Fatalf("state path verbose description = %q, want human context guidance", got)
 	}
 	for _, want := range []string{"backup verify", "export all", "export triage", "export session", "export spec", "export release-readiness"} {
 		if !stringSliceContains(commands["state"].subcommands, want) {

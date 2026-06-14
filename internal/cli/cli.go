@@ -83,6 +83,11 @@ type statePathResult struct {
 	DatabasePath    string `json:"database_path"`
 }
 
+type statePathOptions struct {
+	jsonOutput    bool
+	verboseOutput bool
+}
+
 // Run dispatches a loaf command.
 func (r Runner) Run(args []string) error {
 	out := r.Stdout
@@ -877,7 +882,7 @@ func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) er
 			writeStatePathHelp(out)
 			return nil
 		}
-		jsonOutput, err := parseJSONOnly(args[1:])
+		options, err := parseStatePathArgs(args[1:])
 		if err != nil {
 			return err
 		}
@@ -889,13 +894,20 @@ func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) er
 		if err != nil {
 			return err
 		}
-		if jsonOutput {
+		if options.jsonOutput {
 			return writeJSON(out, statePathResult{
 				ContractVersion: state.StateJSONContractVersion,
 				DatabaseScope:   "global",
 				ProjectRoot:     projectRoot.Path(),
 				DatabasePath:    path,
 			})
+		}
+		if options.verboseOutput {
+			fmt.Fprintln(out, "loaf state path")
+			fmt.Fprintln(out, "scope: global database")
+			fmt.Fprintf(out, "project root: %s\n", projectRoot.Path())
+			fmt.Fprintf(out, "database: %s\n", path)
+			return nil
 		}
 		fmt.Fprintln(out, path)
 		return nil
@@ -972,12 +984,13 @@ func writeStateHelp(out io.Writer) {
 }
 
 func writeStatePathHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf state path [--json]")
+	fmt.Fprintln(out, "Usage: loaf state path [--json|--verbose]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Print the resolved native SQLite database path.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --verbose    Output command, scope, project root, and database path")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
@@ -9713,6 +9726,24 @@ func parseJSONOnly(args []string) (bool, error) {
 		}
 	}
 	return jsonOutput, nil
+}
+
+func parseStatePathArgs(args []string) (statePathOptions, error) {
+	var options statePathOptions
+	for _, arg := range args {
+		switch arg {
+		case "--json":
+			options.jsonOutput = true
+		case "--verbose":
+			options.verboseOutput = true
+		default:
+			return statePathOptions{}, fmt.Errorf("unknown option %q", arg)
+		}
+	}
+	if options.jsonOutput && options.verboseOutput {
+		return statePathOptions{}, fmt.Errorf("state path cannot combine --json and --verbose")
+	}
+	return options, nil
 }
 
 func parseStateBackupVerifyArgs(args []string) (backupVerifyOptions, error) {

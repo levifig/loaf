@@ -157,6 +157,7 @@ verify the backup with `loaf state backup verify <backup>`, preserve the current
 
 - `loaf state path`:
   - `--json` - Output database path and scope as JSON
+  - `--verbose` - Output command, scope, project root, and database path
 
 - `loaf state status`:
   - `--json` - Output status as JSON

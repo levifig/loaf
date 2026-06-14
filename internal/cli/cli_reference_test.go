@@ -35,6 +35,8 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		"`--origin <imported|manual>` - Provenance value to backfill",
 		"`loaf state backup verify`",
 		"`--json` - Output verification details as JSON",
+		"`loaf state path`",
+		"`--verbose` - Output command, scope, project root, and database path",
 		"`loaf state export`",
 		"`--format <format>` - Output format for the selected export kind",
 		"`loaf state export all`",
