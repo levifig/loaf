@@ -2422,6 +2422,67 @@ func TestRunnerProjectCommandsRejectSchemaChecksumDrift(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectCommandsRejectPathInvariantMismatch(t *testing.T) {
+	workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+	db := openCLITestDB(t, initialized.DatabasePath)
+	if _, err := db.Exec(`UPDATE projects SET current_path = current_path || '/stale' WHERE id = ?`, initialized.ProjectID); err != nil {
+		t.Fatalf("drift project current_path error = %v", err)
+	}
+	closeCLITestDB(t, db)
+
+	var listOut bytes.Buffer
+	if err := (Runner{Stdout: &listOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "list", "--json"}); err != nil {
+		t.Fatalf("project list --json error = %v", err)
+	}
+	var listed state.ProjectList
+	if err := json.Unmarshal(listOut.Bytes(), &listed); err != nil {
+		t.Fatalf("json.Unmarshal(project list) error = %v\n%s", err, listOut.String())
+	}
+	if len(listed.Projects) != 1 || listed.Projects[0].CurrentPath != workingDir {
+		t.Fatalf("project list = %#v, want inspectable current path row %s", listed.Projects, workingDir)
+	}
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "show", args: []string{"project", "show"}},
+		{name: "rename dry-run", args: []string{"project", "rename", "Human Dogfood", "--dry-run"}},
+		{name: "move dry-run", args: []string{"project", "move", workingDir, realpath(t, t.TempDir()), "--dry-run"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run(tt.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want project path invariant rejection", tt.args)
+			}
+			for _, want := range []string{
+				"project state path invariants are invalid",
+				initialized.DatabasePath,
+				"scope: global database",
+				"current_path",
+				"does not match current project_paths row",
+				"loaf state doctor",
+			} {
+				if !strings.Contains(err.Error(), want) {
+					t.Fatalf("Run(%v) error = %q, want %q", tt.args, err.Error(), want)
+				}
+			}
+		})
+	}
+
+	var jsonOut bytes.Buffer
+	err := (Runner{Stdout: &jsonOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"})
+	if err == nil {
+		t.Fatal("project show --json path invariant error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, jsonOut.Bytes())
+	if output.Command != "project show" || !strings.Contains(output.Error, "project state path invariants") || !strings.Contains(output.Error, initialized.DatabasePath) {
+		t.Fatalf("project show --json error = %#v, want path invariant context", output)
+	}
+}
+
 func TestRunnerProjectShowDoesNotRegisterUnknownPath(t *testing.T) {
 	registeredDir := realpath(t, t.TempDir())
 	unknownDir := realpath(t, t.TempDir())

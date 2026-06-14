@@ -138,6 +138,11 @@ func (s *Store) SchemaVersion(ctx context.Context) (int, error) {
 	return int(version.Int64), nil
 }
 
+// DatabasePath returns the SQLite path backing this store.
+func (s *Store) DatabasePath() string {
+	return s.path
+}
+
 // ValidateCurrentSchema rejects version drift, missing migrations, and checksum drift.
 func (s *Store) ValidateCurrentSchema(ctx context.Context) (int, error) {
 	version, err := s.SchemaVersion(ctx)
@@ -161,6 +166,21 @@ func (s *Store) ValidateCurrentSchema(ctx context.Context) (int, error) {
 		}
 	}
 	return version, nil
+}
+
+// ValidateProjectPathInvariants rejects inconsistent durable project path metadata.
+func (s *Store) ValidateProjectPathInvariants(ctx context.Context) error {
+	diagnostics, valid, err := inspectProjectPathInvariants(ctx, s)
+	if err != nil {
+		return err
+	}
+	if valid {
+		return nil
+	}
+	if len(diagnostics) == 0 {
+		return fmt.Errorf("project path invariants are invalid")
+	}
+	return fmt.Errorf("%s", diagnostics[0].Message)
 }
 
 // AppliedMigrationCount returns the number of applied migrations.

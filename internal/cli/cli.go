@@ -1234,6 +1234,10 @@ func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runti
 	if err != nil {
 		return err
 	}
+	if err := validateProjectPathInvariantsForCommand(store); err != nil {
+		store.Close()
+		return err
+	}
 	defer store.Close()
 	identity, err := store.LookupProjectIdentityForRoot(context.Background(), projectRoot)
 	if err != nil {
@@ -1260,6 +1264,13 @@ func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Run
 	}
 	projectRoot, store, err := r.openProjectStoreReadOnly(runtime)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "project rename", err)
+		}
+		return err
+	}
+	if err := validateProjectPathInvariantsForCommand(store); err != nil {
+		store.Close()
 		if options.jsonOutput {
 			return writeJSONCommandError(out, "project rename", err)
 		}
@@ -1338,6 +1349,13 @@ func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runti
 	}
 	projectRoot, store, err := r.openProjectStoreReadOnly(runtime)
 	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "project move", err)
+		}
+		return err
+	}
+	if err := validateProjectPathInvariantsForCommand(store); err != nil {
+		store.Close()
 		if options.jsonOutput {
 			return writeJSONCommandError(out, "project move", err)
 		}
@@ -1422,6 +1440,13 @@ func (r Runner) openProjectStoreReadOnly(runtime state.Runtime) (project.Root, *
 		return project.Root{}, nil, fmt.Errorf("project state database is invalid at %s (scope: global database): %w; run `loaf state doctor`", databasePath, err)
 	}
 	return projectRoot, store, nil
+}
+
+func validateProjectPathInvariantsForCommand(store *state.Store) error {
+	if err := store.ValidateProjectPathInvariants(context.Background()); err != nil {
+		return fmt.Errorf("project state path invariants are invalid at %s (scope: global database): %w; run `loaf state doctor`", store.DatabasePath(), err)
+	}
+	return nil
 }
 
 func (r Runner) openProjectStore(runtime state.Runtime) (project.Root, *state.Store, error) {

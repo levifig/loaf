@@ -14,7 +14,7 @@ This audit maps the reliability contract to current evidence and calls out the f
 | Row-level project isolation via durable `project_id` | `docs/schema/0001_initial.sql`, `docs/schema/0003_project_identity_and_relationship_origin.sql`, `internal/state/schema_test.go`, `internal/state/status_test.go` | Proven |
 | Generated project IDs are stable and not path/name derived | `internal/state/status_test.go`, project identity CLI tests | Proven |
 | Friendly project name is mutable and independent | project rename tests in `internal/cli/cli_test.go`; schema docs include `friendly_name` | Proven |
-| Current path is mutable and historical paths are preserved | project move tests in `internal/cli/cli_test.go`; `docs/schema/0004_project_path_current_uniqueness.sql` | Proven |
+| Current path is mutable and historical paths are preserved | project move tests; path-invariant rejection tests in `internal/cli/cli_test.go`; `docs/schema/0004_project_path_current_uniqueness.sql` | Proven |
 | Read-only project commands do not create state | control-plane no-mutation tests in `internal/cli/cli_test.go` | Proven |
 | Rejected rename/move operations do not create DB rows or repo files | project rename/move safeguard tests in `internal/cli/cli_test.go` | Proven |
 
@@ -89,4 +89,4 @@ This checkpoint adds a non-mutating doctor diagnostic, `backend-mapping-sensitiv
 
 ## Next Review Target
 
-Continue sampling project identity mismatch/path-invariant failures. The test matrix is strong, but the final UX claim should keep being reviewed against actual command output, not only fixtures.
+Continue sampling backend/Linear diagnostic output from live fixtures. The test matrix is strong, but the final UX claim should keep being reviewed against actual command output, not only fixtures.
