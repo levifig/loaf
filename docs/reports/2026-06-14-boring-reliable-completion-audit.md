@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 19:16
+Date: 2026-06-14 19:24
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest human/JSON failure pass dogfooded backup/export/import command surfaces from the primary checkout with isolated XDG homes. JSON failures remained concise and machine-readable, but human missing-state errors from `state backup` and Markdown `state export ...` commands did not show the global DB target.
+The latest report-alias pass dogfooded release-readiness, triage, and session report generation from the primary checkout with isolated XDG homes. Markdown output and report/state-export alias equality were stable, but `loaf report generate ... --json` success wrappers did not carry contract version, command, global/project scope, or durable project identity.
 
-This checkpoint adds human missing-state context for those commands: global database scope, target database path, and safe next actions to inspect state or import local Markdown. JSON error payloads are unchanged.
+This checkpoint enriches the `MarkdownExport` JSON wrapper with contract version, command, global database scope, project export scope, and durable project identity. External report JSON keeps the local path boundary by omitting project/database paths, while internal session report JSON includes them for agent routing. Human report-generation missing-state errors now include the global database path and safe next actions; JSON error payloads remain concise.
 
 ## Next Review Target
 
-Continue the completion-audit pass by auditing release-readiness/spec/session/triage export human output and report-generation aliases against the reliability contract, looking for any remaining mismatch between docs, tests, and dogfood evidence.
+Continue the completion-audit pass by auditing remaining JSON success envelopes for contract/context drift, starting with migration and repair commands that emit operation-specific wrappers.

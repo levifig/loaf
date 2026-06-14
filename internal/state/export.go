@@ -68,10 +68,18 @@ type ExportManifest struct {
 
 // MarkdownExport is a generated Markdown view of SQLite state.
 type MarkdownExport struct {
-	ExportKind string `json:"export_kind"`
-	Format     string `json:"format"`
-	Audience   string `json:"audience"`
-	Content    string `json:"content"`
+	ContractVersion    int    `json:"contract_version"`
+	Command            string `json:"command,omitempty"`
+	ExportKind         string `json:"export_kind"`
+	Format             string `json:"format"`
+	Audience           string `json:"audience"`
+	DatabaseScope      string `json:"database_scope"`
+	ExportScope        string `json:"export_scope"`
+	ProjectID          string `json:"project_id"`
+	ProjectName        string `json:"project_name"`
+	ProjectCurrentPath string `json:"project_current_path,omitempty"`
+	DatabasePath       string `json:"database_path,omitempty"`
+	Content            string `json:"content"`
 }
 
 type exportTable struct {
@@ -283,16 +291,12 @@ func ExportTriageMarkdown(ctx context.Context, root project.Root, resolver PathR
 		return MarkdownExport{}, err
 	}
 
-	content := renderTriageMarkdown(markdownExportContextFromStatus(status, ExportAudienceExternal), ideas, sparks, brainstorms)
+	exportContext := markdownExportContextFromStatus(status, ExportAudienceExternal)
+	content := renderTriageMarkdown(exportContext, ideas, sparks, brainstorms)
 	if err := ValidateExternalMarkdownExport(content); err != nil {
 		return MarkdownExport{}, err
 	}
-	return MarkdownExport{
-		ExportKind: ExportKindTriage,
-		Format:     ExportFormatMarkdown,
-		Audience:   ExportAudienceExternal,
-		Content:    content,
-	}, nil
+	return markdownExportResult(ExportKindTriage, exportContext, content), nil
 }
 
 // ExportReleaseReadinessMarkdown returns an external-safe Markdown release readiness summary.
@@ -318,16 +322,12 @@ func ExportReleaseReadinessMarkdown(ctx context.Context, root project.Root, reso
 	if err != nil {
 		return MarkdownExport{}, err
 	}
-	content := renderReleaseReadinessMarkdown(markdownExportContextFromStatus(status, ExportAudienceExternal), data)
+	exportContext := markdownExportContextFromStatus(status, ExportAudienceExternal)
+	content := renderReleaseReadinessMarkdown(exportContext, data)
 	if err := ValidateExternalMarkdownExport(content); err != nil {
 		return MarkdownExport{}, err
 	}
-	return MarkdownExport{
-		ExportKind: ExportKindReleaseReadiness,
-		Format:     ExportFormatMarkdown,
-		Audience:   ExportAudienceExternal,
-		Content:    content,
-	}, nil
+	return markdownExportResult(ExportKindReleaseReadiness, exportContext, content), nil
 }
 
 // ExportSpecMarkdown returns an internal Markdown summary for one spec.
@@ -353,12 +353,8 @@ func ExportSpecMarkdown(ctx context.Context, root project.Root, resolver PathRes
 	if err != nil {
 		return MarkdownExport{}, err
 	}
-	return MarkdownExport{
-		ExportKind: ExportKindSpec,
-		Format:     ExportFormatMarkdown,
-		Audience:   ExportAudienceLocal,
-		Content:    renderSpecMarkdown(markdownExportContextFromStatus(status, ExportAudienceLocal), show.Spec),
-	}, nil
+	exportContext := markdownExportContextFromStatus(status, ExportAudienceLocal)
+	return markdownExportResult(ExportKindSpec, exportContext, renderSpecMarkdown(exportContext, show.Spec)), nil
 }
 
 // ExportSessionMarkdown returns an internal Markdown summary for one session.
@@ -384,12 +380,8 @@ func ExportSessionMarkdown(ctx context.Context, root project.Root, resolver Path
 	if err != nil {
 		return MarkdownExport{}, err
 	}
-	return MarkdownExport{
-		ExportKind: ExportKindSession,
-		Format:     ExportFormatMarkdown,
-		Audience:   ExportAudienceLocal,
-		Content:    renderSessionMarkdown(markdownExportContextFromStatus(status, ExportAudienceLocal), show.Session),
-	}, nil
+	exportContext := markdownExportContextFromStatus(status, ExportAudienceLocal)
+	return markdownExportResult(ExportKindSession, exportContext, renderSessionMarkdown(exportContext, show.Session)), nil
 }
 
 func (s *Store) releaseReadinessExportData(ctx context.Context, root project.Root, schemaVersion int) (releaseReadinessExportData, error) {
@@ -689,6 +681,25 @@ func markdownExportContextFromStatus(status Status, audience string) markdownExp
 		ProjectCurrentPath: status.ProjectCurrentPath,
 		DatabasePath:       status.DatabasePath,
 	}
+}
+
+func markdownExportResult(kind string, ctx markdownExportContext, content string) MarkdownExport {
+	result := MarkdownExport{
+		ContractVersion: StateJSONContractVersion,
+		ExportKind:      kind,
+		Format:          ExportFormatMarkdown,
+		Audience:        ctx.Audience,
+		DatabaseScope:   firstNonEmpty(ctx.DatabaseScope, "global"),
+		ExportScope:     firstNonEmpty(ctx.ExportScope, "project"),
+		ProjectID:       ctx.ProjectID,
+		ProjectName:     ctx.ProjectName,
+		Content:         content,
+	}
+	if ctx.Audience == ExportAudienceLocal {
+		result.ProjectCurrentPath = ctx.ProjectCurrentPath
+		result.DatabasePath = ctx.DatabasePath
+	}
+	return result
 }
 
 func renderMarkdownExportContext(b *strings.Builder, ctx markdownExportContext) {

@@ -5296,6 +5296,19 @@ status: active
 	if !strings.Contains(reportOut.String(), "# Session Export") {
 		t.Fatalf("report output = %q, want session export markdown", reportOut.String())
 	}
+
+	var sessionJSONOut bytes.Buffer
+	if err := (Runner{Stdout: &sessionJSONOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "generate", "session", "20260528-session", "--json"}); err != nil {
+		t.Fatalf("report generate session --json error = %v", err)
+	}
+	var sessionJSON state.MarkdownExport
+	if err := json.Unmarshal(sessionJSONOut.Bytes(), &sessionJSON); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", sessionJSONOut.String(), err)
+	}
+	if sessionJSON.Command != "report generate session" || sessionJSON.ExportKind != state.ExportKindSession || sessionJSON.Audience != state.ExportAudienceLocal {
+		t.Fatalf("session JSON wrapper = %#v, want session report command and local audience", sessionJSON)
+	}
+	assertCLIProjectContext(t, workingDir, sessionJSON.ContractVersion, sessionJSON.DatabaseScope, sessionJSON.DatabasePath, sessionJSON.ProjectID, sessionJSON.ProjectName, sessionJSON.ProjectCurrentPath)
 }
 
 func TestRunnerReportGenerateTriageAndReleaseReadinessMatchStateExports(t *testing.T) {
@@ -5363,6 +5376,18 @@ func TestRunnerReportGenerateJSONContracts(t *testing.T) {
 	}
 	if export.ExportKind != state.ExportKindTriage || export.Format != state.ExportFormatMarkdown || export.Audience != state.ExportAudienceExternal {
 		t.Fatalf("export wrapper = %#v, want triage markdown external", export)
+	}
+	if export.Command != "report generate triage" {
+		t.Fatalf("export.Command = %q, want report generate triage", export.Command)
+	}
+	if export.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("export.ContractVersion = %d, want %d", export.ContractVersion, state.StateJSONContractVersion)
+	}
+	if export.DatabaseScope != "global" || export.ExportScope != "project" || export.ProjectID == "" || export.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("export context = %#v, want global project identity", export)
+	}
+	if export.DatabasePath != "" || export.ProjectCurrentPath != "" {
+		t.Fatalf("external export context = %#v, want no local paths", export)
 	}
 	if !strings.Contains(export.Content, "# Triage Export") || !strings.Contains(export.Content, "## Project Context") {
 		t.Fatalf("export content = %q, want triage markdown with project context", export.Content)
@@ -5435,6 +5460,17 @@ func TestRunnerReportGenerateRejectsMissingInvalidUnsupportedState(t *testing.T)
 	}
 	if !strings.Contains(err.Error(), "SQLite state database is not initialized") {
 		t.Fatalf("error = %v, want initialization message", err)
+	}
+	for _, want := range []string{
+		"scope: global database",
+		"database:",
+		filepath.Join(stateHome, "loaf", "loaf.sqlite"),
+		"next: run `loaf state status`",
+		"loaf state migrate markdown --apply",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %v, want %q", err, want)
+		}
 	}
 
 	err = Runner{

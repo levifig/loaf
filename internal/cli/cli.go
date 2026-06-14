@@ -9174,9 +9174,13 @@ func (r Runner) runReportGenerate(args []string, out io.Writer, runtime state.Ru
 		return fmt.Errorf("report generate kind %q is not implemented yet", options.kind)
 	}
 	if err != nil {
-		return err
+		if options.jsonOutput {
+			return err
+		}
+		return r.withStateMissingContext(err, projectRoot)
 	}
 	if options.jsonOutput {
+		result.Command = "report generate " + options.kind
 		return writeJSON(out, result)
 	}
 	fmt.Fprint(out, result.Content)
