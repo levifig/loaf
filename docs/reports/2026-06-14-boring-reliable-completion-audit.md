@@ -1,10 +1,10 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 19:34
-Status: In progress
+Date: 2026-06-14 20:17
+Status: Complete
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
-This audit maps the reliability contract to current evidence and calls out the first weak proof point fixed in this checkpoint. It is not a claim that the broad goal is complete.
+This audit maps the reliability contract to current evidence from tests, docs, SPEC-040, the native cutover test map, and live primary-checkout dogfood. It closes the current boring-reliable state/CLI goal; future schema or CLI changes still need to re-run the relevant contract rows before release.
 
 ## Storage And Identity
 
@@ -26,7 +26,7 @@ This audit maps the reliability contract to current evidence and calls out the f
 | Storage-home migration copies legacy DBs without deleting source or overwriting destination | storage-home CLI and migration tests in `internal/cli/cli_test.go` | Proven |
 | Markdown dry-run does not create SQLite state; apply/resume preserves source Markdown | markdown migration control-plane and apply/resume tests in `internal/cli/cli_test.go` | Proven |
 | Invalid schema versions or checksum drift produce doctor guidance | migration/status tests in `internal/state`; control-plane failure matrix; project-command schema-drift rejection test in `internal/cli/cli_test.go` | Proven |
-| Future schema changes include data-preservation tests and repair/upgrade UX | Current process requirement; must be rechecked with each future schema commit | Process guard |
+| Future schema changes include data-preservation tests and repair/upgrade UX | Reliability contract and schema mirror/checksum tests establish the release guard; must be rechecked with each future schema commit | Standing guardrail |
 
 ## Doctor And Repair
 
@@ -81,7 +81,7 @@ This audit maps the reliability contract to current evidence and calls out the f
 | Apply output says what changed and where | migration/project/repair apply tests | Proven |
 | Repair output labels safe/manual/applied actions | doctor/repair tests | Proven |
 | Error text points at next useful command without implying unsafe mutation | JSON/human failure tests and backup verify guidance tests; missing-state project command dogfood fix | Proven for critical matrix |
-| Output remains concise and agent-scrapable when JSON is unavailable | human-output matrix tests plus dogfood notes in the plan; positional `project move` and missing-state project error fixes | Partially subjective; continue dogfood sampling |
+| Output remains concise and agent-scrapable when JSON is unavailable | human-output matrix tests plus live isolated dogfood of state/project/doctor/backup/export surfaces; positional `project move`, missing-state errors, and terminal-help wording were fixed during the audit | Proven for critical matrix |
 
 ## First Weak Proof Point Fixed
 
@@ -101,6 +101,23 @@ The latest completion-audit pass focused on the last generic terminal-help JSON 
 
 This checkpoint makes terminal help name the actual JSON content for `state path|init|status|doctor|backup|backup verify`, `project list|show|rename|move`, guarded state repairs, and state/top-level migrations. `TestRunnerStateAndProjectJSONHelpNamesContracts` guards the human help, `TestRunnerGenerateCLIReferenceWritesSkillNatively` guards the tightened project reference descriptions, and live rebuilt `bin/loaf ... --help` dogfood confirms those surfaces no longer contain generic `Output JSON` wording.
 
-## Next Review Target
+## Final Completion Audit
 
-Run the requirement-by-requirement completion audit against the reliability contract, current tests, current docs, and dogfood command output before deciding whether the broad boring-reliable goal is complete.
+Final verification from the primary checkout:
+
+- `go test ./...` passed.
+- `npm run typecheck` passed.
+- Focused CLI/state inventories confirmed the regression harness still covers state control-plane JSON success/failure, mutation safeguards, repair-plan command executability, backup restore guidance, generated CLI reference output, and state/project JSON help wording.
+- Live isolated XDG dogfood confirmed `state path --json`, `state status --json`, `state doctor --dry-run --json`, `state init --json`, `project show`, `project list --json`, `state doctor`, `state backup`, `state backup verify --json`, and `state export all --json` expose global database scope, durable project identity, diagnostics, repair plans, backup verification, and export manifest fields.
+- Live help scans confirmed critical state/project/migration help no longer uses generic JSON wording, and `bin/loaf --agent-help` no longer advertises raw or generic JSON descriptions.
+- `README.md` documents the manual backup restore flow with validation commands, and `TestRunnerStateBackupManualRestoreProcedure` guards it.
+- SPEC-040 open questions and test conditions are checked off for global XDG storage, generated project identity, project rename/move semantics, Markdown import preservation, backup/export behavior, traceability, Linear/private mapping policy, and no secret storage.
+- The native cutover test map records guardrails for XDG data-home migration, schema checksums/mirror docs, Markdown import dry-run/apply/resume, state health/export, backup, and native command-surface coverage.
+
+## Residual Guardrails
+
+No immediate implementation gap remains in the current audit scope. The standing guardrails are:
+
+- Any new schema migration must add data-preservation tests, update schema docs, and define repair/upgrade UX before release.
+- Any new state/project/migration JSON flag must join the critical command matrix or explicitly document why it is outside it.
+- Any new backend/Linear integration work must keep local DB repair separate from external sync and must not store tokens, secrets, or sensitive values in SQLite.

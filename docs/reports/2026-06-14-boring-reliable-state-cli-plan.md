@@ -1,10 +1,10 @@
 # Boring Reliable State And CLI Plan
 
-Date: 2026-06-14 12:37
-Status: Planning checkpoint
+Date: 2026-06-14 20:17
+Status: Completed checkpoint
 Scope: Single global SQLite state, project identity, migrations, repair UX, backup/export, backend mappings, and human/agent CLI contracts.
 
-This plan pauses opportunistic hardening and turns the remaining work into a measurable reliability contract. The current codebase has made real progress: the native Go runtime is authoritative, state lives in one global SQLite database, project identity is durable and path/name independent, and many state commands already have JSON contracts, human output, and tests. The remaining risk is unevenness: one surface can be excellent while a nearby surface still has unclear output, weak repair guidance, or missing matrix coverage.
+This plan paused opportunistic hardening and turned the remaining work into a measurable reliability contract. The current codebase has reached the checkpoint: the native Go runtime is authoritative, state lives in one global SQLite database, project identity is durable and path/name independent, and critical state/project/migration commands have JSON contracts, human output, repair guidance, docs, tests, and live dogfood evidence. Future work should use this contract as a regression gate rather than reopening the whole audit by default.
 
 ## Current Baseline
 
@@ -109,6 +109,8 @@ This is the focused audit set for the next iteration. Each row should eventually
 | `project rename --dry-run/apply` | Covered | Covered | Covered for missing DB and unknown path | Preserves project ID | Critical |
 | `project move --dry-run/apply` | Covered | Covered | Covered for missing DB, unknown from, missing target | Preserves project ID; one current path | Critical |
 | Backend mapping diagnostics | Human via doctor | JSON via doctor | Invalid state returns JSON payload | Diagnostics only | Critical |
+
+Final status: all critical rows have current test or dogfood evidence in `docs/reports/2026-06-14-boring-reliable-completion-audit.md`.
 
 ## Focused Execution Plan
 
@@ -258,7 +260,8 @@ Progress:
 - 2026-06-14: Continued the agent-help/raw-JSON audit across SQLite-backed entity families: `brainstorm`, `idea`, `spark`, `tag`, `bundle`, and `link`. Their payload structs already exposed global/project context plus relationships, events, tag mutations, bundle membership, and source/target relationship IDs, but help surfaces still used vague JSON wording. Agent help, command help, and generated CLI reference output now name those fields directly; `TestRunnerAgentHelpIsNative`, `TestRunnerGenerateCLIReferenceWritesSkillNatively`, and rebuilt `bin/loaf --agent-help` dogfood guard the descriptions.
 - 2026-06-14: Finished the remaining `--agent-help` raw-JSON pass across `kb`, `check`, `housekeeping`, and `trace`. These surfaces now name their concrete JSON content across agent help, command help, and generated CLI reference output: knowledge totals, coverage/staleness metadata, frontmatter diagnostics, QMD import status, hook pass/block results, cleanup sections/signals, traced entities, sources, relationships, and SQLite-backed project identity. `TestRunnerAgentHelpIsNative`, `TestRunnerGenerateCLIReferenceWritesSkillNatively`, and rebuilt `bin/loaf --agent-help` dogfood guard the descriptions.
 - 2026-06-14: Ran the final terminal-help JSON wording sweep for critical state/project control-plane commands. Human `--help` for `state path|init|status|doctor|backup|backup verify`, `project list|show|rename|move`, guarded state repairs, and state/top-level migrations now names the same contract fields already present in agent help and generated CLI reference output. `TestRunnerStateAndProjectJSONHelpNamesContracts`, `TestRunnerGenerateCLIReferenceWritesSkillNatively`, and rebuilt `bin/loaf ... --help` dogfood guard the descriptions.
+- 2026-06-14: Completed the final requirement-by-requirement audit in `docs/reports/2026-06-14-boring-reliable-completion-audit.md`. The audit ties the reliability contract to `go test ./...`, `npm run typecheck`, focused CLI/state test inventories, isolated XDG dogfood, SPEC-040 checked decisions/test conditions, native cutover guardrails, README restore guidance, and generated help/reference scans.
 
 ## Next Best Commit
 
-The next implementation commit should run the requirement-by-requirement completion audit against the reliability contract, current tests, current docs, and dogfood command output before deciding whether the broad boring-reliable goal is complete.
+No immediate implementation checkpoint is identified by this audit. Keep the reliability contract as the regression gate for future schema, state/project/migration CLI, JSON, backup/export/restore, and backend/Linear changes.
