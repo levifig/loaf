@@ -7996,6 +7996,7 @@ func (r Runner) runSessionList(args []string, out io.Writer, runtime state.Runti
 	if err != nil {
 		return err
 	}
+	sessions.Diagnostics = stateListWarnings(status.Diagnostics)
 	if options.jsonOutput {
 		return writeJSON(out, sessions)
 	}
@@ -8074,6 +8075,7 @@ func (r Runner) runSessionLog(args []string, out io.Writer, runtime state.Runtim
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "logged journal entry: %s\n", result.ID)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -8548,6 +8550,10 @@ func nestedStringMapValue(values map[string]any, keys ...string) string {
 
 func writeSessionStart(out io.Writer, branch string, result state.SessionStartResult) {
 	fmt.Fprint(out, "\n  loaf session start\n\n")
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.DatabaseScope != "" || result.DatabasePath != "" || result.ProjectID != "" || result.ProjectName != "" || result.ProjectCurrentPath != "" {
+		fmt.Fprintln(out)
+	}
 	fmt.Fprintf(out, "  Branch: %s\n", branch)
 	fmt.Fprintf(out, "  Action: %s\n", result.Action)
 	fmt.Fprintf(out, "  Session: %s\n", firstNonEmpty(result.Session.Alias, result.Session.ID))
@@ -8567,6 +8573,10 @@ func writeSessionStart(out io.Writer, branch string, result state.SessionStartRe
 
 func writeSessionEnd(out io.Writer, result state.SessionEndResult) {
 	fmt.Fprint(out, "\n  loaf session end\n\n")
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.DatabaseScope != "" || result.DatabasePath != "" || result.ProjectID != "" || result.ProjectName != "" || result.ProjectCurrentPath != "" {
+		fmt.Fprintln(out)
+	}
 	fmt.Fprintf(out, "  Action: %s\n", result.Action)
 	if result.NoopReason != "" {
 		fmt.Fprintf(out, "  Reason: %s\n", result.NoopReason)
@@ -8583,6 +8593,10 @@ func writeSessionEnd(out io.Writer, result state.SessionEndResult) {
 
 func writeSessionArchive(out io.Writer, result state.SessionArchiveResult) {
 	fmt.Fprint(out, "\n  loaf session archive\n\n")
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.DatabaseScope != "" || result.DatabasePath != "" || result.ProjectID != "" || result.ProjectName != "" || result.ProjectCurrentPath != "" {
+		fmt.Fprintln(out)
+	}
 	fmt.Fprintf(out, "  Action: %s\n", result.Action)
 	fmt.Fprintf(out, "  Session: %s\n", firstNonEmpty(result.Session.Alias, result.Session.ID))
 	fmt.Fprintf(out, "  Status: %s\n", result.Session.Status)
@@ -8597,6 +8611,11 @@ func writeSessionList(out io.Writer, sessions state.SessionList, filters state.S
 	archived := sortedSessionsByArchivedState(sessions, true)
 
 	fmt.Fprint(out, "\n  loaf session list\n\n")
+	writeProjectMutationContext(out, "  ", sessions.DatabaseScope, sessions.DatabasePath, sessions.ProjectID, sessions.ProjectName, sessions.ProjectCurrentPath)
+	writeStateDiagnostics(out, "  ", sessions.Diagnostics)
+	if sessionListHasContext(sessions) {
+		fmt.Fprintln(out)
+	}
 	if len(active) == 0 {
 		fmt.Fprint(out, "  No active sessions found.\n")
 	} else {
@@ -8647,6 +8666,7 @@ func writeSessionList(out io.Writer, sessions state.SessionList, filters state.S
 func writeSessionShow(out io.Writer, result state.SessionShow) {
 	session := result.Session
 	fmt.Fprintf(out, "session %s\n", firstNonEmpty(session.Alias, session.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	if session.Branch != "" {
 		fmt.Fprintf(out, "branch: %s\n", session.Branch)
 	}
@@ -8717,6 +8737,15 @@ func (r Runner) runReport(args []string, out io.Writer, runtime state.Runtime) e
 	default:
 		return unknownSubcommandError("report", args[0])
 	}
+}
+
+func sessionListHasContext(sessions state.SessionList) bool {
+	return sessions.DatabaseScope != "" ||
+		sessions.DatabasePath != "" ||
+		sessions.ProjectID != "" ||
+		sessions.ProjectName != "" ||
+		sessions.ProjectCurrentPath != "" ||
+		len(sessions.Diagnostics) > 0
 }
 
 func writeReportHelp(out io.Writer) {

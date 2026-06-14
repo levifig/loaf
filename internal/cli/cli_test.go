@@ -4910,6 +4910,7 @@ func TestRunnerSessionStartUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if start.Action != state.SessionStartActionCreated || start.Session.Alias == "" || start.HarnessSessionID != "harness-cli-123456" {
 		t.Fatalf("start = %#v, want created harness-backed session", start)
 	}
+	assertCLISessionContext(t, start.ContractVersion, start.DatabaseScope, start.DatabasePath, start.ProjectID, start.ProjectName, start.ProjectCurrentPath, workingDir)
 
 	var showOut bytes.Buffer
 	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"session", "show", start.Session.Alias, "--json"}); err != nil {
@@ -4922,6 +4923,7 @@ func TestRunnerSessionStartUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if len(show.Session.JournalEntries) != 1 || show.Session.JournalEntries[0].EntryType != "session" || show.Session.JournalEntries[0].Scope != "start" {
 		t.Fatalf("journal entries = %#v, want linked session(start)", show.Session.JournalEntries)
 	}
+	assertCLISessionContext(t, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath, workingDir)
 }
 
 func TestRunnerSessionStartUsesMarkdownSessionWhenMarkdownOnly(t *testing.T) {
@@ -4948,6 +4950,9 @@ func TestRunnerSessionStartUsesMarkdownSessionWhenMarkdownOnly(t *testing.T) {
 	start := decodeSessionStart(t, stdout.Bytes())
 	if start.Action != state.SessionStartActionCreated || start.Session.Alias == "" || start.HarnessSessionID != "markdown-start-111111" {
 		t.Fatalf("start = %#v, want created markdown session", start)
+	}
+	if start.ContractVersion != 0 || start.DatabaseScope != "" || start.DatabasePath != "" || start.ProjectID != "" || start.ProjectName != "" || start.ProjectCurrentPath != "" {
+		t.Fatalf("markdown start context = %#v, want no SQLite context", start)
 	}
 	sessionRel := filepath.ToSlash(filepath.Join("sessions", start.Session.Alias+".md"))
 	created := readCLIAgentsFile(t, workingDir, sessionRel)
@@ -5055,6 +5060,7 @@ func TestRunnerSessionEndTargetsHarnessSessionInSQLiteState(t *testing.T) {
 	if ended.Action != state.SessionEndActionStopped || ended.Session.ID != target.Session.ID || len(ended.JournalEntryIDs) != 2 {
 		t.Fatalf("ended = %#v, want stopped target session", ended)
 	}
+	assertCLISessionContext(t, ended.ContractVersion, ended.DatabaseScope, ended.DatabasePath, ended.ProjectID, ended.ProjectName, ended.ProjectCurrentPath, workingDir)
 
 	var targetShowOut bytes.Buffer
 	if err := (Runner{Stdout: &targetShowOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"session", "show", target.Session.Alias, "--json"}); err != nil {
@@ -5064,6 +5070,7 @@ func TestRunnerSessionEndTargetsHarnessSessionInSQLiteState(t *testing.T) {
 	if targetShow.Session.Status != "stopped" {
 		t.Fatalf("target status = %q, want stopped", targetShow.Session.Status)
 	}
+	assertCLISessionContext(t, targetShow.ContractVersion, targetShow.DatabaseScope, targetShow.DatabasePath, targetShow.ProjectID, targetShow.ProjectName, targetShow.ProjectCurrentPath, workingDir)
 
 	var otherShowOut bytes.Buffer
 	if err := (Runner{Stdout: &otherShowOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"session", "show", other.Session.Alias, "--json"}); err != nil {
@@ -5085,6 +5092,7 @@ func TestRunnerSessionEndTargetsHarnessSessionInSQLiteState(t *testing.T) {
 	if _, ok := list.Sessions[other.Session.Alias]; !ok {
 		t.Fatalf("active session list missing active session %s", other.Session.Alias)
 	}
+	assertCLISessionContext(t, list.ContractVersion, list.DatabaseScope, list.DatabasePath, list.ProjectID, list.ProjectName, list.ProjectCurrentPath, workingDir)
 }
 
 func TestRunnerSessionEndIfActiveNoopsInSQLiteState(t *testing.T) {
@@ -5112,6 +5120,7 @@ func TestRunnerSessionEndIfActiveNoopsInSQLiteState(t *testing.T) {
 	if ended.Action != state.SessionEndActionNoop || ended.NoopReason == "" {
 		t.Fatalf("ended = %#v, want noop with reason", ended)
 	}
+	assertCLISessionContext(t, ended.ContractVersion, ended.DatabaseScope, ended.DatabasePath, ended.ProjectID, ended.ProjectName, ended.ProjectCurrentPath, workingDir)
 }
 
 func TestRunnerSessionEndUsesMarkdownSessionWhenMarkdownOnly(t *testing.T) {
@@ -5150,6 +5159,9 @@ last_updated: 2026-06-10T10:00:00Z
 	ended := decodeSessionEnd(t, stdout.Bytes())
 	if ended.Action != state.SessionEndActionStopped || ended.Session.Alias != "20260610-active" || ended.Session.Status != "stopped" || len(ended.JournalEntryIDs) != 2 {
 		t.Fatalf("ended = %#v, want stopped markdown session", ended)
+	}
+	if ended.ContractVersion != 0 || ended.DatabaseScope != "" || ended.DatabasePath != "" || ended.ProjectID != "" || ended.ProjectName != "" || ended.ProjectCurrentPath != "" {
+		t.Fatalf("markdown end context = %#v, want no SQLite context", ended)
 	}
 	stopped := readCLIAgentsFile(t, workingDir, "sessions/20260610-active.md")
 	for _, want := range []string{"status: stopped", "session(end): session ended", "session(stop):   === SESSION STOPPED ==="} {
@@ -5277,6 +5289,7 @@ func TestRunnerSessionArchiveTargetsHarnessSessionInSQLiteState(t *testing.T) {
 	if archived.Action != state.SessionArchiveActionArchived || archived.Session.ID != target.Session.ID || archived.Session.Status != "archived" {
 		t.Fatalf("archived = %#v, want archived target session", archived)
 	}
+	assertCLISessionContext(t, archived.ContractVersion, archived.DatabaseScope, archived.DatabasePath, archived.ProjectID, archived.ProjectName, archived.ProjectCurrentPath, workingDir)
 
 	var listOut bytes.Buffer
 	if err := (Runner{Stdout: &listOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"session", "list", "--json"}); err != nil {
@@ -10524,6 +10537,7 @@ claude_session_id: session-archived
 	if archived.Status != "archived" || archived.SourcePath != ".agents/sessions/archive/20260527-archived.md" {
 		t.Fatalf("archived session = %#v, want archived imported session", archived)
 	}
+	assertCLISessionContext(t, sessions.ContractVersion, sessions.DatabaseScope, sessions.DatabasePath, sessions.ProjectID, sessions.ProjectName, sessions.ProjectCurrentPath, workingDir)
 }
 
 func TestRunnerSessionListHumanUsesSQLiteStateWhenInitialized(t *testing.T) {
@@ -10559,7 +10573,7 @@ claude_session_id: session-archived
 		t.Fatalf("session list error = %v", err)
 	}
 	output := activeOnly.String()
-	for _, want := range []string{"loaf session list", "Active Sessions", "feature/session-list", ".agents/sessions/20260528-active.md", "1 active"} {
+	for _, want := range []string{"loaf session list", "scope: global database", "database:", "project:", "project name:", "project path:", "Active Sessions", "feature/session-list", ".agents/sessions/20260528-active.md", "1 active"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -10643,6 +10657,9 @@ claude_session_id: session-archived
 	if archived.Status != "archived" || archived.SourcePath != ".agents/sessions/archive/20260527-archived.md" {
 		t.Fatalf("archived session = %#v, want archive directory to force archived status", archived)
 	}
+	if sessions.ContractVersion != 0 || sessions.DatabaseScope != "" || sessions.DatabasePath != "" || sessions.ProjectID != "" || sessions.ProjectName != "" || sessions.ProjectCurrentPath != "" {
+		t.Fatalf("markdown session list context = %#v, want no SQLite context", sessions)
+	}
 	assertNoStateDatabase(t, workingDir, stateHome)
 
 	var activeOnly bytes.Buffer
@@ -10662,6 +10679,31 @@ claude_session_id: session-archived
 	}
 	if strings.Contains(output, "old/session") || strings.Contains(output, "args=session list") {
 		t.Fatalf("output = %q, want archive hidden and no legacy delegation", output)
+	}
+	if strings.Contains(output, "scope: global database") || strings.Contains(output, "project name:") {
+		t.Fatalf("output = %q, want markdown fallback without SQLite context", output)
+	}
+}
+
+func assertCLISessionContext(t *testing.T, contractVersion int, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string, workingDir string) {
+	t.Helper()
+	if contractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", contractVersion, state.StateJSONContractVersion)
+	}
+	if databaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", databaseScope)
+	}
+	if databasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if projectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if projectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", projectName, filepath.Base(workingDir))
+	}
+	if projectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", projectCurrentPath, workingDir)
 	}
 }
 
@@ -10732,6 +10774,7 @@ claude_session_id: session-active
 	if show.Query != "20260528-active" || session.Alias != "20260528-active" {
 		t.Fatalf("show = %#v, want query and alias", show)
 	}
+	assertCLISessionContext(t, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath, workingDir)
 	if session.Branch != "feature/session-show" || session.Status != "active" || session.HarnessSessionID != "session-active" {
 		t.Fatalf("session metadata = %#v, want imported frontmatter", session)
 	}
@@ -10755,7 +10798,7 @@ claude_session_id: session-active
 		t.Fatalf("session show error = %v", err)
 	}
 	output := humanOut.String()
-	for _, want := range []string{"session 20260528-active", "branch: feature/session-show", "status: active", "harness session: session-active", ".agents/sessions/20260528-active.md", "decision(sqlite): keep session state queryable", "inbound associated_with task TASK-001"} {
+	for _, want := range []string{"session 20260528-active", "scope: global database", "database:", "project:", "project name:", "project path:", "branch: feature/session-show", "status: active", "harness session: session-active", ".agents/sessions/20260528-active.md", "decision(sqlite): keep session state queryable", "inbound associated_with task TASK-001"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -10796,6 +10839,9 @@ last_updated: 2026-05-28T10:05:00Z
 	session := show.Session
 	if show.Query != "20260528-active" || session.Alias != "20260528-active" {
 		t.Fatalf("show = %#v, want query and alias", show)
+	}
+	if show.ContractVersion != 0 || show.DatabaseScope != "" || show.DatabasePath != "" || show.ProjectID != "" || show.ProjectName != "" || show.ProjectCurrentPath != "" {
+		t.Fatalf("markdown show context = %#v, want no SQLite context", show)
 	}
 	if session.Branch != "feature/session-show" || session.Status != "active" || session.HarnessSessionID != "session-active" {
 		t.Fatalf("session metadata = %#v, want markdown frontmatter metadata", session)
@@ -10883,6 +10929,7 @@ func TestRunnerSessionLogJSONUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if result.EntryType != "decision" || result.Scope != "sqlite" || result.Message != "write to state" {
 		t.Fatalf("result = %#v, want parsed journal entry", result)
 	}
+	assertCLISessionContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
 	if result.ObservedWorktree != workingDir || result.HarnessSessionID != "harness-123" {
 		t.Fatalf("result context = %#v, want observed worktree and harness id", result)
 	}
@@ -11178,6 +11225,7 @@ func TestRunnerSessionLogFromHookUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if result.EntryType != "task" || result.Scope != "completed" || result.Message != "port hook logging" {
 		t.Fatalf("result = %#v, want TaskCompleted entry", result)
 	}
+	assertCLISessionContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
 	if result.Session == nil || result.Session.ID != start.Session.ID {
 		t.Fatalf("result session = %#v, want linked started session", result.Session)
 	}
