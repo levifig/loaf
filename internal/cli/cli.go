@@ -1934,7 +1934,11 @@ func (r Runner) runMarkdownMigration(args []string, out io.Writer, runtime state
 		} else {
 			fmt.Fprintf(out, "%s --apply\n", displayCommand)
 		}
+		fmt.Fprintf(out, "scope: %s database, %s import\n", result.DatabaseScope, result.ImportScope)
 		fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
+		fmt.Fprintf(out, "project: %s\n", result.ProjectID)
+		fmt.Fprintf(out, "project name: %s\n", result.ProjectName)
+		fmt.Fprintf(out, "project path: %s\n", result.ProjectCurrentPath)
 		writeMarkdownMigrationPlan(out, result.MarkdownMigrationPlan)
 		return nil
 	}

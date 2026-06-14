@@ -5540,8 +5540,23 @@ func TestRunnerStateMigrateMarkdownApplyJSON(t *testing.T) {
 	if !result.Applied {
 		t.Fatal("Applied = false, want true")
 	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.ImportScope != "project" {
+		t.Fatalf("ImportScope = %q, want project", result.ImportScope)
+	}
 	if result.DatabasePath == "" {
 		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
 	}
 	if _, err := os.Stat(result.DatabasePath); err != nil {
 		t.Fatalf("database was not created: %v", err)
@@ -5656,6 +5671,11 @@ func TestRunnerStateMigrateMarkdownResumeHuman(t *testing.T) {
 	}
 	if !strings.Contains(output, "database: ") {
 		t.Fatalf("output = %q, want database path", output)
+	}
+	for _, want := range []string{"scope: global database, project import", "project:", "project name:", "project path:"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
 	}
 	if !strings.Contains(output, "ideas: 1") {
 		t.Fatalf("output = %q, want idea count", output)

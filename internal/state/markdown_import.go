@@ -20,8 +20,13 @@ import (
 // MarkdownMigrationResult is the structured result for a markdown migration apply.
 type MarkdownMigrationResult struct {
 	MarkdownMigrationPlan
-	DatabasePath string `json:"database_path"`
-	Applied      bool   `json:"applied"`
+	DatabaseScope      string `json:"database_scope"`
+	ImportScope        string `json:"import_scope"`
+	DatabasePath       string `json:"database_path"`
+	ProjectID          string `json:"project_id"`
+	ProjectName        string `json:"project_name"`
+	ProjectCurrentPath string `json:"project_current_path"`
+	Applied            bool   `json:"applied"`
 }
 
 type taskIndexEntry struct {
@@ -67,7 +72,12 @@ func ApplyMarkdownMigration(ctx context.Context, root project.Root, resolver Pat
 	}
 	return MarkdownMigrationResult{
 		MarkdownMigrationPlan: plan,
+		DatabaseScope:         "global",
+		ImportScope:           "project",
 		DatabasePath:          status.DatabasePath,
+		ProjectID:             status.ProjectID,
+		ProjectName:           status.ProjectName,
+		ProjectCurrentPath:    status.ProjectCurrentPath,
 		Applied:               true,
 	}, nil
 }

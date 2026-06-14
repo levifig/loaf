@@ -28,8 +28,23 @@ func TestApplyMarkdownMigrationImportsArtifactsAndPreservesSources(t *testing.T)
 	if !result.Applied {
 		t.Fatal("Applied = false, want true")
 	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.ImportScope != "project" {
+		t.Fatalf("ImportScope = %q, want project", result.ImportScope)
+	}
 	if result.DatabasePath == "" {
 		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName == "" {
+		t.Fatal("ProjectName is empty")
+	}
+	if result.ProjectCurrentPath != root.Path() {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, root.Path())
 	}
 	if _, err := os.Stat(result.DatabasePath); err != nil {
 		t.Fatalf("database was not created: %v", err)
