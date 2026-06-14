@@ -34,6 +34,8 @@ const (
 	DiagnosticPolicyInvalidLocalData = "invalid-local-data"
 	DiagnosticPolicyWarningDrift     = "warning-drift"
 	DiagnosticPolicyExternalSyncGap  = "external-sync-gap"
+	DiagnosticPolicyImportPending    = "import-pending"
+	DiagnosticPolicyStaleExport      = "stale-export"
 )
 
 // Diagnostic describes a state-runtime observation without mutating state.
@@ -497,7 +499,25 @@ func inspectUnimportedLocalMarkdown(ctx context.Context, root project.Root, stor
 	return []Diagnostic{{
 		Severity: "warn",
 		Code:     "local-markdown-not-imported",
+		Category: RepairCategoryMarkdownImport,
+		Policy:   DiagnosticPolicyImportPending,
 		Message:  fmt.Sprintf("local .agents Markdown has %d importable artifact(s), but this project has no imported Markdown sources in the global SQLite database; run `loaf state migrate markdown --dry-run` before trusting empty SQLite output", importableCount),
+		Details: map[string]any{
+			"agents_path":       plan.AgentsPath,
+			"importable_count":  importableCount,
+			"specs":             plan.Specs,
+			"tasks":             plan.Tasks,
+			"ideas":             plan.Ideas,
+			"sparks":            plan.Sparks,
+			"brainstorms":       plan.Brainstorms,
+			"shaping_drafts":    plan.ShapingDrafts,
+			"sessions":          plan.Sessions,
+			"reports":           plan.Reports,
+			"relationships":     plan.Relationships,
+			"imported_sources":  0,
+			"preview_command":   "loaf state migrate markdown --dry-run",
+			"migration_command": "loaf state migrate markdown --apply",
+		},
 	}}, nil
 }
 
@@ -1133,7 +1153,17 @@ FROM exports JOIN journal_entries ON exports.source_entity_kind = 'journal_entry
 			diagnostics = append(diagnostics, Diagnostic{
 				Severity: "warn",
 				Code:     "stale-compatibility-export",
+				Category: RepairCategoryCompatibilityExport,
+				Policy:   DiagnosticPolicyStaleExport,
 				Message:  fmt.Sprintf("export %s at %s is stale for %s %s", id, path, kind, entityID),
+				Details: map[string]any{
+					"export_id":          id,
+					"path":               path,
+					"source_entity_kind": kind,
+					"source_entity_id":   entityID,
+					"generated_at":       generatedAt,
+					"source_updated_at":  updatedAt,
+				},
 			})
 		}
 	}

@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state doctor --json` and exported state snapshots now classify local Markdown import and stale compatibility export warnings with structured category, policy, and details fields for safer agent routing.
 - `loaf state export all --format json` now carries current state diagnostics and repair-plan actions alongside the raw project tables, so backend/Linear repair follow-up exports preserve the reason and policy that led to the export.
 - `loaf state migrate markdown --apply|--resume --json` now includes an explicit `action` field, and human output prints the same action so agents and humans can distinguish fresh imports from resumed imports without relying on argv context.
 - `loaf state backup verify --json` now includes the current checkout's restore target, preserve path, and validation commands without reading or recreating live SQLite state; human verify output prints the same concrete restore paths.

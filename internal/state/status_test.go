@@ -282,6 +282,10 @@ status: final
 	if !strings.Contains(diagnostic.Message, "1 importable artifact") || !strings.Contains(diagnostic.Message, "loaf state migrate markdown --dry-run") {
 		t.Fatalf("diagnostic Message = %q, want import guidance", diagnostic.Message)
 	}
+	assertDiagnosticPolicy(t, status.Diagnostics, "local-markdown-not-imported", RepairCategoryMarkdownImport, DiagnosticPolicyImportPending, false)
+	assertDiagnosticDetail(t, status.Diagnostics, "local-markdown-not-imported", "importable_count", 1)
+	assertDiagnosticDetail(t, status.Diagnostics, "local-markdown-not-imported", "reports", 1)
+	assertDiagnosticDetail(t, status.Diagnostics, "local-markdown-not-imported", "preview_command", "loaf state migrate markdown --dry-run")
 	action := findRepairAction(t, RepairPlanForStatus(status), "migrate-current-project-markdown")
 	if action.Command != "loaf state migrate markdown --dry-run" || !action.Safe {
 		t.Fatalf("repair action = %#v, want safe markdown migration preview", action)
@@ -318,6 +322,8 @@ status: todo
 	if !strings.Contains(diagnostic.Message, "1 importable artifact") {
 		t.Fatalf("diagnostic Message = %q, want local artifact count", diagnostic.Message)
 	}
+	assertDiagnosticPolicy(t, status.Diagnostics, "local-markdown-not-imported", RepairCategoryMarkdownImport, DiagnosticPolicyImportPending, false)
+	assertDiagnosticDetail(t, status.Diagnostics, "local-markdown-not-imported", "tasks", 1)
 }
 
 func TestInspectReportsInvalidWhenDatabaseFileIsNotSQLite(t *testing.T) {
@@ -431,7 +437,10 @@ VALUES ('export-stale', ?, 'triage', 'markdown', '.agents/exports/triage.md', 1,
 		t.Fatalf("Mode = %q, want %q despite stale export warning", status.Mode, ModeSQLiteReady)
 	}
 	assertDiagnostic(t, status.Diagnostics, "sqlite-ready")
-	assertDiagnostic(t, status.Diagnostics, "stale-compatibility-export")
+	assertDiagnosticPolicy(t, status.Diagnostics, "stale-compatibility-export", RepairCategoryCompatibilityExport, DiagnosticPolicyStaleExport, false)
+	assertDiagnosticDetail(t, status.Diagnostics, "stale-compatibility-export", "export_id", "export-stale")
+	assertDiagnosticDetail(t, status.Diagnostics, "stale-compatibility-export", "source_entity_kind", "idea")
+	assertDiagnosticDetail(t, status.Diagnostics, "stale-compatibility-export", "source_entity_id", "idea-stale-export")
 }
 
 func TestInspectReportsInvalidProjectPathInvariants(t *testing.T) {

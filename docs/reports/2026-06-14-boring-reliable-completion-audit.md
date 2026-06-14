@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 18:59
+Date: 2026-06-14 19:06
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest backend/Linear follow-up pass dogfooded a temp project from the primary checkout with isolated XDG homes. `state doctor --json` correctly reported backend mapping drift, ambiguous Linear mappings, and unmapped active local tasks, with repair actions pointing at `state export all --format json`.
+The latest warning follow-up pass dogfooded a temp project from the primary checkout with isolated XDG homes. `state doctor --json` and `state export all --format json` preserved local Markdown import and stale compatibility export warnings, but those diagnostics had no category, policy, or details.
 
-The weak point was that the recommended export snapshot contained the relevant raw rows but dropped the diagnostic and repair-plan context. This checkpoint adds `diagnostics` and `repair_plan` to `ExportSnapshot`, manifest counts for both, and CLI regression coverage proving backend drift and Linear reconciliation exports remain self-contained.
+This checkpoint classifies `local-markdown-not-imported` as `markdown-import/import-pending` with importable artifact counts and preview/apply commands, and `stale-compatibility-export` as `compatibility-export/stale-export` with export/source identifiers and timestamps. State and CLI regression tests now prove those structured details survive through doctor, report warnings, and export snapshots.
 
 ## Next Review Target
 
-Continue the completion-audit pass against stale compatibility export and local Markdown/import warning follow-up paths from the primary checkout with isolated XDG homes, looking for unclear no-mutation, JSON, or human-output contracts.
+Continue the completion-audit pass by auditing backup/export/import command output against the full reliability contract, looking for any remaining mismatch between docs, tests, JSON payloads, human output, and dogfood evidence.

@@ -4437,6 +4437,57 @@ VALUES ('task-active-unmapped', ?, NULL, 'Active unmapped task', 'todo', 'P2', N
 	})
 }
 
+func TestRunnerStateExportAllCarriesWarningDiagnosticDetails(t *testing.T) {
+	workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+	writeCLIAgentsFile(t, workingDir, "tasks/TASK-001-local.md", `---
+title: Local Markdown Task
+status: todo
+---
+# Local Markdown Task
+`)
+	db := openCLITestDB(t, initialized.DatabasePath)
+	if _, err := db.Exec(`
+INSERT INTO specs (id, project_id, title, status, body_source_id, created_at, updated_at)
+VALUES ('SPEC-STALE', ?, 'Stale Spec', 'active', NULL, '2026-06-13T10:00:00Z', '2026-06-14T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+		t.Fatalf("insert stale spec fixture error = %v", err)
+	}
+	if _, err := db.Exec(`
+INSERT INTO exports (id, project_id, export_kind, format, path, state_version, source_entity_kind, source_entity_id, generated_at, created_at, updated_at)
+VALUES ('export-stale-spec', ?, 'spec', 'markdown', '.agents/specs/SPEC-STALE.md', 1, 'spec', 'SPEC-STALE', '2026-06-13T11:00:00Z', '2026-06-13T11:00:00Z', '2026-06-13T11:00:00Z')
+`, initialized.ProjectID); err != nil {
+		t.Fatalf("insert stale export fixture error = %v", err)
+	}
+	closeCLITestDB(t, db)
+
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "export", "all", "--format", "json"}); err != nil {
+		t.Fatalf("state export all --format json error = %v", err)
+	}
+	snapshot := decodeStateExportSnapshot(t, stdout.Bytes())
+	localMarkdown := findCLIDiagnostic(t, snapshot.Diagnostics, "local-markdown-not-imported")
+	if localMarkdown.Category != state.RepairCategoryMarkdownImport || localMarkdown.Policy != state.DiagnosticPolicyImportPending {
+		t.Fatalf("local markdown diagnostic = %#v, want markdown import/import-pending", localMarkdown)
+	}
+	if localMarkdown.Details["importable_count"] != float64(1) || localMarkdown.Details["tasks"] != float64(1) {
+		t.Fatalf("local markdown details = %#v, want importable task counts", localMarkdown.Details)
+	}
+	if localMarkdown.Details["preview_command"] != "loaf state migrate markdown --dry-run" {
+		t.Fatalf("local markdown details = %#v, want preview command", localMarkdown.Details)
+	}
+
+	staleExport := findCLIDiagnostic(t, snapshot.Diagnostics, "stale-compatibility-export")
+	if staleExport.Category != state.RepairCategoryCompatibilityExport || staleExport.Policy != state.DiagnosticPolicyStaleExport {
+		t.Fatalf("stale export diagnostic = %#v, want compatibility-export/stale-export", staleExport)
+	}
+	if staleExport.Details["export_id"] != "export-stale-spec" || staleExport.Details["source_entity_id"] != "SPEC-STALE" {
+		t.Fatalf("stale export details = %#v, want export and source identifiers", staleExport.Details)
+	}
+	if snapshot.Manifest.DiagnosticCount != len(snapshot.Diagnostics) || snapshot.Manifest.RepairActionCount != len(snapshot.RepairPlan) {
+		t.Fatalf("export manifest = %#v, want diagnostic and repair counts matching payload", snapshot.Manifest)
+	}
+}
+
 func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -13556,6 +13607,10 @@ status: final
 	if !hasDiagnostic(reports.Diagnostics, "local-markdown-not-imported") {
 		t.Fatalf("diagnostics = %#v, want local-markdown-not-imported", reports.Diagnostics)
 	}
+	diagnostic := findCLIDiagnostic(t, reports.Diagnostics, "local-markdown-not-imported")
+	if diagnostic.Category != state.RepairCategoryMarkdownImport || diagnostic.Policy != state.DiagnosticPolicyImportPending {
+		t.Fatalf("diagnostic = %#v, want markdown import/import-pending policy", diagnostic)
+	}
 	if len(reports.Reports) != 0 {
 		t.Fatalf("reports = %#v, want empty SQLite list with warning", reports.Reports)
 	}
@@ -13570,7 +13625,7 @@ status: final
 		t.Fatalf("report list human error = %v", err)
 	}
 	output := humanOut.String()
-	for _, want := range []string{"loaf report list", "warn:", "local .agents Markdown has 1 importable artifact", "loaf state migrate markdown --dry-run", "No reports found."} {
+	for _, want := range []string{"loaf report list", "warn [markdown-import/import-pending]:", "local .agents Markdown has 1 importable artifact", "loaf state migrate markdown --dry-run", "No reports found."} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
