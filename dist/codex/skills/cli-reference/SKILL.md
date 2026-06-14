@@ -188,12 +188,12 @@ For agents, `loaf state backup verify <backup> --json` also returns
   - `--dry-run` - Preview import counts without creating a database
   - `--apply` - Initialize SQLite and import Markdown artifacts
   - `--resume` - Resume the Markdown import after an interrupted attempt
-  - `--json` - Output migration details as JSON
+  - `--json` - Output migration contract, scope, project context, and counts as JSON
 
 - `loaf state migrate storage-home`:
   - `--dry-run` - Preview the storage-home migration
   - `--apply` - Copy the legacy database without deleting it
-  - `--json` - Output migration details as JSON
+  - `--json` - Output migration contract, global database paths, action, and project identity when available
 
 - `loaf state backup`:
   - `--json` - Output backup details as JSON
@@ -464,7 +464,7 @@ only when a durable prose artifact is explicitly needed.
 
 - `loaf report generate`:
   - `--format <format>` - Output format: markdown
-  - `--json` - Output JSON wrapper with markdown content
+  - `--json` - Output contract, command, project context, and markdown content as JSON
 
 - `loaf report create`:
   - `--type <type>` - Report type

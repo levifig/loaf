@@ -99,8 +99,14 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 	if !strings.Contains(content, "- `loaf report generate`:\n  - `--format <format>` - Output format: markdown") {
 		t.Fatalf("generated CLI reference missing report generate markdown format guidance\n%s", content)
 	}
-	if !strings.Contains(content, "  - `--json` - Output JSON wrapper with markdown content") {
+	if !strings.Contains(content, "  - `--json` - Output contract, command, project context, and markdown content as JSON") {
 		t.Fatalf("generated CLI reference missing report generate JSON guidance\n%s", content)
+	}
+	if !strings.Contains(content, "- `loaf state migrate markdown`:\n  - `--dry-run` - Preview import counts without creating a database\n  - `--apply` - Initialize SQLite and import Markdown artifacts\n  - `--resume` - Resume the Markdown import after an interrupted attempt\n  - `--json` - Output migration contract, scope, project context, and counts as JSON") {
+		t.Fatalf("generated CLI reference missing state migrate markdown JSON contract guidance\n%s", content)
+	}
+	if !strings.Contains(content, "- `loaf state migrate storage-home`:\n  - `--dry-run` - Preview the storage-home migration\n  - `--apply` - Copy the legacy database without deleting it\n  - `--json` - Output migration contract, global database paths, action, and project identity when available") {
+		t.Fatalf("generated CLI reference missing state migrate storage-home JSON contract guidance\n%s", content)
 	}
 	if !strings.Contains(content, "- `loaf report list`:\n  - `--type <type>` - Filter by report type\n  - `--status <status>` - Filter by status; Loaf lifecycle statuses: draft, final, archived") {
 		t.Fatalf("generated CLI reference missing report list status guidance\n%s", content)

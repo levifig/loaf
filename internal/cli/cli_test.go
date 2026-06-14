@@ -14795,7 +14795,7 @@ func TestRunnerReportGenerateHelpNamesMarkdownFormat(t *testing.T) {
 	for _, want := range []string{
 		"Usage: loaf report generate <kind> [ref] [--format markdown] [--json]",
 		"--format     Output format: markdown",
-		"--json       Output JSON wrapper with markdown content",
+		"--json       Output contract, command, project context, and markdown content as JSON",
 	} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
@@ -14880,12 +14880,22 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 		options            []string
 		optionDescriptions map[string]string
 	}{}
+	seenCommands := map[string]bool{}
 	for _, command := range doc.Commands {
+		if seenCommands[command.Name] {
+			t.Fatalf("agent help has duplicate command %q", command.Name)
+		}
+		seenCommands[command.Name] = true
 		entry := commands[command.Name]
 		if entry.optionDescriptions == nil {
 			entry.optionDescriptions = map[string]string{}
 		}
+		seenSubcommands := map[string]bool{}
 		for _, subcommand := range command.Subcommands {
+			if seenSubcommands[subcommand.Name] {
+				t.Fatalf("agent help command %q has duplicate subcommand %q", command.Name, subcommand.Name)
+			}
+			seenSubcommands[subcommand.Name] = true
 			entry.subcommands = append(entry.subcommands, subcommand.Name)
 			for _, option := range subcommand.Options {
 				key := command.Name + " " + subcommand.Name + " " + option.Flags
@@ -14928,7 +14938,7 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			t.Fatalf("%s options = %#v, want agent help to include %q", commandName, commands[commandName].options, want)
 		}
 	}
-	for _, want := range []string{"repair", "repair legacy-project-database", "repair relationship-origin"} {
+	for _, want := range []string{"repair", "repair legacy-project-database", "repair relationship-origin", "migrate", "migrate markdown", "migrate storage-home"} {
 		if !stringSliceContains(commands["state"].subcommands, want) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
 		}
@@ -14961,6 +14971,12 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["state"].optionDescriptions["state repair relationship-origin --dry-run"]; !strings.Contains(got, "without writing") {
 		t.Fatalf("relationship repair dry-run description = %q, want non-mutating preview", got)
 	}
+	if got := commands["state"].optionDescriptions["state migrate markdown --json"]; !strings.Contains(got, "migration contract") || !strings.Contains(got, "project context") {
+		t.Fatalf("state migrate markdown json description = %q, want contract/project context guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state migrate storage-home --json"]; !strings.Contains(got, "global database paths") || !strings.Contains(got, "project identity") {
+		t.Fatalf("state migrate storage-home json description = %q, want global path/project identity guidance", got)
+	}
 	if got := commands["state"].optionDescriptions["state backup verify --json"]; !strings.Contains(got, "raw JSON") {
 		t.Fatalf("state backup verify json description = %q, want JSON guidance", got)
 	}
@@ -14976,8 +14992,8 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["report"].optionDescriptions["report generate --format <format>"]; !strings.Contains(got, "markdown") {
 		t.Fatalf("report generate format description = %q, want Markdown guidance", got)
 	}
-	if got := commands["report"].optionDescriptions["report generate --json"]; !strings.Contains(got, "markdown content") {
-		t.Fatalf("report generate json description = %q, want Markdown content guidance", got)
+	if got := commands["report"].optionDescriptions["report generate --json"]; !strings.Contains(got, "contract") || !strings.Contains(got, "project context") || !strings.Contains(got, "markdown content") {
+		t.Fatalf("report generate json description = %q, want contract/project context/Markdown content guidance", got)
 	}
 	if got := commands["report"].optionDescriptions["report list --status <status>"]; !strings.Contains(got, "draft, final, archived") {
 		t.Fatalf("report list status description = %q, want lifecycle status guidance", got)

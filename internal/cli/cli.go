@@ -9097,7 +9097,7 @@ func writeReportListHelp(out io.Writer) {
 }
 
 func writeReportGenerateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report generate <kind> [ref] [--format markdown] [--json]", "Generate a read-only markdown report.", "--format     Output format: markdown", "--json       Output JSON wrapper with markdown content")
+	writeUsageHelp(out, "loaf report generate <kind> [ref] [--format markdown] [--json]", "Generate a read-only markdown report.", "--format     Output format: markdown", "--json       Output contract, command, project context, and markdown content as JSON")
 }
 
 func writeReportCreateHelp(out io.Writer) {

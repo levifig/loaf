@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 19:28
+Date: 2026-06-14 19:34
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest migration/repair JSON pass dogfooded storage-home migration, Markdown migration, and repair envelopes from the primary checkout with isolated XDG homes. Markdown migration and repair envelopes carried contract/scope/project context where available, but `loaf state migrate storage-home --dry-run --json` did not include project identity after the global data-home database already contained the current project.
+The latest alias/help/reference pass audited command aliases, `--agent-help`, command help, and generated CLI reference output against the tightened JSON contracts. Runtime state/top-level migration aliases returned consistent JSON envelopes, but `--agent-help` only exposed top-level migration leaf commands and report/migration JSON descriptions did not name contract/project-context fields.
 
-This checkpoint makes storage-home preview perform a read-only status inspection when the destination DB exists and records the verified durable project ID, friendly name, and current path when the DB is ready. The command remains non-mutating.
+This checkpoint adds `state migrate markdown` and `state migrate storage-home` leaf commands to agent help, clarifies migration/report JSON descriptions across agent help, command help, and generated CLI reference output, and adds duplicate command/subcommand guards for the agent-help JSON surface.
 
 ## Next Review Target
 
-Continue the completion-audit pass by auditing command aliases and generated reference/help output for drift against the newly tightened JSON contracts.
+Continue the completion-audit pass by auditing generated `dist/` and plugin artifacts plus install-facing surfaces for stale state-command descriptions.

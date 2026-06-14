@@ -118,12 +118,12 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
 					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},
 					{Flags: "--resume", Description: "Resume the Markdown import after an interrupted attempt"},
-					{Flags: "--json", Description: "Output migration details as JSON"},
+					{Flags: "--json", Description: "Output migration contract, scope, project context, and counts as JSON"},
 				}},
 				{Name: "migrate storage-home", Description: "Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview the storage-home migration"},
 					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
-					{Flags: "--json", Description: "Output migration details as JSON"},
+					{Flags: "--json", Description: "Output migration contract, global database paths, action, and project identity when available"},
 				}},
 				{Name: "backup", Description: "Create a SQLite database backup under the global data-home backups directory", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup details as JSON"}}},
 				{Name: "backup verify", Description: "Verify an existing SQLite database backup", Options: []cliReferenceOption{{Flags: "--json", Description: "Output verification details as JSON"}}},
@@ -245,7 +245,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 				}},
 				{Name: "generate", Description: "Generate a report from state", Options: []cliReferenceOption{
 					{Flags: "--format <format>", Description: "Output format: markdown"},
-					{Flags: "--json", Description: "Output JSON wrapper with markdown content"},
+					{Flags: "--json", Description: "Output contract, command, project context, and markdown content as JSON"},
 				}},
 				{Name: "create", Description: "Create a report draft", Options: []cliReferenceOption{
 					{Flags: "--type <type>", Description: "Report type"},
