@@ -509,24 +509,24 @@ Knowledge base management
 **Options:**
 
 - `loaf kb validate`:
-  - `--json` - Output results as JSON
+  - `--json` - Output per-file frontmatter errors and warnings as JSON
 
 - `loaf kb status`:
-  - `--json` - Output status as JSON
+  - `--json` - Output knowledge file totals, coverage counts, stale count, review age, and directories as JSON
 
 - `loaf kb check`:
   - `--file <path>` - Reverse lookup: find knowledge files covering this path
-  - `--json` - Output results as JSON
+  - `--json` - Output per-file staleness, coverage, commit, and review metadata as JSON
 
 - `loaf kb review`:
-  - `--json` - Output updated frontmatter as JSON
+  - `--json` - Output updated knowledge frontmatter as JSON
 
 - `loaf kb init`:
-  - `--json` - Output results as JSON
+  - `--json` - Output directory actions, config status, and QMD collections as JSON
 
 - `loaf kb import`:
   - `--path <path>` - Path to the external project's knowledge directory
-  - `--json` - Output results as JSON
+  - `--json` - Output QMD import collection status or import error as JSON
 
 **Usage:**
 ```bash
@@ -569,7 +569,7 @@ Scan project artifacts and recommend housekeeping actions
 **Options:**
 
 - `--dry-run` - Show recommendations without prompting for actions
-- `--json` - Output as JSON
+- `--json` - Output housekeeping sections, cleanup candidates, signals, and SQLite-backed project identity when available as JSON
 - `--sessions` - Only review sessions
 - `--specs` - Only review specs
 - `--plans` - Only review plans
@@ -590,7 +590,7 @@ Trace relationships for one state entity
 
 **Options:**
 
-- `--json` - Output relationship trace as JSON
+- `--json` - Output traced entity, sources, relationships, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash
@@ -872,7 +872,7 @@ Run enforcement hook checks
 **Options:**
 
 - `--hook <id>` - Registered hook ID to run
-- `--json` - Output JSON format
+- `--json` - Output hook result, pass/block status, exit code, warnings, errors, and findings as JSON
 
 **Usage:**
 ```bash

@@ -15046,6 +15046,30 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			t.Fatalf("kb options = %#v, want agent help to include %q", commands["kb"].options, want)
 		}
 	}
+	for option, wants := range map[string][]string{
+		"kb status --json":   {"knowledge file totals", "coverage counts", "directories"},
+		"kb validate --json": {"frontmatter errors", "warnings"},
+		"kb check --json":    {"staleness", "coverage", "commit", "review metadata"},
+		"kb review --json":   {"updated knowledge frontmatter"},
+		"kb init --json":     {"directory actions", "config status", "QMD collections"},
+		"kb import --json":   {"QMD import collection status", "import error"},
+	} {
+		got := commands["kb"].optionDescriptions[option]
+		for _, want := range wants {
+			if !strings.Contains(got, want) {
+				t.Fatalf("agent help option %q description = %q, want %q", option, got, want)
+			}
+		}
+	}
+	if got := commands["check"].optionDescriptions["check --json"]; !strings.Contains(got, "hook result") || !strings.Contains(got, "pass/block status") || !strings.Contains(got, "exit code") {
+		t.Fatalf("check json description = %q, want hook result/pass-block/exit code guidance", got)
+	}
+	if got := commands["housekeeping"].optionDescriptions["housekeeping --json"]; !strings.Contains(got, "housekeeping sections") || !strings.Contains(got, "cleanup candidates") || !strings.Contains(got, "project identity") {
+		t.Fatalf("housekeeping json description = %q, want sections/cleanup/project identity guidance", got)
+	}
+	if got := commands["trace"].optionDescriptions["trace --json"]; !strings.Contains(got, "traced entity") || !strings.Contains(got, "sources") || !strings.Contains(got, "relationships") || !strings.Contains(got, "project identity") {
+		t.Fatalf("trace json description = %q, want entity/sources/relationships/project identity guidance", got)
+	}
 	for _, want := range []string{
 		"migrate worktree-storage --apply",
 		"migrate worktree-storage --force-from-worktree",

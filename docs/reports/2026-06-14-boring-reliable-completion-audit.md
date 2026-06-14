@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest completion-audit pass focused on entity-family surfaces: `brainstorm`, `idea`, `spark`, `tag`, `bundle`, and `link`. Their JSON payloads already exposed the right global/project context, relationship IDs, events, tag mutations, and membership results, but agent help, command help, and generated CLI reference output still described them generically as raw JSON or just JSON.
+The latest completion-audit pass focused on the remaining utility and knowledge surfaces: `kb`, `check`, `housekeeping`, and `trace`. Their payloads already exposed useful structure, but help surfaces still used generic JSON wording, especially in `--agent-help`.
 
-This checkpoint makes those entity-family help surfaces name the actual JSON content: global database scope, durable project identity, relationships, events, archive results, tag mutations, bundle tags, bundle members, and source/target relationship IDs. `TestRunnerAgentHelpIsNative` and `TestRunnerGenerateCLIReferenceWritesSkillNatively` guard representative descriptions, and the rebuilt `bin/loaf --agent-help` output no longer contains raw JSON descriptions for those entity families.
+This checkpoint makes those help surfaces name the actual JSON content: knowledge file totals, coverage and staleness metadata, frontmatter errors/warnings, QMD import status, hook pass/block results, housekeeping sections and cleanup candidates, traced entities, sources, relationships, global database scope, and durable project identity when SQLite-backed. `TestRunnerAgentHelpIsNative` and `TestRunnerGenerateCLIReferenceWritesSkillNatively` guard representative descriptions, and the rebuilt `bin/loaf --agent-help` output no longer contains raw JSON descriptions for KB/check/housekeeping/trace.
 
 ## Next Review Target
 
-Continue the completion-audit pass by auditing the remaining `--agent-help` raw JSON descriptions for KB/check/housekeeping/trace.
+Continue the completion-audit pass with a final terminal-help sweep for remaining generic `Output JSON` wording outside agent help and generated CLI reference output.

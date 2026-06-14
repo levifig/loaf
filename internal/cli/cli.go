@@ -299,7 +299,7 @@ func writeHousekeepingHelp(out io.Writer) {
 	fmt.Fprintln(out, "Scan agent artifacts and summarize housekeeping recommendations.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output housekeeping sections, cleanup candidates, signals, and SQLite-backed project identity when available as JSON")
 	fmt.Fprintln(out, "  --dry-run    Show recommendations without applying actions")
 	fmt.Fprintln(out, "  --sessions   Only review sessions")
 	fmt.Fprintln(out, "  --specs      Only review specs")
@@ -2407,7 +2407,7 @@ func (r Runner) runTrace(args []string, out io.Writer, runtime state.Runtime) er
 }
 
 func writeTraceHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf trace <entity> [--json]", "Trace relationships for one entity.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf trace <entity> [--json]", "Trace relationships for one entity.", "--json       Output traced entity, sources, relationships, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runTask(args []string, out io.Writer, runtime state.Runtime) error {

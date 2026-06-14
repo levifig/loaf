@@ -261,17 +261,17 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Knowledge base management",
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "glossary", Description: "Domain glossary mutation and lookup"},
-				{Name: "validate", Description: "Validate knowledge file frontmatter", Options: []cliReferenceOption{{Flags: "--json", Description: "Output results as JSON"}}},
-				{Name: "status", Description: "Show knowledge base overview", Options: []cliReferenceOption{{Flags: "--json", Description: "Output status as JSON"}}},
+				{Name: "validate", Description: "Validate knowledge file frontmatter", Options: []cliReferenceOption{{Flags: "--json", Description: "Output per-file frontmatter errors and warnings as JSON"}}},
+				{Name: "status", Description: "Show knowledge base overview", Options: []cliReferenceOption{{Flags: "--json", Description: "Output knowledge file totals, coverage counts, stale count, review age, and directories as JSON"}}},
 				{Name: "check", Description: "Check knowledge file staleness against git history", Options: []cliReferenceOption{
 					{Flags: "--file <path>", Description: "Reverse lookup: find knowledge files covering this path"},
-					{Flags: "--json", Description: "Output results as JSON"},
+					{Flags: "--json", Description: "Output per-file staleness, coverage, commit, and review metadata as JSON"},
 				}},
-				{Name: "review", Description: "Mark a knowledge file as reviewed today", Options: []cliReferenceOption{{Flags: "--json", Description: "Output updated frontmatter as JSON"}}},
-				{Name: "init", Description: "Initialize knowledge base directories and QMD collections", Options: []cliReferenceOption{{Flags: "--json", Description: "Output results as JSON"}}},
+				{Name: "review", Description: "Mark a knowledge file as reviewed today", Options: []cliReferenceOption{{Flags: "--json", Description: "Output updated knowledge frontmatter as JSON"}}},
+				{Name: "init", Description: "Initialize knowledge base directories and QMD collections", Options: []cliReferenceOption{{Flags: "--json", Description: "Output directory actions, config status, and QMD collections as JSON"}}},
 				{Name: "import", Description: "Import external project knowledge via QMD collection", Options: []cliReferenceOption{
 					{Flags: "--path <path>", Description: "Path to the external project's knowledge directory"},
-					{Flags: "--json", Description: "Output results as JSON"},
+					{Flags: "--json", Description: "Output QMD import collection status or import error as JSON"},
 				}},
 			},
 		},
@@ -288,7 +288,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Scan project artifacts and recommend housekeeping actions",
 			Options: []cliReferenceOption{
 				{Flags: "--dry-run", Description: "Show recommendations without prompting for actions"},
-				{Flags: "--json", Description: "Output as JSON"},
+				{Flags: "--json", Description: "Output housekeeping sections, cleanup candidates, signals, and SQLite-backed project identity when available as JSON"},
 				{Flags: "--sessions", Description: "Only review sessions"},
 				{Flags: "--specs", Description: "Only review specs"},
 				{Flags: "--plans", Description: "Only review plans"},
@@ -300,7 +300,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Name:        "trace",
 			Description: "Trace relationships for one state entity",
 			Options: []cliReferenceOption{
-				{Flags: "--json", Description: "Output relationship trace as JSON"},
+				{Flags: "--json", Description: "Output traced entity, sources, relationships, global database scope, and project identity as JSON"},
 			},
 		},
 		{
@@ -431,7 +431,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Run enforcement hook checks",
 			Options: []cliReferenceOption{
 				{Flags: "--hook <id>", Description: "Registered hook ID to run"},
-				{Flags: "--json", Description: "Output JSON format"},
+				{Flags: "--json", Description: "Output hook result, pass/block status, exit code, warnings, errors, and findings as JSON"},
 			},
 		},
 	}

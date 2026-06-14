@@ -224,27 +224,27 @@ func writeKbHelp(out io.Writer) {
 }
 
 func writeKbStatusHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf kb status [--json]", "Show knowledge base overview.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf kb status [--json]", "Show knowledge base overview.", "--json       Output knowledge file totals, coverage counts, stale count, review age, and directories as JSON")
 }
 
 func writeKbValidateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf kb validate [--json]", "Validate knowledge file frontmatter.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf kb validate [--json]", "Validate knowledge file frontmatter.", "--json       Output per-file frontmatter errors and warnings as JSON")
 }
 
 func writeKbCheckHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf kb check [--file <path>] [--json]", "Check knowledge file staleness against git history.", "--file       Reverse lookup: find knowledge files covering this path", "--json       Output JSON")
+	writeUsageHelp(out, "loaf kb check [--file <path>] [--json]", "Check knowledge file staleness against git history.", "--file       Reverse lookup: find knowledge files covering this path", "--json       Output per-file staleness, coverage, commit, and review metadata as JSON")
 }
 
 func writeKbReviewHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf kb review <file> [--json]", "Mark a knowledge file as reviewed today.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf kb review <file> [--json]", "Mark a knowledge file as reviewed today.", "--json       Output updated knowledge frontmatter as JSON")
 }
 
 func writeKbInitHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf kb init [--json]", "Initialize knowledge base directories and QMD collections.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf kb init [--json]", "Initialize knowledge base directories and QMD collections.", "--json       Output directory actions, config status, and QMD collections as JSON")
 }
 
 func writeKbImportHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf kb import <name> --path <path> [--json]", "Register an external QMD collection as a knowledge source.", "--path       Path to the external project's knowledge directory", "--json       Output JSON")
+	writeUsageHelp(out, "loaf kb import <name> --path <path> [--json]", "Register an external QMD collection as a knowledge source.", "--path       Path to the external project's knowledge directory", "--json       Output QMD import collection status or import error as JSON")
 }
 
 func writeKbGlossaryHelp(out io.Writer) {
