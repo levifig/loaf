@@ -989,7 +989,7 @@ func writeStatePathHelp(out io.Writer) {
 	fmt.Fprintln(out, "Print the resolved native SQLite database path.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output contract version, command, project root, database scope, and database path as JSON")
 	fmt.Fprintln(out, "  --verbose    Output command, scope, project root, and database path")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
@@ -1000,7 +1000,7 @@ func writeStateInitHelp(out io.Writer) {
 	fmt.Fprintln(out, "Initialize the native SQLite state database.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output readiness mode, global database scope, database path, and project identity as JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
@@ -1010,7 +1010,7 @@ func writeStateStatusHelp(out io.Writer) {
 	fmt.Fprintln(out, "Show SQLite readiness and markdown-only compatibility status.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output readiness mode, diagnostics, global database scope, and project identity as JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
@@ -1022,7 +1022,7 @@ func writeStateDoctorHelp(out io.Writer) {
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  --fix        Initialize missing SQLite state when safe")
 	fmt.Fprintln(out, "  --dry-run    Show repair plan without applying fixes")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output diagnostics, repair plan, global database scope, and project identity as JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
@@ -1062,12 +1062,12 @@ func writeStateBackupHelp(out io.Writer) {
 	fmt.Fprintln(out, "  verify <backup>  Verify an existing SQLite backup")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output backup verification, checksum, schema version, project count, and current project identity as JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
 func writeStateBackupVerifyHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf state backup verify <backup> [--json]", "Verify an existing SQLite database backup without reading or mutating live state.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf state backup verify <backup> [--json]", "Verify an existing SQLite database backup without reading or mutating live state.", "--json       Output backup verification, restore guidance, schema version, and captured project identities as JSON")
 }
 
 func writeStateExportHelp(out io.Writer) {
@@ -1165,7 +1165,7 @@ func writeProjectListHelp(out io.Writer) {
 	fmt.Fprintln(out, "List registered projects in the global SQLite database.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output database path, project IDs, friendly names, and current paths as JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
@@ -1175,7 +1175,7 @@ func writeProjectShowHelp(out io.Writer) {
 	fmt.Fprintln(out, "Show the current durable project identity.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output project ID, friendly name, current path, and database path as JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
@@ -1186,7 +1186,7 @@ func writeProjectRenameHelp(out io.Writer) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  --dry-run    Validate and preview without writing")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output project ID, friendly name, current path, database path, and applied status as JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
@@ -1200,7 +1200,7 @@ func writeProjectMoveHelp(out io.Writer) {
 	fmt.Fprintln(out, "  --from       Previous absolute project path")
 	fmt.Fprintln(out, "  --to         New absolute project path")
 	fmt.Fprintln(out, "  --dry-run    Validate and preview without writing")
-	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  --json       Output project ID, friendly name, current path, database path, and applied status as JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
@@ -1768,11 +1768,11 @@ func (r Runner) runStateRepair(args []string, out io.Writer, runtime state.Runti
 }
 
 func writeStateRepairLegacyProjectDatabaseHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf state repair legacy-project-database [--dry-run|--apply] [--json]", "Archive migrated legacy per-project SQLite files without deleting them.", "--dry-run    Preview archive paths without writing", "--apply      Move legacy SQLite files into the archive directory", "--json       Output JSON")
+	writeUsageHelp(out, "loaf state repair legacy-project-database [--dry-run|--apply] [--json]", "Archive migrated legacy per-project SQLite files without deleting them.", "--dry-run    Preview archive paths without writing", "--apply      Move legacy SQLite files into the archive directory", "--json       Output archive plan/result, global database scope, and project identity as JSON")
 }
 
 func writeStateRepairRelationshipOriginHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]", "Backfill missing relationship provenance for the current project.", "--origin     Provenance value to set: imported or manual", "--dry-run    Preview affected rows without writing", "--apply      Apply the backfill", "--json       Output JSON")
+	writeUsageHelp(out, "loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]", "Backfill missing relationship provenance for the current project.", "--origin     Provenance value to set: imported or manual", "--dry-run    Preview affected rows without writing", "--apply      Apply the backfill", "--json       Output repair plan/result, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runStateRepairLegacyProjectDatabase(args []string, out io.Writer, runtime state.Runtime) error {
@@ -2094,19 +2094,19 @@ func (r Runner) runStateMigrate(args []string, out io.Writer, runtime state.Runt
 }
 
 func writeStateMigrateMarkdownHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf state migrate markdown [--dry-run|--apply|--resume] [--json]", "Import .agents Markdown artifacts into SQLite without mutating Markdown.", "--dry-run     Preview import work", "--apply       Apply the import", "--resume      Resume an interrupted import", "--json        Output JSON")
+	writeUsageHelp(out, "loaf state migrate markdown [--dry-run|--apply|--resume] [--json]", "Import .agents Markdown artifacts into SQLite without mutating Markdown.", "--dry-run     Preview import work", "--apply       Apply the import", "--resume      Resume an interrupted import", "--json        Output migration contract, scope, project context, and counts as JSON")
 }
 
 func writeStateMigrateStorageHomeHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf state migrate storage-home [--dry-run|--apply] [--json]", "Copy legacy per-project state into the global XDG data-home SQLite database.", "--dry-run     Preview migration work", "--apply       Apply the migration", "--json        Output JSON")
+	writeUsageHelp(out, "loaf state migrate storage-home [--dry-run|--apply] [--json]", "Copy legacy per-project state into the global XDG data-home SQLite database.", "--dry-run     Preview migration work", "--apply       Apply the migration", "--json        Output migration contract, global database paths, action, and project identity when available")
 }
 
 func writeMigrateMarkdownHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf migrate markdown [--dry-run|--apply|--resume] [--json]", "Import .agents Markdown artifacts into SQLite without mutating Markdown.", "--dry-run     Preview import work", "--apply       Apply the import", "--resume      Resume an interrupted import", "--json        Output JSON")
+	writeUsageHelp(out, "loaf migrate markdown [--dry-run|--apply|--resume] [--json]", "Import .agents Markdown artifacts into SQLite without mutating Markdown.", "--dry-run     Preview import work", "--apply       Apply the import", "--resume      Resume an interrupted import", "--json        Output migration contract, scope, project context, and counts as JSON")
 }
 
 func writeMigrateStorageHomeHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf migrate storage-home [--dry-run|--apply] [--json]", "Copy legacy per-project state into the global XDG data-home SQLite database.", "--dry-run     Preview migration work", "--apply       Apply the migration", "--json        Output JSON")
+	writeUsageHelp(out, "loaf migrate storage-home [--dry-run|--apply] [--json]", "Copy legacy per-project state into the global XDG data-home SQLite database.", "--dry-run     Preview migration work", "--apply       Apply the migration", "--json        Output migration contract, global database paths, action, and project identity when available")
 }
 
 func (r Runner) runMigrate(args []string, out io.Writer, runtime state.Runtime) error {

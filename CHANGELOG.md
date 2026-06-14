@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- State, project, repair, backup, and migration terminal help now names the JSON contract fields instead of using generic `Output JSON`, including readiness, diagnostics, repair plans, backup restore guidance, migration context, durable project identity, and applied status.
 - Utility and knowledge-base help surfaces now describe `kb`, `check`, `housekeeping`, and `trace` JSON output in terms of knowledge metadata, hook results, cleanup sections/signals, traced entities, global database scope, and project identity across agent help, command help, and generated CLI reference output.
 - Entity-family help surfaces now describe `brainstorm`, `idea`, `spark`, `tag`, `bundle`, and `link` JSON output in terms of global database scope, project identity, relationships, events, tags, and bundle membership across agent help, command help, and generated CLI reference output.
 - `loaf session report --json` now returns the same session Markdown export contract as state/report generation aliases instead of advertising `--json` and rejecting it; session, task, spec, and report help now describe their JSON scope, project identity, diagnostics, events, and compatibility summaries precisely.

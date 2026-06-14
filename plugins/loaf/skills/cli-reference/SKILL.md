@@ -258,21 +258,21 @@ Project IDs are stable SQLite identities, not path or name hashes. Use
   - `--json` - Output database path, project IDs, friendly names, and current paths as JSON
 
 - `loaf project show`:
-  - `--json` - Output identity details as JSON
+  - `--json` - Output project ID, friendly name, current path, and database path as JSON
 
 - `loaf project identity`:
-  - `--json` - Output identity details as JSON
+  - `--json` - Output project ID, friendly name, current path, and database path as JSON
 
 - `loaf project rename`:
   - `--dry-run` - Validate and preview without writing
-  - `--json` - Output updated identity as JSON
+  - `--json` - Output project ID, friendly name, current path, database path, and applied status as JSON
 
 - `loaf project move`:
   - `<from> [to]` - Previous and optional new absolute project paths
   - `--from <path>` - Previous absolute project path
   - `--to <path>` - New absolute project path; defaults to the current project root
   - `--dry-run` - Validate and preview without writing
-  - `--json` - Output move details as JSON
+  - `--json` - Output project ID, friendly name, current path, database path, and applied status as JSON
 
 **Usage:**
 ```bash

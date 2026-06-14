@@ -3228,6 +3228,57 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 	}
 }
 
+func TestRunnerStateAndProjectJSONHelpNamesContracts(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	tests := []struct {
+		name  string
+		args  []string
+		wants []string
+	}{
+		{name: "state path", args: []string{"state", "path", "--help"}, wants: []string{"--json", "contract version", "database scope", "database path"}},
+		{name: "state init", args: []string{"state", "init", "--help"}, wants: []string{"--json", "readiness mode", "global database scope", "project identity"}},
+		{name: "state status", args: []string{"state", "status", "--help"}, wants: []string{"--json", "readiness mode", "diagnostics", "project identity"}},
+		{name: "state doctor", args: []string{"state", "doctor", "--help"}, wants: []string{"--json", "diagnostics", "repair plan", "global database scope"}},
+		{name: "state backup", args: []string{"state", "backup", "--help"}, wants: []string{"--json", "backup verification", "checksum", "current project identity"}},
+		{name: "state backup verify", args: []string{"state", "backup", "verify", "--help"}, wants: []string{"--json", "restore guidance", "schema version", "captured project identities"}},
+		{name: "project list", args: []string{"project", "list", "--help"}, wants: []string{"--json", "database path", "friendly names", "current paths"}},
+		{name: "project show", args: []string{"project", "show", "--help"}, wants: []string{"--json", "project ID", "friendly name", "current path", "database path"}},
+		{name: "project rename", args: []string{"project", "rename", "--help"}, wants: []string{"--json", "friendly name", "database path", "applied status"}},
+		{name: "project move", args: []string{"project", "move", "--help"}, wants: []string{"--json", "current path", "database path", "applied status"}},
+		{name: "state repair legacy", args: []string{"state", "repair", "legacy-project-database", "--help"}, wants: []string{"--json", "archive plan/result", "global database scope", "project identity"}},
+		{name: "state repair relationship", args: []string{"state", "repair", "relationship-origin", "--help"}, wants: []string{"--json", "repair plan/result", "global database scope", "project identity"}},
+		{name: "state migrate markdown", args: []string{"state", "migrate", "markdown", "--help"}, wants: []string{"--json", "migration contract", "project context", "counts"}},
+		{name: "state migrate storage-home", args: []string{"state", "migrate", "storage-home", "--help"}, wants: []string{"--json", "migration contract", "global database paths", "project identity"}},
+		{name: "migrate markdown", args: []string{"migrate", "markdown", "--help"}, wants: []string{"--json", "migration contract", "project context", "counts"}},
+		{name: "migrate storage-home", args: []string{"migrate", "storage-home", "--help"}, wants: []string{"--json", "migration contract", "global database paths", "project identity"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := Runner{
+				Stdout:     &stdout,
+				WorkingDir: workingDir,
+				StateHome:  stateHome,
+			}.Run(tt.args)
+			if err != nil {
+				t.Fatalf("Run(%v) error = %v", tt.args, err)
+			}
+			output := stdout.String()
+			if strings.Contains(output, "Output JSON") {
+				t.Fatalf("output = %q, want specific JSON contract wording", output)
+			}
+			for _, want := range tt.wants {
+				if !strings.Contains(output, want) {
+					t.Fatalf("output = %q, want %q", output, want)
+				}
+			}
+		})
+	}
+}
+
 func TestRunnerTaskStatusHelpNamesValidStatuses(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()

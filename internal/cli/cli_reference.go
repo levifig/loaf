@@ -143,21 +143,21 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--json", Description: "Output database path, project IDs, friendly names, and current paths as JSON"},
 				}},
 				{Name: "show", Description: "Show the current project identity", Options: []cliReferenceOption{
-					{Flags: "--json", Description: "Output identity details as JSON"},
+					{Flags: "--json", Description: "Output project ID, friendly name, current path, and database path as JSON"},
 				}},
 				{Name: "identity", Description: "Alias for project show", Options: []cliReferenceOption{
-					{Flags: "--json", Description: "Output identity details as JSON"},
+					{Flags: "--json", Description: "Output project ID, friendly name, current path, and database path as JSON"},
 				}},
 				{Name: "rename", Description: "Rename the friendly project name", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Validate and preview without writing"},
-					{Flags: "--json", Description: "Output updated identity as JSON"},
+					{Flags: "--json", Description: "Output project ID, friendly name, current path, database path, and applied status as JSON"},
 				}},
 				{Name: "move", Description: "Record a checkout path move", Options: []cliReferenceOption{
 					{Flags: "<from> [to]", Description: "Previous and optional new absolute project paths"},
 					{Flags: "--from <path>", Description: "Previous absolute project path"},
 					{Flags: "--to <path>", Description: "New absolute project path; defaults to the current project root"},
 					{Flags: "--dry-run", Description: "Validate and preview without writing"},
-					{Flags: "--json", Description: "Output move details as JSON"},
+					{Flags: "--json", Description: "Output project ID, friendly name, current path, database path, and applied status as JSON"},
 				}},
 			},
 		},

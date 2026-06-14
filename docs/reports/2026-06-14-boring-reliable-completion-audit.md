@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest completion-audit pass focused on the remaining utility and knowledge surfaces: `kb`, `check`, `housekeeping`, and `trace`. Their payloads already exposed useful structure, but help surfaces still used generic JSON wording, especially in `--agent-help`.
+The latest completion-audit pass focused on the last generic terminal-help JSON wording for state, project, repair, backup, and migration commands. Agent help and generated CLI reference had already been tightened, but human `--help` still showed plain `Output JSON` for critical control-plane commands.
 
-This checkpoint makes those help surfaces name the actual JSON content: knowledge file totals, coverage and staleness metadata, frontmatter errors/warnings, QMD import status, hook pass/block results, housekeeping sections and cleanup candidates, traced entities, sources, relationships, global database scope, and durable project identity when SQLite-backed. `TestRunnerAgentHelpIsNative` and `TestRunnerGenerateCLIReferenceWritesSkillNatively` guard representative descriptions, and the rebuilt `bin/loaf --agent-help` output no longer contains raw JSON descriptions for KB/check/housekeeping/trace.
+This checkpoint makes terminal help name the actual JSON content for `state path|init|status|doctor|backup|backup verify`, `project list|show|rename|move`, guarded state repairs, and state/top-level migrations. `TestRunnerStateAndProjectJSONHelpNamesContracts` guards the human help, `TestRunnerGenerateCLIReferenceWritesSkillNatively` guards the tightened project reference descriptions, and live rebuilt `bin/loaf ... --help` dogfood confirms those surfaces no longer contain generic `Output JSON` wording.
 
 ## Next Review Target
 
-Continue the completion-audit pass with a final terminal-help sweep for remaining generic `Output JSON` wording outside agent help and generated CLI reference output.
+Run the requirement-by-requirement completion audit against the reliability contract, current tests, current docs, and dogfood command output before deciding whether the broad boring-reliable goal is complete.
