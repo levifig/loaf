@@ -688,6 +688,7 @@ ORDER BY field
 SELECT entity_kind, COUNT(*)
 FROM backend_mappings
 WHERE entity_kind NOT IN (
+  'project',
   'alias',
   'spec',
   'task',
@@ -762,7 +763,8 @@ ORDER BY sync_status
 
 	missingRows, err := store.db.QueryContext(ctx, `
 WITH local_entities(entity_kind, project_id, entity_id) AS (
-  SELECT 'alias', project_id, id FROM aliases
+  SELECT 'project', id, id FROM projects
+  UNION ALL SELECT 'alias', project_id, id FROM aliases
   UNION ALL SELECT 'spec', project_id, id FROM specs
   UNION ALL SELECT 'task', project_id, id FROM tasks
   UNION ALL SELECT 'idea', project_id, id FROM ideas
@@ -790,6 +792,7 @@ LEFT JOIN local_entities
  AND local_entities.entity_id = backend_mappings.entity_id
 WHERE local_entities.entity_id IS NULL
   AND backend_mappings.entity_kind IN (
+    'project',
     'alias',
     'spec',
     'task',

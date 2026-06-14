@@ -8,6 +8,8 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state doctor` now accepts project-level backend mappings, allowing a Loaf project to be linked to a Linear/external project while still rejecting mismatched project mapping IDs.
+- `loaf state doctor --json` now exits nonzero for invalid SQLite state while still returning the machine-readable status payload.
 - `loaf state export all --format json` now includes `project_paths` rows so project-scoped snapshots preserve checkout path history alongside durable project identity.
 - `npm run build` now rebuilds the Go CLI before regenerating the CLI reference so agent-facing docs do not lag behind command metadata changes.
 - `loaf state backup verify <backup> [--json]` now verifies existing SQLite backups without live-state access and reports all project identities captured in the global backup.

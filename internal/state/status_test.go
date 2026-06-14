@@ -651,6 +651,64 @@ VALUES ('backend-mapping-unknown-kind', ?, 'linear', 'milestone', 'milestone-one
 	assertNoDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
 }
 
+func TestInspectAcceptsProjectBackendMapping(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-linear-project', ?, 'linear', 'project', ?, 'project', 'LIN-PROJ-123', 'https://linear.app/workspace/project/LIN-PROJ-123', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID, projectID); err != nil {
+		t.Fatalf("insert project backend mapping error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeSQLiteReady {
+		t.Fatalf("Mode = %q, want %q for valid project backend mapping", status.Mode, ModeSQLiteReady)
+	}
+	assertNoDiagnostic(t, status.Diagnostics, "backend-mapping-entity-kind-unknown")
+	assertNoDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
+}
+
+func TestInspectRejectsProjectBackendMappingToDifferentProjectID(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missing', 'project', 'LIN-PROJ-124', 'https://linear.app/workspace/project/LIN-PROJ-124', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert wrong project backend mapping error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeInvalid {
+		t.Fatalf("Mode = %q, want %q for mismatched project backend mapping", status.Mode, ModeInvalid)
+	}
+	diagnostic := findDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
+	if !strings.Contains(diagnostic.Message, "project project-missing") {
+		t.Fatalf("diagnostic Message = %q, want project entity reference", diagnostic.Message)
+	}
+}
+
 func TestInspectReportsAmbiguousBackendMappingAsWarning(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

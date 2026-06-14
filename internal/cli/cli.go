@@ -1554,7 +1554,13 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 		}
 	}
 	if jsonOutput {
-		return writeJSON(out, status)
+		if err := writeJSON(out, status); err != nil {
+			return err
+		}
+		if status.Mode == state.ModeInvalid {
+			return ExitError{Code: 1}
+		}
+		return nil
 	}
 
 	fmt.Fprintln(out, "loaf state doctor")
