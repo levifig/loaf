@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf housekeeping` JSON and human output now report global database scope and durable project identity details when backed by SQLite, while Markdown fallback output keeps repository-local artifact context.
 - `loaf trace` and `loaf spec show` JSON and human output now report global database scope and durable project identity details when backed by SQLite, while Markdown `spec show` fallback output keeps repository-local spec context.
 - `loaf task list|show|status` and `loaf spec list` JSON and human output now report global database scope and durable project identity details when backed by SQLite, while Markdown fallback output keeps repository-local task/spec context.
 - `loaf brainstorm promote|archive|list|show` JSON and human output now report global database scope and durable project identity details.

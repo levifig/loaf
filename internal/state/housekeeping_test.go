@@ -36,6 +36,7 @@ func TestHousekeepingSummarizesSQLiteLifecycleState(t *testing.T) {
 	if summary.DatabasePath != result.DatabasePath {
 		t.Fatalf("DatabasePath = %q, want %q", summary.DatabasePath, result.DatabasePath)
 	}
+	assertTaskProjectContext(t, root.Path(), summary.ContractVersion, summary.DatabaseScope, summary.DatabasePath, summary.ProjectID, summary.ProjectName, summary.ProjectCurrentPath)
 	for name, status := range map[string]string{
 		"specs":          "complete",
 		"tasks":          "done",

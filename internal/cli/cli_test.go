@@ -76,6 +76,7 @@ status: complete
 		t.Fatalf("housekeeping --json error = %v", err)
 	}
 	summary := decodeHousekeepingSummary(t, jsonOut.Bytes())
+	assertCLIProjectContext(t, workingDir, summary.ContractVersion, summary.DatabaseScope, summary.DatabasePath, summary.ProjectID, summary.ProjectName, summary.ProjectCurrentPath)
 	if summary.Sections["specs"].ByStatus["complete"] != 1 || summary.Sections["tasks"].ByStatus["done"] != 1 {
 		t.Fatalf("summary = %#v, want SQLite spec/task lifecycle counts", summary)
 	}
@@ -89,7 +90,7 @@ status: complete
 	if err != nil {
 		t.Fatalf("housekeeping --dry-run error = %v", err)
 	}
-	for _, want := range []string{"loaf housekeeping (SQLite state, dry run)", "database:", "specs", "tasks", "cleanup candidate"} {
+	for _, want := range []string{"loaf housekeeping (SQLite state, dry run)", "scope: global database", "database:", "project:", "project name:", "project path:", "specs", "tasks", "cleanup candidate"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Fatalf("stdout = %q, want %q", humanOut.String(), want)
 		}
@@ -138,6 +139,9 @@ status: absorbed
 	if summary.DatabasePath != filepath.Join(workingDir, ".agents") {
 		t.Fatalf("database path = %q, want markdown artifacts path", summary.DatabasePath)
 	}
+	if summary.ContractVersion != 0 || summary.DatabaseScope != "" || summary.ProjectID != "" || summary.ProjectName != "" || summary.ProjectCurrentPath != "" {
+		t.Fatalf("markdown housekeeping context = %#v, want empty", summary)
+	}
 	if summary.Sections["specs"].ByStatus["complete"] != 1 || summary.Sections["tasks"].ByStatus["done"] != 1 || summary.Sections["sessions"].ByStatus["active"] != 1 || summary.Sections["sessions"].ByStatus["archived"] != 1 || summary.Sections["shaping_drafts"].ByStatus["absorbed"] != 1 {
 		t.Fatalf("summary = %#v, want markdown artifact lifecycle counts", summary)
 	}
@@ -158,6 +162,9 @@ status: absorbed
 		if !strings.Contains(humanOut.String(), want) {
 			t.Fatalf("stdout = %q, want %q", humanOut.String(), want)
 		}
+	}
+	if strings.Contains(humanOut.String(), "scope: global database") || strings.Contains(humanOut.String(), "project path:") {
+		t.Fatalf("stdout = %q, want markdown fallback without database context", humanOut.String())
 	}
 	if strings.Contains(humanOut.String(), "specs") {
 		t.Fatalf("stdout = %q, want --sessions filter to hide specs", humanOut.String())

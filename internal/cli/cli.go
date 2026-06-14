@@ -367,7 +367,8 @@ func writeHousekeepingSummary(out io.Writer, result state.HousekeepingSummary, o
 	} else {
 		fmt.Fprint(out, "\n  loaf housekeeping (SQLite state)\n\n")
 	}
-	fmt.Fprintf(out, "  database: %s\n\n", result.DatabasePath)
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	fmt.Fprintln(out)
 	for _, name := range sortedHousekeepingSections(result) {
 		section := result.Sections[name]
 		fmt.Fprintf(out, "    %-16s%d total", housekeepingSectionLabel(name), section.Total)
@@ -438,9 +439,14 @@ func filterHousekeepingSummary(result state.HousekeepingSummary, sections map[st
 		return result
 	}
 	filtered := state.HousekeepingSummary{
-		Version:      result.Version,
-		DatabasePath: result.DatabasePath,
-		Sections:     map[string]state.HousekeepingSection{},
+		ContractVersion:    result.ContractVersion,
+		DatabaseScope:      result.DatabaseScope,
+		DatabasePath:       result.DatabasePath,
+		ProjectID:          result.ProjectID,
+		ProjectName:        result.ProjectName,
+		ProjectCurrentPath: result.ProjectCurrentPath,
+		Version:            result.Version,
+		Sections:           map[string]state.HousekeepingSection{},
 	}
 	for section := range sections {
 		if value, ok := result.Sections[section]; ok {
