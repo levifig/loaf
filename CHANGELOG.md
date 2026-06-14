@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state doctor` repair-plan commands now have regression coverage proving suggested follow-up commands run in the diagnostic mode that produced them.
 - `loaf state doctor` repair plans now classify local database, backend mapping, and external sync actions for clearer human and agent follow-up.
 - Added safe next-action guidance to backup verification output after dogfooding the manual restore flow, so users know how to preserve the current DB, restore the verified backup, and rerun health checks.
 - Documented and verified a manual SQLite backup restore flow so users can recover the global database by verifying a backup, preserving the current DB, copying the backup into place, and running health checks.

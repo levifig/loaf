@@ -3166,6 +3166,310 @@ VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missin
 	}
 }
 
+func TestRunnerStateDoctorRepairPlanCommandsExecuteInDiagnosticMode(t *testing.T) {
+	tests := []struct {
+		name          string
+		actionCode    string
+		setup         func(t *testing.T) (string, string)
+		wantCommand   string
+		wantExitCode  int
+		verifyCommand func(t *testing.T, output []byte)
+	}{
+		{
+			name:         "missing database initializes through doctor fix",
+			actionCode:   "initialize-database",
+			wantCommand:  "loaf state doctor --fix",
+			wantExitCode: 0,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				return realpath(t, t.TempDir()), t.TempDir()
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				text := string(output)
+				if !strings.Contains(text, "loaf state doctor") || !strings.Contains(text, "info: SQLite state database initialized") {
+					t.Fatalf("doctor --fix output = %q, want initialized SQLite state", text)
+				}
+			},
+		},
+		{
+			name:         "legacy storage-home migration previews while markdown-only",
+			actionCode:   "migrate-storage-home",
+			wantCommand:  "loaf state migrate storage-home --dry-run",
+			wantExitCode: 0,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir := realpath(t, t.TempDir())
+				t.Setenv("XDG_DATA_HOME", t.TempDir())
+				t.Setenv("XDG_STATE_HOME", t.TempDir())
+				root, err := project.ResolveRoot(workingDir)
+				if err != nil {
+					t.Fatalf("ResolveRoot() error = %v", err)
+				}
+				initializeCLILegacyStateDatabase(t, root)
+				return workingDir, ""
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				text := string(output)
+				if !strings.Contains(text, "loaf state migrate storage-home --dry-run") || !strings.Contains(text, "applied: false") {
+					t.Fatalf("storage-home dry-run output = %q, want preview output", text)
+				}
+			},
+		},
+		{
+			name:         "legacy project database repair dry-run previews leftover",
+			actionCode:   "review-legacy-project-database",
+			wantCommand:  "loaf state repair legacy-project-database --dry-run --json",
+			wantExitCode: 0,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir := realpath(t, t.TempDir())
+				t.Setenv("XDG_DATA_HOME", t.TempDir())
+				t.Setenv("XDG_STATE_HOME", t.TempDir())
+				root, err := project.ResolveRoot(workingDir)
+				if err != nil {
+					t.Fatalf("ResolveRoot() error = %v", err)
+				}
+				initializeCLILegacyStateDatabase(t, root)
+				if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir}).Run([]string{"state", "init", "--json"}); err != nil {
+					t.Fatalf("state init --json error = %v", err)
+				}
+				return workingDir, ""
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				result := decodeLegacyProjectDatabaseArchiveResult(t, output)
+				if result.Applied || len(result.MatchedPaths) == 0 {
+					t.Fatalf("legacy repair dry-run = %#v, want matched unapplied archive plan", result)
+				}
+			},
+		},
+		{
+			name:         "schema drift inspection keeps doctor JSON executable",
+			actionCode:   "inspect-schema-migrations",
+			wantCommand:  "loaf state doctor --json",
+			wantExitCode: 1,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+				db := openCLITestDB(t, initialized.DatabasePath)
+				if _, err := db.Exec(`UPDATE schema_migrations SET checksum = 'drifted' WHERE version = 1`); err != nil {
+					t.Fatalf("drift schema checksum error = %v", err)
+				}
+				closeCLITestDB(t, db)
+				return workingDir, stateHome
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				status := decodeStateStatus(t, output)
+				if status.Mode != state.ModeInvalid || !hasDiagnostic(status.Diagnostics, "schema-checksum-mismatch") {
+					t.Fatalf("doctor output = %#v, want schema checksum mismatch", status)
+				}
+			},
+		},
+		{
+			name:         "SQLite invariant inspection keeps doctor JSON executable",
+			actionCode:   "inspect-state-invariants",
+			wantCommand:  "loaf state doctor --json",
+			wantExitCode: 1,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+				db := openCLITestDB(t, initialized.DatabasePath)
+				if _, err := db.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+					t.Fatalf("disable foreign keys error = %v", err)
+				}
+				if _, err := db.Exec(`
+INSERT INTO aliases (id, project_id, entity_kind, entity_id, namespace, alias, created_at, updated_at)
+VALUES ('alias-orphaned-project', 'project-missing', 'task', 'task-missing', 'task', 'TASK-MISSING', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`); err != nil {
+					t.Fatalf("insert orphaned alias fixture error = %v", err)
+				}
+				closeCLITestDB(t, db)
+				return workingDir, stateHome
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				status := decodeStateStatus(t, output)
+				if status.Mode != state.ModeInvalid || !hasDiagnostic(status.Diagnostics, "sqlite-foreign-key-violation") {
+					t.Fatalf("doctor output = %#v, want foreign-key violation", status)
+				}
+			},
+		},
+		{
+			name:         "project path invariant repair can list projects",
+			actionCode:   "repair-project-path-invariants",
+			wantCommand:  "loaf project list --json",
+			wantExitCode: 0,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+				db := openCLITestDB(t, initialized.DatabasePath)
+				if _, err := db.Exec(`UPDATE projects SET current_path = ? WHERE id = ?`, filepath.Join(workingDir, "stale"), initialized.ProjectID); err != nil {
+					t.Fatalf("drift project current_path error = %v", err)
+				}
+				closeCLITestDB(t, db)
+				return workingDir, stateHome
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				var projects state.ProjectList
+				if err := json.Unmarshal(output, &projects); err != nil {
+					t.Fatalf("json.Unmarshal(%q) error = %v", string(output), err)
+				}
+				if projects.DatabaseScope != "global" || len(projects.Projects) != 1 {
+					t.Fatalf("project list = %#v, want global project index", projects)
+				}
+			},
+		},
+		{
+			name:         "relationship provenance repair dry-run executes",
+			actionCode:   "audit-relationship-origin",
+			wantCommand:  "loaf state repair relationship-origin --origin imported --dry-run --json",
+			wantExitCode: 0,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+				db := openCLITestDB(t, initialized.DatabasePath)
+				if _, err := db.Exec(`
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
+VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one', 'implements', 'legacy row', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+					t.Fatalf("insert relationship without origin error = %v", err)
+				}
+				closeCLITestDB(t, db)
+				return workingDir, stateHome
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				result := decodeRelationshipOriginRepairResult(t, output)
+				if result.Applied || result.Matched != 1 || result.Updated != 0 {
+					t.Fatalf("relationship repair dry-run = %#v, want one matched unapplied row", result)
+				}
+			},
+		},
+		{
+			name:         "invalid backend mappings keep doctor JSON executable",
+			actionCode:   "inspect-backend-mappings",
+			wantCommand:  "loaf state doctor --json",
+			wantExitCode: 1,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+				db := openCLITestDB(t, initialized.DatabasePath)
+				if _, err := db.Exec(`
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missing', 'project', 'LIN-PROJ-124', 'https://linear.app/workspace/project/LIN-PROJ-124', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+					t.Fatalf("insert invalid backend mapping error = %v", err)
+				}
+				closeCLITestDB(t, db)
+				return workingDir, stateHome
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				status := decodeStateStatus(t, output)
+				if status.Mode != state.ModeInvalid || !hasDiagnostic(status.Diagnostics, "backend-mapping-entity-missing") {
+					t.Fatalf("doctor output = %#v, want invalid backend mapping diagnostic", status)
+				}
+			},
+		},
+		{
+			name:         "backend mapping drift can export audit snapshot",
+			actionCode:   "audit-backend-mappings",
+			wantCommand:  "loaf state export all --format json",
+			wantExitCode: 0,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+				db := openCLITestDB(t, initialized.DatabasePath)
+				if _, err := db.Exec(`
+INSERT INTO tasks (id, project_id, spec_id, title, status, priority, body_source_id, created_at, updated_at)
+VALUES ('task-linear-typo', ?, NULL, 'Linear typo task', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+					t.Fatalf("insert task fixture error = %v", err)
+				}
+				if _, err := db.Exec(`
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-linear-typo', ?, 'linear', 'task', 'task-linear-typo', 'issue', 'ENG-126', 'https://linear.app/workspace/issue/ENG-126', 'lnked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+					t.Fatalf("insert backend mapping fixture error = %v", err)
+				}
+				closeCLITestDB(t, db)
+				return workingDir, stateHome
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				snapshot := decodeStateExportSnapshot(t, output)
+				if snapshot.ExportKind != state.ExportKindAll || !snapshot.Manifest.Verified {
+					t.Fatalf("export snapshot = %#v, want verified all export", snapshot)
+				}
+			},
+		},
+		{
+			name:         "Linear task mapping gaps can export sync snapshot",
+			actionCode:   "reconcile-linear-task-mappings",
+			wantCommand:  "loaf state export all --format json",
+			wantExitCode: 0,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+				writeCLIAgentsFile(t, workingDir, "loaf.json", `{"integrations":{"linear":{"enabled":true}}}`)
+				db := openCLITestDB(t, initialized.DatabasePath)
+				if _, err := db.Exec(`
+INSERT INTO tasks (id, project_id, spec_id, title, status, priority, body_source_id, created_at, updated_at)
+VALUES ('task-active-unmapped', ?, NULL, 'Active unmapped task', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+					t.Fatalf("insert task fixture error = %v", err)
+				}
+				closeCLITestDB(t, db)
+				return workingDir, stateHome
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				snapshot := decodeStateExportSnapshot(t, output)
+				if snapshot.ExportKind != state.ExportKindAll || !snapshot.Manifest.Verified {
+					t.Fatalf("export snapshot = %#v, want verified Linear reconciliation export", snapshot)
+				}
+			},
+		},
+		{
+			name:         "local markdown import preview executes",
+			actionCode:   "migrate-current-project-markdown",
+			wantCommand:  "loaf state migrate markdown --dry-run",
+			wantExitCode: 0,
+			setup: func(t *testing.T) (string, string) {
+				t.Helper()
+				workingDir, stateHome, _ := initCLIStateForRepairCommand(t)
+				writeCLIAgentsFile(t, workingDir, "tasks/TASK-001-local.md", "# Local Task\n")
+				return workingDir, stateHome
+			},
+			verifyCommand: func(t *testing.T, output []byte) {
+				t.Helper()
+				text := string(output)
+				if !strings.Contains(text, "loaf state migrate markdown --dry-run") || !strings.Contains(text, "tasks: 1") {
+					t.Fatalf("markdown dry-run output = %q, want preview output", text)
+				}
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			workingDir, stateHome := tc.setup(t)
+			action := doctorRepairActionForCLI(t, workingDir, stateHome, tc.actionCode)
+			if action.Command != tc.wantCommand {
+				t.Fatalf("repair action command = %q, want %q", action.Command, tc.wantCommand)
+			}
+			output := runRepairActionCommandForCLI(t, workingDir, stateHome, action, tc.wantExitCode)
+			if tc.verifyCommand != nil {
+				tc.verifyCommand(t, output)
+			}
+		})
+	}
+}
+
 func TestRunnerStateDoctorDryRunJSONUsesStableEmptyRepairPlan(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -13287,6 +13591,76 @@ func findStateRepairAction(t *testing.T, actions []state.RepairAction, code stri
 	}
 	t.Fatalf("repair action %q not found in %#v", code, actions)
 	return state.RepairAction{}
+}
+
+func initCLIStateForRepairCommand(t *testing.T) (string, string, state.Status) {
+	t.Helper()
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+	return workingDir, stateHome, decodeStateStatus(t, stdout.Bytes())
+}
+
+func doctorRepairActionForCLI(t *testing.T, workingDir string, stateHome string, code string) state.RepairAction {
+	t.Helper()
+	var stdout bytes.Buffer
+	err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "doctor", "--json"})
+	status := decodeStateStatus(t, stdout.Bytes())
+	if status.Mode == state.ModeInvalid {
+		assertSilentExitCode(t, err, 1)
+	} else if err != nil {
+		t.Fatalf("state doctor --json error = %v", err)
+	}
+	return findStateRepairAction(t, status.RepairPlan, code)
+}
+
+func runRepairActionCommandForCLI(t *testing.T, workingDir string, stateHome string, action state.RepairAction, wantExitCode int) []byte {
+	t.Helper()
+	args := repairActionCommandArgs(t, action)
+	var stdout bytes.Buffer
+	err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run(args)
+	if wantExitCode == 0 {
+		if err != nil {
+			t.Fatalf("%s error = %v\nstdout:\n%s", action.Command, err, stdout.String())
+		}
+	} else {
+		assertSilentExitCode(t, err, wantExitCode)
+	}
+	if stdout.Len() == 0 {
+		t.Fatalf("%s produced empty stdout", action.Command)
+	}
+	return stdout.Bytes()
+}
+
+func repairActionCommandArgs(t *testing.T, action state.RepairAction) []string {
+	t.Helper()
+	if action.Command == "" {
+		t.Fatalf("repair action %q has no command", action.Code)
+	}
+	parts := strings.Fields(action.Command)
+	if len(parts) < 2 || parts[0] != "loaf" {
+		t.Fatalf("repair action %q command = %q, want loaf command", action.Code, action.Command)
+	}
+	return parts[1:]
+}
+
+func openCLITestDB(t *testing.T, path string) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		t.Fatalf("sql.Open(%s) error = %v", path, err)
+	}
+	return db
+}
+
+func closeCLITestDB(t *testing.T, db *sql.DB) {
+	t.Helper()
+	if err := db.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
 }
 
 func sqliteCount(t *testing.T, db *sql.DB, query string, args ...any) int {
