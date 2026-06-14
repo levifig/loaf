@@ -1546,7 +1546,7 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 		}
 		return err
 	}
-	if dryRun {
+	if dryRun || len(status.Diagnostics) > 0 {
 		status.RepairPlan = state.RepairPlanForStatus(status)
 	}
 	if fix && status.Mode == state.ModeMarkdownOnly {

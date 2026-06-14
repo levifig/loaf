@@ -3100,6 +3100,69 @@ func TestRunnerStateDoctorDryRunShowsRepairPlanWithoutCreatingDatabase(t *testin
 	}
 }
 
+func TestRunnerStateDoctorJSONIncludesRepairPlanForDiagnostics(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var missingOut bytes.Buffer
+	err := Runner{
+		Stdout:     &missingOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "doctor", "--json"})
+	if err != nil {
+		t.Fatalf("state doctor --json missing database error = %v", err)
+	}
+	missing := decodeStateStatus(t, missingOut.Bytes())
+	if missing.Mode != state.ModeMarkdownOnly {
+		t.Fatalf("missing Mode = %q, want %q", missing.Mode, state.ModeMarkdownOnly)
+	}
+	action := findStateRepairAction(t, missing.RepairPlan, "initialize-database")
+	if !action.Safe || action.Applied {
+		t.Fatalf("missing repair action = %#v, want safe unapplied initialization", action)
+	}
+	assertNoStateDatabase(t, workingDir, stateHome)
+
+	var initOut bytes.Buffer
+	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+	initialized := decodeStateStatus(t, initOut.Bytes())
+	db, err := sql.Open("sqlite3", initialized.DatabasePath)
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missing', 'project', 'LIN-PROJ-124', 'https://linear.app/workspace/project/LIN-PROJ-124', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+		t.Fatalf("insert invalid backend mapping error = %v", err)
+	}
+
+	var invalidOut bytes.Buffer
+	err = Runner{
+		Stdout:     &invalidOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "doctor", "--json"})
+	if err == nil {
+		t.Fatal("state doctor --json invalid database error = nil, want nonzero exit")
+	}
+	assertSilentExitCode(t, err, 1)
+	invalid := decodeStateStatus(t, invalidOut.Bytes())
+	if invalid.Mode != state.ModeInvalid {
+		t.Fatalf("invalid Mode = %q, want %q", invalid.Mode, state.ModeInvalid)
+	}
+	action = findStateRepairAction(t, invalid.RepairPlan, "audit-backend-mappings")
+	if action.Safe || action.Applied {
+		t.Fatalf("invalid repair action = %#v, want manual unapplied audit", action)
+	}
+	if action.Command != "loaf state export all --format json" {
+		t.Fatalf("invalid repair action command = %q, want state export all JSON", action.Command)
+	}
+}
+
 func TestRunnerStateDoctorDryRunJSONUsesStableEmptyRepairPlan(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
