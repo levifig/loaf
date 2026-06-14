@@ -39,6 +39,8 @@ type ExportSnapshot struct {
 	ProjectCurrentPath string                      `json:"project_current_path"`
 	DatabasePath       string                      `json:"database_path"`
 	SchemaVersion      int                         `json:"schema_version"`
+	Diagnostics        []Diagnostic                `json:"diagnostics"`
+	RepairPlan         []RepairAction              `json:"repair_plan"`
 	Manifest           ExportManifest              `json:"manifest"`
 	Tables             map[string][]map[string]any `json:"tables"`
 }
@@ -55,6 +57,8 @@ type ExportManifest struct {
 	ProjectCurrentPath string         `json:"project_current_path"`
 	IntegrityCheck     string         `json:"integrity_check"`
 	ForeignKeyCheck    string         `json:"foreign_key_check"`
+	DiagnosticCount    int            `json:"diagnostic_count"`
+	RepairActionCount  int            `json:"repair_action_count"`
 	TableCount         int            `json:"table_count"`
 	TableOrder         []string       `json:"table_order"`
 	RowCounts          map[string]int `json:"row_counts"`
@@ -207,6 +211,7 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 		totalRows += len(rows)
 	}
 	generatedAt := time.Now().UTC().Format(time.RFC3339Nano)
+	repairPlan := RepairPlanForStatus(status)
 
 	return ExportSnapshot{
 		ContractVersion:    StateJSONContractVersion,
@@ -221,6 +226,8 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 		ProjectCurrentPath: identity.CurrentPath,
 		DatabasePath:       status.DatabasePath,
 		SchemaVersion:      status.SchemaVersion,
+		Diagnostics:        status.Diagnostics,
+		RepairPlan:         repairPlan,
 		Manifest: ExportManifest{
 			ContractVersion:    StateJSONContractVersion,
 			Verified:           true,
@@ -232,6 +239,8 @@ func ExportAllJSON(ctx context.Context, root project.Root, resolver PathResolver
 			ProjectCurrentPath: identity.CurrentPath,
 			IntegrityCheck:     integrityCheck,
 			ForeignKeyCheck:    foreignKeyCheck,
+			DiagnosticCount:    len(status.Diagnostics),
+			RepairActionCount:  len(repairPlan),
 			TableCount:         len(tableOrder),
 			TableOrder:         tableOrder,
 			RowCounts:          rowCounts,

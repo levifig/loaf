@@ -3796,6 +3796,16 @@ VALUES ('backend-mapping-linear-typo', ?, 'linear', 'task', 'task-linear-typo', 
 				if snapshot.ExportKind != state.ExportKindAll || !snapshot.Manifest.Verified {
 					t.Fatalf("export snapshot = %#v, want verified all export", snapshot)
 				}
+				if !hasDiagnostic(snapshot.Diagnostics, "backend-mapping-sync-status-unknown") {
+					t.Fatalf("export diagnostics = %#v, want backend mapping drift diagnostic", snapshot.Diagnostics)
+				}
+				action := findStateRepairAction(t, snapshot.RepairPlan, "audit-backend-mappings")
+				if action.Command != "loaf state export all --format json" || action.RequiresExternalSync {
+					t.Fatalf("export repair action = %#v, want local backend mapping audit action", action)
+				}
+				if snapshot.Manifest.DiagnosticCount != len(snapshot.Diagnostics) || snapshot.Manifest.RepairActionCount != len(snapshot.RepairPlan) {
+					t.Fatalf("export manifest = %#v, want diagnostic and repair counts matching payload", snapshot.Manifest)
+				}
 			},
 		},
 		{
@@ -3822,6 +3832,16 @@ VALUES ('task-active-unmapped', ?, NULL, 'Active unmapped task', 'todo', 'P2', N
 				snapshot := decodeStateExportSnapshot(t, output)
 				if snapshot.ExportKind != state.ExportKindAll || !snapshot.Manifest.Verified {
 					t.Fatalf("export snapshot = %#v, want verified Linear reconciliation export", snapshot)
+				}
+				if !hasDiagnostic(snapshot.Diagnostics, "linear-mode-local-task-unmapped") {
+					t.Fatalf("export diagnostics = %#v, want Linear unmapped task diagnostic", snapshot.Diagnostics)
+				}
+				action := findStateRepairAction(t, snapshot.RepairPlan, "reconcile-linear-task-mappings")
+				if action.Command != "loaf state export all --format json" || !action.RequiresExternalSync {
+					t.Fatalf("export repair action = %#v, want external Linear reconciliation action", action)
+				}
+				if snapshot.Manifest.DiagnosticCount != len(snapshot.Diagnostics) || snapshot.Manifest.RepairActionCount != len(snapshot.RepairPlan) {
+					t.Fatalf("export manifest = %#v, want diagnostic and repair counts matching payload", snapshot.Manifest)
 				}
 			},
 		},

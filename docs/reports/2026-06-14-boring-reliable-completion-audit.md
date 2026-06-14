@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 18:53
+Date: 2026-06-14 18:59
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest Markdown import apply/resume pass dogfooded a temp project from the primary checkout with isolated XDG homes. Dry-run did not create the global database, apply and repeated resume stayed idempotent at one spec/task/idea/relationship row each, and source `.agents` file hashes were unchanged.
+The latest backend/Linear follow-up pass dogfooded a temp project from the primary checkout with isolated XDG homes. `state doctor --json` correctly reported backend mapping drift, ambiguous Linear mappings, and unmapped active local tasks, with repair actions pointing at `state export all --format json`.
 
-The weak point was agentic clarity: apply and resume JSON results were indistinguishable once separated from argv context. This checkpoint adds `action: "apply"` or `action: "resume"` to `MarkdownMigrationResult`, prints the same action in human output, and adds CLI regression coverage for action reporting plus source preservation through repeated resume.
+The weak point was that the recommended export snapshot contained the relevant raw rows but dropped the diagnostic and repair-plan context. This checkpoint adds `diagnostics` and `repair_plan` to `ExportSnapshot`, manifest counts for both, and CLI regression coverage proving backend drift and Linear reconciliation exports remain self-contained.
 
 ## Next Review Target
 
-Continue the completion-audit pass against backend/Linear export and repair follow-up paths from the primary checkout with isolated XDG homes, looking for unclear policy, JSON, or human-output contracts.
+Continue the completion-audit pass against stale compatibility export and local Markdown/import warning follow-up paths from the primary checkout with isolated XDG homes, looking for unclear no-mutation, JSON, or human-output contracts.
