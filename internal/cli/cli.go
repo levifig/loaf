@@ -1671,11 +1671,11 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 }
 
 func writeStateProjectIdentity(out io.Writer, status state.Status) {
-	if status.ProjectName != "" {
-		fmt.Fprintf(out, "project: %s\n", status.ProjectName)
-	}
 	if status.ProjectID != "" {
-		fmt.Fprintf(out, "project id: %s\n", status.ProjectID)
+		fmt.Fprintf(out, "project: %s\n", status.ProjectID)
+	}
+	if status.ProjectName != "" {
+		fmt.Fprintf(out, "project name: %s\n", status.ProjectName)
 	}
 	if status.ProjectCurrentPath != "" {
 		fmt.Fprintf(out, "project path: %s\n", status.ProjectCurrentPath)

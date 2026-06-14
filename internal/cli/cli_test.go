@@ -2899,10 +2899,13 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("state status error = %v", err)
 	}
-	for _, want := range []string{"loaf state status", "scope: global database", "project:", "project id:", "project path:", "mode: " + state.ModeSQLiteReady} {
+	for _, want := range []string{"loaf state status", "scope: global database", "project: " + initialized.ProjectID, "project name: " + initialized.ProjectName, "project path:", "mode: " + state.ModeSQLiteReady} {
 		if !strings.Contains(humanStatusOut.String(), want) {
 			t.Fatalf("state status output = %q, want %q", humanStatusOut.String(), want)
 		}
+	}
+	if strings.Contains(humanStatusOut.String(), "project id:") {
+		t.Fatalf("state status output = %q, want normalized project identity labels", humanStatusOut.String())
 	}
 
 	var doctorOut bytes.Buffer
@@ -2917,10 +2920,13 @@ func TestRunnerStateInitStatusAndDoctor(t *testing.T) {
 	if !strings.Contains(doctorOut.String(), "mode: "+state.ModeSQLiteReady) {
 		t.Fatalf("doctor output = %q, want sqlite-ready mode", doctorOut.String())
 	}
-	for _, want := range []string{"scope: global database", "project:", "project id:", "project path:", "schema version:"} {
+	for _, want := range []string{"scope: global database", "project: " + initialized.ProjectID, "project name: " + initialized.ProjectName, "project path:", "schema version:"} {
 		if !strings.Contains(doctorOut.String(), want) {
 			t.Fatalf("doctor output = %q, want %q", doctorOut.String(), want)
 		}
+	}
+	if strings.Contains(doctorOut.String(), "project id:") {
+		t.Fatalf("doctor output = %q, want normalized project identity labels", doctorOut.String())
 	}
 }
 
@@ -3191,10 +3197,13 @@ func TestRunnerStateInitHumanOutputPrintsRepositoryExternalDatabaseWithoutSecret
 	}
 
 	output := stdout.String()
-	for _, want := range []string{"scope: global database", "project:", "project id:", "project path:"} {
+	for _, want := range []string{"scope: global database", "project:", "project name:", "project path:"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
+	}
+	if strings.Contains(output, "project id:") {
+		t.Fatalf("output = %q, want normalized project identity labels", output)
 	}
 	databasePath := ""
 	for _, line := range strings.Split(output, "\n") {

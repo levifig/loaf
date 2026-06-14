@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state init|status|doctor` human output now uses the same durable project identity labels as the rest of the SQLite CLI: `project` for ID and `project name` for the friendly name.
 - `loaf state backup` human output now ends with a concrete `state backup verify <backup>` next action, and backup help/reference text names the global data-home backups directory.
 - `loaf state path --verbose` now provides human-oriented command, scope, project root, and database path context while preserving raw-path default output for shell substitution and restore workflows.
 - `loaf project show|identity` and `loaf project list` human output now use the same command, scope, database, project ID, friendly name, and project path labels as project identity mutations.
