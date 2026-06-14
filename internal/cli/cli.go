@@ -1578,6 +1578,22 @@ func writeStateProjectIdentity(out io.Writer, status state.Status) {
 	}
 }
 
+func writeStateDiagnostics(out io.Writer, indent string, diagnostics []state.Diagnostic) {
+	for _, diagnostic := range diagnostics {
+		fmt.Fprintf(out, "%s%s: %s\n", indent, diagnostic.Severity, diagnostic.Message)
+	}
+}
+
+func stateListWarnings(diagnostics []state.Diagnostic) []state.Diagnostic {
+	warnings := []state.Diagnostic{}
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity == "warn" || diagnostic.Severity == "error" {
+			warnings = append(warnings, diagnostic)
+		}
+	}
+	return warnings
+}
+
 func (r Runner) runStateRepair(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 {
 		return fmt.Errorf("state repair requires a target")
@@ -8771,6 +8787,7 @@ func (r Runner) runReportList(args []string, out io.Writer, runtime state.Runtim
 	if err != nil {
 		return err
 	}
+	reports.Diagnostics = stateListWarnings(status.Diagnostics)
 	if options.jsonOutput {
 		return writeJSON(out, reports)
 	}
@@ -8951,16 +8968,17 @@ func writeReportStatus(out io.Writer, action string, result state.ReportStatusRe
 func writeReportList(out io.Writer, reports state.ReportList) {
 	fmt.Fprint(out, "\n  loaf report list\n\n")
 	writeProjectMutationContext(out, "  ", reports.DatabaseScope, reports.DatabasePath, reports.ProjectID, reports.ProjectName, reports.ProjectCurrentPath)
+	writeStateDiagnostics(out, "  ", reports.Diagnostics)
 
 	if len(reports.Reports) == 0 {
-		if reports.DatabaseScope != "" || reports.DatabasePath != "" || reports.ProjectID != "" || reports.ProjectName != "" || reports.ProjectCurrentPath != "" {
+		if reportListHasContext(reports) {
 			fmt.Fprintln(out)
 		}
 		fmt.Fprint(out, "  No reports found.\n\n")
 		return
 	}
 
-	if reports.DatabaseScope != "" || reports.DatabasePath != "" || reports.ProjectID != "" || reports.ProjectName != "" || reports.ProjectCurrentPath != "" {
+	if reportListHasContext(reports) {
 		fmt.Fprintln(out)
 	}
 	for _, status := range reportStatusDisplayOrder(reports) {
@@ -8979,6 +8997,15 @@ func writeReportList(out io.Writer, reports state.ReportList) {
 		fmt.Fprintln(out)
 	}
 	fmt.Fprintf(out, "  %d report(s) total\n\n", len(reports.Reports))
+}
+
+func reportListHasContext(reports state.ReportList) bool {
+	return reports.DatabaseScope != "" ||
+		reports.DatabasePath != "" ||
+		reports.ProjectID != "" ||
+		reports.ProjectName != "" ||
+		reports.ProjectCurrentPath != "" ||
+		len(reports.Diagnostics) > 0
 }
 
 func markdownReportList(rootPath string, options state.ReportListOptions) (state.ReportList, error) {

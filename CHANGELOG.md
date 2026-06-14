@@ -9,6 +9,7 @@ is a Loaf workflow staging section for curated entries before release.
 ### Changed
 
 - `loaf brainstorm promote|archive|list|show` JSON and human output now report global database scope and durable project identity details.
+- `loaf state doctor` and SQLite-backed `loaf report list` now warn when the global database is ready but the current repo still has importable local `.agents` Markdown that has not been migrated.
 - `loaf spark capture|promote|resolve|list|show` JSON and human output now report global database scope and durable project identity details.
 - `loaf idea capture|promote|resolve|archive|list|show` JSON and human output now report global database scope and durable project identity details.
 - `loaf report create|finalize|archive|list` JSON and human output now report global database scope and durable project identity details when backed by SQLite, while Markdown fallback output keeps repository-local report context.

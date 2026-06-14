@@ -223,6 +223,69 @@ func TestInspectReportsSQLiteReadyWhenDatabaseIsInitialized(t *testing.T) {
 	assertDiagnostic(t, status.Diagnostics, "sqlite-ready")
 }
 
+func TestInspectWarnsWhenGlobalDatabaseHasNotImportedCurrentMarkdown(t *testing.T) {
+	registeredRoot := projectRoot(t)
+	unimportedRoot := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), registeredRoot, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	writeAgentsFile(t, unimportedRoot.Path(), "reports/local.md", `---
+title: Local Markdown Report
+status: final
+---
+# Local Markdown Report
+`)
+
+	status, err := Inspect(unimportedRoot, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect(unimported) error = %v", err)
+	}
+	if status.Mode != ModeSQLiteReady {
+		t.Fatalf("Mode = %q, want %q", status.Mode, ModeSQLiteReady)
+	}
+	diagnostic := findDiagnostic(t, status.Diagnostics, "local-markdown-not-imported")
+	if !strings.Contains(diagnostic.Message, "1 importable artifact") || !strings.Contains(diagnostic.Message, "loaf state migrate markdown --dry-run") {
+		t.Fatalf("diagnostic Message = %q, want import guidance", diagnostic.Message)
+	}
+	action := findRepairAction(t, RepairPlanForStatus(status), "migrate-current-project-markdown")
+	if action.Command != "loaf state migrate markdown --dry-run" || !action.Safe {
+		t.Fatalf("repair action = %#v, want safe markdown migration preview", action)
+	}
+
+	if _, err := ApplyMarkdownMigration(context.Background(), unimportedRoot, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("ApplyMarkdownMigration() error = %v", err)
+	}
+	migrated, err := Inspect(unimportedRoot, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect(migrated) error = %v", err)
+	}
+	assertNoDiagnostic(t, migrated.Diagnostics, "local-markdown-not-imported")
+}
+
+func TestInspectWarnsWhenInitializedProjectHasUnimportedMarkdown(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	writeAgentsFile(t, root.Path(), "tasks/TASK-001-local.md", `---
+title: Local Markdown Task
+status: todo
+---
+# Local Markdown Task
+`)
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	diagnostic := findDiagnostic(t, status.Diagnostics, "local-markdown-not-imported")
+	if !strings.Contains(diagnostic.Message, "1 importable artifact") {
+		t.Fatalf("diagnostic Message = %q, want local artifact count", diagnostic.Message)
+	}
+}
+
 func TestInspectReportsInvalidWhenDatabaseFileIsNotSQLite(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

@@ -16,6 +16,7 @@ type ReportList struct {
 	ProjectID          string                `json:"project_id,omitempty"`
 	ProjectName        string                `json:"project_name,omitempty"`
 	ProjectCurrentPath string                `json:"project_current_path,omitempty"`
+	Diagnostics        []Diagnostic          `json:"diagnostics,omitempty"`
 	Version            int                   `json:"version"`
 	Reports            map[string]ReportItem `json:"reports"`
 }

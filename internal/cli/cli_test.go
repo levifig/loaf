@@ -11559,6 +11559,55 @@ source: old
 	assertNoStateDatabase(t, workingDir, stateHome)
 }
 
+func TestRunnerReportListWarnsWhenGlobalDatabaseHasUnimportedMarkdown(t *testing.T) {
+	registeredDir := realpath(t, t.TempDir())
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: registeredDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init registered project error = %v", err)
+	}
+	writeCLIAgentsFile(t, workingDir, "reports/local.md", `---
+title: Local Markdown Report
+type: audit
+status: final
+---
+# Local Markdown Report
+`)
+
+	var jsonOut bytes.Buffer
+	err := Runner{
+		Stdout:     &jsonOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"report", "list", "--json"})
+	if err != nil {
+		t.Fatalf("report list --json error = %v", err)
+	}
+	reports := decodeReportList(t, jsonOut.Bytes())
+	if !hasDiagnostic(reports.Diagnostics, "local-markdown-not-imported") {
+		t.Fatalf("diagnostics = %#v, want local-markdown-not-imported", reports.Diagnostics)
+	}
+	if len(reports.Reports) != 0 {
+		t.Fatalf("reports = %#v, want empty SQLite list with warning", reports.Reports)
+	}
+
+	var humanOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"report", "list"})
+	if err != nil {
+		t.Fatalf("report list human error = %v", err)
+	}
+	output := humanOut.String()
+	for _, want := range []string{"loaf report list", "warn:", "local .agents Markdown has 1 importable artifact", "loaf state migrate markdown --dry-run", "No reports found."} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
+	}
+}
+
 func assertCLIReportContext(t *testing.T, contractVersion int, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string, workingDir string) {
 	t.Helper()
 	if contractVersion != state.StateJSONContractVersion {

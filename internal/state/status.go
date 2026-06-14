@@ -170,6 +170,16 @@ func Inspect(root project.Root, resolver PathResolver) (Status, error) {
 				Message:  fmt.Sprintf("legacy project database remains at %s after global DB initialization", status.LegacyDatabasePath),
 			})
 		}
+		markdownDiagnostics, err := inspectUnimportedLocalMarkdown(context.Background(), root, store, status.ProjectID)
+		if err != nil {
+			status.Diagnostics = append(status.Diagnostics, Diagnostic{
+				Severity: "warn",
+				Code:     "local-markdown-import-check-unreadable",
+				Message:  err.Error(),
+			})
+		} else {
+			status.Diagnostics = append(status.Diagnostics, markdownDiagnostics...)
+		}
 		linearDiagnostics, err := inspectLinearModeTaskMappings(context.Background(), root, store, status.ProjectID)
 		if err != nil {
 			status.Diagnostics = append(status.Diagnostics, Diagnostic{
@@ -302,6 +312,15 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Description:    "Regenerate the stale compatibility export from SQLite state.",
 				Safe:           false,
 			})
+		case "local-markdown-not-imported":
+			actions = appendRepairAction(actions, RepairAction{
+				Code:           "migrate-current-project-markdown",
+				DiagnosticCode: diagnostic.Code,
+				Description:    "Preview importing this project's local .agents Markdown artifacts into the global SQLite database.",
+				Command:        "loaf state migrate markdown --dry-run",
+				Path:           status.ProjectRoot,
+				Safe:           true,
+			})
 		}
 	}
 	return actions
@@ -400,6 +419,43 @@ func inspectOperationalInvariants(ctx context.Context, store *Store) ([]Diagnost
 	}
 
 	return diagnostics, valid, nil
+}
+
+func inspectUnimportedLocalMarkdown(ctx context.Context, root project.Root, store *Store, projectID string) ([]Diagnostic, error) {
+	plan, err := PreviewMarkdownMigration(root)
+	if err != nil {
+		return nil, err
+	}
+	importableCount := markdownMigrationImportableCount(plan)
+	if importableCount == 0 {
+		return nil, nil
+	}
+	if projectID != "" {
+		var importedSources int
+		if err := store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sources WHERE project_id = ? AND path LIKE '.agents/%'`, projectID).Scan(&importedSources); err != nil {
+			return nil, fmt.Errorf("inspect imported Markdown sources: %w", err)
+		}
+		if importedSources > 0 {
+			return nil, nil
+		}
+	}
+	return []Diagnostic{{
+		Severity: "warn",
+		Code:     "local-markdown-not-imported",
+		Message:  fmt.Sprintf("local .agents Markdown has %d importable artifact(s), but this project has no imported Markdown sources in the global SQLite database; run `loaf state migrate markdown --dry-run` before trusting empty SQLite output", importableCount),
+	}}, nil
+}
+
+func markdownMigrationImportableCount(plan MarkdownMigrationPlan) int {
+	return plan.Specs +
+		plan.Tasks +
+		plan.Ideas +
+		plan.Sparks +
+		plan.Brainstorms +
+		plan.ShapingDrafts +
+		plan.Sessions +
+		plan.Reports +
+		plan.Relationships
 }
 
 func inspectSQLiteIntegrity(ctx context.Context, store *Store) ([]Diagnostic, bool, error) {
