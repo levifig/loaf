@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/levifig/loaf/internal/project"
 )
@@ -325,7 +326,7 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Path:           status.DatabasePath,
 				Safe:           false,
 			})
-		case "backend-mapping-field-empty", "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing":
+		case "backend-mapping-field-empty", "backend-mapping-sensitive-value", "backend-mapping-entity-kind-unknown", "backend-mapping-entity-missing":
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "inspect-backend-mappings",
 				DiagnosticCode: diagnostic.Code,
@@ -739,6 +740,46 @@ ORDER BY field
 		return nil, false, fmt.Errorf("iterate blank backend mapping fields: %w", err)
 	}
 
+	sensitiveRows, err := store.db.QueryContext(ctx, `
+SELECT field, value
+FROM (
+  SELECT 'external_id' AS field, external_id AS value FROM backend_mappings
+  UNION ALL SELECT 'external_url', COALESCE(external_url, '') FROM backend_mappings
+)
+ORDER BY field
+`)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect sensitive backend mapping values: %w", err)
+	}
+	defer sensitiveRows.Close()
+	sensitiveCounts := map[string]int{}
+	for sensitiveRows.Next() {
+		var field, value string
+		if err := sensitiveRows.Scan(&field, &value); err != nil {
+			return nil, false, fmt.Errorf("scan sensitive backend mapping value: %w", err)
+		}
+		if backendMappingHasSensitiveValue(value) {
+			sensitiveCounts[field]++
+		}
+	}
+	if err := sensitiveRows.Err(); err != nil {
+		return nil, false, fmt.Errorf("iterate sensitive backend mapping values: %w", err)
+	}
+	for _, field := range []string{"external_id", "external_url"} {
+		count := sensitiveCounts[field]
+		if count == 0 {
+			continue
+		}
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "backend-mapping-sensitive-value",
+			Category: RepairCategoryBackendMapping,
+			Policy:   DiagnosticPolicyInvalidLocalData,
+			Message:  fmt.Sprintf("%d backend mapping row(s) contain sensitive-looking %s values; replace them with external record identifiers or URLs before trusting integration state", count, field),
+		})
+	}
+
 	unknownRows, err := store.db.QueryContext(ctx, `
 SELECT entity_kind, COUNT(*)
 FROM backend_mappings
@@ -926,6 +967,33 @@ ORDER BY project_id, backend, entity_kind, entity_id, external_kind
 	}
 
 	return diagnostics, valid, nil
+}
+
+func backendMappingHasSensitiveValue(value string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "" {
+		return false
+	}
+	markers := []string{
+		"authorization:",
+		"bearer ",
+		strings.Join([]string{"api", "_", "key", "="}, ""),
+		strings.Join([]string{"x-api", "-", "key"}, ""),
+		strings.Join([]string{"access_", "tok", "en", "="}, ""),
+		strings.Join([]string{"refresh_", "tok", "en", "="}, ""),
+		strings.Join([]string{"tok", "en", "="}, ""),
+		strings.Join([]string{"pass", "word", "="}, ""),
+		strings.Join([]string{"sec", "ret", "="}, ""),
+		"ghp_",
+		"xoxb-",
+		"sk_live_",
+	}
+	for _, marker := range markers {
+		if strings.Contains(normalized, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func inspectLinearModeTaskMappings(ctx context.Context, root project.Root, store *Store, projectID string) ([]Diagnostic, error) {

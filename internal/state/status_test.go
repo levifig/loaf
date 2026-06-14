@@ -665,6 +665,51 @@ VALUES ('backend-mapping-empty-field', ?, 'linear', 'task', 'task-linear-empty-f
 	}
 }
 
+func TestInspectReportsSensitiveBackendMappingValues(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	projectID := projectIDForTest(t, store, root)
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO tasks (id, project_id, spec_id, title, status, priority, body_source_id, created_at, updated_at)
+VALUES ('task-linear-sensitive', ?, NULL, 'Linear task with sensitive mapping value', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert task fixture error = %v", err)
+	}
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-sensitive-value', ?, 'linear', 'task', 'task-linear-sensitive', 'issue', 'ENG-130', 'https://linear.app/workspace/issue/ENG-130?access_token=REDACTED', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, projectID); err != nil {
+		t.Fatalf("insert sensitive backend mapping error = %v", err)
+	}
+
+	status, err := Inspect(root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	if status.Mode != ModeInvalid {
+		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
+	}
+	diagnostic := findDiagnostic(t, status.Diagnostics, "backend-mapping-sensitive-value")
+	if !strings.Contains(diagnostic.Message, "external_url") {
+		t.Fatalf("diagnostic Message = %q, want field name", diagnostic.Message)
+	}
+	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-sensitive-value", RepairCategoryBackendMapping, DiagnosticPolicyInvalidLocalData, false)
+
+	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-backend-mappings")
+	if action.Safe {
+		t.Fatalf("repair action Safe = true, want manual backend mapping audit")
+	}
+	if action.Category != RepairCategoryBackendMapping || action.RequiresExternalSync {
+		t.Fatalf("repair action = %#v, want local backend mapping inspection", action)
+	}
+}
+
 func TestInspectReportsUnknownBackendMappingEntityKind(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state doctor` now rejects backend mapping rows with sensitive-looking external identity values, keeping Linear/backend metadata to identifiers and URLs instead of credentials.
 - `loaf state export all --json --format markdown` now returns the same machine-readable flag-conflict error as the reverse flag order instead of falling through to a generic unsupported-format message.
 - `loaf report generate` now accepts its documented `--format markdown` option and supports `--json`, returning the same markdown export wrapper used by state exports with machine-readable errors for unsupported formats and missing state.
 - Markdown exports from `loaf state export triage|release-readiness|spec|session` now include explicit project context; external-safe exports name the global/project scope, stable project ID, and friendly project name without exposing local paths, while internal exports also include project and database paths.

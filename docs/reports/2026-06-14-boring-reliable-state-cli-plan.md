@@ -236,6 +236,10 @@ Only after Tracks 1-5, run a requirement-by-requirement completion audit against
 
 Go/no-go: every requirement has current evidence, not just a historical changelog entry.
 
+Progress:
+
+- 2026-06-14: Started the completion audit in `docs/reports/2026-06-14-boring-reliable-completion-audit.md`, mapping the reliability contract to current tests, docs, and dogfood evidence. The first weak proof point was the backend mapping sensitive-value boundary: schema tests proved Loaf does not define dedicated sensitive storage columns, but doctor did not reject sensitive-looking values inside external identity fields. `backend-mapping-sensitive-value` now classifies those rows as invalid local backend-mapping data, and `TestInspectReportsSensitiveBackendMappingValues` covers the repair policy.
+
 ## Next Best Commit
 
-The next implementation commit should begin the completion-audit pass: map the reliability contract bullets above to current tests, docs, or dogfood evidence, then fix the first remaining requirement with missing or weak evidence rather than adding more opportunistic polish.
+The next implementation commit should continue the completion-audit pass by dogfooding the subjective human-output contract against primary-checkout command output and tightening the first command surface whose actual output is less clear than the documented reliability contract.
