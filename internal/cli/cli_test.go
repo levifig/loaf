@@ -5979,6 +5979,7 @@ status: implementing
 	}
 
 	trace := decodeTraceResult(t, stdout.Bytes())
+	assertCLIProjectContext(t, workingDir, trace.ContractVersion, trace.DatabaseScope, trace.DatabasePath, trace.ProjectID, trace.ProjectName, trace.ProjectCurrentPath)
 	if trace.Entity.Kind != "task" || trace.Entity.Alias != "TASK-001" || trace.Entity.Title != "Example Task" {
 		t.Fatalf("Entity = %#v, want imported task", trace.Entity)
 	}
@@ -5987,6 +5988,22 @@ status: implementing
 	}
 	if !hasTraceRelationship(trace.Relationships, "outbound", "blocked_by", "task", "TASK-000") {
 		t.Fatalf("Relationships = %#v, want task dependency alias", trace.Relationships)
+	}
+
+	var humanOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"trace", "TASK-001"})
+	if err != nil {
+		t.Fatalf("trace TASK-001 human error = %v", err)
+	}
+	human := humanOut.String()
+	for _, want := range []string{"task TASK-001", "scope: global database", "database:", "project:", "project name:", "project path:", "title: Example Task", "outbound implements spec SPEC-001"} {
+		if !strings.Contains(human, want) {
+			t.Fatalf("human output = %q, want %q", human, want)
+		}
 	}
 }
 
@@ -10130,6 +10147,7 @@ Imported spec prose.
 		t.Fatalf("spec show --json error = %v", err)
 	}
 	show := decodeSpecShow(t, showOut.Bytes())
+	assertCLIProjectContext(t, workingDir, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath)
 	if show.Spec.Alias != "SPEC-001" || show.Spec.Title != "Example Spec" || show.Spec.Status != "implementing" {
 		t.Fatalf("show = %#v, want imported spec metadata", show)
 	}
@@ -10156,7 +10174,7 @@ Imported spec prose.
 		t.Fatalf("spec show human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"spec SPEC-001", "title: Example Spec", "status: implementing", "tasks: 1 todo / 0 in_progress / 0 done", "source: .agents/specs/SPEC-001-example.md", "inbound implements task TASK-001", "Imported spec prose."} {
+	for _, want := range []string{"spec SPEC-001", "scope: global database", "database:", "project:", "project name:", "project path:", "title: Example Spec", "status: implementing", "tasks: 1 todo / 0 in_progress / 0 done", "source: .agents/specs/SPEC-001-example.md", "inbound implements task TASK-001", "Imported spec prose."} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -10202,6 +10220,9 @@ Markdown spec prose.
 		t.Fatalf("spec show markdown --json error = %v", err)
 	}
 	show := decodeSpecShow(t, jsonOut.Bytes())
+	if show.ContractVersion != 0 || show.DatabaseScope != "" || show.DatabasePath != "" || show.ProjectID != "" || show.ProjectName != "" || show.ProjectCurrentPath != "" {
+		t.Fatalf("markdown spec show context = %#v, want empty", show)
+	}
 	spec := show.Spec
 	if show.Query != "SPEC-001" || spec.Alias != "SPEC-001" || spec.Title != "Example Spec" || spec.Status != "implementing" {
 		t.Fatalf("show = %#v, want TASKS.json spec metadata over frontmatter", show)
@@ -10236,6 +10257,9 @@ Markdown spec prose.
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
+	}
+	if strings.Contains(output, "scope: global database") || strings.Contains(output, "project path:") {
+		t.Fatalf("output = %q, want markdown fallback without database context", output)
 	}
 	assertNoStateDatabase(t, workingDir, stateHome)
 }

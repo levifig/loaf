@@ -13,10 +13,16 @@ import (
 
 // TraceResult describes a state-backed entity and its immediate provenance graph.
 type TraceResult struct {
-	Query         string              `json:"query"`
-	Entity        TraceEntity         `json:"entity"`
-	Sources       []TraceSource       `json:"sources"`
-	Relationships []TraceRelationship `json:"relationships"`
+	ContractVersion    int                 `json:"contract_version,omitempty"`
+	DatabaseScope      string              `json:"database_scope,omitempty"`
+	DatabasePath       string              `json:"database_path,omitempty"`
+	ProjectID          string              `json:"project_id,omitempty"`
+	ProjectName        string              `json:"project_name,omitempty"`
+	ProjectCurrentPath string              `json:"project_current_path,omitempty"`
+	Query              string              `json:"query"`
+	Entity             TraceEntity         `json:"entity"`
+	Sources            []TraceSource       `json:"sources"`
+	Relationships      []TraceRelationship `json:"relationships"`
 }
 
 // TraceEntity is a compact representation of a traced row.
@@ -77,6 +83,10 @@ func (s *Store) Trace(ctx context.Context, root project.Root, ref string) (Trace
 	if err != nil {
 		return TraceResult{}, err
 	}
+	identity, err := s.projectIdentity(ctx, projectID)
+	if err != nil {
+		return TraceResult{}, err
+	}
 	entity, err := s.resolveTraceEntity(ctx, projectID, ref)
 	if err != nil {
 		return TraceResult{}, err
@@ -90,10 +100,16 @@ func (s *Store) Trace(ctx context.Context, root project.Root, ref string) (Trace
 		return TraceResult{}, err
 	}
 	return TraceResult{
-		Query:         ref,
-		Entity:        entity,
-		Sources:       sources,
-		Relationships: relationships,
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      identity.DatabaseScope,
+		DatabasePath:       identity.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Query:              ref,
+		Entity:             entity,
+		Sources:            sources,
+		Relationships:      relationships,
 	}, nil
 }
 

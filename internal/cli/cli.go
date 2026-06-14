@@ -2109,6 +2109,7 @@ func (r Runner) runTrace(args []string, out io.Writer, runtime state.Runtime) er
 	}
 
 	fmt.Fprintf(out, "%s %s\n", result.Entity.Kind, firstNonEmpty(result.Entity.Alias, result.Entity.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	if result.Entity.Title != "" {
 		fmt.Fprintf(out, "title: %s\n", result.Entity.Title)
 	}
@@ -6288,6 +6289,7 @@ func loadMarkdownSpecIndex(rootPath string) map[string]markdownSpecIndexEntry {
 func writeSpecShow(out io.Writer, result state.SpecShow) {
 	spec := result.Spec
 	fmt.Fprintf(out, "spec %s\n", firstNonEmpty(spec.Alias, spec.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "title: %s\n", spec.Title)
 	fmt.Fprintf(out, "status: %s\n", spec.Status)
 	fmt.Fprintf(out, "tasks: %d todo / %d in_progress / %d done\n", spec.Tasks.Todo, spec.Tasks.InProgress, spec.Tasks.Done)
