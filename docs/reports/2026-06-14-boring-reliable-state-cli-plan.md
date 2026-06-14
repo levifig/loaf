@@ -116,6 +116,8 @@ The previous shape was directionally right but broad enough to invite edge chasi
 
 ### Gate 1: Prove The Control Plane
 
+Status: Complete as of 2026-06-14 via `TestRunnerStateControlPlaneJSONFailureMatrix`, `TestRunnerStateControlPlaneJSONSuccessMatrix`, and `TestRunnerStateControlPlaneMutationAndRepairSafeguards`.
+
 Finish the command matrix for the commands that can damage trust fastest: `state status`, `state doctor`, `state export all`, `state backup verify`, `project show/list`, `project rename/move`, `migrate markdown --dry-run`, and `migrate storage-home --dry-run`.
 
 Exit criteria:
@@ -156,6 +158,7 @@ Progress:
 
 - 2026-06-14: `TestRunnerStateControlPlaneJSONFailureMatrix` covers sampled JSON failure contracts across `state`, `state repair`, `state backup verify`, `state export`, `project`, and `migrate` control-plane commands, including contract version, command name, error text, silent exit code, and no state database creation for pre-open/read-only failures.
 - 2026-06-14: `TestRunnerStateControlPlaneJSONSuccessMatrix` covers JSON success and no-mutation contracts for initialized read-only surfaces (`state status`, `state doctor`, `state export all`, `project show`, `project list`), migration dry-runs (`state migrate markdown --dry-run`, `state migrate storage-home --dry-run`), and `state backup verify` without live state access.
+- 2026-06-14: `TestRunnerStateControlPlaneMutationAndRepairSafeguards` covers project rename/move dry-run and apply safeguards plus repair dry-runs for relationship origins and legacy project databases, including durable project ID preservation, single current path after moves, dry-run table stability, and no archive writes during legacy repair previews.
 
 Go/no-go: the matrix can be re-run with one command and failures identify the exact command contract that regressed.
 
@@ -206,4 +209,4 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 
 ## Next Best Commit
 
-The next implementation commit should finish Gate 1 by mapping the remaining project mutation safeguards (`project rename/move` dry-run and apply paths) and repair dry-runs into the command-matrix evidence, then update this report to state whether Gate 1 is complete or exactly which command still lacks proof. After that, move to Gate 2 restore confidence instead of continuing to polish low-risk surfaces.
+The next implementation commit should start Gate 2 by documenting and verifying the manual restore procedure: verify a backup, preserve the current global DB, restore the verified backup into the XDG data-home path, then run `state doctor` and `state status`. Prefer docs plus tests/dogfood evidence first; add a `state restore` command only if the manual flow proves too clumsy.

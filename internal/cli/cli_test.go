@@ -6578,6 +6578,170 @@ func TestRunnerStateControlPlaneJSONSuccessMatrix(t *testing.T) {
 	})
 }
 
+func TestRunnerStateControlPlaneMutationAndRepairSafeguards(t *testing.T) {
+	t.Run("project rename and move keep durable identity boundaries", func(t *testing.T) {
+		workingDir := realpath(t, t.TempDir())
+		movedDir := realpath(t, t.TempDir())
+		stateHome := t.TempDir()
+		if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+			t.Fatalf("state init --json error = %v", err)
+		}
+
+		original := projectIdentityForCLI(t, workingDir, stateHome)
+		beforeRenamePreview := exportAllTablesForCLI(t, workingDir, stateHome)
+		var renamePreviewOut bytes.Buffer
+		if err := (Runner{Stdout: &renamePreviewOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Preview Loaf", "--dry-run", "--json"}); err != nil {
+			t.Fatalf("project rename --dry-run --json error = %v", err)
+		}
+		var renamePreview state.ProjectRenameResult
+		if err := json.Unmarshal(renamePreviewOut.Bytes(), &renamePreview); err != nil {
+			t.Fatalf("json.Unmarshal(%q) error = %v", renamePreviewOut.String(), err)
+		}
+		if renamePreview.ContractVersion != state.StateJSONContractVersion || renamePreview.DatabaseScope != "global" || renamePreview.Action != "dry-run" {
+			t.Fatalf("rename preview = %#v, want global dry-run contract", renamePreview)
+		}
+		if renamePreview.Project.ID != original.ID || renamePreview.Project.FriendlyName != "Preview Loaf" || renamePreview.FromName != original.FriendlyName {
+			t.Fatalf("rename preview = %#v, want same ID %q from %q to Preview Loaf", renamePreview, original.ID, original.FriendlyName)
+		}
+		afterRenamePreview := exportAllTablesForCLI(t, workingDir, stateHome)
+		if !reflect.DeepEqual(beforeRenamePreview, afterRenamePreview) {
+			t.Fatalf("project rename dry-run mutated exported tables:\nbefore=%#v\nafter=%#v", beforeRenamePreview, afterRenamePreview)
+		}
+
+		var renameApplyOut bytes.Buffer
+		if err := (Runner{Stdout: &renameApplyOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Friendly Loaf", "--json"}); err != nil {
+			t.Fatalf("project rename --json error = %v", err)
+		}
+		var renamed state.ProjectIdentity
+		if err := json.Unmarshal(renameApplyOut.Bytes(), &renamed); err != nil {
+			t.Fatalf("json.Unmarshal(%q) error = %v", renameApplyOut.String(), err)
+		}
+		if renamed.ContractVersion != state.StateJSONContractVersion || renamed.DatabaseScope != "global" || renamed.ID != original.ID || renamed.FriendlyName != "Friendly Loaf" || renamed.CurrentPath != workingDir {
+			t.Fatalf("renamed project = %#v, want same ID %q renamed at %s", renamed, original.ID, workingDir)
+		}
+
+		beforeMovePreview := exportAllTablesForCLI(t, workingDir, stateHome)
+		var movePreviewOut bytes.Buffer
+		if err := (Runner{Stdout: &movePreviewOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", workingDir, "--dry-run", "--json"}); err != nil {
+			t.Fatalf("project move --dry-run --json error = %v", err)
+		}
+		var movePreview state.ProjectMoveResult
+		if err := json.Unmarshal(movePreviewOut.Bytes(), &movePreview); err != nil {
+			t.Fatalf("json.Unmarshal(%q) error = %v", movePreviewOut.String(), err)
+		}
+		if movePreview.ContractVersion != state.StateJSONContractVersion || movePreview.DatabaseScope != "global" || movePreview.Action != "dry-run" {
+			t.Fatalf("move preview = %#v, want global dry-run contract", movePreview)
+		}
+		if movePreview.Project.ID != original.ID || movePreview.Project.CurrentPath != movedDir || movePreview.FromPath != workingDir || movePreview.ToPath != movedDir {
+			t.Fatalf("move preview = %#v, want same ID %q previewed from %s to %s", movePreview, original.ID, workingDir, movedDir)
+		}
+		afterMovePreview := exportAllTablesForCLI(t, workingDir, stateHome)
+		if !reflect.DeepEqual(beforeMovePreview, afterMovePreview) {
+			t.Fatalf("project move dry-run mutated exported tables:\nbefore=%#v\nafter=%#v", beforeMovePreview, afterMovePreview)
+		}
+
+		var moveApplyOut bytes.Buffer
+		if err := (Runner{Stdout: &moveApplyOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "move", "--from", workingDir, "--json"}); err != nil {
+			t.Fatalf("project move --json error = %v", err)
+		}
+		var moved state.ProjectMoveResult
+		if err := json.Unmarshal(moveApplyOut.Bytes(), &moved); err != nil {
+			t.Fatalf("json.Unmarshal(%q) error = %v", moveApplyOut.String(), err)
+		}
+		if moved.ContractVersion != state.StateJSONContractVersion || moved.DatabaseScope != "global" || moved.Action != "moved" {
+			t.Fatalf("moved project result = %#v, want global moved contract", moved)
+		}
+		if moved.Project.ID != original.ID || moved.Project.FriendlyName != "Friendly Loaf" || moved.Project.CurrentPath != movedDir {
+			t.Fatalf("moved project = %#v, want same renamed ID %q at %s", moved.Project, original.ID, movedDir)
+		}
+		db, err := sql.Open("sqlite3", stateDBPathForWorkingDir(t, movedDir, stateHome))
+		if err != nil {
+			t.Fatalf("sql.Open() error = %v", err)
+		}
+		defer db.Close()
+		if got := sqliteCount(t, db, `SELECT COUNT(*) FROM projects`); got != 1 {
+			t.Fatalf("projects = %d, want one durable project after rename/move", got)
+		}
+		if got := sqliteCount(t, db, `SELECT COUNT(*) FROM project_paths WHERE project_id = ? AND is_current = 1`, original.ID); got != 1 {
+			t.Fatalf("current project paths = %d, want one current path after move", got)
+		}
+		assertNoRepositoryAgentsDir(t, workingDir)
+		assertNoRepositoryAgentsDir(t, movedDir)
+	})
+
+	t.Run("relationship-origin repair dry-run preserves relationship rows", func(t *testing.T) {
+		workingDir := realpath(t, t.TempDir())
+		stateHome := t.TempDir()
+		var initOut bytes.Buffer
+		if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+			t.Fatalf("state init --json error = %v", err)
+		}
+		initialized := decodeStateStatus(t, initOut.Bytes())
+		db, err := sql.Open("sqlite3", initialized.DatabasePath)
+		if err != nil {
+			t.Fatalf("sql.Open() error = %v", err)
+		}
+		defer db.Close()
+		if _, err := db.Exec(`
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, created_at, updated_at)
+VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one', 'implements', 'legacy row', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+			t.Fatalf("insert relationship without origin error = %v", err)
+		}
+
+		before := exportAllTablesForCLI(t, workingDir, stateHome)
+		var stdout bytes.Buffer
+		if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "repair", "relationship-origin", "--origin", "imported", "--dry-run", "--json"}); err != nil {
+			t.Fatalf("state repair relationship-origin --dry-run --json error = %v", err)
+		}
+		result := decodeRelationshipOriginRepairResult(t, stdout.Bytes())
+		if result.ContractVersion != state.StateJSONContractVersion || result.DatabaseScope != "global" || result.ProjectID != initialized.ProjectID || result.Applied || result.Matched != 1 || result.Updated != 0 || result.BackupPath != "" {
+			t.Fatalf("relationship repair dry-run = %#v, want one matched row without writes or backup", result)
+		}
+		after := exportAllTablesForCLI(t, workingDir, stateHome)
+		if !reflect.DeepEqual(before, after) {
+			t.Fatalf("relationship-origin dry-run mutated exported tables:\nbefore=%#v\nafter=%#v", before, after)
+		}
+	})
+
+	t.Run("legacy project database repair dry-run preserves legacy files", func(t *testing.T) {
+		workingDir := realpath(t, t.TempDir())
+		dataHome := t.TempDir()
+		stateHome := t.TempDir()
+		t.Setenv("XDG_DATA_HOME", dataHome)
+		t.Setenv("XDG_STATE_HOME", stateHome)
+		root, err := project.ResolveRoot(workingDir)
+		if err != nil {
+			t.Fatalf("ResolveRoot() error = %v", err)
+		}
+		legacyPath := initializeCLILegacyStateDatabase(t, root)
+		if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir}).Run([]string{"state", "init", "--json"}); err != nil {
+			t.Fatalf("state init --json error = %v", err)
+		}
+
+		var stdout bytes.Buffer
+		if err := (Runner{Stdout: &stdout, WorkingDir: workingDir}).Run([]string{"state", "repair", "legacy-project-database", "--dry-run", "--json"}); err != nil {
+			t.Fatalf("state repair legacy-project-database --dry-run --json error = %v", err)
+		}
+		result := decodeLegacyProjectDatabaseArchiveResult(t, stdout.Bytes())
+		if result.ContractVersion != state.StateJSONContractVersion || result.DatabaseScope != "global" || result.Action != state.LegacyProjectDatabaseArchiveAction || result.Applied {
+			t.Fatalf("legacy project database repair dry-run = %#v, want unapplied archive plan", result)
+		}
+		if len(result.MatchedPaths) == 0 || len(result.ArchivedPaths) != 0 || result.LegacyDatabasePath != legacyPath {
+			t.Fatalf("legacy project database repair dry-run = %#v, want matched legacy files and no archived files", result)
+		}
+		if _, err := os.Stat(legacyPath); err != nil {
+			t.Fatalf("legacy database stat error = %v, want dry-run to preserve %s", err, legacyPath)
+		}
+		if result.ArchivePath == "" {
+			t.Fatal("legacy project database repair dry-run ArchivePath is empty")
+		}
+		if _, err := os.Stat(result.ArchivePath); !os.IsNotExist(err) {
+			t.Fatalf("archive path stat error = %v, want dry-run not to create archive %s", err, result.ArchivePath)
+		}
+	})
+}
+
 func TestRunnerTraceJSONUsesSQLiteState(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -12522,6 +12686,19 @@ func exportAllTablesForCLI(t *testing.T, workingDir string, stateHome string) ma
 		t.Fatalf("state export all --json error = %v", err)
 	}
 	return decodeStateExportSnapshot(t, stdout.Bytes()).Tables
+}
+
+func projectIdentityForCLI(t *testing.T, workingDir string, stateHome string) state.ProjectIdentity {
+	t.Helper()
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"}); err != nil {
+		t.Fatalf("project show --json error = %v", err)
+	}
+	var identity state.ProjectIdentity
+	if err := json.Unmarshal(stdout.Bytes(), &identity); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", stdout.String(), err)
+	}
+	return identity
 }
 
 func decodeMarkdownMigrationPlan(t *testing.T, data []byte) state.MarkdownMigrationPlan {

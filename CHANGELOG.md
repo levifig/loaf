@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- Completed the Gate 1 control-plane evidence pass with regression coverage for project rename/move safeguards and repair dry-runs, including durable project identity, single current path, dry-run table stability, and legacy archive preview safety.
 - Added command-matrix regression coverage for critical state/project/migration JSON success contracts, including read-only no-mutation checks, migration dry-run no-copy/no-database checks, and backup verification without live state access.
 - Refocused the boring-reliable state/CLI plan into gated execution criteria so future work progresses through control-plane proof, recovery confidence, and UX/policy normalization instead of broad edge chasing.
 - Added command-matrix regression coverage for critical state/project/migration JSON failure contracts, including contract version, command name, silent exit code, and no database creation for pre-open failures.
