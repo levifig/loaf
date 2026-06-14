@@ -1406,7 +1406,7 @@ func (r Runner) openProjectStoreReadOnly(runtime state.Runtime) (project.Root, *
 	}
 	if info, err := os.Stat(databasePath); err != nil {
 		if os.IsNotExist(err) {
-			return project.Root{}, nil, fmt.Errorf("state database does not exist; run `loaf state init` first")
+			return project.Root{}, nil, fmt.Errorf("project state database does not exist at %s (scope: global database); run `loaf state status` to inspect it or `loaf state init` to create it", databasePath)
 		}
 		return project.Root{}, nil, fmt.Errorf("stat state database: %w", err)
 	} else if info.IsDir() {

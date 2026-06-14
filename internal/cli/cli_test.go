@@ -2335,6 +2335,44 @@ func TestRunnerProjectReadsDoNotCreateMissingDatabase(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectMissingDatabaseHumanErrorsIncludeContext(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	databasePath := filepath.Join(stateHome, "loaf", "loaf.sqlite")
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "show", args: []string{"project", "show"}},
+		{name: "list", args: []string{"project", "list"}},
+		{name: "rename dry-run", args: []string{"project", "rename", "Human Dogfood", "--dry-run"}},
+		{name: "move dry-run", args: []string{"project", "move", workingDir, realpath(t, t.TempDir()), "--dry-run"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run(tt.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want missing database error", tt.args)
+			}
+			for _, want := range []string{
+				"project state database does not exist",
+				"scope: global database",
+				databasePath,
+				"loaf state status",
+				"loaf state init",
+			} {
+				if !strings.Contains(err.Error(), want) {
+					t.Fatalf("Run(%v) error = %q, want %q", tt.args, err.Error(), want)
+				}
+			}
+		})
+	}
+	if _, err := os.Stat(databasePath); !os.IsNotExist(err) {
+		t.Fatalf("state database stat error = %v, want project human failures not to create database", err)
+	}
+}
+
 func TestRunnerProjectShowDoesNotRegisterUnknownPath(t *testing.T) {
 	registeredDir := realpath(t, t.TempDir())
 	unknownDir := realpath(t, t.TempDir())

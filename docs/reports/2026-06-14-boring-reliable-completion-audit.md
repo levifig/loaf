@@ -78,8 +78,8 @@ This audit maps the reliability contract to current evidence and calls out the f
 | Dry-run output says no changes were written | migration/project/repair dry-run tests | Proven |
 | Apply output says what changed and where | migration/project/repair apply tests | Proven |
 | Repair output labels safe/manual/applied actions | doctor/repair tests | Proven |
-| Error text points at next useful command without implying unsafe mutation | JSON/human failure tests and backup verify guidance tests | Proven for critical matrix |
-| Output remains concise and agent-scrapable when JSON is unavailable | human-output matrix tests plus dogfood notes in the plan; positional `project move` dogfood fix | Partially subjective; continue dogfood sampling |
+| Error text points at next useful command without implying unsafe mutation | JSON/human failure tests and backup verify guidance tests; missing-state project command dogfood fix | Proven for critical matrix |
+| Output remains concise and agent-scrapable when JSON is unavailable | human-output matrix tests plus dogfood notes in the plan; positional `project move` and missing-state project error fixes | Partially subjective; continue dogfood sampling |
 
 ## First Weak Proof Point Fixed
 
@@ -89,4 +89,4 @@ This checkpoint adds a non-mutating doctor diagnostic, `backend-mapping-sensitiv
 
 ## Next Review Target
 
-Continue sampling human failure output for missing/invalid project state, especially read-only project commands. The test matrix is strong, but the final UX claim should keep being reviewed against actual command output, not only fixtures.
+Continue sampling invalid-state project-command output, especially schema drift and project identity mismatch cases. The test matrix is strong, but the final UX claim should keep being reviewed against actual command output, not only fixtures.
