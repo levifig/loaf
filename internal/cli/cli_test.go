@@ -4370,6 +4370,9 @@ VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missin
 		if diagnostic.Category != state.RepairCategoryBackendMapping || diagnostic.Policy != state.DiagnosticPolicyInvalidLocalData || diagnostic.RequiresExternalSync {
 			t.Fatalf("diagnostic = %#v, want invalid local backend mapping policy", diagnostic)
 		}
+		if diagnostic.Details["mapping_id"] != "backend-mapping-wrong-project" || diagnostic.Details["entity_kind"] != "project" {
+			t.Fatalf("diagnostic Details = %#v, want structured backend mapping identifiers", diagnostic.Details)
+		}
 	})
 
 	t.Run("Linear external sync gap", func(t *testing.T) {
@@ -4407,6 +4410,9 @@ VALUES ('task-active-unmapped', ?, NULL, 'Active unmapped task', 'todo', 'P2', N
 		diagnostic := findCLIDiagnostic(t, status.Diagnostics, "linear-mode-local-task-unmapped")
 		if diagnostic.Category != state.RepairCategoryExternalSync || diagnostic.Policy != state.DiagnosticPolicyExternalSyncGap || !diagnostic.RequiresExternalSync {
 			t.Fatalf("diagnostic = %#v, want Linear external sync policy", diagnostic)
+		}
+		if diagnostic.Details["backend"] != "linear" || diagnostic.Details["unmapped_task_count"] != float64(1) {
+			t.Fatalf("diagnostic Details = %#v, want structured Linear sync identifiers", diagnostic.Details)
 		}
 	})
 }

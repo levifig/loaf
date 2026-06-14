@@ -204,6 +204,7 @@ Write and enforce a small policy for backend mappings:
 Progress:
 
 - 2026-06-14: Backend-related diagnostics now expose `category`, `policy`, and `requires_external_sync` where relevant. Invalid backend mapping rows use `backend-mapping` / `invalid-local-data`, warning-only drift uses `backend-mapping` / `warning-drift`, and Linear task mapping gaps use `external-sync` / `external-sync-gap` with `requires_external_sync: true`. Human `state doctor` output renders these labels inline, and `TestRunnerStateDoctorLabelsBackendDiagnosticPolicy` verifies both human output and JSON fields.
+- 2026-06-14: Dogfooded invalid backend mapping rows and Linear-unmapped local tasks from the primary checkout with isolated XDG homes. Human output already separated invalid local data from external sync work, but JSON diagnostics still forced agents to parse prose for affected rows. Backend and Linear diagnostics now include structured `details` payloads for fields such as `mapping_id`, `entity_kind`, `entity_id`, `external_id`, `row_count`, and `unmapped_task_count`; `TestInspectReportsInvalidBackendMappingMissingEntity`, backend warning tests, Linear warning tests, and `TestRunnerStateDoctorLabelsBackendDiagnosticPolicy` cover the public contract.
 
 Go/no-go: doctor diagnostics and repair/export guidance make it obvious whether the next action is local repair, export/audit, or backend sync.
 
@@ -246,4 +247,4 @@ Progress:
 
 ## Next Best Commit
 
-The next implementation commit should continue the completion-audit pass by sampling backend/Linear diagnostic output from live fixtures and tightening the first policy or repair-guidance path whose actual behavior is less clear than the documented reliability contract.
+The next implementation commit should continue the completion-audit pass by auditing backup/export/import restore edges: pick one path where the documented reliability contract still depends on procedure rather than a command/test, dogfood it from the primary checkout with isolated XDG homes, and tighten the first unclear safety or JSON contract that appears.

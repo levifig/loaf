@@ -1,6 +1,6 @@
 # Boring Reliable Completion Audit
 
-Date: 2026-06-14 18:08
+Date: 2026-06-14 18:36
 Status: In progress
 Scope: Current evidence for `docs/reports/2026-06-14-boring-reliable-state-cli-plan.md`.
 
@@ -57,7 +57,7 @@ This audit maps the reliability contract to current evidence and calls out the f
 | Local mappings reject unknown entity kinds and missing local entities | backend mapping invariant tests in `internal/state/status_test.go` | Proven |
 | Ambiguous mappings and unknown sync statuses are visible diagnostics | backend mapping warning tests in `internal/state/status_test.go` | Proven |
 | Linear-enabled projects warn about active local tasks without Linear mappings | `TestInspectWarnsOnUnmappedLocalTasksWhenLinearEnabled` | Proven |
-| Repair guidance separates local DB repair from future backend sync work | diagnostic policy tests in `internal/state/status_test.go` and `internal/cli/cli_test.go` | Proven |
+| Repair guidance separates local DB repair from future backend sync work | diagnostic policy tests in `internal/state/status_test.go` and `internal/cli/cli_test.go`; live isolated `state doctor --json` dogfood for invalid backend rows and Linear-unmapped tasks | Proven |
 
 ## Agentic JSON
 
@@ -69,6 +69,7 @@ This audit maps the reliability contract to current evidence and calls out the f
 | Project-aware payloads include ID, name, and current path when available | state/project/backup/export tests | Proven for critical matrix |
 | Empty collections are stable arrays | repair-plan and export JSON tests | Proven |
 | Exit codes are deterministic while preserving JSON | JSON failure matrix tests | Proven for critical matrix |
+| Backend/Linear diagnostics include structured routing details | `Diagnostic.Details` in `internal/state/status.go`; backend/Linear detail assertions in `internal/state/status_test.go` and `internal/cli/cli_test.go`; live isolated `state doctor --json` dogfood | Proven |
 
 ## Human CLI
 
@@ -87,6 +88,12 @@ The first weak item was the backend policy requirement that mappings store only 
 
 This checkpoint adds a non-mutating doctor diagnostic, `backend-mapping-sensitive-value`, classifies it as `backend-mapping` / `invalid-local-data`, and keeps the repair guidance as a manual local backend-mapping audit rather than external sync work.
 
+## Latest Checkpoint
+
+The latest backend/Linear sampling pass found that human output and repair plans already separated invalid local backend data from external sync work, but JSON consumers still had to parse diagnostic prose to identify affected rows or counts.
+
+This checkpoint adds structured diagnostic `details` for backend mapping and Linear sync findings, covering affected fields, row counts, mapping IDs, local entity identifiers, external identifiers, and unmapped task counts. Live dogfood through the rebuilt `bin/loaf` confirmed those details appear in `state doctor --json` for both invalid backend mapping rows and Linear-unmapped local tasks.
+
 ## Next Review Target
 
-Continue sampling backend/Linear diagnostic output from live fixtures. The test matrix is strong, but the final UX claim should keep being reviewed against actual command output, not only fixtures.
+Continue the completion-audit pass against backup/export/import restore edges. The manual restore story is documented and tested, but it should keep being dogfooded from the primary checkout with isolated XDG homes to find the next unclear safety, JSON, or human-output contract.

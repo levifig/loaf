@@ -604,6 +604,10 @@ VALUES ('backend-mapping-orphaned', ?, 'linear', 'task', 'task-missing', 'issue'
 	}
 	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
 	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-entity-missing", RepairCategoryBackendMapping, DiagnosticPolicyInvalidLocalData, false)
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-entity-missing", "mapping_id", "backend-mapping-orphaned")
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-entity-missing", "entity_kind", "task")
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-entity-missing", "entity_id", "task-missing")
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-entity-missing", "external_id", "ENG-123")
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-backend-mappings")
 	if action.Safe {
@@ -652,6 +656,8 @@ VALUES ('backend-mapping-empty-field', ?, 'linear', 'task', 'task-linear-empty-f
 		t.Fatalf("diagnostic Message = %q, want field name", diagnostic.Message)
 	}
 	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-field-empty", RepairCategoryBackendMapping, DiagnosticPolicyInvalidLocalData, false)
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-field-empty", "field", "external_id")
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-field-empty", "row_count", 1)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-backend-mappings")
 	if action.Safe {
@@ -700,6 +706,8 @@ VALUES ('backend-mapping-sensitive-value', ?, 'linear', 'task', 'task-linear-sen
 		t.Fatalf("diagnostic Message = %q, want field name", diagnostic.Message)
 	}
 	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-sensitive-value", RepairCategoryBackendMapping, DiagnosticPolicyInvalidLocalData, false)
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-sensitive-value", "field", "external_url")
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-sensitive-value", "row_count", 1)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-backend-mappings")
 	if action.Safe {
@@ -736,6 +744,8 @@ VALUES ('backend-mapping-unknown-kind', ?, 'linear', 'milestone', 'milestone-one
 	}
 	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-kind-unknown")
 	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-entity-kind-unknown", RepairCategoryBackendMapping, DiagnosticPolicyInvalidLocalData, false)
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-entity-kind-unknown", "entity_kind", "milestone")
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-entity-kind-unknown", "row_count", 1)
 	assertNoDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
 }
 
@@ -832,6 +842,9 @@ VALUES
 	}
 	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-ambiguous")
 	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-entity-ambiguous", RepairCategoryBackendMapping, DiagnosticPolicyWarningDrift, false)
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-entity-ambiguous", "entity_kind", "task")
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-entity-ambiguous", "entity_id", "task-linear")
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-entity-ambiguous", "distinct_external_id_count", 2)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
 	if action.Safe {
@@ -881,6 +894,8 @@ VALUES
 		t.Fatalf("diagnostic Message = %q, want unknown status value", diagnostic.Message)
 	}
 	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-sync-status-unknown", RepairCategoryBackendMapping, DiagnosticPolicyWarningDrift, false)
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-sync-status-unknown", "sync_status", "lnked")
+	assertDiagnosticDetail(t, status.Diagnostics, "backend-mapping-sync-status-unknown", "row_count", 1)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
 	if action.Safe {
@@ -935,6 +950,9 @@ VALUES ('backend-mapping-linear-task', ?, 'linear', 'task', 'task-active-mapped'
 		t.Fatalf("diagnostic Message = %q, want count of only active unmapped tasks", diagnostic.Message)
 	}
 	assertDiagnosticPolicy(t, status.Diagnostics, "linear-mode-local-task-unmapped", RepairCategoryExternalSync, DiagnosticPolicyExternalSyncGap, true)
+	assertDiagnosticDetail(t, status.Diagnostics, "linear-mode-local-task-unmapped", "backend", "linear")
+	assertDiagnosticDetail(t, status.Diagnostics, "linear-mode-local-task-unmapped", "entity_kind", "task")
+	assertDiagnosticDetail(t, status.Diagnostics, "linear-mode-local-task-unmapped", "unmapped_task_count", 1)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "reconcile-linear-task-mappings")
 	if action.Safe {
@@ -1078,6 +1096,18 @@ func assertDiagnosticPolicy(t *testing.T, diagnostics []Diagnostic, code string,
 	diagnostic := findDiagnostic(t, diagnostics, code)
 	if diagnostic.Category != category || diagnostic.Policy != policy || diagnostic.RequiresExternalSync != requiresExternalSync {
 		t.Fatalf("diagnostic %q = %#v, want category %q policy %q requiresExternalSync %v", code, diagnostic, category, policy, requiresExternalSync)
+	}
+}
+
+func assertDiagnosticDetail(t *testing.T, diagnostics []Diagnostic, code string, key string, want any) {
+	t.Helper()
+	diagnostic := findDiagnostic(t, diagnostics, code)
+	got, ok := diagnostic.Details[key]
+	if !ok {
+		t.Fatalf("diagnostic %q details = %#v, want key %q", code, diagnostic.Details, key)
+	}
+	if got != want {
+		t.Fatalf("diagnostic %q details[%q] = %#v, want %#v", code, key, got, want)
 	}
 }
 

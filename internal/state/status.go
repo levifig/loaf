@@ -38,12 +38,13 @@ const (
 
 // Diagnostic describes a state-runtime observation without mutating state.
 type Diagnostic struct {
-	Severity             string `json:"severity"`
-	Code                 string `json:"code"`
-	Category             string `json:"category,omitempty"`
-	Policy               string `json:"policy,omitempty"`
-	Message              string `json:"message"`
-	RequiresExternalSync bool   `json:"requires_external_sync,omitempty"`
+	Severity             string         `json:"severity"`
+	Code                 string         `json:"code"`
+	Category             string         `json:"category,omitempty"`
+	Policy               string         `json:"policy,omitempty"`
+	Message              string         `json:"message"`
+	Details              map[string]any `json:"details,omitempty"`
+	RequiresExternalSync bool           `json:"requires_external_sync,omitempty"`
 }
 
 // RepairAction describes an explicit repair recommendation from diagnostics.
@@ -734,6 +735,10 @@ ORDER BY field
 			Category: RepairCategoryBackendMapping,
 			Policy:   DiagnosticPolicyInvalidLocalData,
 			Message:  fmt.Sprintf("%d backend mapping row(s) have an empty %s field; fix or remove the local backend mapping row before trusting integration state", count, field),
+			Details: map[string]any{
+				"field":     field,
+				"row_count": count,
+			},
 		})
 	}
 	if err := blankRows.Err(); err != nil {
@@ -777,6 +782,10 @@ ORDER BY field
 			Category: RepairCategoryBackendMapping,
 			Policy:   DiagnosticPolicyInvalidLocalData,
 			Message:  fmt.Sprintf("%d backend mapping row(s) contain sensitive-looking %s values; replace them with external record identifiers or URLs before trusting integration state", count, field),
+			Details: map[string]any{
+				"field":     field,
+				"row_count": count,
+			},
 		})
 	}
 
@@ -825,6 +834,10 @@ ORDER BY entity_kind
 			Category: RepairCategoryBackendMapping,
 			Policy:   DiagnosticPolicyInvalidLocalData,
 			Message:  fmt.Sprintf("%d backend mapping row(s) reference unknown local entity kind %q; fix or remove the local backend mapping row before trusting integration state", count, entityKind),
+			Details: map[string]any{
+				"entity_kind": entityKind,
+				"row_count":   count,
+			},
 		})
 	}
 	if err := unknownRows.Err(); err != nil {
@@ -855,6 +868,10 @@ ORDER BY sync_status
 			Category: RepairCategoryBackendMapping,
 			Policy:   DiagnosticPolicyWarningDrift,
 			Message:  fmt.Sprintf("%d backend mapping row(s) have unknown sync_status %q; audit local integration metadata before pruning or reconnecting external records", count, syncStatus),
+			Details: map[string]any{
+				"row_count":   count,
+				"sync_status": syncStatus,
+			},
 		})
 	}
 	if err := unknownStatusRows.Err(); err != nil {
@@ -931,6 +948,14 @@ ORDER BY backend_mappings.id
 			Category: RepairCategoryBackendMapping,
 			Policy:   DiagnosticPolicyInvalidLocalData,
 			Message:  fmt.Sprintf("backend mapping %s links local %s %s to %s %s:%s, but the local entity is missing; fix or remove the local backend mapping row before trusting integration state", mappingID, entityKind, entityID, backend, externalKind, externalID),
+			Details: map[string]any{
+				"backend":       backend,
+				"entity_id":     entityID,
+				"entity_kind":   entityKind,
+				"external_id":   externalID,
+				"external_kind": externalKind,
+				"mapping_id":    mappingID,
+			},
 		})
 	}
 	if err := missingRows.Err(); err != nil {
@@ -960,6 +985,14 @@ ORDER BY project_id, backend, entity_kind, entity_id, external_kind
 			Category: RepairCategoryBackendMapping,
 			Policy:   DiagnosticPolicyWarningDrift,
 			Message:  fmt.Sprintf("local %s %s in project %s maps to %d %s %s records; audit local integration metadata before pruning or reconnecting external records", entityKind, entityID, projectID, count, backend, externalKind),
+			Details: map[string]any{
+				"backend":                    backend,
+				"distinct_external_id_count": count,
+				"entity_id":                  entityID,
+				"entity_kind":                entityKind,
+				"external_kind":              externalKind,
+				"project_id":                 projectID,
+			},
 		})
 	}
 	if err := ambiguousRows.Err(); err != nil {
@@ -1021,11 +1054,16 @@ WHERE tasks.project_id = ?
 		return nil, nil
 	}
 	return []Diagnostic{{
-		Severity:             "warn",
-		Code:                 "linear-mode-local-task-unmapped",
-		Category:             RepairCategoryExternalSync,
-		Policy:               DiagnosticPolicyExternalSyncGap,
-		Message:              fmt.Sprintf("Linear integration is enabled, but %d active local task row(s) have no Linear backend mapping; export local task state and reconcile it through Linear or future backend sync tooling", unmappedCount),
+		Severity: "warn",
+		Code:     "linear-mode-local-task-unmapped",
+		Category: RepairCategoryExternalSync,
+		Policy:   DiagnosticPolicyExternalSyncGap,
+		Message:  fmt.Sprintf("Linear integration is enabled, but %d active local task row(s) have no Linear backend mapping; export local task state and reconcile it through Linear or future backend sync tooling", unmappedCount),
+		Details: map[string]any{
+			"backend":             "linear",
+			"entity_kind":         "task",
+			"unmapped_task_count": unmappedCount,
+		},
 		RequiresExternalSync: true,
 	}}, nil
 }
