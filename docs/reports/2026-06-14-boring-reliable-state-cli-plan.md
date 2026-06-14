@@ -129,6 +129,8 @@ Exit criteria:
 
 ### Gate 2: Make Recovery Boring
 
+Status: In progress. Manual restore is now documented and covered by `TestRunnerStateBackupManualRestoreProcedure`; one remaining Gate 2 decision is whether this is pleasant enough or should become a guarded `state restore` command.
+
 Close the restore-confidence gap before polishing lower-risk CLI surfaces. Start with a documented manual restore procedure unless command-level restore proves necessary.
 
 Exit criteria:
@@ -171,6 +173,10 @@ Backup verification is strong, but restore is not yet a first-class story. Decid
 
 Recommendation: start with documented manual restore plus tests around backup verification and doctor compatibility. Add a command only when the manual procedure proves too clumsy.
 
+Progress:
+
+- 2026-06-14: README and generated CLI reference guidance document the manual restore flow: verify the backup, preserve the current global DB, copy the verified backup into the XDG data-home DB path, then run `state doctor` and `state status`. `TestRunnerStateBackupManualRestoreProcedure` backs the flow by verifying a backup, preserving a changed live DB, copying the backup into the global path, and proving doctor/status report the restored project identity.
+
 Go/no-go: a user can recover from a bad global DB using a verified backup without guessing which files to copy or which checks to run.
 
 ### Track 3: Repair UX
@@ -209,4 +215,4 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 
 ## Next Best Commit
 
-The next implementation commit should start Gate 2 by documenting and verifying the manual restore procedure: verify a backup, preserve the current global DB, restore the verified backup into the XDG data-home path, then run `state doctor` and `state status`. Prefer docs plus tests/dogfood evidence first; add a `state restore` command only if the manual flow proves too clumsy.
+The next implementation commit should finish the Gate 2 decision: dogfood the documented manual restore flow against an isolated data home from the primary checkout, then either record that manual restore is acceptable for pre-release or add a guarded `state restore <backup> --dry-run|--apply` command if the manual flow is too clumsy or error-prone.

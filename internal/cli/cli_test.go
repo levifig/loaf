@@ -3823,6 +3823,77 @@ func TestRunnerStateBackupVerifyReportsGlobalProjects(t *testing.T) {
 	}
 }
 
+func TestRunnerStateBackupManualRestoreProcedure(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init --json error = %v", err)
+	}
+	original := projectIdentityForCLI(t, workingDir, stateHome)
+
+	var backupOut bytes.Buffer
+	if err := (Runner{Stdout: &backupOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "--json"}); err != nil {
+		t.Fatalf("state backup --json error = %v", err)
+	}
+	backup := decodeStateBackupResult(t, backupOut.Bytes())
+	if backup.ProjectID != original.ID || backup.ProjectName != original.FriendlyName {
+		t.Fatalf("backup project = %s/%s, want original %s/%s", backup.ProjectID, backup.ProjectName, original.ID, original.FriendlyName)
+	}
+
+	var verifyOut bytes.Buffer
+	if err := (Runner{Stdout: &verifyOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "verify", backup.BackupPath, "--json"}); err != nil {
+		t.Fatalf("state backup verify --json error = %v", err)
+	}
+	verified := decodeStateBackupVerificationResult(t, verifyOut.Bytes())
+	if !verified.Verified || verified.BackupPath != backup.BackupPath || verified.SHA256 != backup.SHA256 {
+		t.Fatalf("backup verification = %#v, want verified backup %s", verified, backup.BackupPath)
+	}
+
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Changed After Backup", "--json"}); err != nil {
+		t.Fatalf("project rename after backup error = %v", err)
+	}
+	changed := projectIdentityForCLI(t, workingDir, stateHome)
+	if changed.ID != original.ID || changed.FriendlyName != "Changed After Backup" {
+		t.Fatalf("changed project = %#v, want same ID %s with changed name", changed, original.ID)
+	}
+
+	preservedLivePath := backup.DatabasePath + ".before-restore"
+	if err := os.Rename(backup.DatabasePath, preservedLivePath); err != nil {
+		t.Fatalf("preserve live database error = %v", err)
+	}
+	copyFileForCLITest(t, backup.BackupPath, backup.DatabasePath, 0o600)
+
+	var preservedVerifyOut bytes.Buffer
+	if err := (Runner{Stdout: &preservedVerifyOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "verify", preservedLivePath, "--json"}); err != nil {
+		t.Fatalf("state backup verify preserved live database error = %v", err)
+	}
+	preserved := decodeStateBackupVerificationResult(t, preservedVerifyOut.Bytes())
+	if !preserved.Verified || len(preserved.Projects) != 1 || preserved.Projects[0].FriendlyName != "Changed After Backup" {
+		t.Fatalf("preserved live database verification = %#v, want changed project preserved", preserved)
+	}
+
+	var doctorOut bytes.Buffer
+	if err := (Runner{Stdout: &doctorOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "doctor", "--json"}); err != nil {
+		t.Fatalf("state doctor --json after manual restore error = %v", err)
+	}
+	doctor := decodeStateStatus(t, doctorOut.Bytes())
+	if doctor.Mode != state.ModeSQLiteReady || doctor.ProjectID != original.ID || doctor.ProjectName != original.FriendlyName {
+		t.Fatalf("doctor after restore = %#v, want original restored project %s/%s", doctor, original.ID, original.FriendlyName)
+	}
+
+	var statusOut bytes.Buffer
+	if err := (Runner{Stdout: &statusOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "status", "--json"}); err != nil {
+		t.Fatalf("state status --json after manual restore error = %v", err)
+	}
+	status := decodeStateStatus(t, statusOut.Bytes())
+	if status.Mode != state.ModeSQLiteReady || status.ProjectID != original.ID || status.ProjectName != original.FriendlyName || status.DatabasePath != backup.DatabasePath {
+		t.Fatalf("status after restore = %#v, want original restored state at %s", status, backup.DatabasePath)
+	}
+	if restoredHash := testFileSHA256(t, backup.DatabasePath); restoredHash != backup.SHA256 {
+		t.Fatalf("restored database sha256 = %q, want backup sha256 %q", restoredHash, backup.SHA256)
+	}
+}
+
 func TestRunnerStateBackupVerifyJSONErrorsIncludeBackupPath(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	invalidBackup := filepath.Join(t.TempDir(), "not-a-backup.sqlite")
@@ -13786,6 +13857,17 @@ func testFileSHA256(t *testing.T, path string) string {
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
+}
+
+func copyFileForCLITest(t *testing.T, source string, destination string, perm os.FileMode) {
+	t.Helper()
+	data, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", source, err)
+	}
+	if err := os.WriteFile(destination, data, perm); err != nil {
+		t.Fatalf("WriteFile(%s) error = %v", destination, err)
+	}
 }
 
 func assertNoStateDatabase(t *testing.T, workingDir string, stateHome string) {

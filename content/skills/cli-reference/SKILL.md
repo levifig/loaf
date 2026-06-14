@@ -127,6 +127,11 @@ markdown-only compatibility mode until SQLite is initialized. Use
 `loaf state migrate markdown --apply` to import `.agents/` Markdown into SQLite
 without rewriting the source Markdown files.
 
+Manual restore from a backup is explicit until a guarded restore command exists:
+verify the backup with `loaf state backup verify <backup>`, preserve the current
+`$(loaf state path)` file, copy the verified backup to that path, then run
+`loaf state doctor` and `loaf state status`.
+
 **Subcommands:**
 
 | Subcommand | Purpose |
@@ -216,6 +221,8 @@ without rewriting the source Markdown files.
 loaf state status
 loaf state migrate markdown --dry-run
 loaf state migrate markdown --apply
+loaf state backup
+loaf state backup verify /path/to/backup.sqlite
 loaf state status
 ```
 

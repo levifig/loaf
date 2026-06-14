@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- Documented and verified a manual SQLite backup restore flow so users can recover the global database by verifying a backup, preserving the current DB, copying the backup into place, and running health checks.
 - Completed the Gate 1 control-plane evidence pass with regression coverage for project rename/move safeguards and repair dry-runs, including durable project identity, single current path, dry-run table stability, and legacy archive preview safety.
 - Added command-matrix regression coverage for critical state/project/migration JSON success contracts, including read-only no-mutation checks, migration dry-run no-copy/no-database checks, and backup verification without live state access.
 - Refocused the boring-reliable state/CLI plan into gated execution criteria so future work progresses through control-plane proof, recovery confidence, and UX/policy normalization instead of broad edge chasing.
