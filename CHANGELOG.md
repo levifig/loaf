@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- Project commands now reject schema checksum drift before reading identity state, matching `state doctor` invalid-state behavior and pointing users at the affected global database path.
 - Project command human errors for missing SQLite state now include the global database path, scope, and safe `state status` / `state init` next actions instead of a terse missing-database message.
 - `loaf project move` now accepts positional absolute paths (`loaf project move <from> [to]`) in addition to `--from/--to`, preserving the same dry-run, JSON, and path-safety checks.
 - `loaf state doctor` now rejects backend mapping rows with sensitive-looking external identity values, keeping Linear/backend metadata to identifiers and URLs instead of credentials.

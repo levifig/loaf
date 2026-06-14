@@ -2373,6 +2373,55 @@ func TestRunnerProjectMissingDatabaseHumanErrorsIncludeContext(t *testing.T) {
 	}
 }
 
+func TestRunnerProjectCommandsRejectSchemaChecksumDrift(t *testing.T) {
+	workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+	db := openCLITestDB(t, initialized.DatabasePath)
+	if _, err := db.Exec(`UPDATE schema_migrations SET checksum = 'drifted' WHERE version = 1`); err != nil {
+		t.Fatalf("drift schema checksum error = %v", err)
+	}
+	closeCLITestDB(t, db)
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "show", args: []string{"project", "show"}},
+		{name: "list", args: []string{"project", "list"}},
+		{name: "rename dry-run", args: []string{"project", "rename", "Human Dogfood", "--dry-run"}},
+		{name: "move dry-run", args: []string{"project", "move", workingDir, realpath(t, t.TempDir()), "--dry-run"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run(tt.args)
+			if err == nil {
+				t.Fatalf("Run(%v) error = nil, want schema checksum drift rejection", tt.args)
+			}
+			for _, want := range []string{
+				"project state database is invalid",
+				initialized.DatabasePath,
+				"scope: global database",
+				"schema migration 1 checksum does not match Go-owned migration",
+				"loaf state doctor",
+			} {
+				if !strings.Contains(err.Error(), want) {
+					t.Fatalf("Run(%v) error = %q, want %q", tt.args, err.Error(), want)
+				}
+			}
+		})
+	}
+
+	var jsonOut bytes.Buffer
+	err := (Runner{Stdout: &jsonOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "show", "--json"})
+	if err == nil {
+		t.Fatal("project show --json schema checksum drift error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, jsonOut.Bytes())
+	if output.Command != "project show" || !strings.Contains(output.Error, "schema migration 1 checksum") || !strings.Contains(output.Error, initialized.DatabasePath) {
+		t.Fatalf("project show --json error = %#v, want schema checksum drift context", output)
+	}
+}
+
 func TestRunnerProjectShowDoesNotRegisterUnknownPath(t *testing.T) {
 	registeredDir := realpath(t, t.TempDir())
 	unknownDir := realpath(t, t.TempDir())

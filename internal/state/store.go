@@ -138,6 +138,31 @@ func (s *Store) SchemaVersion(ctx context.Context) (int, error) {
 	return int(version.Int64), nil
 }
 
+// ValidateCurrentSchema rejects version drift, missing migrations, and checksum drift.
+func (s *Store) ValidateCurrentSchema(ctx context.Context) (int, error) {
+	version, err := s.SchemaVersion(ctx)
+	if err != nil {
+		return 0, err
+	}
+	current := CurrentSchemaVersion()
+	if version != current {
+		return version, fmt.Errorf("schema version %d does not match expected version %d", version, current)
+	}
+	for _, migration := range SchemaMigrations() {
+		var checksum string
+		err := s.db.QueryRowContext(ctx, `SELECT checksum FROM schema_migrations WHERE version = ?`, migration.Version).Scan(&checksum)
+		switch {
+		case err == nil && checksum != migration.Checksum():
+			return version, fmt.Errorf("schema migration %d checksum does not match Go-owned migration", migration.Version)
+		case errors.Is(err, sql.ErrNoRows):
+			return version, fmt.Errorf("schema migration %d is missing", migration.Version)
+		case err != nil:
+			return version, fmt.Errorf("read schema migration %d: %w", migration.Version, err)
+		}
+	}
+	return version, nil
+}
+
 // AppliedMigrationCount returns the number of applied migrations.
 func (s *Store) AppliedMigrationCount(ctx context.Context) (int, error) {
 	var count int

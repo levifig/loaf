@@ -1416,14 +1416,10 @@ func (r Runner) openProjectStoreReadOnly(runtime state.Runtime) (project.Root, *
 	if err != nil {
 		return project.Root{}, nil, err
 	}
-	version, err := store.SchemaVersion(context.Background())
+	_, err = store.ValidateCurrentSchema(context.Background())
 	if err != nil {
 		store.Close()
-		return project.Root{}, nil, err
-	}
-	if version != state.CurrentSchemaVersion() {
-		store.Close()
-		return project.Root{}, nil, fmt.Errorf("state database is invalid; run `loaf state doctor`")
+		return project.Root{}, nil, fmt.Errorf("project state database is invalid at %s (scope: global database): %w; run `loaf state doctor`", databasePath, err)
 	}
 	return projectRoot, store, nil
 }

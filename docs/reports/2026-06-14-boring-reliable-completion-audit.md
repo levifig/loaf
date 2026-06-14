@@ -25,7 +25,7 @@ This audit maps the reliability contract to current evidence and calls out the f
 | Migrations are ordered, checksummed, transactional, and mirrored into schema docs | migration/schema tests in `internal/state`; schema mirror test in `internal/state/schema_test.go` | Proven |
 | Storage-home migration copies legacy DBs without deleting source or overwriting destination | storage-home CLI and migration tests in `internal/cli/cli_test.go` | Proven |
 | Markdown dry-run does not create SQLite state; apply/resume preserves source Markdown | markdown migration control-plane and apply/resume tests in `internal/cli/cli_test.go` | Proven |
-| Invalid schema versions or checksum drift produce doctor guidance | migration/status tests in `internal/state` and control-plane failure matrix in `internal/cli/cli_test.go` | Proven |
+| Invalid schema versions or checksum drift produce doctor guidance | migration/status tests in `internal/state`; control-plane failure matrix; project-command schema-drift rejection test in `internal/cli/cli_test.go` | Proven |
 | Future schema changes include data-preservation tests and repair/upgrade UX | Current process requirement; must be rechecked with each future schema commit | Process guard |
 
 ## Doctor And Repair
@@ -89,4 +89,4 @@ This checkpoint adds a non-mutating doctor diagnostic, `backend-mapping-sensitiv
 
 ## Next Review Target
 
-Continue sampling invalid-state project-command output, especially schema drift and project identity mismatch cases. The test matrix is strong, but the final UX claim should keep being reviewed against actual command output, not only fixtures.
+Continue sampling project identity mismatch/path-invariant failures. The test matrix is strong, but the final UX claim should keep being reviewed against actual command output, not only fixtures.
