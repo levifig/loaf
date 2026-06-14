@@ -8964,8 +8964,15 @@ func TestRunnerTagCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	if added.Name != "sqlite" || added.Entity.Kind != "spec" || added.Entity.Alias != "SPEC-001" {
 		t.Fatalf("added = %#v, want sqlite tag on SPEC-001", added)
 	}
-	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"tag", "add", "20260528-tag-idea", "sqlite"}); err != nil {
+	assertCLITagMutationContext(t, added, workingDir)
+	var humanAddOut bytes.Buffer
+	if err := (Runner{Stdout: &humanAddOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"tag", "add", "20260528-tag-idea", "sqlite"}); err != nil {
 		t.Fatalf("tag add idea error = %v", err)
+	}
+	for _, want := range []string{"tagged idea 20260528-tag-idea with sqlite", "scope: global database", "database:", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanAddOut.String(), want) {
+			t.Fatalf("human tag add output = %q, want %q", humanAddOut.String(), want)
+		}
 	}
 
 	var listOut bytes.Buffer
@@ -8981,6 +8988,22 @@ func TestRunnerTagCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	if tags.Tags["sqlite"].Count != 2 {
 		t.Fatalf("tags = %#v, want sqlite count 2", tags.Tags)
 	}
+	assertCLITagListContext(t, tags, workingDir)
+
+	var humanListOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanListOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"tag", "list"})
+	if err != nil {
+		t.Fatalf("tag list human error = %v", err)
+	}
+	for _, want := range []string{"loaf tag list", "scope: global database", "database:", "project:", "project name:", "project path:", "sqlite"} {
+		if !strings.Contains(humanListOut.String(), want) {
+			t.Fatalf("human tag list output = %q, want %q", humanListOut.String(), want)
+		}
+	}
 
 	var showOut bytes.Buffer
 	err = Runner{
@@ -8995,6 +9018,22 @@ func TestRunnerTagCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	if len(show.Members) != 2 {
 		t.Fatalf("show.Members = %#v, want 2 members", show.Members)
 	}
+	assertCLITagShowContext(t, show, workingDir)
+
+	var humanShowOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanShowOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"tag", "show", "sqlite"})
+	if err != nil {
+		t.Fatalf("tag show human error = %v", err)
+	}
+	for _, want := range []string{"tag sqlite", "scope: global database", "database:", "project:", "project name:", "project path:", "SPEC-001", "20260528-tag-idea"} {
+		if !strings.Contains(humanShowOut.String(), want) {
+			t.Fatalf("human tag show output = %q, want %q", humanShowOut.String(), want)
+		}
+	}
 
 	var removeOut bytes.Buffer
 	err = Runner{
@@ -9008,6 +9047,88 @@ func TestRunnerTagCommandsUseSQLiteStateWhenInitialized(t *testing.T) {
 	removed := decodeTagMutationResult(t, removeOut.Bytes())
 	if removed.Entity.Alias != "SPEC-001" {
 		t.Fatalf("removed = %#v, want SPEC-001 removed", removed)
+	}
+	assertCLITagMutationContext(t, removed, workingDir)
+
+	var humanRemoveOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanRemoveOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"tag", "remove", "20260528-tag-idea", "sqlite"})
+	if err != nil {
+		t.Fatalf("tag remove human error = %v", err)
+	}
+	for _, want := range []string{"removed tag sqlite from idea 20260528-tag-idea", "scope: global database", "database:", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanRemoveOut.String(), want) {
+			t.Fatalf("human tag remove output = %q, want %q", humanRemoveOut.String(), want)
+		}
+	}
+}
+
+func assertCLITagMutationContext(t *testing.T, result state.TagMutationResult, workingDir string) {
+	t.Helper()
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.DatabasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
+	}
+}
+
+func assertCLITagListContext(t *testing.T, result state.TagList, workingDir string) {
+	t.Helper()
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.DatabasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
+	}
+}
+
+func assertCLITagShowContext(t *testing.T, result state.TagShowResult, workingDir string) {
+	t.Helper()
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.DatabasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(workingDir))
+	}
+	if result.ProjectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, workingDir)
 	}
 }
 

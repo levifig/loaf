@@ -13,8 +13,14 @@ import (
 
 // TagList is the state-backed tag-list read model.
 type TagList struct {
-	Version int                `json:"version"`
-	Tags    map[string]TagItem `json:"tags"`
+	ContractVersion    int                `json:"contract_version,omitempty"`
+	DatabaseScope      string             `json:"database_scope,omitempty"`
+	DatabasePath       string             `json:"database_path,omitempty"`
+	ProjectID          string             `json:"project_id,omitempty"`
+	ProjectName        string             `json:"project_name,omitempty"`
+	ProjectCurrentPath string             `json:"project_current_path,omitempty"`
+	Version            int                `json:"version"`
+	Tags               map[string]TagItem `json:"tags"`
 }
 
 // TagItem is a tag entry returned by the state-backed tag list.
@@ -24,14 +30,26 @@ type TagItem struct {
 
 // TagShowResult describes a tag and its classified rows.
 type TagShowResult struct {
-	Name    string        `json:"name"`
-	Members []TraceEntity `json:"members"`
+	ContractVersion    int           `json:"contract_version,omitempty"`
+	DatabaseScope      string        `json:"database_scope,omitempty"`
+	DatabasePath       string        `json:"database_path,omitempty"`
+	ProjectID          string        `json:"project_id,omitempty"`
+	ProjectName        string        `json:"project_name,omitempty"`
+	ProjectCurrentPath string        `json:"project_current_path,omitempty"`
+	Name               string        `json:"name"`
+	Members            []TraceEntity `json:"members"`
 }
 
 // TagMutationResult describes an add/remove tag mutation.
 type TagMutationResult struct {
-	Name   string      `json:"name"`
-	Entity TraceEntity `json:"entity"`
+	ContractVersion    int         `json:"contract_version,omitempty"`
+	DatabaseScope      string      `json:"database_scope,omitempty"`
+	DatabasePath       string      `json:"database_path,omitempty"`
+	ProjectID          string      `json:"project_id,omitempty"`
+	ProjectName        string      `json:"project_name,omitempty"`
+	ProjectCurrentPath string      `json:"project_current_path,omitempty"`
+	Name               string      `json:"name"`
+	Entity             TraceEntity `json:"entity"`
 }
 
 // ListTags returns tags from initialized SQLite state.
@@ -80,6 +98,10 @@ func (s *Store) ListTags(ctx context.Context, root project.Root) (TagList, error
 	if err != nil {
 		return TagList{}, err
 	}
+	identity, err := s.projectIdentity(ctx, projectID)
+	if err != nil {
+		return TagList{}, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 SELECT tags.name, COUNT(entity_tags.id)
 FROM tags
@@ -95,7 +117,16 @@ ORDER BY tags.name
 	}
 	defer rows.Close()
 
-	result := TagList{Version: 1, Tags: map[string]TagItem{}}
+	result := TagList{
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      identity.DatabaseScope,
+		DatabasePath:       identity.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Version:            1,
+		Tags:               map[string]TagItem{},
+	}
 	for rows.Next() {
 		var name string
 		var count int
@@ -113,6 +144,10 @@ ORDER BY tags.name
 // ShowTag returns members for one tag from an open store.
 func (s *Store) ShowTag(ctx context.Context, root project.Root, name string) (TagShowResult, error) {
 	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TagShowResult{}, err
+	}
+	identity, err := s.projectIdentity(ctx, projectID)
 	if err != nil {
 		return TagShowResult{}, err
 	}
@@ -168,12 +203,25 @@ ORDER BY entity_tags.entity_kind, entity_tags.entity_id
 		right := members[j].Kind + "\x00" + firstNonEmpty(members[j].Alias, members[j].ID)
 		return left < right
 	})
-	return TagShowResult{Name: tagName, Members: members}, nil
+	return TagShowResult{
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      identity.DatabaseScope,
+		DatabasePath:       identity.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Name:               tagName,
+		Members:            members,
+	}, nil
 }
 
 // AddTag adds a tag membership in an open store.
 func (s *Store) AddTag(ctx context.Context, root project.Root, ref string, name string) (TagMutationResult, error) {
 	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TagMutationResult{}, err
+	}
+	identity, err := s.projectIdentity(ctx, projectID)
 	if err != nil {
 		return TagMutationResult{}, err
 	}
@@ -213,12 +261,25 @@ func (s *Store) AddTag(ctx context.Context, root project.Root, ref string, name 
 	if err := tx.Commit(); err != nil {
 		return TagMutationResult{}, fmt.Errorf("commit tag transaction: %w", err)
 	}
-	return TagMutationResult{Name: tagName, Entity: entity}, nil
+	return TagMutationResult{
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      identity.DatabaseScope,
+		DatabasePath:       identity.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Name:               tagName,
+		Entity:             entity,
+	}, nil
 }
 
 // RemoveTag removes a tag membership in an open store.
 func (s *Store) RemoveTag(ctx context.Context, root project.Root, ref string, name string) (TagMutationResult, error) {
 	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TagMutationResult{}, err
+	}
+	identity, err := s.projectIdentity(ctx, projectID)
 	if err != nil {
 		return TagMutationResult{}, err
 	}
@@ -245,7 +306,16 @@ WHERE project_id = ? AND tag_id = ? AND entity_kind = ? AND entity_id = ?
 	if rows == 0 {
 		return TagMutationResult{}, fmt.Errorf("tag %q is not attached to %s %q", tagName, entity.Kind, firstNonEmpty(entity.Alias, entity.ID))
 	}
-	return TagMutationResult{Name: tagName, Entity: entity}, nil
+	return TagMutationResult{
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      identity.DatabaseScope,
+		DatabasePath:       identity.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Name:               tagName,
+		Entity:             entity,
+	}, nil
 }
 
 func openInitializedStore(root project.Root, resolver PathResolver) (*Store, error) {

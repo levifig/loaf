@@ -4851,6 +4851,7 @@ func (r Runner) runTagAdd(args []string, out io.Writer, runtime state.Runtime) e
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "tagged %s %s with %s\n", result.Entity.Kind, firstNonEmpty(result.Entity.Alias, result.Entity.ID), result.Name)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -4877,6 +4878,7 @@ func (r Runner) runTagRemove(args []string, out io.Writer, runtime state.Runtime
 		return writeJSON(out, result)
 	}
 	fmt.Fprintf(out, "removed tag %s from %s %s\n", result.Name, result.Entity.Kind, firstNonEmpty(result.Entity.Alias, result.Entity.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	return nil
 }
 
@@ -4894,10 +4896,19 @@ func (r Runner) tagStateMode(runtime state.Runtime) (project.Root, string, error
 
 func writeTagList(out io.Writer, tags state.TagList) {
 	if len(tags.Tags) == 0 {
-		fmt.Fprint(out, "\n  No tags found.\n\n")
+		fmt.Fprint(out, "\n  loaf tag list\n\n")
+		writeProjectMutationContext(out, "  ", tags.DatabaseScope, tags.DatabasePath, tags.ProjectID, tags.ProjectName, tags.ProjectCurrentPath)
+		if tags.DatabaseScope != "" {
+			fmt.Fprintln(out)
+		}
+		fmt.Fprint(out, "  No tags found.\n\n")
 		return
 	}
 	fmt.Fprint(out, "\n  loaf tag list\n\n")
+	writeProjectMutationContext(out, "  ", tags.DatabaseScope, tags.DatabasePath, tags.ProjectID, tags.ProjectName, tags.ProjectCurrentPath)
+	if tags.DatabaseScope != "" {
+		fmt.Fprintln(out)
+	}
 	for _, name := range sortedTags(tags) {
 		fmt.Fprintf(out, "    %-24s%d\n", name, tags.Tags[name].Count)
 	}
@@ -4906,6 +4917,10 @@ func writeTagList(out io.Writer, tags state.TagList) {
 
 func writeTagShow(out io.Writer, result state.TagShowResult) {
 	fmt.Fprintf(out, "\n  tag %s\n\n", result.Name)
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.DatabaseScope != "" {
+		fmt.Fprintln(out)
+	}
 	if len(result.Members) == 0 {
 		fmt.Fprint(out, "  No tagged rows found.\n\n")
 		return
