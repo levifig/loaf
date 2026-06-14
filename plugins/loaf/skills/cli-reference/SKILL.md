@@ -132,6 +132,9 @@ Manual restore from a backup is explicit until a guarded restore command exists:
 verify the backup with `loaf state backup verify <backup>`, preserve the current
 `$(loaf state path)` file, copy the verified backup to that path, then run
 `loaf state doctor` and `loaf state status`.
+For agents, `loaf state backup verify <backup> --json` also returns
+`restore_database_path`, `restore_preserve_path`, and
+`restore_validation_commands` for the current checkout.
 
 **Subcommands:**
 
