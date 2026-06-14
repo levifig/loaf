@@ -23,21 +23,28 @@ type RelationshipOriginRepairOptions struct {
 
 // RelationshipOriginRepairResult describes a dry-run or applied relationship provenance repair.
 type RelationshipOriginRepairResult struct {
-	ContractVersion int    `json:"contract_version"`
-	DatabasePath    string `json:"database_path"`
-	BackupPath      string `json:"backup_path,omitempty"`
-	ProjectID       string `json:"project_id"`
-	Origin          string `json:"origin"`
-	Matched         int    `json:"matched"`
-	Updated         int    `json:"updated"`
-	Applied         bool   `json:"applied"`
-	GeneratedAt     string `json:"generated_at"`
+	ContractVersion    int    `json:"contract_version"`
+	DatabaseScope      string `json:"database_scope"`
+	DatabasePath       string `json:"database_path"`
+	BackupPath         string `json:"backup_path,omitempty"`
+	ProjectID          string `json:"project_id"`
+	ProjectName        string `json:"project_name"`
+	ProjectCurrentPath string `json:"project_current_path"`
+	Origin             string `json:"origin"`
+	Matched            int    `json:"matched"`
+	Updated            int    `json:"updated"`
+	Applied            bool   `json:"applied"`
+	GeneratedAt        string `json:"generated_at"`
 }
 
 // LegacyProjectDatabaseArchiveResult describes a guarded legacy project database archive.
 type LegacyProjectDatabaseArchiveResult struct {
 	ContractVersion    int      `json:"contract_version"`
+	DatabaseScope      string   `json:"database_scope"`
 	ProjectRoot        string   `json:"project_root"`
+	ProjectID          string   `json:"project_id"`
+	ProjectName        string   `json:"project_name"`
+	ProjectCurrentPath string   `json:"project_current_path"`
 	DatabasePath       string   `json:"database_path"`
 	LegacyDatabasePath string   `json:"legacy_database_path"`
 	ArchivePath        string   `json:"archive_path,omitempty"`
@@ -83,13 +90,16 @@ func RepairMissingRelationshipOrigins(ctx context.Context, root project.Root, re
 	}
 
 	result := RelationshipOriginRepairResult{
-		ContractVersion: StateJSONContractVersion,
-		DatabasePath:    status.DatabasePath,
-		ProjectID:       identity.ID,
-		Origin:          options.Origin,
-		Matched:         matched,
-		Applied:         options.Apply,
-		GeneratedAt:     time.Now().UTC().Format(time.RFC3339Nano),
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      status.DatabaseScope,
+		DatabasePath:       status.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Origin:             options.Origin,
+		Matched:            matched,
+		Applied:            options.Apply,
+		GeneratedAt:        time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	if !options.Apply || matched == 0 {
 		return result, nil
@@ -130,7 +140,11 @@ func ArchiveLegacyProjectDatabase(root project.Root, resolver PathResolver, appl
 	now := time.Now().UTC()
 	result := LegacyProjectDatabaseArchiveResult{
 		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      status.DatabaseScope,
 		ProjectRoot:        root.Path(),
+		ProjectID:          status.ProjectID,
+		ProjectName:        status.ProjectName,
+		ProjectCurrentPath: status.ProjectCurrentPath,
 		DatabasePath:       plan.DatabasePath,
 		LegacyDatabasePath: plan.LegacyDatabasePath,
 		MatchedPaths:       []string{},

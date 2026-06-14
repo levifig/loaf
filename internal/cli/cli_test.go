@@ -3175,6 +3175,11 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	if !strings.Contains(humanDryRunOut.String(), "loaf state repair relationship-origin --dry-run") {
 		t.Fatalf("human dry-run output = %q, want explicit --dry-run header", humanDryRunOut.String())
 	}
+	for _, want := range []string{"scope: global database", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanDryRunOut.String(), want) {
+			t.Fatalf("human dry-run output = %q, want %q", humanDryRunOut.String(), want)
+		}
+	}
 	if !strings.Contains(humanDryRunOut.String(), "next: rerun with --apply") {
 		t.Fatalf("human dry-run output = %q, want apply guidance when rows match", humanDryRunOut.String())
 	}
@@ -3191,6 +3196,18 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	dryRun := decodeRelationshipOriginRepairResult(t, dryRunOut.Bytes())
 	if dryRun.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("dry-run ContractVersion = %d, want %d", dryRun.ContractVersion, state.StateJSONContractVersion)
+	}
+	if dryRun.DatabaseScope != "global" {
+		t.Fatalf("dry-run DatabaseScope = %q, want global", dryRun.DatabaseScope)
+	}
+	if dryRun.ProjectID != initialized.ProjectID {
+		t.Fatalf("dry-run ProjectID = %q, want %q", dryRun.ProjectID, initialized.ProjectID)
+	}
+	if dryRun.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("dry-run ProjectName = %q, want %q", dryRun.ProjectName, filepath.Base(workingDir))
+	}
+	if dryRun.ProjectCurrentPath != workingDir {
+		t.Fatalf("dry-run ProjectCurrentPath = %q, want %q", dryRun.ProjectCurrentPath, workingDir)
 	}
 	if dryRun.Applied {
 		t.Fatal("dry-run Applied = true, want false")
@@ -3217,6 +3234,18 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	applied := decodeRelationshipOriginRepairResult(t, applyOut.Bytes())
 	if applied.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("applied ContractVersion = %d, want %d", applied.ContractVersion, state.StateJSONContractVersion)
+	}
+	if applied.DatabaseScope != "global" {
+		t.Fatalf("applied DatabaseScope = %q, want global", applied.DatabaseScope)
+	}
+	if applied.ProjectID != initialized.ProjectID {
+		t.Fatalf("applied ProjectID = %q, want %q", applied.ProjectID, initialized.ProjectID)
+	}
+	if applied.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("applied ProjectName = %q, want %q", applied.ProjectName, filepath.Base(workingDir))
+	}
+	if applied.ProjectCurrentPath != workingDir {
+		t.Fatalf("applied ProjectCurrentPath = %q, want %q", applied.ProjectCurrentPath, workingDir)
 	}
 	if !applied.Applied {
 		t.Fatal("apply Applied = false, want true")
@@ -3278,6 +3307,11 @@ func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
 	if !strings.Contains(humanDryRunOut.String(), "loaf state repair legacy-project-database --dry-run") {
 		t.Fatalf("human dry-run output = %q, want explicit --dry-run header", humanDryRunOut.String())
 	}
+	for _, want := range []string{"scope: global database", "project:", "project name:", "project path:"} {
+		if !strings.Contains(humanDryRunOut.String(), want) {
+			t.Fatalf("human dry-run output = %q, want %q", humanDryRunOut.String(), want)
+		}
+	}
 	if !strings.Contains(humanDryRunOut.String(), "next: rerun with --apply") {
 		t.Fatalf("human dry-run output = %q, want apply guidance when legacy files match", humanDryRunOut.String())
 	}
@@ -3293,6 +3327,18 @@ func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
 	dryRun := decodeLegacyProjectDatabaseArchiveResult(t, dryRunOut.Bytes())
 	if dryRun.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("dry-run ContractVersion = %d, want %d", dryRun.ContractVersion, state.StateJSONContractVersion)
+	}
+	if dryRun.DatabaseScope != "global" {
+		t.Fatalf("dry-run DatabaseScope = %q, want global", dryRun.DatabaseScope)
+	}
+	if dryRun.ProjectID == "" {
+		t.Fatal("dry-run ProjectID is empty")
+	}
+	if dryRun.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("dry-run ProjectName = %q, want %q", dryRun.ProjectName, filepath.Base(workingDir))
+	}
+	if dryRun.ProjectCurrentPath != workingDir {
+		t.Fatalf("dry-run ProjectCurrentPath = %q, want %q", dryRun.ProjectCurrentPath, workingDir)
 	}
 	if dryRun.Applied {
 		t.Fatal("dry-run Applied = true, want false")
@@ -3318,6 +3364,18 @@ func TestRunnerStateRepairLegacyProjectDatabaseDryRunAndApply(t *testing.T) {
 	applied := decodeLegacyProjectDatabaseArchiveResult(t, applyOut.Bytes())
 	if applied.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("applied ContractVersion = %d, want %d", applied.ContractVersion, state.StateJSONContractVersion)
+	}
+	if applied.DatabaseScope != "global" {
+		t.Fatalf("applied DatabaseScope = %q, want global", applied.DatabaseScope)
+	}
+	if applied.ProjectID != dryRun.ProjectID {
+		t.Fatalf("applied ProjectID = %q, want %q", applied.ProjectID, dryRun.ProjectID)
+	}
+	if applied.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("applied ProjectName = %q, want %q", applied.ProjectName, filepath.Base(workingDir))
+	}
+	if applied.ProjectCurrentPath != workingDir {
+		t.Fatalf("applied ProjectCurrentPath = %q, want %q", applied.ProjectCurrentPath, workingDir)
 	}
 	if !applied.Applied {
 		t.Fatal("apply Applied = false, want true")

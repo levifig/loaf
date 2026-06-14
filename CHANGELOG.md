@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state repair ...` JSON and human output now report global database scope and durable project identity details for guarded repair previews and applies.
 - `loaf state init|status|doctor` now report global database scope consistently in JSON and human output, and human diagnostics include durable project identity details when available.
 - `loaf migrate storage-home --json` and human output now report global database scope, project migration scope, and applied project identity details.
 - `loaf migrate markdown --apply|--resume --json` now reports global database scope, project import scope, and durable project identity details.

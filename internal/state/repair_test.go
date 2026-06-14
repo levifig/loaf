@@ -28,6 +28,18 @@ func TestRepairMissingRelationshipOriginsDryRunDoesNotWrite(t *testing.T) {
 	if result.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
 	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.ProjectID != projectID {
+		t.Fatalf("ProjectID = %q, want %q", result.ProjectID, projectID)
+	}
+	if result.ProjectName != filepath.Base(root.Path()) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(root.Path()))
+	}
+	if result.ProjectCurrentPath != root.Path() {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, root.Path())
+	}
 	if result.Applied {
 		t.Fatal("Applied = true, want dry-run")
 	}
@@ -62,6 +74,18 @@ func TestRepairMissingRelationshipOriginsApplyBackfillsCurrentProject(t *testing
 	}
 	if result.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.ProjectID != projectID {
+		t.Fatalf("ProjectID = %q, want %q", result.ProjectID, projectID)
+	}
+	if result.ProjectName != filepath.Base(root.Path()) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(root.Path()))
+	}
+	if result.ProjectCurrentPath != root.Path() {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, root.Path())
 	}
 	if !result.Applied {
 		t.Fatal("Applied = false, want true")
@@ -123,6 +147,18 @@ func TestArchiveLegacyProjectDatabaseDryRunDoesNotMoveFiles(t *testing.T) {
 	if result.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
 	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(root.Path()) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(root.Path()))
+	}
+	if result.ProjectCurrentPath != root.Path() {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, root.Path())
+	}
 	if result.Applied {
 		t.Fatal("Applied = true, want dry-run")
 	}
@@ -162,6 +198,18 @@ func TestArchiveLegacyProjectDatabaseApplyMovesDatabaseAndSidecars(t *testing.T)
 	result, err := ArchiveLegacyProjectDatabase(root, PathResolver{}, true)
 	if err != nil {
 		t.Fatalf("ArchiveLegacyProjectDatabase() error = %v", err)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.ProjectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if result.ProjectName != filepath.Base(root.Path()) {
+		t.Fatalf("ProjectName = %q, want %q", result.ProjectName, filepath.Base(root.Path()))
+	}
+	if result.ProjectCurrentPath != root.Path() {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", result.ProjectCurrentPath, root.Path())
 	}
 	if !result.Applied {
 		t.Fatal("Applied = false, want true")
