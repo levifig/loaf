@@ -2432,14 +2432,21 @@ func (r Runner) runTaskList(args []string, out io.Writer, runtime state.Runtime)
 		}
 		return err
 	}
-	projectRoot, mode, err := r.taskStateMode(runtime)
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
 		if options.jsonOutput {
 			return writeJSONCommandError(out, "task list", err)
 		}
 		return err
 	}
-	switch mode {
+	status, err := state.Inspect(projectRoot, state.PathResolver{StateHome: r.StateHome})
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "task list", err)
+		}
+		return err
+	}
+	switch status.Mode {
 	case state.ModeMarkdownOnly:
 		tasks, err := markdownTaskList(projectRoot.Path(), options.filters)
 		if err != nil {
@@ -2468,6 +2475,7 @@ func (r Runner) runTaskList(args []string, out io.Writer, runtime state.Runtime)
 		}
 		return err
 	}
+	tasks.Diagnostics = stateListWarnings(status.Diagnostics)
 	if options.jsonOutput {
 		return writeJSON(out, tasks)
 	}
@@ -2479,11 +2487,15 @@ func (r Runner) runTaskStatus(args []string, out io.Writer, runtime state.Runtim
 	if len(args) > 0 {
 		return fmt.Errorf("task status accepts no arguments")
 	}
-	projectRoot, mode, err := r.taskStateMode(runtime)
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
 		return err
 	}
-	switch mode {
+	status, err := state.Inspect(projectRoot, state.PathResolver{StateHome: r.StateHome})
+	if err != nil {
+		return err
+	}
+	switch status.Mode {
 	case state.ModeMarkdownOnly:
 		tasks, err := markdownTaskList(projectRoot.Path(), state.TaskListOptions{})
 		if err != nil {
@@ -2502,6 +2514,7 @@ func (r Runner) runTaskStatus(args []string, out io.Writer, runtime state.Runtim
 	if err != nil {
 		return err
 	}
+	tasks.Diagnostics = stateListWarnings(status.Diagnostics)
 	specs, err := state.ListSpecs(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
 	if err != nil {
 		return err
@@ -2718,6 +2731,7 @@ func writeProjectMutationContext(out io.Writer, prefix string, databaseScope str
 func writeTaskShow(out io.Writer, result state.TaskShow) {
 	task := result.Task
 	fmt.Fprintf(out, "task %s\n", firstNonEmpty(task.Alias, task.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "title: %s\n", task.Title)
 	fmt.Fprintf(out, "status: %s\n", task.Status)
 	if task.Priority != "" {
@@ -2761,12 +2775,18 @@ func (r Runner) taskStateMode(runtime state.Runtime) (project.Root, string, erro
 }
 
 func writeTaskList(out io.Writer, tasks state.TaskList, filters state.TaskListOptions) {
+	fmt.Fprint(out, "\n  loaf task list\n\n")
+	writeProjectMutationContext(out, "  ", tasks.DatabaseScope, tasks.DatabasePath, tasks.ProjectID, tasks.ProjectName, tasks.ProjectCurrentPath)
+	writeStateDiagnostics(out, "  ", tasks.Diagnostics)
+	if taskListHasContext(tasks) {
+		fmt.Fprintln(out)
+	}
+
 	if len(tasks.Tasks) == 0 {
-		fmt.Fprint(out, "\n  No tasks found.\n\n")
+		fmt.Fprint(out, "  No tasks found.\n\n")
 		return
 	}
 
-	fmt.Fprint(out, "\n  loaf task list\n\n")
 	specs := map[string]bool{}
 	for _, status := range taskStatusDisplayOrder(filters) {
 		group := sortedTasksByStatus(tasks, status)
@@ -2791,6 +2811,15 @@ func writeTaskList(out io.Writer, tasks state.TaskList, filters state.TaskListOp
 		return
 	}
 	fmt.Fprintf(out, "  Total: %d tasks across %d specs\n\n", total, len(specs))
+}
+
+func taskListHasContext(tasks state.TaskList) bool {
+	return tasks.DatabaseScope != "" ||
+		tasks.DatabasePath != "" ||
+		tasks.ProjectID != "" ||
+		tasks.ProjectName != "" ||
+		tasks.ProjectCurrentPath != "" ||
+		len(tasks.Diagnostics) > 0
 }
 
 func markdownTaskList(rootPath string, options state.TaskListOptions) (state.TaskList, error) {
@@ -4084,6 +4113,11 @@ func writeTaskStatus(out io.Writer, tasks state.TaskList, specs state.SpecList) 
 	specCounts := countSpecStatuses(specs)
 
 	fmt.Fprint(out, "\n  loaf task status\n\n")
+	writeProjectMutationContext(out, "  ", tasks.DatabaseScope, tasks.DatabasePath, tasks.ProjectID, tasks.ProjectName, tasks.ProjectCurrentPath)
+	writeStateDiagnostics(out, "  ", tasks.Diagnostics)
+	if taskListHasContext(tasks) {
+		fmt.Fprintln(out)
+	}
 	fmt.Fprintf(out, "  Tasks:  %s  (%d total)\n", formatStatusCounts(taskCounts, []string{"in_progress", "blocked", "todo", "review", "done"}), len(tasks.Tasks))
 	fmt.Fprintf(out, "  Specs:  %s  (%d total)\n\n", formatStatusCounts(specCounts, []string{"implementing", "approved", "drafting", "complete"}), len(specs.Specs))
 }
@@ -5624,6 +5658,7 @@ func (r Runner) runSpecList(args []string, out io.Writer, runtime state.Runtime)
 	if err != nil {
 		return err
 	}
+	specs.Diagnostics = stateListWarnings(status.Diagnostics)
 	if jsonOutput {
 		return writeJSON(out, specs)
 	}
@@ -5714,12 +5749,18 @@ func (r Runner) runSpecArchive(args []string, out io.Writer, runtime state.Runti
 }
 
 func writeSpecList(out io.Writer, specs state.SpecList) {
+	fmt.Fprint(out, "\n  loaf spec list\n\n")
+	writeProjectMutationContext(out, "  ", specs.DatabaseScope, specs.DatabasePath, specs.ProjectID, specs.ProjectName, specs.ProjectCurrentPath)
+	writeStateDiagnostics(out, "  ", specs.Diagnostics)
+	if specListHasContext(specs) {
+		fmt.Fprintln(out)
+	}
+
 	if len(specs.Specs) == 0 {
-		fmt.Fprint(out, "\n  No specs found.\n\n")
+		fmt.Fprint(out, "  No specs found.\n\n")
 		return
 	}
 
-	fmt.Fprint(out, "\n  loaf spec list\n\n")
 	for _, status := range specStatusDisplayOrder(specs) {
 		group := sortedSpecsByStatus(specs, status)
 		if len(group) == 0 {
@@ -5735,6 +5776,15 @@ func writeSpecList(out io.Writer, specs state.SpecList) {
 	}
 
 	fmt.Fprintf(out, "  Total: %d specs\n\n", len(specs.Specs))
+}
+
+func specListHasContext(specs state.SpecList) bool {
+	return specs.DatabaseScope != "" ||
+		specs.DatabasePath != "" ||
+		specs.ProjectID != "" ||
+		specs.ProjectName != "" ||
+		specs.ProjectCurrentPath != "" ||
+		len(specs.Diagnostics) > 0
 }
 
 func markdownSpecList(rootPath string) (state.SpecList, error) {

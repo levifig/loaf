@@ -12,8 +12,15 @@ var specStatusOrder = []string{"implementing", "approved", "drafting", "complete
 
 // SpecList is the state-backed spec-list read model.
 type SpecList struct {
-	Version int                 `json:"version"`
-	Specs   map[string]SpecItem `json:"specs"`
+	ContractVersion    int                 `json:"contract_version,omitempty"`
+	DatabaseScope      string              `json:"database_scope,omitempty"`
+	DatabasePath       string              `json:"database_path,omitempty"`
+	ProjectID          string              `json:"project_id,omitempty"`
+	ProjectName        string              `json:"project_name,omitempty"`
+	ProjectCurrentPath string              `json:"project_current_path,omitempty"`
+	Diagnostics        []Diagnostic        `json:"diagnostics,omitempty"`
+	Version            int                 `json:"version"`
+	Specs              map[string]SpecItem `json:"specs"`
 }
 
 // SpecItem is a spec entry returned by the state-backed spec list.
@@ -56,6 +63,10 @@ func (s *Store) ListSpecs(ctx context.Context, root project.Root) (SpecList, err
 	if err != nil {
 		return SpecList{}, err
 	}
+	identity, err := s.projectIdentity(ctx, projectID)
+	if err != nil {
+		return SpecList{}, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 SELECT
   spec_alias.alias,
@@ -76,7 +87,16 @@ ORDER BY spec_alias.alias
 		return SpecList{}, fmt.Errorf("query specs: %w", err)
 	}
 
-	specList := SpecList{Version: 1, Specs: map[string]SpecItem{}}
+	specList := SpecList{
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      identity.DatabaseScope,
+		DatabasePath:       identity.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Version:            1,
+		Specs:              map[string]SpecItem{},
+	}
 	for rows.Next() {
 		var alias, title, status, sourcePath string
 		if err := rows.Scan(&alias, &title, &status, &sourcePath); err != nil {

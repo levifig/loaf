@@ -6075,6 +6075,7 @@ status: implementing
 	}
 
 	tasks := decodeTaskList(t, stdout.Bytes())
+	assertCLIProjectContext(t, workingDir, tasks.ContractVersion, tasks.DatabaseScope, tasks.DatabasePath, tasks.ProjectID, tasks.ProjectName, tasks.ProjectCurrentPath)
 	if _, ok := tasks.Tasks["TASK-002"]; ok {
 		t.Fatal("active task list includes done task")
 	}
@@ -6107,8 +6108,10 @@ func TestRunnerTaskListHumanUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("task list --status todo error = %v", err)
 	}
 	output := stdout.String()
-	if !strings.Contains(output, "loaf task list") || !strings.Contains(output, "TASK-001") || !strings.Contains(output, "Example Task") {
-		t.Fatalf("output = %q, want state-backed task list", output)
+	for _, want := range []string{"loaf task list", "scope: global database", "database:", "project:", "project name:", "project path:", "TASK-001", "Example Task"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
 	}
 }
 
@@ -6149,6 +6152,11 @@ status: complete
 	output := stdout.String()
 	for _, want := range []string{
 		"loaf task status",
+		"scope: global database",
+		"database:",
+		"project:",
+		"project name:",
+		"project path:",
 		"Tasks:",
 		"1 in_progress",
 		"0 blocked",
@@ -6328,6 +6336,7 @@ Imported body.
 	}
 
 	show := decodeTaskShow(t, stdout.Bytes())
+	assertCLIProjectContext(t, workingDir, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath)
 	task := show.Task
 	if show.Query != "TASK-001" || task.Alias != "TASK-001" || task.Title != "Example Task" || task.Status != "todo" || task.Priority != "P1" || task.Spec != "SPEC-001" {
 		t.Fatalf("show = %#v, want imported TASK-001 details", show)
@@ -6363,7 +6372,7 @@ func TestRunnerTaskShowHumanUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("task show error = %v", err)
 	}
 	output := stdout.String()
-	for _, want := range []string{"task TASK-001", "title: Example Task", "status: todo", "priority: P1", "spec: SPEC-001", "source: .agents/tasks/TASK-001-example.md", "# Task Body"} {
+	for _, want := range []string{"task TASK-001", "scope: global database", "database:", "project:", "project name:", "project path:", "title: Example Task", "status: todo", "priority: P1", "spec: SPEC-001", "source: .agents/tasks/TASK-001-example.md", "# Task Body"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -6413,6 +6422,9 @@ depends_on: TASK-999
 		t.Fatalf("task list markdown --json --active error = %v", err)
 	}
 	tasks := decodeTaskList(t, jsonOut.Bytes())
+	if tasks.ContractVersion != 0 || tasks.DatabaseScope != "" || tasks.DatabasePath != "" || tasks.ProjectID != "" || tasks.ProjectName != "" || tasks.ProjectCurrentPath != "" {
+		t.Fatalf("markdown task list context = %#v, want empty", tasks)
+	}
 	if _, ok := tasks.Tasks["TASK-002"]; ok {
 		t.Fatalf("active tasks = %#v, want done task filtered out", tasks.Tasks)
 	}
@@ -6452,6 +6464,9 @@ depends_on: TASK-999
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
+	}
+	if strings.Contains(output, "scope: global database") || strings.Contains(output, "project path:") {
+		t.Fatalf("output = %q, want markdown fallback without database context", output)
 	}
 	assertNoStateDatabase(t, workingDir, stateHome)
 }
@@ -6498,6 +6513,9 @@ status: complete
 		if !strings.Contains(output, want) {
 			t.Fatalf("stdout = %q, want %q", output, want)
 		}
+	}
+	if strings.Contains(output, "scope: global database") || strings.Contains(output, "project path:") {
+		t.Fatalf("stdout = %q, want markdown fallback without database context", output)
 	}
 	assertNoStateDatabase(t, workingDir, stateHome)
 }
@@ -6683,6 +6701,9 @@ Markdown details.
 		t.Fatalf("task show markdown --json error = %v", err)
 	}
 	show := decodeTaskShow(t, jsonOut.Bytes())
+	if show.ContractVersion != 0 || show.DatabaseScope != "" || show.DatabasePath != "" || show.ProjectID != "" || show.ProjectName != "" || show.ProjectCurrentPath != "" {
+		t.Fatalf("markdown task show context = %#v, want empty", show)
+	}
 	task := show.Task
 	if show.Query != "TASK-001" || task.Alias != "TASK-001" || task.Title != "Example Task" || task.Status != "todo" || task.Priority != "P1" || task.Spec != "SPEC-001" {
 		t.Fatalf("show = %#v, want TASKS.json metadata over frontmatter", show)
@@ -9939,6 +9960,7 @@ status: implementing
 	}
 
 	specs := decodeSpecList(t, stdout.Bytes())
+	assertCLIProjectContext(t, workingDir, specs.ContractVersion, specs.DatabaseScope, specs.DatabasePath, specs.ProjectID, specs.ProjectName, specs.ProjectCurrentPath)
 	spec := specs.Specs["SPEC-001"]
 	if spec.Title != "Example Spec" || spec.Status != "implementing" || spec.SourcePath != ".agents/specs/SPEC-001-example.md" {
 		t.Fatalf("SPEC-001 = %#v, want imported spec metadata", spec)
@@ -9974,7 +9996,7 @@ status: implementing
 		t.Fatalf("spec list error = %v", err)
 	}
 	output := stdout.String()
-	for _, want := range []string{"loaf spec list", "Implementing (1)", "SPEC-001", "Example Spec", "0 todo / 1 in_progress / 0 done"} {
+	for _, want := range []string{"loaf spec list", "scope: global database", "database:", "project:", "project name:", "project path:", "Implementing (1)", "SPEC-001", "Example Spec", "0 todo / 1 in_progress / 0 done"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -10017,6 +10039,9 @@ status: drafting
 		t.Fatalf("spec list markdown --json error = %v", err)
 	}
 	specs := decodeSpecList(t, jsonOut.Bytes())
+	if specs.ContractVersion != 0 || specs.DatabaseScope != "" || specs.DatabasePath != "" || specs.ProjectID != "" || specs.ProjectName != "" || specs.ProjectCurrentPath != "" {
+		t.Fatalf("markdown spec list context = %#v, want empty", specs)
+	}
 	spec := specs.Specs["SPEC-001"]
 	if spec.Title != "Example Spec" || spec.Status != "implementing" || spec.SourcePath != ".agents/specs/SPEC-001-example.md" {
 		t.Fatalf("SPEC-001 = %#v, want markdown spec metadata", spec)
@@ -11865,6 +11890,28 @@ func decodeTaskList(t *testing.T, data []byte) state.TaskList {
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}
 	return result
+}
+
+func assertCLIProjectContext(t *testing.T, workingDir string, contractVersion int, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string) {
+	t.Helper()
+	if contractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", contractVersion, state.StateJSONContractVersion)
+	}
+	if databaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", databaseScope)
+	}
+	if databasePath == "" {
+		t.Fatal("DatabasePath is empty")
+	}
+	if projectID == "" {
+		t.Fatal("ProjectID is empty")
+	}
+	if projectName != filepath.Base(workingDir) {
+		t.Fatalf("ProjectName = %q, want %q", projectName, filepath.Base(workingDir))
+	}
+	if projectCurrentPath != workingDir {
+		t.Fatalf("ProjectCurrentPath = %q, want %q", projectCurrentPath, workingDir)
+	}
 }
 
 func decodeTaskShow(t *testing.T, data []byte) state.TaskShow {
