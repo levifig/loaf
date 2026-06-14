@@ -26,11 +26,17 @@ type TaskCreateOptions struct {
 
 // TaskCreateResult describes a created SQLite-backed task.
 type TaskCreateResult struct {
-	Task     TraceEntity   `json:"task"`
-	Priority string        `json:"priority"`
-	Spec     TraceEntity   `json:"spec,omitempty"`
-	Depends  []TraceEntity `json:"depends_on"`
-	EventID  string        `json:"event_id"`
+	ContractVersion    int           `json:"contract_version,omitempty"`
+	DatabaseScope      string        `json:"database_scope,omitempty"`
+	DatabasePath       string        `json:"database_path,omitempty"`
+	ProjectID          string        `json:"project_id,omitempty"`
+	ProjectName        string        `json:"project_name,omitempty"`
+	ProjectCurrentPath string        `json:"project_current_path,omitempty"`
+	Task               TraceEntity   `json:"task"`
+	Priority           string        `json:"priority"`
+	Spec               *TraceEntity  `json:"spec,omitempty"`
+	Depends            []TraceEntity `json:"depends_on"`
+	EventID            string        `json:"event_id"`
 }
 
 // CreateTask creates a task in initialized SQLite state.
@@ -49,6 +55,10 @@ func (s *Store) CreateTask(ctx context.Context, root project.Root, options TaskC
 	if err != nil {
 		return TaskCreateResult{}, err
 	}
+	identity, err := s.projectIdentity(ctx, projectID)
+	if err != nil {
+		return TaskCreateResult{}, err
+	}
 	title := strings.TrimSpace(options.Title)
 	if title == "" {
 		return TaskCreateResult{}, fmt.Errorf("task create requires --title")
@@ -61,7 +71,7 @@ func (s *Store) CreateTask(ctx context.Context, root project.Root, options TaskC
 		return TaskCreateResult{}, fmt.Errorf("invalid priority %q (valid: %s)", priority, taskPriorityText())
 	}
 
-	var spec TraceEntity
+	var spec *TraceEntity
 	var specID any
 	if strings.TrimSpace(options.Spec) != "" {
 		resolved, err := s.resolveTraceEntity(ctx, projectID, options.Spec)
@@ -71,7 +81,7 @@ func (s *Store) CreateTask(ctx context.Context, root project.Root, options TaskC
 		if resolved.Kind != "spec" {
 			return TaskCreateResult{}, fmt.Errorf("%q resolves to %s, not spec", options.Spec, resolved.Kind)
 		}
-		spec = resolved
+		spec = &resolved
 		specID = resolved.ID
 	}
 
@@ -115,7 +125,7 @@ VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)
 		return TaskCreateResult{}, err
 	}
 
-	if spec.ID != "" {
+	if spec != nil {
 		relationshipID := stableMigrationID("relationship", projectID, "task", taskID, "implements", "spec", spec.ID)
 		if _, err := tx.ExecContext(ctx, `
 INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
@@ -148,11 +158,17 @@ VALUES (?, ?, 'task', ?, 'status_changed', NULL, 'todo', 'recorded by task creat
 
 	task := TraceEntity{Kind: "task", ID: taskID, Alias: alias, Title: title, Status: "todo"}
 	return TaskCreateResult{
-		Task:     task,
-		Priority: priority,
-		Spec:     spec,
-		Depends:  dependencies,
-		EventID:  eventID,
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      identity.DatabaseScope,
+		DatabasePath:       identity.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Task:               task,
+		Priority:           priority,
+		Spec:               spec,
+		Depends:            dependencies,
+		EventID:            eventID,
 	}, nil
 }
 

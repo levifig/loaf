@@ -28,14 +28,20 @@ type TaskUpdateOptions struct {
 
 // TaskStatusUpdateResult describes a task status mutation.
 type TaskStatusUpdateResult struct {
-	Task     TraceEntity   `json:"task"`
-	Previous string        `json:"previous_status"`
-	Status   string        `json:"status"`
-	Priority string        `json:"priority,omitempty"`
-	Spec     *TraceEntity  `json:"spec,omitempty"`
-	Depends  []TraceEntity `json:"depends_on,omitempty"`
-	Session  *TraceEntity  `json:"session,omitempty"`
-	EventID  string        `json:"event_id,omitempty"`
+	ContractVersion    int           `json:"contract_version,omitempty"`
+	DatabaseScope      string        `json:"database_scope,omitempty"`
+	DatabasePath       string        `json:"database_path,omitempty"`
+	ProjectID          string        `json:"project_id,omitempty"`
+	ProjectName        string        `json:"project_name,omitempty"`
+	ProjectCurrentPath string        `json:"project_current_path,omitempty"`
+	Task               TraceEntity   `json:"task"`
+	Previous           string        `json:"previous_status"`
+	Status             string        `json:"status"`
+	Priority           string        `json:"priority,omitempty"`
+	Spec               *TraceEntity  `json:"spec,omitempty"`
+	Depends            []TraceEntity `json:"depends_on,omitempty"`
+	Session            *TraceEntity  `json:"session,omitempty"`
+	EventID            string        `json:"event_id,omitempty"`
 }
 
 // UpdateTaskStatus updates a task's status in initialized SQLite state.
@@ -61,6 +67,10 @@ func (s *Store) UpdateTaskStatus(ctx context.Context, root project.Root, ref str
 // UpdateTask updates a task in an open store.
 func (s *Store) UpdateTask(ctx context.Context, root project.Root, options TaskUpdateOptions) (TaskStatusUpdateResult, error) {
 	projectID, err := s.projectID(ctx, root)
+	if err != nil {
+		return TaskStatusUpdateResult{}, err
+	}
+	identity, err := s.projectIdentity(ctx, projectID)
 	if err != nil {
 		return TaskStatusUpdateResult{}, err
 	}
@@ -220,14 +230,20 @@ ON CONFLICT(id) DO NOTHING
 	}
 	resultSession := session
 	return TaskStatusUpdateResult{
-		Task:     task,
-		Previous: previousStatus,
-		Status:   finalStatus,
-		Priority: finalPriority,
-		Spec:     resultSpec,
-		Depends:  resultDepends,
-		Session:  resultSession,
-		EventID:  eventID,
+		ContractVersion:    StateJSONContractVersion,
+		DatabaseScope:      identity.DatabaseScope,
+		DatabasePath:       identity.DatabasePath,
+		ProjectID:          identity.ID,
+		ProjectName:        identity.FriendlyName,
+		ProjectCurrentPath: identity.CurrentPath,
+		Task:               task,
+		Previous:           previousStatus,
+		Status:             finalStatus,
+		Priority:           finalPriority,
+		Spec:               resultSpec,
+		Depends:            resultDepends,
+		Session:            resultSession,
+		EventID:            eventID,
 	}, nil
 }
 

@@ -2581,11 +2581,12 @@ func (r Runner) runTaskArchive(args []string, out io.Writer, runtime state.Runti
 
 func writeTaskCreate(out io.Writer, result state.TaskCreateResult) {
 	fmt.Fprintf(out, "created task %s: %s\n", firstNonEmpty(result.Task.Alias, result.Task.ID), result.Task.Title)
+	writeTaskMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "status: %s\n", result.Task.Status)
 	if result.Priority != "" {
 		fmt.Fprintf(out, "priority: %s\n", result.Priority)
 	}
-	if result.Spec.Alias != "" {
+	if result.Spec != nil && result.Spec.Alias != "" {
 		fmt.Fprintf(out, "spec: %s\n", result.Spec.Alias)
 	}
 	if len(result.Depends) > 0 {
@@ -2602,6 +2603,7 @@ func writeTaskCreate(out io.Writer, result state.TaskCreateResult) {
 
 func writeTaskUpdate(out io.Writer, result state.TaskStatusUpdateResult) {
 	fmt.Fprintf(out, "updated task %s\n", firstNonEmpty(result.Task.Alias, result.Task.ID))
+	writeTaskMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	if result.Previous != result.Status {
 		fmt.Fprintf(out, "status: %s -> %s\n", result.Previous, result.Status)
 	} else if result.Status != "" {
@@ -2630,6 +2632,7 @@ func writeTaskUpdate(out io.Writer, result state.TaskStatusUpdateResult) {
 
 func writeTaskArchive(out io.Writer, result state.TaskArchiveResult) {
 	fmt.Fprint(out, "\n  loaf task archive\n\n")
+	writeTaskMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	if result.Spec != nil && len(result.Archived) == 0 && len(result.Skipped) == 0 {
 		fmt.Fprintf(out, "  No completed tasks found for %s\n\n", firstNonEmpty(result.Spec.Alias, result.Spec.ID))
 		return
@@ -2662,6 +2665,25 @@ func writeTaskArchive(out io.Writer, result state.TaskArchiveResult) {
 		fmt.Fprintf(out, "  Skipped %d task(s)\n", len(result.Skipped))
 	}
 	fmt.Fprintln(out)
+}
+
+func writeTaskMutationContext(out io.Writer, prefix string, databaseScope string, databasePath string, projectID string, projectName string, projectCurrentPath string) {
+	if databaseScope == "" {
+		return
+	}
+	fmt.Fprintf(out, "%sscope: %s database\n", prefix, databaseScope)
+	if databasePath != "" {
+		fmt.Fprintf(out, "%sdatabase: %s\n", prefix, databasePath)
+	}
+	if projectID != "" {
+		fmt.Fprintf(out, "%sproject: %s\n", prefix, projectID)
+	}
+	if projectName != "" {
+		fmt.Fprintf(out, "%sproject name: %s\n", prefix, projectName)
+	}
+	if projectCurrentPath != "" {
+		fmt.Fprintf(out, "%sproject path: %s\n", prefix, projectCurrentPath)
+	}
 }
 
 func writeTaskShow(out io.Writer, result state.TaskShow) {
@@ -2946,12 +2968,13 @@ func markdownTaskCreate(rootPath string, options state.TaskCreateOptions) (state
 	}
 
 	result := state.TaskCreateResult{
-		Task:     state.TraceEntity{Kind: "task", ID: taskID, Alias: taskID, Title: title, Status: "todo"},
-		Priority: priority,
-		Depends:  dependencies,
+		ContractVersion: state.StateJSONContractVersion,
+		Task:            state.TraceEntity{Kind: "task", ID: taskID, Alias: taskID, Title: title, Status: "todo"},
+		Priority:        priority,
+		Depends:         dependencies,
 	}
 	if specRef != "" {
-		result.Spec = specEntity
+		result.Spec = &specEntity
 	}
 	return result, nil
 }
@@ -3084,12 +3107,13 @@ func markdownTaskUpdate(rootPath string, options state.TaskUpdateOptions) (state
 	}
 
 	result := state.TaskStatusUpdateResult{
-		Task:     state.TraceEntity{Kind: "task", ID: options.Ref, Alias: options.Ref, Title: jsonObjectString(entry, "title"), Status: finalStatus},
-		Previous: previousStatus,
-		Status:   finalStatus,
-		Priority: finalPriority,
-		Spec:     specEntity,
-		Session:  sessionEntity,
+		ContractVersion: state.StateJSONContractVersion,
+		Task:            state.TraceEntity{Kind: "task", ID: options.Ref, Alias: options.Ref, Title: jsonObjectString(entry, "title"), Status: finalStatus},
+		Previous:        previousStatus,
+		Status:          finalStatus,
+		Priority:        finalPriority,
+		Spec:            specEntity,
+		Session:         sessionEntity,
 	}
 	if options.SetDependsOn {
 		result.Depends = dependencies
@@ -5884,7 +5908,7 @@ func markdownTaskArchive(rootPath string, options state.TaskArchiveOptions) (sta
 		return state.TaskArchiveResult{}, fmt.Errorf("TASKS.json tasks must be an object")
 	}
 
-	result := state.TaskArchiveResult{Archived: []state.TaskArchiveItem{}, Skipped: []state.TaskArchiveItem{}}
+	result := state.TaskArchiveResult{ContractVersion: state.StateJSONContractVersion, Archived: []state.TaskArchiveItem{}, Skipped: []state.TaskArchiveItem{}}
 	refs := append([]string{}, options.Refs...)
 	if options.Spec != "" {
 		specs, ok := index["specs"].(map[string]any)

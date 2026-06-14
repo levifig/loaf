@@ -6159,8 +6159,26 @@ func TestRunnerTaskCreateUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("task create --json error = %v", err)
 	}
 	created := decodeTaskCreateResult(t, createOut.Bytes())
-	if created.Task.Alias != "TASK-002" || created.Task.Title != "Created Task" || created.Task.Status != "todo" || created.Priority != "P1" || created.Spec.Alias != "SPEC-001" || created.EventID == "" {
+	if created.Task.Alias != "TASK-002" || created.Task.Title != "Created Task" || created.Task.Status != "todo" || created.Priority != "P1" || created.Spec == nil || created.Spec.Alias != "SPEC-001" || created.EventID == "" {
 		t.Fatalf("created = %#v, want TASK-002 under SPEC-001", created)
+	}
+	if created.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("created ContractVersion = %d, want %d", created.ContractVersion, state.StateJSONContractVersion)
+	}
+	if created.DatabaseScope != "global" {
+		t.Fatalf("created DatabaseScope = %q, want global", created.DatabaseScope)
+	}
+	if created.DatabasePath == "" {
+		t.Fatal("created DatabasePath is empty")
+	}
+	if created.ProjectID == "" {
+		t.Fatal("created ProjectID is empty")
+	}
+	if created.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("created ProjectName = %q, want %q", created.ProjectName, filepath.Base(workingDir))
+	}
+	if created.ProjectCurrentPath != workingDir {
+		t.Fatalf("created ProjectCurrentPath = %q, want %q", created.ProjectCurrentPath, workingDir)
 	}
 	if len(created.Depends) != 1 || created.Depends[0].Alias != "TASK-001" {
 		t.Fatalf("created.Depends = %#v, want TASK-001", created.Depends)
@@ -6215,10 +6233,35 @@ func TestRunnerTaskCreateHumanUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("task create human error = %v", err)
 	}
 	output := stdout.String()
-	for _, want := range []string{"created task TASK-001: Human Task", "status: todo", "priority: P2", "event:"} {
+	for _, want := range []string{"created task TASK-001: Human Task", "scope: global database", "database:", "project:", "project name:", "project path:", "status: todo", "priority: P2", "event:"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
+	}
+}
+
+func TestRunnerTaskCreateJSONOmitsEmptySpecWhenInitialized(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"task", "create", "--title", "No Spec Task", "--json"})
+	if err != nil {
+		t.Fatalf("task create --json error = %v", err)
+	}
+	created := decodeTaskCreateResult(t, stdout.Bytes())
+	if created.Spec != nil {
+		t.Fatalf("created.Spec = %#v, want nil", created.Spec)
+	}
+	if bytes.Contains(stdout.Bytes(), []byte(`"spec"`)) {
+		t.Fatalf("output = %s, want spec omitted", stdout.String())
 	}
 }
 
@@ -6474,11 +6517,17 @@ func TestRunnerTaskCreateUsesMarkdownIndexWhenMarkdownOnly(t *testing.T) {
 		t.Fatalf("task create markdown --json error = %v", err)
 	}
 	created := decodeTaskCreateResult(t, createOut.Bytes())
-	if created.Task.Alias != "TASK-002" || created.Task.Title != "Created Task!" || created.Task.Status != "todo" || created.Priority != "P1" || created.Spec.Alias != "SPEC-001" {
+	if created.Task.Alias != "TASK-002" || created.Task.Title != "Created Task!" || created.Task.Status != "todo" || created.Priority != "P1" || created.Spec == nil || created.Spec.Alias != "SPEC-001" {
 		t.Fatalf("created = %#v, want TASK-002 under SPEC-001", created)
 	}
 	if len(created.Depends) != 1 || created.Depends[0].Alias != "TASK-001" {
 		t.Fatalf("created.Depends = %#v, want TASK-001", created.Depends)
+	}
+	if created.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("created ContractVersion = %d, want %d", created.ContractVersion, state.StateJSONContractVersion)
+	}
+	if created.DatabaseScope != "" || created.DatabasePath != "" || created.ProjectID != "" || created.ProjectName != "" || created.ProjectCurrentPath != "" {
+		t.Fatalf("created database context = %#v, want empty for markdown fallback", created)
 	}
 
 	var index map[string]any
@@ -6819,6 +6868,24 @@ func TestRunnerTaskUpdateStatusUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if updated.Task.Alias != "TASK-001" || updated.Previous != "todo" || updated.Status != "in_progress" || updated.EventID == "" {
 		t.Fatalf("updated = %#v, want TASK-001 todo -> in_progress", updated)
 	}
+	if updated.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("updated ContractVersion = %d, want %d", updated.ContractVersion, state.StateJSONContractVersion)
+	}
+	if updated.DatabaseScope != "global" {
+		t.Fatalf("updated DatabaseScope = %q, want global", updated.DatabaseScope)
+	}
+	if updated.DatabasePath == "" {
+		t.Fatal("updated DatabasePath is empty")
+	}
+	if updated.ProjectID == "" {
+		t.Fatal("updated ProjectID is empty")
+	}
+	if updated.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("updated ProjectName = %q, want %q", updated.ProjectName, filepath.Base(workingDir))
+	}
+	if updated.ProjectCurrentPath != workingDir {
+		t.Fatalf("updated ProjectCurrentPath = %q, want %q", updated.ProjectCurrentPath, workingDir)
+	}
 
 	var listOut bytes.Buffer
 	err = Runner{
@@ -7007,6 +7074,12 @@ Preserve this body.
 	if len(updated.Depends) != 1 || updated.Depends[0].Alias != "TASK-003" {
 		t.Fatalf("updated.Depends = %#v, want TASK-003", updated.Depends)
 	}
+	if updated.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("updated ContractVersion = %d, want %d", updated.ContractVersion, state.StateJSONContractVersion)
+	}
+	if updated.DatabaseScope != "" || updated.DatabasePath != "" || updated.ProjectID != "" || updated.ProjectName != "" || updated.ProjectCurrentPath != "" {
+		t.Fatalf("updated database context = %#v, want empty for markdown fallback", updated)
+	}
 
 	rawIndex, err := os.ReadFile(filepath.Join(workingDir, ".agents", "TASKS.json"))
 	if err != nil {
@@ -7185,6 +7258,24 @@ func TestRunnerTaskArchiveUsesSQLiteStateWhenInitialized(t *testing.T) {
 	if len(archive.Archived) != 1 || archive.Archived[0].Task == nil || archive.Archived[0].Task.Alias != "TASK-001" || archive.Archived[0].EventID == "" {
 		t.Fatalf("Archived = %#v, want TASK-001 archived with event", archive.Archived)
 	}
+	if archive.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("archive ContractVersion = %d, want %d", archive.ContractVersion, state.StateJSONContractVersion)
+	}
+	if archive.DatabaseScope != "global" {
+		t.Fatalf("archive DatabaseScope = %q, want global", archive.DatabaseScope)
+	}
+	if archive.DatabasePath == "" {
+		t.Fatal("archive DatabasePath is empty")
+	}
+	if archive.ProjectID == "" {
+		t.Fatal("archive ProjectID is empty")
+	}
+	if archive.ProjectName != filepath.Base(workingDir) {
+		t.Fatalf("archive ProjectName = %q, want %q", archive.ProjectName, filepath.Base(workingDir))
+	}
+	if archive.ProjectCurrentPath != workingDir {
+		t.Fatalf("archive ProjectCurrentPath = %q, want %q", archive.ProjectCurrentPath, workingDir)
+	}
 	if len(archive.Skipped) != 3 {
 		t.Fatalf("Skipped = %#v, want three skipped refs", archive.Skipped)
 	}
@@ -7356,6 +7447,12 @@ func TestRunnerTaskArchiveUsesMarkdownIndexWhenMarkdownOnly(t *testing.T) {
 	}
 	if archive.Skipped[1].Ref != "TASK-999" || archive.Skipped[1].Reason != "not found in index" {
 		t.Fatalf("Skipped[1] = %#v, want not-found skip", archive.Skipped[1])
+	}
+	if archive.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("archive ContractVersion = %d, want %d", archive.ContractVersion, state.StateJSONContractVersion)
+	}
+	if archive.DatabaseScope != "" || archive.DatabasePath != "" || archive.ProjectID != "" || archive.ProjectName != "" || archive.ProjectCurrentPath != "" {
+		t.Fatalf("archive database context = %#v, want empty for markdown fallback", archive)
 	}
 	if _, err := os.Stat(filepath.Join(workingDir, ".agents", "tasks", "TASK-001-done.md")); !os.IsNotExist(err) {
 		t.Fatalf("active task file stat error = %v, want not exist", err)
