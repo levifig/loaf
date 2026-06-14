@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state backup verify --json` now includes `backup_path` in verification failure payloads after a path has been parsed, making invalid-backup diagnostics easier for agents to correlate.
 - `loaf state path --json` now reports the resolved global SQLite path with contract version, project root, and database scope without creating the database.
 - `loaf state doctor` now accepts project-level backend mappings, allowing a Loaf project to be linked to a Linear/external project while still rejecting mismatched project mapping IDs.
 - `loaf state doctor --json` now exits nonzero for invalid SQLite state while still returning the machine-readable status payload.

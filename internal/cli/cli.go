@@ -73,6 +73,7 @@ type commandErrorJSON struct {
 	ContractVersion int    `json:"contract_version"`
 	Command         string `json:"command"`
 	Error           string `json:"error"`
+	BackupPath      string `json:"backup_path,omitempty"`
 }
 
 type statePathResult struct {
@@ -1846,7 +1847,7 @@ func (r Runner) runStateBackupVerify(args []string, out io.Writer) error {
 	result, err := state.VerifyBackup(context.Background(), options.path)
 	if err != nil {
 		if options.jsonOutput {
-			return writeJSONCommandError(out, "state backup verify", err)
+			return writeStateBackupVerifyJSONError(out, options.path, err)
 		}
 		return err
 	}
@@ -11430,6 +11431,18 @@ func writeJSONCommandError(out io.Writer, command string, err error) error {
 		ContractVersion: state.StateJSONContractVersion,
 		Command:         command,
 		Error:           err.Error(),
+	}); writeErr != nil {
+		return writeErr
+	}
+	return ExitError{Code: 1}
+}
+
+func writeStateBackupVerifyJSONError(out io.Writer, backupPath string, err error) error {
+	if writeErr := writeJSON(out, commandErrorJSON{
+		ContractVersion: state.StateJSONContractVersion,
+		Command:         "state backup verify",
+		Error:           err.Error(),
+		BackupPath:      backupPath,
 	}); writeErr != nil {
 		return writeErr
 	}

@@ -3760,6 +3760,53 @@ func TestRunnerStateBackupVerifyReportsGlobalProjects(t *testing.T) {
 	}
 }
 
+func TestRunnerStateBackupVerifyJSONErrorsIncludeBackupPath(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	invalidBackup := filepath.Join(t.TempDir(), "not-a-backup.sqlite")
+	if err := os.WriteFile(invalidBackup, []byte("not sqlite"), 0o600); err != nil {
+		t.Fatalf("WriteFile(invalid backup) error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+		StateHome:  t.TempDir(),
+	}.Run([]string{"state", "backup", "verify", invalidBackup, "--json"})
+	if err == nil {
+		t.Fatal("state backup verify invalid backup error = nil, want JSON rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	output := decodeCommandError(t, stdout.Bytes())
+	if output.Command != "state backup verify" {
+		t.Fatalf("Command = %q, want state backup verify", output.Command)
+	}
+	if output.BackupPath != invalidBackup {
+		t.Fatalf("BackupPath = %q, want %q", output.BackupPath, invalidBackup)
+	}
+	if !strings.Contains(output.Error, "open state backup for verification") {
+		t.Fatalf("Error = %q, want verification context", output.Error)
+	}
+
+	var parseOut bytes.Buffer
+	err = Runner{
+		Stdout:     &parseOut,
+		WorkingDir: workingDir,
+		StateHome:  t.TempDir(),
+	}.Run([]string{"state", "backup", "verify", "--json"})
+	if err == nil {
+		t.Fatal("state backup verify missing path error = nil, want JSON rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	parseError := decodeCommandError(t, parseOut.Bytes())
+	if parseError.Command != "state backup verify" || !strings.Contains(parseError.Error, "requires a backup path") {
+		t.Fatalf("parse JSON error = %#v, want missing backup path", parseError)
+	}
+	if parseError.BackupPath != "" {
+		t.Fatalf("parse BackupPath = %q, want omitted/empty before path is parsed", parseError.BackupPath)
+	}
+}
+
 func TestRunnerStateBackupRejectsMissingAndInvalidState(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
