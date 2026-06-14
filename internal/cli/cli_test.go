@@ -2045,6 +2045,9 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if shown.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("shown.ContractVersion = %d, want %d", shown.ContractVersion, state.StateJSONContractVersion)
 	}
+	if shown.DatabaseScope != "global" {
+		t.Fatalf("shown.DatabaseScope = %q, want global", shown.DatabaseScope)
+	}
 	if shown.ID == "" || shown.CurrentPath != workingDir || shown.FriendlyName != filepath.Base(workingDir) {
 		t.Fatalf("shown project = %#v, want generated identity for %s", shown, workingDir)
 	}
@@ -2071,6 +2074,9 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if renamed.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("renamed.ContractVersion = %d, want %d", renamed.ContractVersion, state.StateJSONContractVersion)
 	}
+	if renamed.DatabaseScope != "global" {
+		t.Fatalf("renamed.DatabaseScope = %q, want global", renamed.DatabaseScope)
+	}
 	if renamed.ID != shown.ID || renamed.FriendlyName != "Friendly Loaf" {
 		t.Fatalf("renamed project = %#v, want same ID %q and friendly name", renamed, shown.ID)
 	}
@@ -2085,6 +2091,9 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	}
 	if moved.ContractVersion != state.StateJSONContractVersion || moved.Project.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("moved contract versions = %d/%d, want %d", moved.ContractVersion, moved.Project.ContractVersion, state.StateJSONContractVersion)
+	}
+	if moved.DatabaseScope != "global" || moved.Project.DatabaseScope != "global" {
+		t.Fatalf("moved scopes = %q/%q, want global/global", moved.DatabaseScope, moved.Project.DatabaseScope)
 	}
 	if moved.Project.ID != shown.ID || moved.Project.CurrentPath != movedDir {
 		t.Fatalf("moved project = %#v, want same ID %q at %s", moved.Project, shown.ID, movedDir)
@@ -2101,6 +2110,9 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if movedShown.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("movedShown.ContractVersion = %d, want %d", movedShown.ContractVersion, state.StateJSONContractVersion)
 	}
+	if movedShown.DatabaseScope != "global" {
+		t.Fatalf("movedShown.DatabaseScope = %q, want global", movedShown.DatabaseScope)
+	}
 	if movedShown.ID != shown.ID || movedShown.FriendlyName != "Friendly Loaf" {
 		t.Fatalf("moved show = %#v, want same renamed project", movedShown)
 	}
@@ -2116,11 +2128,17 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if listed.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("listed.ContractVersion = %d, want %d", listed.ContractVersion, state.StateJSONContractVersion)
 	}
+	if listed.DatabaseScope != "global" {
+		t.Fatalf("listed.DatabaseScope = %q, want global", listed.DatabaseScope)
+	}
 	if len(listed.Projects) != 1 {
 		t.Fatalf("listed projects = %#v, want one stable project", listed.Projects)
 	}
 	if listed.Projects[0].ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("listed project ContractVersion = %d, want %d", listed.Projects[0].ContractVersion, state.StateJSONContractVersion)
+	}
+	if listed.Projects[0].DatabaseScope != "global" {
+		t.Fatalf("listed project DatabaseScope = %q, want global", listed.Projects[0].DatabaseScope)
 	}
 	if listed.Projects[0].ID != shown.ID || listed.Projects[0].FriendlyName != "Friendly Loaf" || listed.Projects[0].CurrentPath != movedDir {
 		t.Fatalf("listed project = %#v, want renamed moved project", listed.Projects[0])
@@ -2130,8 +2148,8 @@ func TestRunnerProjectShowRenameAndMoveUseStableIdentity(t *testing.T) {
 	if err := (Runner{Stdout: &humanListOut, WorkingDir: movedDir, StateHome: stateHome}).Run([]string{"project", "list"}); err != nil {
 		t.Fatalf("project list error = %v", err)
 	}
-	if !strings.Contains(humanListOut.String(), "Friendly Loaf") || !strings.Contains(humanListOut.String(), shown.ID) || !strings.Contains(humanListOut.String(), movedDir) {
-		t.Fatalf("project list output = %q, want friendly name, id, and current path", humanListOut.String())
+	if !strings.Contains(humanListOut.String(), "scope: global database") || !strings.Contains(humanListOut.String(), "Friendly Loaf") || !strings.Contains(humanListOut.String(), shown.ID) || !strings.Contains(humanListOut.String(), movedDir) {
+		t.Fatalf("project list output = %q, want global scope, friendly name, id, and current path", humanListOut.String())
 	}
 
 	db, err := sql.Open("sqlite3", filepath.Join(stateHome, "loaf", "loaf.sqlite"))
@@ -2281,6 +2299,9 @@ func TestRunnerProjectRenameDryRunDoesNotWrite(t *testing.T) {
 	if preview.ContractVersion != state.StateJSONContractVersion || preview.Project.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("preview contract versions = %d/%d, want %d", preview.ContractVersion, preview.Project.ContractVersion, state.StateJSONContractVersion)
 	}
+	if preview.DatabaseScope != "global" || preview.Project.DatabaseScope != "global" {
+		t.Fatalf("preview scopes = %q/%q, want global/global", preview.DatabaseScope, preview.Project.DatabaseScope)
+	}
 	if preview.Action != "dry-run" || preview.Project.ID != shown.ID || preview.FromName != shown.FriendlyName || preview.ToName != "Preview Loaf" {
 		t.Fatalf("preview = %#v, want dry-run rename from %q to Preview Loaf", preview, shown.FriendlyName)
 	}
@@ -2306,6 +2327,9 @@ func TestRunnerProjectRenameDryRunDoesNotWrite(t *testing.T) {
 	}
 	if !strings.Contains(humanOut.String(), "Project rename dry run") || !strings.Contains(humanOut.String(), "no changes written") {
 		t.Fatalf("human dry-run output = %q, want explicit preview wording", humanOut.String())
+	}
+	if !strings.Contains(humanOut.String(), "scope: global database") {
+		t.Fatalf("human dry-run output = %q, want global scope", humanOut.String())
 	}
 }
 
@@ -2338,6 +2362,9 @@ func TestRunnerProjectMoveDryRunDoesNotWrite(t *testing.T) {
 	if preview.ContractVersion != state.StateJSONContractVersion || preview.Project.ContractVersion != state.StateJSONContractVersion {
 		t.Fatalf("preview contract versions = %d/%d, want %d", preview.ContractVersion, preview.Project.ContractVersion, state.StateJSONContractVersion)
 	}
+	if preview.DatabaseScope != "global" || preview.Project.DatabaseScope != "global" {
+		t.Fatalf("preview scopes = %q/%q, want global/global", preview.DatabaseScope, preview.Project.DatabaseScope)
+	}
 	if preview.Action != "dry-run" || preview.Project.ID != shown.ID || preview.Project.CurrentPath != movedDir {
 		t.Fatalf("preview = %#v, want dry-run with same ID %q and target path %s", preview, shown.ID, movedDir)
 	}
@@ -2360,6 +2387,9 @@ func TestRunnerProjectMoveDryRunDoesNotWrite(t *testing.T) {
 	}
 	if !strings.Contains(humanOut.String(), "Project move dry run") || !strings.Contains(humanOut.String(), "no changes written") {
 		t.Fatalf("human dry-run output = %q, want explicit preview wording", humanOut.String())
+	}
+	if !strings.Contains(humanOut.String(), "scope: global database") {
+		t.Fatalf("human dry-run output = %q, want global scope", humanOut.String())
 	}
 }
 

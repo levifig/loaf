@@ -1385,6 +1385,7 @@ func (r Runner) openProjectStore(runtime state.Runtime) (project.Root, *state.St
 
 func writeProjectIdentity(out io.Writer, identity state.ProjectIdentity) {
 	fmt.Fprintf(out, "Project: %s\n", firstNonEmpty(identity.FriendlyName, "(unnamed)"))
+	fmt.Fprintf(out, "  scope: %s database\n", identity.DatabaseScope)
 	fmt.Fprintf(out, "  id:   %s\n", identity.ID)
 	fmt.Fprintf(out, "  path: %s\n", identity.CurrentPath)
 	fmt.Fprintf(out, "  db:   %s\n", identity.DatabasePath)
@@ -1392,6 +1393,7 @@ func writeProjectIdentity(out io.Writer, identity state.ProjectIdentity) {
 
 func writeProjectList(out io.Writer, result state.ProjectList) {
 	fmt.Fprintln(out, "loaf project list")
+	fmt.Fprintf(out, "scope: %s database\n", result.DatabaseScope)
 	fmt.Fprintf(out, "database: %s\n\n", result.DatabasePath)
 	if len(result.Projects) == 0 {
 		fmt.Fprintln(out, "No projects registered.")

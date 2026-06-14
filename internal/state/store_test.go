@@ -128,6 +128,9 @@ func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
 	if identity.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", identity.ContractVersion, StateJSONContractVersion)
 	}
+	if identity.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", identity.DatabaseScope)
+	}
 	if identity.FriendlyName != filepath.Base(root.Path()) {
 		t.Fatalf("FriendlyName = %q, want folder name", identity.FriendlyName)
 	}
@@ -138,6 +141,9 @@ func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
 	}
 	if renamed.ID != identity.ID {
 		t.Fatalf("rename changed project ID: %q -> %q", identity.ID, renamed.ID)
+	}
+	if renamed.DatabaseScope != "global" {
+		t.Fatalf("renamed DatabaseScope = %q, want global", renamed.DatabaseScope)
 	}
 	if renamed.FriendlyName != "Friendly Loaf" {
 		t.Fatalf("FriendlyName = %q, want Friendly Loaf", renamed.FriendlyName)
@@ -153,6 +159,9 @@ func TestProjectIdentityIsStableAcrossRenameAndMove(t *testing.T) {
 	}
 	if moved.Project.ID != identity.ID {
 		t.Fatalf("move changed project ID: %q -> %q", identity.ID, moved.Project.ID)
+	}
+	if moved.DatabaseScope != "global" || moved.Project.DatabaseScope != "global" {
+		t.Fatalf("moved scopes = %q/%q, want global/global", moved.DatabaseScope, moved.Project.DatabaseScope)
 	}
 	if moved.Project.CurrentPath != newRoot.Path() {
 		t.Fatalf("CurrentPath = %q, want %q", moved.Project.CurrentPath, newRoot.Path())
@@ -186,6 +195,9 @@ func TestPreviewMoveProjectValidatesWithoutWriting(t *testing.T) {
 	}
 	if preview.Action != "dry-run" {
 		t.Fatalf("Action = %q, want dry-run", preview.Action)
+	}
+	if preview.DatabaseScope != "global" || preview.Project.DatabaseScope != "global" {
+		t.Fatalf("preview scopes = %q/%q, want global/global", preview.DatabaseScope, preview.Project.DatabaseScope)
 	}
 	if preview.Project.ID != identity.ID || preview.Project.CurrentPath != newRoot.Path() {
 		t.Fatalf("preview project = %#v, want same ID %q previewing %s", preview.Project, identity.ID, newRoot.Path())
@@ -225,6 +237,9 @@ func TestPreviewRenameProjectValidatesWithoutWriting(t *testing.T) {
 	}
 	if preview.Action != "dry-run" || preview.FromName != identity.FriendlyName || preview.ToName != "Preview Loaf" {
 		t.Fatalf("preview = %#v, want dry-run from %q to Preview Loaf", preview, identity.FriendlyName)
+	}
+	if preview.DatabaseScope != "global" || preview.Project.DatabaseScope != "global" {
+		t.Fatalf("preview scopes = %q/%q, want global/global", preview.DatabaseScope, preview.Project.DatabaseScope)
 	}
 	if preview.Project.ID != identity.ID || preview.Project.FriendlyName != "Preview Loaf" {
 		t.Fatalf("preview project = %#v, want same ID %q with preview name", preview.Project, identity.ID)
@@ -299,11 +314,17 @@ func TestListProjectsReturnsRegisteredIdentities(t *testing.T) {
 	if projects.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("projects ContractVersion = %d, want %d", projects.ContractVersion, StateJSONContractVersion)
 	}
+	if projects.DatabaseScope != "global" {
+		t.Fatalf("projects DatabaseScope = %q, want global", projects.DatabaseScope)
+	}
 	if len(projects.Projects) != 2 {
 		t.Fatalf("projects = %#v, want two registered identities", projects.Projects)
 	}
 	byID := map[string]ProjectIdentity{}
 	for _, project := range projects.Projects {
+		if project.DatabaseScope != "global" {
+			t.Fatalf("listed project DatabaseScope = %q, want global", project.DatabaseScope)
+		}
 		byID[project.ID] = project
 	}
 	if byID[loafIdentity.ID].FriendlyName != "Loaf" || byID[loafIdentity.ID].CurrentPath != root.Path() {

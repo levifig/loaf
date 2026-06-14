@@ -19,6 +19,7 @@ import (
 // ID is intentionally independent of the current path and friendly name.
 type ProjectIdentity struct {
 	ContractVersion int    `json:"contract_version"`
+	DatabaseScope   string `json:"database_scope"`
 	ID              string `json:"id"`
 	FriendlyName    string `json:"friendly_name"`
 	CurrentPath     string `json:"current_path"`
@@ -29,6 +30,7 @@ type ProjectIdentity struct {
 // ProjectList is the global project identity index.
 type ProjectList struct {
 	ContractVersion int               `json:"contract_version"`
+	DatabaseScope   string            `json:"database_scope"`
 	DatabasePath    string            `json:"database_path"`
 	Projects        []ProjectIdentity `json:"projects"`
 }
@@ -36,6 +38,7 @@ type ProjectList struct {
 // ProjectMoveResult describes a safe path remapping for a project.
 type ProjectMoveResult struct {
 	ContractVersion int             `json:"contract_version"`
+	DatabaseScope   string          `json:"database_scope"`
 	Project         ProjectIdentity `json:"project"`
 	FromPath        string          `json:"from_path"`
 	ToPath          string          `json:"to_path"`
@@ -45,6 +48,7 @@ type ProjectMoveResult struct {
 // ProjectRenameResult describes a friendly-name change preview.
 type ProjectRenameResult struct {
 	ContractVersion int             `json:"contract_version"`
+	DatabaseScope   string          `json:"database_scope"`
 	Project         ProjectIdentity `json:"project"`
 	FromName        string          `json:"from_name"`
 	ToName          string          `json:"to_name"`
@@ -94,11 +98,12 @@ ORDER BY lower(COALESCE(NULLIF(projects.friendly_name, ''), projects.id)), proje
 
 	list := ProjectList{
 		ContractVersion: StateJSONContractVersion,
+		DatabaseScope:   "global",
 		DatabasePath:    s.path,
 		Projects:        []ProjectIdentity{},
 	}
 	for rows.Next() {
-		identity := ProjectIdentity{ContractVersion: StateJSONContractVersion}
+		identity := ProjectIdentity{ContractVersion: StateJSONContractVersion, DatabaseScope: "global"}
 		if err := rows.Scan(&identity.ID, &identity.FriendlyName, &identity.CurrentPath, &identity.LastSeenAt); err != nil {
 			return ProjectList{}, fmt.Errorf("scan project identity: %w", err)
 		}
@@ -213,6 +218,7 @@ func (s *Store) PreviewRenameProject(ctx context.Context, root project.Root, fri
 	identity.FriendlyName = friendlyName
 	return ProjectRenameResult{
 		ContractVersion: StateJSONContractVersion,
+		DatabaseScope:   identity.DatabaseScope,
 		Project:         identity,
 		FromName:        fromName,
 		ToName:          friendlyName,
@@ -286,6 +292,7 @@ func (s *Store) moveProject(ctx context.Context, root project.Root, fromPath str
 		identity.CurrentPath = toPath
 		return ProjectMoveResult{
 			ContractVersion: StateJSONContractVersion,
+			DatabaseScope:   identity.DatabaseScope,
 			Project:         identity,
 			FromPath:        fromPath,
 			ToPath:          toPath,
@@ -333,6 +340,7 @@ WHERE id = ?
 	}
 	return ProjectMoveResult{
 		ContractVersion: StateJSONContractVersion,
+		DatabaseScope:   identity.DatabaseScope,
 		Project:         identity,
 		FromPath:        fromPath,
 		ToPath:          toPath,
@@ -349,7 +357,7 @@ func (s *Store) projectID(ctx context.Context, root project.Root) (string, error
 }
 
 func (s *Store) projectIdentity(ctx context.Context, projectID string) (ProjectIdentity, error) {
-	identity := ProjectIdentity{ContractVersion: StateJSONContractVersion}
+	identity := ProjectIdentity{ContractVersion: StateJSONContractVersion, DatabaseScope: "global"}
 	var friendlyName sql.NullString
 	var currentPath sql.NullString
 	var lastSeenAt sql.NullString
