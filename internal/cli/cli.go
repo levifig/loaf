@@ -38,12 +38,13 @@ type housekeepingOptions struct {
 }
 
 type compatibilityCommandSummary struct {
-	Version int            `json:"version"`
-	Command string         `json:"command"`
-	Mode    string         `json:"mode"`
-	Action  string         `json:"action"`
-	Reason  string         `json:"reason"`
-	Counts  map[string]int `json:"counts,omitempty"`
+	ContractVersion int            `json:"contract_version"`
+	Version         int            `json:"version"`
+	Command         string         `json:"command"`
+	Mode            string         `json:"mode"`
+	Action          string         `json:"action"`
+	Reason          string         `json:"reason"`
+	Counts          map[string]int `json:"counts,omitempty"`
 }
 
 type compatibilityCommandOptions struct {
@@ -2270,11 +2271,12 @@ func (r Runner) runTaskRefresh(args []string, out io.Writer, runtime state.Runti
 		return err
 	}
 	summary := compatibilityCommandSummary{
-		Version: 1,
-		Command: "task refresh",
-		Mode:    "sqlite",
-		Action:  "read",
-		Reason:  "SQLite state is canonical; Markdown TASKS.json refresh is not run.",
+		ContractVersion: state.StateJSONContractVersion,
+		Version:         1,
+		Command:         "task refresh",
+		Mode:            "sqlite",
+		Action:          "read",
+		Reason:          "SQLite state is canonical; Markdown TASKS.json refresh is not run.",
 		Counts: map[string]int{
 			"tasks": len(tasks.Tasks),
 			"specs": len(specs.Specs),
@@ -2319,11 +2321,12 @@ func (r Runner) runTaskSync(args []string, out io.Writer, runtime state.Runtime)
 		return err
 	}
 	summary := compatibilityCommandSummary{
-		Version: 1,
-		Command: "task sync",
-		Mode:    "sqlite",
-		Action:  "skipped",
-		Reason:  "SQLite state is canonical; Markdown task sync is a compatibility repair path and is not run in SQLite mode.",
+		ContractVersion: state.StateJSONContractVersion,
+		Version:         1,
+		Command:         "task sync",
+		Mode:            "sqlite",
+		Action:          "skipped",
+		Reason:          "SQLite state is canonical; Markdown task sync is a compatibility repair path and is not run in SQLite mode.",
 		Counts: map[string]int{
 			"tasks": len(tasks.Tasks),
 			"specs": len(specs.Specs),
@@ -3253,12 +3256,13 @@ func markdownTaskRefresh(rootPath string) (compatibilityCommandSummary, error) {
 		return compatibilityCommandSummary{}, err
 	}
 	return compatibilityCommandSummary{
-		Version: 1,
-		Command: "task refresh",
-		Mode:    "markdown",
-		Action:  "rebuild",
-		Reason:  "Rebuilt TASKS.json from task/spec markdown files.",
-		Counts:  counts,
+		ContractVersion: state.StateJSONContractVersion,
+		Version:         1,
+		Command:         "task refresh",
+		Mode:            "markdown",
+		Action:          "rebuild",
+		Reason:          "Rebuilt TASKS.json from task/spec markdown files.",
+		Counts:          counts,
 	}, nil
 }
 
@@ -3324,12 +3328,13 @@ func markdownTaskSync(rootPath string, args []string) (compatibilityCommandSumma
 			return compatibilityCommandSummary{}, err
 		}
 		return compatibilityCommandSummary{
-			Version: 1,
-			Command: "task sync",
-			Mode:    "markdown",
-			Action:  "push",
-			Reason:  "Pushed TASKS.json metadata into task/spec markdown frontmatter.",
-			Counts:  counts,
+			ContractVersion: state.StateJSONContractVersion,
+			Version:         1,
+			Command:         "task sync",
+			Mode:            "markdown",
+			Action:          "push",
+			Reason:          "Pushed TASKS.json metadata into task/spec markdown frontmatter.",
+			Counts:          counts,
 		}, nil
 	case hasFlag(args, "--import"):
 		return importMarkdownTaskIndexOrphans(rootPath)
@@ -3601,12 +3606,13 @@ func importMarkdownTaskIndexOrphans(rootPath string) (compatibilityCommandSummar
 		}
 	}
 	return compatibilityCommandSummary{
-		Version: 1,
-		Command: "task sync",
-		Mode:    "markdown",
-		Action:  "import",
-		Reason:  "Imported orphan task/spec markdown files into TASKS.json.",
-		Counts:  markdownTaskIndexCounts(index, importedTasks, importedSpecs),
+		ContractVersion: state.StateJSONContractVersion,
+		Version:         1,
+		Command:         "task sync",
+		Mode:            "markdown",
+		Action:          "import",
+		Reason:          "Imported orphan task/spec markdown files into TASKS.json.",
+		Counts:          markdownTaskIndexCounts(index, importedTasks, importedSpecs),
 	}, nil
 }
 
@@ -6773,11 +6779,12 @@ func (r Runner) runSessionEnrich(args []string, out io.Writer, runtime state.Run
 		return err
 	}
 	summary := compatibilityCommandSummary{
-		Version: 1,
-		Command: "session enrich",
-		Mode:    "sqlite",
-		Action:  "skipped",
-		Reason:  "SQLite journal state is written through `loaf session log`; Markdown JSONL enrichment is a compatibility path and is not run in SQLite mode.",
+		ContractVersion: state.StateJSONContractVersion,
+		Version:         1,
+		Command:         "session enrich",
+		Mode:            "sqlite",
+		Action:          "skipped",
+		Reason:          "SQLite journal state is written through `loaf session log`; Markdown JSONL enrichment is a compatibility path and is not run in SQLite mode.",
 		Counts: map[string]int{
 			"sessions": len(sessions.Sessions),
 		},
@@ -6817,11 +6824,12 @@ func (r Runner) runSessionHousekeeping(args []string, out io.Writer, runtime sta
 		return err
 	}
 	summary := compatibilityCommandSummary{
-		Version: 1,
-		Command: "session housekeeping",
-		Mode:    "sqlite",
-		Action:  "skipped",
-		Reason:  "SQLite session lifecycle is maintained by native `loaf session start/end/archive/log`; markdown session housekeeping is a compatibility cleanup path and is not run in SQLite mode.",
+		ContractVersion: state.StateJSONContractVersion,
+		Version:         1,
+		Command:         "session housekeeping",
+		Mode:            "sqlite",
+		Action:          "skipped",
+		Reason:          "SQLite session lifecycle is maintained by native `loaf session start/end/archive/log`; markdown session housekeeping is a compatibility cleanup path and is not run in SQLite mode.",
 		Counts: map[string]int{
 			"sessions": len(sessions.Sessions),
 		},
@@ -7395,12 +7403,13 @@ func markdownCompatibilitySummary(rootPath string, command string, mode string, 
 		counts[status]++
 	}
 	return compatibilityCommandSummary{
-		Version: 1,
-		Command: command,
-		Mode:    mode,
-		Action:  action,
-		Reason:  reason,
-		Counts:  counts,
+		ContractVersion: state.StateJSONContractVersion,
+		Version:         1,
+		Command:         command,
+		Mode:            mode,
+		Action:          action,
+		Reason:          reason,
+		Counts:          counts,
 	}, nil
 }
 

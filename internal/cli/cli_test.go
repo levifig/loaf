@@ -12185,6 +12185,9 @@ func decodeCompatibilityCommandSummary(t *testing.T, data []byte) compatibilityC
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d in %s", result.ContractVersion, state.StateJSONContractVersion, string(data))
+	}
 	return result
 }
 
