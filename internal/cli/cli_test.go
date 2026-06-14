@@ -4314,7 +4314,7 @@ func TestRunnerStateBackupHumanOutput(t *testing.T) {
 	}
 
 	output := stdout.String()
-	for _, want := range []string{"loaf state backup", "scope: global database", "database:", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 1", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "created at:"} {
+	for _, want := range []string{"loaf state backup", "scope: global database", "database:", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 1", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "created at:", "next: verify this backup later with `loaf state backup verify "} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -14158,6 +14158,7 @@ func TestRunnerNestedStateBackedHelpDoesNotParseAsOption(t *testing.T) {
 		{name: "state migrate storage-home", args: []string{"state", "migrate", "storage-home", "--help"}, want: "Usage: loaf state migrate storage-home"},
 		{name: "migrate markdown", args: []string{"migrate", "markdown", "--help"}, want: "Usage: loaf migrate markdown"},
 		{name: "migrate storage-home", args: []string{"migrate", "storage-home", "--help"}, want: "Usage: loaf migrate storage-home"},
+		{name: "state backup", args: []string{"state", "backup", "--help"}, want: "global data-home backups directory"},
 		{name: "state backup verify", args: []string{"state", "backup", "verify", "--help"}, want: "Usage: loaf state backup verify"},
 		{name: "state export all", args: []string{"state", "export", "all", "--help"}, want: "Usage: loaf state export all"},
 		{name: "task update", args: []string{"task", "update", "--help"}, want: "Usage: loaf task update <task>"},
@@ -14384,6 +14385,11 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["state"].optionDescriptions["state path --verbose"]; !strings.Contains(got, "scope") || !strings.Contains(got, "database path") {
 		t.Fatalf("state path verbose description = %q, want human context guidance", got)
+	}
+	for _, subcommand := range []string{"backup"} {
+		if !stringSliceContains(commands["state"].subcommands, subcommand) {
+			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, subcommand)
+		}
 	}
 	for _, want := range []string{"backup verify", "export all", "export triage", "export session", "export spec", "export release-readiness"} {
 		if !stringSliceContains(commands["state"].subcommands, want) {

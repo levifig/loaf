@@ -37,6 +37,7 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		"`--json` - Output verification details as JSON",
 		"`loaf state path`",
 		"`--verbose` - Output command, scope, project root, and database path",
+		"`loaf state backup` | Create a SQLite database backup under the global data-home backups directory",
 		"`loaf state export`",
 		"`--format <format>` - Output format for the selected export kind",
 		"`loaf state export all`",

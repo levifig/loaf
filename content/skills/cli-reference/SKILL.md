@@ -144,7 +144,7 @@ verify the backup with `loaf state backup verify <backup>`, preserve the current
 | `loaf state repair relationship-origin` | Preview or apply guarded relationship provenance backfills |
 | `loaf state migrate markdown` | Import existing .agents Markdown artifacts into SQLite |
 | `loaf state migrate storage-home` | Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME |
-| `loaf state backup` | Create a SQLite database backup |
+| `loaf state backup` | Create a SQLite database backup under the global data-home backups directory |
 | `loaf state backup verify` | Verify an existing SQLite database backup |
 | `loaf state export` | Export SQLite state for review or migration |
 | `loaf state export all` | Export a complete project-scoped SQLite snapshot |

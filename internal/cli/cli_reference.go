@@ -125,7 +125,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
 					{Flags: "--json", Description: "Output migration details as JSON"},
 				}},
-				{Name: "backup", Description: "Create a SQLite database backup", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup details as JSON"}}},
+				{Name: "backup", Description: "Create a SQLite database backup under the global data-home backups directory", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup details as JSON"}}},
 				{Name: "backup verify", Description: "Verify an existing SQLite database backup", Options: []cliReferenceOption{{Flags: "--json", Description: "Output verification details as JSON"}}},
 				{Name: "export", Description: "Export SQLite state for review or migration", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format for the selected export kind"}}},
 				{Name: "export all", Description: "Export a complete project-scoped SQLite snapshot", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: json"}, {Flags: "--json", Description: "Alias for --format json"}}},

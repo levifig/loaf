@@ -1056,6 +1056,7 @@ func writeStateBackupHelp(out io.Writer) {
 	fmt.Fprintln(out, "Usage: loaf state backup [verify <backup>] [--json]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Create or verify SQLite database backups.")
+	fmt.Fprintln(out, "Backups are written under the global data-home backups directory next to the SQLite database.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Subcommands:")
 	fmt.Fprintln(out, "  verify <backup>  Verify an existing SQLite backup")
@@ -1899,6 +1900,7 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
 	fmt.Fprintf(out, "foreign keys: %s\n", result.ForeignKeyCheck)
 	fmt.Fprintf(out, "created at: %s\n", result.CreatedAt)
+	fmt.Fprintf(out, "next: verify this backup later with `loaf state backup verify %s` before restoring it\n", result.BackupPath)
 	return nil
 }
 
