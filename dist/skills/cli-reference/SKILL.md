@@ -149,6 +149,9 @@ without rewriting the source Markdown files.
 
 **Options:**
 
+- `loaf state path`:
+  - `--json` - Output database path and scope as JSON
+
 - `loaf state status`:
   - `--json` - Output status as JSON
 

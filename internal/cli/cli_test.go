@@ -49,6 +49,34 @@ func TestRunnerDispatchesStatePathNatively(t *testing.T) {
 	if got != filepath.Join(stateHome, "loaf", "loaf.sqlite") {
 		t.Fatalf("stdout = %q, want state path under %q", got, stateHome)
 	}
+
+	var jsonOut bytes.Buffer
+	err = Runner{
+		Stdout:     &jsonOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "path", "--json"})
+	if err != nil {
+		t.Fatalf("Run(--json) error = %v", err)
+	}
+	var result struct {
+		ContractVersion int    `json:"contract_version"`
+		DatabaseScope   string `json:"database_scope"`
+		ProjectRoot     string `json:"project_root"`
+		DatabasePath    string `json:"database_path"`
+	}
+	if err := json.Unmarshal(jsonOut.Bytes(), &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", jsonOut.String(), err)
+	}
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" || result.ProjectRoot != root.Path() || result.DatabasePath != want {
+		t.Fatalf("state path JSON = %#v, want global scope, root %q, database %q", result, root.Path(), want)
+	}
+	if _, err := os.Stat(want); !os.IsNotExist(err) {
+		t.Fatalf("state path --json database stat = %v, want command not to create database", err)
+	}
 }
 
 func TestRunnerHousekeepingUsesSQLiteStateWhenInitialized(t *testing.T) {
@@ -2765,6 +2793,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		want string
 	}{
 		{name: "state", args: []string{"state", "--help"}, want: "Usage: loaf state <command> [options]"},
+		{name: "state path", args: []string{"state", "path", "--help"}, want: "Usage: loaf state path [--json]"},
 		{name: "state init", args: []string{"state", "init", "--help"}, want: "Usage: loaf state init [--json]"},
 		{name: "state doctor", args: []string{"state", "doctor", "--help"}, want: "Usage: loaf state doctor [--fix] [--dry-run] [--json]"},
 		{name: "state repair", args: []string{"state", "repair", "--help"}, want: "Usage: loaf state repair <target> [options]"},

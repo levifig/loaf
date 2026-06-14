@@ -88,7 +88,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Name:        "state",
 			Description: "Manage native SQLite state",
 			Subcommands: []cliReferenceSubcommand{
-				{Name: "path", Description: "Print the resolved SQLite database path"},
+				{Name: "path", Description: "Print the resolved SQLite database path", Options: []cliReferenceOption{{Flags: "--json", Description: "Output database path and scope as JSON"}}},
 				{Name: "status", Description: "Show SQLite readiness and markdown-only compatibility status", Options: []cliReferenceOption{
 					{Flags: "--json", Description: "Output status as JSON"},
 				}},

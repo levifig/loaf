@@ -74,7 +74,7 @@ func agentHelpCommands() []agentHelpCommand {
 			Name:        "state",
 			Description: "Manage native SQLite state",
 			Subcommands: []agentHelpSubcommand{
-				{Name: "path", Description: "Print the native SQLite database path"},
+				{Name: "path", Description: "Print the native SQLite database path", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
 				{Name: "init", Description: "Initialize native SQLite state", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
 				{Name: "status", Description: "Show native state status", Options: []agentHelpOption{{Flags: "--json", Description: "Output raw JSON"}}},
 				{Name: "doctor", Description: "Diagnose native state health", Options: []agentHelpOption{{Flags: "--fix", Description: "Apply safe repairs"}, {Flags: "--dry-run", Description: "Preview repairs without writing"}, {Flags: "--json", Description: "Output raw JSON"}}},

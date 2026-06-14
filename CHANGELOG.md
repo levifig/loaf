@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state path --json` now reports the resolved global SQLite path with contract version, project root, and database scope without creating the database.
 - `loaf state doctor` now accepts project-level backend mappings, allowing a Loaf project to be linked to a Linear/external project while still rejecting mismatched project mapping IDs.
 - `loaf state doctor --json` now exits nonzero for invalid SQLite state while still returning the machine-readable status payload.
 - `loaf state export all --format json` now includes `project_paths` rows so project-scoped snapshots preserve checkout path history alongside durable project identity.

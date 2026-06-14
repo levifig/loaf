@@ -75,6 +75,13 @@ type commandErrorJSON struct {
 	Error           string `json:"error"`
 }
 
+type statePathResult struct {
+	ContractVersion int    `json:"contract_version"`
+	DatabaseScope   string `json:"database_scope"`
+	ProjectRoot     string `json:"project_root"`
+	DatabasePath    string `json:"database_path"`
+}
+
 // Run dispatches a loaf command.
 func (r Runner) Run(args []string) error {
 	out := r.Stdout
@@ -869,8 +876,9 @@ func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) er
 			writeStatePathHelp(out)
 			return nil
 		}
-		if len(args) > 1 {
-			return fmt.Errorf("state path accepts no arguments")
+		jsonOutput, err := parseJSONOnly(args[1:])
+		if err != nil {
+			return err
 		}
 		projectRoot, err := project.ResolveRoot(runtime.RootPath())
 		if err != nil {
@@ -879,6 +887,14 @@ func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) er
 		path, err := state.PathResolver{StateHome: r.StateHome}.DatabasePath(projectRoot)
 		if err != nil {
 			return err
+		}
+		if jsonOutput {
+			return writeJSON(out, statePathResult{
+				ContractVersion: state.StateJSONContractVersion,
+				DatabaseScope:   "global",
+				ProjectRoot:     projectRoot.Path(),
+				DatabasePath:    path,
+			})
 		}
 		fmt.Fprintln(out, path)
 		return nil
@@ -955,9 +971,13 @@ func writeStateHelp(out io.Writer) {
 }
 
 func writeStatePathHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf state path")
+	fmt.Fprintln(out, "Usage: loaf state path [--json]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Print the resolved native SQLite database path.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --json       Output JSON")
+	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
 func writeStateInitHelp(out io.Writer) {
