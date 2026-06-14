@@ -126,6 +126,73 @@ func TestBackupReportsGlobalProjectCount(t *testing.T) {
 	}
 }
 
+func TestVerifyBackupReportsAllProjectsWithoutLiveState(t *testing.T) {
+	firstRoot := projectRoot(t)
+	secondRoot := projectRoot(t)
+	stateHome := t.TempDir()
+	firstStatus, err := Initialize(context.Background(), firstRoot, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize(firstRoot) error = %v", err)
+	}
+	secondStatus, err := Initialize(context.Background(), secondRoot, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Initialize(secondRoot) error = %v", err)
+	}
+	backup, err := Backup(context.Background(), firstRoot, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+	if err := os.Remove(firstStatus.DatabasePath); err != nil {
+		t.Fatalf("remove live database error = %v", err)
+	}
+
+	result, err := VerifyBackup(context.Background(), backup.BackupPath)
+	if err != nil {
+		t.Fatalf("VerifyBackup() error = %v", err)
+	}
+
+	if result.ContractVersion != StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.BackupPath != backup.BackupPath {
+		t.Fatalf("BackupPath = %q, want %q", result.BackupPath, backup.BackupPath)
+	}
+	if result.Bytes != backup.Bytes {
+		t.Fatalf("Bytes = %d, want %d", result.Bytes, backup.Bytes)
+	}
+	if result.SHA256 != backup.SHA256 {
+		t.Fatalf("SHA256 = %q, want %q", result.SHA256, backup.SHA256)
+	}
+	if !result.Verified {
+		t.Fatal("Verified = false, want true")
+	}
+	if result.SchemaVersion != CurrentSchemaVersion() {
+		t.Fatalf("SchemaVersion = %d, want %d", result.SchemaVersion, CurrentSchemaVersion())
+	}
+	if result.ProjectCount != 2 || len(result.Projects) != 2 {
+		t.Fatalf("projects = %d/%d, want two projects", result.ProjectCount, len(result.Projects))
+	}
+	seen := map[string]bool{}
+	for _, project := range result.Projects {
+		seen[project.ID] = true
+		if project.DatabasePath != backup.BackupPath {
+			t.Fatalf("project DatabasePath = %q, want backup path %q", project.DatabasePath, backup.BackupPath)
+		}
+	}
+	if !seen[firstStatus.ProjectID] || !seen[secondStatus.ProjectID] {
+		t.Fatalf("verified projects = %#v, want %q and %q", seen, firstStatus.ProjectID, secondStatus.ProjectID)
+	}
+	if result.IntegrityCheck != "ok" {
+		t.Fatalf("IntegrityCheck = %q, want ok", result.IntegrityCheck)
+	}
+	if result.ForeignKeyCheck != "ok" {
+		t.Fatalf("ForeignKeyCheck = %q, want ok", result.ForeignKeyCheck)
+	}
+}
+
 func TestBackupCreatesTimestampedFilesWithoutOverwriting(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

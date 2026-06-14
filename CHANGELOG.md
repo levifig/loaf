@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state backup verify <backup> [--json]` now verifies existing SQLite backups without live-state access and reports all project identities captured in the global backup.
 - `loaf task refresh|sync --json` and `loaf session enrich|housekeeping --json` compatibility summaries now include `contract_version` for agentic consumers.
 - `loaf housekeeping` JSON and human output now report global database scope and durable project identity details when backed by SQLite, while Markdown fallback output keeps repository-local artifact context.
 - `loaf trace` and `loaf spec show` JSON and human output now report global database scope and durable project identity details when backed by SQLite, while Markdown `spec show` fallback output keeps repository-local spec context.

@@ -64,6 +64,11 @@ type projectMoveOptions struct {
 	jsonOutput bool
 }
 
+type backupVerifyOptions struct {
+	path       string
+	jsonOutput bool
+}
+
 type commandErrorJSON struct {
 	ContractVersion int    `json:"contract_version"`
 	Command         string `json:"command"`
@@ -912,6 +917,11 @@ func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) er
 			writeStateBackupHelp(out)
 			return nil
 		}
+		if writeNestedHelp(out, args[1:], map[string]func(io.Writer){
+			"verify": writeStateBackupVerifyHelp,
+		}) {
+			return nil
+		}
 		return r.runStateBackup(args[1:], out, runtime)
 	case "export":
 		if len(args) == 1 || isHelpArg(args[1:]) {
@@ -937,6 +947,7 @@ func writeStateHelp(out io.Writer) {
 	fmt.Fprintln(out, "  repair        Repair guarded SQLite data drift")
 	fmt.Fprintln(out, "  migrate       Run state migrations")
 	fmt.Fprintln(out, "  backup        Create a SQLite database backup")
+	fmt.Fprintln(out, "  backup verify Verify an existing SQLite backup")
 	fmt.Fprintln(out, "  export        Export SQLite state")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
@@ -1008,13 +1019,20 @@ func writeStateMigrateHelp(out io.Writer) {
 }
 
 func writeStateBackupHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf state backup [--json]")
+	fmt.Fprintln(out, "Usage: loaf state backup [verify <backup>] [--json]")
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, "Create a SQLite database backup.")
+	fmt.Fprintln(out, "Create or verify SQLite database backups.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Subcommands:")
+	fmt.Fprintln(out, "  verify <backup>  Verify an existing SQLite backup")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  --json       Output JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
+}
+
+func writeStateBackupVerifyHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state backup verify <backup> [--json]", "Verify an existing SQLite database backup without reading or mutating live state.", "--json       Output JSON")
 }
 
 func writeStateExportHelp(out io.Writer) {
@@ -1744,6 +1762,9 @@ func repairModeFlag(apply bool) string {
 }
 
 func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runtime) error {
+	if len(args) > 0 && args[0] == "verify" {
+		return r.runStateBackupVerify(args[1:], out)
+	}
 	jsonRequested := hasFlag(args, "--json")
 	jsonOutput, err := parseJSONOnly(args)
 	if err != nil {
@@ -1784,6 +1805,47 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
 	fmt.Fprintf(out, "foreign keys: %s\n", result.ForeignKeyCheck)
 	fmt.Fprintf(out, "created at: %s\n", result.CreatedAt)
+	return nil
+}
+
+func (r Runner) runStateBackupVerify(args []string, out io.Writer) error {
+	jsonRequested := hasFlag(args, "--json")
+	options, err := parseStateBackupVerifyArgs(args)
+	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state backup verify", err)
+		}
+		return err
+	}
+	result, err := state.VerifyBackup(context.Background(), options.path)
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state backup verify", err)
+		}
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	fmt.Fprintln(out, "loaf state backup verify")
+	fmt.Fprintf(out, "scope: %s backup\n", result.DatabaseScope)
+	fmt.Fprintf(out, "backup: %s\n", result.BackupPath)
+	fmt.Fprintf(out, "bytes: %d\n", result.Bytes)
+	fmt.Fprintf(out, "sha256: %s\n", result.SHA256)
+	fmt.Fprintf(out, "verified: %t\n", result.Verified)
+	fmt.Fprintf(out, "schema version: %d\n", result.SchemaVersion)
+	fmt.Fprintf(out, "projects: %d\n", result.ProjectCount)
+	for _, project := range result.Projects {
+		fmt.Fprintf(out, "project: %s\n", project.ID)
+		if project.FriendlyName != "" {
+			fmt.Fprintf(out, "project name: %s\n", project.FriendlyName)
+		}
+		if project.CurrentPath != "" {
+			fmt.Fprintf(out, "project path: %s\n", project.CurrentPath)
+		}
+	}
+	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
+	fmt.Fprintf(out, "foreign keys: %s\n", result.ForeignKeyCheck)
 	return nil
 }
 
@@ -9529,6 +9591,28 @@ func parseJSONOnly(args []string) (bool, error) {
 		}
 	}
 	return jsonOutput, nil
+}
+
+func parseStateBackupVerifyArgs(args []string) (backupVerifyOptions, error) {
+	var options backupVerifyOptions
+	for _, arg := range args {
+		switch arg {
+		case "--json":
+			options.jsonOutput = true
+		default:
+			if strings.HasPrefix(arg, "-") {
+				return backupVerifyOptions{}, fmt.Errorf("unknown option %q", arg)
+			}
+			if options.path != "" {
+				return backupVerifyOptions{}, fmt.Errorf("state backup verify accepts exactly one backup path")
+			}
+			options.path = arg
+		}
+	}
+	if options.path == "" {
+		return backupVerifyOptions{}, fmt.Errorf("state backup verify requires a backup path")
+	}
+	return options, nil
 }
 
 func parseCompatibilityCommandArgs(command string, args []string, allowedFlags map[string]bool) (compatibilityCommandOptions, error) {

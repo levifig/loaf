@@ -3618,6 +3618,79 @@ func TestRunnerStateBackupHumanOutput(t *testing.T) {
 	}
 }
 
+func TestRunnerStateBackupVerifyReportsGlobalProjects(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	otherDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init first error = %v", err)
+	}
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: otherDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init second error = %v", err)
+	}
+
+	var backupOut bytes.Buffer
+	if err := (Runner{Stdout: &backupOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "--json"}); err != nil {
+		t.Fatalf("state backup --json error = %v", err)
+	}
+	backup := decodeStateBackupResult(t, backupOut.Bytes())
+	if err := os.Remove(backup.DatabasePath); err != nil {
+		t.Fatalf("remove live database error = %v", err)
+	}
+
+	var jsonOut bytes.Buffer
+	err := Runner{
+		Stdout:     &jsonOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "backup", "verify", backup.BackupPath, "--json"})
+	if err != nil {
+		t.Fatalf("state backup verify --json error = %v", err)
+	}
+	result := decodeStateBackupVerificationResult(t, jsonOut.Bytes())
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	if result.DatabaseScope != "global" {
+		t.Fatalf("DatabaseScope = %q, want global", result.DatabaseScope)
+	}
+	if result.BackupPath != backup.BackupPath {
+		t.Fatalf("BackupPath = %q, want %q", result.BackupPath, backup.BackupPath)
+	}
+	if result.SHA256 != backup.SHA256 {
+		t.Fatalf("SHA256 = %q, want %q", result.SHA256, backup.SHA256)
+	}
+	if !result.Verified {
+		t.Fatal("Verified = false, want true")
+	}
+	if result.SchemaVersion != state.CurrentSchemaVersion() {
+		t.Fatalf("SchemaVersion = %d, want %d", result.SchemaVersion, state.CurrentSchemaVersion())
+	}
+	if result.ProjectCount != 2 || len(result.Projects) != 2 {
+		t.Fatalf("projects = %d/%d, want two projects", result.ProjectCount, len(result.Projects))
+	}
+	for _, project := range result.Projects {
+		if project.DatabasePath != backup.BackupPath {
+			t.Fatalf("project DatabasePath = %q, want backup path %q", project.DatabasePath, backup.BackupPath)
+		}
+	}
+
+	var humanOut bytes.Buffer
+	err = Runner{
+		Stdout:     &humanOut,
+		WorkingDir: otherDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "backup", "verify", backup.BackupPath})
+	if err != nil {
+		t.Fatalf("state backup verify error = %v", err)
+	}
+	for _, want := range []string{"loaf state backup verify", "scope: global backup", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 2", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok"} {
+		if !strings.Contains(humanOut.String(), want) {
+			t.Fatalf("output = %q, want %q", humanOut.String(), want)
+		}
+	}
+}
+
 func TestRunnerStateBackupRejectsMissingAndInvalidState(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -11850,6 +11923,15 @@ func decodeStateBackupResult(t *testing.T, data []byte) state.BackupResult {
 	return result
 }
 
+func decodeStateBackupVerificationResult(t *testing.T, data []byte) state.BackupVerificationResult {
+	t.Helper()
+	var result state.BackupVerificationResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return result
+}
+
 func assertNoSQLiteSidecars(t *testing.T, path string) {
 	t.Helper()
 	for _, suffix := range []string{"-wal", "-shm"} {
@@ -12563,6 +12645,7 @@ func TestRunnerNestedStateBackedHelpDoesNotParseAsOption(t *testing.T) {
 		{name: "state migrate storage-home", args: []string{"state", "migrate", "storage-home", "--help"}, want: "Usage: loaf state migrate storage-home"},
 		{name: "migrate markdown", args: []string{"migrate", "markdown", "--help"}, want: "Usage: loaf migrate markdown"},
 		{name: "migrate storage-home", args: []string{"migrate", "storage-home", "--help"}, want: "Usage: loaf migrate storage-home"},
+		{name: "state backup verify", args: []string{"state", "backup", "verify", "--help"}, want: "Usage: loaf state backup verify"},
 		{name: "state export all", args: []string{"state", "export", "all", "--help"}, want: "Usage: loaf state export all"},
 		{name: "task update", args: []string{"task", "update", "--help"}, want: "Usage: loaf task update <task>"},
 		{name: "task create", args: []string{"task", "create", "--help"}, want: "Usage: loaf task create --title <title>"},
@@ -12786,7 +12869,7 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
 		}
 	}
-	for _, want := range []string{"export all", "export triage", "export session", "export spec", "export release-readiness"} {
+	for _, want := range []string{"backup verify", "export all", "export triage", "export session", "export spec", "export release-readiness"} {
 		if !stringSliceContains(commands["state"].subcommands, want) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
 		}
@@ -12805,6 +12888,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["state"].optionDescriptions["state repair relationship-origin --dry-run"]; !strings.Contains(got, "without writing") {
 		t.Fatalf("relationship repair dry-run description = %q, want non-mutating preview", got)
+	}
+	if got := commands["state"].optionDescriptions["state backup verify --json"]; !strings.Contains(got, "raw JSON") {
+		t.Fatalf("state backup verify json description = %q, want JSON guidance", got)
 	}
 	if got := commands["state"].optionDescriptions["state export all --format <format>"]; !strings.Contains(got, "json") {
 		t.Fatalf("state export all format description = %q, want JSON guidance", got)
