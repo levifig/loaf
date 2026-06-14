@@ -196,6 +196,7 @@ without rewriting the source Markdown files.
 
 - `loaf state export all`:
   - `--format <format>` - Output format: json
+  - `--json` - Alias for --format json
 
 - `loaf state export triage`:
   - `--format <format>` - Output format: markdown

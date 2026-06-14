@@ -3999,6 +3999,21 @@ status: implementing
 	if snapshot.ExportScope != "project" {
 		t.Fatalf("ExportScope = %q, want project", snapshot.ExportScope)
 	}
+
+	var aliasOut bytes.Buffer
+	err = Runner{
+		Stdout:     &aliasOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "export", "all", "--json"})
+	if err != nil {
+		t.Fatalf("state export all --json error = %v", err)
+	}
+	aliasSnapshot := decodeStateExportSnapshot(t, aliasOut.Bytes())
+	if aliasSnapshot.ExportKind != state.ExportKindAll || aliasSnapshot.Format != state.ExportFormatJSON || aliasSnapshot.ProjectID != snapshot.ProjectID {
+		t.Fatalf("alias snapshot = %#v, want all/json export for project %q", aliasSnapshot, snapshot.ProjectID)
+	}
+
 	if snapshot.SchemaVersion != state.CurrentSchemaVersion() {
 		t.Fatalf("SchemaVersion = %d, want %d", snapshot.SchemaVersion, state.CurrentSchemaVersion())
 	}
@@ -4918,6 +4933,21 @@ func TestRunnerStateExportRejectsMissingInvalidUnsupportedState(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "state export format \"markdown\" is not implemented yet") {
 		t.Fatalf("error = %v, want unsupported format message", err)
+	}
+
+	var jsonMarkdownOut bytes.Buffer
+	err = Runner{
+		Stdout:     &jsonMarkdownOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "export", "triage", "--json"})
+	if err == nil {
+		t.Fatal("state export triage --json error = nil, want rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	jsonMarkdownError := decodeCommandError(t, jsonMarkdownOut.Bytes())
+	if jsonMarkdownError.Command != "state export" || !strings.Contains(jsonMarkdownError.Error, "--json is only supported for state export all") {
+		t.Fatalf("JSON error = %#v, want markdown export json-alias rejection", jsonMarkdownError)
 	}
 
 	root, err := project.ResolveRoot(workingDir)
@@ -13079,6 +13109,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["state"].optionDescriptions["state export all --format <format>"]; !strings.Contains(got, "json") {
 		t.Fatalf("state export all format description = %q, want JSON guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state export all --json"]; !strings.Contains(got, "Alias for --format json") {
+		t.Fatalf("state export all json description = %q, want JSON alias guidance", got)
 	}
 	if got := commands["state"].optionDescriptions["state export release-readiness --format <format>"]; !strings.Contains(got, "markdown") {
 		t.Fatalf("state export release-readiness format description = %q, want Markdown guidance", got)

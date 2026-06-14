@@ -1074,7 +1074,7 @@ func writeStateExportHelp(out io.Writer) {
 }
 
 func writeStateExportAllHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf state export all --format json", "Export a complete project-scoped SQLite snapshot.", "--format     Output format")
+	writeUsageHelp(out, "loaf state export all --format json [--json]", "Export a complete project-scoped SQLite snapshot.", "--format     Output format", "--json       Alias for --format json")
 }
 
 func writeStateExportReleaseReadinessHelp(out io.Writer) {
@@ -9731,6 +9731,14 @@ func parseStateExportArgs(args []string) (stateExportOptions, error) {
 			options.format = value
 		case strings.HasPrefix(arg, "--format="):
 			options.format = strings.TrimPrefix(arg, "--format=")
+		case arg == "--json":
+			if options.kind != state.ExportKindAll {
+				return stateExportOptions{}, fmt.Errorf("state export %s uses --format markdown; --json is only supported for state export all", options.kind)
+			}
+			if options.format != "" && options.format != state.ExportFormatJSON {
+				return stateExportOptions{}, fmt.Errorf("state export all cannot combine --json with --format %s", options.format)
+			}
+			options.format = state.ExportFormatJSON
 		default:
 			if strings.HasPrefix(arg, "-") {
 				return stateExportOptions{}, fmt.Errorf("unknown option %q", arg)
@@ -9791,6 +9799,8 @@ func stateExportJSONRequested(args []string) bool {
 			if strings.TrimPrefix(arg, "--format=") == state.ExportFormatJSON {
 				return true
 			}
+		case arg == "--json":
+			return true
 		}
 	}
 	return false
