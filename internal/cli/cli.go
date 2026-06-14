@@ -632,19 +632,19 @@ func writeBrainstormHelp(out io.Writer) {
 }
 
 func writeBrainstormListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf brainstorm list [--all|--status <status>] [--json]", "List brainstorms from SQLite state.", "--all        Include archived brainstorms", "--status     Filter by status", "--json       Output JSON")
+	writeUsageHelp(out, "loaf brainstorm list [--all|--status <status>] [--json]", "List brainstorms from SQLite state.", "--all        Include archived brainstorms", "--status     Filter by status", "--json       Output brainstorms, global database scope, and project identity as JSON")
 }
 
 func writeBrainstormShowHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf brainstorm show <brainstorm> [--json]", "Show one brainstorm from SQLite state.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf brainstorm show <brainstorm> [--json]", "Show one brainstorm from SQLite state.", "--json       Output brainstorm details, relationships, global database scope, and project identity as JSON")
 }
 
 func writeBrainstormPromoteHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf brainstorm promote <brainstorm> --to-idea <idea> [--json]", "Record brainstorm-to-idea promotion.", "--to-idea    Target idea", "--json       Output JSON")
+	writeUsageHelp(out, "loaf brainstorm promote <brainstorm> --to-idea <idea> [--json]", "Record brainstorm-to-idea promotion.", "--to-idea    Target idea", "--json       Output promotion relationship, global database scope, and project identity as JSON")
 }
 
 func writeBrainstormArchiveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf brainstorm archive <brainstorm...> [--reason <text>] [--json]", "Archive one or more brainstorms.", "--reason     Archive reason", "--json       Output JSON")
+	writeUsageHelp(out, "loaf brainstorm archive <brainstorm...> [--reason <text>] [--json]", "Archive one or more brainstorms.", "--reason     Archive reason", "--json       Output archive result, archived brainstorms, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runBrainstormList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -4465,27 +4465,27 @@ func writeIdeaHelp(out io.Writer) {
 }
 
 func writeIdeaListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf idea list [--all|--status <status>] [--json]", "List ideas from SQLite state.", "--all        Include resolved and archived ideas", "--status     Filter by status", "--json       Output JSON")
+	writeUsageHelp(out, "loaf idea list [--all|--status <status>] [--json]", "List ideas from SQLite state.", "--all        Include resolved and archived ideas", "--status     Filter by status", "--json       Output ideas, global database scope, and project identity as JSON")
 }
 
 func writeIdeaShowHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf idea show <idea> [--json]", "Show one idea from SQLite state.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf idea show <idea> [--json]", "Show one idea from SQLite state.", "--json       Output idea details, relationships, global database scope, and project identity as JSON")
 }
 
 func writeIdeaCaptureHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf idea capture --title <title> [--json]", "Capture an idea in SQLite state.", "--title      Idea title", "--json       Output JSON")
+	writeUsageHelp(out, "loaf idea capture --title <title> [--json]", "Capture an idea in SQLite state.", "--title      Idea title", "--json       Output created idea, event, global database scope, and project identity as JSON")
 }
 
 func writeIdeaPromoteHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf idea promote <idea> --to-spec <spec> [--json]", "Record idea-to-spec promotion.", "--to-spec    Target spec", "--json       Output JSON")
+	writeUsageHelp(out, "loaf idea promote <idea> --to-spec <spec> [--json]", "Record idea-to-spec promotion.", "--to-spec    Target spec", "--json       Output promotion relationship, global database scope, and project identity as JSON")
 }
 
 func writeIdeaResolveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf idea resolve <idea> --by <entity> [--json]", "Resolve an idea by linking it to another entity.", "--by         Resolving entity", "--json       Output JSON")
+	writeUsageHelp(out, "loaf idea resolve <idea> --by <entity> [--json]", "Resolve an idea by linking it to another entity.", "--by         Resolving entity", "--json       Output resolution relationship, event, global database scope, and project identity as JSON")
 }
 
 func writeIdeaArchiveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf idea archive <idea...> [--reason <text>] [--json]", "Archive one or more ideas.", "--reason     Archive reason", "--json       Output JSON")
+	writeUsageHelp(out, "loaf idea archive <idea...> [--reason <text>] [--json]", "Archive one or more ideas.", "--reason     Archive reason", "--json       Output archive result, archived ideas, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runIdeaList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -4841,23 +4841,23 @@ func writeSparkHelp(out io.Writer) {
 }
 
 func writeSparkListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spark list [--all|--status <status>] [--json]", "List sparks from SQLite state.", "--all        Include resolved sparks", "--status     Filter by status", "--json       Output JSON")
+	writeUsageHelp(out, "loaf spark list [--all|--status <status>] [--json]", "List sparks from SQLite state.", "--all        Include resolved sparks", "--status     Filter by status", "--json       Output sparks, global database scope, and project identity as JSON")
 }
 
 func writeSparkShowHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spark show <spark> [--json]", "Show one spark from SQLite state.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf spark show <spark> [--json]", "Show one spark from SQLite state.", "--json       Output spark details, relationships, global database scope, and project identity as JSON")
 }
 
 func writeSparkCaptureHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spark capture --scope <scope> --text <text> [--json]", "Capture a spark in SQLite state.", "--scope      Spark scope", "--text       Spark text", "--json       Output JSON")
+	writeUsageHelp(out, "loaf spark capture --scope <scope> --text <text> [--json]", "Capture a spark in SQLite state.", "--scope      Spark scope", "--text       Spark text", "--json       Output created spark, event, global database scope, and project identity as JSON")
 }
 
 func writeSparkResolveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spark resolve <spark> [--reason <text>] [--json]", "Resolve a spark.", "--reason     Resolution reason", "--json       Output JSON")
+	writeUsageHelp(out, "loaf spark resolve <spark> [--reason <text>] [--json]", "Resolve a spark.", "--reason     Resolution reason", "--json       Output resolution relationship, event, global database scope, and project identity as JSON")
 }
 
 func writeSparkPromoteHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spark promote <spark> --to-idea <idea> [--json]", "Record spark-to-idea promotion.", "--to-idea    Target idea", "--json       Output JSON")
+	writeUsageHelp(out, "loaf spark promote <spark> --to-idea <idea> [--json]", "Record spark-to-idea promotion.", "--to-idea    Target idea", "--json       Output promotion relationship, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runSparkList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -5124,19 +5124,19 @@ func writeTagHelp(out io.Writer) {
 }
 
 func writeTagListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf tag list [--json]", "List tags from SQLite state.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf tag list [--json]", "List tags from SQLite state.", "--json       Output tags, global database scope, and project identity as JSON")
 }
 
 func writeTagShowHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf tag show <tag> [--json]", "Show entities with a tag.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf tag show <tag> [--json]", "Show entities with a tag.", "--json       Output tagged entities, global database scope, and project identity as JSON")
 }
 
 func writeTagAddHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf tag add <entity> <tag> [--json]", "Add a tag to an entity.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf tag add <entity> <tag> [--json]", "Add a tag to an entity.", "--json       Output tag mutation, entity, global database scope, and project identity as JSON")
 }
 
 func writeTagRemoveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf tag remove <entity> <tag> [--json]", "Remove a tag from an entity.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf tag remove <entity> <tag> [--json]", "Remove a tag from an entity.", "--json       Output tag mutation, entity, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runTagList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -5344,27 +5344,27 @@ func writeBundleHelp(out io.Writer) {
 }
 
 func writeBundleListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf bundle list [--json]", "List bundles from SQLite state.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf bundle list [--json]", "List bundles from SQLite state.", "--json       Output bundles, global database scope, and project identity as JSON")
 }
 
 func writeBundleCreateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf bundle create <slug> [--title <title>] [--tags <tags>] [--json]", "Create a bundle.", "--title      Bundle title", "--tags       Comma-separated tag query", "--json       Output JSON")
+	writeUsageHelp(out, "loaf bundle create <slug> [--title <title>] [--tags <tags>] [--json]", "Create a bundle.", "--title      Bundle title", "--tags       Comma-separated tag query", "--json       Output created bundle, tags, global database scope, and project identity as JSON")
 }
 
 func writeBundleUpdateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf bundle update <slug> [--title <title>] [--tags <tags>] [--json]", "Update a bundle.", "--title      Bundle title", "--tags       Comma-separated tag query", "--json       Output JSON")
+	writeUsageHelp(out, "loaf bundle update <slug> [--title <title>] [--tags <tags>] [--json]", "Update a bundle.", "--title      Bundle title", "--tags       Comma-separated tag query", "--json       Output updated bundle, tags, global database scope, and project identity as JSON")
 }
 
 func writeBundleShowHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf bundle show <bundle> [--json]", "Show one bundle.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf bundle show <bundle> [--json]", "Show one bundle.", "--json       Output bundle details, members, global database scope, and project identity as JSON")
 }
 
 func writeBundleAddHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf bundle add <bundle> <entity> [--json]", "Add an entity to a bundle.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf bundle add <bundle> <entity> [--json]", "Add an entity to a bundle.", "--json       Output bundle membership result, global database scope, and project identity as JSON")
 }
 
 func writeBundleRemoveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf bundle remove <bundle> <entity> [--json]", "Remove an entity from a bundle.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf bundle remove <bundle> <entity> [--json]", "Remove an entity from a bundle.", "--json       Output bundle membership result, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runBundleList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -5684,15 +5684,15 @@ func writeLinkHelp(out io.Writer) {
 }
 
 func writeLinkCreateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf link create --from <entity> --to <entity> [--type <type>] [--reason <text>] [--json]", "Create an explicit relationship.", "--from       Source entity", "--to         Target entity", "--type       Relationship type", "--reason     Relationship reason", "--json       Output JSON")
+	writeUsageHelp(out, "loaf link create --from <entity> --to <entity> [--type <type>] [--reason <text>] [--json]", "Create an explicit relationship.", "--from       Source entity", "--to         Target entity", "--type       Relationship type", "--reason     Relationship reason", "--json       Output relationship ID, source/target, global database scope, and project identity as JSON")
 }
 
 func writeLinkListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf link list <entity> [--json]", "List relationships for one entity.", "--json       Output JSON")
+	writeUsageHelp(out, "loaf link list <entity> [--json]", "List relationships for one entity.", "--json       Output relationships, global database scope, and project identity as JSON")
 }
 
 func writeLinkRemoveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf link remove --from <entity> --to <entity> [--type <type>] [--json]", "Remove an explicit relationship.", "--from       Source entity", "--to         Target entity", "--type       Relationship type", "--json       Output JSON")
+	writeUsageHelp(out, "loaf link remove --from <entity> --to <entity> [--type <type>] [--json]", "Remove an explicit relationship.", "--from       Source entity", "--to         Target entity", "--type       Relationship type", "--json       Output removed relationship ID, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runLinkCreate(args []string, out io.Writer, runtime state.Runtime) error {

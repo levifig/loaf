@@ -616,18 +616,18 @@ Manage brainstorms in native SQLite state
 - `loaf brainstorm list`:
   - `--all` - Include archived brainstorms
   - `--status <status>` - Filter by status
-  - `--json` - Output brainstorms as JSON
+  - `--json` - Output brainstorms, global database scope, and project identity as JSON
 
 - `loaf brainstorm show`:
-  - `--json` - Output brainstorm details as JSON
+  - `--json` - Output brainstorm details, relationships, global database scope, and project identity as JSON
 
 - `loaf brainstorm promote`:
   - `--to-idea <idea>` - Target idea
-  - `--json` - Output promotion result as JSON
+  - `--json` - Output promotion relationship, global database scope, and project identity as JSON
 
 - `loaf brainstorm archive`:
   - `--reason <text>` - Archive reason
-  - `--json` - Output archive result as JSON
+  - `--json` - Output archive result, archived brainstorms, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash
@@ -659,26 +659,26 @@ Manage ideas in native SQLite state
 - `loaf idea list`:
   - `--all` - Include resolved and archived ideas
   - `--status <status>` - Filter by status
-  - `--json` - Output ideas as JSON
+  - `--json` - Output ideas, global database scope, and project identity as JSON
 
 - `loaf idea show`:
-  - `--json` - Output idea details as JSON
+  - `--json` - Output idea details, relationships, global database scope, and project identity as JSON
 
 - `loaf idea capture`:
   - `--title <title>` - Idea title
-  - `--json` - Output created idea as JSON
+  - `--json` - Output created idea, event, global database scope, and project identity as JSON
 
 - `loaf idea promote`:
   - `--to-spec <spec>` - Target spec
-  - `--json` - Output promotion result as JSON
+  - `--json` - Output promotion relationship, global database scope, and project identity as JSON
 
 - `loaf idea resolve`:
   - `--by <entity>` - Resolving entity
-  - `--json` - Output resolution result as JSON
+  - `--json` - Output resolution relationship, event, global database scope, and project identity as JSON
 
 - `loaf idea archive`:
   - `--reason <text>` - Archive reason
-  - `--json` - Output archive result as JSON
+  - `--json` - Output archive result, archived ideas, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash
@@ -709,23 +709,23 @@ Manage sparks in native SQLite state
 - `loaf spark list`:
   - `--all` - Include resolved sparks
   - `--status <status>` - Filter by status
-  - `--json` - Output sparks as JSON
+  - `--json` - Output sparks, global database scope, and project identity as JSON
 
 - `loaf spark show`:
-  - `--json` - Output spark details as JSON
+  - `--json` - Output spark details, relationships, global database scope, and project identity as JSON
 
 - `loaf spark capture`:
   - `--scope <scope>` - Spark scope
   - `--text <text>` - Spark text
-  - `--json` - Output created spark as JSON
+  - `--json` - Output created spark, event, global database scope, and project identity as JSON
 
 - `loaf spark resolve`:
   - `--reason <text>` - Resolution reason
-  - `--json` - Output resolution result as JSON
+  - `--json` - Output resolution relationship, event, global database scope, and project identity as JSON
 
 - `loaf spark promote`:
   - `--to-idea <idea>` - Target idea
-  - `--json` - Output promotion result as JSON
+  - `--json` - Output promotion relationship, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash
@@ -753,16 +753,16 @@ Manage tags in native SQLite state
 **Options:**
 
 - `loaf tag list`:
-  - `--json` - Output tags as JSON
+  - `--json` - Output tags, global database scope, and project identity as JSON
 
 - `loaf tag show`:
-  - `--json` - Output tag details as JSON
+  - `--json` - Output tagged entities, global database scope, and project identity as JSON
 
 - `loaf tag add`:
-  - `--json` - Output tag mutation as JSON
+  - `--json` - Output tag mutation, entity, global database scope, and project identity as JSON
 
 - `loaf tag remove`:
-  - `--json` - Output tag mutation as JSON
+  - `--json` - Output tag mutation, entity, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash
@@ -792,26 +792,26 @@ Manage bundles in native SQLite state
 **Options:**
 
 - `loaf bundle list`:
-  - `--json` - Output bundles as JSON
+  - `--json` - Output bundles, global database scope, and project identity as JSON
 
 - `loaf bundle create`:
   - `--title <title>` - Bundle title
   - `--tags <tags>` - Comma-separated tag query
-  - `--json` - Output created bundle as JSON
+  - `--json` - Output created bundle, tags, global database scope, and project identity as JSON
 
 - `loaf bundle update`:
   - `--title <title>` - Bundle title
   - `--tags <tags>` - Comma-separated tag query
-  - `--json` - Output updated bundle as JSON
+  - `--json` - Output updated bundle, tags, global database scope, and project identity as JSON
 
 - `loaf bundle show`:
-  - `--json` - Output bundle details as JSON
+  - `--json` - Output bundle details, members, global database scope, and project identity as JSON
 
 - `loaf bundle add`:
-  - `--json` - Output bundle membership as JSON
+  - `--json` - Output bundle membership result, global database scope, and project identity as JSON
 
 - `loaf bundle remove`:
-  - `--json` - Output bundle membership as JSON
+  - `--json` - Output bundle membership result, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash
@@ -842,16 +842,16 @@ Manage explicit relationships in native SQLite state
   - `--to <entity>` - Target entity
   - `--type <type>` - Relationship type
   - `--reason <text>` - Relationship reason
-  - `--json` - Output created relationship as JSON
+  - `--json` - Output relationship ID, source/target, global database scope, and project identity as JSON
 
 - `loaf link list`:
-  - `--json` - Output relationships as JSON
+  - `--json` - Output relationships, global database scope, and project identity as JSON
 
 - `loaf link remove`:
   - `--from <entity>` - Source entity
   - `--to <entity>` - Target entity
   - `--type <type>` - Relationship type
-  - `--json` - Output removed relationship as JSON
+  - `--json` - Output removed relationship ID, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash

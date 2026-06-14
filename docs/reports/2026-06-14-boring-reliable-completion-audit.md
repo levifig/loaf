@@ -97,10 +97,10 @@ This checkpoint adds structured diagnostic `details` for backend mapping and Lin
 
 ## Latest Checkpoint
 
-The latest non-control-plane agent-help pass focused on SQLite-backed session, task, spec, and report surfaces whose JSON structs already expose stable contract fields. The pass found the expected generic wording, plus one behavioral bug: `loaf session report --json` was advertised in help/agent-help but rejected by the runner.
+The latest completion-audit pass focused on entity-family surfaces: `brainstorm`, `idea`, `spark`, `tag`, `bundle`, and `link`. Their JSON payloads already exposed the right global/project context, relationship IDs, events, tag mutations, and membership results, but agent help, command help, and generated CLI reference output still described them generically as raw JSON or just JSON.
 
-This checkpoint makes `session report --json` return the same local `MarkdownExport` contract as the state/report-generation session export path, with `command: session report`. Agent help, command help, and generated CLI reference output now describe session/task/spec/report JSON payloads in terms of global database scope, project identity, diagnostics, journal entries, relationships, events, compatibility counts, status transitions, and Markdown export content. `TestRunnerReportGenerateSessionAndSessionReportMatchStateExport`, `TestRunnerAgentHelpIsNative`, and `TestRunnerGenerateCLIReferenceWritesSkillNatively` guard the behavior and descriptions.
+This checkpoint makes those entity-family help surfaces name the actual JSON content: global database scope, durable project identity, relationships, events, archive results, tag mutations, bundle tags, bundle members, and source/target relationship IDs. `TestRunnerAgentHelpIsNative` and `TestRunnerGenerateCLIReferenceWritesSkillNatively` guard representative descriptions, and the rebuilt `bin/loaf --agent-help` output no longer contains raw JSON descriptions for those entity families.
 
 ## Next Review Target
 
-Continue the completion-audit pass by auditing the remaining `--agent-help` raw JSON descriptions for KB/check/housekeeping/trace and entity families such as brainstorm, idea, spark, tag, bundle, and link.
+Continue the completion-audit pass by auditing the remaining `--agent-help` raw JSON descriptions for KB/check/housekeeping/trace.

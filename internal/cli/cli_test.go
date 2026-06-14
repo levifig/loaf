@@ -15181,6 +15181,22 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			t.Fatalf("agent help options missing %q", want)
 		}
 	}
+	for option, wants := range map[string][]string{
+		"brainstorm list --json": {"brainstorms", "global database scope", "project identity"},
+		"idea resolve --json":    {"resolution relationship", "event", "project identity"},
+		"spark capture --json":   {"created spark", "event", "global database scope"},
+		"tag add --json":         {"tag mutation", "entity", "project identity"},
+		"bundle show --json":     {"members", "global database scope"},
+		"link create --json":     {"relationship ID", "source/target", "project identity"},
+	} {
+		command := strings.Fields(option)[0]
+		got := commands[command].optionDescriptions[option]
+		for _, want := range wants {
+			if !strings.Contains(got, want) {
+				t.Fatalf("agent help option %q description = %q, want %q", option, got, want)
+			}
+		}
+	}
 }
 
 func assertAgentHelpJSONMatchesLiveHelp(t *testing.T, commandArgs []string, agentOptions []string, jsonOption string) {
