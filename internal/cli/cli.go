@@ -1593,7 +1593,7 @@ func (r Runner) runStateDoctor(args []string, out io.Writer, runtime state.Runti
 	fmt.Fprintf(out, "mode: %s\n", status.Mode)
 	fmt.Fprintf(out, "schema version: %d\n", status.SchemaVersion)
 	for _, diagnostic := range status.Diagnostics {
-		fmt.Fprintf(out, "%s: %s\n", diagnostic.Severity, diagnostic.Message)
+		fmt.Fprintf(out, "%s\n", formatStateDiagnosticLine("", diagnostic))
 	}
 	if len(status.RepairPlan) > 0 {
 		fmt.Fprintln(out, "repair plan:")
@@ -1640,8 +1640,24 @@ func writeStateProjectIdentity(out io.Writer, status state.Status) {
 
 func writeStateDiagnostics(out io.Writer, indent string, diagnostics []state.Diagnostic) {
 	for _, diagnostic := range diagnostics {
-		fmt.Fprintf(out, "%s%s: %s\n", indent, diagnostic.Severity, diagnostic.Message)
+		fmt.Fprintf(out, "%s\n", formatStateDiagnosticLine(indent, diagnostic))
 	}
+}
+
+func formatStateDiagnosticLine(indent string, diagnostic state.Diagnostic) string {
+	label := diagnostic.Severity
+	switch {
+	case diagnostic.Category != "" && diagnostic.Policy != "":
+		label = fmt.Sprintf("%s [%s/%s]", label, diagnostic.Category, diagnostic.Policy)
+	case diagnostic.Category != "":
+		label = fmt.Sprintf("%s [%s]", label, diagnostic.Category)
+	case diagnostic.Policy != "":
+		label = fmt.Sprintf("%s [%s]", label, diagnostic.Policy)
+	}
+	if diagnostic.RequiresExternalSync {
+		label += " [external-sync-required]"
+	}
+	return fmt.Sprintf("%s%s: %s", indent, label, diagnostic.Message)
 }
 
 func stateListWarnings(diagnostics []state.Diagnostic) []state.Diagnostic {

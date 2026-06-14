@@ -29,11 +29,20 @@ const (
 	RepairCategoryCompatibilityExport    = "compatibility-export"
 )
 
+const (
+	DiagnosticPolicyInvalidLocalData = "invalid-local-data"
+	DiagnosticPolicyWarningDrift     = "warning-drift"
+	DiagnosticPolicyExternalSyncGap  = "external-sync-gap"
+)
+
 // Diagnostic describes a state-runtime observation without mutating state.
 type Diagnostic struct {
-	Severity string `json:"severity"`
-	Code     string `json:"code"`
-	Message  string `json:"message"`
+	Severity             string `json:"severity"`
+	Code                 string `json:"code"`
+	Category             string `json:"category,omitempty"`
+	Policy               string `json:"policy,omitempty"`
+	Message              string `json:"message"`
+	RequiresExternalSync bool   `json:"requires_external_sync,omitempty"`
 }
 
 // RepairAction describes an explicit repair recommendation from diagnostics.
@@ -721,7 +730,9 @@ ORDER BY field
 		diagnostics = append(diagnostics, Diagnostic{
 			Severity: "error",
 			Code:     "backend-mapping-field-empty",
-			Message:  fmt.Sprintf("%d backend mapping row(s) have an empty %s field", count, field),
+			Category: RepairCategoryBackendMapping,
+			Policy:   DiagnosticPolicyInvalidLocalData,
+			Message:  fmt.Sprintf("%d backend mapping row(s) have an empty %s field; fix or remove the local backend mapping row before trusting integration state", count, field),
 		})
 	}
 	if err := blankRows.Err(); err != nil {
@@ -770,7 +781,9 @@ ORDER BY entity_kind
 		diagnostics = append(diagnostics, Diagnostic{
 			Severity: "error",
 			Code:     "backend-mapping-entity-kind-unknown",
-			Message:  fmt.Sprintf("%d backend mapping row(s) reference unknown entity kind %q", count, entityKind),
+			Category: RepairCategoryBackendMapping,
+			Policy:   DiagnosticPolicyInvalidLocalData,
+			Message:  fmt.Sprintf("%d backend mapping row(s) reference unknown local entity kind %q; fix or remove the local backend mapping row before trusting integration state", count, entityKind),
 		})
 	}
 	if err := unknownRows.Err(); err != nil {
@@ -798,7 +811,9 @@ ORDER BY sync_status
 		diagnostics = append(diagnostics, Diagnostic{
 			Severity: "warn",
 			Code:     "backend-mapping-sync-status-unknown",
-			Message:  fmt.Sprintf("%d backend mapping row(s) have unknown sync_status %q", count, syncStatus),
+			Category: RepairCategoryBackendMapping,
+			Policy:   DiagnosticPolicyWarningDrift,
+			Message:  fmt.Sprintf("%d backend mapping row(s) have unknown sync_status %q; audit local integration metadata before pruning or reconnecting external records", count, syncStatus),
 		})
 	}
 	if err := unknownStatusRows.Err(); err != nil {
@@ -872,7 +887,9 @@ ORDER BY backend_mappings.id
 		diagnostics = append(diagnostics, Diagnostic{
 			Severity: "error",
 			Code:     "backend-mapping-entity-missing",
-			Message:  fmt.Sprintf("backend mapping %s links %s %s to %s %s:%s, but the local entity is missing", mappingID, entityKind, entityID, backend, externalKind, externalID),
+			Category: RepairCategoryBackendMapping,
+			Policy:   DiagnosticPolicyInvalidLocalData,
+			Message:  fmt.Sprintf("backend mapping %s links local %s %s to %s %s:%s, but the local entity is missing; fix or remove the local backend mapping row before trusting integration state", mappingID, entityKind, entityID, backend, externalKind, externalID),
 		})
 	}
 	if err := missingRows.Err(); err != nil {
@@ -899,7 +916,9 @@ ORDER BY project_id, backend, entity_kind, entity_id, external_kind
 		diagnostics = append(diagnostics, Diagnostic{
 			Severity: "warn",
 			Code:     "backend-mapping-entity-ambiguous",
-			Message:  fmt.Sprintf("%s %s in project %s maps to %d %s %s records", entityKind, entityID, projectID, count, backend, externalKind),
+			Category: RepairCategoryBackendMapping,
+			Policy:   DiagnosticPolicyWarningDrift,
+			Message:  fmt.Sprintf("local %s %s in project %s maps to %d %s %s records; audit local integration metadata before pruning or reconnecting external records", entityKind, entityID, projectID, count, backend, externalKind),
 		})
 	}
 	if err := ambiguousRows.Err(); err != nil {
@@ -934,9 +953,12 @@ WHERE tasks.project_id = ?
 		return nil, nil
 	}
 	return []Diagnostic{{
-		Severity: "warn",
-		Code:     "linear-mode-local-task-unmapped",
-		Message:  fmt.Sprintf("Linear integration is enabled, but %d active local task row(s) have no Linear backend mapping", unmappedCount),
+		Severity:             "warn",
+		Code:                 "linear-mode-local-task-unmapped",
+		Category:             RepairCategoryExternalSync,
+		Policy:               DiagnosticPolicyExternalSyncGap,
+		Message:              fmt.Sprintf("Linear integration is enabled, but %d active local task row(s) have no Linear backend mapping; export local task state and reconcile it through Linear or future backend sync tooling", unmappedCount),
+		RequiresExternalSync: true,
 	}}, nil
 }
 

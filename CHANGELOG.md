@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Changed
 
+- `loaf state doctor` diagnostics now label backend mapping and Linear sync findings by policy so local data fixes, drift audits, and external sync work are easier to distinguish.
 - `loaf state doctor` repair-plan commands now have regression coverage proving suggested follow-up commands run in the diagnostic mode that produced them.
 - `loaf state doctor` repair plans now classify local database, backend mapping, and external sync actions for clearer human and agent follow-up.
 - Added safe next-action guidance to backup verification output after dogfooding the manual restore flow, so users know how to preserve the current DB, restore the verified backup, and rerun health checks.

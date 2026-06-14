@@ -201,6 +201,10 @@ Write and enforce a small policy for backend mappings:
 - external sync gaps that are future Linear work;
 - fields that must never store secrets.
 
+Progress:
+
+- 2026-06-14: Backend-related diagnostics now expose `category`, `policy`, and `requires_external_sync` where relevant. Invalid backend mapping rows use `backend-mapping` / `invalid-local-data`, warning-only drift uses `backend-mapping` / `warning-drift`, and Linear task mapping gaps use `external-sync` / `external-sync-gap` with `requires_external_sync: true`. Human `state doctor` output renders these labels inline, and `TestRunnerStateDoctorLabelsBackendDiagnosticPolicy` verifies both human output and JSON fields.
+
 Go/no-go: doctor diagnostics and repair/export guidance make it obvious whether the next action is local repair, export/audit, or backend sync.
 
 ### Track 5: Human Output Pass
@@ -222,4 +226,4 @@ Go/no-go: every requirement has current evidence, not just a historical changelo
 
 ## Next Best Commit
 
-The next implementation commit should continue Gate 3 by tightening backend/Linear policy documentation and diagnostics. First target: make backend mapping diagnostics explicitly distinguish invalid local data, warning-only drift, and external sync gaps in human output and JSON-facing descriptions.
+The next implementation commit should continue Gate 3 with the human-output pass across the state/project/migration command matrix. First target: normalize concise command, scope, project, path, mutation status, and next-action lines for the highest-risk human paths.

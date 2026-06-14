@@ -603,6 +603,7 @@ VALUES ('backend-mapping-orphaned', ?, 'linear', 'task', 'task-missing', 'issue'
 		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
 	}
 	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
+	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-entity-missing", RepairCategoryBackendMapping, DiagnosticPolicyInvalidLocalData, false)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-backend-mappings")
 	if action.Safe {
@@ -650,6 +651,7 @@ VALUES ('backend-mapping-empty-field', ?, 'linear', 'task', 'task-linear-empty-f
 	if !strings.Contains(diagnostic.Message, "external_id") {
 		t.Fatalf("diagnostic Message = %q, want field name", diagnostic.Message)
 	}
+	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-field-empty", RepairCategoryBackendMapping, DiagnosticPolicyInvalidLocalData, false)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "inspect-backend-mappings")
 	if action.Safe {
@@ -688,6 +690,7 @@ VALUES ('backend-mapping-unknown-kind', ?, 'linear', 'milestone', 'milestone-one
 		t.Fatalf("Mode = %q, want %q", status.Mode, ModeInvalid)
 	}
 	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-kind-unknown")
+	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-entity-kind-unknown", RepairCategoryBackendMapping, DiagnosticPolicyInvalidLocalData, false)
 	assertNoDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
 }
 
@@ -747,6 +750,7 @@ VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missin
 	if !strings.Contains(diagnostic.Message, "project project-missing") {
 		t.Fatalf("diagnostic Message = %q, want project entity reference", diagnostic.Message)
 	}
+	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-entity-missing", RepairCategoryBackendMapping, DiagnosticPolicyInvalidLocalData, false)
 }
 
 func TestInspectReportsAmbiguousBackendMappingAsWarning(t *testing.T) {
@@ -782,6 +786,7 @@ VALUES
 		t.Fatalf("Mode = %q, want %q for ambiguous backend mapping warning", status.Mode, ModeSQLiteReady)
 	}
 	assertDiagnostic(t, status.Diagnostics, "backend-mapping-entity-ambiguous")
+	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-entity-ambiguous", RepairCategoryBackendMapping, DiagnosticPolicyWarningDrift, false)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
 	if action.Safe {
@@ -830,6 +835,7 @@ VALUES
 	if !strings.Contains(diagnostic.Message, "lnked") {
 		t.Fatalf("diagnostic Message = %q, want unknown status value", diagnostic.Message)
 	}
+	assertDiagnosticPolicy(t, status.Diagnostics, "backend-mapping-sync-status-unknown", RepairCategoryBackendMapping, DiagnosticPolicyWarningDrift, false)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "audit-backend-mappings")
 	if action.Safe {
@@ -883,6 +889,7 @@ VALUES ('backend-mapping-linear-task', ?, 'linear', 'task', 'task-active-mapped'
 	if !strings.Contains(diagnostic.Message, "1 active local task row") {
 		t.Fatalf("diagnostic Message = %q, want count of only active unmapped tasks", diagnostic.Message)
 	}
+	assertDiagnosticPolicy(t, status.Diagnostics, "linear-mode-local-task-unmapped", RepairCategoryExternalSync, DiagnosticPolicyExternalSyncGap, true)
 
 	action := findRepairAction(t, RepairPlanForStatus(status), "reconcile-linear-task-mappings")
 	if action.Safe {
@@ -1019,6 +1026,14 @@ func projectIDForTest(t *testing.T, store *Store, root project.Root) string {
 func assertDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) {
 	t.Helper()
 	_ = findDiagnostic(t, diagnostics, code)
+}
+
+func assertDiagnosticPolicy(t *testing.T, diagnostics []Diagnostic, code string, category string, policy string, requiresExternalSync bool) {
+	t.Helper()
+	diagnostic := findDiagnostic(t, diagnostics, code)
+	if diagnostic.Category != category || diagnostic.Policy != policy || diagnostic.RequiresExternalSync != requiresExternalSync {
+		t.Fatalf("diagnostic %q = %#v, want category %q policy %q requiresExternalSync %v", code, diagnostic, category, policy, requiresExternalSync)
+	}
 }
 
 func findDiagnostic(t *testing.T, diagnostics []Diagnostic, code string) Diagnostic {

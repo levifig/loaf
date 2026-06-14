@@ -3944,6 +3944,82 @@ VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missin
 	assertJSONFieldAbsent(t, stdout.Bytes(), "error")
 }
 
+func TestRunnerStateDoctorLabelsBackendDiagnosticPolicy(t *testing.T) {
+	t.Run("invalid local backend mapping", func(t *testing.T) {
+		workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+		db := openCLITestDB(t, initialized.DatabasePath)
+		if _, err := db.Exec(`
+INSERT INTO backend_mappings (id, project_id, backend, entity_kind, entity_id, external_kind, external_id, external_url, sync_status, created_at, updated_at)
+VALUES ('backend-mapping-wrong-project', ?, 'linear', 'project', 'project-missing', 'project', 'LIN-PROJ-124', 'https://linear.app/workspace/project/LIN-PROJ-124', 'linked', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+			t.Fatalf("insert invalid backend mapping error = %v", err)
+		}
+		closeCLITestDB(t, db)
+
+		var humanOut bytes.Buffer
+		err := (Runner{Stdout: &humanOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "doctor"})
+		if err == nil {
+			t.Fatal("state doctor invalid backend mapping error = nil, want nonzero exit")
+		}
+		for _, want := range []string{
+			"error [backend-mapping/invalid-local-data]:",
+			"fix or remove the local backend mapping row",
+			"- inspect-backend-mappings [manual/backend-mapping]",
+		} {
+			if !strings.Contains(humanOut.String(), want) {
+				t.Fatalf("human output = %q, want %q", humanOut.String(), want)
+			}
+		}
+
+		var jsonOut bytes.Buffer
+		err = (Runner{Stdout: &jsonOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "doctor", "--json"})
+		assertSilentExitCode(t, err, 1)
+		status := decodeStateStatus(t, jsonOut.Bytes())
+		diagnostic := findCLIDiagnostic(t, status.Diagnostics, "backend-mapping-entity-missing")
+		if diagnostic.Category != state.RepairCategoryBackendMapping || diagnostic.Policy != state.DiagnosticPolicyInvalidLocalData || diagnostic.RequiresExternalSync {
+			t.Fatalf("diagnostic = %#v, want invalid local backend mapping policy", diagnostic)
+		}
+	})
+
+	t.Run("Linear external sync gap", func(t *testing.T) {
+		workingDir, stateHome, initialized := initCLIStateForRepairCommand(t)
+		writeCLIAgentsFile(t, workingDir, "loaf.json", `{"integrations":{"linear":{"enabled":true}}}`)
+		db := openCLITestDB(t, initialized.DatabasePath)
+		if _, err := db.Exec(`
+INSERT INTO tasks (id, project_id, spec_id, title, status, priority, body_source_id, created_at, updated_at)
+VALUES ('task-active-unmapped', ?, NULL, 'Active unmapped task', 'todo', 'P2', NULL, '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
+`, initialized.ProjectID); err != nil {
+			t.Fatalf("insert task fixture error = %v", err)
+		}
+		closeCLITestDB(t, db)
+
+		var humanOut bytes.Buffer
+		if err := (Runner{Stdout: &humanOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "doctor"}); err != nil {
+			t.Fatalf("state doctor Linear warning error = %v", err)
+		}
+		for _, want := range []string{
+			"warn [external-sync/external-sync-gap] [external-sync-required]:",
+			"reconcile it through Linear or future backend sync tooling",
+			"- reconcile-linear-task-mappings [manual/external-sync]",
+			"external sync: required",
+		} {
+			if !strings.Contains(humanOut.String(), want) {
+				t.Fatalf("human output = %q, want %q", humanOut.String(), want)
+			}
+		}
+
+		var jsonOut bytes.Buffer
+		if err := (Runner{Stdout: &jsonOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "doctor", "--json"}); err != nil {
+			t.Fatalf("state doctor --json Linear warning error = %v", err)
+		}
+		status := decodeStateStatus(t, jsonOut.Bytes())
+		diagnostic := findCLIDiagnostic(t, status.Diagnostics, "linear-mode-local-task-unmapped")
+		if diagnostic.Category != state.RepairCategoryExternalSync || diagnostic.Policy != state.DiagnosticPolicyExternalSyncGap || !diagnostic.RequiresExternalSync {
+			t.Fatalf("diagnostic = %#v, want Linear external sync policy", diagnostic)
+		}
+	})
+}
+
 func TestRunnerStateBackupCreatesSQLiteCopy(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -13580,6 +13656,17 @@ func hasDiagnostic(diagnostics []state.Diagnostic, code string) bool {
 		}
 	}
 	return false
+}
+
+func findCLIDiagnostic(t *testing.T, diagnostics []state.Diagnostic, code string) state.Diagnostic {
+	t.Helper()
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Code == code {
+			return diagnostic
+		}
+	}
+	t.Fatalf("diagnostic %q not found in %#v", code, diagnostics)
+	return state.Diagnostic{}
 }
 
 func findStateRepairAction(t *testing.T, actions []state.RepairAction, code string) state.RepairAction {
