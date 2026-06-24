@@ -150,7 +150,10 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
 					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},
 					{Flags: "--resume", Description: "Resume the Markdown import after an interrupted attempt"},
-					{Flags: "--json", Description: "Output migration contract, scope, project context, and counts as JSON"},
+					{Flags: "--backup", Description: "Create SQLite and .agents rollback backups during apply or resume"},
+					{Flags: "--remove-source", Description: "Remove ephemeral Markdown sources after a rollback backup"},
+					{Flags: "--rollback <manifest>", Description: "Restore .agents files from a rollback manifest"},
+					{Flags: "--json", Description: "Output migration contract, scope, project context, counts, and rollback fields as JSON"},
 				}},
 				{Name: "migrate storage-home", Description: "Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview the storage-home migration"},
@@ -201,7 +204,10 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
 					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},
 					{Flags: "--resume", Description: "Resume the Markdown import after an interrupted attempt"},
-					{Flags: "--json", Description: "Output migration contract, scope, project context, and counts as JSON"},
+					{Flags: "--backup", Description: "Create SQLite and .agents rollback backups during apply or resume"},
+					{Flags: "--remove-source", Description: "Remove ephemeral Markdown sources after a rollback backup"},
+					{Flags: "--rollback <manifest>", Description: "Restore .agents files from a rollback manifest"},
+					{Flags: "--json", Description: "Output migration contract, scope, project context, counts, and rollback fields as JSON"},
 				}},
 				{Name: "storage-home", Description: "Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview the storage-home migration"},

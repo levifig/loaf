@@ -256,7 +256,10 @@ For agents, `loaf state backup verify <backup> --json` also returns
   - `--dry-run` - Preview import counts without creating a database
   - `--apply` - Initialize SQLite and import Markdown artifacts
   - `--resume` - Resume the Markdown import after an interrupted attempt
-  - `--json` - Output migration contract, scope, project context, and counts as JSON
+  - `--backup` - Create SQLite and .agents rollback backups during apply or resume
+  - `--remove-source` - Remove ephemeral Markdown sources after a rollback backup
+  - `--rollback <manifest>` - Restore .agents files from a rollback manifest
+  - `--json` - Output migration contract, scope, project context, counts, and rollback fields as JSON
 
 - `loaf state migrate storage-home`:
   - `--dry-run` - Preview the storage-home migration
@@ -378,7 +381,10 @@ when the artifact counts and unimported file classifications look right.
   - `--dry-run` - Preview import counts without creating a database
   - `--apply` - Initialize SQLite and import Markdown artifacts
   - `--resume` - Resume the Markdown import after an interrupted attempt
-  - `--json` - Output migration contract, scope, project context, and counts as JSON
+  - `--backup` - Create SQLite and .agents rollback backups during apply or resume
+  - `--remove-source` - Remove ephemeral Markdown sources after a rollback backup
+  - `--rollback <manifest>` - Restore .agents files from a rollback manifest
+  - `--json` - Output migration contract, scope, project context, counts, and rollback fields as JSON
 
 - `loaf migrate storage-home`:
   - `--dry-run` - Preview the storage-home migration
