@@ -301,8 +301,11 @@ All of the above are **held behind WS-G** and require your explicit sign-off bef
 ## 6. Spec program (WS → SPEC)
 
 The whole process is now captured as a cross-referenced spec program (all `status: drafting`).
-WS-B split into four specs by reversibility; status-unification moved from this roadmap's WS-B
-into WS-C per the SPEC-043 adversarial review.
+WS-B split into five specs by reversibility; status-unification moved from this roadmap's WS-B
+into WS-C per the SPEC-043 adversarial review. The whole program is governed by **ADR-016**
+(artifact storage trichotomy: nouns→SQLite, verbs→git, markdown→render; the DB stores outputs +
+provenance pointers, never code) — surfaced by the parallel gridsight thermonuclear-migration
+session and now the citable rule behind SPEC-043/044/050/053/054.
 
 | Spec | WS | Scope | Breaking? | Gated on |
 |------|----|-------|:--:|---------|
@@ -310,6 +313,7 @@ into WS-C per the SPEC-043 adversarial review.
 | **SPEC-044** | B | Durable-doc render, finalization & drift gate (self-consistency, not DB-mirror) | no | SPEC-043 |
 | **SPEC-045** | B | Ephemeral-to-SQLite cutover (`.md` removal) | **yes** | SPEC-053 |
 | **SPEC-046** | B | `docs/` Tier-2 indexing & cross-project search | no | SPEC-043 |
+| **SPEC-054** | B | Rich artifact entity model (report→finding→verdict+run) & `--format` export | no | SPEC-043 |
 | **SPEC-047** | A | Build integrity, parity contract & target simplification (keystone) | no¹ | — (¹user-side gemini drop → SPEC-053) |
 | **SPEC-048** | C | Session-model convergence to SQLite (atomic) | no | SPEC-043 |
 | **SPEC-049** | C | Status-vocabulary unification | **yes** | SPEC-053 |
