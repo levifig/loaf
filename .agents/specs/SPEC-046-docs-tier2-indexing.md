@@ -6,7 +6,7 @@ source_sessions:
   - id: 20260621-001541-session
     role: shaped
 created: 2026-06-22T09:13:21Z
-status: drafting
+status: implementing
 branch: feat/docs-tier2-indexing
 ---
 
@@ -113,7 +113,9 @@ search is a scope flag over existing rows, not new plumbing.
 - Which `docs/` paths are in scope: `docs/decisions/*` (ADRs), `docs/ARCHITECTURE.md`,
   `docs/STRATEGY.md`, `docs/VISION.md`, and `docs/**/*.md` generally (decide globs in breakdown);
   exclude generated/index files (`docs/decisions/README.md` if purely generated).
-- Optional `post-commit`/`post-checkout` re-index hook (advisory), behind the open question.
+- No default git hook in this spec. Freshness is provided by lazy search-time staleness checks plus
+  explicit `loaf docs index --rebuild`; a future hook can call the same command if the cost/benefit
+  becomes clear.
 
 ### Out of Scope
 - Any change that makes SQLite the *source* for Tier-2 docs — they stay git-native source
@@ -153,16 +155,15 @@ search is a scope flag over existing rows, not new plumbing.
 | ADR-013:12 mis-statement makes "where do ADRs live" ambiguous during breakdown | Low | Low | This spec fixes the source of truth (index `docs/decisions/`); SPEC-050 corrects the prose |
 
 ## Open Questions
-- [ ] Re-index trigger default: on-demand-only, or also wire a `post-commit`/`post-checkout` hook
-      out of the box? (freshness vs. per-commit cost)
-- [ ] Exact `docs/` glob: all `docs/**/*.md`, or an allowlist (decisions/ + the four top-level
-      durable docs)? Handle non-markdown (`docs/schema/*`?) — index or skip.
-- [ ] Default search scope confirmation: current-project default + `--all-projects` flag (proposed),
-      vs. a configurable default.
-- [ ] Should `loaf docs index` be a top-level verb, or namespaced under `loaf search index` /
-      `loaf docs`? (depends on SPEC-043's final verb layout)
-- [ ] Working-tree vs `HEAD`: index uncommitted edits (proposed — index working tree) vs. only
-      committed content (cleaner ref semantics, staler results)?
+- [x] Re-index trigger default: lazy search-time staleness checks plus explicit
+      `loaf docs index [--rebuild]`. No default post-commit/post-checkout hook in this spec.
+- [x] Exact `docs/` glob: index Markdown under `docs/**/*.md`, including ADRs and top-level durable
+      docs; skip non-Markdown schema/assets and generated index files.
+- [x] Default search scope: current project; `--all-projects` is the explicit widening flag.
+- [x] Command shape: top-level family `loaf docs index [--rebuild]`; search remains
+      `loaf search <query>`.
+- [x] Working-tree vs `HEAD`: index working-tree content from the invoking checkout and record
+      branch/ref metadata for stale-scope detection.
 
 ## Test Conditions
 - [ ] `loaf docs index` populates `docs_index` from the invoking checkout's `docs/`; a subsequent
@@ -197,6 +198,6 @@ Tracks ship in order; all non-breaking. Hard dependency: **SPEC-043 must have la
    *Go/no-go:* the branch-switch test condition passes. *(non-breaking)*
 4. **Track 3 — Cross-project scope.** `--all-projects` flag + current-project default + path
    disambiguation across partitions. *Go/no-go:* cross-project hits are unambiguous. *(non-breaking)*
-5. **Track 4 — Optional re-index hook.** `post-commit`/`post-checkout` advisory hook calling
-   `loaf docs index`, gated on the open question; ships only if breakdown elects to. *(non-breaking;
-   optional)*
+5. **Track 4 — Documentation/reference updates.** Update CLI reference, agent help, generated
+   outputs, and the native cutover test map so `loaf docs index` and Tier-2 search are documented
+   with the same contract the implementation enforces. *(non-breaking)*
