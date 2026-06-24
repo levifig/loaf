@@ -25,6 +25,10 @@ is a Loaf workflow staging section for curated entries before release.
 - Trimmed duplicated skill guidance and stale references in SPEC-050, including orchestration authority handoffs, ADR-source de-duplication, helper-script contract checks, and generated CLI/session reference coverage.
 - Refreshed the SPEC-051 skill routing eval harness and description rewrite validation scaffolding, including dry-run suite checks and conflict-pair probes for measured routing work.
 
+### Added
+
+- Added a canonical lifecycle status registry for Loaf state entities, including per-entity validators and explicit exclusions for finding and run domain vocabularies.
+
 ## [2.0.0-pre.20260614235428] - 2026-06-14
 
 ### Changed
