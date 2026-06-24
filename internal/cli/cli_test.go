@@ -148,6 +148,56 @@ status: complete
 	}
 }
 
+func TestRunnerSpecRenderWritesScratchFileToXDGCache(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	cacheHome := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", cacheHome)
+	writeCLIAgentsFile(t, workingDir, "specs/SPEC-001-render.md", `---
+id: SPEC-001
+title: Render Spec
+status: implementing
+---
+# Render Spec
+
+Spec body.
+`)
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "migrate", "markdown", "--apply"}); err != nil {
+		t.Fatalf("state migrate markdown --apply error = %v", err)
+	}
+
+	var jsonOut bytes.Buffer
+	err := Runner{
+		Stdout:     &jsonOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"spec", "render", "SPEC-001", "--json"})
+	if err != nil {
+		t.Fatalf("spec render --json error = %v", err)
+	}
+	var result state.DurableRenderResult
+	if err := json.Unmarshal(jsonOut.Bytes(), &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", jsonOut.String(), err)
+	}
+	if result.Kind != "spec" || result.Ref != "SPEC-001" || result.Contract != state.DurableRenderContract {
+		t.Fatalf("result = %#v, want spec durable render metadata", result)
+	}
+	if !strings.HasPrefix(result.Path, filepath.Join(cacheHome, "loaf", "renders")+string(filepath.Separator)) {
+		t.Fatalf("Path = %q, want XDG cache under %q", result.Path, cacheHome)
+	}
+	if strings.Contains(result.Path, workingDir) {
+		t.Fatalf("Path = %q, want out-of-tree render", result.Path)
+	}
+	content, err := os.ReadFile(result.Path)
+	if err != nil {
+		t.Fatalf("read render path error = %v", err)
+	}
+	text := string(content)
+	if !strings.Contains(text, "# Render Spec") || !strings.Contains(text, "<!-- loaf:render kind=spec contract=durable-doc-v1 -->") {
+		t.Fatalf("render content = %q, want body and stamp", text)
+	}
+}
+
 func TestRunnerHousekeepingUsesMarkdownArtifactsWhenMarkdownOnly(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()

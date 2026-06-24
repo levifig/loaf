@@ -6364,6 +6364,7 @@ func (r Runner) runSpec(args []string, out io.Writer, runtime state.Runtime) err
 	if writeNestedHelp(out, args, map[string]func(io.Writer){
 		"list":    writeSpecListHelp,
 		"show":    writeSpecShowHelp,
+		"render":  writeSpecRenderHelp,
 		"archive": writeSpecArchiveHelp,
 	}) {
 		return nil
@@ -6373,6 +6374,8 @@ func (r Runner) runSpec(args []string, out io.Writer, runtime state.Runtime) err
 		return r.runSpecList(args[1:], out, runtime)
 	case "show":
 		return r.runSpecShow(args[1:], out, runtime)
+	case "render":
+		return r.runSpecRender(args[1:], out, runtime)
 	case "archive":
 		return r.runSpecArchive(args[1:], out, runtime)
 	default:
@@ -6388,6 +6391,7 @@ func writeSpecHelp(out io.Writer) {
 	fmt.Fprintln(out, "Subcommands:")
 	fmt.Fprintln(out, "  list     List specs")
 	fmt.Fprintln(out, "  show     Show one spec")
+	fmt.Fprintln(out, "  render   Render a spec to the XDG cache")
 	fmt.Fprintln(out, "  archive  Archive completed specs")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
@@ -6400,6 +6404,10 @@ func writeSpecListHelp(out io.Writer) {
 
 func writeSpecShowHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf spec show <spec> [--json]", "Show one spec.", "--json       Output spec details, task counts, relationships, global database scope, and project identity as JSON")
+}
+
+func writeSpecRenderHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spec render <spec> [--json]", "Render a deterministic spec Markdown file to the XDG cache.", "--json       Output render path, content hash, contract, global database scope, and project identity as JSON")
 }
 
 func writeSpecArchiveHelp(out io.Writer) {
@@ -6482,6 +6490,39 @@ func (r Runner) runSpecShow(args []string, out io.Writer, runtime state.Runtime)
 		return writeJSON(out, result)
 	}
 	writeSpecShow(out, result)
+	return nil
+}
+
+func (r Runner) runSpecRender(args []string, out io.Writer, runtime state.Runtime) error {
+	ref, jsonOutput, err := parseSingleRefArgs("spec render", args)
+	if err != nil {
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return err
+	}
+	status, err := state.Inspect(projectRoot, state.PathResolver{StateHome: r.StateHome})
+	if err != nil {
+		return err
+	}
+	switch status.Mode {
+	case state.ModeMarkdownOnly:
+		return sqliteStateRequiredError("spec render")
+	case state.ModeInvalid:
+		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+	result, err := state.RenderDurableArtifact(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.DurableRenderOptions{
+		Kind: "spec",
+		Ref:  ref,
+	})
+	if err != nil {
+		return err
+	}
+	if jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeDurableRenderResult(out, result)
 	return nil
 }
 
@@ -9552,6 +9593,7 @@ func (r Runner) runReport(args []string, out io.Writer, runtime state.Runtime) e
 	if writeNestedHelp(out, args, map[string]func(io.Writer){
 		"list":     writeReportListHelp,
 		"show":     writeReportShowHelp,
+		"render":   writeReportRenderHelp,
 		"generate": writeReportGenerateHelp,
 		"create":   writeReportCreateHelp,
 		"finalize": writeReportFinalizeHelp,
@@ -9564,6 +9606,8 @@ func (r Runner) runReport(args []string, out io.Writer, runtime state.Runtime) e
 		return r.runReportList(args[1:], out, runtime)
 	case "show":
 		return r.runReportShow(args[1:], out, runtime)
+	case "render":
+		return r.runReportRender(args[1:], out, runtime)
 	case "generate":
 		return r.runReportGenerate(args[1:], out, runtime)
 	case "create":
@@ -9594,6 +9638,7 @@ func writeReportHelp(out io.Writer) {
 	fmt.Fprintln(out, "Subcommands:")
 	fmt.Fprintln(out, "  list      List reports")
 	fmt.Fprintln(out, "  show      Show one report")
+	fmt.Fprintln(out, "  render    Render a report to the XDG cache")
 	fmt.Fprintln(out, "  generate  Generate read-only markdown exports")
 	fmt.Fprintln(out, "  create    Create a report")
 	fmt.Fprintln(out, "  finalize  Finalize a report")
@@ -9609,6 +9654,10 @@ func writeReportListHelp(out io.Writer) {
 
 func writeReportShowHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf report show <report> [--json]", "Show one report.", "--json       Output report details, relationships, global database scope, and project identity as JSON")
+}
+
+func writeReportRenderHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf report render <report> [--json]", "Render a deterministic report Markdown file to the XDG cache.", "--json       Output render path, content hash, contract, global database scope, and project identity as JSON")
 }
 
 func writeReportGenerateHelp(out io.Writer) {
@@ -9698,6 +9747,35 @@ func (r Runner) runReportShow(args []string, out io.Writer, runtime state.Runtim
 		return writeJSON(out, result)
 	}
 	writeReportShow(out, result)
+	return nil
+}
+
+func (r Runner) runReportRender(args []string, out io.Writer, runtime state.Runtime) error {
+	ref, jsonOutput, err := parseSingleRefArgs("report render", args)
+	if err != nil {
+		return err
+	}
+	projectRoot, mode, err := r.reportStateMode(runtime)
+	if err != nil {
+		return err
+	}
+	switch mode {
+	case state.ModeMarkdownOnly:
+		return sqliteStateRequiredError("report render")
+	case state.ModeInvalid:
+		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+	result, err := state.RenderDurableArtifact(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.DurableRenderOptions{
+		Kind: "report",
+		Ref:  ref,
+	})
+	if err != nil {
+		return err
+	}
+	if jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeDurableRenderResult(out, result)
 	return nil
 }
 
@@ -9925,6 +10003,18 @@ func writeReportStatus(out io.Writer, action string, result state.ReportStatusRe
 	if result.EventID != "" {
 		fmt.Fprintf(out, "event: %s\n", result.EventID)
 	}
+}
+
+func writeDurableRenderResult(out io.Writer, result state.DurableRenderResult) {
+	fmt.Fprintf(out, "rendered %s %s\n", result.Kind, result.Ref)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.Title != "" {
+		fmt.Fprintf(out, "title: %s\n", result.Title)
+	}
+	fmt.Fprintf(out, "branch: %s\n", result.Branch)
+	fmt.Fprintf(out, "contract: %s\n", result.Contract)
+	fmt.Fprintf(out, "path: %s\n", result.Path)
+	fmt.Fprintf(out, "sha256: %s\n", result.ContentHash)
 }
 
 func writeReportList(out io.Writer, reports state.ReportList) {

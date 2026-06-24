@@ -433,6 +433,7 @@ status and relationship data when initialized.
 |------------|---------|
 | `loaf spec list` | Show specs with status and task counts |
 | `loaf spec show` | Show spec details |
+| `loaf spec render` | Render deterministic spec Markdown to the XDG cache |
 | `loaf spec archive` | Archive a completed spec |
 
 **Options:**
@@ -443,6 +444,9 @@ status and relationship data when initialized.
 - `loaf spec show`:
   - `--json` - Output spec details, task counts, relationships, global database scope, and project identity as JSON
 
+- `loaf spec render`:
+  - `--json` - Output render path, content hash, contract, global database scope, and project identity as JSON
+
 - `loaf spec archive`:
   - `--json` - Output archive result, archived specs, global database scope, and project identity as JSON
 
@@ -450,7 +454,7 @@ status and relationship data when initialized.
 ```bash
 loaf spec list
 loaf spec show
-loaf spec archive
+loaf spec render
 ```
 
 ---
@@ -470,6 +474,7 @@ only when a durable prose artifact is explicitly needed.
 |------------|---------|
 | `loaf report list` | List reports |
 | `loaf report show` | Show one report |
+| `loaf report render` | Render deterministic report Markdown to the XDG cache |
 | `loaf report generate` | Generate a report from state |
 | `loaf report create` | Create a report draft |
 | `loaf report finalize` | Mark a report draft as final |
@@ -484,6 +489,9 @@ only when a durable prose artifact is explicitly needed.
 
 - `loaf report show`:
   - `--json` - Output report details, relationships, global database scope, and project identity as JSON
+
+- `loaf report render`:
+  - `--json` - Output render path, content hash, contract, global database scope, and project identity as JSON
 
 - `loaf report generate`:
   - `--format <format>` - Output format: markdown
