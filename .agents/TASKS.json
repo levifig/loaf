@@ -4790,7 +4790,7 @@
       "title": "Align git-workflow commit-format guidance with enforcement",
       "slug": "git-workflow-unscoped-commit-format",
       "spec": "SPEC-047",
-      "status": "todo",
+      "status": "done",
       "priority": "P2",
       "depends_on": [
         "TASK-257"
@@ -4806,8 +4806,8 @@
       "done": "git-workflow source and generated copies teach the unscoped Conventional Commit format enforced by the native hook.",
       "session": null,
       "created": "2026-06-24T12:03:41Z",
-      "updated": "2026-06-24T12:03:41Z",
-      "completed_at": null,
+      "updated": "2026-06-24T12:45:00Z",
+      "completed_at": "2026-06-24T12:45:00Z",
       "file": "TASK-258-git-workflow-unscoped-commit-format.md"
     },
     "TASK-259": {
