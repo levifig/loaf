@@ -338,6 +338,34 @@ func cliReferenceCommands() []cliReferenceCommand {
 			},
 		},
 		{
+			Name:        "run",
+			Description: "Manage provenance runs for generated findings and reports",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "list", Description: "List provenance runs", Options: []cliReferenceOption{
+					{Flags: "--status <status>", Description: "Filter by status: " + strings.Join(state.RunStatuses(), ", ")},
+					{Flags: "--generator <ref>", Description: "Filter by generator reference"},
+					{Flags: "--json", Description: "Output runs, filters, global database scope, and project identity as JSON"},
+				}},
+				{Name: "show", Description: "Show one provenance run", Options: []cliReferenceOption{
+					{Flags: "--json", Description: "Output run metadata, relationships, global database scope, and project identity as JSON"},
+				}},
+				{Name: "create", Description: "Create a provenance run row without storing generator code", Options: []cliReferenceOption{
+					{Flags: "--generator <ref>", Description: "Generator reference or name"},
+					{Flags: "--version <version>", Description: "Generator version"},
+					{Flags: "--hash <hash>", Description: "Generator content hash"},
+					{Flags: "--status <status>", Description: "Initial status: " + strings.Join(state.RunStatuses(), ", ")},
+					{Flags: "--metadata <json>", Description: "JSON metadata"},
+					{Flags: "--report <report>", Description: "Optional produced report relationship"},
+					{Flags: "--json", Description: "Output created run, event, global database scope, and project identity as JSON"},
+				}},
+				{Name: "complete", Description: "Complete, fail, or archive a provenance run", Options: []cliReferenceOption{
+					{Flags: "--status <status>", Description: "Completion status: completed, failed, archived"},
+					{Flags: "--metadata <json>", Description: "Replace run metadata with JSON"},
+					{Flags: "--json", Description: "Output run transition, event, global database scope, and project identity as JSON"},
+				}},
+			},
+		},
+		{
 			Name:        "plan",
 			Description: "Manage plans in native SQLite state",
 			Subcommands: nativeArtifactReferenceSubcommands("plan"),

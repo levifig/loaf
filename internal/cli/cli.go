@@ -127,6 +127,21 @@ type findingImportJSONCLIOptions struct {
 	importJSON state.FindingImportJSONOptions
 }
 
+type runCreateCLIOptions struct {
+	jsonOutput bool
+	create     state.RunCreateOptions
+}
+
+type runListCLIOptions struct {
+	jsonOutput bool
+	filters    state.RunListOptions
+}
+
+type runCompleteCLIOptions struct {
+	jsonOutput bool
+	complete   state.RunCompleteOptions
+}
+
 type renderSweepOptions struct {
 	jsonOutput bool
 	dryRun     bool
@@ -200,6 +215,8 @@ func (r Runner) Run(args []string) error {
 		dispatchErr = r.runSearch(args[1:], out, runtime)
 	case "finding":
 		dispatchErr = r.runFinding(args[1:], out, runtime)
+	case "run":
+		dispatchErr = r.runRun(args[1:], out, runtime)
 	case "trace":
 		dispatchErr = r.runTrace(args[1:], out, runtime)
 	case "brainstorm":
@@ -294,6 +311,7 @@ func writeRootHelp(out io.Writer) {
 	fmt.Fprintln(out, "  project       Manage project identity")
 	fmt.Fprintln(out, "  search        Search SQLite-resident artifacts and journals")
 	fmt.Fprintln(out, "  finding       Manage report findings and verdicts")
+	fmt.Fprintln(out, "  run           Manage provenance runs")
 	fmt.Fprintln(out, "  migrate       Run migration workflows")
 	fmt.Fprintln(out, "  render        Maintain durable markdown renders")
 	fmt.Fprintln(out, "  session       Manage sessions")
@@ -10013,6 +10031,168 @@ func (r Runner) findingStateMode(runtime state.Runtime) (project.Root, string, e
 	return projectRoot, status.Mode, nil
 }
 
+func (r Runner) runRun(args []string, out io.Writer, runtime state.Runtime) error {
+	if len(args) == 0 || isHelpArg(args) {
+		writeRunHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"list":     writeRunListHelp,
+		"show":     writeRunShowHelp,
+		"create":   writeRunCreateHelp,
+		"complete": writeRunCompleteHelp,
+	}) {
+		return nil
+	}
+	switch args[0] {
+	case "list":
+		return r.runRunList(args[1:], out, runtime)
+	case "show":
+		return r.runRunShow(args[1:], out, runtime)
+	case "create":
+		return r.runRunCreate(args[1:], out, runtime)
+	case "complete":
+		return r.runRunComplete(args[1:], out, runtime)
+	default:
+		return unknownSubcommandError("run", args[0])
+	}
+}
+
+func writeRunHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf run <subcommand> [options]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Manage provenance runs in native SQLite state.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Subcommands:")
+	fmt.Fprintln(out, "  list      List runs")
+	fmt.Fprintln(out, "  show      Show one run")
+	fmt.Fprintln(out, "  create    Create a provenance run")
+	fmt.Fprintln(out, "  complete  Complete a provenance run")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  -h, --help  Show help")
+}
+
+func writeRunListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf run list [--status <status>] [--generator <ref>] [--json]", "List provenance runs.", "--status     Filter by status: pending, running, completed, failed, archived", "--generator  Filter by generator ref", "--json       Output runs, filters, global database scope, and project identity as JSON")
+}
+
+func writeRunShowHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf run show <run> [--json]", "Show one provenance run.", "--json       Output run details, relationships, global database scope, and project identity as JSON")
+}
+
+func writeRunCreateHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf run create --generator <ref> [options]", "Create a provenance run.", "--generator  Generator reference; code is never accepted or stored", "--version    Generator version", "--hash       Generator hash", "--status     Initial status: pending, running, completed, failed, archived", "--metadata   JSON metadata", "--report     Optional report relationship", "--json       Output created run, event, global database scope, and project identity as JSON")
+}
+
+func writeRunCompleteHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf run complete <run> [--status completed|failed|archived] [--json]", "Complete a provenance run.", "--status     Completion status: completed, failed, archived", "--metadata   JSON metadata to replace run metadata", "--json       Output run status transition, event, global database scope, and project identity as JSON")
+}
+
+func (r Runner) runRunList(args []string, out io.Writer, runtime state.Runtime) error {
+	options, err := parseRunListArgs(args)
+	if err != nil {
+		return err
+	}
+	projectRoot, mode, err := r.findingStateMode(runtime)
+	if err != nil {
+		return err
+	}
+	switch mode {
+	case state.ModeMarkdownOnly:
+		return sqliteStateRequiredError("run list")
+	case state.ModeInvalid:
+		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+	result, err := state.ListRuns(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.filters)
+	if err != nil {
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeRunList(out, result)
+	return nil
+}
+
+func (r Runner) runRunShow(args []string, out io.Writer, runtime state.Runtime) error {
+	ref, jsonOutput, err := parseSingleRefArgs("run show", args)
+	if err != nil {
+		return err
+	}
+	projectRoot, mode, err := r.findingStateMode(runtime)
+	if err != nil {
+		return err
+	}
+	switch mode {
+	case state.ModeMarkdownOnly:
+		return sqliteStateRequiredError("run show")
+	case state.ModeInvalid:
+		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+	result, err := state.ShowRun(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, ref)
+	if err != nil {
+		return err
+	}
+	if jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeRunShow(out, result)
+	return nil
+}
+
+func (r Runner) runRunCreate(args []string, out io.Writer, runtime state.Runtime) error {
+	options, err := parseRunCreateArgs(args)
+	if err != nil {
+		return err
+	}
+	projectRoot, mode, err := r.findingStateMode(runtime)
+	if err != nil {
+		return err
+	}
+	switch mode {
+	case state.ModeMarkdownOnly:
+		return sqliteStateRequiredError("run create")
+	case state.ModeInvalid:
+		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+	result, err := state.CreateRun(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.create)
+	if err != nil {
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeRunCreate(out, result)
+	return nil
+}
+
+func (r Runner) runRunComplete(args []string, out io.Writer, runtime state.Runtime) error {
+	options, err := parseRunCompleteArgs(args)
+	if err != nil {
+		return err
+	}
+	projectRoot, mode, err := r.findingStateMode(runtime)
+	if err != nil {
+		return err
+	}
+	switch mode {
+	case state.ModeMarkdownOnly:
+		return sqliteStateRequiredError("run complete")
+	case state.ModeInvalid:
+		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+	result, err := state.CompleteRun(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.complete)
+	if err != nil {
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeRunComplete(out, result)
+	return nil
+}
+
 func sessionListHasContext(sessions state.SessionList) bool {
 	return sessions.DatabaseScope != "" ||
 		sessions.DatabasePath != "" ||
@@ -10744,6 +10924,86 @@ func markdownCell(value string) string {
 
 func markdownText(value string) string {
 	return strings.ReplaceAll(value, "\r\n", "\n")
+}
+
+func writeRunCreate(out io.Writer, result state.RunCreateResult) {
+	fmt.Fprintf(out, "created run %s\n", firstNonEmpty(result.Run.Alias, result.Run.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	fmt.Fprintf(out, "generator: %s\n", result.Run.GeneratorRef)
+	fmt.Fprintf(out, "status: %s\n", result.Run.Status)
+	if result.EventID != "" {
+		fmt.Fprintf(out, "event: %s\n", result.EventID)
+	}
+}
+
+func writeRunList(out io.Writer, result state.RunList) {
+	fmt.Fprint(out, "\n  loaf run list\n\n")
+	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if len(result.Runs) == 0 {
+		fmt.Fprint(out, "  No runs found.\n\n")
+		return
+	}
+	keys := make([]string, 0, len(result.Runs))
+	for key := range result.Runs {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		run := result.Runs[key]
+		fmt.Fprintf(out, "  %-28s%s\n", key, run.GeneratorRef)
+		fmt.Fprintf(out, "                              %s", run.Status)
+		if run.GeneratorVersion != "" {
+			fmt.Fprintf(out, " / %s", run.GeneratorVersion)
+		}
+		fmt.Fprintln(out)
+	}
+	fmt.Fprintf(out, "\n  Total: %d run(s)\n\n", len(result.Runs))
+}
+
+func writeRunShow(out io.Writer, result state.RunShow) {
+	run := result.Run
+	fmt.Fprintf(out, "run %s\n", firstNonEmpty(run.Alias, run.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	fmt.Fprintf(out, "generator: %s\n", run.GeneratorRef)
+	if run.GeneratorVersion != "" {
+		fmt.Fprintf(out, "version: %s\n", run.GeneratorVersion)
+	}
+	if run.GeneratorHash != "" {
+		fmt.Fprintf(out, "hash: %s\n", run.GeneratorHash)
+	}
+	fmt.Fprintf(out, "status: %s\n", run.Status)
+	if run.StartedAt != "" {
+		fmt.Fprintf(out, "started: %s\n", run.StartedAt)
+	}
+	if run.CompletedAt != "" {
+		fmt.Fprintf(out, "completed: %s\n", run.CompletedAt)
+	}
+	if len(run.Relationships) == 0 {
+		fmt.Fprintln(out, "relationships: none")
+	} else {
+		fmt.Fprintln(out, "relationships:")
+		for _, relationship := range run.Relationships {
+			target := firstNonEmpty(relationship.Entity.Alias, relationship.Entity.ID)
+			fmt.Fprintf(out, "  - %s %s %s %s", relationship.Direction, relationship.Type, relationship.Entity.Kind, target)
+			if relationship.Reason != "" {
+				fmt.Fprintf(out, " (%s)", relationship.Reason)
+			}
+			fmt.Fprintln(out)
+		}
+	}
+	if run.Metadata != "" {
+		fmt.Fprintf(out, "metadata: %s\n", run.Metadata)
+	}
+}
+
+func writeRunComplete(out io.Writer, result state.RunCompleteResult) {
+	fmt.Fprintf(out, "completed run %s\n", firstNonEmpty(result.Run.Alias, result.Run.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	fmt.Fprintf(out, "previous: %s\n", result.Previous)
+	fmt.Fprintf(out, "status: %s\n", result.Status)
+	if result.EventID != "" {
+		fmt.Fprintf(out, "event: %s\n", result.EventID)
+	}
 }
 
 func writeFindingImportJSON(out io.Writer, result state.FindingImportJSONResult) {
@@ -12895,6 +13155,116 @@ func parseSessionLogArgs(args []string) (sessionLogOptions, error) {
 	if len(entryParts) == 1 {
 		options.entry = entryParts[0]
 	}
+	return options, nil
+}
+
+func parseRunListArgs(args []string) (runListCLIOptions, error) {
+	var options runListCLIOptions
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			options.jsonOutput = true
+		case "--status":
+			value, err := consumeFlagValue(args, &i, "--status")
+			if err != nil {
+				return runListCLIOptions{}, err
+			}
+			options.filters.Status = value
+		case "--generator":
+			value, err := consumeFlagValue(args, &i, "--generator")
+			if err != nil {
+				return runListCLIOptions{}, err
+			}
+			options.filters.Generator = value
+		default:
+			return runListCLIOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+	return options, nil
+}
+
+func parseRunCreateArgs(args []string) (runCreateCLIOptions, error) {
+	var options runCreateCLIOptions
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			options.jsonOutput = true
+		case "--generator":
+			value, err := consumeFlagValue(args, &i, "--generator")
+			if err != nil {
+				return runCreateCLIOptions{}, err
+			}
+			options.create.GeneratorRef = value
+		case "--version":
+			value, err := consumeFlagValue(args, &i, "--version")
+			if err != nil {
+				return runCreateCLIOptions{}, err
+			}
+			options.create.GeneratorVersion = value
+		case "--hash":
+			value, err := consumeFlagValue(args, &i, "--hash")
+			if err != nil {
+				return runCreateCLIOptions{}, err
+			}
+			options.create.GeneratorHash = value
+		case "--status":
+			value, err := consumeFlagValue(args, &i, "--status")
+			if err != nil {
+				return runCreateCLIOptions{}, err
+			}
+			options.create.Status = value
+		case "--metadata":
+			value, err := consumeFlagValue(args, &i, "--metadata")
+			if err != nil {
+				return runCreateCLIOptions{}, err
+			}
+			options.create.Metadata = value
+		case "--report":
+			value, err := consumeFlagValue(args, &i, "--report")
+			if err != nil {
+				return runCreateCLIOptions{}, err
+			}
+			options.create.Report = value
+		default:
+			return runCreateCLIOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+	if strings.TrimSpace(options.create.GeneratorRef) == "" {
+		return runCreateCLIOptions{}, fmt.Errorf("run create requires --generator")
+	}
+	return options, nil
+}
+
+func parseRunCompleteArgs(args []string) (runCompleteCLIOptions, error) {
+	var options runCompleteCLIOptions
+	var positional []string
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			options.jsonOutput = true
+		case "--status":
+			value, err := consumeFlagValue(args, &i, "--status")
+			if err != nil {
+				return runCompleteCLIOptions{}, err
+			}
+			options.complete.Status = value
+		case "--metadata":
+			value, err := consumeFlagValue(args, &i, "--metadata")
+			if err != nil {
+				return runCompleteCLIOptions{}, err
+			}
+			options.complete.Metadata = value
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return runCompleteCLIOptions{}, fmt.Errorf("unknown option %q", args[i])
+			}
+			positional = append(positional, args[i])
+		}
+	}
+	if len(positional) != 1 {
+		return runCompleteCLIOptions{}, fmt.Errorf("run complete requires exactly one run")
+	}
+	options.complete.Run = positional[0]
 	return options, nil
 }
 

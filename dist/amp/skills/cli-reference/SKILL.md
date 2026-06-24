@@ -627,6 +627,53 @@ loaf finding create
 
 ---
 
+## Run Management
+
+### `loaf run`
+Manage provenance runs for generated findings and reports
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf run list` | List provenance runs |
+| `loaf run show` | Show one provenance run |
+| `loaf run create` | Create a provenance run row without storing generator code |
+| `loaf run complete` | Complete, fail, or archive a provenance run |
+
+**Options:**
+
+- `loaf run list`:
+  - `--status <status>` - Filter by status: pending, running, completed, failed, archived
+  - `--generator <ref>` - Filter by generator reference
+  - `--json` - Output runs, filters, global database scope, and project identity as JSON
+
+- `loaf run show`:
+  - `--json` - Output run metadata, relationships, global database scope, and project identity as JSON
+
+- `loaf run create`:
+  - `--generator <ref>` - Generator reference or name
+  - `--version <version>` - Generator version
+  - `--hash <hash>` - Generator content hash
+  - `--status <status>` - Initial status: pending, running, completed, failed, archived
+  - `--metadata <json>` - JSON metadata
+  - `--report <report>` - Optional produced report relationship
+  - `--json` - Output created run, event, global database scope, and project identity as JSON
+
+- `loaf run complete`:
+  - `--status <status>` - Completion status: completed, failed, archived
+  - `--metadata <json>` - Replace run metadata with JSON
+  - `--json` - Output run transition, event, global database scope, and project identity as JSON
+
+**Usage:**
+```bash
+loaf run list
+loaf run show
+loaf run create
+```
+
+---
+
 ## Plan Management
 
 ### `loaf plan`

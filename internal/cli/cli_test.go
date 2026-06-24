@@ -14081,6 +14081,90 @@ func TestRunnerFindingCRUDAndReportDecomposition(t *testing.T) {
 	}
 }
 
+func TestRunnerRunLifecycleAndFindingRelationships(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "create", "run-report", "--type", "audit"}); err != nil {
+		t.Fatalf("report create error = %v", err)
+	}
+
+	var createOut bytes.Buffer
+	err := Runner{Stdout: &createOut, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{
+		"run", "create",
+		"--generator", "pipeline/findings",
+		"--version", "v1",
+		"--hash", "hash-run",
+		"--status", "running",
+		"--metadata", `{"kind":"fixture"}`,
+		"--report", "report-run-report",
+		"--json",
+	})
+	if err != nil {
+		t.Fatalf("run create --json error = %v", err)
+	}
+	created := decodeRunCreateResult(t, createOut.Bytes())
+	if !strings.HasPrefix(created.Run.Alias, "RUN-") || created.Run.GeneratorRef != "pipeline/findings" || created.Run.Status != "running" {
+		t.Fatalf("created run = %#v, want running pipeline/findings run", created.Run)
+	}
+	if !hasTraceRelationship(created.Run.Relationships, "outbound", "produces", "report", "report-run-report") {
+		t.Fatalf("created run relationships = %#v, want report relationship", created.Run.Relationships)
+	}
+
+	var findingOut bytes.Buffer
+	err = Runner{Stdout: &findingOut, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{
+		"finding", "create",
+		"--report", "report-run-report",
+		"--run", created.Run.Alias,
+		"--title", "Run linked finding",
+		"--severity", "medium",
+		"--confidence", "high",
+		"--message", "Finding created by provenance run.",
+		"--json",
+	})
+	if err != nil {
+		t.Fatalf("finding create --run error = %v", err)
+	}
+	finding := decodeFindingCreateResult(t, findingOut.Bytes())
+
+	var listOut bytes.Buffer
+	err = Runner{Stdout: &listOut, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{"run", "list", "--status", "running", "--generator", "pipeline/findings", "--json"})
+	if err != nil {
+		t.Fatalf("run list --json error = %v", err)
+	}
+	list := decodeRunList(t, listOut.Bytes())
+	if len(list.Runs) != 1 || list.Runs[created.Run.Alias].GeneratorVersion != "v1" || list.Runs[created.Run.Alias].GeneratorHash != "hash-run" {
+		t.Fatalf("list runs = %#v, want created run with version/hash", list.Runs)
+	}
+
+	var completeOut bytes.Buffer
+	err = Runner{Stdout: &completeOut, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{"run", "complete", created.Run.Alias, "--json"})
+	if err != nil {
+		t.Fatalf("run complete --json error = %v", err)
+	}
+	completed := decodeRunCompleteResult(t, completeOut.Bytes())
+	if completed.Previous != "running" || completed.Status != "completed" || completed.Run.CompletedAt == "" {
+		t.Fatalf("completed run = %#v, want running->completed transition", completed)
+	}
+
+	var showOut bytes.Buffer
+	err = Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{"run", "show", created.Run.Alias, "--json"})
+	if err != nil {
+		t.Fatalf("run show --json error = %v", err)
+	}
+	show := decodeRunShow(t, showOut.Bytes())
+	if show.Run.Metadata != `{"kind":"fixture"}` || !hasTraceRelationship(show.Run.Relationships, "outbound", "produces", "finding", finding.Finding.Alias) {
+		t.Fatalf("show run = %#v, want metadata preserved and finding relationship", show.Run)
+	}
+
+	err = Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{"run", "create", "--generator", "pipeline/findings", "--body-file", "script.sh"})
+	if err == nil || !strings.Contains(err.Error(), `unknown option "--body-file"`) {
+		t.Fatalf("run create --body-file error = %v, want unknown option", err)
+	}
+}
+
 func TestRunnerFindingImportJSON(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -15018,6 +15102,42 @@ func decodeFindingVerdictResult(t *testing.T, data []byte) state.FindingVerdictR
 func decodeFindingImportJSONResult(t *testing.T, data []byte) state.FindingImportJSONResult {
 	t.Helper()
 	var result state.FindingImportJSONResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return result
+}
+
+func decodeRunCreateResult(t *testing.T, data []byte) state.RunCreateResult {
+	t.Helper()
+	var result state.RunCreateResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return result
+}
+
+func decodeRunList(t *testing.T, data []byte) state.RunList {
+	t.Helper()
+	var result state.RunList
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return result
+}
+
+func decodeRunShow(t *testing.T, data []byte) state.RunShow {
+	t.Helper()
+	var result state.RunShow
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return result
+}
+
+func decodeRunCompleteResult(t *testing.T, data []byte) state.RunCompleteResult {
+	t.Helper()
+	var result state.RunCompleteResult
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
 	}
