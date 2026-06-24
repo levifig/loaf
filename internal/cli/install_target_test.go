@@ -136,7 +136,7 @@ func TestInstallTargetGeminiAndAmpUseSharedAndCustomHomes(t *testing.T) {
 	ampSkills := filepath.Join(root, "amp-skills")
 	ampPlugins := filepath.Join(root, "amp-plugins")
 	writeInstallFile(t, filepath.Join(ampDist, "skills", "implement", "SKILL.md"), "# Implement\n")
-	writeInstallFile(t, filepath.Join(ampDist, "plugins", "loaf.js"), "export default {}\n")
+	writeInstallFile(t, filepath.Join(ampDist, ".amp", "plugins", "loaf.ts"), "export default function () {}\n")
 
 	if err := installTargetDistribution(targetInstallOptions{
 		Target:        "amp",
@@ -150,7 +150,7 @@ func TestInstallTargetGeminiAndAmpUseSharedAndCustomHomes(t *testing.T) {
 		t.Fatalf("install amp error = %v", err)
 	}
 	assertInstallFile(t, filepath.Join(ampSkills, "implement", "SKILL.md"), "# Implement\n")
-	assertInstallFile(t, filepath.Join(ampPlugins, "loaf.js"), "export default {}\n")
+	assertInstallFile(t, filepath.Join(ampPlugins, "loaf.ts"), "export default function () {}\n")
 	assertInstallFile(t, filepath.Join(ampConfig, loafInstallMarkerFile), "9.8.7-test.1\n")
 }
 

@@ -4667,7 +4667,7 @@
       "title": "Add build artifact JS/TS validation gate",
       "slug": "build-artifact-js-ts-validation-gate",
       "spec": "SPEC-047",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [
@@ -4682,15 +4682,15 @@
       "done": "The native build/test gate validates emitted JavaScript and TypeScript artifacts with real tooling, removes the fake node shim, and preserves the explicit dependency-approval hold before adding any new npm dev dependency.",
       "session": null,
       "created": "2026-06-24T12:03:41Z",
-      "updated": "2026-06-24T12:03:41Z",
-      "completed_at": null,
+      "updated": "2026-06-24T12:17:12Z",
+      "completed_at": "2026-06-24T12:17:12Z",
       "file": "TASK-253-build-artifact-js-ts-validation-gate.md"
     },
     "TASK-254": {
       "title": "Emit first-class Amp TypeScript plugin",
       "slug": "amp-first-class-typescript-plugin",
       "spec": "SPEC-047",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "P1",
       "depends_on": [
         "TASK-253"
@@ -4706,7 +4706,7 @@
       "done": "Amp build output emits dist/amp/.amp/plugins/loaf.ts, uses the documented PluginAPI default-function shape, fixes tool.call/tool.result event handling, drops the WIP header, and passes the JS/TS validation gate.",
       "session": null,
       "created": "2026-06-24T12:03:41Z",
-      "updated": "2026-06-24T12:03:41Z",
+      "updated": "2026-06-24T12:17:12Z",
       "completed_at": null,
       "file": "TASK-254-amp-first-class-typescript-plugin.md"
     },

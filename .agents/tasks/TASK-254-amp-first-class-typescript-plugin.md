@@ -2,10 +2,10 @@
 id: TASK-254
 title: Emit first-class Amp TypeScript plugin
 spec: SPEC-047
-status: todo
+status: in_progress
 priority: P1
 created: '2026-06-24T12:03:41Z'
-updated: '2026-06-24T12:03:41Z'
+updated: '2026-06-24T12:17:12Z'
 completed_at: null
 depends_on:
   - TASK-253
@@ -39,12 +39,13 @@ undefined `call` identifier.
 
 ## Acceptance Criteria
 
-- [ ] `dist/amp/plugins/loaf.js` is no longer emitted.
-- [ ] `dist/amp/.amp/plugins/loaf.ts` is emitted.
-- [ ] The WIP/experimental API header is gone.
-- [ ] `tool.call` and `tool.result` handlers use the event parameter as source of
+- [x] `dist/amp/plugins/loaf.js` is no longer emitted.
+- [x] `dist/amp/.amp/plugins/loaf.ts` is emitted.
+- [x] The WIP/experimental API header is gone.
+- [x] `tool.call` and `tool.result` handlers use the event parameter as source of
   truth and never reference an undefined `call`.
-- [ ] Generated Amp TypeScript passes the validation gate from TASK-253.
+- [ ] Generated Amp TypeScript passes the validation gate from TASK-253 with
+  dependency-approved `@ampcode/plugin` typing available.
 - [ ] Tests exercise at least one hook firing path through the generated handler
   shape.
 

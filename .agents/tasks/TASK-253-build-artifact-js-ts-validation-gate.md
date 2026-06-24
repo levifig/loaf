@@ -2,11 +2,11 @@
 id: TASK-253
 title: Add build artifact JS/TS validation gate
 spec: SPEC-047
-status: todo
+status: done
 priority: P1
 created: '2026-06-24T12:03:41Z'
-updated: '2026-06-24T12:03:41Z'
-completed_at: null
+updated: '2026-06-24T12:17:12Z'
+completed_at: '2026-06-24T12:17:12Z'
 depends_on: []
 files:
   - internal/cli/build_test.go
@@ -38,14 +38,14 @@ and request explicit approval before editing `package.json`.
 
 ## Acceptance Criteria
 
-- [ ] `setupFakeNodeForBuild` is removed or no longer used to prove native build
+- [x] `setupFakeNodeForBuild` is removed or no longer used to prove native build
   correctness.
-- [ ] Emitted JavaScript artifacts are checked with `node --check`.
-- [ ] Emitted TypeScript artifacts have a deterministic validation command.
-- [ ] CI hard-fails when required validation tooling is absent.
-- [ ] Local TypeScript validation may warn-and-skip only outside CI, naming the
+- [x] Emitted JavaScript artifacts are checked with `node --check`.
+- [x] Emitted TypeScript artifacts have a deterministic validation command.
+- [x] CI hard-fails when required validation tooling is absent.
+- [x] Local TypeScript validation may warn-and-skip only outside CI, naming the
   skipped files.
-- [ ] Tests prove malformed generated JS and TS artifacts fail validation.
+- [x] Tests prove malformed generated JS and TS artifacts fail validation.
 
 ## Verification
 

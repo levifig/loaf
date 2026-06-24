@@ -178,7 +178,7 @@ func installAmpTarget(options targetInstallOptions) error {
 	if err := syncTargetDirIfExists(filepath.Join(options.DistDir, "skills"), skillsDest); err != nil {
 		return err
 	}
-	pluginSrc := filepath.Join(options.DistDir, "plugins", "loaf.js")
+	pluginSrc := filepath.Join(options.DistDir, ".amp", "plugins", "loaf.ts")
 	if fileExistsForInstall(pluginSrc) {
 		pluginsDest := options.AmpPluginsDir
 		if pluginsDest == "" {
@@ -187,7 +187,7 @@ func installAmpTarget(options targetInstallOptions) error {
 		if err := os.MkdirAll(pluginsDest, 0o755); err != nil {
 			return err
 		}
-		if err := copyFileForInstall(pluginSrc, filepath.Join(pluginsDest, "loaf.js")); err != nil {
+		if err := copyFileForInstall(pluginSrc, filepath.Join(pluginsDest, "loaf.ts")); err != nil {
 			return err
 		}
 	}
