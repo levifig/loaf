@@ -9,7 +9,10 @@ import (
 	"strings"
 )
 
-const installDeprecationManifestPath = "config/deprecations.json"
+const (
+	installDeprecationManifestPath = "config/deprecations.json"
+	defaultDeprecationWindow       = "one-release"
+)
 
 type installDeprecationManifest struct {
 	Version        int                         `json:"version"`
@@ -62,6 +65,8 @@ type installDeprecationCleanupAction struct {
 	Name   string
 	Path   string
 	Reason string
+	Since  string
+	Window string
 	Action string
 }
 
@@ -124,6 +129,8 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 				Name:   target.Target,
 				Path:   path,
 				Reason: target.Reason,
+				Since:  target.Since,
+				Window: deprecationWindow(target.Window),
 			}
 			if !dirExistsForInstall(path) {
 				action.Action = "missing"
@@ -154,6 +161,8 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 				Name:   skill.Skill,
 				Path:   path,
 				Reason: skill.Reason,
+				Since:  skill.Since,
+				Window: deprecationWindow(skill.Window),
 			}
 			if !dirExistsForInstall(path) {
 				action.Action = "missing"
@@ -186,6 +195,8 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 			Name:   relocation.ID,
 			Path:   from + " -> " + to,
 			Reason: relocation.Reason,
+			Since:  relocation.Since,
+			Window: deprecationWindow(relocation.Window),
 		}
 		if !dirExistsForInstall(from) {
 			action.Action = "missing"
@@ -215,6 +226,13 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 		result.Removed = append(result.Removed, action)
 	}
 	return result, nil
+}
+
+func deprecationWindow(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return defaultDeprecationWindow
+	}
+	return value
 }
 
 func isLoafOwnedInstallDir(path string) bool {
@@ -276,6 +294,9 @@ func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationClea
 		if action.Reason != "" {
 			fmt.Fprintf(out, " — %s", action.Reason)
 		}
+		if action.Since != "" || action.Window != "" {
+			fmt.Fprintf(out, " (since %s, window %s)", emptyInstallDeprecationField(action.Since), emptyInstallDeprecationField(action.Window))
+		}
 		fmt.Fprintln(out)
 	}
 	for _, action := range result.Skipped {
@@ -286,4 +307,11 @@ func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationClea
 			fmt.Fprintf(out, "    %s skipped retired %s %s at %s; path is not marked as Loaf-owned\n", ansiYellow("⚠"), action.Kind, action.Name, ansiGray(action.Path))
 		}
 	}
+}
+
+func emptyInstallDeprecationField(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "unspecified"
+	}
+	return value
 }

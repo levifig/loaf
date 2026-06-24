@@ -93,7 +93,7 @@ func TestRunnerInstallUpgradeCleansRetiredTargetFromManifest(t *testing.T) {
 	if _, err := os.Stat(retiredTarget); !os.IsNotExist(err) {
 		t.Fatalf("retired target stat = %v, want removed", err)
 	}
-	for _, want := range []string{"install deprecation cleanup", "removed retired target retired-tool", "retired by test manifest"} {
+	for _, want := range []string{"install deprecation cleanup", "removed retired target retired-tool", "retired by test manifest", "since v9.9.0, window one-release"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 		}
@@ -132,6 +132,35 @@ func TestRunnerInstallUpgradeCleansRetiredSkillFromManifest(t *testing.T) {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 		}
+	}
+}
+
+func TestRunnerInstallUpgradeReportsDefaultDeprecationWindow(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	retiredSkill := filepath.Join(home, ".agents", "skills", "old-skill")
+	writeInstallFile(t, filepath.Join(retiredSkill, "SKILL.md"), "# Old skill\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [],
+  "retired_skills": [
+    {
+      "skill": "old-skill",
+      "since": "v9.9.0",
+      "reason": "old-skill was retired",
+      "skill_homes": ["${HOME}/.agents/skills"]
+    }
+  ],
+  "relocations": [],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "since v9.9.0, window one-release") {
+		t.Fatalf("stdout = %q, want default deprecation window", stdout.String())
 	}
 }
 
