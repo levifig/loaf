@@ -135,7 +135,7 @@ func includeBrainstormStatus(status string, options BrainstormListOptions) bool 
 	if options.Status != "" {
 		return true
 	}
-	if !options.All && (status == "resolved" || status == "archived") {
+	if !options.All && (LifecycleStatusMatches(LifecycleEntityBrainstorm, status, LifecycleStatusDone) || LifecycleStatusMatches(LifecycleEntityBrainstorm, status, LifecycleStatusArchived)) {
 		return false
 	}
 	return true

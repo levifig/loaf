@@ -221,6 +221,12 @@ func CanonicalLifecycleStatus(kind string, status string) (string, bool) {
 	return canonical, true
 }
 
+// LifecycleStatusMatches reports whether a legacy or canonical status represents the canonical status.
+func LifecycleStatusMatches(kind string, status string, canonical string) bool {
+	mapped, ok := CanonicalLifecycleStatus(kind, status)
+	return ok && mapped == canonical
+}
+
 // NonLifecycleStatusVocabularies returns explicit status-like vocabularies excluded from lifecycle canonicalization.
 func NonLifecycleStatusVocabularies() []string {
 	return append([]string(nil), nonLifecycleStatusVocabularies...)

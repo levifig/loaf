@@ -355,7 +355,7 @@ func (s *Store) ResolveIdea(ctx context.Context, root project.Root, ideaRef stri
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	if _, err := tx.ExecContext(ctx, `UPDATE ideas SET status = ?, updated_at = ? WHERE project_id = ? AND id = ?`, "resolved", now, projectID, idea.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE ideas SET status = ?, updated_at = ? WHERE project_id = ? AND id = ?`, LifecycleStatusDone, now, projectID, idea.ID); err != nil {
 		return IdeaResolveResult{}, fmt.Errorf("update idea status: %w", err)
 	}
 
@@ -373,13 +373,13 @@ ON CONFLICT(id) DO UPDATE SET
 	}
 
 	eventID := ""
-	if previousStatus != "resolved" {
-		eventID = stableMigrationID("event", projectID, "idea", idea.ID, "status", previousStatus, "resolved")
+	if !LifecycleStatusMatches(LifecycleEntityIdea, previousStatus, LifecycleStatusDone) {
+		eventID = stableMigrationID("event", projectID, "idea", idea.ID, "status", previousStatus, LifecycleStatusDone)
 		_, err = tx.ExecContext(ctx, `
 INSERT INTO events (id, project_id, entity_kind, entity_id, event_type, from_status, to_status, note, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO NOTHING
-`, eventID, projectID, "idea", idea.ID, "status_changed", previousStatus, "resolved", "recorded by idea resolve", now, now)
+`, eventID, projectID, "idea", idea.ID, "status_changed", previousStatus, LifecycleStatusDone, "recorded by idea resolve", now, now)
 		if err != nil {
 			return IdeaResolveResult{}, fmt.Errorf("record idea resolution event: %w", err)
 		}
@@ -389,7 +389,7 @@ ON CONFLICT(id) DO NOTHING
 		return IdeaResolveResult{}, fmt.Errorf("commit idea resolve transaction: %w", err)
 	}
 
-	idea.Status = "resolved"
+	idea.Status = LifecycleStatusDone
 	return IdeaResolveResult{
 		ContractVersion:    StateJSONContractVersion,
 		DatabaseScope:      identity.DatabaseScope,
@@ -572,7 +572,7 @@ func includeIdeaStatus(status string, options IdeaListOptions) bool {
 	if options.Status != "" {
 		return true
 	}
-	if !options.All && (status == "resolved" || status == "archived") {
+	if !options.All && (LifecycleStatusMatches(LifecycleEntityIdea, status, LifecycleStatusDone) || LifecycleStatusMatches(LifecycleEntityIdea, status, LifecycleStatusArchived)) {
 		return false
 	}
 	return true
