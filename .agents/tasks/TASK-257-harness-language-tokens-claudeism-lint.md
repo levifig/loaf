@@ -2,11 +2,11 @@
 id: TASK-257
 title: Add harness-language tokens and Claude-ism lint
 spec: SPEC-047
-status: todo
+status: done
 priority: P1
 created: '2026-06-24T12:03:41Z'
-updated: '2026-06-24T12:03:41Z'
-completed_at: null
+updated: '2026-06-24T12:41:10Z'
+completed_at: '2026-06-24T12:41:10Z'
 depends_on:
   - TASK-256
 files:
@@ -37,15 +37,15 @@ SPEC-047, then fail non-Claude builds when raw Claude-specific language leaks.
 
 ## Acceptance Criteria
 
-- [ ] The fixed token set resolves for Claude Code, Codex, Cursor, OpenCode, and
+- [x] The fixed token set resolves for Claude Code, Codex, Cursor, OpenCode, and
   Amp.
-- [ ] Build output contains no unresolved `{{...}}` tokens.
-- [ ] Non-Claude output contains no raw `CLAUDE.md`, `AskUserQuestionTool`,
+- [x] Build output contains no unresolved `{{...}}` tokens.
+- [x] Non-Claude output contains no raw `CLAUDE.md`, `AskUserQuestionTool`,
   `TodoWrite`, or Claude-specific command names.
-- [ ] `subagent` leakage is allowed only through an explicit file:reason allowlist
+- [x] `subagent` leakage is allowed only through an explicit file:reason allowlist
   when the target natively uses that word.
-- [ ] Lint failures report file and line.
-- [ ] Tests seed at least one failure and one allowlisted pass.
+- [x] Lint failures report file and line.
+- [x] Tests seed at least one failure and one allowlisted pass.
 
 ## Verification
 

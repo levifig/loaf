@@ -4764,7 +4764,7 @@
       "title": "Add harness-language tokens and Claude-ism lint",
       "slug": "harness-language-tokens-claudeism-lint",
       "spec": "SPEC-047",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-256"
@@ -4782,8 +4782,8 @@
       "done": "The fixed SPEC-047 harness token set resolves per target and the build fails with file:line output for unresolved tokens or non-Claude leakage outside an explicit allowlist.",
       "session": null,
       "created": "2026-06-24T12:03:41Z",
-      "updated": "2026-06-24T12:03:41Z",
-      "completed_at": null,
+      "updated": "2026-06-24T12:41:10Z",
+      "completed_at": "2026-06-24T12:41:10Z",
       "file": "TASK-257-harness-language-tokens-claudeism-lint.md"
     },
     "TASK-258": {

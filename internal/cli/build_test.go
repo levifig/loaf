@@ -112,7 +112,7 @@ func TestRunnerBuildTargetCodexRunsNativeTarget(t *testing.T) {
 		t.Fatalf("shared skill frontmatter = %q, want prefix %q", sharedSkill, wantSharedFrontmatter)
 	}
 	if strings.Contains(sharedSkill, "{{IMPLEMENT_CMD}}") || !strings.Contains(sharedSkill, "/implement") {
-		t.Fatalf("shared skill = %q, want command substitution", sharedSkill)
+		t.Fatalf("shared skill = %q, want shared command substitution", sharedSkill)
 	}
 	if strings.Contains(sharedSkill, "version: 9.8.7-test.1") {
 		t.Fatalf("shared skill = %q, should not inject version into shared intermediate", sharedSkill)
@@ -695,6 +695,34 @@ func TestNativeBuildValidationRejectsMalformedTypeScriptWhenEnabled(t *testing.T
 	}
 	if !strings.Contains(err.Error(), "TypeScript validation failed") || !strings.Contains(err.Error(), "TS1005") {
 		t.Fatalf("error = %v, want TypeScript diagnostic", err)
+	}
+}
+
+func TestNativeBuildHarnessLanguageReportsFileAndLine(t *testing.T) {
+	root := realpath(t, t.TempDir())
+	path := filepath.Join(root, "dist", "codex", "skills", "bad", "SKILL.md")
+	mkdirAll(t, filepath.Dir(path))
+	writeFile(t, path, "# Bad\n\nUse AskUserQuestion here.\n")
+
+	err := validateNativeBuildHarnessLanguage(root, "codex", []string{path})
+	if err == nil {
+		t.Fatal("validateNativeBuildHarnessLanguage error = nil, want Claudeism failure")
+	}
+	for _, want := range []string{"dist/codex/skills/bad/SKILL.md:3", "AskUserQuestion"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %v, want %q", err, want)
+		}
+	}
+}
+
+func TestNativeBuildHarnessLanguageAllowsOpenCodeSubagentMode(t *testing.T) {
+	root := realpath(t, t.TempDir())
+	path := filepath.Join(root, "dist", "opencode", "agents", "reviewer.md")
+	mkdirAll(t, filepath.Dir(path))
+	writeFile(t, path, "---\nmode: subagent\n---\n")
+
+	if err := validateNativeBuildHarnessLanguage(root, "opencode", []string{path}); err != nil {
+		t.Fatalf("validateNativeBuildHarnessLanguage error = %v, want allowlisted OpenCode agent mode", err)
 	}
 }
 

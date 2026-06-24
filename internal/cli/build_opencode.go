@@ -54,7 +54,7 @@ func buildNativeOpenCodeTarget(root string) error {
 		targetName:    "opencode",
 		version:       version,
 		targetsConfig: targetsConfig,
-		transformMd:   substituteNativeBuildCursorCommands,
+		transformMd:   func(content string) string { return substituteNativeBuildHarnessLanguage(content, "opencode") },
 	}); err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func generateNativeOpenCodeCommands(root string, version string) error {
 		fields = setNativeBuildYAMLFieldValue(fields, "version", nativeBuildStringValue(version))
 		content = strings.ReplaceAll(content, "](templates/", "](../skills/"+skill+"/templates/")
 		content = strings.ReplaceAll(content, "](references/", "](../skills/"+skill+"/references/")
-		output := "---\n" + renderNativeBuildYAMLFieldValues(fields) + "---\n" + substituteNativeBuildCursorCommands(content)
+		output := "---\n" + renderNativeBuildYAMLFieldValues(fields) + "---\n" + substituteNativeBuildHarnessLanguage(content, "opencode")
 		if err := os.MkdirAll(commandsDest, 0o755); err != nil {
 			return err
 		}

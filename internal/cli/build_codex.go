@@ -136,7 +136,7 @@ func buildNativeCodexTarget(root string) error {
 		targetName:    "codex",
 		version:       version,
 		targetsConfig: targetsConfig,
-		transformMd:   func(content string) string { return content },
+		transformMd:   func(content string) string { return substituteNativeBuildHarnessLanguage(content, "codex") },
 	}); err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func buildNativeSkillOnlyTarget(root string, targetName string) error {
 		targetName:    targetName,
 		version:       version,
 		targetsConfig: targetsConfig,
-		transformMd:   func(content string) string { return content },
+		transformMd:   func(content string) string { return substituteNativeBuildHarnessLanguage(content, targetName) },
 	})
 }
 
@@ -477,12 +477,93 @@ func copyNativeSharedTemplates(skill string, skillDest string, srcDir string, co
 }
 
 func substituteNativeBuildCommands(content string) string {
-	replacer := strings.NewReplacer(
+	return substituteNativeBuildHarnessLanguage(content, "claude-code")
+}
+
+type nativeBuildHarnessLanguage struct {
+	harnessName       string
+	interviewTool     string
+	subagentMechanism string
+	todoTool          string
+	agentsFile        string
+}
+
+var nativeBuildHarnessLanguages = map[string]nativeBuildHarnessLanguage{
+	"claude-code": {
+		harnessName:       "Claude Code",
+		interviewTool:     "AskUserQuestionTool",
+		subagentMechanism: "Task subagents",
+		todoTool:          "TodoWrite",
+		agentsFile:        "CLAUDE.md",
+	},
+	"codex": {
+		harnessName:       "Codex",
+		interviewTool:     "request_user_input",
+		subagentMechanism: "separate Codex thread or explicit multi-agent tool when available",
+		todoTool:          "update_plan",
+		agentsFile:        "AGENTS.md",
+	},
+	"cursor": {
+		harnessName:       "Cursor",
+		interviewTool:     "built-in chat clarification",
+		subagentMechanism: "background agent",
+		todoTool:          "task list or chat checklist",
+		agentsFile:        "AGENTS.md",
+	},
+	"opencode": {
+		harnessName:       "OpenCode",
+		interviewTool:     "prompt the user in chat",
+		subagentMechanism: "subtask agent",
+		todoTool:          "native task/todo surface when available",
+		agentsFile:        "AGENTS.md",
+	},
+	"amp": {
+		harnessName:       "Amp",
+		interviewTool:     "Amp UI input",
+		subagentMechanism: "Amp check/agent mode or new thread",
+		todoTool:          "Amp thread checklist",
+		agentsFile:        "AGENTS.md",
+	},
+}
+
+func substituteNativeBuildHarnessLanguage(content string, targetName string) string {
+	language, ok := nativeBuildHarnessLanguages[targetName]
+	if !ok {
+		language = nativeBuildHarnessLanguages["claude-code"]
+	}
+	content = strings.NewReplacer(
 		"{{IMPLEMENT_CMD}}", "/implement",
 		"{{RESUME_CMD}}", "/implement",
 		"{{ORCHESTRATE_CMD}}", "/implement",
-	)
-	return replacer.Replace(content)
+		"{{HARNESS_NAME}}", language.harnessName,
+		"{{INTERVIEW_TOOL}}", language.interviewTool,
+		"{{SUBAGENT_MECHANISM}}", language.subagentMechanism,
+		"{{TODO_TOOL}}", language.todoTool,
+		"{{AGENTS_FILE}}", language.agentsFile,
+	).Replace(content)
+	if targetName == "claude-code" {
+		return content
+	}
+	return strings.NewReplacer(
+		".claude/CLAUDE.md -> .agents/AGENTS.md", ".agents/AGENTS.md",
+		".claude/CLAUDE.md", ".agents/AGENTS.md",
+		"Claude Code", language.harnessName,
+		"CLAUDE.md", language.agentsFile,
+		"AskUserQuestionTool", language.interviewTool,
+		"AskUserQuestion", language.interviewTool,
+		"TodoWrite/TodoRead", language.todoTool,
+		"TodoWrite", language.todoTool,
+		"TodoRead", language.todoTool,
+		"/loaf:", "/",
+		"Task subagents", language.subagentMechanism,
+		"Task tool", language.subagentMechanism,
+		"Task(subagent_type=", "Agent(agent_type=",
+		"subagent_type", "agent_type",
+		"Subagents", language.subagentMechanism,
+		"subagents", language.subagentMechanism,
+		"Subagent", language.subagentMechanism,
+		"subagent", language.subagentMechanism,
+	).Replace(content)
 }
 
 func readNativeBuildTargetsConfig(root string) (nativeBuildTargetsConfig, error) {
