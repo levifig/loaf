@@ -4740,7 +4740,7 @@
       "title": "Preserve Codex hook semantics and OpenCode command reachability",
       "slug": "codex-opencode-parity-semantics",
       "spec": "SPEC-047",
-      "status": "in_progress",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-255"
