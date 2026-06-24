@@ -20,7 +20,8 @@ import (
 
 // DocsIndexOptions controls a docs index scan.
 type DocsIndexOptions struct {
-	Rebuild bool
+	Rebuild      bool
+	WorktreePath string
 }
 
 // DocsIndexResult describes a completed docs index scan.
@@ -73,13 +74,17 @@ func (s *Store) IndexDocs(ctx context.Context, root project.Root, options DocsIn
 	if err != nil {
 		return DocsIndexResult{}, err
 	}
-	candidates, err := scanDocsIndexCandidates(root.Path())
+	indexedWorktree, err := docsIndexWorktreePath(root, options.WorktreePath)
+	if err != nil {
+		return DocsIndexResult{}, err
+	}
+	candidates, err := scanDocsIndexCandidates(indexedWorktree)
 	if err != nil {
 		return DocsIndexResult{}, err
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	indexedRef := observedDocsGitRef(root.Path())
-	indexedWorktree := filepath.ToSlash(root.Path())
+	indexedRef := observedDocsGitRef(indexedWorktree)
+	indexedWorktree = filepath.ToSlash(indexedWorktree)
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -140,6 +145,18 @@ VALUES (?, ?, ?, ?, ?)
 		Removed:            removed,
 		Docs:               docs,
 	}, nil
+}
+
+func docsIndexWorktreePath(root project.Root, override string) (string, error) {
+	path := strings.TrimSpace(override)
+	if path == "" {
+		path = root.Path()
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve docs index worktree path: %w", err)
+	}
+	return filepath.Clean(abs), nil
 }
 
 func scanDocsIndexCandidates(rootPath string) ([]docsIndexCandidate, error) {

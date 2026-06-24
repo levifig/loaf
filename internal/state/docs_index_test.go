@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/levifig/loaf/internal/project"
 )
 
 func TestIndexDocsScansMarkdownMaintainsFTSAndPrunes(t *testing.T) {
@@ -73,6 +75,42 @@ func TestScanDocsIndexCandidatesRejectsNonUTF8Markdown(t *testing.T) {
 	_, err := scanDocsIndexCandidates(rootPath)
 	if err == nil || !strings.Contains(err.Error(), "must be UTF-8 text") {
 		t.Fatalf("scanDocsIndexCandidates() error = %v, want UTF-8 rejection", err)
+	}
+}
+
+func TestIndexDocsUsesInvokingLinkedWorktreeWhenProvided(t *testing.T) {
+	requireGit(t)
+	main := initGitRepo(t)
+	linked := addLinkedWorktree(t, main, "docs-index-linked")
+	writeDocsFile(t, linked, "docs/linked.md", "# Linked\n\nbranch-only docs")
+	root, err := project.ResolveRoot(linked)
+	if err != nil {
+		t.Fatalf("ResolveRoot(linked) error = %v", err)
+	}
+	if root.Path() != main {
+		t.Fatalf("ResolveRoot(linked) = %q, want identity root %q", root.Path(), main)
+	}
+
+	ctx := context.Background()
+	stateHome := t.TempDir()
+	if _, err := Initialize(ctx, root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	result, err := store.IndexDocs(ctx, root, DocsIndexOptions{WorktreePath: linked})
+	if err != nil {
+		t.Fatalf("IndexDocs(linked) error = %v", err)
+	}
+	if result.ProjectCurrentPath != main {
+		t.Fatalf("ProjectCurrentPath = %q, want identity root %q", result.ProjectCurrentPath, main)
+	}
+	if result.IndexedWorktree != filepath.ToSlash(linked) || result.IndexedRef != "docs-index-linked" {
+		t.Fatalf("index provenance = worktree %q ref %q, want linked worktree branch", result.IndexedWorktree, result.IndexedRef)
+	}
+	if len(result.Docs) != 1 || result.Docs[0].Path != "docs/linked.md" {
+		t.Fatalf("Docs = %#v, want linked worktree docs file", result.Docs)
 	}
 }
 

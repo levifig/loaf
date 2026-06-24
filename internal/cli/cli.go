@@ -2907,9 +2907,10 @@ func (r Runner) runSearch(args []string, out io.Writer, runtime state.Runtime) e
 		return err
 	}
 	result, err := state.Search(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.SearchOptions{
-		Query:       options.query,
-		AllProjects: options.allProjects,
-		Limit:       options.limit,
+		Query:        options.query,
+		AllProjects:  options.allProjects,
+		Limit:        options.limit,
+		WorktreePath: runtime.RootPath(),
 	})
 	if err != nil {
 		if options.jsonOutput {
@@ -3039,7 +3040,7 @@ func (r Runner) runDocsIndex(args []string, out io.Writer, runtime state.Runtime
 	if err != nil {
 		return err
 	}
-	result, err := state.IndexDocs(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.DocsIndexOptions{Rebuild: options.rebuild})
+	result, err := state.IndexDocs(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.DocsIndexOptions{Rebuild: options.rebuild, WorktreePath: runtime.RootPath()})
 	if err != nil {
 		return err
 	}

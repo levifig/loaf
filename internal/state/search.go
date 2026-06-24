@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -13,9 +14,10 @@ import (
 
 // SearchOptions describes a SQLite search request.
 type SearchOptions struct {
-	Query       string
-	AllProjects bool
-	Limit       int
+	Query        string
+	AllProjects  bool
+	Limit        int
+	WorktreePath string
 }
 
 // SearchResult is the state-backed search response.
@@ -79,6 +81,14 @@ func (s *Store) Search(ctx context.Context, root project.Root, options SearchOpt
 	if limit <= 0 {
 		limit = 20
 	}
+	indexedWorktree, err := docsIndexWorktreePath(root, options.WorktreePath)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	indexedWorktree = filepath.ToSlash(indexedWorktree)
+	if err := s.ensureDocsIndexFresh(ctx, root, projectID, indexedWorktree); err != nil {
+		return SearchResult{}, err
+	}
 
 	hits, err := s.searchArtifactBodies(ctx, projectID, options.AllProjects, ftsQuery)
 	if err != nil {
@@ -89,7 +99,7 @@ func (s *Store) Search(ctx context.Context, root project.Root, options SearchOpt
 		return SearchResult{}, err
 	}
 	hits = append(hits, journalHits...)
-	docHits, err := s.searchDocsIndex(ctx, projectID, options.AllProjects, ftsQuery)
+	docHits, err := s.searchDocsIndex(ctx, projectID, indexedWorktree, options.AllProjects, ftsQuery)
 	if err != nil {
 		return SearchResult{}, err
 	}
@@ -200,7 +210,7 @@ WHERE journal_search MATCH ?`
 	return hits, nil
 }
 
-func (s *Store) searchDocsIndex(ctx context.Context, projectID string, allProjects bool, ftsQuery string) ([]SearchHit, error) {
+func (s *Store) searchDocsIndex(ctx context.Context, projectID string, indexedWorktree string, allProjects bool, ftsQuery string) ([]SearchHit, error) {
 	query := `
 SELECT docs_index.project_id, docs_index.path, docs_index.indexed_worktree, snippet(docs_search, 3, '', '', '...', 12), bm25(docs_search)
 FROM docs_search
@@ -208,8 +218,8 @@ JOIN docs_index ON docs_index.rowid = docs_search.rowid
 WHERE docs_search MATCH ?`
 	args := []any{ftsQuery}
 	if !allProjects {
-		query += ` AND docs_index.project_id = ?`
-		args = append(args, projectID)
+		query += ` AND docs_index.project_id = ? AND docs_index.indexed_worktree = ?`
+		args = append(args, projectID, indexedWorktree)
 	}
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -231,6 +241,55 @@ WHERE docs_search MATCH ?`
 		return nil, fmt.Errorf("iterate docs search hits: %w", err)
 	}
 	return hits, nil
+}
+
+func (s *Store) ensureDocsIndexFresh(ctx context.Context, root project.Root, projectID string, indexedWorktree string) error {
+	candidates, err := scanDocsIndexCandidates(indexedWorktree)
+	if err != nil {
+		return err
+	}
+	current := make(map[string]string, len(candidates))
+	for _, candidate := range candidates {
+		current[candidate.relativePath] = candidate.contentHash
+	}
+	rows, err := s.db.QueryContext(ctx, `
+SELECT path, content_hash
+FROM docs_index
+WHERE project_id = ? AND indexed_worktree = ?
+`, projectID, indexedWorktree)
+	if err != nil {
+		return fmt.Errorf("query docs index freshness: %w", err)
+	}
+	stale := false
+	indexed := 0
+	for rows.Next() {
+		var path string
+		var hash string
+		if err := rows.Scan(&path, &hash); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan docs index freshness row: %w", err)
+		}
+		indexed++
+		currentHash, ok := current[path]
+		if !ok || currentHash != hash {
+			stale = true
+		}
+		delete(current, path)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close docs index freshness rows: %w", err)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate docs index freshness rows: %w", err)
+	}
+	if indexed == 0 && len(candidates) == 0 {
+		return nil
+	}
+	if stale || len(current) > 0 || indexed != len(candidates) {
+		_, err := s.IndexDocs(ctx, root, DocsIndexOptions{WorktreePath: indexedWorktree})
+		return err
+	}
+	return nil
 }
 
 func searchFTSQuery(query string) (string, error) {

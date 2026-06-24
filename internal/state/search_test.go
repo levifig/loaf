@@ -150,6 +150,43 @@ func TestSearchReturnsTier2DocsHits(t *testing.T) {
 	}
 }
 
+func TestSearchRefreshesStaleDocsIndexForCurrentWorktree(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	writeDocsFile(t, root.Path(), "docs/guide.md", "# Guide\n\nold-doc-term")
+	if _, err := Initialize(ctx, root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	oldHits, err := store.Search(ctx, root, SearchOptions{Query: "old-doc-term"})
+	if err != nil {
+		t.Fatalf("Search(old) error = %v", err)
+	}
+	projectID := projectIDForTest(t, store, root)
+	if !searchDocsHitContain(oldHits.Results, projectID, "docs/guide.md") {
+		t.Fatalf("old hits = %#v, want lazily indexed docs hit", oldHits.Results)
+	}
+
+	writeDocsFile(t, root.Path(), "docs/guide.md", "# Guide\n\nnew-doc-term")
+	staleHits, err := store.Search(ctx, root, SearchOptions{Query: "old-doc-term"})
+	if err != nil {
+		t.Fatalf("Search(stale old) error = %v", err)
+	}
+	if searchDocsHitContain(staleHits.Results, projectID, "docs/guide.md") {
+		t.Fatalf("stale hits = %#v, want old docs term pruned after lazy refresh", staleHits.Results)
+	}
+	newHits, err := store.Search(ctx, root, SearchOptions{Query: "new-doc-term"})
+	if err != nil {
+		t.Fatalf("Search(new) error = %v", err)
+	}
+	if !searchDocsHitContain(newHits.Results, projectID, "docs/guide.md") {
+		t.Fatalf("new hits = %#v, want refreshed docs hit", newHits.Results)
+	}
+}
+
 func assertSearchProjectContext(t *testing.T, root interface{ Path() string }, result SearchResult) {
 	t.Helper()
 	if result.ContractVersion != StateJSONContractVersion || result.DatabaseScope != "global" || result.DatabasePath == "" || result.ProjectID == "" || result.ProjectCurrentPath != root.Path() {
