@@ -4846,7 +4846,7 @@
       "title": "Add artifact body schema and FTS foundation",
       "slug": "artifact-body-schema-fts-foundation",
       "spec": "SPEC-043",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [],
       "files": [
@@ -4861,8 +4861,8 @@
       "done": "Schema migration adds artifact_bodies, artifact_search FTS5, plan/handoff/council tables, schema docs, and state-doctor entity visibility without new Go module dependencies.",
       "session": null,
       "created": "2026-06-24T13:04:19Z",
-      "updated": "2026-06-24T13:04:19Z",
-      "completed_at": null,
+      "updated": "2026-06-24T13:16:26Z",
+      "completed_at": "2026-06-24T13:16:26Z",
       "file": "TASK-349-artifact-body-schema-fts-foundation.md"
     },
     "TASK-350": {
