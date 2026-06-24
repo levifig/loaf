@@ -135,6 +135,30 @@ loaf search
 
 ---
 
+## Docs Management
+
+### `loaf docs`
+Manage docs/ indexing
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf docs index` | Index docs/ Markdown into SQLite FTS |
+
+**Options:**
+
+- `loaf docs index`:
+  - `--rebuild` - Rebuild current worktree docs index before scanning
+  - `--json` - Output indexed docs, counts, global database scope, and project identity as JSON
+
+**Usage:**
+```bash
+loaf docs index
+```
+
+---
+
 ## Render Management
 
 ### `loaf render`

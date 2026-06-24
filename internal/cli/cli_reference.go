@@ -97,6 +97,16 @@ func cliReferenceCommands() []cliReferenceCommand {
 			},
 		},
 		{
+			Name:        "docs",
+			Description: "Manage docs/ indexing",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "index", Description: "Index docs/ Markdown into SQLite FTS", Options: []cliReferenceOption{
+					{Flags: "--rebuild", Description: "Rebuild current worktree docs index before scanning"},
+					{Flags: "--json", Description: "Output indexed docs, counts, global database scope, and project identity as JSON"},
+				}},
+			},
+		},
+		{
 			Name:        "render",
 			Description: "Maintain committed durable Markdown renders",
 			Subcommands: []cliReferenceSubcommand{
