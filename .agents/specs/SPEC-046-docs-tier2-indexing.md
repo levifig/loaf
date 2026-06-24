@@ -6,7 +6,7 @@ source_sessions:
   - id: 20260621-001541-session
     role: shaped
 created: 2026-06-22T09:13:21Z
-status: implementing
+status: complete
 branch: feat/docs-tier2-indexing
 ---
 
@@ -149,7 +149,7 @@ search is a scope flag over existing rows, not new plumbing.
 |------|------------|--------|------------|
 | Index reflects wrong branch's `docs/` | Med | High | Index the invoking checkout's working tree + record ref; staleness check re-scopes before serving; `--rebuild` escape hatch |
 | Stale index after `git checkout`/`rebase` with no hook | Med | Med | Hash-based staleness detection on every `loaf search`; optional `post-checkout` hook; `loaf docs index --rebuild` |
-| Lazy re-index slows `loaf search` on large `docs/` | Low | Med | Hash-compare is cheap; only changed docs re-index; full scan only via explicit `--rebuild` |
+| Lazy re-index slows `loaf search` on large `docs/` | Low | Med | Hash-compare is cheap; stale worktree indexes refresh on demand; explicit `--rebuild` remains available |
 | Tier-2 `path:line` collides/confuses with Tier-1 entity refs in output | Med | Med | Explicit `tier` discriminator + distinct `locator` shape in schema and human output |
 | Cross-project search leaks paths from unrelated repos confusingly | Low | Low | Default current-project; `--all-projects` groups by project + shows project name + absolute path |
 | ADR-013:12 mis-statement makes "where do ADRs live" ambiguous during breakdown | Low | Low | This spec fixes the source of truth (index `docs/decisions/`); SPEC-050 corrects the prose |
@@ -166,21 +166,21 @@ search is a scope flag over existing rows, not new plumbing.
       branch/ref metadata for stale-scope detection.
 
 ## Test Conditions
-- [ ] `loaf docs index` populates `docs_index` from the invoking checkout's `docs/`; a subsequent
+- [x] `loaf docs index` populates `docs_index` from the invoking checkout's `docs/`; a subsequent
       `loaf search "<term-in-an-ADR>"` returns the ADR with a `docs/decisions/…md:line` locator.
-- [ ] `loaf search` returns **both** Tier-1 hits (entity-addressed) and Tier-2 hits (`path:line`)
+- [x] `loaf search` returns **both** Tier-1 hits (entity-addressed) and Tier-2 hits (`path:line`)
       in one result set, each tagged with its `tier`; `--json` carries the discriminator.
-- [ ] Editing a `docs/` file and re-running `loaf search` reflects the new content **without** an
-      explicit re-index (lazy staleness detection re-indexes the changed doc).
-- [ ] `git checkout`-ing a branch with different `docs/` content and running `loaf search` returns
+- [x] Editing a `docs/` file and re-running `loaf search` reflects the new content **without** an
+      explicit re-index (lazy staleness detection refreshes the current worktree index).
+- [x] `git checkout`-ing a branch with different `docs/` content and running `loaf search` returns
       results from the **checked-out branch's** docs, not another branch's (working-tree rule).
-- [ ] `loaf docs index --rebuild` drops and rebuilds the index; results are unchanged vs. a fresh
+- [x] `loaf docs index --rebuild` drops and rebuilds the index; results are unchanged vs. a fresh
       index (index is purely derived).
-- [ ] `loaf search` defaults to the current project; `--all-projects` returns hits across project
+- [x] `loaf search` defaults to the current project; `--all-projects` returns hits across project
       partitions, each labeled with project + an unambiguous path.
-- [ ] Tier-2 docs are never written/moved by indexing — `git status` stays clean after any
+- [x] Tier-2 docs are never written/moved by indexing — `git status` stays clean after any
       `loaf search` / `loaf docs index`.
-- [ ] `CGO_ENABLED=0 go build` stays green (no new dependency; reuses SPEC-043 FTS5 setup).
+- [x] `CGO_ENABLED=0 go build` stays green (no new dependency; reuses SPEC-043 FTS5 setup).
 
 ## Priority Order
 
