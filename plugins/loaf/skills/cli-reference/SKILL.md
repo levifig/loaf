@@ -435,6 +435,7 @@ status and relationship data when initialized.
 | `loaf spec list` | Show specs with status and task counts |
 | `loaf spec show` | Show spec details |
 | `loaf spec render` | Render deterministic spec Markdown to the XDG cache |
+| `loaf spec finalize` | Write deterministic spec Markdown to its tracked git location |
 | `loaf spec archive` | Archive a completed spec |
 
 **Options:**
@@ -446,6 +447,9 @@ status and relationship data when initialized.
   - `--json` - Output spec details, task counts, relationships, global database scope, and project identity as JSON
 
 - `loaf spec render`:
+  - `--json` - Output render path, content hash, contract, global database scope, and project identity as JSON
+
+- `loaf spec finalize`:
   - `--json` - Output render path, content hash, contract, global database scope, and project identity as JSON
 
 - `loaf spec archive`:
@@ -478,7 +482,7 @@ only when a durable prose artifact is explicitly needed.
 | `loaf report render` | Render deterministic report Markdown to the XDG cache |
 | `loaf report generate` | Generate a report from state |
 | `loaf report create` | Create a report draft |
-| `loaf report finalize` | Mark a report draft as final |
+| `loaf report finalize` | Mark a report draft as final and write its deterministic tracked render |
 | `loaf report archive` | Archive a finalized report |
 
 **Options:**
@@ -507,7 +511,7 @@ only when a durable prose artifact is explicitly needed.
   - `--json` - Output created report, event, global database scope, and project identity as JSON
 
 - `loaf report finalize`:
-  - `--json` - Output report status transition, event, global database scope, and project identity as JSON
+  - `--json` - Output report status transition, render path, event, global database scope, and project identity as JSON
 
 - `loaf report archive`:
   - `--json` - Output report status transition, event, global database scope, and project identity as JSON

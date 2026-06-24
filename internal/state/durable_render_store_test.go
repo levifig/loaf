@@ -91,3 +91,75 @@ func TestRenderDurableArtifactWritesReportToCache(t *testing.T) {
 		t.Fatalf("report render content = %q, want report kind and stamp", text)
 	}
 }
+
+func TestFinalizeDurableArtifactWritesSpecToTrackedSource(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	specRel := filepath.ToSlash(filepath.Join(".agents", "specs", "SPEC-001-finalize.md"))
+	writeAgentsFile(t, root.Path(), "specs/SPEC-001-finalize.md", `---
+id: SPEC-001
+title: Finalize Spec
+status: implementing
+---
+# Finalize Spec
+
+Original body.
+`)
+	if _, err := ApplyMarkdownMigration(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("ApplyMarkdownMigration() error = %v", err)
+	}
+
+	result, err := FinalizeDurableArtifact(context.Background(), root, PathResolver{StateHome: stateHome}, DurableFinalizeOptions{Kind: "spec", Ref: "SPEC-001"})
+	if err != nil {
+		t.Fatalf("FinalizeDurableArtifact(spec) error = %v", err)
+	}
+	if result.RelativePath != specRel {
+		t.Fatalf("RelativePath = %q, want %q", result.RelativePath, specRel)
+	}
+	content, err := os.ReadFile(filepath.Join(root.Path(), filepath.FromSlash(specRel)))
+	if err != nil {
+		t.Fatalf("read finalized spec error = %v", err)
+	}
+	text := string(content)
+	if !strings.Contains(text, "<!-- loaf:render kind=spec contract=durable-doc-v1 -->") || !strings.Contains(text, "# Finalize Spec") {
+		t.Fatalf("finalized spec = %q, want body and stamp", text)
+	}
+	if strings.Contains(text, "created_at") || strings.Contains(text, "updated_at") {
+		t.Fatalf("finalized spec contains volatile metadata:\n%s", text)
+	}
+}
+
+func TestFinalizeDurableArtifactWritesReportFallbackPath(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	created, err := CreateReport(context.Background(), root, PathResolver{StateHome: stateHome}, ReportCreateOptions{
+		Slug:    "finalize-render",
+		Kind:    "audit",
+		Source:  "test",
+		Body:    "# Finalize Render\n\nReport body.",
+		SetBody: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateReport() error = %v", err)
+	}
+
+	result, err := FinalizeDurableArtifact(context.Background(), root, PathResolver{StateHome: stateHome}, DurableFinalizeOptions{Kind: "report", Ref: created.Report.Alias})
+	if err != nil {
+		t.Fatalf("FinalizeDurableArtifact(report) error = %v", err)
+	}
+	wantRel := filepath.ToSlash(filepath.Join(".agents", "reports", created.Report.Alias+".md"))
+	if result.RelativePath != wantRel {
+		t.Fatalf("RelativePath = %q, want %q", result.RelativePath, wantRel)
+	}
+	content, err := os.ReadFile(filepath.Join(root.Path(), filepath.FromSlash(wantRel)))
+	if err != nil {
+		t.Fatalf("read finalized report error = %v", err)
+	}
+	text := string(content)
+	if !strings.Contains(text, "report_kind: audit") || !strings.Contains(text, "<!-- loaf:render kind=report contract=durable-doc-v1 -->") {
+		t.Fatalf("finalized report = %q, want report kind and stamp", text)
+	}
+}

@@ -6362,10 +6362,11 @@ func (r Runner) runSpec(args []string, out io.Writer, runtime state.Runtime) err
 		return nil
 	}
 	if writeNestedHelp(out, args, map[string]func(io.Writer){
-		"list":    writeSpecListHelp,
-		"show":    writeSpecShowHelp,
-		"render":  writeSpecRenderHelp,
-		"archive": writeSpecArchiveHelp,
+		"list":     writeSpecListHelp,
+		"show":     writeSpecShowHelp,
+		"render":   writeSpecRenderHelp,
+		"finalize": writeSpecFinalizeHelp,
+		"archive":  writeSpecArchiveHelp,
 	}) {
 		return nil
 	}
@@ -6376,6 +6377,8 @@ func (r Runner) runSpec(args []string, out io.Writer, runtime state.Runtime) err
 		return r.runSpecShow(args[1:], out, runtime)
 	case "render":
 		return r.runSpecRender(args[1:], out, runtime)
+	case "finalize":
+		return r.runSpecFinalize(args[1:], out, runtime)
 	case "archive":
 		return r.runSpecArchive(args[1:], out, runtime)
 	default:
@@ -6392,6 +6395,7 @@ func writeSpecHelp(out io.Writer) {
 	fmt.Fprintln(out, "  list     List specs")
 	fmt.Fprintln(out, "  show     Show one spec")
 	fmt.Fprintln(out, "  render   Render a spec to the XDG cache")
+	fmt.Fprintln(out, "  finalize Write a deterministic spec render to git")
 	fmt.Fprintln(out, "  archive  Archive completed specs")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
@@ -6408,6 +6412,10 @@ func writeSpecShowHelp(out io.Writer) {
 
 func writeSpecRenderHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf spec render <spec> [--json]", "Render a deterministic spec Markdown file to the XDG cache.", "--json       Output render path, content hash, contract, global database scope, and project identity as JSON")
+}
+
+func writeSpecFinalizeHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spec finalize <spec> [--json]", "Write a deterministic spec Markdown render to its tracked git location.", "--json       Output render path, content hash, contract, global database scope, and project identity as JSON")
 }
 
 func writeSpecArchiveHelp(out io.Writer) {
@@ -6523,6 +6531,39 @@ func (r Runner) runSpecRender(args []string, out io.Writer, runtime state.Runtim
 		return writeJSON(out, result)
 	}
 	writeDurableRenderResult(out, result)
+	return nil
+}
+
+func (r Runner) runSpecFinalize(args []string, out io.Writer, runtime state.Runtime) error {
+	ref, jsonOutput, err := parseSingleRefArgs("spec finalize", args)
+	if err != nil {
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return err
+	}
+	status, err := state.Inspect(projectRoot, state.PathResolver{StateHome: r.StateHome})
+	if err != nil {
+		return err
+	}
+	switch status.Mode {
+	case state.ModeMarkdownOnly:
+		return sqliteStateRequiredError("spec finalize")
+	case state.ModeInvalid:
+		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+	result, err := state.FinalizeDurableArtifact(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.DurableFinalizeOptions{
+		Kind: "spec",
+		Ref:  ref,
+	})
+	if err != nil {
+		return err
+	}
+	if jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeDurableFinalizeResult(out, result)
 	return nil
 }
 
@@ -9892,6 +9933,14 @@ func (r Runner) runReportFinalize(args []string, out io.Writer, runtime state.Ru
 	if err != nil {
 		return err
 	}
+	render, err := state.FinalizeDurableArtifact(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.DurableFinalizeOptions{
+		Kind: "report",
+		Ref:  ref,
+	})
+	if err != nil {
+		return err
+	}
+	result.Render = &render
 	if jsonOutput {
 		return writeJSON(out, result)
 	}
@@ -10003,6 +10052,10 @@ func writeReportStatus(out io.Writer, action string, result state.ReportStatusRe
 	if result.EventID != "" {
 		fmt.Fprintf(out, "event: %s\n", result.EventID)
 	}
+	if result.Render != nil {
+		fmt.Fprintf(out, "render: %s\n", result.Render.RelativePath)
+		fmt.Fprintf(out, "render sha256: %s\n", result.Render.ContentHash)
+	}
 }
 
 func writeDurableRenderResult(out io.Writer, result state.DurableRenderResult) {
@@ -10014,6 +10067,17 @@ func writeDurableRenderResult(out io.Writer, result state.DurableRenderResult) {
 	fmt.Fprintf(out, "branch: %s\n", result.Branch)
 	fmt.Fprintf(out, "contract: %s\n", result.Contract)
 	fmt.Fprintf(out, "path: %s\n", result.Path)
+	fmt.Fprintf(out, "sha256: %s\n", result.ContentHash)
+}
+
+func writeDurableFinalizeResult(out io.Writer, result state.DurableFinalizeResult) {
+	fmt.Fprintf(out, "finalized %s %s\n", result.Kind, result.Ref)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.Title != "" {
+		fmt.Fprintf(out, "title: %s\n", result.Title)
+	}
+	fmt.Fprintf(out, "contract: %s\n", result.Contract)
+	fmt.Fprintf(out, "path: %s\n", result.RelativePath)
 	fmt.Fprintf(out, "sha256: %s\n", result.ContentHash)
 }
 
