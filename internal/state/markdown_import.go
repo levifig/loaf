@@ -736,7 +736,7 @@ func (m markdownImporter) upsertAlias(ctx context.Context, entityKind string, en
 	_, err := m.tx.ExecContext(ctx, `
 INSERT INTO aliases (id, project_id, entity_kind, entity_id, namespace, alias, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET
+ON CONFLICT(project_id, namespace, alias) DO UPDATE SET
   entity_kind = excluded.entity_kind,
   entity_id = excluded.entity_id,
   updated_at = excluded.updated_at

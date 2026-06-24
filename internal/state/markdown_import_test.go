@@ -93,6 +93,16 @@ func TestApplyMarkdownMigrationImportsArtifactsAndPreservesSources(t *testing.T)
 	if string(contentAfterApply) != taskBody {
 		t.Fatalf("task source was mutated: %q", string(contentAfterApply))
 	}
+	if _, err := store.db.ExecContext(
+		context.Background(),
+		`UPDATE aliases SET id = ? WHERE project_id = ? AND namespace = ? AND alias = ?`,
+		"legacy-spec-alias-id",
+		result.ProjectID,
+		"spec",
+		"SPEC-001",
+	); err != nil {
+		t.Fatalf("seed legacy alias id error = %v", err)
+	}
 
 	second, err := ApplyMarkdownMigration(context.Background(), root, PathResolver{StateHome: stateHome})
 	if err != nil {
@@ -104,6 +114,7 @@ func TestApplyMarkdownMigrationImportsArtifactsAndPreservesSources(t *testing.T)
 	assertTableCount(t, store, "specs", 1)
 	assertTableCount(t, store, "tasks", 1)
 	assertTableCount(t, store, "relationships", 2)
+	assertTableCount(t, store, "aliases", 8)
 }
 
 func TestApplyMarkdownMigrationDoesNotRequireTasksJSON(t *testing.T) {
