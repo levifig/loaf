@@ -2978,10 +2978,17 @@ func parseSearchArgs(args []string) (searchOptions, error) {
 
 func searchHitAddress(hit state.SearchHit) string {
 	if hit.Source == "docs_index" {
-		if hit.ProjectName != "" {
-			return hit.ProjectName + ":" + hit.Path
+		locator := hit.Locator
+		if locator == "" {
+			locator = hit.Path
 		}
-		return hit.Path
+		if hit.ProjectName != "" {
+			return hit.ProjectName + ":" + locator
+		}
+		return locator
+	}
+	if hit.Locator != "" {
+		return hit.Locator
 	}
 	if hit.Source == "journal_entry" {
 		address := hit.JournalEntryID

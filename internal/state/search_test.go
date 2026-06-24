@@ -137,6 +137,10 @@ func TestSearchReturnsTier2DocsHits(t *testing.T) {
 	if !searchDocsHitContain(current.Results, projectID, "docs/guide.md") {
 		t.Fatalf("current results = %#v, want current docs hit", current.Results)
 	}
+	currentHit, ok := searchDocsHit(current.Results, projectID, "docs/guide.md")
+	if !ok || currentHit.LineStart != 3 || currentHit.Locator != "docs/guide.md:3" {
+		t.Fatalf("current docs hit = %#v, %v; want line locator docs/guide.md:3", currentHit, ok)
+	}
 	if searchDocsHitContain(current.Results, otherProjectID, "docs/guide.md") {
 		t.Fatalf("current results = %#v, want no cross-project docs hit", current.Results)
 	}

@@ -40,10 +40,12 @@ type SearchHit struct {
 	ProjectID          string  `json:"project_id"`
 	ProjectName        string  `json:"project_name,omitempty"`
 	ProjectCurrentPath string  `json:"project_current_path,omitempty"`
+	Locator            string  `json:"locator,omitempty"`
 	EntityKind         string  `json:"entity_kind,omitempty"`
 	EntityID           string  `json:"entity_id,omitempty"`
 	BodyKind           string  `json:"body_kind,omitempty"`
 	Path               string  `json:"path,omitempty"`
+	LineStart          int     `json:"line_start,omitempty"`
 	IndexedWorktree    string  `json:"indexed_worktree,omitempty"`
 	JournalEntryID     string  `json:"journal_entry_id,omitempty"`
 	SessionID          string  `json:"session_id,omitempty"`
@@ -79,6 +81,7 @@ func (s *Store) Search(ctx context.Context, root project.Root, options SearchOpt
 	if err != nil {
 		return SearchResult{}, err
 	}
+	queryTokens := strings.Fields(ftsQuery)
 	limit := options.Limit
 	if limit <= 0 {
 		limit = 20
@@ -101,7 +104,7 @@ func (s *Store) Search(ctx context.Context, root project.Root, options SearchOpt
 		return SearchResult{}, err
 	}
 	hits = append(hits, journalHits...)
-	docHits, err := s.searchDocsIndex(ctx, projectID, indexedWorktree, options.AllProjects, ftsQuery)
+	docHits, err := s.searchDocsIndex(ctx, projectID, indexedWorktree, options.AllProjects, ftsQuery, queryTokens)
 	if err != nil {
 		return SearchResult{}, err
 	}
@@ -167,6 +170,10 @@ WHERE artifact_search MATCH ?`
 		if err := rows.Scan(&hit.ProjectID, &hit.EntityKind, &hit.EntityID, &hit.BodyKind, &hit.Snippet, &hit.Rank); err != nil {
 			return nil, fmt.Errorf("scan artifact search hit: %w", err)
 		}
+		hit.Locator = hit.EntityKind + "/" + hit.EntityID
+		if hit.BodyKind != "" {
+			hit.Locator += "#" + hit.BodyKind
+		}
 		hit.Snippet = redactSearchSnippet(hit.Snippet)
 		hits = append(hits, hit)
 	}
@@ -203,6 +210,13 @@ WHERE journal_search MATCH ?`
 		}
 		hit.SessionID = sessionID.String
 		hit.Scope = scope.String
+		hit.Locator = hit.JournalEntryID
+		if hit.SessionID != "" {
+			hit.Locator = hit.SessionID + "/" + hit.Locator
+		}
+		if hit.EntryType != "" {
+			hit.Locator = hit.EntryType + ":" + hit.Locator
+		}
 		hit.Snippet = redactSearchSnippet(hit.Snippet)
 		hits = append(hits, hit)
 	}
@@ -212,7 +226,7 @@ WHERE journal_search MATCH ?`
 	return hits, nil
 }
 
-func (s *Store) searchDocsIndex(ctx context.Context, projectID string, indexedWorktree string, allProjects bool, ftsQuery string) ([]SearchHit, error) {
+func (s *Store) searchDocsIndex(ctx context.Context, projectID string, indexedWorktree string, allProjects bool, ftsQuery string, queryTokens []string) ([]SearchHit, error) {
 	query := `
 SELECT
   docs_index.project_id,
@@ -220,6 +234,7 @@ SELECT
   COALESCE(current_path.path, projects.current_path, ''),
   docs_index.path,
   docs_index.indexed_worktree,
+  docs_index.content,
   snippet(docs_search, 3, '', '', '...', 12),
   bm25(docs_search)
 FROM docs_search
@@ -242,10 +257,16 @@ WHERE docs_search MATCH ?`
 	var hits []SearchHit
 	for rows.Next() {
 		var hit SearchHit
+		var content string
 		hit.Tier = "tier2"
 		hit.Source = "docs_index"
-		if err := rows.Scan(&hit.ProjectID, &hit.ProjectName, &hit.ProjectCurrentPath, &hit.Path, &hit.IndexedWorktree, &hit.Snippet, &hit.Rank); err != nil {
+		if err := rows.Scan(&hit.ProjectID, &hit.ProjectName, &hit.ProjectCurrentPath, &hit.Path, &hit.IndexedWorktree, &content, &hit.Snippet, &hit.Rank); err != nil {
 			return nil, fmt.Errorf("scan docs search hit: %w", err)
+		}
+		hit.LineStart = firstMatchingLine(content, queryTokens)
+		hit.Locator = hit.Path
+		if hit.LineStart > 0 {
+			hit.Locator = fmt.Sprintf("%s:%d", hit.Path, hit.LineStart)
 		}
 		hit.Snippet = redactSearchSnippet(hit.Snippet)
 		hits = append(hits, hit)
@@ -254,6 +275,28 @@ WHERE docs_search MATCH ?`
 		return nil, fmt.Errorf("iterate docs search hits: %w", err)
 	}
 	return hits, nil
+}
+
+func firstMatchingLine(content string, tokens []string) int {
+	loweredTokens := make([]string, 0, len(tokens))
+	for _, token := range tokens {
+		token = strings.ToLower(strings.TrimSpace(token))
+		if token != "" {
+			loweredTokens = append(loweredTokens, token)
+		}
+	}
+	if len(loweredTokens) == 0 {
+		return 0
+	}
+	for i, line := range strings.Split(content, "\n") {
+		loweredLine := strings.ToLower(line)
+		for _, token := range loweredTokens {
+			if strings.Contains(loweredLine, token) {
+				return i + 1
+			}
+		}
+	}
+	return 0
 }
 
 func (s *Store) ensureDocsIndexFresh(ctx context.Context, root project.Root, projectID string, indexedWorktree string) error {

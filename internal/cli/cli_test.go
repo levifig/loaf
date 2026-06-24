@@ -16132,8 +16132,8 @@ func TestRunnerSearchReturnsTier2DocsHits(t *testing.T) {
 		t.Fatalf("results = %#v, want one docs hit", result.Results)
 	}
 	hit := result.Results[0]
-	if hit.Tier != "tier2" || hit.Source != "docs_index" || hit.Path != "docs/guide.md" || !strings.Contains(hit.Snippet, "clisearchdocsterm") {
-		t.Fatalf("hit = %#v, want Tier-2 docs hit with snippet", hit)
+	if hit.Tier != "tier2" || hit.Source != "docs_index" || hit.Path != "docs/guide.md" || hit.Locator != "docs/guide.md:3" || !strings.Contains(hit.Snippet, "clisearchdocsterm") {
+		t.Fatalf("hit = %#v, want Tier-2 docs hit with line locator and snippet", hit)
 	}
 	if hit.ProjectName == "" || hit.ProjectCurrentPath != workingDir {
 		t.Fatalf("hit project context = %#v, want project name and path %q", hit, workingDir)
