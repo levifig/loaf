@@ -166,6 +166,85 @@ func TestRunnerInstallUpgradeSkipsUnmarkedRetiredTarget(t *testing.T) {
 	}
 }
 
+func TestRunnerInstallUpgradeRelocatesManifestPathExactlyOnce(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	oldPath := filepath.Join(home, ".old-agents", "skills")
+	newPath := filepath.Join(home, ".agents", "skills")
+	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
+	writeInstallFile(t, filepath.Join(oldPath, "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [],
+  "retired_skills": [],
+  "relocations": [
+    {
+      "id": "old-agents-skills",
+      "from": "${HOME}/.old-agents/skills",
+      "to": "${HOME}/.agents/skills",
+      "since": "v9.9.0",
+      "window": "one-release",
+      "reason": "skills moved to ~/.agents/skills"
+    }
+  ],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	assertInstallPathMissing(t, oldPath)
+	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+	if !strings.Contains(stdout.String(), "relocated path old-agents-skills") {
+		t.Fatalf("stdout = %q, want relocation report", stdout.String())
+	}
+
+	stdout.Reset()
+	err = Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("second install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	assertInstallPathMissing(t, oldPath)
+	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+}
+
+func TestRunnerInstallUpgradeRemovesStaleRelocatedPathWhenDestinationExists(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	oldPath := filepath.Join(home, ".old-agents", "skills")
+	newPath := filepath.Join(home, ".agents", "skills")
+	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
+	writeInstallFile(t, filepath.Join(oldPath, "stale", "SKILL.md"), "# Stale\n")
+	writeInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [],
+  "retired_skills": [],
+  "relocations": [
+    {
+      "id": "old-agents-skills",
+      "from": "${HOME}/.old-agents/skills",
+      "to": "${HOME}/.agents/skills",
+      "since": "v9.9.0",
+      "window": "one-release",
+      "reason": "skills moved to ~/.agents/skills"
+    }
+  ],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	assertInstallPathMissing(t, oldPath)
+	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+	if !strings.Contains(stdout.String(), "removed stale relocated path old-agents-skills") {
+		t.Fatalf("stdout = %q, want stale relocation removal report", stdout.String())
+	}
+}
+
 func TestRunnerInstallCodexUsesCodeXHomeNatively(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
 	codexHome := filepath.Join(home, "custom-codex")

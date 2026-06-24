@@ -172,7 +172,54 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 			result.Removed = append(result.Removed, action)
 		}
 	}
+	for _, relocation := range manifest.Relocations {
+		from, err := expandInstallDeprecationPath(relocation.From, pathContext)
+		if err != nil {
+			return result, err
+		}
+		to, err := expandInstallDeprecationPath(relocation.To, pathContext)
+		if err != nil {
+			return result, err
+		}
+		action := installDeprecationCleanupAction{
+			Kind:   "path",
+			Name:   relocation.ID,
+			Path:   from + " -> " + to,
+			Reason: relocation.Reason,
+		}
+		if !dirExistsForInstall(from) {
+			action.Action = "missing"
+			result.Skipped = append(result.Skipped, action)
+			continue
+		}
+		if !isLoafOwnedInstallDir(from) {
+			action.Action = "unmarked"
+			result.Skipped = append(result.Skipped, action)
+			continue
+		}
+		if dirExistsForInstall(to) {
+			if err := os.RemoveAll(from); err != nil {
+				return result, err
+			}
+			action.Action = "removed-stale"
+			result.Removed = append(result.Removed, action)
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
+			return result, err
+		}
+		if err := os.Rename(from, to); err != nil {
+			return result, err
+		}
+		action.Action = "relocated"
+		result.Removed = append(result.Removed, action)
+	}
 	return result, nil
+}
+
+func isLoafOwnedInstallDir(path string) bool {
+	return fileExistsForInstall(filepath.Join(path, loafInstallMarkerFile)) ||
+		fileExistsForInstall(filepath.Join(path, "SKILL.md"))
 }
 
 func installPathContext() map[string]string {
@@ -218,7 +265,14 @@ func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationClea
 	}
 	fmt.Fprintf(out, "  %s install deprecation cleanup\n", ansiGray("•"))
 	for _, action := range result.Removed {
-		fmt.Fprintf(out, "    %s removed retired %s %s at %s", ansiGreen("✓"), action.Kind, action.Name, ansiGray(action.Path))
+		switch action.Action {
+		case "relocated":
+			fmt.Fprintf(out, "    %s relocated %s %s at %s", ansiGreen("✓"), action.Kind, action.Name, ansiGray(action.Path))
+		case "removed-stale":
+			fmt.Fprintf(out, "    %s removed stale relocated %s %s at %s", ansiGreen("✓"), action.Kind, action.Name, ansiGray(action.Path))
+		default:
+			fmt.Fprintf(out, "    %s removed retired %s %s at %s", ansiGreen("✓"), action.Kind, action.Name, ansiGray(action.Path))
+		}
 		if action.Reason != "" {
 			fmt.Fprintf(out, " — %s", action.Reason)
 		}
