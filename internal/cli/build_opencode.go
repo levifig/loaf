@@ -86,13 +86,17 @@ func generateNativeOpenCodeCommands(root string, version string) error {
 			continue
 		}
 		skill := entry.Name()
+		invocable, err := isNativeOpenCodeCommandSkill(sidecarsSrc, skill)
+		if err != nil {
+			return err
+		}
+		if !invocable {
+			continue
+		}
 		sidecarPath := filepath.Join(sidecarsSrc, skill, "SKILL.opencode.yaml")
 		sidecarFields, err := readNativeBuildAgentSidecar(sidecarPath, false)
 		if err != nil {
 			return err
-		}
-		if len(sidecarFields) == 0 {
-			continue
 		}
 		skillPath := filepath.Join(skillsSrc, skill, "SKILL.md")
 		body, err := os.ReadFile(skillPath)
@@ -122,6 +126,19 @@ func generateNativeOpenCodeCommands(root string, version string) error {
 		}
 	}
 	return nil
+}
+
+func isNativeOpenCodeCommandSkill(sidecarsSrc string, skill string) (bool, error) {
+	fields, err := readNativeBuildAgentSidecar(filepath.Join(sidecarsSrc, skill, "SKILL.claude-code.yaml"), false)
+	if err != nil {
+		return false, err
+	}
+	for _, field := range fields {
+		if field.key == "user-invocable" && field.value.kind == "bool" {
+			return field.value.scalar == "true", nil
+		}
+	}
+	return false, nil
 }
 
 func generateNativeOpenCodePlugin(hooksPath string, dist string, version string) error {

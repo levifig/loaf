@@ -2,11 +2,11 @@
 id: TASK-256
 title: Preserve Codex hook semantics and OpenCode command reachability
 spec: SPEC-047
-status: todo
+status: done
 priority: P1
 created: '2026-06-24T12:03:41Z'
-updated: '2026-06-24T12:03:41Z'
-completed_at: null
+updated: '2026-06-24T12:32:20Z'
+completed_at: '2026-06-24T12:32:20Z'
 depends_on:
   - TASK-255
 files:
@@ -36,12 +36,12 @@ sidecar presence.
 
 ## Acceptance Criteria
 
-- [ ] Codex hooks default `failClosed` to `false`.
-- [ ] Codex parses `failClosed` as true only when explicitly set to true.
-- [ ] Codex carries `blocking` and `if` through source parsing and emitted JSON.
-- [ ] Enforcement hooks in `config/hooks.yaml` still emit as enforcing.
-- [ ] Every `user-invocable: true` workflow skill gets an OpenCode command.
-- [ ] `user-invocable: false` reference skills do not get OpenCode commands.
+- [x] Codex hooks default `failClosed` to `false`.
+- [x] Codex parses `failClosed` as true only when explicitly set to true.
+- [x] Codex carries `blocking` and `if` through source parsing and emitted JSON.
+- [x] Enforcement hooks in `config/hooks.yaml` still emit as enforcing.
+- [x] Every `user-invocable: true` workflow skill gets an OpenCode command.
+- [x] `user-invocable: false` reference skills do not get OpenCode commands.
 
 ## Verification
 

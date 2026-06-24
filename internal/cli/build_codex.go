@@ -21,14 +21,6 @@ var codexEnforcementHooks = map[string]bool{
 	"security-audit":          true,
 }
 
-type nativeBuildCodexHook struct {
-	id          string
-	matcher     string
-	timeout     int
-	failClosed  bool
-	description string
-}
-
 type nativeBuildYAMLField struct {
 	key   string
 	value string
@@ -49,6 +41,8 @@ type nativeCodexPreToolHookJSON struct {
 	Command     string `json:"command"`
 	Timeout     int    `json:"timeout"`
 	FailClosed  bool   `json:"failClosed"`
+	Blocking    bool   `json:"blocking"`
+	If          string `json:"if,omitempty"`
 	Description string `json:"description,omitempty"`
 }
 
@@ -553,13 +547,13 @@ func nativeBuildPackageVersion(root string) (string, error) {
 }
 
 func generateNativeCodexHooksJSON(root string, dist string) error {
-	hooks, err := readNativeCodexHooks(filepath.Join(root, "config", "hooks.yaml"))
+	hooks, err := readNativeBuildHooks(filepath.Join(root, "config", "hooks.yaml"))
 	if err != nil {
 		return err
 	}
 	var preTool []nativeCodexPreToolHookJSON
 	for _, hook := range hooks {
-		if !codexEnforcementHooks[hook.id] || !strings.Contains(hook.matcher, "Bash") {
+		if hook.section != "pre-tool" || !codexEnforcementHooks[hook.id] || !strings.Contains(hook.matcher, "Bash") {
 			continue
 		}
 		timeout := hook.timeout
@@ -572,6 +566,8 @@ func generateNativeCodexHooksJSON(root string, dist string) error {
 			Command:     "loaf check --hook " + hook.id,
 			Timeout:     timeout / 1000,
 			FailClosed:  hook.failClosed,
+			Blocking:    hook.blocking,
+			If:          hook.ifCondition,
 		}
 		if hook.description != "" {
 			entry.Description = hook.description
@@ -596,62 +592,6 @@ func generateNativeCodexHooksJSON(root string, dist string) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(codexDir, "hooks.json"), body, 0o644)
-}
-
-func readNativeCodexHooks(path string) ([]nativeBuildCodexHook, error) {
-	body, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	var hooks []nativeBuildCodexHook
-	inPreTool := false
-	var current *nativeBuildCodexHook
-	for _, line := range strings.Split(string(body), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "    ") && strings.HasSuffix(trimmed, ":") {
-			if current != nil {
-				hooks = append(hooks, *current)
-				current = nil
-			}
-			inPreTool = trimmed == "pre-tool:"
-			continue
-		}
-		if !inPreTool {
-			continue
-		}
-		if strings.HasPrefix(trimmed, "- id:") {
-			if current != nil {
-				hooks = append(hooks, *current)
-			}
-			current = &nativeBuildCodexHook{failClosed: true}
-			current.id = unquoteNativeBuildYAML(strings.TrimSpace(strings.TrimPrefix(trimmed, "- id:")))
-			continue
-		}
-		if current == nil || !strings.Contains(trimmed, ":") {
-			continue
-		}
-		key, value, _ := strings.Cut(trimmed, ":")
-		value = unquoteNativeBuildYAML(strings.TrimSpace(value))
-		switch key {
-		case "matcher":
-			current.matcher = value
-		case "timeout":
-			if parsed, err := strconv.Atoi(value); err == nil {
-				current.timeout = parsed
-			}
-		case "failClosed":
-			current.failClosed = value != "false"
-		case "description":
-			current.description = value
-		}
-	}
-	if current != nil {
-		hooks = append(hooks, *current)
-	}
-	return hooks, nil
 }
 
 func parseNativeBuildSimpleYAMLScalars(content string) map[string]string {

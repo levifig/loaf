@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,12 +155,41 @@ func TestRunnerBuildTargetCodexRunsNativeTarget(t *testing.T) {
 	if !strings.HasPrefix(hooksJSON, "{\n  \"version\": 1,\n  \"hooks\": {") {
 		t.Fatalf("hooks.json = %q, want TypeScript-compatible top-level field order", hooksJSON)
 	}
-	if !strings.Contains(hooksJSON, "{\n        \"loaf-managed\": true,\n        \"matcher\": \"Bash\",\n        \"command\": \"loaf check --hook check-secrets\",\n        \"timeout\": 30,\n        \"failClosed\": true,\n        \"description\": \"Check for hardcoded secrets before writing\"\n      }") {
+	if !strings.Contains(hooksJSON, "{\n        \"loaf-managed\": true,\n        \"matcher\": \"Bash\",\n        \"command\": \"loaf check --hook check-secrets\",\n        \"timeout\": 30,\n        \"failClosed\": true,\n        \"blocking\": true,\n        \"description\": \"Check for hardcoded secrets before writing\"\n      }") {
 		t.Fatalf("hooks.json = %q, want TypeScript-compatible hook field order", hooksJSON)
 	}
-	for _, want := range []string{`"matcher": "Bash"`, `"command": "loaf check --hook check-secrets"`, `"timeout": 30`, `"failClosed": true`} {
+	for _, want := range []string{`"matcher": "Bash"`, `"command": "loaf check --hook check-secrets"`, `"timeout": 30`, `"failClosed": true`, `"blocking": true`} {
 		if !strings.Contains(hooksJSON, want) {
 			t.Fatalf("hooks.json = %q, want %q", hooksJSON, want)
+		}
+	}
+	var hooks nativeCodexHooksJSON
+	if err := json.Unmarshal([]byte(hooksJSON), &hooks); err != nil {
+		t.Fatalf("Unmarshal(codex hooks) error = %v\n%s", err, hooksJSON)
+	}
+	hooksByID := map[string]nativeCodexPreToolHookJSON{}
+	for _, hook := range hooks.Hooks.PreToolUse {
+		id := strings.TrimPrefix(hook.Command, "loaf check --hook ")
+		hooksByID[id] = hook
+	}
+	for _, tc := range []struct {
+		id         string
+		failClosed bool
+		blocking   bool
+		ifValue    string
+	}{
+		{id: "check-secrets", failClosed: true, blocking: true},
+		{id: "security-audit", failClosed: true, blocking: true},
+		{id: "validate-commit", failClosed: true, blocking: true, ifValue: "Bash(git commit:*)"},
+		{id: "validate-push", failClosed: false, blocking: false, ifValue: "Bash(git push:*)"},
+		{id: "workflow-pre-pr", failClosed: false, blocking: false, ifValue: "Bash(gh pr create:*)"},
+	} {
+		hook, ok := hooksByID[tc.id]
+		if !ok {
+			t.Fatalf("codex hooks = %#v, missing %s", hooksByID, tc.id)
+		}
+		if hook.FailClosed != tc.failClosed || hook.Blocking != tc.blocking || hook.If != tc.ifValue {
+			t.Fatalf("codex hook %s = %#v, want failClosed=%v blocking=%v if=%q", tc.id, hook, tc.failClosed, tc.blocking, tc.ifValue)
 		}
 	}
 	if strings.Contains(hooksJSON, "workflow-pre-merge") || strings.Contains(hooksJSON, "detect-linear-magic") {
@@ -327,6 +357,19 @@ func TestRunnerBuildTargetOpenCodeRunsNativeTarget(t *testing.T) {
 		if !strings.Contains(command, want) {
 			t.Fatalf("opencode command = %q, want %q", command, want)
 		}
+	}
+	workflowCommand := readBuildFileString(t, filepath.Join(root, "dist", "opencode", "commands", "workflow-only.md"))
+	for _, want := range []string{
+		"description: Workflow-only skill without an OpenCode sidecar.",
+		"version: 9.8.7-test.1",
+		"/implement",
+	} {
+		if !strings.Contains(workflowCommand, want) {
+			t.Fatalf("opencode workflow-only command = %q, want %q", workflowCommand, want)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, "dist", "opencode", "commands", "reference-only.md")); !os.IsNotExist(err) {
+		t.Fatalf("reference-only command stat = %v, want no OpenCode command for non-invocable skill", err)
 	}
 	agent := readBuildFileString(t, filepath.Join(root, "dist", "opencode", "agents", "background-runner.md"))
 	for _, want := range []string{
@@ -714,9 +757,35 @@ func seedNativeCodexBuildFixture(t *testing.T, root string) {
 		"  pre-tool:",
 		"    - id: check-secrets",
 		"      matcher: \"Edit|Write|Bash\"",
+		"      blocking: true",
 		"      timeout: 30000",
 		"      failClosed: true",
 		"      description: Check for hardcoded secrets before writing",
+		"    - id: security-audit",
+		"      matcher: \"Bash\"",
+		"      blocking: true",
+		"      timeout: 600000",
+		"      failClosed: true",
+		"      description: Run security audit on bash commands",
+		"    - id: validate-push",
+		"      matcher: \"Bash\"",
+		"      if: \"Bash(git push:*)\"",
+		"      blocking: false",
+		"      timeout: 60000",
+		"      description: Validates version bump, CHANGELOG, and build before git push",
+		"    - id: workflow-pre-pr",
+		"      matcher: \"Bash\"",
+		"      if: \"Bash(gh pr create:*)\"",
+		"      blocking: false",
+		"      timeout: 5000",
+		"      description: Remind about PR format before gh pr create",
+		"    - id: validate-commit",
+		"      matcher: \"Bash\"",
+		"      if: \"Bash(git commit:*)\"",
+		"      blocking: true",
+		"      timeout: 30000",
+		"      failClosed: true",
+		"      description: Validate commit messages follow conventions",
 		"    - id: workflow-pre-merge",
 		"      type: command",
 		"      instruction: instructions/pre-merge.md",
@@ -804,8 +873,42 @@ func seedNativeOpenCodeBuildFixture(t *testing.T, root string) {
 	mkdirAll(t, filepath.Join(root, "content", "agents"))
 	mkdirAll(t, filepath.Join(root, "content", "hooks", "instructions"))
 	mkdirAll(t, filepath.Join(root, "content", "hooks", "post-tool"))
+	writeFile(t, filepath.Join(root, "content", "skills", "demo", "SKILL.claude-code.yaml"), strings.Join([]string{
+		"user-invocable: true",
+		"",
+	}, "\n"))
 	writeFile(t, filepath.Join(root, "content", "skills", "demo", "SKILL.opencode.yaml"), strings.Join([]string{
 		"subtask: false",
+		"",
+	}, "\n"))
+	mkdirAll(t, filepath.Join(root, "content", "skills", "workflow-only"))
+	writeFile(t, filepath.Join(root, "content", "skills", "workflow-only", "SKILL.md"), strings.Join([]string{
+		"---",
+		"name: workflow-only",
+		"description: Workflow-only skill without an OpenCode sidecar.",
+		"---",
+		"",
+		"# Workflow Only",
+		"",
+		"Run {{IMPLEMENT_CMD}} from a command generated by reachability.",
+		"",
+	}, "\n"))
+	writeFile(t, filepath.Join(root, "content", "skills", "workflow-only", "SKILL.claude-code.yaml"), strings.Join([]string{
+		"user-invocable: true",
+		"",
+	}, "\n"))
+	mkdirAll(t, filepath.Join(root, "content", "skills", "reference-only"))
+	writeFile(t, filepath.Join(root, "content", "skills", "reference-only", "SKILL.md"), strings.Join([]string{
+		"---",
+		"name: reference-only",
+		"description: Reference-only skill.",
+		"---",
+		"",
+		"# Reference Only",
+		"",
+	}, "\n"))
+	writeFile(t, filepath.Join(root, "content", "skills", "reference-only", "SKILL.claude-code.yaml"), strings.Join([]string{
+		"user-invocable: false",
 		"",
 	}, "\n"))
 	writeFile(t, filepath.Join(root, "content", "agents", "background-runner.md"), strings.Join([]string{

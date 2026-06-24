@@ -4690,7 +4690,7 @@
       "title": "Emit first-class Amp TypeScript plugin",
       "slug": "amp-first-class-typescript-plugin",
       "spec": "SPEC-047",
-      "status": "in_progress",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-253"
@@ -4740,7 +4740,7 @@
       "title": "Preserve Codex hook semantics and OpenCode command reachability",
       "slug": "codex-opencode-parity-semantics",
       "spec": "SPEC-047",
-      "status": "todo",
+      "status": "in_progress",
       "priority": "P1",
       "depends_on": [
         "TASK-255"
@@ -4756,8 +4756,8 @@
       "done": "Codex preserves advisory/enforcement and conditional hook fields, and OpenCode generates commands for every user-invocable workflow skill rather than only sidecar-bearing skills.",
       "session": null,
       "created": "2026-06-24T12:03:41Z",
-      "updated": "2026-06-24T12:03:41Z",
-      "completed_at": null,
+      "updated": "2026-06-24T12:32:20Z",
+      "completed_at": "2026-06-24T12:32:20Z",
       "file": "TASK-256-codex-opencode-parity-semantics.md"
     },
     "TASK-257": {

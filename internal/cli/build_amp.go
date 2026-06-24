@@ -21,6 +21,7 @@ type nativeBuildHook struct {
 	event       string
 	timeout     int
 	failClosed  bool
+	blocking    bool
 	ifCondition string
 	section     string
 	typeName    string
@@ -582,6 +583,8 @@ func readNativeBuildHooks(path string) ([]nativeBuildHook, error) {
 			}
 		case "failClosed":
 			current.failClosed = value == "true"
+		case "blocking":
+			current.blocking = value == "true"
 		case "if":
 			current.ifCondition = value
 		case "description":
