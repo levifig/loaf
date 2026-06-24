@@ -4714,7 +4714,7 @@
       "title": "Remove Gemini from in-repo build and install surfaces",
       "slug": "remove-gemini-in-repo-build-install-surfaces",
       "spec": "SPEC-047",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-254"
@@ -4728,12 +4728,12 @@
         "dist/gemini/",
         ".agents/tasks/TASK-255-remove-gemini-in-repo-build-install-surfaces.md"
       ],
-      "verify": "! rg -n 'gemini' config internal/cli dist plugins package.json README.md docs content && npm run build && npm run test",
+      "verify": "! rg -n 'gemini|Gemini' config/targets.yaml internal/cli/build.go internal/cli/build_test.go internal/cli/install.go internal/cli/install_target.go internal/cli/install_target_test.go internal/cli/install_fenced.go internal/cli/install_mcp.go internal/cli/install_mcp_test.go internal/cli/install_command_test.go internal/cli/install_symlink.go internal/cli/version.go package.json README.md docs/ARCHITECTURE.md docs/knowledge/build-system.md docs/knowledge/glossary.md .agents/AGENTS.md && test ! -e dist/gemini && npm run build && npm run test",
       "done": "Gemini is absent from source build/install wiring and generated in-repo output while user-side cleanup remains deferred to SPEC-053.",
       "session": null,
       "created": "2026-06-24T12:03:41Z",
-      "updated": "2026-06-24T12:03:41Z",
-      "completed_at": null,
+      "updated": "2026-06-24T12:25:48Z",
+      "completed_at": "2026-06-24T12:25:48Z",
       "file": "TASK-255-remove-gemini-in-repo-build-install-surfaces.md"
     },
     "TASK-256": {

@@ -98,8 +98,6 @@ func installTargetDistribution(options targetInstallOptions) error {
 		return installCursorTarget(options)
 	case "codex":
 		return installCodexTarget(options)
-	case "gemini":
-		return installGeminiTarget(options)
 	case "amp":
 		return installAmpTarget(options)
 	default:
@@ -156,14 +154,6 @@ func installCodexTarget(options targetInstallOptions) error {
 		return err
 	}
 	if err := mergeHookFiles(filepath.Join(codexHome, "hooks.json"), filepath.Join(options.DistDir, ".codex", "hooks.json")); err != nil {
-		return err
-	}
-	return writeInstallMarker(options.ConfigDir, options.Version)
-}
-
-func installGeminiTarget(options targetInstallOptions) error {
-	homeDir := installHomeDir(options)
-	if err := syncTargetDirIfExists(filepath.Join(options.DistDir, "skills"), filepath.Join(homeDir, ".agents", "skills")); err != nil {
 		return err
 	}
 	return writeInstallMarker(options.ConfigDir, options.Version)

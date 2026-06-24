@@ -36,7 +36,6 @@ func TestRunnerBuildRunsContentBuilderNatively(t *testing.T) {
 		filepath.Join(root, "dist", "opencode", "stale.txt"),
 		filepath.Join(root, "dist", "cursor", "stale.txt"),
 		filepath.Join(root, "dist", "codex", "stale.txt"),
-		filepath.Join(root, "dist", "gemini", "stale.txt"),
 		filepath.Join(root, "dist", "amp", "stale.txt"),
 	} {
 		mkdirAll(t, filepath.Dir(staleFile))
@@ -51,7 +50,7 @@ func TestRunnerBuildRunsContentBuilderNatively(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build error = %v", err)
 	}
-	for _, want := range []string{"loaf build", "shared skills intermediate", "claude-code", "opencode", "cursor", "codex", "gemini", "amp", "Build complete"} {
+	for _, want := range []string{"loaf build", "shared skills intermediate", "claude-code", "opencode", "cursor", "codex", "amp", "Build complete"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 		}
@@ -61,7 +60,6 @@ func TestRunnerBuildRunsContentBuilderNatively(t *testing.T) {
 		filepath.Join(root, "dist", "opencode", "stale.txt"),
 		filepath.Join(root, "dist", "cursor", "stale.txt"),
 		filepath.Join(root, "dist", "codex", "stale.txt"),
-		filepath.Join(root, "dist", "gemini", "stale.txt"),
 		filepath.Join(root, "dist", "amp", "stale.txt"),
 	} {
 		if _, err := os.Stat(staleFile); !os.IsNotExist(err) {
@@ -73,7 +71,6 @@ func TestRunnerBuildRunsContentBuilderNatively(t *testing.T) {
 		filepath.Join(root, "dist", "opencode", "plugins", "hooks.ts"),
 		filepath.Join(root, "dist", "cursor", "hooks.json"),
 		filepath.Join(root, "dist", "codex", ".codex", "hooks.json"),
-		filepath.Join(root, "dist", "gemini", "skills", "demo", "SKILL.md"),
 		filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf.ts"),
 	} {
 		if _, err := os.Stat(path); err != nil {
@@ -167,66 +164,6 @@ func TestRunnerBuildTargetCodexRunsNativeTarget(t *testing.T) {
 	}
 	if strings.Contains(hooksJSON, "workflow-pre-merge") || strings.Contains(hooksJSON, "detect-linear-magic") {
 		t.Fatalf("hooks.json = %q, want only Bash enforcement hooks", hooksJSON)
-	}
-}
-
-func TestRunnerBuildTargetGeminiRunsNativeSkillOnlyTarget(t *testing.T) {
-	root := setupBuildCommandLoafRoot(t)
-	seedNativeCodexBuildFixture(t, root)
-	staleGeminiFile := filepath.Join(root, "dist", "gemini", "stale.txt")
-	mkdirAll(t, filepath.Dir(staleGeminiFile))
-	writeFile(t, staleGeminiFile, "old target output\n")
-	var stdout bytes.Buffer
-
-	err := Runner{
-		Stdout:     &stdout,
-		WorkingDir: root,
-	}.Run([]string{"build", "--target", "gemini"})
-	if err != nil {
-		t.Fatalf("build --target gemini error = %v\n%s", err, stdout.String())
-	}
-	for _, want := range []string{"loaf build", "shared skills intermediate", "gemini", "Build complete"} {
-		if !strings.Contains(stdout.String(), want) {
-			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
-		}
-	}
-	if _, err := os.Stat(staleGeminiFile); !os.IsNotExist(err) {
-		t.Fatalf("stale gemini file stat = %v, want target output reset", err)
-	}
-
-	geminiSkill := readBuildFileString(t, filepath.Join(root, "dist", "gemini", "skills", "demo", "SKILL.md"))
-	wantGeminiFrontmatter := strings.Join([]string{
-		"---",
-		"name: demo",
-		"description: >-",
-		"  Demo skill that has enough words to require folded YAML output from gray",
-		"  matter when the native builder writes frontmatter for generated skills.",
-		"version: 9.8.7-test.1",
-		"---",
-		"",
-	}, "\n")
-	if !strings.HasPrefix(geminiSkill, wantGeminiFrontmatter) {
-		t.Fatalf("gemini skill frontmatter = %q, want prefix %q", geminiSkill, wantGeminiFrontmatter)
-	}
-	if strings.Contains(geminiSkill, "{{IMPLEMENT_CMD}}") || !strings.Contains(geminiSkill, "/implement") {
-		t.Fatalf("gemini skill = %q, want shared command substitution", geminiSkill)
-	}
-	if !strings.Contains(readBuildFileString(t, filepath.Join(root, "dist", "gemini", "skills", "demo", "references", "guide.md")), "/implement") {
-		t.Fatalf("gemini reference was not copied from substituted shared intermediate")
-	}
-	if !strings.Contains(readBuildFileString(t, filepath.Join(root, "dist", "gemini", "skills", "demo", "templates", "session.md")), "/implement") {
-		t.Fatalf("gemini shared template was not copied from substituted shared intermediate")
-	}
-	scriptPath := filepath.Join(root, "dist", "gemini", "skills", "demo", "scripts", "demo.sh")
-	info, err := os.Stat(scriptPath)
-	if err != nil {
-		t.Fatalf("Stat(%s) error = %v", scriptPath, err)
-	}
-	if info.Mode().Perm() != 0o755 {
-		t.Fatalf("script mode = %v, want executable source mode preserved", info.Mode().Perm())
-	}
-	if _, err := os.Stat(filepath.Join(root, "dist", "gemini", ".codex", "hooks.json")); !os.IsNotExist(err) {
-		t.Fatalf("gemini hooks stat = %v, want skill-only target without Codex hooks", err)
 	}
 }
 
@@ -532,7 +469,7 @@ func TestRunnerBuildRejectsUnknownTargetBeforeContentBuilder(t *testing.T) {
 	if err == nil {
 		t.Fatal("build --target bogus error = nil, want native target validation")
 	}
-	for _, want := range []string{"Unknown target bogus", "Valid targets: claude-code, opencode, cursor, codex, gemini, amp"} {
+	for _, want := range []string{"Unknown target bogus", "Valid targets: claude-code, opencode, cursor, codex, amp"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("error = %v, want %q", err, want)
 		}
@@ -742,8 +679,6 @@ func setupBuildCommandLoafRoot(t *testing.T) string {
 		"    output: dist/cursor/",
 		"  codex:",
 		"    output: dist/codex/",
-		"  gemini:",
-		"    output: dist/gemini/",
 		"  amp:",
 		"    output: dist/amp/",
 		"",
@@ -770,8 +705,6 @@ func seedNativeCodexBuildFixture(t *testing.T, root string) {
 		"    output: dist/cursor/",
 		"  codex:",
 		"    output: dist/codex/",
-		"  gemini:",
-		"    output: dist/gemini/",
 		"  amp:",
 		"    output: dist/amp/",
 		"",

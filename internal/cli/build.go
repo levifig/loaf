@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var defaultBuildTargets = []string{"claude-code", "opencode", "cursor", "codex", "gemini", "amp"}
+var defaultBuildTargets = []string{"claude-code", "opencode", "cursor", "codex", "amp"}
 
 type buildOptions struct {
 	target string
@@ -161,8 +161,6 @@ func buildNativeTargetOnly(root string, targetName string) ([]string, error) {
 		err = buildNativeCursorTarget(root)
 	case "codex":
 		err = buildNativeCodexTarget(root)
-	case "gemini":
-		err = buildNativeSkillOnlyTarget(root, "gemini")
 	case "amp":
 		err = buildNativeAmpTarget(root)
 	default:

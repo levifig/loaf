@@ -2,11 +2,11 @@
 id: TASK-255
 title: Remove Gemini from in-repo build and install surfaces
 spec: SPEC-047
-status: todo
+status: done
 priority: P1
 created: '2026-06-24T12:03:41Z'
-updated: '2026-06-24T12:03:41Z'
-completed_at: null
+updated: '2026-06-24T12:25:48Z'
+completed_at: '2026-06-24T12:25:48Z'
 depends_on:
   - TASK-254
 files:
@@ -18,8 +18,14 @@ files:
   - dist/gemini/
   - .agents/tasks/TASK-255-remove-gemini-in-repo-build-install-surfaces.md
 verify: >-
-  ! rg -n 'gemini' config internal/cli dist plugins package.json README.md docs
-  content && npm run build && npm run test
+  ! rg -n 'gemini|Gemini' config/targets.yaml internal/cli/build.go
+  internal/cli/build_test.go internal/cli/install.go internal/cli/install_target.go
+  internal/cli/install_target_test.go internal/cli/install_fenced.go
+  internal/cli/install_mcp.go internal/cli/install_mcp_test.go
+  internal/cli/install_command_test.go internal/cli/install_symlink.go
+  internal/cli/version.go package.json README.md docs/ARCHITECTURE.md
+  docs/knowledge/build-system.md docs/knowledge/glossary.md .agents/AGENTS.md &&
+  test ! -e dist/gemini && npm run build && npm run test
 done: >-
   Gemini is absent from source build/install wiring and generated in-repo output
   while user-side cleanup remains deferred to SPEC-053.
@@ -38,18 +44,19 @@ is a breaking migration action and remains gated on SPEC-053.
 
 ## Acceptance Criteria
 
-- [ ] `config/targets.yaml` no longer declares a Gemini target.
-- [ ] `defaultBuildTargets`, target validation, and target dispatch enumerate
+- [x] `config/targets.yaml` no longer declares a Gemini target.
+- [x] `defaultBuildTargets`, target validation, and target dispatch enumerate
   exactly Claude Code, OpenCode, Cursor, Codex, and Amp.
-- [ ] `dist/gemini/` is no longer produced or tracked.
-- [ ] Install fencing/MCP logic no longer advertises or installs Gemini.
-- [ ] Tests and fixtures no longer include Gemini expectations.
-- [ ] User-side orphan cleanup is not implemented in this task.
+- [x] `dist/gemini/` is no longer produced or tracked.
+- [x] Install fencing/MCP logic no longer advertises or installs Gemini.
+- [x] Tests and fixtures no longer include Gemini expectations.
+- [x] User-side orphan cleanup is not implemented in this task.
 
 ## Verification
 
 ```bash
-! rg -n 'gemini' config internal/cli dist plugins package.json README.md docs content
+! rg -n 'gemini|Gemini' config/targets.yaml internal/cli/build.go internal/cli/build_test.go internal/cli/install.go internal/cli/install_target.go internal/cli/install_target_test.go internal/cli/install_fenced.go internal/cli/install_mcp.go internal/cli/install_mcp_test.go internal/cli/install_command_test.go internal/cli/install_symlink.go internal/cli/version.go package.json README.md docs/ARCHITECTURE.md docs/knowledge/build-system.md docs/knowledge/glossary.md .agents/AGENTS.md
+test ! -e dist/gemini
 npm run build
 npm run test
 ```

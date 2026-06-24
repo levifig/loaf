@@ -112,25 +112,9 @@ func TestInstallTargetCodexUsesCodexHomeForHooksAndSharedSkillsHome(t *testing.T
 	assertInstallFile(t, filepath.Join(config, loafInstallMarkerFile), "9.8.7-test.1\n")
 }
 
-func TestInstallTargetGeminiAndAmpUseSharedAndCustomHomes(t *testing.T) {
+func TestInstallTargetAmpUsesSharedAndCustomHomes(t *testing.T) {
 	root := realpath(t, t.TempDir())
 	home := filepath.Join(root, "home")
-	geminiDist := filepath.Join(root, "dist", "gemini")
-	geminiConfig := filepath.Join(root, ".gemini")
-	writeInstallFile(t, filepath.Join(geminiDist, "skills", "knowledge-base", "SKILL.md"), "# KB\n")
-
-	if err := installTargetDistribution(targetInstallOptions{
-		Target:    "gemini",
-		DistDir:   geminiDist,
-		ConfigDir: geminiConfig,
-		Version:   "9.8.7-test.1",
-		HomeDir:   home,
-	}); err != nil {
-		t.Fatalf("install gemini error = %v", err)
-	}
-	assertInstallFile(t, filepath.Join(home, ".agents", "skills", "knowledge-base", "SKILL.md"), "# KB\n")
-	assertInstallFile(t, filepath.Join(geminiConfig, loafInstallMarkerFile), "9.8.7-test.1\n")
-
 	ampDist := filepath.Join(root, "dist", "amp")
 	ampConfig := filepath.Join(root, ".amp")
 	ampSkills := filepath.Join(root, "amp-skills")
