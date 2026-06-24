@@ -2,11 +2,11 @@
 id: TASK-352
 title: Enforce registered artifact body writes
 spec: SPEC-043
-status: todo
+status: done
 priority: P1
 created: '2026-06-24T13:04:19Z'
-updated: '2026-06-24T13:04:19Z'
-completed_at: null
+updated: '2026-06-24T14:07:27Z'
+completed_at: '2026-06-24T14:07:27Z'
 depends_on:
   - TASK-351
 files:
@@ -32,11 +32,11 @@ free-handing body artifacts into `.agents` without registering SQLite nouns.
 
 ## Acceptance Criteria
 
-- [ ] Direct writes to body-capable `.agents` artifact paths are detected when they bypass the SQLite body write path.
-- [ ] Generated durable renders, templates, specs/tasks metadata updates, and non-artifact docs have explicit tested allow rules.
-- [ ] The guard is exposed through the existing hook/check infrastructure and respects the five-target parity contract from SPEC-047.
-- [ ] Failure output names the file path and the CLI command that should be used instead.
-- [ ] The enforcement is non-breaking for existing Markdown fallback files in this spec.
+- [x] Direct writes to body-capable `.agents` artifact paths are detected when they bypass the SQLite body write path.
+- [x] Generated durable renders, templates, specs/tasks metadata updates, and non-artifact docs have explicit tested allow rules.
+- [x] The guard is exposed through the existing hook/check infrastructure and respects the five-target parity contract from SPEC-047.
+- [x] Failure output names the file path and the CLI command that should be used instead.
+- [x] The enforcement is non-breaking for existing Markdown fallback files in this spec.
 
 ## Verification
 

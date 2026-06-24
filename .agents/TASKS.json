@@ -4918,7 +4918,7 @@
       "title": "Enforce registered artifact body writes",
       "slug": "registered-artifact-body-write-enforcement",
       "spec": "SPEC-043",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-351"
@@ -4934,8 +4934,8 @@
       "done": "Harness-portable enforcement catches direct unregistered .agents artifact-body writes while allowing explicit generated/rendered exceptions.",
       "session": null,
       "created": "2026-06-24T13:04:19Z",
-      "updated": "2026-06-24T13:04:19Z",
-      "completed_at": null,
+      "updated": "2026-06-24T14:07:27Z",
+      "completed_at": "2026-06-24T14:07:27Z",
       "file": "TASK-352-registered-artifact-body-write-enforcement.md"
     },
     "TASK-353": {
