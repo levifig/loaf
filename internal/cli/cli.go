@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -89,6 +90,13 @@ type statePathOptions struct {
 	verboseOutput bool
 }
 
+type searchOptions struct {
+	query       string
+	allProjects bool
+	limit       int
+	jsonOutput  bool
+}
+
 // Run dispatches a loaf command.
 func (r Runner) Run(args []string) error {
 	out := r.Stdout
@@ -151,6 +159,8 @@ func (r Runner) Run(args []string) error {
 		dispatchErr = r.runState(args[1:], out, runtime)
 	case "project":
 		dispatchErr = r.runProject(args[1:], out, runtime)
+	case "search":
+		dispatchErr = r.runSearch(args[1:], out, runtime)
 	case "trace":
 		dispatchErr = r.runTrace(args[1:], out, runtime)
 	case "brainstorm":
@@ -243,6 +253,7 @@ func writeRootHelp(out io.Writer) {
 	fmt.Fprintln(out, "  setup         Initialize, build, and install")
 	fmt.Fprintln(out, "  state         Manage native SQLite state")
 	fmt.Fprintln(out, "  project       Manage project identity")
+	fmt.Fprintln(out, "  search        Search SQLite-resident artifacts and journals")
 	fmt.Fprintln(out, "  migrate       Run migration workflows")
 	fmt.Fprintln(out, "  session       Manage sessions")
 	fmt.Fprintln(out, "  task          Manage tasks")
@@ -2731,6 +2742,113 @@ func (r Runner) initializeState(runtime state.Runtime) (state.Status, error) {
 		return state.Status{}, err
 	}
 	return state.Initialize(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
+}
+
+func (r Runner) runSearch(args []string, out io.Writer, runtime state.Runtime) error {
+	if isHelpArg(args) {
+		writeSearchHelp(out)
+		return nil
+	}
+	jsonRequested := hasFlag(args, "--json")
+	options, err := parseSearchArgs(args)
+	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "search", err)
+		}
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "search", err)
+		}
+		return err
+	}
+	result, err := state.Search(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.SearchOptions{
+		Query:       options.query,
+		AllProjects: options.allProjects,
+		Limit:       options.limit,
+	})
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "search", err)
+		}
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	fmt.Fprintf(out, "search %q\n", result.Query)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	if result.AllProjects {
+		fmt.Fprintln(out, "scope: all projects")
+	} else {
+		fmt.Fprintln(out, "scope: current project")
+	}
+	fmt.Fprintf(out, "results: %d\n", len(result.Results))
+	for _, hit := range result.Results {
+		fmt.Fprintf(out, "- [%s] %s %s", hit.Tier, hit.Source, searchHitAddress(hit))
+		if hit.Snippet != "" {
+			fmt.Fprintf(out, " — %s", hit.Snippet)
+		}
+		fmt.Fprintln(out)
+	}
+	return nil
+}
+
+func writeSearchHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf search <query> [--all-projects] [--limit <n>] [--json]", "Search Tier-1 SQLite artifact bodies and journal entries.", "--all-projects  Search every registered project instead of only the current project", "--limit         Maximum results to return (default: 20)", "--json          Output tiered hits, stable entity addresses, snippets, global database scope, and project identity as JSON")
+}
+
+func parseSearchArgs(args []string) (searchOptions, error) {
+	var options searchOptions
+	var queryParts []string
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			options.jsonOutput = true
+		case "--all-projects":
+			options.allProjects = true
+		case "--limit":
+			value, err := consumeFlagValue(args, &i, "--limit")
+			if err != nil {
+				return searchOptions{}, err
+			}
+			limit, err := strconv.Atoi(value)
+			if err != nil || limit <= 0 {
+				return searchOptions{}, fmt.Errorf("--limit must be a positive integer")
+			}
+			options.limit = limit
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return searchOptions{}, fmt.Errorf("unknown search option %q", args[i])
+			}
+			queryParts = append(queryParts, args[i])
+		}
+	}
+	options.query = strings.TrimSpace(strings.Join(queryParts, " "))
+	if options.query == "" {
+		return searchOptions{}, fmt.Errorf("search requires a query")
+	}
+	return options, nil
+}
+
+func searchHitAddress(hit state.SearchHit) string {
+	if hit.Source == "journal_entry" {
+		address := hit.JournalEntryID
+		if hit.SessionID != "" {
+			address = hit.SessionID + "/" + address
+		}
+		if hit.EntryType != "" {
+			address = hit.EntryType + ":" + address
+		}
+		return address
+	}
+	address := hit.EntityKind + "/" + hit.EntityID
+	if hit.BodyKind != "" {
+		address += "#" + hit.BodyKind
+	}
+	return address
 }
 
 func (r Runner) runTrace(args []string, out io.Writer, runtime state.Runtime) error {

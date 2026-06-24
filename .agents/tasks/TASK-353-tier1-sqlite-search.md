@@ -2,11 +2,11 @@
 id: TASK-353
 title: Implement Tier-1 SQLite search
 spec: SPEC-043
-status: todo
+status: done
 priority: P1
 created: '2026-06-24T13:04:19Z'
-updated: '2026-06-24T13:04:19Z'
-completed_at: null
+updated: '2026-06-24T14:16:44Z'
+completed_at: '2026-06-24T14:16:44Z'
 depends_on:
   - TASK-352
 files:
@@ -35,13 +35,13 @@ journal entries using FTS5.
 
 ## Acceptance Criteria
 
-- [ ] `loaf search <query>` returns current-project Tier-1 hits from artifact bodies and journal entries.
-- [ ] `--all-projects` expands scope explicitly; default search does not cross project boundaries.
-- [ ] JSON output includes a `tier` discriminator and stable entity addressing.
-- [ ] Ranking uses SQLite FTS ranking consistently enough for deterministic tests.
-- [ ] Snippets omit or redact planted secret-like content.
-- [ ] Editing a body removes old-term matches and adds new-term matches.
-- [ ] CLI reference output documents `loaf search` and is regenerated.
+- [x] `loaf search <query>` returns current-project Tier-1 hits from artifact bodies and journal entries.
+- [x] `--all-projects` expands scope explicitly; default search does not cross project boundaries.
+- [x] JSON output includes a `tier` discriminator and stable entity addressing.
+- [x] Ranking uses SQLite FTS ranking consistently enough for deterministic tests.
+- [x] Snippets omit or redact planted secret-like content.
+- [x] Editing a body removes old-term matches and adds new-term matches.
+- [x] CLI reference output documents `loaf search` and is regenerated.
 
 ## Verification
 

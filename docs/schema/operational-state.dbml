@@ -168,6 +168,16 @@ Table artifact_search {
   content text
 }
 
+Table journal_search {
+  rowid integer [pk]
+  project_id text
+  journal_entry_id text
+  session_id text
+  entry_type text
+  scope text
+  message text
+}
+
 Table reports {
   id text [pk, not null]
   project_id text [not null, ref: > projects.id]

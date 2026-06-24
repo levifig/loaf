@@ -118,6 +118,25 @@ loaf release
 
 ---
 
+## Search Management
+
+### `loaf search`
+Search Tier-1 SQLite artifact bodies and journal entries
+
+**Options:**
+
+- `<query>` - Search terms matched through SQLite FTS5
+- `--all-projects` - Search every registered project instead of only the current project
+- `--limit <n>` - Maximum results to return (default: 20)
+- `--json` - Output tiered hits, stable entity addresses, snippets, global database scope, and project identity as JSON
+
+**Usage:**
+```bash
+loaf search
+```
+
+---
+
 ## State Management
 
 ### `loaf state`

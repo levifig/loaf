@@ -44,8 +44,8 @@ var requiredInitialTables = []string{
 
 func TestSchemaMigrationsAreOrderedAndChecksummed(t *testing.T) {
 	migrations := SchemaMigrations()
-	if len(migrations) != 5 {
-		t.Fatalf("len(SchemaMigrations()) = %d, want 5", len(migrations))
+	if len(migrations) != 6 {
+		t.Fatalf("len(SchemaMigrations()) = %d, want 6", len(migrations))
 	}
 
 	for i, migration := range migrations {
@@ -67,6 +67,9 @@ func TestSchemaMigrationsAreOrderedAndChecksummed(t *testing.T) {
 	}
 	if migrations[4].Name != "artifact_bodies_and_search" {
 		t.Fatalf("migration[4].Name = %q, want artifact_bodies_and_search", migrations[4].Name)
+	}
+	if migrations[5].Name != "journal_search" {
+		t.Fatalf("migration[5].Name = %q, want journal_search", migrations[5].Name)
 	}
 	for _, migration := range migrations {
 		if strings.TrimSpace(migration.SQL) == "" {
@@ -211,6 +214,10 @@ func TestSchemaDocumentationMirrorsExecutableMigration(t *testing.T) {
 	if sqlDoc != SchemaMigrations()[4].SQL {
 		t.Fatal("docs/schema/0005_artifact_bodies_and_search.sql must match embedded migration 0005 exactly")
 	}
+	sqlDoc = readRepoFile(t, "docs", "schema", "0006_journal_search.sql")
+	if sqlDoc != SchemaMigrations()[5].SQL {
+		t.Fatal("docs/schema/0006_journal_search.sql must match embedded migration 0006 exactly")
+	}
 
 	dbmlDoc := readRepoFile(t, "docs", "schema", "operational-state.dbml")
 	mermaidDoc := readRepoFile(t, "docs", "schema", "operational-state.mmd")
@@ -330,6 +337,49 @@ SELECT entity_kind, entity_id FROM artifact_search WHERE artifact_search MATCH '
 	}
 	if entityKind != "report" || entityID != "report-one" {
 		t.Fatalf("artifact_search hit = %s/%s, want report/report-one", entityKind, entityID)
+	}
+}
+
+func TestJournalSearchFTS5VirtualTableWorks(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open(sqliteDriverName, filepath.Join(t.TempDir(), "state.sqlite"))
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+
+	if err := ApplyMigrations(ctx, db, SchemaMigrations()); err != nil {
+		t.Fatalf("ApplyMigrations() error = %v", err)
+	}
+
+	now := "2026-06-24T13:00:00Z"
+	if _, err := db.ExecContext(ctx, `
+INSERT INTO projects (id, identity_hash, created_at, updated_at) VALUES ('project-one', 'hash-one', ?, ?)
+`, now, now); err != nil {
+		t.Fatalf("insert project fixture error = %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `
+INSERT INTO journal_entries (id, project_id, entry_type, scope, message, created_at, updated_at)
+VALUES ('journal-one', 'project-one', 'decision', 'search', 'alpha journal needle', ?, ?)
+`, now, now); err != nil {
+		t.Fatalf("insert journal entry fixture error = %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `
+INSERT INTO journal_search(rowid, project_id, journal_entry_id, session_id, entry_type, scope, message)
+SELECT rowid, project_id, id, COALESCE(session_id, ''), entry_type, COALESCE(scope, ''), message FROM journal_entries WHERE id = 'journal-one'
+`); err != nil {
+		t.Fatalf("insert journal_search fixture error = %v", err)
+	}
+
+	var entryType, entryID string
+	if err := db.QueryRowContext(ctx, `
+SELECT entry_type, journal_entry_id FROM journal_search WHERE journal_search MATCH 'needle'
+`).Scan(&entryType, &entryID); err != nil {
+		t.Fatalf("journal_search MATCH error = %v", err)
+	}
+	if entryType != "decision" || entryID != "journal-one" {
+		t.Fatalf("journal_search hit = %s/%s, want decision/journal-one", entryType, entryID)
 	}
 }
 

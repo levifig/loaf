@@ -131,6 +131,15 @@ erDiagram
     text body_kind
     text content
   }
+  journal_search {
+    integer rowid PK
+    text project_id
+    text journal_entry_id
+    text session_id
+    text entry_type
+    text scope
+    text message
+  }
   reports {
     text id PK
     text project_id FK

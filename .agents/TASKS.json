@@ -4942,7 +4942,7 @@
       "title": "Implement Tier-1 SQLite search",
       "slug": "tier1-sqlite-search",
       "spec": "SPEC-043",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-352"
@@ -4960,8 +4960,8 @@
       "done": "`loaf search` queries current-project SQLite artifact bodies and journal entries through FTS5, supports explicit all-project scope, returns tiered JSON, and redacts secret-like snippets.",
       "session": null,
       "created": "2026-06-24T13:04:19Z",
-      "updated": "2026-06-24T13:04:19Z",
-      "completed_at": null,
+      "updated": "2026-06-24T14:16:44Z",
+      "completed_at": "2026-06-24T14:16:44Z",
       "file": "TASK-353-tier1-sqlite-search.md"
     }
   },

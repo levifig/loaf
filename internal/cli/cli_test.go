@@ -14985,6 +14985,7 @@ func TestRunnerNestedStateBackedHelpDoesNotParseAsOption(t *testing.T) {
 		{name: "bundle update", args: []string{"bundle", "update", "--help"}, want: "Usage: loaf bundle update <slug>"},
 		{name: "link create", args: []string{"link", "create", "--help"}, want: "Usage: loaf link create --from <entity>"},
 		{name: "trace", args: []string{"trace", "--help"}, want: "Usage: loaf trace <entity>"},
+		{name: "search", args: []string{"search", "--help"}, want: "Usage: loaf search <query>"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -15499,6 +15500,36 @@ func assertAgentHelpJSONMatchesLiveHelp(t *testing.T, commandArgs []string, agen
 	}
 	if strings.Contains(stdout.String(), "--json") && !stringSliceContains(agentOptions, jsonOption) {
 		t.Fatalf("live help for %q includes --json, but agent help options = %#v missing %q", strings.Join(commandArgs, " "), agentOptions, jsonOption)
+	}
+}
+
+func TestRunnerSearchReturnsTier1SQLiteHits(t *testing.T) {
+	workingDir := initCLIGitRepo(t)
+	stateHome := t.TempDir()
+	if err := (Runner{WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	if err := (Runner{WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "create", "search-report", "--message", "cliuniqueterm report body"}); err != nil {
+		t.Fatalf("report create error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"search", "cliuniqueterm", "--json"}); err != nil {
+		t.Fatalf("search --json error = %v", err)
+	}
+	var result state.SearchResult
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("Unmarshal(%q) error = %v", stdout.String(), err)
+	}
+	if result.Query != "cliuniqueterm" || result.AllProjects {
+		t.Fatalf("search result = %#v, want current-project query", result)
+	}
+	if len(result.Results) != 1 {
+		t.Fatalf("results = %#v, want one report hit", result.Results)
+	}
+	hit := result.Results[0]
+	if hit.Tier != "tier1" || hit.Source != "artifact_body" || hit.EntityKind != "report" || hit.EntityID == "" || !strings.Contains(hit.Snippet, "cliuniqueterm") {
+		t.Fatalf("hit = %#v, want Tier-1 report artifact hit with snippet", hit)
 	}
 }
 
