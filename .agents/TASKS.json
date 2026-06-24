@@ -4892,7 +4892,7 @@
       "title": "Add body write UX and missing entity verbs",
       "slug": "body-write-ux-missing-entity-verbs",
       "spec": "SPEC-043",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-350"
@@ -4910,8 +4910,8 @@
       "done": "Body-capable entities support non-file body creation/editing, report show, brainstorm capture, and first-class plan/handoff/council storage with generated CLI reference output in sync.",
       "session": null,
       "created": "2026-06-24T13:04:19Z",
-      "updated": "2026-06-24T13:04:19Z",
-      "completed_at": null,
+      "updated": "2026-06-24T13:57:17Z",
+      "completed_at": "2026-06-24T13:57:17Z",
       "file": "TASK-351-body-write-ux-missing-entity-verbs.md"
     },
     "TASK-352": {
