@@ -35,20 +35,22 @@ type SearchResult struct {
 
 // SearchHit is one FTS result.
 type SearchHit struct {
-	Tier            string  `json:"tier"`
-	Source          string  `json:"source"`
-	ProjectID       string  `json:"project_id"`
-	EntityKind      string  `json:"entity_kind,omitempty"`
-	EntityID        string  `json:"entity_id,omitempty"`
-	BodyKind        string  `json:"body_kind,omitempty"`
-	Path            string  `json:"path,omitempty"`
-	IndexedWorktree string  `json:"indexed_worktree,omitempty"`
-	JournalEntryID  string  `json:"journal_entry_id,omitempty"`
-	SessionID       string  `json:"session_id,omitempty"`
-	EntryType       string  `json:"entry_type,omitempty"`
-	Scope           string  `json:"scope,omitempty"`
-	Snippet         string  `json:"snippet"`
-	Rank            float64 `json:"rank"`
+	Tier               string  `json:"tier"`
+	Source             string  `json:"source"`
+	ProjectID          string  `json:"project_id"`
+	ProjectName        string  `json:"project_name,omitempty"`
+	ProjectCurrentPath string  `json:"project_current_path,omitempty"`
+	EntityKind         string  `json:"entity_kind,omitempty"`
+	EntityID           string  `json:"entity_id,omitempty"`
+	BodyKind           string  `json:"body_kind,omitempty"`
+	Path               string  `json:"path,omitempty"`
+	IndexedWorktree    string  `json:"indexed_worktree,omitempty"`
+	JournalEntryID     string  `json:"journal_entry_id,omitempty"`
+	SessionID          string  `json:"session_id,omitempty"`
+	EntryType          string  `json:"entry_type,omitempty"`
+	Scope              string  `json:"scope,omitempty"`
+	Snippet            string  `json:"snippet"`
+	Rank               float64 `json:"rank"`
 }
 
 var searchTokenRE = regexp.MustCompile(`[[:alnum:]_]+`)
@@ -212,9 +214,20 @@ WHERE journal_search MATCH ?`
 
 func (s *Store) searchDocsIndex(ctx context.Context, projectID string, indexedWorktree string, allProjects bool, ftsQuery string) ([]SearchHit, error) {
 	query := `
-SELECT docs_index.project_id, docs_index.path, docs_index.indexed_worktree, snippet(docs_search, 3, '', '', '...', 12), bm25(docs_search)
+SELECT
+  docs_index.project_id,
+  COALESCE(NULLIF(projects.friendly_name, ''), docs_index.project_id),
+  COALESCE(current_path.path, projects.current_path, ''),
+  docs_index.path,
+  docs_index.indexed_worktree,
+  snippet(docs_search, 3, '', '', '...', 12),
+  bm25(docs_search)
 FROM docs_search
 JOIN docs_index ON docs_index.rowid = docs_search.rowid
+LEFT JOIN projects ON projects.id = docs_index.project_id
+LEFT JOIN project_paths AS current_path
+  ON current_path.project_id = docs_index.project_id
+ AND current_path.is_current = 1
 WHERE docs_search MATCH ?`
 	args := []any{ftsQuery}
 	if !allProjects {
@@ -231,7 +244,7 @@ WHERE docs_search MATCH ?`
 		var hit SearchHit
 		hit.Tier = "tier2"
 		hit.Source = "docs_index"
-		if err := rows.Scan(&hit.ProjectID, &hit.Path, &hit.IndexedWorktree, &hit.Snippet, &hit.Rank); err != nil {
+		if err := rows.Scan(&hit.ProjectID, &hit.ProjectName, &hit.ProjectCurrentPath, &hit.Path, &hit.IndexedWorktree, &hit.Snippet, &hit.Rank); err != nil {
 			return nil, fmt.Errorf("scan docs search hit: %w", err)
 		}
 		hit.Snippet = redactSearchSnippet(hit.Snippet)

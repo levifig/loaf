@@ -148,6 +148,10 @@ func TestSearchReturnsTier2DocsHits(t *testing.T) {
 	if !searchDocsHitContain(all.Results, otherProjectID, "docs/guide.md") {
 		t.Fatalf("all-project results = %#v, want other docs hit", all.Results)
 	}
+	otherHit, ok := searchDocsHit(all.Results, otherProjectID, "docs/guide.md")
+	if !ok || otherHit.ProjectName == "" || otherHit.ProjectCurrentPath != otherRoot.Path() {
+		t.Fatalf("other docs hit = %#v, %v; want project name and current path %q", otherHit, ok, otherRoot.Path())
+	}
 }
 
 func TestSearchRefreshesStaleDocsIndexForCurrentWorktree(t *testing.T) {
@@ -207,12 +211,17 @@ func searchHitsContain(hits []SearchHit, source string, projectID string, entity
 }
 
 func searchDocsHitContain(hits []SearchHit, projectID string, path string) bool {
+	_, ok := searchDocsHit(hits, projectID, path)
+	return ok
+}
+
+func searchDocsHit(hits []SearchHit, projectID string, path string) (SearchHit, bool) {
 	for _, hit := range hits {
 		if hit.Tier == "tier2" && hit.Source == "docs_index" && hit.ProjectID == projectID && hit.Path == path {
-			return true
+			return hit, true
 		}
 	}
-	return false
+	return SearchHit{}, false
 }
 
 func containsAny(value string, needle string) bool {

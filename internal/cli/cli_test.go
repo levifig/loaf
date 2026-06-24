@@ -16135,6 +16135,9 @@ func TestRunnerSearchReturnsTier2DocsHits(t *testing.T) {
 	if hit.Tier != "tier2" || hit.Source != "docs_index" || hit.Path != "docs/guide.md" || !strings.Contains(hit.Snippet, "clisearchdocsterm") {
 		t.Fatalf("hit = %#v, want Tier-2 docs hit with snippet", hit)
 	}
+	if hit.ProjectName == "" || hit.ProjectCurrentPath != workingDir {
+		t.Fatalf("hit project context = %#v, want project name and path %q", hit, workingDir)
+	}
 }
 
 func realpath(t *testing.T, path string) string {
