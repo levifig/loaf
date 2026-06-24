@@ -206,18 +206,19 @@ implemented as deprecation-manifest entries so they flow through the same mechan
 
 ## Test Conditions
 
-- [ ] `loaf install --upgrade` removes a previously-installed but now-dropped target's surface
+- [x] `loaf install --upgrade` removes a previously-installed but now-dropped target's surface
       (Gemini simulation) and reports what it removed.
-- [ ] `loaf install --upgrade` removes a retired skill's installed files via a manifest entry.
-- [ ] Relocation from an old destination to `~/.agents/skills` results in exactly one copy at the
+- [x] `loaf install --upgrade` removes a retired skill's installed files via a manifest entry.
+- [x] Relocation from an old destination to `~/.agents/skills` results in exactly one copy at the
       new path and the old path removed; re-running upgrade is a no-op.
-- [ ] `loaf state backup` produces a restorable snapshot of the DB and affected `.agents/` tree.
-- [ ] `loaf migrate markdown --dry-run` reports the bodies it would import and the files it would
+- [x] `loaf state backup` produces a restorable DB snapshot, and
+      `loaf migrate markdown --backup` snapshots the affected `.agents/` tree.
+- [x] `loaf migrate markdown --dry-run` reports the bodies it would import and the files it would
       remove, changing nothing.
-- [ ] `loaf migrate markdown` imports ephemeral bodies, then `--rollback` restores the original
+- [x] `loaf migrate markdown` imports ephemeral bodies, then `--rollback` restores the original
       `.md` files byte-for-byte from the backup.
-- [ ] Migration refuses to run (with a clear message) without a successful backup.
-- [ ] A retired surface emits a tombstone; upgrade output cites the tombstone reason.
+- [x] Migration refuses to run (with a clear message) without a successful backup.
+- [x] A retired surface emits a tombstone; upgrade output cites the tombstone reason.
 - [ ] `thermo-nuclear-code-quality-review` is registered as retired and removed on upgrade.
 - [ ] `debugging` carries `disable-model-invocation: true` (not `user-invocable: false`) and a
       tightened description; the change is reflected in all first-class harness outputs.
