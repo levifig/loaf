@@ -576,10 +576,12 @@ Manage report findings and verdicts in native SQLite state
   - `--severity <severity>` - Filter by severity: critical, high, medium, low, info
   - `--confidence <confidence>` - Filter by confidence: high, medium, low
   - `--dimension <dimension>` - Filter by freeform finding dimension
-  - `--json` - Output findings, filters, global database scope, and project identity as JSON
+  - `--format <format>` - Output format: json, csv, markdown, html
+  - `--json` - Alias for --format json
 
 - `loaf finding show`:
-  - `--json` - Output finding details, verdicts, relationships, global database scope, and project identity as JSON
+  - `--format <format>` - Output format: json, csv, markdown, html
+  - `--json` - Alias for --format json
 
 - `loaf finding create`:
   - `--report <report>` - Parent report

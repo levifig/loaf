@@ -296,9 +296,10 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--severity <severity>", Description: "Filter by severity: " + strings.Join(state.FindingSeverities(), ", ")},
 					{Flags: "--confidence <confidence>", Description: "Filter by confidence: " + strings.Join(state.FindingConfidences(), ", ")},
 					{Flags: "--dimension <dimension>", Description: "Filter by freeform finding dimension"},
-					{Flags: "--json", Description: "Output findings, filters, global database scope, and project identity as JSON"},
+					{Flags: "--format <format>", Description: "Output format: json, csv, markdown, html"},
+					{Flags: "--json", Description: "Alias for --format json"},
 				}},
-				{Name: "show", Description: "Show one finding", Options: []cliReferenceOption{{Flags: "--json", Description: "Output finding details, verdicts, relationships, global database scope, and project identity as JSON"}}},
+				{Name: "show", Description: "Show one finding", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: json, csv, markdown, html"}, {Flags: "--json", Description: "Alias for --format json"}}},
 				{Name: "create", Description: "Create a finding under a report", Options: []cliReferenceOption{
 					{Flags: "--report <report>", Description: "Parent report"},
 					{Flags: "--run <run>", Description: "Optional run provenance row"},

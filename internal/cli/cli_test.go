@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"database/sql"
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -14150,6 +14151,80 @@ func TestRunnerFindingImportJSON(t *testing.T) {
 	list := decodeFindingList(t, listOut.Bytes())
 	if len(list.Findings) != 1 {
 		t.Fatalf("imported list = %#v, want one confirmed critical finding", list.Findings)
+	}
+}
+
+func TestRunnerFindingFormatExports(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"report", "create", "format-audit", "--type", "audit"}); err != nil {
+		t.Fatalf("report create error = %v", err)
+	}
+	var createOut bytes.Buffer
+	if err := (Runner{Stdout: &createOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{
+		"finding", "create",
+		"--report", "report-format-audit",
+		"--title", "Escaped <Finding>",
+		"--severity", "critical",
+		"--confidence", "high",
+		"--dimension", "auth",
+		"--path", "internal/auth.go",
+		"--line-start", "42",
+		"--message", "No private Loaf refs here.",
+		"--json",
+	}); err != nil {
+		t.Fatalf("finding create error = %v", err)
+	}
+	created := decodeFindingCreateResult(t, createOut.Bytes())
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{
+		"finding", "verdict", created.Finding.Alias,
+		"--outcome", "confirmed",
+		"--rationale", "Reproduced from format test.",
+	}); err != nil {
+		t.Fatalf("finding verdict error = %v", err)
+	}
+
+	var csvOut bytes.Buffer
+	if err := (Runner{Stdout: &csvOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"finding", "list", "--severity", "critical", "--format", "csv"}); err != nil {
+		t.Fatalf("finding list --format csv error = %v", err)
+	}
+	records, err := csv.NewReader(strings.NewReader(csvOut.String())).ReadAll()
+	if err != nil {
+		t.Fatalf("parse finding CSV error = %v\n%s", err, csvOut.String())
+	}
+	if len(records) != 2 || records[0][0] != "alias" || records[1][1] != "Escaped <Finding>" || records[1][2] != "confirmed" {
+		t.Fatalf("CSV records = %#v, want header and confirmed finding", records)
+	}
+
+	var markdownOut bytes.Buffer
+	if err := (Runner{Stdout: &markdownOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"finding", "list", "--format", "markdown"}); err != nil {
+		t.Fatalf("finding list --format markdown error = %v", err)
+	}
+	if !strings.Contains(markdownOut.String(), "# Findings") || strings.Contains(markdownOut.String(), "task:") {
+		t.Fatalf("markdown output = %q, want public finding table", markdownOut.String())
+	}
+
+	var htmlOut bytes.Buffer
+	if err := (Runner{Stdout: &htmlOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"finding", "show", created.Finding.Alias, "--format=html"}); err != nil {
+		t.Fatalf("finding show --format html error = %v", err)
+	}
+	if !strings.Contains(htmlOut.String(), "&lt;Finding&gt;") || !strings.Contains(htmlOut.String(), "<h2>Verdicts</h2>") {
+		t.Fatalf("HTML output = %q, want escaped title and verdict section", htmlOut.String())
+	}
+
+	var showCSV bytes.Buffer
+	if err := (Runner{Stdout: &showCSV, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"finding", "show", created.Finding.Alias, "--format", "csv"}); err != nil {
+		t.Fatalf("finding show --format csv error = %v", err)
+	}
+	showRecords, err := csv.NewReader(strings.NewReader(showCSV.String())).ReadAll()
+	if err != nil {
+		t.Fatalf("parse finding show CSV error = %v\n%s", err, showCSV.String())
+	}
+	if len(showRecords) != 2 || showRecords[1][12] != "1" {
+		t.Fatalf("show CSV records = %#v, want verdict_count 1", showRecords)
 	}
 }
 

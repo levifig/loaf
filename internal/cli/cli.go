@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"io/fs"
 	"os"
@@ -105,7 +107,14 @@ type findingCreateCLIOptions struct {
 
 type findingListCLIOptions struct {
 	jsonOutput bool
+	format     string
 	filters    state.FindingListOptions
+}
+
+type findingShowCLIOptions struct {
+	ref        string
+	jsonOutput bool
+	format     string
 }
 
 type findingVerdictCLIOptions struct {
@@ -9817,11 +9826,11 @@ func writeFindingHelp(out io.Writer) {
 }
 
 func writeFindingListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf finding list [--report <report>] [--status <status>] [--severity <severity>] [--confidence <confidence>] [--dimension <dimension>] [--json]", "List findings.", "--report     Filter by parent report", "--status     Filter by finding status: open, confirmed, refuted, partial, archived", "--severity   Filter by severity: critical, high, medium, low, info", "--confidence Filter by confidence: high, medium, low", "--dimension  Filter by freeform dimension", "--json       Output findings, filters, global database scope, and project identity as JSON")
+	writeUsageHelp(out, "loaf finding list [--report <report>] [--status <status>] [--severity <severity>] [--confidence <confidence>] [--dimension <dimension>] [--format json|csv|markdown|html] [--json]", "List findings.", "--report     Filter by parent report", "--status     Filter by finding status: open, confirmed, refuted, partial, archived", "--severity   Filter by severity: critical, high, medium, low, info", "--confidence Filter by confidence: high, medium, low", "--dimension  Filter by freeform dimension", "--format     Output format: json, csv, markdown, html", "--json       Alias for --format json")
 }
 
 func writeFindingShowHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf finding show <finding> [--json]", "Show one finding.", "--json       Output finding details, verdicts, relationships, global database scope, and project identity as JSON")
+	writeUsageHelp(out, "loaf finding show <finding> [--format json|csv|markdown|html] [--json]", "Show one finding.", "--format     Output format: json, csv, markdown, html", "--json       Alias for --format json")
 }
 
 func writeFindingCreateHelp(out io.Writer) {
@@ -9855,15 +9864,23 @@ func (r Runner) runFindingList(args []string, out io.Writer, runtime state.Runti
 	if err != nil {
 		return err
 	}
-	if options.jsonOutput {
+	switch options.format {
+	case state.ExportFormatJSON:
 		return writeJSON(out, result)
+	case "csv":
+		return writeFindingListCSV(out, result)
+	case state.ExportFormatMarkdown:
+		return writeFindingListMarkdown(out, result)
+	case "html":
+		writeFindingListHTML(out, result)
+		return nil
 	}
 	writeFindingList(out, result)
 	return nil
 }
 
 func (r Runner) runFindingShow(args []string, out io.Writer, runtime state.Runtime) error {
-	ref, jsonOutput, err := parseSingleRefArgs("finding show", args)
+	options, err := parseFindingShowArgs(args)
 	if err != nil {
 		return err
 	}
@@ -9877,12 +9894,20 @@ func (r Runner) runFindingShow(args []string, out io.Writer, runtime state.Runti
 	case state.ModeInvalid:
 		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
 	}
-	result, err := state.ShowFinding(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, ref)
+	result, err := state.ShowFinding(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.ref)
 	if err != nil {
 		return err
 	}
-	if jsonOutput {
+	switch options.format {
+	case state.ExportFormatJSON:
 		return writeJSON(out, result)
+	case "csv":
+		return writeFindingShowCSV(out, result)
+	case state.ExportFormatMarkdown:
+		return writeFindingShowMarkdown(out, result)
+	case "html":
+		writeFindingShowHTML(out, result)
+		return nil
 	}
 	writeFindingShow(out, result)
 	return nil
@@ -10424,6 +10449,81 @@ func writeFindingList(out io.Writer, result state.FindingList) {
 	fmt.Fprintf(out, "\n  Total: %d finding(s)\n\n", len(result.Findings))
 }
 
+func writeFindingListCSV(out io.Writer, result state.FindingList) error {
+	writer := csv.NewWriter(out)
+	if err := writer.Write([]string{"alias", "title", "status", "severity", "confidence", "dimension", "report", "run", "path", "line_start", "line_end", "symbol"}); err != nil {
+		return err
+	}
+	for _, finding := range sortedFindingItems(result.Findings) {
+		if err := writer.Write([]string{
+			firstNonEmpty(finding.Alias, finding.ID),
+			finding.Title,
+			finding.Status,
+			finding.Severity,
+			finding.Confidence,
+			finding.Dimension,
+			finding.Report,
+			finding.Run,
+			finding.Path,
+			intString(finding.LineStart),
+			intString(finding.LineEnd),
+			finding.Symbol,
+		}); err != nil {
+			return err
+		}
+	}
+	writer.Flush()
+	return writer.Error()
+}
+
+func writeFindingListMarkdown(out io.Writer, result state.FindingList) error {
+	var builder strings.Builder
+	builder.WriteString("# Findings\n\n")
+	builder.WriteString("| Finding | Status | Severity | Confidence | Dimension | Location |\n")
+	builder.WriteString("|---|---|---|---|---|---|\n")
+	for _, finding := range sortedFindingItems(result.Findings) {
+		builder.WriteString("| ")
+		builder.WriteString(markdownCell(firstNonEmpty(finding.Alias, finding.ID) + " - " + finding.Title))
+		builder.WriteString(" | ")
+		builder.WriteString(markdownCell(finding.Status))
+		builder.WriteString(" | ")
+		builder.WriteString(markdownCell(finding.Severity))
+		builder.WriteString(" | ")
+		builder.WriteString(markdownCell(finding.Confidence))
+		builder.WriteString(" | ")
+		builder.WriteString(markdownCell(finding.Dimension))
+		builder.WriteString(" | ")
+		builder.WriteString(markdownCell(findingItemLocation(finding)))
+		builder.WriteString(" |\n")
+	}
+	content := builder.String()
+	if err := state.ValidateExternalMarkdownExport(content); err != nil {
+		return err
+	}
+	fmt.Fprint(out, content)
+	return nil
+}
+
+func writeFindingListHTML(out io.Writer, result state.FindingList) {
+	fmt.Fprintln(out, "<!doctype html>")
+	fmt.Fprintln(out, "<html><head><meta charset=\"utf-8\"><title>Findings</title></head><body>")
+	fmt.Fprintln(out, "<h1>Findings</h1>")
+	fmt.Fprintln(out, "<table>")
+	fmt.Fprintln(out, "<thead><tr><th>Finding</th><th>Status</th><th>Severity</th><th>Confidence</th><th>Dimension</th><th>Location</th></tr></thead>")
+	fmt.Fprintln(out, "<tbody>")
+	for _, finding := range sortedFindingItems(result.Findings) {
+		fmt.Fprintf(out, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n",
+			html.EscapeString(firstNonEmpty(finding.Alias, finding.ID)+" - "+finding.Title),
+			html.EscapeString(finding.Status),
+			html.EscapeString(finding.Severity),
+			html.EscapeString(finding.Confidence),
+			html.EscapeString(finding.Dimension),
+			html.EscapeString(findingItemLocation(finding)))
+	}
+	fmt.Fprintln(out, "</tbody></table>")
+	fmt.Fprintln(out, "</body></html>")
+}
+
 func writeFindingShow(out io.Writer, result state.FindingShow) {
 	finding := result.Finding
 	fmt.Fprintf(out, "finding %s\n", firstNonEmpty(finding.Alias, finding.ID))
@@ -10473,6 +10573,118 @@ func writeFindingShow(out io.Writer, result state.FindingShow) {
 	}
 }
 
+func writeFindingShowCSV(out io.Writer, result state.FindingShow) error {
+	writer := csv.NewWriter(out)
+	if err := writer.Write([]string{"alias", "title", "status", "severity", "confidence", "dimension", "report", "run", "path", "line_start", "line_end", "symbol", "verdict_count"}); err != nil {
+		return err
+	}
+	finding := result.Finding
+	run := ""
+	if finding.Run != nil {
+		run = firstNonEmpty(finding.Run.Alias, finding.Run.ID)
+	}
+	if err := writer.Write([]string{
+		firstNonEmpty(finding.Alias, finding.ID),
+		finding.Title,
+		finding.Status,
+		finding.Severity,
+		finding.Confidence,
+		finding.Dimension,
+		firstNonEmpty(finding.Report.Alias, finding.Report.ID),
+		run,
+		finding.Path,
+		intString(finding.LineStart),
+		intString(finding.LineEnd),
+		finding.Symbol,
+		strconv.Itoa(len(finding.Verdicts)),
+	}); err != nil {
+		return err
+	}
+	writer.Flush()
+	return writer.Error()
+}
+
+func writeFindingShowMarkdown(out io.Writer, result state.FindingShow) error {
+	finding := result.Finding
+	var builder strings.Builder
+	builder.WriteString("# ")
+	builder.WriteString(markdownText(finding.Title))
+	builder.WriteString("\n\n")
+	builder.WriteString("- Finding: ")
+	builder.WriteString(markdownText(firstNonEmpty(finding.Alias, finding.ID)))
+	builder.WriteString("\n- Status: ")
+	builder.WriteString(markdownText(finding.Status))
+	builder.WriteString("\n- Severity: ")
+	builder.WriteString(markdownText(finding.Severity))
+	builder.WriteString("\n- Confidence: ")
+	builder.WriteString(markdownText(finding.Confidence))
+	if finding.Dimension != "" {
+		builder.WriteString("\n- Dimension: ")
+		builder.WriteString(markdownText(finding.Dimension))
+	}
+	if location := findingDetailLocation(finding); location != "" {
+		builder.WriteString("\n- Location: ")
+		builder.WriteString(markdownText(location))
+	}
+	builder.WriteString("\n\n")
+	if finding.Body != "" {
+		builder.WriteString("## Narrative\n\n")
+		builder.WriteString(markdownText(finding.Body))
+		builder.WriteString("\n\n")
+	}
+	builder.WriteString("## Verdicts\n\n")
+	if len(finding.Verdicts) == 0 {
+		builder.WriteString("No verdicts recorded.\n")
+	} else {
+		for _, verdict := range finding.Verdicts {
+			builder.WriteString("- ")
+			builder.WriteString(markdownText(verdict.Outcome))
+			builder.WriteString(": ")
+			builder.WriteString(markdownText(verdict.Rationale))
+			builder.WriteString("\n")
+		}
+	}
+	content := builder.String()
+	if err := state.ValidateExternalMarkdownExport(content); err != nil {
+		return err
+	}
+	fmt.Fprint(out, content)
+	return nil
+}
+
+func writeFindingShowHTML(out io.Writer, result state.FindingShow) {
+	finding := result.Finding
+	fmt.Fprintln(out, "<!doctype html>")
+	fmt.Fprintf(out, "<html><head><meta charset=\"utf-8\"><title>%s</title></head><body>\n", html.EscapeString(finding.Title))
+	fmt.Fprintf(out, "<h1>%s</h1>\n", html.EscapeString(finding.Title))
+	fmt.Fprintln(out, "<dl>")
+	fmt.Fprintf(out, "<dt>Finding</dt><dd>%s</dd>\n", html.EscapeString(firstNonEmpty(finding.Alias, finding.ID)))
+	fmt.Fprintf(out, "<dt>Status</dt><dd>%s</dd>\n", html.EscapeString(finding.Status))
+	fmt.Fprintf(out, "<dt>Severity</dt><dd>%s</dd>\n", html.EscapeString(finding.Severity))
+	fmt.Fprintf(out, "<dt>Confidence</dt><dd>%s</dd>\n", html.EscapeString(finding.Confidence))
+	if finding.Dimension != "" {
+		fmt.Fprintf(out, "<dt>Dimension</dt><dd>%s</dd>\n", html.EscapeString(finding.Dimension))
+	}
+	if location := findingDetailLocation(finding); location != "" {
+		fmt.Fprintf(out, "<dt>Location</dt><dd>%s</dd>\n", html.EscapeString(location))
+	}
+	fmt.Fprintln(out, "</dl>")
+	if finding.Body != "" {
+		fmt.Fprintf(out, "<h2>Narrative</h2><p>%s</p>\n", html.EscapeString(finding.Body))
+	}
+	fmt.Fprintln(out, "<h2>Verdicts</h2>")
+	if len(finding.Verdicts) == 0 {
+		fmt.Fprintln(out, "<p>No verdicts recorded.</p>")
+	} else {
+		fmt.Fprintln(out, "<ul>")
+		for _, verdict := range finding.Verdicts {
+			fmt.Fprintf(out, "<li><strong>%s</strong>: %s</li>\n", html.EscapeString(verdict.Outcome), html.EscapeString(verdict.Rationale))
+		}
+		fmt.Fprintln(out, "</ul>")
+	}
+	fmt.Fprintln(out, "</body></html>")
+}
+
 func writeFindingVerdict(out io.Writer, result state.FindingVerdictResult) {
 	fmt.Fprintf(out, "recorded verdict for %s\n", firstNonEmpty(result.Finding.Alias, result.Finding.ID))
 	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
@@ -10482,6 +10694,56 @@ func writeFindingVerdict(out io.Writer, result state.FindingVerdictResult) {
 	if result.EventID != "" {
 		fmt.Fprintf(out, "event: %s\n", result.EventID)
 	}
+}
+
+func sortedFindingItems(findings map[string]state.FindingItem) []state.FindingItem {
+	keys := make([]string, 0, len(findings))
+	for key := range findings {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	items := make([]state.FindingItem, 0, len(keys))
+	for _, key := range keys {
+		items = append(items, findings[key])
+	}
+	return items
+}
+
+func findingItemLocation(finding state.FindingItem) string {
+	location := finding.Path
+	if finding.LineStart > 0 {
+		location = fmt.Sprintf("%s:%d", location, finding.LineStart)
+	}
+	if finding.LineEnd > 0 && finding.LineEnd != finding.LineStart {
+		location = fmt.Sprintf("%s-%d", location, finding.LineEnd)
+	}
+	return location
+}
+
+func findingDetailLocation(finding state.FindingDetail) string {
+	location := finding.Path
+	if finding.LineStart > 0 {
+		location = fmt.Sprintf("%s:%d", location, finding.LineStart)
+	}
+	if finding.LineEnd > 0 && finding.LineEnd != finding.LineStart {
+		location = fmt.Sprintf("%s-%d", location, finding.LineEnd)
+	}
+	return location
+}
+
+func intString(value int) string {
+	if value == 0 {
+		return ""
+	}
+	return strconv.Itoa(value)
+}
+
+func markdownCell(value string) string {
+	return strings.ReplaceAll(markdownText(value), "|", "\\|")
+}
+
+func markdownText(value string) string {
+	return strings.ReplaceAll(value, "\r\n", "\n")
 }
 
 func writeFindingImportJSON(out io.Writer, result state.FindingImportJSONResult) {
@@ -12703,40 +12965,49 @@ func parseReportCreateArgs(args []string) (reportCreateOptions, error) {
 func parseFindingListArgs(args []string) (findingListCLIOptions, error) {
 	var options findingListCLIOptions
 	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--json":
+		switch {
+		case args[i] == "--json":
 			options.jsonOutput = true
-		case "--report":
+			options.format = state.ExportFormatJSON
+		case args[i] == "--format":
+			value, err := consumeFlagValue(args, &i, "--format")
+			if err != nil {
+				return findingListCLIOptions{}, err
+			}
+			options.format = normalizeFindingOutputFormat(value)
+		case strings.HasPrefix(args[i], "--format="):
+			options.format = normalizeFindingOutputFormat(strings.TrimPrefix(args[i], "--format="))
+		case args[i] == "--report":
 			value, err := consumeFlagValue(args, &i, "--report")
 			if err != nil {
 				return findingListCLIOptions{}, err
 			}
 			options.filters.Report = value
-		case "--run":
+		case args[i] == "--run":
 			value, err := consumeFlagValue(args, &i, "--run")
 			if err != nil {
 				return findingListCLIOptions{}, err
 			}
 			options.filters.Run = value
-		case "--status":
+		case args[i] == "--status":
 			value, err := consumeFlagValue(args, &i, "--status")
 			if err != nil {
 				return findingListCLIOptions{}, err
 			}
 			options.filters.Status = value
-		case "--severity":
+		case args[i] == "--severity":
 			value, err := consumeFlagValue(args, &i, "--severity")
 			if err != nil {
 				return findingListCLIOptions{}, err
 			}
 			options.filters.Severity = value
-		case "--confidence":
+		case args[i] == "--confidence":
 			value, err := consumeFlagValue(args, &i, "--confidence")
 			if err != nil {
 				return findingListCLIOptions{}, err
 			}
 			options.filters.Confidence = value
-		case "--dimension":
+		case args[i] == "--dimension":
 			value, err := consumeFlagValue(args, &i, "--dimension")
 			if err != nil {
 				return findingListCLIOptions{}, err
@@ -12746,7 +13017,60 @@ func parseFindingListArgs(args []string) (findingListCLIOptions, error) {
 			return findingListCLIOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
 	}
+	if !validFindingOutputFormat(options.format) {
+		return findingListCLIOptions{}, fmt.Errorf("finding list supports --format json, csv, markdown, or html")
+	}
 	return options, nil
+}
+
+func parseFindingShowArgs(args []string) (findingShowCLIOptions, error) {
+	var options findingShowCLIOptions
+	var positional []string
+	for i := 0; i < len(args); i++ {
+		switch {
+		case args[i] == "--json":
+			options.jsonOutput = true
+			options.format = state.ExportFormatJSON
+		case args[i] == "--format":
+			value, err := consumeFlagValue(args, &i, "--format")
+			if err != nil {
+				return findingShowCLIOptions{}, err
+			}
+			options.format = normalizeFindingOutputFormat(value)
+		case strings.HasPrefix(args[i], "--format="):
+			options.format = normalizeFindingOutputFormat(strings.TrimPrefix(args[i], "--format="))
+		case strings.HasPrefix(args[i], "-"):
+			return findingShowCLIOptions{}, fmt.Errorf("unknown option %q", args[i])
+		default:
+			positional = append(positional, args[i])
+		}
+	}
+	if len(positional) != 1 {
+		return findingShowCLIOptions{}, fmt.Errorf("finding show requires exactly one finding")
+	}
+	if !validFindingOutputFormat(options.format) {
+		return findingShowCLIOptions{}, fmt.Errorf("finding show supports --format json, csv, markdown, or html")
+	}
+	options.ref = positional[0]
+	return options, nil
+}
+
+func normalizeFindingOutputFormat(format string) string {
+	switch strings.ToLower(strings.TrimSpace(format)) {
+	case "md":
+		return state.ExportFormatMarkdown
+	default:
+		return strings.ToLower(strings.TrimSpace(format))
+	}
+}
+
+func validFindingOutputFormat(format string) bool {
+	switch format {
+	case "", state.ExportFormatJSON, "csv", state.ExportFormatMarkdown, "html":
+		return true
+	default:
+		return false
+	}
 }
 
 func parseFindingCreateArgs(args []string) (findingCreateCLIOptions, error) {
