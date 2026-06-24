@@ -137,6 +137,32 @@ loaf search
 
 ---
 
+## Render Management
+
+### `loaf render`
+Maintain committed durable Markdown renders
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf render sweep` | Upgrade committed durable renders to the current renderer contract |
+
+**Options:**
+
+- `loaf render sweep`:
+  - `--dry-run` - Report upgrade-needed files without rewriting them
+  - `--json` - Output scanned files, upgrade counts, drift counts, and target contract as JSON
+
+**Usage:**
+```bash
+loaf render sweep --dry-run
+loaf render sweep --json
+loaf check --hook render-drift --json
+```
+
+---
+
 ## State Management
 
 ### `loaf state`

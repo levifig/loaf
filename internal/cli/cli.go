@@ -97,6 +97,11 @@ type searchOptions struct {
 	jsonOutput  bool
 }
 
+type renderSweepOptions struct {
+	jsonOutput bool
+	dryRun     bool
+}
+
 // Run dispatches a loaf command.
 func (r Runner) Run(args []string) error {
 	out := r.Stdout
@@ -153,6 +158,8 @@ func (r Runner) Run(args []string) error {
 		dispatchErr = r.runMigrate(args[1:], out, runtime)
 	case "release":
 		dispatchErr = r.runRelease(args[1:], out, runtime.RootPath())
+	case "render":
+		dispatchErr = r.runRender(args[1:], out, runtime)
 	case "setup":
 		dispatchErr = r.runSetup(args[1:], out, runtime.RootPath())
 	case "state":
@@ -255,6 +262,7 @@ func writeRootHelp(out io.Writer) {
 	fmt.Fprintln(out, "  project       Manage project identity")
 	fmt.Fprintln(out, "  search        Search SQLite-resident artifacts and journals")
 	fmt.Fprintln(out, "  migrate       Run migration workflows")
+	fmt.Fprintln(out, "  render        Maintain durable markdown renders")
 	fmt.Fprintln(out, "  session       Manage sessions")
 	fmt.Fprintln(out, "  task          Manage tasks")
 	fmt.Fprintln(out, "  spec          Manage specs")
@@ -312,6 +320,81 @@ func (r Runner) runHousekeeping(args []string, out io.Writer, runtime state.Runt
 	}
 	writeHousekeepingSummary(out, result, options)
 	return nil
+}
+
+func (r Runner) runRender(args []string, out io.Writer, runtime state.Runtime) error {
+	if len(args) == 0 || isHelpArg(args) {
+		writeRenderHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"sweep": writeRenderSweepHelp,
+	}) {
+		return nil
+	}
+	switch args[0] {
+	case "sweep":
+		return r.runRenderSweep(args[1:], out, runtime)
+	default:
+		return unknownSubcommandError("render", args[0])
+	}
+}
+
+func writeRenderHelp(out io.Writer) {
+	fmt.Fprintln(out, "Usage: loaf render <subcommand> [options]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Maintain committed durable Markdown renders.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Subcommands:")
+	fmt.Fprintln(out, "  sweep  Upgrade committed durable renders to the current renderer contract")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  -h, --help  Show help")
+}
+
+func writeRenderSweepHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf render sweep [--dry-run] [--json]", "Upgrade committed durable renders to the current renderer contract.", "--dry-run    Report upgrade-needed files without rewriting them", "--json       Output scanned files, upgrade counts, drift counts, and target contract as JSON")
+}
+
+func (r Runner) runRenderSweep(args []string, out io.Writer, runtime state.Runtime) error {
+	options, err := parseRenderSweepArgs(args)
+	if err != nil {
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return err
+	}
+	result, err := state.SweepDurableRenderContracts(projectRoot, state.DurableRenderSweepOptions{DryRun: options.dryRun})
+	if err != nil {
+		return err
+	}
+	if options.jsonOutput {
+		if err := writeJSON(out, result); err != nil {
+			return err
+		}
+	} else {
+		writeRenderSweepResult(out, result)
+	}
+	if result.HasBlockingFindings() {
+		return ExitError{Code: 2}
+	}
+	return nil
+}
+
+func parseRenderSweepArgs(args []string) (renderSweepOptions, error) {
+	var options renderSweepOptions
+	for _, arg := range args {
+		switch arg {
+		case "--json":
+			options.jsonOutput = true
+		case "--dry-run":
+			options.dryRun = true
+		default:
+			return renderSweepOptions{}, fmt.Errorf("unknown render sweep option %q", arg)
+		}
+	}
+	return options, nil
 }
 
 func writeHousekeepingHelp(out io.Writer) {
@@ -10079,6 +10162,33 @@ func writeDurableFinalizeResult(out io.Writer, result state.DurableFinalizeResul
 	fmt.Fprintf(out, "contract: %s\n", result.Contract)
 	fmt.Fprintf(out, "path: %s\n", result.RelativePath)
 	fmt.Fprintf(out, "sha256: %s\n", result.ContentHash)
+}
+
+func writeRenderSweepResult(out io.Writer, result state.DurableRenderSweepResult) {
+	fmt.Fprintln(out, "render sweep")
+	fmt.Fprintf(out, "contract: %s\n", result.Contract)
+	fmt.Fprintf(out, "scanned: %d\n", result.Scanned)
+	fmt.Fprintf(out, "current: %d\n", result.Current)
+	fmt.Fprintf(out, "upgrade needed: %d\n", result.UpgradeNeeded)
+	fmt.Fprintf(out, "upgraded: %d\n", result.Upgraded)
+	fmt.Fprintf(out, "drift: %d\n", result.Drift)
+	fmt.Fprintf(out, "invalid: %d\n", result.Invalid)
+	if result.Skipped > 0 {
+		fmt.Fprintf(out, "skipped: %d\n", result.Skipped)
+	}
+	if result.DryRun {
+		fmt.Fprintln(out, "dry run: true")
+	}
+	for _, file := range result.Files {
+		switch file.Status {
+		case "upgraded":
+			fmt.Fprintf(out, "upgraded %s: %s -> %s\n", file.RelativePath, file.FromContract, file.ToContract)
+		case "upgrade-needed":
+			fmt.Fprintf(out, "upgrade-needed %s: %s -> %s\n", file.RelativePath, file.FromContract, file.ToContract)
+		case "drift", "invalid":
+			fmt.Fprintf(out, "%s %s: %s\n", file.Status, file.RelativePath, file.Error)
+		}
+	}
 }
 
 func writeReportList(out io.Writer, reports state.ReportList) {

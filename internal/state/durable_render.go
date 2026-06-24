@@ -8,6 +8,8 @@ import (
 
 const DurableRenderContract = "durable-doc-v1"
 
+var durableRenderCurrentContract = DurableRenderContract
+
 // DurableRenderField is one stable scalar field in a committed durable render.
 type DurableRenderField struct {
 	Key   string
@@ -62,9 +64,17 @@ func DurableReportRenderDocument(report ReportDetail) DurableRenderDocument {
 
 // RenderDurableDocument emits byte-stable Markdown for a durable render.
 func RenderDurableDocument(doc DurableRenderDocument) (string, error) {
+	return renderDurableDocumentWithContract(doc, durableRenderCurrentContract)
+}
+
+func renderDurableDocumentWithContract(doc DurableRenderDocument, contract string) (string, error) {
 	kind := strings.TrimSpace(doc.Kind)
 	if kind == "" {
 		return "", fmt.Errorf("durable render requires kind")
+	}
+	contract = strings.TrimSpace(contract)
+	if contract == "" {
+		return "", fmt.Errorf("durable render requires contract")
 	}
 	fields, err := canonicalDurableFields(doc.Fields)
 	if err != nil {
@@ -82,36 +92,44 @@ func RenderDurableDocument(doc DurableRenderDocument) (string, error) {
 		b.WriteString(body)
 		b.WriteString("\n\n")
 	}
-	b.WriteString(durableRenderStamp(kind, DurableRenderContract))
+	b.WriteString(durableRenderStamp(kind, contract))
 	b.WriteString("\n")
 	return b.String(), nil
 }
 
 // ParseDurableRender parses a committed durable render for self-consistency checks.
 func ParseDurableRender(content string) (DurableRenderDocument, error) {
+	doc, contract, err := parseDurableRenderAnyContract(content)
+	if err != nil {
+		return DurableRenderDocument{}, err
+	}
+	if contract != durableRenderCurrentContract {
+		return DurableRenderDocument{}, fmt.Errorf("unsupported durable render contract %q", contract)
+	}
+	return doc, nil
+}
+
+func parseDurableRenderAnyContract(content string) (DurableRenderDocument, string, error) {
 	normalized := normalizeLineEndings(content)
 	lines := strings.Split(strings.TrimSuffix(normalized, "\n"), "\n")
 	if len(lines) == 0 {
-		return DurableRenderDocument{}, fmt.Errorf("durable render is empty")
+		return DurableRenderDocument{}, "", fmt.Errorf("durable render is empty")
 	}
 	stamp := lines[len(lines)-1]
 	kind, contract, err := parseDurableRenderStamp(stamp)
 	if err != nil {
-		return DurableRenderDocument{}, err
-	}
-	if contract != DurableRenderContract {
-		return DurableRenderDocument{}, fmt.Errorf("unsupported durable render contract %q", contract)
+		return DurableRenderDocument{}, "", err
 	}
 	bodyPart := strings.Join(lines[:len(lines)-1], "\n")
 	fields, body, err := parseDurableFrontmatter(bodyPart)
 	if err != nil {
-		return DurableRenderDocument{}, err
+		return DurableRenderDocument{}, "", err
 	}
 	return DurableRenderDocument{
 		Kind:   kind,
 		Fields: fields,
 		Body:   strings.Trim(body, "\n"),
-	}, nil
+	}, contract, nil
 }
 
 // ReRenderDurableRender parses and re-renders content using the deterministic renderer.

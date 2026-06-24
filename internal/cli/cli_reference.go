@@ -95,6 +95,16 @@ func cliReferenceCommands() []cliReferenceCommand {
 			},
 		},
 		{
+			Name:        "render",
+			Description: "Maintain committed durable Markdown renders",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "sweep", Description: "Upgrade committed durable renders to the current renderer contract", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Report upgrade-needed files without rewriting them"},
+					{Flags: "--json", Description: "Output scanned files, upgrade counts, drift counts, and target contract as JSON"},
+				}},
+			},
+		},
+		{
 			Name:        "state",
 			Description: "Manage native SQLite state",
 			Subcommands: []cliReferenceSubcommand{
@@ -760,6 +770,12 @@ func cliReferenceCommandUsageExamples(commandName string) []string {
 			"loaf migrate markdown --dry-run",
 			"loaf migrate markdown --apply",
 			"loaf migrate storage-home --dry-run",
+		}
+	case "render":
+		return []string{
+			"loaf render sweep --dry-run",
+			"loaf render sweep --json",
+			"loaf check --hook render-drift --json",
 		}
 	case "report":
 		return []string{

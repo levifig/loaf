@@ -240,6 +240,42 @@ Spec body.
 	}
 }
 
+func TestRunnerRenderSweepScansCommittedRendersWithoutDatabase(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	writeCLIAgentsFile(t, workingDir, "specs/SPEC-001-sweep.md", `---
+id: SPEC-001
+status: implementing
+title: Sweep Spec
+---
+
+# Sweep Spec
+
+Body.
+
+<!-- loaf:render kind=spec contract=durable-doc-v1 -->
+`)
+
+	var jsonOut bytes.Buffer
+	err := Runner{
+		Stdout:     &jsonOut,
+		WorkingDir: workingDir,
+		StateHome:  t.TempDir(),
+	}.Run([]string{"render", "sweep", "--json"})
+	if err != nil {
+		t.Fatalf("render sweep --json error = %v", err)
+	}
+	var result state.DurableRenderSweepResult
+	if err := json.Unmarshal(jsonOut.Bytes(), &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", jsonOut.String(), err)
+	}
+	if result.Contract != state.DurableRenderContract || result.Scanned != 1 || result.Current != 1 || result.UpgradeNeeded != 0 || result.Drift != 0 || result.Invalid != 0 {
+		t.Fatalf("result = %#v, want one current durable render", result)
+	}
+	if len(result.Files) != 1 || result.Files[0].RelativePath != ".agents/specs/SPEC-001-sweep.md" || result.Files[0].Status != "current" {
+		t.Fatalf("files = %#v, want current committed spec render", result.Files)
+	}
+}
+
 func TestRunnerHousekeepingUsesMarkdownArtifactsWhenMarkdownOnly(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
