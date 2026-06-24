@@ -71,6 +71,7 @@ type installAliasManifest struct {
 
 type installDeprecationCleanupResult struct {
 	Removed []installDeprecationCleanupAction
+	Aliases []installDeprecationCleanupAction
 	Skipped []installDeprecationCleanupAction
 }
 
@@ -277,6 +278,18 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 		action.Action = "relocated"
 		result.Removed = append(result.Removed, action)
 	}
+	for _, alias := range manifest.Aliases {
+		result.Aliases = append(result.Aliases, installDeprecationCleanupAction{
+			Kind:    "alias",
+			Name:    alias.From,
+			Path:    alias.To,
+			Reason:  alias.Reason,
+			Since:   alias.Since,
+			Window:  deprecationWindow(alias.Window),
+			Signoff: alias.Signoff,
+			Action:  "alias",
+		})
+	}
 	return result, nil
 }
 
@@ -335,7 +348,7 @@ func expandInstallDeprecationPath(path string, context map[string]string) (strin
 }
 
 func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationCleanupResult) {
-	if len(result.Removed) == 0 && len(result.Skipped) == 0 {
+	if len(result.Removed) == 0 && len(result.Aliases) == 0 && len(result.Skipped) == 0 {
 		return
 	}
 	fmt.Fprintf(out, "  %s install deprecation cleanup\n", ansiGray("•"))
@@ -348,15 +361,12 @@ func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationClea
 		default:
 			fmt.Fprintf(out, "    %s removed retired %s %s at %s", ansiGreen("✓"), action.Kind, action.Name, ansiGray(action.Path))
 		}
-		if action.Reason != "" {
-			fmt.Fprintf(out, " — %s", action.Reason)
-		}
-		if action.Since != "" || action.Window != "" {
-			fmt.Fprintf(out, " (since %s, window %s)", emptyInstallDeprecationField(action.Since), emptyInstallDeprecationField(action.Window))
-		}
-		if action.Signoff != "" {
-			fmt.Fprintf(out, " [signoff: %s]", action.Signoff)
-		}
+		writeInstallDeprecationMetadata(out, action)
+		fmt.Fprintln(out)
+	}
+	for _, action := range result.Aliases {
+		fmt.Fprintf(out, "    %s alias %s -> %s", ansiGray("-"), action.Name, action.Path)
+		writeInstallDeprecationMetadata(out, action)
 		fmt.Fprintln(out)
 	}
 	for _, action := range result.Skipped {
@@ -366,6 +376,18 @@ func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationClea
 		case "unmarked":
 			fmt.Fprintf(out, "    %s skipped retired %s %s at %s; path is not marked as Loaf-owned\n", ansiYellow("⚠"), action.Kind, action.Name, ansiGray(action.Path))
 		}
+	}
+}
+
+func writeInstallDeprecationMetadata(out io.Writer, action installDeprecationCleanupAction) {
+	if action.Reason != "" {
+		fmt.Fprintf(out, " — %s", action.Reason)
+	}
+	if action.Since != "" || action.Window != "" {
+		fmt.Fprintf(out, " (since %s, window %s)", emptyInstallDeprecationField(action.Since), emptyInstallDeprecationField(action.Window))
+	}
+	if action.Signoff != "" {
+		fmt.Fprintf(out, " [signoff: %s]", action.Signoff)
 	}
 }
 
