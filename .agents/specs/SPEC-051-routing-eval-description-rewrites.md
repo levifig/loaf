@@ -3,7 +3,7 @@ id: SPEC-051
 title: Routing Eval & Validated Description Rewrites
 source: "/Users/levifig/Code/levifig/projects/loaf/.agents/drafts/20260621-020342-loaf-restructuring-roadmap.md (WS-E)"
 created: 2026-06-22T09:13:21Z
-status: drafting
+status: implementing
 branch: feat/routing-eval-description-rewrites
 source_sessions:
   - id: 20260621-001541-session
@@ -14,21 +14,22 @@ source_sessions:
 
 ## Problem Statement
 
-Skill routing is the only mechanism that decides which of 35 skills a user
+Skill routing is the only mechanism that decides which of 34 skills a user
 utterance reaches, and Loaf has no working evidence that routing is correct.
 The one tool that should measure it — `cli/scripts/eval-skill-routing.mjs` — is
 stale: it expects routes to skills that do not exist (`council-session`,
 `cleanup`, `resume-session`, `reference-session` at
 `cli/scripts/eval-skill-routing.mjs:195-244`), routes some prompts to `idea`
 where `triage` now owns queue processing (`:185-189`), and does not test the
-known confusable pairs at all. The actual skill set is
+known confusable pairs at all. The actual skill set on the implementation
+branch is
 `architecture, bootstrap, brainstorm, breakdown, cli-reference, council,
 database-design, debugging, documentation-standards, foundations, git-workflow,
 go-development, handoff, housekeeping, idea, implement, infrastructure-management,
 interface-design, knowledge-base, orchestration, power-systems-modeling,
 python-development, refactor-deepen, reflect, release, research, ruby-development,
-security-compliance, shape, ship, strategy, thermo-nuclear-code-quality-review,
-triage, typescript-development, wrap` — 35 skills, none of which is
+security-compliance, shape, ship, strategy, triage, typescript-development,
+wrap` — 34 skills, none of which is
 `council-session`/`cleanup`/`resume-session`/`reference-session`.
 
 The deep-evaluation report (`report-loaf-skills-deep-audit`,
@@ -43,9 +44,11 @@ blind change to the most behaviorally-sensitive string in the system.
 
 One adjacent drift rides here because it shares the same surface:
 `docs/knowledge/skill-architecture.md:88` claims "33 skills total: 17 workflow,
-16 reference/knowledge" while the real count is 35. (The companion drift — that
-the user-invocable workflow skills lack a `skill(<name>)` first-action self-log
-line — is owned by SPEC-048, which rewrites the skills' session interaction.)
+16 reference/knowledge" while the real count is 34: 19 workflow/default-invocable
+skills and 15 reference skills with `user-invocable: false`. (The companion
+drift — that the user-invocable workflow skills lack a `skill(<name>)`
+first-action self-log line — is owned by SPEC-048, which rewrites the skills'
+session interaction.)
 
 ## Strategic Alignment
 
@@ -87,7 +90,7 @@ decide which description rewrites ship.
    skill list and the `<available_skills>` listing from the real
    `content/skills/*` set (the loader already does this at `:54-84`; the stale
    part is the hard-coded `TEST_CASES` map at `:89-250`). Replace `TEST_CASES`
-   with the current 35 skills and remove the four phantom skills. Add an
+   with the current 34 skills and remove the four phantom skills. Add an
    explicit **conflict-pair suite**: utterance → expected-skill probes for
    `idea`/`triage`, `research`/`brainstorm`, `strategy`/`reflect`,
    `ship`/`release`, `architecture`/`shape`, and
@@ -98,7 +101,9 @@ decide which description rewrites ship.
 
 2. **Establish a baseline.** Run the refreshed harness against the *current*
    descriptions and record the per-pair accuracy. This is the number every
-   rewrite must beat.
+   rewrite must beat. The implementation environment currently has no
+   `ANTHROPIC_API_KEY`, so the harness must support a no-key structural
+   validation mode and reserve live baseline capture for a key-backed run.
 
 3. **Eval-gate the rewrites.** For each candidate skill
    (`foundations`, `research`, `brainstorm`, `interface-design`, `strategy`),
@@ -111,7 +116,7 @@ decide which description rewrites ship.
    (`.agents/reports/20260620-214448-audit-loaf-skills-deep-audit.md:24`).
 
 4. **Fix the taxonomy doc.** Update `docs/knowledge/skill-architecture.md:88`
-   from "33 skills total" to the verified count (35) with the correct
+   from "33 skills total" to the verified count (34) with the correct
    workflow/reference split, and refresh any other stale figure in that file.
 
 The harness is the deliverable that outlasts this spec: it is the regression
@@ -120,12 +125,15 @@ guard so the next description edit or new skill cannot silently degrade routing.
 ## Scope
 
 ### In Scope
-- Rewrite `cli/scripts/eval-skill-routing.mjs` test cases to the real 35-skill
+- Rewrite `cli/scripts/eval-skill-routing.mjs` test cases to the real 34-skill
   set; remove phantom skills (`council-session`, `cleanup`, `resume-session`,
   `reference-session`).
 - Add a conflict-pair probe suite for the six named pairs/groups.
-- Capture a recorded baseline routing-accuracy result (committed as a fixture or
-  documented in the harness output section of the eval, not as live CI).
+- Add a no-key structural validation mode for the suite, plus key-backed JSON
+  output for live baseline runs.
+- Capture a recorded baseline routing-accuracy result once an
+  `ANTHROPIC_API_KEY` is available (committed as a fixture or documented in the
+  harness output section of the eval, not as live CI).
 - Eval-gated `description:` rewrites for `foundations`, `research`,
   `brainstorm`, `interface-design`, `strategy` — ship only measured wins.
 - Fix the skill count and tier figures in
@@ -140,7 +148,7 @@ guard so the next description edit or new skill cannot silently degrade routing.
 - Adding the eval to CI as a blocking gate (requires an API key in CI and has
   per-run cost; see Rabbit Holes). The eval is a developer/pre-merge tool here.
 - Renaming, hiding, retiring, or merging any skill (taxonomy decisions are
-  SPEC-053 / WS-G; `debugging`/`thermo` disposition is not decided here).
+  SPEC-053 / WS-G; `debugging` disposition is not decided here).
 - Session-model rewrites or status-enum work (SPEC-048 / SPEC-049).
 - First-action self-logging line (`loaf session log "skill(<name>)"`) — owned by
   SPEC-048, which atomically rewrites the skills' session interaction.
@@ -154,7 +162,7 @@ guard so the next description edit or new skill cannot silently degrade routing.
 - **Chasing 100% routing accuracy.** Some utterances are genuinely ambiguous
   (e.g. "step back and assess" between `research` and `reflect`). The bar is
   *measured improvement on the named pairs*, not perfection.
-- **Rewriting all 35 descriptions.** Only the five named collision-prone skills
+- **Rewriting all 34 descriptions.** Only the five named collision-prone skills
   are in scope; touching others invites churn without evidence.
 - **Building a bespoke eval framework.** Reuse the existing harness shape; do
   not import a heavyweight eval dependency (CLAUDE.md: ask before adding deps).
@@ -180,37 +188,40 @@ guard so the next description edit or new skill cannot silently degrade routing.
 
 1. What model should the recorded baseline use — Opus (highest fidelity, matches
    `DEFAULT_MODEL` at `eval-skill-routing.mjs:22`) or a cheaper model for
-   repeatability? Proposed: record baseline on the default model, allow
-   `--model` override for cheap iteration.
+   repeatability? Decision: record baseline on the default model when a key is
+   available; allow `--model` override for cheap iteration.
 2. How is the baseline persisted for reviewers — a committed JSON fixture under
-   `cli/scripts/` or a documented number in the spec/PR? Proposed: committed
-   fixture so regressions are diffable.
+   `cli/scripts/` or a documented number in the spec/PR? Decision: committed
+   JSON fixture so regressions are diffable.
 3. Are `git-workflow` and `documentation-standards` themselves rewrite
    candidates, or only probe-targets that sharpen `foundations`? Proposed:
    probe-targets only unless the eval shows `foundations` cannot win without
    adjusting a sibling's negative routing.
 4. Does the eval need to model the two-tier description truncation (≤250 char
    first sentence vs full) the harness already slices at
-   `eval-skill-routing.mjs:81`? Confirm the 250-char budget still matches the
-   harnesses' real `<available_skills>` truncation.
+   `eval-skill-routing.mjs:81`? Decision: keep the explicit 250-character
+   simulation parameter and report it in dry-run/live JSON output.
 
 ## Test Conditions
 
-- [ ] `npm run eval:routing` runs end-to-end with no skipped/"not found" skills
-      (the phantom-skill warning at `eval-skill-routing.mjs:319` never fires).
+- [ ] `npm run eval:routing -- --dry-run` validates the suite with no
+      skipped/"not found" skills and without requiring `ANTHROPIC_API_KEY`.
+- [ ] With `ANTHROPIC_API_KEY`, `npm run eval:routing` runs end-to-end with no
+      skipped/"not found" skills.
 - [ ] `rg -n 'council-session|cleanup|resume-session|reference-session' cli/scripts`
       returns no matches.
 - [ ] The harness includes explicit conflict-pair probes for all six named
       pairs/groups (`idea`/`triage`, `research`/`brainstorm`, `strategy`/`reflect`,
       `ship`/`release`, `architecture`/`shape`,
       `foundations`/`git-workflow`/`documentation-standards`).
-- [ ] A baseline routing-accuracy result is recorded and committed.
+- [ ] A baseline routing-accuracy result is recorded and committed after a
+      key-backed run.
 - [ ] Each shipped `description:` rewrite (`foundations`, `research`,
       `brainstorm`, `interface-design`, `strategy`) has a recorded
       before/after accuracy showing measured improvement with no per-pair
       regression; any candidate without a win is documented as discarded.
 - [ ] `docs/knowledge/skill-architecture.md` states the verified skill count
-      (35) and correct workflow/reference split; `rg -n '33 skills' docs`
+      (34) and correct workflow/reference split; `rg -n '33 skills' docs`
       returns no matches.
 - [ ] `loaf build` succeeds and `git diff --exit-code -- dist plugins` is clean
       (regenerated artifacts committed with source).
@@ -222,9 +233,9 @@ All tracks are **non-breaking** (content + developer tooling only; no schema,
 no harness surface, no install change). No SPEC-053 gate applies.
 
 1. **Track 1 — Refresh the harness** *(non-breaking; enables everything below)*.
-   Rewrite `eval-skill-routing.mjs` test cases to the real 35-skill set, drop
-   phantom skills, add conflict-pair probes. Go/no-go: harness runs clean with
-   zero skipped skills.
+   Rewrite `eval-skill-routing.mjs` test cases to the real 34-skill set, drop
+   phantom skills, add conflict-pair probes, and add no-key structural
+   validation. Go/no-go: dry-run harness runs clean with zero skipped skills.
 2. **Track 2 — Record baseline** *(non-breaking; gate for Track 3)*. Run and
    commit baseline accuracy. Go/no-go: baseline reproducible within run-to-run
    variance.
