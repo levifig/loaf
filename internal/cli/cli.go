@@ -2939,7 +2939,7 @@ func (r Runner) runSearch(args []string, out io.Writer, runtime state.Runtime) e
 }
 
 func writeSearchHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf search <query> [--all-projects] [--limit <n>] [--json]", "Search Tier-1 SQLite artifact bodies and journal entries.", "--all-projects  Search every registered project instead of only the current project", "--limit         Maximum results to return (default: 20)", "--json          Output tiered hits, stable entity addresses, snippets, global database scope, and project identity as JSON")
+	writeUsageHelp(out, "loaf search <query> [--all-projects] [--limit <n>] [--json]", "Search SQLite artifact bodies, journal entries, and indexed docs.", "--all-projects  Search every registered project instead of only the current project", "--limit         Maximum results to return (default: 20)", "--json          Output tiered hits, stable entity addresses, snippets, global database scope, and project identity as JSON")
 }
 
 func parseSearchArgs(args []string) (searchOptions, error) {
@@ -2976,6 +2976,9 @@ func parseSearchArgs(args []string) (searchOptions, error) {
 }
 
 func searchHitAddress(hit state.SearchHit) string {
+	if hit.Source == "docs_index" {
+		return hit.Path
+	}
 	if hit.Source == "journal_entry" {
 		address := hit.JournalEntryID
 		if hit.SessionID != "" {

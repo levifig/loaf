@@ -121,7 +121,7 @@ loaf release
 ## Search Management
 
 ### `loaf search`
-Search Tier-1 SQLite artifact bodies and journal entries
+Search SQLite artifact bodies, journal entries, and indexed docs
 
 **Options:**
 

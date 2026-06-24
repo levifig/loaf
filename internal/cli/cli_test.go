@@ -16109,6 +16109,34 @@ func TestRunnerDocsIndexIndexesMarkdown(t *testing.T) {
 	}
 }
 
+func TestRunnerSearchReturnsTier2DocsHits(t *testing.T) {
+	workingDir := initCLIGitRepo(t)
+	stateHome := t.TempDir()
+	writeCLIFile(t, filepath.Join(workingDir, "docs", "guide.md"), "# Guide\n\nclisearchdocsterm")
+	if err := (Runner{WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	if err := (Runner{WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"docs", "index"}); err != nil {
+		t.Fatalf("docs index error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"search", "clisearchdocsterm", "--json"}); err != nil {
+		t.Fatalf("search docs --json error = %v", err)
+	}
+	var result state.SearchResult
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("Unmarshal(%q) error = %v", stdout.String(), err)
+	}
+	if len(result.Results) != 1 {
+		t.Fatalf("results = %#v, want one docs hit", result.Results)
+	}
+	hit := result.Results[0]
+	if hit.Tier != "tier2" || hit.Source != "docs_index" || hit.Path != "docs/guide.md" || !strings.Contains(hit.Snippet, "clisearchdocsterm") {
+		t.Fatalf("hit = %#v, want Tier-2 docs hit with snippet", hit)
+	}
+}
+
 func realpath(t *testing.T, path string) string {
 	t.Helper()
 	realpath, err := filepath.EvalSymlinks(path)

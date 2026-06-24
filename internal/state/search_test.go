@@ -106,6 +106,50 @@ func TestSearchRedactsSnippetsAndUpdatesArtifactIndex(t *testing.T) {
 	}
 }
 
+func TestSearchReturnsTier2DocsHits(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	otherRoot := projectRoot(t)
+	stateHome := t.TempDir()
+	writeDocsFile(t, root.Path(), "docs/guide.md", "# Guide\n\nshared-doc-term current")
+	writeDocsFile(t, otherRoot.Path(), "docs/guide.md", "# Guide\n\nshared-doc-term other")
+	if _, err := Initialize(ctx, root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize(root) error = %v", err)
+	}
+	if _, err := Initialize(ctx, otherRoot, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize(otherRoot) error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+	projectID := projectIDForTest(t, store, root)
+	otherProjectID := projectIDForTest(t, store, otherRoot)
+	if _, err := store.IndexDocs(ctx, root, DocsIndexOptions{}); err != nil {
+		t.Fatalf("IndexDocs(root) error = %v", err)
+	}
+	if _, err := store.IndexDocs(ctx, otherRoot, DocsIndexOptions{}); err != nil {
+		t.Fatalf("IndexDocs(otherRoot) error = %v", err)
+	}
+
+	current, err := store.Search(ctx, root, SearchOptions{Query: "shared-doc-term"})
+	if err != nil {
+		t.Fatalf("Search(current) error = %v", err)
+	}
+	if !searchDocsHitContain(current.Results, projectID, "docs/guide.md") {
+		t.Fatalf("current results = %#v, want current docs hit", current.Results)
+	}
+	if searchDocsHitContain(current.Results, otherProjectID, "docs/guide.md") {
+		t.Fatalf("current results = %#v, want no cross-project docs hit", current.Results)
+	}
+
+	all, err := store.Search(ctx, root, SearchOptions{Query: "shared-doc-term", AllProjects: true})
+	if err != nil {
+		t.Fatalf("Search(all projects) error = %v", err)
+	}
+	if !searchDocsHitContain(all.Results, otherProjectID, "docs/guide.md") {
+		t.Fatalf("all-project results = %#v, want other docs hit", all.Results)
+	}
+}
+
 func assertSearchProjectContext(t *testing.T, root interface{ Path() string }, result SearchResult) {
 	t.Helper()
 	if result.ContractVersion != StateJSONContractVersion || result.DatabaseScope != "global" || result.DatabasePath == "" || result.ProjectID == "" || result.ProjectCurrentPath != root.Path() {
@@ -119,6 +163,15 @@ func searchHitsContain(hits []SearchHit, source string, projectID string, entity
 			continue
 		}
 		if entityID == "" || hit.EntityID == entityID {
+			return true
+		}
+	}
+	return false
+}
+
+func searchDocsHitContain(hits []SearchHit, projectID string, path string) bool {
+	for _, hit := range hits {
+		if hit.Tier == "tier2" && hit.Source == "docs_index" && hit.ProjectID == projectID && hit.Path == path {
 			return true
 		}
 	}

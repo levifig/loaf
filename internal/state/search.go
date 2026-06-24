@@ -11,7 +11,7 @@ import (
 	"github.com/levifig/loaf/internal/project"
 )
 
-// SearchOptions describes a Tier-1 SQLite search request.
+// SearchOptions describes a SQLite search request.
 type SearchOptions struct {
 	Query       string
 	AllProjects bool
@@ -31,25 +31,27 @@ type SearchResult struct {
 	Results            []SearchHit `json:"results"`
 }
 
-// SearchHit is one Tier-1 FTS result.
+// SearchHit is one FTS result.
 type SearchHit struct {
-	Tier           string  `json:"tier"`
-	Source         string  `json:"source"`
-	ProjectID      string  `json:"project_id"`
-	EntityKind     string  `json:"entity_kind,omitempty"`
-	EntityID       string  `json:"entity_id,omitempty"`
-	BodyKind       string  `json:"body_kind,omitempty"`
-	JournalEntryID string  `json:"journal_entry_id,omitempty"`
-	SessionID      string  `json:"session_id,omitempty"`
-	EntryType      string  `json:"entry_type,omitempty"`
-	Scope          string  `json:"scope,omitempty"`
-	Snippet        string  `json:"snippet"`
-	Rank           float64 `json:"rank"`
+	Tier            string  `json:"tier"`
+	Source          string  `json:"source"`
+	ProjectID       string  `json:"project_id"`
+	EntityKind      string  `json:"entity_kind,omitempty"`
+	EntityID        string  `json:"entity_id,omitempty"`
+	BodyKind        string  `json:"body_kind,omitempty"`
+	Path            string  `json:"path,omitempty"`
+	IndexedWorktree string  `json:"indexed_worktree,omitempty"`
+	JournalEntryID  string  `json:"journal_entry_id,omitempty"`
+	SessionID       string  `json:"session_id,omitempty"`
+	EntryType       string  `json:"entry_type,omitempty"`
+	Scope           string  `json:"scope,omitempty"`
+	Snippet         string  `json:"snippet"`
+	Rank            float64 `json:"rank"`
 }
 
 var searchTokenRE = regexp.MustCompile(`[[:alnum:]_]+`)
 
-// Search queries Tier-1 SQLite-resident artifact bodies and journal entries.
+// Search queries SQLite-resident artifact bodies, journal entries, and indexed docs.
 func Search(ctx context.Context, root project.Root, resolver PathResolver, options SearchOptions) (SearchResult, error) {
 	store, err := openInitializedStore(root, resolver)
 	if err != nil {
@@ -59,7 +61,7 @@ func Search(ctx context.Context, root project.Root, resolver PathResolver, optio
 	return store.Search(ctx, root, options)
 }
 
-// Search queries Tier-1 SQLite-resident artifact bodies and journal entries using an open store.
+// Search queries SQLite-resident artifact bodies, journal entries, and indexed docs using an open store.
 func (s *Store) Search(ctx context.Context, root project.Root, options SearchOptions) (SearchResult, error) {
 	projectID, err := s.projectID(ctx, root)
 	if err != nil {
@@ -87,6 +89,11 @@ func (s *Store) Search(ctx context.Context, root project.Root, options SearchOpt
 		return SearchResult{}, err
 	}
 	hits = append(hits, journalHits...)
+	docHits, err := s.searchDocsIndex(ctx, projectID, options.AllProjects, ftsQuery)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	hits = append(hits, docHits...)
 	sort.SliceStable(hits, func(i, j int) bool {
 		if hits[i].Rank != hits[j].Rank {
 			return hits[i].Rank < hits[j].Rank
@@ -102,6 +109,9 @@ func (s *Store) Search(ctx context.Context, root project.Root, options SearchOpt
 		}
 		if hits[i].EntityID != hits[j].EntityID {
 			return hits[i].EntityID < hits[j].EntityID
+		}
+		if hits[i].Path != hits[j].Path {
+			return hits[i].Path < hits[j].Path
 		}
 		return hits[i].JournalEntryID < hits[j].JournalEntryID
 	})
@@ -186,6 +196,39 @@ WHERE journal_search MATCH ?`
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate journal search hits: %w", err)
+	}
+	return hits, nil
+}
+
+func (s *Store) searchDocsIndex(ctx context.Context, projectID string, allProjects bool, ftsQuery string) ([]SearchHit, error) {
+	query := `
+SELECT docs_index.project_id, docs_index.path, docs_index.indexed_worktree, snippet(docs_search, 3, '', '', '...', 12), bm25(docs_search)
+FROM docs_search
+JOIN docs_index ON docs_index.rowid = docs_search.rowid
+WHERE docs_search MATCH ?`
+	args := []any{ftsQuery}
+	if !allProjects {
+		query += ` AND docs_index.project_id = ?`
+		args = append(args, projectID)
+	}
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("search docs index: %w", err)
+	}
+	defer rows.Close()
+	var hits []SearchHit
+	for rows.Next() {
+		var hit SearchHit
+		hit.Tier = "tier2"
+		hit.Source = "docs_index"
+		if err := rows.Scan(&hit.ProjectID, &hit.Path, &hit.IndexedWorktree, &hit.Snippet, &hit.Rank); err != nil {
+			return nil, fmt.Errorf("scan docs search hit: %w", err)
+		}
+		hit.Snippet = redactSearchSnippet(hit.Snippet)
+		hits = append(hits, hit)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate docs search hits: %w", err)
 	}
 	return hits, nil
 }
