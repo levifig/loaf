@@ -62,7 +62,7 @@ func agentHelpCommands() []agentHelpCommand {
 			Options: []agentHelpOption{
 				{Flags: "--to <target>", Description: "Target to install to, or all"},
 				{Flags: "--upgrade", Description: "Upgrade already-installed targets"},
-				{Flags: "-y, --yes", Description: "Assume yes to safe project-file symlink migrations"},
+				{Flags: "-y, --yes", Description: "Assume yes to safe project-file symlink migrations and destructive deprecation cleanup"},
 				{Flags: "--no-yes", Description: "Force prompt-style declines in non-interactive mode"},
 			},
 		},

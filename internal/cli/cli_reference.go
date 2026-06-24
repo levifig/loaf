@@ -58,7 +58,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Options: []cliReferenceOption{
 				{Flags: "--to <target>", Description: `Target to install to (or "all")`},
 				{Flags: "--upgrade", Description: "Update installed targets and apply deprecation-manifest cleanup"},
-				{Flags: "-y, --yes", Description: "Assume 'yes' to safe migrations (merge content, back up, and replace real files with symlinks)"},
+				{Flags: "-y, --yes", Description: "Assume 'yes' to safe migrations and destructive deprecation cleanup"},
 				{Flags: "--no-yes", Description: "Force interactive prompts even when stdin is not a TTY (testing)"},
 			},
 		},

@@ -15,12 +15,13 @@ const (
 )
 
 type installDeprecationManifest struct {
-	Version        int                         `json:"version"`
-	RetiredTargets []retiredInstallTarget      `json:"retired_targets"`
-	RetiredSkills  []retiredInstallSkill       `json:"retired_skills"`
-	RetiredAgents  []retiredInstallAgent       `json:"retired_agents"`
-	Relocations    []installRelocationManifest `json:"relocations"`
-	Aliases        []installAliasManifest      `json:"aliases"`
+	Version            int                         `json:"version"`
+	RetiredTargets     []retiredInstallTarget      `json:"retired_targets"`
+	RetiredSkills      []retiredInstallSkill       `json:"retired_skills"`
+	RetiredAgents      []retiredInstallAgent       `json:"retired_agents"`
+	ExternalizedSkills []externalizedInstallSkill  `json:"externalized_skills"`
+	Relocations        []installRelocationManifest `json:"relocations"`
+	Aliases            []installAliasManifest      `json:"aliases"`
 }
 
 type retiredInstallTarget struct {
@@ -50,6 +51,17 @@ type retiredInstallAgent struct {
 	AgentHomes []string `json:"agent_homes"`
 }
 
+type externalizedInstallSkill struct {
+	Skill          string   `json:"skill"`
+	Since          string   `json:"since"`
+	Window         string   `json:"window"`
+	Reason         string   `json:"reason"`
+	Signoff        string   `json:"signoff"`
+	Source         string   `json:"source"`
+	InstallCommand string   `json:"install_command"`
+	SkillHomes     []string `json:"skill_homes"`
+}
+
 type installRelocationManifest struct {
 	ID      string `json:"id"`
 	From    string `json:"from"`
@@ -70,9 +82,10 @@ type installAliasManifest struct {
 }
 
 type installDeprecationCleanupResult struct {
-	Removed []installDeprecationCleanupAction
-	Aliases []installDeprecationCleanupAction
-	Skipped []installDeprecationCleanupAction
+	Removed      []installDeprecationCleanupAction
+	Externalized []installDeprecationCleanupAction
+	Aliases      []installDeprecationCleanupAction
+	Skipped      []installDeprecationCleanupAction
 }
 
 type installDeprecationCleanupAction struct {
@@ -83,10 +96,12 @@ type installDeprecationCleanupAction struct {
 	Since   string
 	Window  string
 	Signoff string
+	Source  string
+	Command string
 	Action  string
 }
 
-func runInstallDeprecationCleanup(loafRoot string, out io.Writer) error {
+func runInstallDeprecationCleanup(loafRoot string, out io.Writer, allowDestructive bool) error {
 	manifest, found, err := loadInstallDeprecationManifest(loafRoot)
 	if err != nil {
 		return err
@@ -94,7 +109,7 @@ func runInstallDeprecationCleanup(loafRoot string, out io.Writer) error {
 	if !found || manifest.isEmpty() {
 		return nil
 	}
-	result, err := applyInstallDeprecationCleanup(manifest, installPathContext())
+	result, err := applyInstallDeprecationCleanup(manifest, installPathContext(), allowDestructive)
 	if err != nil {
 		return err
 	}
@@ -129,11 +144,12 @@ func (m installDeprecationManifest) isEmpty() bool {
 	return len(m.RetiredTargets) == 0 &&
 		len(m.RetiredSkills) == 0 &&
 		len(m.RetiredAgents) == 0 &&
+		len(m.ExternalizedSkills) == 0 &&
 		len(m.Relocations) == 0 &&
 		len(m.Aliases) == 0
 }
 
-func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathContext map[string]string) (installDeprecationCleanupResult, error) {
+func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathContext map[string]string, allowDestructive bool) (installDeprecationCleanupResult, error) {
 	var result installDeprecationCleanupResult
 	for _, target := range manifest.RetiredTargets {
 		for _, rawPath := range target.Paths {
@@ -157,6 +173,11 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 			}
 			if !fileExistsForInstall(filepath.Join(path, loafInstallMarkerFile)) {
 				action.Action = "unmarked"
+				result.Skipped = append(result.Skipped, action)
+				continue
+			}
+			if !allowDestructive {
+				action.Action = "confirmation-required"
 				result.Skipped = append(result.Skipped, action)
 				continue
 			}
@@ -193,6 +214,11 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 				result.Skipped = append(result.Skipped, action)
 				continue
 			}
+			if !allowDestructive {
+				action.Action = "confirmation-required"
+				result.Skipped = append(result.Skipped, action)
+				continue
+			}
 			if err := os.RemoveAll(path); err != nil {
 				return result, err
 			}
@@ -226,11 +252,40 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 				result.Skipped = append(result.Skipped, action)
 				continue
 			}
+			if !allowDestructive {
+				action.Action = "confirmation-required"
+				result.Skipped = append(result.Skipped, action)
+				continue
+			}
 			if err := os.Remove(path); err != nil {
 				return result, err
 			}
 			action.Action = "removed"
 			result.Removed = append(result.Removed, action)
+		}
+	}
+	for _, skill := range manifest.ExternalizedSkills {
+		for _, rawHome := range skill.SkillHomes {
+			home, err := expandInstallDeprecationPath(rawHome, pathContext)
+			if err != nil {
+				return result, err
+			}
+			path := filepath.Join(home, skill.Skill)
+			if !dirExistsForInstall(path) || !fileExistsForInstall(filepath.Join(path, "SKILL.md")) {
+				continue
+			}
+			result.Externalized = append(result.Externalized, installDeprecationCleanupAction{
+				Kind:    "skill",
+				Name:    skill.Skill,
+				Path:    path,
+				Reason:  skill.Reason,
+				Since:   skill.Since,
+				Window:  deprecationWindow(skill.Window),
+				Signoff: skill.Signoff,
+				Source:  skill.Source,
+				Command: skill.InstallCommand,
+				Action:  "externalized",
+			})
 		}
 	}
 	for _, relocation := range manifest.Relocations {
@@ -258,6 +313,11 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 		}
 		if !isLoafOwnedInstallDir(from) {
 			action.Action = "unmarked"
+			result.Skipped = append(result.Skipped, action)
+			continue
+		}
+		if !allowDestructive {
+			action.Action = "confirmation-required"
 			result.Skipped = append(result.Skipped, action)
 			continue
 		}
@@ -348,7 +408,7 @@ func expandInstallDeprecationPath(path string, context map[string]string) (strin
 }
 
 func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationCleanupResult) {
-	if len(result.Removed) == 0 && len(result.Aliases) == 0 && len(result.Skipped) == 0 {
+	if len(result.Removed) == 0 && len(result.Externalized) == 0 && len(result.Aliases) == 0 && len(result.Skipped) == 0 {
 		return
 	}
 	fmt.Fprintf(out, "  %s install deprecation cleanup\n", ansiGray("•"))
@@ -364,6 +424,17 @@ func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationClea
 		writeInstallDeprecationMetadata(out, action)
 		fmt.Fprintln(out)
 	}
+	for _, action := range result.Externalized {
+		fmt.Fprintf(out, "    %s externalized %s %s at %s", ansiGray("-"), action.Kind, action.Name, ansiGray(action.Path))
+		writeInstallDeprecationMetadata(out, action)
+		if action.Source != "" {
+			fmt.Fprintf(out, " source: %s", action.Source)
+		}
+		if action.Command != "" {
+			fmt.Fprintf(out, " command: %s", action.Command)
+		}
+		fmt.Fprintln(out)
+	}
 	for _, action := range result.Aliases {
 		fmt.Fprintf(out, "    %s alias %s -> %s", ansiGray("-"), action.Name, action.Path)
 		writeInstallDeprecationMetadata(out, action)
@@ -375,6 +446,8 @@ func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationClea
 			fmt.Fprintf(out, "    %s retired %s %s already absent at %s\n", ansiGray("-"), action.Kind, action.Name, ansiGray(action.Path))
 		case "unmarked":
 			fmt.Fprintf(out, "    %s skipped retired %s %s at %s; path is not marked as Loaf-owned\n", ansiYellow("⚠"), action.Kind, action.Name, ansiGray(action.Path))
+		case "confirmation-required":
+			fmt.Fprintf(out, "    %s skipped %s %s at %s; rerun with --yes to apply destructive deprecation cleanup\n", ansiYellow("⚠"), action.Kind, action.Name, ansiGray(action.Path))
 		}
 	}
 }

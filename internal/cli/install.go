@@ -76,7 +76,8 @@ func (r Runner) runInstall(args []string, out io.Writer, runtimeRoot string) err
 		fmt.Fprintf(out, "  %s %s\n", ansiGray("Upgrading:"), strings.Join(selectedTargets, ", "))
 	}
 	if options.upgrade {
-		if err := runInstallDeprecationCleanup(loafRoot, out); err != nil {
+		allowDestructiveCleanup := options.yes != nil && *options.yes
+		if err := runInstallDeprecationCleanup(loafRoot, out, allowDestructiveCleanup); err != nil {
 			return err
 		}
 	}
@@ -189,7 +190,7 @@ func writeInstallHelp(out io.Writer) {
 		"Options:",
 		"  --to <target>  Target to install to (or \"all\")",
 		"  --upgrade      Update installed targets and apply deprecation-manifest cleanup",
-		"  -y, --yes      Assume yes to safe project-file symlink migrations",
+		"  -y, --yes      Assume yes to safe project-file symlink migrations and destructive deprecation cleanup",
 		"  --no-yes       Force prompt-style declines in non-interactive mode",
 		"  -h, --help     Show help",
 	}, "\n"))

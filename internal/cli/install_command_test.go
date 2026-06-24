@@ -135,6 +135,38 @@ func TestRunnerInstallUpgradeCleansRetiredSkillFromManifest(t *testing.T) {
 	}
 }
 
+func TestRunnerInstallUpgradeSkipsDestructiveDeprecationWithoutExplicitYes(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	retiredSkill := filepath.Join(home, ".agents", "skills", "old-skill")
+	writeInstallFile(t, filepath.Join(retiredSkill, "SKILL.md"), "# Old skill\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [],
+  "retired_skills": [
+    {
+      "skill": "old-skill",
+      "since": "v9.9.0",
+      "reason": "old-skill was retired",
+      "skill_homes": ["${HOME}/.agents/skills"]
+    }
+  ],
+  "relocations": [],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	assertInstallFile(t, filepath.Join(retiredSkill, "SKILL.md"), "# Old skill\n")
+	for _, want := range []string{"skipped skill old-skill", "rerun with --yes to apply destructive deprecation cleanup"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+}
+
 func TestRunnerInstallUpgradeCleansRetiredAgentFromManifest(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
 	agentHome := filepath.Join(home, ".cursor", "agents")
@@ -296,6 +328,50 @@ func TestRunnerInstallUpgradeReportsAliasTombstoneFromManifest(t *testing.T) {
 		"alias old-skill -> new-skill",
 		"old-skill now routes to new-skill",
 		"since v9.9.0, window one-release",
+		"[signoff: report-spec-053-taxonomy-signoff]",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+}
+
+func TestRunnerInstallUpgradeReportsExternalizedSkillWithoutRemoving(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	externalizedSkill := filepath.Join(home, ".agents", "skills", "vendor-skill")
+	writeInstallFile(t, filepath.Join(externalizedSkill, "SKILL.md"), "# Vendor skill\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [],
+  "retired_skills": [],
+  "retired_agents": [],
+  "externalized_skills": [
+    {
+      "skill": "vendor-skill",
+      "since": "v9.9.0",
+      "reason": "vendor-skill moved out of Loaf core",
+      "signoff": "report-spec-053-taxonomy-signoff",
+      "source": "https://github.com/example/skills/tree/main/skills/vendor-skill",
+      "install_command": "loaf skill add https://github.com/example/skills/tree/main/skills/vendor-skill",
+      "skill_homes": ["${HOME}/.agents/skills"]
+    }
+  ],
+  "relocations": [],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	assertInstallFile(t, filepath.Join(externalizedSkill, "SKILL.md"), "# Vendor skill\n")
+	for _, want := range []string{
+		"install deprecation cleanup",
+		"externalized skill vendor-skill",
+		"vendor-skill moved out of Loaf core",
+		"source: https://github.com/example/skills/tree/main/skills/vendor-skill",
+		"command: loaf skill add https://github.com/example/skills/tree/main/skills/vendor-skill",
 		"[signoff: report-spec-053-taxonomy-signoff]",
 	} {
 		if !strings.Contains(stdout.String(), want) {
