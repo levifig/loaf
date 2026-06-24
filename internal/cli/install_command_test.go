@@ -135,6 +135,76 @@ func TestRunnerInstallUpgradeCleansRetiredSkillFromManifest(t *testing.T) {
 	}
 }
 
+func TestRunnerInstallUpgradeCleansRetiredAgentFromManifest(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	agentHome := filepath.Join(home, ".cursor", "agents")
+	retiredAgent := filepath.Join(agentHome, "old-agent.md")
+	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
+	writeInstallFile(t, retiredAgent, "# Old Agent\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [],
+  "retired_skills": [],
+  "retired_agents": [
+    {
+      "agent": "old-agent",
+      "since": "v9.9.0",
+      "window": "one-release",
+      "reason": "old-agent was retired",
+      "agent_homes": ["${HOME}/.cursor/agents"]
+    }
+  ],
+  "relocations": [],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	if _, err := os.Stat(retiredAgent); !os.IsNotExist(err) {
+		t.Fatalf("retired agent stat = %v, want removed", err)
+	}
+	for _, want := range []string{"removed retired agent old-agent", "old-agent was retired"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+}
+
+func TestRunnerInstallUpgradeSkipsUnmarkedRetiredAgent(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	agentHome := filepath.Join(home, ".cursor", "agents")
+	retiredAgent := filepath.Join(agentHome, "old-agent.md")
+	writeInstallFile(t, retiredAgent, "# User-owned Agent\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [],
+  "retired_skills": [],
+  "retired_agents": [
+    {
+      "agent": "old-agent",
+      "since": "v9.9.0",
+      "reason": "old-agent was retired",
+      "agent_homes": ["${HOME}/.cursor/agents"]
+    }
+  ],
+  "relocations": [],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	assertInstallFile(t, retiredAgent, "# User-owned Agent\n")
+	if !strings.Contains(stdout.String(), "path is not marked as Loaf-owned") {
+		t.Fatalf("stdout = %q, want unmarked skip", stdout.String())
+	}
+}
+
 func TestRunnerInstallUpgradeReportsDefaultDeprecationWindow(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
 	retiredSkill := filepath.Join(home, ".agents", "skills", "old-skill")

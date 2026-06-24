@@ -18,6 +18,7 @@ type installDeprecationManifest struct {
 	Version        int                         `json:"version"`
 	RetiredTargets []retiredInstallTarget      `json:"retired_targets"`
 	RetiredSkills  []retiredInstallSkill       `json:"retired_skills"`
+	RetiredAgents  []retiredInstallAgent       `json:"retired_agents"`
 	Relocations    []installRelocationManifest `json:"relocations"`
 	Aliases        []installAliasManifest      `json:"aliases"`
 }
@@ -36,6 +37,14 @@ type retiredInstallSkill struct {
 	Window     string   `json:"window"`
 	Reason     string   `json:"reason"`
 	SkillHomes []string `json:"skill_homes"`
+}
+
+type retiredInstallAgent struct {
+	Agent      string   `json:"agent"`
+	Since      string   `json:"since"`
+	Window     string   `json:"window"`
+	Reason     string   `json:"reason"`
+	AgentHomes []string `json:"agent_homes"`
 }
 
 type installRelocationManifest struct {
@@ -112,6 +121,7 @@ func loadInstallDeprecationManifest(loafRoot string) (installDeprecationManifest
 func (m installDeprecationManifest) isEmpty() bool {
 	return len(m.RetiredTargets) == 0 &&
 		len(m.RetiredSkills) == 0 &&
+		len(m.RetiredAgents) == 0 &&
 		len(m.Relocations) == 0 &&
 		len(m.Aliases) == 0
 }
@@ -181,6 +191,38 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 			result.Removed = append(result.Removed, action)
 		}
 	}
+	for _, agent := range manifest.RetiredAgents {
+		for _, rawHome := range agent.AgentHomes {
+			home, err := expandInstallDeprecationPath(rawHome, pathContext)
+			if err != nil {
+				return result, err
+			}
+			path := filepath.Join(home, agent.Agent+".md")
+			action := installDeprecationCleanupAction{
+				Kind:   "agent",
+				Name:   agent.Agent,
+				Path:   path,
+				Reason: agent.Reason,
+				Since:  agent.Since,
+				Window: deprecationWindow(agent.Window),
+			}
+			if !fileExistsForInstall(path) {
+				action.Action = "missing"
+				result.Skipped = append(result.Skipped, action)
+				continue
+			}
+			if !isLoafOwnedAgentFile(home) {
+				action.Action = "unmarked"
+				result.Skipped = append(result.Skipped, action)
+				continue
+			}
+			if err := os.Remove(path); err != nil {
+				return result, err
+			}
+			action.Action = "removed"
+			result.Removed = append(result.Removed, action)
+		}
+	}
 	for _, relocation := range manifest.Relocations {
 		from, err := expandInstallDeprecationPath(relocation.From, pathContext)
 		if err != nil {
@@ -238,6 +280,11 @@ func deprecationWindow(value string) string {
 func isLoafOwnedInstallDir(path string) bool {
 	return fileExistsForInstall(filepath.Join(path, loafInstallMarkerFile)) ||
 		fileExistsForInstall(filepath.Join(path, "SKILL.md"))
+}
+
+func isLoafOwnedAgentFile(agentHome string) bool {
+	return fileExistsForInstall(filepath.Join(agentHome, loafInstallMarkerFile)) ||
+		fileExistsForInstall(filepath.Join(filepath.Dir(agentHome), loafInstallMarkerFile))
 }
 
 func installPathContext() map[string]string {
