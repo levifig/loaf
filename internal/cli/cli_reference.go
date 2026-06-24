@@ -325,6 +325,15 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--metadata <json>", Description: "JSON metadata"},
 					{Flags: "--json", Description: "Output verdict, updated finding, event, global database scope, and project identity as JSON"},
 				}},
+				{Name: "import-json", Description: "Import row-shaped finding and verdict JSON", Options: []cliReferenceOption{
+					{Flags: "--report <report>", Description: "Existing report ref, or slug for a new import report"},
+					{Flags: "--report-type <type>", Description: "Report type used when creating a missing report"},
+					{Flags: "--source <source>", Description: "Source label used when creating a missing report"},
+					{Flags: "--run <run>", Description: "Optional run provenance row for imported rows"},
+					{Flags: "--findings <path>", Description: "Row-shaped findings JSON; may be repeated"},
+					{Flags: "--verdicts <path>", Description: "Row-shaped verdicts JSON; may be repeated"},
+					{Flags: "--json", Description: "Output import counts, files, global database scope, and project identity as JSON"},
+				}},
 			},
 		},
 		{

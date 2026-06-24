@@ -14080,6 +14080,79 @@ func TestRunnerFindingCRUDAndReportDecomposition(t *testing.T) {
 	}
 }
 
+func TestRunnerFindingImportJSON(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	importDir := filepath.Join(workingDir, "import")
+	if err := os.MkdirAll(importDir, 0o755); err != nil {
+		t.Fatalf("mkdir import fixture error = %v", err)
+	}
+	writeCLIFile(t, filepath.Join(importDir, "find.auth.json"), `[
+  {
+    "id": "auth-001",
+    "title": "Missing authorization check",
+    "severity": "critical",
+    "confidence": "high",
+    "path": "internal/auth.go",
+    "line_start": 42,
+    "message": "Handler accepts caller-controlled account IDs."
+  }
+]`)
+	writeCLIFile(t, filepath.Join(importDir, "VERDICTS.json"), `[
+  {
+    "id": "auth-001-confirmed",
+    "finding_id": "auth-001",
+    "outcome": "confirmed",
+    "rationale": "Reproduced from CLI import fixture."
+  }
+]`)
+
+	var importOut bytes.Buffer
+	err := Runner{Stdout: &importOut, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{
+		"finding", "import-json",
+		"--report", "imported-audit",
+		"--findings", "import/find.auth.json",
+		"--verdicts", "import/VERDICTS.json",
+		"--json",
+	})
+	if err != nil {
+		t.Fatalf("finding import-json --json error = %v", err)
+	}
+	imported := decodeFindingImportJSONResult(t, importOut.Bytes())
+	if imported.Report.Alias != "report-imported-audit" || imported.FindingsImported != 1 || imported.VerdictsImported != 1 {
+		t.Fatalf("imported = %#v, want created report with one finding and verdict", imported)
+	}
+
+	var secondOut bytes.Buffer
+	err = Runner{Stdout: &secondOut, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{
+		"finding", "import-json",
+		"--report", "report-imported-audit",
+		"--findings", "import/find.auth.json",
+		"--verdicts", "import/VERDICTS.json",
+		"--json",
+	})
+	if err != nil {
+		t.Fatalf("finding import-json second run error = %v", err)
+	}
+	second := decodeFindingImportJSONResult(t, secondOut.Bytes())
+	if second.FindingsImported != 0 || second.VerdictsImported != 0 || second.FindingsSkipped != 1 || second.VerdictsSkipped != 1 {
+		t.Fatalf("second = %#v, want idempotent skips", second)
+	}
+
+	var listOut bytes.Buffer
+	err = Runner{Stdout: &listOut, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{"finding", "list", "--severity", "critical", "--status", "confirmed", "--json"})
+	if err != nil {
+		t.Fatalf("finding list imported rows error = %v", err)
+	}
+	list := decodeFindingList(t, listOut.Bytes())
+	if len(list.Findings) != 1 {
+		t.Fatalf("imported list = %#v, want one confirmed critical finding", list.Findings)
+	}
+}
+
 func TestRunnerReportShowUsesMarkdownFallbackWhenMarkdownOnly(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -14867,6 +14940,15 @@ func decodeFindingVerdictResult(t *testing.T, data []byte) state.FindingVerdictR
 	return result
 }
 
+func decodeFindingImportJSONResult(t *testing.T, data []byte) state.FindingImportJSONResult {
+	t.Helper()
+	var result state.FindingImportJSONResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	return result
+}
+
 func decodeArtifactEntityCreateResult(t *testing.T, data []byte) state.ArtifactEntityCreateResult {
 	t.Helper()
 	var result state.ArtifactEntityCreateResult
@@ -15072,6 +15154,16 @@ func sqliteEntityStatus(t *testing.T, db *sql.DB, table string, kind string, ali
 func writeCLIAgentsFile(t *testing.T, root string, rel string, content string) {
 	t.Helper()
 	path := filepath.Join(root, ".agents", filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(path), err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", path, err)
+	}
+}
+
+func writeCLIFile(t *testing.T, path string, content string) {
+	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(path), err)
 	}

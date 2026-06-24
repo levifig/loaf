@@ -113,6 +113,11 @@ type findingVerdictCLIOptions struct {
 	verdict    state.FindingVerdictOptions
 }
 
+type findingImportJSONCLIOptions struct {
+	jsonOutput bool
+	importJSON state.FindingImportJSONOptions
+}
+
 type renderSweepOptions struct {
 	jsonOutput bool
 	dryRun     bool
@@ -9770,10 +9775,11 @@ func (r Runner) runFinding(args []string, out io.Writer, runtime state.Runtime) 
 		return nil
 	}
 	if writeNestedHelp(out, args, map[string]func(io.Writer){
-		"list":    writeFindingListHelp,
-		"show":    writeFindingShowHelp,
-		"create":  writeFindingCreateHelp,
-		"verdict": writeFindingVerdictHelp,
+		"list":        writeFindingListHelp,
+		"show":        writeFindingShowHelp,
+		"create":      writeFindingCreateHelp,
+		"verdict":     writeFindingVerdictHelp,
+		"import-json": writeFindingImportJSONHelp,
 	}) {
 		return nil
 	}
@@ -9786,6 +9792,8 @@ func (r Runner) runFinding(args []string, out io.Writer, runtime state.Runtime) 
 		return r.runFindingCreate(args[1:], out, runtime)
 	case "verdict":
 		return r.runFindingVerdict(args[1:], out, runtime)
+	case "import-json":
+		return r.runFindingImportJSON(args[1:], out, runtime)
 	default:
 		return unknownSubcommandError("finding", args[0])
 	}
@@ -9801,6 +9809,8 @@ func writeFindingHelp(out io.Writer) {
 	fmt.Fprintln(out, "  show     Show one finding")
 	fmt.Fprintln(out, "  create   Create a finding")
 	fmt.Fprintln(out, "  verdict  Record a finding verdict")
+	fmt.Fprintln(out, "  import-json")
+	fmt.Fprintln(out, "           Import row-shaped findings and verdicts")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  -h, --help  Show help")
@@ -9820,6 +9830,10 @@ func writeFindingCreateHelp(out io.Writer) {
 
 func writeFindingVerdictHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf finding verdict <finding> --outcome <outcome> --rationale <text> [--json]", "Record a finding verdict.", "--outcome    Verdict outcome: confirmed, refuted, partial", "--rationale  Verdict rationale", "--run        Optional run provenance row", "--notes      Reproduction notes", "--metadata   JSON metadata", "--json       Output verdict, updated finding, event, global database scope, and project identity as JSON")
+}
+
+func writeFindingImportJSONHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf finding import-json --report <report> [--findings <path>] [--verdicts <path>] [--json]", "Import row-shaped finding and verdict JSON.", "--report      Existing report ref, or slug for a new import report", "--report-type Type used when creating a missing report", "--source      Source label used when creating a missing report", "--run         Optional run provenance row for imported rows", "--findings    Row-shaped findings JSON; may be repeated", "--verdicts    Row-shaped verdicts JSON; may be repeated", "--json        Output import counts, files, global database scope, and project identity as JSON")
 }
 
 func (r Runner) runFindingList(args []string, out io.Writer, runtime state.Runtime) error {
@@ -9931,6 +9945,34 @@ func (r Runner) runFindingVerdict(args []string, out io.Writer, runtime state.Ru
 		return writeJSON(out, result)
 	}
 	writeFindingVerdict(out, result)
+	return nil
+}
+
+func (r Runner) runFindingImportJSON(args []string, out io.Writer, runtime state.Runtime) error {
+	options, err := parseFindingImportJSONArgs(args)
+	if err != nil {
+		return err
+	}
+	projectRoot, mode, err := r.findingStateMode(runtime)
+	if err != nil {
+		return err
+	}
+	switch mode {
+	case state.ModeMarkdownOnly:
+		return sqliteStateRequiredError("finding import-json")
+	case state.ModeInvalid:
+		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+	options.importJSON.FindingFiles = resolveFindingImportPaths(projectRoot.Path(), options.importJSON.FindingFiles)
+	options.importJSON.VerdictFiles = resolveFindingImportPaths(projectRoot.Path(), options.importJSON.VerdictFiles)
+	result, err := state.ImportFindingJSON(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.importJSON)
+	if err != nil {
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeFindingImportJSON(out, result)
 	return nil
 }
 
@@ -10439,6 +10481,28 @@ func writeFindingVerdict(out io.Writer, result state.FindingVerdictResult) {
 	fmt.Fprintf(out, "rationale: %s\n", result.Verdict.Rationale)
 	if result.EventID != "" {
 		fmt.Fprintf(out, "event: %s\n", result.EventID)
+	}
+}
+
+func writeFindingImportJSON(out io.Writer, result state.FindingImportJSONResult) {
+	fmt.Fprintf(out, "imported findings into %s\n", firstNonEmpty(result.Report.Alias, result.Report.ID))
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	fmt.Fprintf(out, "findings: %d imported / %d skipped\n", result.FindingsImported, result.FindingsSkipped)
+	fmt.Fprintf(out, "verdicts: %d imported / %d skipped\n", result.VerdictsImported, result.VerdictsSkipped)
+	if len(result.Files) == 0 {
+		fmt.Fprintln(out, "files: none")
+		return
+	}
+	fmt.Fprintln(out, "files:")
+	for _, file := range result.Files {
+		fmt.Fprintf(out, "  - %s (%s): %d row(s)", file.Path, file.Kind, file.Rows)
+		if file.FindingsImported > 0 || file.FindingsSkipped > 0 {
+			fmt.Fprintf(out, ", findings %d imported / %d skipped", file.FindingsImported, file.FindingsSkipped)
+		}
+		if file.VerdictsImported > 0 || file.VerdictsSkipped > 0 {
+			fmt.Fprintf(out, ", verdicts %d imported / %d skipped", file.VerdictsImported, file.VerdictsSkipped)
+		}
+		fmt.Fprintln(out)
 	}
 }
 
@@ -12845,6 +12909,73 @@ func parseFindingVerdictArgs(args []string) (findingVerdictCLIOptions, error) {
 		return findingVerdictCLIOptions{}, fmt.Errorf("finding verdict requires --rationale")
 	}
 	return options, nil
+}
+
+func parseFindingImportJSONArgs(args []string) (findingImportJSONCLIOptions, error) {
+	var options findingImportJSONCLIOptions
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			options.jsonOutput = true
+		case "--report":
+			value, err := consumeFlagValue(args, &i, "--report")
+			if err != nil {
+				return findingImportJSONCLIOptions{}, err
+			}
+			options.importJSON.Report = value
+		case "--report-type":
+			value, err := consumeFlagValue(args, &i, "--report-type")
+			if err != nil {
+				return findingImportJSONCLIOptions{}, err
+			}
+			options.importJSON.ReportKind = value
+		case "--source":
+			value, err := consumeFlagValue(args, &i, "--source")
+			if err != nil {
+				return findingImportJSONCLIOptions{}, err
+			}
+			options.importJSON.Source = value
+		case "--run":
+			value, err := consumeFlagValue(args, &i, "--run")
+			if err != nil {
+				return findingImportJSONCLIOptions{}, err
+			}
+			options.importJSON.Run = value
+		case "--findings":
+			value, err := consumeFlagValue(args, &i, "--findings")
+			if err != nil {
+				return findingImportJSONCLIOptions{}, err
+			}
+			options.importJSON.FindingFiles = append(options.importJSON.FindingFiles, value)
+		case "--verdicts":
+			value, err := consumeFlagValue(args, &i, "--verdicts")
+			if err != nil {
+				return findingImportJSONCLIOptions{}, err
+			}
+			options.importJSON.VerdictFiles = append(options.importJSON.VerdictFiles, value)
+		default:
+			return findingImportJSONCLIOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+	if strings.TrimSpace(options.importJSON.Report) == "" {
+		return findingImportJSONCLIOptions{}, fmt.Errorf("finding import-json requires --report")
+	}
+	if len(options.importJSON.FindingFiles) == 0 && len(options.importJSON.VerdictFiles) == 0 {
+		return findingImportJSONCLIOptions{}, fmt.Errorf("finding import-json requires --findings or --verdicts")
+	}
+	return options, nil
+}
+
+func resolveFindingImportPaths(root string, paths []string) []string {
+	resolved := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if filepath.IsAbs(path) {
+			resolved = append(resolved, path)
+			continue
+		}
+		resolved = append(resolved, filepath.Join(root, path))
+	}
+	return resolved
 }
 
 func parseReportGenerateArgs(args []string) (reportGenerateOptions, error) {

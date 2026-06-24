@@ -564,6 +564,7 @@ Manage report findings and verdicts in native SQLite state
 | `loaf finding show` | Show one finding |
 | `loaf finding create` | Create a finding under a report |
 | `loaf finding verdict` | Record a finding verdict |
+| `loaf finding import-json` | Import row-shaped finding and verdict JSON |
 
 **Options:**
 
@@ -604,6 +605,15 @@ Manage report findings and verdicts in native SQLite state
   - `--notes <text>` - Reproduction notes
   - `--metadata <json>` - JSON metadata
   - `--json` - Output verdict, updated finding, event, global database scope, and project identity as JSON
+
+- `loaf finding import-json`:
+  - `--report <report>` - Existing report ref, or slug for a new import report
+  - `--report-type <type>` - Report type used when creating a missing report
+  - `--source <source>` - Source label used when creating a missing report
+  - `--run <run>` - Optional run provenance row for imported rows
+  - `--findings <path>` - Row-shaped findings JSON; may be repeated
+  - `--verdicts <path>` - Row-shaped verdicts JSON; may be repeated
+  - `--json` - Output import counts, files, global database scope, and project identity as JSON
 
 **Usage:**
 ```bash

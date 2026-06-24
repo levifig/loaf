@@ -2,6 +2,8 @@ package state
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -161,6 +163,109 @@ func TestFindingValidationRejectsInvalidVocabulary(t *testing.T) {
 	}
 }
 
+func TestImportFindingJSONLoadsFindingsVerdictsAndIsIdempotent(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	fixtureDir := t.TempDir()
+	findingsPath := filepath.Join(fixtureDir, "find.auth.json")
+	verdictsPath := filepath.Join(fixtureDir, "VERDICTS.json")
+	writeFindingJSONFixture(t, findingsPath, `[
+  {
+    "id": "auth-001",
+    "title": "Missing authorization check",
+    "severity": "critical",
+    "confidence": "high",
+    "path": "internal/auth.go",
+    "line_start": 42,
+    "message": "Handler accepts caller-controlled account IDs.",
+    "verdicts": [
+      {
+        "id": "auth-001-confirmed",
+        "outcome": "confirmed",
+        "rationale": "Reproduced with a cross-account request."
+      }
+    ]
+  },
+  {
+    "id": "auth-002",
+    "title": "Overstated auth warning",
+    "severity": "high",
+    "confidence": "medium",
+    "path": "internal/warning.go",
+    "line": 7
+  }
+]`)
+	writeFindingJSONFixture(t, verdictsPath, `{
+  "verdicts": [
+    {
+      "id": "auth-002-refuted",
+      "finding_id": "auth-002",
+      "outcome": "refuted",
+      "rationale": "The warning path is unreachable in production.",
+      "notes": "Checked guard conditions."
+    }
+  ]
+}`)
+
+	imported, err := ImportFindingJSON(context.Background(), root, PathResolver{StateHome: stateHome}, FindingImportJSONOptions{
+		Report:       "pipeline-audit",
+		FindingFiles: []string{findingsPath},
+		VerdictFiles: []string{verdictsPath},
+	})
+	if err != nil {
+		t.Fatalf("ImportFindingJSON() error = %v", err)
+	}
+	if imported.Report.Alias != "report-pipeline-audit" {
+		t.Fatalf("Report.Alias = %q, want created report alias", imported.Report.Alias)
+	}
+	if imported.FindingsImported != 2 || imported.VerdictsImported != 2 || imported.FindingsSkipped != 0 || imported.VerdictsSkipped != 0 {
+		t.Fatalf("imported counts = %#v, want 2 findings and 2 verdicts imported", imported)
+	}
+
+	confirmed, err := ListFindings(context.Background(), root, PathResolver{StateHome: stateHome}, FindingListOptions{Severity: "critical", Status: "confirmed", Dimension: "auth"})
+	if err != nil {
+		t.Fatalf("ListFindings(confirmed critical auth) error = %v", err)
+	}
+	if len(confirmed.Findings) != 1 {
+		t.Fatalf("confirmed findings = %#v, want one imported finding", confirmed.Findings)
+	}
+	for _, finding := range confirmed.Findings {
+		if finding.Path != "internal/auth.go" || finding.LineStart != 42 {
+			t.Fatalf("confirmed finding = %#v, want imported location", finding)
+		}
+	}
+
+	refuted, err := ListFindings(context.Background(), root, PathResolver{StateHome: stateHome}, FindingListOptions{Status: "refuted", Severity: "high"})
+	if err != nil {
+		t.Fatalf("ListFindings(refuted high) error = %v", err)
+	}
+	if len(refuted.Findings) != 1 {
+		t.Fatalf("refuted findings = %#v, want verdict-file update", refuted.Findings)
+	}
+
+	second, err := ImportFindingJSON(context.Background(), root, PathResolver{StateHome: stateHome}, FindingImportJSONOptions{
+		Report:       "report-pipeline-audit",
+		FindingFiles: []string{findingsPath},
+		VerdictFiles: []string{verdictsPath},
+	})
+	if err != nil {
+		t.Fatalf("ImportFindingJSON(second) error = %v", err)
+	}
+	if second.FindingsImported != 0 || second.VerdictsImported != 0 || second.FindingsSkipped != 2 || second.VerdictsSkipped != 2 {
+		t.Fatalf("second counts = %#v, want idempotent skips", second)
+	}
+	reportShow, err := ShowReport(context.Background(), root, PathResolver{StateHome: stateHome}, "report-pipeline-audit")
+	if err != nil {
+		t.Fatalf("ShowReport(imported report) error = %v", err)
+	}
+	if len(reportShow.Report.Findings) != 2 {
+		t.Fatalf("report findings = %#v, want two imported findings", reportShow.Report.Findings)
+	}
+}
+
 func insertRunFixture(t *testing.T, root project.Root, stateHome string, alias string) string {
 	t.Helper()
 	store := openTestStore(t, root, stateHome)
@@ -186,4 +291,11 @@ VALUES (?, ?, 'pipeline/findings', 'v1', 'hash-run', 'completed', NULL, ?, ?, ?,
 		t.Fatalf("commit run alias transaction error = %v", err)
 	}
 	return alias
+}
+
+func writeFindingJSONFixture(t *testing.T, path string, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write fixture %s error = %v", path, err)
+	}
 }
