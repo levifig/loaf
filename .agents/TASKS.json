@@ -4950,7 +4950,7 @@
     },
     "SPEC-047": {
       "title": "Build Integrity, Parity Contract & Target Simplification",
-      "status": "implementing",
+      "status": "complete",
       "requirement": null,
       "source": "/Users/levifig/Code/levifig/projects/loaf/.agents/drafts/20260621-020342-loaf-restructuring-roadmap.md (WS-A)",
       "created": "2026-06-22T09:13:21Z",
