@@ -4814,7 +4814,7 @@
       "title": "Add source-derived five-target parity matrix test",
       "slug": "source-derived-five-target-parity-matrix",
       "spec": "SPEC-047",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-253",
@@ -4826,7 +4826,10 @@
       ],
       "files": [
         "internal/cli/build_test.go",
-        "internal/cli/build.go",
+        "cli/scripts/build-go.mjs",
+        "cli/scripts/verify-go-artifacts.mjs",
+        "bin/native/darwin-arm64/loaf",
+        "plugins/loaf/bin/native/darwin-arm64/loaf",
         "config/hooks.yaml",
         "content/skills/",
         ".agents/tasks/TASK-259-source-derived-five-target-parity-matrix.md"
@@ -4835,8 +4838,8 @@
       "done": "A source-derived parity matrix test enumerates exactly Claude Code, Codex, Cursor, OpenCode, and Amp and fails on skill reachability, hook semantic, or harness-language gaps.",
       "session": null,
       "created": "2026-06-24T12:03:41Z",
-      "updated": "2026-06-24T12:03:41Z",
-      "completed_at": null,
+      "updated": "2026-06-24T12:53:35Z",
+      "completed_at": "2026-06-24T12:53:35Z",
       "file": "TASK-259-source-derived-five-target-parity-matrix.md"
     }
   },

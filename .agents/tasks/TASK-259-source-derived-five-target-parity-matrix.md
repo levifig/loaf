@@ -2,11 +2,11 @@
 id: TASK-259
 title: Add source-derived five-target parity matrix test
 spec: SPEC-047
-status: todo
+status: done
 priority: P1
 created: '2026-06-24T12:03:41Z'
-updated: '2026-06-24T12:03:41Z'
-completed_at: null
+updated: '2026-06-24T12:53:35Z'
+completed_at: '2026-06-24T12:53:35Z'
 depends_on:
   - TASK-253
   - TASK-254
@@ -16,7 +16,10 @@ depends_on:
   - TASK-258
 files:
   - internal/cli/build_test.go
-  - internal/cli/build.go
+  - cli/scripts/build-go.mjs
+  - cli/scripts/verify-go-artifacts.mjs
+  - bin/native/darwin-arm64/loaf
+  - plugins/loaf/bin/native/darwin-arm64/loaf
   - config/hooks.yaml
   - content/skills/
   - .agents/tasks/TASK-259-source-derived-five-target-parity-matrix.md
@@ -40,17 +43,17 @@ hook semantics, and harness-language hygiene.
 
 ## Acceptance Criteria
 
-- [ ] The parity test enumerates exactly Claude Code, Codex, Cursor, OpenCode,
+- [x] The parity test enumerates exactly Claude Code, Codex, Cursor, OpenCode,
   and Amp.
-- [ ] Expectations are derived from source inputs, not a hand-maintained static
+- [x] Expectations are derived from source inputs, not a hand-maintained static
   matrix.
-- [ ] Every `user-invocable` workflow skill is reachable through the target's
+- [x] Every `user-invocable` workflow skill is reachable through the target's
   native idiom.
-- [ ] Advisory hooks stay advisory and enforcement hooks stay enforcing on every
+- [x] Advisory hooks stay advisory and enforcement hooks stay enforcing on every
   supported hook surface.
-- [ ] The test fails on a seeded reachability gap.
-- [ ] The test fails on a seeded hook semantic gap.
-- [ ] The test fails on a seeded harness-language leak.
+- [x] The test fails on a seeded reachability gap.
+- [x] The test fails on a seeded hook semantic gap.
+- [x] The test fails on a seeded harness-language leak.
 
 ## Verification
 

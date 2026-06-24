@@ -3,8 +3,10 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -726,6 +728,91 @@ func TestNativeBuildHarnessLanguageAllowsOpenCodeSubagentMode(t *testing.T) {
 	}
 }
 
+func TestNativeBuildParityMatrixDerivesFromSource(t *testing.T) {
+	root := setupBuildCommandLoafRoot(t)
+	seedNativeBuildParityFixture(t, root)
+	var stdout bytes.Buffer
+
+	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatalf("build error = %v\n%s", err, stdout.String())
+	}
+	expectations, err := nativeBuildParityExpectationsFromSource(root)
+	if err != nil {
+		t.Fatalf("nativeBuildParityExpectationsFromSource error = %v", err)
+	}
+	if err := assertNativeBuildParityReachability(root, expectations); err != nil {
+		t.Fatalf("assertNativeBuildParityReachability error = %v", err)
+	}
+	if err := assertNativeBuildParityHookSemantics(root, expectations); err != nil {
+		t.Fatalf("assertNativeBuildParityHookSemantics error = %v", err)
+	}
+	if err := assertNativeBuildParityHarnessLanguage(root, expectations.targets); err != nil {
+		t.Fatalf("assertNativeBuildParityHarnessLanguage error = %v", err)
+	}
+}
+
+func TestNativeBuildParityMatrixDetectsSeededReachabilityGap(t *testing.T) {
+	root := setupBuildCommandLoafRoot(t)
+	seedNativeBuildParityFixture(t, root)
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatalf("build error = %v\n%s", err, stdout.String())
+	}
+	expectations, err := nativeBuildParityExpectationsFromSource(root)
+	if err != nil {
+		t.Fatalf("nativeBuildParityExpectationsFromSource error = %v", err)
+	}
+	if err := os.Remove(filepath.Join(root, "dist", "opencode", "commands", "workflow-only.md")); err != nil {
+		t.Fatalf("Remove(workflow-only command) error = %v", err)
+	}
+
+	err = assertNativeBuildParityReachability(root, expectations)
+	if err == nil || !strings.Contains(err.Error(), "opencode command workflow-only") {
+		t.Fatalf("assertNativeBuildParityReachability error = %v, want seeded opencode command gap", err)
+	}
+}
+
+func TestNativeBuildParityMatrixDetectsSeededHookSemanticGap(t *testing.T) {
+	root := setupBuildCommandLoafRoot(t)
+	seedNativeBuildParityFixture(t, root)
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatalf("build error = %v\n%s", err, stdout.String())
+	}
+	expectations, err := nativeBuildParityExpectationsFromSource(root)
+	if err != nil {
+		t.Fatalf("nativeBuildParityExpectationsFromSource error = %v", err)
+	}
+	path := filepath.Join(root, "dist", "codex", ".codex", "hooks.json")
+	body := readBuildFileString(t, path)
+	body = strings.Replace(body, "\"command\": \"loaf check --hook validate-push\",\n        \"timeout\": 60,\n        \"failClosed\": false", "\"command\": \"loaf check --hook validate-push\",\n        \"timeout\": 60,\n        \"failClosed\": true", 1)
+	writeFile(t, path, body)
+
+	err = assertNativeBuildParityHookSemantics(root, expectations)
+	if err == nil || !strings.Contains(err.Error(), "codex hook validate-push failClosed") {
+		t.Fatalf("assertNativeBuildParityHookSemantics error = %v, want seeded hook semantic gap", err)
+	}
+}
+
+func TestNativeBuildParityMatrixDetectsSeededHarnessLanguageLeak(t *testing.T) {
+	root := setupBuildCommandLoafRoot(t)
+	seedNativeBuildParityFixture(t, root)
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatalf("build error = %v\n%s", err, stdout.String())
+	}
+	expectations, err := nativeBuildParityExpectationsFromSource(root)
+	if err != nil {
+		t.Fatalf("nativeBuildParityExpectationsFromSource error = %v", err)
+	}
+	writeFile(t, filepath.Join(root, "dist", "codex", "skills", "workflow-only", "SKILL.md"), "AskUserQuestion\n")
+
+	err = assertNativeBuildParityHarnessLanguage(root, expectations.targets)
+	if err == nil || !strings.Contains(err.Error(), "AskUserQuestion") {
+		t.Fatalf("assertNativeBuildParityHarnessLanguage error = %v, want seeded harness leak", err)
+	}
+}
+
 func setupBuildCommandLoafRoot(t *testing.T) string {
 	t.Helper()
 	root := realpath(t, t.TempDir())
@@ -1009,6 +1096,302 @@ func seedNativeClaudeCodeBuildFixture(t *testing.T, root string) {
 	if err := os.Chmod(filepath.Join(root, "content", "hooks", "subagent", "subagent-notify.sh"), 0o755); err != nil {
 		t.Fatalf("Chmod(subagent-notify.sh) error = %v", err)
 	}
+}
+
+func seedNativeBuildParityFixture(t *testing.T, root string) {
+	t.Helper()
+	seedNativeCodexBuildFixture(t, root)
+	seedNativeCursorBuildFixture(t, root)
+	seedNativeOpenCodeBuildFixture(t, root)
+	seedNativeClaudeCodeBuildFixture(t, root)
+	writeFile(t, filepath.Join(root, "content", "skills", "demo", "SKILL.claude-code.yaml"), strings.Join([]string{
+		"user-invocable: true",
+		"allowed-tools: Bash",
+		"",
+	}, "\n"))
+	writeFile(t, filepath.Join(root, "content", "skills", "workflow-only", "SKILL.md"), strings.Join([]string{
+		"---",
+		"name: workflow-only",
+		"description: Workflow-only skill without target-specific command sidecars.",
+		"---",
+		"",
+		"# Workflow Only",
+		"",
+		"Use AskUserQuestionTool, TodoWrite, CLAUDE.md, /loaf:implement, and subagent language.",
+		"",
+	}, "\n"))
+}
+
+type nativeBuildParityExpectations struct {
+	targets        []string
+	workflowSkills []string
+	preToolHooks   []nativeBuildHook
+}
+
+func nativeBuildParityExpectationsFromSource(root string) (nativeBuildParityExpectations, error) {
+	targets, err := nativeBuildTargetNames(root)
+	if err != nil {
+		return nativeBuildParityExpectations{}, err
+	}
+	if strings.Join(targets, ",") != strings.Join(defaultBuildTargets, ",") {
+		return nativeBuildParityExpectations{}, fmt.Errorf("targets = %v, want exactly %v", targets, defaultBuildTargets)
+	}
+	workflowSkills, err := nativeBuildParityUserInvocableSkills(root)
+	if err != nil {
+		return nativeBuildParityExpectations{}, err
+	}
+	hooks, err := readNativeBuildHooks(filepath.Join(root, "config", "hooks.yaml"))
+	if err != nil {
+		return nativeBuildParityExpectations{}, err
+	}
+	var preToolHooks []nativeBuildHook
+	for _, hook := range hooks {
+		if hook.section == "pre-tool" && hook.typeName != "prompt" {
+			preToolHooks = append(preToolHooks, hook)
+		}
+	}
+	return nativeBuildParityExpectations{
+		targets:        targets,
+		workflowSkills: workflowSkills,
+		preToolHooks:   preToolHooks,
+	}, nil
+}
+
+func nativeBuildParityUserInvocableSkills(root string) ([]string, error) {
+	skillsDir := filepath.Join(root, "content", "skills")
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		return nil, err
+	}
+	var skills []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		sidecarPath := filepath.Join(skillsDir, entry.Name(), "SKILL.claude-code.yaml")
+		fields, err := readNativeBuildAgentSidecar(sidecarPath, false)
+		if err != nil {
+			return nil, err
+		}
+		for _, field := range fields {
+			if field.key == "user-invocable" && field.value.kind == "bool" && field.value.scalar == "true" {
+				skills = append(skills, entry.Name())
+			}
+		}
+	}
+	sort.Strings(skills)
+	return skills, nil
+}
+
+func assertNativeBuildParityReachability(root string, expectations nativeBuildParityExpectations) error {
+	if len(expectations.workflowSkills) == 0 {
+		return fmt.Errorf("no source user-invocable workflow skills found")
+	}
+	for _, target := range expectations.targets {
+		for _, skill := range expectations.workflowSkills {
+			skillPath := filepath.Join(nativeBuildTargetOutputDir(root, target), "skills", skill, "SKILL.md")
+			if _, err := os.Stat(skillPath); err != nil {
+				return fmt.Errorf("%s skill %s not reachable at %s: %w", target, skill, nativeBuildRelativePath(root, skillPath), err)
+			}
+			if target == "opencode" {
+				commandPath := filepath.Join(root, "dist", "opencode", "commands", skill+".md")
+				if _, err := os.Stat(commandPath); err != nil {
+					return fmt.Errorf("opencode command %s not reachable at %s: %w", skill, nativeBuildRelativePath(root, commandPath), err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func assertNativeBuildParityHookSemantics(root string, expectations nativeBuildParityExpectations) error {
+	for _, hook := range expectations.preToolHooks {
+		if err := assertNativeBuildClaudeHookSemantics(root, hook); err != nil {
+			return err
+		}
+		if err := assertNativeBuildCursorHookSemantics(root, hook); err != nil {
+			return err
+		}
+		if err := assertNativeBuildOpenCodeHookSemantics(root, hook); err != nil {
+			return err
+		}
+		if err := assertNativeBuildAmpHookSemantics(root, hook); err != nil {
+			return err
+		}
+		if hook.section == "pre-tool" && codexEnforcementHooks[hook.id] && strings.Contains(hook.matcher, "Bash") {
+			if err := assertNativeBuildCodexHookSemantics(root, hook); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func assertNativeBuildClaudeHookSemantics(root string, hook nativeBuildHook) error {
+	var payload struct {
+		Hooks struct {
+			PreToolUse []struct {
+				Hooks []map[string]any `json:"hooks"`
+			} `json:"PreToolUse"`
+		} `json:"hooks"`
+	}
+	if err := readNativeBuildJSON(filepath.Join(root, "plugins", "loaf", "hooks", "hooks.json"), &payload); err != nil {
+		return err
+	}
+	entry, ok := findNativeBuildGenericHook(payload.Hooks.PreToolUse, "command", nativeClaudeHookCommand(hook))
+	if !ok {
+		return fmt.Errorf("claude-code hook %s missing command %q", hook.id, nativeClaudeHookCommand(hook))
+	}
+	if got := nativeBuildGenericBool(entry, "failClosed"); got != hook.failClosed {
+		return fmt.Errorf("claude-code hook %s failClosed = %v, want %v", hook.id, got, hook.failClosed)
+	}
+	return nil
+}
+
+func assertNativeBuildCursorHookSemantics(root string, hook nativeBuildHook) error {
+	var payload nativeCursorHooksJSON
+	if err := readNativeBuildJSON(filepath.Join(root, "dist", "cursor", "hooks.json"), &payload); err != nil {
+		return err
+	}
+	command := nativeCursorHookCommand(hook)
+	for _, entry := range payload.Hooks.PreToolUse {
+		if entry.Command == command {
+			if entry.FailClosed != hook.failClosed {
+				return fmt.Errorf("cursor hook %s failClosed = %v, want %v", hook.id, entry.FailClosed, hook.failClosed)
+			}
+			if entry.If != hook.ifCondition {
+				return fmt.Errorf("cursor hook %s if = %q, want %q", hook.id, entry.If, hook.ifCondition)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("cursor hook %s missing command %q", hook.id, command)
+}
+
+func assertNativeBuildCodexHookSemantics(root string, hook nativeBuildHook) error {
+	var payload nativeCodexHooksJSON
+	if err := readNativeBuildJSON(filepath.Join(root, "dist", "codex", ".codex", "hooks.json"), &payload); err != nil {
+		return err
+	}
+	command := "loaf check --hook " + hook.id
+	for _, entry := range payload.Hooks.PreToolUse {
+		if entry.Command == command {
+			if entry.FailClosed != hook.failClosed {
+				return fmt.Errorf("codex hook %s failClosed = %v, want %v", hook.id, entry.FailClosed, hook.failClosed)
+			}
+			if entry.Blocking != hook.blocking {
+				return fmt.Errorf("codex hook %s blocking = %v, want %v", hook.id, entry.Blocking, hook.blocking)
+			}
+			if entry.If != hook.ifCondition {
+				return fmt.Errorf("codex hook %s if = %q, want %q", hook.id, entry.If, hook.ifCondition)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("codex hook %s missing command %q", hook.id, command)
+}
+
+func assertNativeBuildOpenCodeHookSemantics(root string, hook nativeBuildHook) error {
+	return assertNativeBuildPluginHookSemantics(filepath.Join(root, "dist", "opencode", "plugins", "hooks.ts"), "opencode", hook)
+}
+
+func assertNativeBuildAmpHookSemantics(root string, hook nativeBuildHook) error {
+	return assertNativeBuildPluginHookSemantics(filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf.ts"), "amp", hook)
+}
+
+func assertNativeBuildPluginHookSemantics(path string, target string, hook nativeBuildHook) error {
+	hooks, err := readNativeBuildPluginPreToolHooks(path)
+	if err != nil {
+		return err
+	}
+	for _, entries := range hooks {
+		for _, entry := range entries {
+			if entry.ID == hook.id {
+				if entry.FailClosed != hook.failClosed {
+					return fmt.Errorf("%s hook %s failClosed = %v, want %v", target, hook.id, entry.FailClosed, hook.failClosed)
+				}
+				if entry.If != hook.ifCondition {
+					return fmt.Errorf("%s hook %s if = %q, want %q", target, hook.id, entry.If, hook.ifCondition)
+				}
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("%s hook %s missing", target, hook.id)
+}
+
+func readNativeBuildPluginPreToolHooks(path string) (map[string][]nativeAmpHookEntry, error) {
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	startMarker := "const preToolHooks: Record<string, HookEntry[]> = "
+	start := strings.Index(string(body), startMarker)
+	if start < 0 {
+		return nil, fmt.Errorf("%s missing preToolHooks", path)
+	}
+	rest := string(body)[start+len(startMarker):]
+	end := strings.Index(rest, ";\n\nconst postToolHooks")
+	if end < 0 {
+		return nil, fmt.Errorf("%s missing postToolHooks delimiter", path)
+	}
+	var hooks map[string][]nativeAmpHookEntry
+	if err := json.Unmarshal([]byte(rest[:end]), &hooks); err != nil {
+		return nil, err
+	}
+	return hooks, nil
+}
+
+func assertNativeBuildParityHarnessLanguage(root string, targets []string) error {
+	for _, target := range targets {
+		outputDir := nativeBuildTargetOutputDir(root, target)
+		var paths []string
+		if err := filepath.WalkDir(outputDir, func(path string, entry os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			switch strings.ToLower(filepath.Ext(path)) {
+			case ".md", ".json", ".yaml", ".yml", ".toml", ".ts":
+				paths = append(paths, path)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := validateNativeBuildHarnessLanguage(root, target, paths); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func readNativeBuildJSON(path string, out any) error {
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(body, out)
+}
+
+func findNativeBuildGenericHook(groups []struct {
+	Hooks []map[string]any `json:"hooks"`
+}, key string, value string) (map[string]any, bool) {
+	for _, group := range groups {
+		for _, entry := range group.Hooks {
+			if got, ok := entry[key].(string); ok && got == value {
+				return entry, true
+			}
+		}
+	}
+	return nil, false
+}
+
+func nativeBuildGenericBool(entry map[string]any, key string) bool {
+	value, _ := entry[key].(bool)
+	return value
 }
 
 func readBuildFileString(t *testing.T, path string) string {
