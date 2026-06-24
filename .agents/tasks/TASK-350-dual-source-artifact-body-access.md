@@ -2,11 +2,11 @@
 id: TASK-350
 title: Implement dual-source artifact body access
 spec: SPEC-043
-status: todo
+status: done
 priority: P1
 created: '2026-06-24T13:04:19Z'
-updated: '2026-06-24T13:04:19Z'
-completed_at: null
+updated: '2026-06-24T13:28:11Z'
+completed_at: '2026-06-24T13:28:11Z'
 depends_on:
   - TASK-349
 files:
@@ -32,12 +32,12 @@ maintenance.
 
 ## Acceptance Criteria
 
-- [ ] Shared state helpers upsert/read/delete `artifact_bodies` rows by project, entity kind, entity id, and body kind.
-- [ ] Body reads prefer SQLite `artifact_bodies` and fall back to `body_source_id` Markdown files when no SQLite body exists.
-- [ ] Markdown migration imports current artifact bodies into `artifact_bodies` without mutating Markdown files.
-- [ ] FTS rows are upserted/deleted from the same Go transaction as body writes; no triggers maintain FTS.
-- [ ] Existing `show`/`trace` behavior for specs, tasks, ideas, brainstorms, sessions, reports, and sparks does not regress.
-- [ ] Multi-paragraph imported bodies round-trip byte-exact.
+- [x] Shared state helpers upsert/read/delete `artifact_bodies` rows by project, entity kind, entity id, and body kind.
+- [x] Body reads prefer SQLite `artifact_bodies` and fall back to `body_source_id` Markdown files when no SQLite body exists.
+- [x] Markdown migration imports current artifact bodies into `artifact_bodies` without mutating Markdown files.
+- [x] FTS rows are upserted/deleted from the same Go transaction as body writes; no triggers maintain FTS.
+- [x] Existing `show`/`trace` behavior for specs, tasks, ideas, brainstorms, sessions, reports, and sparks does not regress.
+- [x] Multi-paragraph imported bodies round-trip byte-exact.
 
 ## Verification
 

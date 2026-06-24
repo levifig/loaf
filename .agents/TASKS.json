@@ -4869,7 +4869,7 @@
       "title": "Implement dual-source artifact body access",
       "slug": "dual-source-artifact-body-access",
       "spec": "SPEC-043",
-      "status": "todo",
+      "status": "done",
       "priority": "P1",
       "depends_on": [
         "TASK-349"
@@ -4884,8 +4884,8 @@
       "done": "Body-capable entities read SQLite artifact bodies first, fall back to imported Markdown sources, and keep FTS rows synchronized by Go-side writes in the same transaction.",
       "session": null,
       "created": "2026-06-24T13:04:19Z",
-      "updated": "2026-06-24T13:04:19Z",
-      "completed_at": null,
+      "updated": "2026-06-24T13:28:11Z",
+      "completed_at": "2026-06-24T13:28:11Z",
       "file": "TASK-350-dual-source-artifact-body-access.md"
     },
     "TASK-351": {
