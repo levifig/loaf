@@ -553,6 +553,69 @@ loaf report generate release-readiness
 
 ---
 
+## Finding Management
+
+### `loaf finding`
+Manage report findings and verdicts in native SQLite state
+
+**Subcommands:**
+
+| Subcommand | Purpose |
+|------------|---------|
+| `loaf finding list` | List findings |
+| `loaf finding show` | Show one finding |
+| `loaf finding create` | Create a finding under a report |
+| `loaf finding verdict` | Record a finding verdict |
+
+**Options:**
+
+- `loaf finding list`:
+  - `--report <report>` - Filter by parent report
+  - `--run <run>` - Filter by provenance run
+  - `--status <status>` - Filter by status: open, confirmed, refuted, partial, archived
+  - `--severity <severity>` - Filter by severity: critical, high, medium, low, info
+  - `--confidence <confidence>` - Filter by confidence: high, medium, low
+  - `--dimension <dimension>` - Filter by freeform finding dimension
+  - `--json` - Output findings, filters, global database scope, and project identity as JSON
+
+- `loaf finding show`:
+  - `--json` - Output finding details, verdicts, relationships, global database scope, and project identity as JSON
+
+- `loaf finding create`:
+  - `--report <report>` - Parent report
+  - `--run <run>` - Optional run provenance row
+  - `--title <title>` - Finding title
+  - `--status <status>` - Initial status: open, confirmed, refuted, partial, archived
+  - `--severity <severity>` - Severity: critical, high, medium, low, info
+  - `--confidence <confidence>` - Confidence: high, medium, low
+  - `--dimension <dimension>` - Freeform finding dimension
+  - `--path <path>` - File path or artifact location
+  - `--line-start <line>` - Starting line number
+  - `--line-end <line>` - Ending line number
+  - `--symbol <symbol>` - Symbol or object location
+  - `--metadata <json>` - JSON metadata
+  - `--body-file <path>` - Read finding narrative from a UTF-8 file
+  - `--body -` - Read finding narrative from stdin
+  - `--message <text>` - Use inline finding narrative text
+  - `--json` - Output created finding, event, global database scope, and project identity as JSON
+
+- `loaf finding verdict`:
+  - `--outcome <outcome>` - Verdict outcome: confirmed, refuted, partial
+  - `--rationale <text>` - Verdict rationale
+  - `--run <run>` - Optional run provenance row
+  - `--notes <text>` - Reproduction notes
+  - `--metadata <json>` - JSON metadata
+  - `--json` - Output verdict, updated finding, event, global database scope, and project identity as JSON
+
+**Usage:**
+```bash
+loaf finding list
+loaf finding show
+loaf finding create
+```
+
+---
+
 ## Plan Management
 
 ### `loaf plan`
