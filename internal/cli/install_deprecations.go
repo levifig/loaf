@@ -24,11 +24,12 @@ type installDeprecationManifest struct {
 }
 
 type retiredInstallTarget struct {
-	Target string   `json:"target"`
-	Since  string   `json:"since"`
-	Window string   `json:"window"`
-	Reason string   `json:"reason"`
-	Paths  []string `json:"paths"`
+	Target  string   `json:"target"`
+	Since   string   `json:"since"`
+	Window  string   `json:"window"`
+	Reason  string   `json:"reason"`
+	Signoff string   `json:"signoff"`
+	Paths   []string `json:"paths"`
 }
 
 type retiredInstallSkill struct {
@@ -36,6 +37,7 @@ type retiredInstallSkill struct {
 	Since      string   `json:"since"`
 	Window     string   `json:"window"`
 	Reason     string   `json:"reason"`
+	Signoff    string   `json:"signoff"`
 	SkillHomes []string `json:"skill_homes"`
 }
 
@@ -44,24 +46,27 @@ type retiredInstallAgent struct {
 	Since      string   `json:"since"`
 	Window     string   `json:"window"`
 	Reason     string   `json:"reason"`
+	Signoff    string   `json:"signoff"`
 	AgentHomes []string `json:"agent_homes"`
 }
 
 type installRelocationManifest struct {
-	ID     string `json:"id"`
-	From   string `json:"from"`
-	To     string `json:"to"`
-	Since  string `json:"since"`
-	Window string `json:"window"`
-	Reason string `json:"reason"`
+	ID      string `json:"id"`
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Since   string `json:"since"`
+	Window  string `json:"window"`
+	Reason  string `json:"reason"`
+	Signoff string `json:"signoff"`
 }
 
 type installAliasManifest struct {
-	From   string `json:"from"`
-	To     string `json:"to"`
-	Since  string `json:"since"`
-	Window string `json:"window"`
-	Reason string `json:"reason"`
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Since   string `json:"since"`
+	Window  string `json:"window"`
+	Reason  string `json:"reason"`
+	Signoff string `json:"signoff"`
 }
 
 type installDeprecationCleanupResult struct {
@@ -70,13 +75,14 @@ type installDeprecationCleanupResult struct {
 }
 
 type installDeprecationCleanupAction struct {
-	Kind   string
-	Name   string
-	Path   string
-	Reason string
-	Since  string
-	Window string
-	Action string
+	Kind    string
+	Name    string
+	Path    string
+	Reason  string
+	Since   string
+	Window  string
+	Signoff string
+	Action  string
 }
 
 func runInstallDeprecationCleanup(loafRoot string, out io.Writer) error {
@@ -135,12 +141,13 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 				return result, err
 			}
 			action := installDeprecationCleanupAction{
-				Kind:   "target",
-				Name:   target.Target,
-				Path:   path,
-				Reason: target.Reason,
-				Since:  target.Since,
-				Window: deprecationWindow(target.Window),
+				Kind:    "target",
+				Name:    target.Target,
+				Path:    path,
+				Reason:  target.Reason,
+				Since:   target.Since,
+				Window:  deprecationWindow(target.Window),
+				Signoff: target.Signoff,
 			}
 			if !dirExistsForInstall(path) {
 				action.Action = "missing"
@@ -167,12 +174,13 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 			}
 			path := filepath.Join(home, skill.Skill)
 			action := installDeprecationCleanupAction{
-				Kind:   "skill",
-				Name:   skill.Skill,
-				Path:   path,
-				Reason: skill.Reason,
-				Since:  skill.Since,
-				Window: deprecationWindow(skill.Window),
+				Kind:    "skill",
+				Name:    skill.Skill,
+				Path:    path,
+				Reason:  skill.Reason,
+				Since:   skill.Since,
+				Window:  deprecationWindow(skill.Window),
+				Signoff: skill.Signoff,
 			}
 			if !dirExistsForInstall(path) {
 				action.Action = "missing"
@@ -199,12 +207,13 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 			}
 			path := filepath.Join(home, agent.Agent+".md")
 			action := installDeprecationCleanupAction{
-				Kind:   "agent",
-				Name:   agent.Agent,
-				Path:   path,
-				Reason: agent.Reason,
-				Since:  agent.Since,
-				Window: deprecationWindow(agent.Window),
+				Kind:    "agent",
+				Name:    agent.Agent,
+				Path:    path,
+				Reason:  agent.Reason,
+				Since:   agent.Since,
+				Window:  deprecationWindow(agent.Window),
+				Signoff: agent.Signoff,
 			}
 			if !fileExistsForInstall(path) {
 				action.Action = "missing"
@@ -233,12 +242,13 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 			return result, err
 		}
 		action := installDeprecationCleanupAction{
-			Kind:   "path",
-			Name:   relocation.ID,
-			Path:   from + " -> " + to,
-			Reason: relocation.Reason,
-			Since:  relocation.Since,
-			Window: deprecationWindow(relocation.Window),
+			Kind:    "path",
+			Name:    relocation.ID,
+			Path:    from + " -> " + to,
+			Reason:  relocation.Reason,
+			Since:   relocation.Since,
+			Window:  deprecationWindow(relocation.Window),
+			Signoff: relocation.Signoff,
 		}
 		if !dirExistsForInstall(from) {
 			action.Action = "missing"
@@ -343,6 +353,9 @@ func writeInstallDeprecationCleanup(out io.Writer, result installDeprecationClea
 		}
 		if action.Since != "" || action.Window != "" {
 			fmt.Fprintf(out, " (since %s, window %s)", emptyInstallDeprecationField(action.Since), emptyInstallDeprecationField(action.Window))
+		}
+		if action.Signoff != "" {
+			fmt.Fprintf(out, " [signoff: %s]", action.Signoff)
 		}
 		fmt.Fprintln(out)
 	}

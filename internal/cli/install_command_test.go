@@ -234,6 +234,39 @@ func TestRunnerInstallUpgradeReportsDefaultDeprecationWindow(t *testing.T) {
 	}
 }
 
+func TestRunnerInstallUpgradeReportsDeprecationSignoff(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	retiredSkill := filepath.Join(home, ".agents", "skills", "old-skill")
+	writeInstallFile(t, filepath.Join(retiredSkill, "SKILL.md"), "# Old skill\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [],
+  "retired_skills": [
+    {
+      "skill": "old-skill",
+      "since": "v9.9.0",
+      "reason": "old-skill was retired",
+      "signoff": "report-spec-053-taxonomy-signoff",
+      "skill_homes": ["${HOME}/.agents/skills"]
+    }
+  ],
+  "retired_agents": [],
+  "relocations": [],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	for _, want := range []string{"removed retired skill old-skill", "[signoff: report-spec-053-taxonomy-signoff]"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+}
+
 func TestRunnerInstallUpgradeSkipsUnmarkedRetiredTarget(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
 	retiredTarget := filepath.Join(home, ".unmarked-tool")
