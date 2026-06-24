@@ -64,6 +64,108 @@ func TestRunnerInstallUpgradeOnlyInstallsDetectedLoafTargets(t *testing.T) {
 	}
 }
 
+func TestRunnerInstallUpgradeCleansRetiredTargetFromManifest(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	retiredTarget := filepath.Join(home, ".retired-tool")
+	writeInstallFile(t, filepath.Join(retiredTarget, loafInstallMarkerFile), "old\n")
+	writeInstallFile(t, filepath.Join(retiredTarget, "skills", "stale", "SKILL.md"), "stale\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [
+    {
+      "target": "retired-tool",
+      "since": "v9.9.0",
+      "window": "one-release",
+      "reason": "retired by test manifest",
+      "paths": ["${HOME}/.retired-tool"]
+    }
+  ],
+  "retired_skills": [],
+  "relocations": [],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	if _, err := os.Stat(retiredTarget); !os.IsNotExist(err) {
+		t.Fatalf("retired target stat = %v, want removed", err)
+	}
+	for _, want := range []string{"install deprecation cleanup", "removed retired target retired-tool", "retired by test manifest"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+}
+
+func TestRunnerInstallUpgradeCleansRetiredSkillFromManifest(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	retiredSkill := filepath.Join(home, ".agents", "skills", "old-skill")
+	writeInstallFile(t, filepath.Join(retiredSkill, "SKILL.md"), "# Old skill\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [],
+  "retired_skills": [
+    {
+      "skill": "old-skill",
+      "since": "v9.9.0",
+      "window": "one-release",
+      "reason": "old-skill was retired",
+      "skill_homes": ["${HOME}/.agents/skills"]
+    }
+  ],
+  "relocations": [],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	if _, err := os.Stat(retiredSkill); !os.IsNotExist(err) {
+		t.Fatalf("retired skill stat = %v, want removed", err)
+	}
+	for _, want := range []string{"removed retired skill old-skill", "old-skill was retired"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+}
+
+func TestRunnerInstallUpgradeSkipsUnmarkedRetiredTarget(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	retiredTarget := filepath.Join(home, ".unmarked-tool")
+	writeInstallFile(t, filepath.Join(retiredTarget, "user-file.txt"), "keep me\n")
+	writeInstallDeprecationManifest(t, root, `{
+  "version": 1,
+  "retired_targets": [
+    {
+      "target": "unmarked-tool",
+      "since": "v9.9.0",
+      "window": "one-release",
+      "reason": "retired by test manifest",
+      "paths": ["${HOME}/.unmarked-tool"]
+    }
+  ],
+  "retired_skills": [],
+  "relocations": [],
+  "aliases": []
+}`)
+
+	var stdout bytes.Buffer
+	err := Runner{Stdout: &stdout, WorkingDir: root}.Run([]string{"install", "--upgrade", "--yes"})
+	if err != nil {
+		t.Fatalf("install --upgrade error = %v\n%s", err, stdout.String())
+	}
+	assertInstallFile(t, filepath.Join(retiredTarget, "user-file.txt"), "keep me\n")
+	if !strings.Contains(stdout.String(), "path is not marked as Loaf-owned") {
+		t.Fatalf("stdout = %q, want unmarked skip", stdout.String())
+	}
+}
+
 func TestRunnerInstallCodexUsesCodeXHomeNatively(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
 	codexHome := filepath.Join(home, "custom-codex")
@@ -366,6 +468,11 @@ func setupInstallCommandFixture(t *testing.T) (string, string) {
 	t.Setenv("PATH", bin)
 	writeInstallFile(t, filepath.Join(root, "package.json"), `{"name":"loaf","version":"9.8.7-test.1"}`+"\n")
 	return root, home
+}
+
+func writeInstallDeprecationManifest(t *testing.T, root string, body string) {
+	t.Helper()
+	writeInstallFile(t, filepath.Join(root, "config", "deprecations.json"), body+"\n")
 }
 
 func readInstallCommandJSON(t *testing.T, path string) map[string]any {

@@ -3,7 +3,7 @@ id: SPEC-053
 title: Breaking-Change Migration Mechanism & Taxonomy Decisions
 source: "/Users/levifig/Code/levifig/projects/loaf/.agents/drafts/20260621-020342-loaf-restructuring-roadmap.md (WS-G)"
 created: 2026-06-22T09:13:21Z
-status: drafting
+status: implementing
 branch: feat/migration-mechanism-taxonomy
 source_sessions:
   - id: 20260621-001541-session
@@ -96,12 +96,15 @@ Deliver three things, all opt-in and reversible, gated on user sign-off:
 1. **An upgrade/cleanup mechanism in `loaf install --upgrade`** that knows about (a) targets and
    skills that no longer exist (orphans) and (b) destinations that have moved (relocation). Driven
    by a declarative **deprecation manifest** (retired targets, retired skills, old→new path maps)
-   so future breaking changes register an entry instead of writing bespoke cleanup code.
+   so future breaking changes register an entry instead of writing bespoke cleanup code. The first
+   implementation lands the manifest loader, report model, and test-only simulated entries while
+   leaving production breaking entries empty until sign-off.
 
 2. **A tombstone/alias + deprecation-window model.** A removed skill or target leaves a tombstone
    recording what it was, when it was retired, and what (if anything) replaces it. Aliases let a
    renamed surface keep routing during the deprecation window. Upgrade reports what it removed and
-   why; nothing is deleted silently.
+   why; nothing is deleted silently. Tombstones live in the static package manifest first; SQLite
+   can later mirror applied migration events if a query surface is needed.
 
 3. **A reversible, backed-up ephemeral body migration.** `loaf state backup` snapshots the SQLite
    DB and the affected `.agents/` tree before any destructive step; `loaf migrate markdown`
@@ -126,11 +129,14 @@ implemented as deprecation-manifest entries so they flow through the same mechan
 
 ### In Scope
 - Deprecation manifest format (retired targets, retired skills, renamed/aliased surfaces, old→new
-  path maps) consumed by `loaf install --upgrade`.
+  path maps) consumed by `loaf install --upgrade`; production manifests may be empty until a
+  breaking entry is signed off.
 - Orphan cleanup for whole dropped targets (Gemini) and individual retired skills, including
-  surfaces under `~/.agents/skills` and per-tool config dirs.
+  surfaces under `~/.agents/skills` and per-tool config dirs, proven with simulated/test-only
+  manifest entries before real breaking entries are registered.
 - Relocation handling: detect an install at an old destination, migrate/relink to the new one, and
-  remove the stale dir — idempotent, safe to re-run.
+  remove the stale dir — idempotent, safe to re-run, and proven with simulated/test-only manifest
+  entries before SPEC-052 registers real path maps.
 - Tombstone + alias model and a deprecation window with user-visible upgrade reporting.
 - `loaf state backup` (DB + affected `.agents/` snapshot) and reversible `loaf migrate markdown`
   with `--dry-run` and `--rollback`, used by SPEC-045's cutover.
@@ -180,15 +186,23 @@ implemented as deprecation-manifest entries so they flow through the same mechan
 
 ## Open Questions
 
-1. Deprecation window length — one release, N releases, or a date? Per-entry or global default?
+1. Deprecation window length — one release, N releases, or a date? Decision for mechanism:
+   per-entry `window` field with a documented default of one release; entries may override.
 2. Should tombstones live in SQLite (queryable via `loaf`) or as a static manifest in the package,
-   or both?
-3. `librarian`: retire or wire? (Needs user sign-off; affects SPEC-029.)
-4. Where does `loaf state backup` write, and what is its retention/cleanup policy?
+   or both? Decision for mechanism: static package manifest first, with optional future SQLite
+   event mirroring for applied cleanups.
+3. `librarian`: retire or wire? (Needs user sign-off; affects SPEC-029.) Still open; no
+   production tombstone entry lands without sign-off.
+4. Where does `loaf state backup` write, and what is its retention/cleanup policy? Decision for
+   first backup slice: `XDG_DATA_HOME/loaf/backups/<timestamp>/`, verified by manifest and explicit
+   restore guidance; retention policy deferred to a later housekeeping spec.
 5. For opt-in packs: is de-selection on upgrade an explicit flag, or inferred from a saved install
-   profile? Where is the install profile stored?
+   profile? Where is the install profile stored? Still open; production opt-in pack removals do
+   not land in the first mechanism slice.
 6. Does relocation need to preserve user-local edits at the old path, or is the install dir
-   considered fully Loaf-owned (overwrite-safe)?
+   considered fully Loaf-owned (overwrite-safe)? Decision for install cleanup: only delete
+   Loaf-owned paths with `.loaf-version` or exact managed child paths; unmarked directories are
+   reported as skipped, not removed.
 
 ## Test Conditions
 

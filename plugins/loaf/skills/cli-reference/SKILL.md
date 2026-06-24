@@ -65,7 +65,7 @@ Install Loaf to detected AI tool configurations
 **Options:**
 
 - `--to <target>` - Target to install to (or "all")
-- `--upgrade` - Update only already-installed targets
+- `--upgrade` - Update installed targets and apply deprecation-manifest cleanup
 - `-y, --yes` - Assume 'yes' to safe migrations (merge content, back up, and replace real files with symlinks)
 - `--no-yes` - Force interactive prompts even when stdin is not a TTY (testing)
 
