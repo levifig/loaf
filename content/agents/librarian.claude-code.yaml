@@ -1,8 +1,8 @@
 name: librarian
 description: >-
-  Tends session lifecycle: Current State updates, journal quality, wrap summaries,
-  and status transitions. Use for session housekeeping, state snapshots, and
-  end-of-session summaries. Scoped to .agents/ artifacts only.
+  Durable artifact handler for SQLite-backed Loaf state and .agents/ artifacts.
+  Use from wrap, housekeeping, or orchestration when session journals, reports,
+  specs, handoffs, or knowledge notes need lifecycle-safe tending.
 model: sonnet
 skills:
   - orchestration
