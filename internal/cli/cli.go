@@ -53,6 +53,8 @@ type compatibilityCommandSummary struct {
 
 type compatibilityCommandOptions struct {
 	jsonOutput bool
+	dryRun     bool
+	sessionRef string
 }
 
 type projectRenameOptions struct {
@@ -7900,7 +7902,7 @@ func writeSessionHelp(out io.Writer) {
 	fmt.Fprintln(out, "  list          List sessions")
 	fmt.Fprintln(out, "  show          Show one session")
 	fmt.Fprintln(out, "  log           Append a journal entry")
-	fmt.Fprintln(out, "  enrich        Summarize markdown enrichment compatibility in SQLite mode")
+	fmt.Fprintln(out, "  enrich        Record a native SQLite enrichment checkpoint")
 	fmt.Fprintln(out, "  housekeeping  Summarize markdown housekeeping compatibility in SQLite mode")
 	fmt.Fprintln(out, "  state         Compatibility session-state helpers")
 	fmt.Fprintln(out, "  context       Render hook context prompts")
@@ -7935,7 +7937,7 @@ func writeSessionLogHelp(out io.Writer) {
 }
 
 func writeSessionEnrichHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf session enrich [--json]", "Summarize markdown enrichment compatibility.", "--json        Output compatibility mode, action, reason, and counts as JSON")
+	writeUsageHelp(out, "loaf session enrich [--dry-run] [--json]", "Record a native SQLite enrichment checkpoint without editing session Markdown.", "--dry-run     Preview enrichment state without writing a checkpoint", "--json        Output compatibility mode, action, reason, and counts as JSON")
 }
 
 func writeSessionHousekeepingHelp(out io.Writer) {
@@ -8257,17 +8259,49 @@ func (r Runner) runSessionEnrich(args []string, out io.Writer, runtime state.Run
 	if err != nil {
 		return err
 	}
+	if options.dryRun {
+		summary := compatibilityCommandSummary{
+			ContractVersion: state.StateJSONContractVersion,
+			Version:         1,
+			Command:         "session enrich",
+			Mode:            "sqlite",
+			Action:          "skipped",
+			Reason:          "Dry run requested; SQLite journal enrichment checkpoint was not written.",
+			Counts: map[string]int{
+				"sessions": len(sessions.Sessions),
+			},
+		}
+		if options.jsonOutput {
+			return writeJSON(out, summary)
+		}
+		writeCompatibilityCommandSummary(out, summary)
+		return nil
+	}
+	message := "recorded native SQLite enrichment checkpoint"
+	if options.sessionRef != "" {
+		message = fmt.Sprintf("recorded native SQLite enrichment checkpoint for %s", options.sessionRef)
+	}
+	journal, err := state.LogJournal(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.JournalLogOptions{
+		Entry:            fmt.Sprintf("session(enrich): %s", message),
+		ObservedBranch:   state.ObservedGitBranch(runtime.RootPath()),
+		ObservedWorktree: runtime.RootPath(),
+	})
+	if err != nil {
+		return err
+	}
 	summary := compatibilityCommandSummary{
 		ContractVersion: state.StateJSONContractVersion,
 		Version:         1,
 		Command:         "session enrich",
 		Mode:            "sqlite",
-		Action:          "skipped",
-		Reason:          "SQLite journal state is written through `loaf session log`; Markdown JSONL enrichment is a compatibility path and is not run in SQLite mode.",
+		Action:          "logged",
+		Reason:          "SQLite journal enrichment checkpoint written natively; no session Markdown file is edited.",
 		Counts: map[string]int{
-			"sessions": len(sessions.Sessions),
+			"sessions":        len(sessions.Sessions),
+			"journal_entries": 1,
 		},
 	}
+	_ = journal
 	if options.jsonOutput {
 		return writeJSON(out, summary)
 	}
@@ -12209,6 +12243,12 @@ func parseCompatibilityCommandArgs(command string, args []string, allowedFlags m
 		switch arg {
 		case "--json":
 			options.jsonOutput = true
+		case "--dry-run":
+			if allowedFlags != nil && allowedFlags[arg] {
+				options.dryRun = true
+				continue
+			}
+			return compatibilityCommandOptions{}, fmt.Errorf("unknown %s option %q", command, arg)
 		case "--model", "--session-id":
 			if command != "session enrich" {
 				return compatibilityCommandOptions{}, fmt.Errorf("%s does not support %s", command, arg)
@@ -12230,6 +12270,7 @@ func parseCompatibilityCommandArgs(command string, args []string, allowedFlags m
 			if positional > 1 {
 				return compatibilityCommandOptions{}, fmt.Errorf("%s accepts at most one session file", command)
 			}
+			options.sessionRef = arg
 		}
 	}
 	return options, nil

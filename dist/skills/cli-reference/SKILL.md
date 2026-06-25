@@ -511,8 +511,8 @@ loaf migrate lifecycle-statuses --dry-run
 Manage project tasks
 
 In SQLite-backed projects, task metadata mutations go through the Go-native
-state store. Markdown task files and `TASKS.json` remain compatibility/source
-artifacts during migration; do not edit them directly for lifecycle changes.
+state store. `.agents/tasks/` and `.agents/TASKS.json` are rollback material
+after the SPEC-045 cutover; do not recreate them as compatibility mirrors.
 
 **Subcommands:**
 

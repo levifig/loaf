@@ -306,7 +306,10 @@ func runNativeEphemeralProvenance(cwd string) checkResult {
 		return result
 	}
 	if len(tracked) > 0 {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("Ephemeral provenance guard pending until %d tracked ephemeral file(s) are cut over", len(tracked)))
+		result.Passed = false
+		result.Blocked = true
+		result.Errors = append(result.Errors, "Tracked ephemeral Markdown is not allowed after SQLite cutover")
+		result.Findings = append(result.Findings, tracked...)
 		return result
 	}
 

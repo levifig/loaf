@@ -202,7 +202,7 @@ func TestRunnerCheckValidHooksAreHandledNatively(t *testing.T) {
 	}
 }
 
-func TestRunnerCheckEphemeralProvenancePendingBeforeCutover(t *testing.T) {
+func TestRunnerCheckEphemeralProvenanceBlocksTrackedEphemeralMarkdown(t *testing.T) {
 	repo := initCLIGitRepo(t)
 	writeCheckFile(t, repo, ".agents/tasks/TASK-001-example.md", "# Task\n")
 	writeCheckFile(t, repo, ".agents/specs/SPEC-001-example.md", "source: .agents/tasks/TASK-001-example.md\n")
@@ -213,15 +213,16 @@ func TestRunnerCheckEphemeralProvenancePendingBeforeCutover(t *testing.T) {
 		Stdout:     &stdout,
 		WorkingDir: repo,
 	}.Run([]string{"check", "--hook", "ephemeral-provenance", "--json"})
-	if err != nil {
-		t.Fatalf("ephemeral-provenance pending error = %v", err)
+	var exitErr ExitError
+	if !errors.As(err, &exitErr) || exitErr.Code != 2 {
+		t.Fatalf("ephemeral-provenance error = %v, want exit code 2", err)
 	}
 	var output checkJSONOutput
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("Unmarshal(%q) error = %v", stdout.String(), err)
 	}
-	if !output.Passed || output.Blocked || len(output.Warnings) != 1 || !strings.Contains(output.Warnings[0], "pending") {
-		t.Fatalf("output = %#v, want pending warning pass", output)
+	if !output.Blocked || len(output.Findings) == 0 || output.Findings[0] != ".agents/tasks/TASK-001-example.md" {
+		t.Fatalf("output = %#v, want tracked ephemeral finding", output)
 	}
 }
 

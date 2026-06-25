@@ -1492,6 +1492,60 @@ claude_session_id: abc123
 	}
 }
 
+func TestRunnerSessionEnrichWritesSQLiteJournalWithoutMarkdown(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	sessionRel := filepath.Join("sessions", "20260528-session.md")
+	writeCLIAgentsFile(t, workingDir, sessionRel, `---
+status: done
+branch: main
+claude_session_id: abc123
+---
+# Session
+`)
+	writeCLIAgentsFile(t, workingDir, "TASKS.json", `{"tasks":{}}`)
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "migrate", "markdown", "--apply"}); err != nil {
+		t.Fatalf("state migrate markdown --apply error = %v", err)
+	}
+	sessionPath := filepath.Join(workingDir, ".agents", sessionRel)
+	if err := os.Remove(sessionPath); err != nil {
+		t.Fatalf("remove session markdown after migration error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"session", "enrich", "20260528-session.md", "--json"})
+	if err != nil {
+		t.Fatalf("session enrich --json error = %v", err)
+	}
+	summary := decodeCompatibilityCommandSummary(t, stdout.Bytes())
+	if summary.Command != "session enrich" || summary.Action != "logged" || summary.Counts["journal_entries"] != 1 {
+		t.Fatalf("summary = %#v, want logged SQLite enrichment checkpoint", summary)
+	}
+	if _, err := os.Stat(sessionPath); !os.IsNotExist(err) {
+		t.Fatalf("session markdown stat = %v, want no recreated markdown file", err)
+	}
+	root, err := project.ResolveRoot(workingDir)
+	if err != nil {
+		t.Fatalf("ResolveRoot() error = %v", err)
+	}
+	databasePath, err := (state.PathResolver{StateHome: stateHome}).DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	db, err := sql.Open("sqlite3", databasePath)
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	defer db.Close()
+	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM journal_entries WHERE entry_type = ? AND scope = ? AND message = ?`, "session", "enrich", "recorded native SQLite enrichment checkpoint for 20260528-session.md"); got != 1 {
+		t.Fatalf("journal entry count = %d, want enrichment checkpoint", got)
+	}
+}
+
 func TestRunnerSessionEnrichSummarizesMarkdownOnly(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell fixture is POSIX-only")

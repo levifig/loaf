@@ -134,7 +134,7 @@ func agentHelpCommands() []agentHelpCommand {
 				{Name: "show", Description: "Display one session", Options: []agentHelpOption{{Flags: "--json", Description: "Output session details, journal entries, relationships, global database scope, and project identity as JSON"}}},
 				{Name: "log", Description: "Append a journal entry", Options: []agentHelpOption{{Flags: "--from-hook", Description: "Read hook input"}, {Flags: "--session-id <id>", Description: "Harness session ID"}, {Flags: "--json", Description: "Output journal entry, linked session, global database scope, and project identity as JSON"}}},
 				{Name: "report", Description: "Generate a session report", Options: []agentHelpOption{{Flags: "--json", Description: "Output export contract, command, project context, and markdown content as JSON"}}},
-				{Name: "enrich", Description: "Summarize compatibility enrichment status", Options: []agentHelpOption{{Flags: "--json", Description: "Output compatibility mode, action, reason, and counts as JSON"}}},
+				{Name: "enrich", Description: "Record a native SQLite enrichment checkpoint", Options: []agentHelpOption{{Flags: "--dry-run", Description: "Preview enrichment state without writing a checkpoint"}, {Flags: "--json", Description: "Output compatibility mode, action, reason, and counts as JSON"}}},
 				{Name: "housekeeping", Description: "Summarize session housekeeping status", Options: []agentHelpOption{{Flags: "--json", Description: "Output compatibility mode, action, reason, and counts as JSON"}}},
 				{Name: "state", Description: "Manage session current-state metadata"},
 				{Name: "context", Description: "Render session context for compaction or resumption"},

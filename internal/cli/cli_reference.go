@@ -886,11 +886,11 @@ func withMissingCLIReferenceSubcommands(subcommands []cliReferenceSubcommand, su
 func cliReferenceCommandGuidance(commandName string) string {
 	switch commandName {
 	case "task":
-		return "In SQLite-backed projects, task metadata mutations go through the Go-native\nstate store. Markdown task files and `TASKS.json` remain compatibility/source\nartifacts during migration; do not edit them directly for lifecycle changes."
+		return "In SQLite-backed projects, task metadata mutations go through the Go-native\nstate store. `.agents/tasks/` and `.agents/TASKS.json` are rollback material\nafter the SPEC-045 cutover; do not recreate them as compatibility mirrors."
 	case "spec":
 		return "Spec lifecycle changes go through `loaf spec` commands. Markdown spec files\nremain the authored prose artifact, while SQLite state carries operational\nstatus and relationship data when initialized."
 	case "session":
-		return "Session list/show/log/report commands are SQLite-aware. Prefer these commands\nover manual session frontmatter edits when changing lifecycle or journal state."
+		return "Session list/show/log/report/enrich commands are SQLite-aware. Prefer these\ncommands over manual session frontmatter edits when changing lifecycle or\njournal state; `session enrich` records a native journal checkpoint and edits no\nsession Markdown."
 	case "report":
 		return "In SQLite-backed projects, report lifecycle state is stored in SQLite. Use\ngenerated report commands for review output; create authored Markdown reports\nonly when a durable prose artifact is explicitly needed."
 	case "state":
