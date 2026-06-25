@@ -266,6 +266,83 @@ func TestImportFindingJSONLoadsFindingsVerdictsAndIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestImportFindingJSONLoadsDeepEvaluationReportRows(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	fixtureDir := t.TempDir()
+	findingsPath := filepath.Join(fixtureDir, "find.loaf-skill-suite.json")
+	writeFindingJSONFixture(t, findingsPath, `[
+  {
+    "id": "loaf-build-validates-nothing",
+    "title": "Build does not validate generated target output",
+    "dimension": "build-integrity",
+    "severity": "critical",
+    "confidence": "high",
+    "path": "cli/lib/build/targets/amp.ts",
+    "message": "The generated plugin surface can ship syntactically invalid output.",
+    "verdicts": [
+      {
+        "id": "loaf-build-validates-nothing-confirmed",
+        "outcome": "confirmed",
+        "rationale": "Deep evaluation reproduced invalid generated plugin syntax."
+      }
+    ]
+  },
+  {
+    "id": "loaf-taxonomy-too-large",
+    "title": "Skill taxonomy is too large",
+    "dimension": "taxonomy",
+    "severity": "high",
+    "confidence": "medium",
+    "message": "The deep evaluation treated this as a tempting but unsupported diagnosis.",
+    "verdicts": [
+      {
+        "id": "loaf-taxonomy-too-large-refuted",
+        "outcome": "refuted",
+        "rationale": "The report concluded no skill-family merges were warranted."
+      }
+    ]
+  }
+]`)
+
+	imported, err := ImportFindingJSON(context.Background(), root, PathResolver{StateHome: stateHome}, FindingImportJSONOptions{
+		Report:       "report-loaf-skill-suite-deep-evaluation",
+		ReportKind:   "audit",
+		Source:       "deep-evaluation-report",
+		FindingFiles: []string{findingsPath},
+	})
+	if err != nil {
+		t.Fatalf("ImportFindingJSON(deep evaluation) error = %v", err)
+	}
+	if imported.Report.Alias != "report-loaf-skill-suite-deep-evaluation" || imported.FindingsImported != 2 || imported.VerdictsImported != 2 {
+		t.Fatalf("imported = %#v, want deep-evaluation report with two findings and verdicts", imported)
+	}
+
+	confirmed, err := ListFindings(context.Background(), root, PathResolver{StateHome: stateHome}, FindingListOptions{Severity: "critical", Status: "confirmed"})
+	if err != nil {
+		t.Fatalf("ListFindings(critical confirmed) error = %v", err)
+	}
+	if len(confirmed.Findings) != 1 {
+		t.Fatalf("confirmed findings = %#v, want one critical confirmed deep-evaluation finding", confirmed.Findings)
+	}
+	for _, finding := range confirmed.Findings {
+		if finding.Report != "report-loaf-skill-suite-deep-evaluation" || finding.Dimension != "build-integrity" {
+			t.Fatalf("confirmed finding = %#v, want deep-evaluation build-integrity finding", finding)
+		}
+	}
+
+	reportShow, err := ShowReport(context.Background(), root, PathResolver{StateHome: stateHome}, "report-loaf-skill-suite-deep-evaluation")
+	if err != nil {
+		t.Fatalf("ShowReport(deep evaluation) error = %v", err)
+	}
+	if len(reportShow.Report.Findings) != 2 {
+		t.Fatalf("report findings = %#v, want imported deep-evaluation decomposition", reportShow.Report.Findings)
+	}
+}
+
 func insertRunFixture(t *testing.T, root project.Root, stateHome string, alias string) string {
 	t.Helper()
 	store := openTestStore(t, root, stateHome)

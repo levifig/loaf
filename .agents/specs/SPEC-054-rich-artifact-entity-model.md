@@ -9,7 +9,7 @@ source_sessions:
     role: referenced
     note: "gridsight thermonuclear-pipeline migration session — worked example + motivating analysis"
 created: 2026-06-24T09:30:00Z
-status: implementing
+status: complete
 branch: feat/rich-entity-model
 governed_by: ADR-016
 ---
@@ -136,17 +136,17 @@ is the "noun" layer that must be modeled as queryable rows.
   Markdown export validation remains required where an external audience is declared.
 
 ## Test Conditions
-- [ ] `loaf finding list --severity critical --status confirmed` returns matching rows across
+- [x] `loaf finding list --severity critical --status confirmed` returns matching rows across
       reports; `--format csv|json|markdown` produces the corresponding format.
-- [ ] This session's deep-evaluation report imports into queryable `finding`/`verdict` rows; a
+- [x] This session's deep-evaluation report imports into queryable `finding`/`verdict` rows; a
       severity/status filter returns the expected subset.
-- [ ] A `report show` renders parent + findings + verdicts (from rows), with an optional cached
+- [x] A `report show` renders parent + findings + verdicts (from rows), with an optional cached
       markdown for instant display.
-- [ ] A `run` row records `generator_ref` + `version/hash` + state; the generator code is **not**
+- [x] A `run` row records `generator_ref` + `version/hash` + state; the generator code is **not**
       stored in SQLite (assert no script body column exists).
-- [ ] Importing row-shaped finding JSON (the gridsight pipeline's `find.<dimension>.json` /
+- [x] Importing row-shaped finding JSON (the gridsight pipeline's `find.<dimension>.json` /
       `VERDICTS.json` shape) yields finding/verdict rows without parsing the markdown renders.
-- [ ] An external-audience `--format` export passes `ValidateExternalMarkdownExport` (no leaked IDs).
+- [x] An external-audience `--format` export passes `ValidateExternalMarkdownExport` (no leaked IDs).
 
 ## Priority Order
 
