@@ -3,7 +3,7 @@ id: SPEC-053
 title: Breaking-Change Migration Mechanism & Taxonomy Decisions
 source: "/Users/levifig/Code/levifig/projects/loaf/.agents/drafts/20260621-020342-loaf-restructuring-roadmap.md (WS-G)"
 created: 2026-06-22T09:13:21Z
-status: implementing
+status: complete
 branch: feat/migration-mechanism-taxonomy
 source_sessions:
   - id: 20260621-001541-session
