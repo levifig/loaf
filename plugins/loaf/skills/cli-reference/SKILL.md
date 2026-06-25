@@ -338,8 +338,10 @@ loaf state status
 ### `loaf session`
 Manage session journals and native SQLite session state
 
-Session list/show/log/report commands are SQLite-aware. Prefer these commands
-over manual session frontmatter edits when changing lifecycle or journal state.
+Session list/show/log/report/enrich commands are SQLite-aware. Prefer these
+commands over manual session frontmatter edits when changing lifecycle or
+journal state; `session enrich` records a native journal checkpoint and edits no
+session Markdown.
 
 **Subcommands:**
 

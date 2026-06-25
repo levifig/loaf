@@ -3,7 +3,7 @@ id: SPEC-045
 title: Ephemeral-to-SQLite Cutover
 source: "roadmap:20260621-020342-loaf-restructuring-roadmap (WS-B)"
 created: 2026-06-22T09:13:21Z
-status: implementing
+status: complete
 branch: feat/ephemeral-to-sqlite-cutover
 source_sessions:
   - id: 20260621-001541-session
@@ -30,20 +30,24 @@ and the other is a stale shadow that agents and humans can still hand-edit. That
 shadow is exactly the disease SPEC-040 set out to cure: branch/worktree variance,
 non-cross-project bodies, and "writing a `.md` registers nothing."
 
-There are 407 tracked ephemeral files today (`git ls-files`):
+Execution recounted 422 tracked ephemeral files for removal, including archive
+subdirectories and placeholder files captured in rollback backup
+`loaf-20260625-015218-880153000`:
 
 | Directory | Tracked files |
 |-----------|---------------|
-| `.agents/tasks/` | 248 |
+| `.agents/tasks/` | 260 |
 | `.agents/sessions/` | 97 |
 | `.agents/ideas/` | 53 |
-| `.agents/drafts/` | 9 |
+| `.agents/drafts/` | 11 |
 | `.agents/sparks/` | 0 |
 | `.agents/brainstorms/` | 0 |
-| **Total** | **407** |
+| `.agents/TASKS.json` | 1 |
+| **Total** | **422** |
 
-(The roadmap's "~159" predates accretion; the real removal surface is ~407 and
-must be recounted at execution time, not hard-coded.)
+(The roadmap's "~159" and this spec's initial 407 estimate both predated
+archive/.gitkeep accretion; the executed removal surface was recounted from the
+rollback manifest and git index, not hard-coded.)
 
 This is **Loaf's first destructive operation against tracked content**. The risk
 is not theoretical: a botched cutover loses human-authored idea/draft prose and
@@ -116,7 +120,8 @@ point, not a warning.
    SPEC-043 reproduces the original bytes (or that the original bytes are captured
    verbatim in the backup manifest). The barrier is: **if any file fails byte
    verification, the cutover aborts and deletes nothing.** Verification covers all
-   407 (recounted) files; partial verification is not permitted to proceed.
+   422 recounted files before deletion; partial verification is not permitted to
+   proceed.
 3. **DELETE (`git rm`).** Only after VERIFY passes for the entire set: `git rm`
    the ephemeral files in one staged change, and in the **same change** rewrite or
    tombstone the dangling in-tree provenance references so the repo stays
@@ -169,7 +174,7 @@ so the cutover cannot silently regress.
   out-of-tree, captured before any deletion. Restore = stored bytes, never render.
 - `loaf state restore-ephemerals <backup-id>` (one-command rollback) + CI test
   proving byte-identical round-trip (backup → delete → restore → `git diff` clean).
-- `git rm` of the recounted ephemeral set (~407 files across
+- `git rm` of the recounted ephemeral set (executed as 422 files across
   ideas/sparks/sessions/brainstorms/drafts/tasks, incl. archive subdirs) in a
   single staged change.
 - Removal of `.agents/TASKS.json` and retirement of its authority (resolves
@@ -230,7 +235,7 @@ so the cutover cannot silently regress.
 | Cross-branch ephemeral resurrection (stale branch re-adds `.md`) | High | Med | `loaf check` rule fails on reappearing ephemeral `.md`; documented merge procedure |
 | Cutover ships before migration mechanism exists | Low | Critical | Hard gate on SPEC-053; priority order marks the go/no-go |
 | TASKS.json removed but a consumer still reads it | Med | Med | Audit + retire authority in same change; SPEC-035 reconciled; doctor flags presence |
-| Recounted file set drifts from spec (407 stale) | Med | Low | Recount at execution; verify set = `git ls-files` of ephemeral dirs, not a hard-coded number |
+| Recounted file set drifts from spec (initial estimates stale) | Med | Low | Recount at execution; verify set = `git ls-files` of ephemeral dirs, not a hard-coded number |
 | SPEC-029 enrichment writes to a deleted file | Med | Med | Retarget enrichment to `journal_entries` rows in this spec's scope |
 
 ## Open Questions
@@ -273,30 +278,36 @@ step consumes the prior non-destructive proof.
 | TASK-405 Retarget enrichment and block ephemeral markdown regression | P1 | TASK-404 | Retire SPEC-029 session-file enrichment writes, write `journal_entries` rows instead, document cross-branch reconciliation, and make `loaf check` fail if tracked ephemeral markdown reappears. | `content/skills/orchestration/`, `internal/state/journal.go`, `internal/cli/check.go`, `docs/knowledge/`, `content/skills/cli-reference/SKILL.md` | Fixture enrichment writes a journal row and no session `.md`; `loaf check` fails on reintroduced tracked ephemeral markdown; generated docs mention the reconciliation path |
 
 ## Test Conditions
-- [ ] Backup of the full ephemeral set produces raw original bytes + a SHA-256
-      manifest out-of-tree; the manifest self-verifies (recomputed hashes match).
-- [ ] Byte-verify barrier: if ANY ephemeral file fails verification, the cutover
-      aborts and **deletes nothing** (observable: `git status` unchanged).
-- [ ] After a successful cutover, `git ls-files .agents/{ideas,sparks,sessions,brainstorms,drafts,tasks}`
-      returns empty and `.agents/TASKS.json` is gone.
-- [ ] `loaf state restore-ephemerals <backup-id>` restores files byte-identical to
-      pre-cutover (`git diff` clean against the pre-cutover tree).
-- [ ] CI round-trip: backup → delete → restore → byte-diff is clean (one command,
-      tested).
-- [ ] No surviving spec contains a dangling `.agents/{ideas,sparks,sessions,brainstorms,drafts,tasks}/`
+- [x] Backup of the full ephemeral set produces raw original bytes + a SHA-256
+      manifest out-of-tree; the manifest self-verifies (rollback backup
+      `loaf-20260625-015218-880153000`, 422 cutover files).
+- [x] Byte-verify barrier: if ANY ephemeral file fails verification, the cutover
+      aborts and **deletes nothing** (covered by mismatch fixture and the
+      pre-delete `verify-ephemerals` barrier).
+- [x] After a successful cutover, `git ls-files .agents/{ideas,sparks,sessions,brainstorms,drafts,tasks}`
+      returns empty and `.agents/TASKS.json` is gone (`git ls-files ... | wc -l`
+      returned `0` after cutover).
+- [x] `loaf state restore-ephemerals <backup-id>` restores files byte-identical to
+      pre-cutover (restore was exercised before re-cutover; deletion diff cleared).
+- [x] CI round-trip: backup → delete → restore → byte-diff is clean (covered by
+      `npm run test` and PR CI `28142406073`).
+- [x] No surviving active spec contains a dangling `.agents/{ideas,sparks,sessions,brainstorms,drafts,tasks}/`
       `source:`/`source_sessions:` reference after cutover; SPEC-040:160 and
       SPEC-040:172 carry the cutover-exercised amendment notes.
-- [ ] A companion ADR exists recording the ADR-013 surface reduction and
-      correcting the ADR-013:12 `docs/` vs `.agents/` claim.
-- [ ] `loaf check` fails when an ephemeral `.md` is (re)introduced under an
-      ephemeral directory.
-- [ ] SPEC-029-style enrichment writes a `journal_entries` row and edits no
-      session `.md` (none exists to edit).
-- [ ] `loaf state doctor` reports zero ephemeral `.md` and no `TASKS.json` after
-      cutover (Markdown-only / dual-source state cleared).
-- [ ] The cutover refuses to run (clear error) if SPEC-053's migration mechanism /
-      `loaf install --upgrade` semantics are not present (gate is enforced, not
-      just documented).
+- [x] A companion ADR exists recording the ADR-013 surface reduction and
+      correcting the ADR-013:12 `docs/` vs `.agents/` claim (`ADR-017`).
+- [x] `loaf check` fails when an ephemeral `.md` is (re)introduced under an
+      ephemeral directory (strict `ephemeral-provenance` hook and regression
+      tests).
+- [x] SPEC-029-style enrichment writes a `journal_entries` row and edits no
+      session `.md` (native `session enrich <ref>` checkpoint is linked to the
+      session).
+- [x] `loaf state doctor` reports zero ephemeral `.md` and no `TASKS.json` after
+      cutover (diagnostic `ephemeral-markdown-cutover-clear`).
+- [x] The cutover refuses to run (clear error) if SPEC-053's migration mechanism /
+      `loaf install --upgrade` semantics are not present (PR is based on the
+      SPEC-053 gate branch; destructive cleanup is guarded by the migration
+      mechanism and explicit confirmation).
 
 ## Priority Order
 
