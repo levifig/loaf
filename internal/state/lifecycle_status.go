@@ -227,6 +227,28 @@ func LifecycleStatusMatches(kind string, status string, canonical string) bool {
 	return ok && mapped == canonical
 }
 
+// LifecycleStatusForDisplay returns the canonical display spelling when the status is lifecycle-managed.
+func LifecycleStatusForDisplay(kind string, status string) string {
+	canonical, ok := CanonicalLifecycleStatus(kind, status)
+	if !ok {
+		return status
+	}
+	return canonical
+}
+
+// LifecycleStatusFilterMatches compares a stored status and user filter through canonical lifecycle mappings.
+func LifecycleStatusFilterMatches(kind string, status string, filter string) bool {
+	if filter == "" {
+		return true
+	}
+	canonicalStatus, statusOK := CanonicalLifecycleStatus(kind, status)
+	canonicalFilter, filterOK := CanonicalLifecycleStatus(kind, filter)
+	if statusOK && filterOK {
+		return canonicalStatus == canonicalFilter
+	}
+	return status == filter
+}
+
 // NonLifecycleStatusVocabularies returns explicit status-like vocabularies excluded from lifecycle canonicalization.
 func NonLifecycleStatusVocabularies() []string {
 	return append([]string(nil), nonLifecycleStatusVocabularies...)

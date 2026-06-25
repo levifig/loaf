@@ -113,6 +113,7 @@ ORDER BY brainstorm_alias.alias
 		if !includeBrainstormStatus(status, options) {
 			continue
 		}
+		status = LifecycleStatusForDisplay(LifecycleEntityBrainstorm, status)
 		brainstorms.Brainstorms[alias] = BrainstormItem{
 			Title:      title,
 			Status:     status,
@@ -129,7 +130,7 @@ ORDER BY brainstorm_alias.alias
 }
 
 func includeBrainstormStatus(status string, options BrainstormListOptions) bool {
-	if options.Status != "" && status != options.Status {
+	if !LifecycleStatusFilterMatches(LifecycleEntityBrainstorm, status, options.Status) {
 		return false
 	}
 	if options.Status != "" {

@@ -110,6 +110,7 @@ ORDER BY session_alias.alias
 		if !options.All && !LifecycleStatusMatches(LifecycleEntitySession, status, LifecycleStatusInProgress) {
 			continue
 		}
+		status = LifecycleStatusForDisplay(LifecycleEntitySession, status)
 		sessionList.Sessions[alias] = SessionItem{
 			Branch:           branch,
 			Status:           status,

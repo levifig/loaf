@@ -5221,7 +5221,7 @@ func writeTaskStatus(out io.Writer, tasks state.TaskList, specs state.SpecList) 
 		fmt.Fprintln(out)
 	}
 	fmt.Fprintf(out, "  Tasks:  %s  (%d total)\n", formatStatusCounts(taskCounts, []string{"in_progress", "blocked", "todo", "review", "done"}), len(tasks.Tasks))
-	fmt.Fprintf(out, "  Specs:  %s  (%d total)\n\n", formatStatusCounts(specCounts, []string{"implementing", "approved", "drafting", "complete"}), len(specs.Specs))
+	fmt.Fprintf(out, "  Specs:  %s  (%d total)\n\n", formatStatusCounts(specCounts, []string{state.LifecycleStatusInProgress, state.LifecycleStatusTodo, state.LifecycleStatusDraft, state.LifecycleStatusDone}), len(specs.Specs))
 }
 
 func countTaskStatuses(tasks state.TaskList) map[string]int {
@@ -7061,7 +7061,7 @@ func readMarkdownSpec(rootPath string, path string, index map[string]markdownSpe
 	alias := firstNonEmpty(field("id"), specAliasFromPath(path), strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)))
 	meta := index[alias]
 	title := firstNonEmpty(meta.Title, field("title"), firstMarkdownHeading(markdownContentWithoutFrontmatter(string(body))), alias)
-	status := firstNonEmpty(meta.Status, field("status"), "unknown")
+	status := state.LifecycleStatusForDisplay(state.LifecycleEntitySpec, firstNonEmpty(meta.Status, field("status"), "drafting"))
 	return state.SpecItem{
 		Title:      title,
 		Status:     status,
@@ -10409,7 +10409,7 @@ func writeReportHelp(out io.Writer) {
 }
 
 func writeReportListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf report list [--type <type>|--status <status>] [--json]", "List reports.", "--type       Filter by report type", "--status     Filter by status; Loaf lifecycle statuses: draft, final, archived", "--json       Output reports, diagnostics, global database scope, and project identity as JSON")
+	writeUsageHelp(out, "loaf report list [--type <type>|--status <status>] [--json]", "List reports.", "--type       Filter by report type", "--status     Filter by status; Loaf lifecycle statuses: draft, done, archived", "--json       Output reports, diagnostics, global database scope, and project identity as JSON")
 }
 
 func writeReportShowHelp(out io.Writer) {
@@ -11422,11 +11422,12 @@ func readMarkdownReport(rootPath string, path string) (state.ReportItem, string,
 	}
 	stem := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 	alias := firstNonEmpty(field("id"), stem)
-	status := firstNonEmpty(field("status"), "unknown")
+	status := firstNonEmpty(field("status"), "draft")
 	sourcePath := markdownReportSourcePath(rootPath, path)
 	if strings.HasPrefix(sourcePath, ".agents/reports/archive/") {
 		status = "archived"
 	}
+	status = state.LifecycleStatusForDisplay(state.LifecycleEntityReport, status)
 	title := firstNonEmpty(field("title"), firstMarkdownHeading(markdownContentWithoutFrontmatter(string(body))), alias)
 	kind := firstNonEmpty(field("type", "report_kind", "kind"), "markdown")
 	return state.ReportItem{
@@ -11459,7 +11460,7 @@ func reportMatchesFilters(item state.ReportItem, options state.ReportListOptions
 	if options.Type != "" && item.Kind != options.Type {
 		return false
 	}
-	if options.Status != "" && item.Status != options.Status {
+	if !state.LifecycleStatusFilterMatches(state.LifecycleEntityReport, item.Status, options.Status) {
 		return false
 	}
 	return true
@@ -11530,21 +11531,22 @@ func markdownReportFinalize(rootPath string, ref string) (state.ReportStatusResu
 	if err != nil {
 		return state.ReportStatusResult{}, err
 	}
-	previous := firstNonEmpty(firstFieldValue(frontmatter["status"]), "unknown")
-	if previous != "draft" {
+	previousRaw := firstNonEmpty(firstFieldValue(frontmatter["status"]), "draft")
+	previous := state.LifecycleStatusForDisplay(state.LifecycleEntityReport, previousRaw)
+	if !state.LifecycleStatusMatches(state.LifecycleEntityReport, previousRaw, state.LifecycleStatusDraft) {
 		return state.ReportStatusResult{}, fmt.Errorf("report %q is not draft (status: %s)", ref, previous)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	frontmatter["status"] = markdownReportFrontmatterScalar("final")
+	frontmatter["status"] = markdownReportFrontmatterScalar(state.LifecycleStatusDone)
 	frontmatter["finalized_at"] = markdownReportFrontmatterScalar(now)
 	if err := os.WriteFile(path, []byte(renderMarkdownReport(frontmatter, body)), 0o600); err != nil {
 		return state.ReportStatusResult{}, fmt.Errorf("write finalized report %s: %w", ref, err)
 	}
 	title := firstNonEmpty(firstFieldValue(frontmatter["title"]), firstMarkdownHeading(body), alias)
 	return state.ReportStatusResult{
-		Report:   state.TraceEntity{Kind: "report", ID: alias, Alias: alias, Title: title, Status: "final"},
+		Report:   state.TraceEntity{Kind: "report", ID: alias, Alias: alias, Title: title, Status: state.LifecycleStatusDone},
 		Previous: previous,
-		Status:   "final",
+		Status:   state.LifecycleStatusDone,
 	}, nil
 }
 
@@ -11557,9 +11559,10 @@ func markdownReportArchive(rootPath string, ref string) (state.ReportStatusResul
 	if err != nil {
 		return state.ReportStatusResult{}, err
 	}
-	previous := firstNonEmpty(firstFieldValue(frontmatter["status"]), "unknown")
-	if previous != "final" {
-		return state.ReportStatusResult{}, fmt.Errorf("report %q is not final (status: %s)", ref, previous)
+	previousRaw := firstNonEmpty(firstFieldValue(frontmatter["status"]), "draft")
+	previous := state.LifecycleStatusForDisplay(state.LifecycleEntityReport, previousRaw)
+	if !state.LifecycleStatusMatches(state.LifecycleEntityReport, previousRaw, state.LifecycleStatusDone) {
+		return state.ReportStatusResult{}, fmt.Errorf("report %q is not done (status: %s)", ref, previous)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	frontmatter["status"] = markdownReportFrontmatterScalar("archived")
@@ -14025,15 +14028,15 @@ func sortedSpecsByStatus(specs state.SpecList, status string) []string {
 
 func specStatusLabel(status string) string {
 	switch status {
-	case "implementing":
-		return "Implementing"
-	case "approved":
-		return "Approved"
-	case "drafting":
-		return "Drafting"
-	case "complete":
-		return "Complete"
-	case "archived":
+	case state.LifecycleStatusInProgress:
+		return "In Progress"
+	case state.LifecycleStatusTodo:
+		return "Todo"
+	case state.LifecycleStatusDraft:
+		return "Draft"
+	case state.LifecycleStatusDone:
+		return "Done"
+	case state.LifecycleStatusArchived:
 		return "Archived"
 	default:
 		return status
@@ -14162,7 +14165,7 @@ func formatSessionJournalTimestamp(value string) string {
 func sortedSessionsByArchivedState(sessions state.SessionList, archived bool) []string {
 	var aliases []string
 	for alias, session := range sessions.Sessions {
-		if (session.Status == "archived") == archived {
+		if state.LifecycleStatusMatches(state.LifecycleEntitySession, session.Status, state.LifecycleStatusArchived) == archived {
 			aliases = append(aliases, alias)
 		}
 	}
@@ -14171,7 +14174,7 @@ func sortedSessionsByArchivedState(sessions state.SessionList, archived bool) []
 }
 
 func reportStatusDisplayOrder(reports state.ReportList) []string {
-	statuses := []string{"draft", "final", "archived"}
+	statuses := []string{state.LifecycleStatusDraft, state.LifecycleStatusDone, state.LifecycleStatusArchived}
 	seen := map[string]bool{}
 	for _, status := range statuses {
 		seen[status] = true
@@ -14202,8 +14205,8 @@ func reportStatusLabel(status string) string {
 	switch status {
 	case "draft":
 		return "Drafts"
-	case "final":
-		return "Final"
+	case "done":
+		return "Done"
 	case "archived":
 		return "Archived"
 	default:

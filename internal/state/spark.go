@@ -193,6 +193,7 @@ ORDER BY spark_alias.alias
 		if !includeSparkStatus(status, options) {
 			continue
 		}
+		status = LifecycleStatusForDisplay(LifecycleEntitySpark, status)
 		sparks.Sparks[alias] = SparkItem{
 			Text:       text,
 			Scope:      scope,
@@ -275,6 +276,7 @@ WHERE sparks.project_id = ? AND sparks.id = ?
 	if err != nil {
 		return SparkDetail{}, fmt.Errorf("read spark %s: %w", entity.ID, err)
 	}
+	status = LifecycleStatusForDisplay(LifecycleEntitySpark, status)
 
 	alias := firstNonEmpty(entity.Alias)
 	if alias == "" {
@@ -592,7 +594,7 @@ ON CONFLICT(id) DO UPDATE SET
 }
 
 func includeSparkStatus(status string, options SparkListOptions) bool {
-	if options.Status != "" && status != options.Status {
+	if !LifecycleStatusFilterMatches(LifecycleEntitySpark, status, options.Status) {
 		return false
 	}
 	if options.Status != "" {

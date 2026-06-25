@@ -5324,8 +5324,8 @@ status: final
 		"Sessions: 1 active, 1 total",
 		"Reports: 0 draft, 1 total",
 		"No generated exports recorded.",
-		"session/final: Release internal reference internal reference report",
-		"active session on feature/internal reference-internal reference with 1 journal entry",
+		"session/done: Release internal reference internal reference report",
+		"in_progress session on feature/internal reference-internal reference with 1 journal entry",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
@@ -5387,7 +5387,7 @@ Imported spec prose.
 		"- Database: `" + filepath.Join(stateHome, "loaf", "loaf.sqlite") + "`",
 		"Spec: `SPEC-001`",
 		"Title: Example Spec",
-		"Status: implementing",
+		"Status: in_progress",
 		"Tasks: 1 todo, 1 in progress, 1 done",
 		"`.agents/specs/SPEC-001-example.md`",
 		"inbound `implements` task `TASK-001`",
@@ -5744,8 +5744,8 @@ func TestRunnerReportLifecycleUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("report finalize error = %v", err)
 	}
 	finalized := decodeReportStatusResult(t, finalizeOut.Bytes())
-	if finalized.Previous != "draft" || finalized.Status != "final" {
-		t.Fatalf("finalized = %#v, want final transition", finalized)
+	if finalized.Previous != "draft" || finalized.Status != "done" {
+		t.Fatalf("finalized = %#v, want done transition", finalized)
 	}
 	assertCLIReportContext(t, finalized.ContractVersion, finalized.DatabaseScope, finalized.DatabasePath, finalized.ProjectID, finalized.ProjectName, finalized.ProjectCurrentPath, workingDir)
 	if finalized.Render == nil || finalized.Render.RelativePath != ".agents/reports/report-release-readiness.md" {
@@ -5764,7 +5764,7 @@ func TestRunnerReportLifecycleUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("report archive error = %v", err)
 	}
 	archived := decodeReportStatusResult(t, archiveOut.Bytes())
-	if archived.Previous != "final" || archived.Status != "archived" {
+	if archived.Previous != "done" || archived.Status != "archived" {
 		t.Fatalf("archived = %#v, want archived transition", archived)
 	}
 	assertCLIReportContext(t, archived.ContractVersion, archived.DatabaseScope, archived.DatabasePath, archived.ProjectID, archived.ProjectName, archived.ProjectCurrentPath, workingDir)
@@ -5853,8 +5853,8 @@ func TestRunnerReportLifecycleUsesMarkdownFilesWhenMarkdownOnly(t *testing.T) {
 		t.Fatalf("report finalize markdown error = %v", err)
 	}
 	finalized := decodeReportStatusResult(t, finalizeOut.Bytes())
-	if finalized.Previous != "draft" || finalized.Status != "final" || finalized.Report.Alias != created.Report.Alias {
-		t.Fatalf("finalized = %#v, want draft to final", finalized)
+	if finalized.Previous != "draft" || finalized.Status != "done" || finalized.Report.Alias != created.Report.Alias {
+		t.Fatalf("finalized = %#v, want draft to done", finalized)
 	}
 	if finalized.ContractVersion != 0 || finalized.DatabaseScope != "" || finalized.DatabasePath != "" || finalized.ProjectID != "" || finalized.ProjectName != "" || finalized.ProjectCurrentPath != "" {
 		t.Fatalf("finalized markdown context = %#v, want no SQLite context", finalized)
@@ -5867,7 +5867,7 @@ func TestRunnerReportLifecycleUsesMarkdownFilesWhenMarkdownOnly(t *testing.T) {
 	if !ok {
 		t.Fatal("finalized report frontmatter missing")
 	}
-	if firstFieldValue(reportFrontmatter["status"]) != "final" || firstFieldValue(reportFrontmatter["finalized_at"]) == "" {
+	if firstFieldValue(reportFrontmatter["status"]) != "done" || firstFieldValue(reportFrontmatter["finalized_at"]) == "" {
 		t.Fatalf("frontmatter = %#v, want finalized metadata", reportFrontmatter)
 	}
 
@@ -5881,8 +5881,8 @@ func TestRunnerReportLifecycleUsesMarkdownFilesWhenMarkdownOnly(t *testing.T) {
 		t.Fatalf("report archive markdown error = %v", err)
 	}
 	archived := decodeReportStatusResult(t, archiveOut.Bytes())
-	if archived.Previous != "final" || archived.Status != "archived" || archived.Report.Alias != created.Report.Alias {
-		t.Fatalf("archived = %#v, want final to archived", archived)
+	if archived.Previous != "done" || archived.Status != "archived" || archived.Report.Alias != created.Report.Alias {
+		t.Fatalf("archived = %#v, want done to archived", archived)
 	}
 	if archived.ContractVersion != 0 || archived.DatabaseScope != "" || archived.DatabasePath != "" || archived.ProjectID != "" || archived.ProjectName != "" || archived.ProjectCurrentPath != "" {
 		t.Fatalf("archived markdown context = %#v, want no SQLite context", archived)
@@ -6532,7 +6532,7 @@ func TestRunnerSessionStartUsesSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("session show --json error = %v", err)
 	}
 	show := decodeSessionShow(t, showOut.Bytes())
-	if show.Session.Branch != "main" || show.Session.Status != "active" || show.Session.HarnessSessionID != "harness-cli-123456" {
+	if show.Session.Branch != "main" || show.Session.Status != "in_progress" || show.Session.HarnessSessionID != "harness-cli-123456" {
 		t.Fatalf("session = %#v, want native active session", show.Session)
 	}
 	if len(show.Session.JournalEntries) != 1 || show.Session.JournalEntries[0].EntryType != "session" || show.Session.JournalEntries[0].Scope != "start" {
@@ -6682,8 +6682,8 @@ func TestRunnerSessionEndTargetsHarnessSessionInSQLiteState(t *testing.T) {
 		t.Fatalf("session show target error = %v", err)
 	}
 	targetShow := decodeSessionShow(t, targetShowOut.Bytes())
-	if targetShow.Session.Status != "stopped" {
-		t.Fatalf("target status = %q, want stopped", targetShow.Session.Status)
+	if targetShow.Session.Status != "paused" {
+		t.Fatalf("target status = %q, want paused", targetShow.Session.Status)
 	}
 	assertCLISessionContext(t, targetShow.ContractVersion, targetShow.DatabaseScope, targetShow.DatabasePath, targetShow.ProjectID, targetShow.ProjectName, targetShow.ProjectCurrentPath, workingDir)
 
@@ -6692,8 +6692,8 @@ func TestRunnerSessionEndTargetsHarnessSessionInSQLiteState(t *testing.T) {
 		t.Fatalf("session show other error = %v", err)
 	}
 	otherShow := decodeSessionShow(t, otherShowOut.Bytes())
-	if otherShow.Session.Status != "active" {
-		t.Fatalf("other status = %q, want active", otherShow.Session.Status)
+	if otherShow.Session.Status != "in_progress" {
+		t.Fatalf("other status = %q, want in_progress", otherShow.Session.Status)
 	}
 
 	var listOut bytes.Buffer
@@ -7282,14 +7282,14 @@ status: open
 	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM ideas WHERE title = ?`, "Matrix Idea"); got != 1 {
 		t.Fatalf("Matrix Idea count = %d, want 1", got)
 	}
-	if got := sqliteEntityStatus(t, db, "ideas", "idea", "20260528-source-idea"); got != "resolved" {
-		t.Fatalf("20260528-source-idea status = %q, want resolved", got)
+	if got := sqliteEntityStatus(t, db, "ideas", "idea", "20260528-source-idea"); got != "done" {
+		t.Fatalf("20260528-source-idea status = %q, want done", got)
 	}
 	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM sparks WHERE text = ? AND scope = ?`, "Matrix Spark", "matrix"); got != 1 {
 		t.Fatalf("captured Matrix Spark count = %d, want 1", got)
 	}
-	if got := sqliteEntityStatus(t, db, "sparks", "spark", "SPARK-matrix"); got != "resolved" {
-		t.Fatalf("SPARK-matrix status = %q, want resolved", got)
+	if got := sqliteEntityStatus(t, db, "sparks", "spark", "SPARK-matrix"); got != "done" {
+		t.Fatalf("SPARK-matrix status = %q, want done", got)
 	}
 	if got := sqliteEntityStatus(t, db, "brainstorms", "brainstorm", "20260528-brainstorm-matrix"); got != "archived" {
 		t.Fatalf("20260528-brainstorm-matrix status = %q, want archived", got)
@@ -8516,10 +8516,10 @@ status: complete
 		"1 done",
 		"(3 total)",
 		"Specs:",
-		"1 implementing",
-		"0 approved",
-		"0 drafting",
-		"1 complete",
+		"1 in_progress",
+		"0 todo",
+		"0 draft",
+		"1 done",
 		"(2 total)",
 	} {
 		if !strings.Contains(output, want) {
@@ -8860,7 +8860,7 @@ status: complete
 		t.Fatalf("task status markdown error = %v", err)
 	}
 	output := stdout.String()
-	for _, want := range []string{"loaf task status", "Tasks:", "1 in_progress", "1 todo", "1 done", "(3 total)", "Specs:", "1 implementing", "1 complete", "(2 total)"} {
+	for _, want := range []string{"loaf task status", "Tasks:", "1 in_progress", "1 todo", "1 done", "(3 total)", "Specs:", "1 in_progress", "1 done", "(2 total)"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("stdout = %q, want %q", output, want)
 		}
@@ -10000,7 +10000,7 @@ status: archived
 		t.Fatalf("brainstorm list --all --json error = %v", err)
 	}
 	all := decodeBrainstormList(t, allOut.Bytes())
-	if len(all.Brainstorms) != 3 || all.Brainstorms["20260528-brainstorm-resolved"].Status != "resolved" {
+	if len(all.Brainstorms) != 3 || all.Brainstorms["20260528-brainstorm-resolved"].Status != "done" {
 		t.Fatalf("all = %#v, want all brainstorms", all.Brainstorms)
 	}
 	assertCLIBrainstormContext(t, all.ContractVersion, all.DatabaseScope, all.DatabasePath, all.ProjectID, all.ProjectName, all.ProjectCurrentPath, workingDir)
@@ -10030,7 +10030,7 @@ status: archived
 		t.Fatalf("brainstorm list human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"loaf brainstorm list", "scope: global database", "database:", "project:", "project name:", "project path:", "20260528-brainstorm-open", "Open Brainstorm", "[resolved]", ".agents/drafts/20260528-brainstorm-open.md"} {
+	for _, want := range []string{"loaf brainstorm list", "scope: global database", "database:", "project:", "project name:", "project path:", "20260528-brainstorm-open", "Open Brainstorm", "[done]", ".agents/drafts/20260528-brainstorm-open.md"} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -10513,7 +10513,7 @@ status: open
 		t.Fatalf("idea resolve error = %v", err)
 	}
 	result := decodeIdeaResolveResult(t, resolveOut.Bytes())
-	if result.Idea.Status != "resolved" || result.ResolvedBy.Alias != "SPEC-001" || result.EventID == "" {
+	if result.Idea.Status != "done" || result.ResolvedBy.Alias != "SPEC-001" || result.EventID == "" {
 		t.Fatalf("result = %#v, want resolved idea by SPEC-001 with event", result)
 	}
 	assertCLIIdeaContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
@@ -10543,7 +10543,7 @@ status: open
 		t.Fatalf("idea list --all --json error = %v", err)
 	}
 	all := decodeIdeaList(t, allOut.Bytes())
-	if all.Ideas["20260528-sqlite-state"].Status != "resolved" {
+	if all.Ideas["20260528-sqlite-state"].Status != "done" {
 		t.Fatalf("all.Ideas = %#v, want resolved idea included with --all", all.Ideas)
 	}
 	assertCLIIdeaContext(t, all.ContractVersion, all.DatabaseScope, all.DatabasePath, all.ProjectID, all.ProjectName, all.ProjectCurrentPath, workingDir)
@@ -11098,7 +11098,7 @@ func TestRunnerSparkListAndResolveUseSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("spark resolve error = %v", err)
 	}
 	result := decodeSparkResolveResult(t, resolveOut.Bytes())
-	if result.Spark.Status != "resolved" || result.ResolvedBy.Alias != "20260528-target-idea" || result.EventID == "" || result.Reason != "triaged into target idea" {
+	if result.Spark.Status != "done" || result.ResolvedBy.Alias != "20260528-target-idea" || result.EventID == "" || result.Reason != "triaged into target idea" {
 		t.Fatalf("result = %#v, want resolved spark by target idea with event", result)
 	}
 	assertCLISparkContext(t, result.ContractVersion, result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath, workingDir)
@@ -11128,7 +11128,7 @@ func TestRunnerSparkListAndResolveUseSQLiteStateWhenInitialized(t *testing.T) {
 		t.Fatalf("spark list --all --json error = %v", err)
 	}
 	all := decodeSparkList(t, allOut.Bytes())
-	if all.Sparks["SPARK-smoke"].Status != "resolved" {
+	if all.Sparks["SPARK-smoke"].Status != "done" {
 		t.Fatalf("all.Sparks = %#v, want resolved spark included with --all", all.Sparks)
 	}
 	assertCLISparkContext(t, all.ContractVersion, all.DatabaseScope, all.DatabasePath, all.ProjectID, all.ProjectName, all.ProjectCurrentPath, workingDir)
@@ -12313,7 +12313,7 @@ status: implementing
 	specs := decodeSpecList(t, stdout.Bytes())
 	assertCLIProjectContext(t, workingDir, specs.ContractVersion, specs.DatabaseScope, specs.DatabasePath, specs.ProjectID, specs.ProjectName, specs.ProjectCurrentPath)
 	spec := specs.Specs["SPEC-001"]
-	if spec.Title != "Example Spec" || spec.Status != "implementing" || spec.SourcePath != ".agents/specs/SPEC-001-example.md" {
+	if spec.Title != "Example Spec" || spec.Status != "in_progress" || spec.SourcePath != ".agents/specs/SPEC-001-example.md" {
 		t.Fatalf("SPEC-001 = %#v, want imported spec metadata", spec)
 	}
 	if spec.Tasks.Todo != 1 || spec.Tasks.InProgress != 0 || spec.Tasks.Done != 1 {
@@ -12347,7 +12347,7 @@ status: implementing
 		t.Fatalf("spec list error = %v", err)
 	}
 	output := stdout.String()
-	for _, want := range []string{"loaf spec list", "scope: global database", "database:", "project:", "project name:", "project path:", "Implementing (1)", "SPEC-001", "Example Spec", "0 todo / 1 in_progress / 0 done"} {
+	for _, want := range []string{"loaf spec list", "scope: global database", "database:", "project:", "project name:", "project path:", "In Progress (1)", "SPEC-001", "Example Spec", "0 todo / 1 in_progress / 0 done"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -12394,7 +12394,7 @@ status: drafting
 		t.Fatalf("markdown spec list context = %#v, want empty", specs)
 	}
 	spec := specs.Specs["SPEC-001"]
-	if spec.Title != "Example Spec" || spec.Status != "implementing" || spec.SourcePath != ".agents/specs/SPEC-001-example.md" {
+	if spec.Title != "Example Spec" || spec.Status != "in_progress" || spec.SourcePath != ".agents/specs/SPEC-001-example.md" {
 		t.Fatalf("SPEC-001 = %#v, want markdown spec metadata", spec)
 	}
 	if spec.Tasks.Todo != 2 || spec.Tasks.InProgress != 1 || spec.Tasks.Done != 1 {
@@ -12414,7 +12414,7 @@ status: drafting
 		t.Fatalf("spec list markdown human error = %v", err)
 	}
 	output := humanOut.String()
-	for _, want := range []string{"loaf spec list", "Implementing (1)", "SPEC-001", "Example Spec", "2 todo / 1 in_progress / 1 done", "Drafting (1)", "SPEC-002"} {
+	for _, want := range []string{"loaf spec list", "In Progress (1)", "SPEC-001", "Example Spec", "2 todo / 1 in_progress / 1 done", "Draft (1)", "SPEC-002"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -12482,7 +12482,7 @@ Imported spec prose.
 	}
 	show := decodeSpecShow(t, showOut.Bytes())
 	assertCLIProjectContext(t, workingDir, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath)
-	if show.Spec.Alias != "SPEC-001" || show.Spec.Title != "Example Spec" || show.Spec.Status != "implementing" {
+	if show.Spec.Alias != "SPEC-001" || show.Spec.Title != "Example Spec" || show.Spec.Status != "in_progress" {
 		t.Fatalf("show = %#v, want imported spec metadata", show)
 	}
 	if show.Spec.Tasks.Todo != 1 || show.Spec.Tasks.InProgress != 0 || show.Spec.Tasks.Done != 0 {
@@ -12508,7 +12508,7 @@ Imported spec prose.
 		t.Fatalf("spec show human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"spec SPEC-001", "scope: global database", "database:", "project:", "project name:", "project path:", "title: Example Spec", "status: implementing", "tasks: 1 todo / 0 in_progress / 0 done", "source: .agents/specs/SPEC-001-example.md", "inbound implements task TASK-001", "Imported spec prose."} {
+	for _, want := range []string{"spec SPEC-001", "scope: global database", "database:", "project:", "project name:", "project path:", "title: Example Spec", "status: in_progress", "tasks: 1 todo / 0 in_progress / 0 done", "source: .agents/specs/SPEC-001-example.md", "inbound implements task TASK-001", "Imported spec prose."} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -12558,7 +12558,7 @@ Markdown spec prose.
 		t.Fatalf("markdown spec show context = %#v, want empty", show)
 	}
 	spec := show.Spec
-	if show.Query != "SPEC-001" || spec.Alias != "SPEC-001" || spec.Title != "Example Spec" || spec.Status != "implementing" {
+	if show.Query != "SPEC-001" || spec.Alias != "SPEC-001" || spec.Title != "Example Spec" || spec.Status != "in_progress" {
 		t.Fatalf("show = %#v, want TASKS.json spec metadata over frontmatter", show)
 	}
 	if spec.Tasks.Todo != 1 || spec.Tasks.InProgress != 1 || spec.Tasks.Done != 1 {
@@ -12587,7 +12587,7 @@ Markdown spec prose.
 		t.Fatalf("spec show markdown human error = %v", err)
 	}
 	output := humanOut.String()
-	for _, want := range []string{"spec SPEC-001", "title: Example Spec", "status: implementing", "tasks: 1 todo / 1 in_progress / 1 done", "source: .agents/specs/SPEC-001-example.md", "source hash:", "inbound implements task TASK-001", "# Spec Body", "Markdown spec prose."} {
+	for _, want := range []string{"spec SPEC-001", "title: Example Spec", "status: in_progress", "tasks: 1 todo / 1 in_progress / 1 done", "source: .agents/specs/SPEC-001-example.md", "source hash:", "inbound implements task TASK-001", "# Spec Body", "Markdown spec prose."} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -12697,7 +12697,7 @@ status: drafting
 		t.Fatalf("spec list after archive error = %v", err)
 	}
 	specs := decodeSpecList(t, listOut.Bytes())
-	if specs.Specs["SPEC-001"].Status != "archived" || specs.Specs["SPEC-002"].Status != "drafting" {
+	if specs.Specs["SPEC-001"].Status != "archived" || specs.Specs["SPEC-002"].Status != "draft" {
 		t.Fatalf("specs = %#v, want SPEC-001 archived and SPEC-002 unchanged", specs.Specs)
 	}
 
@@ -12910,7 +12910,7 @@ claude_session_id: session-archived
 
 	sessions := decodeSessionList(t, stdout.Bytes())
 	active := sessions.Sessions["20260528-active"]
-	if active.Branch != "feature/session-list" || active.Status != "active" || active.HarnessSessionID != "session-active" {
+	if active.Branch != "feature/session-list" || active.Status != "in_progress" || active.HarnessSessionID != "session-active" {
 		t.Fatalf("active session = %#v, want imported metadata", active)
 	}
 	if active.SourcePath != ".agents/sessions/20260528-active.md" || active.JournalEntries != 1 {
@@ -13158,7 +13158,7 @@ claude_session_id: session-active
 		t.Fatalf("show = %#v, want query and alias", show)
 	}
 	assertCLISessionContext(t, show.ContractVersion, show.DatabaseScope, show.DatabasePath, show.ProjectID, show.ProjectName, show.ProjectCurrentPath, workingDir)
-	if session.Branch != "feature/session-show" || session.Status != "active" || session.HarnessSessionID != "session-active" {
+	if session.Branch != "feature/session-show" || session.Status != "in_progress" || session.HarnessSessionID != "session-active" {
 		t.Fatalf("session metadata = %#v, want imported frontmatter", session)
 	}
 	if len(session.Sources) != 1 || session.Sources[0].Path != ".agents/sessions/20260528-active.md" || session.Sources[0].Hash == "" {
@@ -13181,7 +13181,7 @@ claude_session_id: session-active
 		t.Fatalf("session show error = %v", err)
 	}
 	output := humanOut.String()
-	for _, want := range []string{"session 20260528-active", "scope: global database", "database:", "project:", "project name:", "project path:", "branch: feature/session-show", "status: active", "harness session: session-active", ".agents/sessions/20260528-active.md", "decision(sqlite): keep session state queryable", "inbound associated_with task TASK-001"} {
+	for _, want := range []string{"session 20260528-active", "scope: global database", "database:", "project:", "project name:", "project path:", "branch: feature/session-show", "status: in_progress", "harness session: session-active", ".agents/sessions/20260528-active.md", "decision(sqlite): keep session state queryable", "inbound associated_with task TASK-001"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -13903,7 +13903,7 @@ source: SPEC-001
 		t.Fatalf("report list --status final error = %v", err)
 	}
 	output := stdout.String()
-	for _, want := range []string{"loaf report list", "scope: global database", "database:", "project:", "project name:", "project path:", "Final:", "Final Report", "[audit]", ".agents/reports/final.md", "1 report(s) total"} {
+	for _, want := range []string{"loaf report list", "scope: global database", "database:", "project:", "project name:", "project path:", "Done:", "Final Report", "[audit]", ".agents/reports/final.md", "1 report(s) total"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -13976,7 +13976,7 @@ source: old
 		t.Fatalf("report list markdown --status final error = %v", err)
 	}
 	output := humanOut.String()
-	for _, want := range []string{"loaf report list", "Final:", "Final Report", "[audit]", ".agents/reports/final.md", "1 report(s) total"} {
+	for _, want := range []string{"loaf report list", "Done:", "Final Report", "[audit]", ".agents/reports/final.md", "1 report(s) total"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -15698,7 +15698,7 @@ func TestRunnerReportListHelpNamesLifecycleStatuses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run(report list --help) error = %v", err)
 	}
-	want := "--status     Filter by status; Loaf lifecycle statuses: draft, final, archived"
+	want := "--status     Filter by status; Loaf lifecycle statuses: draft, done, archived"
 	if !strings.Contains(stdout.String(), want) {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
@@ -15903,7 +15903,7 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["report"].optionDescriptions["report generate --json"]; !strings.Contains(got, "contract") || !strings.Contains(got, "project context") || !strings.Contains(got, "markdown content") {
 		t.Fatalf("report generate json description = %q, want contract/project context/Markdown content guidance", got)
 	}
-	if got := commands["report"].optionDescriptions["report list --status <status>"]; !strings.Contains(got, "draft, final, archived") {
+	if got := commands["report"].optionDescriptions["report list --status <status>"]; !strings.Contains(got, "draft, done, archived") {
 		t.Fatalf("report list status description = %q, want lifecycle status guidance", got)
 	}
 	for _, want := range []string{

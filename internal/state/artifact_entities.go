@@ -245,12 +245,13 @@ ORDER BY artifact_alias.alias
 			rows.Close()
 			return ArtifactEntityList{}, fmt.Errorf("scan %s: %w", kind, err)
 		}
-		if options.Status != "" && options.Status != status {
+		if !LifecycleStatusFilterMatches(kind, status, options.Status) {
 			continue
 		}
-		if !options.All && status == "archived" {
+		if !options.All && LifecycleStatusMatches(kind, status, LifecycleStatusArchived) {
 			continue
 		}
+		status = LifecycleStatusForDisplay(kind, status)
 		result.Entities[alias] = ArtifactEntityItem{Title: title, Status: status}
 	}
 	if err := rows.Close(); err != nil {
@@ -314,6 +315,7 @@ WHERE %s.project_id = ? AND %s.id = ?
 	if err != nil {
 		return ArtifactEntityDetail{}, fmt.Errorf("read %s %s: %w", kind, entity.ID, err)
 	}
+	status = LifecycleStatusForDisplay(kind, status)
 	alias := firstNonEmpty(entity.Alias)
 	if alias == "" {
 		if found, err := s.entityAlias(ctx, projectID, kind, entity.ID); err == nil {

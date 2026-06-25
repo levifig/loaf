@@ -319,7 +319,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "list", Description: "List reports", Options: []cliReferenceOption{
 					{Flags: "--type <type>", Description: "Filter by report type"},
-					{Flags: "--status <status>", Description: "Filter by status; Loaf lifecycle statuses: draft, final, archived"},
+					{Flags: "--status <status>", Description: "Filter by status; Loaf lifecycle statuses: draft, done, archived"},
 					{Flags: "--json", Description: "Output reports, diagnostics, global database scope, and project identity as JSON"},
 				}},
 				{Name: "show", Description: "Show one report", Options: []cliReferenceOption{{Flags: "--json", Description: "Output report details, relationships, global database scope, and project identity as JSON"}}},

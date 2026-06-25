@@ -184,6 +184,7 @@ ORDER BY idea_alias.alias
 		if !includeIdeaStatus(status, options) {
 			continue
 		}
+		status = LifecycleStatusForDisplay(LifecycleEntityIdea, status)
 		ideas.Ideas[alias] = IdeaItem{
 			Title:      title,
 			Status:     status,
@@ -566,7 +567,7 @@ ON CONFLICT(id) DO NOTHING
 }
 
 func includeIdeaStatus(status string, options IdeaListOptions) bool {
-	if options.Status != "" && status != options.Status {
+	if !LifecycleStatusFilterMatches(LifecycleEntityIdea, status, options.Status) {
 		return false
 	}
 	if options.Status != "" {
