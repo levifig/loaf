@@ -286,7 +286,7 @@ func validateNativeBuildArtifacts(root string, targetName string) ([]string, err
 	}
 	defer cleanup()
 
-	args := []string{"--noEmit", "--allowJs", "false", "--skipLibCheck", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--target", "ES2022", ambientTypes}
+	args := []string{"--noEmit", "--allowJs", "false", "--skipLibCheck", "--module", "ES2022", "--moduleResolution", "Bundler", "--target", "ES2022", ambientTypes}
 	args = append(args, tsFiles...)
 	if err := runNativeBuildArtifactCheck("tsc", args); err != nil {
 		return nil, fmt.Errorf("TypeScript validation failed: %w", err)
