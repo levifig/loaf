@@ -5403,7 +5403,7 @@ func writeIdeaHelp(out io.Writer) {
 }
 
 func writeIdeaListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf idea list [--all|--status <status>] [--json]", "List ideas from SQLite state.", "--all        Include resolved and archived ideas", "--status     Filter by status", "--json       Output ideas, global database scope, and project identity as JSON")
+	writeUsageHelp(out, "loaf idea list [--all|--status <status>] [--json]", "List ideas from SQLite state.", "--all        Include done and archived ideas", "--status     Filter by status", "--json       Output ideas, global database scope, and project identity as JSON")
 }
 
 func writeIdeaShowHelp(out io.Writer) {
@@ -5779,7 +5779,7 @@ func writeSparkHelp(out io.Writer) {
 }
 
 func writeSparkListHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spark list [--all|--status <status>] [--json]", "List sparks from SQLite state.", "--all        Include resolved sparks", "--status     Filter by status", "--json       Output sparks, global database scope, and project identity as JSON")
+	writeUsageHelp(out, "loaf spark list [--all|--status <status>] [--json]", "List sparks from SQLite state.", "--all        Include done sparks", "--status     Filter by status", "--json       Output sparks, global database scope, and project identity as JSON")
 }
 
 func writeSparkShowHelp(out io.Writer) {

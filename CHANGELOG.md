@@ -17,6 +17,7 @@ is a Loaf workflow staging section for curated entries before release.
 - Refreshed the SPEC-051 skill routing eval harness and description rewrite validation scaffolding, including dry-run suite checks and conflict-pair probes for measured routing work.
 - SPEC-049 lifecycle write paths now emit canonical statuses such as `done`, `paused`, and `in_progress` while tolerating legacy current rows until migration.
 - SPEC-049 lifecycle list, show, export, and help surfaces now display canonical statuses while accepting legacy status filters during the migration window.
+- SPEC-049 generated CLI reference output and report templates now document canonical lifecycle statuses, including report `done` and the lifecycle-status migration command.
 
 ## [2.0.0-pre.20260625183349] - 2026-06-25
 

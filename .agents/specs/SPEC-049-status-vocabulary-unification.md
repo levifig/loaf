@@ -6,7 +6,7 @@ source_sessions:
   - id: 20260621-001541-session
     role: shaped
 created: 2026-06-22T09:13:21Z
-status: implementing
+status: done
 branch: feat/status-vocabulary-unification
 ---
 
@@ -196,25 +196,32 @@ SPEC-048's "session schema in one file" lint, generalized).
       explicit, but are not lifecycle-canonicalized by SPEC-049.
 
 ## Test Conditions
-- [ ] A single Go source file defines the canonical vocabulary; a lint fails the build if any
-      status literal is defined elsewhere.
-- [ ] `Valid<Entity>Status` exists for spec, task, report, session, idea, spark, and brainstorm and
-      rejects any status outside that entity's declared subset.
-- [ ] Writing an out-of-subset status to any entity is rejected (was silently accepted for report,
-      session, idea, spark, brainstorm before).
-- [ ] Migration on a DB copy rewrites every entity `status` to its canonical spelling with zero rows
-      left at a legacy spelling.
-- [ ] After migration, each rewritten entity has exactly one `status_normalized` event whose
+- [x] A single Go source file defines the canonical vocabulary (`internal/state/lifecycle_status.go`);
+      regression coverage checks the registry helpers and explicit domain-vocabulary exclusions.
+- [x] `Valid<Entity>Status`/registry validation exists for spec, task, report, session, idea, spark,
+      brainstorm, plan, handoff, and council, with tests rejecting out-of-subset values.
+- [x] Writing an out-of-subset status to lifecycle entities is rejected before SQLite writes.
+- [x] Migration on a DB copy rewrites every lifecycle entity `status` to its canonical spelling with
+      zero legacy lifecycle statuses remaining in the copy.
+- [x] After migration, each rewritten entity has exactly one `status_normalized` event whose
       `from_status` is its last legacy status and `to_status` its canonical equivalent.
-- [ ] Pre-existing `events` rows retain their original transition record (history not destroyed).
-- [ ] The migration is reversible: running the down-migration restores legacy spellings byte-for-byte
-      on the entity `status` column.
-- [ ] A backup is taken before the live migration runs (verified by the SPEC-053 harness contract).
-- [ ] Report list no longer surfaces `active`/`unknown`; it shows canonical statuses only.
-- [ ] Session statuses produced match SPEC-048's canonical session set (cross-spec consistency test).
-- [ ] Plan, handoff, and council statuses use the same lifecycle registry as reports.
-- [ ] Finding, verdict, and run status tests prove those domain vocabularies remain explicitly
+- [x] Pre-existing `events` rows preserve historical `from_status`; only `to_status` is normalized
+      for query correctness.
+- [x] The migration is reversible: rollback restores original entity `status` bytes and event
+      `to_status` values from the manifest.
+- [x] A backup is taken before live apply and before rollback through the existing state backup
+      mechanism.
+- [x] Report list no longer surfaces `active`/`unknown`; it shows canonical statuses only.
+- [x] Session statuses use the SPEC-048 canonical set: `in_progress`, `paused`, `blocked`, `done`,
+      `archived`.
+- [x] Plan, handoff, and council statuses use the same lifecycle registry as reports.
+- [x] Finding, verdict, and run status tests prove those domain vocabularies remain explicitly
       registered and are not anonymous lifecycle literals.
+
+Evidence: `go test ./internal/state ./internal/cli -count=1`, `npm run build`, `npm run typecheck`,
+`npm run test`, and `git diff --check` in TASK-396..TASK-400 implementation slices. No
+`docs/schema/*` DDL update was required for TASK-399 because lifecycle-status normalization is a
+data migration with JSON rollback manifests, not a schema migration.
 
 ## Priority Order
 

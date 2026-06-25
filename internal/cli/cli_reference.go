@@ -348,8 +348,8 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--message <text>", Description: "Use inline Markdown body text"},
 					{Flags: "--json", Description: "Output created report, event, global database scope, and project identity as JSON"},
 				}},
-				{Name: "finalize", Description: "Mark a report draft as final and write its deterministic tracked render", Options: []cliReferenceOption{{Flags: "--json", Description: "Output report status transition, render path, event, global database scope, and project identity as JSON"}}},
-				{Name: "archive", Description: "Archive a finalized report", Options: []cliReferenceOption{{Flags: "--json", Description: "Output report status transition, event, global database scope, and project identity as JSON"}}},
+				{Name: "finalize", Description: "Mark a report draft as done and write its deterministic tracked render", Options: []cliReferenceOption{{Flags: "--json", Description: "Output report status transition, render path, event, global database scope, and project identity as JSON"}}},
+				{Name: "archive", Description: "Archive a done report", Options: []cliReferenceOption{{Flags: "--json", Description: "Output report status transition, event, global database scope, and project identity as JSON"}}},
 			},
 		},
 		{
@@ -526,7 +526,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Manage ideas in native SQLite state",
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "list", Description: "List ideas from SQLite state", Options: []cliReferenceOption{
-					{Flags: "--all", Description: "Include resolved and archived ideas"},
+					{Flags: "--all", Description: "Include done and archived ideas"},
 					{Flags: "--status <status>", Description: "Filter by status"},
 					{Flags: "--json", Description: "Output ideas, global database scope, and project identity as JSON"},
 				}},
@@ -554,7 +554,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Manage sparks in native SQLite state",
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "list", Description: "List sparks from SQLite state", Options: []cliReferenceOption{
-					{Flags: "--all", Description: "Include resolved sparks"},
+					{Flags: "--all", Description: "Include done sparks"},
 					{Flags: "--status <status>", Description: "Filter by status"},
 					{Flags: "--json", Description: "Output sparks, global database scope, and project identity as JSON"},
 				}},
@@ -854,8 +854,8 @@ func supplementalCLIReferenceCommands(commands []cliReferenceCommand) []cliRefer
 		Subcommands: []cliReferenceSubcommand{
 			{Name: "list", Description: "List reports from SQLite state or Markdown compatibility files"},
 			{Name: "create", Description: "Create a draft report row in SQLite state"},
-			{Name: "finalize", Description: "Transition a draft report to final"},
-			{Name: "archive", Description: "Transition a final report to archived"},
+			{Name: "finalize", Description: "Transition a draft report to done"},
+			{Name: "archive", Description: "Transition a done report to archived"},
 			{Name: "generate", Description: "Generate report Markdown from SQLite state to stdout"},
 		},
 	}}
