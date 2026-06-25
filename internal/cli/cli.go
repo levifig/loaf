@@ -8283,8 +8283,10 @@ func (r Runner) runSessionEnrich(args []string, out io.Writer, runtime state.Run
 	}
 	journal, err := state.LogJournal(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.JournalLogOptions{
 		Entry:            fmt.Sprintf("session(enrich): %s", message),
+		SessionRef:       options.sessionRef,
 		ObservedBranch:   state.ObservedGitBranch(runtime.RootPath()),
 		ObservedWorktree: runtime.RootPath(),
+		LinkSession:      options.sessionRef != "",
 	})
 	if err != nil {
 		return err

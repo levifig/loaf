@@ -1544,6 +1544,20 @@ claude_session_id: abc123
 	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM journal_entries WHERE entry_type = ? AND scope = ? AND message = ?`, "session", "enrich", "recorded native SQLite enrichment checkpoint for 20260528-session.md"); got != 1 {
 		t.Fatalf("journal entry count = %d, want enrichment checkpoint", got)
 	}
+	show, err := state.ShowSession(context.Background(), root, state.PathResolver{StateHome: stateHome}, "20260528-session")
+	if err != nil {
+		t.Fatalf("ShowSession() error = %v", err)
+	}
+	found := false
+	for _, entry := range show.Session.JournalEntries {
+		if entry.EntryType == "session" && entry.Scope == "enrich" && entry.Message == "recorded native SQLite enrichment checkpoint for 20260528-session.md" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("journal entries = %#v, want enrichment checkpoint linked to session", show.Session.JournalEntries)
+	}
 }
 
 func TestRunnerSessionEnrichSummarizesMarkdownOnly(t *testing.T) {
