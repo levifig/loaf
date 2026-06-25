@@ -6,7 +6,7 @@ source_sessions:
   - id: 20260621-001541-session
     role: shaped
 created: 2026-06-22T08:56:30Z
-status: implementing
+status: complete
 branch: feat/sqlite-native-content
 ---
 
@@ -138,18 +138,18 @@ Tier-2 indexing is SPEC-046; status-vocabulary unification is SPEC-049.
       precedence for file-backed multi-line input, `--body -` is the agent-primary stdin path.
 
 ## Test Conditions
-- [ ] A spec/report created via `loaf <entity> new` stores its body in SQLite; `loaf <entity> show`
+- [x] A spec/report created via `loaf <entity> new` stores its body in SQLite; `loaf <entity> show`
       displays it with **no in-tree file present**; a multi-paragraph body round-trips byte-exact.
-- [ ] Existing entities with only a `.md` still `show` correctly (dual-source fallback) — **nothing
+- [x] Existing entities with only a `.md` still `show` correctly (dual-source fallback) — **nothing
       regresses**; `git status` shows no deletions.
-- [ ] `loaf search "<term>"` returns hits across ideas/sparks/sessions/specs/reports + journals,
+- [x] `loaf search "<term>"` returns hits across ideas/sparks/sessions/specs/reports + journals,
       including a report body `loaf report list` cannot surface today.
-- [ ] Edit-then-search: an old term stops matching and a new term matches after `loaf <entity> edit`.
-- [ ] `report show` and `brainstorm capture` exist; `plan`/`handoff`/`council` have SQLite storage
+- [x] Edit-then-search: an old term stops matching and a new term matches after `loaf <entity> edit`.
+- [x] `report show` and `brainstorm capture` exist; `plan`/`handoff`/`council` have SQLite storage
       and appear correctly in `loaf state doctor`.
-- [ ] `CGO_ENABLED=0 go build` + `govulncheck` pass with FTS5 enabled.
-- [ ] A planted secret in a body is excluded from / redacted in FTS results (privacy test).
-- [ ] Concurrency stress: parallel `loaf session log` + a long write transaction do not drop
+- [x] `CGO_ENABLED=0 go build` + `govulncheck` pass with FTS5 enabled.
+- [x] A planted secret in a body is excluded from / redacted in FTS results (privacy test).
+- [x] Concurrency stress: parallel `loaf session log` + a long write transaction do not drop
       journal writes.
 
 ## Priority Order
