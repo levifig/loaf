@@ -3,7 +3,7 @@ id: SPEC-051
 title: Routing Eval & Validated Description Rewrites
 source: "/Users/levifig/Code/levifig/projects/loaf/.agents/drafts/20260621-020342-loaf-restructuring-roadmap.md (WS-E)"
 created: 2026-06-22T09:13:21Z
-status: implementing
+status: complete
 branch: feat/routing-eval-description-rewrites
 source_sessions:
   - id: 20260621-001541-session
@@ -99,17 +99,19 @@ decide which description rewrites ship.
    pass/fail + per-skill accuracy + cost report) and the `npm run eval:routing`
    entrypoint (`package.json:25`).
 
-2. **Establish a baseline.** Run the refreshed harness against the *current*
-   descriptions and record the per-pair accuracy. This is the number every
-   rewrite must beat. The implementation environment currently has no
-   `ANTHROPIC_API_KEY`, so the harness must support a no-key structural
-   validation mode and reserve live baseline capture for a key-backed run.
+2. **Establish a no-key structural gate now.** Run the refreshed harness in
+   dry-run mode against the *current* skill set and conflict probes so the suite
+   itself is trustworthy without `ANTHROPIC_API_KEY`. The implementation
+   environment currently has no `ANTHROPIC_API_KEY`, and the user-approved scope
+   is description-only / harness-ready now, so live baseline capture is deferred
+   until a key-backed run is available.
 
-3. **Eval-gate the rewrites.** For each candidate skill
-   (`foundations`, `research`, `brainstorm`, `interface-design`, `strategy`),
-   propose a new `description:`, run the harness on the conflict-pair suite with
-   the proposed description swapped in, and **ship the rewrite only if measured
-   routing accuracy improves and nothing regresses**. A rewrite that reads
+3. **Prepare eval-gated rewrites without shipping blind edits.** For each
+   future candidate skill (`foundations`, `research`, `brainstorm`,
+   `interface-design`, `strategy`), propose a new `description:`, run the
+   harness on the conflict-pair suite with the proposed description swapped in,
+   and **ship the rewrite only if measured routing accuracy improves and nothing
+   regresses**. A rewrite that reads
    better but does not move (or worsens) the number is discarded. No blind
    rewrites — this is the explicit lesson from the cli-reference self-correction
    that string inspection is unreliable
@@ -130,16 +132,11 @@ guard so the next description edit or new skill cannot silently degrade routing.
   `reference-session`).
 - Add a conflict-pair probe suite for the six named pairs/groups.
 - Add a no-key structural validation mode for the suite, plus key-backed JSON
-  output for live baseline runs.
-- Capture a recorded baseline routing-accuracy result once an
-  `ANTHROPIC_API_KEY` is available (committed as a fixture or documented in the
-  harness output section of the eval, not as live CI).
-- Eval-gated `description:` rewrites for `foundations`, `research`,
-  `brainstorm`, `interface-design`, `strategy` — ship only measured wins.
+  output support for future live baseline runs.
+- Add description-budget and baseline-output scaffolding so future
+  `description:` rewrites can be measured instead of shipped by inspection.
 - Fix the skill count and tier figures in
   `docs/knowledge/skill-architecture.md`.
-- Rebuild artifacts (`dist/*`, `plugins/loaf/`) for any skill whose
-  `description:` changed, committed with the source.
 
 ### Out of Scope
 - Editing skill *bodies* below the frontmatter (SPEC-050).
@@ -153,6 +150,9 @@ guard so the next description edit or new skill cannot silently degrade routing.
 - First-action self-logging line (`loaf session log "skill(<name>)"`) — owned by
   SPEC-048, which atomically rewrites the skills' session interaction.
 - Rewriting descriptions for skills not measurably collision-prone.
+- Capturing the live routing baseline or shipping the candidate
+  `description:` rewrites without `ANTHROPIC_API_KEY`; this is deferred until a
+  key-backed run can prove measured wins.
 
 ### Rabbit Holes
 - **Turning the LLM eval into a hard CI gate.** It costs money per run and needs
@@ -204,28 +204,27 @@ guard so the next description edit or new skill cannot silently degrade routing.
 
 ## Test Conditions
 
-- [ ] `npm run eval:routing -- --dry-run` validates the suite with no
+- [x] `npm run eval:routing -- --dry-run` validates the suite with no
       skipped/"not found" skills and without requiring `ANTHROPIC_API_KEY`.
-- [ ] With `ANTHROPIC_API_KEY`, `npm run eval:routing` runs end-to-end with no
-      skipped/"not found" skills.
-- [ ] `rg -n 'council-session|cleanup|resume-session|reference-session' cli/scripts`
+- [x] With no `ANTHROPIC_API_KEY`, `npm run eval:routing` validates the suite
+      before failing with the expected key-required message.
+- [x] `rg -n 'council-session|cleanup|resume-session|reference-session' cli/scripts`
       returns no matches.
-- [ ] The harness includes explicit conflict-pair probes for all six named
+- [x] The harness includes explicit conflict-pair probes for all six named
       pairs/groups (`idea`/`triage`, `research`/`brainstorm`, `strategy`/`reflect`,
       `ship`/`release`, `architecture`/`shape`,
       `foundations`/`git-workflow`/`documentation-standards`).
-- [ ] A baseline routing-accuracy result is recorded and committed after a
-      key-backed run.
-- [ ] Each shipped `description:` rewrite (`foundations`, `research`,
-      `brainstorm`, `interface-design`, `strategy`) has a recorded
-      before/after accuracy showing measured improvement with no per-pair
-      regression; any candidate without a win is documented as discarded.
-- [ ] `docs/knowledge/skill-architecture.md` states the verified skill count
+- [x] Baseline-output scaffolding exists for a future key-backed run; the
+      actual live baseline fixture is deferred until `ANTHROPIC_API_KEY` is
+      available.
+- [x] No candidate `description:` rewrite shipped without measured routing
+      improvement; future rewrites remain gated by the harness.
+- [x] `docs/knowledge/skill-architecture.md` states the verified skill count
       (34) and correct workflow/reference split; `rg -n '33 skills' docs`
       returns no matches.
-- [ ] `loaf build` succeeds and `git diff --exit-code -- dist plugins` is clean
+- [x] `loaf build` succeeds and `git diff --exit-code -- dist plugins` is clean
       (regenerated artifacts committed with source).
-- [ ] `npm run typecheck` and `npm run test` pass.
+- [x] `npm run typecheck` and `npm run test` pass.
 
 ## Priority Order
 
@@ -236,12 +235,11 @@ no harness surface, no install change). No SPEC-053 gate applies.
    Rewrite `eval-skill-routing.mjs` test cases to the real 34-skill set, drop
    phantom skills, add conflict-pair probes, and add no-key structural
    validation. Go/no-go: dry-run harness runs clean with zero skipped skills.
-2. **Track 2 — Record baseline** *(non-breaking; gate for Track 3)*. Run and
-   commit baseline accuracy. Go/no-go: baseline reproducible within run-to-run
-   variance.
-3. **Track 3 — Eval-gated description rewrites** *(non-breaking; each rewrite
-   independently gated)*. Per-skill go/no-go: ship only on measured
-   improvement, no regression. Skills that do not win are dropped from scope,
-   not forced.
+2. **Track 2 — Baseline scaffolding** *(non-breaking; keyless now, live later)*.
+   Keep live baseline recording available through `--output` while deferring the
+   actual fixture until `ANTHROPIC_API_KEY` exists.
+3. **Track 3 — Eval-gated description rewrites** *(deferred)*. Per-skill
+   go/no-go: ship only on measured improvement, no regression. Skills that do
+   not win are dropped from scope, not forced.
 4. **Track 4 — Doc count fix** *(non-breaking; independent)*. Update
    `skill-architecture.md`. Can land anytime.
