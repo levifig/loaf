@@ -73,6 +73,11 @@ type backupVerifyOptions struct {
 	jsonOutput bool
 }
 
+type restoreEphemeralsOptions struct {
+	target     string
+	jsonOutput bool
+}
+
 type commandErrorJSON struct {
 	ContractVersion int    `json:"contract_version"`
 	Command         string `json:"command"`
@@ -1489,6 +1494,12 @@ func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) er
 			return nil
 		}
 		return r.runStateBackup(args[1:], out, runtime)
+	case "restore-ephemerals":
+		if isHelpArg(args[1:]) {
+			writeStateRestoreEphemeralsHelp(out)
+			return nil
+		}
+		return r.runStateRestoreEphemerals(args[1:], out, runtime)
 	case "export":
 		if len(args) == 1 || isHelpArg(args[1:]) {
 			writeStateExportHelp(out)
@@ -1514,6 +1525,7 @@ func writeStateHelp(out io.Writer) {
 	fmt.Fprintln(out, "  migrate       Run state migrations")
 	fmt.Fprintln(out, "  backup        Create a SQLite database backup")
 	fmt.Fprintln(out, "  backup verify Verify an existing SQLite backup")
+	fmt.Fprintln(out, "  restore-ephemerals Restore .agents ephemeral Markdown from a rollback backup")
 	fmt.Fprintln(out, "  export        Export SQLite state")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
@@ -1605,6 +1617,10 @@ func writeStateBackupHelp(out io.Writer) {
 
 func writeStateBackupVerifyHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf state backup verify <backup> [--json]", "Verify an existing SQLite database backup without reading or mutating live state.", "--json       Output backup verification, restore guidance, schema version, and captured project identities as JSON")
+}
+
+func writeStateRestoreEphemeralsHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state restore-ephemerals <manifest|backup-dir|backup-id> [--json]", "Restore .agents ephemeral Markdown files from a checksum-verified rollback manifest and stage them when inside a Git worktree.", "--json       Output rollback contract, project path, manifest path, restored file list, and restored status as JSON")
 }
 
 func writeStateExportHelp(out io.Writer) {
@@ -2519,6 +2535,102 @@ func (r Runner) runStateBackupVerify(args []string, out io.Writer, runtime state
 		fmt.Fprintf(out, "next: if present, preserve current database as %s, copy this verified backup to %s, then run `loaf state doctor` and `loaf state status`\n", result.RestorePreservePath, result.RestoreDatabasePath)
 	} else {
 		fmt.Fprintln(out, "next: if present, preserve current database, copy this verified backup to `loaf state path`, then run `loaf state doctor` and `loaf state status`")
+	}
+	return nil
+}
+
+func (r Runner) runStateRestoreEphemerals(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
+	options, err := parseStateRestoreEphemeralsArgs(args)
+	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state restore-ephemerals", err)
+		}
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state restore-ephemerals", err)
+		}
+		return err
+	}
+	manifestPath, err := r.resolveEphemeralRestoreManifest(projectRoot, options.target)
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state restore-ephemerals", err)
+		}
+		return err
+	}
+	result, err := state.RestoreEphemeralMarkdownBackup(context.Background(), projectRoot, manifestPath)
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state restore-ephemerals", err)
+		}
+		return err
+	}
+	if err := stageRestoredEphemeralFiles(projectRoot, result.RestoredFiles); err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state restore-ephemerals", err)
+		}
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeMarkdownRollbackResultHuman(out, "loaf state restore-ephemerals", result)
+	return nil
+}
+
+func (r Runner) resolveEphemeralRestoreManifest(projectRoot project.Root, target string) (string, error) {
+	if info, err := os.Stat(target); err == nil {
+		if info.IsDir() {
+			return filepath.Join(target, "manifest.json"), nil
+		}
+		return target, nil
+	} else if filepath.IsAbs(target) || strings.Contains(target, string(filepath.Separator)) || strings.Contains(target, "/") || strings.Contains(target, "\\") {
+		return target, nil
+	}
+
+	databasePath, err := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(projectRoot)
+	if err != nil {
+		return "", err
+	}
+	backupDir := filepath.Join(filepath.Dir(databasePath), "backups")
+	candidates := []string{
+		filepath.Join(backupDir, target, "manifest.json"),
+		filepath.Join(backupDir, target+"-markdown", "manifest.json"),
+	}
+	if ext := filepath.Ext(target); ext != "" {
+		base := strings.TrimSuffix(target, ext)
+		candidates = append(candidates, filepath.Join(backupDir, base+"-markdown", "manifest.json"))
+	}
+	seen := map[string]bool{}
+	for _, candidate := range candidates {
+		if seen[candidate] {
+			continue
+		}
+		seen[candidate] = true
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("state restore-ephemerals target %q not found; pass a manifest path, backup directory, or backup id under %s", target, backupDir)
+}
+
+func stageRestoredEphemeralFiles(projectRoot project.Root, restoredFiles []string) error {
+	if len(restoredFiles) == 0 {
+		return nil
+	}
+	check := exec.Command("git", "-C", projectRoot.Path(), "rev-parse", "--is-inside-work-tree")
+	if err := check.Run(); err != nil {
+		return nil
+	}
+	args := []string{"-C", projectRoot.Path(), "add", "--"}
+	args = append(args, restoredFiles...)
+	cmd := exec.Command("git", args...)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("stage restored ephemeral files: %w: %s", err, strings.TrimSpace(string(output)))
 	}
 	return nil
 }
@@ -11955,6 +12067,28 @@ func parseStateBackupVerifyArgs(args []string) (backupVerifyOptions, error) {
 	}
 	if options.path == "" {
 		return backupVerifyOptions{}, fmt.Errorf("state backup verify requires a backup path")
+	}
+	return options, nil
+}
+
+func parseStateRestoreEphemeralsArgs(args []string) (restoreEphemeralsOptions, error) {
+	var options restoreEphemeralsOptions
+	for _, arg := range args {
+		switch arg {
+		case "--json":
+			options.jsonOutput = true
+		default:
+			if strings.HasPrefix(arg, "-") {
+				return restoreEphemeralsOptions{}, fmt.Errorf("unknown option %q", arg)
+			}
+			if options.target != "" {
+				return restoreEphemeralsOptions{}, fmt.Errorf("state restore-ephemerals accepts exactly one manifest path, backup directory, or backup id")
+			}
+			options.target = arg
+		}
+	}
+	if options.target == "" {
+		return restoreEphemeralsOptions{}, fmt.Errorf("state restore-ephemerals requires a manifest path, backup directory, or backup id")
 	}
 	return options, nil
 }

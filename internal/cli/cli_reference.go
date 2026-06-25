@@ -168,6 +168,10 @@ func cliReferenceCommands() []cliReferenceCommand {
 				}},
 				{Name: "backup", Description: "Create a SQLite database backup under the global data-home backups directory", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup verification, checksum, schema version, project count, and current project identity as JSON"}}},
 				{Name: "backup verify", Description: "Verify an existing SQLite database backup", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup verification, restore guidance, schema version, and captured project identities as JSON"}}},
+				{Name: "restore-ephemerals", Description: "Restore and stage .agents ephemeral Markdown from a rollback manifest or backup id", Options: []cliReferenceOption{
+					{Flags: "<manifest|backup-dir|backup-id>", Description: "Rollback manifest path, directory containing manifest.json, or backup id under the global backups directory"},
+					{Flags: "--json", Description: "Output rollback contract, project path, manifest path, restored file list, and restored status as JSON"},
+				}},
 				{Name: "export", Description: "Export SQLite state for review or migration", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format for the selected export kind"}}},
 				{Name: "export all", Description: "Export a complete project-scoped SQLite snapshot", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: json"}, {Flags: "--json", Description: "Alias for --format json"}}},
 				{Name: "export triage", Description: "Export a triage summary from SQLite state", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format: markdown"}}},
@@ -888,7 +892,7 @@ func cliReferenceCommandGuidance(commandName string) string {
 	case "state":
 		return "Existing TypeScript-era projects can keep running supported commands in\nmarkdown-only compatibility mode until SQLite is initialized. Use\n`loaf state migrate markdown --apply` to import `.agents/` Markdown into SQLite\nwithout rewriting the source Markdown files." +
 			"\n\nManual restore from a backup is explicit until a guarded restore command exists:\nverify the backup with `loaf state backup verify <backup>`, preserve the current\n`$(loaf state path)` file, copy the verified backup to that path, then run\n`loaf state doctor` and `loaf state status`." +
-			"\nFor agents, `loaf state backup verify <backup> --json` also returns\n`restore_database_path`, `restore_preserve_path`, and\n`restore_validation_commands` for the current checkout."
+			"\nFor agents, `loaf state backup verify <backup> --json` also returns\n`restore_database_path`, `restore_preserve_path`, and\n`restore_validation_commands` for the current checkout. Ephemeral Markdown can\nbe restored and staged with `loaf state restore-ephemerals <manifest|backup-dir|backup-id>`."
 	case "project":
 		return "Project IDs are stable SQLite identities, not path or name hashes. Use\n`loaf project rename --dry-run` for display-name previews and\n`loaf project move --dry-run` before recording checkout path moves."
 	case "migrate":
@@ -908,6 +912,7 @@ func cliReferenceCommandUsageExamples(commandName string) []string {
 			"loaf state migrate lifecycle-statuses --dry-run",
 			"loaf state backup",
 			"loaf state backup verify /path/to/backup.sqlite",
+			"loaf state restore-ephemerals loaf-20260625-120000-000000000",
 			"loaf state status",
 		}
 	case "project":

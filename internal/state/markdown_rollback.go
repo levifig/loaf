@@ -57,6 +57,7 @@ type MarkdownRollbackResult struct {
 }
 
 const MarkdownMigrationActionRollback = "rollback"
+const MarkdownMigrationActionRestoreEphemerals = "restore-ephemerals"
 
 // CreateMarkdownRollbackBackup snapshots .agents into the state backup
 // directory and writes a manifest usable by RollbackMarkdownMigration.
@@ -205,6 +206,16 @@ func RemoveMarkdownMigrationSources(root project.Root, manifestPath string) ([]s
 
 // RollbackMarkdownMigration restores .agents files from a rollback manifest.
 func RollbackMarkdownMigration(ctx context.Context, root project.Root, manifestPath string) (MarkdownRollbackResult, error) {
+	return restoreMarkdownRollbackFiles(ctx, root, manifestPath, MarkdownMigrationActionRollback, nil)
+}
+
+// RestoreEphemeralMarkdownBackup restores only ephemeral .agents files from a
+// rollback manifest, leaving durable Markdown renders untouched.
+func RestoreEphemeralMarkdownBackup(ctx context.Context, root project.Root, manifestPath string) (MarkdownRollbackResult, error) {
+	return restoreMarkdownRollbackFiles(ctx, root, manifestPath, MarkdownMigrationActionRestoreEphemerals, isEphemeralMarkdownMigrationSource)
+}
+
+func restoreMarkdownRollbackFiles(ctx context.Context, root project.Root, manifestPath string, action string, include func(string) bool) (MarkdownRollbackResult, error) {
 	select {
 	case <-ctx.Done():
 		return MarkdownRollbackResult{}, ctx.Err()
@@ -220,6 +231,9 @@ func RollbackMarkdownMigration(ctx context.Context, root project.Root, manifestP
 
 	restored := []string{}
 	for _, file := range manifest.Files {
+		if include != nil && !include(file.Path) {
+			continue
+		}
 		sum, err := fileSHA256(file.BackupPath)
 		if err != nil {
 			return MarkdownRollbackResult{}, fmt.Errorf("checksum rollback source %s: %w", file.Path, err)
@@ -240,7 +254,7 @@ func RollbackMarkdownMigration(ctx context.Context, root project.Root, manifestP
 
 	return MarkdownRollbackResult{
 		ContractVersion:      StateJSONContractVersion,
-		Action:               MarkdownMigrationActionRollback,
+		Action:               action,
 		ProjectPath:          root.Path(),
 		RollbackManifestPath: manifestPath,
 		StateBackupPath:      manifest.StateBackupPath,

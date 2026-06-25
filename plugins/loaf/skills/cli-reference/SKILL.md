@@ -209,7 +209,8 @@ verify the backup with `loaf state backup verify <backup>`, preserve the current
 `loaf state doctor` and `loaf state status`.
 For agents, `loaf state backup verify <backup> --json` also returns
 `restore_database_path`, `restore_preserve_path`, and
-`restore_validation_commands` for the current checkout.
+`restore_validation_commands` for the current checkout. Ephemeral Markdown can
+be restored and staged with `loaf state restore-ephemerals <manifest|backup-dir|backup-id>`.
 
 **Subcommands:**
 
@@ -226,6 +227,7 @@ For agents, `loaf state backup verify <backup> --json` also returns
 | `loaf state migrate lifecycle-statuses` | Normalize legacy lifecycle statuses in SQLite |
 | `loaf state backup` | Create a SQLite database backup under the global data-home backups directory |
 | `loaf state backup verify` | Verify an existing SQLite database backup |
+| `loaf state restore-ephemerals` | Restore and stage .agents ephemeral Markdown from a rollback manifest or backup id |
 | `loaf state export` | Export SQLite state for review or migration |
 | `loaf state export all` | Export a complete project-scoped SQLite snapshot |
 | `loaf state export triage` | Export a triage summary from SQLite state |
@@ -287,6 +289,10 @@ For agents, `loaf state backup verify <backup> --json` also returns
 - `loaf state backup verify`:
   - `--json` - Output backup verification, restore guidance, schema version, and captured project identities as JSON
 
+- `loaf state restore-ephemerals`:
+  - `<manifest|backup-dir|backup-id>` - Rollback manifest path, directory containing manifest.json, or backup id under the global backups directory
+  - `--json` - Output rollback contract, project path, manifest path, restored file list, and restored status as JSON
+
 - `loaf state export`:
   - `--format <format>` - Output format for the selected export kind
 
@@ -314,6 +320,7 @@ loaf state migrate markdown --apply
 loaf state migrate lifecycle-statuses --dry-run
 loaf state backup
 loaf state backup verify /path/to/backup.sqlite
+loaf state restore-ephemerals loaf-20260625-120000-000000000
 loaf state status
 ```
 

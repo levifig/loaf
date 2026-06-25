@@ -39,6 +39,7 @@ is a Loaf workflow staging section for curated entries before release.
 - Completed SPEC-047 build integrity and parity hardening, including real JS/TS output validation, first-class Amp TypeScript plugin output, Gemini target removal, Codex hook semantics, OpenCode command reachability, and cross-harness parity linting.
 - Converged session workflow guidance in SPEC-048 around SQLite-backed session state, native session journal commands, and render-on-demand Markdown artifacts across skills, templates, agents, and generated targets.
 - SPEC-053 adds the breaking-change migration mechanism: `loaf install --upgrade` now reports externalized vendor skills and requires `--yes` before destructive deprecation cleanup, while `librarian` is available as the durable artifact handler across supported harnesses.
+- SPEC-045 adds `loaf state restore-ephemerals <manifest|backup-dir|backup-id>` to restore and stage ephemeral `.agents` Markdown rollback backups with checksum verification and JSON output before destructive cutover work.
 
 ## [2.0.0-pre.20260614235428] - 2026-06-14
 

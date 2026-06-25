@@ -3373,6 +3373,7 @@ func TestRunnerStateAndProjectJSONHelpNamesContracts(t *testing.T) {
 		{name: "state doctor", args: []string{"state", "doctor", "--help"}, wants: []string{"--json", "diagnostics", "repair plan", "global database scope"}},
 		{name: "state backup", args: []string{"state", "backup", "--help"}, wants: []string{"--json", "backup verification", "checksum", "current project identity"}},
 		{name: "state backup verify", args: []string{"state", "backup", "verify", "--help"}, wants: []string{"--json", "restore guidance", "schema version", "captured project identities"}},
+		{name: "state restore ephemerals", args: []string{"state", "restore-ephemerals", "--help"}, wants: []string{"--json", "rollback contract", "restored file list", "restored status"}},
 		{name: "project list", args: []string{"project", "list", "--help"}, wants: []string{"--json", "database path", "friendly names", "current paths"}},
 		{name: "project show", args: []string{"project", "show", "--help"}, wants: []string{"--json", "project ID", "friendly name", "current path", "database path"}},
 		{name: "project rename", args: []string{"project", "rename", "--help"}, wants: []string{"--json", "friendly name", "database path", "applied status"}},
@@ -7498,22 +7499,26 @@ func TestRunnerStateMigrateMarkdownBackupRemoveSourceAndRollback(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(workingDir, ".agents", "reports", "report.md")); err != nil {
 		t.Fatalf("report render should remain after source removal: %v", err)
 	}
+	changedSpecBody := "# Spec changed after backup\n"
+	if err := os.WriteFile(filepath.Join(workingDir, ".agents", "specs", "SPEC-001-example.md"), []byte(changedSpecBody), 0o600); err != nil {
+		t.Fatalf("write changed spec render error = %v", err)
+	}
 
 	var rollbackStdout bytes.Buffer
 	err = Runner{
 		Stdout:     &rollbackStdout,
 		WorkingDir: workingDir,
 		StateHome:  stateHome,
-	}.Run([]string{"state", "migrate", "markdown", "--rollback", result.RollbackManifestPath, "--json"})
+	}.Run([]string{"state", "restore-ephemerals", result.RollbackManifestPath, "--json"})
 	if err != nil {
-		t.Fatalf("state migrate markdown --rollback --json error = %v", err)
+		t.Fatalf("state restore-ephemerals --json error = %v", err)
 	}
 	var rollback state.MarkdownRollbackResult
 	if err := json.Unmarshal(rollbackStdout.Bytes(), &rollback); err != nil {
 		t.Fatalf("decode rollback result error = %v\n%s", err, rollbackStdout.String())
 	}
-	if !rollback.Restored || rollback.Action != state.MarkdownMigrationActionRollback {
-		t.Fatalf("rollback = %#v, want restored rollback action", rollback)
+	if !rollback.Restored || rollback.Action != state.MarkdownMigrationActionRestoreEphemerals {
+		t.Fatalf("rollback = %#v, want restored ephemeral action", rollback)
 	}
 	taskContent, err := os.ReadFile(filepath.Join(workingDir, ".agents", "tasks", "TASK-001-example.md"))
 	if err != nil {
@@ -7521,6 +7526,37 @@ func TestRunnerStateMigrateMarkdownBackupRemoveSourceAndRollback(t *testing.T) {
 	}
 	if string(taskContent) != taskBody {
 		t.Fatalf("restored task content = %q, want %q", string(taskContent), taskBody)
+	}
+	specContent, err := os.ReadFile(filepath.Join(workingDir, ".agents", "specs", "SPEC-001-example.md"))
+	if err != nil {
+		t.Fatalf("read changed spec render error = %v", err)
+	}
+	if string(specContent) != changedSpecBody {
+		t.Fatalf("restore-ephemerals rewrote durable spec render = %q, want %q", string(specContent), changedSpecBody)
+	}
+
+	if err := os.Remove(filepath.Join(workingDir, ".agents", "tasks", "TASK-001-example.md")); err != nil {
+		t.Fatalf("remove restored task before backup-id restore error = %v", err)
+	}
+	backupID := strings.TrimSuffix(filepath.Base(result.BackupPath), filepath.Ext(result.BackupPath))
+	var restoreStdout bytes.Buffer
+	err = Runner{
+		Stdout:     &restoreStdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "restore-ephemerals", backupID})
+	if err != nil {
+		t.Fatalf("state restore-ephemerals backup id error = %v", err)
+	}
+	if !strings.Contains(restoreStdout.String(), "loaf state restore-ephemerals") {
+		t.Fatalf("restore output missing command header:\n%s", restoreStdout.String())
+	}
+	taskContent, err = os.ReadFile(filepath.Join(workingDir, ".agents", "tasks", "TASK-001-example.md"))
+	if err != nil {
+		t.Fatalf("read backup-id restored task error = %v", err)
+	}
+	if string(taskContent) != taskBody {
+		t.Fatalf("backup-id restored task content = %q, want %q", string(taskContent), taskBody)
 	}
 }
 
@@ -7923,6 +7959,13 @@ func TestRunnerStateControlPlaneJSONFailureMatrix(t *testing.T) {
 			args:               []string{"state", "backup", "verify", "--json"},
 			command:            "state backup verify",
 			want:               "requires a backup path",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state restore ephemerals missing target",
+			args:               []string{"state", "restore-ephemerals", "--json"},
+			command:            "state restore-ephemerals",
+			want:               "requires a manifest path",
 			wantMissingStateDB: true,
 		},
 		{
@@ -15728,6 +15771,7 @@ func TestRunnerNestedStateBackedHelpDoesNotParseAsOption(t *testing.T) {
 		{name: "migrate storage-home", args: []string{"migrate", "storage-home", "--help"}, want: "Usage: loaf migrate storage-home"},
 		{name: "state backup", args: []string{"state", "backup", "--help"}, want: "global data-home backups directory"},
 		{name: "state backup verify", args: []string{"state", "backup", "verify", "--help"}, want: "Usage: loaf state backup verify"},
+		{name: "state restore ephemerals", args: []string{"state", "restore-ephemerals", "--help"}, want: "Usage: loaf state restore-ephemerals"},
 		{name: "state export all", args: []string{"state", "export", "all", "--help"}, want: "Usage: loaf state export all"},
 		{name: "task update", args: []string{"task", "update", "--help"}, want: "Usage: loaf task update <task>"},
 		{name: "task create", args: []string{"task", "create", "--help"}, want: "Usage: loaf task create --title <title>"},
@@ -15985,7 +16029,7 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, subcommand)
 		}
 	}
-	for _, want := range []string{"backup verify", "export all", "export triage", "export session", "export spec", "export release-readiness"} {
+	for _, want := range []string{"backup verify", "restore-ephemerals", "export all", "export triage", "export session", "export spec", "export release-readiness"} {
 		if !stringSliceContains(commands["state"].subcommands, want) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
 		}
@@ -16022,6 +16066,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["state"].optionDescriptions["state backup verify --json"]; !strings.Contains(got, "restore guidance") || !strings.Contains(got, "captured project identities") {
 		t.Fatalf("state backup verify json description = %q, want restore/project identity guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state restore-ephemerals --json"]; !strings.Contains(got, "rollback contract") || !strings.Contains(got, "restored file list") {
+		t.Fatalf("state restore-ephemerals json description = %q, want rollback/restored-file guidance", got)
 	}
 	if got := commands["state"].optionDescriptions["state export all --format <format>"]; !strings.Contains(got, "json") {
 		t.Fatalf("state export all format description = %q, want JSON guidance", got)
