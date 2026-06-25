@@ -6,7 +6,7 @@ source_sessions:
   - id: 20260621-001541-session
     role: shaped
 created: 2026-06-22T09:13:21Z
-status: implementing
+status: complete
 branch: feat/durable-doc-render
 related_specs:
   - SPEC-043
@@ -237,26 +237,26 @@ and reopen the dual-source drift this whole program closes.
 
 ## Test Conditions
 
-- [ ] Rendering the same durable artifact twice produces **byte-identical** output (no timestamps,
+- [x] Rendering the same durable artifact twice produces **byte-identical** output (no timestamps,
       counts, or absolute paths differ).
-- [ ] Rendering the same artifact under two different `$XDG_DATA_HOME` homes produces
+- [x] Rendering the same artifact under two different `$XDG_DATA_HOME` homes produces
       **byte-identical** output.
-- [ ] `loaf spec render <ref>` and `loaf report render <ref>` write markdown files under
+- [x] `loaf spec render <ref>` and `loaf report render <ref>` write markdown files under
       `$XDG_CACHE_HOME/loaf/renders/` namespaced by project + branch, and create **no** in-tree file.
-- [ ] The finalization step writes the deterministic render into its git location
+- [x] The finalization step writes the deterministic render into its git location
       (`.agents/specs/…` or report durable locations) as a reviewable change.
-- [ ] Each committed render carries a renderer-contract-version stamp.
-- [ ] The render-drift gate **passes** when a committed render matches a fresh deterministic
+- [x] Each committed render carries a renderer-contract-version stamp.
+- [x] The render-drift gate **passes** when a committed render matches a fresh deterministic
       re-render (self-consistency round-trip).
-- [ ] The render-drift gate **fails** when a committed render is hand-edited, with a message
+- [x] The render-drift gate **fails** when a committed render is hand-edited, with a message
       instructing `loaf <entity> edit` then re-render (REJECT + redirect; no silent re-import).
-- [ ] The render-drift gate is a standalone CI step that does **not** invoke or share code with the
+- [x] The render-drift gate is a standalone CI step that does **not** invoke or share code with the
       `dist`/`plugins` verifier and passes on a fresh checkout with **no SQLite DB present**.
-- [ ] The local pre-push check fails on a hand-edited committed render before push.
-- [ ] Bumping the renderer-contract-version flags affected committed renders as
+- [x] The local pre-push check fails on a hand-edited committed render before push.
+- [x] Bumping the renderer-contract-version flags affected committed renders as
       upgrade-needed (not hand-edited) and a single sweep re-renders them into one finalization
       commit.
-- [ ] The deterministic durable renderer output passes `ValidateExternalMarkdownExport` only where
+- [x] The deterministic durable renderer output passes `ValidateExternalMarkdownExport` only where
       an external audience is targeted; internal renders may retain `SPEC-*`/`TASK-*` (SPEC-038).
 
 ## Priority Order
