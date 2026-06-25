@@ -41,6 +41,7 @@ is a Loaf workflow staging section for curated entries before release.
 - SPEC-053 adds the breaking-change migration mechanism: `loaf install --upgrade` now reports externalized vendor skills and requires `--yes` before destructive deprecation cleanup, while `librarian` is available as the durable artifact handler across supported harnesses.
 - SPEC-045 adds `loaf state restore-ephemerals <manifest|backup-dir|backup-id>` to restore and stage ephemeral `.agents` Markdown rollback backups with checksum verification and JSON output before destructive cutover work.
 - SPEC-045 adds `loaf state verify-ephemerals <manifest|backup-dir|backup-id>` to fail closed when ephemeral `.agents` Markdown no longer matches its rollback backup bytes, creating a byte barrier for cutover CI.
+- SPEC-045 adds `loaf check --hook ephemeral-provenance` to guard active specs against dangling ephemeral Markdown provenance after cutover, with ADR-017 recording the SQLite-only ephemeral artifact decision.
 
 ## [2.0.0-pre.20260614235428] - 2026-06-14
 

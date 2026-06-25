@@ -1,7 +1,7 @@
 ---
 id: SPEC-045
 title: Ephemeral-to-SQLite Cutover
-source: "/Users/levifig/Code/levifig/projects/loaf/.agents/drafts/20260621-020342-loaf-restructuring-roadmap.md (WS-B)"
+source: "roadmap:20260621-020342-loaf-restructuring-roadmap (WS-B)"
 created: 2026-06-22T09:13:21Z
 status: implementing
 branch: feat/ephemeral-to-sqlite-cutover
