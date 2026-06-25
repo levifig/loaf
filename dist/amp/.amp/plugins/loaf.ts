@@ -97,12 +97,12 @@ async function runHook(
       const result = await new Promise<HookResult>((resolve) => {
         let stdoutStr = '';
         let stderrStr = '';
-        child.stdout?.on('data', (data) => stdoutStr += data);
-        child.stderr?.on('data', (data) => stderrStr += data);
-        child.on('close', (code) => {
+        child.stdout?.on('data', (data: string) => stdoutStr += data);
+        child.stderr?.on('data', (data: string) => stderrStr += data);
+        child.on('close', (code: number | null) => {
           resolve({ exitCode: code ?? 1, stdout: stdoutStr, stderr: stderrStr }); // null means signal-killed; fail closed
         });
-        child.on('error', (err) => {
+        child.on('error', (err: Error) => {
           resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
         });
       });
@@ -127,12 +127,12 @@ async function runHook(
       const result = await new Promise<HookResult>((resolve) => {
         let stdoutStr = '';
         let stderrStr = '';
-        child.stdout?.on('data', (data) => stdoutStr += data);
-        child.stderr?.on('data', (data) => stderrStr += data);
-        child.on('close', (code) => {
+        child.stdout?.on('data', (data: string) => stdoutStr += data);
+        child.stderr?.on('data', (data: string) => stderrStr += data);
+        child.on('close', (code: number | null) => {
           resolve({ exitCode: code ?? 1, stdout: stdoutStr, stderr: stderrStr }); // null means signal-killed; fail closed
         });
-        child.on('error', (err) => {
+        child.on('error', (err: Error) => {
           resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
         });
       });
@@ -388,7 +388,7 @@ export default function (amp: PluginAPI) {
     }
   });
 
-  amp.on('tool.call', async (event) => {
+  amp.on('tool.call', async (event: { tool?: string; input?: unknown; arguments?: unknown }) => {
       const toolName = event?.tool;
       const toolInput = event?.input ?? event?.arguments ?? {};
       if (!toolName) return;
@@ -415,7 +415,7 @@ export default function (amp: PluginAPI) {
       }
     });
 
-  amp.on('tool.result', async (event) => {
+  amp.on('tool.result', async (event: { tool?: string; input?: unknown; arguments?: unknown }) => {
       const toolName = event?.tool;
       const toolInput = event?.input ?? event?.arguments ?? {};
       if (!toolName) return;

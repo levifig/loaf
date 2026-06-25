@@ -232,7 +232,7 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 		"@version 9.8.7-test.1",
 		"import type { PluginAPI } from '@ampcode/plugin';",
 		"export default function (amp: PluginAPI)",
-		"amp.on('tool.call', async (event) =>",
+		"amp.on('tool.call', async (event: { tool?: string; input?: unknown; arguments?: unknown }) =>",
 		`"command": "loaf check --hook check-secrets"`,
 		`"command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/pre-merge.md\""`,
 		`const postToolHooks: Record<string, HookEntry[]> = {`,
@@ -389,7 +389,7 @@ func TestRunnerBuildTargetOpenCodeRunsNativeTarget(t *testing.T) {
 	plugin := readBuildFileString(t, filepath.Join(root, "dist", "opencode", "plugins", "hooks.ts"))
 	for _, want := range []string{
 		"@version 9.8.7-test.1",
-		"'tool.execute.before': async (input) =>",
+		"'tool.execute.before': async (input: { tool?: { name?: string; input?: unknown } }) =>",
 		`"command": "loaf check --hook check-secrets"`,
 		`"command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/pre-merge.md\""`,
 		`"script": "post-tool/kb-staleness-nudge.sh"`,

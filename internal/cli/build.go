@@ -280,12 +280,95 @@ func validateNativeBuildArtifacts(root string, targetName string) ([]string, err
 		message := "TypeScript validation skipped; tsc not found for " + strings.Join(files, ", ")
 		return []string{message}, nil
 	}
-	args := []string{"--noEmit", "--allowJs", "false", "--skipLibCheck", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--target", "ES2022"}
+	ambientTypes, cleanup, err := writeNativeBuildTypeScriptAmbientTypes()
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	args := []string{"--noEmit", "--allowJs", "false", "--skipLibCheck", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--target", "ES2022", ambientTypes}
 	args = append(args, tsFiles...)
 	if err := runNativeBuildArtifactCheck("tsc", args); err != nil {
 		return nil, fmt.Errorf("TypeScript validation failed: %w", err)
 	}
 	return nil, nil
+}
+
+func writeNativeBuildTypeScriptAmbientTypes() (string, func(), error) {
+	dir, err := os.MkdirTemp("", "loaf-build-ts-*")
+	if err != nil {
+		return "", func() {}, err
+	}
+	cleanup := func() {
+		_ = os.RemoveAll(dir)
+	}
+	path := filepath.Join(dir, "generated-artifact-env.d.ts")
+	if err := os.WriteFile(path, []byte(nativeBuildTypeScriptAmbientTypes()), 0o644); err != nil {
+		cleanup()
+		return "", func() {}, err
+	}
+	return path, cleanup, nil
+}
+
+func nativeBuildTypeScriptAmbientTypes() string {
+	return `declare const process: {
+  env: Record<string, string | undefined>;
+  cwd(): string;
+};
+
+declare const console: {
+  error(...args: unknown[]): void;
+  log(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+};
+
+declare module 'child_process' {
+  export interface ExecFileOptions {
+    cwd?: string;
+    env?: Record<string, string | undefined>;
+    encoding?: string;
+    timeout?: number;
+  }
+
+  export interface WritableStreamLike {
+    write(data: string): void;
+    end(): void;
+  }
+
+  export interface ReadableStreamLike {
+    on(event: 'data', listener: (data: string) => void): void;
+  }
+
+  export interface ChildProcessLike {
+    stdin?: WritableStreamLike;
+    stdout?: ReadableStreamLike;
+    stderr?: ReadableStreamLike;
+    on(event: 'close', listener: (code: number | null) => void): void;
+    on(event: 'error', listener: (err: Error) => void): void;
+  }
+
+  export function execFile(file: string, args: string[], options?: ExecFileOptions): ChildProcessLike;
+}
+
+declare module 'util' {
+  export function promisify(fn: (...args: any[]) => any): (...args: any[]) => Promise<any>;
+}
+
+declare module 'path' {
+  export function dirname(path: string): string;
+  export function join(...paths: string[]): string;
+}
+
+declare module 'url' {
+  export function fileURLToPath(url: string | { href: string }): string;
+}
+
+declare module '@ampcode/plugin' {
+  export interface PluginAPI {
+    on(event: string, handler: (...args: any[]) => unknown | Promise<unknown>): void;
+  }
+}
+`
 }
 
 type nativeBuildHarnessLanguageFinding struct {

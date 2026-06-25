@@ -157,7 +157,7 @@ func renderNativeOpenCodePlugin(hooks []nativeBuildHook, version string) string 
 	return nativeOpenCodeHeader(version) + "\n\n" +
 		nativeAmpCoreFunctions() + "\n\n" +
 		nativeAmpHookData(hooks) + "\n\n" +
-		"export default async function AgentSkillsPlugin({ client, $ }) {\n  return {\n" +
+		"export default async function AgentSkillsPlugin({ client, $ }: { client?: unknown; $?: unknown }) {\n  void client;\n  void $;\n  return {\n" +
 		nativeOpenCodePluginBody() + "\n  };\n}"
 }
 
@@ -179,7 +179,7 @@ const execFileAsync = promisify(execFile);`
 
 func nativeOpenCodePluginBody() string {
 	body := `    // Pre-tool hook handler
-    'tool.execute.before': async (input) => {
+    'tool.execute.before': async (input: { tool?: { name?: string; input?: unknown } }) => {
       const toolName = input?.tool?.name;
       const toolInput = input?.tool?.input;
       if (!toolName) return;
@@ -207,7 +207,7 @@ func nativeOpenCodePluginBody() string {
     },
 
     // Post-tool hook handler
-    'tool.execute.after': async (input) => {
+    'tool.execute.after': async (input: { tool?: { name?: string; input?: unknown } }) => {
       const toolName = input?.tool?.name;
       const toolInput = input?.tool?.input;
       if (!toolName) return;
@@ -228,7 +228,7 @@ func nativeOpenCodePluginBody() string {
       }
     },
     // Session lifecycle event handler
-    'event': async ({ event }) => {
+    'event': async ({ event }: { event: { type?: string } }) => {
       if (event.type === 'session.created' && sessionHooks.sessionstart) {
         for (const hook of sessionHooks.sessionstart) {
           await runHook('session', 'session', hook.id, hook.command, hook.script, undefined, hook.timeout, hook.failClosed);
