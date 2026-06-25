@@ -214,9 +214,6 @@ func RemoveMarkdownMigrationSources(root project.Root, manifestPath string) ([]s
 		if err != nil {
 			return nil, err
 		}
-		if strings.HasPrefix(file.Path, ".agents/drafts/") && !isKnownAgentsFile(filepath.Join(root.Path(), ".agents"), path) {
-			continue
-		}
 		sum, err := fileSHA256(file.BackupPath)
 		if err != nil {
 			return nil, fmt.Errorf("checksum rollback source before removal %s: %w", file.Path, err)
@@ -459,22 +456,27 @@ func rollbackProjectPath(root project.Root, rel string) (string, error) {
 
 func isEphemeralMarkdownMigrationSource(rel string) bool {
 	rel = filepath.ToSlash(rel)
-	if !strings.HasPrefix(rel, ".agents/") || !strings.HasSuffix(rel, ".md") {
+	if rel == ".agents/TASKS.json" {
+		return true
+	}
+	if !strings.HasPrefix(rel, ".agents/") {
 		return false
 	}
-	switch {
-	case strings.HasPrefix(rel, ".agents/tasks/"):
-		return !strings.Contains(strings.TrimPrefix(rel, ".agents/tasks/"), "/")
-	case strings.HasPrefix(rel, ".agents/ideas/"):
-		return !strings.Contains(strings.TrimPrefix(rel, ".agents/ideas/"), "/")
-	case strings.HasPrefix(rel, ".agents/sessions/"):
-		sessionRel := strings.TrimPrefix(rel, ".agents/sessions/")
-		return !strings.Contains(sessionRel, "/") || strings.HasPrefix(sessionRel, "archive/")
-	case strings.HasPrefix(rel, ".agents/drafts/"):
-		return !strings.Contains(strings.TrimPrefix(rel, ".agents/drafts/"), "/")
-	default:
-		return false
+
+	ephemeralRoots := []string{
+		".agents/tasks/",
+		".agents/ideas/",
+		".agents/sparks/",
+		".agents/sessions/",
+		".agents/brainstorms/",
+		".agents/drafts/",
 	}
+	for _, root := range ephemeralRoots {
+		if strings.HasPrefix(rel, root) {
+			return strings.HasSuffix(rel, ".md") || filepath.Base(rel) == ".gitkeep"
+		}
+	}
+	return false
 }
 
 func copyFile(src string, dst string, mode os.FileMode) error {

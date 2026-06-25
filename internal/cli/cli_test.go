@@ -7456,7 +7456,9 @@ func TestRunnerStateMigrateMarkdownBackupRemoveSourceAndRollback(t *testing.T) {
 	taskBody := "# Task\n"
 	writeCLIAgentsFile(t, workingDir, "specs/SPEC-001-example.md", "# Spec\n")
 	writeCLIAgentsFile(t, workingDir, "tasks/TASK-001-example.md", taskBody)
+	writeCLIAgentsFile(t, workingDir, "tasks/archive/TASK-999-archived.md", "# Archived Task\n")
 	writeCLIAgentsFile(t, workingDir, "ideas/20260528-idea.md", "# Idea\n")
+	writeCLIAgentsFile(t, workingDir, "ideas/archive/.gitkeep", "")
 	writeCLIAgentsFile(t, workingDir, "sessions/20260528-session.md", "[2026-05-28 10:00] spark(scope): capture this\n")
 	writeCLIAgentsFile(t, workingDir, "reports/report.md", "# Report\n")
 	writeCLIAgentsFile(t, workingDir, "TASKS.json", `{"tasks":{"TASK-001":{"spec":"SPEC-001"}}}`)
@@ -7482,9 +7484,12 @@ func TestRunnerStateMigrateMarkdownBackupRemoveSourceAndRollback(t *testing.T) {
 		t.Fatalf("rollback manifest was not created: %v", err)
 	}
 	wantRemoved := []string{
+		".agents/TASKS.json",
 		".agents/ideas/20260528-idea.md",
+		".agents/ideas/archive/.gitkeep",
 		".agents/sessions/20260528-session.md",
 		".agents/tasks/TASK-001-example.md",
+		".agents/tasks/archive/TASK-999-archived.md",
 	}
 	if !reflect.DeepEqual(result.RemovedSourceFiles, wantRemoved) {
 		t.Fatalf("RemovedSourceFiles = %#v, want %#v", result.RemovedSourceFiles, wantRemoved)
@@ -7527,6 +7532,20 @@ func TestRunnerStateMigrateMarkdownBackupRemoveSourceAndRollback(t *testing.T) {
 	}
 	if string(taskContent) != taskBody {
 		t.Fatalf("restored task content = %q, want %q", string(taskContent), taskBody)
+	}
+	archivedTaskContent, err := os.ReadFile(filepath.Join(workingDir, ".agents", "tasks", "archive", "TASK-999-archived.md"))
+	if err != nil {
+		t.Fatalf("read restored archived task error = %v", err)
+	}
+	if string(archivedTaskContent) != "# Archived Task\n" {
+		t.Fatalf("restored archived task content = %q, want byte-exact original", string(archivedTaskContent))
+	}
+	tasksJSONContent, err := os.ReadFile(filepath.Join(workingDir, ".agents", "TASKS.json"))
+	if err != nil {
+		t.Fatalf("read restored TASKS.json error = %v", err)
+	}
+	if string(tasksJSONContent) != `{"tasks":{"TASK-001":{"spec":"SPEC-001"}}}` {
+		t.Fatalf("restored TASKS.json = %q, want byte-exact original", string(tasksJSONContent))
 	}
 	specContent, err := os.ReadFile(filepath.Join(workingDir, ".agents", "specs", "SPEC-001-example.md"))
 	if err != nil {
@@ -7672,6 +7691,7 @@ func TestRunnerStateVerifyEphemeralsFailsOnDrift(t *testing.T) {
 	stateHome := t.TempDir()
 	writeCLIAgentsFile(t, workingDir, "specs/SPEC-001-example.md", "# Spec\n")
 	writeCLIAgentsFile(t, workingDir, "tasks/TASK-001-example.md", "# Task\n")
+	writeCLIAgentsFile(t, workingDir, "tasks/archive/TASK-999-archived.md", "# Archived Task\n")
 	writeCLIAgentsFile(t, workingDir, "ideas/20260528-idea.md", "# Idea\n")
 	writeCLIAgentsFile(t, workingDir, "TASKS.json", `{"tasks":{"TASK-001":{"spec":"SPEC-001"}}}`)
 
@@ -7700,8 +7720,8 @@ func TestRunnerStateVerifyEphemeralsFailsOnDrift(t *testing.T) {
 	if err := json.Unmarshal(verifyStdout.Bytes(), &verified); err != nil {
 		t.Fatalf("decode ephemeral verification result error = %v\n%s", err, verifyStdout.String())
 	}
-	if !verified.Verified || verified.TotalFiles != 2 || verified.VerifiedFiles != 2 || len(verified.Failures) != 0 {
-		t.Fatalf("verified = %#v, want two verified ephemeral files", verified)
+	if !verified.Verified || verified.TotalFiles != 4 || verified.VerifiedFiles != 4 || len(verified.Failures) != 0 {
+		t.Fatalf("verified = %#v, want four verified ephemeral files", verified)
 	}
 
 	if err := os.WriteFile(filepath.Join(workingDir, ".agents", "tasks", "TASK-001-example.md"), []byte("# Drift\n"), 0o600); err != nil {
