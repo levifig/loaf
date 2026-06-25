@@ -8,8 +8,8 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Added
 
-- Added a reversible `loaf state migrate lifecycle-statuses` migration with copy-run dry-run, live-backup apply, rollback manifest, and top-level `loaf migrate lifecycle-statuses` alias.
-- Added a canonical lifecycle status registry for Loaf state entities, including per-entity validators and explicit exclusions for finding and run domain vocabularies.
+- Added the SPEC-049 reversible `loaf state migrate lifecycle-statuses` migration with copy-run dry-run, live-backup apply, rollback manifest, and top-level `loaf migrate lifecycle-statuses` alias.
+- Added the SPEC-049 canonical lifecycle status registry for Loaf state entities, including per-entity validators and explicit exclusions for finding and run domain vocabularies.
 
 ### Changed
 
