@@ -130,6 +130,9 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 	if !strings.Contains(content, "- `loaf state restore-ephemerals`:\n  - `<manifest|backup-dir|backup-id>` - Rollback manifest path, directory containing manifest.json, or backup id under the global backups directory\n  - `--json` - Output rollback contract, project path, manifest path, restored file list, and restored status as JSON") {
 		t.Fatalf("generated CLI reference missing state restore-ephemerals JSON contract guidance\n%s", content)
 	}
+	if !strings.Contains(content, "- `loaf state verify-ephemerals`:\n  - `<manifest|backup-dir|backup-id>` - Rollback manifest path, directory containing manifest.json, or backup id under the global backups directory\n  - `--json` - Output verification contract, project context, per-file checks, and failures as JSON") {
+		t.Fatalf("generated CLI reference missing state verify-ephemerals JSON contract guidance\n%s", content)
+	}
 	if !strings.Contains(content, "- `loaf state migrate storage-home`:\n  - `--dry-run` - Preview the storage-home migration\n  - `--apply` - Copy the legacy database without deleting it\n  - `--json` - Output migration contract, global database paths, action, and project identity when available") {
 		t.Fatalf("generated CLI reference missing state migrate storage-home JSON contract guidance\n%s", content)
 	}

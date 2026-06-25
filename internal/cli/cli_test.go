@@ -3374,6 +3374,7 @@ func TestRunnerStateAndProjectJSONHelpNamesContracts(t *testing.T) {
 		{name: "state backup", args: []string{"state", "backup", "--help"}, wants: []string{"--json", "backup verification", "checksum", "current project identity"}},
 		{name: "state backup verify", args: []string{"state", "backup", "verify", "--help"}, wants: []string{"--json", "restore guidance", "schema version", "captured project identities"}},
 		{name: "state restore ephemerals", args: []string{"state", "restore-ephemerals", "--help"}, wants: []string{"--json", "rollback contract", "restored file list", "restored status"}},
+		{name: "state verify ephemerals", args: []string{"state", "verify-ephemerals", "--help"}, wants: []string{"--json", "verification contract", "per-file checks", "failures"}},
 		{name: "project list", args: []string{"project", "list", "--help"}, wants: []string{"--json", "database path", "friendly names", "current paths"}},
 		{name: "project show", args: []string{"project", "show", "--help"}, wants: []string{"--json", "project ID", "friendly name", "current path", "database path"}},
 		{name: "project rename", args: []string{"project", "rename", "--help"}, wants: []string{"--json", "friendly name", "database path", "applied status"}},
@@ -7666,6 +7667,64 @@ WHERE project_id = ?
 	}
 }
 
+func TestRunnerStateVerifyEphemeralsFailsOnDrift(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	writeCLIAgentsFile(t, workingDir, "specs/SPEC-001-example.md", "# Spec\n")
+	writeCLIAgentsFile(t, workingDir, "tasks/TASK-001-example.md", "# Task\n")
+	writeCLIAgentsFile(t, workingDir, "ideas/20260528-idea.md", "# Idea\n")
+	writeCLIAgentsFile(t, workingDir, "TASKS.json", `{"tasks":{"TASK-001":{"spec":"SPEC-001"}}}`)
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "migrate", "markdown", "--apply", "--backup", "--json"})
+	if err != nil {
+		t.Fatalf("state migrate markdown --apply --backup --json error = %v", err)
+	}
+	migration := decodeMarkdownMigrationResult(t, stdout.Bytes())
+	backupID := strings.TrimSuffix(filepath.Base(migration.BackupPath), filepath.Ext(migration.BackupPath))
+
+	var verifyStdout bytes.Buffer
+	err = Runner{
+		Stdout:     &verifyStdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "verify-ephemerals", backupID, "--json"})
+	if err != nil {
+		t.Fatalf("state verify-ephemerals --json error = %v", err)
+	}
+	var verified state.EphemeralVerificationResult
+	if err := json.Unmarshal(verifyStdout.Bytes(), &verified); err != nil {
+		t.Fatalf("decode ephemeral verification result error = %v\n%s", err, verifyStdout.String())
+	}
+	if !verified.Verified || verified.TotalFiles != 2 || verified.VerifiedFiles != 2 || len(verified.Failures) != 0 {
+		t.Fatalf("verified = %#v, want two verified ephemeral files", verified)
+	}
+
+	if err := os.WriteFile(filepath.Join(workingDir, ".agents", "tasks", "TASK-001-example.md"), []byte("# Drift\n"), 0o600); err != nil {
+		t.Fatalf("write drifted task error = %v", err)
+	}
+	var driftStdout bytes.Buffer
+	err = Runner{
+		Stdout:     &driftStdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "verify-ephemerals", migration.RollbackManifestPath, "--json"})
+	if err == nil {
+		t.Fatal("state verify-ephemerals drift error = nil, want failure")
+	}
+	var drift state.EphemeralVerificationResult
+	if unmarshalErr := json.Unmarshal(driftStdout.Bytes(), &drift); unmarshalErr != nil {
+		t.Fatalf("decode drift verification result error = %v\n%s", unmarshalErr, driftStdout.String())
+	}
+	if drift.Verified || len(drift.Failures) != 1 || drift.Failures[0].Path != ".agents/tasks/TASK-001-example.md" {
+		t.Fatalf("drift = %#v, want one task failure", drift)
+	}
+}
+
 func TestRunnerStateMigrateMarkdownResumeJSON(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -7965,6 +8024,13 @@ func TestRunnerStateControlPlaneJSONFailureMatrix(t *testing.T) {
 			name:               "state restore ephemerals missing target",
 			args:               []string{"state", "restore-ephemerals", "--json"},
 			command:            "state restore-ephemerals",
+			want:               "requires a manifest path",
+			wantMissingStateDB: true,
+		},
+		{
+			name:               "state verify ephemerals missing target",
+			args:               []string{"state", "verify-ephemerals", "--json"},
+			command:            "state verify-ephemerals",
 			want:               "requires a manifest path",
 			wantMissingStateDB: true,
 		},
@@ -15772,6 +15838,7 @@ func TestRunnerNestedStateBackedHelpDoesNotParseAsOption(t *testing.T) {
 		{name: "state backup", args: []string{"state", "backup", "--help"}, want: "global data-home backups directory"},
 		{name: "state backup verify", args: []string{"state", "backup", "verify", "--help"}, want: "Usage: loaf state backup verify"},
 		{name: "state restore ephemerals", args: []string{"state", "restore-ephemerals", "--help"}, want: "Usage: loaf state restore-ephemerals"},
+		{name: "state verify ephemerals", args: []string{"state", "verify-ephemerals", "--help"}, want: "Usage: loaf state verify-ephemerals"},
 		{name: "state export all", args: []string{"state", "export", "all", "--help"}, want: "Usage: loaf state export all"},
 		{name: "task update", args: []string{"task", "update", "--help"}, want: "Usage: loaf task update <task>"},
 		{name: "task create", args: []string{"task", "create", "--help"}, want: "Usage: loaf task create --title <title>"},
@@ -16029,7 +16096,7 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, subcommand)
 		}
 	}
-	for _, want := range []string{"backup verify", "restore-ephemerals", "export all", "export triage", "export session", "export spec", "export release-readiness"} {
+	for _, want := range []string{"backup verify", "restore-ephemerals", "verify-ephemerals", "export all", "export triage", "export session", "export spec", "export release-readiness"} {
 		if !stringSliceContains(commands["state"].subcommands, want) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
 		}
@@ -16069,6 +16136,9 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["state"].optionDescriptions["state restore-ephemerals --json"]; !strings.Contains(got, "rollback contract") || !strings.Contains(got, "restored file list") {
 		t.Fatalf("state restore-ephemerals json description = %q, want rollback/restored-file guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state verify-ephemerals --json"]; !strings.Contains(got, "verification contract") || !strings.Contains(got, "per-file checks") {
+		t.Fatalf("state verify-ephemerals json description = %q, want verification/per-file guidance", got)
 	}
 	if got := commands["state"].optionDescriptions["state export all --format <format>"]; !strings.Contains(got, "json") {
 		t.Fatalf("state export all format description = %q, want JSON guidance", got)

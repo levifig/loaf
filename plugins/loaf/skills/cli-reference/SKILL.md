@@ -210,7 +210,8 @@ verify the backup with `loaf state backup verify <backup>`, preserve the current
 For agents, `loaf state backup verify <backup> --json` also returns
 `restore_database_path`, `restore_preserve_path`, and
 `restore_validation_commands` for the current checkout. Ephemeral Markdown can
-be restored and staged with `loaf state restore-ephemerals <manifest|backup-dir|backup-id>`.
+be verified with `loaf state verify-ephemerals <manifest|backup-dir|backup-id>`
+and restored and staged with `loaf state restore-ephemerals <manifest|backup-dir|backup-id>`.
 
 **Subcommands:**
 
@@ -228,6 +229,7 @@ be restored and staged with `loaf state restore-ephemerals <manifest|backup-dir|
 | `loaf state backup` | Create a SQLite database backup under the global data-home backups directory |
 | `loaf state backup verify` | Verify an existing SQLite database backup |
 | `loaf state restore-ephemerals` | Restore and stage .agents ephemeral Markdown from a rollback manifest or backup id |
+| `loaf state verify-ephemerals` | Verify .agents ephemeral Markdown before SQLite cutover |
 | `loaf state export` | Export SQLite state for review or migration |
 | `loaf state export all` | Export a complete project-scoped SQLite snapshot |
 | `loaf state export triage` | Export a triage summary from SQLite state |
@@ -293,6 +295,10 @@ be restored and staged with `loaf state restore-ephemerals <manifest|backup-dir|
   - `<manifest|backup-dir|backup-id>` - Rollback manifest path, directory containing manifest.json, or backup id under the global backups directory
   - `--json` - Output rollback contract, project path, manifest path, restored file list, and restored status as JSON
 
+- `loaf state verify-ephemerals`:
+  - `<manifest|backup-dir|backup-id>` - Rollback manifest path, directory containing manifest.json, or backup id under the global backups directory
+  - `--json` - Output verification contract, project context, per-file checks, and failures as JSON
+
 - `loaf state export`:
   - `--format <format>` - Output format for the selected export kind
 
@@ -320,6 +326,7 @@ loaf state migrate markdown --apply
 loaf state migrate lifecycle-statuses --dry-run
 loaf state backup
 loaf state backup verify /path/to/backup.sqlite
+loaf state verify-ephemerals loaf-20260625-120000-000000000
 loaf state restore-ephemerals loaf-20260625-120000-000000000
 loaf state status
 ```

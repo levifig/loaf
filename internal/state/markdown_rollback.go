@@ -56,8 +56,40 @@ type MarkdownRollbackResult struct {
 	Restored             bool     `json:"restored"`
 }
 
+// EphemeralVerificationResult describes the non-mutating byte barrier for
+// destructive ephemeral Markdown cutover.
+type EphemeralVerificationResult struct {
+	ContractVersion      int                         `json:"contract_version"`
+	Action               string                      `json:"action"`
+	DatabaseScope        string                      `json:"database_scope"`
+	DatabasePath         string                      `json:"database_path"`
+	ProjectID            string                      `json:"project_id"`
+	ProjectName          string                      `json:"project_name"`
+	ProjectCurrentPath   string                      `json:"project_current_path"`
+	RollbackManifestPath string                      `json:"rollback_manifest_path"`
+	TotalFiles           int                         `json:"total_files"`
+	VerifiedFiles        int                         `json:"verified_files"`
+	Verified             bool                        `json:"verified"`
+	Files                []EphemeralVerificationFile `json:"files"`
+	Failures             []EphemeralVerificationFile `json:"failures"`
+}
+
+// EphemeralVerificationFile describes one file checked by the byte barrier.
+type EphemeralVerificationFile struct {
+	Path               string `json:"path"`
+	Bytes              int64  `json:"bytes"`
+	SHA256             string `json:"sha256"`
+	BackupSHA256       string `json:"backup_sha256,omitempty"`
+	SQLiteSourceSHA256 string `json:"sqlite_source_sha256,omitempty"`
+	BackupMatches      bool   `json:"backup_matches"`
+	SQLiteSourceMatch  bool   `json:"sqlite_source_matches"`
+	Verified           bool   `json:"verified"`
+	Reason             string `json:"reason,omitempty"`
+}
+
 const MarkdownMigrationActionRollback = "rollback"
 const MarkdownMigrationActionRestoreEphemerals = "restore-ephemerals"
+const MarkdownMigrationActionVerifyEphemerals = "verify-ephemerals"
 
 // CreateMarkdownRollbackBackup snapshots .agents into the state backup
 // directory and writes a manifest usable by RollbackMarkdownMigration.
@@ -215,6 +247,100 @@ func RestoreEphemeralMarkdownBackup(ctx context.Context, root project.Root, mani
 	return restoreMarkdownRollbackFiles(ctx, root, manifestPath, MarkdownMigrationActionRestoreEphemerals, isEphemeralMarkdownMigrationSource)
 }
 
+// VerifyEphemeralMarkdownBackup verifies that every ephemeral file covered by a
+// rollback manifest still matches the captured backup bytes.
+func VerifyEphemeralMarkdownBackup(ctx context.Context, root project.Root, resolver PathResolver, manifestPath string) (EphemeralVerificationResult, error) {
+	manifest, err := readMarkdownRollbackManifest(manifestPath)
+	if err != nil {
+		return EphemeralVerificationResult{}, err
+	}
+	if err := validateMarkdownRollbackManifestRoot(root, manifest); err != nil {
+		return EphemeralVerificationResult{}, err
+	}
+	status, err := Inspect(root, resolver)
+	if err != nil {
+		return EphemeralVerificationResult{}, err
+	}
+	if status.Mode == ModeInvalid {
+		return EphemeralVerificationResult{}, fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+
+	result := EphemeralVerificationResult{
+		ContractVersion:      StateJSONContractVersion,
+		Action:               MarkdownMigrationActionVerifyEphemerals,
+		DatabaseScope:        "global",
+		DatabasePath:         status.DatabasePath,
+		RollbackManifestPath: manifestPath,
+		Files:                []EphemeralVerificationFile{},
+		Failures:             []EphemeralVerificationFile{},
+	}
+	sourceHashes := map[string]string{}
+	if status.Mode != ModeMarkdownOnly {
+		store, err := OpenStoreReadOnly(status.DatabasePath)
+		if err != nil {
+			return EphemeralVerificationResult{}, fmt.Errorf("open state database for ephemeral verification: %w", err)
+		}
+		defer store.Close()
+		identity, err := store.LookupProjectIdentityForRoot(ctx, root)
+		if err != nil {
+			return EphemeralVerificationResult{}, fmt.Errorf("resolve project identity for ephemeral verification: %w", err)
+		}
+		result.ProjectID = identity.ID
+		result.ProjectName = identity.FriendlyName
+		result.ProjectCurrentPath = identity.CurrentPath
+		sourceHashes, err = readSourceHashesByPath(ctx, store, identity.ID)
+		if err != nil {
+			return EphemeralVerificationResult{}, err
+		}
+	}
+
+	for _, file := range manifest.Files {
+		if !isEphemeralMarkdownMigrationSource(file.Path) {
+			continue
+		}
+		check := EphemeralVerificationFile{
+			Path:               file.Path,
+			Bytes:              file.Bytes,
+			SHA256:             file.SHA256,
+			SQLiteSourceSHA256: sourceHashes[file.Path],
+		}
+		projectPath, err := rollbackProjectPath(root, file.Path)
+		if err != nil {
+			return EphemeralVerificationResult{}, err
+		}
+		currentSHA, err := fileSHA256(projectPath)
+		if err != nil {
+			check.Reason = fmt.Sprintf("current file is unreadable: %v", err)
+		}
+		backupSHA, err := fileSHA256(file.BackupPath)
+		if err != nil {
+			if check.Reason != "" {
+				check.Reason += "; "
+			}
+			check.Reason += fmt.Sprintf("backup file is unreadable: %v", err)
+		}
+		check.BackupSHA256 = backupSHA
+		check.BackupMatches = check.Reason == "" && currentSHA == file.SHA256 && backupSHA == file.SHA256
+		check.SQLiteSourceMatch = check.SQLiteSourceSHA256 != "" && currentSHA == check.SQLiteSourceSHA256
+		check.Verified = check.BackupMatches
+		if !check.Verified && check.Reason == "" {
+			check.Reason = "current file bytes do not match the rollback backup manifest"
+		}
+		result.TotalFiles++
+		if check.Verified {
+			result.VerifiedFiles++
+		} else {
+			result.Failures = append(result.Failures, check)
+		}
+		result.Files = append(result.Files, check)
+	}
+	if result.TotalFiles == 0 {
+		return EphemeralVerificationResult{}, fmt.Errorf("markdown rollback manifest has no ephemeral files")
+	}
+	result.Verified = result.VerifiedFiles == result.TotalFiles
+	return result, nil
+}
+
 func restoreMarkdownRollbackFiles(ctx context.Context, root project.Root, manifestPath string, action string, include func(string) bool) (MarkdownRollbackResult, error) {
 	select {
 	case <-ctx.Done():
@@ -261,6 +387,26 @@ func restoreMarkdownRollbackFiles(ctx context.Context, root project.Root, manife
 		RestoredFiles:        restored,
 		Restored:             true,
 	}, nil
+}
+
+func readSourceHashesByPath(ctx context.Context, store *Store, projectID string) (map[string]string, error) {
+	rows, err := store.db.QueryContext(ctx, `SELECT path, COALESCE(hash, '') FROM sources WHERE project_id = ?`, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("read source hashes for ephemeral verification: %w", err)
+	}
+	defer rows.Close()
+	hashes := map[string]string{}
+	for rows.Next() {
+		var path, hash string
+		if err := rows.Scan(&path, &hash); err != nil {
+			return nil, fmt.Errorf("scan source hash for ephemeral verification: %w", err)
+		}
+		hashes[filepath.ToSlash(path)] = hash
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read source hashes for ephemeral verification: %w", err)
+	}
+	return hashes, nil
 }
 
 func readMarkdownRollbackManifest(path string) (MarkdownRollbackManifest, error) {
