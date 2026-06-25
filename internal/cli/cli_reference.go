@@ -160,6 +160,12 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
 					{Flags: "--json", Description: "Output migration contract, global database paths, action, and project identity when available"},
 				}},
+				{Name: "migrate lifecycle-statuses", Description: "Normalize legacy lifecycle statuses in SQLite", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview status normalization on a temporary database copy"},
+					{Flags: "--apply", Description: "Normalize live SQLite statuses after creating a backup"},
+					{Flags: "--rollback <manifest>", Description: "Restore statuses from a lifecycle-statuses rollback manifest"},
+					{Flags: "--json", Description: "Output migration contract, project context, counts, backup, and rollback fields as JSON"},
+				}},
 				{Name: "backup", Description: "Create a SQLite database backup under the global data-home backups directory", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup verification, checksum, schema version, project count, and current project identity as JSON"}}},
 				{Name: "backup verify", Description: "Verify an existing SQLite database backup", Options: []cliReferenceOption{{Flags: "--json", Description: "Output backup verification, restore guidance, schema version, and captured project identities as JSON"}}},
 				{Name: "export", Description: "Export SQLite state for review or migration", Options: []cliReferenceOption{{Flags: "--format <format>", Description: "Output format for the selected export kind"}}},
@@ -252,6 +258,12 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--dry-run", Description: "Preview the storage-home migration"},
 					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
 					{Flags: "--json", Description: "Output migration contract, global database paths, action, and project identity when available"},
+				}},
+				{Name: "lifecycle-statuses", Description: "Normalize legacy lifecycle statuses in SQLite", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview status normalization on a temporary database copy"},
+					{Flags: "--apply", Description: "Normalize live SQLite statuses after creating a backup"},
+					{Flags: "--rollback <manifest>", Description: "Restore statuses from a lifecycle-statuses rollback manifest"},
+					{Flags: "--json", Description: "Output migration contract, project context, counts, backup, and rollback fields as JSON"},
 				}},
 				{Name: "worktree-storage", Description: "Move linked-worktree .agents state to the main worktree", Options: []cliReferenceOption{
 					{Flags: "--apply", Description: "Perform the migration; dry-run is the default"},
@@ -893,6 +905,7 @@ func cliReferenceCommandUsageExamples(commandName string) []string {
 			"loaf state status",
 			"loaf state migrate markdown --dry-run",
 			"loaf state migrate markdown --apply",
+			"loaf state migrate lifecycle-statuses --dry-run",
 			"loaf state backup",
 			"loaf state backup verify /path/to/backup.sqlite",
 			"loaf state status",
@@ -913,6 +926,7 @@ func cliReferenceCommandUsageExamples(commandName string) []string {
 			"loaf migrate markdown --dry-run",
 			"loaf migrate markdown --apply",
 			"loaf migrate storage-home --dry-run",
+			"loaf migrate lifecycle-statuses --dry-run",
 		}
 	case "render":
 		return []string{

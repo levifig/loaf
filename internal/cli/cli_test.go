@@ -7524,6 +7524,112 @@ func TestRunnerStateMigrateMarkdownBackupRemoveSourceAndRollback(t *testing.T) {
 	}
 }
 
+func TestRunnerStateMigrateLifecycleStatusesJSONApplyAndRollback(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	writeCLIAgentsFile(t, workingDir, "specs/SPEC-001-legacy.md", `---
+title: Legacy Spec
+status: complete
+---
+# Legacy Spec
+`)
+
+	var migrateStdout bytes.Buffer
+	err := Runner{
+		Stdout:     &migrateStdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "migrate", "markdown", "--apply", "--json"})
+	if err != nil {
+		t.Fatalf("state migrate markdown --apply --json error = %v", err)
+	}
+	migrated := decodeMarkdownMigrationResult(t, migrateStdout.Bytes())
+	db := openCLITestDB(t, migrated.DatabasePath)
+	if _, err := db.Exec(`UPDATE specs SET status = 'implementing' WHERE project_id = ?`, migrated.ProjectID); err != nil {
+		closeCLITestDB(t, db)
+		t.Fatalf("seed legacy spec status error = %v", err)
+	}
+	if _, err := db.Exec(`
+INSERT INTO events (id, project_id, entity_kind, entity_id, event_type, from_status, to_status, note, created_at, updated_at)
+SELECT 'event-spec-complete', project_id, 'spec', id, 'status_changed', 'implementing', 'complete', 'legacy event', '2026-06-25T00:00:00Z', '2026-06-25T00:00:00Z'
+FROM specs
+WHERE project_id = ?
+`, migrated.ProjectID); err != nil {
+		closeCLITestDB(t, db)
+		t.Fatalf("seed legacy spec event error = %v", err)
+	}
+	closeCLITestDB(t, db)
+
+	var dryRunStdout bytes.Buffer
+	err = Runner{
+		Stdout:     &dryRunStdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "migrate", "lifecycle-statuses", "--dry-run", "--json"})
+	if err != nil {
+		t.Fatalf("state migrate lifecycle-statuses --dry-run --json error = %v", err)
+	}
+	var dryRun state.LifecycleStatusMigrationResult
+	if err := json.Unmarshal(dryRunStdout.Bytes(), &dryRun); err != nil {
+		t.Fatalf("decode dry-run lifecycle migration error = %v\n%s", err, dryRunStdout.String())
+	}
+	if dryRun.Action != state.LifecycleStatusMigrationActionDryRun || dryRun.Applied || !dryRun.CopyRun || dryRun.EntitiesRewritten != 1 || dryRun.EventsRewritten != 1 {
+		t.Fatalf("dry-run lifecycle migration = %#v, want copy-run with one entity and one event", dryRun)
+	}
+	if got := rawCLISpecStatus(t, migrated.DatabasePath, migrated.ProjectID); got != "implementing" {
+		t.Fatalf("spec status after dry-run = %q, want implementing", got)
+	}
+
+	var applyStdout bytes.Buffer
+	err = Runner{
+		Stdout:     &applyStdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "migrate", "lifecycle-statuses", "--apply", "--json"})
+	if err != nil {
+		t.Fatalf("state migrate lifecycle-statuses --apply --json error = %v", err)
+	}
+	var applied state.LifecycleStatusMigrationResult
+	if err := json.Unmarshal(applyStdout.Bytes(), &applied); err != nil {
+		t.Fatalf("decode apply lifecycle migration error = %v\n%s", err, applyStdout.String())
+	}
+	if !applied.Applied || applied.BackupPath == "" || applied.RollbackManifestPath == "" || applied.LegacyStatusesRemaining != 0 {
+		t.Fatalf("apply lifecycle migration = %#v, want applied backup, manifest, no remaining legacy statuses", applied)
+	}
+	if got := rawCLISpecStatus(t, migrated.DatabasePath, migrated.ProjectID); got != state.LifecycleStatusInProgress {
+		t.Fatalf("spec status after apply = %q, want in_progress", got)
+	}
+	if got := rawCLIEventToStatus(t, migrated.DatabasePath, "event-spec-complete"); got != state.LifecycleStatusDone {
+		t.Fatalf("event to_status after apply = %q, want done", got)
+	}
+
+	var rollbackStdout bytes.Buffer
+	err = Runner{
+		Stdout:     &rollbackStdout,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"migrate", "lifecycle-statuses", "--rollback", applied.RollbackManifestPath, "--json"})
+	if err != nil {
+		t.Fatalf("migrate lifecycle-statuses --rollback --json error = %v", err)
+	}
+	var rolledBack state.LifecycleStatusMigrationResult
+	if err := json.Unmarshal(rollbackStdout.Bytes(), &rolledBack); err != nil {
+		t.Fatalf("decode rollback lifecycle migration error = %v\n%s", err, rollbackStdout.String())
+	}
+	if rolledBack.Action != state.LifecycleStatusMigrationActionRollback || !rolledBack.Applied || rolledBack.RollbackEntitiesRestored != 1 || rolledBack.RollbackEventsRestored != 1 {
+		t.Fatalf("rollback lifecycle migration = %#v, want one restored entity and event", rolledBack)
+	}
+	if got := rawCLISpecStatus(t, migrated.DatabasePath, migrated.ProjectID); got != "implementing" {
+		t.Fatalf("spec status after rollback = %q, want implementing", got)
+	}
+	if got := rawCLIEventToStatus(t, migrated.DatabasePath, "event-spec-complete"); got != "complete" {
+		t.Fatalf("event to_status after rollback = %q, want complete", got)
+	}
+	if got := rawCLINormalizationEventCount(t, migrated.DatabasePath, migrated.ProjectID); got != 0 {
+		t.Fatalf("normalization event count after rollback = %d, want 0", got)
+	}
+}
+
 func TestRunnerStateMigrateMarkdownResumeJSON(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
@@ -15426,6 +15532,35 @@ func sqliteCount(t *testing.T, db *sql.DB, query string, args ...any) int {
 		t.Fatalf("sqlite count query %q error = %v", query, err)
 	}
 	return count
+}
+
+func rawCLISpecStatus(t *testing.T, databasePath string, projectID string) string {
+	t.Helper()
+	db := openCLITestDB(t, databasePath)
+	defer closeCLITestDB(t, db)
+	var status string
+	if err := db.QueryRow(`SELECT status FROM specs WHERE project_id = ?`, projectID).Scan(&status); err != nil {
+		t.Fatalf("read raw spec status error = %v", err)
+	}
+	return status
+}
+
+func rawCLIEventToStatus(t *testing.T, databasePath string, eventID string) string {
+	t.Helper()
+	db := openCLITestDB(t, databasePath)
+	defer closeCLITestDB(t, db)
+	var status string
+	if err := db.QueryRow(`SELECT to_status FROM events WHERE id = ?`, eventID).Scan(&status); err != nil {
+		t.Fatalf("read raw event to_status error = %v", err)
+	}
+	return status
+}
+
+func rawCLINormalizationEventCount(t *testing.T, databasePath string, projectID string) int {
+	t.Helper()
+	db := openCLITestDB(t, databasePath)
+	defer closeCLITestDB(t, db)
+	return sqliteCount(t, db, `SELECT COUNT(*) FROM events WHERE project_id = ? AND event_type = ?`, projectID, "status_normalized")
 }
 
 func sqliteEntityStatus(t *testing.T, db *sql.DB, table string, kind string, alias string) string {
