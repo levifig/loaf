@@ -285,41 +285,41 @@ tokens where harness-specific terms appear.
 
 ## Test Conditions
 
-- [ ] `wrap` is cited as the canonical session model in `.claude/CLAUDE.md` and
+- [x] `wrap` is cited as the canonical session model in `.claude/CLAUDE.md` and
   `.agents/AGENTS.md`; no other document presents a competing "create a session
   file" model as primary.
-- [ ] `content/templates/session.md` no longer instructs creating
+- [x] `content/templates/session.md` no longer instructs creating
   `.agents/sessions/*.md` as a source surface; it documents the journal entry
   format and entry types as a render template / reference.
-- [ ] No skill or agent profile references `loaf session housekeeping`; all
+- [x] No skill or agent profile references `loaf session housekeeping`; all
   housekeeping guidance uses `loaf housekeeping`.
-- [ ] `content/skills/housekeeping/SKILL.md` writes a `skill(housekeeping)`
+- [x] `content/skills/housekeeping/SKILL.md` writes a `skill(housekeeping)`
   self-log marker on invocation, and `wrap`'s "no housekeeping this session"
   nudge stops mis-firing when housekeeping has run.
-- [ ] Zero matches for `Transcript Archival` or `.agents/transcripts/` across
+- [x] Zero matches for `Transcript Archival` or `.agents/transcripts/` across
   `content/` and all built outputs (`dist/*`, `plugins/loaf/`).
-- [ ] `content/skills/implement/SKILL.md` no longer contains "MANDATORY: Create
+- [x] `content/skills/implement/SKILL.md` no longer contains "MANDATORY: Create
   session file BEFORE any other work" or "DO NOT PROCEED WITHOUT A SESSION FILE";
   it teaches `loaf session start`.
-- [ ] `content/agents/implementer.md` no longer demands a hand-authored "session
+- [x] `content/agents/implementer.md` no longer demands a hand-authored "session
   file" and aligns with the `loaf session start` model — changed in the same
   commit set as `implement`.
-- [ ] `orchestration` SKILL + `sessions.md`/`context-management.md`/
+- [x] `orchestration` SKILL + `sessions.md`/`context-management.md`/
   `background-agents.md` present the SQLite/`wrap` model and contain no
   `transcripts:` frontmatter rows/layout.
-- [ ] `brainstorm` captures sparks via `loaf spark capture` (SQLite-first); the
+- [x] `brainstorm` captures sparks via `loaf spark capture` (SQLite-first); the
   draft `.md` is described as export/projection, not canonical source.
-- [ ] Read-side skills (`reflect`, `research`, `background-runner`) reference the
+- [x] Read-side skills (`reflect`, `research`, `background-runner`) reference the
   SQLite session model, not markdown session files as the routing surface.
-- [ ] User-invocable workflow skills touched in this convergence include a
+- [x] User-invocable workflow skills touched in this convergence include a
   first-action `loaf session log "skill(<name>): …"`; the `shape`, `housekeeping`,
   and `implement` AGENTS.md exemplars match the documented rule.
-- [ ] The session vocabulary used in the rewritten content matches the runtime
+- [x] The session vocabulary used in the rewritten content matches the runtime
   enum (`internal/state/session_*.go`) / SPEC-049's canonical enum — no fourth
   vocabulary introduced.
-- [ ] `loaf build` succeeds; `npm run typecheck` and `npm run test` pass; built
+- [x] `loaf build` succeeds; `npm run typecheck` and `npm run test` pass; built
   outputs committed with source.
-- [ ] The whole convergence lands as one atomic change set — no intermediate
+- [x] The whole convergence lands as one atomic change set — no intermediate
   commit leaves some session skills SQLite-first and others markdown-first.
 
 ## Priority Order
