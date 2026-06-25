@@ -291,7 +291,7 @@ Review timestamp: 2026-06-24 13:01.
 - [x] Amp plugin path: project build emits `dist/amp/.amp/plugins/loaf.ts`;
       system install path remains outside this spec.
 - [x] Amp plugin module format: `.ts` default function receiving `PluginAPI`.
-- [ ] Exact TypeScript validator command/fixture layout: implementation must
+- [x] Exact TypeScript validator command/fixture layout: implementation must
       choose the smallest deterministic `tsc --noEmit` setup and request approval
       before adding any dev dependency.
 - [x] Missing tool behavior: CI hard-fails; local TypeScript validation may warn
