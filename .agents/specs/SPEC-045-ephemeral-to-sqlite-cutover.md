@@ -3,7 +3,7 @@ id: SPEC-045
 title: Ephemeral-to-SQLite Cutover
 source: "/Users/levifig/Code/levifig/projects/loaf/.agents/drafts/20260621-020342-loaf-restructuring-roadmap.md (WS-B)"
 created: 2026-06-22T09:13:21Z
-status: drafting
+status: implementing
 branch: feat/ephemeral-to-sqlite-cutover
 source_sessions:
   - id: 20260621-001541-session
@@ -234,18 +234,43 @@ so the cutover cannot silently regress.
 | SPEC-029 enrichment writes to a deleted file | Med | Med | Retarget enrichment to `journal_entries` rows in this spec's scope |
 
 ## Open Questions
-- [ ] Backup format: a single tarball + JSON SHA-256 manifest, or per-file copies
+- [x] Backup format: a single tarball + JSON SHA-256 manifest, or per-file copies
       under a backup-id directory? (Recommend tarball + manifest, addressable by
-      backup-id, co-located with `loaf state backup` output.)
-- [ ] Cross-branch reconciliation: exact merge/rebase procedure and whether
-      `loaf` provides a helper or only documents the manual steps.
-- [ ] Whether `archive/` subdirectories of ephemeral dirs are imported+removed in
-      this cutover or handled as a separate lower-priority pass.
-- [ ] Tombstone format for absorbed provenance refs (frontmatter note vs inline
+      backup-id, co-located with `loaf state backup` output.) **Decision:** use a
+      backup-id directory under the state backup root with raw per-file bytes plus
+      `manifest.json`; this is easier to restore path-by-path than a tarball and
+      still supports manifest verification.
+- [x] Cross-branch reconciliation: exact merge/rebase procedure and whether
+      `loaf` provides a helper or only documents the manual steps. **Decision:**
+      document the manual merge/rebase procedure and enforce with `loaf check`;
+      do not build a branch graph helper in SPEC-045.
+- [x] Whether `archive/` subdirectories of ephemeral dirs are imported+removed in
+      this cutover or handled as a separate lower-priority pass. **Decision:**
+      include archives; the cutover set is `git ls-files` under the ephemeral
+      roots, including archive subdirectories.
+- [x] Tombstone format for absorbed provenance refs (frontmatter note vs inline
       comment) — must remain SPEC-038-clean for any externally-exported spec.
-- [ ] Does restore need to recreate the SQLite rows too, or only the files (with
+      **Decision:** prefer stable SQLite aliases in frontmatter where available;
+      otherwise add a compact frontmatter `absorbed_sources` list with path,
+      backup id, and cutover note. Do not use inline comments.
+- [x] Does restore need to recreate the SQLite rows too, or only the files (with
       re-import as a follow-up)? (Recommend: restore files only; re-import is the
-      forward path.)
+      forward path.) **Decision:** restore files only; `loaf migrate markdown`
+      remains the forward re-import path.
+
+## Task Breakdown
+
+The implementation uses local SQLite task rows (no compatibility task markdown is
+generated in this branch). Dependencies are linear because every destructive
+step consumes the prior non-destructive proof.
+
+| Task | Priority | Depends On | Scope | File Hints | Verification |
+|------|----------|------------|-------|------------|--------------|
+| TASK-401 Add ephemeral backup and restore primitives | P1 | - | Enumerate the tracked ephemeral set, write raw bytes plus SHA-256 manifest under the state backup root, add `loaf state restore-ephemerals <backup-id>` to restore stored bytes to original paths. | `internal/state/markdown_rollback.go`, `internal/state/backup.go`, `internal/cli/cli.go`, `internal/cli/cli_test.go` | Backup manifest self-verifies; restore writes byte-identical files in fixtures; `go test ./internal/state ./internal/cli -run 'Ephemeral|Restore|MarkdownRollback' -count=1` |
+| TASK-402 Add ephemeral byte-verify barrier | P1 | TASK-401 | Compare every tracked ephemeral file against the SQLite body store or the backup bytes and abort the cutover if any file fails; leave git status unchanged on failure. | `internal/state/artifact_body.go`, `internal/state/markdown_import.go`, `internal/state/markdown_rollback.go`, `internal/cli/cli_test.go` | Injected mismatch aborts; no file deletion occurs; successful verify reports the full recounted set |
+| TASK-403 Prepare provenance rewrites and companion ADR | P1 | TASK-402 | Rewrite or tombstone surviving `source:` / `source_sessions:` references, amend SPEC-040 notes, and add the ADR recording `.agents/` surface reduction plus ADR-013 correction. | `.agents/specs/`, `docs/decisions/`, `internal/cli/check.go`, `internal/cli/check_test.go` | No dangling `.agents/{ideas,sparks,sessions,brainstorms,drafts,tasks}/` refs remain in surviving specs; ADR is listed in `docs/decisions/README.md` |
+| TASK-404 Cut over tracked ephemerals to SQLite-only | P0 | TASK-403 | Gate destructive `git rm` behind SPEC-053, verified backup, full byte barrier, and explicit confirmation; remove tracked ephemeral `.md` files plus `.agents/TASKS.json`. | `internal/cli/cli.go`, `internal/state/markdown_rollback.go`, `.agents/{ideas,sparks,sessions,brainstorms,drafts,tasks}/`, `.agents/TASKS.json` | Successful cutover leaves `git ls-files` empty for ephemeral roots and removes `.agents/TASKS.json`; restore from TASK-401 makes `git diff` clean against the pre-cutover tree |
+| TASK-405 Retarget enrichment and block ephemeral markdown regression | P1 | TASK-404 | Retire SPEC-029 session-file enrichment writes, write `journal_entries` rows instead, document cross-branch reconciliation, and make `loaf check` fail if tracked ephemeral markdown reappears. | `content/skills/orchestration/`, `internal/state/journal.go`, `internal/cli/check.go`, `docs/knowledge/`, `content/skills/cli-reference/SKILL.md` | Fixture enrichment writes a journal row and no session `.md`; `loaf check` fails on reintroduced tracked ephemeral markdown; generated docs mention the reconciliation path |
 
 ## Test Conditions
 - [ ] Backup of the full ephemeral set produces raw original bytes + a SHA-256
