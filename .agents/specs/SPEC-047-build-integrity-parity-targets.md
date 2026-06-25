@@ -303,33 +303,33 @@ Review timestamp: 2026-06-24 13:01.
 
 ## Test Conditions
 
-- [ ] No fake `node` shim remains in `build_test.go`; the TypeScript-in-`.js`
+- [x] No fake `node` shim remains in `build_test.go`; the TypeScript-in-`.js`
       assertion at `build_test.go:283` is gone.
-- [ ] A build with an intentionally malformed emitted `.js` fails `node --check`;
+- [x] A build with an intentionally malformed emitted `.js` fails `node --check`;
       a malformed emitted `.ts` fails the `tsc --noEmit` step.
-- [ ] The Amp plugin is emitted as valid TypeScript at
+- [x] The Amp plugin is emitted as valid TypeScript at
       `dist/amp/.amp/plugins/loaf.ts`,
       passes `tsc --noEmit`, and contains no `@i-know-the-amp-plugin-api-is-wip`
       header.
-- [ ] The Amp `tool.call`/`tool.result` handlers read tool name/arguments from
+- [x] The Amp `tool.call`/`tool.result` handlers read tool name/arguments from
       the event parameter (no reference to an undefined `call`); a test exercises
       a hook firing through the handler.
-- [ ] `dist/gemini/` is not produced; no Gemini entry remains in
+- [x] `dist/gemini/` is not produced; no Gemini entry remains in
       `config/targets.yaml`, build wiring, `install_fenced.go`, `install_mcp.go`,
       or any test fixture; `loaf build` succeeds.
-- [ ] A Codex hook with no explicit `failClosed` emits `failClosed: false`; a
+- [x] A Codex hook with no explicit `failClosed` emits `failClosed: false`; a
       Codex hook with `if`/`blocking` carries those fields into `hooks.json`.
-- [ ] Every `user-invocable` skill produces an OpenCode command file; a skill with
+- [x] Every `user-invocable` skill produces an OpenCode command file; a skill with
       `user-invocable: false` produces none.
-- [ ] The content lint fails the build when a Claude-ism or an unresolved
+- [x] The content lint fails the build when a Claude-ism or an unresolved
       `{{…}}` token appears in any non-Claude first-class target output.
-- [ ] `git-workflow/SKILL.md` documents unscoped `type: description`; the
+- [x] `git-workflow/SKILL.md` documents unscoped `type: description`; the
       distributed copies are rebuilt to match; a sample commit message passing the
       doc passes `check.go` enforcement.
-- [ ] The parity-matrix test enumerates exactly the five first-class harnesses and
+- [x] The parity-matrix test enumerates exactly the five first-class harnesses and
       fails if any `user-invocable` skill is unreachable, any advisory hook
       becomes enforcing (or vice versa) on any surface, or any Claude-ism leaks.
-- [ ] `loaf build`, `npm run typecheck`, and `npm run test` all pass; committed
+- [x] `loaf build`, `npm run typecheck`, and `npm run test` all pass; committed
       `dist/`/`plugins/` artifacts match regenerated output (`git diff
       --exit-code -- dist plugins`).
 
