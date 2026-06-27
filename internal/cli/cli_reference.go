@@ -326,6 +326,15 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Name:        "spec",
 			Description: "Manage project specs",
 			Subcommands: []cliReferenceSubcommand{
+				{Name: "new", Description: "Create a spec in SQLite state", Options: []cliReferenceOption{
+					{Flags: "--title <title>", Description: "Spec title (defaults to a title derived from the slug)"},
+					{Flags: "--id <SPEC-NNN>", Description: "Explicit spec id; auto-allocated when omitted"},
+					{Flags: "--source <source>", Description: "Provenance label recorded on the creation event (default: ad-hoc)"},
+					{Flags: "--body-file <path>", Description: "Read the spec body from a file"},
+					{Flags: "--body -", Description: "Read the spec body from stdin"},
+					{Flags: "--message <text>", Description: "Use the given text as the spec body"},
+					{Flags: "--json", Description: "Output the created spec, global database scope, and project identity as JSON"},
+				}},
 				{Name: "list", Description: "Show specs with status and task counts", Options: []cliReferenceOption{{Flags: "--json", Description: "Output specs, diagnostics, task counts, global database scope, and project identity as JSON"}}},
 				{Name: "show", Description: "Show spec details", Options: []cliReferenceOption{{Flags: "--json", Description: "Output spec details, task counts, relationships, global database scope, and project identity as JSON"}}},
 				{Name: "render", Description: "Render deterministic spec Markdown to the XDG cache", Options: []cliReferenceOption{{Flags: "--json", Description: "Output render path, content hash, contract, global database scope, and project identity as JSON"}}},

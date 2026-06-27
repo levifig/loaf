@@ -6,7 +6,9 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
-- _No unreleased changes yet._
+### Added
+
+- Added `loaf spec new` — the sanctioned SQLite-native spec-create path (mirrors `loaf report create`): `<slug> --title [--id SPEC-NNN] [--source] [--body-file|--body -|--message]`, id auto-allocation across SQLite rows and on-disk specs, and `has_body` in `loaf spec show`. New specs are authored in SQLite and rendered to git via `loaf spec finalize`, so authoring never trips the `artifact-body-write` gate (SPEC-055 Track 1).
 
 ## [2.0.0-pre.20260625192947] - 2026-06-25
 

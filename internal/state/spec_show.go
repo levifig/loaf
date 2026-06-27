@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/levifig/loaf/internal/project"
 )
@@ -31,6 +32,7 @@ type SpecDetail struct {
 	Tasks         SpecTaskCounts      `json:"tasks"`
 	Sources       []TraceSource       `json:"sources"`
 	Body          string              `json:"body,omitempty"`
+	HasBody       bool                `json:"has_body"`
 	Relationships []TraceRelationship `json:"relationships"`
 	CreatedAt     string              `json:"created_at"`
 	UpdatedAt     string              `json:"updated_at"`
@@ -144,6 +146,7 @@ WHERE specs.project_id = ? AND specs.id = ?
 		Tasks:         tasks,
 		Sources:       sources,
 		Body:          body,
+		HasBody:       strings.TrimSpace(body) != "",
 		Relationships: relationships,
 		CreatedAt:     createdAt,
 		UpdatedAt:     updatedAt,

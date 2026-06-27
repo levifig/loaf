@@ -589,6 +589,7 @@ status and relationship data when initialized.
 
 | Subcommand | Purpose |
 |------------|---------|
+| `loaf spec new` | Create a spec in SQLite state |
 | `loaf spec list` | Show specs with status and task counts |
 | `loaf spec show` | Show spec details |
 | `loaf spec render` | Render deterministic spec Markdown to the XDG cache |
@@ -596,6 +597,15 @@ status and relationship data when initialized.
 | `loaf spec archive` | Archive a completed spec |
 
 **Options:**
+
+- `loaf spec new`:
+  - `--title <title>` - Spec title (defaults to a title derived from the slug)
+  - `--id <SPEC-NNN>` - Explicit spec id; auto-allocated when omitted
+  - `--source <source>` - Provenance label recorded on the creation event (default: ad-hoc)
+  - `--body-file <path>` - Read the spec body from a file
+  - `--body -` - Read the spec body from stdin
+  - `--message <text>` - Use the given text as the spec body
+  - `--json` - Output the created spec, global database scope, and project identity as JSON
 
 - `loaf spec list`:
   - `--json` - Output specs, diagnostics, task counts, global database scope, and project identity as JSON
@@ -614,9 +624,9 @@ status and relationship data when initialized.
 
 **Usage:**
 ```bash
+loaf spec new
 loaf spec list
 loaf spec show
-loaf spec render
 ```
 
 ---

@@ -6994,6 +6994,7 @@ func (r Runner) runSpec(args []string, out io.Writer, runtime state.Runtime) err
 		return nil
 	}
 	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"new":      writeSpecNewHelp,
 		"list":     writeSpecListHelp,
 		"show":     writeSpecShowHelp,
 		"render":   writeSpecRenderHelp,
@@ -7003,6 +7004,8 @@ func (r Runner) runSpec(args []string, out io.Writer, runtime state.Runtime) err
 		return nil
 	}
 	switch args[0] {
+	case "new":
+		return r.runSpecNew(args[1:], out, runtime)
 	case "list":
 		return r.runSpecList(args[1:], out, runtime)
 	case "show":
@@ -7024,6 +7027,7 @@ func writeSpecHelp(out io.Writer) {
 	fmt.Fprintln(out, "Manage project specs in native SQLite state or markdown compatibility mode.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Subcommands:")
+	fmt.Fprintln(out, "  new      Create a spec in SQLite state")
 	fmt.Fprintln(out, "  list     List specs")
 	fmt.Fprintln(out, "  show     Show one spec")
 	fmt.Fprintln(out, "  render   Render a spec to the XDG cache")
@@ -7032,6 +7036,17 @@ func writeSpecHelp(out io.Writer) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  -h, --help  Show help")
+}
+
+func writeSpecNewHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf spec new <slug> --title <title> [options]", "Create a spec in SQLite state.",
+		"--title      Spec title (defaults to a title derived from the slug)",
+		"--id         Explicit spec id (SPEC-NNN); auto-allocated when omitted",
+		"--source     Provenance label recorded on the creation event (default: ad-hoc)",
+		"--body-file  Read the spec body from a file",
+		"--body -     Read the spec body from stdin",
+		"--message    Use the given text as the spec body",
+		"--json       Output the created spec, global database scope, and project identity as JSON")
 }
 
 func writeSpecListHelp(out io.Writer) {
@@ -7091,6 +7106,45 @@ func (r Runner) runSpecList(args []string, out io.Writer, runtime state.Runtime)
 		return writeJSON(out, specs)
 	}
 	writeSpecList(out, specs)
+	return nil
+}
+
+func (r Runner) runSpecNew(args []string, out io.Writer, runtime state.Runtime) error {
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return err
+	}
+	status, err := state.Inspect(projectRoot, state.PathResolver{StateHome: r.StateHome})
+	if err != nil {
+		return err
+	}
+	switch status.Mode {
+	case state.ModeMarkdownOnly:
+		return sqliteStateRequiredError("spec new")
+	case state.ModeInvalid:
+		return fmt.Errorf("state database is invalid; run `loaf state doctor`")
+	}
+
+	options, err := parseSpecNewArgs(args)
+	if err != nil {
+		return err
+	}
+	body, ok, err := r.resolveBodyInput("spec new", options.body, false)
+	if err != nil {
+		return err
+	}
+	if ok {
+		options.create.Body = body
+		options.create.SetBody = true
+	}
+	result, err := state.CreateSpec(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.create)
+	if err != nil {
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeSpecCreate(out, result)
 	return nil
 }
 
@@ -7345,6 +7399,7 @@ func markdownSpecShow(rootPath string, ref string) (state.SpecShow, error) {
 				Tasks:         taskCounts[alias],
 				Sources:       []state.TraceSource{{Path: item.SourcePath, Hash: hex.EncodeToString(hash[:])}},
 				Body:          strings.TrimSpace(markdownContentWithoutFrontmatter(string(body))),
+				HasBody:       strings.TrimSpace(markdownContentWithoutFrontmatter(string(body))) != "",
 				Relationships: markdownSpecRelationships(alias, taskIndex),
 				CreatedAt:     firstNonEmpty(meta.Created, field("created", "created_at")),
 				UpdatedAt:     firstNonEmpty(meta.Updated, field("updated", "updated_at"), meta.Created, field("created", "created_at")),
@@ -11058,6 +11113,16 @@ func (r Runner) reportStateMode(runtime state.Runtime) (project.Root, string, er
 	return projectRoot, status.Mode, nil
 }
 
+func writeSpecCreate(out io.Writer, result state.SpecCreateResult) {
+	fmt.Fprintf(out, "created spec %s: %s\n", firstNonEmpty(result.Spec.Alias, result.Spec.ID), result.Spec.Title)
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	fmt.Fprintf(out, "status: %s\n", result.Spec.Status)
+	fmt.Fprintf(out, "source: %s\n", result.Source)
+	if result.EventID != "" {
+		fmt.Fprintf(out, "event: %s\n", result.EventID)
+	}
+}
+
 func writeReportCreate(out io.Writer, result state.ReportCreateResult) {
 	fmt.Fprintf(out, "created report %s: %s\n", firstNonEmpty(result.Report.Alias, result.Report.ID), result.Report.Title)
 	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
@@ -12643,6 +12708,12 @@ type reportCreateOptions struct {
 	body       bodyInputOptions
 }
 
+type specNewOptions struct {
+	jsonOutput bool
+	create     state.SpecCreateOptions
+	body       bodyInputOptions
+}
+
 type reportGenerateOptions struct {
 	kind       string
 	ref        string
@@ -13876,6 +13947,51 @@ func parseReportListArgs(args []string) (reportListOptions, error) {
 			return reportListOptions{}, fmt.Errorf("unknown option %q", args[i])
 		}
 	}
+	return options, nil
+}
+
+func parseSpecNewArgs(args []string) (specNewOptions, error) {
+	options := specNewOptions{create: state.SpecCreateOptions{Source: "ad-hoc"}}
+	var positional []string
+	for i := 0; i < len(args); i++ {
+		if ok, err := parseBodyInputFlag(args, &i, &options.body); ok || err != nil {
+			if err != nil {
+				return specNewOptions{}, err
+			}
+			continue
+		}
+		switch args[i] {
+		case "--json":
+			options.jsonOutput = true
+		case "--title":
+			value, err := consumeFlagValue(args, &i, "--title")
+			if err != nil {
+				return specNewOptions{}, err
+			}
+			options.create.Title = value
+		case "--id":
+			value, err := consumeFlagValue(args, &i, "--id")
+			if err != nil {
+				return specNewOptions{}, err
+			}
+			options.create.ID = value
+		case "--source":
+			value, err := consumeFlagValue(args, &i, "--source")
+			if err != nil {
+				return specNewOptions{}, err
+			}
+			options.create.Source = value
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return specNewOptions{}, fmt.Errorf("unknown option %q", args[i])
+			}
+			positional = append(positional, args[i])
+		}
+	}
+	if len(positional) != 1 {
+		return specNewOptions{}, fmt.Errorf("spec new requires exactly one slug")
+	}
+	options.create.Slug = positional[0]
 	return options, nil
 }
 
