@@ -6,7 +6,11 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
-- _No unreleased changes yet._
+### Added
+
+- Added `loaf spec status <ref> <new-status>` — set/transition a spec's lifecycle status (validates the canonical vocabulary, writes a `status_changed` event), closing the gap where specs could not move `draft→implementing→complete` via CLI.
+- Added guarded `loaf spec delete <ref> [--yes]` and `loaf project delete <project-id> [--yes]` — cascade-deleting removal for global-DB entities (refuse without `--yes`, print what was removed, leave finalized git renders in place).
+- Added a `LOAF_DB` env override for the global SQLite database path so dev/smoke runs can isolate from production state (documented in `.agents/AGENTS.md`).
 
 ## [2.0.0-pre.20260625192947] - 2026-06-25
 
