@@ -1,7 +1,7 @@
 ---
 id: SPEC-055
 state_id: "spec:351cba440e08a4678fb027ec"
-status: draft
+status: in_progress
 title: Sanctioned Artifact Body-Edit Path
 ---
 
