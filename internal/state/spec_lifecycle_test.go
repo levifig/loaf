@@ -108,6 +108,120 @@ func TestCreateSpecExplicitIDAndDuplicateRejection(t *testing.T) {
 	}
 }
 
+func TestCreateSpecStoresBranchSourceAndRelated(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	// Pre-existing specs to relate to.
+	if _, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{Slug: "alpha", ID: "SPEC-001"}); err != nil {
+		t.Fatalf("CreateSpec(alpha) error = %v", err)
+	}
+	if _, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{Slug: "beta", ID: "SPEC-002"}); err != nil {
+		t.Fatalf("CreateSpec(beta) error = %v", err)
+	}
+
+	created, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:    "gamma",
+		ID:      "SPEC-003",
+		Source:  "SPARK-42",
+		Branch:  "feat/gamma",
+		Related: []string{"SPEC-001", "SPEC-002"},
+	})
+	if err != nil {
+		t.Fatalf("CreateSpec(gamma) error = %v", err)
+	}
+	if created.Spec.Alias != "SPEC-003" {
+		t.Fatalf("created alias = %q, want SPEC-003", created.Spec.Alias)
+	}
+
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-003")
+	if err != nil {
+		t.Fatalf("ShowSpec(SPEC-003) error = %v", err)
+	}
+	if show.Spec.Branch != "feat/gamma" {
+		t.Fatalf("Branch = %q, want feat/gamma", show.Spec.Branch)
+	}
+	if show.Spec.Source != "SPARK-42" {
+		t.Fatalf("Source = %q, want SPARK-42", show.Spec.Source)
+	}
+	if !hasRelatedSpec(show.Spec.Related, "SPEC-001") || !hasRelatedSpec(show.Spec.Related, "SPEC-002") {
+		t.Fatalf("Related = %#v, want SPEC-001 and SPEC-002 resolved", show.Spec.Related)
+	}
+	// The related_to relationships must be created and resolvable from the trace graph.
+	if !hasStateTraceRelationship(show.Spec.Relationships, "outbound", "related_to", "spec", "SPEC-001") {
+		t.Fatalf("Relationships = %#v, want outbound related_to SPEC-001", show.Spec.Relationships)
+	}
+	if !hasStateTraceRelationship(show.Spec.Relationships, "outbound", "related_to", "spec", "SPEC-002") {
+		t.Fatalf("Relationships = %#v, want outbound related_to SPEC-002", show.Spec.Relationships)
+	}
+
+	// The relationship is symmetric and resolvable from the related spec.
+	related, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-001")
+	if err != nil {
+		t.Fatalf("ShowSpec(SPEC-001) error = %v", err)
+	}
+	if !hasStateTraceRelationship(related.Spec.Relationships, "inbound", "related_to", "spec", "SPEC-003") {
+		t.Fatalf("SPEC-001 Relationships = %#v, want inbound related_to SPEC-003", related.Spec.Relationships)
+	}
+	if !hasRelatedSpec(related.Spec.Related, "SPEC-003") {
+		t.Fatalf("SPEC-001 Related = %#v, want SPEC-003 (symmetric)", related.Spec.Related)
+	}
+}
+
+func TestCreateSpecWithoutBranchSourceRelatedUsesDefaults(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	if _, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{Slug: "plain"}); err != nil {
+		t.Fatalf("CreateSpec(plain) error = %v", err)
+	}
+
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-001")
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Branch != "" {
+		t.Fatalf("Branch = %q, want empty", show.Spec.Branch)
+	}
+	if show.Spec.Source != "ad-hoc" {
+		t.Fatalf("Source = %q, want ad-hoc default", show.Spec.Source)
+	}
+	if len(show.Spec.Related) != 0 {
+		t.Fatalf("Related = %#v, want empty", show.Spec.Related)
+	}
+}
+
+func TestCreateSpecRejectsNonSpecRelated(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	_, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:    "needs-missing",
+		Related: []string{"SPEC-404"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "SPEC-404") {
+		t.Fatalf("CreateSpec(missing related) error = %v, want unresolved related spec", err)
+	}
+}
+
+func hasRelatedSpec(related []TraceEntity, alias string) bool {
+	for _, entity := range related {
+		if entity.Alias == alias {
+			return true
+		}
+	}
+	return false
+}
+
 func TestCreateSpecFinalizeRendersSlugFilename(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

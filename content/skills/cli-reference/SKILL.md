@@ -601,7 +601,9 @@ status and relationship data when initialized.
 - `loaf spec new`:
   - `--title <title>` - Spec title (defaults to a title derived from the slug)
   - `--id <SPEC-NNN>` - Explicit spec id; auto-allocated when omitted
-  - `--source <source>` - Provenance label recorded on the creation event (default: ad-hoc)
+  - `--source <source>` - Provenance label recorded on the spec and creation event (default: ad-hoc)
+  - `--branch <name>` - Implementation branch recorded on the spec for breakdown/implement handoff
+  - `--related <SPEC-A,SPEC-B>` - Comma-separated spec refs to link as related
   - `--body-file <path>` - Read the spec body from a file
   - `--body -` - Read the spec body from stdin
   - `--message <text>` - Use the given text as the spec body
@@ -611,7 +613,7 @@ status and relationship data when initialized.
   - `--json` - Output specs, diagnostics, task counts, global database scope, and project identity as JSON
 
 - `loaf spec show`:
-  - `--json` - Output spec details, task counts, relationships, global database scope, and project identity as JSON
+  - `--json` - Output spec details, branch, source, resolved related specs, task counts, relationships, global database scope, and project identity as JSON
 
 - `loaf spec render`:
   - `--json` - Output render path, content hash, contract, global database scope, and project identity as JSON

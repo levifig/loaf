@@ -26,6 +26,8 @@ type SpecCreateOptions struct {
 	ID      string
 	Title   string
 	Source  string
+	Branch  string
+	Related []string
 	Body    string
 	SetBody bool
 }
@@ -37,10 +39,12 @@ type SpecCreateResult struct {
 	DatabasePath       string      `json:"database_path,omitempty"`
 	ProjectID          string      `json:"project_id,omitempty"`
 	ProjectName        string      `json:"project_name,omitempty"`
-	ProjectCurrentPath string      `json:"project_current_path,omitempty"`
-	Spec               TraceEntity `json:"spec"`
-	Source             string      `json:"source"`
-	EventID            string      `json:"event_id"`
+	ProjectCurrentPath string        `json:"project_current_path,omitempty"`
+	Spec               TraceEntity   `json:"spec"`
+	Source             string        `json:"source"`
+	Branch             string        `json:"branch,omitempty"`
+	Related            []TraceEntity `json:"related,omitempty"`
+	EventID            string        `json:"event_id"`
 }
 
 // CreateSpec creates a draft spec in initialized SQLite state.
@@ -75,6 +79,31 @@ func (s *Store) CreateSpec(ctx context.Context, root project.Root, options SpecC
 	if source == "" {
 		source = "ad-hoc"
 	}
+	branch := strings.TrimSpace(options.Branch)
+
+	// Resolve related specs before opening the write transaction. The store uses a
+	// single SQLite connection, so resolution (which reads via s.db) must complete
+	// before BeginTx holds that connection. Related specs must already exist.
+	related := []TraceEntity{}
+	seenRelated := map[string]bool{}
+	for _, ref := range options.Related {
+		ref = strings.TrimSpace(ref)
+		if ref == "" {
+			continue
+		}
+		resolved, err := s.resolveTraceEntity(ctx, projectID, ref)
+		if err != nil {
+			return SpecCreateResult{}, fmt.Errorf("resolve related spec %q: %w", ref, err)
+		}
+		if resolved.Kind != "spec" {
+			return SpecCreateResult{}, fmt.Errorf("related %q resolves to %s, not spec", ref, resolved.Kind)
+		}
+		if seenRelated[resolved.ID] {
+			continue
+		}
+		seenRelated[resolved.ID] = true
+		related = append(related, resolved)
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -106,13 +135,24 @@ ON CONFLICT(id) DO UPDATE SET
 	}
 
 	if _, err := tx.ExecContext(ctx, `
-INSERT INTO specs (id, project_id, title, status, body_source_id, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-`, specID, projectID, title, LifecycleStatusDraft, sourceID, now, now); err != nil {
+INSERT INTO specs (id, project_id, title, status, branch, source, body_source_id, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`, specID, projectID, title, LifecycleStatusDraft, nullableText(branch), source, sourceID, now, now); err != nil {
 		return SpecCreateResult{}, fmt.Errorf("insert spec %s: %w", alias, err)
 	}
 	if err := insertAlias(ctx, tx, projectID, "spec", specID, "spec", alias, now); err != nil {
 		return SpecCreateResult{}, err
+	}
+
+	for _, target := range related {
+		relationshipID := stableMigrationID("relationship", projectID, "spec", specID, "related_to", "spec", target.ID)
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, 'spec', ?, 'spec', ?, 'related_to', 'recorded by spec new', 'command', ?, ?)
+ON CONFLICT(id) DO NOTHING
+`, relationshipID, projectID, specID, target.ID, now, now); err != nil {
+			return SpecCreateResult{}, fmt.Errorf("record related spec relationship %s: %w", firstNonEmpty(target.Alias, target.ID), err)
+		}
 	}
 
 	eventID := stableMigrationID("event", projectID, "spec", specID, "created", LifecycleStatusDraft)
@@ -141,6 +181,8 @@ VALUES (?, ?, 'spec', ?, 'status_changed', NULL, ?, ?, ?, ?)
 		ProjectCurrentPath: identity.CurrentPath,
 		Spec:               TraceEntity{Kind: "spec", ID: specID, Alias: alias, Title: title, Status: LifecycleStatusDraft},
 		Source:             source,
+		Branch:             branch,
+		Related:            related,
 		EventID:            eventID,
 	}, nil
 }
@@ -244,4 +286,13 @@ func specTitleFromSlug(slug string) string {
 
 func specCreateEventNote(source string) string {
 	return fmt.Sprintf("recorded by spec new; source=%s", source)
+}
+
+// nullableText returns nil for empty input so optional TEXT columns store SQL NULL
+// rather than an empty string, keeping new rows consistent with pre-migration rows.
+func nullableText(value string) any {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return value
 }

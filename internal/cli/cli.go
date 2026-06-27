@@ -7042,7 +7042,9 @@ func writeSpecNewHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf spec new <slug> --title <title> [options]", "Create a spec in SQLite state.",
 		"--title      Spec title (defaults to a title derived from the slug)",
 		"--id         Explicit spec id (SPEC-NNN); auto-allocated when omitted",
-		"--source     Provenance label recorded on the creation event (default: ad-hoc)",
+		"--source     Provenance label recorded on the spec and creation event (default: ad-hoc)",
+		"--branch     Implementation branch recorded on the spec for breakdown/implement handoff",
+		"--related    Comma-separated spec refs to link as related (SPEC-A,SPEC-B)",
 		"--body-file  Read the spec body from a file",
 		"--body -     Read the spec body from stdin",
 		"--message    Use the given text as the spec body",
@@ -7840,12 +7842,25 @@ func writeSpecShow(out io.Writer, result state.SpecShow) {
 	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "title: %s\n", spec.Title)
 	fmt.Fprintf(out, "status: %s\n", spec.Status)
+	if spec.Branch != "" {
+		fmt.Fprintf(out, "branch: %s\n", spec.Branch)
+	}
+	if spec.Source != "" {
+		fmt.Fprintf(out, "source: %s\n", spec.Source)
+	}
 	fmt.Fprintf(out, "tasks: %d todo / %d in_progress / %d done\n", spec.Tasks.Todo, spec.Tasks.InProgress, spec.Tasks.Done)
 	for _, source := range spec.Sources {
-		fmt.Fprintf(out, "source: %s\n", source.Path)
+		fmt.Fprintf(out, "render: %s\n", source.Path)
 		if source.Hash != "" {
-			fmt.Fprintf(out, "source hash: %s\n", source.Hash)
+			fmt.Fprintf(out, "render hash: %s\n", source.Hash)
 		}
+	}
+	if len(spec.Related) > 0 {
+		labels := make([]string, 0, len(spec.Related))
+		for _, related := range spec.Related {
+			labels = append(labels, firstNonEmpty(related.Alias, related.ID))
+		}
+		fmt.Fprintf(out, "related: %s\n", strings.Join(labels, ", "))
 	}
 	if len(spec.Relationships) == 0 {
 		fmt.Fprintln(out, "relationships: none")
@@ -11118,6 +11133,16 @@ func writeSpecCreate(out io.Writer, result state.SpecCreateResult) {
 	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "status: %s\n", result.Spec.Status)
 	fmt.Fprintf(out, "source: %s\n", result.Source)
+	if result.Branch != "" {
+		fmt.Fprintf(out, "branch: %s\n", result.Branch)
+	}
+	if len(result.Related) > 0 {
+		labels := make([]string, 0, len(result.Related))
+		for _, related := range result.Related {
+			labels = append(labels, firstNonEmpty(related.Alias, related.ID))
+		}
+		fmt.Fprintf(out, "related: %s\n", strings.Join(labels, ", "))
+	}
 	if result.EventID != "" {
 		fmt.Fprintf(out, "event: %s\n", result.EventID)
 	}
@@ -13981,6 +14006,18 @@ func parseSpecNewArgs(args []string) (specNewOptions, error) {
 				return specNewOptions{}, err
 			}
 			options.create.Source = value
+		case "--branch":
+			value, err := consumeFlagValue(args, &i, "--branch")
+			if err != nil {
+				return specNewOptions{}, err
+			}
+			options.create.Branch = value
+		case "--related":
+			value, err := consumeFlagValue(args, &i, "--related")
+			if err != nil {
+				return specNewOptions{}, err
+			}
+			options.create.Related = append(options.create.Related, splitCommaList(value)...)
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return specNewOptions{}, fmt.Errorf("unknown option %q", args[i])

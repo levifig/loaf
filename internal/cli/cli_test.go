@@ -12811,7 +12811,7 @@ Imported spec prose.
 		t.Fatalf("spec show human error = %v", err)
 	}
 	human := humanOut.String()
-	for _, want := range []string{"spec SPEC-001", "scope: global database", "database:", "project:", "project name:", "project path:", "title: Example Spec", "status: in_progress", "tasks: 1 todo / 0 in_progress / 0 done", "source: .agents/specs/SPEC-001-example.md", "inbound implements task TASK-001", "Imported spec prose."} {
+	for _, want := range []string{"spec SPEC-001", "scope: global database", "database:", "project:", "project name:", "project path:", "title: Example Spec", "status: in_progress", "tasks: 1 todo / 0 in_progress / 0 done", "render: .agents/specs/SPEC-001-example.md", "inbound implements task TASK-001", "Imported spec prose."} {
 		if !strings.Contains(human, want) {
 			t.Fatalf("human output = %q, want %q", human, want)
 		}
@@ -12890,7 +12890,7 @@ Markdown spec prose.
 		t.Fatalf("spec show markdown human error = %v", err)
 	}
 	output := humanOut.String()
-	for _, want := range []string{"spec SPEC-001", "title: Example Spec", "status: in_progress", "tasks: 1 todo / 1 in_progress / 1 done", "source: .agents/specs/SPEC-001-example.md", "source hash:", "inbound implements task TASK-001", "# Spec Body", "Markdown spec prose."} {
+	for _, want := range []string{"spec SPEC-001", "title: Example Spec", "status: in_progress", "tasks: 1 todo / 1 in_progress / 1 done", "render: .agents/specs/SPEC-001-example.md", "render hash:", "inbound implements task TASK-001", "# Spec Body", "Markdown spec prose."} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output = %q, want %q", output, want)
 		}
@@ -14447,6 +14447,71 @@ func TestRunnerSpecNewAllocatesExplicitIDAndRejectsDuplicates(t *testing.T) {
 	err := Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}.Run([]string{"spec", "new", "dup", "--id", "SPEC-050", "--message", "body"})
 	if err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("spec new duplicate error = %v, want already exists", err)
+	}
+}
+
+func TestRunnerSpecNewStoresBranchSourceAndRelated(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+
+	for _, id := range []string{"SPEC-001", "SPEC-002"} {
+		if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"spec", "new", "dep-" + id, "--id", id, "--message", "body"}); err != nil {
+			t.Fatalf("spec new %s error = %v", id, err)
+		}
+	}
+
+	var createOut bytes.Buffer
+	if err := (Runner{Stdout: &createOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{
+		"spec", "new", "body-edit-path",
+		"--id", "SPEC-003",
+		"--branch", "feat/body-edit-path",
+		"--source", "SPARK-7",
+		"--related", "SPEC-001,SPEC-002",
+		"--json",
+	}); err != nil {
+		t.Fatalf("spec new --branch --related error = %v", err)
+	}
+	created := decodeSpecCreateResult(t, createOut.Bytes())
+	if created.Branch != "feat/body-edit-path" {
+		t.Fatalf("created.Branch = %q, want feat/body-edit-path", created.Branch)
+	}
+	if created.Source != "SPARK-7" {
+		t.Fatalf("created.Source = %q, want SPARK-7", created.Source)
+	}
+
+	var showOut bytes.Buffer
+	if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"spec", "show", "SPEC-003", "--json"}); err != nil {
+		t.Fatalf("spec show --json error = %v", err)
+	}
+	show := decodeSpecShow(t, showOut.Bytes())
+	if show.Spec.Branch != "feat/body-edit-path" {
+		t.Fatalf("show.Spec.Branch = %q, want feat/body-edit-path", show.Spec.Branch)
+	}
+	if show.Spec.Source != "SPARK-7" {
+		t.Fatalf("show.Spec.Source = %q, want SPARK-7", show.Spec.Source)
+	}
+	relatedAliases := map[string]bool{}
+	for _, related := range show.Spec.Related {
+		relatedAliases[related.Alias] = true
+	}
+	if !relatedAliases["SPEC-001"] || !relatedAliases["SPEC-002"] {
+		t.Fatalf("show.Spec.Related = %#v, want SPEC-001 and SPEC-002", show.Spec.Related)
+	}
+	if !hasTraceRelationship(show.Spec.Relationships, "outbound", "related_to", "spec", "SPEC-001") {
+		t.Fatalf("Relationships = %#v, want outbound related_to SPEC-001", show.Spec.Relationships)
+	}
+
+	var humanOut bytes.Buffer
+	if err := (Runner{Stdout: &humanOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"spec", "show", "SPEC-003"}); err != nil {
+		t.Fatalf("spec show human error = %v", err)
+	}
+	for _, want := range []string{"branch: feat/body-edit-path", "source: SPARK-7", "related: SPEC-001, SPEC-002"} {
+		if !strings.Contains(humanOut.String(), want) {
+			t.Fatalf("human output = %q, want %q", humanOut.String(), want)
+		}
 	}
 }
 
@@ -16141,6 +16206,8 @@ func TestRunnerSpecNewHelpMatchesParser(t *testing.T) {
 	for _, want := range []string{
 		"Usage: loaf spec new <slug> --title <title> [options]",
 		"--id         Explicit spec id (SPEC-NNN); auto-allocated when omitted",
+		"--branch     Implementation branch recorded on the spec for breakdown/implement handoff",
+		"--related    Comma-separated spec refs to link as related (SPEC-A,SPEC-B)",
 		"--body-file  Read the spec body from a file",
 		"--message    Use the given text as the spec body",
 	} {
