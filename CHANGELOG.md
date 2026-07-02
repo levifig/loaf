@@ -6,7 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
-- _No unreleased changes yet._
+### Fixed
+
+- Treat command-authored relationship provenance as valid in `loaf state doctor`, avoiding a misleading `relationship-origin-unknown` repair prompt for rows created by current Loaf commands.
+- Stop `loaf release --dry-run` after reporting that no unreleased changes exist, instead of generating a bogus next-version release plan.
 
 ## [2.0.0-alpha.1] - 2026-06-27
 
