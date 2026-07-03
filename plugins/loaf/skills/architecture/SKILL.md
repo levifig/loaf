@@ -125,7 +125,7 @@ Supersession is healthy. The bar for *writing* an ADR is high; once written, the
 - Follow the shared interview protocol in [templates/grilling.md](templates/grilling.md)
 - Present multiple options with pros/cons and "fits when" context
 - Wait for explicit user decision before proceeding with documentation
-- Log decision to session journal: `loaf session log "decision(architecture): ADR-NNN adopted for X"`
+- Log decision to the project journal: `loaf journal log "decision(architecture): ADR-NNN adopted for X"`
 
 **Never**
 - Make architectural decisions without user input

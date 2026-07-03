@@ -481,7 +481,6 @@ func writeHousekeepingHelp(out io.Writer) {
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  --json       Output housekeeping sections, cleanup candidates, signals, and SQLite-backed project identity when available as JSON")
 	fmt.Fprintln(out, "  --dry-run    Show recommendations without applying actions")
-	fmt.Fprintln(out, "  --sessions   Only review sessions")
 	fmt.Fprintln(out, "  --specs      Only review specs")
 	fmt.Fprintln(out, "  --drafts     Only review shaping drafts")
 	fmt.Fprintln(out, "  --plans      Accept legacy plans filter for compatibility")
@@ -666,7 +665,6 @@ var markdownHousekeepingSectionSpecs = []markdownHousekeepingSectionSpec{
 	{name: "brainstorms", relativeDir: filepath.Join("drafts", "brainstorms"), cleanupStatuses: cleanupStatusSet("resolved", "archived")},
 	{name: "ideas", relativeDir: "ideas", cleanupStatuses: cleanupStatusSet("resolved", "archived")},
 	{name: "reports", relativeDir: "reports", cleanupStatuses: cleanupStatusSet("final", "archived")},
-	{name: "sessions", relativeDir: "sessions", cleanupStatuses: cleanupStatusSet("done", "stopped", "archived")},
 	{name: "shaping_drafts", relativeDir: "drafts", cleanupStatuses: cleanupStatusSet("absorbed", "archived")},
 	{name: "sparks", relativeDir: "sparks", cleanupStatuses: cleanupStatusSet("resolved", "archived")},
 	{name: "specs", relativeDir: "specs", cleanupStatuses: cleanupStatusSet("complete", "archived")},
@@ -10504,8 +10502,6 @@ func parseHousekeepingArgs(args []string) (housekeepingOptions, error) {
 			options.jsonOutput = true
 		case "--dry-run":
 			options.dryRun = true
-		case "--sessions":
-			options.addHousekeepingSection("sessions")
 		case "--specs":
 			options.addHousekeepingSection("specs")
 		case "--drafts":

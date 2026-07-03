@@ -291,16 +291,6 @@ status: done
 ---
 # Done Task
 `)
-	writeCLIAgentsFile(t, workingDir, "sessions/20260528-active.md", `---
-status: active
----
-# Active Session
-`)
-	writeCLIAgentsFile(t, workingDir, "sessions/archive/20260527-stopped.md", `---
-status: stopped
----
-# Archived Session
-`)
 	writeCLIAgentsFile(t, workingDir, "drafts/20260528-absorbed.md", `---
 status: absorbed
 ---
@@ -323,10 +313,13 @@ status: absorbed
 	if summary.ContractVersion != 0 || summary.DatabaseScope != "" || summary.ProjectID != "" || summary.ProjectName != "" || summary.ProjectCurrentPath != "" {
 		t.Fatalf("markdown housekeeping context = %#v, want empty", summary)
 	}
-	if summary.Sections["specs"].ByStatus["complete"] != 1 || summary.Sections["tasks"].ByStatus["done"] != 1 || summary.Sections["sessions"].ByStatus["active"] != 1 || summary.Sections["sessions"].ByStatus["archived"] != 1 || summary.Sections["shaping_drafts"].ByStatus["absorbed"] != 1 {
+	if summary.Sections["specs"].ByStatus["complete"] != 1 || summary.Sections["tasks"].ByStatus["done"] != 1 || summary.Sections["shaping_drafts"].ByStatus["absorbed"] != 1 {
 		t.Fatalf("summary = %#v, want markdown artifact lifecycle counts", summary)
 	}
-	if summary.Sections["specs"].CleanupCandidate != 1 || summary.Sections["tasks"].CleanupCandidate != 1 || summary.Sections["sessions"].CleanupCandidate != 1 || summary.Sections["shaping_drafts"].CleanupCandidate != 1 {
+	if _, ok := summary.Sections["sessions"]; ok {
+		t.Fatalf("summary = %#v, want no sessions housekeeping section", summary)
+	}
+	if summary.Sections["specs"].CleanupCandidate != 1 || summary.Sections["tasks"].CleanupCandidate != 1 || summary.Sections["shaping_drafts"].CleanupCandidate != 1 {
 		t.Fatalf("summary = %#v, want markdown cleanup candidates", summary)
 	}
 
@@ -335,11 +328,11 @@ status: absorbed
 		Stdout:     &humanOut,
 		WorkingDir: workingDir,
 		StateHome:  stateHome,
-	}.Run([]string{"housekeeping", "--dry-run", "--sessions"})
+	}.Run([]string{"housekeeping", "--dry-run", "--specs"})
 	if err != nil {
 		t.Fatalf("housekeeping markdown human summary error = %v", err)
 	}
-	for _, want := range []string{"loaf housekeeping (markdown, dry run)", "artifacts:", "sessions", "cleanup candidate"} {
+	for _, want := range []string{"loaf housekeeping (markdown, dry run)", "artifacts:", "specs", "cleanup candidate"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Fatalf("stdout = %q, want %q", humanOut.String(), want)
 		}
@@ -347,8 +340,8 @@ status: absorbed
 	if strings.Contains(humanOut.String(), "scope: global database") || strings.Contains(humanOut.String(), "project path:") {
 		t.Fatalf("stdout = %q, want markdown fallback without database context", humanOut.String())
 	}
-	if strings.Contains(humanOut.String(), "specs") {
-		t.Fatalf("stdout = %q, want --sessions filter to hide specs", humanOut.String())
+	if strings.Contains(humanOut.String(), "tasks") {
+		t.Fatalf("stdout = %q, want --specs filter to hide tasks", humanOut.String())
 	}
 	assertNoStateDatabase(t, workingDir, stateHome)
 }
@@ -5511,7 +5504,7 @@ func TestRunnerHousekeepingHelpIsNative(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%v error = %v", args, err)
 			}
-			if !strings.Contains(stdout.String(), "Usage: loaf housekeeping [options]") || !strings.Contains(stdout.String(), "--sessions") {
+			if !strings.Contains(stdout.String(), "Usage: loaf housekeeping [options]") || !strings.Contains(stdout.String(), "--specs") {
 				t.Fatalf("stdout = %q, want native housekeeping help", stdout.String())
 			}
 		})

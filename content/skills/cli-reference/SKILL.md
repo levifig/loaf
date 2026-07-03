@@ -23,7 +23,7 @@ Quick reference for all Loaf CLI commands. Each command includes its purpose, co
 ## Global Commands
 
 ### {{IMPLEMENT_CMD}}
-Orchestrates implementation sessions through agent delegation and batch execution.
+Orchestrates implementation work through agent delegation and batch execution. Logs to the project journal.
 
 **Use when:**
 - User asks "implement this" or "start working on TASK-XXX"
@@ -31,18 +31,18 @@ Orchestrates implementation sessions through agent delegation and batch executio
 - Resuming work after context loss
 
 **Usage:**
-- {{IMPLEMENT_CMD}} TASK-XXX - Load task, auto-create session
+- {{IMPLEMENT_CMD}} TASK-XXX - Load one task and build its plan
 - {{IMPLEMENT_CMD}} SPEC-XXX - Resolve all tasks, build dependency waves
 - {{IMPLEMENT_CMD}} TASK-XXX..YYY - Expand range, build waves
-- {{IMPLEMENT_CMD}} "description" - Ad-hoc session
+- {{IMPLEMENT_CMD}} "description" - Ad-hoc implementation work
 
 ### {{ORCHESTRATE_CMD}}
-Coordinates multi-agent work: agent delegation, session management, Linear integration.
+Coordinates multi-agent work: agent delegation, journal continuity, Linear integration.
 
 **Use when:**
-- Managing sessions and delegating to agents
+- Delegating to agents and coordinating cross-cutting work
 - Running council workflows
-- Coordinating cross-cutting work
+- Keeping journal continuity across parallel conversations
 
 ---
 
@@ -1047,7 +1047,6 @@ Scan project artifacts and recommend housekeeping actions
 
 - `--dry-run` - Show recommendations without prompting for actions
 - `--json` - Output housekeeping sections, cleanup candidates, signals, and SQLite-backed project identity when available as JSON
-- `--sessions` - Only review sessions
 - `--specs` - Only review specs
 - `--plans` - Only review plans
 - `--drafts` - Only review drafts
