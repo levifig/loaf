@@ -8,6 +8,7 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Fixed
 
+- Aligned `validate-council.py` and the `new-council.sh` scaffold with the council skill's template contract (frontmatter `topic`/`created`/`status`/`composition`, canonical `draft`/`done`/`archived` lifecycle from SPEC-049), and added a Go contract test that locks the validator, template, and scaffold together so they cannot drift apart again.
 - Treat command-authored relationship provenance as valid in `loaf state doctor`, avoiding a misleading `relationship-origin-unknown` repair prompt for rows created by current Loaf commands.
 - Stop `loaf release --dry-run` after reporting that no unreleased changes exist, instead of generating a bogus next-version release plan.
 
