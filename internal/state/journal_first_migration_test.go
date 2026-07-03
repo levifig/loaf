@@ -466,9 +466,17 @@ func TestJournalFirstMigrationExcludedFromAutoApply(t *testing.T) {
 
 // seedSessionPreserveFixture adds, on top of the baseline fixture, session-type
 // rows that exercise the safe purge predicate: several machine-generated shapes
-// spanning distinct families plus one synthetic user-authored session(scope) row
-// whose message matches no machine shape. The user row must survive as
-// entry_type='legacy_session'; the machine rows must be purged.
+// spanning distinct families, one synthetic user-authored session(scope) row
+// whose message matches no machine shape, and two NULL-scope rows. The user row
+// and both NULL-scope rows must survive as entry_type='legacy_session'; the
+// machine rows must be purged.
+//
+// The NULL-scope rows guard the SQL three-valued-logic hazard: machine writers
+// always set scope, so a NULL scope is not provably machine-generated and must
+// be preserved — even when the message happens to match a machine shape. Without
+// coalescing NULL scope to the empty string, the NOT(...) demotion predicate
+// evaluates to NULL (not true) on these rows, so they would slip past step (2a)
+// and be destroyed by the unconditional DELETE in step (2b).
 func seedSessionPreserveFixture(t *testing.T, databasePath string, projectID string) {
 	t.Helper()
 	store, err := OpenStore(databasePath)
@@ -493,6 +501,13 @@ func seedSessionPreserveFixture(t *testing.T, databasePath string, projectID str
 		// Synthetic USER-authored session(scope) row: matches NO machine shape.
 		// It must be preserved as legacy_session, not purged.
 		{journalInsertSQL, journalArgs("j-user-session", projectID, "session", "planning", "handwritten note that happens to use the session type", "main", "", nil, now)},
+		// NULL-scope row whose MESSAGE matches a machine shape ("=== SESSION
+		// STARTED ==="). A NULL scope is not provably machine-generated, so this
+		// row must be PRESERVED regardless of message shape. This is the exact
+		// regression the COALESCE(scope,'') hardening fixes.
+		{journalInsertSQL, journalArgs("j-null-machinemsg", projectID, "session", "", "=== SESSION STARTED ===", "main", "", nil, now)},
+		// NULL-scope row with a plainly non-machine message: also preserved.
+		{journalInsertSQL, journalArgs("j-null-human", projectID, "session", "", "a plain thought written with no scope", "main", "", nil, now)},
 	}
 	for _, statement := range statements {
 		if _, err := store.db.ExecContext(ctx, statement.sql, statement.args...); err != nil {
@@ -518,7 +533,29 @@ func TestJournalFirstMigrationPreservesUnknownSessionRows(t *testing.T) {
 	seedSessionPreserveFixture(t, status.DatabasePath, status.ProjectID)
 
 	// Baseline fixture seeds 3 machine session rows; preserve fixture adds 6
-	// machine + 1 user row. So 9 purged, 1 preserved as legacy_session.
+	// machine + 1 user row + 2 NULL-scope rows. So 9 purged, 3 preserved as
+	// legacy_session (the user row and both NULL-scope rows).
+	//
+	// Dry-run first: the preview measures counts via the Go family predicates
+	// (COALESCE(scope,'')) against a copy and must agree exactly with the SQL
+	// apply below. If the Go predicates diverged from the SQL on NULL-scope rows,
+	// these counts would differ from the apply's — the precise divergence the
+	// COALESCE hardening prevents. This runs against a copy and leaves live state
+	// untouched, so the apply below still sees the full unmigrated fixture.
+	preview, err := PreviewJournalFirstMigration(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("PreviewJournalFirstMigration() error = %v", err)
+	}
+	if !preview.CopyRun || preview.Applied {
+		t.Fatalf("preview copy_run/applied = %t/%t, want true/false", preview.CopyRun, preview.Applied)
+	}
+	if preview.NoiseEntriesPurged != 9 {
+		t.Fatalf("dry-run noise purged = %d, want 9 (machine rows only)", preview.NoiseEntriesPurged)
+	}
+	if preview.SessionRowsPreservedAsLegacy != 3 {
+		t.Fatalf("dry-run preserved as legacy_session = %d, want 3 (user row + 2 NULL-scope rows)", preview.SessionRowsPreservedAsLegacy)
+	}
+
 	result, err := ApplyJournalFirstMigration(ctx, root, resolver)
 	if err != nil {
 		t.Fatalf("ApplyJournalFirstMigration() error = %v", err)
@@ -526,8 +563,8 @@ func TestJournalFirstMigrationPreservesUnknownSessionRows(t *testing.T) {
 	if result.NoiseEntriesPurged != 9 {
 		t.Fatalf("noise purged = %d, want 9 (machine rows only)", result.NoiseEntriesPurged)
 	}
-	if result.SessionRowsPreservedAsLegacy != 1 {
-		t.Fatalf("preserved as legacy_session = %d, want 1", result.SessionRowsPreservedAsLegacy)
+	if result.SessionRowsPreservedAsLegacy != 3 {
+		t.Fatalf("preserved as legacy_session = %d, want 3 (user row + 2 NULL-scope rows)", result.SessionRowsPreservedAsLegacy)
 	}
 
 	// Per-family breakdown must sum to the purged total and name the right shapes.
@@ -574,6 +611,20 @@ func TestJournalFirstMigrationPreservesUnknownSessionRows(t *testing.T) {
 		t.Fatalf("FTS match for preserved row = %q, want j-user-session", got)
 	}
 
+	// NULL-scope rows must survive as legacy_session — never deleted — even when
+	// the message matches a machine shape. This is the SQL 3VL regression guard:
+	// a bare `scope = 'start'` on a NULL scope yields NULL, so the NOT(...)
+	// demotion would not fire and the DELETE would destroy these rows.
+	for _, id := range []string{"j-null-machinemsg", "j-null-human"} {
+		if got := rawCount(t, status.DatabasePath, `SELECT COUNT(*) FROM journal_entries WHERE id = ? AND entry_type = 'legacy_session'`, id); got != 1 {
+			t.Fatalf("NULL-scope row %q not preserved as legacy_session; count = %d, want 1", id, got)
+		}
+		// Its scope stays NULL (content untouched — only entry_type changed).
+		if got := rawCount(t, status.DatabasePath, `SELECT COUNT(*) FROM journal_entries WHERE id = ? AND scope IS NULL`, id); got != 1 {
+			t.Fatalf("NULL-scope row %q lost its NULL scope; count = %d, want 1", id, got)
+		}
+	}
+
 	// Idempotent re-run: nothing left to purge or preserve.
 	second, err := ApplyJournalFirstMigration(ctx, root, resolver)
 	if err != nil {
@@ -582,8 +633,8 @@ func TestJournalFirstMigrationPreservesUnknownSessionRows(t *testing.T) {
 	if second.NoiseEntriesPurged != 0 || second.SessionRowsPreservedAsLegacy != 0 {
 		t.Fatalf("re-run purged/preserved = %d/%d, want 0/0", second.NoiseEntriesPurged, second.SessionRowsPreservedAsLegacy)
 	}
-	if got := rawCount(t, status.DatabasePath, `SELECT COUNT(*) FROM journal_entries WHERE entry_type = 'legacy_session'`); got != 1 {
-		t.Fatalf("legacy_session rows after re-run = %d, want 1 (unchanged)", got)
+	if got := rawCount(t, status.DatabasePath, `SELECT COUNT(*) FROM journal_entries WHERE entry_type = 'legacy_session'`); got != 3 {
+		t.Fatalf("legacy_session rows after re-run = %d, want 3 (unchanged)", got)
 	}
 }
 

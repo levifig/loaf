@@ -68,21 +68,30 @@ type JournalFirstPurgeFamily struct {
 // corresponding branch of the migration SQL (0010_journal_first.sql step 2a/2b);
 // the two MUST stay in lockstep. Any entry_type='session' row not matched by one
 // of these is preserved as entry_type='legacy_session'.
+//
+// NULL-safety: scope is NULLABLE, so these predicates coalesce every scope
+// reference to the empty string — matching the migration SQL exactly. Without
+// that coalesce a NULL-scope row's scope = 'start' yields SQL NULL, the family
+// match becomes NULL rather than false, and the dry-run purge count would
+// diverge from what the migration's NOT(...) demotion actually preserves.
+// Coalescing NULL scope to the empty string means such a row matches no family
+// and is counted as preserved-as-legacy, exactly as the SQL demotes it.
+// (message is NOT NULL, so it needs no coalesce.)
 var journalFirstPurgeFamilies = []struct {
 	name string
 	sql  string
 }{
-	{"start_marker", `scope = 'start' AND (message = '=== SESSION STARTED ===' OR message GLOB '=== SESSION STARTED === (session *)')`},
-	{"resume_marker", `scope = 'resume' AND (message = '=== SESSION RESUMED ===' OR message GLOB '=== SESSION RESUMED === (session *)')`},
-	{"stop_marker", `scope = 'stop' AND message IN ('=== SESSION STOPPED ===', '=== SESSION COMPLETE ===')`},
-	{"context_cleared", `scope = 'clear' AND message = '=== CONTEXT CLEARED ==='`},
-	{"commit_summary", `scope IN ('end', 'conclude', 'wrap') AND message LIKE 'at commit %'`},
-	{"session_ended", `scope IN ('end', 'conclude', 'wrap') AND message = 'session ended'`},
-	{"end_status_marker", `scope IN ('end', 'conclude', 'wrap') AND message IN ('closed by new conversation', 'session handed off, pending final status update')`},
-	{"context_arrival", `scope = 'context' AND message LIKE 'from commit %'`},
-	{"merge_consolidated", `scope = 'merge' AND message LIKE 'consolidated from %'`},
-	{"test_fixture", `scope = 'test' AND message = 'verify session type'`},
-	{"enrich_checkpoint", `scope = 'enrich' AND message = 'recorded native SQLite enrichment checkpoint'`},
+	{"start_marker", `COALESCE(scope, '') = 'start' AND (message = '=== SESSION STARTED ===' OR message GLOB '=== SESSION STARTED === (session *)')`},
+	{"resume_marker", `COALESCE(scope, '') = 'resume' AND (message = '=== SESSION RESUMED ===' OR message GLOB '=== SESSION RESUMED === (session *)')`},
+	{"stop_marker", `COALESCE(scope, '') = 'stop' AND message IN ('=== SESSION STOPPED ===', '=== SESSION COMPLETE ===')`},
+	{"context_cleared", `COALESCE(scope, '') = 'clear' AND message = '=== CONTEXT CLEARED ==='`},
+	{"commit_summary", `COALESCE(scope, '') IN ('end', 'conclude', 'wrap') AND message LIKE 'at commit %'`},
+	{"session_ended", `COALESCE(scope, '') IN ('end', 'conclude', 'wrap') AND message = 'session ended'`},
+	{"end_status_marker", `COALESCE(scope, '') IN ('end', 'conclude', 'wrap') AND message IN ('closed by new conversation', 'session handed off, pending final status update')`},
+	{"context_arrival", `COALESCE(scope, '') = 'context' AND message LIKE 'from commit %'`},
+	{"merge_consolidated", `COALESCE(scope, '') = 'merge' AND message LIKE 'consolidated from %'`},
+	{"test_fixture", `COALESCE(scope, '') = 'test' AND message = 'verify session type'`},
+	{"enrich_checkpoint", `COALESCE(scope, '') = 'enrich' AND message = 'recorded native SQLite enrichment checkpoint'`},
 }
 
 // zeroJournalFirstPurgeBreakdown returns the family list with all counts zero,
@@ -222,8 +231,14 @@ type journalFirstMigrationGate struct {
 	// safely behind schema — every recorded migration matches the Go-owned
 	// checksum, integrity is clean, and only known migrations (versions up to
 	// the current baseline) remain to be applied. The migration runner applies
-	// those pending migrations (on the copy for dry-run, on the live target
-	// after backup for apply) before the destructive journal-first step.
+	// those pending migrations before the destructive journal-first step: on the
+	// copy for dry-run, and on the live target BEFORE Backup for apply. The
+	// pre-backup ordering is deliberate — Backup/VerifyBackup reject any schema
+	// version that is not acceptableSchemaVersion (the baseline or the
+	// journal-first version), so a behind-schema live database must be brought
+	// current first for the mandatory pre-migration backup to verify. Those
+	// pending migrations (1..9) are purely additive, so applying them before the
+	// backup keeps it a complete, reversible pre-journal-first checkpoint.
 	pendingSchema bool
 }
 

@@ -58,25 +58,35 @@ WHERE harness_session_id IS NULL
 -- (2a) Preserve any entry_type='session' row that is NOT a known machine shape
 -- by demoting it to 'legacy_session'. Runs before the purge so unknown human
 -- content is already off the 'session' type when the DELETE fires.
+--
+-- NULL-safety: journal_entries.scope is NULLABLE, so a bare `scope = 'start'`
+-- yields SQL NULL (not false) on a NULL-scope row; the whole OR-chain then
+-- collapses to NULL and NOT(NULL) is NULL, so the row would NOT be demoted and
+-- would be swept up by the DELETE in step (2b). Machine writers ALWAYS set
+-- scope, so a NULL-scope row is not provably machine-generated and must be
+-- preserved. COALESCE(scope,'') maps NULL to '' — which equals no family scope
+-- literal and satisfies no IN(...) list — so the machine-shape match reliably
+-- fails and the row is demoted to legacy_session. (message is NOT NULL in the
+-- schema, so message comparisons never introduce the same NULL hazard.)
 UPDATE journal_entries
 SET entry_type = 'legacy_session'
 WHERE entry_type = 'session'
   AND NOT (
-       (scope = 'start'  AND (message = '=== SESSION STARTED ==='
+       (COALESCE(scope, '') = 'start'  AND (message = '=== SESSION STARTED ==='
                               OR message GLOB '=== SESSION STARTED === (session *)'))
-    OR (scope = 'resume' AND (message = '=== SESSION RESUMED ==='
+    OR (COALESCE(scope, '') = 'resume' AND (message = '=== SESSION RESUMED ==='
                               OR message GLOB '=== SESSION RESUMED === (session *)'))
-    OR (scope = 'stop'   AND message IN ('=== SESSION STOPPED ===', '=== SESSION COMPLETE ==='))
-    OR (scope = 'clear'  AND message = '=== CONTEXT CLEARED ===')
-    OR (scope IN ('end', 'conclude', 'wrap')
+    OR (COALESCE(scope, '') = 'stop'   AND message IN ('=== SESSION STOPPED ===', '=== SESSION COMPLETE ==='))
+    OR (COALESCE(scope, '') = 'clear'  AND message = '=== CONTEXT CLEARED ===')
+    OR (COALESCE(scope, '') IN ('end', 'conclude', 'wrap')
                          AND (message LIKE 'at commit %'
                               OR message IN ('session ended',
                                              'closed by new conversation',
                                              'session handed off, pending final status update')))
-    OR (scope = 'context' AND message LIKE 'from commit %')
-    OR (scope = 'merge'   AND message LIKE 'consolidated from %')
-    OR (scope = 'test'    AND message = 'verify session type')
-    OR (scope = 'enrich'  AND message = 'recorded native SQLite enrichment checkpoint')
+    OR (COALESCE(scope, '') = 'context' AND message LIKE 'from commit %')
+    OR (COALESCE(scope, '') = 'merge'   AND message LIKE 'consolidated from %')
+    OR (COALESCE(scope, '') = 'test'    AND message = 'verify session type')
+    OR (COALESCE(scope, '') = 'enrich'  AND message = 'recorded native SQLite enrichment checkpoint')
   );
 
 -- (2b) Purge the remaining entry_type='session' rows: now exactly the machine
