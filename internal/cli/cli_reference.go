@@ -191,6 +191,8 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--harness-session-id <id>", Description: "Opaque conversation correlation tag"},
 					{Flags: "--branch <branch>", Description: "Observed branch (defaults to current git branch)"},
 					{Flags: "--worktree <path>", Description: "Observed worktree path"},
+					{Flags: "--from-hook", Description: "Derive the entry from a harness hook payload on stdin; exits silently for subagents"},
+					{Flags: "--detect-linear", Description: "Scan recent commits for Linear magic words and log a discovery entry"},
 					{Flags: "--json", Description: "Output the written entry and project identity as JSON"},
 				}},
 				{Name: "recent", Description: "Show the recent project journal timeline", Options: []cliReferenceOption{
@@ -209,7 +211,9 @@ func cliReferenceCommands() []cliReferenceCommand {
 				}},
 				{Name: "context", Description: "Emit the layered continuity digest (latest wrap, recent branch entries, open tasks)", Options: []cliReferenceOption{
 					{Flags: "--branch <branch>", Description: "Branch scope for the recent-entries layer"},
+					{Flags: "--from-hook", Description: "Read the harness hook payload on stdin; exits silently for subagents (SessionStart/PostCompact)"},
 					{Flags: "--json", Description: "Output the digest and project identity as JSON"},
+					{Flags: "for-prompt|for-compact|for-resumption", Description: "Hook subcommands: inject implementation principles, journal-flush guidance, or the resumption digest"},
 				}},
 				{Name: "export", Description: "Export the project journal to markdown or JSONL", Options: []cliReferenceOption{
 					{Flags: "--format <format>", Description: "Output format: markdown (default) or jsonl"},

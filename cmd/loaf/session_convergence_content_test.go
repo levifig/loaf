@@ -39,6 +39,59 @@ func TestSessionModelConvergenceContentGuards(t *testing.T) {
 	}
 }
 
+// TestJournalFirstHookSurfacesConverged asserts the hook definition and
+// generated hook artifacts carry no session-entity commands (SPEC-056 Track 3).
+// Scope is deliberately limited to hook config surfaces; skill/template bodies
+// are Track 4's convergence target and are excluded here.
+func TestJournalFirstHookSurfacesConverged(t *testing.T) {
+	root := repoRoot(t)
+
+	hookSurfaces := []string{
+		filepath.FromSlash("config/hooks.yaml"),
+		filepath.FromSlash("plugins/loaf/hooks/hooks.json"),
+		filepath.FromSlash("dist/cursor/hooks.json"),
+		filepath.FromSlash("dist/opencode/plugins/hooks.ts"),
+		filepath.FromSlash("dist/amp/.amp/plugins/loaf.ts"),
+	}
+	forbidden := []string{
+		"loaf session start",
+		"loaf session end",
+		"loaf session log",
+		"loaf session context",
+		"session log --from-hook",
+		"session log --detect-linear",
+		"session context for-prompt",
+		"session context for-compact",
+		"session context for-resumption",
+		"SessionEnd",
+	}
+	required := map[string]string{
+		filepath.FromSlash("config/hooks.yaml"):            "loaf journal context --from-hook",
+		filepath.FromSlash("plugins/loaf/hooks/hooks.json"): "journal context --from-hook",
+	}
+
+	var failures []string
+	for _, rel := range hookSurfaces {
+		path := filepath.Join(root, rel)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			// dist artifacts are only present after a build; skip when absent.
+			continue
+		}
+		failures = append(failures, forbiddenMatchesInFile(t, path, forbidden)...)
+	}
+	for rel, want := range required {
+		path := filepath.Join(root, rel)
+		body := readTextFile(t, path)
+		if !strings.Contains(body, want) {
+			failures = append(failures, filepath.ToSlash(rel)+": missing required journal-first command "+strconv.Quote(want))
+		}
+	}
+	sort.Strings(failures)
+	if len(failures) > 0 {
+		t.Fatalf("journal-first hook surfaces not converged:\n%s", strings.Join(failures, "\n"))
+	}
+}
+
 func forbiddenContentMatches(t *testing.T, path string, forbidden []string) []string {
 	t.Helper()
 	info, err := os.Stat(path)

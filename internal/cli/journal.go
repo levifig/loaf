@@ -63,6 +63,8 @@ func writeJournalLogHelp(out io.Writer) {
 		"--harness-session-id  Opaque conversation correlation tag",
 		"--branch              Observed branch (defaults to current git branch)",
 		"--worktree            Observed worktree path",
+		"--from-hook           Derive the entry from a harness hook payload on stdin (git/gh/task events)",
+		"--detect-linear       Scan recent commits for Linear magic words and log a discovery entry",
 		"--json                Output the written entry and project context as JSON")
 }
 
@@ -88,8 +90,14 @@ func writeJournalShowHelp(out io.Writer) {
 
 func writeJournalContextHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf journal context [options]", "Emit the layered continuity digest: latest project wrap, recent current-branch entries, and open tasks.",
-		"--branch  Branch scope for the recent-entries layer (defaults to current git branch)",
-		"--json    Output the digest and project context as JSON")
+		"--branch      Branch scope for the recent-entries layer (defaults to current git branch)",
+		"--from-hook   Read the harness hook payload on stdin and exit silently for subagent invocations",
+		"--json        Output the digest and project context as JSON",
+		"",
+		"Hook subcommands (read stdin, exit silently for subagents):",
+		"  for-prompt      Inject implementation principles on UserPromptSubmit",
+		"  for-compact     Inject journal-flush guidance before compaction",
+		"  for-resumption  Emit the continuity digest after compaction")
 }
 
 func writeJournalExportHelp(out io.Writer) {
@@ -104,6 +112,8 @@ type journalLogOptions struct {
 	branchSet        bool
 	worktree         string
 	jsonOutput       bool
+	fromHook         bool
+	detectLinear     bool
 }
 
 func parseJournalLogArgs(args []string) (journalLogOptions, error) {
@@ -113,6 +123,10 @@ func parseJournalLogArgs(args []string) (journalLogOptions, error) {
 		switch args[i] {
 		case "--json":
 			options.jsonOutput = true
+		case "--from-hook":
+			options.fromHook = true
+		case "--detect-linear":
+			options.detectLinear = true
 		case "--harness-session-id":
 			value, err := consumeFlagValue(args, &i, "--harness-session-id")
 			if err != nil {
@@ -138,6 +152,17 @@ func parseJournalLogArgs(args []string) (journalLogOptions, error) {
 			}
 			positional = append(positional, args[i])
 		}
+	}
+	// --from-hook and --detect-linear derive the entry from stdin/git, so the
+	// positional entry is optional in that mode.
+	if options.fromHook || options.detectLinear {
+		if len(positional) > 1 {
+			return journalLogOptions{}, fmt.Errorf("journal log accepts at most one \"type(scope): message\" entry")
+		}
+		if len(positional) == 1 {
+			options.entry = positional[0]
+		}
+		return options, nil
 	}
 	if len(positional) != 1 {
 		return journalLogOptions{}, fmt.Errorf("journal log requires exactly one \"type(scope): message\" entry")
@@ -165,6 +190,18 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 	worktree := options.worktree
 	if worktree == "" {
 		worktree = runtime.RootPath()
+	}
+	if options.fromHook || options.detectLinear {
+		proceed, herr := r.journalLogFromHook(&options, projectRoot, worktree)
+		if herr != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, "journal log", herr)
+			}
+			return herr
+		}
+		if !proceed {
+			return nil
+		}
 	}
 	branch := options.branch
 	if !options.branchSet {
@@ -432,13 +469,43 @@ func (r Runner) runJournalShow(args []string, out io.Writer, runtime state.Runti
 }
 
 func (r Runner) runJournalContext(args []string, out io.Writer, runtime state.Runtime) error {
+	// Hook subcommands: SessionStart/PostCompact emit the layered digest, while
+	// UserPromptSubmit and PreCompact inject guidance text. All preserve the
+	// subagent silent-exit guard.
+	if len(args) > 0 {
+		switch args[0] {
+		case "for-prompt":
+			return r.runJournalContextForPrompt(out)
+		case "for-compact":
+			return r.runJournalContextForCompact(out)
+		case "for-resumption":
+			return r.runJournalContextResumption(out, runtime)
+		}
+	}
 	jsonRequested := hasFlag(args, "--json")
 	jsonOutput := jsonRequested
+	// SessionStart/PostCompact pass --from-hook so the digest can guard against
+	// subagent invocations: read the hook payload and exit silently (writing
+	// nothing) when an agent_id is present.
+	if hasFlag(args, "--from-hook") {
+		hookInput, err := r.readJournalHookInput()
+		if err != nil {
+			if jsonRequested {
+				return writeJSONCommandError(out, "journal context", err)
+			}
+			return err
+		}
+		if hookInput.AgentID != "" {
+			return nil
+		}
+	}
 	branch := ""
 	branchSet := false
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--json":
+			// handled above
+		case "--from-hook":
 			// handled above
 		case "--branch":
 			value, err := consumeFlagValue(args, &i, "--branch")
