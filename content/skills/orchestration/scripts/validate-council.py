@@ -57,26 +57,32 @@ def validate_frontmatter(fm: dict) -> list[str]:
         if field not in council:
             errors.append(f"Missing required field: council.{field}")
 
-    # Status follows the canonical council lifecycle (SPEC-049)
+    # Status follows the canonical council lifecycle (SPEC-049).
+    # Empty or null values are invalid, so validate whenever the key exists.
     valid_statuses = ['draft', 'done', 'archived']
-    if council.get('status') and council['status'] not in valid_statuses:
+    if 'status' in council and council['status'] not in valid_statuses:
         errors.append(f"Invalid council.status: {council['status']} (must be one of: {', '.join(valid_statuses)})")
 
-    # Validate ISO 8601 created timestamp
-    created = council.get('created', '')
-    if created:
-        try:
-            datetime.fromisoformat(created.replace('Z', '+00:00'))
-        except ValueError:
-            errors.append(f"Invalid ISO 8601 created timestamp: {created}")
+    # Validate ISO 8601 created timestamp; YAML may parse an unquoted
+    # timestamp into a datetime already
+    if 'created' in council:
+        created = council['created']
+        if not isinstance(created, datetime):
+            try:
+                datetime.fromisoformat(str(created).replace('Z', '+00:00'))
+            except (TypeError, ValueError):
+                errors.append(f"Invalid ISO 8601 created timestamp: {created}")
 
-    # Validate composition
-    composition = council.get('composition', [])
-    if composition:
-        if len(composition) < 5:
-            errors.append(f"Council requires at least 5 agents in composition (got {len(composition)})")
-        if len(composition) % 2 == 0:
-            errors.append(f"Council requires an ODD number of agents in composition (got {len(composition)})")
+    # Validate composition; an empty or non-list value fails
+    if 'composition' in council:
+        composition = council['composition']
+        if not isinstance(composition, list):
+            errors.append(f"council.composition must be a list of agents (got {type(composition).__name__})")
+        else:
+            if len(composition) < 5:
+                errors.append(f"Council requires at least 5 agents in composition (got {len(composition)})")
+            if len(composition) % 2 == 0:
+                errors.append(f"Council requires an ODD number of agents in composition (got {len(composition)})")
 
     # session_reference and linear_issue are optional free-form references
 

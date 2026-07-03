@@ -2,12 +2,14 @@ package cli
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // councilValidatorContract holds the requirement literals declared in
@@ -35,8 +37,13 @@ func TestCouncilTemplateSatisfiesValidatorContract(t *testing.T) {
 	doc := parseCouncilDocument(t, fencedCouncilBlock(t, readCouncilContractFile(t, templatePath)))
 
 	for _, field := range contract.requiredFields {
-		if _, ok := doc.fields[field]; !ok {
+		value, ok := doc.fields[field]
+		if !ok {
 			t.Errorf("council template frontmatter is missing field %q required by validate-council.py", field)
+			continue
+		}
+		if field != "composition" && value == "" {
+			t.Errorf("council template frontmatter field %q is empty; validate-council.py rejects empty values", field)
 		}
 	}
 
@@ -77,12 +84,92 @@ func TestNewCouncilScaffoldSatisfiesValidatorContract(t *testing.T) {
 		t.Errorf("new-council.sh scaffold status %q is not accepted by validate-council.py (valid: %v)", status, contract.validStatuses)
 	}
 
-	// Composition entries are interpolated at runtime; the scaffold itself
-	// enforces the >=5 and odd participant checks before writing the file.
+	// Composition entries are interpolated at runtime;
+	// TestNewCouncilScaffoldOutputSatisfiesValidatorContract runs the script
+	// and validates the generated file including the composition list.
 
 	for _, section := range contract.requiredSections {
 		if !doc.headings[section] {
 			t.Errorf("new-council.sh scaffold body is missing section %q required by validate-council.py", section)
+		}
+	}
+}
+
+// TestNewCouncilScaffoldOutputSatisfiesValidatorContract executes
+// new-council.sh and validates the file it actually writes, so regressions in
+// runtime interpolation (not just the heredoc text) are caught.
+func TestNewCouncilScaffoldOutputSatisfiesValidatorContract(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("new-council.sh requires bash")
+	}
+	root := councilContractRepoRoot(t)
+	contract := readCouncilValidatorContract(t, root)
+	scriptPath := filepath.Join(root, "content", "skills", "orchestration", "scripts", "new-council.sh")
+
+	workDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(workDir, ".agents", "councils"), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	agents := []string{"agent-one", "agent-two", "agent-three", "agent-four", "agent-five"}
+	cmd := exec.Command("bash", append([]string{scriptPath, "test-topic", "20260101-000000-session"}, agents...)...)
+	cmd.Dir = workDir
+	// Keep loaf off PATH so the scaffold skips its session-existence check.
+	cmd.Env = []string{"PATH=/usr/bin:/bin"}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("new-council.sh error = %v\noutput:\n%s", err, output)
+	}
+
+	entries, err := os.ReadDir(filepath.Join(workDir, ".agents", "councils"))
+	if err != nil {
+		t.Fatalf("ReadDir() error = %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected exactly 1 generated council file, got %d", len(entries))
+	}
+
+	filename := entries[0].Name()
+	filenamePattern := councilValidatorFilenamePattern(t, root)
+	if !regexp.MustCompile(filenamePattern).MatchString(filename) {
+		t.Errorf("generated filename %q does not match validate-council.py pattern %q", filename, filenamePattern)
+	}
+
+	generated := readCouncilContractFile(t, filepath.Join(workDir, ".agents", "councils", filename))
+	doc := parseCouncilDocument(t, generated)
+
+	for _, field := range contract.requiredFields {
+		value, ok := doc.fields[field]
+		if !ok {
+			t.Errorf("generated council file is missing field %q required by validate-council.py", field)
+			continue
+		}
+		if field != "composition" && value == "" {
+			t.Errorf("generated council file field %q is empty; validate-council.py rejects empty values", field)
+		}
+	}
+
+	status := doc.fields["status"]
+	if !slices.Contains(contract.validStatuses, status) {
+		t.Errorf("generated council file status %q is not accepted by validate-council.py (valid: %v)", status, contract.validStatuses)
+	}
+
+	if created := doc.fields["created"]; created != "" {
+		if _, err := time.Parse(time.RFC3339, created); err != nil {
+			t.Errorf("generated council file created %q is not ISO 8601: %v", created, err)
+		}
+	}
+
+	if doc.composition != len(agents) {
+		t.Errorf("generated council file has %d composition entries, want %d", doc.composition, len(agents))
+	}
+	if doc.composition < 5 || doc.composition%2 == 0 {
+		t.Errorf("generated council file composition count %d violates the >=5 odd rule", doc.composition)
+	}
+
+	for _, section := range contract.requiredSections {
+		if !doc.headings[section] {
+			t.Errorf("generated council file is missing section %q required by validate-council.py", section)
 		}
 	}
 }
@@ -113,6 +200,18 @@ func readCouncilValidatorContract(t *testing.T, root string) councilValidatorCon
 		validStatuses:    councilPythonListLiteral(t, source, "valid_statuses"),
 		requiredSections: councilPythonListLiteral(t, source, "required_sections"),
 	}
+}
+
+// councilValidatorFilenamePattern extracts the filename regex literal from
+// validate-council.py so the exec test checks against the same rule.
+func councilValidatorFilenamePattern(t *testing.T, root string) string {
+	t.Helper()
+	source := readCouncilContractFile(t, filepath.Join(root, "content", "skills", "orchestration", "scripts", "validate-council.py"))
+	match := regexp.MustCompile(`pattern\s*=\s*r'(\^[^']+)'`).FindStringSubmatch(source)
+	if match == nil {
+		t.Fatal("validate-council.py no longer declares the filename pattern as a raw-string literal")
+	}
+	return match[1]
 }
 
 func councilPythonListLiteral(t *testing.T, source, name string) []string {
