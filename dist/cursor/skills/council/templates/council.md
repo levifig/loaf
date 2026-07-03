@@ -7,7 +7,7 @@
 council:
   topic: "[Clear decision description]"
   created: "[ISO timestamp]"
-  status: in_progress
+  status: draft  # draft | done | archived
   composition:
     - [agent1]
     - [agent2]

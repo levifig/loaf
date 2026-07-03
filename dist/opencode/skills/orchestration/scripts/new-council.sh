@@ -47,39 +47,42 @@ if [[ -f "$FILEPATH" ]]; then
     exit 1
 fi
 
-# Build participants YAML
-PARTICIPANTS_YAML=""
+# Build composition YAML
+COMPOSITION_YAML=""
 for p in "${PARTICIPANTS[@]}"; do
-    PARTICIPANTS_YAML="${PARTICIPANTS_YAML}    - ${p}
+    COMPOSITION_YAML="${COMPOSITION_YAML}    - ${p}
 "
 done
 
-# Generate council file
+# Generate council file (shape must match council/templates/council.md)
 cat > "$FILEPATH" << EOF
 ---
 council:
   topic: "${TOPIC//-/ }"
-  timestamp: "${ISO_TIMESTAMP}"
-  status: pending
-  session: "${SESSION}"
-  participants:
-${PARTICIPANTS_YAML}  decision: ""
+  created: "${ISO_TIMESTAMP}"
+  status: draft
+  composition:
+${COMPOSITION_YAML}  session_reference: "${SESSION}"
 ---
 
 # Council: ${TOPIC//-/ }
+
+## Decision Question
+
+[Clear, specific question being decided]
+
+## Options
+
+### Option 1: [Name]
+Brief description and trade-offs.
+
+### Option 2: [Name]
+Brief description and trade-offs.
 
 ## Context
 
 Why this council was convened.
 What problem or decision needed multiple perspectives.
-
-## Options Considered
-
-### Option A: [Name]
-Brief description and trade-offs.
-
-### Option B: [Name]
-Brief description and trade-offs.
 
 ## Agent Perspectives
 
@@ -112,15 +115,15 @@ done)
 
 ## Decision
 
-**Chosen**: [Pending user approval]
+[To be filled after user approval]
 
-## Rationale
+---
 
-[To be filled after deliberation]
+## Deliberation Log
 
-## Implementation Notes
-
-[To be filled after decision]
+### ${ISO_TIMESTAMP} - Council Convened
+Agents: ${PARTICIPANTS[*]}
+Composition selected by orchestrator.
 EOF
 
 echo "Created: $FILEPATH"

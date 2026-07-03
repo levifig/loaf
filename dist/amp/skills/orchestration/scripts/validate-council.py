@@ -51,39 +51,34 @@ def validate_frontmatter(fm: dict) -> list[str]:
         errors.append("Missing 'council' block in frontmatter")
         return errors
 
-    # Required council fields
-    required_fields = ['topic', 'timestamp', 'status', 'session', 'participants', 'decision']
+    # Required council fields — must match council/templates/council.md
+    required_fields = ['topic', 'created', 'status', 'composition']
     for field in required_fields:
         if field not in council:
             errors.append(f"Missing required field: council.{field}")
 
-    # Validate status values
-    valid_statuses = ['pending', 'approved', 'rejected', 'deferred']
+    # Status follows the canonical council lifecycle (SPEC-049)
+    valid_statuses = ['draft', 'done', 'archived']
     if council.get('status') and council['status'] not in valid_statuses:
         errors.append(f"Invalid council.status: {council['status']} (must be one of: {', '.join(valid_statuses)})")
 
-    # Validate ISO 8601 timestamp
-    timestamp = council.get('timestamp', '')
-    if timestamp:
+    # Validate ISO 8601 created timestamp
+    created = council.get('created', '')
+    if created:
         try:
-            datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            datetime.fromisoformat(created.replace('Z', '+00:00'))
         except ValueError:
-            errors.append(f"Invalid ISO 8601 timestamp: {timestamp}")
+            errors.append(f"Invalid ISO 8601 created timestamp: {created}")
 
-    # Validate participants
-    participants = council.get('participants', [])
-    if participants:
-        if len(participants) < 5:
-            errors.append(f"Council requires at least 5 participants (got {len(participants)})")
-        if len(participants) % 2 == 0:
-            errors.append(f"Council requires an ODD number of participants (got {len(participants)})")
+    # Validate composition
+    composition = council.get('composition', [])
+    if composition:
+        if len(composition) < 5:
+            errors.append(f"Council requires at least 5 agents in composition (got {len(composition)})")
+        if len(composition) % 2 == 0:
+            errors.append(f"Council requires an ODD number of agents in composition (got {len(composition)})")
 
-    # Validate session link (file should exist, but we just check format here)
-    session = council.get('session', '')
-    if session:
-        session_pattern = r'^\d{8}-\d{6}-[a-z0-9-]+$'
-        if not re.match(session_pattern, session):
-            errors.append(f"Invalid session reference format: {session}")
+    # session_reference and linear_issue are optional free-form references
 
     return errors
 
@@ -91,10 +86,12 @@ def validate_frontmatter(fm: dict) -> list[str]:
 def validate_sections(body: str) -> list[str]:
     """Validate required markdown sections."""
     errors = []
-    required_sections = ['## Context', '## Decision', '## Rationale']
+    required_sections = ['## Decision Question', '## Context', '## Agent Perspectives', '## Synthesis', '## Decision']
 
+    # Exact heading match so '## Decision Question' does not satisfy '## Decision'
+    headings = {line.strip() for line in body.splitlines() if line.strip().startswith('##')}
     for section in required_sections:
-        if section not in body:
+        if section not in headings:
             errors.append(f"Missing required section: {section}")
 
     return errors
