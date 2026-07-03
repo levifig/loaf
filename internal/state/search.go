@@ -48,7 +48,7 @@ type SearchHit struct {
 	LineStart          int     `json:"line_start,omitempty"`
 	IndexedWorktree    string  `json:"indexed_worktree,omitempty"`
 	JournalEntryID     string  `json:"journal_entry_id,omitempty"`
-	SessionID          string  `json:"session_id,omitempty"`
+	HarnessSessionID   string  `json:"harness_session_id,omitempty"`
 	EntryType          string  `json:"entry_type,omitempty"`
 	Scope              string  `json:"scope,omitempty"`
 	Snippet            string  `json:"snippet"`
@@ -184,8 +184,11 @@ WHERE artifact_search MATCH ?`
 }
 
 func (s *Store) searchJournalEntries(ctx context.Context, projectID string, allProjects bool, ftsQuery string) ([]SearchHit, error) {
+	// The FTS correlation column (harness_session_id post-migration, session_id
+	// on the pre-migration schema) is UNINDEXED passthrough metadata; selecting
+	// the indexed message columns keeps this query schema-shape agnostic.
 	query := `
-SELECT project_id, journal_entry_id, session_id, entry_type, scope, snippet(journal_search, 5, '', '', '...', 12), bm25(journal_search)
+SELECT project_id, journal_entry_id, entry_type, scope, snippet(journal_search, 5, '', '', '...', 12), bm25(journal_search)
 FROM journal_search
 WHERE journal_search MATCH ?`
 	args := []any{ftsQuery}
@@ -201,19 +204,14 @@ WHERE journal_search MATCH ?`
 	var hits []SearchHit
 	for rows.Next() {
 		var hit SearchHit
-		var sessionID sql.NullString
 		var scope sql.NullString
 		hit.Tier = "tier1"
 		hit.Source = "journal_entry"
-		if err := rows.Scan(&hit.ProjectID, &hit.JournalEntryID, &sessionID, &hit.EntryType, &scope, &hit.Snippet, &hit.Rank); err != nil {
+		if err := rows.Scan(&hit.ProjectID, &hit.JournalEntryID, &hit.EntryType, &scope, &hit.Snippet, &hit.Rank); err != nil {
 			return nil, fmt.Errorf("scan journal search hit: %w", err)
 		}
-		hit.SessionID = sessionID.String
 		hit.Scope = scope.String
 		hit.Locator = hit.JournalEntryID
-		if hit.SessionID != "" {
-			hit.Locator = hit.SessionID + "/" + hit.Locator
-		}
 		if hit.EntryType != "" {
 			hit.Locator = hit.EntryType + ":" + hit.Locator
 		}

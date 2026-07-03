@@ -408,13 +408,12 @@ func appendRepairAction(actions []RepairAction, action RepairAction) []RepairAct
 func inspectSchemaMigrations(ctx context.Context, store *Store, version int) ([]Diagnostic, bool) {
 	diagnostics := []Diagnostic{}
 	valid := true
-	current := CurrentSchemaVersion()
-	if version != current {
+	if !acceptableSchemaVersion(version) {
 		valid = false
 		diagnostics = append(diagnostics, Diagnostic{
 			Severity: "error",
 			Code:     "schema-version-mismatch",
-			Message:  fmt.Sprintf("schema version %d does not match expected version %d", version, current),
+			Message:  fmt.Sprintf("schema version %d does not match expected version %d", version, CurrentSchemaVersion()),
 		})
 	}
 
@@ -444,6 +443,30 @@ func inspectSchemaMigrations(ctx context.Context, store *Store, version int) ([]
 				Message:  err.Error(),
 			})
 		}
+	}
+
+	// The journal-first migration is applied out-of-band and is absent on a
+	// pre-migration database. When present, its checksum must still match the
+	// Go-owned migration; a drifted checksum is drift like any other.
+	journalFirst := JournalFirstMigration()
+	var journalFirstChecksum string
+	switch err := store.db.QueryRowContext(ctx, `SELECT checksum FROM schema_migrations WHERE version = ?`, journalFirst.Version).Scan(&journalFirstChecksum); {
+	case errorsIsNoRows(err):
+		// Not applied; valid.
+	case err != nil:
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "schema-version-unreadable",
+			Message:  err.Error(),
+		})
+	case journalFirstChecksum != journalFirst.Checksum():
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "schema-checksum-mismatch",
+			Message:  fmt.Sprintf("schema migration %d checksum does not match Go-owned migration", journalFirst.Version),
+		})
 	}
 	return diagnostics, valid
 }
@@ -894,7 +917,6 @@ WHERE entity_kind NOT IN (
   'spark',
   'brainstorm',
   'shaping_draft',
-  'session',
   'report',
   'plan',
   'handoff',
@@ -985,7 +1007,6 @@ WITH local_entities(entity_kind, project_id, entity_id) AS (
   UNION ALL SELECT 'spark', project_id, id FROM sparks
   UNION ALL SELECT 'brainstorm', project_id, id FROM brainstorms
   UNION ALL SELECT 'shaping_draft', project_id, id FROM shaping_drafts
-  UNION ALL SELECT 'session', project_id, id FROM sessions
   UNION ALL SELECT 'report', project_id, id FROM reports
   UNION ALL SELECT 'plan', project_id, id FROM plans
   UNION ALL SELECT 'handoff', project_id, id FROM handoffs
@@ -1018,7 +1039,6 @@ WHERE local_entities.entity_id IS NULL
     'spark',
     'brainstorm',
     'shaping_draft',
-    'session',
     'report',
     'plan',
     'handoff',
@@ -1212,9 +1232,6 @@ FROM exports JOIN brainstorms ON exports.source_entity_kind = 'brainstorm' AND b
 UNION ALL
 SELECT exports.id, exports.path, exports.source_entity_kind, exports.source_entity_id, exports.generated_at, shaping_drafts.updated_at
 FROM exports JOIN shaping_drafts ON exports.source_entity_kind = 'shaping_draft' AND shaping_drafts.project_id = exports.project_id AND shaping_drafts.id = exports.source_entity_id
-UNION ALL
-SELECT exports.id, exports.path, exports.source_entity_kind, exports.source_entity_id, exports.generated_at, sessions.updated_at
-FROM exports JOIN sessions ON exports.source_entity_kind = 'session' AND sessions.project_id = exports.project_id AND sessions.id = exports.source_entity_id
 UNION ALL
 SELECT exports.id, exports.path, exports.source_entity_kind, exports.source_entity_id, exports.generated_at, reports.updated_at
 FROM exports JOIN reports ON exports.source_entity_kind = 'report' AND reports.project_id = exports.project_id AND reports.id = exports.source_entity_id

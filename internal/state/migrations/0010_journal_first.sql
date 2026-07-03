@@ -1,0 +1,123 @@
+-- SPEC-056 journal-first: the project journal replaces the session entity.
+-- Destructive and idempotent. Backfills harness_session_id onto journal rows,
+-- purges lifecycle-noise entries, drops the session FK columns/tables, and
+-- rebuilds the journal FTS index keyed on harness_session_id.
+--
+-- Ordering note: PRAGMA foreign_keys is a no-op inside a transaction, and
+-- ApplyMigrations runs every migration inside one transaction. The rebuilds
+-- below therefore drop the session FK columns from handoffs and journal_entries
+-- BEFORE dropping the sessions table, so no live foreign key references the
+-- sessions table at COMMIT. SQLite's DROP TABLE does not enforce child->parent
+-- foreign keys, so intermediate states inside the transaction are safe.
+
+-- (1) Backfill harness_session_id from the owning session record.
+UPDATE journal_entries
+SET harness_session_id = (
+  SELECT s.harness_session_id FROM sessions s WHERE s.id = journal_entries.session_id
+)
+WHERE harness_session_id IS NULL
+  AND session_id IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM sessions s
+    WHERE s.id = journal_entries.session_id AND s.harness_session_id IS NOT NULL
+  );
+
+-- (2) Purge lifecycle-noise entries. entry_type='session' is the lifecycle
+-- machinery's own bookkeeping type: every such row is a machine-generated
+-- marker or auto-summary, never deliberate human synthesis. Verified across the
+-- production DB, the scopes decompose as: start/stop/resume/clear = literal
+-- marker strings ("=== SESSION STARTED ==="); end/wrap/conclude = auto-summaries
+-- ("at commit X, N commits, N decisions, N entries", "session ended");
+-- context = "from commit X" arrival stamps; merge = "consolidated from <file>.md"
+-- housekeeping records; test/enrich = fixtures and enrichment checkpoints.
+-- Deliberate synthesis ("tried X, abandoned Y, next Z") is a distinct
+-- entry_type='wrap' row (SPEC-056 §Solution Direction) and is left untouched by
+-- keying the purge on entry_type, not scope. This satisfies the "zero non-noise
+-- rows lost" test condition and the "match the known marker patterns" guidance.
+DELETE FROM journal_entries WHERE entry_type = 'session';
+
+-- (3) Rebuild handoffs: replace the session_id FK with a plain
+-- harness_session_id provenance column. Backfill from the session record.
+CREATE TABLE handoffs_new (
+  id TEXT PRIMARY KEY NOT NULL,
+  project_id TEXT NOT NULL,
+  harness_session_id TEXT,
+  task_id TEXT,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL,
+  body_source_id TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (task_id) REFERENCES tasks(id),
+  FOREIGN KEY (body_source_id) REFERENCES sources(id)
+);
+
+INSERT INTO handoffs_new (id, project_id, harness_session_id, task_id, title, status, body_source_id, created_at, updated_at)
+SELECT
+  h.id,
+  h.project_id,
+  (SELECT s.harness_session_id FROM sessions s WHERE s.id = h.session_id),
+  h.task_id,
+  h.title,
+  h.status,
+  h.body_source_id,
+  h.created_at,
+  h.updated_at
+FROM handoffs h;
+
+DROP TABLE handoffs;
+ALTER TABLE handoffs_new RENAME TO handoffs;
+CREATE INDEX IF NOT EXISTS idx_handoffs_context ON handoffs (project_id, harness_session_id, task_id);
+
+-- (4) Delete session lifecycle rows from the event log and alias registry.
+DELETE FROM events WHERE entity_kind = 'session';
+DELETE FROM aliases WHERE entity_kind = 'session';
+
+-- (5) Rebuild journal_entries without the session_id FK column.
+CREATE TABLE journal_entries_new (
+  id TEXT PRIMARY KEY NOT NULL,
+  project_id TEXT NOT NULL,
+  entry_type TEXT NOT NULL,
+  scope TEXT,
+  message TEXT NOT NULL,
+  observed_branch TEXT,
+  observed_worktree TEXT,
+  harness_session_id TEXT,
+  spec_id TEXT,
+  task_id TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (spec_id) REFERENCES specs(id),
+  FOREIGN KEY (task_id) REFERENCES tasks(id)
+);
+
+INSERT INTO journal_entries_new (id, project_id, entry_type, scope, message, observed_branch, observed_worktree, harness_session_id, spec_id, task_id, created_at, updated_at)
+SELECT id, project_id, entry_type, scope, message, observed_branch, observed_worktree, harness_session_id, spec_id, task_id, created_at, updated_at
+FROM journal_entries;
+
+DROP TABLE journal_entries;
+ALTER TABLE journal_entries_new RENAME TO journal_entries;
+CREATE INDEX IF NOT EXISTS idx_journal_context ON journal_entries (project_id, spec_id, task_id);
+CREATE INDEX IF NOT EXISTS idx_journal_harness ON journal_entries (project_id, harness_session_id);
+
+-- (6) Drop the empty per-session snapshot table.
+DROP TABLE IF EXISTS session_state_snapshots;
+
+-- (7) Drop the sessions table. Safe now that no live FK references it.
+DROP TABLE IF EXISTS sessions;
+
+-- (8) Rebuild the journal FTS index keyed on harness_session_id.
+DROP TABLE IF EXISTS journal_search;
+CREATE VIRTUAL TABLE journal_search USING fts5(
+  project_id UNINDEXED,
+  journal_entry_id UNINDEXED,
+  harness_session_id UNINDEXED,
+  entry_type,
+  scope,
+  message
+);
+INSERT INTO journal_search(rowid, project_id, journal_entry_id, harness_session_id, entry_type, scope, message)
+SELECT rowid, project_id, id, COALESCE(harness_session_id, ''), entry_type, COALESCE(scope, ''), message
+FROM journal_entries;

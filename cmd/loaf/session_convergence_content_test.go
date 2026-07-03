@@ -39,21 +39,6 @@ func TestSessionModelConvergenceContentGuards(t *testing.T) {
 	}
 }
 
-func TestSessionModelConvergenceAnointsWrapInTopLevelGuidance(t *testing.T) {
-	root := repoRoot(t)
-	for _, rel := range []string{".agents/AGENTS.md", ".claude/CLAUDE.md"} {
-		body := readTextFile(t, filepath.Join(root, filepath.FromSlash(rel)))
-		for _, want := range []string{"canonical session model", "wrap", "loaf session start", "loaf session end --wrap"} {
-			if !strings.Contains(body, want) {
-				t.Fatalf("%s missing %q in canonical session guidance", rel, want)
-			}
-		}
-		if strings.Contains(body, "Create session file following") {
-			t.Fatalf("%s still advertises hand-authored session file scaffolding", rel)
-		}
-	}
-}
-
 func forbiddenContentMatches(t *testing.T, path string, forbidden []string) []string {
 	t.Helper()
 	info, err := os.Stat(path)
