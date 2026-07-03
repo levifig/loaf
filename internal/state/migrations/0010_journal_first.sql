@@ -22,18 +22,65 @@ WHERE harness_session_id IS NULL
     WHERE s.id = journal_entries.session_id AND s.harness_session_id IS NOT NULL
   );
 
--- (2) Purge lifecycle-noise entries. entry_type='session' is the lifecycle
--- machinery's own bookkeeping type: every such row is a machine-generated
--- marker or auto-summary, never deliberate human synthesis. Verified across the
--- production DB, the scopes decompose as: start/stop/resume/clear = literal
--- marker strings ("=== SESSION STARTED ==="); end/wrap/conclude = auto-summaries
--- ("at commit X, N commits, N decisions, N entries", "session ended");
--- context = "from commit X" arrival stamps; merge = "consolidated from <file>.md"
--- housekeeping records; test/enrich = fixtures and enrichment checkpoints.
--- Deliberate synthesis ("tried X, abandoned Y, next Z") is a distinct
--- entry_type='wrap' row (SPEC-056 §Solution Direction) and is left untouched by
--- keying the purge on entry_type, not scope. This satisfies the "zero non-noise
--- rows lost" test condition and the "match the known marker patterns" guidance.
+-- (2) Purge lifecycle-noise entries safely. entry_type='session' was the
+-- lifecycle machinery's bookkeeping type; on this installation every such row is
+-- a machine-generated marker or auto-summary. But an unconditional
+-- `DELETE FROM journal_entries WHERE entry_type='session'` would also destroy any
+-- user-authored session(...) row on some other installation. So instead of
+-- trusting the type blindly, we enumerate the exact machine-generated shapes and
+-- purge ONLY those; anything typed 'session' that does not match is preserved by
+-- renaming its entry_type to 'legacy_session' (content untouched). The 'session'
+-- type still dies; unknown human content survives and is re-indexed by the FTS
+-- rebuild in step (8) like any other row.
+--
+-- The machine shapes were derived empirically from the production journal
+-- (entry_type='session' rows). Each family is anchored on both scope and message
+-- so a coincidental human message under a lifecycle scope is not swept up:
+--   start   : "=== SESSION STARTED ==="  [+ optional " (session <hex>)"]
+--   resume  : "=== SESSION RESUMED ==="   [+ optional " (session <hex>)"]
+--   stop    : "=== SESSION STOPPED ===" | "=== SESSION COMPLETE ==="
+--   clear   : "=== CONTEXT CLEARED ==="
+--   end / conclude / wrap (machine auto-summaries, NOT the deliberate
+--            entry_type='wrap' synthesis rows, which are a different type):
+--            "at commit <hash>[, N commits][, N decisions][, N entries]"
+--            | "session ended"
+--            | "closed by new conversation"
+--            | "session handed off, pending final status update"
+--   context : "from commit <hash>"  arrival stamps
+--   merge   : "consolidated from <file>.md"  housekeeping records
+--   test    : "verify session type"  fixture
+--   enrich  : "recorded native SQLite enrichment checkpoint"
+--
+-- Deliberate synthesis ("tried X, abandoned Y, next Z") lives in entry_type='wrap'
+-- rows (SPEC-056 §Solution Direction) and is never touched: we only ever read or
+-- rewrite entry_type='session'.
+
+-- (2a) Preserve any entry_type='session' row that is NOT a known machine shape
+-- by demoting it to 'legacy_session'. Runs before the purge so unknown human
+-- content is already off the 'session' type when the DELETE fires.
+UPDATE journal_entries
+SET entry_type = 'legacy_session'
+WHERE entry_type = 'session'
+  AND NOT (
+       (scope = 'start'  AND (message = '=== SESSION STARTED ==='
+                              OR message GLOB '=== SESSION STARTED === (session *)'))
+    OR (scope = 'resume' AND (message = '=== SESSION RESUMED ==='
+                              OR message GLOB '=== SESSION RESUMED === (session *)'))
+    OR (scope = 'stop'   AND message IN ('=== SESSION STOPPED ===', '=== SESSION COMPLETE ==='))
+    OR (scope = 'clear'  AND message = '=== CONTEXT CLEARED ===')
+    OR (scope IN ('end', 'conclude', 'wrap')
+                         AND (message LIKE 'at commit %'
+                              OR message IN ('session ended',
+                                             'closed by new conversation',
+                                             'session handed off, pending final status update')))
+    OR (scope = 'context' AND message LIKE 'from commit %')
+    OR (scope = 'merge'   AND message LIKE 'consolidated from %')
+    OR (scope = 'test'    AND message = 'verify session type')
+    OR (scope = 'enrich'  AND message = 'recorded native SQLite enrichment checkpoint')
+  );
+
+-- (2b) Purge the remaining entry_type='session' rows: now exactly the machine
+-- shapes, since every unknown row was demoted to 'legacy_session' above.
 DELETE FROM journal_entries WHERE entry_type = 'session';
 
 -- (3) Rebuild handoffs: replace the session_id FK with a plain

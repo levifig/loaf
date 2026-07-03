@@ -214,6 +214,13 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 		HarnessSessionID: options.harnessSessionID,
 	})
 	if err != nil {
+		// Hook-invoked logging (git/gh/task PostToolUse via --from-hook, or Linear
+		// detection) must never fail the harness on a fresh install: when the state
+		// database is missing or uninitialized, write nothing and exit 0. Interactive
+		// invocations keep the current error behavior.
+		if (options.fromHook || options.detectLinear) && isStateMissingError(err) {
+			return nil
+		}
 		if options.jsonOutput {
 			return writeJSONCommandError(out, "journal log", err)
 		}
@@ -340,11 +347,14 @@ func (r Runner) runJournalSearch(args []string, out io.Writer, runtime state.Run
 		}
 		return err
 	}
-	result, err := state.Search(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.SearchOptions{
-		Query:        options.query,
-		AllProjects:  options.allProjects,
-		Limit:        options.limit,
-		WorktreePath: runtime.RootPath(),
+	// Journal search queries only the journal_search FTS table joined to
+	// journal_entries. It never refreshes or scans the docs index, so a
+	// journal-only read cannot mutate docs state or fail on unrelated docs
+	// scanning (SPEC-056 M1).
+	result, err := state.SearchJournal(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.SearchOptions{
+		Query:       options.query,
+		AllProjects: options.allProjects,
+		Limit:       options.limit,
 	})
 	if err != nil {
 		if options.jsonOutput {
@@ -352,13 +362,6 @@ func (r Runner) runJournalSearch(args []string, out io.Writer, runtime state.Run
 		}
 		return r.withStateMissingContext(err, projectRoot)
 	}
-	journalHits := make([]state.SearchHit, 0, len(result.Results))
-	for _, hit := range result.Results {
-		if hit.Source == "journal_entry" {
-			journalHits = append(journalHits, hit)
-		}
-	}
-	result.Results = journalHits
 	if options.jsonOutput {
 		return writeJSON(out, result)
 	}
@@ -469,6 +472,15 @@ func (r Runner) runJournalShow(args []string, out io.Writer, runtime state.Runti
 }
 
 func (r Runner) runJournalContext(args []string, out io.Writer, runtime state.Runtime) error {
+	return r.runJournalContextDigest(args, out, runtime, false)
+}
+
+// runJournalContextDigest emits the layered continuity digest. hookInvocation is
+// true when reached from a harness hook (SessionStart --from-hook or PostCompact
+// for-resumption): on those paths a missing or uninitialized state database must
+// never fail the harness, so it emits a single non-blocking diagnostic line and
+// exits 0. Non-hook (interactive) invocations keep the current error behavior.
+func (r Runner) runJournalContextDigest(args []string, out io.Writer, runtime state.Runtime, hookInvocation bool) error {
 	// Hook subcommands: SessionStart/PostCompact emit the layered digest, while
 	// UserPromptSubmit and PreCompact inject guidance text. All preserve the
 	// subagent silent-exit guard.
@@ -488,6 +500,7 @@ func (r Runner) runJournalContext(args []string, out io.Writer, runtime state.Ru
 	// subagent invocations: read the hook payload and exit silently (writing
 	// nothing) when an agent_id is present.
 	if hasFlag(args, "--from-hook") {
+		hookInvocation = true
 		hookInput, err := r.readJournalHookInput()
 		if err != nil {
 			if jsonRequested {
@@ -539,6 +552,15 @@ func (r Runner) runJournalContext(args []string, out io.Writer, runtime state.Ru
 		Branch: branch,
 	})
 	if err != nil {
+		// On hook paths (SessionStart/PostCompact) a fresh install with no state
+		// database yet must never fail the harness: emit one non-blocking
+		// diagnostic line and exit 0. Interactive invocations keep erroring.
+		if hookInvocation && isStateMissingError(err) {
+			if !jsonOutput {
+				fmt.Fprintln(out, "  loaf journal context: no journal yet (run `loaf state init` to start recording)")
+			}
+			return nil
+		}
 		if jsonOutput {
 			return writeJSONCommandError(out, "journal context", err)
 		}
@@ -725,6 +747,12 @@ func (r Runner) runJournalFirstMigration(args []string, out io.Writer, runtime s
 	}
 	fmt.Fprintf(out, "  journal entries: %d -> %d\n", result.JournalEntriesBefore, result.JournalEntriesAfter)
 	fmt.Fprintf(out, "  noise purged: %d\n", result.NoiseEntriesPurged)
+	for _, family := range result.PurgeBreakdown {
+		if family.Count > 0 {
+			fmt.Fprintf(out, "    %s: %d\n", family.Family, family.Count)
+		}
+	}
+	fmt.Fprintf(out, "  session rows preserved as legacy_session: %d\n", result.SessionRowsPreservedAsLegacy)
 	fmt.Fprintf(out, "  harness ids backfilled: %d\n", result.HarnessSessionBackfill)
 	fmt.Fprintf(out, "  sessions dropped: %d\n", result.SessionsDropped)
 	fmt.Fprintf(out, "  session events deleted: %d\n", result.SessionEventsDeleted)

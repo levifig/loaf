@@ -105,6 +105,14 @@ func deriveJournalHookLogEntry(input journalHookInput) (string, bool) {
 	}
 }
 
+// isStateMissingError reports whether err is the canonical "state database is
+// missing or uninitialized" signal emitted across the state package (the same
+// sentinel withStateMissingContext keys off). Hook-invoked journal paths use it
+// to degrade gracefully on a fresh install rather than failing the harness.
+func isStateMissingError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "SQLite state database is not initialized")
+}
+
 // journalContextPromptInstructions is injected on every UserPromptSubmit. It
 // carries the durable implementation principles without any session-lifecycle
 // language: the journal is the only session-related structure.
@@ -223,5 +231,8 @@ func (r Runner) runJournalContextResumption(out io.Writer, runtime state.Runtime
 	if hookInput.AgentID != "" {
 		return nil
 	}
-	return r.runJournalContext(nil, out, runtime)
+	// PostCompact resumption is a hook path: a missing state database must not
+	// fail the harness. The subagent guard already ran above, so the inner digest
+	// call reads no further stdin.
+	return r.runJournalContextDigest(nil, out, runtime, true)
 }

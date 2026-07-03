@@ -109,27 +109,7 @@ func (s *Store) Search(ctx context.Context, root project.Root, options SearchOpt
 		return SearchResult{}, err
 	}
 	hits = append(hits, docHits...)
-	sort.SliceStable(hits, func(i, j int) bool {
-		if hits[i].Rank != hits[j].Rank {
-			return hits[i].Rank < hits[j].Rank
-		}
-		if hits[i].Source != hits[j].Source {
-			return hits[i].Source < hits[j].Source
-		}
-		if hits[i].ProjectID != hits[j].ProjectID {
-			return hits[i].ProjectID < hits[j].ProjectID
-		}
-		if hits[i].EntityKind != hits[j].EntityKind {
-			return hits[i].EntityKind < hits[j].EntityKind
-		}
-		if hits[i].EntityID != hits[j].EntityID {
-			return hits[i].EntityID < hits[j].EntityID
-		}
-		if hits[i].Path != hits[j].Path {
-			return hits[i].Path < hits[j].Path
-		}
-		return hits[i].JournalEntryID < hits[j].JournalEntryID
-	})
+	sortSearchHits(hits)
 	if len(hits) > limit {
 		hits = hits[:limit]
 	}
@@ -273,6 +253,34 @@ WHERE docs_search MATCH ?`
 		return nil, fmt.Errorf("iterate docs search hits: %w", err)
 	}
 	return hits, nil
+}
+
+// sortSearchHits applies the canonical FTS ordering: ascending bm25 rank
+// (SQLite returns more-relevant rows as smaller/more-negative bm25 scores),
+// then a stable tiebreak chain on source and identity fields so results are
+// deterministic across the global and journal-only search paths.
+func sortSearchHits(hits []SearchHit) {
+	sort.SliceStable(hits, func(i, j int) bool {
+		if hits[i].Rank != hits[j].Rank {
+			return hits[i].Rank < hits[j].Rank
+		}
+		if hits[i].Source != hits[j].Source {
+			return hits[i].Source < hits[j].Source
+		}
+		if hits[i].ProjectID != hits[j].ProjectID {
+			return hits[i].ProjectID < hits[j].ProjectID
+		}
+		if hits[i].EntityKind != hits[j].EntityKind {
+			return hits[i].EntityKind < hits[j].EntityKind
+		}
+		if hits[i].EntityID != hits[j].EntityID {
+			return hits[i].EntityID < hits[j].EntityID
+		}
+		if hits[i].Path != hits[j].Path {
+			return hits[i].Path < hits[j].Path
+		}
+		return hits[i].JournalEntryID < hits[j].JournalEntryID
+	})
 }
 
 func firstMatchingLine(content string, tokens []string) int {

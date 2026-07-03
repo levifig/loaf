@@ -139,12 +139,12 @@ func ObservedGitBranch(worktree string) string {
 func parseJournalEntry(entry string) (string, string, string, error) {
 	trimmed := strings.TrimSpace(entry)
 	if trimmed == "" {
-		return "", "", "", fmt.Errorf("session log entry cannot be empty")
+		return "", "", "", fmt.Errorf("journal entry cannot be empty")
 	}
 	re := regexp.MustCompile(`^([A-Za-z0-9_-]+)(?:\(([^)]*)\))?:\s*(.+)$`)
 	matches := re.FindStringSubmatch(trimmed)
 	if matches == nil {
-		return "", "", "", fmt.Errorf("session log entry must look like type(scope): message")
+		return "", "", "", fmt.Errorf("journal entry must look like type(scope): message")
 	}
 	return matches[1], strings.TrimSpace(matches[2]), strings.TrimSpace(matches[3]), nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -79,6 +80,24 @@ func TestLogJournalRejectsMalformedEntry(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("LogJournal() error = nil, want malformed entry error")
+	}
+	// The parser vocabulary is journal-first: the message must not reference the
+	// removed "session log" concept (SPEC-056 NIT).
+	if !strings.Contains(err.Error(), "journal entry must look like") {
+		t.Fatalf("LogJournal() error = %v, want journal-entry wording", err)
+	}
+	if strings.Contains(err.Error(), "session log entry") {
+		t.Fatalf("LogJournal() error = %v, must not use removed session-log wording", err)
+	}
+}
+
+func TestParseJournalEntryEmptyUsesJournalVocabulary(t *testing.T) {
+	_, _, _, err := parseJournalEntry("   ")
+	if err == nil {
+		t.Fatal("parseJournalEntry(blank) error = nil, want empty-entry error")
+	}
+	if !strings.Contains(err.Error(), "journal entry cannot be empty") {
+		t.Fatalf("parseJournalEntry(blank) error = %v, want journal-entry wording", err)
 	}
 }
 

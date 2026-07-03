@@ -1274,6 +1274,79 @@ FROM exports JOIN journal_entries ON exports.source_entity_kind = 'journal_entry
 	return diagnostics, nil
 }
 
+// classifyBehindSchemaTarget reports whether a database that Inspect marked
+// ModeInvalid is invalid *only* because it is behind schema — i.e. it has fewer
+// than the current auto-applied migrations, every recorded migration matches its
+// Go-owned checksum, no unexpected migration versions are recorded, and SQLite
+// integrity and foreign keys are clean. Such a database can be safely brought
+// current by applying the pending non-destructive migrations. Any other invalid
+// condition (checksum drift, corruption, foreign-key violations, or a version at
+// or beyond the current baseline that is still somehow invalid) returns false so
+// the caller refuses with a clear error.
+func classifyBehindSchemaTarget(databasePath string) (bool, error) {
+	store, err := OpenStoreReadOnly(databasePath)
+	if err != nil {
+		return false, nil
+	}
+	defer store.Close()
+	ctx := context.Background()
+
+	version, err := store.SchemaVersion(ctx)
+	if err != nil {
+		return false, nil
+	}
+	// Only strictly-behind databases qualify. A version at or beyond the current
+	// baseline that is still invalid is a genuine problem, not a pending upgrade.
+	if version >= CurrentSchemaVersion() || version < 1 {
+		return false, nil
+	}
+
+	// Every recorded migration must be a known Go-owned migration with a matching
+	// checksum. An unknown version or a drifted checksum is real drift, not a
+	// pending upgrade.
+	known := map[int]SchemaMigration{}
+	for _, migration := range SchemaMigrations() {
+		known[migration.Version] = migration
+	}
+	rows, err := store.db.QueryContext(ctx, `SELECT version, checksum FROM schema_migrations ORDER BY version`)
+	if err != nil {
+		return false, nil
+	}
+	defer rows.Close()
+	recorded := 0
+	for rows.Next() {
+		var recordedVersion int
+		var recordedChecksum string
+		if err := rows.Scan(&recordedVersion, &recordedChecksum); err != nil {
+			return false, fmt.Errorf("scan schema migration row: %w", err)
+		}
+		migration, ok := known[recordedVersion]
+		if !ok || migration.Checksum() != recordedChecksum {
+			return false, nil
+		}
+		recorded++
+	}
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("iterate schema migration rows: %w", err)
+	}
+	// The recorded rows must be exactly versions 1..version with no gaps, so the
+	// pending set is precisely the known migrations above the current version.
+	if recorded != version {
+		return false, nil
+	}
+
+	// SQLite integrity and foreign keys must be clean; behind-schema is about
+	// missing migrations, not corruption.
+	_, integrityValid, err := inspectSQLiteIntegrity(ctx, store)
+	if err != nil {
+		return false, fmt.Errorf("classify behind-schema integrity: %w", err)
+	}
+	if !integrityValid {
+		return false, nil
+	}
+	return true, nil
+}
+
 func errorsIsNoRows(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)
 }

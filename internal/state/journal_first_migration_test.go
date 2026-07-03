@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/levifig/loaf/internal/project"
 )
 
 // seedJournalFirstFixture builds a production-shaped v9 database: sessions with
@@ -458,6 +461,299 @@ func TestJournalFirstMigrationExcludedFromAutoApply(t *testing.T) {
 	}
 	if len(m.Checksum()) != 64 {
 		t.Fatalf("JournalFirstMigration().Checksum() length = %d, want 64", len(m.Checksum()))
+	}
+}
+
+// seedSessionPreserveFixture adds, on top of the baseline fixture, session-type
+// rows that exercise the safe purge predicate: several machine-generated shapes
+// spanning distinct families plus one synthetic user-authored session(scope) row
+// whose message matches no machine shape. The user row must survive as
+// entry_type='legacy_session'; the machine rows must be purged.
+func seedSessionPreserveFixture(t *testing.T, databasePath string, projectID string) {
+	t.Helper()
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	ctx := context.Background()
+	now := "2026-07-02T00:00:00Z"
+
+	statements := []struct {
+		sql  string
+		args []any
+	}{
+		// Machine shapes across several families (all purged).
+		{journalInsertSQL, journalArgs("j-mach-resume", projectID, "session", "resume", "=== SESSION RESUMED === (session 96f8726b)", "main", "", nil, now)},
+		{journalInsertSQL, journalArgs("j-mach-clear", projectID, "session", "clear", "=== CONTEXT CLEARED ===", "main", "", nil, now)},
+		{journalInsertSQL, journalArgs("j-mach-commit", projectID, "session", "end", "at commit 92ae0ef, 3 decisions, 1 entries", "main", "", nil, now)},
+		{journalInsertSQL, journalArgs("j-mach-wrapsum", projectID, "session", "wrap", "at commit 13b4436, 6 commits, 12 decisions, 7 entries", "main", "", nil, now)},
+		{journalInsertSQL, journalArgs("j-mach-ctx", projectID, "session", "context", "from commit 92ae0ef", "main", "", nil, now)},
+		{journalInsertSQL, journalArgs("j-mach-merge", projectID, "session", "merge", "consolidated from 20260422-011533-session.md", "main", "", nil, now)},
+		// Synthetic USER-authored session(scope) row: matches NO machine shape.
+		// It must be preserved as legacy_session, not purged.
+		{journalInsertSQL, journalArgs("j-user-session", projectID, "session", "planning", "handwritten note that happens to use the session type", "main", "", nil, now)},
+	}
+	for _, statement := range statements {
+		if _, err := store.db.ExecContext(ctx, statement.sql, statement.args...); err != nil {
+			t.Fatalf("seed preserve statement %q error = %v", statement.sql, err)
+		}
+	}
+}
+
+// TestJournalFirstMigrationPreservesUnknownSessionRows asserts the safe purge
+// predicate: known machine-generated session rows are purged with a per-family
+// breakdown, an unknown user-authored session(scope) row is preserved as
+// legacy_session (content untouched), and re-running is a clean no-op.
+func TestJournalFirstMigrationPreservesUnknownSessionRows(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	resolver := PathResolver{StateHome: stateHome}
+	status, err := Initialize(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	seedJournalFirstFixture(t, status.DatabasePath, status.ProjectID)
+	seedSessionPreserveFixture(t, status.DatabasePath, status.ProjectID)
+
+	// Baseline fixture seeds 3 machine session rows; preserve fixture adds 6
+	// machine + 1 user row. So 9 purged, 1 preserved as legacy_session.
+	result, err := ApplyJournalFirstMigration(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("ApplyJournalFirstMigration() error = %v", err)
+	}
+	if result.NoiseEntriesPurged != 9 {
+		t.Fatalf("noise purged = %d, want 9 (machine rows only)", result.NoiseEntriesPurged)
+	}
+	if result.SessionRowsPreservedAsLegacy != 1 {
+		t.Fatalf("preserved as legacy_session = %d, want 1", result.SessionRowsPreservedAsLegacy)
+	}
+
+	// Per-family breakdown must sum to the purged total and name the right shapes.
+	families := map[string]int{}
+	total := 0
+	for _, family := range result.PurgeBreakdown {
+		families[family.Family] = family.Count
+		total += family.Count
+	}
+	if total != result.NoiseEntriesPurged {
+		t.Fatalf("purge breakdown sum = %d, want %d", total, result.NoiseEntriesPurged)
+	}
+	// Baseline: start_marker(1) stop_marker(1) session_ended(1).
+	// Preserve:  resume_marker(1) context_cleared(1) commit_summary(2 = end + wrap)
+	//            context_arrival(1) merge_consolidated(1).
+	wantFamilies := map[string]int{
+		"start_marker":       1,
+		"stop_marker":        1,
+		"session_ended":      1,
+		"resume_marker":      1,
+		"context_cleared":    1,
+		"commit_summary":     2,
+		"context_arrival":    1,
+		"merge_consolidated": 1,
+	}
+	for name, want := range wantFamilies {
+		if families[name] != want {
+			t.Fatalf("family %q count = %d, want %d; full breakdown = %+v", name, families[name], want, result.PurgeBreakdown)
+		}
+	}
+
+	// No entry_type='session' rows survive; the user row is renamed, not deleted.
+	if got := rawCount(t, status.DatabasePath, `SELECT COUNT(*) FROM journal_entries WHERE entry_type = 'session'`); got != 0 {
+		t.Fatalf("session-type rows after apply = %d, want 0", got)
+	}
+	if got := rawCount(t, status.DatabasePath, `SELECT COUNT(*) FROM journal_entries WHERE id = 'j-user-session' AND entry_type = 'legacy_session'`); got != 1 {
+		t.Fatalf("user session row not preserved as legacy_session; count = %d, want 1", got)
+	}
+	if got := rawString(t, status.DatabasePath, `SELECT message FROM journal_entries WHERE id = 'j-user-session'`); got != "handwritten note that happens to use the session type" {
+		t.Fatalf("preserved row content changed = %q", got)
+	}
+	// The preserved row is FTS-indexed like any other row.
+	if got := rawString(t, status.DatabasePath, `SELECT journal_entry_id FROM journal_search WHERE journal_search MATCH 'handwritten'`); got != "j-user-session" {
+		t.Fatalf("FTS match for preserved row = %q, want j-user-session", got)
+	}
+
+	// Idempotent re-run: nothing left to purge or preserve.
+	second, err := ApplyJournalFirstMigration(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("second ApplyJournalFirstMigration() error = %v", err)
+	}
+	if second.NoiseEntriesPurged != 0 || second.SessionRowsPreservedAsLegacy != 0 {
+		t.Fatalf("re-run purged/preserved = %d/%d, want 0/0", second.NoiseEntriesPurged, second.SessionRowsPreservedAsLegacy)
+	}
+	if got := rawCount(t, status.DatabasePath, `SELECT COUNT(*) FROM journal_entries WHERE entry_type = 'legacy_session'`); got != 1 {
+		t.Fatalf("legacy_session rows after re-run = %d, want 1 (unchanged)", got)
+	}
+}
+
+// initializeBehindSchemaFixture creates the global database at an older schema
+// version (migrations 1..upToVersion applied, 0008/0009 pending) with a project
+// row, then seeds the baseline journal-first fixture. It returns the resolved
+// status-shaped project id and database path.
+func initializeBehindSchemaFixture(t *testing.T, root project.Root, resolver PathResolver, upToVersion int) (projectID string, databasePath string) {
+	t.Helper()
+	ctx := context.Background()
+	databasePath, err := resolver.DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0o700); err != nil {
+		t.Fatalf("create database dir error = %v", err)
+	}
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	if err := ApplyMigrations(ctx, store.db, SchemaMigrations()[:upToVersion]); err != nil {
+		t.Fatalf("apply behind-schema migrations error = %v", err)
+	}
+	if err := store.UpsertProject(ctx, root); err != nil {
+		t.Fatalf("UpsertProject() error = %v", err)
+	}
+	identity, err := store.LookupProjectIdentityForRoot(ctx, root)
+	if err != nil {
+		t.Fatalf("LookupProjectIdentityForRoot() error = %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("close store error = %v", err)
+	}
+	seedJournalFirstFixture(t, databasePath, identity.ID)
+	return identity.ID, databasePath
+}
+
+// TestJournalFirstMigrationRunsOnBehindSchemaDatabase asserts that a database
+// stuck below the current schema (0008/0009 pending) — which Inspect marks
+// ModeInvalid — is still reachable by both dry-run and apply. Both apply the
+// pending non-destructive migrations before the journal-first step and succeed
+// end-to-end.
+func TestJournalFirstMigrationRunsOnBehindSchemaDatabase(t *testing.T) {
+	ctx := context.Background()
+
+	// Dry-run on a behind-schema (v7) database.
+	t.Run("dry-run", func(t *testing.T) {
+		root := projectRoot(t)
+		resolver := PathResolver{StateHome: t.TempDir()}
+		_, databasePath := initializeBehindSchemaFixture(t, root, resolver, 7)
+
+		// Guard: Inspect must consider this invalid (pending migrations) so the
+		// test exercises the behind-schema gate path, not the ready path.
+		pre, err := Inspect(root, resolver)
+		if err != nil {
+			t.Fatalf("Inspect() error = %v", err)
+		}
+		if pre.Mode != ModeInvalid || pre.SchemaVersion != 7 {
+			t.Fatalf("pre-migration mode/version = %q/%d, want invalid/7", pre.Mode, pre.SchemaVersion)
+		}
+
+		preview, err := PreviewJournalFirstMigration(ctx, root, resolver)
+		if err != nil {
+			t.Fatalf("PreviewJournalFirstMigration() on behind-schema database error = %v", err)
+		}
+		if !preview.CopyRun || preview.Applied {
+			t.Fatalf("preview copy_run/applied = %t/%t, want true/false", preview.CopyRun, preview.Applied)
+		}
+		if preview.NoiseEntriesPurged != 3 || preview.JournalEntriesAfter != 5 {
+			t.Fatalf("preview purged/after = %d/%d, want 3/5", preview.NoiseEntriesPurged, preview.JournalEntriesAfter)
+		}
+		if preview.SchemaVersion != journalFirstMigrationVersion {
+			t.Fatalf("preview schema version = %d, want %d", preview.SchemaVersion, journalFirstMigrationVersion)
+		}
+		// Live database must be untouched by the dry-run: still v7, sessions intact.
+		if got := rawTableExists(t, databasePath, "sessions"); !got {
+			t.Fatalf("live sessions table missing after dry-run on behind-schema database")
+		}
+		post, err := Inspect(root, resolver)
+		if err != nil {
+			t.Fatalf("Inspect() after dry-run error = %v", err)
+		}
+		if post.SchemaVersion != 7 {
+			t.Fatalf("live schema version after dry-run = %d, want 7 (untouched)", post.SchemaVersion)
+		}
+	})
+
+	// Apply on a behind-schema (v7) database.
+	t.Run("apply", func(t *testing.T) {
+		root := projectRoot(t)
+		resolver := PathResolver{StateHome: t.TempDir()}
+		_, databasePath := initializeBehindSchemaFixture(t, root, resolver, 7)
+
+		applied, err := ApplyJournalFirstMigration(ctx, root, resolver)
+		if err != nil {
+			t.Fatalf("ApplyJournalFirstMigration() on behind-schema database error = %v", err)
+		}
+		if !applied.Applied || applied.CopyRun {
+			t.Fatalf("apply applied/copy_run = %t/%t, want true/false", applied.Applied, applied.CopyRun)
+		}
+		if applied.BackupPath == "" {
+			t.Fatalf("apply backup path is empty; a pre-migration backup is mandatory")
+		}
+		if applied.NoiseEntriesPurged != 3 || applied.JournalEntriesAfter != 5 {
+			t.Fatalf("apply purged/after = %d/%d, want 3/5", applied.NoiseEntriesPurged, applied.JournalEntriesAfter)
+		}
+		if applied.SchemaVersion != journalFirstMigrationVersion {
+			t.Fatalf("apply schema version = %d, want %d", applied.SchemaVersion, journalFirstMigrationVersion)
+		}
+		// Live database is now fully migrated and Inspect-ready.
+		final, err := Inspect(root, resolver)
+		if err != nil {
+			t.Fatalf("Inspect() after apply error = %v", err)
+		}
+		if final.Mode != ModeSQLiteReady || final.SchemaVersion != journalFirstMigrationVersion {
+			t.Fatalf("post-apply mode/version = %q/%d, want sqlite-ready/%d", final.Mode, final.SchemaVersion, journalFirstMigrationVersion)
+		}
+		if rawTableExists(t, databasePath, "sessions") {
+			t.Fatalf("sessions table still present after apply on behind-schema database")
+		}
+		// Pending migrations 8 and 9 were recorded on the way through.
+		if got := rawCount(t, databasePath, `SELECT COUNT(*) FROM schema_migrations WHERE version IN (8, 9, 10)`); got != 3 {
+			t.Fatalf("recorded migrations 8/9/10 = %d, want 3", got)
+		}
+	})
+}
+
+// TestJournalFirstMigrationRefusesGenuinelyInvalidDatabase asserts that a
+// database invalid for reasons other than being behind schema (here: checksum
+// drift on a recorded migration) is still refused by both dry-run and apply with
+// a clear error, rather than being treated as a pending upgrade.
+func TestJournalFirstMigrationRefusesGenuinelyInvalidDatabase(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	resolver := PathResolver{StateHome: t.TempDir()}
+	_, databasePath := initializeBehindSchemaFixture(t, root, resolver, 7)
+
+	// Corrupt a recorded migration checksum so the database is invalid for a
+	// reason unrelated to pending migrations.
+	corrupt, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	if _, err := corrupt.db.ExecContext(ctx, `UPDATE schema_migrations SET checksum = 'drifted' WHERE version = 3`); err != nil {
+		t.Fatalf("corrupt checksum error = %v", err)
+	}
+	if err := corrupt.Close(); err != nil {
+		t.Fatalf("close store error = %v", err)
+	}
+
+	if pre, err := Inspect(root, resolver); err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	} else if pre.Mode != ModeInvalid {
+		t.Fatalf("mode = %q, want invalid", pre.Mode)
+	}
+
+	if _, err := PreviewJournalFirstMigration(ctx, root, resolver); err == nil {
+		t.Fatalf("PreviewJournalFirstMigration() on drifted database succeeded, want refusal")
+	} else if !strings.Contains(err.Error(), "invalid") {
+		t.Fatalf("preview refusal error = %q, want it to mention invalid state", err.Error())
+	}
+	if _, err := ApplyJournalFirstMigration(ctx, root, resolver); err == nil {
+		t.Fatalf("ApplyJournalFirstMigration() on drifted database succeeded, want refusal")
+	} else if !strings.Contains(err.Error(), "invalid") {
+		t.Fatalf("apply refusal error = %q, want it to mention invalid state", err.Error())
+	}
+	// The drifted database must be left untouched by the refusal.
+	if got := rawTableExists(t, databasePath, "sessions"); !got {
+		t.Fatalf("sessions table missing after refusal; refusal must not mutate")
 	}
 }
 
