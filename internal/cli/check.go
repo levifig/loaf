@@ -776,9 +776,7 @@ func runNativeValidatePush(hookContext checkHookContext, cwd string) checkResult
 		return result
 	}
 
-	if pushIsAllowedOperationalMainPush(cwd, &result) {
-		return result
-	}
+	checkDirectMainSourcePush(cwd, &result)
 
 	packageVersion, hasPackageJSON, hasBuildScript := headPackageInfo(cwd)
 
@@ -821,7 +819,7 @@ func runNativeValidatePush(hookContext checkHookContext, cwd string) checkResult
 	return result
 }
 
-var pushTagRefspecRE = regexp.MustCompile(`(?:^|\s)(?:refs/tags/\S+|v\d+\.\d+\.\d+[^\s:]*)(?:\s|$)`)
+var pushTagRefspecRE = regexp.MustCompile(`(?:^|\s)\+?(?:refs/tags/\S+|\S+:refs/tags/\S+|v\d+\.\d+\.\d+[^\s:]*)(?:\s|$)`)
 
 // pushIsReleaseFlow reports whether a push participates in the release flow:
 // pushing tags or pushing the default branch.
@@ -847,22 +845,22 @@ func gitDefaultBranch(cwd string) string {
 	return "main"
 }
 
-func pushIsAllowedOperationalMainPush(cwd string, result *checkResult) bool {
+func checkDirectMainSourcePush(cwd string, result *checkResult) {
 	currentBranch, err := commandOutput(cwd, "git", "branch", "--show-current")
 	if err != nil {
-		return false
+		return
 	}
 	currentBranch = strings.TrimSpace(currentBranch)
 	if currentBranch == "" || currentBranch != gitDefaultBranch(cwd) {
-		return false
+		return
 	}
 	changedFilesOutput, err := commandOutput(cwd, "git", "diff", "origin/"+currentBranch+"..HEAD", "--name-only")
 	if err != nil {
-		return false
+		return
 	}
 	files := nonEmptyLines(changedFilesOutput)
 	if len(files) == 0 {
-		return true
+		return
 	}
 	var disallowed []string
 	for _, file := range files {
@@ -882,9 +880,7 @@ func pushIsAllowedOperationalMainPush(cwd string, result *checkResult) bool {
 			message += fmt.Sprintf(" (and %d more)", len(disallowed)-5)
 		}
 		result.Errors = append(result.Errors, message)
-		return true
 	}
-	return true
 }
 
 func headPackageInfo(cwd string) (version string, exists bool, hasBuildScript bool) {

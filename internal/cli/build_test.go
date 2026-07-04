@@ -310,6 +310,7 @@ func TestRunnerBuildTargetCursorRunsNativeTarget(t *testing.T) {
 		`"command": "loaf check --hook check-secrets"`,
 		`"command": "loaf check --hook ephemeral-provenance"`,
 		`"command": "loaf check --hook validate-push --advisory"`,
+		`"command": "loaf check --hook workflow-pre-pr --advisory"`,
 		`"command": "cat \"$HOME/.cursor/hooks/instructions/pre-merge.md\""`,
 		`"postToolUse": [`,
 		`"command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh"`,
