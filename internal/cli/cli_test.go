@@ -732,6 +732,30 @@ func TestRunnerAllowsFreshWorktreeWithIdenticalAgentsCheckout(t *testing.T) {
 	if string(raw) != main+"\n" {
 		t.Fatalf(".moved-to = %q, want %q", raw, main+"\n")
 	}
+
+	stdout.Reset()
+	stderr.Reset()
+	err = Runner{
+		Stdout:     &stdout,
+		Stderr:     &stderr,
+		WorkingDir: linked,
+	}.Run([]string{"doctor"})
+	if exitErr, ok := err.(interface {
+		ExitCode() int
+		Silent() bool
+	}); ok && exitErr.ExitCode() == 2 && exitErr.Silent() {
+		t.Fatalf("second doctor in bootstrapped identical worktree hit pre-A3 refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
+	}
+	if strings.Contains(stderr.String(), "SPEC-036") || strings.Contains(stdout.String(), "SPEC-036") {
+		t.Fatalf("second identical worktree output contained SPEC-036 refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
+	}
+	raw, err = os.ReadFile(filepath.Join(linked, ".agents", worktreeBackPointerFile))
+	if err != nil {
+		t.Fatalf("ReadFile(.moved-to) after second run error = %v", err)
+	}
+	if string(raw) != main+"\n" {
+		t.Fatalf(".moved-to after second run = %q, want %q", raw, main+"\n")
+	}
 }
 
 func TestRunnerRefusesLinkedWorktreeWithLocalOnlyAgentsFile(t *testing.T) {
@@ -786,6 +810,33 @@ func TestRunnerRefusesLinkedWorktreeWithDivergentAgentsFile(t *testing.T) {
 	}
 }
 
+func TestRunnerRefusesLinkedWorktreeWithValidPointerAndDivergentAgentsFile(t *testing.T) {
+	main := initCLIGitRepo(t)
+	linked := addCLILinkedWorktree(t, main, "valid-pointer-divergent-agents")
+	seedCLIIdenticalAgentsCheckout(t, main, linked)
+	writeFile(t, filepath.Join(linked, ".agents", worktreeBackPointerFile), main+"\n")
+	writeFile(t, filepath.Join(linked, ".agents", "local-only.md"), "# Local Only\n")
+	var stderr bytes.Buffer
+
+	err := Runner{
+		Stderr:     &stderr,
+		WorkingDir: linked,
+	}.Run([]string{"journal", "recent"})
+
+	exitErr, ok := err.(interface {
+		ExitCode() int
+		Silent() bool
+	})
+	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
+		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
+	}
+	for _, want := range []string{"SPEC-036", "loaf migrate worktree-storage"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
+		}
+	}
+}
+
 func TestRunnerRefusesLinkedWorktreeWithSymlinkAgentsFile(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink fixture is platform-sensitive on Windows")
@@ -794,6 +845,38 @@ func TestRunnerRefusesLinkedWorktreeWithSymlinkAgentsFile(t *testing.T) {
 	linked := addCLILinkedWorktree(t, main, "symlink-agents")
 	seedCLIIdenticalAgentsCheckout(t, main, linked)
 	writeFile(t, filepath.Join(main, ".agents", "linked.md"), "target\n")
+	writeFile(t, filepath.Join(linked, "target.md"), "target\n")
+	if err := os.Symlink("../target.md", filepath.Join(linked, ".agents", "linked.md")); err != nil {
+		t.Fatalf("Symlink() error = %v", err)
+	}
+	var stderr bytes.Buffer
+
+	err := Runner{
+		Stderr:     &stderr,
+		WorkingDir: linked,
+	}.Run([]string{"journal", "recent"})
+
+	exitErr, ok := err.(interface {
+		ExitCode() int
+		Silent() bool
+	})
+	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
+		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
+	}
+	for _, want := range []string{"SPEC-036", "loaf migrate worktree-storage"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
+		}
+	}
+}
+
+func TestRunnerRefusesLinkedWorktreeWithOnlySymlinkAgentsFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink fixture is platform-sensitive on Windows")
+	}
+	main := initCLIGitRepo(t)
+	linked := addCLILinkedWorktree(t, main, "symlink-only-agents")
+	mkdirAll(t, filepath.Join(linked, ".agents"))
 	writeFile(t, filepath.Join(linked, "target.md"), "target\n")
 	if err := os.Symlink("../target.md", filepath.Join(linked, ".agents", "linked.md")); err != nil {
 		t.Fatalf("Symlink() error = %v", err)

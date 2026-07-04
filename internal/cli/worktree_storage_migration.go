@@ -333,7 +333,8 @@ func detectPreA3StateNative(startDir string) bool {
 	case worktreeAgentsNone:
 		return false
 	case worktreeAgentsIdenticalCheckout:
-		return writeWorktreeBackPointerNative(localAgents, mainRoot) != nil
+		_ = writeWorktreeBackPointerNative(localAgents, mainRoot)
+		return false
 	default:
 		return true
 	}
@@ -353,11 +354,11 @@ func classifyWorktreeAgentsStateNative(localAgents string, mainAgents string, ma
 	}
 
 	files := enumerateWorktreeAgentFiles(localAgents)
-	if len(files) == 0 {
-		return worktreeAgentsNone
-	}
 	if len(findWorktreeSymlinkPaths(localAgents)) > 0 {
 		return worktreeAgentsDivergentLocalState
+	}
+	if len(files) == 0 {
+		return worktreeAgentsNone
 	}
 
 	for _, rel := range files {
