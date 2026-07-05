@@ -119,7 +119,7 @@ SQLite journal / sparks / ideas / brainstorms / Linear / current conversation
 docs/changes/YYYYMMDD-slug/
   change.md        canonical Change artifact, grows toward executability
   notes.md         optional working notes, only when useful
-  reviews/         optional temporary review packets
+  reviews/         optional packets that must outlive the PR (D15)
         |
         v
 draft PR (default at shaping)  →  spike  →  implementation  →  review  →  merge
@@ -165,7 +165,8 @@ Provenance: decisions 1–8 accepted in the 2026-07-05 interactive interview
 against the `ce-loaf-analysis` executive report; 9–10 accepted in follow-up
 review the same day; 11 accepted after external (Codex) review; 12 accepted
 from user direction during dogfooding; 13–14 accepted after a worked-examples
-comparison in the same review cycle.
+comparison in the same review cycle; 15–16 accepted 2026-07-06 in the
+review-layering discussion.
 
 1. **One `change.md`, canonical, dogfooded now.** This document is the pilot of
    its own contract. `notes.md` and `reviews/` remain optional escape hatches.
@@ -234,6 +235,21 @@ comparison in the same review cycle.
     turns the report into a gate, for CI on non-draft PRs and implement
     preflight. Output follows the `loaf check` findings shape; required-section
     lists are hardcoded until a real ceremony demands configurability.
+15. **Review layering: conversation iterates, the PR reviews, the journal
+    remembers.** Early shaping churn happens conversationally, with decisions
+    captured to the journal — anchored comments on a still-churning document
+    only orphan. PR review threads are the medium for stability-point review:
+    contract review at the draft→ready flip, implementation review after it.
+    External review rounds conducted off-PR land one round-summary comment on
+    the PR (findings and dispositions), keeping the PR the durable review
+    record. The `reviews/` folder is reserved for packets that must outlive
+    the PR. This sharpens Decision 3: during draft, the PR is visibility;
+    the flip is the moment review relocates to it.
+16. **Vocabulary: the artifact is a Change.** "Spec" names the durable
+    post-implementation behavior contract under `docs/specs/` (what is now
+    true, never a plan); "CR" is retired vocabulary, permitted only as
+    historical reference. Already implied by the Cut list, Decision 6, and
+    Durable Outputs — pinned here because naming drift surfaced in use.
 
 ## Rabbit Holes and No-Gos
 
