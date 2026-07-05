@@ -407,7 +407,8 @@ spec; explains the CLI boundary) move to the shape-skill-rewrite Change.
 
 ## Definition of Done
 
-- The change template and `loaf change init/check` are shipped; V1 and V2 pass.
+- The change and PR templates ship as distributable content;
+  `loaf change init/check` ships; V1–V3 pass.
 - This pilot's PR is reviewed and merged with the change folder on main.
 - At least one follow-up Change is shaped from the template (H3) — proof the
   contract works beyond its own pilot.

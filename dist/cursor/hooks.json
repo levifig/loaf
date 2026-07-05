@@ -36,21 +36,21 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook ephemeral-provenance",
+        "command": "bash $HOME/.cursor/hooks/",
         "if": "Bash(git push:*)"
       },
       {
         "loaf-managed": true,
         "timeout": 60,
         "matcher": "Bash",
-        "command": "loaf check --hook validate-push --advisory",
+        "command": "loaf check --hook validate-push",
         "if": "Bash(git push:*)"
       },
       {
         "loaf-managed": true,
         "timeout": 5,
         "matcher": "Bash",
-        "command": "loaf check --hook workflow-pre-pr --advisory",
+        "command": "loaf check --hook workflow-pre-pr",
         "if": "Bash(gh pr create:*)"
       },
       {
