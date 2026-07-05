@@ -80,8 +80,9 @@ than both its current model and compound-engineering's pure-git model.
 - The Change artifact contract: one `change.md` per `docs/changes/YYYYMMDD-slug/`,
   growing toward executability.
 - A change template extracted from this pilot, plus the Change-aware PR
-  template (the PR is the shaping surface, so its template is part of the
-  contract).
+  template as distributable content (the PR is the shaping surface, so its
+  template is part of the contract; Loaf's `.github/` copy is the installed
+  instance).
 - A deliberately small `loaf change` CLI: `init` and `check` (carrying the
   structural gate). `archive` waits until a completed Change gives it a ceremony.
 - This pilot itself — shaped, branched, and reviewed through the model.
@@ -163,7 +164,8 @@ gates.
 Provenance: decisions 1–8 accepted in the 2026-07-05 interactive interview
 against the `ce-loaf-analysis` executive report; 9–10 accepted in follow-up
 review the same day; 11 accepted after external (Codex) review; 12 accepted
-from user direction during dogfooding.
+from user direction during dogfooding; 13–14 accepted after a worked-examples
+comparison in the same review cycle.
 
 1. **One `change.md`, canonical, dogfooded now.** This document is the pilot of
    its own contract. `notes.md` and `reviews/` remain optional escape hatches.
@@ -216,6 +218,22 @@ from user direction during dogfooding.
     keeping their intent: the pilot gate now bans status-like frontmatter
     outright and computes completeness instead of policing a declared value.
     Decision 3 (draft PR at shaping) carries the signal.
+13. **Section contract: flat product, contained planning, fixed tail.** The
+    Product Contract is the flat opening narrative (Problem, Hypothesis,
+    Scope, Observable Workflow, Rabbit Holes and No-Gos, optional Success
+    Metrics); the Planning Contract is one container section holding the HOW
+    as free-form `###` subsections named by the work; Implementation Units,
+    Verification Contract, and Definition of Done are fixed-name tail
+    sections. `check` needs only the product set, the container, and three
+    tail names — subsection naming inside the container stays free.
+14. **`loaf change check` is two-tier with an opt-in gate.** Violations always
+    fail: status-like frontmatter, malformed `YYYYMMDD-slug` naming, identity
+    mismatch (`change:` vs folder slug, `created:` vs folder date), missing
+    Product Contract sections. Executability is derived and reported, never
+    failed by default — a shaping-stage Change is valid. `--require-executable`
+    turns the report into a gate, for CI on non-draft PRs and implement
+    preflight. Output follows the `loaf check` findings shape; required-section
+    lists are hardcoded until a real ceremony demands configurability.
 
 ## Rabbit Holes and No-Gos
 
@@ -243,6 +261,20 @@ from user direction during dogfooding.
   them; both live in a follow-up Change).
 
 ## Planning Contract
+
+### Section contract
+
+- **Product Contract** — the flat opening sections: Problem, Hypothesis,
+  Scope, Observable Workflow, Rabbit Holes and No-Gos, plus Success Metrics
+  when validation matters. Product truth reads as narrative; no container.
+- **Planning Contract** — this container section, holding the HOW as
+  free-form `###` subsections named by the work (approach, placement,
+  boundaries, risks, sequencing, spike findings). The container is the
+  contract; its subsection names are not.
+- **Executable tail** — Implementation Units, Verification Contract, and
+  Definition of Done, followed by Durable Outputs. `check` derives
+  executability from the container and the tail, so those names are fixed.
+- **Decisions** — a cross-cutting provenance log serving both contracts.
 
 ### Artifact placement
 
@@ -273,10 +305,11 @@ when to call the CLI and how to read its output; preserving the line between
 interactive shaping and autonomous execution.
 
 The CLI owns invariants: validated `YYYYMMDD-slug` folder init; required-file
-and heading checks; readiness-vocabulary validation (rejecting progress words);
-branch/change mismatch detection; listing branch-local Changes; archival moves;
-machine-readable check output; verification-gate wiring; generated references.
-CLI help must remain legible to humans, not just agents.
+and heading checks; the status-like frontmatter ban; branch/change mismatch
+detection; listing branch-local Changes; archival moves; machine-readable
+check output; verification-gate wiring; generated references; materializing
+the PR template into a consumer repo's `.github/` when absent. CLI help must
+remain legible to humans, not just agents.
 
 Initial surface, deliberately small:
 
@@ -326,8 +359,12 @@ tracked entities.
 
 - **U1 — Pilot restructure.** This document, restructured to its own contract
   (done in shaping; you are reading the result).
-- **U2 — Change template.** Extract a `docs/changes` template from this file's
-  structure.
+- **U2 — Templates.** Extract a `docs/changes` change template from this
+  file's structure, and make the Change-aware PR template distributable
+  content under the shape skill (`content/skills/shape/templates/`) — Loaf's
+  own `.github/` copy is the installed instance; materializing it into a
+  consumer repo's `.github/` when absent belongs to the CLI (`change init`
+  or bootstrap).
 - **U3 — `loaf change init` and `loaf change check`.** `check` carries V1
   (readiness vocabulary) and V2 (structure) from day one, with machine-readable
   output.
@@ -339,14 +376,19 @@ see Follow-ups.
 
 Executable (machine-checkable):
 
-- **V1.** `loaf change check` exits non-zero when `change.md` carries any
-  status-like frontmatter (`readiness`, `status`, `state`, or progress
-  vocabulary in any frontmatter field) — the field class is banned, not
-  policed — and reports derived executability: whether the planning contract,
-  implementation units, verification contract, and definition of done are
-  present and non-empty. *(the pilot gate)*
-- **V2.** `loaf change check` validates folder naming (`YYYYMMDD-slug`) and
-  required `change.md` headings, with machine-readable output.
+- **V1.** `loaf change check` exits non-zero on violations: status-like
+  frontmatter (`readiness`, `status`, `state`, or progress vocabulary in any
+  frontmatter field — the field class is banned, not policed), malformed
+  `YYYYMMDD-slug` folder naming, identity mismatch (`change:` vs folder slug,
+  `created:` vs folder date), or missing Product Contract sections. *(the
+  pilot gate)*
+- **V2.** `loaf change check` reports derived executability — Planning
+  Contract, Implementation Units, Verification Contract, and Definition of
+  Done present and non-empty — without failing a shaping-stage document, in
+  machine-readable output following the `loaf check` findings shape.
+- **V3.** `loaf change check --require-executable` exits non-zero when the
+  document is not executable — the CI gate for non-draft PRs and the
+  implement-skill preflight.
 
 Human review:
 
@@ -430,8 +472,6 @@ more of the model's surface gets dogfooded by construction:
 
 ## Open Questions
 
-- Exact field split between Product Contract and Planning Contract sections.
-- Full `loaf change check` contract beyond V1/V2.
 - SPEC-017 binary-R revival details — format only, no task model import.
 - Smallest useful spike harness (worktree provisioning: harness-native
   `EnterWorktree` vs. a `git worktree add` wrapper).
