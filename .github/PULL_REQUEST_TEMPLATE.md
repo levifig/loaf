@@ -1,27 +1,35 @@
-## Summary
+<!-- Draft = still shaping. Ready for review = implementation-ready. -->
 
-<!-- One-paragraph description of what this PR changes and why. -->
+## Change
 
-## Implements
+<!-- Link the Change folder this PR advances: docs/changes/YYYYMMDD-slug/
+     The Change artifact lives in this PR's diff — the draft PR is its shaping
+     surface. During coexistence, legacy PRs implementing a numbered spec link
+     the .agents/specs/ path here instead. Delete this section for PRs tied to
+     neither. -->
 
-<!--
-If this PR implements a spec, link it here. Under ADR-013 (agentic state
-storage model), specs live in `.agents/specs/` (active) or
-`.agents/specs/archive/` (completed) and are NOT in the PR diff itself —
-agentic state is project-scoped working memory, not branch content. PRs
-that implement a spec MUST link to it so reviewers have a one-click path
-from the PR to the canonical artifact.
+## What & Why
 
-Example:
-- Implements: SPEC-036 — see [.agents/specs/SPEC-036-worktree-aware-agents-storage-routing.md]
--->
+<!-- What this PR does and the problem it solves. For a shaping (draft) PR,
+     summarize the direction; for an implementation PR, summarize the delta. -->
 
-## Test plan
+## Review focus
 
-<!-- Bullet list of how this was verified. Commands run, scenarios covered,
-     anything a reviewer should re-run locally. -->
+<!-- Where reviewer attention pays off: decisions to challenge, boundaries to
+     verify, criteria to confirm. -->
+
+## Verification
+
+<!-- What proves this works: gates run (`loaf change check`, `loaf check`),
+     tests, commands a reviewer should re-run locally. On a draft, state what
+     remains open instead. -->
 
 ## Migration / breaking changes
 
 <!-- If this PR changes user-facing behavior, document the migration step.
      Otherwise: "None." -->
+
+## Deferred
+
+<!-- Intentionally out of scope, and where it went (follow-up Change, open
+     question, issue). Delete if nothing was deferred. -->

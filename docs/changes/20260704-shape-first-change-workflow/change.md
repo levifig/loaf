@@ -1,7 +1,6 @@
 ---
 change: shape-first-change-workflow
 created: 2026-07-04
-readiness: shaping
 branch: shape-first-change-workflow
 ---
 
@@ -62,8 +61,9 @@ than both its current model and compound-engineering's pure-git model.
   found Loaf already mid-pivot post-SPEC-056, and identified verification
   contracts plus gates-derived done as Loaf's strongest differentiator.
 - CE usefully collapses brainstorm/requirements/plan/units into one artifact
-  moving by document **readiness**, not progress status. Loaf borrows the
-  readiness distinction without adopting CE's lack of intake, continuity, or
+  moving by document **completeness**, not progress status. Loaf keeps that
+  distinction but relocates the signal into PR state and document structure —
+  no field at all — while rejecting CE's lack of intake, continuity, and
   enforcement.
 - Skills are the portable knowledge layer but are weak at invariants; the CLI is
   better at deterministic, repeatable operations.
@@ -78,10 +78,12 @@ than both its current model and compound-engineering's pure-git model.
 **In**
 
 - The Change artifact contract: one `change.md` per `docs/changes/YYYYMMDD-slug/`,
-  growing by readiness.
-- A change template extracted from this pilot.
+  growing toward executability.
+- A change template extracted from this pilot, plus the Change-aware PR
+  template (the PR is the shaping surface, so its template is part of the
+  contract).
 - A deliberately small `loaf change` CLI: `init` and `check` (carrying the
-  readiness gate). `archive` waits until a completed Change gives it a ceremony.
+  structural gate). `archive` waits until a completed Change gives it a ceremony.
 - This pilot itself — shaped, branched, and reviewed through the model.
 
 **Out** (deferred to follow-up Changes — see Follow-ups)
@@ -114,7 +116,7 @@ SQLite journal / sparks / ideas / brainstorms / Linear / current conversation
         |  critique gate, choose smallest useful artifact)
         v
 docs/changes/YYYYMMDD-slug/
-  change.md        canonical Change artifact, grows by readiness
+  change.md        canonical Change artifact, grows toward executability
   notes.md         optional working notes, only when useful
   reviews/         optional temporary review packets
         |
@@ -137,25 +139,31 @@ artifact creation — `change create` is not the product, and source-specific
 input modes (`from idea`, `from journal`, `from Linear`) are conversational, not
 CLI surface.
 
-### Readiness
+### Readiness (derived, never declared)
 
-Readiness describes **document completeness, never implementation progress**:
+Readiness distinguishes **document completeness from implementation progress**
+— but it is not a field. It is read from two places that cannot drift:
 
-- `shaping` — product contract exists or is forming; the artifact is not
-  executable.
-- `implementation-ready` — product contract, planning contract, implementation
-  units, verification contract, and definition of done are complete enough for a
-  human, `/goal`, or implementation skill to execute.
+- **The PR state.** A draft PR *is* shaping — drafting inherently means the
+  Change is still being formed. Marking the PR ready for review *is* the
+  implementation-ready declaration.
+- **Document structure.** `loaf change check` derives executability from the
+  required sections themselves: a Change is implementation-ready when its
+  planning contract, implementation units, verification contract, and
+  definition of done are present and non-empty.
 
-Progress is derived from Git, PR review, and gates. Progress words (`active`,
-`in-progress`, `done`, `archived`) are invalid readiness values — enforced by
-the pilot gate (see Verification Contract, V1).
+There is no `readiness:` frontmatter to update, police, or let go stale — and
+no field for progress words to creep into. `loaf change check` treats any
+status-like frontmatter (`readiness`, `status`, `state`) as a violation (see
+Verification Contract, V1). Progress remains derived from Git, PR review, and
+gates.
 
 ## Decisions
 
 Provenance: decisions 1–8 accepted in the 2026-07-05 interactive interview
 against the `ce-loaf-analysis` executive report; 9–10 accepted in follow-up
-review the same day; 11 accepted after external (Codex) review.
+review the same day; 11 accepted after external (Codex) review; 12 accepted
+from user direction during dogfooding.
 
 1. **One `change.md`, canonical, dogfooded now.** This document is the pilot of
    its own contract. `notes.md` and `reviews/` remain optional escape hatches.
@@ -200,6 +208,14 @@ review the same day; 11 accepted after external (Codex) review.
     rewrite, conversion pass, guidance sweep, skill tightening, and spike
     harness are follow-up Changes (see Follow-ups) — a smaller reviewable
     pilot, and more Changes shaped through the model.
+12. **The readiness field is dropped; readiness is derived.** Drafting a PR
+    inherently means shaping — the draft→ready flip is the human
+    implementation-ready declaration, and `loaf change check` derives
+    structural executability from the required sections. This supersedes the
+    *mechanism* in Decision 7 and the original readiness vocabulary while
+    keeping their intent: the pilot gate now bans status-like frontmatter
+    outright and computes completeness instead of policing a declared value.
+    Decision 3 (draft PR at shaping) carries the signal.
 
 ## Rabbit Holes and No-Gos
 
@@ -215,8 +231,8 @@ review the same day; 11 accepted after external (Codex) review.
 
 **Rabbit holes to avoid**
 
-- "Readiness" quietly growing progress values — V1 exists to block this
-  structurally.
+- Any status-like field creeping back onto the Change — V1 bans the field
+  class outright; completeness lives in document structure and PR state.
 - SQLite change indexing drifting into body storage — pinned shut by Decision 9.
 - Spike overbuild — the spike's stop condition is "enough unknowns discovered to
   revise the Change," never "it works." The discard default is the guarantee.
@@ -323,16 +339,20 @@ see Follow-ups.
 
 Executable (machine-checkable):
 
-- **V1.** `loaf change check` exits non-zero when `readiness` is anything other
-  than `shaping` or `implementation-ready` — including every progress word
-  (`active`, `in-progress`, `done`, `archived`). *(the pilot gate)*
+- **V1.** `loaf change check` exits non-zero when `change.md` carries any
+  status-like frontmatter (`readiness`, `status`, `state`, or progress
+  vocabulary in any frontmatter field) — the field class is banned, not
+  policed — and reports derived executability: whether the planning contract,
+  implementation units, verification contract, and definition of done are
+  present and non-empty. *(the pilot gate)*
 - **V2.** `loaf change check` validates folder naming (`YYYYMMDD-slug`) and
   required `change.md` headings, with machine-readable output.
 
 Human review:
 
-- **H1.** Readiness never encodes progress; done is derived from Git state, PR
-  review, and gates — never a mutable status flag.
+- **H1.** No status or readiness field exists on a Change; completeness reads
+  from document structure and the PR's draft/ready state, and done is derived
+  from Git state, PR review, and gates — never a mutable flag.
 - **H2.** Cross-change context stays in SQLite/journal surfaces, not duplicated
   across Git folders.
 - **H3.** A subsequent Change is shaped from the template without friction —
@@ -424,11 +444,11 @@ more of the model's surface gets dogfooded by construction:
 
 ## Source Inputs
 
-- The `ce-loaf-analysis` Claude Code session
-  (`session_01WmuZzg6cA5ASwrUKrjMMrL`): the CE comparison, four Opus-class
-  audits, and the executive report recommending the hybrid Change model,
-  readiness, spike, one-way federation, and gates-derived done — plus the
-  2026-07-05 interactive review that produced the Decisions section.
+- The `ce-loaf-analysis` working session (2026-07-04): the compound-engineering
+  comparison, four deep codebase audits, and the executive report recommending
+  the hybrid Change model, spike step, one-way federation, and gates-derived
+  done — plus the 2026-07-05 interactive review that produced the Decisions
+  section.
 - `docs/changes/20260704-worktree-storage-bootstrap/plan.md`, the first
   branch-local Change pilot.
 - Loaf report `report-codex-handoff-journal-first-audit` (SQLite-backed; its
