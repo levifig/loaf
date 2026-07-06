@@ -4,10 +4,7 @@ created: [YYYY-MM-DD]
 branch: [slug]
 ---
 
-<!-- Frontmatter must open the file at byte one — parsers depend on it.
-     No status-like frontmatter (readiness/status/state): readiness is
-     derived — a draft PR is shaping; `loaf change check` derives structural
-     executability from the sections below. -->
+<!-- Frontmatter must open the file at byte one — parsers depend on it. No status-like frontmatter (readiness/status/state): readiness is derived — a draft PR is shaping; `loaf change check` derives structural executability from the sections below. -->
 
 # [Change Title]
 
@@ -35,13 +32,11 @@ branch: [slug]
 
 ## Observable Workflow
 
-[What someone sees or does once this ships — commands, flows, UX. Concrete
-over abstract.]
+[What someone sees or does once this ships — commands, flows, UX. Concrete over abstract.]
 
 ## Rabbit Holes and No-Gos
 
-[Boundaries: the ways this work could quietly grow into something it must
-not become.]
+[Boundaries: the ways this work could quietly grow into something it must not become.]
 
 ## Decisions
 
@@ -51,8 +46,7 @@ Provenance: [how each decision was accepted — interview, review, dogfooding.]
 
 ## Planning Contract
 
-[The HOW. Free-form `###` subsections named by the work — the container is
-the contract; the subsection names are yours.]
+[The HOW. Free-form `###` subsections named by the work — the container is the contract; the subsection names are yours.]
 
 ### [Approach / Placement / Risks / Sequencing / Spike findings …]
 
@@ -60,20 +54,19 @@ the contract; the subsection names are yours.]
 
 ## Implementation Units
 
-In-document work packets — commit-boundary guides and review anchors, not
-tracked entities.
+<!-- In-document work packets — commit-boundary guides and review anchors, not tracked entities. -->
 
-- **U1 — [Unit name].** [What it delivers.]
+- [**U1 — Unit name.** What it delivers.]
 
 ## Verification Contract
 
-Executable (machine-checkable):
+<!-- Executable (machine-checkable): -->
 
-- **V1.** [Criterion bound to a command and an expected result.]
+- [**V1.** Criterion bound to a command and an expected result.]
 
-Human review:
+<!-- Human review: -->
 
-- **H1.** [What a reviewer confirms that no command can.]
+- [**H1.** What a reviewer confirms that no command can.]
 
 ## Definition of Done
 
@@ -81,9 +74,7 @@ Human review:
 
 ## Durable Outputs
 
-[Specs, ADRs, knowledge docs, or schema updates to create after
-implementation proves what is now true. A final spec describes reality,
-not a plan.]
+[Specs, ADRs, knowledge docs, or schema updates to create after implementation proves what is now true. A final spec describes reality, not a plan.]
 
 ## Open Questions
 
@@ -91,8 +82,6 @@ not a plan.]
 
 ## Source Inputs
 
-- [Where this Change came from: journal entries (cite by ID), sparks, ideas,
-  brainstorms, issues, conversations, prior Changes.]
+- [Where this Change came from: journal entries (cite by ID), sparks, ideas, brainstorms, issues, conversations, prior Changes.]
 
-<!-- Optional sections, added when they earn their place: Background,
-     Success Metrics (when validation matters), Follow-ups, Critique Gate. -->
+<!-- Optional sections, added when they earn their place: Background, Success Metrics (when validation matters), Follow-ups, Critique Gate. -->
