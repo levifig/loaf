@@ -47,7 +47,7 @@ session on this branch. Ephemeral by rule — deleted at ship.
 
 ## Pointers
 
-- Contract: `change.md` — Decisions 1–20, Verification Contract V1–V3.
+- Contract: `change.md` — Decisions 1–21, Verification Contract V1–V3.
 - Evidence: `research/` — the decision aid that settled D13/D14, and the
   external-inputs evaluation feeding D17–D20.
 - Review history: PR #91 round-summary comments.

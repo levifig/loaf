@@ -1,11 +1,13 @@
-<!-- No status-like frontmatter (readiness/status/state) — readiness is
-     derived: a draft PR is shaping; `loaf change check` derives structural
-     executability from the sections below. -->
 ---
 change: [slug]
 created: [YYYY-MM-DD]
 branch: [slug]
 ---
+
+<!-- Frontmatter must open the file at byte one — parsers depend on it.
+     No status-like frontmatter (readiness/status/state): readiness is
+     derived — a draft PR is shaping; `loaf change check` derives structural
+     executability from the sections below. -->
 
 # [Change Title]
 

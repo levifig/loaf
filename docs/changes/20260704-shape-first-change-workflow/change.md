@@ -488,10 +488,11 @@ Executable (machine-checkable):
 
 - **V1.** `loaf change check` exits non-zero on violations: status-like
   frontmatter (`readiness`, `status`, `state`, or progress vocabulary in any
-  frontmatter field — the field class is banned, not policed), malformed
-  `YYYYMMDD-slug` folder naming, identity mismatch (`change:` vs folder slug,
-  `created:` vs folder date), or missing Product Contract sections. *(the
-  pilot gate)*
+  frontmatter field — the field class is banned, not policed), frontmatter
+  not opening the file at byte one (parsers depend on it; a template bug
+  caught in external review earned this clause), malformed `YYYYMMDD-slug`
+  folder naming, identity mismatch (`change:` vs folder slug, `created:` vs
+  folder date), or missing Product Contract sections. *(the pilot gate)*
 - **V2.** `loaf change check` reports derived executability — Planning
   Contract, Implementation Units, Verification Contract, and Definition of
   Done present and non-empty — without failing a shaping-stage document, in
@@ -524,6 +525,10 @@ spec; explains the CLI boundary) move to the shape-skill-rewrite Change.
   contract works beyond its own pilot.
 - H1–H2 confirmed in review.
 - Durable outputs (below) landed, or explicitly deferred at merge time.
+- `handoff.md` is removed before merge — a ready-to-merge PR still carrying
+  the baton is a Decision 18 violation (external review round 3 caught it
+  already stale mid-flight; mechanical enforcement lands with the ship
+  amendment).
 
 Follow-up Changes have their own Definitions of Done — this Change does not
 gate on them (they are successors, not dependencies).
