@@ -1419,6 +1419,23 @@ loaf check
 
 ---
 
+## Doctor Management
+
+### `loaf doctor`
+Diagnose Loaf project alignment (symlinks, stale files, version drift)
+
+**Options:**
+
+- `--fix` - Apply safe auto-fixes for failing checks
+- `--verbose` - Print each check name even when passing
+
+**Usage:**
+```bash
+loaf doctor
+```
+
+---
+
 ## Command Substitution Reference
 
 The following placeholders are substituted at build time per target:
@@ -1431,6 +1448,8 @@ The following placeholders are substituted at build time per target:
 ---
 
 ## Quick Decision Guide
+
+**Shaping new work?** -> `loaf change init <slug>`, then validate with `loaf change check`
 
 **Need to start working?** -> `{{IMPLEMENT_CMD}} TASK-XXX`
 

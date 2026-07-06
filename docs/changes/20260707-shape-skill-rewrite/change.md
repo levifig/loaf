@@ -32,6 +32,7 @@ A shape skill rewritten around the Change model — with the fog register as a d
 - Reaction-artifact guidance for unknown-known routing (design variants, mocks — HTML in `research/`, pilot Decisions 20/21e).
 - Instantiate the pilot's Critique Gate as the final shaping step, before `check` and the PR offer.
 - Delete shape's spec-first machinery — SPEC-ID generation, the spec lifecycle state machine, the breakdown handoff — per the dead-weight adjudication in the blast-radius findings.
+- Ship the reviewed CLI reference skill (`cli-reference`, "Loaf CLI Reference") with this branch: the generator gains the missing top-level `loaf doctor` section and a Change-first Quick Decision Guide entry; regenerated output and build artifacts ride this PR (Decision 10).
 
 **Out** (deferred, not rejected)
 
@@ -86,6 +87,7 @@ Provenance: 1–7 accepted 2026-07-06/07 in the Field Guide evaluation conversat
 7. **Imports are implemented against committed evidence.** The grilling and prototype semantics come from pointing the implementing agent at `research/mattpocock-review/` in the pilot's folder — source as reference, not re-description in a prompt (the Field Guide's references pattern, applied to this Change's own implementation).
 8. **Fog routes name in-session techniques, never skill invocations.** The blindspot pass proved the destination skills' contracts don't fit the handoff: research re-interviews an already-scoped question and writes evidence to `.agents/reports/` instead of the Change's `research/`; brainstorm forces a strategic frame onto Change-local questions and sends resolutions forward into intake instead of back into the session; no skill is the blindspot-pass destination. Grilling, reaction artifacts, spikes, and blindspot passes are moves shape executes itself; fixing the skills' contracts belongs to tightening.
 9. **The critique gate becomes a shaping step.** The pilot's Critique Gate section is target behavior with no owner in the current skill — an agent won't know to interrogate its own scope, boundary placement, or smuggled status words before finalizing. The rewrite instantiates it as the last move before `loaf change check` and the PR offer.
+10. **The CLI reference ships with this Change** *(user direction, 2026-07-07)*. Review found the committed render current (regenerates byte-identical) but the generator blind in two spots: no top-level `loaf doctor` section, and a Quick Decision Guide that routes "start working" exclusively through TASK-XXX with no `loaf change` path. Both fixed at the generator (`internal/cli/cli_reference.go`), never the generated file. The Global Commands block and the task/spec entries stay — they document shipped behavior under the transitional model; their removal belongs to conversion/sweep.
 
 ## Planning Contract
 
@@ -150,6 +152,7 @@ Ordered by likelihood-of-change (Decision 4, dogfooded):
 - **U3 — Decomposition guidance.** Breakdown absorption: units, ordering-for-review, verification-contract authoring; the surviving-value checklist from the blast-radius findings imported verbatim in spirit.
 - **U4 — Change contract and CLI boundary.** The model teaching: source polymorphism, init/check reading, evidence lands in the Change's `research/` (never `.agents/reports/` for shaping work), critique gate, opt-in draft PR, branch-at-shaping, durable-outputs timing, absent-strategic-docs path.
 - **U5 — Mechanical close-out.** Frontmatter description with negative routing (not brainstorm, not idea), sidecar review, related-skills links (breakdown reference dropped), `hooks.yaml` check, `loaf build`, routing eval, `templates/spec.md` disposition per the fog entry.
+- **U6 — CLI reference rider (Decision 10).** `loaf doctor` metadata and the Change-first decision-guide entry added to the generator; `build:cli-ref` regeneration plus tracked build artifacts committed together. Landed at shaping time, ahead of U1–U5.
 
 ## Verification Contract
 

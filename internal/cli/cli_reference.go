@@ -681,6 +681,14 @@ func cliReferenceCommands() []cliReferenceCommand {
 				{Flags: "--json", Description: "Output hook result, pass/block status, exit code, warnings, errors, and findings as JSON"},
 			},
 		},
+		{
+			Name:        "doctor",
+			Description: "Diagnose Loaf project alignment (symlinks, stale files, version drift)",
+			Options: []cliReferenceOption{
+				{Flags: "--fix", Description: "Apply safe auto-fixes for failing checks"},
+				{Flags: "--verbose", Description: "Print each check name even when passing"},
+			},
+		},
 	}
 }
 
@@ -755,6 +763,8 @@ Coordinates multi-agent work: agent delegation, journal continuity, Linear integ
 		"---",
 		"",
 		"## Quick Decision Guide",
+		"",
+		"**Shaping new work?** -> `loaf change init <slug>`, then validate with `loaf change check`",
 		"",
 		"**Need to start working?** -> `{{IMPLEMENT_CMD}} TASK-XXX`",
 		"",
