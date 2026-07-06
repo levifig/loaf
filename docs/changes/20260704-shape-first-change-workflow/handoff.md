@@ -14,6 +14,19 @@ session on this branch. Ephemeral by rule — deleted at ship.
 - PR #91 is a **draft**. Flipping to ready is the Decision 12 declaration;
   pending after the next review round.
 
+## In flight (2026-07-06)
+
+- Three-agent critical review of github.com/mattpocock/skills against this
+  Change's 20 decisions — **all decisions explicitly up for debate** (user
+  directive: learn and improve, not defend). Lenses: skill-authoring
+  inventory, workflow-process comparison, devil's advocate. Results arrive as
+  background-task notifications; adjudicate each finding against change.md,
+  apply what survives deep consideration, and post a round-summary comment on
+  PR #91 (Decision 15).
+- The originating session's executive report (CE-vs-Loaf comparison) exists
+  only in that session's JSONL — recoverable if needed; its substance is
+  absorbed into change.md and research/external-inputs.md.
+
 ## Next actions, in order
 
 1. External review round 3 on the PR. Suggested challenge focus: Decision 13's
