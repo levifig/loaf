@@ -2,34 +2,31 @@
 
 In-flight baton (Decision 18): the state of this Change for the next agent or session on this branch. Ephemeral by rule — deleted at ship.
 
-## Where this stands (2026-07-06)
+## Where this stands (2026-07-06, post-round-3)
 
-- The contract is complete: 21 decisions with provenance, externally reviewed three times — Codex rounds 1–2 and the mattpocock/skills adversarial round (summaries live as PR #91 comments, per Decision 15).
-- U1 (pilot) and U2 (change + PR templates, distributed to all targets) are done. **U3 (`loaf change init/check`) is implemented, pending review.** Native Go under `internal/cli/change.go` with V1–V3 written as tests first (`internal/cli/change_test.go`); the template is embedded and drift-gated byte-identical to `content/skills/shape/templates/change.md`. `go test ./...`, `gofmt`, `go vet`, and `CGO_ENABLED=0 go build ./...` pass; the pilot itself checks clean (no violations, executable: yes). Commit `938e9d3c`; the V2 placeholder-discounting fix (fresh Changes read executable:no) landed in `29d9a6b6`.
-- PR #91 is a **draft**. Flipping to ready is the Decision 12 declaration; pending after review of U3.
-
-## In flight (2026-07-06)
-
-- The mattpocock/skills adversarial review is **complete and adjudicated**: Decision 21 (eight sub-amendments), raw reports in `research/mattpocock-review/`, round summary on PR #91. Contract now stands at 21 decisions; the draft PR is opt-in (21a), harvest mechanics belong to the sweep follow-up (21b), and a new beyond-one-context follow-up exists (21g).
-- The originating session's executive report (CE-vs-Loaf comparison) exists only in that session's JSONL — recoverable if needed; its substance is absorbed into change.md and research/external-inputs.md.
+- The contract is complete: **22 decisions with provenance**, externally reviewed four rounds — Codex rounds 1–3 and the mattpocock/skills three-lens adversarial round (all summaries live as PR #91 comments, per Decision 15).
+- **All implementation units are done.** U1 (pilot), U2 (change + PR templates, distributed to all targets), U3 (`loaf change init/check`, native Go, V1–V3 as tests first, embedded template drift-gated). The V2 placeholder fix landed (`29d9a6b6`): a fresh init reads `executable: no` — and after the template-tail rework (`6fb0ca09`) it shows **all four** gaps. The pilot itself checks clean: no violations, `executable: yes`, exit 0.
+- The package was reflowed to the no-hard-wrap rule (`49e51e4e`, word-diff verified whitespace-only); Decision 22 (the operating model: derived states, cached projections, partitioned/transferable authority, `todo` column, released as project-level join, local-first parity, tracker-native task lists) is pinned (`2a377bb0`).
+- PR #91 is a **draft**. Flipping to ready is the Decision 12 declaration; the endgame sequence is agreed and below.
 
 ## Next actions, in order
 
-1. Optional: external review round 4 on the PR (the mattpocock/skills adversarial round was round 3). Suggested challenge focus: Decision 13's free-form H3s (checkable enough?), Decision 14's identity-mismatch strictness, Decision 17's harvest mechanics, Decision 19's delta-merge.
-2. Push the branch (confirm first) and flip #91 to ready — the Decision 12 implementation-ready declaration. Push and the draft→ready flip are the orchestrator's calls, not the implementer's.
-3. Delete `handoff.md` before merge (Decision 18 / Definition of Done) and merge with the change folder on main — the orchestrator's to do.
+1. **External review round 4** (user-run, in flight). Fresh surfaces since round 3: Decision 22, the reflow, the template-tail rework (four-gap fresh init), the V2 placeholder semantics, U3's full implementation.
+2. Apply surviving round-4 findings.
+3. **Endgame** (orchestrator's calls): generate the pilot's architectural walkthrough (Delba pattern per Decision 20 — intended-vs-actual against the Planning Contract, V→test map, anchored mermaid) and post it as the flip-accompanying PR comment; delete this file (Decision 18 / Definition of Done); flip #91 to ready; merge.
 
-## Resolved finding from U3
+## Open proposals (not yet pinned)
 
-Resolution (a) implemented (commit `29d9a6b6`): `loaf change check` V2 now discounts bracket placeholders (`[...]`) and HTML comments, so a freshly-`init`'d Change reads `executable: no`. Nuance for follow-up: the shipped template's Implementation Units and Verification Contract still carry authored guidance prose, so only Planning Contract and Definition of Done read as gaps on a fresh init — making all four read as gaps is a template-content edit (needs a rebuild to propagate to `dist/`/`plugins/`), out of this checker fix's scope.
+- The walkthrough wiring rides the sweep follow-up's ship amendments (Decision 20's "explainer guidance") — v1 skill-taught, delivered as a PR comment (mermaid renders natively), promoted to `research/` only if it becomes evidence. The pilot's own walkthrough at flip is the first instance and reference example.
 
 ## Warnings
 
-- **The global `loaf` binary is stale relative to this branch.** `loaf build` regenerates pre-#89 hook artifacts (dropped `--advisory` flags, mangled ephemeral-provenance command) — it clobbered two files once, restored in `348c56d4`. Rebuild from source before trusting build outputs, and never bulk-add `dist/`/`plugins/` without reading the diff.
+- **The global `loaf` binary is stale relative to this branch.** `loaf build` regenerates pre-#89 hook artifacts — it clobbered two files once, restored in `348c56d4`. Rebuild from source before trusting build outputs; never bulk-add `dist/`/`plugins/` without reading the diff. (A source-built scratch binary is fine: `go build -o /tmp/loaf-scratch ./cmd/loaf`.)
 - The untracked `.agents/reports/*` renders on this branch are intentional (SQLite-backed reports; cited by identity per Decision 10).
+- Two sparks captured via lane 2 late in shaping: hooks-surface deep re-evaluation (cross-harness focus: Claude Code, Codex, Cursor, OpenCode) and a Pi-shaped harness (separate endeavour). In intake, not this Change's scope.
 
 ## Pointers
 
-- Contract: `change.md` — Decisions 1–21, Verification Contract V1–V3.
-- Evidence: `research/` — the decision aid that settled D13/D14, and the external-inputs evaluation feeding D17–D20.
-- Review history: PR #91 round-summary comments.
+- Contract: `change.md` — Decisions 1–22, Verification Contract V1–V3.
+- Evidence: `research/` — the decision aid that settled D13/D14, the external-inputs evaluation feeding D17–D20, and the three mattpocock-review reports behind Decision 21.
+- Review history: PR #91 round-summary comments (rounds 1–3 + U3 landing + finding resolution).
