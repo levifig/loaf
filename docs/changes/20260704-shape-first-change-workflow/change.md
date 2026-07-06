@@ -118,7 +118,9 @@ SQLite journal / sparks / ideas / brainstorms / Linear / current conversation
         v
 docs/changes/YYYYMMDD-slug/
   change.md        canonical Change artifact, grows toward executability
+  handoff.md       in-flight baton for the next agent/session — deleted at ship (D18)
   notes.md         optional working notes, only when useful
+  research/        write-once evidence: spikes, explorations, HTML explainers (D18/D20)
   reviews/         optional packets that must outlive the PR (D15)
         |
         v
@@ -166,7 +168,9 @@ against the `ce-loaf-analysis` executive report; 9–10 accepted in follow-up
 review the same day; 11 accepted after external (Codex) review; 12 accepted
 from user direction during dogfooding; 13–14 accepted after a worked-examples
 comparison in the same review cycle; 15–16 accepted 2026-07-06 in the
-review-layering discussion.
+review-layering discussion; 17–20 accepted 2026-07-06 after synthesis of the
+external inputs (SDD Blueprint, HTML-artifact practice) and the
+harvest/package design discussion.
 
 1. **One `change.md`, canonical, dogfooded now.** This document is the pilot of
    its own contract. `notes.md` and `reviews/` remain optional escape hatches.
@@ -250,6 +254,43 @@ review-layering discussion.
     true, never a plan); "CR" is retired vocabulary, permitted only as
     historical reference. Already implied by the Cut list, Decision 6, and
     Durable Outputs — pinned here because naming drift surfaced in use.
+17. **The package carries deferrals; ship harvests them.** Deferred work and
+    spun-out follow-ups are written into the Change (Follow-ups / Out) and
+    nowhere else during flight — one write surface, and intake becomes
+    review-gated: a reviewer can challenge a deferral before it enters the
+    queue. At ship, the harvest step captures each item into SQLite intake as
+    a spark citing the change slug; when a tracker is explicitly configured,
+    harvest additionally projects items to it, recorded in the publish
+    ledger. Two-lane rule: work that would still matter if this Change were
+    abandoned goes straight to `loaf spark capture` at discovery — only
+    change-adjacent deferrals ride the package. Tracker election is explicit
+    configuration (`project_tracker:` / `integrations.*`), never tool
+    presence — an authed `gh` does not make GitHub the tracker.
+18. **Package structure: the Change folder is the branch-local working
+    directory.** Alongside `change.md`: `handoff.md` — the baton for the next
+    agent or session, ephemeral by rule and deleted at ship (a merged Change
+    has no in-flight state); `notes.md` — scratchpad, as before; `research/`
+    — write-once evidence (spike findings, explorations, architectural
+    explainers), dispositioned at finalize: durable pieces promote to
+    `docs/knowledge/` or specs, the rest archives with the folder;
+    `reviews/` — unchanged (Decision 15). The change template gains the
+    optional-members note with the U3 slice (avoiding a rebuild on the
+    known-stale local CLI).
+19. **Finalize merges deltas into the durable spec corpus.** A Change is a
+    delta against `docs/specs/` — added, modified, or removed behavior.
+    Ship's finalize step merges that delta into the durable specs; post-merge
+    housekeeping archives the folder. The archive is the chronological
+    reasoning log; the spec corpus stays current. This gives Durable Outputs
+    its mechanic and retroactively strengthens Decision 2 — the archive is
+    half of a cycle, not a storage preference. (Independently converged with
+    the delta-spec model in the SDD Blueprint synthesis; see Source Inputs.)
+20. **Format split: contracts in markdown, evidence in HTML.** `change.md`
+    and everything `loaf change check` reads stay markdown — diffable,
+    checkable, line-reviewable. Rich evidence — explorations, decision aids,
+    architectural explainers ("read architectural changes first, then code")
+    — lives in `research/` as HTML, read rendered and never diffed. An
+    implementation PR should carry or generate an architectural walkthrough
+    as a review aid at Decision 15's stability point.
 
 ## Rabbit Holes and No-Gos
 
@@ -353,6 +394,13 @@ resulting URL recorded in the publish ledger (`backend_mappings`). No
 bidirectional status sync, no sub-issue generation, until dogfooding proves the
 need.
 
+Ceremonies are the federation points: trackers never participate in iteration,
+only receive projections at ceremony boundaries — the Change published at
+shaping or ship, deferred items projected at harvest (Decision 17). Election is
+explicit configuration, never tool presence; with nothing configured, the same
+ceremonies write only to git and SQLite. GitHub Issues is a first-class
+low-ceremony tier for `gh`-authed repos that opt in.
+
 ### Changesets and releases
 
 Changesets are release input; Change folders are planning and implementation
@@ -436,6 +484,12 @@ gate on them (they are successors, not dependencies).
 
 ## Durable Outputs
 
+The mechanic (Decision 19): a Change is a delta against the durable spec
+corpus; ship's finalize step merges added/modified/removed behavior into
+`docs/specs/`, promotes durable `research/` evidence to `docs/knowledge/`,
+deletes `handoff.md`, and archives the folder as the chronological reasoning
+log.
+
 To create or update after implementation proves the model:
 
 - **ARCHITECTURE.md** — artifact-model section rewritten: the git/SQLite split,
@@ -478,7 +532,9 @@ more of the model's surface gets dogfooded by construction:
 - **spec-conversion-and-guidance-sweep** — inventory the 24 active specs,
   convert genuinely in-flight ones (SPEC-055 first), freeze the rest; then
   sweep README and skills so nothing implies numbered specs. Conversion
-  strictly before sweep (Decision 4). Owns the convergence check.
+  strictly before sweep (Decision 4). Owns the convergence check, and the
+  ship-skill amendment: the harvest step (Decision 17), delta-merge finalize
+  (Decision 19), and explainer guidance (Decision 20).
 - **skill-surface-tightening** — every skill useful, trim unnecessary
   instructions, kill shadow/never-used skills and silent failures (Decision 8).
 - **spike-harness** — worktree provisioning, discard guarantee, writeback loop,
@@ -492,8 +548,9 @@ more of the model's surface gets dogfooded by construction:
 - SPEC-017 binary-R revival details — format only, no task model import.
 - Smallest useful spike harness (worktree provisioning: harness-native
   `EnterWorktree` vs. a `git worktree add` wrapper).
-- Finalize mechanics for proposing durable outputs: manual `/reflect`, an
-  automatic nudge, or an explicit `loaf change finalize`.
+- Finalize mechanics, narrowed: Decision 19 defines *what* finalize does
+  (delta-merge, promotion, archive); still open is the *trigger* — manual
+  `/reflect`, an automatic nudge, or an explicit `loaf change finalize`.
 - Release grouping language ("change bundle"?) and the smallest changesets
   integration that replaces conflict-prone changelog input.
 - Conversion inventory specifics: which of the 24 active specs convert vs.
@@ -524,4 +581,14 @@ more of the model's surface gets dogfooded by construction:
   Acceptance Criteria/Evals, Success Metrics.
 - NotebookLM notebook "Agile Product Management: From Shaping to
   Implementation" — Shape Up, GitHub Spec Kit, Linear, RAC/Lore, Compound
-  Engineering, AI-agent spec writing.
+  Engineering, AI-agent spec writing. Its synthesized report, "The SDD
+  Blueprint," independently converged on the delta-spec/archive cycle
+  (Decision 19); its companion video is a communications artifact, not a
+  design input. Evaluation in `research/external-inputs.md`.
+- Thariq, "Using Claude Code: The Unreasonable Effectiveness of HTML"
+  (x.com/trq212, also on the Claude blog) — HTML as agent output for specs,
+  reports, PR explainers, and throwaway editors; markdown-diff caveat that
+  motivates the Decision 20 format split.
+- Delba Oliveira (x.com/delba_oliveira) — "read architectural changes first,
+  then code": HTML before/after architectural walkthroughs as the PR review
+  entry point (Decision 20).
