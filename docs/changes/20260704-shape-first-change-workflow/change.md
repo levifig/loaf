@@ -124,7 +124,7 @@ docs/changes/YYYYMMDD-slug/
   reviews/         optional packets that must outlive the PR (D15)
         |
         v
-draft PR (default at shaping)  →  spike  →  implementation  →  review  →  merge
+draft PR (offered at shaping — opt-in, D21a)  →  spike  →  implementation  →  review  →  merge
         |
         v
 durable docs:                          post-merge housekeeping:
@@ -170,7 +170,8 @@ from user direction during dogfooding; 13–14 accepted after a worked-examples
 comparison in the same review cycle; 15–16 accepted 2026-07-06 in the
 review-layering discussion; 17–20 accepted 2026-07-06 after synthesis of the
 external inputs (SDD Blueprint, HTML-artifact practice) and the
-harvest/package design discussion.
+harvest/package design discussion; 21 accepted 2026-07-06 after the
+three-lens adversarial review of mattpocock/skills.
 
 1. **One `change.md`, canonical, dogfooded now.** This document is the pilot of
    its own contract. `notes.md` and `reviews/` remain optional escape hatches.
@@ -291,6 +292,51 @@ harvest/package design discussion.
     — lives in `research/` as HTML, read rendered and never diffed. An
     implementation PR should carry or generate an architectural walkthrough
     as a review aid at Decision 15's stability point.
+21. **External-review amendments** (three-lens adversarial review of
+    github.com/mattpocock/skills — the first deliberately disconfirming
+    input; raw reports in `research/mattpocock-review/`):
+    - **(a) The draft PR becomes opt-in** *(amends 3)*. Shaping offers the
+      draft PR; nothing opens automatically. A conditional default was
+      rejected as hidden judgment — who evaluates the condition? When no PR
+      exists, document structure (V2) carries readiness; opening a PR
+      ready-for-review is itself the implementation-ready declaration
+      (refines 12's phrasing, not its substance). `loaf change list` grows
+      into the local index.
+    - **(b) Harvest mechanics defer to their ceremony** *(amends 17)*. The
+      two-lane rule and harvest intent stand; the publish ledger, tracker
+      projection, and parse mechanics move to the sweep follow-up that owns
+      ship — by this document's own name-the-ceremony rule.
+    - **(c) Harvest gains rejections** *(extends 17)*. A Change's Cut list
+      and reasoned won'ts harvest into a deduplicated rejection KB, distinct
+      from deferrals — temporary circumstances make deferrals, not
+      rejections; forgetting a rejection costs a full re-litigation.
+    - **(d) Durable-output timing splits by artifact type** *(amends 19)*.
+      Decision records defer to finalize; the living domain glossary may be
+      created or updated inline during a Change — a glossary is consumed by
+      the work that writes it.
+    - **(e) Evidence format corrected** *(amends 20)*. Rich/visual evidence →
+      HTML; citation/fact findings → markdown. Committed `research/` holds
+      keep-worthy evidence; purely regenerable review aids may stay
+      uncommitted. Not all evidence is HTML; not all HTML is committed.
+    - **(f) V2 is the flagship gate** *(reframes 7)*. The derived-
+      executability report is what proves gates-derived done; the
+      status-frontmatter ban remains as regression insurance — agents add
+      status fields by pattern-matching, and the reviewed repo's own
+      convention drift (a shadow skill invisible to its own router) is
+      evidence that discipline without enforcement decays.
+    - **(g) Beyond-one-context escape hatch** *(amends 5 and 13)*. When a
+      Change exceeds one context window or PR, implementation units graduate
+      into claimable tracked units indexed by `change.md` — the map is an
+      index, never a store (independently validating 9 and 10). Owned by a
+      new follow-up; the "smart zone" context budget is the trigger concept.
+    - **(h) Archive stands, under review** *(amends 2)*. Post-finalize
+      folders are residue by construction; archive's long-term usefulness is
+      re-evaluated after several Changes complete, with delete-post-finalize
+      (the finalize merge commit is the retrievable archive) as the recorded
+      fallback.
+    Meta-finding accepted: prior Source Inputs were uniformly confirming —
+    survivorship bias acknowledged; deliberately adversarial input is now
+    standing practice for shaping rounds.
 
 ## Rabbit Holes and No-Gos
 
@@ -533,13 +579,33 @@ more of the model's surface gets dogfooded by construction:
   convert genuinely in-flight ones (SPEC-055 first), freeze the rest; then
   sweep README and skills so nothing implies numbered specs. Conversion
   strictly before sweep (Decision 4). Owns the convergence check, and the
-  ship-skill amendment: the harvest step (Decision 17), delta-merge finalize
-  (Decision 19), and explainer guidance (Decision 20).
+  ship-skill amendment: the harvest step and its mechanics — ledger,
+  projection, rejection KB (Decisions 17, 21b, 21c) — delta-merge finalize
+  (Decision 19), explainer guidance (Decision 20), and the two-axis
+  (standards ∥ spec, never reranked) review discipline for Decision 15's
+  stability-point reviews.
 - **skill-surface-tightening** — every skill useful, trim unnecessary
-  instructions, kill shadow/never-used skills and silent failures (Decision 8).
-- **spike-harness** — worktree provisioning, discard guarantee, writeback loop,
-  plus the general Verification Contract format (SPEC-017 binary-R revival,
-  detached from its task model).
+  instructions, kill shadow/never-used skills and silent failures
+  (Decision 8). Inventory payload from the mattpocock review: wire and use
+  `disable-model-invocation` (documented, unimplemented, unused across all 34
+  skills — the exact shadow-instruction class this change hunts), a router
+  skill with a stale-router-is-a-bug contract, bucket/lifecycle taxonomy
+  (in-progress/deprecated), `cli-reference` as a thin pointer to
+  `loaf --help`, context-load vs cognitive-load vocabulary for the audit,
+  one-trigger-per-branch description discipline, and a rejection ledger for
+  Loaf's own backlog. Loaf's `eval:routing` infrastructure is ahead of the
+  reviewed repo — preserve and extend it as the audit's measurement tool.
+- **spike-harness** — worktree provisioning, discard guarantee, writeback
+  loop, plus the general Verification Contract format (SPEC-017 binary-R
+  revival, detached from its task model, with the tautological-criterion
+  guard: a criterion must have an independent source of truth). Blueprint:
+  the reviewed repo's `prototype` skill — question-first, capture-the-answer,
+  discard the shell but keep the validated core.
+- **beyond-one-context coordination** *(new, Decision 21g)* — when a Change
+  exceeds the smart-zone context budget or spans parallel sessions,
+  implementation units graduate to claimable tracked units indexed by
+  `change.md`; wayfinder-style frontier over blocking edges is the proven
+  design.
 - **`loaf change archive`** — built when the first completed Change gives
   post-merge housekeeping its ceremony (Decision 2).
 
@@ -555,6 +621,9 @@ more of the model's surface gets dogfooded by construction:
   integration that replaces conflict-prone changelog input.
 - Conversion inventory specifics: which of the 24 active specs convert vs.
   freeze (owned by the conversion follow-up Change).
+- Archive's long-term usefulness (Decision 21h): re-evaluate after several
+  Changes finalize — keep the chronological log, or delete post-finalize with
+  the merge commit as the archive.
 
 ## Source Inputs
 
@@ -571,6 +640,14 @@ more of the model's surface gets dogfooded by construction:
   lessons.
 - External (Codex) review of this Change, 2026-07-05 — branch integrity, source
   integrity, scope trim, and decision provenance.
+- github.com/mattpocock/skills — three-lens adversarial review (skill
+  inventory, workflow process, devil's advocate), 2026-07-06: the first
+  deliberately disconfirming Source Input. Raw reports in
+  `research/mattpocock-review/`; adjudicated in Decision 21. Contributed the
+  opt-in draft PR, harvest-to-ceremony deferral, rejection harvesting, the
+  glossary timing split, the evidence-format correction, the smart-zone
+  budget, and the beyond-one-context escape hatch — and independently
+  validated Decisions 9, 10, and 17's election rule.
 - Loaf memory notes on brief-first, change-first, and `/ship` versus `/release`.
 - `docs/STRATEGY.md` and `docs/ARCHITECTURE.md` — skills describe what to do;
   the CLI executes deterministic behavior.

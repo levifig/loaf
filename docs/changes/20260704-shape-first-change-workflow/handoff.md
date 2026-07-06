@@ -5,8 +5,9 @@ session on this branch. Ephemeral by rule — deleted at ship.
 
 ## Where this stands (2026-07-06)
 
-- The contract is complete: 20 decisions with provenance, externally reviewed
-  twice (round summaries live as PR #91 comments, per Decision 15).
+- The contract is complete: 21 decisions with provenance, externally reviewed
+  three times — Codex rounds 1–2 and the mattpocock/skills adversarial round
+  (summaries live as PR #91 comments, per Decision 15).
 - U1 (pilot) and U2 (change + PR templates, distributed to all targets) are
   done. **U3 (`loaf change init/check`) is the only open unit and the merge
   gate** — V1–V3 in change.md define its contract; implement Go-side under
@@ -16,13 +17,12 @@ session on this branch. Ephemeral by rule — deleted at ship.
 
 ## In flight (2026-07-06)
 
-- Three-agent critical review of github.com/mattpocock/skills against this
-  Change's 20 decisions — **all decisions explicitly up for debate** (user
-  directive: learn and improve, not defend). Lenses: skill-authoring
-  inventory, workflow-process comparison, devil's advocate. Results arrive as
-  background-task notifications; adjudicate each finding against change.md,
-  apply what survives deep consideration, and post a round-summary comment on
-  PR #91 (Decision 15).
+- The mattpocock/skills adversarial review is **complete and adjudicated**:
+  Decision 21 (eight sub-amendments), raw reports in
+  `research/mattpocock-review/`, round summary on PR #91. Contract now stands
+  at 21 decisions; the draft PR is opt-in (21a), harvest mechanics belong to
+  the sweep follow-up (21b), and a new beyond-one-context follow-up exists
+  (21g).
 - The originating session's executive report (CE-vs-Loaf comparison) exists
   only in that session's JSONL — recoverable if needed; its substance is
   absorbed into change.md and research/external-inputs.md.
