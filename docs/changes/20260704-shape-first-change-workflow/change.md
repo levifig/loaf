@@ -497,6 +497,10 @@ Executable (machine-checkable):
   Contract, Implementation Units, Verification Contract, and Definition of
   Done present and non-empty — without failing a shaping-stage document, in
   machine-readable output following the `loaf check` findings shape.
+  Non-empty means authored content: lines consisting only of bracket
+  placeholders (`[...]`) or comments count as empty, so a freshly-templated
+  Change reads not-executable until its tail is actually written (U3 found
+  the literal reading let placeholder-only documents satisfy the V3 gate).
 - **V3.** `loaf change check --require-executable` exits non-zero when the
   document is not executable — the CI gate for non-draft PRs and the
   implement-skill preflight.
