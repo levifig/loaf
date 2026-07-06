@@ -145,6 +145,93 @@ func TestChangeCheckV1RejectsProgressVocabularyValues(t *testing.T) {
 	}
 }
 
+// V1(a): the full canonical change-state vocabulary (Decision 22) plus released
+// is banned as a frontmatter value under ANY key. This is external review round
+// 4's exact probe set — each canonical state (and released) stored under an
+// arbitrary key that is not itself status-like.
+func TestChangeCheckV1RejectsCanonicalStateVocabularyUnderArbitraryKeys(t *testing.T) {
+	cases := []struct{ key, value string }{
+		{"phase", "shaping"},
+		{"queue", "backlog"},
+		{"lane", "todo"},
+		{"review_phase", "review"},
+		{"merge_state", "merged"},
+		{"release_state", "released"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.key+"="+tc.value, func(t *testing.T) {
+			repo := initCLIGitRepo(t)
+			fm := strings.Join([]string{
+				"---",
+				"change: demo",
+				"created: 2026-07-04",
+				"branch: demo",
+				tc.key + ": " + tc.value,
+				"---",
+			}, "\n")
+			folder := writeChangeFolder(t, repo, "20260704-demo", changeDoc(fm, productSections()...))
+
+			out, err := runChangeCheckJSON(t, repo, folder)
+			var exitErr ExitError
+			if !errors.As(err, &exitErr) || exitErr.Code == 0 {
+				t.Fatalf("err = %v, want non-zero ExitError for %s: %s", err, tc.key, tc.value)
+			}
+			if out.Passed {
+				t.Fatalf("passed = true, want false for %q stored under key %q", tc.value, tc.key)
+			}
+			if !findingsContain(out.Findings, tc.value) || !findingsContain(out.Findings, tc.key) {
+				t.Fatalf("findings = %v, want mention of banned value %q under key %q", out.Findings, tc.value, tc.key)
+			}
+		})
+	}
+}
+
+// V1(a): matching is case-insensitive on the normalized value — underscores and
+// spaces normalize to hyphens, so "In Progress" and "in_progress" both match the
+// canonical "in-progress".
+func TestChangeCheckV1RejectsStateVocabularyRegardlessOfCasingOrSeparator(t *testing.T) {
+	for _, value := range []string{"In Progress", "in_progress", "IN-PROGRESS", "Merged", "BACKLOG"} {
+		t.Run(value, func(t *testing.T) {
+			repo := initCLIGitRepo(t)
+			fm := strings.Join([]string{
+				"---",
+				"change: demo",
+				"created: 2026-07-04",
+				"branch: demo",
+				"phase: " + value,
+				"---",
+			}, "\n")
+			folder := writeChangeFolder(t, repo, "20260704-demo", changeDoc(fm, productSections()...))
+
+			out, err := runChangeCheckJSON(t, repo, folder)
+			var exitErr ExitError
+			if !errors.As(err, &exitErr) || exitErr.Code == 0 {
+				t.Fatalf("err = %v, want non-zero ExitError for normalized state value %q", err, value)
+			}
+			if out.Passed {
+				t.Fatalf("passed = true, want false for normalized state value %q", value)
+			}
+		})
+	}
+}
+
+// V1(a) exemption: identity fields (change, created, branch) are exempt from the
+// state-vocabulary ban — their semantics are checked elsewhere. A branch is a git
+// ref that may legitimately be named after a state word, so branch: review passes.
+func TestChangeCheckV1AllowsBranchNamedLikeState(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	body := changeDoc(changeFrontmatter("demo", "2026-07-04", "review"), productSections()...)
+	folder := writeChangeFolder(t, repo, "20260704-demo", body)
+
+	out, err := runChangeCheckJSON(t, repo, folder)
+	if err != nil {
+		t.Fatalf("err = %v, want nil; branch: review is an identity field, exempt from the state ban", err)
+	}
+	if !out.Passed {
+		t.Fatalf("passed = false, want true; a branch named after a state word must not be a violation. findings = %v", out.Findings)
+	}
+}
+
 // V1(b): frontmatter must open the file at byte one.
 func TestChangeCheckV1RejectsFrontmatterNotAtByteOne(t *testing.T) {
 	repo := initCLIGitRepo(t)

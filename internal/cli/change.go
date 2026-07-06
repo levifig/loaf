@@ -63,14 +63,42 @@ var changeStatusKeys = map[string]bool{
 	"state":     true,
 }
 
-// changeProgressValues are banned as frontmatter values in any field (V1a):
-// progress is derived from Git, PR review, and gates.
-var changeProgressValues = map[string]bool{
-	"active":      true,
+// changeBannedStateValues are banned as frontmatter values under any key (V1a):
+// the full canonical change-state vocabulary (Decision 22) plus released and the
+// legacy progress words. Change state is derived (loaf change state), never
+// stored, so none of these words may live in a stored frontmatter value.
+// Matching is on the normalized value (see normalizeChangeStateValue).
+var changeBannedStateValues = map[string]bool{
+	// Canonical change-state vocabulary (Decision 22).
+	"backlog":     true,
+	"shaping":     true,
+	"todo":        true,
 	"in-progress": true,
-	"done":        true,
-	"archived":    true,
+	"review":      true,
+	"merged":      true,
+	// released is a project-level event, never a change state, but is equally
+	// banned as a stored value (Decision 22, Verification Contract V1).
+	"released": true,
+	// Legacy progress words, kept as regression insurance.
+	"active":   true,
+	"done":     true,
+	"archived": true,
 }
+
+// changeIdentityKeys are the frontmatter fields whose values carry identity, not
+// state, and are therefore exempt from the state-vocabulary ban. change: and
+// created: are already checked against the folder name; branch: names a git
+// branch that may legitimately equal a state word (a branch named "review").
+// The status-key ban (readiness/status/state) still applies to every key.
+var changeIdentityKeys = map[string]bool{
+	"change":  true,
+	"created": true,
+	"branch":  true,
+}
+
+// changeStateSeparatorRE collapses underscores and whitespace runs to a single
+// hyphen so "In Progress" and "in_progress" both normalize to "in-progress".
+var changeStateSeparatorRE = regexp.MustCompile(`[_\s]+`)
 
 type changeCheckOptions struct {
 	path              string
@@ -349,16 +377,19 @@ func evaluateChangeDoc(content string, folderBase string, currentBranch string) 
 		report.Violations = append(report.Violations, "frontmatter must open the file at byte one")
 	}
 
-	// V1a: status-like keys and progress vocabulary values.
+	// V1a: status-like keys and the canonical change-state vocabulary as values.
 	for _, field := range fields {
 		if changeStatusKeys[strings.ToLower(field.Key)] {
 			report.Violations = append(report.Violations,
 				fmt.Sprintf("status-like frontmatter key %q is banned; readiness is derived", field.Key))
 			continue
 		}
-		if changeProgressValues[strings.ToLower(field.Value)] {
+		if changeIdentityKeys[strings.ToLower(field.Key)] {
+			continue
+		}
+		if changeBannedStateValues[normalizeChangeStateValue(field.Value)] {
 			report.Violations = append(report.Violations,
-				fmt.Sprintf("progress vocabulary %q in frontmatter field %q is banned", field.Value, field.Key))
+				fmt.Sprintf("change-state vocabulary %q in frontmatter field %q is banned; state is derived", field.Value, field.Key))
 		}
 	}
 
@@ -450,6 +481,13 @@ func changeFrontmatterFields(content string) ([]changeFrontmatterField, bool) {
 		})
 	}
 	return fields, true
+}
+
+// normalizeChangeStateValue lowercases, trims, and collapses underscore/space
+// runs to hyphens so state words are matched regardless of casing or separator
+// style ("In Progress", "in_progress", "in-progress" all match "in-progress").
+func normalizeChangeStateValue(value string) string {
+	return changeStateSeparatorRE.ReplaceAllString(strings.ToLower(strings.TrimSpace(value)), "-")
 }
 
 func changeFieldValue(fields []changeFrontmatterField, key string) string {
