@@ -609,6 +609,57 @@ func TestChangeCheckByBranchErrorsWhenManyMatch(t *testing.T) {
 	}
 }
 
+// The no-match error lists every discovered Change folder with its branch: value
+// so the user can pick a path — a bare check on a branch with no matching Change
+// (e.g. main right after init) is a dead end otherwise.
+func TestChangeCheckByBranchNoMatchListsAvailableFolders(t *testing.T) {
+	repo := initCLIGitRepo(t) // current branch is main
+	writeChangeFolder(t, repo, "20260704-demo",
+		changeDoc(changeFrontmatter("demo", "2026-07-04", "feat-one"), productSections()...))
+	writeChangeFolder(t, repo, "20260705-other",
+		changeDoc(changeFrontmatter("other", "2026-07-05", "feat-two"), productSections()...))
+
+	err := Runner{Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}, WorkingDir: repo}.Run([]string{"change", "check"})
+	if err == nil {
+		t.Fatalf("err = nil, want a no-match error listing available folders")
+	}
+	msg := err.Error()
+	for _, want := range []string{
+		"no change folder matches branch",
+		"available change folders:",
+		"20260704-demo", "branch: feat-one",
+		"20260705-other", "branch: feat-two",
+	} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("error = %q, want it to contain %q", msg, want)
+		}
+	}
+}
+
+// The ambiguous-match error lists the candidate folders too.
+func TestChangeCheckByBranchManyMatchListsAvailableFolders(t *testing.T) {
+	repo := initCLIGitRepo(t) // current branch is main
+	writeChangeFolder(t, repo, "20260704-demo",
+		changeDoc(changeFrontmatter("demo", "2026-07-04", "main"), productSections()...))
+	writeChangeFolder(t, repo, "20260704-other",
+		changeDoc(changeFrontmatter("other", "2026-07-04", "main"), productSections()...))
+
+	err := Runner{Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}, WorkingDir: repo}.Run([]string{"change", "check"})
+	if err == nil {
+		t.Fatalf("err = nil, want an ambiguous-match error listing available folders")
+	}
+	msg := err.Error()
+	for _, want := range []string{
+		"multiple change folders match branch",
+		"available change folders:",
+		"20260704-demo", "20260704-other",
+	} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("error = %q, want it to contain %q", msg, want)
+		}
+	}
+}
+
 // --- init: happy path, refuse existing, bad slug ---------------------------
 
 func TestChangeInitHappyPath(t *testing.T) {
@@ -642,6 +693,28 @@ func TestChangeInitHappyPath(t *testing.T) {
 	// present in the template).
 	if _, err := runChangeCheckJSON(t, repo, folder); err != nil {
 		t.Fatalf("check on freshly-init'd change err = %v, want nil", err)
+	}
+}
+
+// init's success output carries a next-steps hint: work happens on branch
+// <slug>, so create/switch to it or pass the folder path to check explicitly.
+// Without it, `loaf change init` on main followed by a bare `loaf change check`
+// dead-ends on "no change folder matches branch main".
+func TestChangeInitEmitsNextStepsHint(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: repo}).Run([]string{"change", "init", "auth-token-rotation"}); err != nil {
+		t.Fatalf("change init error = %v", err)
+	}
+	output := stdout.String()
+	for _, want := range []string{
+		`branch "auth-token-rotation"`,
+		"git switch -c auth-token-rotation",
+		"loaf change check",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("init output = %q, want next-steps hint containing %q", output, want)
+		}
 	}
 }
 

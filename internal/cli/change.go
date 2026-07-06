@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -166,7 +167,10 @@ func writeChangeInitHelp(out io.Writer) {
 
 func writeChangeCheckHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf change check [folder] [--require-executable] [--json]",
-		"Validate a Change (folder resolves from the current branch when omitted) and report derived executability.",
+		"Validate a Change and report derived executability. Folder resolution: an "+
+			"explicit [folder] path always wins; otherwise the current git branch is "+
+			"matched against the branch: frontmatter across docs/changes/*/change.md.",
+		"[folder]              Change folder (or change.md) path; resolves from the current branch when omitted",
 		"--require-executable  Exit non-zero unless the Change is implementation-ready (CI gate for non-draft PRs)",
 		"--json                Output folder, passed, executable, findings, warnings, and gaps as JSON")
 }
@@ -210,7 +214,12 @@ func (r Runner) runChangeInit(args []string, out io.Writer, rootPath string) err
 	if err := os.WriteFile(target, []byte(stampChangeTemplate(changeTemplate, slug, now)), 0o644); err != nil {
 		return fmt.Errorf("write change.md: %w", err)
 	}
+	folderRel := relFromRoot(rootPath, folder)
 	fmt.Fprintf(out, "Created change: %s\n", relFromRoot(rootPath, target))
+	fmt.Fprintf(out, "\nNext: work on this change happens on branch %q.\n", slug)
+	fmt.Fprintf(out, "  Create or switch to it:   git switch -c %s\n", slug)
+	fmt.Fprintf(out, "  Then validate the change:  loaf change check\n")
+	fmt.Fprintf(out, "  Or check it from any branch by passing the folder: loaf change check %s\n", folderRel)
 	return nil
 }
 
@@ -341,6 +350,7 @@ func resolveChangeFolderByBranch(rootPath string) (string, string, error) {
 		return "", "", err
 	}
 	var folders []string
+	var available []changeBranchEntry
 	for _, changeFile := range matches {
 		content, err := os.ReadFile(changeFile)
 		if err != nil {
@@ -350,7 +360,12 @@ func resolveChangeFolderByBranch(rootPath string) (string, string, error) {
 		if !atByteOne {
 			continue
 		}
-		if changeFieldValue(fields, "branch") == branch {
+		fmBranch := changeFieldValue(fields, "branch")
+		available = append(available, changeBranchEntry{
+			folder: relFromRoot(rootPath, filepath.Dir(changeFile)),
+			branch: fmBranch,
+		})
+		if fmBranch == branch {
 			folders = append(folders, filepath.Dir(changeFile))
 		}
 	}
@@ -358,10 +373,36 @@ func resolveChangeFolderByBranch(rootPath string) (string, string, error) {
 	case 1:
 		return folders[0], filepath.Join(folders[0], "change.md"), nil
 	case 0:
-		return "", "", fmt.Errorf("no change folder matches branch %q; pass a change folder path", branch)
+		return "", "", fmt.Errorf("no change folder matches branch %q; pass a change folder path.%s", branch, formatAvailableChanges(available))
 	default:
-		return "", "", fmt.Errorf("multiple change folders match branch %q; pass a change folder path", branch)
+		return "", "", fmt.Errorf("multiple change folders match branch %q; pass a change folder path.%s", branch, formatAvailableChanges(available))
 	}
+}
+
+// changeBranchEntry pairs a Change folder with the branch declared in its
+// frontmatter, for listing candidates when branch resolution is unambiguous.
+type changeBranchEntry struct {
+	folder string
+	branch string
+}
+
+// formatAvailableChanges renders the discovered Change folders and their branch:
+// values so a failed branch resolution tells the user exactly what they can pass.
+func formatAvailableChanges(entries []changeBranchEntry) string {
+	if len(entries) == 0 {
+		return " (no change folders found under docs/changes/)"
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].folder < entries[j].folder })
+	var b strings.Builder
+	b.WriteString("\navailable change folders:")
+	for _, entry := range entries {
+		branch := entry.branch
+		if branch == "" {
+			branch = "(no branch: field)"
+		}
+		fmt.Fprintf(&b, "\n  %s  branch: %s", entry.folder, branch)
+	}
+	return b.String()
 }
 
 // evaluateChangeDoc runs the Verification Contract against one change.md.
