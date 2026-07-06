@@ -54,19 +54,19 @@ Provenance: [how each decision was accepted — interview, review, dogfooding.]
 
 ## Implementation Units
 
-In-document work packets — commit-boundary guides and review anchors, not tracked entities.
+<!-- In-document work packets — commit-boundary guides and review anchors, not tracked entities. -->
 
-- **U1 — [Unit name].** [What it delivers.]
+- [**U1 — Unit name.** What it delivers.]
 
 ## Verification Contract
 
-Executable (machine-checkable):
+<!-- Executable (machine-checkable): -->
 
-- **V1.** [Criterion bound to a command and an expected result.]
+- [**V1.** Criterion bound to a command and an expected result.]
 
-Human review:
+<!-- Human review: -->
 
-- **H1.** [What a reviewer confirms that no command can.]
+- [**H1.** What a reviewer confirms that no command can.]
 
 ## Definition of Done
 

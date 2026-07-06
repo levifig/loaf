@@ -320,11 +320,9 @@ func TestChangeCheckV2FullDocumentIsExecutable(t *testing.T) {
 // satisfy the V3 gate). With V2 discounting placeholders and comments, a fresh
 // Change reads not-executable — its tail is scaffolding, not authored content.
 //
-// The template ships two tail sections (Planning Contract, Definition of Done)
-// as pure placeholders; those read as gaps immediately. Implementation Units
-// and Verification Contract also ship authored guidance prose in the template,
-// so they are not gaps until that prose is replaced — the assertion checks the
-// pure-placeholder sections, which is sufficient to pin executable:no.
+// Every tail section ships as scaffolding — bracket placeholders and HTML
+// comments only, no bare labels — so all four executable sections read as gaps
+// on a fresh init and none is executable until the author writes real content.
 func TestChangeCheckFreshInitNotExecutable(t *testing.T) {
 	repo := initCLIGitRepo(t)
 	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: repo}).Run([]string{"change", "init", "fresh-demo"}); err != nil {
@@ -343,9 +341,9 @@ func TestChangeCheckFreshInitNotExecutable(t *testing.T) {
 	if out.Executable {
 		t.Fatalf("executable = true, want false; a freshly-templated Change has no authored tail. gaps = %v", out.Gaps)
 	}
-	for _, want := range []string{"Planning Contract", "Definition of Done"} {
+	for _, want := range []string{"Planning Contract", "Implementation Units", "Verification Contract", "Definition of Done"} {
 		if !findingsContain(out.Gaps, want) {
-			t.Fatalf("gaps = %v, want placeholder-only tail section %q listed as a gap", out.Gaps, want)
+			t.Fatalf("gaps = %v, want scaffolding-only tail section %q listed as a gap", out.Gaps, want)
 		}
 	}
 }
