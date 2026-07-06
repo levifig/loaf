@@ -13,8 +13,10 @@ session on this branch. Ephemeral by rule — deleted at ship.
   Native Go under `internal/cli/change.go` with V1–V3 written as tests first
   (`internal/cli/change_test.go`); the template is embedded and drift-gated
   byte-identical to `content/skills/shape/templates/change.md`. `go test ./...`,
-  `gofmt`, and `CGO_ENABLED=0 go build ./...` pass; the pilot itself checks
-  clean (no violations, executable: yes). Commit `938e9d3c`.
+  `gofmt`, `go vet`, and `CGO_ENABLED=0 go build ./...` pass; the pilot itself
+  checks clean (no violations, executable: yes). Commit `938e9d3c`; the V2
+  placeholder-discounting fix (fresh Changes read executable:no) landed in
+  `29d9a6b6`.
 - PR #91 is a **draft**. Flipping to ready is the Decision 12 declaration;
   pending after review of U3.
 
@@ -32,28 +34,25 @@ session on this branch. Ephemeral by rule — deleted at ship.
 
 ## Next actions, in order
 
-1. Review U3 (`internal/cli/change.go` + `change_test.go`, commit `938e9d3c`).
-   Focus: the finding below (fresh-init reads executable:yes), exit-code and
-   JSON-shape conventions, folder-resolution edge cases.
-2. External review round 3 on the PR. Suggested challenge focus: Decision 13's
-   free-form H3s (checkable enough?), Decision 14's identity-mismatch
-   strictness, Decision 17's harvest mechanics, Decision 19's delta-merge.
-3. Apply surviving findings; push the branch (confirm first) and flip #91 to
-   ready — the Decision 12 implementation-ready declaration. (Push and the
-   draft→ready flip are the orchestrator's calls, not the implementer's.)
+1. Optional: external review round 4 on the PR (the mattpocock/skills adversarial
+   round was round 3). Suggested challenge focus: Decision 13's free-form H3s
+   (checkable enough?), Decision 14's identity-mismatch strictness, Decision 17's
+   harvest mechanics, Decision 19's delta-merge.
+2. Push the branch (confirm first) and flip #91 to ready — the Decision 12
+   implementation-ready declaration. Push and the draft→ready flip are the
+   orchestrator's calls, not the implementer's.
+3. Delete `handoff.md` before merge (Decision 18 / Definition of Done) and merge
+   with the change folder on main — the orchestrator's to do.
 
-## Open finding from U3 (for spec review)
+## Resolved finding from U3
 
-A freshly `init`'d Change reads `executable: yes` because the shipped template
-carries all tail sections (Planning Contract, Implementation Units,
-Verification Contract, Definition of Done) with placeholder prose — content
-under the heading, which V2 counts as non-empty. This is literal to the
-Verification Contract ("present and non-empty") and the shaping-stage case
-(product sections only) still reads non-executable. If a fresh Change should
-read non-executable until authored, either V2 must discount bracket-placeholder
-content or the template must ship the tail empty/omitted. Left as-is because the
-draft PR state is the real readiness signal (D12/D21a) and stripping
-placeholders was not in the U3 contract.
+Resolution (a) implemented (commit `29d9a6b6`): `loaf change check` V2 now
+discounts bracket placeholders (`[...]`) and HTML comments, so a freshly-`init`'d
+Change reads `executable: no`. Nuance for follow-up: the shipped template's
+Implementation Units and Verification Contract still carry authored guidance
+prose, so only Planning Contract and Definition of Done read as gaps on a fresh
+init — making all four read as gaps is a template-content edit (needs a rebuild
+to propagate to `dist/`/`plugins/`), out of this checker fix's scope.
 
 ## Warnings
 
