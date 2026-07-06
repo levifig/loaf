@@ -311,6 +311,124 @@ func TestChangeCheckV2FullDocumentIsExecutable(t *testing.T) {
 	}
 }
 
+// --- V2 placeholder discounting: authored content, not scaffolding -----------
+
+// TestChangeCheckFreshInitNotExecutable is the traceable resolution of the U3
+// finding: a Change scaffolded by `loaf change init` used to read
+// executable:yes because the template's bracket placeholders counted as content
+// (the literal "present and non-empty" reading let a placeholder-only document
+// satisfy the V3 gate). With V2 discounting placeholders and comments, a fresh
+// Change reads not-executable — its tail is scaffolding, not authored content.
+//
+// The template ships two tail sections (Planning Contract, Definition of Done)
+// as pure placeholders; those read as gaps immediately. Implementation Units
+// and Verification Contract also ship authored guidance prose in the template,
+// so they are not gaps until that prose is replaced — the assertion checks the
+// pure-placeholder sections, which is sufficient to pin executable:no.
+func TestChangeCheckFreshInitNotExecutable(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: repo}).Run([]string{"change", "init", "fresh-demo"}); err != nil {
+		t.Fatalf("change init error = %v", err)
+	}
+	today := time.Now().Format("20060102")
+	folder := filepath.Join(repo, "docs", "changes", today+"-fresh-demo")
+
+	out, err := runChangeCheckJSON(t, repo, folder)
+	if err != nil {
+		t.Fatalf("check on freshly-init'd change err = %v, want nil (shaping-stage is valid, exit zero)", err)
+	}
+	if !out.Passed {
+		t.Fatalf("passed = false, want true; a freshly-init'd Change has no violations. findings = %v", out.Findings)
+	}
+	if out.Executable {
+		t.Fatalf("executable = true, want false; a freshly-templated Change has no authored tail. gaps = %v", out.Gaps)
+	}
+	for _, want := range []string{"Planning Contract", "Definition of Done"} {
+		if !findingsContain(out.Gaps, want) {
+			t.Fatalf("gaps = %v, want placeholder-only tail section %q listed as a gap", out.Gaps, want)
+		}
+	}
+}
+
+// A tail section mixing a placeholder line with one authored line is non-empty:
+// discounting removes only the placeholder, and any real content keeps the
+// section authored.
+func TestChangeCheckSectionMixedPlaceholderIsAuthored(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	sections := append(productSections(),
+		"## Planning Contract\n\n### Approach\n\nReal shaping prose.",
+		"## Implementation Units\n\n- [What this Change delivers.]\n- Wire the token rotation job.",
+		"## Verification Contract\n\n- V1. command exits non-zero.",
+		"## Definition of Done\n\n- Gates pass.",
+	)
+	body := changeDoc(changeFrontmatter("demo", "2026-07-04", "demo"), sections...)
+	folder := writeChangeFolder(t, repo, "20260704-demo", body)
+
+	out, err := runChangeCheckJSON(t, repo, folder)
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if findingsContain(out.Gaps, "Implementation Units") {
+		t.Fatalf("gaps = %v, must not flag Implementation Units; it carries an authored line beside the placeholder", out.Gaps)
+	}
+	if !out.Executable {
+		t.Fatalf("executable = false, want true; every tail section is authored. gaps = %v", out.Gaps)
+	}
+}
+
+// A tail section whose only content is an HTML comment reads as empty — comments
+// are guidance, not authored content.
+func TestChangeCheckSectionOnlyHTMLCommentIsEmpty(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	sections := append(productSections(),
+		"## Planning Contract\n\n### Approach\n\nReal shaping prose.",
+		"## Implementation Units\n\n- Ship the thing.",
+		"## Verification Contract\n\n- V1. command exits non-zero.",
+		"## Definition of Done\n\n<!-- fill this in before the draft to ready flip -->",
+	)
+	body := changeDoc(changeFrontmatter("demo", "2026-07-04", "demo"), sections...)
+	folder := writeChangeFolder(t, repo, "20260704-demo", body)
+
+	out, err := runChangeCheckJSON(t, repo, folder)
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if out.Executable {
+		t.Fatalf("executable = true, want false; Definition of Done holds only a comment. gaps = %v", out.Gaps)
+	}
+	if !findingsContain(out.Gaps, "Definition of Done") {
+		t.Fatalf("gaps = %v, want a Definition of Done gap for a comment-only section", out.Gaps)
+	}
+}
+
+// Decision pinned: a surviving alphanumeric label (e.g. **U1**) after
+// bracket-discounting is authored content. The V2 clause left "structure with
+// only placeholder content" to implementation; the deterministic rule strips
+// placeholder spans and comments, never bare labels, so a bullet like
+// `- **U1 — [Unit name].** [What it delivers.]` reads as authored via its label.
+func TestChangeCheckStructuralLabelCountsAsAuthored(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	sections := append(productSections(),
+		"## Planning Contract\n\n### Approach\n\nReal shaping prose.",
+		"## Implementation Units\n\n- **U1 — [Unit name].** [What it delivers.]",
+		"## Verification Contract\n\n- V1. command exits non-zero.",
+		"## Definition of Done\n\n- Gates pass.",
+	)
+	body := changeDoc(changeFrontmatter("demo", "2026-07-04", "demo"), sections...)
+	folder := writeChangeFolder(t, repo, "20260704-demo", body)
+
+	out, err := runChangeCheckJSON(t, repo, folder)
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if findingsContain(out.Gaps, "Implementation Units") {
+		t.Fatalf("gaps = %v, Implementation Units should read authored: the **U1** label survives discounting", out.Gaps)
+	}
+	if !out.Executable {
+		t.Fatalf("executable = false, want true; every tail section is authored. gaps = %v", out.Gaps)
+	}
+}
+
 // --- V3: --require-executable turns the report into a gate -------------------
 
 func TestChangeCheckV3RequireExecutableFailsOnShapingDoc(t *testing.T) {

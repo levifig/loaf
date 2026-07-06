@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/levifig/loaf/internal/state"
 )
@@ -27,6 +28,14 @@ var changeSlugRE = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 // changeFolderRE bounds a Change folder name: YYYYMMDD-slug.
 var changeFolderRE = regexp.MustCompile(`^(\d{8})-([a-z0-9]+(?:-[a-z0-9]+)*)$`)
+
+// changeHTMLCommentRE matches an HTML comment, including multi-line blocks.
+var changeHTMLCommentRE = regexp.MustCompile(`(?s)<!--.*?-->`)
+
+// changeBracketPlaceholderRE matches a bracket placeholder span (`[...]`). The
+// class excludes brackets but not newlines, so a placeholder wrapping several
+// lines is matched as one span.
+var changeBracketPlaceholderRE = regexp.MustCompile(`\[[^\[\]]*\]`)
 
 // changeProductSections are the required Product Contract H2s (V1e).
 var changeProductSections = []string{
@@ -381,13 +390,15 @@ func evaluateChangeDoc(content string, folderBase string, currentBranch string) 
 	}
 
 	// V2: derived executability — required tail sections present and non-empty.
+	// Non-empty means authored content: bracket placeholders and comments are
+	// scaffolding, not content, so a freshly-templated Change is not executable.
 	for _, name := range changeExecutableSections {
 		body, ok := sections[name]
 		if !ok {
 			report.Gaps = append(report.Gaps, fmt.Sprintf("%s (missing)", name))
 			continue
 		}
-		if strings.TrimSpace(body) == "" {
+		if !changeSectionAuthored(body) {
 			report.Gaps = append(report.Gaps, fmt.Sprintf("%s (empty)", name))
 		}
 	}
@@ -488,6 +499,23 @@ func changeSections(content string) map[string]string {
 	}
 	flush()
 	return sections
+}
+
+// changeSectionAuthored reports whether a section body carries authored content
+// once scaffolding is discounted (V2). HTML comments and bracket placeholder
+// spans (`[...]`, including multi-line spans) are removed; if any letter or
+// digit survives, the section is authored. Bare structural labels (e.g. a **U1**
+// bullet left unfilled) survive discounting and therefore count as authored —
+// the rule strips placeholders and comments, never labels.
+func changeSectionAuthored(body string) bool {
+	stripped := changeHTMLCommentRE.ReplaceAllString(body, "")
+	stripped = changeBracketPlaceholderRE.ReplaceAllString(stripped, "")
+	for _, r := range stripped {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return true
+		}
+	}
+	return false
 }
 
 func currentChangeBranch(root string) string {
