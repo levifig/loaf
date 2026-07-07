@@ -57,7 +57,7 @@ config/                         # Build configuration
 | Agents | `content/agents/{name}.md` | - |
 | Hooks | `content/hooks/{pre,post}-tool/` | - |
 | Config | `config/` | `hooks.yaml`, `targets.yaml` |
-| CLI | `internal/cli/` | `cmd/loaf/main.go` |
+| CLI | `internal/cli/` | `cli.go` |
 
 ## Agent Profiles
 
@@ -79,7 +79,7 @@ See [SOUL.md](../SOUL.md) for the Warden identity and fellowship conventions.
 
 **Add template:** Create in `content/skills/{name}/templates/` (skill-specific) or `content/templates/` + register in `shared-templates` in `targets.yaml`
 
-**Add target:** Create `cli/lib/build/targets/{target}.ts`, register in `cli/commands/build.ts`
+**Add target:** Create `internal/cli/build_{target}.go`, add the name to `defaultBuildTargets` and the target switch in `internal/cli/build.go` (see `build_amp.go` for the pattern)
 
 ## Skill Development
 
