@@ -112,7 +112,7 @@ Once the shape of the work is nameable, confirm scope with the user, then:
 loaf change init <slug>
 ```
 
-This scaffolds `docs/changes/YYYYMMDD-slug/change.md` from [the Change template](templates/change.md) and puts you on branch `<slug>` — branch-at-shaping, not deferred to implementation. A Change grows toward executability from here: the flat Product Contract sections (Problem, Hypothesis, Scope, Observable Workflow, Rabbit Holes and No-Gos) fill in as understanding solidifies through the steps below, not all at once. See [references/cli-boundary.md](references/cli-boundary.md) for what `init` writes and how `check` reads it.
+This scaffolds `docs/changes/YYYYMMDD-slug/change.md` from [the Change template](templates/change.md) and prints the branch to use — **it does not switch branches**. Create or switch to it yourself (`git switch -c <slug>`) before committing anything: branch-at-shaping, not deferred to implementation. A Change grows toward executability from here: the flat Product Contract sections (Problem, Hypothesis, Scope, Observable Workflow, Rabbit Holes and No-Gos) fill in as understanding solidifies through the steps below, not all at once. See [references/cli-boundary.md](references/cli-boundary.md) for what `init` writes and how `check` reads it.
 
 ### Step 4: Narrow the Unknowns
 
