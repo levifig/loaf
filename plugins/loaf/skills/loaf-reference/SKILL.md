@@ -1,10 +1,11 @@
 ---
-name: cli-reference
+name: loaf-reference
 description: >-
   Documents the Loaf CLI commands and when to use them. Reference for
-  /implement, /implement, and all loaf subcommands. Use when you need to know
+  /loaf:implement, /loaf:implement, and all loaf subcommands. Use when you need to know
   which CLI command to invoke. Not for skill documentation (use the skill's own
-  SKILL.md) or for understanding build internals.
+  SKILL.md) or for understa...
+user-invocable: false
 version: 2.0.0-alpha.5
 ---
 
@@ -22,7 +23,7 @@ Quick reference for all Loaf CLI commands. Each command includes its purpose, co
 
 ## Global Commands
 
-### /implement
+### /loaf:implement
 Orchestrates implementation work through agent delegation and batch execution. Logs to the project journal.
 
 **Use when:**
@@ -31,12 +32,12 @@ Orchestrates implementation work through agent delegation and batch execution. L
 - Resuming work after context loss
 
 **Usage:**
-- /implement TASK-XXX - Load one task and build its plan
-- /implement SPEC-XXX - Resolve all tasks, build dependency waves
-- /implement TASK-XXX..YYY - Expand range, build waves
-- /implement "description" - Ad-hoc implementation work
+- /loaf:implement TASK-XXX - Load one task and build its plan
+- /loaf:implement SPEC-XXX - Resolve all tasks, build dependency waves
+- /loaf:implement TASK-XXX..YYY - Expand range, build waves
+- /loaf:implement "description" - Ad-hoc implementation work
 
-### /implement
+### /loaf:implement
 Coordinates multi-agent work: agent delegation, journal continuity, Linear integration.
 
 **Use when:**
@@ -410,7 +411,7 @@ entries, `loaf journal context` for the layered continuity digest, and
   - `--harness-session-id <id>` - Opaque conversation correlation tag
   - `--branch <branch>` - Observed branch (defaults to current git branch)
   - `--worktree <path>` - Observed worktree path
-  - `--from-hook` - Derive the entry from a harness hook payload on stdin; exits silently for Amp check/agent mode or new thread
+  - `--from-hook` - Derive the entry from a harness hook payload on stdin; exits silently for subagents
   - `--detect-linear` - Scan recent commits for Linear magic words and log a discovery entry
   - `--json` - Output the written entry and project identity as JSON
 
@@ -430,7 +431,7 @@ entries, `loaf journal context` for the layered continuity digest, and
 
 - `loaf journal context`:
   - `--branch <branch>` - Branch scope for the recent-entries layer
-  - `--from-hook` - Read the harness hook payload on stdin; exits silently for Amp check/agent mode or new thread (SessionStart/PostCompact)
+  - `--from-hook` - Read the harness hook payload on stdin; exits silently for subagents (SessionStart/PostCompact)
   - `--json` - Output the digest and project identity as JSON
   - `for-prompt|for-compact|for-resumption` - Hook subcommands: inject implementation principles, journal-flush guidance, or the resumption digest
 
@@ -657,7 +658,7 @@ status and relationship data when initialized.
   - `--title <title>` - Spec title (defaults to a title derived from the slug)
   - `--id <SPEC-NNN>` - Explicit spec id; auto-allocated when omitted
   - `--source <source>` - Provenance label recorded on the spec and creation event (default: ad-hoc)
-  - `--branch <name>` - Implementation branch recorded on the spec for breakdown/implement handoff
+  - `--branch <name>` - Implementation branch recorded on the spec for breakdown/loaf:implement handoff
   - `--related <SPEC-A,SPEC-B>` - Comma-separated spec refs to link as related
   - `--body-file <path>` - Read the spec body from a file
   - `--body -` - Read the spec body from stdin
@@ -1440,10 +1441,10 @@ loaf doctor
 
 The following placeholders are substituted at build time per target:
 
-| Placeholder | Amp | OpenCode | Cursor |
+| Placeholder | Claude Code | OpenCode | Cursor |
 |-------------|-------------|----------|--------|
-| `/implement` | `/implement` | `/implement` | `@loaf/implement` |
-| `/implement` | `/implement` | `/implement` | `@loaf/implement` |
+| `/loaf:implement` | `/loaf:implement` | `/loaf:implement` | `@loaf/loaf:implement` |
+| `/loaf:implement` | `/loaf:implement` | `/loaf:implement` | `@loaf/loaf:implement` |
 
 ---
 
@@ -1451,11 +1452,11 @@ The following placeholders are substituted at build time per target:
 
 **Shaping new work?** -> `loaf change init <slug>`, then validate with `loaf change check`
 
-**Need to start working?** -> `/implement TASK-XXX`
+**Need to start working?** -> `/loaf:implement TASK-XXX`
 
-**Need to continue after restart?** -> `loaf journal context` then `/implement`
+**Need to continue after restart?** -> `loaf journal context` then `/loaf:implement`
 
-**Need to coordinate agents?** -> `/implement`
+**Need to coordinate agents?** -> `/loaf:implement`
 
 **Made changes to skills?** -> `loaf build && loaf install --to <target>`
 

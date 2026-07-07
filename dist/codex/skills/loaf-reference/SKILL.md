@@ -1,5 +1,5 @@
 ---
-name: cli-reference
+name: loaf-reference
 description: >-
   Documents the Loaf CLI commands and when to use them. Reference for
   /implement, /implement, and all loaf subcommands. Use when you need to know
@@ -410,7 +410,7 @@ entries, `loaf journal context` for the layered continuity digest, and
   - `--harness-session-id <id>` - Opaque conversation correlation tag
   - `--branch <branch>` - Observed branch (defaults to current git branch)
   - `--worktree <path>` - Observed worktree path
-  - `--from-hook` - Derive the entry from a harness hook payload on stdin; exits silently for background agent
+  - `--from-hook` - Derive the entry from a harness hook payload on stdin; exits silently for separate Codex thread or explicit multi-agent tool when available
   - `--detect-linear` - Scan recent commits for Linear magic words and log a discovery entry
   - `--json` - Output the written entry and project identity as JSON
 
@@ -430,7 +430,7 @@ entries, `loaf journal context` for the layered continuity digest, and
 
 - `loaf journal context`:
   - `--branch <branch>` - Branch scope for the recent-entries layer
-  - `--from-hook` - Read the harness hook payload on stdin; exits silently for background agent (SessionStart/PostCompact)
+  - `--from-hook` - Read the harness hook payload on stdin; exits silently for separate Codex thread or explicit multi-agent tool when available (SessionStart/PostCompact)
   - `--json` - Output the digest and project identity as JSON
   - `for-prompt|for-compact|for-resumption` - Hook subcommands: inject implementation principles, journal-flush guidance, or the resumption digest
 
@@ -1440,7 +1440,7 @@ loaf doctor
 
 The following placeholders are substituted at build time per target:
 
-| Placeholder | Cursor | OpenCode | Cursor |
+| Placeholder | Codex | OpenCode | Cursor |
 |-------------|-------------|----------|--------|
 | `/implement` | `/implement` | `/implement` | `@loaf/implement` |
 | `/implement` | `/implement` | `/implement` | `@loaf/implement` |

@@ -1,10 +1,11 @@
 ---
-name: cli-reference
+name: loaf-reference
 description: >-
   Documents the Loaf CLI commands and when to use them. Reference for
-  /implement, /implement, and all loaf subcommands. Use when you
-  need to know which CLI command to invoke. Not for skill documentation (use the
-  skill's own SKILL.md) or for understanding build internals.
+  /implement, /implement, and all loaf subcommands. Use when you need to know
+  which CLI command to invoke. Not for skill documentation (use the skill's own
+  SKILL.md) or for understanding build internals.
+version: 2.0.0-alpha.5
 ---
 
 # Loaf CLI Reference
@@ -409,7 +410,7 @@ entries, `loaf journal context` for the layered continuity digest, and
   - `--harness-session-id <id>` - Opaque conversation correlation tag
   - `--branch <branch>` - Observed branch (defaults to current git branch)
   - `--worktree <path>` - Observed worktree path
-  - `--from-hook` - Derive the entry from a harness hook payload on stdin; exits silently for subagents
+  - `--from-hook` - Derive the entry from a harness hook payload on stdin; exits silently for subtask agent
   - `--detect-linear` - Scan recent commits for Linear magic words and log a discovery entry
   - `--json` - Output the written entry and project identity as JSON
 
@@ -429,7 +430,7 @@ entries, `loaf journal context` for the layered continuity digest, and
 
 - `loaf journal context`:
   - `--branch <branch>` - Branch scope for the recent-entries layer
-  - `--from-hook` - Read the harness hook payload on stdin; exits silently for subagents (SessionStart/PostCompact)
+  - `--from-hook` - Read the harness hook payload on stdin; exits silently for subtask agent (SessionStart/PostCompact)
   - `--json` - Output the digest and project identity as JSON
   - `for-prompt|for-compact|for-resumption` - Hook subcommands: inject implementation principles, journal-flush guidance, or the resumption digest
 
@@ -1439,7 +1440,7 @@ loaf doctor
 
 The following placeholders are substituted at build time per target:
 
-| Placeholder | Claude Code | OpenCode | Cursor |
+| Placeholder | OpenCode | OpenCode | Cursor |
 |-------------|-------------|----------|--------|
 | `/implement` | `/implement` | `/implement` | `@loaf/implement` |
 | `/implement` | `/implement` | `/implement` | `@loaf/implement` |
