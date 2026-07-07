@@ -183,11 +183,13 @@ Human review:
 
 ## Open Questions
 
-- [UK] Right altitude for the new SKILL.md — inline routing table vs. `references/` split under the 500-line rule → reaction artifact: draft both tables inline first, judge in review.
-- [KU] Does `eval:routing` cover shape's confusable neighbors (brainstorm, idea) well enough to catch a regressed description? → owned by U5; extend the eval fixture if not.
-- [KU] Should the change template's Open Questions comment mention quadrant tags, or does the skill alone teach it? → grilling question for the review round; recommended answer: one-line template comment, nothing more.
-- [KU] Delete `templates/spec.md` with this rewrite, or leave it for the conversion pass? → grilling question at review; recommended answer: delete here — shape no longer teaches specs, the conversion pass owns legacy spec work and does not use shape's template. Check nothing else references it (`shared-templates`, build config) before removing.
+- ~~[UK] Right altitude for the new SKILL.md — inline routing table vs. `references/` split~~ → resolved in implementation: register, routing table, and process stayed inline (164 lines); technique mechanics went to six `references/` files. Deviation noted honestly: the implementer judged directly instead of producing both drafts as the entry asked — a fully-inline draft would have breached the 500-line rule, and orchestrator review confirmed the altitude. The dual-draft rite was skipped, not the judgment it protects.
+- ~~[KU] Does `eval:routing` cover shape's confusable neighbors (brainstorm, idea)?~~ → resolved: it didn't; U5 added idea-shape and brainstorm-shape conflict probes (115 → 119 cases), and shape's own cases updated from spec to Change vocabulary.
+- ~~[KU] Should the change template's Open Questions comment mention quadrant tags?~~ → resolved with the recommended answer: one-line fog-register comment added to the template, explicitly marked convention-never-parsed. PR review can veto.
+- ~~[KU] Delete `templates/spec.md` with this rewrite, or leave it for the conversion pass?~~ → resolved with the recommended answer: deleted; `shared-templates` and build config verified silent on it, and the conversion pass does not consume shape's template.
 - ~~[UU] What agents actually misread in the current skill text~~ → resolved by the 2026-07-07 blindspot pass; adjudicated in Blast-radius findings, raw reports in `research/`.
+
+The register is empty; remaining review is the human pass at the draft→ready flip (H1–H2) and the trailing H3 check on the next shaped Change.
 
 ## Source Inputs
 
