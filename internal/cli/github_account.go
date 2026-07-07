@@ -99,6 +99,36 @@ func shellCommandUsesGitHubCLI(command string) bool {
 	return githubCommandRE.MatchString(strings.TrimSpace(command))
 }
 
+// shellCommandOnlyManagesGitHubAuth reports whether every gh invocation in the
+// command is a `gh auth` administrative subcommand (login, logout, switch,
+// refresh, status, ...). Identity administration is the user's domain, so those
+// invocations bypass account convergence: converging first would misdirect them
+// — e.g. `gh auth logout` under a mismatch would first force-switch the global
+// pointer to the configured account and then log THAT account out, not the one
+// the user targeted. A compound that mixes auth with resource-touching gh usage
+// (e.g. `gh auth switch --user x && gh pr create`) is not exempt and still
+// converges. Because githubCommandRE only matches gh at a command position, a
+// `gh auth` substring living inside an argument (e.g. `echo "gh auth"`) is not
+// mistaken for an invocation.
+func shellCommandOnlyManagesGitHubAuth(command string) bool {
+	trimmed := strings.TrimSpace(command)
+	positions := githubCommandRE.FindAllStringIndex(trimmed, -1)
+	if len(positions) == 0 {
+		return false
+	}
+	for _, pos := range positions {
+		rest := strings.TrimLeft(trimmed[pos[1]:], " \t")
+		subcommand := rest
+		if i := strings.IndexAny(rest, " \t"); i >= 0 {
+			subcommand = rest[:i]
+		}
+		if subcommand != "auth" {
+			return false
+		}
+	}
+	return true
+}
+
 func activeGitHubAccount(root string) githubAccountCommandResult {
 	cmd := exec.Command("gh", "auth", "status", "--active", "--hostname", githubAccountHostname, "--json", "hosts")
 	cmd.Dir = root

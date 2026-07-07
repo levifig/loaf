@@ -412,6 +412,131 @@ func TestGitHubAccountHookPassesMatchingConfiguredAccount(t *testing.T) {
 	}
 }
 
+func TestGitHubAccountHookExemptsGitHubAuthAdministration(t *testing.T) {
+	// gh auth administration is the user's domain: under an account mismatch it
+	// must pass through untouched — no status probe, no switch — so convergence
+	// never misdirects the command (e.g. logging out the configured account).
+	for _, command := range []string{
+		"gh auth logout",
+		"gh auth switch --user other",
+		"gh auth status",
+	} {
+		t.Run(command, func(t *testing.T) {
+			repo := initCLIGitRepo(t)
+			writeCheckFile(t, repo, ".agents/loaf.json", `{"integrations":{"github":{"account":"levifig"}}}`+"\n")
+			hookContext := checkHookContext{
+				ToolName:  "Bash",
+				ToolInput: checkHookInput{Command: command},
+			}
+
+			statusCalled := false
+			switchCalled := false
+			result := runNativeGitHubAccountWithRunner(hookContext, repo, func(root string) githubAccountCommandResult {
+				statusCalled = true
+				return githubAccountCommandResult{stdout: githubAuthStatusJSON("work-account"), exitCode: 0}
+			}, func(root, user string) githubAccountCommandResult {
+				switchCalled = true
+				return githubAccountCommandResult{exitCode: 0}
+			})
+
+			if statusCalled || switchCalled {
+				t.Fatalf("gh probed for auth-administration command (status=%v switch=%v), want pass-through with no gh execution", statusCalled, switchCalled)
+			}
+			if !result.Passed || result.Blocked || len(result.Errors) != 0 || len(result.Warnings) != 0 {
+				t.Fatalf("result = %#v, want clean pass-through for %q", result, command)
+			}
+		})
+	}
+}
+
+func TestGitHubAccountHookConvergesCompoundAuthAndResourceCommand(t *testing.T) {
+	// A compound that mixes gh auth with resource-touching gh usage is not
+	// exempt: it still converges on the configured account.
+	repo := initCLIGitRepo(t)
+	writeCheckFile(t, repo, ".agents/loaf.json", `{"integrations":{"github":{"account":"levifig"}}}`+"\n")
+	hookContext := checkHookContext{
+		ToolName:  "Bash",
+		ToolInput: checkHookInput{Command: "gh auth switch --user x && gh pr create"},
+	}
+
+	statusCalls := 0
+	status := func(root string) githubAccountCommandResult {
+		statusCalls++
+		if statusCalls == 1 {
+			return githubAccountCommandResult{stdout: githubAuthStatusJSON("work-account"), exitCode: 0}
+		}
+		return githubAccountCommandResult{stdout: githubAuthStatusJSON("levifig"), exitCode: 0}
+	}
+	switchCalls := 0
+	switcher := func(root, user string) githubAccountCommandResult {
+		switchCalls++
+		return githubAccountCommandResult{exitCode: 0}
+	}
+
+	result := runNativeGitHubAccountWithRunner(hookContext, repo, status, switcher)
+	if !result.Passed || result.Blocked {
+		t.Fatalf("result = %#v, want pass-with-warning after convergence", result)
+	}
+	if switchCalls != 1 {
+		t.Fatalf("switchCalls = %d, want the mixed compound to converge with one switch", switchCalls)
+	}
+}
+
+func TestGitHubAccountHookPassesMatchingReadOnlyResourceCommand(t *testing.T) {
+	// Regression: a resource-touching gh command against a matching account
+	// still probes once and passes cleanly, unaffected by the auth exemption.
+	repo := initCLIGitRepo(t)
+	writeCheckFile(t, repo, ".agents/loaf.json", `{"integrations":{"github":{"account":"levifig"}}}`+"\n")
+	hookContext := checkHookContext{
+		ToolName:  "Bash",
+		ToolInput: checkHookInput{Command: "gh pr list"},
+	}
+
+	statusCalls := 0
+	switchCalled := false
+	result := runNativeGitHubAccountWithRunner(hookContext, repo, func(root string) githubAccountCommandResult {
+		statusCalls++
+		return githubAccountCommandResult{stdout: githubAuthStatusJSON("levifig"), exitCode: 0}
+	}, func(root, user string) githubAccountCommandResult {
+		switchCalled = true
+		return githubAccountCommandResult{exitCode: 0}
+	})
+	if !result.Passed || result.Blocked || len(result.Errors) != 0 || len(result.Warnings) != 0 {
+		t.Fatalf("result = %#v, want clean matching-account pass", result)
+	}
+	if switchCalled {
+		t.Fatalf("switch attempted for already-matching account, want none")
+	}
+	if statusCalls != 1 {
+		t.Fatalf("statusCalls = %d, want single probe when already matching", statusCalls)
+	}
+}
+
+func TestShellCommandOnlyManagesGitHubAuth(t *testing.T) {
+	cases := []struct {
+		command string
+		want    bool
+	}{
+		{command: "gh auth logout", want: true},
+		{command: "gh auth switch --user other", want: true},
+		{command: "gh auth status", want: true},
+		{command: "gh auth refresh", want: true},
+		{command: "env GH_HOST=github.com gh auth status", want: true},
+		{command: "cd repo && gh auth switch --user levifig", want: true},
+		{command: "gh pr list", want: false},
+		{command: "gh auth switch --user x && gh pr create", want: false},
+		{command: "gh pr view 91 && gh auth status", want: false},
+		{command: "gh", want: false},
+		{command: `echo "gh auth"`, want: false},
+		{command: "grep ghp_ fixture.txt", want: false},
+	}
+	for _, tc := range cases {
+		if got := shellCommandOnlyManagesGitHubAuth(tc.command); got != tc.want {
+			t.Fatalf("shellCommandOnlyManagesGitHubAuth(%q) = %v, want %v", tc.command, got, tc.want)
+		}
+	}
+}
+
 func TestShellCommandUsesGitHubCLI(t *testing.T) {
 	cases := []struct {
 		command string

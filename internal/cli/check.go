@@ -807,6 +807,12 @@ func runNativeGitHubAccountWithRunner(
 	if checkContextToolName(hookContext) != "Bash" || !shellCommandUsesGitHubCLI(command) {
 		return result
 	}
+	// Identity administration (`gh auth ...`) is the user's domain: pass it
+	// through untouched — no status probe, no switch — so convergence never
+	// misdirects the command onto the configured account.
+	if shellCommandOnlyManagesGitHubAuth(command) {
+		return result
+	}
 	expected, err := configuredGitHubAccount(cwd)
 	if err != nil {
 		result.Passed = false
