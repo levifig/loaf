@@ -60,7 +60,7 @@ const TEST_CASES = {
     "Create tasks for SPEC-015",
     "Decompose this plan into atomic work items",
   ],
-  "cli-reference": [
+  "loaf-reference": [
     "Which loaf command shows the recent project journal?",
     "Show me the Loaf CLI command for task status",
     "What flags does loaf journal recent support?",

@@ -1,5 +1,5 @@
 ---
-name: cli-reference
+name: loaf-reference
 description: >-
   Documents the Loaf CLI commands and when to use them. Reference for
   {{IMPLEMENT_CMD}}, {{ORCHESTRATE_CMD}}, and all loaf

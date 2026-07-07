@@ -185,7 +185,7 @@ func TestOrchestrationDuplicateAuthorityReferencesRetired(t *testing.T) {
 
 func TestCliReferenceCatalogsJournalFamily(t *testing.T) {
 	root := repoRoot(t)
-	rel := filepath.FromSlash("content/skills/cli-reference/SKILL.md")
+	rel := filepath.FromSlash("content/skills/loaf-reference/SKILL.md")
 	body := readTextFile(t, filepath.Join(root, rel))
 	for _, command := range []string{
 		"loaf journal log",

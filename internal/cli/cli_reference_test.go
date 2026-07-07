@@ -20,7 +20,7 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		t.Fatalf("__generate-cli-ref error = %v", err)
 	}
 
-	outputPath := filepath.Join(workingDir, "content", "skills", "cli-reference", "SKILL.md")
+	outputPath := filepath.Join(workingDir, "content", "skills", "loaf-reference", "SKILL.md")
 	data, err := os.ReadFile(outputPath)
 	if err != nil {
 		t.Fatalf("ReadFile(%s) error = %v", outputPath, err)

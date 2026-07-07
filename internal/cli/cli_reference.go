@@ -32,7 +32,7 @@ func (r Runner) runGenerateCLIReference(args []string, out io.Writer, rootPath s
 	if len(args) > 0 {
 		return fmt.Errorf("__generate-cli-ref does not accept arguments")
 	}
-	outputPath := filepath.Join(rootPath, "content", "skills", "cli-reference", "SKILL.md")
+	outputPath := filepath.Join(rootPath, "content", "skills", "loaf-reference", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 		return fmt.Errorf("create CLI reference directory: %w", err)
 	}
@@ -694,7 +694,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 
 func generateCLIReferenceSkill(commands []cliReferenceCommand) string {
 	sections := []string{`---
-name: cli-reference
+name: loaf-reference
 description: >-
   Documents the Loaf CLI commands and when to use them. Reference for
   {{IMPLEMENT_CMD}}, {{ORCHESTRATE_CMD}}, and all loaf
