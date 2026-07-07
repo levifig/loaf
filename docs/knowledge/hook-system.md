@@ -83,7 +83,7 @@ Native enforcement and workflow checks run via `loaf check --hook <id>` in `inte
 |------|-------|---------|:--------:|-------------|
 | `check-secrets` | security-compliance | Edit\|Write\|Bash | Yes (failClosed) | Scans file content and Bash commands for hardcoded secrets |
 | `security-audit` | security-compliance | Bash | Yes (failClosed) | Blocks dangerous shell patterns; runs Trivy/Semgrep/npm-audit when available |
-| `github-account` | git-workflow | Bash | Yes (failClosed) | Blocks `gh` commands when the active GitHub CLI account differs from `.agents/loaf.json` |
+| `github-account` | git-workflow | Bash | Yes (failClosed) | Switches the active GitHub CLI account to match `.agents/loaf.json` before `gh` commands (pass-with-warning); blocks only when the switch fails |
 | `validate-push` | git-workflow | Bash | Advisory | Verifies version bump, CHANGELOG, build before push |
 | `workflow-pre-pr` | git-workflow | Bash | Advisory | Checks PR format, CHANGELOG entry, unpushed base-branch commits |
 | `validate-commit` | orchestration | Bash | Yes (failClosed) | Validates Conventional Commits format, blocks AI attribution |
