@@ -12048,6 +12048,9 @@ func TestRunnerReportListWarnsWhenGlobalDatabaseHasUnimportedMarkdown(t *testing
 	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: registeredDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
 		t.Fatalf("state init registered project error = %v", err)
 	}
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init working project error = %v", err)
+	}
 	writeCLIAgentsFile(t, workingDir, "reports/local.md", `---
 title: Local Markdown Report
 type: audit

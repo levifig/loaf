@@ -1,13 +1,19 @@
 package main
 
 import (
+	"bytes"
+	"database/sql"
 	"encoding/json"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/levifig/loaf/internal/state"
 )
 
 func TestNewRunnerWiresBuildInfo(t *testing.T) {
@@ -345,6 +351,103 @@ func TestPublicBinaryRootHelpAndUnknownCommandAreNative(t *testing.T) {
 	}
 	if doc.Name != "loaf" || len(doc.Commands) < 15 {
 		t.Fatalf("agent help = %#v, want full native command catalog", doc)
+	}
+}
+
+func TestPublicBinaryConcurrentStateInitConverges(t *testing.T) {
+	repoRoot := repoRoot(t)
+	binary := buildLoafBinary(t, repoRoot)
+	for iteration := 0; iteration < 10; iteration++ {
+		workingDir := realpath(t, t.TempDir())
+		databasePath := filepath.Join(t.TempDir(), "loaf.sqlite")
+		env := envWith("LOAF_DB=" + databasePath)
+
+		type processResult struct {
+			output string
+			err    error
+		}
+		start := make(chan struct{})
+		started := make(chan struct{}, 2)
+		results := make(chan processResult, 2)
+		var wg sync.WaitGroup
+		for process := 0; process < 2; process++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				cmd := exec.Command(binary, "state", "init", "--json")
+				cmd.Dir = workingDir
+				cmd.Env = env
+				var output bytes.Buffer
+				cmd.Stdout = &output
+				cmd.Stderr = &output
+				<-start
+				if err := cmd.Start(); err != nil {
+					started <- struct{}{}
+					results <- processResult{output: output.String(), err: err}
+					return
+				}
+				started <- struct{}{}
+				err := cmd.Wait()
+				results <- processResult{output: output.String(), err: err}
+			}()
+		}
+		close(start)
+		for process := 0; process < 2; process++ {
+			<-started
+		}
+		wg.Wait()
+		close(results)
+		projectIDs := make([]string, 0, 2)
+		for result := range results {
+			if result.err != nil {
+				t.Fatalf("iteration %d concurrent state init error = %v\n%s", iteration, result.err, result.output)
+			}
+			var status state.Status
+			if err := json.Unmarshal([]byte(result.output), &status); err != nil {
+				t.Fatalf("iteration %d decode state init output = %v\n%s", iteration, err, result.output)
+			}
+			if status.ProjectID == "" {
+				t.Fatalf("iteration %d state init output = %#v, want nonempty project ID", iteration, status)
+			}
+			projectIDs = append(projectIDs, status.ProjectID)
+		}
+		if len(projectIDs) != 2 || projectIDs[0] != projectIDs[1] {
+			t.Fatalf("iteration %d concurrent project IDs = %#v, want one shared ID", iteration, projectIDs)
+		}
+
+		// Read the resulting database through a mode=ro URI so this assertion
+		// cannot repair or otherwise mutate the fixture.
+		values := url.Values{}
+		values.Set("mode", "ro")
+		readOnlyDSN := (&url.URL{Scheme: "file", Path: filepath.ToSlash(databasePath), RawQuery: values.Encode()}).String()
+		db, err := sql.Open("sqlite3", readOnlyDSN)
+		if err != nil {
+			t.Fatalf("iteration %d sql.Open(read-only) error = %v", iteration, err)
+		}
+		func() {
+			defer db.Close()
+			for query, want := range map[string]int{
+				`SELECT COUNT(*) FROM projects`:                           1,
+				`SELECT COUNT(*) FROM project_paths`:                      1,
+				`SELECT COUNT(*) FROM project_paths WHERE is_current = 1`: 1,
+				`SELECT COUNT(*) FROM project_paths AS paths LEFT JOIN projects ON projects.id = paths.project_id WHERE projects.id IS NULL`: 0,
+			} {
+				var got int
+				if err := db.QueryRow(query).Scan(&got); err != nil {
+					t.Fatalf("iteration %d %s error = %v", iteration, query, err)
+				}
+				if got != want {
+					t.Fatalf("iteration %d %s = %d, want %d", iteration, query, got, want)
+				}
+			}
+			var currentPath string
+			if err := db.QueryRow(`SELECT path FROM project_paths WHERE is_current = 1`).Scan(&currentPath); err != nil {
+				t.Fatalf("iteration %d read current path error = %v", iteration, err)
+			}
+			if currentPath != workingDir {
+				t.Fatalf("iteration %d current path = %q, want %q", iteration, currentPath, workingDir)
+			}
+		}()
 	}
 }
 

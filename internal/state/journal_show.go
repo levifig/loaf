@@ -24,7 +24,7 @@ type JournalShow struct {
 
 // ShowJournal returns one journal entry from initialized SQLite state.
 func ShowJournal(ctx context.Context, root project.Root, resolver PathResolver, ref string) (JournalShow, error) {
-	store, err := openInitializedStore(root, resolver)
+	store, err := openProjectStoreReadExisting(ctx, root, resolver)
 	if err != nil {
 		return JournalShow{}, err
 	}

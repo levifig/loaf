@@ -51,7 +51,7 @@ const defaultJournalContextBranchLimit = 10
 
 // JournalContextForRoot computes the continuity digest from initialized SQLite state.
 func JournalContextForRoot(ctx context.Context, root project.Root, resolver PathResolver, options JournalContextOptions) (JournalContext, error) {
-	store, err := openInitializedStore(root, resolver)
+	store, err := openProjectStoreReadExisting(ctx, root, resolver)
 	if err != nil {
 		return JournalContext{}, err
 	}

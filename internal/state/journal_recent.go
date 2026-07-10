@@ -52,7 +52,7 @@ const defaultJournalRecentLimit = 20
 
 // RecentJournal returns the project journal timeline from initialized SQLite state.
 func RecentJournal(ctx context.Context, root project.Root, resolver PathResolver, options JournalRecentOptions) (JournalRecent, error) {
-	store, err := openInitializedStore(root, resolver)
+	store, err := openProjectStoreReadExisting(ctx, root, resolver)
 	if err != nil {
 		return JournalRecent{}, err
 	}

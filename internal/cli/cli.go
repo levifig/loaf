@@ -91,10 +91,19 @@ type verifyEphemeralsOptions struct {
 }
 
 type commandErrorJSON struct {
-	ContractVersion int    `json:"contract_version"`
-	Command         string `json:"command"`
-	Error           string `json:"error"`
-	BackupPath      string `json:"backup_path,omitempty"`
+	ContractVersion   int                      `json:"contract_version"`
+	Command           string                   `json:"command"`
+	Error             string                   `json:"error"`
+	BackupPath        string                   `json:"backup_path,omitempty"`
+	Code              string                   `json:"code,omitempty"`
+	CurrentPath       string                   `json:"current_path,omitempty"`
+	KnownCurrentPaths []string                 `json:"known_current_paths,omitempty"`
+	Suggestions       []commandErrorSuggestion `json:"suggestions,omitempty"`
+}
+
+type commandErrorSuggestion struct {
+	Action  string `json:"action"`
+	Command string `json:"command"`
 }
 
 type statePathResult struct {
@@ -12895,11 +12904,26 @@ func writeJSON(out io.Writer, value any) error {
 }
 
 func writeJSONCommandError(out io.Writer, command string, err error) error {
-	if writeErr := writeJSON(out, commandErrorJSON{
+	output := commandErrorJSON{
 		ContractVersion: state.StateJSONContractVersion,
 		Command:         command,
 		Error:           err.Error(),
-	}); writeErr != nil {
+	}
+	var identityErr *state.UnregisteredProjectIdentityError
+	if errors.As(err, &identityErr) {
+		output.Code = identityErr.Code
+		output.CurrentPath = identityErr.CurrentPath
+		output.KnownCurrentPaths = identityErr.KnownCurrentPaths
+		for _, moveCommand := range identityErr.MoveCommands {
+			output.Suggestions = append(output.Suggestions, commandErrorSuggestion{Action: "move-project", Command: moveCommand})
+		}
+		initCommand := identityErr.InitCommand
+		if initCommand == "" {
+			initCommand = "loaf state init"
+		}
+		output.Suggestions = append(output.Suggestions, commandErrorSuggestion{Action: "initialize-project", Command: initCommand})
+	}
+	if writeErr := writeJSON(out, output); writeErr != nil {
 		return writeErr
 	}
 	return ExitError{Code: 1}

@@ -482,7 +482,7 @@ VALUES ('idea-legacy', ?, 'Legacy Idea', 'open', ?, ?)
 		t.Fatalf("insert legacy idea error = %v", err)
 	}
 
-	identity, err := store.ProjectIdentityForRoot(context.Background(), root)
+	identity, err := store.EnsureProject(context.Background(), root)
 	if err != nil {
 		t.Fatalf("ProjectIdentityForRoot() error = %v", err)
 	}

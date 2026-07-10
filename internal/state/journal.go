@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -42,16 +41,7 @@ type JournalLogResult struct {
 
 // LogJournal writes a journal entry into initialized SQLite state.
 func LogJournal(ctx context.Context, root project.Root, resolver PathResolver, options JournalLogOptions) (JournalLogResult, error) {
-	databasePath, err := resolver.DatabasePath(root)
-	if err != nil {
-		return JournalLogResult{}, err
-	}
-	if _, err := os.Stat(databasePath); os.IsNotExist(err) {
-		return JournalLogResult{}, fmt.Errorf("SQLite state database is not initialized; run `loaf state init` first")
-	} else if err != nil {
-		return JournalLogResult{}, fmt.Errorf("inspect state database: %w", err)
-	}
-	store, err := OpenStore(databasePath)
+	store, err := openProjectStoreMutateExisting(ctx, root, resolver)
 	if err != nil {
 		return JournalLogResult{}, err
 	}
