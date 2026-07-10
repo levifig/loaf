@@ -2829,7 +2829,8 @@ func TestRunnerStateAndProjectJSONHelpNamesContracts(t *testing.T) {
 		{name: "state status", args: []string{"state", "status", "--help"}, wants: []string{"--json", "readiness mode", "diagnostics", "project identity"}},
 		{name: "state doctor", args: []string{"state", "doctor", "--help"}, wants: []string{"--json", "diagnostics", "repair plan", "global database scope"}},
 		{name: "state backup", args: []string{"state", "backup", "--help"}, wants: []string{"--json", "backup verification", "checksum", "current project identity"}},
-		{name: "state backup verify", args: []string{"state", "backup", "verify", "--help"}, wants: []string{"--json", "restore guidance", "schema version", "captured project identities"}},
+		{name: "state backup verify", args: []string{"state", "backup", "verify", "--help"}, wants: []string{"--json", "SQLite validity", "journal retrieval readiness", "recovery readiness", "watermark", "captured project identities"}},
+		{name: "state backup restore", args: []string{"state", "backup", "restore", "--help"}, wants: []string{"isolated disposable restore rehearsal", "never activates or replaces the live database", "--to <absolute-empty-database-path>", "--json"}},
 		{name: "state restore ephemerals", args: []string{"state", "restore-ephemerals", "--help"}, wants: []string{"--json", "rollback contract", "restored file list", "restored status"}},
 		{name: "state verify ephemerals", args: []string{"state", "verify-ephemerals", "--help"}, wants: []string{"--json", "verification contract", "per-file checks", "failures"}},
 		{name: "project list", args: []string{"project", "list", "--help"}, wants: []string{"--json", "database path", "friendly names", "current paths"}},
@@ -4447,6 +4448,198 @@ func TestRunnerStateBackupHumanOutput(t *testing.T) {
 	}
 }
 
+func TestRunnerStateBackupReportsRecoveryEvidence(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup"}); err != nil {
+		t.Fatalf("state backup error = %v", err)
+	}
+	output := stdout.String()
+	for _, want := range []string{
+		"recovery tier: local_rollback",
+		"destination classification: local rollback destination",
+		"device loss protected: false",
+		"SQLite valid: true",
+		"journal retrieval ready: true",
+		"recovery ready: true",
+		"covered through: none (no journal watermark)",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output = %q, want %q", output, want)
+		}
+	}
+}
+
+func TestRunnerStateBackupRestoreRehearsesWithoutMutatingLiveDatabase(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+
+	var backupOut bytes.Buffer
+	if err := (Runner{Stdout: &backupOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "--json"}); err != nil {
+		t.Fatalf("state backup error = %v", err)
+	}
+	backup := decodeStateBackupResult(t, backupOut.Bytes())
+	liveBefore := testFileSHA256(t, backup.DatabasePath)
+	restorePath := filepath.Join(t.TempDir(), "rehearsal.sqlite")
+	var restoreOut bytes.Buffer
+	if err := (Runner{Stdout: &restoreOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "restore", backup.BackupPath, "--to", restorePath, "--json"}); err != nil {
+		t.Fatalf("state backup restore error = %v", err)
+	}
+	var result state.BackupRestoreResult
+	if err := json.Unmarshal(restoreOut.Bytes(), &result); err != nil {
+		t.Fatalf("restore JSON error = %v\n%s", err, restoreOut.String())
+	}
+	if !result.ExactCopy || !result.DisposableRehearsal || result.LiveDatabaseMutated || !result.SQLiteValid || !result.JournalRetrievalReady || !result.RecoveryReady {
+		t.Fatalf("restore result = %#v, want exact disposable recovery-ready rehearsal", result)
+	}
+	if result.BackupPath != backup.BackupPath || result.RestorePath != restorePath || result.SourceSHA256 != backup.SHA256 || result.RestoredSHA256 != backup.SHA256 {
+		t.Fatalf("restore paths/digests = %#v, want backup %s and restore %s", result, backup.BackupPath, restorePath)
+	}
+	if got := testFileSHA256(t, backup.DatabasePath); got != liveBefore {
+		t.Fatalf("live database digest = %q, want unchanged %q", got, liveBefore)
+	}
+	if _, err := os.Stat(restorePath); err != nil {
+		t.Fatalf("restore target missing: %v", err)
+	}
+	humanRestorePath := filepath.Join(t.TempDir(), "human-rehearsal.sqlite")
+	var humanOut bytes.Buffer
+	if err := (Runner{Stdout: &humanOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "restore", backup.BackupPath, "--to", humanRestorePath}); err != nil {
+		t.Fatalf("human state backup restore error = %v", err)
+	}
+	for _, want := range []string{"isolated restore rehearsal: true", "disposable: true", "exact copy: true", "live database mutated: false", "schema version:", "projects:", "integrity: ok", "foreign keys: ok", "journal search parity: true", "watermark present:", "recovery ready: true", "manual only after documented universal quiescence"} {
+		if !strings.Contains(humanOut.String(), want) {
+			t.Fatalf("human restore output = %q, want %q", humanOut.String(), want)
+		}
+	}
+}
+
+func TestRunnerStateBackupExternalDestinationJSONErrorsAreTypedAndSilent(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	volatile := filepath.Join(t.TempDir(), "external")
+	for _, tc := range []struct {
+		name string
+		to   string
+		code string
+	}{
+		{name: "relative", to: "relative-external", code: state.BackupDestinationNotAbsoluteCode},
+		{name: "volatile", to: volatile, code: state.BackupDestinationVolatileCode},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "--to", tc.to, "--json"})
+			if err == nil {
+				t.Fatal("state backup error = nil, want typed rejection")
+			}
+			assertSilentExitCode(t, err, 1)
+			var payload map[string]any
+			if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+				t.Fatalf("JSON error = %v\n%s", err, stdout.String())
+			}
+			if payload["command"] != "state backup" || payload["code"] != tc.code || payload["requested_destination_directory"] != tc.to {
+				t.Fatalf("payload = %#v, want state backup/%s/requested=%s", payload, tc.code, tc.to)
+			}
+			if strings.Contains(stdout.String(), "loaf state backup\n") {
+				t.Fatalf("JSON error contains human prose: %q", stdout.String())
+			}
+		})
+	}
+}
+
+func TestRunnerStateBackupParsersRejectAmbiguousFlagsWithSilentJSON(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	cases := []struct {
+		name string
+		args []string
+		cmd  string
+	}{
+		{name: "backup missing to value", args: []string{"state", "backup", "--to", "--json"}, cmd: "state backup"},
+		{name: "backup empty to value", args: []string{"state", "backup", "--to", "", "--json"}, cmd: "state backup"},
+		{name: "backup whitespace to value", args: []string{"state", "backup", "--to", "   ", "--json"}, cmd: "state backup"},
+		{name: "backup duplicate to", args: []string{"state", "backup", "--to", "/a", "--to", "/b", "--json"}, cmd: "state backup"},
+		{name: "backup duplicate json", args: []string{"state", "backup", "--json", "--json"}, cmd: "state backup"},
+		{name: "backup unknown", args: []string{"state", "backup", "--unknown", "--json"}, cmd: "state backup"},
+		{name: "backup extra positional", args: []string{"state", "backup", "extra", "--json"}, cmd: "state backup"},
+		{name: "restore missing to value", args: []string{"state", "backup", "restore", "/backup.sqlite", "--to", "--json"}, cmd: "state backup restore"},
+		{name: "restore missing backup", args: []string{"state", "backup", "restore", "--json"}, cmd: "state backup restore"},
+		{name: "restore omitted to", args: []string{"state", "backup", "restore", "/backup.sqlite", "--json"}, cmd: "state backup restore"},
+		{name: "restore empty to value", args: []string{"state", "backup", "restore", "/backup.sqlite", "--to", "", "--json"}, cmd: "state backup restore"},
+		{name: "restore whitespace to value", args: []string{"state", "backup", "restore", "/backup.sqlite", "--to", "   ", "--json"}, cmd: "state backup restore"},
+		{name: "restore duplicate to", args: []string{"state", "backup", "restore", "/backup.sqlite", "--to", "/a", "--to", "/b", "--json"}, cmd: "state backup restore"},
+		{name: "restore duplicate json", args: []string{"state", "backup", "restore", "/backup.sqlite", "--to", "/a", "--json", "--json"}, cmd: "state backup restore"},
+		{name: "restore unknown", args: []string{"state", "backup", "restore", "/backup.sqlite", "--to", "/a", "--unknown", "--json"}, cmd: "state backup restore"},
+		{name: "restore extra positional", args: []string{"state", "backup", "restore", "/backup.sqlite", "/extra.sqlite", "--to", "/a", "--json"}, cmd: "state backup restore"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			err := (Runner{Stdout: &stdout, WorkingDir: workingDir}).Run(tc.args)
+			if err == nil {
+				t.Fatal("Run() error = nil, want parser failure")
+			}
+			assertSilentExitCode(t, err, 1)
+			var payload map[string]any
+			if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+				t.Fatalf("JSON error = %v\n%s", err, stdout.String())
+			}
+			if payload["command"] != tc.cmd || payload["contract_version"] == nil || payload["error"] == nil {
+				t.Fatalf("payload = %#v, want command/contract/error", payload)
+			}
+			if _, present := payload["restore_result"]; present {
+				t.Fatalf("parse failure emitted zero restore result: %#v", payload)
+			}
+		})
+	}
+}
+
+func TestRunnerStateBackupRestoreDivergentSourceJSONIncludesPartialEvidence(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	var backupOut bytes.Buffer
+	if err := (Runner{Stdout: &backupOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "--json"}); err != nil {
+		t.Fatalf("state backup error = %v", err)
+	}
+	backup := decodeStateBackupResult(t, backupOut.Bytes())
+	if err := os.WriteFile(backup.BackupPath, []byte("divergent source"), 0o600); err != nil {
+		t.Fatalf("write divergent backup error = %v", err)
+	}
+	restorePath := filepath.Join(t.TempDir(), "divergent-rehearsal.sqlite")
+	var stdout bytes.Buffer
+	err := (Runner{Stdout: &stdout, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "restore", backup.BackupPath, "--to", restorePath, "--json"})
+	if err == nil {
+		t.Fatal("divergent restore error = nil, want recovery rejection")
+	}
+	assertSilentExitCode(t, err, 1)
+	var payload map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("restore JSON error = %v\n%s", err, stdout.String())
+	}
+	if payload["command"] != "state backup restore" || payload["code"] != state.BackupNotRecoveryReadyCode || payload["backup_path"] != backup.BackupPath || payload["restore_path"] != restorePath {
+		t.Fatalf("payload = %#v, want typed divergent-source paths", payload)
+	}
+	partial, ok := payload["restore_result"].(map[string]any)
+	if !ok || partial["source_sha256"] == "" || partial["sqlite_valid"] != false || partial["journal_retrieval_ready"] != false || partial["exact_copy"] != false || partial["recovery_ready"] != false {
+		t.Fatalf("partial restore evidence = %#v, want source checksum/invalid SQLite evidence and no readiness claim", payload["restore_result"])
+	}
+	if strings.Contains(stdout.String(), "loaf state backup restore\n") {
+		t.Fatalf("JSON error contains human prose: %q", stdout.String())
+	}
+}
+
 func TestRunnerStateBackupVerifyReportsGlobalProjects(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	otherDir := realpath(t, t.TempDir())
@@ -4498,14 +4691,8 @@ func TestRunnerStateBackupVerifyReportsGlobalProjects(t *testing.T) {
 	if result.ProjectCount != 2 || len(result.Projects) != 2 {
 		t.Fatalf("projects = %d/%d, want two projects", result.ProjectCount, len(result.Projects))
 	}
-	if result.RestoreDatabasePath != backup.DatabasePath {
-		t.Fatalf("RestoreDatabasePath = %q, want live target %q", result.RestoreDatabasePath, backup.DatabasePath)
-	}
-	if result.RestorePreservePath != backup.DatabasePath+".before-restore" {
-		t.Fatalf("RestorePreservePath = %q, want preserve path for live target", result.RestorePreservePath)
-	}
-	if strings.Join(result.RestoreValidationCommands, ",") != "loaf state doctor,loaf state status" {
-		t.Fatalf("RestoreValidationCommands = %#v, want doctor/status checks", result.RestoreValidationCommands)
+	if result.RestoreDatabasePath != "" || result.RestorePreservePath != "" || len(result.RestoreValidationCommands) != 0 {
+		t.Fatalf("verify result contains unexpected live restore fields: %#v", result)
 	}
 	if _, err := os.Stat(backup.DatabasePath); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("state backup verify recreated live database; stat err = %v", err)
@@ -4525,29 +4712,25 @@ func TestRunnerStateBackupVerifyReportsGlobalProjects(t *testing.T) {
 	if err != nil {
 		t.Fatalf("state backup verify error = %v", err)
 	}
-	for _, want := range []string{"loaf state backup verify", "scope: global backup", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 2", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "restore target:", "preserve as:", "next: if present, preserve current database as"} {
+	for _, want := range []string{"loaf state backup verify", "scope: global backup", "backup:", "bytes:", "sha256:", "verified: true", "schema version:", "projects: 2", "project:", "project name:", "project path:", "integrity: ok", "foreign keys: ok", "next: run `loaf state backup restore ", "isolated rehearsal", "universal quiescence"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Fatalf("output = %q, want %q", humanOut.String(), want)
 		}
 	}
 }
 
-func TestRunnerStateBackupManualRestoreProcedure(t *testing.T) {
+func TestRunnerStateBackupRestoreProcedureLeavesLiveStateUntouched(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()
 	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
 		t.Fatalf("state init --json error = %v", err)
 	}
-	original := projectIdentityForCLI(t, workingDir, stateHome)
 
 	var backupOut bytes.Buffer
 	if err := (Runner{Stdout: &backupOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "--json"}); err != nil {
 		t.Fatalf("state backup --json error = %v", err)
 	}
 	backup := decodeStateBackupResult(t, backupOut.Bytes())
-	if backup.ProjectID != original.ID || backup.ProjectName != original.FriendlyName {
-		t.Fatalf("backup project = %s/%s, want original %s/%s", backup.ProjectID, backup.ProjectName, original.ID, original.FriendlyName)
-	}
 
 	var verifyOut bytes.Buffer
 	if err := (Runner{Stdout: &verifyOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "verify", backup.BackupPath, "--json"}); err != nil {
@@ -4557,52 +4740,31 @@ func TestRunnerStateBackupManualRestoreProcedure(t *testing.T) {
 	if !verified.Verified || verified.BackupPath != backup.BackupPath || verified.SHA256 != backup.SHA256 {
 		t.Fatalf("backup verification = %#v, want verified backup %s", verified, backup.BackupPath)
 	}
-	if verified.RestoreDatabasePath != backup.DatabasePath {
-		t.Fatalf("verified RestoreDatabasePath = %q, want %q", verified.RestoreDatabasePath, backup.DatabasePath)
+	if verified.RestoreDatabasePath != "" || verified.RestorePreservePath != "" || len(verified.RestoreValidationCommands) != 0 {
+		t.Fatalf("verification contains unexpected live restore fields: %#v", verified)
 	}
-
-	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"project", "rename", "Changed After Backup", "--json"}); err != nil {
-		t.Fatalf("project rename after backup error = %v", err)
+	liveBefore := testFileSHA256(t, backup.DatabasePath)
+	tablesBefore := exportAllTablesForCLI(t, workingDir, stateHome)
+	restorePath := filepath.Join(t.TempDir(), "isolated-rehearsal.sqlite")
+	var restoreOut bytes.Buffer
+	if err := (Runner{Stdout: &restoreOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "restore", backup.BackupPath, "--to", restorePath, "--json"}); err != nil {
+		t.Fatalf("state backup restore --json error = %v", err)
 	}
-	changed := projectIdentityForCLI(t, workingDir, stateHome)
-	if changed.ID != original.ID || changed.FriendlyName != "Changed After Backup" {
-		t.Fatalf("changed project = %#v, want same ID %s with changed name", changed, original.ID)
+	var rehearsal state.BackupRestoreResult
+	if err := json.Unmarshal(restoreOut.Bytes(), &rehearsal); err != nil {
+		t.Fatalf("restore JSON error = %v", err)
 	}
-
-	preservedLivePath := backup.DatabasePath + ".before-restore"
-	if err := os.Rename(backup.DatabasePath, preservedLivePath); err != nil {
-		t.Fatalf("preserve live database error = %v", err)
+	if !rehearsal.ExactCopy || !rehearsal.DisposableRehearsal || rehearsal.LiveDatabaseMutated != false {
+		t.Fatalf("rehearsal = %#v, want exact disposable non-mutating result", rehearsal)
 	}
-	copyFileForCLITest(t, backup.BackupPath, backup.DatabasePath, 0o600)
-
-	var preservedVerifyOut bytes.Buffer
-	if err := (Runner{Stdout: &preservedVerifyOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "backup", "verify", preservedLivePath, "--json"}); err != nil {
-		t.Fatalf("state backup verify preserved live database error = %v", err)
+	if got := testFileSHA256(t, backup.DatabasePath); got != liveBefore {
+		t.Fatalf("live database digest changed: got %q want %q", got, liveBefore)
 	}
-	preserved := decodeStateBackupVerificationResult(t, preservedVerifyOut.Bytes())
-	if !preserved.Verified || len(preserved.Projects) != 1 || preserved.Projects[0].FriendlyName != "Changed After Backup" {
-		t.Fatalf("preserved live database verification = %#v, want changed project preserved", preserved)
+	if tablesAfter := exportAllTablesForCLI(t, workingDir, stateHome); !reflect.DeepEqual(tablesBefore, tablesAfter) {
+		t.Fatalf("live logical state changed across rehearsal: before=%#v after=%#v", tablesBefore, tablesAfter)
 	}
-
-	var doctorOut bytes.Buffer
-	if err := (Runner{Stdout: &doctorOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "doctor", "--json"}); err != nil {
-		t.Fatalf("state doctor --json after manual restore error = %v", err)
-	}
-	doctor := decodeStateStatus(t, doctorOut.Bytes())
-	if doctor.Mode != state.ModeSQLiteReady || doctor.ProjectID != original.ID || doctor.ProjectName != original.FriendlyName {
-		t.Fatalf("doctor after restore = %#v, want original restored project %s/%s", doctor, original.ID, original.FriendlyName)
-	}
-
-	var statusOut bytes.Buffer
-	if err := (Runner{Stdout: &statusOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "status", "--json"}); err != nil {
-		t.Fatalf("state status --json after manual restore error = %v", err)
-	}
-	status := decodeStateStatus(t, statusOut.Bytes())
-	if status.Mode != state.ModeSQLiteReady || status.ProjectID != original.ID || status.ProjectName != original.FriendlyName || status.DatabasePath != backup.DatabasePath {
-		t.Fatalf("status after restore = %#v, want original restored state at %s", status, backup.DatabasePath)
-	}
-	if restoredHash := testFileSHA256(t, backup.DatabasePath); restoredHash != backup.SHA256 {
-		t.Fatalf("restored database sha256 = %q, want backup sha256 %q", restoredHash, backup.SHA256)
+	if _, err := os.Stat(backup.BackupPath); err != nil {
+		t.Fatalf("source backup was not retained: %v", err)
 	}
 }
 
@@ -7176,16 +7338,8 @@ func TestRunnerStateControlPlaneJSONSuccessMatrix(t *testing.T) {
 		if len(verified.Projects) != 1 || verified.Projects[0].ID != backup.ProjectID {
 			t.Fatalf("backup verification projects = %#v, want backed-up project %s", verified.Projects, backup.ProjectID)
 		}
-		otherRoot, err := project.ResolveRoot(otherWorkingDir)
-		if err != nil {
-			t.Fatalf("ResolveRoot(otherWorkingDir) error = %v", err)
-		}
-		otherDatabasePath, err := state.PathResolver{StateHome: otherStateHome}.DatabasePath(otherRoot)
-		if err != nil {
-			t.Fatalf("DatabasePath(otherWorkingDir) error = %v", err)
-		}
-		if verified.RestoreDatabasePath != otherDatabasePath {
-			t.Fatalf("RestoreDatabasePath = %q, want verifier target %q", verified.RestoreDatabasePath, otherDatabasePath)
+		if verified.RestoreDatabasePath != "" || verified.RestorePreservePath != "" || len(verified.RestoreValidationCommands) != 0 {
+			t.Fatalf("verification contains unexpected live restore fields: %#v", verified)
 		}
 		assertNoStateDatabase(t, otherWorkingDir, otherStateHome)
 	})
@@ -14337,8 +14491,11 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	if got := commands["state"].optionDescriptions["state backup --json"]; !strings.Contains(got, "checksum") || !strings.Contains(got, "current project identity") {
 		t.Fatalf("state backup json description = %q, want checksum/current project identity guidance", got)
 	}
-	if got := commands["state"].optionDescriptions["state backup verify --json"]; !strings.Contains(got, "restore guidance") || !strings.Contains(got, "captured project identities") {
-		t.Fatalf("state backup verify json description = %q, want restore/project identity guidance", got)
+	if got := commands["state"].optionDescriptions["state backup verify --json"]; !strings.Contains(got, "journal retrieval readiness") || !strings.Contains(got, "recovery readiness") || !strings.Contains(got, "watermark") {
+		t.Fatalf("state backup verify json description = %q, want readiness/watermark evidence", got)
+	}
+	if got := commands["state"].optionDescriptions["state backup restore --json"]; !strings.Contains(got, "isolated disposable rehearsal") || !strings.Contains(got, "never activates the live database") {
+		t.Fatalf("state backup restore json description = %q, want isolated/no-live-activation guidance", got)
 	}
 	if got := commands["state"].optionDescriptions["state restore-ephemerals --json"]; !strings.Contains(got, "rollback contract") || !strings.Contains(got, "restored file list") {
 		t.Fatalf("state restore-ephemerals json description = %q, want rollback/restored-file guidance", got)

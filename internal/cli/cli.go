@@ -78,6 +78,22 @@ type projectMoveOptions struct {
 type backupVerifyOptions struct {
 	path       string
 	jsonOutput bool
+	jsonSet    bool
+}
+
+type stateBackupOptions struct {
+	destination    string
+	destinationSet bool
+	jsonOutput     bool
+	jsonSet        bool
+}
+
+type stateBackupRestoreOptions struct {
+	backupPath     string
+	restorePath    string
+	restorePathSet bool
+	jsonOutput     bool
+	jsonSet        bool
 }
 
 type restoreEphemeralsOptions struct {
@@ -91,16 +107,25 @@ type verifyEphemeralsOptions struct {
 }
 
 type commandErrorJSON struct {
-	ContractVersion     int                        `json:"contract_version"`
-	Command             string                     `json:"command"`
-	Error               string                     `json:"error"`
-	BackupPath          string                     `json:"backup_path,omitempty"`
-	BackupVerified      bool                       `json:"backup_verified"`
-	Code                string                     `json:"code,omitempty"`
-	JournalSearchParity *state.JournalSearchParity `json:"journal_search_parity,omitempty"`
-	CurrentPath         string                     `json:"current_path,omitempty"`
-	KnownCurrentPaths   []string                   `json:"known_current_paths,omitempty"`
-	Suggestions         []commandErrorSuggestion   `json:"suggestions,omitempty"`
+	ContractVersion               int                        `json:"contract_version"`
+	Command                       string                     `json:"command"`
+	Error                         string                     `json:"error"`
+	BackupPath                    string                     `json:"backup_path,omitempty"`
+	RestorePath                   string                     `json:"restore_path,omitempty"`
+	RequestedDestinationDirectory string                     `json:"requested_destination_directory,omitempty"`
+	ResolvedDestinationDirectory  string                     `json:"resolved_destination_directory,omitempty"`
+	RecoveryTier                  string                     `json:"recovery_tier,omitempty"`
+	SHA256                        string                     `json:"sha256,omitempty"`
+	SourceSHA256                  string                     `json:"source_sha256,omitempty"`
+	RestoredSHA256                string                     `json:"restored_sha256,omitempty"`
+	BackupResult                  *state.BackupResult        `json:"backup_result,omitempty"`
+	RestoreResult                 *state.BackupRestoreResult `json:"restore_result,omitempty"`
+	BackupVerified                bool                       `json:"backup_verified"`
+	Code                          string                     `json:"code,omitempty"`
+	JournalSearchParity           *state.JournalSearchParity `json:"journal_search_parity,omitempty"`
+	CurrentPath                   string                     `json:"current_path,omitempty"`
+	KnownCurrentPaths             []string                   `json:"known_current_paths,omitempty"`
+	Suggestions                   []commandErrorSuggestion   `json:"suggestions,omitempty"`
 }
 
 type commandErrorSuggestion struct {
@@ -1516,7 +1541,8 @@ func (r Runner) runState(args []string, out io.Writer, runtime state.Runtime) er
 			return nil
 		}
 		if writeNestedHelp(out, args[1:], map[string]func(io.Writer){
-			"verify": writeStateBackupVerifyHelp,
+			"verify":  writeStateBackupVerifyHelp,
+			"restore": writeStateBackupRestoreHelp,
 		}) {
 			return nil
 		}
@@ -1558,6 +1584,7 @@ func writeStateHelp(out io.Writer) {
 	fmt.Fprintln(out, "  migrate       Run state migrations")
 	fmt.Fprintln(out, "  backup        Create a SQLite database backup")
 	fmt.Fprintln(out, "  backup verify Verify an existing SQLite backup")
+	fmt.Fprintln(out, "  backup restore Rehearse an isolated disposable restore")
 	fmt.Fprintln(out, "  restore-ephemerals Restore .agents ephemeral Markdown from a rollback backup")
 	fmt.Fprintln(out, "  verify-ephemerals Verify .agents ephemeral Markdown before cutover")
 	fmt.Fprintln(out, "  export        Export SQLite state")
@@ -1637,21 +1664,28 @@ func writeStateMigrateHelp(out io.Writer) {
 }
 
 func writeStateBackupHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf state backup [verify <backup>] [--json]")
+	fmt.Fprintln(out, "Usage: loaf state backup [--to <DIRECTORY>] [--json]")
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, "Create or verify SQLite database backups.")
-	fmt.Fprintln(out, "Backups are written under the global data-home backups directory next to the SQLite database.")
+	fmt.Fprintln(out, "Create a SQLite database backup.")
+	fmt.Fprintln(out, "Without --to, create a local_rollback snapshot under the global data-home backups directory.")
+	fmt.Fprintln(out, "With --to, create an operator-selected non-temporary external destination copy; this is not proof of off-device protection.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Subcommands:")
 	fmt.Fprintln(out, "  verify <backup>  Verify an existing SQLite backup")
+	fmt.Fprintln(out, "  restore <backup> --to <absolute-empty-database-path>  Run an isolated disposable restore rehearsal; never activates or replaces the live database")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
-	fmt.Fprintln(out, "  --json       Output backup verification, checksum, schema version, project count, and current project identity as JSON")
+	fmt.Fprintln(out, "  --to <DIRECTORY>  Operator-selected non-temporary external destination directory")
+	fmt.Fprintln(out, "  --json            Output backup verification, classification, readiness, checksum, watermark, and current project identity as JSON")
 	fmt.Fprintln(out, "  -h, --help   Show help")
 }
 
 func writeStateBackupVerifyHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf state backup verify <backup> [--json]", "Verify an existing SQLite database backup without reading or mutating live state.", "--json       Output backup verification, restore guidance, schema version, and captured project identities as JSON")
+	writeUsageHelp(out, "loaf state backup verify <backup> [--json]", "Verify an existing SQLite database backup without reading or mutating live state.", "--json       Output schema version, SQLite validity, journal retrieval readiness, recovery readiness, watermark, and captured project identities as JSON")
+}
+
+func writeStateBackupRestoreHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state backup restore <backup> --to <absolute-empty-database-path> [--json]", "Run an isolated disposable restore rehearsal. It never activates or replaces the live database.", "--to <absolute-empty-database-path>  Required empty disposable restore target; the target must not exist", "--json                              Output exact-copy, integrity, retrieval, watermark, and live-database safety evidence as JSON")
 }
 
 func writeStateRestoreEphemeralsHelp(out io.Writer) {
@@ -2621,8 +2655,11 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 	if len(args) > 0 && args[0] == "verify" {
 		return r.runStateBackupVerify(args[1:], out, runtime)
 	}
+	if len(args) > 0 && args[0] == "restore" {
+		return r.runStateBackupRestore(args[1:], out, runtime)
+	}
 	jsonRequested := hasFlag(args, "--json")
-	jsonOutput, err := parseJSONOnly(args)
+	options, err := parseStateBackupArgs(args)
 	if err != nil {
 		if jsonRequested {
 			return writeJSONCommandError(out, "state backup", err)
@@ -2631,22 +2668,40 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 	}
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
-		if jsonOutput {
+		if options.jsonOutput {
 			return writeJSONCommandError(out, "state backup", err)
 		}
 		return err
 	}
-	result, err := state.Backup(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
+	var result state.BackupResult
+	if options.destination == "" {
+		result, err = state.Backup(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
+	} else {
+		result, err = state.BackupWithDestination(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.destination)
+	}
 	if err != nil {
-		if jsonOutput {
-			return writeJSONCommandError(out, "state backup", err)
+		if options.jsonOutput {
+			return writeStateBackupJSONError(out, "state backup", result, err)
 		}
 		return r.withStateMissingContext(err, projectRoot)
 	}
-	if jsonOutput {
+	if options.jsonOutput {
 		return writeJSON(out, result)
 	}
 	fmt.Fprintln(out, "loaf state backup")
+	fmt.Fprintf(out, "recovery tier: %s\n", result.RecoveryTier)
+	if result.RequestedDestinationDirectory == "" {
+		fmt.Fprintln(out, "requested destination directory: local data-home backup directory")
+	} else {
+		fmt.Fprintf(out, "requested destination directory: %s\n", result.RequestedDestinationDirectory)
+	}
+	fmt.Fprintf(out, "resolved destination directory: %s\n", result.ResolvedDestinationDirectory)
+	if result.DeviceLossProtectionBasis == state.ProtectionBasisOperatorSelected {
+		fmt.Fprintln(out, "destination classification: operator-selected non-temporary external destination")
+	} else {
+		fmt.Fprintln(out, "destination classification: local rollback destination")
+	}
+	fmt.Fprintf(out, "device loss protected: %t\n", result.DeviceLossProtected)
 	fmt.Fprintf(out, "scope: %s database\n", result.DatabaseScope)
 	fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
 	fmt.Fprintf(out, "backup: %s\n", result.BackupPath)
@@ -2660,6 +2715,10 @@ func (r Runner) runStateBackup(args []string, out io.Writer, runtime state.Runti
 	fmt.Fprintf(out, "project path: %s\n", result.ProjectCurrentPath)
 	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
 	fmt.Fprintf(out, "foreign keys: %s\n", result.ForeignKeyCheck)
+	fmt.Fprintf(out, "SQLite valid: %t\n", result.SQLiteValid)
+	fmt.Fprintf(out, "journal retrieval ready: %t\n", result.JournalRetrievalReady)
+	fmt.Fprintf(out, "recovery ready: %t\n", result.RecoveryReady)
+	writeJournalWatermarkHuman(out, result.JournalWatermark)
 	fmt.Fprintf(out, "created at: %s\n", result.CreatedAt)
 	fmt.Fprintf(out, "next: verify this backup later with `loaf state backup verify %s` before restoring it\n", result.BackupPath)
 	return nil
@@ -2681,7 +2740,6 @@ func (r Runner) runStateBackupVerify(args []string, out io.Writer, runtime state
 		}
 		return err
 	}
-	r.addBackupRestoreTargets(&result, runtime)
 	if options.jsonOutput {
 		return writeJSON(out, result)
 	}
@@ -2704,14 +2762,75 @@ func (r Runner) runStateBackupVerify(args []string, out io.Writer, runtime state
 	}
 	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
 	fmt.Fprintf(out, "foreign keys: %s\n", result.ForeignKeyCheck)
-	if result.RestoreDatabasePath != "" {
-		fmt.Fprintf(out, "restore target: %s\n", result.RestoreDatabasePath)
-		fmt.Fprintf(out, "preserve as: %s\n", result.RestorePreservePath)
-		fmt.Fprintf(out, "next: if present, preserve current database as %s, copy this verified backup to %s, then run `loaf state doctor` and `loaf state status`\n", result.RestorePreservePath, result.RestoreDatabasePath)
-	} else {
-		fmt.Fprintln(out, "next: if present, preserve current database, copy this verified backup to `loaf state path`, then run `loaf state doctor` and `loaf state status`")
-	}
+	fmt.Fprintf(out, "SQLite valid: %t\n", result.SQLiteValid)
+	fmt.Fprintf(out, "journal retrieval ready: %t\n", result.JournalRetrievalReady)
+	fmt.Fprintf(out, "recovery ready: %t\n", result.RecoveryReady)
+	writeJournalWatermarkHuman(out, result.JournalWatermark)
+	fmt.Fprintf(out, "next: run `loaf state backup restore %s --to /absolute/empty-disposable-path` for an isolated rehearsal; live activation remains manual after documented universal quiescence\n", result.BackupPath)
 	return nil
+}
+
+func (r Runner) runStateBackupRestore(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
+	options, err := parseStateBackupRestoreArgs(args)
+	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "state backup restore", err)
+		}
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "state backup restore", err)
+		}
+		return err
+	}
+	result, err := state.RehearseBackupRestore(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, options.backupPath, options.restorePath)
+	if err != nil {
+		if options.jsonOutput {
+			return writeStateRestoreJSONError(out, result, err)
+		}
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeStateBackupRestoreHuman(out, result)
+	return nil
+}
+
+func writeStateBackupRestoreHuman(out io.Writer, result state.BackupRestoreResult) {
+	fmt.Fprintln(out, "loaf state backup restore")
+	fmt.Fprintln(out, "isolated restore rehearsal: true")
+	fmt.Fprintln(out, "disposable: true")
+	fmt.Fprintf(out, "backup: %s\n", result.BackupPath)
+	fmt.Fprintf(out, "restore: %s\n", result.RestorePath)
+	fmt.Fprintf(out, "source sha256: %s\n", result.SourceSHA256)
+	fmt.Fprintf(out, "restored sha256: %s\n", result.RestoredSHA256)
+	fmt.Fprintf(out, "exact copy: %t\n", result.ExactCopy)
+	fmt.Fprintf(out, "live database: %s\n", result.LiveDatabasePath)
+	fmt.Fprintf(out, "live database mutated: %t\n", result.LiveDatabaseMutated)
+	fmt.Fprintf(out, "SQLite valid: %t\n", result.SQLiteValid)
+	fmt.Fprintf(out, "integrity: %s\n", result.IntegrityCheck)
+	fmt.Fprintf(out, "foreign keys: %s\n", result.ForeignKeyCheck)
+	fmt.Fprintf(out, "schema version: %d\n", result.SchemaVersion)
+	fmt.Fprintf(out, "projects: %d\n", result.ProjectCount)
+	fmt.Fprintf(out, "journal retrieval ready: %t\n", result.JournalRetrievalReady)
+	fmt.Fprintf(out, "journal search parity: %t\n", result.JournalSearchParity.Ready)
+	writeJournalWatermarkHuman(out, result.JournalWatermark)
+	fmt.Fprintf(out, "recovery ready: %t\n", result.RecoveryReady)
+	fmt.Fprintln(out, "activation: manual only after documented universal quiescence; no concurrent live restore")
+}
+
+func writeJournalWatermarkHuman(out io.Writer, watermark state.JournalWatermark) {
+	if !watermark.Present {
+		fmt.Fprintln(out, "watermark present: false")
+		fmt.Fprintln(out, "covered through: none (no journal watermark)")
+		return
+	}
+	fmt.Fprintln(out, "watermark present: true")
+	fmt.Fprintf(out, "covered through: journal:%s at %s\n", watermark.JournalEntryID, watermark.CreatedAt)
 }
 
 func (r Runner) runStateRestoreEphemerals(args []string, out io.Writer, runtime state.Runtime) error {
@@ -2878,20 +2997,6 @@ func stageRestoredEphemeralFiles(projectRoot project.Root, restoredFiles []strin
 		return fmt.Errorf("stage restored ephemeral files: %w: %s", err, strings.TrimSpace(string(output)))
 	}
 	return nil
-}
-
-func (r Runner) addBackupRestoreTargets(result *state.BackupVerificationResult, runtime state.Runtime) {
-	projectRoot, err := project.ResolveRoot(runtime.RootPath())
-	if err != nil {
-		return
-	}
-	databasePath, err := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(projectRoot)
-	if err != nil {
-		return
-	}
-	result.RestoreDatabasePath = databasePath
-	result.RestorePreservePath = databasePath + ".before-restore"
-	result.RestoreValidationCommands = []string{"loaf state doctor", "loaf state status"}
 }
 
 func (r Runner) runStateExport(args []string, out io.Writer, runtime state.Runtime) error {
@@ -10487,7 +10592,11 @@ func parseStateBackupVerifyArgs(args []string) (backupVerifyOptions, error) {
 	for _, arg := range args {
 		switch arg {
 		case "--json":
+			if options.jsonSet {
+				return backupVerifyOptions{}, fmt.Errorf("state backup verify accepts --json at most once")
+			}
 			options.jsonOutput = true
+			options.jsonSet = true
 		default:
 			if strings.HasPrefix(arg, "-") {
 				return backupVerifyOptions{}, fmt.Errorf("unknown option %q", arg)
@@ -10500,6 +10609,78 @@ func parseStateBackupVerifyArgs(args []string) (backupVerifyOptions, error) {
 	}
 	if options.path == "" {
 		return backupVerifyOptions{}, fmt.Errorf("state backup verify requires a backup path")
+	}
+	return options, nil
+}
+
+func parseStateBackupArgs(args []string) (stateBackupOptions, error) {
+	var options stateBackupOptions
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			if options.jsonSet {
+				return stateBackupOptions{}, fmt.Errorf("state backup accepts --json at most once")
+			}
+			options.jsonOutput = true
+			options.jsonSet = true
+		case "--to":
+			if options.destinationSet {
+				return stateBackupOptions{}, fmt.Errorf("state backup accepts --to at most once")
+			}
+			value, err := consumeFlagValue(args, &i, "--to")
+			if err != nil {
+				return stateBackupOptions{}, err
+			}
+			if strings.TrimSpace(value) == "" {
+				return stateBackupOptions{}, fmt.Errorf("--to requires a non-empty directory")
+			}
+			options.destination = value
+			options.destinationSet = true
+		default:
+			return stateBackupOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+	return options, nil
+}
+
+func parseStateBackupRestoreArgs(args []string) (stateBackupRestoreOptions, error) {
+	var options stateBackupRestoreOptions
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			if options.jsonSet {
+				return stateBackupRestoreOptions{}, fmt.Errorf("state backup restore accepts --json at most once")
+			}
+			options.jsonOutput = true
+			options.jsonSet = true
+		case "--to":
+			if options.restorePathSet {
+				return stateBackupRestoreOptions{}, fmt.Errorf("state backup restore requires --to exactly once")
+			}
+			value, err := consumeFlagValue(args, &i, "--to")
+			if err != nil {
+				return stateBackupRestoreOptions{}, err
+			}
+			if strings.TrimSpace(value) == "" {
+				return stateBackupRestoreOptions{}, fmt.Errorf("--to requires a non-empty absolute database path")
+			}
+			options.restorePath = value
+			options.restorePathSet = true
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return stateBackupRestoreOptions{}, fmt.Errorf("unknown option %q", args[i])
+			}
+			if options.backupPath != "" {
+				return stateBackupRestoreOptions{}, fmt.Errorf("state backup restore accepts exactly one backup path")
+			}
+			options.backupPath = args[i]
+		}
+	}
+	if options.backupPath == "" {
+		return stateBackupRestoreOptions{}, fmt.Errorf("state backup restore requires a backup path")
+	}
+	if options.restorePath == "" {
+		return stateBackupRestoreOptions{}, fmt.Errorf("state backup restore requires --to exactly once")
 	}
 	return options, nil
 }
@@ -13048,6 +13229,67 @@ func writeJSONCommandError(out io.Writer, command string, err error) error {
 			Ready:         repairErr.Result.Missing == 0 && repairErr.Result.Extra == 0 && repairErr.Result.Changed == 0 && repairErr.Result.CanonicalRows == repairErr.Result.IndexRows,
 		}
 		output.JournalSearchParity = &parity
+	}
+	var destinationErr *state.BackupDestinationError
+	if errors.As(err, &destinationErr) {
+		output.Code = destinationErr.Code
+		output.RequestedDestinationDirectory = destinationErr.Requested
+		output.ResolvedDestinationDirectory = destinationErr.Resolved
+	}
+	var recoveryErr *state.RecoveryError
+	if errors.As(err, &recoveryErr) {
+		output.Code = recoveryErr.Code
+		output.BackupPath = recoveryErr.BackupPath
+		output.RestorePath = recoveryErr.RestorePath
+	}
+	if writeErr := writeJSON(out, output); writeErr != nil {
+		return writeErr
+	}
+	return ExitError{Code: 1}
+}
+
+func writeStateBackupJSONError(out io.Writer, command string, result state.BackupResult, err error) error {
+	output := commandErrorJSON{
+		ContractVersion:               state.StateJSONContractVersion,
+		Command:                       command,
+		Error:                         err.Error(),
+		BackupPath:                    result.BackupPath,
+		RequestedDestinationDirectory: result.RequestedDestinationDirectory,
+		ResolvedDestinationDirectory:  result.ResolvedDestinationDirectory,
+		RecoveryTier:                  result.RecoveryTier,
+		SHA256:                        result.SHA256,
+		BackupResult:                  &result,
+	}
+	var destinationErr *state.BackupDestinationError
+	if errors.As(err, &destinationErr) {
+		output.Code = destinationErr.Code
+		output.RequestedDestinationDirectory = destinationErr.Requested
+		output.ResolvedDestinationDirectory = destinationErr.Resolved
+	}
+	if writeErr := writeJSON(out, output); writeErr != nil {
+		return writeErr
+	}
+	return ExitError{Code: 1}
+}
+
+func writeStateRestoreJSONError(out io.Writer, result state.BackupRestoreResult, err error) error {
+	output := commandErrorJSON{
+		ContractVersion: state.StateJSONContractVersion,
+		Command:         "state backup restore",
+		Error:           err.Error(),
+		BackupPath:      result.BackupPath,
+		RestorePath:     result.RestorePath,
+		SourceSHA256:    result.SourceSHA256,
+		RestoredSHA256:  result.RestoredSHA256,
+	}
+	if result.ContractVersion != 0 || result.BackupPath != "" || result.RestorePath != "" || result.SourceSHA256 != "" || result.RestoredSHA256 != "" {
+		output.RestoreResult = &result
+	}
+	var recoveryErr *state.RecoveryError
+	if errors.As(err, &recoveryErr) {
+		output.Code = recoveryErr.Code
+		output.BackupPath = recoveryErr.BackupPath
+		output.RestorePath = recoveryErr.RestorePath
 	}
 	if writeErr := writeJSON(out, output); writeErr != nil {
 		return writeErr

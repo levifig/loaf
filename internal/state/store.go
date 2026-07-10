@@ -95,7 +95,15 @@ func nextSQLiteRetryDelay(delay time.Duration) time.Duration {
 
 // OpenStoreReadOnly opens an existing SQLite database without creating or mutating it.
 func OpenStoreReadOnly(path string) (*Store, error) {
-	db, err := sql.Open(sqliteDriverName, sqliteReadOnlyDSN(path))
+	return openStoreReadOnly(path, sqliteReadOnlyDSN(path))
+}
+
+func openStoreReadOnlyForBackup(path string) (*Store, error) {
+	return openStoreReadOnly(path, sqliteReadOnlyBackupDSN(path))
+}
+
+func openStoreReadOnly(path, dsn string) (*Store, error) {
+	db, err := sql.Open(sqliteDriverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open state database read-only: %w", err)
 	}
@@ -129,6 +137,19 @@ func sqliteReadOnlyDSN(path string) string {
 	values := url.Values{}
 	values.Add("mode", "ro")
 	values.Add("_pragma", "busy_timeout(5000)")
+	values.Add("_pragma", "foreign_keys(on)")
+	return (&url.URL{
+		Scheme:   "file",
+		Path:     filepath.ToSlash(path),
+		RawQuery: values.Encode(),
+	}).String()
+}
+
+func sqliteReadOnlyBackupDSN(path string) string {
+	values := url.Values{}
+	values.Add("mode", "ro")
+	values.Add("_pragma", "busy_timeout(5000)")
+	values.Add("_pragma", "synchronous(full)")
 	values.Add("_pragma", "foreign_keys(on)")
 	return (&url.URL{
 		Scheme:   "file",

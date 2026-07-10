@@ -48,7 +48,7 @@ Names and one-line purposes only. Run `loaf <command> --help` for options, argum
 | `loaf docs` | Manage docs/ indexing | index |
 | `loaf change` | Shape-first Change artifacts: git-canonical work context under docs/changes/ | init, check, list |
 | `loaf render` | Maintain committed durable Markdown renders | sweep |
-| `loaf state` | Manage native SQLite state | path, status, init, doctor, repair legacy-project-database, repair relationship-origin, repair journal-search, migrate markdown, migrate storage-home, migrate lifecycle-statuses, backup, backup verify, restore-ephemerals, verify-ephemerals, export, export all, export triage, export spec, export release-readiness |
+| `loaf state` | Manage native SQLite state | path, status, init, doctor, repair legacy-project-database, repair relationship-origin, repair journal-search, migrate markdown, migrate storage-home, migrate lifecycle-statuses, backup, backup verify, backup restore, restore-ephemerals, verify-ephemerals, export, export all, export triage, export spec, export release-readiness |
 | `loaf journal` | Record and read the project-scoped journal (the durable record across all conversations) | log, recent, search, show, context, export |
 | `loaf project` | Manage durable project identity | list, show, identity, rename, move, delete |
 | `loaf migrate` | Run native migration workflows | markdown, storage-home, lifecycle-statuses, worktree-storage |
