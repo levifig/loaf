@@ -116,6 +116,9 @@ func (s *Store) ImportMarkdown(ctx context.Context, root project.Root) error {
 	if err := importer.importAll(ctx); err != nil {
 		return err
 	}
+	if _, err := rebuildAndVerifyJournalSearch(ctx, tx); err != nil {
+		return fmt.Errorf("rebuild journal search after markdown import: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit markdown import: %w", err)
 	}

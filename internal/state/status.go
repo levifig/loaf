@@ -28,14 +28,16 @@ const (
 	RepairCategoryExternalSync           = "external-sync"
 	RepairCategoryMarkdownImport         = "markdown-import"
 	RepairCategoryCompatibilityExport    = "compatibility-export"
+	RepairCategoryJournalSearch          = "journal-search"
 )
 
 const (
-	DiagnosticPolicyInvalidLocalData = "invalid-local-data"
-	DiagnosticPolicyWarningDrift     = "warning-drift"
-	DiagnosticPolicyExternalSyncGap  = "external-sync-gap"
-	DiagnosticPolicyImportPending    = "import-pending"
-	DiagnosticPolicyStaleExport      = "stale-export"
+	DiagnosticPolicyInvalidLocalData     = "invalid-local-data"
+	DiagnosticPolicyWarningDrift         = "warning-drift"
+	DiagnosticPolicyExternalSyncGap      = "external-sync-gap"
+	DiagnosticPolicyImportPending        = "import-pending"
+	DiagnosticPolicyStaleExport          = "stale-export"
+	DiagnosticPolicyDerivedIndexDiverged = "derived-index-diverged"
 )
 
 // Diagnostic describes a state-runtime observation without mutating state.
@@ -378,6 +380,16 @@ func RepairPlanForStatus(status Status) []RepairAction {
 				Description:    "Regenerate the stale compatibility export from SQLite state.",
 				Safe:           false,
 			})
+		case JournalSearchDivergenceCode:
+			actions = appendRepairAction(actions, RepairAction{
+				Code:           "repair-journal-search",
+				DiagnosticCode: diagnostic.Code,
+				Category:       RepairCategoryJournalSearch,
+				Description:    "Rebuild the derived journal search index from canonical journal entries after creating a verified backup.",
+				Command:        "loaf state repair journal-search --dry-run --json",
+				Path:           status.DatabasePath,
+				Safe:           false,
+			})
 		case "local-markdown-not-imported":
 			actions = appendRepairAction(actions, RepairAction{
 				Code:           "migrate-current-project-markdown",
@@ -506,6 +518,34 @@ func inspectOperationalInvariants(ctx context.Context, store *Store) ([]Diagnost
 	diagnostics = append(diagnostics, backendDiagnostics...)
 	if !backendMappingsValid {
 		valid = false
+	}
+
+	journalSearchParity, err := InspectJournalSearchParity(ctx, store)
+	if err != nil {
+		return nil, false, err
+	}
+	if !journalSearchParity.Ready {
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     JournalSearchDivergenceCode,
+			Category: RepairCategoryJournalSearch,
+			Policy:   DiagnosticPolicyDerivedIndexDiverged,
+			Message: fmt.Sprintf(
+				"journal search index diverged from canonical journal (canonical_rows=%d, index_rows=%d, missing=%d, extra=%d, changed=%d); run: loaf state repair journal-search --dry-run",
+				journalSearchParity.CanonicalRows,
+				journalSearchParity.IndexRows,
+				journalSearchParity.Missing,
+				journalSearchParity.Extra,
+				journalSearchParity.Changed,
+			),
+			Details: map[string]any{
+				"canonical_rows": journalSearchParity.CanonicalRows,
+				"index_rows":     journalSearchParity.IndexRows,
+				"missing":        journalSearchParity.Missing,
+				"extra":          journalSearchParity.Extra,
+				"changed":        journalSearchParity.Changed,
+			},
+		})
 	}
 
 	return diagnostics, valid, nil

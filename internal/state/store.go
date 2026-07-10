@@ -116,6 +116,7 @@ func sqliteDSN(path string) string {
 	values := url.Values{}
 	values.Add("_pragma", "busy_timeout(5000)")
 	values.Add("_pragma", "journal_mode(wal)")
+	values.Add("_pragma", "synchronous(full)")
 	values.Add("_pragma", "foreign_keys(on)")
 	return (&url.URL{
 		Scheme:   "file",

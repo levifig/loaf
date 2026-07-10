@@ -398,6 +398,148 @@ func TestProjectRegistrationLegacyRekeyFailureRollsBackEverything(t *testing.T) 
 	}
 }
 
+func TestProjectRegistrationLegacyRekeyRebuildsJournalSearchProjectIDs(t *testing.T) {
+	ctx := context.Background()
+	root := projectRootInTempDir(t)
+	databasePath := filepath.Join(t.TempDir(), "state.sqlite")
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	if err := store.ApplyMigrations(ctx); err != nil {
+		t.Fatalf("ApplyMigrations() error = %v", err)
+	}
+	legacyID := ProjectID(root)
+	legacyPath := filepath.Join(t.TempDir(), "legacy-checkout")
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO projects (id, identity_hash, friendly_name, current_path, last_seen_at, created_at, updated_at)
+VALUES (?, ?, 'Legacy Name', ?, ?, ?, ?)`, legacyID, legacyID, legacyPath, now, now, now); err != nil {
+		t.Fatalf("insert legacy project: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO project_paths (id, project_id, path, is_current, first_seen_at, last_seen_at, created_at, updated_at)
+VALUES ('legacy-path', ?, ?, 1, ?, ?, ?, ?)`, legacyID, legacyPath, now, now, now, now); err != nil {
+		t.Fatalf("insert legacy path: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO journal_entries (
+  id, project_id, entry_type, scope, message, observed_branch, observed_worktree,
+  harness_session_id, session_id, spec_id, task_id, created_at, updated_at
+) VALUES ('legacy-journal', ?, 'decision', 'rekey', 'legacy journal', 'main', NULL, 'hsid-rekey', NULL, NULL, NULL, ?, ?)`, legacyID, now, now); err != nil {
+		t.Fatalf("insert legacy journal row: %v", err)
+	}
+	var rowID int64
+	if err := store.db.QueryRowContext(ctx, `SELECT rowid FROM journal_entries WHERE id = 'legacy-journal'`).Scan(&rowID); err != nil {
+		t.Fatalf("read legacy journal rowid: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO journal_search(rowid, project_id, journal_entry_id, session_id, entry_type, scope, message)
+VALUES (?, ?, 'legacy-journal', 'hsid-rekey', 'decision', 'rekey', 'legacy journal')`, rowID, legacyID); err != nil {
+		t.Fatalf("insert legacy journal_search row: %v", err)
+	}
+
+	identity, err := store.EnsureProject(ctx, root)
+	if err != nil {
+		t.Fatalf("EnsureProject() error = %v", err)
+	}
+	if identity.ID == legacyID {
+		t.Fatalf("identity ID = %q, want generated ID", identity.ID)
+	}
+	var canonicalProjectID, derivedProjectID string
+	if err := store.db.QueryRowContext(ctx, `SELECT project_id FROM journal_entries WHERE id = 'legacy-journal'`).Scan(&canonicalProjectID); err != nil {
+		t.Fatalf("read rekeyed canonical journal row: %v", err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT project_id FROM journal_search WHERE journal_entry_id = 'legacy-journal'`).Scan(&derivedProjectID); err != nil {
+		t.Fatalf("read rekeyed derived journal row: %v", err)
+	}
+	if canonicalProjectID != identity.ID || derivedProjectID != identity.ID {
+		t.Fatalf("rekeyed project IDs canonical=%q derived=%q identity=%q, want all identity", canonicalProjectID, derivedProjectID, identity.ID)
+	}
+	parity, err := InspectJournalSearchParity(ctx, store)
+	if err != nil {
+		t.Fatalf("InspectJournalSearchParity() error = %v", err)
+	}
+	if !parity.Ready {
+		t.Fatalf("rekeyed journal parity = %#v, want ready", parity)
+	}
+}
+
+func TestProjectRegistrationLegacyRekeyJournalSearchFailureRollsBackCanonicalAndIndex(t *testing.T) {
+	ctx := context.Background()
+	root := projectRootInTempDir(t)
+	databasePath := filepath.Join(t.TempDir(), "state.sqlite")
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	if err := store.ApplyMigrations(ctx); err != nil {
+		t.Fatalf("ApplyMigrations() error = %v", err)
+	}
+	legacyID := ProjectID(root)
+	legacyPath := filepath.Join(t.TempDir(), "legacy-checkout")
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO projects (id, identity_hash, friendly_name, current_path, last_seen_at, created_at, updated_at)
+VALUES (?, ?, 'Legacy Name', ?, ?, ?, ?)`, legacyID, legacyID, legacyPath, now, now, now); err != nil {
+		t.Fatalf("insert legacy project: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO project_paths (id, project_id, path, is_current, first_seen_at, last_seen_at, created_at, updated_at)
+VALUES ('legacy-path', ?, ?, 1, ?, ?, ?, ?)`, legacyID, legacyPath, now, now, now, now); err != nil {
+		t.Fatalf("insert legacy path: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO journal_entries (
+  id, project_id, entry_type, scope, message, observed_branch, observed_worktree,
+  harness_session_id, session_id, spec_id, task_id, created_at, updated_at
+) VALUES ('legacy-journal', ?, 'decision', 'rekey', 'changed canonical', 'main', NULL, 'hsid-rekey', NULL, NULL, NULL, ?, ?)`, legacyID, now, now); err != nil {
+		t.Fatalf("insert legacy journal row: %v", err)
+	}
+	var rowID int64
+	if err := store.db.QueryRowContext(ctx, `SELECT rowid FROM journal_entries WHERE id = 'legacy-journal'`).Scan(&rowID); err != nil {
+		t.Fatalf("read legacy journal rowid: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `DROP TABLE journal_search`); err != nil {
+		t.Fatalf("drop journal_search: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `
+CREATE TABLE journal_search (
+  rowid INTEGER PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  journal_entry_id TEXT NOT NULL,
+  session_id TEXT,
+  entry_type TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  message TEXT NOT NULL CHECK(message = 'prior derived')
+)`); err != nil {
+		t.Fatalf("create failing journal_search: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO journal_search(rowid, project_id, journal_entry_id, session_id, entry_type, scope, message)
+VALUES (?, ?, 'legacy-journal', 'hsid-rekey', 'decision', 'rekey', 'prior derived')`, rowID, legacyID); err != nil {
+		t.Fatalf("seed prior derived row: %v", err)
+	}
+	if _, err := store.EnsureProject(ctx, root); err == nil {
+		t.Fatal("EnsureProject() error = nil, want journal parity rebuild failure")
+	}
+	var canonicalProjectID, derivedProjectID string
+	if err := store.db.QueryRowContext(ctx, `SELECT project_id FROM journal_entries WHERE id = 'legacy-journal'`).Scan(&canonicalProjectID); err != nil {
+		t.Fatalf("read canonical journal row after rollback: %v", err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT project_id FROM journal_search WHERE journal_entry_id = 'legacy-journal'`).Scan(&derivedProjectID); err != nil {
+		t.Fatalf("read derived journal row after rollback: %v", err)
+	}
+	if canonicalProjectID != legacyID || derivedProjectID != legacyID {
+		t.Fatalf("project IDs after rollback canonical=%q derived=%q legacy=%q, want legacy", canonicalProjectID, derivedProjectID, legacyID)
+	}
+	if got := countIdentityRows(t, store, `SELECT COUNT(*) FROM projects WHERE id <> ?`, legacyID); got != 0 {
+		t.Fatalf("generated projects after rollback = %d, want zero", got)
+	}
+}
+
 func projectRootInTempDir(t *testing.T) project.Root {
 	t.Helper()
 	dir := t.TempDir()

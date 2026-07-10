@@ -297,6 +297,13 @@ func runJournalFirstMigration(ctx context.Context, store *Store, result *Journal
 	if err := ApplyMigrations(ctx, store.db, migrations); err != nil {
 		return fmt.Errorf("apply journal-first migration: %w", err)
 	}
+	parity, err := InspectJournalSearchParity(ctx, store)
+	if err != nil {
+		return fmt.Errorf("verify journal search parity after journal-first migration: %w", err)
+	}
+	if !parity.Ready {
+		return fmt.Errorf("journal search parity after journal-first migration is not ready: canonical_rows=%d, index_rows=%d, missing=%d, extra=%d, changed=%d", parity.CanonicalRows, parity.IndexRows, parity.Missing, parity.Extra, parity.Changed)
+	}
 
 	after, err := measureJournalFirstAfter(ctx, store)
 	if err != nil {

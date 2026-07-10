@@ -39,6 +39,26 @@ type JournalLogResult struct {
 	HarnessSessionID   string `json:"harness_session_id,omitempty"`
 }
 
+// queryContext is the minimal database surface needed to inspect SQLite
+// metadata. Both *sql.Tx and *Store implement QueryContext, which lets the
+// journal helpers operate against a transaction or a read-only store.
+type queryContext interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+// QueryContext exposes the store's read query surface for helpers that need to
+// work with either an open store or a transaction.
+func (s *Store) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return s.db.QueryContext(ctx, query, args...)
+}
+
+// QueryRowContext exposes the store's single-row query surface for parity
+// helpers that need to work with either an open store or a transaction.
+func (s *Store) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	return s.db.QueryRowContext(ctx, query, args...)
+}
+
 // LogJournal writes a journal entry into initialized SQLite state.
 func LogJournal(ctx context.Context, root project.Root, resolver PathResolver, options JournalLogOptions) (JournalLogResult, error) {
 	store, err := openProjectStoreMutateExisting(ctx, root, resolver)
@@ -167,8 +187,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 // journalSearchCorrelationColumn returns the name of the journal_search FTS
 // correlation column, tolerating both the journal-first schema
 // (harness_session_id) and the pre-migration schema (session_id).
-func journalSearchCorrelationColumn(ctx context.Context, tx *sql.Tx) (string, error) {
-	rows, err := tx.QueryContext(ctx, `PRAGMA table_info(journal_search)`)
+func journalSearchCorrelationColumn(ctx context.Context, queryer queryContext) (string, error) {
+	rows, err := queryer.QueryContext(ctx, `PRAGMA table_info(journal_search)`)
 	if err != nil {
 		return "", fmt.Errorf("inspect journal_search columns: %w", err)
 	}

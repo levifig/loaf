@@ -77,6 +77,9 @@ func (s *Store) Search(ctx context.Context, root project.Root, options SearchOpt
 	if err != nil {
 		return SearchResult{}, err
 	}
+	if err := s.requireJournalSearchReady(ctx); err != nil {
+		return SearchResult{}, err
+	}
 	ftsQuery, err := searchFTSQuery(options.Query)
 	if err != nil {
 		return SearchResult{}, err
@@ -202,6 +205,17 @@ WHERE journal_search MATCH ?`
 		return nil, fmt.Errorf("iterate journal search hits: %w", err)
 	}
 	return hits, nil
+}
+
+func (s *Store) requireJournalSearchReady(ctx context.Context) error {
+	parity, err := InspectJournalSearchParity(ctx, s)
+	if err != nil {
+		return err
+	}
+	if parity.Ready {
+		return nil
+	}
+	return &JournalSearchDivergenceError{Code: JournalSearchDivergenceCode, Parity: parity}
 }
 
 func (s *Store) searchDocsIndex(ctx context.Context, projectID string, indexedWorktree string, allProjects bool, ftsQuery string, queryTokens []string) ([]SearchHit, error) {

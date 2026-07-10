@@ -85,6 +85,12 @@ func TestBackupCreatesSQLiteCopyOutsideRepository(t *testing.T) {
 	if result.ForeignKeyCheck != "ok" {
 		t.Fatalf("ForeignKeyCheck = %q, want ok", result.ForeignKeyCheck)
 	}
+	if !result.JournalRetrievalReady || !result.JournalSearchParity.Ready {
+		t.Fatalf("journal retrieval = %t parity = %#v, want ready", result.JournalRetrievalReady, result.JournalSearchParity)
+	}
+	if result.JournalSearchParity.CanonicalRows != 0 || result.JournalSearchParity.IndexRows != 0 {
+		t.Fatalf("journal parity = %#v, want empty clean parity", result.JournalSearchParity)
+	}
 	assertNoSQLiteSidecars(t, result.BackupPath)
 
 	backupStore, err := OpenStoreReadOnly(result.BackupPath)
@@ -190,6 +196,48 @@ func TestVerifyBackupReportsAllProjectsWithoutLiveState(t *testing.T) {
 	}
 	if result.ForeignKeyCheck != "ok" {
 		t.Fatalf("ForeignKeyCheck = %q, want ok", result.ForeignKeyCheck)
+	}
+	if !result.JournalRetrievalReady || !result.JournalSearchParity.Ready {
+		t.Fatalf("journal retrieval = %t parity = %#v, want ready", result.JournalRetrievalReady, result.JournalSearchParity)
+	}
+}
+
+func TestVerifyBackupReportsDivergentJournalSearchWithoutStructuralFailure(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	resolver := PathResolver{StateHome: stateHome}
+	if _, err := Initialize(ctx, root, resolver); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	if _, err := LogJournal(ctx, root, resolver, JournalLogOptions{Entry: "decision(backup): parity"}); err != nil {
+		t.Fatalf("LogJournal() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	if _, err := store.db.ExecContext(ctx, `DELETE FROM journal_search`); err != nil {
+		store.Close()
+		t.Fatalf("delete journal search rows error = %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	backup, err := Backup(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+	if !backup.Verified || backup.JournalRetrievalReady || backup.JournalSearchParity.Ready {
+		t.Fatalf("backup = %#v, want verified but retrieval-not-ready", backup)
+	}
+	if backup.JournalSearchParity.CanonicalRows != 1 || backup.JournalSearchParity.IndexRows != 0 || backup.JournalSearchParity.Missing != 1 {
+		t.Fatalf("backup parity = %#v, want canonical=1/index=0/missing=1", backup.JournalSearchParity)
+	}
+	verified, err := VerifyBackup(ctx, backup.BackupPath)
+	if err != nil {
+		t.Fatalf("VerifyBackup() error = %v", err)
+	}
+	if !verified.Verified || verified.JournalRetrievalReady || verified.JournalSearchParity != backup.JournalSearchParity {
+		t.Fatalf("verified backup = %#v, want structural true/retrieval false and matching parity", verified)
 	}
 }
 

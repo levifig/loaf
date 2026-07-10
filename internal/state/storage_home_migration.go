@@ -174,6 +174,26 @@ func ApplyStorageHomeMigration(ctx context.Context, root project.Root, resolver 
 		}
 		return StorageHomeMigrationPlan{}, fmt.Errorf("record copied state project: %w", err)
 	}
+	rebuildTx, err := copiedStore.db.BeginTx(ctx, nil)
+	if err != nil {
+		if closeErr := copiedStore.Close(); closeErr != nil {
+			return StorageHomeMigrationPlan{}, fmt.Errorf("begin copied journal search rebuild: %w; close copied state database: %v", err, closeErr)
+		}
+		return StorageHomeMigrationPlan{}, fmt.Errorf("begin copied journal search rebuild: %w", err)
+	}
+	if _, err := rebuildAndVerifyJournalSearch(ctx, rebuildTx); err != nil {
+		_ = rebuildTx.Rollback()
+		if closeErr := copiedStore.Close(); closeErr != nil {
+			return StorageHomeMigrationPlan{}, fmt.Errorf("rebuild copied journal search: %w; close copied state database: %v", err, closeErr)
+		}
+		return StorageHomeMigrationPlan{}, fmt.Errorf("rebuild copied journal search: %w", err)
+	}
+	if err := rebuildTx.Commit(); err != nil {
+		if closeErr := copiedStore.Close(); closeErr != nil {
+			return StorageHomeMigrationPlan{}, fmt.Errorf("commit copied journal search rebuild: %w; close copied state database: %v", err, closeErr)
+		}
+		return StorageHomeMigrationPlan{}, fmt.Errorf("commit copied journal search rebuild: %w", err)
+	}
 	if err := copiedStore.Close(); err != nil {
 		return StorageHomeMigrationPlan{}, fmt.Errorf("close copied state database: %w", err)
 	}
@@ -253,6 +273,9 @@ func (s *Store) mergeProjectDatabase(ctx context.Context, sourcePath string, pro
 		if err := copyProjectScopedRows(ctx, tx, table, projectID); err != nil {
 			return err
 		}
+	}
+	if _, err := rebuildAndVerifyJournalSearch(ctx, tx); err != nil {
+		return fmt.Errorf("rebuild journal search after project database merge: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit project database merge: %w", err)

@@ -17,39 +17,43 @@ import (
 
 // BackupResult describes a repository-external SQLite database backup.
 type BackupResult struct {
-	ContractVersion    int    `json:"contract_version"`
-	DatabaseScope      string `json:"database_scope"`
-	DatabasePath       string `json:"database_path"`
-	BackupPath         string `json:"backup_path"`
-	Bytes              int64  `json:"bytes"`
-	SHA256             string `json:"sha256"`
-	CreatedAt          string `json:"created_at"`
-	Verified           bool   `json:"verified"`
-	SchemaVersion      int    `json:"schema_version"`
-	ProjectCount       int    `json:"project_count"`
-	ProjectID          string `json:"project_id"`
-	ProjectName        string `json:"project_name"`
-	ProjectCurrentPath string `json:"project_current_path"`
-	IntegrityCheck     string `json:"integrity_check"`
-	ForeignKeyCheck    string `json:"foreign_key_check"`
+	ContractVersion       int                 `json:"contract_version"`
+	DatabaseScope         string              `json:"database_scope"`
+	DatabasePath          string              `json:"database_path"`
+	BackupPath            string              `json:"backup_path"`
+	Bytes                 int64               `json:"bytes"`
+	SHA256                string              `json:"sha256"`
+	CreatedAt             string              `json:"created_at"`
+	Verified              bool                `json:"verified"`
+	SchemaVersion         int                 `json:"schema_version"`
+	ProjectCount          int                 `json:"project_count"`
+	ProjectID             string              `json:"project_id"`
+	ProjectName           string              `json:"project_name"`
+	ProjectCurrentPath    string              `json:"project_current_path"`
+	IntegrityCheck        string              `json:"integrity_check"`
+	ForeignKeyCheck       string              `json:"foreign_key_check"`
+	JournalRetrievalReady bool                `json:"journal_retrieval_ready"`
+	JournalSearchParity   JournalSearchParity `json:"journal_search_parity"`
 }
 
 // BackupVerificationResult describes a read-only verification of an existing SQLite backup.
 type BackupVerificationResult struct {
-	ContractVersion           int               `json:"contract_version"`
-	DatabaseScope             string            `json:"database_scope"`
-	BackupPath                string            `json:"backup_path"`
-	Bytes                     int64             `json:"bytes"`
-	SHA256                    string            `json:"sha256"`
-	Verified                  bool              `json:"verified"`
-	SchemaVersion             int               `json:"schema_version"`
-	ProjectCount              int               `json:"project_count"`
-	Projects                  []ProjectIdentity `json:"projects"`
-	IntegrityCheck            string            `json:"integrity_check"`
-	ForeignKeyCheck           string            `json:"foreign_key_check"`
-	RestoreDatabasePath       string            `json:"restore_database_path,omitempty"`
-	RestorePreservePath       string            `json:"restore_preserve_path,omitempty"`
-	RestoreValidationCommands []string          `json:"restore_validation_commands,omitempty"`
+	ContractVersion           int                 `json:"contract_version"`
+	DatabaseScope             string              `json:"database_scope"`
+	BackupPath                string              `json:"backup_path"`
+	Bytes                     int64               `json:"bytes"`
+	SHA256                    string              `json:"sha256"`
+	Verified                  bool                `json:"verified"`
+	SchemaVersion             int                 `json:"schema_version"`
+	ProjectCount              int                 `json:"project_count"`
+	Projects                  []ProjectIdentity   `json:"projects"`
+	IntegrityCheck            string              `json:"integrity_check"`
+	ForeignKeyCheck           string              `json:"foreign_key_check"`
+	RestoreDatabasePath       string              `json:"restore_database_path,omitempty"`
+	RestorePreservePath       string              `json:"restore_preserve_path,omitempty"`
+	RestoreValidationCommands []string            `json:"restore_validation_commands,omitempty"`
+	JournalRetrievalReady     bool                `json:"journal_retrieval_ready"`
+	JournalSearchParity       JournalSearchParity `json:"journal_search_parity"`
 }
 
 // Backup creates a timestamped SQLite backup under the project's state directory.
@@ -78,47 +82,58 @@ func Backup(ctx context.Context, root project.Root, resolver PathResolver) (Back
 	if err != nil {
 		return BackupResult{}, err
 	}
-	store, err := OpenStore(status.DatabasePath)
+	partial := BackupResult{
+		ContractVersion: StateJSONContractVersion,
+		DatabaseScope:   "global",
+		DatabasePath:    status.DatabasePath,
+		BackupPath:      backupPath,
+		CreatedAt:       now.Format(time.RFC3339Nano),
+	}
+	store, err := OpenStoreReadOnly(status.DatabasePath)
 	if err != nil {
-		return BackupResult{}, fmt.Errorf("open state database for backup: %w", err)
+		return partial, fmt.Errorf("open state database for backup: %w", err)
 	}
 	defer store.Close()
 
 	if _, err := store.db.ExecContext(ctx, `VACUUM INTO ?`, backupPath); err != nil {
-		return BackupResult{}, fmt.Errorf("backup state database: %w", err)
+		return partial, fmt.Errorf("backup state database: %w", err)
 	}
 	if err := os.Chmod(backupPath, 0o600); err != nil {
-		return BackupResult{}, fmt.Errorf("set state backup permissions: %w", err)
+		return partial, fmt.Errorf("set state backup permissions: %w", err)
 	}
 	info, err := os.Stat(backupPath)
 	if err != nil {
-		return BackupResult{}, fmt.Errorf("stat state backup: %w", err)
+		return partial, fmt.Errorf("stat state backup: %w", err)
 	}
+	partial.Bytes = info.Size()
 	sha256Sum, err := fileSHA256(backupPath)
 	if err != nil {
-		return BackupResult{}, fmt.Errorf("checksum state backup: %w", err)
+		return partial, fmt.Errorf("checksum state backup: %w", err)
 	}
+	partial.SHA256 = sha256Sum
 	verification, err := verifyBackup(ctx, backupPath, root)
 	if err != nil {
-		return BackupResult{}, err
+		return partial, err
 	}
 
 	return BackupResult{
-		ContractVersion:    StateJSONContractVersion,
-		DatabaseScope:      "global",
-		DatabasePath:       status.DatabasePath,
-		BackupPath:         backupPath,
-		Bytes:              info.Size(),
-		SHA256:             sha256Sum,
-		CreatedAt:          now.Format(time.RFC3339Nano),
-		Verified:           true,
-		SchemaVersion:      verification.schemaVersion,
-		ProjectCount:       verification.projectCount,
-		ProjectID:          verification.projectID,
-		ProjectName:        verification.projectName,
-		ProjectCurrentPath: verification.projectCurrentPath,
-		IntegrityCheck:     verification.integrityCheck,
-		ForeignKeyCheck:    verification.foreignKeyCheck,
+		ContractVersion:       StateJSONContractVersion,
+		DatabaseScope:         "global",
+		DatabasePath:          status.DatabasePath,
+		BackupPath:            backupPath,
+		Bytes:                 info.Size(),
+		SHA256:                sha256Sum,
+		CreatedAt:             now.Format(time.RFC3339Nano),
+		Verified:              true,
+		SchemaVersion:         verification.schemaVersion,
+		ProjectCount:          verification.projectCount,
+		ProjectID:             verification.projectID,
+		ProjectName:           verification.projectName,
+		ProjectCurrentPath:    verification.projectCurrentPath,
+		IntegrityCheck:        verification.integrityCheck,
+		ForeignKeyCheck:       verification.foreignKeyCheck,
+		JournalRetrievalReady: verification.journalRetrievalReady,
+		JournalSearchParity:   verification.journalSearchParity,
 	}, nil
 }
 
@@ -164,19 +179,25 @@ func VerifyBackup(ctx context.Context, backupPath string) (BackupVerificationRes
 	if len(projects.Projects) == 0 {
 		return BackupVerificationResult{}, fmt.Errorf("verify state backup project count: empty projects table")
 	}
+	parity, err := InspectJournalSearchParity(ctx, store)
+	if err != nil {
+		return BackupVerificationResult{}, fmt.Errorf("verify state backup journal search parity: %w", err)
+	}
 
 	return BackupVerificationResult{
-		ContractVersion: StateJSONContractVersion,
-		DatabaseScope:   "global",
-		BackupPath:      backupPath,
-		Bytes:           info.Size(),
-		SHA256:          sha256Sum,
-		Verified:        true,
-		SchemaVersion:   version,
-		ProjectCount:    len(projects.Projects),
-		Projects:        projects.Projects,
-		IntegrityCheck:  integrityCheck,
-		ForeignKeyCheck: foreignKeyCheck,
+		ContractVersion:       StateJSONContractVersion,
+		DatabaseScope:         "global",
+		BackupPath:            backupPath,
+		Bytes:                 info.Size(),
+		SHA256:                sha256Sum,
+		Verified:              true,
+		SchemaVersion:         version,
+		ProjectCount:          len(projects.Projects),
+		Projects:              projects.Projects,
+		IntegrityCheck:        integrityCheck,
+		ForeignKeyCheck:       foreignKeyCheck,
+		JournalRetrievalReady: parity.Ready,
+		JournalSearchParity:   parity,
 	}, nil
 }
 
@@ -195,13 +216,15 @@ func fileSHA256(path string) (string, error) {
 }
 
 type backupVerification struct {
-	schemaVersion      int
-	projectCount       int
-	projectID          string
-	projectName        string
-	projectCurrentPath string
-	integrityCheck     string
-	foreignKeyCheck    string
+	schemaVersion         int
+	projectCount          int
+	projectID             string
+	projectName           string
+	projectCurrentPath    string
+	integrityCheck        string
+	foreignKeyCheck       string
+	journalRetrievalReady bool
+	journalSearchParity   JournalSearchParity
 }
 
 func verifyBackup(ctx context.Context, backupPath string, root project.Root) (backupVerification, error) {
@@ -240,14 +263,20 @@ func verifyBackup(ctx context.Context, backupPath string, root project.Root) (ba
 	if identity.ID == "" {
 		return backupVerification{}, fmt.Errorf("verify state backup project identity: empty project id")
 	}
+	parity, err := InspectJournalSearchParity(ctx, store)
+	if err != nil {
+		return backupVerification{}, fmt.Errorf("verify state backup journal search parity: %w", err)
+	}
 	return backupVerification{
-		schemaVersion:      version,
-		projectCount:       projectCount,
-		projectID:          identity.ID,
-		projectName:        identity.FriendlyName,
-		projectCurrentPath: identity.CurrentPath,
-		integrityCheck:     integrityCheck,
-		foreignKeyCheck:    foreignKeyCheck,
+		schemaVersion:         version,
+		projectCount:          projectCount,
+		projectID:             identity.ID,
+		projectName:           identity.FriendlyName,
+		projectCurrentPath:    identity.CurrentPath,
+		integrityCheck:        integrityCheck,
+		foreignKeyCheck:       foreignKeyCheck,
+		journalRetrievalReady: parity.Ready,
+		journalSearchParity:   parity,
 	}, nil
 }
 

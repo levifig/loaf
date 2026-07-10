@@ -567,6 +567,14 @@ func TestOpenStoreAppliesConnectionPragmas(t *testing.T) {
 	if journalMode != "wal" {
 		t.Fatalf("journal_mode = %q, want wal", journalMode)
 	}
+
+	var synchronous int
+	if err := store.db.QueryRowContext(context.Background(), `PRAGMA synchronous`).Scan(&synchronous); err != nil {
+		t.Fatalf("PRAGMA synchronous error = %v", err)
+	}
+	if synchronous != 2 {
+		t.Fatalf("synchronous = %d, want 2 (FULL)", synchronous)
+	}
 }
 
 func TestApplyMigrationsDetectsChecksumDrift(t *testing.T) {

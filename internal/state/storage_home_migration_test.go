@@ -2,10 +2,12 @@ package state
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/levifig/loaf/internal/project"
 )
@@ -312,6 +314,355 @@ VALUES (?, ?, ?, 1, ?, ?, ?, ?)
 	}
 	if count != 1 {
 		t.Fatalf("migrated project count = %d, want 1", count)
+	}
+}
+
+func TestApplyStorageHomeMigrationCopyRebuildsExactJournalSearchWithoutLegacyContamination(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+	legacyPath := initializeLegacyStateDatabase(t, root, PathResolver{})
+	legacyStore, err := OpenStore(legacyPath)
+	if err != nil {
+		t.Fatalf("OpenStore(legacy) error = %v", err)
+	}
+	for _, message := range []string{"legacy-one", "legacy-two", "legacy-three"} {
+		if _, err := legacyStore.LogJournal(ctx, root, JournalLogOptions{Entry: "decision(storage): " + message}); err != nil {
+			legacyStore.Close()
+			t.Fatalf("LogJournal(%s) error = %v", message, err)
+		}
+	}
+	var firstID, secondID string
+	if err := legacyStore.db.QueryRowContext(ctx, `SELECT id FROM journal_entries ORDER BY rowid LIMIT 1`).Scan(&firstID); err != nil {
+		legacyStore.Close()
+		t.Fatalf("read first legacy journal id: %v", err)
+	}
+	if err := legacyStore.db.QueryRowContext(ctx, `SELECT id FROM journal_entries ORDER BY rowid LIMIT 1 OFFSET 1`).Scan(&secondID); err != nil {
+		legacyStore.Close()
+		t.Fatalf("read second legacy journal id: %v", err)
+	}
+	if _, err := legacyStore.db.ExecContext(ctx, `DELETE FROM journal_search WHERE journal_entry_id = ?`, firstID); err != nil {
+		legacyStore.Close()
+		t.Fatalf("delete legacy derived row: %v", err)
+	}
+	if _, err := legacyStore.db.ExecContext(ctx, `UPDATE journal_search SET message = 'legacy-stale' WHERE journal_entry_id = ?`, secondID); err != nil {
+		legacyStore.Close()
+		t.Fatalf("change legacy derived row: %v", err)
+	}
+	correlationColumn, err := journalSearchCorrelationColumn(ctx, legacyStore)
+	if err != nil {
+		legacyStore.Close()
+		t.Fatalf("read legacy correlation column: %v", err)
+	}
+	rogueSQL := fmt.Sprintf(`
+INSERT INTO journal_search(rowid, project_id, journal_entry_id, %s, entry_type, scope, message)
+VALUES ((SELECT COALESCE(MAX(rowid), 0) + 1 FROM journal_search), 'rogue-project', 'rogue-entry', '', 'rogue', '', 'rogue')`, correlationColumn)
+	if _, err := legacyStore.db.ExecContext(ctx, rogueSQL); err != nil {
+		legacyStore.Close()
+		t.Fatalf("insert legacy rogue derived row: %v", err)
+	}
+	if err := legacyStore.Close(); err != nil {
+		t.Fatalf("Close(legacy) error = %v", err)
+	}
+
+	plan, err := ApplyStorageHomeMigration(ctx, root, PathResolver{})
+	if err != nil {
+		t.Fatalf("ApplyStorageHomeMigration() error = %v", err)
+	}
+	store, err := OpenStore(plan.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore(copied) error = %v", err)
+	}
+	defer store.Close()
+	parity, err := InspectJournalSearchParity(ctx, store)
+	if err != nil {
+		t.Fatalf("InspectJournalSearchParity(copied) error = %v", err)
+	}
+	if !parity.Ready || parity.CanonicalRows != 3 || parity.IndexRows != 3 {
+		t.Fatalf("copied journal parity = %#v, want three exact ready rows", parity)
+	}
+	if got := countIdentityRows(t, store, `SELECT COUNT(*) FROM journal_search WHERE journal_entry_id = 'rogue-entry'`); got != 0 {
+		t.Fatalf("copied rogue derived rows = %d, want zero", got)
+	}
+	if got := countIdentityRows(t, store, `SELECT COUNT(*) FROM journal_search WHERE message = 'legacy-stale'`); got != 0 {
+		t.Fatalf("copied stale derived rows = %d, want zero", got)
+	}
+}
+
+func TestApplyStorageHomeMigrationMergeRebuildsGlobalJournalSearchAfterCanonicalCopy(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	otherRoot := projectRoot(t)
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+	resolver := PathResolver{}
+	if _, err := Initialize(ctx, otherRoot, resolver); err != nil {
+		t.Fatalf("Initialize(other) error = %v", err)
+	}
+	globalPath, err := resolver.DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath(global) error = %v", err)
+	}
+	globalStore, err := OpenStore(globalPath)
+	if err != nil {
+		t.Fatalf("OpenStore(global) error = %v", err)
+	}
+	if _, err := globalStore.LogJournal(ctx, otherRoot, JournalLogOptions{Entry: "decision(storage): global-row"}); err != nil {
+		globalStore.Close()
+		t.Fatalf("LogJournal(global) error = %v", err)
+	}
+	globalCorrelationColumn, err := journalSearchCorrelationColumn(ctx, globalStore)
+	if err != nil {
+		globalStore.Close()
+		t.Fatalf("read global correlation column: %v", err)
+	}
+	globalRogueSQL := fmt.Sprintf(`
+INSERT INTO journal_search(rowid, project_id, journal_entry_id, %s, entry_type, scope, message)
+VALUES ((SELECT COALESCE(MAX(rowid), 0) + 1 FROM journal_search), 'rogue-global', 'rogue-global-entry', '', 'rogue', '', 'rogue-global')`, globalCorrelationColumn)
+	if _, err := globalStore.db.ExecContext(ctx, globalRogueSQL); err != nil {
+		globalStore.Close()
+		t.Fatalf("seed global rogue derived row: %v", err)
+	}
+	if err := globalStore.Close(); err != nil {
+		t.Fatalf("Close(global) error = %v", err)
+	}
+
+	legacyPath, err := resolver.LegacyDatabasePath(root)
+	if err != nil {
+		t.Fatalf("LegacyDatabasePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o700); err != nil {
+		t.Fatalf("create legacy database directory: %v", err)
+	}
+	legacyStore, err := OpenStore(legacyPath)
+	if err != nil {
+		t.Fatalf("OpenStore(legacy) error = %v", err)
+	}
+	if err := ApplyMigrations(ctx, legacyStore.db, SchemaMigrations()[:1]); err != nil {
+		legacyStore.Close()
+		t.Fatalf("apply legacy v1 migration: %v", err)
+	}
+	legacyID := ProjectID(root)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := legacyStore.db.ExecContext(ctx, `INSERT INTO projects (id, identity_hash, created_at, updated_at) VALUES (?, ?, ?, ?)`, legacyID, legacyID, now, now); err != nil {
+		legacyStore.Close()
+		t.Fatalf("insert legacy hash project: %v", err)
+	}
+	if err := legacyStore.Close(); err != nil {
+		t.Fatalf("Close(legacy v1) error = %v", err)
+	}
+	legacyStore, err = OpenStore(legacyPath)
+	if err != nil {
+		t.Fatalf("reopen legacy error = %v", err)
+	}
+	if err := legacyStore.ApplyMigrations(ctx); err != nil {
+		legacyStore.Close()
+		t.Fatalf("upgrade legacy database: %v", err)
+	}
+	if _, err := legacyStore.db.ExecContext(ctx, `
+UPDATE projects SET friendly_name = 'Legacy Hash', current_path = ?, last_seen_at = ? WHERE id = ?`, root.Path(), now, legacyID); err != nil {
+		legacyStore.Close()
+		t.Fatalf("set legacy project path: %v", err)
+	}
+	if _, err := legacyStore.db.ExecContext(ctx, `
+INSERT INTO project_paths (id, project_id, path, is_current, first_seen_at, last_seen_at, created_at, updated_at)
+VALUES ('legacy-root-path', ?, ?, 1, ?, ?, ?, ?)`, legacyID, root.Path(), now, now, now, now); err != nil {
+		legacyStore.Close()
+		t.Fatalf("insert legacy project path: %v", err)
+	}
+	for _, message := range []string{"merge-one", "merge-two"} {
+		if _, err := legacyStore.LogJournal(ctx, root, JournalLogOptions{Entry: "decision(storage): " + message}); err != nil {
+			legacyStore.Close()
+			t.Fatalf("LogJournal(legacy %s) error = %v", message, err)
+		}
+	}
+	var legacyJournalID string
+	if err := legacyStore.db.QueryRowContext(ctx, `SELECT id FROM journal_entries ORDER BY rowid LIMIT 1`).Scan(&legacyJournalID); err != nil {
+		legacyStore.Close()
+		t.Fatalf("read legacy journal id: %v", err)
+	}
+	if _, err := legacyStore.db.ExecContext(ctx, `DELETE FROM journal_search WHERE journal_entry_id = ?`, legacyJournalID); err != nil {
+		legacyStore.Close()
+		t.Fatalf("delete legacy derived row: %v", err)
+	}
+	if err := legacyStore.Close(); err != nil {
+		t.Fatalf("Close(legacy final) error = %v", err)
+	}
+
+	plan, err := PreviewStorageHomeMigration(root, resolver)
+	if err != nil {
+		t.Fatalf("PreviewStorageHomeMigration(merge) error = %v", err)
+	}
+	if plan.Action != StorageHomeActionMerge {
+		t.Fatalf("merge plan action = %q, want %q", plan.Action, StorageHomeActionMerge)
+	}
+	merged, err := ApplyStorageHomeMigration(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("ApplyStorageHomeMigration(merge) error = %v", err)
+	}
+	mergedStore, err := OpenStore(merged.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore(merged) error = %v", err)
+	}
+	defer mergedStore.Close()
+	parity, err := InspectJournalSearchParity(ctx, mergedStore)
+	if err != nil {
+		t.Fatalf("InspectJournalSearchParity(merged) error = %v", err)
+	}
+	if !parity.Ready || parity.CanonicalRows != 3 || parity.IndexRows != 3 {
+		t.Fatalf("merged journal parity = %#v, want three exact ready rows", parity)
+	}
+	if got := countIdentityRows(t, mergedStore, `SELECT COUNT(*) FROM journal_search WHERE journal_entry_id LIKE 'rogue-%'`); got != 0 {
+		t.Fatalf("merged rogue derived rows = %d, want zero", got)
+	}
+}
+
+func TestApplyStorageHomeMigrationCopyParityFailureRemovesDestination(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+	legacyPath := initializeLegacyStateDatabase(t, root, PathResolver{})
+	legacyStore, err := OpenStore(legacyPath)
+	if err != nil {
+		t.Fatalf("OpenStore(legacy) error = %v", err)
+	}
+	if _, err := legacyStore.LogJournal(ctx, root, JournalLogOptions{Entry: "decision(storage): original"}); err != nil {
+		legacyStore.Close()
+		t.Fatalf("LogJournal() error = %v", err)
+	}
+	if _, err := legacyStore.db.ExecContext(ctx, `DROP TABLE journal_search`); err != nil {
+		legacyStore.Close()
+		t.Fatalf("drop legacy journal_search: %v", err)
+	}
+	if _, err := legacyStore.db.ExecContext(ctx, `
+CREATE TABLE journal_search (
+  rowid INTEGER PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  journal_entry_id TEXT NOT NULL,
+  session_id TEXT,
+  entry_type TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  message TEXT NOT NULL CHECK(message = 'prior')
+)`); err != nil {
+		legacyStore.Close()
+		t.Fatalf("create failing legacy journal_search: %v", err)
+	}
+	if err := legacyStore.Close(); err != nil {
+		t.Fatalf("Close(legacy) error = %v", err)
+	}
+	plan, err := PreviewStorageHomeMigration(root, PathResolver{})
+	if err != nil {
+		t.Fatalf("PreviewStorageHomeMigration() error = %v", err)
+	}
+	if plan.Action != StorageHomeActionCopy {
+		t.Fatalf("plan action = %q, want %q", plan.Action, StorageHomeActionCopy)
+	}
+	if _, err := ApplyStorageHomeMigration(ctx, root, PathResolver{}); err == nil {
+		t.Fatal("ApplyStorageHomeMigration() error = nil, want copied parity failure")
+	}
+	if _, err := os.Stat(plan.DatabasePath); !os.IsNotExist(err) {
+		t.Fatalf("copied destination stat error = %v, want destination removed", err)
+	}
+}
+
+func TestApplyStorageHomeMigrationMergeParityFailureRollsBackGlobalCanonicalRows(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	otherRoot := projectRoot(t)
+	dataHome := t.TempDir()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_STATE_HOME", stateHome)
+	resolver := PathResolver{}
+	if _, err := Initialize(ctx, otherRoot, resolver); err != nil {
+		t.Fatalf("Initialize(other) error = %v", err)
+	}
+	globalPath, err := resolver.DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath(global) error = %v", err)
+	}
+	globalStore, err := OpenStore(globalPath)
+	if err != nil {
+		t.Fatalf("OpenStore(global) error = %v", err)
+	}
+	if _, err := globalStore.LogJournal(ctx, otherRoot, JournalLogOptions{Entry: "decision(storage): global-canonical"}); err != nil {
+		globalStore.Close()
+		t.Fatalf("LogJournal(global) error = %v", err)
+	}
+	var globalProjectID, globalJournalID, globalMessage, globalHarness string
+	var globalRowID int64
+	if err := globalStore.db.QueryRowContext(ctx, `
+SELECT journal_entries.rowid, journal_entries.project_id, journal_entries.id, journal_entries.message,
+       COALESCE(journal_entries.harness_session_id, '') FROM journal_entries`).Scan(&globalRowID, &globalProjectID, &globalJournalID, &globalMessage, &globalHarness); err != nil {
+		globalStore.Close()
+		t.Fatalf("read global journal row: %v", err)
+	}
+	if _, err := globalStore.db.ExecContext(ctx, `DROP TABLE journal_search`); err != nil {
+		globalStore.Close()
+		t.Fatalf("drop global journal_search: %v", err)
+	}
+	if _, err := globalStore.db.ExecContext(ctx, `
+CREATE TABLE journal_search (
+  rowid INTEGER PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  journal_entry_id TEXT NOT NULL,
+  session_id TEXT,
+  entry_type TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  message TEXT NOT NULL CHECK(message = 'prior derived')
+)`); err != nil {
+		globalStore.Close()
+		t.Fatalf("create failing global journal_search: %v", err)
+	}
+	if _, err := globalStore.db.ExecContext(ctx, `
+INSERT INTO journal_search(rowid, project_id, journal_entry_id, session_id, entry_type, scope, message)
+VALUES (?, ?, ?, ?, 'decision', 'storage', 'prior derived')`, globalRowID, globalProjectID, globalJournalID, globalHarness); err != nil {
+		globalStore.Close()
+		t.Fatalf("seed global prior derived row: %v", err)
+	}
+	if err := globalStore.Close(); err != nil {
+		t.Fatalf("Close(global) error = %v", err)
+	}
+	initializeLegacyStateDatabase(t, root, resolver)
+	plan, err := PreviewStorageHomeMigration(root, resolver)
+	if err != nil {
+		t.Fatalf("PreviewStorageHomeMigration() error = %v", err)
+	}
+	if plan.Action != StorageHomeActionMerge {
+		t.Fatalf("plan action = %q, want %q", plan.Action, StorageHomeActionMerge)
+	}
+	if _, err := ApplyStorageHomeMigration(ctx, root, resolver); err == nil {
+		t.Fatal("ApplyStorageHomeMigration() error = nil, want merge parity failure")
+	}
+	check, err := OpenStore(globalPath)
+	if err != nil {
+		t.Fatalf("OpenStore(global after rollback) error = %v", err)
+	}
+	defer check.Close()
+	var gotMessage string
+	if err := check.db.QueryRowContext(ctx, `SELECT message FROM journal_entries WHERE id = ?`, globalJournalID).Scan(&gotMessage); err != nil {
+		t.Fatalf("read global canonical row after rollback: %v", err)
+	}
+	if gotMessage != globalMessage {
+		t.Fatalf("global canonical message after rollback = %q, want %q", gotMessage, globalMessage)
+	}
+	var priorCount int
+	if err := check.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM journal_search WHERE journal_entry_id = ? AND message = 'prior derived'`, globalJournalID).Scan(&priorCount); err != nil {
+		t.Fatalf("read global derived row after rollback: %v", err)
+	}
+	if priorCount != 1 {
+		t.Fatalf("global prior derived rows after rollback = %d, want one", priorCount)
+	}
+	if got := countIdentityRows(t, check, `SELECT COUNT(*) FROM journal_entries WHERE project_id = ?`, ProjectID(root)); got != 0 {
+		t.Fatalf("copied root canonical rows after rollback = %d, want zero", got)
 	}
 }
 

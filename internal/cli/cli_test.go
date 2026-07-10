@@ -2790,6 +2790,7 @@ func TestRunnerStateHelpIsNative(t *testing.T) {
 		{name: "state repair", args: []string{"state", "repair", "--help"}, want: "Usage: loaf state repair <target> [options]"},
 		{name: "state repair legacy-project-database", args: []string{"state", "repair", "legacy-project-database", "--help"}, want: "Usage: loaf state repair legacy-project-database [--dry-run|--apply] [--json]"},
 		{name: "state repair relationship-origin", args: []string{"state", "repair", "relationship-origin", "--help"}, want: "Usage: loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]"},
+		{name: "state repair journal-search", args: []string{"state", "repair", "journal-search", "--help"}, want: "Usage: loaf state repair journal-search [--dry-run|--apply] [--json]"},
 		{name: "state migrate", args: []string{"state", "migrate", "--help"}, want: "Usage: loaf state migrate <source> [options]"},
 		{name: "project list", args: []string{"project", "list", "--help"}, want: "Usage: loaf project list [--json]"},
 		{name: "project identity", args: []string{"project", "identity", "--help"}, want: "Usage: loaf project show|identity [--json]"},
@@ -2837,6 +2838,7 @@ func TestRunnerStateAndProjectJSONHelpNamesContracts(t *testing.T) {
 		{name: "project move", args: []string{"project", "move", "--help"}, wants: []string{"--json", "current path", "database path", "applied status"}},
 		{name: "state repair legacy", args: []string{"state", "repair", "legacy-project-database", "--help"}, wants: []string{"--json", "archive plan/result", "global database scope", "project identity"}},
 		{name: "state repair relationship", args: []string{"state", "repair", "relationship-origin", "--help"}, wants: []string{"--json", "repair plan/result", "global database scope", "project identity"}},
+		{name: "state repair journal-search", args: []string{"state", "repair", "journal-search", "--help"}, wants: []string{"--json", "parity counts", "backup verification", "exact parity"}},
 		{name: "state migrate markdown", args: []string{"state", "migrate", "markdown", "--help"}, wants: []string{"--json", "migration contract", "project context", "counts"}},
 		{name: "state migrate storage-home", args: []string{"state", "migrate", "storage-home", "--help"}, wants: []string{"--json", "migration contract", "global database paths", "project identity"}},
 		{name: "migrate markdown", args: []string{"migrate", "markdown", "--help"}, wants: []string{"--json", "migration contract", "project context", "counts"}},
@@ -3780,6 +3782,194 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	}
 	if strings.Contains(noopHumanOut.String(), "next: rerun with --apply") {
 		t.Fatalf("no-op human output = %q, want no apply guidance when no rows match", noopHumanOut.String())
+	}
+}
+
+func TestRunnerStateRepairJournalSearchHumanJSONAndErrorEnvelope(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var initOut bytes.Buffer
+	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	initialized := decodeStateStatus(t, initOut.Bytes())
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"journal", "log", "decision(cli-repair): canonical"}); err != nil {
+		t.Fatalf("journal log error = %v", err)
+	}
+	db, err := sql.Open("sqlite3", initialized.DatabasePath)
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	if _, err := db.Exec(`DELETE FROM journal_search`); err != nil {
+		db.Close()
+		t.Fatalf("delete journal search error = %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("db.Close() error = %v", err)
+	}
+
+	var humanOut bytes.Buffer
+	if err := (Runner{Stdout: &humanOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "repair", "journal-search"}); err != nil {
+		t.Fatalf("journal-search human dry-run error = %v", err)
+	}
+	for _, want := range []string{"loaf state repair journal-search --dry-run", "canonical rows: 1", "index rows: 0", "missing: 1", "extra: 0", "changed: 0", "applied: false", "backup verified: false", "rebuilt: 0", "parity verified: false", "next: loaf state repair journal-search --apply"} {
+		if !strings.Contains(humanOut.String(), want) {
+			t.Fatalf("human output = %q, want %q", humanOut.String(), want)
+		}
+	}
+
+	var searchErrorOut bytes.Buffer
+	err = (Runner{Stdout: &searchErrorOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"search", "canonical", "--json"})
+	if err == nil {
+		t.Fatal("search --json error = nil, want journal-search divergence")
+	}
+	errorPayload := decodeCommandError(t, searchErrorOut.Bytes())
+	if errorPayload.Code != state.JournalSearchDivergenceCode || errorPayload.JournalSearchParity == nil {
+		t.Fatalf("search JSON error = %#v, want divergence code and parity", errorPayload)
+	}
+	if errorPayload.JournalSearchParity.Missing != 1 || errorPayload.JournalSearchParity.CanonicalRows != 1 || errorPayload.JournalSearchParity.IndexRows != 0 {
+		t.Fatalf("search JSON parity = %#v, want canonical=1/index=0/missing=1", *errorPayload.JournalSearchParity)
+	}
+
+	var dryJSON bytes.Buffer
+	if err := (Runner{Stdout: &dryJSON, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "repair", "journal-search", "--dry-run", "--json"}); err != nil {
+		t.Fatalf("journal-search JSON dry-run error = %v", err)
+	}
+	dryResult := decodeJournalSearchRepairResult(t, dryJSON.Bytes())
+	if dryResult.Applied || dryResult.BackupPath != "" || dryResult.BackupVerified || dryResult.ParityVerified || dryResult.Rebuilt != 0 {
+		t.Fatalf("dry-run result = %#v, want no mutation", dryResult)
+	}
+	if dryResult.CanonicalRows != 1 || dryResult.IndexRows != 0 || dryResult.Missing != 1 || dryResult.Extra != 0 || dryResult.Changed != 0 {
+		t.Fatalf("dry-run result parity = %#v, want canonical=1/index=0/missing=1", dryResult)
+	}
+
+	var applyJSON bytes.Buffer
+	if err := (Runner{Stdout: &applyJSON, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "repair", "journal-search", "--apply", "--json"}); err != nil {
+		t.Fatalf("journal-search JSON apply error = %v", err)
+	}
+	applied := decodeJournalSearchRepairResult(t, applyJSON.Bytes())
+	if !applied.Applied || applied.BackupPath == "" || !applied.BackupVerified || applied.Rebuilt != 1 || !applied.ParityVerified {
+		t.Fatalf("apply result = %#v, want verified backup/rebuild/parity", applied)
+	}
+	backup, err := state.VerifyBackup(context.Background(), applied.BackupPath)
+	if err != nil {
+		t.Fatalf("VerifyBackup() error = %v", err)
+	}
+	if !backup.Verified || backup.JournalRetrievalReady {
+		t.Fatalf("pre-repair backup = %#v, want structurally verified/retrieval false", backup)
+	}
+
+	var noopJSON bytes.Buffer
+	if err := (Runner{Stdout: &noopJSON, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "repair", "journal-search", "--apply", "--json"}); err != nil {
+		t.Fatalf("journal-search JSON second apply error = %v", err)
+	}
+	noop := decodeJournalSearchRepairResult(t, noopJSON.Bytes())
+	if !noop.Applied || noop.BackupPath != "" || noop.BackupVerified || noop.Rebuilt != 0 || !noop.ParityVerified {
+		t.Fatalf("second apply = %#v, want idempotent no-op without backup", noop)
+	}
+}
+
+func TestRunnerStateDoctorReturnsErrorForReadyModeJournalDivergence(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	var initOut bytes.Buffer
+	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	initialized := decodeStateStatus(t, initOut.Bytes())
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"journal", "log", "decision(doctor): divergence"}); err != nil {
+		t.Fatalf("journal log error = %v", err)
+	}
+	db, err := sql.Open("sqlite3", initialized.DatabasePath)
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	if _, err := db.Exec(`DELETE FROM journal_search`); err != nil {
+		db.Close()
+		t.Fatalf("delete journal search error = %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("db.Close() error = %v", err)
+	}
+
+	var jsonOut bytes.Buffer
+	err = (Runner{Stdout: &jsonOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "doctor", "--json"})
+	if err == nil {
+		t.Fatal("state doctor --json error = nil, want error diagnostic exit")
+	}
+	assertSilentExitCode(t, err, 1)
+	status := decodeStateStatus(t, jsonOut.Bytes())
+	if status.Mode != state.ModeSQLiteReady || !hasDiagnostic(status.Diagnostics, state.JournalSearchDivergenceCode) {
+		t.Fatalf("doctor status = %#v, want ready mode with divergence diagnostic", status)
+	}
+
+	var humanOut bytes.Buffer
+	err = (Runner{Stdout: &humanOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "doctor"})
+	if err == nil {
+		t.Fatal("state doctor human error = nil, want error diagnostic exit")
+	}
+	if !strings.Contains(humanOut.String(), "journal search index diverged") {
+		t.Fatalf("doctor human output = %q, want divergence diagnostic", humanOut.String())
+	}
+}
+
+func TestRunnerStateRepairJournalSearchFailurePreservesBackupInErrors(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	var initOut bytes.Buffer
+	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	initialized := decodeStateStatus(t, initOut.Bytes())
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"journal", "log", "decision(error): preserve backup"}); err != nil {
+		t.Fatalf("journal log error = %v", err)
+	}
+	db, err := sql.Open("sqlite3", initialized.DatabasePath)
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	if _, err := db.Exec(`DELETE FROM journal_search; DROP TABLE journal_search; CREATE TABLE journal_search (
+  rowid INTEGER PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  journal_entry_id TEXT NOT NULL,
+  harness_session_id TEXT,
+  entry_type TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  message TEXT NOT NULL,
+  required TEXT NOT NULL
+)`); err != nil {
+		db.Close()
+		t.Fatalf("replace journal search table error = %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("db.Close() error = %v", err)
+	}
+
+	var jsonOut bytes.Buffer
+	err = (Runner{Stdout: &jsonOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "repair", "journal-search", "--apply", "--json"})
+	if err == nil {
+		t.Fatal("journal-search apply JSON error = nil, want forced rebuild error")
+	}
+	assertSilentExitCode(t, err, 1)
+	errorPayload := decodeCommandError(t, jsonOut.Bytes())
+	if errorPayload.BackupPath == "" || !errorPayload.BackupVerified || errorPayload.JournalSearchParity == nil {
+		t.Fatalf("repair JSON error = %#v, want preserved backup and pre-parity", errorPayload)
+	}
+	if errorPayload.JournalSearchParity.CanonicalRows != 1 || errorPayload.JournalSearchParity.IndexRows != 0 || errorPayload.JournalSearchParity.Missing != 1 {
+		t.Fatalf("repair JSON pre-parity = %#v, want canonical=1/index=0/missing=1", *errorPayload.JournalSearchParity)
+	}
+	if _, err := os.Stat(errorPayload.BackupPath); err != nil {
+		t.Fatalf("preserved backup missing: %v", err)
+	}
+
+	var humanOut bytes.Buffer
+	err = (Runner{Stdout: &humanOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "repair", "journal-search", "--apply"})
+	if err == nil {
+		t.Fatal("journal-search human apply error = nil, want forced rebuild error")
+	}
+	if !strings.Contains(err.Error(), "preserved backup:") || !strings.Contains(err.Error(), "verified=true") {
+		t.Fatalf("human repair error = %v, want preserved verified backup", err)
 	}
 }
 
@@ -12868,6 +13058,18 @@ func decodeRelationshipOriginRepairResult(t *testing.T, data []byte) state.Relat
 	return result
 }
 
+func decodeJournalSearchRepairResult(t *testing.T, data []byte) state.JournalSearchRepairResult {
+	t.Helper()
+	var result state.JournalSearchRepairResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal(%q) error = %v", string(data), err)
+	}
+	if result.ContractVersion != state.StateJSONContractVersion {
+		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, state.StateJSONContractVersion)
+	}
+	return result
+}
+
 func decodeLegacyProjectDatabaseArchiveResult(t *testing.T, data []byte) state.LegacyProjectDatabaseArchiveResult {
 	t.Helper()
 	var result state.LegacyProjectDatabaseArchiveResult
@@ -14066,7 +14268,7 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 			t.Fatalf("%s options = %#v, want agent help to include %q", commandName, commands[commandName].options, want)
 		}
 	}
-	for _, want := range []string{"repair", "repair legacy-project-database", "repair relationship-origin", "migrate", "migrate markdown", "migrate storage-home"} {
+	for _, want := range []string{"repair", "repair legacy-project-database", "repair relationship-origin", "repair journal-search", "migrate", "migrate markdown", "migrate storage-home"} {
 		if !stringSliceContains(commands["state"].subcommands, want) {
 			t.Fatalf("state subcommands = %#v, want %q", commands["state"].subcommands, want)
 		}
@@ -14116,6 +14318,15 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 	}
 	if got := commands["state"].optionDescriptions["state repair relationship-origin --json"]; !strings.Contains(got, "repair plan/result") || !strings.Contains(got, "global database scope") {
 		t.Fatalf("relationship repair json description = %q, want repair/scope guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state repair journal-search --dry-run"]; !strings.Contains(got, "without writing") {
+		t.Fatalf("journal-search repair dry-run description = %q, want non-mutating preview", got)
+	}
+	if got := commands["state"].optionDescriptions["state repair journal-search --apply"]; !strings.Contains(got, "verified backup") || !strings.Contains(got, "exact parity") {
+		t.Fatalf("journal-search repair apply description = %q, want backup/parity guidance", got)
+	}
+	if got := commands["state"].optionDescriptions["state repair journal-search --json"]; !strings.Contains(got, "parity counts") || !strings.Contains(got, "backup verification") {
+		t.Fatalf("journal-search repair json description = %q, want parity/backup guidance", got)
 	}
 	if got := commands["state"].optionDescriptions["state migrate markdown --json"]; !strings.Contains(got, "migration contract") || !strings.Contains(got, "project context") {
 		t.Fatalf("state migrate markdown json description = %q, want contract/project context guidance", got)

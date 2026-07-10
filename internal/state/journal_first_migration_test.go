@@ -288,6 +288,40 @@ func TestApplyJournalFirstMigrationIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestJournalFirstMigrationVerificationDetectsModifiedDerivedState(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	resolver := PathResolver{StateHome: stateHome}
+	status, err := Initialize(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	seedJournalFirstFixture(t, status.DatabasePath, status.ProjectID)
+	if _, err := ApplyJournalFirstMigration(ctx, root, resolver); err != nil {
+		t.Fatalf("ApplyJournalFirstMigration() error = %v", err)
+	}
+	store, err := OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	if _, err := store.db.ExecContext(ctx, `UPDATE journal_search SET message = 'diverged derived content' WHERE journal_entry_id = 'j-wrap'`); err != nil {
+		t.Fatalf("modify derived journal row: %v", err)
+	}
+	result := journalFirstMigrationBaseResult(status, JournalFirstMigrationActionApply)
+	if err := runJournalFirstMigration(ctx, store, &result); err == nil {
+		t.Fatal("runJournalFirstMigration() error = nil, want exact parity verification failure")
+	}
+	parity, err := InspectJournalSearchParity(ctx, store)
+	if err != nil {
+		t.Fatalf("InspectJournalSearchParity() error = %v", err)
+	}
+	if parity.Changed != 1 || parity.Ready {
+		t.Fatalf("post-failure journal parity = %#v, want changed=1 and not ready", parity)
+	}
+}
+
 func TestInspectAcceptsMigratedJournalFirstDatabase(t *testing.T) {
 	ctx := context.Background()
 	root := projectRoot(t)

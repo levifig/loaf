@@ -41,6 +41,7 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		"| `loaf change` | Shape-first Change artifacts: git-canonical work context under docs/changes/ | init, check, list |",
 		"| `loaf journal` | Record and read the project-scoped journal (the durable record across all conversations) | log, recent, search, show, context, export |",
 		"| `loaf state` | Manage native SQLite state | path, status, init, doctor, repair legacy-project-database,",
+		"repair journal-search",
 		"| `loaf doctor` | Diagnose Loaf project alignment (symlinks, stale files, version drift) | — |",
 		"## Topics",
 		"[references/configuration.md](references/configuration.md)",

@@ -185,6 +185,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 	if err != nil {
 		return ProjectIdentity{}, err
 	}
+	rekeyed := false
 	if projectID == "" {
 		legacyID := ProjectID(root)
 		exists, err := projectExistsTx(ctx, tx, legacyID)
@@ -199,6 +200,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 			if err != nil {
 				return ProjectIdentity{}, err
 			}
+			rekeyed = true
 		} else {
 			projectID = candidateID
 		}
@@ -211,6 +213,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 			if err != nil {
 				return ProjectIdentity{}, err
 			}
+			rekeyed = true
 		}
 	}
 
@@ -226,6 +229,11 @@ WHERE id = ?
 	}
 	if err := markCurrentProjectPathTx(ctx, tx, projectID, currentPath, now); err != nil {
 		return ProjectIdentity{}, err
+	}
+	if rekeyed {
+		if _, err := rebuildAndVerifyJournalSearch(ctx, tx); err != nil {
+			return ProjectIdentity{}, fmt.Errorf("rebuild journal search after legacy project rekey: %w", err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return ProjectIdentity{}, fmt.Errorf("commit project registration: %w", err)

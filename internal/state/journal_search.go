@@ -31,6 +31,9 @@ func (s *Store) SearchJournal(ctx context.Context, root project.Root, options Se
 	if err != nil {
 		return SearchResult{}, err
 	}
+	if err := s.requireJournalSearchReady(ctx); err != nil {
+		return SearchResult{}, err
+	}
 	ftsQuery, err := searchFTSQuery(options.Query)
 	if err != nil {
 		return SearchResult{}, err

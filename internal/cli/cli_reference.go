@@ -174,6 +174,11 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--apply", Description: "Backfill missing origins after creating a SQLite backup"},
 					{Flags: "--json", Description: "Output repair plan/result, global database scope, and project identity as JSON"},
 				}},
+				{Name: "repair journal-search", Description: "Preview or apply a backup-first rebuild of the derived journal search index", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview canonical/index parity counts without writing"},
+					{Flags: "--apply", Description: "Create a verified backup, rebuild the index, and verify exact parity"},
+					{Flags: "--json", Description: "Output parity counts, backup verification, and repair result as JSON"},
+				}},
 				{Name: "migrate markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
 					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},
