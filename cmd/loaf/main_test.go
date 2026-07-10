@@ -60,7 +60,7 @@ func TestPublicBinaryVersionShowsInjectedBuildInfoNatively(t *testing.T) {
 	}
 }
 
-func TestPublicBinaryDispatchesStateVersionAndReleasePostMergeNatively(t *testing.T) {
+func TestPublicBinaryDispatchesStateVersionAndReleasePreflightNatively(t *testing.T) {
 	repoRoot := repoRoot(t)
 	binary := filepath.Join(t.TempDir(), "loaf")
 	if output, err := runCommand(repoRoot, "go", "build", "-o", binary, "./cmd/loaf"); err != nil {
@@ -97,12 +97,15 @@ func TestPublicBinaryDispatchesStateVersionAndReleasePostMergeNatively(t *testin
 
 	output, err = runBinary(binary, workingDir, envWith(), "release", "--post-merge")
 	if err == nil {
-		t.Fatalf("loaf release --post-merge error = nil, want native guardrail failure\n%s", output)
+		t.Fatalf("loaf release --post-merge error = nil, want native lineage-preflight failure\n%s", output)
 	}
-	for _, want := range []string{"loaf release", "Verifying post-merge state", "guardrail 1 failed"} {
+	for _, want := range []string{"release blocked: cannot inspect committed Change graph at HEAD", "inspect committed Change paths at HEAD"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("release output = %q, want %q", output, want)
 		}
+	}
+	if strings.Contains(output, "Verifying post-merge state") {
+		t.Fatalf("release output = %q, want lineage preflight before post-merge actions", output)
 	}
 	if strings.Contains(output, "TypeScript fallback") {
 		t.Fatalf("release output = %q, want native post-merge path without fallback lookup", output)

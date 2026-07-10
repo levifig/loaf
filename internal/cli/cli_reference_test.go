@@ -38,7 +38,7 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		"| Command | Purpose | Subcommands |",
 		"| `loaf build` | Build skill distributions for agent harnesses | — |",
 		"| `loaf config` | Validate and refresh project Loaf config | check |",
-		"| `loaf change` | Shape-first Change artifacts: git-canonical work context under docs/changes/ | init, check |",
+		"| `loaf change` | Shape-first Change artifacts: git-canonical work context under docs/changes/ | init, check, list |",
 		"| `loaf journal` | Record and read the project-scoped journal (the durable record across all conversations) | log, recent, search, show, context, export |",
 		"| `loaf state` | Manage native SQLite state | path, status, init, doctor, repair legacy-project-database,",
 		"| `loaf doctor` | Diagnose Loaf project alignment (symlinks, stale files, version drift) | — |",

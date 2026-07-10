@@ -125,8 +125,12 @@ func cliReferenceCommands() []cliReferenceCommand {
 				}},
 				{Name: "check", Description: "Validate a Change and report derived executability", Options: []cliReferenceOption{
 					{Flags: "[folder]", Description: "Change folder path; an explicit path wins, otherwise resolves from the current branch"},
-					{Flags: "--require-executable", Description: "Exit non-zero unless the Change is implementation-ready (CI gate for non-draft PRs)"},
+					{Flags: "--require-executable", Description: "Exit non-zero unless the Change is structurally executable; this does not prove implementation completion (CI gate for non-draft PRs)"},
 					{Flags: "--json", Description: "Output folder, passed, executable, findings, warnings, and gaps as JSON"},
+				}},
+				{Name: "list", Description: "List a retained lineage after merge or branch deletion", Options: []cliReferenceOption{
+					{Flags: "--lineage <key>", Description: "Required lineage key"},
+					{Flags: "--json", Description: "Output derived nodes, gaps, and optional journal enrichment"},
 				}},
 			},
 		},
