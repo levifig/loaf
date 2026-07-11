@@ -31,9 +31,29 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		"Documents how agents operate the Loaf CLI",
 		"**Note:** This file is auto-generated from native CLI reference metadata.",
 		"## Operating Rules",
+		"## Journal Context (contract v2)",
 		"`loaf --help`",
 		"`loaf <command> --help`",
 		"`loaf config check --json`, `loaf state doctor --json`, `loaf change check --json`",
+		"active-truth read model",
+		"`project-synthesis`",
+		"`scoped-checkpoint`",
+		"`active-lineage`",
+		"`unresolved-blockers`",
+		"`deferred-intent`",
+		"`active-changes`",
+		"`branch-recency`",
+		"`transitional-tasks`",
+		"`wrap(project)`",
+		"`source_available`",
+		"`available_count`",
+		"`shown_count`",
+		"`truncated`",
+		"`expand_command`",
+		"`--limit` accepts 1 through 100 only with `--layer`",
+		"`--cursor` also requires `--layer`",
+		"Use `--branch` to select `branch-recency` scope and bind state cursors.",
+		"active Change provenance or reasons, which always use the actual Git branch",
 		"## Command Index",
 		"| Command | Purpose | Subcommands |",
 		"| `loaf build` | Build skill distributions for agent harnesses | — |",
@@ -66,6 +86,7 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		"## State Management",
 		"**Subcommands:**",
 		"```bash",
+		"latest wrap, recent branch entries, open tasks",
 	} {
 		if strings.Contains(content, unwanted) {
 			t.Fatalf("thinned CLI reference still contains %q\n%s", unwanted, content)
@@ -73,5 +94,110 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), outputPath) {
 		t.Fatalf("stdout = %q, want generated path %q", stdout.String(), outputPath)
+	}
+}
+
+func TestCLIReferenceSourceMatchesGeneratedContract(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() error = %v", err)
+	}
+	repositoryRoot := filepath.Clean(filepath.Join(workingDir, "..", ".."))
+	data, err := os.ReadFile(filepath.Join(repositoryRoot, "content", "skills", "loaf-reference", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("ReadFile(source CLI reference) error = %v", err)
+	}
+	if got, want := string(data), generateCLIReferenceSkill(cliReferenceCommands()); got != want {
+		t.Fatal("content/skills/loaf-reference/SKILL.md is stale; regenerate it with `loaf __generate-cli-ref`")
+	}
+}
+
+func TestJournalContextReferenceMetadataDescribesContractV2(t *testing.T) {
+	var journal *cliReferenceSubcommand
+	for _, command := range cliReferenceCommands() {
+		if command.Name != "journal" {
+			continue
+		}
+		for index := range command.Subcommands {
+			if command.Subcommands[index].Name == "context" {
+				journal = &command.Subcommands[index]
+				break
+			}
+		}
+	}
+	if journal == nil {
+		t.Fatal("journal context reference metadata is missing")
+	}
+	if strings.Contains(journal.Description, "latest wrap") {
+		t.Fatalf("journal context description = %q, must not describe the retired three-part digest", journal.Description)
+	}
+	for _, want := range []string{"--branch <branch>", "--layer <name>", "--limit <n>", "--cursor <token>", "--from-hook", "--json", "for-prompt|for-compact|for-resumption"} {
+		found := false
+		for _, option := range journal.Options {
+			if option.Flags == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("journal context reference options = %#v, want %q", journal.Options, want)
+		}
+	}
+	for _, option := range journal.Options {
+		if option.Flags == "--branch <branch>" {
+			for _, want := range []string{"branch-recency", "bind state cursors", "actual Git branch"} {
+				if !strings.Contains(option.Description, want) {
+					t.Fatalf("--branch description = %q, want %q", option.Description, want)
+				}
+			}
+		}
+		if option.Flags == "--layer <name>" {
+			for _, layer := range []string{"project-synthesis", "scoped-checkpoint", "active-lineage", "unresolved-blockers", "deferred-intent", "active-changes", "branch-recency", "transitional-tasks"} {
+				if !strings.Contains(option.Description, layer) {
+					t.Fatalf("--layer description = %q, want canonical layer %q", option.Description, layer)
+				}
+			}
+		}
+	}
+}
+
+func TestJournalContextAgentHelpDescribesContractV2(t *testing.T) {
+	var journal *agentHelpSubcommand
+	for _, command := range agentHelpCommands() {
+		if command.Name != "journal" {
+			continue
+		}
+		for index := range command.Subcommands {
+			if command.Subcommands[index].Name == "context" {
+				journal = &command.Subcommands[index]
+				break
+			}
+		}
+	}
+	if journal == nil {
+		t.Fatal("journal context agent help is missing")
+	}
+	if !strings.Contains(journal.Description, "contract-v2 active-truth") {
+		t.Fatalf("journal context agent help description = %q, want contract-v2 active truth", journal.Description)
+	}
+	for _, want := range []string{"--branch <branch>", "--layer <name>", "--limit <n>", "--cursor <token>", "--from-hook", "--json", "for-prompt|for-compact|for-resumption"} {
+		found := false
+		for _, option := range journal.Options {
+			if option.Flags == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("journal context agent help options = %#v, want %q", journal.Options, want)
+		}
+	}
+	for _, option := range journal.Options {
+		if option.Flags != "--branch <branch>" {
+			continue
+		}
+		for _, want := range []string{"branch-recency", "bind state cursors", "actual Git branch"} {
+			if !strings.Contains(option.Description, want) {
+				t.Fatalf("agent help --branch description = %q, want %q", option.Description, want)
+			}
+		}
 	}
 }

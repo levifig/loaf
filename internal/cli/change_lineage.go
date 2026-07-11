@@ -41,7 +41,7 @@ func loadChangeNodesAtHEADWithOutput(rootPath string, outputCommand changeGitOut
 		}
 		fields, _ := changeFrontmatterFields(content)
 		nodes = append(nodes, changeNode{
-			Slug: changeFieldValue(fields, "change"), Lineage: changeFieldValue(fields, "lineage"),
+			Slug: changeFieldValue(fields, "change"), Branch: changeFieldValue(fields, "branch"), Lineage: changeFieldValue(fields, "lineage"),
 			Predecessor: changeFieldValue(fields, "predecessor"), ReleaseAfter: changeFieldValue(fields, "release-after"),
 			Folder: filepath.ToSlash(filepath.Dir(path)), ChangeFile: path, Content: content,
 		})

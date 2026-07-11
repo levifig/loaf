@@ -13432,6 +13432,20 @@ func writeJSONCommandError(out io.Writer, command string, err error) error {
 		output.Code = "journal-defer-transaction"
 		output.Field = journalDeferTransactionErr.Stage
 	}
+	var cursorInvalid *state.JournalContextCursorInvalidError
+	if errors.As(err, &cursorInvalid) {
+		output.Code = cursorInvalid.Code
+	}
+	var cursorStale *state.JournalContextCursorStaleError
+	if errors.As(err, &cursorStale) {
+		output.Code = cursorStale.Code
+		output.Suggestion = cursorStale.RestartCommand
+	}
+	var activeCursorErr *journalContextCursorError
+	if errors.As(err, &activeCursorErr) {
+		output.Code = activeCursorErr.Code
+		output.Suggestion = activeCursorErr.RestartCommand
+	}
 	var schemaUpgradeErr *state.SchemaUpgradeRequiredError
 	if errors.As(err, &schemaUpgradeErr) {
 		output.Code = schemaUpgradeErr.Code

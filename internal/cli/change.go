@@ -141,6 +141,7 @@ type changeCheckReport struct {
 // deliberately derived from retained files; no lineage state is persisted.
 type changeNode struct {
 	Slug         string `json:"slug"`
+	Branch       string `json:"branch,omitempty"`
 	Lineage      string `json:"lineage"`
 	Predecessor  string `json:"predecessor,omitempty"`
 	ReleaseAfter string `json:"releaseAfter,omitempty"`
@@ -510,7 +511,7 @@ func loadChangeNodes(rootPath string) ([]changeNode, error) {
 		}
 		fields, _ := changeFrontmatterFields(string(content))
 		folder := filepath.Dir(changeFile)
-		nodes = append(nodes, changeNode{Slug: changeFieldValue(fields, "change"), Lineage: changeFieldValue(fields, "lineage"), Predecessor: changeFieldValue(fields, "predecessor"), ReleaseAfter: changeFieldValue(fields, "release-after"), Folder: relFromRoot(rootPath, folder), ChangeFile: relFromRoot(rootPath, changeFile), Content: string(content)})
+		nodes = append(nodes, changeNode{Slug: changeFieldValue(fields, "change"), Branch: changeFieldValue(fields, "branch"), Lineage: changeFieldValue(fields, "lineage"), Predecessor: changeFieldValue(fields, "predecessor"), ReleaseAfter: changeFieldValue(fields, "release-after"), Folder: relFromRoot(rootPath, folder), ChangeFile: relFromRoot(rootPath, changeFile), Content: string(content)})
 	}
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ChangeFile < nodes[j].ChangeFile })
 	return nodes, nil

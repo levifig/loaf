@@ -12,12 +12,11 @@ description: >-
 
 ## Contents
 - Operating Rules
+- Journal Context (contract v2)
 - Command Index
 - Topics
 
-The Loaf operating manual for agents: how to discover commands, diagnose project
-state, and keep configuration current. It teaches reading the CLI, not
-memorizing it.
+The Loaf operating manual for agents: how to discover commands, diagnose project state, and keep configuration current. It teaches reading the CLI, not memorizing it.
 
 **Note:** This file is auto-generated from native CLI reference metadata. Do not edit manually.
 
@@ -31,6 +30,25 @@ memorizing it.
 - Never hand-edit Loaf-managed hook files; regenerate them through `loaf build` and `loaf install`.
 - Re-run the relevant check after any change and confirm it passes.
 - Log meaningful decisions to the journal: `loaf journal log "decision(scope): ..."`.
+
+## Journal Context (contract v2)
+
+`loaf journal context` is an active-truth read model, not the former latest-arbitrary-wrap plus branch entries plus open tasks summary. Consume its named layers and diagnostics rather than inferring state from an omitted layer.
+
+| Layer | Truth it supplies |
+|-------|-------------------|
+| `project-synthesis` | The latest `wrap(project)` synthesis. |
+| `scoped-checkpoint` | The latest non-project wrap, only when no project synthesis exists; it is explicitly labeled as a fallback. |
+| `active-lineage` | Journal evidence associated with active Change lineage. |
+| `unresolved-blockers` | Blocks that do not have a later exact-scope unblock. |
+| `deferred-intent` | Open deferred-intent decision and spark pairs. |
+| `active-changes` | Git-derived active Change evidence and worktree state. |
+| `branch-recency` | Recent entries on the selected branch after entries already surfaced as active truth are removed. |
+| `transitional-tasks` | Open task-board records during the Markdown-to-native transition. |
+
+Each layer reports `source_available`, `available_count`, `shown_count`, `truncated`, and an exact `expand_command`; paginated layers also return a cursor. `source_available: false` means the source could not be derived and is not an empty result. In particular, an unavailable Change source marks both `active-changes` and `active-lineage` unavailable and emits a diagnostic.
+
+Use `--branch` to select `branch-recency` scope and bind state cursors. It does not override active Change provenance or reasons, which always use the actual Git branch. Use `--layer` to request one canonical layer. `--limit` accepts 1 through 100 only with `--layer`; `--cursor` also requires `--layer` and cannot expand the intrinsic one-item `project-synthesis` or `scoped-checkpoint` layers. Reuse the returned `expand_command` verbatim: cursors are bound to their layer, project, branch, snapshot, and limit. `--json` is the stable machine surface; human output retains the same counts, unavailable markers, and expansion command.
 
 ## Command Index
 

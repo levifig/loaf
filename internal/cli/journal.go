@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -104,10 +105,13 @@ func writeJournalDeferHelp(out io.Writer) {
 }
 
 func writeJournalContextHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf journal context [options]", "Emit the layered continuity digest: latest project wrap, recent current-branch entries, and open tasks.",
-		"--branch      Branch scope for the recent-entries layer (defaults to current git branch)",
-		"--from-hook   Read the harness hook payload on stdin and exit silently for subagent invocations",
-		"--json        Output the digest and project context as JSON",
+	writeUsageHelp(out, "loaf journal context [options]", "Emit the contract-v2 active-truth continuity digest.",
+		"--branch          Branch scope (defaults to the current git branch)",
+		"--layer           Select one layer: project-synthesis, scoped-checkpoint, active-lineage, unresolved-blockers, deferred-intent, active-changes, branch-recency, transitional-tasks",
+		"--limit           Maximum 1..100 items for the selected layer (requires --layer)",
+		"--cursor          Continue the selected layer (requires --layer)",
+		"--from-hook       Read the harness hook payload on stdin and exit silently for subagent invocations",
+		"--json            Output contract-v2 project metadata, layers, and diagnostics as JSON",
 		"",
 		"Hook subcommands (read stdin, exit silently for subagents):",
 		"  for-prompt      Inject implementation principles on UserPromptSubmit",
@@ -129,6 +133,16 @@ type journalLogOptions struct {
 	jsonOutput       bool
 	fromHook         bool
 	detectLinear     bool
+}
+
+type journalUnmatchedUnblockJSON struct {
+	ContractVersion  int    `json:"contract_version"`
+	Command          string `json:"command"`
+	Error            string `json:"error"`
+	Code             string `json:"code"`
+	Key              string `json:"key"`
+	LatestSourceID   string `json:"latest_source_id"`
+	LatestSourceType string `json:"latest_source_type"`
 }
 
 func parseJournalLogArgs(args []string) (journalLogOptions, error) {
@@ -231,6 +245,26 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 		Origin:           &origin,
 	})
 	if err != nil {
+		var unmatched *state.JournalUnmatchedUnblockError
+		if errors.As(err, &unmatched) {
+			if options.fromHook {
+				return writeJournalHookUnmatchedUnblockWarning(out, unmatched)
+			}
+			if options.jsonOutput {
+				if writeErr := writeJSON(out, journalUnmatchedUnblockJSON{
+					ContractVersion:  state.StateJSONContractVersion,
+					Command:          "journal log",
+					Error:            unmatched.Error(),
+					Code:             unmatched.Code,
+					Key:              unmatched.Key,
+					LatestSourceID:   unmatched.LatestSourceID,
+					LatestSourceType: unmatched.LatestSourceType,
+				}); writeErr != nil {
+					return writeErr
+				}
+				return ExitError{Code: 1}
+			}
+		}
 		// Hook-invoked logging (git/gh/task PostToolUse via --from-hook, or Linear
 		// detection) must never fail the harness on a fresh install: when the state
 		// database is missing or uninitialized, write nothing and exit 0. Interactive
@@ -666,6 +700,120 @@ func (r Runner) runJournalContext(args []string, out io.Writer, runtime state.Ru
 	return r.runJournalContextDigest(args, out, runtime, false)
 }
 
+const (
+	journalContextLayerProjectSynthesis = "project-synthesis"
+	journalContextLayerScopedCheckpoint = "scoped-checkpoint"
+	journalContextLayerActiveLineage    = "active-lineage"
+	journalContextLayerBlockers         = "unresolved-blockers"
+	journalContextLayerDeferredIntent   = "deferred-intent"
+	journalContextLayerBranchRecency    = "branch-recency"
+	journalContextLayerTasks            = "transitional-tasks"
+	defaultCLIJournalContextLimit       = 10
+)
+
+var canonicalJournalContextLayers = []string{
+	journalContextLayerProjectSynthesis,
+	journalContextLayerScopedCheckpoint,
+	journalContextLayerActiveLineage,
+	journalContextLayerBlockers,
+	journalContextLayerDeferredIntent,
+	journalContextLayerActiveChanges,
+	journalContextLayerBranchRecency,
+	journalContextLayerTasks,
+}
+
+type journalContextCLIOptions struct {
+	branch     string
+	branchSet  bool
+	layer      string
+	limit      int
+	limitSet   bool
+	cursor     string
+	jsonOutput bool
+	fromHook   bool
+}
+
+type journalContextLayersJSON struct {
+	ProjectSynthesis   *state.JournalContextJournalLayer    `json:"project_synthesis,omitempty"`
+	ScopedCheckpoint   *state.JournalContextCheckpointLayer `json:"scoped_checkpoint,omitempty"`
+	ActiveLineage      *state.JournalContextJournalLayer    `json:"active_lineage,omitempty"`
+	UnresolvedBlockers *state.JournalContextBlockerLayer    `json:"unresolved_blockers,omitempty"`
+	DeferredIntent     *state.JournalContextDeferralLayer   `json:"deferred_intent,omitempty"`
+	ActiveChanges      *activeChangeLayer                   `json:"active_changes,omitempty"`
+	BranchRecency      *state.JournalContextJournalLayer    `json:"branch_recency,omitempty"`
+	TransitionalTasks  *state.JournalContextTaskLayer       `json:"transitional_tasks,omitempty"`
+}
+
+type journalContextCLIResult struct {
+	ContractVersion    int                              `json:"contract_version"`
+	Command            string                           `json:"command"`
+	DatabaseScope      string                           `json:"database_scope"`
+	DatabasePath       string                           `json:"database_path"`
+	ProjectID          string                           `json:"project_id"`
+	ProjectName        string                           `json:"project_name"`
+	ProjectCurrentPath string                           `json:"project_current_path"`
+	JournalWatermark   int64                            `json:"journal_watermark"`
+	Branch             string                           `json:"branch"`
+	Layers             journalContextLayersJSON         `json:"layers"`
+	Diagnostics        []state.JournalContextDiagnostic `json:"diagnostics"`
+}
+
+func parseJournalContextArgs(args []string) (journalContextCLIOptions, error) {
+	options := journalContextCLIOptions{}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			options.jsonOutput = true
+		case "--from-hook":
+			options.fromHook = true
+		case "--branch", "--layer", "--limit", "--cursor":
+			flag := args[i]
+			value, err := consumeFlagValue(args, &i, flag)
+			if err != nil {
+				return journalContextCLIOptions{}, err
+			}
+			switch flag {
+			case "--branch":
+				options.branch, options.branchSet = value, true
+			case "--layer":
+				options.layer = value
+			case "--limit":
+				limit, err := strconv.Atoi(value)
+				if err != nil || limit < 1 || limit > 100 {
+					return journalContextCLIOptions{}, fmt.Errorf("--limit must be an integer from 1 to 100")
+				}
+				options.limit, options.limitSet = limit, true
+			case "--cursor":
+				options.cursor = value
+			}
+		default:
+			return journalContextCLIOptions{}, fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+	if options.layer != "" && !journalContextContains(canonicalJournalContextLayers, options.layer) {
+		return journalContextCLIOptions{}, fmt.Errorf("unknown journal context layer %q (use %s)", options.layer, strings.Join(canonicalJournalContextLayers, ", "))
+	}
+	if options.layer == "" && options.limitSet {
+		return journalContextCLIOptions{}, fmt.Errorf("--limit requires --layer")
+	}
+	if options.layer == "" && options.cursor != "" {
+		return journalContextCLIOptions{}, fmt.Errorf("--cursor requires --layer")
+	}
+	if (options.layer == journalContextLayerProjectSynthesis || options.layer == journalContextLayerScopedCheckpoint) && options.cursor != "" {
+		return journalContextCLIOptions{}, fmt.Errorf("--cursor is not supported for intrinsic one-item layer %s", options.layer)
+	}
+	return options, nil
+}
+
+func journalContextContains(values []string, wanted string) bool {
+	for _, value := range values {
+		if value == wanted {
+			return true
+		}
+	}
+	return false
+}
+
 // runJournalContextDigest emits the layered continuity digest. hookInvocation is
 // true when reached from a harness hook (SessionStart --from-hook or PostCompact
 // for-resumption): on those paths a missing or uninitialized state database must
@@ -686,11 +834,17 @@ func (r Runner) runJournalContextDigest(args []string, out io.Writer, runtime st
 		}
 	}
 	jsonRequested := hasFlag(args, "--json")
-	jsonOutput := jsonRequested
+	options, err := parseJournalContextArgs(args)
+	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "journal context", err)
+		}
+		return err
+	}
 	// SessionStart/PostCompact pass --from-hook so the digest can guard against
 	// subagent invocations: read the hook payload and exit silently (writing
 	// nothing) when an agent_id is present.
-	if hasFlag(args, "--from-hook") {
+	if options.fromHook {
 		hookInvocation = true
 		hookInput, err := r.readJournalHookInput()
 		if err != nil {
@@ -703,86 +857,275 @@ func (r Runner) runJournalContextDigest(args []string, out io.Writer, runtime st
 			return nil
 		}
 	}
-	branch := ""
-	branchSet := false
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--json":
-			// handled above
-		case "--from-hook":
-			// handled above
-		case "--branch":
-			value, err := consumeFlagValue(args, &i, "--branch")
-			if err != nil {
-				if jsonRequested {
-					return writeJSONCommandError(out, "journal context", err)
-				}
-				return err
-			}
-			branch = value
-			branchSet = true
-		default:
-			err := fmt.Errorf("unknown option %q", args[i])
-			if jsonRequested {
-				return writeJSONCommandError(out, "journal context", err)
-			}
-			return err
-		}
-	}
 	projectRoot, err := project.ResolveRoot(runtime.RootPath())
 	if err != nil {
-		if jsonOutput {
+		if options.jsonOutput {
 			return writeJSONCommandError(out, "journal context", err)
 		}
 		return err
 	}
-	if !branchSet {
-		branch = state.ObservedGitBranch(runtime.RootPath())
+	changeSource, changeSourceErr := discoverActiveChanges(projectRoot.Path())
+	if !options.branchSet {
+		if changeSourceErr == nil {
+			options.branch = changeSource.Branch
+		} else {
+			options.branch = state.ObservedGitBranch(runtime.RootPath())
+		}
+	}
+	stateOptions := state.JournalContextOptions{Branch: options.branch}
+	if changeSourceErr == nil {
+		stateOptions.LineageKeys = changeSource.LineageKeys
+	}
+	if options.layer != "" && options.limitSet {
+		setJournalContextStateLimit(&stateOptions, options.layer, options.limit)
+	}
+	if options.cursor != "" && options.layer != journalContextLayerActiveChanges {
+		stateOptions.Cursor = options.cursor
+		stateOptions.CursorLayer = journalContextStateLayer(options.layer)
 	}
 	result, err := state.JournalContextForRoot(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.JournalContextOptions{
-		Branch: branch,
+		Branch: stateOptions.Branch, LineageKeys: stateOptions.LineageKeys, LineageLimit: stateOptions.LineageLimit,
+		BlockerLimit: stateOptions.BlockerLimit, DeferralLimit: stateOptions.DeferralLimit, BranchLimit: stateOptions.BranchLimit,
+		TaskLimit: stateOptions.TaskLimit, Cursor: stateOptions.Cursor, CursorLayer: stateOptions.CursorLayer,
 	})
 	if err != nil {
 		// On hook paths (SessionStart/PostCompact) a fresh install with no state
 		// database yet must never fail the harness: emit one non-blocking
 		// diagnostic line and exit 0. Interactive invocations keep erroring.
 		if hookInvocation && isStateMissingError(err) {
-			if !jsonOutput {
+			if !options.jsonOutput {
 				fmt.Fprintln(out, "  loaf journal context: no journal yet (run `loaf state init` to start recording)")
 			}
 			return nil
 		}
-		if jsonOutput {
+		if options.jsonOutput {
 			return writeJSONCommandError(out, "journal context", err)
 		}
 		return r.withStateMissingContext(err, projectRoot)
 	}
-	if jsonOutput {
-		return writeJSON(out, result)
+	activeLayer := unavailableActiveChanges()
+	if changeSourceErr == nil {
+		activeLimit := defaultCLIJournalContextLimit
+		if options.layer == journalContextLayerActiveChanges && options.limitSet {
+			activeLimit = options.limit
+		}
+		activeLayer, err = activeChangesPage(changeSource, result.ProjectID, options.branch, activeLimit, func() string {
+			if options.layer == journalContextLayerActiveChanges {
+				return options.cursor
+			}
+			return ""
+		}())
+		if err != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, "journal context", err)
+			}
+			return err
+		}
+	} else {
+		result.ActiveLineage.Available = false
+		result.ActiveLineage.AvailableCount = 0
+		result.ActiveLineage.ShownCount = 0
+		result.ActiveLineage.Truncated = false
+		result.ActiveLineage.Cursor = ""
+		result.ActiveLineage.Items = []state.JournalEntryRecord{}
+		result.Diagnostics = append(result.Diagnostics, state.JournalContextDiagnostic{Code: changeSourceUnavailableCode, Message: "Change source unavailable: " + changeSourceErr.Error() + "; active-changes and active-lineage could not be derived"})
 	}
+	rewriteJournalContextExpandCommands(&result, &activeLayer, options)
+	output := composeJournalContextCLIResult(result, activeLayer, options.layer)
+	if options.jsonOutput {
+		return writeJSON(out, output)
+	}
+	writeJournalContextHuman(out, output)
+	return nil
+}
+
+func journalContextStateLayer(layer string) string {
+	switch layer {
+	case journalContextLayerProjectSynthesis:
+		return state.JournalContextLayerSynthesis
+	case journalContextLayerScopedCheckpoint:
+		return state.JournalContextLayerCheckpoint
+	case journalContextLayerActiveLineage:
+		return state.JournalContextLayerLineage
+	case journalContextLayerBlockers:
+		return state.JournalContextLayerBlockers
+	case journalContextLayerDeferredIntent:
+		return state.JournalContextLayerDeferrals
+	case journalContextLayerBranchRecency:
+		return state.JournalContextLayerBranch
+	case journalContextLayerTasks:
+		return state.JournalContextLayerTasks
+	default:
+		return ""
+	}
+}
+
+func setJournalContextStateLimit(options *state.JournalContextOptions, layer string, limit int) {
+	switch layer {
+	case journalContextLayerActiveLineage:
+		options.LineageLimit = limit
+	case journalContextLayerBlockers:
+		options.BlockerLimit = limit
+	case journalContextLayerDeferredIntent:
+		options.DeferralLimit = limit
+	case journalContextLayerBranchRecency:
+		options.BranchLimit = limit
+	case journalContextLayerTasks:
+		options.TaskLimit = limit
+	}
+}
+
+func journalContextExpandCommand(layer, cursor, branch string, limit int) string {
+	command := "loaf journal context --layer " + layer
+	if limit > 0 {
+		command += " --limit " + strconv.Itoa(limit)
+	}
+	if branch != "" {
+		command += " --branch " + journalContextShellQuote(branch)
+	}
+	if cursor != "" {
+		command += " --cursor " + journalContextShellQuote(cursor)
+	}
+	return command
+}
+
+func journalContextShellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
+}
+
+func rewriteJournalContextExpandCommands(result *state.JournalContext, active *activeChangeLayer, options journalContextCLIOptions) {
+	limit := defaultCLIJournalContextLimit
+	if options.limitSet {
+		limit = options.limit
+	}
+	result.ProjectSynthesis.ExpandCommand = journalContextExpandCommand(journalContextLayerProjectSynthesis, "", options.branch, 1)
+	result.LatestCheckpoint.ExpandCommand = journalContextExpandCommand(journalContextLayerScopedCheckpoint, "", options.branch, 1)
+	result.ActiveLineage.ExpandCommand = journalContextExpandCommand(journalContextLayerActiveLineage, result.ActiveLineage.Cursor, options.branch, limit)
+	result.UnresolvedBlockers.ExpandCommand = journalContextExpandCommand(journalContextLayerBlockers, result.UnresolvedBlockers.Cursor, options.branch, limit)
+	result.DeferredIntent.ExpandCommand = journalContextExpandCommand(journalContextLayerDeferredIntent, result.DeferredIntent.Cursor, options.branch, limit)
+	active.ExpandCommand = journalContextExpandCommand(journalContextLayerActiveChanges, active.Cursor, options.branch, limit)
+	result.BranchRecency.ExpandCommand = journalContextExpandCommand(journalContextLayerBranchRecency, result.BranchRecency.Cursor, options.branch, limit)
+	result.TransitionalTasks.ExpandCommand = journalContextExpandCommand(journalContextLayerTasks, result.TransitionalTasks.Cursor, options.branch, limit)
+}
+
+func composeJournalContextCLIResult(result state.JournalContext, active activeChangeLayer, selected string) journalContextCLIResult {
+	output := journalContextCLIResult{
+		ContractVersion:    state.JournalContextContractVersion,
+		Command:            "journal context",
+		DatabaseScope:      result.DatabaseScope,
+		DatabasePath:       result.DatabasePath,
+		ProjectID:          result.ProjectID,
+		ProjectName:        result.ProjectName,
+		ProjectCurrentPath: result.ProjectCurrentPath,
+		JournalWatermark:   result.JournalWatermark,
+		Branch:             result.Branch,
+		Diagnostics:        append([]state.JournalContextDiagnostic(nil), result.Diagnostics...),
+	}
+	if output.Diagnostics == nil {
+		output.Diagnostics = []state.JournalContextDiagnostic{}
+	}
+	include := func(layer string) bool { return selected == "" || selected == layer }
+	if include(journalContextLayerProjectSynthesis) {
+		output.Layers.ProjectSynthesis = &result.ProjectSynthesis
+	}
+	if include(journalContextLayerScopedCheckpoint) {
+		output.Layers.ScopedCheckpoint = &result.LatestCheckpoint
+	}
+	if include(journalContextLayerActiveLineage) {
+		output.Layers.ActiveLineage = &result.ActiveLineage
+	}
+	if include(journalContextLayerBlockers) {
+		output.Layers.UnresolvedBlockers = &result.UnresolvedBlockers
+	}
+	if include(journalContextLayerDeferredIntent) {
+		output.Layers.DeferredIntent = &result.DeferredIntent
+	}
+	if include(journalContextLayerActiveChanges) {
+		output.Layers.ActiveChanges = &active
+	}
+	if include(journalContextLayerBranchRecency) {
+		output.Layers.BranchRecency = &result.BranchRecency
+	}
+	if include(journalContextLayerTasks) {
+		output.Layers.TransitionalTasks = &result.TransitionalTasks
+	}
+	return output
+}
+
+func writeJournalContextHuman(out io.Writer, result journalContextCLIResult) {
 	fmt.Fprint(out, "\n  loaf journal context\n\n")
 	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
-	if result.LatestWrap != nil {
-		fmt.Fprintf(out, "  latest wrap: %s\n", formatJournalEntryLine(*result.LatestWrap))
-	} else {
-		fmt.Fprintln(out, "  latest wrap: none")
-	}
 	if result.Branch != "" {
 		fmt.Fprintf(out, "  branch: %s\n", result.Branch)
+	} else {
+		fmt.Fprintln(out, "  branch: detached or unavailable")
 	}
-	if len(result.BranchEntries) > 0 {
-		fmt.Fprintln(out, "  recent branch entries:")
-		for _, entry := range result.BranchEntries {
+	if layer := result.Layers.ProjectSynthesis; layer != nil {
+		writeJournalLayerHuman(out, journalContextLayerProjectSynthesis, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+		for _, entry := range layer.Items {
 			fmt.Fprintf(out, "    %s\n", formatJournalEntryLine(entry))
 		}
 	}
-	if len(result.OpenTasks) > 0 {
-		fmt.Fprintln(out, "  open tasks:")
-		for _, task := range result.OpenTasks {
+	if layer := result.Layers.ScopedCheckpoint; layer != nil {
+		writeJournalLayerHuman(out, journalContextLayerScopedCheckpoint, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+		for _, item := range layer.Items {
+			fmt.Fprintf(out, "    %s: %s\n", item.Label, formatJournalEntryLine(item.Entry))
+		}
+	}
+	if layer := result.Layers.ActiveLineage; layer != nil {
+		writeJournalLayerHuman(out, journalContextLayerActiveLineage, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+		for _, entry := range layer.Items {
+			fmt.Fprintf(out, "    %s\n", formatJournalEntryLine(entry))
+		}
+	}
+	if layer := result.Layers.UnresolvedBlockers; layer != nil {
+		writeJournalLayerHuman(out, journalContextLayerBlockers, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+		for _, item := range layer.Items {
+			fmt.Fprintf(out, "    %s: %s\n", item.Key, formatJournalEntryLine(item.Block))
+		}
+	}
+	if layer := result.Layers.DeferredIntent; layer != nil {
+		writeJournalLayerHuman(out, journalContextLayerDeferredIntent, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+		for _, item := range layer.Items {
+			fmt.Fprintf(out, "    %s: %s\n", item.OperationKey, item.Spark.Text)
+		}
+	}
+	if layer := result.Layers.ActiveChanges; layer != nil {
+		writeJournalLayerHuman(out, journalContextLayerActiveChanges, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+		for _, item := range layer.Items {
+			writeActiveChangeItemHuman(out, item)
+		}
+	}
+	if layer := result.Layers.BranchRecency; layer != nil {
+		writeJournalLayerHuman(out, journalContextLayerBranchRecency, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+		for _, entry := range layer.Items {
+			fmt.Fprintf(out, "    %s\n", formatJournalEntryLine(entry))
+		}
+	}
+	if layer := result.Layers.TransitionalTasks; layer != nil {
+		writeJournalLayerHuman(out, journalContextLayerTasks, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+		for _, task := range layer.Items {
 			fmt.Fprintf(out, "    %s (%s): %s\n", task.Ref, task.Status, task.Title)
 		}
 	}
-	return nil
+	for _, diagnostic := range result.Diagnostics {
+		fmt.Fprintf(out, "  diagnostic %s: %s\n", diagnostic.Code, diagnostic.Message)
+	}
+}
+
+func writeJournalLayerHuman(out io.Writer, name string, available bool, availableCount, shownCount int, expandCommand string) {
+	if !available {
+		fmt.Fprintf(out, "  %s: unavailable\n", name)
+		fmt.Fprintf(out, "    more: %s\n", expandCommand)
+		return
+	}
+	if availableCount == 0 {
+		fmt.Fprintf(out, "  %s: none\n", name)
+		fmt.Fprintf(out, "    more: %s\n", expandCommand)
+		return
+	}
+	fmt.Fprintf(out, "  %s: showing %d of %d\n", name, shownCount, availableCount)
+	fmt.Fprintf(out, "    more: %s\n", expandCommand)
 }
 
 func (r Runner) runJournalExport(args []string, out io.Writer, runtime state.Runtime) error {
