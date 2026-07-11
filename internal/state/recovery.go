@@ -453,7 +453,46 @@ func compareRestoreRows(ctx context.Context, backupPath, restorePath string) err
 	if !reflect.DeepEqual(sourceSearch, restoredSearch) {
 		return fmt.Errorf("journal search rows differ")
 	}
+	for _, table := range []struct {
+		name    string
+		orderBy string
+	}{
+		{name: "journal_origins", orderBy: "journal_entry_id"},
+		{name: "journal_deferrals", orderBy: "project_id, operation_key"},
+	} {
+		sourceRows, err := journalProvenanceRows(ctx, source, table.name, table.orderBy)
+		if err != nil {
+			return err
+		}
+		restoredRows, err := journalProvenanceRows(ctx, restored, table.name, table.orderBy)
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(sourceRows, restoredRows) {
+			return fmt.Errorf("%s rows differ", table.name)
+		}
+	}
 	return nil
+}
+
+func journalProvenanceRows(ctx context.Context, store *Store, table string, orderBy string) ([]map[string]any, error) {
+	exists, err := provenanceTableExists(ctx, store, table)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return []map[string]any{}, nil
+	}
+	rows, err := store.db.QueryContext(ctx, fmt.Sprintf("SELECT * FROM %s ORDER BY %s", quoteSQLiteIdentifier(table), orderBy))
+	if err != nil {
+		return nil, fmt.Errorf("read %s rows: %w", table, err)
+	}
+	defer rows.Close()
+	result, err := scanRows(rows)
+	if err != nil {
+		return nil, fmt.Errorf("scan %s rows: %w", table, err)
+	}
+	return result, nil
 }
 
 func canonicalJournalRows(ctx context.Context, store *Store) ([]string, error) {

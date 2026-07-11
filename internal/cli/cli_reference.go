@@ -193,6 +193,11 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
 					{Flags: "--json", Description: "Output migration contract, global database paths, action, and project identity when available"},
 				}},
+				{Name: "migrate schema", Description: "Preview or apply pending SQLite schema upgrades with a verified backup before mutation", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview pending schema upgrades without writing"},
+					{Flags: "--apply", Description: "Apply pending schema upgrades after creating and verifying a backup"},
+					{Flags: "--json", Description: "Output schema upgrade action, versions, pending migrations, backup, and verification as JSON"},
+				}},
 				{Name: "migrate lifecycle-statuses", Description: "Normalize legacy lifecycle statuses in SQLite", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview status normalization on a temporary database copy"},
 					{Flags: "--apply", Description: "Normalize live SQLite statuses after creating a backup"},
@@ -252,6 +257,14 @@ func cliReferenceCommands() []cliReferenceCommand {
 				{Name: "export", Description: "Export the project journal to markdown or JSONL", Options: []cliReferenceOption{
 					{Flags: "--format <format>", Description: "Output format: markdown (default) or jsonl"},
 				}},
+				{Name: "defer", Description: "Capture a self-sufficient deferred intent as a decision and open spark pair; stable operation IDs make first writes idempotent and reworded retries visible", Options: []cliReferenceOption{
+					{Flags: "--why <text>", Description: "Why this intent was deferred"},
+					{Flags: "--boundary <text>", Description: "What remains outside this packet"},
+					{Flags: "--trigger <text>", Description: "What should cause revisit"},
+					{Flags: "--operation-id <id>", Description: "Stable retry/idempotency key"},
+					{Flags: "--change <slug|path>", Description: "Optional retained Change local evidence"},
+					{Flags: "--json", Description: "Output the state result as JSON"},
+				}},
 			},
 		},
 		{
@@ -302,6 +315,11 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--dry-run", Description: "Preview the storage-home migration"},
 					{Flags: "--apply", Description: "Copy the legacy database without deleting it"},
 					{Flags: "--json", Description: "Output migration contract, global database paths, action, and project identity when available"},
+				}},
+				{Name: "schema", Description: "Preview or apply pending SQLite schema upgrades with a verified backup before mutation", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Preview pending schema upgrades without writing"},
+					{Flags: "--apply", Description: "Apply pending schema upgrades after creating and verifying a backup"},
+					{Flags: "--json", Description: "Output schema upgrade action, versions, pending migrations, backup, and verification as JSON"},
 				}},
 				{Name: "lifecycle-statuses", Description: "Normalize legacy lifecycle statuses in SQLite", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview status normalization on a temporary database copy"},

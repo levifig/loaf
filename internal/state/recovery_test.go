@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/levifig/loaf/internal/project"
@@ -54,6 +55,68 @@ func TestRehearseBackupRestoreCopiesAndVerifiesDisposableSnapshot(t *testing.T) 
 	}
 	if !bytes.Equal(sourceBytes, readRecoveryFile(t, backup.BackupPath)) {
 		t.Fatal("source backup changed after rehearsal output deletion")
+	}
+}
+
+func TestCompareRestoreRowsDetectsJournalProvenanceDifferences(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	resolver := PathResolver{StateHome: t.TempDir()}
+	if _, err := Initialize(ctx, root, resolver); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, resolver.StateHome)
+	dirty := false
+	if _, err := store.LogJournal(ctx, root, JournalLogOptions{Entry: "decision(recovery): origin", Origin: &JournalOriginInput{EnvelopeVersion: 1, CaptureMechanism: JournalOriginMechanismHook, SourceEvent: "recovery"}}); err != nil {
+		store.Close()
+		t.Fatalf("LogJournal() error = %v", err)
+	}
+	if _, err := store.DeferJournal(ctx, root, JournalDeferOptions{Intent: "recover intent", Why: "recover why", Boundary: "recover boundary", Trigger: "recover trigger", OperationID: "recover-op", Origin: &JournalOriginInput{EnvelopeVersion: 1, CaptureMechanism: JournalOriginMechanismHook, ChangePath: "docs/recovery.md", ChangeSHA256: strings.Repeat("a", 64), Dirty: &dirty, Reconstructable: &dirty}}); err != nil {
+		store.Close()
+		t.Fatalf("DeferJournal() error = %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	backup, err := Backup(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+	sourcePath := backup.BackupPath
+	for _, tc := range []struct {
+		name   string
+		mutate func(*Store) error
+		want   string
+	}{
+		{name: "origin", mutate: func(store *Store) error {
+			_, err := store.db.ExecContext(ctx, `UPDATE journal_origins SET capture_mechanism = 'corrupted'`)
+			return err
+		}, want: "journal_origins rows differ"},
+		{name: "deferral", mutate: func(store *Store) error {
+			_, err := store.db.ExecContext(ctx, `UPDATE journal_deferrals SET stored_digest = replace(stored_digest, 'a', 'b')`)
+			return err
+		}, want: "journal_deferrals rows differ"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			restoredPath := filepath.Join(t.TempDir(), "restored.sqlite")
+			if err := os.WriteFile(restoredPath, readRecoveryFile(t, sourcePath), 0o600); err != nil {
+				t.Fatalf("copy backup: %v", err)
+			}
+			restoredStore, err := OpenStore(restoredPath)
+			if err != nil {
+				t.Fatalf("OpenStore(restored) error = %v", err)
+			}
+			if err := tc.mutate(restoredStore); err != nil {
+				restoredStore.Close()
+				t.Fatalf("mutate restored: %v", err)
+			}
+			if err := restoredStore.Close(); err != nil {
+				t.Fatalf("Close(restored) error = %v", err)
+			}
+			if err := compareRestoreRows(ctx, sourcePath, restoredPath); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("compareRestoreRows() error = %v, want %q", err, tc.want)
+			}
+		})
 	}
 }
 

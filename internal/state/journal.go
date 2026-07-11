@@ -20,6 +20,7 @@ type JournalLogOptions struct {
 	ObservedBranch   string
 	ObservedWorktree string
 	HarnessSessionID string
+	Origin           *JournalOriginInput
 }
 
 // JournalLogResult is returned after a state-backed journal entry write.
@@ -77,6 +78,13 @@ func (s *Store) LogJournal(ctx context.Context, root project.Root, options Journ
 	if err != nil {
 		return JournalLogResult{}, err
 	}
+	var origin JournalOriginInput
+	if options.Origin != nil {
+		origin, err = normalizeJournalOriginInput(*options.Origin)
+		if err != nil {
+			return JournalLogResult{}, err
+		}
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	projectID, err := s.projectID(ctx, root)
 	if err != nil {
@@ -113,6 +121,11 @@ INSERT INTO journal_entries (
 	}
 	if err := insertJournalSearchTx(ctx, tx, projectID, id, options.HarnessSessionID, entryType, scope, message); err != nil {
 		return JournalLogResult{}, err
+	}
+	if options.Origin != nil {
+		if err := insertJournalOriginTx(ctx, tx, id, origin); err != nil {
+			return JournalLogResult{}, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return JournalLogResult{}, fmt.Errorf("commit journal transaction: %w", err)

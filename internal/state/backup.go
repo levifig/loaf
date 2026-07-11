@@ -19,54 +19,56 @@ import (
 
 // BackupResult describes a repository-external SQLite database backup.
 type BackupResult struct {
-	ContractVersion               int                 `json:"contract_version"`
-	DatabaseScope                 string              `json:"database_scope"`
-	DatabasePath                  string              `json:"database_path"`
-	BackupPath                    string              `json:"backup_path"`
-	Bytes                         int64               `json:"bytes"`
-	SHA256                        string              `json:"sha256"`
-	CreatedAt                     string              `json:"created_at"`
-	Verified                      bool                `json:"verified"`
-	SchemaVersion                 int                 `json:"schema_version"`
-	ProjectCount                  int                 `json:"project_count"`
-	ProjectID                     string              `json:"project_id"`
-	ProjectName                   string              `json:"project_name"`
-	ProjectCurrentPath            string              `json:"project_current_path"`
-	IntegrityCheck                string              `json:"integrity_check"`
-	ForeignKeyCheck               string              `json:"foreign_key_check"`
-	JournalRetrievalReady         bool                `json:"journal_retrieval_ready"`
-	JournalSearchParity           JournalSearchParity `json:"journal_search_parity"`
-	RecoveryTier                  string              `json:"recovery_tier"`
-	RequestedDestinationDirectory string              `json:"requested_destination_directory"`
-	ResolvedDestinationDirectory  string              `json:"resolved_destination_directory"`
-	DeviceLossProtected           bool                `json:"device_loss_protected"`
-	DeviceLossProtectionBasis     string              `json:"device_loss_protection_basis"`
-	SQLiteValid                   bool                `json:"sqlite_valid"`
-	RecoveryReady                 bool                `json:"recovery_ready"`
-	JournalWatermark              JournalWatermark    `json:"journal_watermark"`
+	ContractVersion               int                        `json:"contract_version"`
+	DatabaseScope                 string                     `json:"database_scope"`
+	DatabasePath                  string                     `json:"database_path"`
+	BackupPath                    string                     `json:"backup_path"`
+	Bytes                         int64                      `json:"bytes"`
+	SHA256                        string                     `json:"sha256"`
+	CreatedAt                     string                     `json:"created_at"`
+	Verified                      bool                       `json:"verified"`
+	SchemaVersion                 int                        `json:"schema_version"`
+	ProjectCount                  int                        `json:"project_count"`
+	ProjectID                     string                     `json:"project_id"`
+	ProjectName                   string                     `json:"project_name"`
+	ProjectCurrentPath            string                     `json:"project_current_path"`
+	IntegrityCheck                string                     `json:"integrity_check"`
+	ForeignKeyCheck               string                     `json:"foreign_key_check"`
+	JournalRetrievalReady         bool                       `json:"journal_retrieval_ready"`
+	JournalSearchParity           JournalSearchParity        `json:"journal_search_parity"`
+	JournalProvenanceIntegrity    JournalProvenanceIntegrity `json:"journal_provenance_integrity"`
+	RecoveryTier                  string                     `json:"recovery_tier"`
+	RequestedDestinationDirectory string                     `json:"requested_destination_directory"`
+	ResolvedDestinationDirectory  string                     `json:"resolved_destination_directory"`
+	DeviceLossProtected           bool                       `json:"device_loss_protected"`
+	DeviceLossProtectionBasis     string                     `json:"device_loss_protection_basis"`
+	SQLiteValid                   bool                       `json:"sqlite_valid"`
+	RecoveryReady                 bool                       `json:"recovery_ready"`
+	JournalWatermark              JournalWatermark           `json:"journal_watermark"`
 }
 
 // BackupVerificationResult describes a read-only verification of an existing SQLite backup.
 type BackupVerificationResult struct {
-	ContractVersion           int                 `json:"contract_version"`
-	DatabaseScope             string              `json:"database_scope"`
-	BackupPath                string              `json:"backup_path"`
-	Bytes                     int64               `json:"bytes"`
-	SHA256                    string              `json:"sha256"`
-	Verified                  bool                `json:"verified"`
-	SchemaVersion             int                 `json:"schema_version"`
-	ProjectCount              int                 `json:"project_count"`
-	Projects                  []ProjectIdentity   `json:"projects"`
-	IntegrityCheck            string              `json:"integrity_check"`
-	ForeignKeyCheck           string              `json:"foreign_key_check"`
-	RestoreDatabasePath       string              `json:"restore_database_path,omitempty"`
-	RestorePreservePath       string              `json:"restore_preserve_path,omitempty"`
-	RestoreValidationCommands []string            `json:"restore_validation_commands,omitempty"`
-	JournalRetrievalReady     bool                `json:"journal_retrieval_ready"`
-	JournalSearchParity       JournalSearchParity `json:"journal_search_parity"`
-	SQLiteValid               bool                `json:"sqlite_valid"`
-	RecoveryReady             bool                `json:"recovery_ready"`
-	JournalWatermark          JournalWatermark    `json:"journal_watermark"`
+	ContractVersion            int                        `json:"contract_version"`
+	DatabaseScope              string                     `json:"database_scope"`
+	BackupPath                 string                     `json:"backup_path"`
+	Bytes                      int64                      `json:"bytes"`
+	SHA256                     string                     `json:"sha256"`
+	Verified                   bool                       `json:"verified"`
+	SchemaVersion              int                        `json:"schema_version"`
+	ProjectCount               int                        `json:"project_count"`
+	Projects                   []ProjectIdentity          `json:"projects"`
+	IntegrityCheck             string                     `json:"integrity_check"`
+	ForeignKeyCheck            string                     `json:"foreign_key_check"`
+	RestoreDatabasePath        string                     `json:"restore_database_path,omitempty"`
+	RestorePreservePath        string                     `json:"restore_preserve_path,omitempty"`
+	RestoreValidationCommands  []string                   `json:"restore_validation_commands,omitempty"`
+	JournalRetrievalReady      bool                       `json:"journal_retrieval_ready"`
+	JournalSearchParity        JournalSearchParity        `json:"journal_search_parity"`
+	JournalProvenanceIntegrity JournalProvenanceIntegrity `json:"journal_provenance_integrity"`
+	SQLiteValid                bool                       `json:"sqlite_valid"`
+	RecoveryReady              bool                       `json:"recovery_ready"`
+	JournalWatermark           JournalWatermark           `json:"journal_watermark"`
 }
 
 // JournalWatermark identifies the latest canonical journal entry present in a
@@ -264,7 +266,8 @@ func backupWithDestination(ctx context.Context, root project.Root, resolver Path
 		DeviceLossProtected:           false,
 		DeviceLossProtectionBasis:     protectionBasis,
 		SQLiteValid:                   verification.sqliteValid,
-		RecoveryReady:                 verification.sqliteValid && verification.journalRetrievalReady,
+		JournalProvenanceIntegrity:    verification.journalProvenanceIntegrity,
+		RecoveryReady:                 verification.sqliteValid && verification.journalRetrievalReady && verification.journalProvenanceIntegrity.Ready,
 		JournalWatermark:              verification.journalWatermark,
 	}, nil
 }
@@ -315,28 +318,33 @@ func VerifyBackup(ctx context.Context, backupPath string) (BackupVerificationRes
 	if err != nil {
 		return BackupVerificationResult{}, fmt.Errorf("verify state backup journal search parity: %w", err)
 	}
+	provenance, err := InspectJournalProvenanceIntegrity(ctx, store)
+	if err != nil {
+		return BackupVerificationResult{}, fmt.Errorf("verify state backup journal provenance: %w", err)
+	}
 	watermark, err := readJournalWatermark(ctx, store)
 	if err != nil {
 		return BackupVerificationResult{}, fmt.Errorf("verify state backup journal watermark: %w", err)
 	}
 
 	return BackupVerificationResult{
-		ContractVersion:       StateJSONContractVersion,
-		DatabaseScope:         "global",
-		BackupPath:            backupPath,
-		Bytes:                 info.Size(),
-		SHA256:                sha256Sum,
-		Verified:              true,
-		SchemaVersion:         version,
-		ProjectCount:          len(projects.Projects),
-		Projects:              projects.Projects,
-		IntegrityCheck:        integrityCheck,
-		ForeignKeyCheck:       foreignKeyCheck,
-		JournalRetrievalReady: parity.Ready,
-		JournalSearchParity:   parity,
-		SQLiteValid:           true,
-		RecoveryReady:         parity.Ready,
-		JournalWatermark:      watermark,
+		ContractVersion:            StateJSONContractVersion,
+		DatabaseScope:              "global",
+		BackupPath:                 backupPath,
+		Bytes:                      info.Size(),
+		SHA256:                     sha256Sum,
+		Verified:                   true,
+		SchemaVersion:              version,
+		ProjectCount:               len(projects.Projects),
+		Projects:                   projects.Projects,
+		IntegrityCheck:             integrityCheck,
+		ForeignKeyCheck:            foreignKeyCheck,
+		JournalRetrievalReady:      parity.Ready,
+		JournalSearchParity:        parity,
+		JournalProvenanceIntegrity: provenance,
+		SQLiteValid:                true,
+		RecoveryReady:              parity.Ready && provenance.Ready,
+		JournalWatermark:           watermark,
 	}, nil
 }
 
@@ -534,17 +542,18 @@ func defaultVolatileRoots() []string {
 }
 
 type backupVerification struct {
-	schemaVersion         int
-	projectCount          int
-	projectID             string
-	projectName           string
-	projectCurrentPath    string
-	integrityCheck        string
-	foreignKeyCheck       string
-	journalRetrievalReady bool
-	journalSearchParity   JournalSearchParity
-	sqliteValid           bool
-	journalWatermark      JournalWatermark
+	schemaVersion              int
+	projectCount               int
+	projectID                  string
+	projectName                string
+	projectCurrentPath         string
+	integrityCheck             string
+	foreignKeyCheck            string
+	journalRetrievalReady      bool
+	journalSearchParity        JournalSearchParity
+	journalProvenanceIntegrity JournalProvenanceIntegrity
+	sqliteValid                bool
+	journalWatermark           JournalWatermark
 }
 
 func verifyBackup(ctx context.Context, backupPath string, root project.Root) (backupVerification, error) {
@@ -587,22 +596,27 @@ func verifyBackup(ctx context.Context, backupPath string, root project.Root) (ba
 	if err != nil {
 		return backupVerification{}, fmt.Errorf("verify state backup journal search parity: %w", err)
 	}
+	provenance, err := InspectJournalProvenanceIntegrity(ctx, store)
+	if err != nil {
+		return backupVerification{}, fmt.Errorf("verify state backup journal provenance: %w", err)
+	}
 	watermark, err := readJournalWatermark(ctx, store)
 	if err != nil {
 		return backupVerification{}, fmt.Errorf("verify state backup journal watermark: %w", err)
 	}
 	return backupVerification{
-		schemaVersion:         version,
-		projectCount:          projectCount,
-		projectID:             identity.ID,
-		projectName:           identity.FriendlyName,
-		projectCurrentPath:    identity.CurrentPath,
-		integrityCheck:        integrityCheck,
-		foreignKeyCheck:       foreignKeyCheck,
-		journalRetrievalReady: parity.Ready,
-		journalSearchParity:   parity,
-		sqliteValid:           true,
-		journalWatermark:      watermark,
+		schemaVersion:              version,
+		projectCount:               projectCount,
+		projectID:                  identity.ID,
+		projectName:                identity.FriendlyName,
+		projectCurrentPath:         identity.CurrentPath,
+		integrityCheck:             integrityCheck,
+		foreignKeyCheck:            foreignKeyCheck,
+		journalRetrievalReady:      parity.Ready,
+		journalSearchParity:        parity,
+		journalProvenanceIntegrity: provenance,
+		sqliteValid:                true,
+		journalWatermark:           watermark,
 	}, nil
 }
 

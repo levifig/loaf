@@ -261,9 +261,21 @@ func TestRepairJournalSearchHoldsImmediateLockThroughBackupAndCommit(t *testing.
 		t.Fatal("timed out waiting for immediate repair lock")
 	}
 
+	// The public writer correctly rejects known divergence before it attempts a
+	// write. Use an already-open store to exercise the actual SQLite writer
+	// against the repair's immediate transaction instead.
+	databasePath, err := resolver.DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	writerStore, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore(writer) error = %v", err)
+	}
+	defer writerStore.Close()
 	writerDone := make(chan error, 1)
 	go func() {
-		_, err := LogJournal(ctx, root, resolver, JournalLogOptions{Entry: "decision(lock): after"})
+		_, err := writerStore.LogJournal(ctx, root, JournalLogOptions{Entry: "decision(lock): after"})
 		writerDone <- err
 	}()
 	select {
@@ -473,8 +485,16 @@ func TestArchiveLegacyProjectDatabaseDryRunDoesNotMoveFiles(t *testing.T) {
 	if result.Action != LegacyProjectDatabaseArchiveAction {
 		t.Fatalf("Action = %q, want %q", result.Action, LegacyProjectDatabaseArchiveAction)
 	}
-	if len(result.MatchedPaths) != 1 || result.MatchedPaths[0] != legacyPath {
-		t.Fatalf("MatchedPaths = %#v, want legacy path %q", result.MatchedPaths, legacyPath)
+	wantMatched := []string{legacyPath}
+	for _, suffix := range []string{"-wal", "-shm"} {
+		if _, err := os.Stat(legacyPath + suffix); err == nil {
+			wantMatched = append(wantMatched, legacyPath+suffix)
+		} else if !os.IsNotExist(err) {
+			t.Fatalf("stat legacy sidecar %q: %v", suffix, err)
+		}
+	}
+	if !reflect.DeepEqual(result.MatchedPaths, wantMatched) {
+		t.Fatalf("MatchedPaths = %#v, want present database artifacts %#v", result.MatchedPaths, wantMatched)
 	}
 	if _, err := os.Stat(legacyPath); err != nil {
 		t.Fatalf("legacy database moved during dry-run: %v", err)
@@ -502,6 +522,14 @@ func TestArchiveLegacyProjectDatabaseApplyMovesDatabaseAndSidecars(t *testing.T)
 	if err := os.WriteFile(sidecarPath, []byte("sidecar"), 0o600); err != nil {
 		t.Fatalf("write legacy sidecar error = %v", err)
 	}
+	wantArchived := []string{legacyPath}
+	for _, suffix := range []string{"-wal", "-shm"} {
+		if _, err := os.Stat(legacyPath + suffix); err == nil {
+			wantArchived = append(wantArchived, legacyPath+suffix)
+		} else if !os.IsNotExist(err) {
+			t.Fatalf("stat legacy sidecar %q: %v", suffix, err)
+		}
+	}
 
 	result, err := ArchiveLegacyProjectDatabase(root, PathResolver{}, true)
 	if err != nil {
@@ -522,8 +550,11 @@ func TestArchiveLegacyProjectDatabaseApplyMovesDatabaseAndSidecars(t *testing.T)
 	if !result.Applied {
 		t.Fatal("Applied = false, want true")
 	}
-	if len(result.ArchivedPaths) != 2 {
-		t.Fatalf("ArchivedPaths = %#v, want database and sidecar", result.ArchivedPaths)
+	// SQLite may omit an unused WAL or SHM sidecar. Every sidecar that is
+	// present must be archived, without treating an ephemeral SHM file as a
+	// required durable artifact.
+	if len(result.ArchivedPaths) != len(wantArchived) {
+		t.Fatalf("ArchivedPaths = %#v, want one archive per present source %#v", result.ArchivedPaths, wantArchived)
 	}
 	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
 		t.Fatalf("legacy database still exists after archive; err = %v", err)

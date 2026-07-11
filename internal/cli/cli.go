@@ -122,6 +122,14 @@ type commandErrorJSON struct {
 	RestoreResult                 *state.BackupRestoreResult `json:"restore_result,omitempty"`
 	BackupVerified                bool                       `json:"backup_verified"`
 	Code                          string                     `json:"code,omitempty"`
+	Field                         string                     `json:"field,omitempty"`
+	Ref                           string                     `json:"ref,omitempty"`
+	Path                          string                     `json:"path,omitempty"`
+	DatabasePath                  string                     `json:"database_path,omitempty"`
+	CurrentVersion                int                        `json:"current_version,omitempty"`
+	RequiredVersion               int                        `json:"required_version,omitempty"`
+	PendingVersions               []int                      `json:"pending_versions,omitempty"`
+	Suggestion                    string                     `json:"suggestion,omitempty"`
 	JournalSearchParity           *state.JournalSearchParity `json:"journal_search_parity,omitempty"`
 	CurrentPath                   string                     `json:"current_path,omitempty"`
 	KnownCurrentPaths             []string                   `json:"known_current_paths,omitempty"`
@@ -1658,6 +1666,7 @@ func writeStateMigrateHelp(out io.Writer) {
 	fmt.Fprintln(out, "Sources:")
 	fmt.Fprintln(out, "  markdown      Import .agents Markdown artifacts into SQLite")
 	fmt.Fprintln(out, "  storage-home  Copy legacy XDG_STATE_HOME state into XDG_DATA_HOME")
+	fmt.Fprintln(out, "  schema        Preview or apply pending SQLite schema upgrades")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  -h, --help    Show help")
@@ -1837,7 +1846,7 @@ func (r Runner) runProjectList(args []string, out io.Writer, runtime state.Runti
 	if err != nil {
 		return err
 	}
-	_, store, err := r.openProjectStoreReadOnly(runtime)
+	_, store, err := r.openProjectStoreDiagnostic(runtime)
 	if err != nil {
 		return err
 	}
@@ -1858,7 +1867,7 @@ func (r Runner) runProjectShow(args []string, out io.Writer, runtime state.Runti
 	if err != nil {
 		return err
 	}
-	projectRoot, store, err := r.openProjectStoreReadOnly(runtime)
+	projectRoot, store, err := r.openProjectStoreDiagnostic(runtime)
 	if err != nil {
 		return err
 	}
@@ -1890,7 +1899,7 @@ func (r Runner) runProjectRename(args []string, out io.Writer, runtime state.Run
 		}
 		return err
 	}
-	projectRoot, store, err := r.openProjectStoreReadOnly(runtime)
+	projectRoot, store, err := r.openProjectStoreDiagnostic(runtime)
 	if err != nil {
 		if options.jsonOutput {
 			return writeJSONCommandError(out, "project rename", err)
@@ -1975,7 +1984,7 @@ func (r Runner) runProjectMove(args []string, out io.Writer, runtime state.Runti
 		}
 		return err
 	}
-	projectRoot, store, err := r.openProjectStoreReadOnly(runtime)
+	projectRoot, store, err := r.openProjectStoreDiagnostic(runtime)
 	if err != nil {
 		if options.jsonOutput {
 			return writeJSONCommandError(out, "project move", err)
@@ -2119,8 +2128,54 @@ func (r Runner) openProjectStoreReadOnly(runtime state.Runtime) (project.Root, *
 	if err != nil {
 		return project.Root{}, nil, err
 	}
-	_, err = store.ValidateCurrentSchema(context.Background())
+	err = store.RequireCurrentSchema(context.Background())
 	if err != nil {
+		store.Close()
+		return project.Root{}, nil, fmt.Errorf("project state database is invalid at %s (scope: global database): %w; run `loaf state doctor`", databasePath, err)
+	}
+	return projectRoot, store, nil
+}
+
+// openProjectStoreDiagnostic opens schema-current state for a read-only
+// diagnostic surface. It intentionally does not require operational invariants:
+// callers such as `loaf project list` must be able to inspect a divergent path
+// record in order to make the corresponding doctor repair plan executable.
+func (r Runner) openProjectStoreDiagnostic(runtime state.Runtime) (project.Root, *state.Store, error) {
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	resolver := state.PathResolver{StateHome: r.StateHome}
+	databasePath, err := resolver.DatabasePath(projectRoot)
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	if info, err := os.Stat(databasePath); err != nil {
+		if os.IsNotExist(err) {
+			return project.Root{}, nil, fmt.Errorf("project state database does not exist at %s (scope: global database); run `loaf state status` to inspect it or `loaf state init` to create it", databasePath)
+		}
+		return project.Root{}, nil, fmt.Errorf("stat state database: %w", err)
+	} else if info.IsDir() {
+		return project.Root{}, nil, fmt.Errorf("state database path is a directory: %s", databasePath)
+	}
+	store, err := state.OpenStoreReadOnly(databasePath)
+	if err != nil {
+		return project.Root{}, nil, err
+	}
+	version, err := store.SchemaVersion(context.Background())
+	if err != nil {
+		store.Close()
+		return project.Root{}, nil, fmt.Errorf("project state database is invalid at %s (scope: global database): %w; run `loaf state doctor`", databasePath, err)
+	}
+	if version != state.CurrentSchemaVersion() {
+		err := store.RequireCurrentSchema(context.Background())
+		store.Close()
+		if err != nil {
+			return project.Root{}, nil, fmt.Errorf("project state database is invalid at %s (scope: global database): %w; run `loaf state doctor`", databasePath, err)
+		}
+		return project.Root{}, nil, fmt.Errorf("project state database is invalid at %s (scope: global database): schema version changed while opening; run `loaf state doctor`", databasePath)
+	}
+	if _, err := store.ValidateCurrentSchema(context.Background()); err != nil {
 		store.Close()
 		return project.Root{}, nil, fmt.Errorf("project state database is invalid at %s (scope: global database): %w; run `loaf state doctor`", databasePath, err)
 	}
@@ -2151,7 +2206,7 @@ func (r Runner) openProjectStore(runtime state.Runtime) (project.Root, *state.St
 	if err != nil {
 		return project.Root{}, nil, err
 	}
-	if err := store.ApplyMigrations(context.Background()); err != nil {
+	if err := store.RequireCurrentSchema(context.Background()); err != nil {
 		store.Close()
 		return project.Root{}, nil, err
 	}
@@ -3071,6 +3126,7 @@ func (r Runner) runStateMigrate(args []string, out io.Writer, runtime state.Runt
 	if writeNestedHelp(out, args, map[string]func(io.Writer){
 		"lifecycle-statuses": writeStateMigrateLifecycleStatusesHelp,
 		"journal-first":      writeStateMigrateJournalFirstHelp,
+		"schema":             writeStateMigrateSchemaHelp,
 		"markdown":           writeStateMigrateMarkdownHelp,
 		"storage-home":       writeStateMigrateStorageHomeHelp,
 	}) {
@@ -3081,6 +3137,8 @@ func (r Runner) runStateMigrate(args []string, out io.Writer, runtime state.Runt
 		return r.runStateMigrateLifecycleStatuses(args[1:], out, runtime)
 	case "journal-first":
 		return r.runJournalFirstMigration(args[1:], out, runtime, "loaf state migrate journal-first")
+	case "schema":
+		return r.runSchemaUpgrade(args[1:], out, runtime, "loaf state migrate schema")
 	case "markdown":
 		return r.runStateMigrateMarkdown(args[1:], out, runtime)
 	case "storage-home":
@@ -3102,6 +3160,14 @@ func writeStateMigrateLifecycleStatusesHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf state migrate lifecycle-statuses [--dry-run|--apply|--rollback <manifest>] [--json]", "Normalize legacy lifecycle statuses in SQLite with a backup and rollback manifest.", "--dry-run  Preview on a temporary database copy", "--apply    Normalize live SQLite statuses after creating a backup", "--rollback Restore statuses from a lifecycle-statuses rollback manifest", "--json     Output migration contract, project context, counts, backup, and rollback fields as JSON")
 }
 
+func writeStateMigrateSchemaHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state migrate schema [--dry-run|--apply] [--json]", "Preview or apply pending SQLite schema upgrades with a verified backup before mutation.", "--dry-run  Preview pending schema upgrades without writing", "--apply    Apply pending schema upgrades after creating and verifying a backup", "--json     Output schema upgrade action, versions, pending migrations, backup, and verification as JSON")
+}
+
+func writeMigrateSchemaHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf migrate schema [--dry-run|--apply] [--json]", "Preview or apply pending SQLite schema upgrades with a verified backup before mutation.", "--dry-run  Preview pending schema upgrades without writing", "--apply    Apply pending schema upgrades after creating and verifying a backup", "--json     Output schema upgrade action, versions, pending migrations, backup, and verification as JSON")
+}
+
 func writeMigrateMarkdownHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf migrate markdown [--dry-run|--apply|--resume] [--backup] [--remove-source] [--rollback <manifest>] [--json]", "Import .agents Markdown artifacts into SQLite without mutating Markdown by default.", "--dry-run       Preview import work", "--apply         Apply the import", "--resume        Resume an interrupted import", "--backup        Create SQLite and .agents rollback backups during apply/resume", "--remove-source Remove ephemeral Markdown sources; requires --backup", "--rollback      Restore .agents files from a rollback manifest", "--json          Output migration contract, scope, project context, counts, and rollback fields as JSON")
 }
@@ -3114,6 +3180,81 @@ func writeMigrateLifecycleStatusesHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf migrate lifecycle-statuses [--dry-run|--apply|--rollback <manifest>] [--json]", "Normalize legacy lifecycle statuses in SQLite with a backup and rollback manifest.", "--dry-run  Preview on a temporary database copy", "--apply    Normalize live SQLite statuses after creating a backup", "--rollback Restore statuses from a lifecycle-statuses rollback manifest", "--json     Output migration contract, project context, counts, backup, and rollback fields as JSON")
 }
 
+type schemaUpgradeOptions struct {
+	dryRun     bool
+	apply      bool
+	jsonOutput bool
+}
+
+func parseSchemaUpgradeArgs(args []string, command string) (schemaUpgradeOptions, error) {
+	var options schemaUpgradeOptions
+	for _, arg := range args {
+		switch arg {
+		case "--dry-run":
+			if options.dryRun {
+				return schemaUpgradeOptions{}, fmt.Errorf("%s cannot repeat --dry-run", command)
+			}
+			options.dryRun = true
+		case "--apply":
+			if options.apply {
+				return schemaUpgradeOptions{}, fmt.Errorf("%s cannot repeat --apply", command)
+			}
+			options.apply = true
+		case "--json":
+			if options.jsonOutput {
+				return schemaUpgradeOptions{}, fmt.Errorf("%s cannot repeat --json", command)
+			}
+			options.jsonOutput = true
+		default:
+			return schemaUpgradeOptions{}, fmt.Errorf("unknown option %q", arg)
+		}
+	}
+	if options.dryRun && options.apply {
+		return schemaUpgradeOptions{}, fmt.Errorf("%s cannot combine --apply and --dry-run", command)
+	}
+	if !options.dryRun && !options.apply {
+		return schemaUpgradeOptions{}, fmt.Errorf("%s requires --dry-run or --apply", command)
+	}
+	return options, nil
+}
+
+func (r Runner) runSchemaUpgrade(args []string, out io.Writer, runtime state.Runtime, displayCommand string) error {
+	command := strings.TrimPrefix(displayCommand, "loaf ")
+	jsonRequested := hasFlag(args, "--json")
+	options, err := parseSchemaUpgradeArgs(args, displayCommand)
+	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, command, err)
+		}
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, command, err)
+		}
+		return err
+	}
+	resolver := state.PathResolver{StateHome: r.StateHome}
+	var result state.SchemaUpgradeResult
+	if options.apply {
+		result, err = state.ApplySchemaUpgrade(context.Background(), projectRoot, resolver)
+	} else {
+		result, err = state.PreviewSchemaUpgrade(context.Background(), projectRoot, resolver)
+	}
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, command, err)
+		}
+		return err
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeSchemaUpgradeHuman(out, displayCommand, result, options.apply)
+	return nil
+}
+
 func (r Runner) runMigrate(args []string, out io.Writer, runtime state.Runtime) error {
 	if len(args) == 0 {
 		return fmt.Errorf("migrate requires a source")
@@ -3121,6 +3262,7 @@ func (r Runner) runMigrate(args []string, out io.Writer, runtime state.Runtime) 
 	if writeNestedHelp(out, args, map[string]func(io.Writer){
 		"lifecycle-statuses": writeMigrateLifecycleStatusesHelp,
 		"journal-first":      writeMigrateJournalFirstHelp,
+		"schema":             writeMigrateSchemaHelp,
 		"markdown":           writeMigrateMarkdownHelp,
 		"storage-home":       writeMigrateStorageHomeHelp,
 	}) {
@@ -3131,6 +3273,8 @@ func (r Runner) runMigrate(args []string, out io.Writer, runtime state.Runtime) 
 		return r.runLifecycleStatusMigration(args[1:], out, runtime, "loaf migrate lifecycle-statuses")
 	case "journal-first":
 		return r.runJournalFirstMigration(args[1:], out, runtime, "loaf migrate journal-first")
+	case "schema":
+		return r.runSchemaUpgrade(args[1:], out, runtime, "loaf migrate schema")
 	case "markdown":
 		return r.runMarkdownMigration(args[1:], out, runtime, "loaf migrate markdown")
 	case "storage-home":
@@ -3508,6 +3652,36 @@ func writeLifecycleStatusMigrationHuman(out io.Writer, displayCommand string, re
 		}
 	case state.LifecycleStatusMigrationActionRollback:
 		fmt.Fprintln(out, "next: inspect state before rerunning lifecycle status migration")
+	}
+}
+
+func writeSchemaUpgradeHuman(out io.Writer, displayCommand string, result state.SchemaUpgradeResult, applyRequested bool) {
+	flag := "--dry-run"
+	if applyRequested {
+		flag = "--apply"
+	}
+	fmt.Fprintf(out, "%s %s\n", displayCommand, flag)
+	fmt.Fprintf(out, "scope: %s database, schema migration\n", result.DatabaseScope)
+	fmt.Fprintf(out, "database: %s\n", result.DatabasePath)
+	fmt.Fprintf(out, "current schema version: %d\n", result.CurrentVersion)
+	fmt.Fprintf(out, "required schema version: %d\n", result.RequiredVersion)
+	if len(result.PendingVersions) == 0 {
+		fmt.Fprintln(out, "pending versions: none")
+	} else {
+		fmt.Fprintf(out, "pending versions: %v\n", result.PendingVersions)
+	}
+	fmt.Fprintf(out, "action: %s\n", result.Action)
+	fmt.Fprintf(out, "applied: %t\n", result.Applied)
+	fmt.Fprintf(out, "verified: %t\n", result.Verified)
+	fmt.Fprintf(out, "backup verified: %t\n", result.BackupVerified)
+	if result.BackupPath != "" {
+		fmt.Fprintf(out, "backup: %s\n", result.BackupPath)
+	}
+	fmt.Fprintf(out, "final schema version: %d\n", result.SchemaVersion)
+	if result.Action == state.SchemaUpgradeActionDryRun && len(result.PendingVersions) > 0 {
+		fmt.Fprintln(out, "next: rerun with --apply to create a verified backup and apply pending schema upgrades")
+	} else if result.Action == state.SchemaUpgradeActionAlreadyReady {
+		fmt.Fprintln(out, "next: no schema upgrade is needed")
 	}
 }
 
@@ -13241,6 +13415,34 @@ func writeJSONCommandError(out io.Writer, command string, err error) error {
 		output.Code = recoveryErr.Code
 		output.BackupPath = recoveryErr.BackupPath
 		output.RestorePath = recoveryErr.RestorePath
+	}
+	var changeOriginErr *ChangeOriginError
+	if errors.As(err, &changeOriginErr) {
+		output.Code = changeOriginErr.Code
+		output.Ref = changeOriginErr.Ref
+		output.Path = changeOriginErr.Path
+	}
+	var journalDeferValidationErr *state.JournalDeferValidationError
+	if errors.As(err, &journalDeferValidationErr) {
+		output.Code = "journal-defer-validation"
+		output.Field = journalDeferValidationErr.Field
+	}
+	var journalDeferTransactionErr *state.JournalDeferTransactionError
+	if errors.As(err, &journalDeferTransactionErr) {
+		output.Code = "journal-defer-transaction"
+		output.Field = journalDeferTransactionErr.Stage
+	}
+	var schemaUpgradeErr *state.SchemaUpgradeRequiredError
+	if errors.As(err, &schemaUpgradeErr) {
+		output.Code = schemaUpgradeErr.Code
+		output.DatabasePath = schemaUpgradeErr.DatabasePath
+		output.CurrentVersion = schemaUpgradeErr.CurrentVersion
+		output.RequiredVersion = schemaUpgradeErr.RequiredVersion
+		output.PendingVersions = schemaUpgradeErr.PendingVersions
+		output.Suggestion = schemaUpgradeErr.Command
+	}
+	if command == "journal defer" && output.Code == "" {
+		output.Code = "journal-defer-error"
 	}
 	if writeErr := writeJSON(out, output); writeErr != nil {
 		return writeErr

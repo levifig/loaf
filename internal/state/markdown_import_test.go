@@ -71,6 +71,14 @@ func TestApplyMarkdownMigrationImportsArtifactsAndPreservesSources(t *testing.T)
 	assertTableCount(t, store, "sparks", 1)
 	assertTableCount(t, store, "artifact_bodies", 5)
 	assertTableCount(t, store, "journal_entries", 1)
+	assertTableCount(t, store, "journal_origins", 1)
+	var mechanism, sourceEvent, branch, worktree, harnessSessionID string
+	if err := store.db.QueryRowContext(context.Background(), `SELECT capture_mechanism, source_event, COALESCE(branch, ''), COALESCE(worktree, ''), COALESCE(harness_session_id, '') FROM journal_origins`).Scan(&mechanism, &sourceEvent, &branch, &worktree, &harnessSessionID); err != nil {
+		t.Fatalf("read imported journal origin: %v", err)
+	}
+	if mechanism != JournalOriginMechanismMigration || sourceEvent != "markdown_import" || branch != "feature/example" || worktree != "" || harnessSessionID != "" {
+		t.Fatalf("imported origin = %q/%q/%q/%q/%q, want migration/markdown_import and observable legacy fields", mechanism, sourceEvent, branch, worktree, harnessSessionID)
+	}
 	assertTableCount(t, store, "relationships", 2)
 	assertArtifactSearchHitCount(t, store, "Second", 1)
 
@@ -135,6 +143,54 @@ WHERE tasks.project_id = ?
 	assertTableCount(t, store, "tasks", 1)
 	assertTableCount(t, store, "relationships", 2)
 	assertTableCount(t, store, "aliases", 7)
+	assertTableCount(t, store, "journal_origins", 1)
+}
+
+func TestImportMarkdownBackfillsMissingOriginAndProtectsNonMigrationOrigin(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	writeAgentsFile(t, root.Path(), "sessions/import-origin.md", `---
+branch: feature/origin
+harness_session_id: hsid-origin
+---
+[2026-07-10 10:00] decision(import): preserve origin
+`)
+	result, err := ApplyMarkdownMigration(ctx, root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("ApplyMarkdownMigration() error = %v", err)
+	}
+	store, err := OpenStore(result.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+	var journalID string
+	if err := store.db.QueryRowContext(ctx, `SELECT id FROM journal_entries`).Scan(&journalID); err != nil {
+		t.Fatalf("read imported journal ID: %v", err)
+	}
+	if _, err := store.db.ExecContext(ctx, `DELETE FROM journal_origins WHERE project_id = ? AND journal_entry_id = ?`, result.ProjectID, journalID); err != nil {
+		t.Fatalf("delete origin fixture: %v", err)
+	}
+	if err := store.ImportMarkdown(ctx, root); err != nil {
+		t.Fatalf("ImportMarkdown(backfill) error = %v", err)
+	}
+	if got := countIdentityRows(t, store, `SELECT COUNT(*) FROM journal_origins WHERE project_id = ? AND journal_entry_id = ?`, result.ProjectID, journalID); got != 1 {
+		t.Fatalf("backfilled origin rows = %d, want 1", got)
+	}
+	if _, err := store.db.ExecContext(ctx, `UPDATE journal_origins SET capture_mechanism = 'manual', source_event = 'manual' WHERE project_id = ? AND journal_entry_id = ?`, result.ProjectID, journalID); err != nil {
+		t.Fatalf("mark non-migration origin: %v", err)
+	}
+	if err := store.ImportMarkdown(ctx, root); err == nil || !strings.Contains(err.Error(), "refusing to overwrite non-migration journal origin") {
+		t.Fatalf("ImportMarkdown(non-migration origin) error = %v, want deterministic refusal", err)
+	}
+	var mechanism string
+	if err := store.db.QueryRowContext(ctx, `SELECT capture_mechanism FROM journal_origins WHERE project_id = ? AND journal_entry_id = ?`, result.ProjectID, journalID).Scan(&mechanism); err != nil {
+		t.Fatalf("read protected origin: %v", err)
+	}
+	if mechanism != "manual" {
+		t.Fatalf("protected origin mechanism = %q, want manual", mechanism)
+	}
 }
 
 func TestApplyMarkdownMigrationDoesNotRequireTasksJSON(t *testing.T) {

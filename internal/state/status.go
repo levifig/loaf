@@ -548,6 +548,30 @@ func inspectOperationalInvariants(ctx context.Context, store *Store) ([]Diagnost
 		})
 	}
 
+	journalProvenance, err := InspectJournalProvenanceIntegrity(ctx, store)
+	if err != nil {
+		return nil, false, err
+	}
+	if !journalProvenance.Ready {
+		valid = false
+		diagnostics = append(diagnostics, Diagnostic{
+			Severity: "error",
+			Code:     "journal-provenance-invalid",
+			Category: RepairCategoryRelationshipProvenance,
+			Policy:   DiagnosticPolicyInvalidLocalData,
+			Message:  fmt.Sprintf("journal provenance endpoints are invalid (origin_missing_journal=%d, origin_project_mismatches=%d, deferral_missing_decision=%d, deferral_missing_spark=%d, deferral_project_mismatches=%d)", journalProvenance.OriginMissingJournal, journalProvenance.OriginProjectMismatches, journalProvenance.DeferralMissingDecision, journalProvenance.DeferralMissingSpark, journalProvenance.DeferralProjectMismatches),
+			Details: map[string]any{
+				"origin_rows":                 journalProvenance.OriginRows,
+				"origin_missing_journal":      journalProvenance.OriginMissingJournal,
+				"origin_project_mismatches":   journalProvenance.OriginProjectMismatches,
+				"deferral_rows":               journalProvenance.DeferralRows,
+				"deferral_missing_decision":   journalProvenance.DeferralMissingDecision,
+				"deferral_missing_spark":      journalProvenance.DeferralMissingSpark,
+				"deferral_project_mismatches": journalProvenance.DeferralProjectMismatches,
+			},
+		})
+	}
+
 	return diagnostics, valid, nil
 }
 

@@ -25,6 +25,7 @@ func (r Runner) runJournal(args []string, out io.Writer, runtime state.Runtime) 
 		"recent":  writeJournalRecentHelp,
 		"search":  writeJournalSearchHelp,
 		"show":    writeJournalShowHelp,
+		"defer":   writeJournalDeferHelp,
 		"context": writeJournalContextHelp,
 		"export":  writeJournalExportHelp,
 	}) {
@@ -39,6 +40,8 @@ func (r Runner) runJournal(args []string, out io.Writer, runtime state.Runtime) 
 		return r.runJournalSearch(args[1:], out, runtime)
 	case "show":
 		return r.runJournalShow(args[1:], out, runtime)
+	case "defer":
+		return r.runJournalDefer(args[1:], out, runtime)
 	case "context":
 		return r.runJournalContext(args[1:], out, runtime)
 	case "export":
@@ -54,6 +57,7 @@ func writeJournalHelp(out io.Writer) {
 		"recent    Show the recent project timeline",
 		"search    Full-text search journal entries",
 		"show      Show one journal entry by id",
+		"defer     Capture a self-sufficient deferred intent and spark",
 		"context   Emit the layered continuity digest",
 		"export    Export the journal to markdown or JSONL")
 }
@@ -86,6 +90,17 @@ func writeJournalSearchHelp(out io.Writer) {
 func writeJournalShowHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf journal show <entry-id> [--json]", "Show one journal entry by id.",
 		"--json  Output the entry and project context as JSON")
+}
+
+func writeJournalDeferHelp(out io.Writer) {
+	writeUsageHelp(out, `loaf journal defer "<intent>" --why "..." --boundary "..." --trigger "..." --operation-id "..." [--change <slug|path>] [--json]`, "Capture one self-sufficient deferred intent as a reciprocal decision and open spark pair; stable operation IDs make first writes idempotent and reworded retries visible.",
+		"<intent>              One-line intent to revisit",
+		"--why                 Why this intent was deferred",
+		"--boundary            What remains outside this packet",
+		"--trigger             What should cause revisit",
+		"--operation-id        Stable retry/idempotency key",
+		"--change              Optional retained Change slug or canonical path for local evidence",
+		"--json                Output the state result as JSON")
 }
 
 func writeJournalContextHelp(out io.Writer) {
@@ -207,11 +222,13 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 	if !options.branchSet {
 		branch = state.ObservedGitBranch(worktree)
 	}
+	origin := ResolveManualJournalOrigin(worktree, "journal.log")
 	result, err := state.LogJournal(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.JournalLogOptions{
 		Entry:            options.entry,
 		ObservedBranch:   branch,
 		ObservedWorktree: worktree,
 		HarnessSessionID: options.harnessSessionID,
+		Origin:           &origin,
 	})
 	if err != nil {
 		// Hook-invoked logging (git/gh/task PostToolUse via --from-hook, or Linear
@@ -468,7 +485,181 @@ func (r Runner) runJournalShow(args []string, out io.Writer, runtime state.Runti
 	writeProjectMutationContext(out, "  ", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
 	fmt.Fprintf(out, "  id: %s\n", result.Entry.ID)
 	fmt.Fprintf(out, "  %s\n", formatJournalEntryLine(result.Entry))
+	writeJournalOriginHuman(out, result.Origin, "  ")
 	return nil
+}
+
+type journalDeferOptions struct {
+	intent      string
+	why         string
+	boundary    string
+	trigger     string
+	operationID string
+	change      string
+	jsonOutput  bool
+}
+
+func parseJournalDeferArgs(args []string) (journalDeferOptions, error) {
+	var options journalDeferOptions
+	seen := map[string]bool{}
+	var positional []string
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if seen[arg] && arg == "--json" {
+			return journalDeferOptions{}, &state.JournalDeferValidationError{Field: "json", Err: fmt.Errorf("flag may be specified only once")}
+		}
+		switch arg {
+		case "--json":
+			seen[arg] = true
+			options.jsonOutput = true
+		case "--why", "--boundary", "--trigger", "--operation-id", "--change":
+			if seen[arg] {
+				return journalDeferOptions{}, &state.JournalDeferValidationError{Field: strings.TrimPrefix(arg, "--"), Err: fmt.Errorf("flag may be specified only once")}
+			}
+			seen[arg] = true
+			value, err := consumeFlagValue(args, &i, arg)
+			if err != nil {
+				return journalDeferOptions{}, &state.JournalDeferValidationError{Field: strings.TrimPrefix(arg, "--"), Err: err}
+			}
+			if arg == "--change" && strings.TrimSpace(value) == "" {
+				return journalDeferOptions{}, &state.JournalDeferValidationError{Field: "change", Err: fmt.Errorf("must be nonblank")}
+			}
+			switch arg {
+			case "--why":
+				options.why = value
+			case "--boundary":
+				options.boundary = value
+			case "--trigger":
+				options.trigger = value
+			case "--operation-id":
+				options.operationID = value
+			case "--change":
+				options.change = value
+			}
+		default:
+			if strings.HasPrefix(arg, "-") {
+				return journalDeferOptions{}, &state.JournalDeferValidationError{Field: "flag", Err: fmt.Errorf("unknown option %q", arg)}
+			}
+			positional = append(positional, arg)
+		}
+	}
+	if len(positional) != 1 {
+		return journalDeferOptions{}, &state.JournalDeferValidationError{Field: "intent", Err: fmt.Errorf("requires exactly one positional intent")}
+	}
+	options.intent = positional[0]
+	for field, value := range map[string]string{"why": options.why, "boundary": options.boundary, "trigger": options.trigger, "operation_id": options.operationID} {
+		if strings.TrimSpace(value) == "" {
+			return journalDeferOptions{}, &state.JournalDeferValidationError{Field: field, Err: fmt.Errorf("must be nonblank")}
+		}
+	}
+	if strings.TrimSpace(options.intent) == "" {
+		return journalDeferOptions{}, &state.JournalDeferValidationError{Field: "intent", Err: fmt.Errorf("must be nonblank")}
+	}
+	return options, nil
+}
+
+func (r Runner) runJournalDefer(args []string, out io.Writer, runtime state.Runtime) error {
+	jsonRequested := hasFlag(args, "--json")
+	options, err := parseJournalDeferArgs(args)
+	if err != nil {
+		if jsonRequested {
+			return writeJSONCommandError(out, "journal defer", err)
+		}
+		return err
+	}
+	projectRoot, err := project.ResolveRoot(runtime.RootPath())
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "journal defer", err)
+		}
+		return err
+	}
+	origin := ResolveManualJournalOrigin(runtime.RootPath(), "journal.defer")
+	if options.change != "" {
+		origin, err = ResolveChangeOrigin(runtime.RootPath(), options.change)
+		if err != nil {
+			if options.jsonOutput {
+				return writeJSONCommandError(out, "journal defer", err)
+			}
+			return err
+		}
+	}
+	result, err := state.DeferJournal(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.JournalDeferOptions{
+		Intent:      options.intent,
+		Why:         options.why,
+		Boundary:    options.boundary,
+		Trigger:     options.trigger,
+		OperationID: options.operationID,
+		Origin:      &origin,
+	})
+	if err != nil {
+		if options.jsonOutput {
+			return writeJSONCommandError(out, "journal defer", err)
+		}
+		return r.withStateMissingContext(err, projectRoot)
+	}
+	if options.jsonOutput {
+		return writeJSON(out, result)
+	}
+	writeJournalDeferHuman(out, result)
+	return nil
+}
+
+func writeJournalDeferHuman(out io.Writer, result state.JournalDeferResult) {
+	fmt.Fprint(out, "\n  loaf journal defer\n\n")
+	if result.Created {
+		fmt.Fprintln(out, "  created decision + spark")
+	} else {
+		fmt.Fprintln(out, "  reused existing decision + spark")
+	}
+	fmt.Fprintf(out, "  operation: %s\n", result.OperationID)
+	fmt.Fprintf(out, "  decision: %s\n", result.Decision.ID)
+	fmt.Fprintf(out, "  spark: %s\n", result.Spark.ID)
+	fmt.Fprintf(out, "  alias: %s\n", result.Spark.Alias)
+	fmt.Fprintf(out, "  input digest: %s\n", result.InputDigest)
+	fmt.Fprintf(out, "  stored digest: %s\n", result.StoredDigest)
+	fmt.Fprintf(out, "  digest match: %t\n", result.InputDigestMatches)
+	if !result.InputDigestMatches {
+		fmt.Fprintln(out, "  warning: operation already exists; original decision + spark pair reused despite digest mismatch")
+	}
+	writeJournalOriginHuman(out, result.Origin, "  ")
+}
+
+func writeJournalOriginHuman(out io.Writer, origin *state.JournalOrigin, indent string) {
+	if origin == nil {
+		return
+	}
+	fmt.Fprintf(out, "%sprovenance:\n", indent)
+	fmt.Fprintf(out, "%s  mechanism: %s\n", indent, origin.CaptureMechanism)
+	fmt.Fprintf(out, "%s  envelope version: %d\n", indent, origin.EnvelopeVersion)
+	fmt.Fprintf(out, "%s  supported: %t\n", indent, origin.Supported)
+	if !origin.Supported {
+		fmt.Fprintf(out, "%s  warning: unsupported origin envelope version\n", indent)
+	}
+	if origin.SourceEvent != "" {
+		fmt.Fprintf(out, "%s  source event: %s\n", indent, origin.SourceEvent)
+	}
+	if origin.Branch != "" {
+		fmt.Fprintf(out, "%s  branch: %s\n", indent, origin.Branch)
+	}
+	if origin.Worktree != "" {
+		fmt.Fprintf(out, "%s  worktree: %s\n", indent, origin.Worktree)
+	}
+	if origin.Head != "" {
+		fmt.Fprintf(out, "%s  head: %s\n", indent, origin.Head)
+	}
+	if origin.ChangePath != "" {
+		fmt.Fprintf(out, "%s  change path: %s\n", indent, origin.ChangePath)
+	}
+	if origin.ChangeSHA256 != "" {
+		fmt.Fprintf(out, "%s  change sha256: %s\n", indent, origin.ChangeSHA256)
+	}
+	if origin.Dirty != nil {
+		fmt.Fprintf(out, "%s  dirty: %t\n", indent, *origin.Dirty)
+	}
+	if origin.Reconstructable != nil {
+		fmt.Fprintf(out, "%s  reconstructable: %t\n", indent, *origin.Reconstructable)
+	}
 }
 
 func (r Runner) runJournalContext(args []string, out io.Writer, runtime state.Runtime) error {

@@ -170,7 +170,6 @@ func (s *Store) EnsureProject(ctx context.Context, root project.Root) (ProjectId
 		return ProjectIdentity{}, fmt.Errorf("begin project registration: %w", err)
 	}
 	defer tx.Rollback()
-
 	// The candidate insert is deliberately the first SQL operation after
 	// BeginTx. It upgrades SQLite to a write transaction before the mapping
 	// lookup, so independent initializers serialize on the same durable state.
@@ -297,15 +296,15 @@ func (s *Store) PreviewRenameProject(ctx context.Context, root project.Root, fri
 
 // MoveProject changes the current path mapping with safeguards against collisions.
 func (s *Store) MoveProject(ctx context.Context, root project.Root, fromPath string, toPath string) (ProjectMoveResult, error) {
-	return s.moveProject(ctx, root, fromPath, toPath, false)
+	return s.moveProject(ctx, root, fromPath, toPath, false, nil)
 }
 
 // PreviewMoveProject validates a path remapping without mutating project identity rows.
 func (s *Store) PreviewMoveProject(ctx context.Context, root project.Root, fromPath string, toPath string) (ProjectMoveResult, error) {
-	return s.moveProject(ctx, root, fromPath, toPath, true)
+	return s.moveProject(ctx, root, fromPath, toPath, true, nil)
 }
 
-func (s *Store) moveProject(ctx context.Context, root project.Root, fromPath string, toPath string, dryRun bool) (ProjectMoveResult, error) {
+func (s *Store) moveProject(ctx context.Context, root project.Root, fromPath string, toPath string, dryRun bool, beforeTransaction func()) (ProjectMoveResult, error) {
 	fromPath = filepath.Clean(fromPath)
 	toPath = filepath.Clean(toPath)
 	if fromPath == "." || toPath == "." || fromPath == "" || toPath == "" {
@@ -368,6 +367,9 @@ func (s *Store) moveProject(ctx context.Context, root project.Root, fromPath str
 			Action:          "dry-run",
 		}, nil
 	}
+	if beforeTransaction != nil {
+		beforeTransaction()
+	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -375,6 +377,27 @@ func (s *Store) moveProject(ctx context.Context, root project.Root, fromPath str
 		return ProjectMoveResult{}, fmt.Errorf("begin project move: %w", err)
 	}
 	defer tx.Rollback()
+	// Re-read both path owners in the write transaction. The preflight reads
+	// above are advisory only; applying from stale ownership must fail visibly.
+	var transactionalProjectID string
+	err = tx.QueryRowContext(ctx, `SELECT project_id FROM project_paths WHERE path = ?`, fromPath).Scan(&transactionalProjectID)
+	if errors.Is(err, sql.ErrNoRows) && fromPath == root.Path() {
+		transactionalProjectID, err = projectID, nil
+	}
+	if err != nil {
+		return ProjectMoveResult{}, fmt.Errorf("read source project path in move transaction: %w", err)
+	}
+	if transactionalProjectID != projectID {
+		return ProjectMoveResult{}, fmt.Errorf("source path %s changed ownership during move", fromPath)
+	}
+	var transactionalTargetOwner string
+	err = tx.QueryRowContext(ctx, `SELECT project_id FROM project_paths WHERE path = ?`, toPath).Scan(&transactionalTargetOwner)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return ProjectMoveResult{}, fmt.Errorf("read target project path in move transaction: %w", err)
+	}
+	if err == nil && transactionalTargetOwner != projectID {
+		return ProjectMoveResult{}, fmt.Errorf("target path %s is already registered to project %s", toPath, transactionalTargetOwner)
+	}
 	if _, err := tx.ExecContext(ctx, `
 UPDATE project_paths
 SET is_current = 0, updated_at = ?
@@ -385,9 +408,8 @@ WHERE project_id = ?
 	if _, err := tx.ExecContext(ctx, `
 INSERT INTO project_paths (id, project_id, path, is_current, first_seen_at, last_seen_at, created_at, updated_at)
 VALUES (?, ?, ?, 1, ?, ?, ?, ?)
-ON CONFLICT(path) DO UPDATE SET
-  project_id = excluded.project_id,
-  is_current = excluded.is_current,
+	ON CONFLICT(path) DO UPDATE SET
+	  is_current = excluded.is_current,
   last_seen_at = excluded.last_seen_at,
   updated_at = excluded.updated_at
 `, stableMigrationID("project-path", projectID, toPath), projectID, toPath, now, now, now, now); err != nil {

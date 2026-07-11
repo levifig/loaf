@@ -187,8 +187,14 @@ func Initialize(ctx context.Context, root project.Root, resolver PathResolver) (
 	}
 	defer store.Close()
 
-	if err := store.ApplyMigrations(ctx); err != nil {
+	bootstrapped, err := store.BootstrapIfEmpty(ctx)
+	if err != nil {
 		return Status{}, err
+	}
+	if !bootstrapped {
+		if err := store.RequireCurrentSchema(ctx); err != nil {
+			return Status{}, err
+		}
 	}
 	if err := store.UpsertProject(ctx, root); err != nil {
 		return Status{}, err

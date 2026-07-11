@@ -241,6 +241,35 @@ func TestGlobalSearchDivergenceGuardsBeforeDocsWork(t *testing.T) {
 	}
 }
 
+func TestTopLevelJournalSearchReturnsStructuredDivergence(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	resolver := PathResolver{StateHome: stateHome}
+	if _, err := Initialize(ctx, root, resolver); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	if _, err := LogJournal(ctx, root, resolver, JournalLogOptions{Entry: "decision(parity): canonical message"}); err != nil {
+		t.Fatalf("LogJournal() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	if _, err := store.db.ExecContext(ctx, `DELETE FROM journal_search`); err != nil {
+		store.Close()
+		t.Fatalf("delete journal_search: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	_, err := SearchJournal(ctx, root, resolver, SearchOptions{Query: "canonical"})
+	var divergence *JournalSearchDivergenceError
+	if !errors.As(err, &divergence) {
+		t.Fatalf("SearchJournal() error = %v, want JournalSearchDivergenceError", err)
+	}
+	if divergence.Code != JournalSearchDivergenceCode || divergence.Parity.CanonicalRows != 1 || divergence.Parity.IndexRows != 0 || divergence.Parity.Missing != 1 {
+		t.Fatalf("divergence = %#v, want code and exact missing-index counts", divergence)
+	}
+}
+
 func TestConcurrentJournalWritesAndParityInspectionRemainReady(t *testing.T) {
 	const (
 		writers          = 6
