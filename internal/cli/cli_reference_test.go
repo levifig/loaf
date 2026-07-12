@@ -201,3 +201,61 @@ func TestJournalContextAgentHelpDescribesContractV2(t *testing.T) {
 		}
 	}
 }
+
+func TestJournalLogExecpolicySafeAppearsInPublicHelpMetadata(t *testing.T) {
+	var referenceLog *cliReferenceSubcommand
+	for _, command := range cliReferenceCommands() {
+		if command.Name != "journal" {
+			continue
+		}
+		for index := range command.Subcommands {
+			if command.Subcommands[index].Name == "log" {
+				referenceLog = &command.Subcommands[index]
+				break
+			}
+		}
+	}
+	if referenceLog == nil {
+		t.Fatal("journal log reference metadata is missing")
+	}
+	foundReference := false
+	for _, option := range referenceLog.Options {
+		if option.Flags == "--execpolicy-safe" {
+			foundReference = true
+			if !strings.Contains(option.Description, "registered project") || !strings.Contains(option.Description, "runtime or hook payload") {
+				t.Fatalf("reference safe option description = %q, want trust boundary", option.Description)
+			}
+		}
+	}
+	if !foundReference {
+		t.Fatalf("journal log reference options = %#v, want --execpolicy-safe", referenceLog.Options)
+	}
+
+	var agentLog *agentHelpSubcommand
+	for _, command := range agentHelpCommands() {
+		if command.Name != "journal" {
+			continue
+		}
+		for index := range command.Subcommands {
+			if command.Subcommands[index].Name == "log" {
+				agentLog = &command.Subcommands[index]
+				break
+			}
+		}
+	}
+	if agentLog == nil {
+		t.Fatal("journal log agent help is missing")
+	}
+	foundAgent := false
+	for _, option := range agentLog.Options {
+		if option.Flags == "--execpolicy-safe" {
+			foundAgent = true
+			if !strings.Contains(option.Description, "registered project") || !strings.Contains(option.Description, "runtime or hook payload") {
+				t.Fatalf("agent safe option description = %q, want trust boundary", option.Description)
+			}
+		}
+	}
+	if !foundAgent {
+		t.Fatalf("journal log agent options = %#v, want --execpolicy-safe", agentLog.Options)
+	}
+}

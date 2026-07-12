@@ -181,7 +181,7 @@ Build once, deploy everywhere. Skills are the universal layer; profiles and hook
 | Claude Code | ✓ | ✓ | ✓ | Primary |
 | OpenCode | ✓ | ✓ | ✓ | Full support |
 | Cursor | ✓ | ✓ | ✓ | Full support |
-| Codex | — | ✓ | ✓ | Skills + hooks |
+| Codex | — | ✓ | Fallback | Skills + opt-in basic command policy |
 | Amp | — | ✓ | — | Skills + runtime plugin |
 
 *Note: `council-session` skill renamed to `council` for consistency. Removed skills: `resume-session`, `reference-session`.*
@@ -211,7 +211,7 @@ Updates happen automatically via plugin marketplace. Commands are scoped under `
 npx github:levifig/loaf install
 ```
 
-Detects installed tools, lets you select targets, and installs pre-built distributions. Re-run with `--upgrade` to update.
+Detects installed tools, lets you select targets, and installs pre-built distributions. Re-run with `--upgrade` to update. Codex's optional outside-sandbox policy is explicit: `loaf install --to codex --codex-basic-commands` installs only centrally classified basic command leaves with absolute executable prefixes; unclassified and operator commands remain gated. Other harness adapters are not implied by this policy.
 
 ### Upgrading Existing Projects
 

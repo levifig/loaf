@@ -13436,6 +13436,10 @@ func writeJSONCommandError(out io.Writer, command string, err error) error {
 	if errors.As(err, &cursorInvalid) {
 		output.Code = cursorInvalid.Code
 	}
+	var journalExecpolicySafeErr *journalExecpolicySafeError
+	if errors.As(err, &journalExecpolicySafeErr) {
+		output.Code = journalExecpolicySafeCode
+	}
 	var cursorStale *state.JournalContextCursorStaleError
 	if errors.As(err, &cursorStale) {
 		output.Code = cursorStale.Code

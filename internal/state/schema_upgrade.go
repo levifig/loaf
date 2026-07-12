@@ -115,17 +115,10 @@ func (s *Store) RequireCurrentSchema(ctx context.Context) error {
 	} else if !valid {
 		return fmt.Errorf("state database is invalid: operational invariants failed")
 	}
-	// inspectOperationalInvariants records journal-search parity diagnostics but
-	// intentionally does not make parity a hard gate for its callers. Existing
-	// mutable opens must nevertheless reject a stale or divergent derived index
-	// before handing the store to the caller.
-	parity, err := InspectJournalSearchParity(ctx, s)
-	if err != nil {
-		return fmt.Errorf("state database is invalid: inspect journal search parity: %w", err)
-	}
-	if !parity.Ready {
-		return fmt.Errorf("state database is invalid: journal search parity is not ready")
-	}
+	// Journal-search parity is a derived-index invariant, not a schema or
+	// canonical-state invariant. Search and backup boundaries inspect it and
+	// refuse unsafe derived reads; ordinary journal/context operations remain
+	// available so canonical state can still be retrieved or repaired.
 	return nil
 }
 

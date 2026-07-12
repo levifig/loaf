@@ -241,6 +241,81 @@ func TestGlobalSearchDivergenceGuardsBeforeDocsWork(t *testing.T) {
 	}
 }
 
+func TestJournalParityDivergenceInOtherProjectDoesNotBlockCanonicalJournalOperations(t *testing.T) {
+	ctx := context.Background()
+	stateHome := t.TempDir()
+	resolver := PathResolver{StateHome: stateHome}
+	currentRoot := projectRoot(t)
+	otherRoot := projectRoot(t)
+	if _, err := Initialize(ctx, currentRoot, resolver); err != nil {
+		t.Fatalf("Initialize(current) error = %v", err)
+	}
+	if _, err := Initialize(ctx, otherRoot, resolver); err != nil {
+		t.Fatalf("Initialize(other) error = %v", err)
+	}
+	if _, err := LogJournal(ctx, otherRoot, resolver, JournalLogOptions{Entry: "discover(other): other project entry"}); err != nil {
+		t.Fatalf("LogJournal(other) error = %v", err)
+	}
+
+	databasePath, err := resolver.DatabasePath(currentRoot)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	otherProjectID := projectIDForTest(t, store, otherRoot)
+	if _, err := store.db.ExecContext(ctx, `DELETE FROM journal_search WHERE project_id = ?`, otherProjectID); err != nil {
+		store.Close()
+		t.Fatalf("delete other project journal search row: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() after corruption error = %v", err)
+	}
+
+	if _, err := JournalContextForRoot(ctx, currentRoot, resolver, JournalContextOptions{}); err != nil {
+		t.Fatalf("JournalContextForRoot(current) error = %v", err)
+	}
+	recent, err := RecentJournal(ctx, currentRoot, resolver, JournalRecentOptions{})
+	if err != nil {
+		t.Fatalf("RecentJournal(current) error = %v", err)
+	}
+	if len(recent.Entries) != 0 {
+		t.Fatalf("RecentJournal(current) entries = %#v, want empty before current write", recent.Entries)
+	}
+	if _, err := LogJournal(ctx, currentRoot, resolver, JournalLogOptions{Entry: "decision(current): current project entry"}); err != nil {
+		t.Fatalf("LogJournal(current) error = %v", err)
+	}
+
+	parityStore, err := OpenStoreReadOnly(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStoreReadOnly() error = %v", err)
+	}
+	parity, err := InspectJournalSearchParity(ctx, parityStore)
+	if closeErr := parityStore.Close(); closeErr != nil {
+		t.Fatalf("Close() parity store error = %v", closeErr)
+	}
+	if err != nil {
+		t.Fatalf("InspectJournalSearchParity() error = %v", err)
+	}
+	if parity.Ready || parity.CanonicalRows != 2 || parity.IndexRows != 1 || parity.Missing != 1 {
+		t.Fatalf("global parity = %#v, want canonical=2/index=1/missing=1 and not ready", parity)
+	}
+
+	_, err = SearchJournal(ctx, currentRoot, resolver, SearchOptions{Query: "current"})
+	if err == nil {
+		t.Fatal("SearchJournal(current) error = nil, want typed divergence refusal")
+	}
+	var divergence *JournalSearchDivergenceError
+	if !errors.As(err, &divergence) {
+		t.Fatalf("SearchJournal(current) error = %v, want JournalSearchDivergenceError", err)
+	}
+	if divergence.Code != JournalSearchDivergenceCode || divergence.Parity != parity {
+		t.Fatalf("SearchJournal(current) divergence = %#v, want code=%q parity=%#v", divergence, JournalSearchDivergenceCode, parity)
+	}
+}
+
 func TestTopLevelJournalSearchReturnsStructuredDivergence(t *testing.T) {
 	ctx := context.Background()
 	root := projectRoot(t)

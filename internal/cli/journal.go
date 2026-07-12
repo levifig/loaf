@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -65,6 +66,7 @@ func writeJournalHelp(out io.Writer) {
 
 func writeJournalLogHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf journal log [options] \"type(scope): message\"", "Append a project-scoped journal entry.",
+		"--execpolicy-safe     Codex Auto mode: place immediately after `journal log`; require the registered project and derive database/provenance from the current runtime or hook payload",
 		"--harness-session-id  Opaque conversation correlation tag",
 		"--branch              Observed branch (defaults to current git branch)",
 		"--worktree            Observed worktree path",
@@ -125,14 +127,30 @@ func writeJournalExportHelp(out io.Writer) {
 }
 
 type journalLogOptions struct {
-	entry            string
-	harnessSessionID string
-	branch           string
-	branchSet        bool
-	worktree         string
-	jsonOutput       bool
-	fromHook         bool
-	detectLinear     bool
+	entry               string
+	harnessSessionID    string
+	harnessSessionIDSet bool
+	branch              string
+	branchSet           bool
+	worktree            string
+	worktreeSet         bool
+	jsonOutput          bool
+	fromHook            bool
+	detectLinear        bool
+	execpolicySafe      bool
+}
+
+const journalExecpolicySafeCode = "journal-execpolicy-safe"
+
+type journalExecpolicySafeError struct {
+	reason string
+}
+
+func (e *journalExecpolicySafeError) Error() string {
+	if e == nil {
+		return ""
+	}
+	return "--execpolicy-safe " + e.reason
 }
 
 type journalUnmatchedUnblockJSON struct {
@@ -150,6 +168,11 @@ func parseJournalLogArgs(args []string) (journalLogOptions, error) {
 	positional := []string{}
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--execpolicy-safe":
+			if options.execpolicySafe {
+				return journalLogOptions{}, &journalExecpolicySafeError{reason: "may be specified only once"}
+			}
+			options.execpolicySafe = true
 		case "--json":
 			options.jsonOutput = true
 		case "--from-hook":
@@ -162,6 +185,7 @@ func parseJournalLogArgs(args []string) (journalLogOptions, error) {
 				return journalLogOptions{}, err
 			}
 			options.harnessSessionID = value
+			options.harnessSessionIDSet = true
 		case "--branch":
 			value, err := consumeFlagValue(args, &i, "--branch")
 			if err != nil {
@@ -175,11 +199,26 @@ func parseJournalLogArgs(args []string) (journalLogOptions, error) {
 				return journalLogOptions{}, err
 			}
 			options.worktree = value
+			options.worktreeSet = true
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return journalLogOptions{}, fmt.Errorf("unknown option %q", args[i])
 			}
 			positional = append(positional, args[i])
+		}
+	}
+	if options.execpolicySafe {
+		if options.harnessSessionIDSet {
+			return journalLogOptions{}, &journalExecpolicySafeError{reason: "rejects caller-supplied --harness-session-id"}
+		}
+		if options.branchSet {
+			return journalLogOptions{}, &journalExecpolicySafeError{reason: "rejects caller-supplied --branch"}
+		}
+		if options.worktreeSet {
+			return journalLogOptions{}, &journalExecpolicySafeError{reason: "rejects caller-supplied --worktree"}
+		}
+		if options.fromHook && options.detectLinear {
+			return journalLogOptions{}, &journalExecpolicySafeError{reason: "cannot combine --from-hook and --detect-linear"}
 		}
 	}
 	// --from-hook and --detect-linear derive the entry from stdin/git, so the
@@ -205,6 +244,13 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 	options, err := parseJournalLogArgs(args)
 	if err != nil {
 		if jsonRequested {
+			return writeJSONCommandError(out, "journal log", err)
+		}
+		return err
+	}
+	if options.execpolicySafe && os.Getenv("LOAF_DB") != "" {
+		err := &journalExecpolicySafeError{reason: "refuses non-empty LOAF_DB; use the registered project database"}
+		if options.jsonOutput {
 			return writeJSONCommandError(out, "journal log", err)
 		}
 		return err
@@ -236,7 +282,11 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 	if !options.branchSet {
 		branch = state.ObservedGitBranch(worktree)
 	}
-	origin := ResolveManualJournalOrigin(worktree, "journal.log")
+	mechanism := "journal.log"
+	if options.execpolicySafe {
+		mechanism = "journal.log.execpolicy-safe"
+	}
+	origin := ResolveManualJournalOrigin(worktree, mechanism)
 	result, err := state.LogJournal(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.JournalLogOptions{
 		Entry:            options.entry,
 		ObservedBranch:   branch,
@@ -265,11 +315,11 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 				return ExitError{Code: 1}
 			}
 		}
-		// Hook-invoked logging (git/gh/task PostToolUse via --from-hook, or Linear
-		// detection) must never fail the harness on a fresh install: when the state
-		// database is missing or uninitialized, write nothing and exit 0. Interactive
-		// invocations keep the current error behavior.
-		if (options.fromHook || options.detectLinear) && isStateMissingError(err) {
+		// Ordinary hook-invoked logging (git/gh/task PostToolUse via --from-hook, or
+		// Linear detection) degrades on a fresh install so a harness is not blocked.
+		// The hardened execpolicy-safe mode is intentionally different: it requires
+		// the registered project identity and keeps missing-state failures visible.
+		if !options.execpolicySafe && (options.fromHook || options.detectLinear) && isStateMissingError(err) {
 			return nil
 		}
 		if options.jsonOutput {

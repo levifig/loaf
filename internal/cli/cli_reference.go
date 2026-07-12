@@ -58,6 +58,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Options: []cliReferenceOption{
 				{Flags: "--to <target>", Description: `Target to install to (or "all")`},
 				{Flags: "--upgrade", Description: "Update installed targets and apply deprecation-manifest cleanup"},
+				{Flags: "--codex-basic-commands", Description: "Explicitly install the least-privilege Codex basic command policy (requires --to codex or --to all)"},
 				{Flags: "-y, --yes", Description: "Assume 'yes' to safe migrations and destructive deprecation cleanup"},
 				{Flags: "--no-yes", Description: "Force interactive prompts even when stdin is not a TTY (testing)"},
 			},
@@ -227,6 +228,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Record and read the project-scoped journal (the durable record across all conversations)",
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "log", Description: "Append a project-scoped journal entry", Options: []cliReferenceOption{
+					{Flags: "--execpolicy-safe", Description: "Codex Auto mode: place immediately after journal log; require the registered project and derive database/provenance from the current runtime or hook payload"},
 					{Flags: "--harness-session-id <id>", Description: "Opaque conversation correlation tag"},
 					{Flags: "--branch <branch>", Description: "Observed branch (defaults to current git branch)"},
 					{Flags: "--worktree <path>", Description: "Observed worktree path"},
