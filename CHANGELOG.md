@@ -13,7 +13,7 @@ is a Loaf workflow staging section for curated entries before release.
 ### Changed
 
 - Shape new work through retained Change artifacts with fog-routed discovery, critique, and likelihood-of-change decomposition, and replace the generated command catalog with the compact `loaf-reference` operational guide (#97).
-- Allow explicit prerelease dogfood builds while a hard-cut migration sequence is in progress without weakening the stable-release block (#104).
+- Permit explicit prerelease dogfood builds while a Change lineage is incomplete, while continuing to block stable releases until its declared terminal Change lands (#103, #104).
 
 ### Added
 
