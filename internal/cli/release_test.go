@@ -109,7 +109,7 @@ func TestReleaseLineagePreflightRejectsMergeResolutionOnlyDeletion(t *testing.T)
 		t.Fatal(err)
 	}
 	commitAllChangeTest(t, repo, "docs: edit lineage on main")
-	merge := exec.Command("git", "merge", "--no-edit", "side")
+	merge := exec.Command("git", "-c", "user.name=Loaf Test", "-c", "user.email=loaf@example.test", "-c", "commit.gpgsign=false", "merge", "--no-edit", "side")
 	merge.Dir = repo
 	if output, err := merge.CombinedOutput(); err == nil {
 		t.Fatalf("merge unexpectedly succeeded; want conflict before deletion resolution:\n%s", output)
