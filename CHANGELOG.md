@@ -6,6 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-alpha.6] - 2026-07-12
+
 ### Changed
 
 - Shape new work through retained Change artifacts with fog-routed discovery, critique, and likelihood-of-change decomposition, and replace the generated command catalog with the compact `loaf-reference` operational guide (#97).
