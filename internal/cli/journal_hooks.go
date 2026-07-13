@@ -239,11 +239,5 @@ func (r Runner) runJournalContextResumption(out io.Writer, runtime state.Runtime
 	if err != nil {
 		return err
 	}
-	if normalizeJournalHookEnvelope(hookInput, runtime.RootPath()).isSubagent() {
-		return nil
-	}
-	// PostCompact resumption is a hook path: a missing state database must not
-	// fail the harness. The subagent guard already ran above, so the inner digest
-	// call reads no further stdin.
-	return r.runJournalContextDigest(nil, out, runtime, true)
+	return r.runJournalContextDigestWithHookInput(nil, out, runtime, true, &hookInput)
 }

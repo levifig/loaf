@@ -132,11 +132,12 @@
     ],
     "SessionStart": [
       {
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",
             "description": "Emit the layered continuity digest at conversation start",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" journal context --from-hook"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" journal context --from-hook --claude-code"
           }
         ]
       }
@@ -160,19 +161,7 @@
             "type": "command",
             "timeout": 60,
             "description": "Inject journal flush guidance before compaction",
-            "command": "loaf journal context for-compact"
-          }
-        ]
-      }
-    ],
-    "PostCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "timeout": 60,
-            "description": "Emit the layered continuity digest for post-compaction resumption",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" journal context for-resumption"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" journal context for-compact"
           }
         ]
       }

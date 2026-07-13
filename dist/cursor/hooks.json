@@ -115,21 +115,7 @@
       {
         "loaf-managed": true,
         "timeout": 60,
-        "command": "loaf journal context --from-hook"
-      }
-    ],
-    "beforeSubmitPrompt": [
-      {
-        "loaf-managed": true,
-        "timeout": 5,
-        "command": "loaf journal context for-prompt"
-      }
-    ],
-    "preCompact": [
-      {
-        "loaf-managed": true,
-        "timeout": 60,
-        "command": "loaf journal context for-compact"
+        "command": "loaf journal context --from-hook --cursor-hook"
       }
     ]
   }

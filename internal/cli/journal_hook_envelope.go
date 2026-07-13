@@ -33,6 +33,7 @@ type normalizedJournalHookEnvelope struct {
 	Event             string
 	SessionID         string
 	AgentID           string
+	Background        bool
 	Worktree          string
 	Success           *bool
 	Outcome           string
@@ -48,6 +49,10 @@ type normalizedJournalHookEnvelope struct {
 
 func (e normalizedJournalHookEnvelope) isSubagent() bool {
 	return strings.TrimSpace(e.AgentID) != ""
+}
+
+func (e normalizedJournalHookEnvelope) suppressesContext() bool {
+	return e.isSubagent() || e.Background
 }
 
 func (e normalizedJournalHookEnvelope) hasProvenResult() bool {
@@ -150,6 +155,14 @@ func normalizeJournalHookEnvelope(input journalHookInput, defaultWorktree string
 	}
 	if envelope.AgentID == "" && boolValue(firstMapBool(source, source, "is_subagent", "subagent")) {
 		envelope.AgentID = "subagent"
+	}
+	background := firstMapBool(source, source, "is_background", "background", "run_in_background")
+	if background != nil {
+		envelope.Background = *background
+	}
+	if !envelope.Background {
+		mode := strings.ToLower(firstMapString(source, source, "agent_type", "agent_mode", "mode"))
+		envelope.Background = strings.Contains(mode, "background")
 	}
 	envelope.Worktree = firstMapString(source, source, "worktree", "cwd", "working_directory", "project_root")
 	if envelope.Worktree == "" {
