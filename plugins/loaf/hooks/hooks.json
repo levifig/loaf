@@ -124,22 +124,8 @@
             "type": "command",
             "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/instructions/post-merge.md\"",
             "if": "Bash(gh pr merge:*)",
-            "description": "Inject housekeeping checklist after successful gh pr merge",
+            "description": "Inject housekeeping checklist after a gh pr merge hook; command matching does not prove success",
             "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "loaf journal log --from-hook",
-            "if": "Bash(git commit:*)",
-            "description": "Auto-log git commits to the project journal",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "loaf journal log --from-hook",
-            "if": "Bash(gh pr:*)",
-            "description": "Auto-log GitHub PR events (create, merge) to the project journal",
-            "timeout": 30
           }
         ]
       }
@@ -151,18 +137,6 @@
             "type": "command",
             "description": "Emit the layered continuity digest at conversation start",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" journal context --from-hook"
-          }
-        ]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "timeout": 30,
-            "description": "Auto-log task completion or cancellation to the project journal",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" journal log --from-hook"
           }
         ]
       }

@@ -331,20 +331,6 @@ const postToolHooks: Record<string, HookEntry[]> = {
       "timeout": 5000,
       "failClosed": false,
       "if": "Bash(gh pr merge:*)"
-    },
-    {
-      "id": "journal-git-events",
-      "command": "loaf journal log --from-hook",
-      "timeout": 30000,
-      "failClosed": false,
-      "if": "Bash(git commit:*)"
-    },
-    {
-      "id": "journal-gh-events",
-      "command": "loaf journal log --from-hook",
-      "timeout": 30000,
-      "failClosed": false,
-      "if": "Bash(gh pr:*)"
     }
   ]
 };
@@ -355,14 +341,6 @@ const sessionHooks: Record<string, HookEntry[]> = {
       "id": "session-start-loaf",
       "command": "loaf journal context --from-hook",
       "timeout": 60000,
-      "failClosed": false
-    }
-  ],
-  "taskcompleted": [
-    {
-      "id": "journal-task-completed",
-      "command": "loaf journal log --from-hook",
-      "timeout": 30000,
       "failClosed": false
     }
   ],

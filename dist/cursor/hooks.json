@@ -109,20 +109,6 @@
         "matcher": "Bash",
         "command": "cat \"$HOME/.cursor/hooks/instructions/post-merge.md\"",
         "if": "Bash(gh pr merge:*)"
-      },
-      {
-        "loaf-managed": true,
-        "timeout": 30,
-        "matcher": "Bash",
-        "command": "loaf journal log --from-hook",
-        "if": "Bash(git commit:*)"
-      },
-      {
-        "loaf-managed": true,
-        "timeout": 30,
-        "matcher": "Bash",
-        "command": "loaf journal log --from-hook",
-        "if": "Bash(gh pr:*)"
       }
     ],
     "sessionStart": [

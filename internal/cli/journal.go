@@ -138,6 +138,9 @@ type journalLogOptions struct {
 	fromHook            bool
 	detectLinear        bool
 	execpolicySafe      bool
+	hookWarning         *journalHookWarning
+	hookSuppressed      bool
+	origin              *state.JournalOriginInput
 }
 
 const journalExecpolicySafeCode = "journal-execpolicy-safe"
@@ -269,12 +272,35 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 	if options.fromHook || options.detectLinear {
 		proceed, herr := r.journalLogFromHook(&options, projectRoot, worktree)
 		if herr != nil {
+			if options.execpolicySafe && options.fromHook {
+				if identityErr := r.validateSafeHookProject(projectRoot); identityErr != nil {
+					if options.jsonOutput {
+						return writeJSONCommandError(out, "journal log", identityErr)
+					}
+					return identityErr
+				}
+			}
+			if options.fromHook && !options.execpolicySafe {
+				warning := journalHookWarning{ContractVersion: state.StateJSONContractVersion, EnvelopeVersion: journalHookEnvelopeVersion, Kind: "journal-diagnostic", Severity: "warning", Code: journalHookDiagnosticInvalidEnvelope, Message: herr.Error(), NonBlocking: true}
+				return writeJournalHookWarning(out, &warning)
+			}
 			if options.jsonOutput {
 				return writeJSONCommandError(out, "journal log", herr)
 			}
 			return herr
 		}
 		if !proceed {
+			if options.execpolicySafe && options.fromHook && !options.hookSuppressed {
+				if identityErr := r.validateSafeHookProject(projectRoot); identityErr != nil {
+					if options.jsonOutput {
+						return writeJSONCommandError(out, "journal log", identityErr)
+					}
+					return identityErr
+				}
+			}
+			if options.hookWarning != nil {
+				return writeJournalHookWarning(out, options.hookWarning)
+			}
 			return nil
 		}
 	}
@@ -287,6 +313,15 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 		mechanism = "journal.log.execpolicy-safe"
 	}
 	origin := ResolveManualJournalOrigin(worktree, mechanism)
+	if options.origin != nil {
+		origin = *options.origin
+		if origin.Branch == "" {
+			origin.Branch = branch
+		}
+		if origin.Worktree == "" {
+			origin.Worktree = worktree
+		}
+	}
 	result, err := state.LogJournal(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.JournalLogOptions{
 		Entry:            options.entry,
 		ObservedBranch:   branch,
@@ -320,6 +355,18 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 		// The hardened execpolicy-safe mode is intentionally different: it requires
 		// the registered project identity and keeps missing-state failures visible.
 		if !options.execpolicySafe && (options.fromHook || options.detectLinear) && isStateMissingError(err) {
+			if options.fromHook {
+				warning := journalHookWarning{
+					ContractVersion: state.StateJSONContractVersion,
+					EnvelopeVersion: journalHookEnvelopeVersion,
+					Kind:            "journal-diagnostic",
+					Severity:        "warning",
+					Code:            journalHookDiagnosticMissingState,
+					Message:         "journal state is not initialized; automatic hook capture was skipped",
+					NonBlocking:     true,
+				}
+				return writeJournalHookWarning(out, &warning)
+			}
 			return nil
 		}
 		if options.jsonOutput {
@@ -344,6 +391,26 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 		fmt.Fprintf(out, "  harness session: %s\n", result.HarnessSessionID)
 	}
 	return nil
+}
+
+func (r Runner) validateSafeHookProject(root project.Root) error {
+	databasePath, err := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(root)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(databasePath); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("SQLite state database is not initialized; run `loaf state init` or `loaf state migrate markdown --apply` first")
+		}
+		return fmt.Errorf("inspect state database: %w", err)
+	}
+	store, err := state.OpenStoreReadOnly(databasePath)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	_, err = store.ProjectIdentityForRoot(context.Background(), root)
+	return err
 }
 
 type journalRecentOptions struct {
@@ -903,7 +970,7 @@ func (r Runner) runJournalContextDigest(args []string, out io.Writer, runtime st
 			}
 			return err
 		}
-		if hookInput.AgentID != "" {
+		if normalizeJournalHookEnvelope(hookInput, runtime.RootPath()).isSubagent() {
 			return nil
 		}
 	}

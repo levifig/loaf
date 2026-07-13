@@ -104,6 +104,8 @@ After compaction, a branch switch, or a long gap:
   silently and write nothing.
 - PreCompact nudges a journal flush of unrecorded decisions and next actions.
 - Post-compaction resumption re-emits the digest. Digests are never persisted.
+- When an adapter explicitly invokes the target-neutral hook CLI, payloads are normalized before capture. Command text is not an outcome proof: failed, no-op, amended, repeated, or unknown-result events create no completion entry and emit a visible non-blocking diagnostic until a target adapter proves success and a durable SHA/PR identity.
+- separate Codex thread or explicit multi-agent tool when available are suppressed using the normalized target agent identity. A parent agent should record the semantic conclusion when it consumes a material separate Codex thread or explicit multi-agent tool when available finding; raw separate Codex thread or explicit multi-agent tool when available traces do not become project journal churn.
 
 ## Anti-Patterns
 
