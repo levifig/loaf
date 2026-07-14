@@ -1,21 +1,19 @@
 #!/usr/bin/env node
 
 import { createHash, randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { delimiter, dirname, join, resolve, sep } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
+import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../..");
-const researchDir = join(repoRoot, "docs/changes/20260710-journal-reliability-foundation/research");
-const evidencePath = join(researchDir, "u8-opencode-1.17.18-isolated-smoke.json");
-const expectedVersion = "1.17.18";
 const platform = `${process.platform}-${process.arch}`;
 const candidateHooksPath = "dist/opencode/plugins/hooks.ts";
 const candidateNativePath = `bin/native/${platform}/loaf`;
-const markerPattern = /^LOAF_OPENCODE_U8_[A-F0-9]{12}$/;
+const markerPattern = /^LOAF_OPENCODE_REQUEST_SMOKE_[A-F0-9]{12}$/;
 const prompt = "Reply with exactly the unique marker present in Loaf continuity context, and nothing else.";
 const setupSteps = [
   "build candidate Go binary and OpenCode target",
@@ -27,8 +25,8 @@ const setupSteps = [
 
 const safeEnvironmentKeys = ["LANG", "LC_ALL", "PATH", "TERM", "TZ"];
 
-export function opencodeVersionMatches(output, expected = expectedVersion) {
-  return output.trim() === expected;
+export function opencodeVersionMatches(output, expectedVersion) {
+  return output.trim() === expectedVersion;
 }
 
 export function collectTextValues(value, texts = []) {
@@ -98,20 +96,6 @@ function run(command, args, cwd, env, timeout = 300000) {
 
 function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
-}
-
-function resolveExecutable(command) {
-  for (const directory of (process.env.PATH ?? "").split(delimiter)) {
-    if (!directory) continue;
-    const candidate = resolve(directory, command);
-    try {
-      const info = statSync(candidate);
-      if (info.isFile() && (info.mode & 0o111) !== 0) return realpathSync(candidate);
-    } catch {
-      // Continue through the explicit PATH allowlist.
-    }
-  }
-  throw new Error(`installed ${command} executable is unavailable`);
 }
 
 function buildEnvironment() {
@@ -190,7 +174,7 @@ process.exitCode = result.status ?? 1;
   chmodSync(wrapperPath, 0o700);
 }
 
-function baseReceipt(marker, invocation, artifacts) {
+function baseReceipt(marker, invocation, artifacts, expectedVersion) {
   return {
     evidence_version: 2,
     timestamp: new Date().toISOString(),
@@ -218,11 +202,11 @@ function baseReceipt(marker, invocation, artifacts) {
   };
 }
 
-function main() {
-  mkdirSync(researchDir, { recursive: true });
-  const marker = `LOAF_OPENCODE_U8_${randomBytes(6).toString("hex").toUpperCase()}`;
+function main(argv = process.argv.slice(2)) {
+  const { client, expectedVersion, receiptPath } = parseRunnerArgs(argv);
+  const marker = `LOAF_OPENCODE_REQUEST_SMOKE_${randomBytes(6).toString("hex").toUpperCase()}`;
   if (!markerPattern.test(marker)) throw new Error("generated marker does not match the required format");
-  const tempRoot = mkdtempSync(join(tmpdir(), "loaf-u8-opencode-smoke-"));
+  const tempRoot = mkdtempSync(join(tmpdir(), "loaf-opencode-request-context-smoke-"));
   chmodSync(tempRoot, 0o700);
   if (resolve(tempRoot).startsWith(`${repoRoot}${sep}`)) throw new Error("disposable OpenCode smoke root must be outside the repository");
   const disposableRepo = join(tempRoot, "repo");
@@ -230,15 +214,15 @@ function main() {
   const dbPath = join(stateDir, "loaf.sqlite");
   const candidateBinary = join(repoRoot, candidateNativePath);
   const candidatePlugin = join(repoRoot, candidateHooksPath);
-  const installedOpenCode = resolveExecutable("opencode");
   const invocation = {
     command: "opencode",
     args: ["run", "--format", "json", "--model", "opencode/deepseek-v4-flash-free", "--dir", "<disposable-repo>", prompt],
     cwd: "<disposable-repo>",
   };
   let artifacts = { hooks_path: candidateHooksPath, hooks_sha256: "", native_binary_path: candidateNativePath, native_binary_sha256: "" };
-  let smoke = baseReceipt(marker, invocation, artifacts);
+  let smoke = baseReceipt(marker, invocation, artifacts, expectedVersion);
   let cleanupSucceeded = false;
+  let failure;
   const cleanup = () => {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       try {
@@ -272,8 +256,8 @@ function main() {
     if (!existsSync(candidateBinary)) throw new Error("candidate native binary is missing");
     const pluginURL = pathToFileURL(candidatePlugin).href;
     const env = disposableEnvironment(tempRoot, dbPath, pluginURL);
-    const version = run(installedOpenCode, ["--version"], repoRoot, env);
-    if (version.status !== 0 || !opencodeVersionMatches(version.stdout)) throw new Error("installed OpenCode version is not exactly 1.17.18");
+    const version = run(client, ["--version"], repoRoot, env);
+    if (version.status !== 0 || !opencodeVersionMatches(version.stdout, expectedVersion)) throw new Error(`installed OpenCode version does not match ${expectedVersion}`);
     if (run("git", ["init", "-q"], disposableRepo, env).status !== 0) throw new Error("disposable Git initialization failed");
     if (run(candidateBinary, ["state", "init", "--json"], disposableRepo, env).status !== 0) throw new Error("isolated Loaf state initialization failed");
     if (run(candidateBinary, ["journal", "log", `discover(smoke): ${marker}`], disposableRepo, env).status !== 0) throw new Error("isolated journal marker write failed");
@@ -283,7 +267,7 @@ function main() {
     if ((statSync(wrapperPath).mode & 0o777) !== 0o700) throw new Error("OpenCode hook observation wrapper is not mode 0700");
     const smokeEnv = { ...env, PATH: `${tempRoot}:${env.PATH ?? ""}` };
     const opencodeArgs = ["run", "--format", "json", "--model", "opencode/deepseek-v4-flash-free", "--dir", disposableRepo, prompt];
-    const opencode = run(installedOpenCode, opencodeArgs, disposableRepo, smokeEnv, 600000);
+    const opencode = run(client, opencodeArgs, disposableRepo, smokeEnv, 600000);
     if (!existsSync(observationPath)) throw new Error("OpenCode hook observation file was not written");
     if ((statSync(observationPath).mode & 0o777) !== 0o600) throw new Error("OpenCode hook observation is not mode 0600");
     const observedOutput = readFileSync(observationPath, "utf8");
@@ -305,15 +289,22 @@ function main() {
       throw new Error("model-visible OpenCode marker smoke did not pass");
     }
   } catch (error) {
-    smoke.failure_reason = sanitizeError(error, [[repoRoot, "<repo>"], [tempRoot, "<disposable>"], [process.env.HOME ?? "", "<home>"]]);
-    smoke.exit_code = smoke.exit_code || 1;
+    failure = error;
   } finally {
     cleanup();
     smoke.cleanup_succeeded = cleanupSucceeded;
   }
-  writeFileSync(evidencePath, `${JSON.stringify(smoke, null, 2)}\n`);
-  process.stdout.write(`${JSON.stringify({ evidence_path: "docs/changes/20260710-journal-reliability-foundation/research/u8-opencode-1.17.18-isolated-smoke.json", exit_code: smoke.exit_code, assistant_marker_match: smoke.assistant_marker_match, plugin_loaded: smoke.plugin_loaded, root_session_lookup_proven: smoke.root_session_lookup_proven, cleanup_succeeded: smoke.cleanup_succeeded }, null, 2)}\n`);
-  if (smoke.exit_code !== 0 || !smoke.assistant_marker_match || !smoke.plugin_loaded || !smoke.root_session_lookup_proven || !smoke.cleanup_succeeded) process.exitCode = 1;
+  if (failure) throw new Error(sanitizeError(failure, [[repoRoot, "<repo>"], [tempRoot, "<disposable>"], [process.env.HOME ?? "", "<home>"]]));
+  if (!cleanupSucceeded) throw new Error("disposable OpenCode smoke cleanup failed");
+  publishReceiptIfSuccessful(receiptPath, smoke, true);
+  process.stdout.write(`${JSON.stringify({ receipt: receiptPath, exit_code: smoke.exit_code, assistant_marker_match: smoke.assistant_marker_match, plugin_loaded: smoke.plugin_loaded, root_session_lookup_proven: smoke.root_session_lookup_proven, cleanup_succeeded: true }, null, 2)}\n`);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    main();
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : "OpenCode request-context smoke failed"}\n`);
+    process.exitCode = 1;
+  }
+}

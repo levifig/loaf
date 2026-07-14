@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { collectTextValues, modelVisibleProof, opencodeVersionMatches, parseOpenCodeJSONL, sanitizeError, sanitizedStderr } from "./u8-opencode-smoke.mjs";
+import { collectTextValues, modelVisibleProof, opencodeVersionMatches, parseOpenCodeJSONL, sanitizeError, sanitizedStderr } from "./smoke-opencode-request-context.mjs";
 
 test("requires the exact OpenCode version token", () => {
-  assert.equal(opencodeVersionMatches("1.17.18\n"), true);
-  assert.equal(opencodeVersionMatches("1.17.180"), false);
-  assert.equal(opencodeVersionMatches("v1.17.18"), false);
-  assert.equal(opencodeVersionMatches("1.17.18-dev"), false);
+  assert.equal(opencodeVersionMatches("9.8.7\n", "9.8.7"), true);
+  assert.equal(opencodeVersionMatches("9.8.70", "9.8.7"), false);
+  assert.equal(opencodeVersionMatches("v9.8.7", "9.8.7"), false);
+  assert.equal(opencodeVersionMatches("9.8.7-dev", "9.8.7"), false);
 });
 
 test("recursively extracts only string values at text keys", () => {
@@ -19,7 +19,7 @@ test("recursively extracts only string values at text keys", () => {
 });
 
 test("parses JSONL recursively and matches an exact trimmed marker", () => {
-  const marker = "LOAF_OPENCODE_U8_ABCDEF123456";
+  const marker = "LOAF_OPENCODE_REQUEST_SMOKE_ABCDEF123456";
   const raw = [
     JSON.stringify({ type: "message", parts: [{ type: "text", text: `context ${marker}` }] }),
     JSON.stringify({ type: "result", data: { nested: { text: ` ${marker} ` } } }),

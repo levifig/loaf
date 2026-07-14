@@ -1,6 +1,6 @@
 {
   "evidence_version": 2,
-  "timestamp": "2026-07-14T01:36:41.695Z",
+  "timestamp": "2026-07-14T16:12:04.439Z",
   "target": "opencode",
   "surface": "cli",
   "version": "1.17.18",
@@ -39,7 +39,7 @@
   "root_session_lookup_proven": true,
   "no_auth_supplied": true,
   "cleanup_succeeded": true,
-  "marker": "LOAF_OPENCODE_U8_5817D3B6970E",
+  "marker": "LOAF_OPENCODE_REQUEST_SMOKE_26141D99C5B9",
   "candidate_artifacts": {
     "hooks_path": "dist/opencode/plugins/hooks.ts",
     "hooks_sha256": "7715cf7701ce54a9652c0fdaa67025493d0b3407153b89fdfb3be23f26438bef",
