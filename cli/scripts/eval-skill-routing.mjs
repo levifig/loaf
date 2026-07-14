@@ -241,7 +241,7 @@ const CONFLICT_PROBES = [
     group: "strategy-reflect",
     choices: ["strategy", "reflect"],
     expected: "strategy",
-    prompt: "Define the product direction and personas before the next wave",
+    prompt: "Define the product direction and personas before the next delivery",
   },
   {
     group: "strategy-reflect",

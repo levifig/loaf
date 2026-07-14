@@ -722,8 +722,8 @@ func TestRunnerAllowsFreshWorktreeWithIdenticalAgentsCheckout(t *testing.T) {
 	}); ok && exitErr.ExitCode() == 2 && exitErr.Silent() {
 		t.Fatalf("doctor in fresh identical worktree hit pre-A3 refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
 	}
-	if strings.Contains(stderr.String(), "SPEC-036") || strings.Contains(stdout.String(), "SPEC-036") {
-		t.Fatalf("fresh identical worktree output contained SPEC-036 refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
+	if strings.Contains(stderr.String(), "Linked worktrees keep .agents/") || strings.Contains(stdout.String(), "Linked worktrees keep .agents/") {
+		t.Fatalf("fresh identical worktree output contained migration refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
 	}
 	raw, err := os.ReadFile(filepath.Join(linked, ".agents", worktreeBackPointerFile))
 	if err != nil {
@@ -746,8 +746,8 @@ func TestRunnerAllowsFreshWorktreeWithIdenticalAgentsCheckout(t *testing.T) {
 	}); ok && exitErr.ExitCode() == 2 && exitErr.Silent() {
 		t.Fatalf("second doctor in bootstrapped identical worktree hit pre-A3 refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
 	}
-	if strings.Contains(stderr.String(), "SPEC-036") || strings.Contains(stdout.String(), "SPEC-036") {
-		t.Fatalf("second identical worktree output contained SPEC-036 refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
+	if strings.Contains(stderr.String(), "Linked worktrees keep .agents/") || strings.Contains(stdout.String(), "Linked worktrees keep .agents/") {
+		t.Fatalf("second identical worktree output contained migration refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
 	}
 	raw, err = os.ReadFile(filepath.Join(linked, ".agents", worktreeBackPointerFile))
 	if err != nil {
@@ -777,7 +777,7 @@ func TestRunnerRefusesLinkedWorktreeWithLocalOnlyAgentsFile(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"SPEC-036", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -803,7 +803,7 @@ func TestRunnerRefusesLinkedWorktreeWithDivergentAgentsFile(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"SPEC-036", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -830,7 +830,7 @@ func TestRunnerRefusesLinkedWorktreeWithValidPointerAndDivergentAgentsFile(t *te
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"SPEC-036", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -863,7 +863,7 @@ func TestRunnerRefusesLinkedWorktreeWithSymlinkAgentsFile(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"SPEC-036", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -895,7 +895,7 @@ func TestRunnerRefusesLinkedWorktreeWithOnlySymlinkAgentsFile(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"SPEC-036", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -920,7 +920,7 @@ func TestRunnerRefusesPreA3LinkedWorktreeBeforeDispatch(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"SPEC-036", "loaf migrate worktree-storage", "LOAF_DEBUG_RESOLVE"} {
+	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage", "LOAF_DEBUG_RESOLVE"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -945,7 +945,7 @@ func TestRunnerRefusesPreA3LinkedWorktreeWithUnknownCommandFeedback(t *testing.T
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"unknown command 'not-a-command'", "SPEC-036", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"unknown command 'not-a-command'", "Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}

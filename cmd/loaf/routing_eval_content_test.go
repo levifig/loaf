@@ -3,6 +3,7 @@ package main
 import (
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -49,13 +50,20 @@ func TestRoutingEvalContentHasNoPhantomSkillCases(t *testing.T) {
 	}
 }
 
-func TestSkillArchitectureCountMatchesCurrentTaxonomy(t *testing.T) {
+func TestSkillArchitectureDescribesSemanticTaxonomy(t *testing.T) {
 	root := repoRoot(t)
 	body := readTextFile(t, filepath.Join(root, "docs", "knowledge", "skill-architecture.md"))
-	if !strings.Contains(body, "34 skills total: 19 workflow/default-invocable, 15 reference/knowledge") {
-		t.Fatalf("skill architecture doc missing current 34-skill taxonomy")
+	for _, want := range []string{
+		"## Categories",
+		"| Category | `user-invocable` | Examples |",
+		"| Reference/Knowledge | `false` |",
+		"| Workflow/Process | `true` (default) |",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("skill architecture doc missing semantic taxonomy %q", want)
+		}
 	}
-	if strings.Contains(body, "33 skills") || strings.Contains(body, "35 skills") {
-		t.Fatalf("skill architecture doc still contains stale skill count")
+	if regexp.MustCompile(`(?i)\b[0-9]+\s+skills\s+total\b`).MatchString(body) {
+		t.Fatal("skill architecture doc publishes a volatile exact skill-count snapshot")
 	}
 }

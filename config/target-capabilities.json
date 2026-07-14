@@ -4,7 +4,7 @@
     {
       "target": "claude-code",
       "surface": "cli",
-      "version": "2.1.207",
+      "version": "2.1.209",
       "platform": "darwin-arm64",
       "installed_mode": "plugin-dir",
       "context": {
@@ -20,9 +20,9 @@
             "status": "supported",
             "model_visible": true,
             "evidence": {
-              "source": "docs/changes/20260710-journal-reliability-foundation/research/claude-code-2.1.207-plugin-startup-smoke.json",
+              "source": "docs/changes/20260710-journal-reliability-foundation/research/claude-code-2.1.209-plugin-startup-smoke.json",
               "level": "installed-smoke",
-              "summary": "Claude Code 2.1.207 startup smoke returned SessionStart additionalContext and the isolated marker was model-visible exactly."
+              "summary": "Claude Code 2.1.209 startup smoke returned SessionStart additionalContext and the isolated marker was model-visible exactly."
             }
           },
           {
@@ -243,7 +243,7 @@
     {
       "target": "codex",
       "surface": "cli",
-      "version": "0.144.1",
+      "version": "0.144.4",
       "platform": "darwin-arm64",
       "installed_mode": "isolated-codex-home",
       "context": {
@@ -259,9 +259,9 @@
             "status": "supported",
             "model_visible": true,
             "evidence": {
-              "source": "docs/changes/20260710-journal-reliability-foundation/research/codex-0.144.1-isolated-startup-smoke.json",
+              "source": "docs/changes/20260710-journal-reliability-foundation/research/codex-0.144.4-isolated-startup-smoke.json",
               "level": "installed-smoke",
-              "summary": "Codex 0.144.1 isolated CODEX_HOME startup smoke observed exact native SessionStart hookSpecificOutput and the random marker was returned by the model."
+              "summary": "Codex 0.144.4 isolated CODEX_HOME startup smoke observed exact native SessionStart hookSpecificOutput and the random marker was returned by the model."
             }
           },
           {
@@ -269,11 +269,11 @@
             "trigger": "SessionStart:resume",
             "status": "candidate",
             "model_visible": false,
-            "reason": "The tagged schema retains SessionStart for resume, but an installed model-visible resume smoke is not yet proven.",
+            "reason": "Codex 0.144.1 source evidence classified resume as a SessionStart mode, but exact 0.144.4 installed model-visible resume delivery is not yet proven.",
             "evidence": {
               "source": "docs/changes/20260710-journal-reliability-foundation/research/target-capability-survey.md",
               "level": "source",
-              "summary": "Codex 0.144.1 source survey classifies resume as a SessionStart context mode."
+              "summary": "The retained 0.144.1 source survey supports the candidate classification; the exact 0.144.4 installed mode remains unproven."
             }
           },
           {
@@ -281,11 +281,11 @@
             "trigger": "SessionStart:clear",
             "status": "candidate",
             "model_visible": false,
-            "reason": "The tagged schema retains SessionStart for clear, but an installed model-visible clear smoke is not yet proven.",
+            "reason": "Codex 0.144.1 source evidence classified clear as a SessionStart mode, but exact 0.144.4 installed model-visible clear delivery is not yet proven.",
             "evidence": {
               "source": "docs/changes/20260710-journal-reliability-foundation/research/target-capability-survey.md",
               "level": "source",
-              "summary": "Codex 0.144.1 source survey classifies clear as a SessionStart context mode."
+              "summary": "The retained 0.144.1 source survey supports the candidate classification; the exact 0.144.4 installed mode remains unproven."
             }
           },
           {
@@ -293,11 +293,11 @@
             "trigger": "SessionStart:compact",
             "status": "candidate",
             "model_visible": false,
-            "reason": "The tagged schema retains SessionStart for compact, but an installed model-visible compact smoke is not yet proven.",
+            "reason": "Codex 0.144.1 source evidence classified compact as a SessionStart mode, but exact 0.144.4 installed model-visible compact delivery is not yet proven.",
             "evidence": {
               "source": "docs/changes/20260710-journal-reliability-foundation/research/target-capability-survey.md",
               "level": "source",
-              "summary": "Codex 0.144.1 source survey classifies compact as a SessionStart context mode; SubagentStart is not a context mode."
+              "summary": "The retained 0.144.1 source survey supports the candidate classification; exact 0.144.4 compact delivery remains unproven and SubagentStart is not a context mode."
             }
           }
         ]
