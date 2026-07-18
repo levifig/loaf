@@ -78,7 +78,7 @@ jobs:
       - name: Build release targets
         shell: bash
         run: |
-          export LOAF_BUILD_COMMIT="${GITHUB_SHA::7}"
+          export LOAF_BUILD_COMMIT="$(git rev-parse --short=7 HEAD)"
           export LOAF_BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           npm run build:release
 
