@@ -18,7 +18,6 @@ is a Loaf workflow staging section for curated entries before release.
 
 ### Fixed
 
-- Keep journal logging, recent entries, and continuity context available when only another project's derived search index is divergent, while journal search remains fail-closed until repaired (#106).
 - Prevent command text alone from creating automatic commit, pull-request, or task-completion history when the target cannot prove both success and a durable identity (#106).
 
 ## [2.0.0-alpha.6] - 2026-07-12
