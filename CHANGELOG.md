@@ -6,6 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-alpha.8] - 2026-07-18
+
 ### Added
 
 - Add strict, versioned target-adapter ownership manifests with SHA-256 digests and file modes for Claude Code, Cursor, Codex, OpenCode, and Amp (#117).
