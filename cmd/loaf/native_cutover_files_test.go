@@ -241,6 +241,24 @@ func TestNativeGoReleaseBuildUsesPublishTargetPolicy(t *testing.T) {
 	}
 }
 
+func TestReleaseWorkflowVerifiesEvidenceBeforeStampedBuild(t *testing.T) {
+	root := repoRoot(t)
+	body, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "release.yml"))
+	if err != nil {
+		t.Fatalf("read release workflow: %v", err)
+	}
+
+	workflow := string(body)
+	verifyTests := strings.Index(workflow, "      - name: Verify tests\n")
+	buildRelease := strings.Index(workflow, "      - name: Build release targets\n")
+	if verifyTests < 0 || buildRelease < 0 {
+		t.Fatalf("release workflow is missing Verify tests or Build release targets")
+	}
+	if verifyTests > buildRelease {
+		t.Fatalf("release workflow builds metadata-stamped binaries before evidence-bound tests")
+	}
+}
+
 func TestHomebrewFormulaUpdaterGeneratesAuditSafePrereleaseURLs(t *testing.T) {
 	node := requireNode(t)
 	root := repoRoot(t)
