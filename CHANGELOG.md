@@ -6,7 +6,17 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
-- _No unreleased changes yet._
+### Added
+
+- Add strict, versioned target-adapter ownership manifests with SHA-256 digests and file modes for Claude Code, Cursor, Codex, OpenCode, and Amp (#117).
+
+### Changed
+
+- Reconcile adapter installs, upgrades, and removals atomically and fail closed on foreign content, tampering, symlinks, path escapes, mode drift, concurrent changes, or partial failure, while preserving legacy installs that predate manifests (#117).
+
+### Fixed
+
+- Verify release smoke evidence before version stamping and stamp artifacts from the checked-out tag, preventing failed verification from leaving misleading release metadata (#116).
 
 ## [2.0.0-alpha.7] - 2026-07-18
 
