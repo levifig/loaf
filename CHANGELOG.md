@@ -6,6 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-alpha.7] - 2026-07-18
+
 ### Changed
 
 - Add model-visible journal context at Claude Code and Codex startup and on OpenCode requests, with explicit `loaf journal context` fallbacks for unproven lifecycle modes and for Cursor and Amp (#106).
