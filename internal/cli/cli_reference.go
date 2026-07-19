@@ -58,6 +58,8 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Options: []cliReferenceOption{
 				{Flags: "--to <target>", Description: `Target to install to (or "all")`},
 				{Flags: "--upgrade", Description: "Update installed targets and apply deprecation-manifest cleanup"},
+				{Flags: "--dry-run", Description: "With --upgrade, report the deterministic non-mutating upgrade plan: per-artifact actions, preserved conflicts, deprecations, project-file effects, and consent requirements"},
+				{Flags: "--json", Description: "With --dry-run, emit the plan as one JSON document with exact follow-up commands and consent_required"},
 				{Flags: "--codex-basic-commands", Description: "Explicitly install the least-privilege Codex basic command policy (requires --to codex or --to all)"},
 				{Flags: "-y, --yes", Description: "Assume 'yes' to safe migrations and destructive deprecation cleanup"},
 				{Flags: "--no-yes", Description: "Force interactive prompts even when stdin is not a TTY (testing)"},
