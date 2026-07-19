@@ -381,10 +381,14 @@ WHERE project_id = ? AND operation_key = ?
 	}
 
 	var body, why, boundary, trigger string
-	if err := tx.QueryRowContext(ctx, `
+	err := tx.QueryRowContext(ctx, `
 SELECT body, why, boundary, revisit_trigger FROM intent_deferrals
 WHERE project_id = ? AND operation_key = ?
-`, projectID, normalized.OperationID).Scan(&body, &why, &boundary, &trigger); err != nil {
+`, projectID, normalized.OperationID).Scan(&body, &why, &boundary, &trigger)
+	if errors.Is(err, sql.ErrNoRows) {
+		return JournalDeferResult{}, &JournalDeferValidationError{Field: "operation_id", Err: fmt.Errorf("operation key %q is already bound to intent %s without a deferral (its disposition is not deferred); use a distinct operation key or defer that intent explicitly", normalized.OperationID, intentID)}
+	}
+	if err != nil {
 		return JournalDeferResult{}, &JournalDeferTransactionError{Stage: "read canonical packet", Err: err}
 	}
 	storedPacket := intentDeferralPacket(body, why, boundary, trigger)

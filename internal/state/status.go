@@ -892,18 +892,22 @@ func inspectBackendMappingInvariants(ctx context.Context, store *Store) ([]Diagn
 	}
 	intentTablesPresent := intentTableCount == 4
 	intentKindList := ""
+	intentOrphanKindList := ""
 	intentEntityCTE := ""
 	if intentTablesPresent {
-		intentKindList = `,
-  'intent',
-  'exploration',
-  'exploration_checkpoint',
-  'logical_conversation'`
-		intentEntityCTE = `
-  UNION ALL SELECT 'intent', project_id, id FROM intents
-  UNION ALL SELECT 'exploration', project_id, id FROM explorations
-  UNION ALL SELECT 'exploration_checkpoint', project_id, id FROM exploration_checkpoints
-  UNION ALL SELECT 'logical_conversation', project_id, id FROM logical_conversations`
+		// One kind→table source builds every conditional clause so the three
+		// scan sites cannot drift apart.
+		intentKinds := [][2]string{
+			{"intent", "intents"},
+			{"exploration", "explorations"},
+			{"exploration_checkpoint", "exploration_checkpoints"},
+			{"logical_conversation", "logical_conversations"},
+		}
+		for _, kind := range intentKinds {
+			intentKindList += ",\n  '" + kind[0] + "'"
+			intentOrphanKindList += ",\n    '" + kind[0] + "'"
+			intentEntityCTE += "\n  UNION ALL SELECT '" + kind[0] + "', project_id, id FROM " + kind[1]
+		}
 	}
 
 	blankRows, err := store.db.QueryContext(ctx, `
@@ -1138,7 +1142,7 @@ WHERE local_entities.entity_id IS NULL
     'bundle_member',
     'source',
     'hook_event',
-    'export'`+strings.ReplaceAll(intentKindList, "\n  ", "\n    ")+`
+    'export'`+intentOrphanKindList+`
   )
 ORDER BY backend_mappings.id
 `)

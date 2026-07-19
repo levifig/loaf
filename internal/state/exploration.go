@@ -302,15 +302,18 @@ func (s *Store) appendExplorationCheckpointWithHooks(ctx context.Context, root p
 	}
 
 	if operationID != "" {
-		var existingID string
+		var existingID, existingExploration string
 		var existingSeq int
 		var existingDigest string
 		err := tx.QueryRowContext(ctx, `
-SELECT id, seq, content_digest FROM exploration_checkpoints
+SELECT id, exploration_id, seq, content_digest FROM exploration_checkpoints
 WHERE project_id = ? AND operation_key = ?
-`, projectID, operationID).Scan(&existingID, &existingSeq, &existingDigest)
+`, projectID, operationID).Scan(&existingID, &existingExploration, &existingSeq, &existingDigest)
 		switch {
 		case err == nil:
+			if existingExploration != explorationID {
+				return ExplorationMutationResult{}, &ExplorationValidationError{Field: "operation_id", Err: fmt.Errorf("operation key %q is already bound to a checkpoint on exploration %s and cannot append to %s; use a distinct operation key", operationID, existingExploration, explorationID)}
+			}
 			checkpoint, loadErr := loadCheckpointTx(ctx, tx, projectID, existingID)
 			if loadErr != nil {
 				return ExplorationMutationResult{}, &ExplorationTransactionError{Stage: "load established checkpoint", Err: loadErr}

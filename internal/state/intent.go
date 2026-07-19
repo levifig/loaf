@@ -504,6 +504,9 @@ func (s *Store) deferIntentWithHooks(ctx context.Context, root project.Root, opt
 		return IntentMutationResult{}, loadErr
 	}
 	if found {
+		if established.Intent.ID != intentID {
+			return IntentMutationResult{}, &IntentValidationError{Field: "operation_id", Err: fmt.Errorf("operation key %q is already bound to intent %s and cannot defer %s; use a distinct operation key", operationID, established.Intent.ID, intentID)}
+		}
 		if err := tx.Commit(); err != nil {
 			return IntentMutationResult{}, &IntentTransactionError{Stage: "commit retry", Err: err}
 		}
