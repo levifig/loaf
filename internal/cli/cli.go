@@ -6397,7 +6397,7 @@ func writeSparkCaptureHelp(out io.Writer) {
 }
 
 func writeSparkResolveHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf spark resolve <spark> [--reason <text>] [--json]", "Resolve a spark.", "--reason     Resolution reason", "--json       Output resolution relationship, event, global database scope, and project identity as JSON")
+	writeUsageHelp(out, "loaf spark resolve <spark> --by <entity> [--reason <text>] [--json]", "Resolve a spark by linking it to the entity that resolves it.", "--by         Resolving entity reference (required)", "--reason     Resolution reason", "--json       Output resolution relationship, event, global database scope, and project identity as JSON")
 }
 
 func writeSparkPromoteHelp(out io.Writer) {

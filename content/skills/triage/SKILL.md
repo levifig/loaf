@@ -58,7 +58,7 @@ Process the intake queue. Triage is the public funnel where captured material me
 
 ## Dispositions
 
-- **Discard** — `loaf spark resolve <ref> --reason <r>`, `loaf idea archive <ref> --reason <r>`, or `loaf brainstorm archive <ref> --reason <r>`.
+- **Discard** — `loaf spark resolve <ref> --by <resolving-entity> --reason <r>`, `loaf idea archive <ref> --reason <r>`, or `loaf brainstorm archive <ref> --reason <r>`.
 - **Retain as capture** — do nothing; open captures resurface next triage.
 - **Track as Intent** — `loaf intent create --title <t> --body <self-sufficient body> --from <source-ref>...`; link the originating spark, idea, brainstorm, or journal entry as `--from` sources.
 - **Defer** — an existing Intent: `loaf intent defer <ref> --why <w> --boundary <b> --trigger <t> --operation-id <key>`; a new deferred direction: `loaf intent create --disposition deferred ...` with the same four-field payload.

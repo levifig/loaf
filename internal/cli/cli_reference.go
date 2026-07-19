@@ -761,7 +761,8 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--text <text>", Description: "Spark text"},
 					{Flags: "--json", Description: "Output created spark, event, global database scope, and project identity as JSON"},
 				}},
-				{Name: "resolve", Description: "Resolve a spark", Options: []cliReferenceOption{
+				{Name: "resolve", Description: "Resolve a spark by linking it to the entity that resolves it", Options: []cliReferenceOption{
+					{Flags: "--by <entity>", Description: "Resolving entity reference (required)"},
 					{Flags: "--reason <text>", Description: "Resolution reason"},
 					{Flags: "--json", Description: "Output resolution relationship, event, global database scope, and project identity as JSON"},
 				}},
