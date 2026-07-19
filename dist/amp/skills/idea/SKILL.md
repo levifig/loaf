@@ -3,9 +3,10 @@ name: idea
 description: >-
   Captures ideas into structured nuggets for later evaluation. Use when the user
   says "I have an idea" or "note this down." Also activate when a specific
-  actionable concept crystallizes during conversation. For reviewing and
-  processing the intake queue (sparks + raw ideas), use triage instead. Not for
-  deep exploration (use brainstorm) or shaping (use shape).
+  actionable concept crystallizes during conversation. Ideas and sparks are
+  capture primitives routed through triage, which chooses dispositions such as
+  tracking an Intent. Not for divergent inquiry (use explore), processing the
+  intake queue (use triage), or shaping (use shape).
 version: 2.0.0-alpha.9
 ---
 

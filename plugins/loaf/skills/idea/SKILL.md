@@ -3,8 +3,8 @@ name: idea
 description: >-
   Captures ideas into structured nuggets for later evaluation. Use when the user
   says "I have an idea" or "note this down." Also activate when a specific
-  actionable concept crystallizes during conversation. For reviewing and
-  processing the intake qu...
+  actionable concept crystallizes during conversation. Ideas and sparks are
+  capture primitives ro...
 user-invocable: true
 argument-hint: '[idea description]'
 version: 2.0.0-alpha.9
@@ -49,7 +49,7 @@ Capture ideas quickly with minimal friction.
 | Status | Meaning |
 |--------|---------|
 | `raw` | Just captured, unprocessed |
-| `shaping` | Being developed via /loaf:shape or /loaf:brainstorm |
+| `shaping` | Being developed via /loaf:shape or /brainstorm |
 | `shaped` | Converted to SPEC, idea file archived |
 | `archived` | Decided not to pursue, kept for reference |
 
@@ -98,7 +98,7 @@ raw -> shaping -> shaped (becomes SPEC) -> archived
 | Status | Meaning |
 |--------|---------|
 | `raw` | Just captured, unprocessed |
-| `shaping` | Being developed via /loaf:shape or /loaf:brainstorm |
+| `shaping` | Being developed via /loaf:shape or /brainstorm |
 | `shaped` | Converted to SPEC, idea file archived |
 | `archived` | Decided not to pursue, kept for reference |
 

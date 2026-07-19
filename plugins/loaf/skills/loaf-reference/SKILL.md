@@ -2,9 +2,9 @@
 name: loaf-reference
 description: >-
   Documents how agents operate the Loaf CLI: command discovery via loaf --help,
-  JSON diagnosis surfaces, guided config maintenance, and troubleshooting. Use
-  when unsure which loaf command to invoke or how to validate project state. Not
-  for workflow ...
+  JSON diagnosis surfaces, config-aware maintenance, and troubleshooting. Use
+  when unsure which loaf command to invoke, how to validate project state, or
+  when asked to upg...
 user-invocable: false
 version: 2.0.0-alpha.9
 ---
@@ -101,5 +101,6 @@ Names and one-line purposes only. Run `loaf <command> --help` for options, argum
 | Topic | Reference | Use When |
 |-------|-----------|----------|
 | Configuration maintenance | [references/configuration.md](references/configuration.md) | Checking whether a project's Loaf config is current and repairing it; wiring project-owned choices |
+| Config-aware maintenance protocol | [references/maintenance.md](references/maintenance.md) | Upgrading, diagnosing, repairing, or bringing a project current: diagnose, plan, ask, apply, verify |
 | Command routing | [references/command-routing.md](references/command-routing.md) | Deciding which command a task needs; locating the JSON diagnosis surfaces |
 | Troubleshooting | [references/troubleshooting.md](references/troubleshooting.md) | Diagnosing state, config, or alignment failures; isolating a throwaway database |

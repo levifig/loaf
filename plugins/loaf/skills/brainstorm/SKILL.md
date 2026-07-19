@@ -1,18 +1,18 @@
 ---
 name: brainstorm
 description: >-
-  Conducts structured brainstorming with divergent thinking and trade-off
-  analysis. Use when the user asks "help me think through this," "what are the
-  options," or is exploring tradeoffs. Produces docs with sparks. Not for quick
-  ideas or shaping.
-user-invocable: true
+  Preserves the structured divergent-thinking stance consumed by the explore
+  workflow: option generation before judgment, trade-off analysis, and spark
+  capture. Explore owns the user-facing inquiry lifecycle; reference this
+  technique from it. Not a ...
+user-invocable: false
 argument-hint: '[idea or problem]'
 version: 2.0.0-alpha.9
 ---
 
 # Brainstorm
 
-Generative thinking — expanding possibilities before narrowing through structured exploration.
+Generative thinking — expanding possibilities before narrowing. This stance is an internal technique consumed by `/loaf:explore`, which owns inquiry continuity through Explorations and portable checkpoints; invoke the technique from there rather than as a standalone workflow.
 
 ## Critical Rules
 
@@ -64,7 +64,7 @@ Brainstorm documents are archived after sparks are processed — never deleted, 
 
 ## Suggests Next
 
-After brainstorming, suggest `/loaf:shape` if a clear idea emerged, or `/loaf:idea` to capture sparks for later. `/loaf:idea` invoked without arguments scans brainstorm docs for unprocessed sparks, bridging the brainstorm → idea pipeline.
+After a divergent pass, checkpoint the surrounding Exploration (`loaf exploration checkpoint`), then suggest `/loaf:shape` if a clear direction emerged or `/loaf:triage` to disposition captured sparks and ideas.
 
 ## Topics
 
