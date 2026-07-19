@@ -26,17 +26,16 @@ Generative thinking — expanding possibilities before narrowing. This stance is
 
 **Never**
 - Prematurely commit to an option before full exploration
-- Delete brainstorm documents — archive them for context preservation
-- Process sparks during the main brainstorm — capture only, expand later
-- Turn brainstorm into an interview — keep it exploratory
+- Create documents, reports, or any Git artifact from this technique — the surrounding Explore workflow owns checkpoints and any durable writes
+- Process sparks during the divergent pass — capture only, expand later
+- Turn the divergence into an interview — keep it exploratory
 
 ## Verification
 
-After work completes, verify:
-- Brainstorm captured in SQLite or summarized in an explicitly durable report
-- Sparks captured with `loaf spark capture` and optionally summarized in `## Sparks`
-- Spark lifecycle documented: unprocessed → promoted/discarded
-- Brainstorm references strategic context from VISION/STRATEGY
+After a divergent pass, verify:
+- Sparks captured with `loaf spark capture` as they arose
+- The surrounding Exploration checkpointed the conclusions, discarded options, and open question (`loaf exploration checkpoint`)
+- The divergence referenced strategic context from VISION/STRATEGY
 
 ## Quick Reference
 
@@ -57,9 +56,7 @@ After work completes, verify:
 - **Title** -- one-line description
 ```
 
-Sparks are: lightweight, byproducts, worth remembering. Mark as `*(promoted)*` or `*(abandoned)*` after processing.
-
-Brainstorm documents are archived after sparks are processed — never deleted, since the exploration context has lasting value. SQLite spark state is the lifecycle source; draft markdown is a projection or narrative summary.
+Sparks are lightweight byproducts worth remembering; their dispositions belong to triage. SQLite spark state is the source; any summary inside a checkpoint item is narrative, not lifecycle.
 
 ## Suggests Next
 
@@ -69,5 +66,4 @@ After a divergent pass, checkpoint the surrounding Exploration (`loaf exploratio
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
-| Brainstorm Template | [templates/brainstorm.md](templates/brainstorm.md) | Creating structured brainstorm documents |
 | Strategic Context | `strategy/references/` | Grounding exploration in project direction |

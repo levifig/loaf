@@ -11,11 +11,12 @@ This protocol serves natural-language requests to upgrade, diagnose, repair, con
 
 ## Protocol
 
+0. **Classify the request.** A diagnose-only request stops after step 1 with facts; a plan request stops after step 2 with the mutation ledger; only an explicit repair, upgrade, or bring-current request proceeds to apply, and then only for the mutation classes the user's request actually named. Never let the protocol's shape carry a diagnosis into a mutation.
 1. **Diagnose.** Start with `loaf config check --json` for project intent and installed hook health. Add `loaf version` (running executable), `loaf state status --json` and `loaf state doctor --json` (SQLite readiness, schema version, repair plan), and `loaf doctor --json` (project alignment: symlinks, stale files, fenced-version drift). All four are read-only.
 2. **Plan.** For installed-target convergence, use `loaf install --upgrade --dry-run --json`: it reports intended creates, updates, retirements, preserved conflicts, deprecation actions, project-file effects, and whether explicit consent is required, without writing anything.
-3. **Ask.** Only for project-owned choices the facts cannot answer (for example integration election in `.agents/loaf.json`, or consent to destructive deprecation cleanup). Machine-observed facts are never questions.
-4. **Apply.** Use the existing explicit operations the plan named: `loaf config check --fix`, `loaf install --upgrade` (with `-y` only after consent), `loaf doctor --fix`, `loaf state migrate schema --apply`, `loaf state migrate deferrals --apply`. Never invent a bypass.
-5. **Verify.** Rerun the diagnosis surfaces and confirm they converge; report any check that still fails rather than declaring success.
+3. **Ask.** Only for project-owned choices the facts cannot answer (for example integration election in `.agents/loaf.json`, or consent to destructive deprecation cleanup). Machine-observed facts are never questions. Present one complete mutation ledger — every intended operation with its consent requirement — and obtain approval for the ledger as a whole before applying any part of it.
+4. **Apply.** Use the existing explicit operations the ledger named: `loaf config check --fix`, `loaf install --upgrade` (with `-y` only after consent), `loaf doctor --fix --force` (the `--force` form is required for non-interactive execution; plain `--fix` prompts and silently skips repairs without a TTY — if a repair genuinely needs interactive judgment, stop and report that it requires an operator), `loaf state migrate schema --apply`, `loaf state migrate deferrals --apply`. A project-owned election is recorded by editing `.agents/loaf.json` in the checkout — a durable, reviewable change — and validating with `loaf config check --json`. Never invent a bypass.
+5. **Verify.** Rerun the diagnosis surfaces and confirm they converge; report any check that still fails rather than declaring success, and never loop back into apply without a changed ledger.
 
 ## Fact Sources
 

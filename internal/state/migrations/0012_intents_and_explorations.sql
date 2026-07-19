@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS intent_deferrals (
   FOREIGN KEY (project_id) REFERENCES projects(id),
   FOREIGN KEY (project_id, intent_id) REFERENCES intents(project_id, id),
   UNIQUE (project_id, operation_key),
-  UNIQUE (project_id, id)
+  UNIQUE (project_id, id),
+  UNIQUE (intent_id, id)
 );
 CREATE INDEX IF NOT EXISTS idx_intent_deferrals_intent ON intent_deferrals (intent_id, created_at);
 
@@ -75,6 +76,8 @@ CREATE TABLE IF NOT EXISTS intent_dispositions (
   FOREIGN KEY (project_id, intent_id) REFERENCES intents(project_id, id),
   FOREIGN KEY (project_id, deferral_id) REFERENCES intent_deferrals(project_id, id),
   FOREIGN KEY (project_id, supersedes_deferral_id) REFERENCES intent_deferrals(project_id, id),
+  FOREIGN KEY (intent_id, deferral_id) REFERENCES intent_deferrals(intent_id, id),
+  FOREIGN KEY (intent_id, supersedes_deferral_id) REFERENCES intent_deferrals(intent_id, id),
   UNIQUE (intent_id, seq),
   CHECK ((disposition = 'deferred') = (deferral_id IS NOT NULL)),
   CHECK (supersedes_deferral_id IS NULL OR disposition = 'tracked')

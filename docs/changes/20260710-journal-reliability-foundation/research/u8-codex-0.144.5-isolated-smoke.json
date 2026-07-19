@@ -1,6 +1,6 @@
 {
   "evidence_version": 2,
-  "timestamp": "2026-07-19T14:11:06.416Z",
+  "timestamp": "2026-07-19T14:24:45.216Z",
   "target": "codex",
   "surface": "cli",
   "version": "0.144.5",
@@ -36,10 +36,10 @@
   ],
   "exit_code": 0,
   "stderr_empty": false,
-  "stderr": "Reading additional input from stdin...",
+  "stderr": "unexpected stderr",
   "model_visible_marker_observed": true,
   "assistant_marker_match": true,
-  "marker": "LOAF_CODEX_U8_F9E844B2600B",
+  "marker": "LOAF_CODEX_U8_4B1DF1F84A94",
   "hook_observation": {
     "event_name": "SessionStart:startup",
     "native_json": true,
@@ -50,6 +50,7 @@
     "hooks_path": "dist/codex/.codex/hooks.json",
     "hooks_sha256": "0f9e3feb7204c3309a7db6a02224ad881f6801a8cdd126ec6222e6d9a804c33d",
     "native_binary_path": "bin/native/darwin-arm64/loaf",
-    "native_binary_sha256": "5cec460cb9415126630736fe828a0221532b3baebf57f97ea5cb0f302054fd47"
-  }
+    "native_binary_sha256": "85f72b257a0655ff24ac5a46e666e5a5c88094db89c7b1afe9466016fa5f9069"
+  },
+  "failure_reason": "model-visible Codex marker smoke did not pass"
 }

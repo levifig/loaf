@@ -311,6 +311,9 @@ func (s *Store) createIntentWithHooks(ctx context.Context, root project.Root, op
 			}
 			return established, nil
 		}
+		if err := rejectLegacyBoundOperationKeyTx(ctx, tx, projectID, operationID); err != nil {
+			return IntentMutationResult{}, err
+		}
 	}
 
 	now := time.Now().UTC()
@@ -511,6 +514,9 @@ func (s *Store) deferIntentWithHooks(ctx context.Context, root project.Root, opt
 			return IntentMutationResult{}, &IntentTransactionError{Stage: "commit retry", Err: err}
 		}
 		return established, nil
+	}
+	if err := rejectLegacyBoundOperationKeyTx(ctx, tx, projectID, operationID); err != nil {
+		return IntentMutationResult{}, err
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
@@ -1031,6 +1037,24 @@ ORDER BY namespace LIMIT 1
 		}
 	}
 	return TraceEntity{}, fmt.Errorf("source %q not found in SQLite state", ref)
+}
+
+// rejectLegacyBoundOperationKeyTx refuses to mint a new canonical mapping for
+// an operation key that a pre-conversion legacy deferral already owns. Without
+// this guard a tracked create could capture the key, hide the legacy deferral
+// from continuity, and permanently block its conversion.
+func rejectLegacyBoundOperationKeyTx(ctx context.Context, tx *sql.Tx, projectID, operationID string) error {
+	var journalID string
+	err := tx.QueryRowContext(ctx, `
+SELECT journal_entry_id FROM journal_deferrals WHERE project_id = ? AND operation_key = ?
+`, projectID, operationID).Scan(&journalID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return &IntentTransactionError{Stage: "lookup legacy operation key", Err: err}
+	}
+	return &IntentValidationError{Field: "operation_id", Err: fmt.Errorf("operation key %q belongs to a pre-conversion legacy deferral (decision %s); convert it with `loaf state migrate deferrals` or choose a different key", operationID, journalID)}
 }
 
 // loadEstablishedIntentOperationTx returns the first-written result for an

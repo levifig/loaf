@@ -279,8 +279,14 @@ func (s *Store) appendExplorationCheckpointWithHooks(ctx context.Context, root p
 		items = append(items, CheckpointItemDetail{Type: itemType, Position: index + 1, Content: content})
 	}
 
-	core := strings.Join([]string{purpose, conclusions, unresolved, nextAction}, "\x00")
-	inputDigest := intentDigest(core)
+	// The idempotency digest covers the complete requested checkpoint: the
+	// four-field core plus every ordered typed item, so a retry that differs
+	// only in items reports a digest mismatch instead of a silent match.
+	digestParts := []string{purpose, conclusions, unresolved, nextAction}
+	for _, item := range items {
+		digestParts = append(digestParts, item.Type+":"+item.Content)
+	}
+	inputDigest := intentDigest(strings.Join(digestParts, "\x00"))
 
 	projectID, err := s.projectID(ctx, root)
 	if err != nil {

@@ -1,12 +1,13 @@
 ---
 description: >-
-  Surfaces and processes the local intake queue from loaf intake list:
-  unresolved sparks, ideas, brainstorms, tracked and deferred Intents, and
-  unmigrated legacy deferrals. Use when the user asks "triage", "what's in my
-  backlog?", "review my ideas", or "what did we defer?" Produces explicit
-  dispositions: discard, retain, track as Intent, defer, resume, resolve,
-  explore, or hand to shape. Not for capturing new ideas (use idea), divergent
-  inquiry (use explore), or shaping (use shape).
+  Processes the local intake queue from loaf intake list: unresolved sparks,
+  ideas, brainstorms, tracked and deferred Intents, and unmigrated legacy
+  deferrals. Use when the user asks "triage", "process my backlog", or wants
+  dispositions chosen across intake items. Produces explicit dispositions:
+  discard, retain, track as Intent, defer, resume, resolve, explore, or hand to
+  shape. Not for reading a single known item (use loaf intent show or journal
+  directly), capturing new ideas (use idea), divergent inquiry (use explore), or
+  bounding one chosen direction (use shape).
 user-invocable: true
 version: 2.0.0-alpha.9
 ---
@@ -59,16 +60,16 @@ Process the intake queue. Triage is the public funnel where captured material me
 ## Process
 
 1. **Scan.** Run `loaf intake list --json`. Summarize counts by kind, then list each item with its title, disposition or status, and read command.
-2. **Read on demand.** Use each item's `read_command` verbatim when the user wants detail before deciding.
+2. **Read on demand.** Use each item's `read_command` verbatim when the user wants detail before deciding. If a read command fails, record the exact command and error in the summary as `unreadable`, make no semantic disposition for that item, continue the pass, and offer a factual diagnostic step (`loaf state doctor --json`) afterward. Never persist unreadable as a status.
 3. **Decide per item.** Present the applicable dispositions and perform exactly the chosen one.
 4. **Summarize.** Report what was discarded, retained, tracked, deferred, resumed, resolved, or handed onward, and journal notable decisions.
 
 ## Dispositions
 
-- **Discard** — `loaf spark resolve <ref> --by <resolving-entity> --reason <r>`, `loaf idea archive <ref> --reason <r>`, or `loaf brainstorm archive <ref> --reason <r>`.
+- **Discard** — ideas and brainstorms: `loaf idea archive <ref> --reason <r>` or `loaf brainstorm archive <ref> --reason <r>`. A spark is resolved against the entity that addressed it (`loaf spark resolve <ref> --by <entity> --reason <r>`); a pure dead-end spark currently has no deterministic discard operation — leave it retained, journal the judgment, and never invent a resolving entity.
 - **Retain as capture** — do nothing; open captures resurface next triage.
-- **Track as Intent** — `loaf intent create --title <t> --body <self-sufficient body> --from <source-ref>...`; link the originating spark, idea, brainstorm, or journal entry as `--from` sources.
-- **Defer** — an existing Intent: `loaf intent defer <ref> --why <w> --boundary <b> --trigger <t> --operation-id <key>`; a new deferred direction: `loaf intent create --disposition deferred ...` with the same four-field payload.
+- **Track as Intent** — two steps: create the Intent with the capture as its source, then close the capture against it so the direction appears once. `loaf intent create --title <t> --body <self-sufficient body> --from <capture-ref>`, then `loaf spark resolve <capture-ref> --by <intent-ref>` or `loaf idea resolve <capture-ref> --by <intent-ref>` (brainstorms: `loaf brainstorm archive <ref> --reason "tracked as <intent-ref>"`).
+- **Defer** — an existing Intent: `loaf intent defer <ref> --why <w> --boundary <b> --trigger <t> --operation-id <key>`; a new deferred direction needs the full skeleton: `loaf intent create --title <t> --body <b> --disposition deferred --why <w> --boundary <bd> --trigger <tr> --operation-id <key> [--from <source-ref>]`.
 - **Resume** — `loaf intent resume <ref> --reason <why now>`; appends a tracked disposition linked to the deferral it supersedes.
 - **Resolve** — `loaf intent resolve <ref> --reason <outcome>`; history is never rewritten.
 - **Explore** — hand the item to `/explore`, linking it with `--from` when the Exploration is created.

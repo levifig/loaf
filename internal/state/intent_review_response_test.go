@@ -401,3 +401,118 @@ func TestExplorationContextIntentsLayerPaginates(t *testing.T) {
 		t.Fatalf("intents pagination covered %d items in %d pages, want 7 in 3", len(seen), pages)
 	}
 }
+
+// The three tests below falsify the Codex adversarial state-review findings.
+
+func TestCanonicalCreateRejectsLegacyBoundOperationKey(t *testing.T) {
+	root, resolver, store := intentTestFixture(t)
+	ctx := context.Background()
+	projectID := projectIDForTest(t, store, root)
+	seedLegacyDeferral(t, store, projectID, "legacy-captured", "Intent: legacy body\nWhy: w\nBoundary: b\nTrigger: t")
+
+	// A tracked canonical create must not capture the legacy key.
+	_, err := store.CreateIntent(ctx, root, IntentCreateOptions{
+		Title: "Unrelated tracked direction", Body: "b", OperationID: "legacy-captured",
+	})
+	if err == nil || !strings.Contains(err.Error(), "pre-conversion legacy deferral") {
+		t.Fatalf("tracked create with legacy key error = %v, want legacy-binding rejection", err)
+	}
+	// A canonical defer of another intent must not capture it either.
+	other, err := store.CreateIntent(ctx, root, IntentCreateOptions{Title: "Other", Body: "b"})
+	if err != nil {
+		t.Fatalf("CreateIntent(other) error = %v", err)
+	}
+	if _, err := store.DeferIntent(ctx, root, IntentDeferOptions{
+		IntentRef: other.Intent.Alias, Why: "w", Boundary: "b", Trigger: "t", OperationID: "legacy-captured",
+	}); err == nil || !strings.Contains(err.Error(), "pre-conversion legacy deferral") {
+		t.Fatalf("defer with legacy key error = %v, want legacy-binding rejection", err)
+	}
+
+	// The legacy deferral stays visible in intake and convertible.
+	intake, err := ListIntake(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("ListIntake() error = %v", err)
+	}
+	legacyVisible := false
+	for _, item := range intake.Items {
+		if item.Kind == "legacy_deferral" && item.OperationKey == "legacy-captured" {
+			legacyVisible = true
+		}
+	}
+	if !legacyVisible {
+		t.Fatal("legacy deferral disappeared from intake")
+	}
+	conversion, err := store.convertLegacyDeferrals(ctx, root, true, "test-backup")
+	if err != nil {
+		t.Fatalf("convertLegacyDeferrals() error = %v", err)
+	}
+	if conversion.Convertible != 1 {
+		t.Fatalf("conversion convertible = %d, want 1", conversion.Convertible)
+	}
+}
+
+func TestCheckpointRetryDigestCoversItems(t *testing.T) {
+	root, _, store := intentTestFixture(t)
+	ctx := context.Background()
+	created, err := store.CreateExploration(ctx, root, ExplorationCreateOptions{Title: "Digest items"})
+	if err != nil {
+		t.Fatalf("CreateExploration() error = %v", err)
+	}
+	first, err := store.AppendExplorationCheckpoint(ctx, root, ExplorationCheckpointOptions{
+		ExplorationRef: created.Exploration.Alias,
+		Purpose:        "p", Conclusions: "c", Unresolved: "u", NextAction: "n",
+		Items:       []CheckpointItemInput{{Type: "candidate", Content: "A"}},
+		OperationID: "cp-items-1",
+	})
+	if err != nil {
+		t.Fatalf("first checkpoint error = %v", err)
+	}
+	retry, err := store.AppendExplorationCheckpoint(ctx, root, ExplorationCheckpointOptions{
+		ExplorationRef: created.Exploration.Alias,
+		Purpose:        "p", Conclusions: "c", Unresolved: "u", NextAction: "n",
+		Items:       []CheckpointItemInput{{Type: "candidate", Content: "B"}},
+		OperationID: "cp-items-1",
+	})
+	if err != nil {
+		t.Fatalf("retry checkpoint error = %v", err)
+	}
+	if retry.Created || retry.Checkpoint.ID != first.Checkpoint.ID {
+		t.Fatalf("retry = %#v, want stored first write", retry)
+	}
+	if retry.InputDigestMatches {
+		t.Fatal("retry with different items reported digest match, want mismatch")
+	}
+	identical, err := store.AppendExplorationCheckpoint(ctx, root, ExplorationCheckpointOptions{
+		ExplorationRef: created.Exploration.Alias,
+		Purpose:        "p", Conclusions: "c", Unresolved: "u", NextAction: "n",
+		Items:       []CheckpointItemInput{{Type: "candidate", Content: "A"}},
+		OperationID: "cp-items-1",
+	})
+	if err != nil {
+		t.Fatalf("identical retry error = %v", err)
+	}
+	if !identical.InputDigestMatches {
+		t.Fatal("identical retry reported digest mismatch, want match")
+	}
+}
+
+func TestDispositionCannotReferenceAnotherIntentsDeferral(t *testing.T) {
+	root, _, store := intentTestFixture(t)
+	projectID := projectIDForTest(t, store, root)
+	seedIntent(t, store, projectID, "intent:a")
+	seedIntent(t, store, projectID, "intent:b")
+	seedDeferral(t, store, projectID, "intent:b", "deferral:b", "op-b")
+
+	if err := execSchemaSQL(t, store, `
+INSERT INTO intent_dispositions (id, project_id, intent_id, seq, disposition, deferral_id, created_at)
+VALUES ('disp:cross-intent', ?, 'intent:a', 1, 'deferred', 'deferral:b', '2026-07-19T00:00:00Z')
+`, projectID); err == nil || !strings.Contains(err.Error(), "FOREIGN KEY") {
+		t.Fatalf("cross-intent deferral reference error = %v, want FOREIGN KEY violation", err)
+	}
+	if err := execSchemaSQL(t, store, `
+INSERT INTO intent_dispositions (id, project_id, intent_id, seq, disposition, supersedes_deferral_id, created_at)
+VALUES ('disp:cross-supersede', ?, 'intent:a', 1, 'tracked', 'deferral:b', '2026-07-19T00:00:00Z')
+`, projectID); err == nil || !strings.Contains(err.Error(), "FOREIGN KEY") {
+		t.Fatalf("cross-intent supersedes reference error = %v, want FOREIGN KEY violation", err)
+	}
+}

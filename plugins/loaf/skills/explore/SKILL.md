@@ -3,8 +3,8 @@ name: explore
 description: >-
   Conducts divergent inquiry as a durable Exploration: portable checkpoints,
   conversation provenance, and Intent capture that survive compaction and
-  harness changes. Use when the user says "explore this", "resume the
-  exploration", "pick up where we ...
+  harness changes. Use when the direction is genuinely undecided ("explore
+  this", "we don't know which...
 user-invocable: true
 argument-hint: '[topic or exploration ref]'
 version: 2.0.0-alpha.9
@@ -53,7 +53,7 @@ Divergent inquiry with durable continuity. An Exploration is a relational identi
 | Checkpoint | `loaf exploration checkpoint <ref> --purpose <p> --conclusions <c> --unresolved <u> --next <n> [--item candidate:<text>]... [--operation-id <key>]` |
 | Resume elsewhere | `loaf exploration context <ref> --json` |
 | Track a direction | `loaf intent create --title <t> --body <b> --from <source>...` |
-| Defer a direction | `loaf intent create --disposition deferred --why <w> --boundary <b> --trigger <t> --operation-id <key> ...` |
+| Defer a direction | `loaf intent create --title <t> --body <b> --disposition deferred --why <w> --boundary <bd> --trigger <tr> --operation-id <key> [--from <source>]` |
 | Record provenance | `loaf conversation create --title <label>` then `loaf conversation handle add <id> --harness <h> --handle <opaque-id> [--locality <scope>] [--log-ref <path>]` |
 | Associate conversation | `loaf exploration conversation add <exploration> <conversation-id>` |
 
@@ -80,6 +80,12 @@ Larger detail belongs in ordered `--item candidate:` and `--item evidence:` entr
 ## Resumption
 
 A new conversation, harness, or machine resumes with `loaf exploration context <ref> --json`: the portable core returns whole, and each optional layer (items, intents, evidence, conversations) reports counts, truncation, and its exact expansion command. Source handles appear with their last observed availability; treat unavailable ones as lost without ceremony — the checkpoint is the context. If `portable_context_present` is false, the Exploration was never checkpointed: rebuild understanding from linked sources, then write the missing checkpoint first.
+
+Before continuing, inspect the linked Intents in the context. If an Intent this inquiry was developing has since been resolved, do not silently reopen it: acknowledge the resolution, and if the checkpoint's next action still matters, create a successor Intent, record why in its body, and relate the lineage with `loaf link create --from <new-intent-ref> --to <resolved-intent-ref> --type derived-from`. Continued evidence gathering that serves no unresolved Intent should say so in its next checkpoint.
+
+## Deferring
+
+An Exploration is never deferred, paused, or closed — it has no lifecycle to transition. "Defer this exploration" means two concrete acts: checkpoint the current state honestly, then defer the direction it was developing as an Intent — `loaf intent defer` on the linked Intent, or `loaf intent create --disposition deferred` for a new one followed by `loaf link create --from <exploration-ref> --to <intent-ref> --type explores`. The deferred Intent carries the revisit trigger; the Exploration simply waits, resumable from its checkpoint whenever the Intent is resumed.
 
 ## Techniques
 
