@@ -6,6 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-alpha.10] - 2026-07-19
+
 ### Added
 
 - Track directions as first-class Intents with append-only dispositions: `loaf intent create/defer/resume/resolve/show/list`, retry-safe compound deferral through one canonical per-project operation mapping, and immutable self-sufficient deferral payloads (#122).
