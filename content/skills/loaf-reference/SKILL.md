@@ -80,6 +80,9 @@ Names and one-line purposes only. Run `loaf <command> --help` for options, argum
 | `loaf trace` | Trace relationships for one state entity | — |
 | `loaf brainstorm` | Manage brainstorms in native SQLite state | capture, list, show, promote, archive |
 | `loaf idea` | Manage ideas in native SQLite state | list, show, capture, promote, resolve, archive |
+| `loaf intent` | Manage tracked Intent in native SQLite state; disposition is derived from append-only facts | create, defer, resume, resolve, show, list |
+| `loaf exploration` | Manage relational Exploration continuity: immutable portable checkpoints, no lifecycle status, no current pointer | create, checkpoint, list, context, conversation |
+| `loaf conversation` | Manage logical conversations and machine-local provenance handles; handles never imply portable context | create, show, list, handle, observe |
 | `loaf spark` | Manage sparks in native SQLite state | list, show, capture, resolve, promote |
 | `loaf tag` | Manage tags in native SQLite state | list, show, add, remove |
 | `loaf bundle` | Manage bundles in native SQLite state | list, create, update, show, add, remove |

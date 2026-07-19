@@ -303,6 +303,12 @@ func (r Runner) Run(args []string) error {
 		dispatchErr = r.runArtifactEntityCommand("council", args[1:], out, runtime)
 	case "idea":
 		dispatchErr = r.runIdea(args[1:], out, runtime)
+	case "intent":
+		dispatchErr = r.runIntent(args[1:], out, runtime)
+	case "exploration":
+		dispatchErr = r.runExploration(args[1:], out, runtime)
+	case "conversation":
+		dispatchErr = r.runConversation(args[1:], out, runtime)
 	case "spark":
 		dispatchErr = r.runSpark(args[1:], out, runtime)
 	case "tag":
@@ -393,6 +399,9 @@ func writeRootHelp(out io.Writer) {
 	fmt.Fprintln(out, "  migrate       Run migration workflows")
 	fmt.Fprintln(out, "  render        Maintain durable markdown renders")
 	fmt.Fprintln(out, "  journal       Record and read the project journal")
+	fmt.Fprintln(out, "  intent        Manage tracked Intent")
+	fmt.Fprintln(out, "  exploration   Manage Exploration continuity")
+	fmt.Fprintln(out, "  conversation  Manage conversation provenance")
 	fmt.Fprintln(out, "  task          Manage tasks")
 	fmt.Fprintln(out, "  spec          Manage specs")
 	fmt.Fprintln(out, "  report        Manage reports")
