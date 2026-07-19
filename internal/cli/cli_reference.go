@@ -844,7 +844,7 @@ func generateCLIReferenceSkill(commands []cliReferenceCommand) string {
 	header := `---
 name: loaf-reference
 description: >-
-  Documents how agents operate the Loaf CLI: command discovery via loaf --help, JSON diagnosis surfaces, guided config maintenance, and troubleshooting. Use when unsure which loaf command to invoke or how to validate project state. Not for workflow guidance (workflow skills own their CLI contracts) or build internals.
+  Documents how agents operate the Loaf CLI: command discovery via loaf --help, JSON diagnosis surfaces, config-aware maintenance, and troubleshooting. Use when unsure which loaf command to invoke, how to validate project state, or when asked to upgrade, diagnose, repair, configure, or bring a Loaf project current. Not for workflow guidance (workflow skills own their CLI contracts) or build internals.
 ---
 
 # Loaf Reference
@@ -914,6 +914,7 @@ The Loaf operating manual for agents: how to discover commands, diagnose project
 		"| Topic | Reference | Use When |",
 		"|-------|-----------|----------|",
 		"| Configuration maintenance | [references/configuration.md](references/configuration.md) | Checking whether a project's Loaf config is current and repairing it; wiring project-owned choices |",
+		"| Config-aware maintenance protocol | [references/maintenance.md](references/maintenance.md) | Upgrading, diagnosing, repairing, or bringing a project current: diagnose, plan, ask, apply, verify |",
 		"| Command routing | [references/command-routing.md](references/command-routing.md) | Deciding which command a task needs; locating the JSON diagnosis surfaces |",
 		"| Troubleshooting | [references/troubleshooting.md](references/troubleshooting.md) | Diagnosing state, config, or alignment failures; isolating a throwaway database |",
 		"",
