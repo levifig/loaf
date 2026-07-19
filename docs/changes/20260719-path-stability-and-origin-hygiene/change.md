@@ -67,12 +67,12 @@ $ loaf conversation handle add --help          # prints leaf usage, exit 0
 
 ## Decisions
 
-Provenance: accepted 2026-07-19 during hotfix shaping, interviewed against Codex's post-ship review of intent-exploration-foundation; PATH rendering and origin vocabulary were explicit user decisions, the rest shaped autonomously.
+Provenance: accepted 2026-07-19 during hotfix shaping, interviewed against Codex's post-ship review of intent-exploration-foundation; PATH rendering and origin vocabulary were explicit user decisions, the rest shaped autonomously. Decision 4 was amended during implementation (journaled `decision(state)` 2026-07-19) when the source-literal parity scan exposed a fourth legacy origin.
 
 1. **Codex-managed surfaces render the stable PATH entrypoint; canonicalization is validation-only.** This amends Decision 19 of journal-reliability-foundation, which pinned "the canonical absolute Loaf executable" into rendered prefixes. The un-canonicalized `LookPath` result (`/opt/homebrew/bin/loaf`) is absolute and survives upgrades because Homebrew repoints the symlink; `EvalSymlinks` still runs to enforce forbidden-roots and existence checks against the real target. Forecloses literal-`loaf` PATH trust and versioned Cellar pins alike. Journaled as `decision(codex-policy)` 2026-07-19.
-2. **The relationship-origin vocabulary is closed at mechanism level: `imported`, `manual`, `command`.** `origin` answers "by what mechanism did this row appear"; `reason` carries the operation ("recorded by intent create"). The three new writers normalize to `command`, matching every pre-existing CLI writer. Forecloses per-ceremony origin values and the open-ended registry they imply. Journaled as `decision(state)` 2026-07-19.
+2. **The relationship-origin vocabulary is closed at mechanism level: `imported`, `manual`, `command`.** `origin` answers "by what mechanism did this row appear"; `reason` carries the operation ("recorded by intent create"). The three new writers normalize to `command`, matching every pre-existing CLI writer. Forecloses per-ceremony origin values and the open-ended registry they imply. Journaled as `decision(state)` 2026-07-19. Implementation note: the parity scan (Decision 3) found the closed vocabulary already breached beyond the shaped three — `run.go` and `finding.go` inlined origin `system` on five run/finding/verdict relationship writers; all five were normalized to `command` in this Change.
 3. **One registry, three consumers, and the invariant is executable.** Writers, the doctor SQL, and repair all derive from a single Go registry, and each state-creating ceremony gets a doctor-clean-after-writer test — the only structure that prevents recurrence when the next ceremony lands.
-4. **Repair reclassifies the three named legacy values; it does not invent.** `state repair relationship-origin` keeps its missing-origin backfill and adds reclassification of exactly `intent-create`, `legacy-conversion`, and `exploration-create` to `command` — dry-run first, backup-first on apply, idempotent on rerun. Genuinely foreign origins keep warning rather than being laundered into `command`; surfacing them is doctor's job. The live row count is treated as a floor, not an exact target — any Intent/Exploration ceremony run before this ships adds rows the repair must also catch.
+4. **Repair reclassifies the named legacy values; it does not invent.** `state repair relationship-origin` keeps its missing-origin backfill and adds reclassification of exactly `intent-create`, `legacy-conversion`, `exploration-create`, and `system` to `command` — dry-run first, backup-first on apply, idempotent on rerun. `system` was amended in during implementation: the parity scan exposed it as a shipped writer-invented origin (run/finding ceremonies in released alphas), so user databases need the same reclassify path; the local database was confirmed clean of it (its ten unknowns are `legacy-conversion`×8 + `intent-create`×2). Genuinely foreign origins keep warning rather than being laundered into `command`; surfacing them is doctor's job. The live row count is treated as a floor, not an exact target — any Intent/Exploration ceremony run before this ships adds rows the repair must also catch.
 5. **Journal staleness is remediated as data, not solved as code.** Five `unblock` closures and one `wrap(project)` synthesis are Definition of Done evidence; the structural fix is named for the terminal sweep.
 6. **Exploration dogfood is a successor gate, not hotfix scope.** A tracked Intent requires one real Exploration spanning two conversations/harnesses, resumed from its checkpoint, before `change-native-execution-migration` is shaped — honoring the reviewer's sequencing without padding this hotfix.
 
@@ -137,9 +137,12 @@ After ship, `/loaf:reflect` decides whether two learnings earn ARCHITECTURE.md e
 
 ## Open Questions
 
-- [KU] Does the digest-owned merge policy rewrite managed Codex files in every legitimate upgrade state, including partially stale installs? → U2 preflight against `install_codex_rules` ownership tests.
-- [KU] Is `manual` written by any live code path, or only by hand-authored rows? → U1 preflight grep; the registry documents whichever is true.
-- [KU] Does Codex re-read execpolicy rules at task start (making stable paths sufficient without any rewrite), or cache them per session? → U2 isolated `CODEX_HOME` runtime smoke.
+- [KU] Does Codex re-read execpolicy rules at task start (making stable paths sufficient without any rewrite), or cache them per session? → U2 isolated `CODEX_HOME` runtime smoke, recorded with the DoD evidence.
+
+Resolved during implementation (routes retained for provenance):
+
+- ~~[KU] digest-owned merge policy~~ → resolved by U2's upgrade-survival test: an owned upgrade after a symlink retarget converges byte-identically with no rewrite, and the existing ownership tests all pass against the render-path split.
+- ~~[KU] is `manual` code-written?~~ → resolved yes: `Store.CreateLink` (`internal/state/link.go`) writes `manual` on every explicit `loaf link` relationship, and repair writes it under `--origin manual`; recorded in the registry's doc comment.
 
 ## Source Inputs
 

@@ -3785,6 +3785,91 @@ VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one'
 	}
 }
 
+func TestRunnerStateRepairRelationshipOriginTextReportsReclassifyAndForeign(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+
+	var initOut bytes.Buffer
+	if err := (Runner{Stdout: &initOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+		t.Fatalf("state init error = %v", err)
+	}
+	initialized := decodeStateStatus(t, initOut.Bytes())
+	db, err := sql.Open("sqlite3", initialized.DatabasePath)
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	defer db.Close()
+	for id, origin := range map[string]string{
+		"relationship-intent-create":      "intent-create",
+		"relationship-exploration-create": "exploration-create",
+		"relationship-mystery-import":     "mystery-import",
+	} {
+		if _, err := db.Exec(`
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, 'task', 'task-one', 'spec', 'spec-one', 'implements', 'seeded row', ?, '2026-07-19T10:00:00Z', '2026-07-19T10:00:00Z')
+`, id, initialized.ProjectID, origin); err != nil {
+			t.Fatalf("insert %s error = %v", id, err)
+		}
+	}
+
+	// Text-mode dry-run must disclose the reclassification plan and the
+	// preserved foreign origins, not just the missing-origin backfill.
+	var dryRunOut bytes.Buffer
+	err = Runner{
+		Stdout:     &dryRunOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "repair", "relationship-origin", "--origin", "imported", "--dry-run"})
+	if err != nil {
+		t.Fatalf("state repair relationship-origin text dry-run error = %v", err)
+	}
+	for _, want := range []string{
+		"matched: 0",
+		"reclassify exploration-create -> command: matched 1, updated 0",
+		"reclassify intent-create -> command: matched 1, updated 0",
+		"reclassify legacy-conversion -> command: matched 0, updated 0",
+		`warn: foreign origin "mystery-import" on 1 relationship row(s); left for doctor, never rewritten`,
+		"2 relationship row(s) with unknown origin would be reclassified to 'command'",
+		"next: rerun with --apply",
+	} {
+		if !strings.Contains(dryRunOut.String(), want) {
+			t.Fatalf("text dry-run output = %q, want %q", dryRunOut.String(), want)
+		}
+	}
+
+	// Text-mode apply must disclose the backup and the reclassified counts
+	// even when the missing-origin backfill matches nothing.
+	var applyOut bytes.Buffer
+	err = Runner{
+		Stdout:     &applyOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"state", "repair", "relationship-origin", "--origin", "imported", "--apply"})
+	if err != nil {
+		t.Fatalf("state repair relationship-origin text apply error = %v", err)
+	}
+	for _, want := range []string{
+		"backup: ",
+		"reclassify exploration-create -> command: matched 1, updated 1",
+		"reclassify intent-create -> command: matched 1, updated 1",
+		`warn: foreign origin "mystery-import" on 1 relationship row(s); left for doctor, never rewritten`,
+		"applied: true",
+	} {
+		if !strings.Contains(applyOut.String(), want) {
+			t.Fatalf("text apply output = %q, want %q", applyOut.String(), want)
+		}
+	}
+	if strings.Contains(applyOut.String(), "would be reclassified") {
+		t.Fatalf("text apply output = %q, want no dry-run reclassify summary", applyOut.String())
+	}
+	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM relationships WHERE origin = 'command'`); got != 2 {
+		t.Fatalf("command-origin relationships after apply = %d, want 2", got)
+	}
+	if got := sqliteCount(t, db, `SELECT COUNT(*) FROM relationships WHERE origin = 'mystery-import'`); got != 1 {
+		t.Fatalf("foreign-origin relationships after apply = %d, want 1", got)
+	}
+}
+
 func TestRunnerStateRepairJournalSearchHumanJSONAndErrorEnvelope(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()

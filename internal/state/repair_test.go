@@ -448,6 +448,195 @@ func TestRepairMissingRelationshipOriginsRejectsUnknownOrigin(t *testing.T) {
 	}
 }
 
+func TestRepairRelationshipOriginReclassifiesLegacyOriginsAndPreservesForeign(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	resolver := PathResolver{StateHome: stateHome}
+	ctx := context.Background()
+	if _, err := Initialize(ctx, root, resolver); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	projectID := projectIDForTest(t, store, root)
+	insertRelationshipWithOrigin(t, store, projectID, "relationship-intent-create", "intent-create")
+	insertRelationshipWithOrigin(t, store, projectID, "relationship-legacy-conversion", "legacy-conversion")
+	insertRelationshipWithOrigin(t, store, projectID, "relationship-exploration-create", "exploration-create")
+	// 'system' is retired writer provenance released alphas wrote onto run and
+	// finding edges; it must reclassify like any other legacy origin rather
+	// than linger as a foreign-origin doctor warning.
+	insertRelationshipWithOrigin(t, store, projectID, "relationship-system", "system")
+	insertRelationshipWithOrigin(t, store, projectID, "relationship-mystery-import", "mystery-import")
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	wantPlan := []RelationshipOriginReclassification{
+		{Origin: "exploration-create", Target: "command", Matched: 1},
+		{Origin: "intent-create", Target: "command", Matched: 1},
+		{Origin: "legacy-conversion", Target: "command", Matched: 1},
+		{Origin: "system", Target: "command", Matched: 1},
+	}
+	wantForeign := []RelationshipOriginForeignGroup{{Origin: "mystery-import", Count: 1}}
+
+	dryRun, err := RepairMissingRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported"})
+	if err != nil {
+		t.Fatalf("RepairMissingRelationshipOrigins(dry-run) error = %v", err)
+	}
+	if dryRun.Applied || dryRun.BackupPath != "" {
+		t.Fatalf("dry-run result = applied %t backup %q, want unapplied without backup", dryRun.Applied, dryRun.BackupPath)
+	}
+	if !reflect.DeepEqual(dryRun.Reclassified, wantPlan) {
+		t.Fatalf("dry-run Reclassified = %#v, want %#v", dryRun.Reclassified, wantPlan)
+	}
+	if !reflect.DeepEqual(dryRun.ForeignOrigins, wantForeign) {
+		t.Fatalf("dry-run ForeignOrigins = %#v, want %#v", dryRun.ForeignOrigins, wantForeign)
+	}
+	store = openTestStore(t, root, stateHome)
+	assertRelationshipOrigin(t, store, "relationship-intent-create", "intent-create")
+	assertRelationshipOrigin(t, store, "relationship-legacy-conversion", "legacy-conversion")
+	assertRelationshipOrigin(t, store, "relationship-exploration-create", "exploration-create")
+	assertRelationshipOrigin(t, store, "relationship-system", "system")
+	assertRelationshipOrigin(t, store, "relationship-mystery-import", "mystery-import")
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	applied, err := RepairMissingRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
+	if err != nil {
+		t.Fatalf("RepairMissingRelationshipOrigins(apply) error = %v", err)
+	}
+	if !applied.Applied {
+		t.Fatal("Applied = false, want true")
+	}
+	if applied.BackupPath == "" {
+		t.Fatal("BackupPath is empty for applied reclassification")
+	}
+	if _, err := os.Stat(applied.BackupPath); err != nil {
+		t.Fatalf("repair backup does not exist: %v", err)
+	}
+	wantApplied := []RelationshipOriginReclassification{
+		{Origin: "exploration-create", Target: "command", Matched: 1, Updated: 1},
+		{Origin: "intent-create", Target: "command", Matched: 1, Updated: 1},
+		{Origin: "legacy-conversion", Target: "command", Matched: 1, Updated: 1},
+		{Origin: "system", Target: "command", Matched: 1, Updated: 1},
+	}
+	if !reflect.DeepEqual(applied.Reclassified, wantApplied) {
+		t.Fatalf("apply Reclassified = %#v, want %#v", applied.Reclassified, wantApplied)
+	}
+	if !reflect.DeepEqual(applied.ForeignOrigins, wantForeign) {
+		t.Fatalf("apply ForeignOrigins = %#v, want %#v", applied.ForeignOrigins, wantForeign)
+	}
+	store = openTestStore(t, root, stateHome)
+	assertRelationshipOrigin(t, store, "relationship-intent-create", "command")
+	assertRelationshipOrigin(t, store, "relationship-legacy-conversion", "command")
+	assertRelationshipOrigin(t, store, "relationship-exploration-create", "command")
+	assertRelationshipOrigin(t, store, "relationship-system", "command")
+	assertRelationshipOrigin(t, store, "relationship-mystery-import", "mystery-import")
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	rerun, err := RepairMissingRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
+	if err != nil {
+		t.Fatalf("RepairMissingRelationshipOrigins(rerun) error = %v", err)
+	}
+	if rerun.BackupPath != "" {
+		t.Fatalf("rerun BackupPath = %q, want no backup for a no-op", rerun.BackupPath)
+	}
+	for _, reclassification := range rerun.Reclassified {
+		if reclassification.Matched != 0 || reclassification.Updated != 0 {
+			t.Fatalf("rerun reclassification = %#v, want zero matched and updated", reclassification)
+		}
+	}
+	if !reflect.DeepEqual(rerun.ForeignOrigins, wantForeign) {
+		t.Fatalf("rerun ForeignOrigins = %#v, want foreign origin still surfaced", rerun.ForeignOrigins)
+	}
+
+	store = openTestStore(t, root, stateHome)
+	defer store.Close()
+	assertRelationshipOrigin(t, store, "relationship-mystery-import", "mystery-import")
+	diagnostics, err := inspectRelationshipOriginInvariants(ctx, store)
+	if err != nil {
+		t.Fatalf("inspectRelationshipOriginInvariants() error = %v", err)
+	}
+	if len(diagnostics) != 1 {
+		t.Fatalf("diagnostics = %#v, want exactly one foreign-origin warning", diagnostics)
+	}
+	if diagnostics[0].Code != "relationship-origin-unknown" || !strings.Contains(diagnostics[0].Message, "mystery-import") {
+		t.Fatalf("diagnostic = %#v, want relationship-origin-unknown naming mystery-import", diagnostics[0])
+	}
+}
+
+func TestRepairMissingRelationshipOriginsFailedWriteAfterBackupPreservesBackupPath(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	resolver := PathResolver{StateHome: stateHome}
+	ctx := context.Background()
+	if _, err := Initialize(ctx, root, resolver); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	projectID := projectIDForTest(t, store, root)
+	insertRelationshipWithoutOrigin(t, store, projectID)
+	// Abort every relationship update at the SQLite layer so the repair fails
+	// after its pre-repair backup exists. That window is the only one in which
+	// the backup path is the operator's sole recovery reference, so dropping it
+	// from the surfaced result would strand them.
+	if _, err := store.db.ExecContext(ctx, `
+CREATE TRIGGER forced_relationship_update_failure
+BEFORE UPDATE ON relationships
+BEGIN
+  SELECT RAISE(ABORT, 'forced post-backup failure');
+END
+`); err != nil {
+		store.Close()
+		t.Fatalf("create forced failure trigger error = %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	result, err := RepairMissingRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
+	if err == nil {
+		t.Fatal("RepairMissingRelationshipOrigins() error = nil, want forced post-backup failure")
+	}
+	var repairErr *RelationshipOriginRepairError
+	if !errors.As(err, &repairErr) {
+		t.Fatalf("error = %T %v, want *RelationshipOriginRepairError", err, err)
+	}
+	if errors.Unwrap(repairErr) == nil {
+		t.Fatal("Unwrap() = nil, want the underlying repair failure")
+	}
+	if !strings.Contains(err.Error(), "forced post-backup failure") {
+		t.Fatalf("error = %v, want the underlying SQLite abort preserved", err)
+	}
+	if repairErr.Result.BackupPath == "" {
+		t.Fatal("preserved result BackupPath is empty after a post-backup failure")
+	}
+	if !strings.Contains(err.Error(), repairErr.Result.BackupPath) {
+		t.Fatalf("error = %v, want the preserved backup path named", err)
+	}
+	if result.BackupPath != repairErr.Result.BackupPath {
+		t.Fatalf("returned result BackupPath = %q, want %q from the preserved error", result.BackupPath, repairErr.Result.BackupPath)
+	}
+	if _, err := os.Stat(repairErr.Result.BackupPath); err != nil {
+		t.Fatalf("preserved backup does not exist: %v", err)
+	}
+	verification, err := VerifyBackup(ctx, repairErr.Result.BackupPath)
+	if err != nil {
+		t.Fatalf("VerifyBackup(preserved) error = %v", err)
+	}
+	if !verification.Verified {
+		t.Fatalf("preserved backup verification = %#v, want verified", verification)
+	}
+
+	// The live row is untouched, so a rerun after the operator clears the fault
+	// still has the same work to do.
+	store = openTestStore(t, root, stateHome)
+	defer store.Close()
+	assertMissingRelationshipOrigins(t, store, projectID, 1)
+}
+
 func TestArchiveLegacyProjectDatabaseDryRunDoesNotMoveFiles(t *testing.T) {
 	root := projectRoot(t)
 	dataHome := t.TempDir()
@@ -611,6 +800,27 @@ INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_
 VALUES ('relationship-without-origin', ?, 'task', 'task-one', 'spec', 'spec-one', 'implements', 'legacy row', '2026-06-13T10:00:00Z', '2026-06-13T10:00:00Z')
 `, projectID); err != nil {
 		t.Fatalf("insert relationship without origin error = %v", err)
+	}
+}
+
+func insertRelationshipWithOrigin(t *testing.T, store *Store, projectID string, id string, origin string) {
+	t.Helper()
+	if _, err := store.db.ExecContext(context.Background(), `
+INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, created_at, updated_at)
+VALUES (?, ?, 'spark', 'spark-one', 'intent', ?, 'source-of', 'seeded provenance row', ?, '2026-07-01T00:00:00Z', '2026-07-01T00:00:00Z')
+`, id, projectID, "intent-for-"+id, origin); err != nil {
+		t.Fatalf("insert relationship with origin %q error = %v", origin, err)
+	}
+}
+
+func assertRelationshipOrigin(t *testing.T, store *Store, id string, want string) {
+	t.Helper()
+	var got string
+	if err := store.db.QueryRowContext(context.Background(), `SELECT origin FROM relationships WHERE id = ?`, id).Scan(&got); err != nil {
+		t.Fatalf("read relationship %s origin error = %v", id, err)
+	}
+	if got != want {
+		t.Fatalf("relationship %s origin = %q, want %q", id, got, want)
 	}
 }
 
