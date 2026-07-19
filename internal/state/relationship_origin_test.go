@@ -206,15 +206,49 @@ func classifySQLOriginValue(query string, item string, offset int) (relationship
 	}
 }
 
+// relationshipOriginRuntimeBinds classifies the origin binds that are runtime
+// values by construction and therefore cannot be resolved statically. Each key
+// is file:function:identifier — stable across edits, unlike a line number — and
+// each entry is a deliberate decision that the named value is validated against
+// the registry before it reaches SQL:
+//
+//   - repair's backfill origin is the operator's --origin selection, rejected by
+//     RepairRelationshipOrigins unless it is 'imported' or 'manual'.
+//   - repair's reclassification target is read from
+//     legacyRelationshipOriginReclassifications, whose values are registry
+//     constants pinned by TestRelationshipOriginRegistryPinsClosedVocabulary.
+//
+// Any other unresolvable bind fails the scan. Adding a key here is the explicit
+// way to say "this one is checked elsewhere"; silence is not.
+var relationshipOriginRuntimeBinds = map[string]bool{
+	"repair.go:backfillMissingRelationshipOrigins:origin": true,
+	"repair.go:reclassifyLegacyRelationshipOrigin:target": true,
+}
+
+// enclosingFunctionName names the function declaration containing pos, or ""
+// for package-level expressions.
+func enclosingFunctionName(file *ast.File, pos token.Pos) string {
+	for _, decl := range file.Decls {
+		funcDecl, ok := decl.(*ast.FuncDecl)
+		if !ok || pos < funcDecl.Pos() || pos > funcDecl.End() {
+			continue
+		}
+		return funcDecl.Name.Name
+	}
+	return ""
+}
+
 // TestRelationshipOriginSourceLiteralsAreRegistryListed is the registry parity
 // scan: every non-test source file in this package is parsed and every origin
 // literal written to relationships.origin — inline in SQL, bound as a Go
 // string literal, or bound through a package-level string constant — must be
 // registry-listed, which also keeps the retired legacy origins from
-// reappearing in origin position. Origins bound from plain variables are
-// runtime values their callers validate against the registry (repair's
-// --origin flag, the legacy reclassification targets) and stay out of static
-// reach by design.
+// reappearing in origin position.
+//
+// The scan fails closed. A bind it cannot classify — a local variable, a field,
+// a call result — is an error, not a skip, because `origin := "new-ceremony"`
+// would otherwise evade the invariant entirely. The only escape is an explicit
+// relationshipOriginRuntimeBinds entry naming a caller-validated runtime value.
 func TestRelationshipOriginSourceLiteralsAreRegistryListed(t *testing.T) {
 	allowed := map[string]bool{}
 	for _, origin := range allowedRelationshipOrigins() {
@@ -267,7 +301,7 @@ func TestRelationshipOriginSourceLiteralsAreRegistryListed(t *testing.T) {
 	}
 
 	scanned := 0
-	for _, file := range files {
+	for fileName, file := range files {
 		processedQueries := map[token.Pos]bool{}
 		ast.Inspect(file, func(node ast.Node) bool {
 			call, ok := node.(*ast.CallExpr)
@@ -315,9 +349,18 @@ func TestRelationshipOriginSourceLiteralsAreRegistryListed(t *testing.T) {
 							t.Errorf("%s: bound origin literal %s is not registry-listed", fset.Position(bound.Pos()), bound.Value)
 						}
 					case *ast.Ident:
-						if value, ok := stringConstants[bound.Name]; ok && !allowed[value] {
-							t.Errorf("%s: origin constant %s = %q is not registry-listed", fset.Position(bound.Pos()), bound.Name, value)
+						if value, ok := stringConstants[bound.Name]; ok {
+							if !allowed[value] {
+								t.Errorf("%s: origin constant %s = %q is not registry-listed", fset.Position(bound.Pos()), bound.Name, value)
+							}
+							continue
 						}
+						key := fileName + ":" + enclosingFunctionName(file, bound.Pos()) + ":" + bound.Name
+						if !relationshipOriginRuntimeBinds[key] {
+							t.Errorf("%s: origin bound to unresolvable identifier %s (scan key %q); bind a registry constant, or add the key to relationshipOriginRuntimeBinds with a comment if this is a caller-validated runtime value", fset.Position(bound.Pos()), bound.Name, key)
+						}
+					default:
+						t.Errorf("%s: origin bound to unclassifiable expression %T; bind a registry constant or a caller-validated runtime value the scan can key on", fset.Position(call.Args[boundIndex].Pos()), call.Args[boundIndex])
 					}
 				}
 			}

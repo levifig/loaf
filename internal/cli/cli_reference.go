@@ -171,11 +171,11 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--apply", Description: "Move legacy SQLite files into the archive directory"},
 					{Flags: "--json", Description: "Output archive plan/result, global database scope, and project identity as JSON"},
 				}},
-				{Name: "repair relationship-origin", Description: "Backfill missing relationship provenance and reclassify retired legacy origins to 'command'; foreign origins are reported, never rewritten", Options: []cliReferenceOption{
-					{Flags: "--origin <imported|manual>", Description: "Provenance value to backfill onto missing origins"},
+				{Name: "repair relationship-origin", Description: "Reclassify retired legacy origins to 'command'; foreign origins are reported, never rewritten. Bare invocation is reclassify-only and leaves missing origins untouched; --origin adds the backfill", Options: []cliReferenceOption{
+					{Flags: "--origin <imported|manual>", Description: "Enable the missing-origin backfill with this provenance value; omit for reclassify-only"},
 					{Flags: "--dry-run", Description: "Preview affected rows without writing"},
-					{Flags: "--apply", Description: "Backfill missing origins and reclassify retired legacy origins after creating a SQLite backup"},
-					{Flags: "--json", Description: "Output repair plan/result, global database scope, and project identity as JSON"},
+					{Flags: "--apply", Description: "Reclassify retired legacy origins, and backfill missing origins when --origin is given, after creating a SQLite backup"},
+					{Flags: "--json", Description: "Output repair mode, plan/result, global database scope, and project identity as JSON"},
 				}},
 				{Name: "repair journal-search", Description: "Preview or apply a backup-first rebuild of the derived journal search index", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview canonical/index parity counts without writing"},

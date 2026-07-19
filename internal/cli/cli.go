@@ -2543,7 +2543,7 @@ func writeStateRepairLegacyProjectDatabaseHelp(out io.Writer) {
 }
 
 func writeStateRepairRelationshipOriginHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf state repair relationship-origin --origin <imported|manual> [--dry-run|--apply] [--json]", "Backfill missing relationship provenance and reclassify the retired legacy origins (intent-create, legacy-conversion, exploration-create, system) to 'command' for the current project; foreign origins are reported, never rewritten.", "--origin     Provenance value to set on missing origins: imported or manual", "--dry-run    Preview affected rows without writing", "--apply      Apply the backfill and legacy reclassification after a backup", "--json       Output repair plan/result, global database scope, and project identity as JSON")
+	writeUsageHelp(out, "loaf state repair relationship-origin [--origin <imported|manual>] [--dry-run|--apply] [--json]", "Reclassify the retired legacy origins (intent-create, legacy-conversion, exploration-create, system) to 'command' for the current project; foreign origins are reported, never rewritten. Without --origin this reclassification is all that runs and rows with no origin are left untouched; --origin additionally backfills them.", "--origin     Enable the missing-origin backfill with this provenance value: imported or manual (omit for reclassify-only)", "--dry-run    Preview affected rows without writing", "--apply      Apply the reclassification, and the backfill when --origin is given, after a backup", "--json       Output repair mode, plan/result, global database scope, and project identity as JSON")
 }
 
 func writeStateRepairJournalSearchHelp(out io.Writer) {
@@ -2620,7 +2620,7 @@ func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, r
 		}
 		return err
 	}
-	result, err := state.RepairMissingRelationshipOrigins(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.RelationshipOriginRepairOptions{
+	result, err := state.RepairRelationshipOrigins(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.RelationshipOriginRepairOptions{
 		Origin: options.origin,
 		Apply:  options.apply,
 	})
@@ -2647,9 +2647,17 @@ func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, r
 	if result.ProjectCurrentPath != "" {
 		fmt.Fprintf(out, "project path: %s\n", result.ProjectCurrentPath)
 	}
-	fmt.Fprintf(out, "origin: %s\n", result.Origin)
-	fmt.Fprintf(out, "matched: %d\n", result.Matched)
-	fmt.Fprintf(out, "updated: %d\n", result.Updated)
+	fmt.Fprintf(out, "mode: %s\n", result.Mode)
+	backfilling := result.Mode == state.RelationshipOriginRepairModeBackfillAndReclassify
+	if backfilling {
+		fmt.Fprintf(out, "origin: %s\n", result.Origin)
+		fmt.Fprintf(out, "matched: %d\n", result.Matched)
+		fmt.Fprintf(out, "updated: %d\n", result.Updated)
+	} else if result.Matched > 0 {
+		// Reclassify-only never writes these rows, so they are reported as
+		// untouched state rather than as a backfill that matched nothing.
+		fmt.Fprintf(out, "missing origin: %d row(s) left untouched; pass --origin imported|manual to backfill them\n", result.Matched)
+	}
 	reclassifiable := 0
 	reclassifyTarget := ""
 	for _, reclassification := range result.Reclassified {
@@ -2666,8 +2674,16 @@ func (r Runner) runStateRepairRelationshipOrigin(args []string, out io.Writer, r
 	if !result.Applied && reclassifiable > 0 {
 		fmt.Fprintf(out, "%d relationship row(s) with unknown origin would be reclassified to '%s'\n", reclassifiable, reclassifyTarget)
 	}
-	if !result.Applied && (result.Matched > 0 || reclassifiable > 0) {
-		fmt.Fprintln(out, "next: rerun with --apply after reviewing the selected origin")
+	pendingBackfill := 0
+	if backfilling {
+		pendingBackfill = result.Matched
+	}
+	if !result.Applied && (pendingBackfill > 0 || reclassifiable > 0) {
+		if backfilling {
+			fmt.Fprintln(out, "next: rerun with --apply after reviewing the selected origin")
+		} else {
+			fmt.Fprintln(out, "next: rerun with --apply after reviewing the reclassification plan")
+		}
 	}
 	return nil
 }
@@ -13334,6 +13350,7 @@ func parseJournalSearchRepairArgs(args []string) (journalSearchRepairOptions, er
 
 func parseRelationshipOriginRepairArgs(args []string) (relationshipOriginRepairOptions, error) {
 	var options relationshipOriginRepairOptions
+	originSet := false
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch arg {
@@ -13349,6 +13366,7 @@ func parseRelationshipOriginRepairArgs(args []string) (relationshipOriginRepairO
 				return relationshipOriginRepairOptions{}, err
 			}
 			options.origin = value
+			originSet = true
 		default:
 			return relationshipOriginRepairOptions{}, fmt.Errorf("unknown option %q", arg)
 		}
@@ -13356,10 +13374,11 @@ func parseRelationshipOriginRepairArgs(args []string) (relationshipOriginRepairO
 	if options.apply && options.dryRun {
 		return relationshipOriginRepairOptions{}, fmt.Errorf("state repair relationship-origin cannot combine --apply and --dry-run")
 	}
-	if options.origin == "" {
-		return relationshipOriginRepairOptions{}, fmt.Errorf("state repair relationship-origin requires --origin imported|manual")
-	}
-	if options.origin != "imported" && options.origin != "manual" {
+	// Omitting --origin is valid: it selects reclassify-only, the mechanical
+	// registry-derived repair. Supplying it opts into the missing-origin
+	// backfill, which needs a real mechanism value — an explicitly empty one is
+	// an operator mistake, not a mode selection.
+	if originSet && options.origin != "imported" && options.origin != "manual" {
 		return relationshipOriginRepairOptions{}, fmt.Errorf("relationship origin must be imported or manual")
 	}
 	return options, nil

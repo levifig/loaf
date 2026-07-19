@@ -208,7 +208,24 @@ func inspectJournalSearchParityReadOnly(ctx context.Context, databasePath string
 	return parity, nil
 }
 
-// RelationshipOriginRepairOptions controls a guarded relationship provenance backfill.
+// Relationship origin repair runs in one of two modes. Reclassify-only is the
+// default because retiring the legacy origins is a mechanical, registry-derived
+// rewrite that needs no operator judgement; backfilling a missing origin does
+// need it, so it is opt-in through an explicit origin selection.
+const (
+	// RelationshipOriginRepairModeReclassifyOnly reclassifies the retired legacy
+	// origins and reports foreign ones. Rows with no origin are counted and
+	// reported but left untouched.
+	RelationshipOriginRepairModeReclassifyOnly = "reclassify-only"
+	// RelationshipOriginRepairModeBackfillAndReclassify additionally writes the
+	// operator-selected origin onto rows that have none.
+	RelationshipOriginRepairModeBackfillAndReclassify = "backfill-and-reclassify"
+)
+
+// RelationshipOriginRepairOptions controls a guarded relationship provenance
+// repair. An empty Origin selects reclassify-only mode; setting it to
+// 'imported' or 'manual' also enables the missing-origin backfill. Any other
+// value is rejected.
 type RelationshipOriginRepairOptions struct {
 	Origin string
 	Apply  bool
@@ -258,7 +275,11 @@ func (e *RelationshipOriginRepairError) Unwrap() error {
 	return e.Err
 }
 
-// RelationshipOriginRepairResult describes a dry-run or applied relationship provenance repair.
+// RelationshipOriginRepairResult describes a dry-run or applied relationship
+// provenance repair. Mode names which repair ran, so a consumer can never read
+// Matched and Updated as a backfill that matched rows and failed to write them:
+// in reclassify-only mode Matched counts rows the backfill would have covered
+// had it been enabled, and Updated is always zero.
 type RelationshipOriginRepairResult struct {
 	ContractVersion    int                                  `json:"contract_version"`
 	DatabaseScope      string                               `json:"database_scope"`
@@ -267,6 +288,7 @@ type RelationshipOriginRepairResult struct {
 	ProjectID          string                               `json:"project_id"`
 	ProjectName        string                               `json:"project_name"`
 	ProjectCurrentPath string                               `json:"project_current_path"`
+	Mode               string                               `json:"mode"`
 	Origin             string                               `json:"origin"`
 	Matched            int                                  `json:"matched"`
 	Updated            int                                  `json:"updated"`
@@ -295,14 +317,22 @@ type LegacyProjectDatabaseArchiveResult struct {
 	Warnings           []string `json:"warnings"`
 }
 
-// RepairMissingRelationshipOrigins backfills missing relationship origin values
-// and reclassifies the retired legacy origins to 'command' for the current
-// project only. Origins outside the allowed and legacy vocabularies are
-// reported, never rewritten. It is dry-run unless options.Apply is true. A
-// failure once the pre-repair backup exists returns a
-// *RelationshipOriginRepairError carrying the partial result and backup path.
-func RepairMissingRelationshipOrigins(ctx context.Context, root project.Root, resolver PathResolver, options RelationshipOriginRepairOptions) (RelationshipOriginRepairResult, error) {
-	if options.Origin != relationshipOriginImported && options.Origin != relationshipOriginManual {
+// RepairRelationshipOrigins reclassifies the retired legacy origins to
+// 'command' for the current project and, when options.Origin selects a
+// mechanism, also backfills rows that have no origin at all. Origins outside
+// the allowed and legacy vocabularies are reported, never rewritten. It is
+// dry-run unless options.Apply is true. A failure once the pre-repair backup
+// exists returns a *RelationshipOriginRepairError carrying the partial result
+// and backup path.
+func RepairRelationshipOrigins(ctx context.Context, root project.Root, resolver PathResolver, options RelationshipOriginRepairOptions) (RelationshipOriginRepairResult, error) {
+	mode := RelationshipOriginRepairModeReclassifyOnly
+	switch options.Origin {
+	case "":
+		// No mechanism selected: reclassify the legacy origins and leave rows
+		// that carry no origin for an explicit, operator-chosen backfill.
+	case relationshipOriginImported, relationshipOriginManual:
+		mode = RelationshipOriginRepairModeBackfillAndReclassify
+	default:
 		return RelationshipOriginRepairResult{}, fmt.Errorf("relationship origin must be imported or manual")
 	}
 
@@ -347,6 +377,7 @@ func RepairMissingRelationshipOrigins(ctx context.Context, root project.Root, re
 		ProjectID:          identity.ID,
 		ProjectName:        identity.FriendlyName,
 		ProjectCurrentPath: identity.CurrentPath,
+		Mode:               mode,
 		Origin:             options.Origin,
 		Matched:            matched,
 		Reclassified:       reclassifications,
@@ -358,7 +389,13 @@ func RepairMissingRelationshipOrigins(ctx context.Context, root project.Root, re
 	for _, reclassification := range reclassifications {
 		reclassifiable += reclassification.Matched
 	}
-	if !options.Apply || (matched == 0 && reclassifiable == 0) {
+	// Missing origins are only pending work when the backfill is enabled;
+	// reclassify-only leaves them alone, so they must not trigger a backup.
+	pendingBackfill := 0
+	if mode == RelationshipOriginRepairModeBackfillAndReclassify {
+		pendingBackfill = matched
+	}
+	if !options.Apply || (pendingBackfill == 0 && reclassifiable == 0) {
 		return result, nil
 	}
 
@@ -371,7 +408,7 @@ func RepairMissingRelationshipOrigins(ctx context.Context, root project.Root, re
 
 	// Every failure past this point carries the backup path so a partially
 	// applied repair still tells the operator where their pre-repair copy is.
-	if matched > 0 {
+	if pendingBackfill > 0 {
 		updated, err := store.backfillMissingRelationshipOrigins(ctx, identity.ID, options.Origin, result.GeneratedAt)
 		if err != nil {
 			return result, &RelationshipOriginRepairError{Result: result, Err: err}

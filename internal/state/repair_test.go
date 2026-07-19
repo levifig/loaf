@@ -328,7 +328,7 @@ func TestRepairJournalSearchHoldsImmediateLockThroughBackupAndCommit(t *testing.
 	}
 }
 
-func TestRepairMissingRelationshipOriginsDryRunDoesNotWrite(t *testing.T) {
+func TestRepairRelationshipOriginsDryRunDoesNotWrite(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
 	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
@@ -341,9 +341,9 @@ func TestRepairMissingRelationshipOriginsDryRunDoesNotWrite(t *testing.T) {
 		t.Fatalf("Close() error = %v", err)
 	}
 
-	result, err := RepairMissingRelationshipOrigins(context.Background(), root, PathResolver{StateHome: stateHome}, RelationshipOriginRepairOptions{Origin: "imported"})
+	result, err := RepairRelationshipOrigins(context.Background(), root, PathResolver{StateHome: stateHome}, RelationshipOriginRepairOptions{Origin: "imported"})
 	if err != nil {
-		t.Fatalf("RepairMissingRelationshipOrigins() error = %v", err)
+		t.Fatalf("RepairRelationshipOrigins() error = %v", err)
 	}
 	if result.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
@@ -375,7 +375,7 @@ func TestRepairMissingRelationshipOriginsDryRunDoesNotWrite(t *testing.T) {
 	assertMissingRelationshipOrigins(t, store, projectID, 1)
 }
 
-func TestRepairMissingRelationshipOriginsApplyBackfillsCurrentProject(t *testing.T) {
+func TestRepairRelationshipOriginsApplyBackfillsCurrentProject(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
 	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
@@ -388,9 +388,9 @@ func TestRepairMissingRelationshipOriginsApplyBackfillsCurrentProject(t *testing
 		t.Fatalf("Close() error = %v", err)
 	}
 
-	result, err := RepairMissingRelationshipOrigins(context.Background(), root, PathResolver{StateHome: stateHome}, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
+	result, err := RepairRelationshipOrigins(context.Background(), root, PathResolver{StateHome: stateHome}, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
 	if err != nil {
-		t.Fatalf("RepairMissingRelationshipOrigins() error = %v", err)
+		t.Fatalf("RepairRelationshipOrigins() error = %v", err)
 	}
 	if result.ContractVersion != StateJSONContractVersion {
 		t.Fatalf("ContractVersion = %d, want %d", result.ContractVersion, StateJSONContractVersion)
@@ -435,16 +435,16 @@ func TestRepairMissingRelationshipOriginsApplyBackfillsCurrentProject(t *testing
 	}
 }
 
-func TestRepairMissingRelationshipOriginsRejectsUnknownOrigin(t *testing.T) {
+func TestRepairRelationshipOriginsRejectsUnknownOrigin(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
 	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
 		t.Fatalf("Initialize() error = %v", err)
 	}
 
-	_, err := RepairMissingRelationshipOrigins(context.Background(), root, PathResolver{StateHome: stateHome}, RelationshipOriginRepairOptions{Origin: "guessed", Apply: true})
+	_, err := RepairRelationshipOrigins(context.Background(), root, PathResolver{StateHome: stateHome}, RelationshipOriginRepairOptions{Origin: "guessed", Apply: true})
 	if err == nil {
-		t.Fatal("RepairMissingRelationshipOrigins() error = nil, want invalid origin error")
+		t.Fatal("RepairRelationshipOrigins() error = nil, want invalid origin error")
 	}
 }
 
@@ -478,9 +478,9 @@ func TestRepairRelationshipOriginReclassifiesLegacyOriginsAndPreservesForeign(t 
 	}
 	wantForeign := []RelationshipOriginForeignGroup{{Origin: "mystery-import", Count: 1}}
 
-	dryRun, err := RepairMissingRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported"})
+	dryRun, err := RepairRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported"})
 	if err != nil {
-		t.Fatalf("RepairMissingRelationshipOrigins(dry-run) error = %v", err)
+		t.Fatalf("RepairRelationshipOrigins(dry-run) error = %v", err)
 	}
 	if dryRun.Applied || dryRun.BackupPath != "" {
 		t.Fatalf("dry-run result = applied %t backup %q, want unapplied without backup", dryRun.Applied, dryRun.BackupPath)
@@ -501,9 +501,9 @@ func TestRepairRelationshipOriginReclassifiesLegacyOriginsAndPreservesForeign(t 
 		t.Fatalf("Close() error = %v", err)
 	}
 
-	applied, err := RepairMissingRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
+	applied, err := RepairRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
 	if err != nil {
-		t.Fatalf("RepairMissingRelationshipOrigins(apply) error = %v", err)
+		t.Fatalf("RepairRelationshipOrigins(apply) error = %v", err)
 	}
 	if !applied.Applied {
 		t.Fatal("Applied = false, want true")
@@ -536,9 +536,9 @@ func TestRepairRelationshipOriginReclassifiesLegacyOriginsAndPreservesForeign(t 
 		t.Fatalf("Close() error = %v", err)
 	}
 
-	rerun, err := RepairMissingRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
+	rerun, err := RepairRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
 	if err != nil {
-		t.Fatalf("RepairMissingRelationshipOrigins(rerun) error = %v", err)
+		t.Fatalf("RepairRelationshipOrigins(rerun) error = %v", err)
 	}
 	if rerun.BackupPath != "" {
 		t.Fatalf("rerun BackupPath = %q, want no backup for a no-op", rerun.BackupPath)
@@ -567,7 +567,146 @@ func TestRepairRelationshipOriginReclassifiesLegacyOriginsAndPreservesForeign(t 
 	}
 }
 
-func TestRepairMissingRelationshipOriginsFailedWriteAfterBackupPreservesBackupPath(t *testing.T) {
+// Bare invocation is the Change's Observable Workflow form: it reclassifies the
+// retired legacy origins without touching rows that carry no origin at all,
+// because choosing a provenance value for those needs operator judgement.
+func TestRepairRelationshipOriginsReclassifyOnlyLeavesMissingOriginsUntouched(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	resolver := PathResolver{StateHome: stateHome}
+	ctx := context.Background()
+	if _, err := Initialize(ctx, root, resolver); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	projectID := projectIDForTest(t, store, root)
+	insertRelationshipWithOrigin(t, store, projectID, "relationship-intent-create", "intent-create")
+	insertRelationshipWithoutOrigin(t, store, projectID)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	dryRun, err := RepairRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{})
+	if err != nil {
+		t.Fatalf("RepairRelationshipOrigins(bare dry-run) error = %v", err)
+	}
+	if dryRun.Mode != RelationshipOriginRepairModeReclassifyOnly {
+		t.Fatalf("dry-run Mode = %q, want %q", dryRun.Mode, RelationshipOriginRepairModeReclassifyOnly)
+	}
+	if dryRun.Origin != "" {
+		t.Fatalf("dry-run Origin = %q, want empty in reclassify-only mode", dryRun.Origin)
+	}
+	if dryRun.Matched != 1 {
+		t.Fatalf("dry-run Matched = %d, want the missing-origin row reported", dryRun.Matched)
+	}
+	if dryRun.Updated != 0 {
+		t.Fatalf("dry-run Updated = %d, want 0", dryRun.Updated)
+	}
+	wantPlan := []RelationshipOriginReclassification{
+		{Origin: "exploration-create", Target: "command", Matched: 0},
+		{Origin: "intent-create", Target: "command", Matched: 1},
+		{Origin: "legacy-conversion", Target: "command", Matched: 0},
+		{Origin: "system", Target: "command", Matched: 0},
+	}
+	if !reflect.DeepEqual(dryRun.Reclassified, wantPlan) {
+		t.Fatalf("dry-run Reclassified = %#v, want %#v", dryRun.Reclassified, wantPlan)
+	}
+
+	applied, err := RepairRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Apply: true})
+	if err != nil {
+		t.Fatalf("RepairRelationshipOrigins(bare apply) error = %v", err)
+	}
+	if applied.Mode != RelationshipOriginRepairModeReclassifyOnly {
+		t.Fatalf("apply Mode = %q, want %q", applied.Mode, RelationshipOriginRepairModeReclassifyOnly)
+	}
+	if applied.BackupPath == "" {
+		t.Fatal("BackupPath is empty for an applied reclassification")
+	}
+	if _, err := os.Stat(applied.BackupPath); err != nil {
+		t.Fatalf("repair backup does not exist: %v", err)
+	}
+	if applied.Updated != 0 {
+		t.Fatalf("apply Updated = %d, want 0 — reclassify-only must never backfill", applied.Updated)
+	}
+
+	store = openTestStore(t, root, stateHome)
+	assertRelationshipOrigin(t, store, "relationship-intent-create", "command")
+	// The missing-origin row is still missing: bare invocation reports it and
+	// leaves it for an explicit --origin run.
+	assertMissingRelationshipOrigins(t, store, projectID, 1)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	rerun, err := RepairRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Apply: true})
+	if err != nil {
+		t.Fatalf("RepairRelationshipOrigins(bare rerun) error = %v", err)
+	}
+	if rerun.BackupPath != "" {
+		t.Fatalf("rerun BackupPath = %q, want no backup for a no-op", rerun.BackupPath)
+	}
+	for _, reclassification := range rerun.Reclassified {
+		if reclassification.Matched != 0 || reclassification.Updated != 0 {
+			t.Fatalf("rerun reclassification = %#v, want zero matched and updated", reclassification)
+		}
+	}
+	if rerun.Matched != 1 {
+		t.Fatalf("rerun Matched = %d, want the missing-origin row still reported", rerun.Matched)
+	}
+}
+
+// V3's doctor-clean requirement: a database whose only unknown origins are the
+// retired legacy values is fully healed by one apply, with no residual warning.
+// The mixed fixture above proves foreign origins survive; this one proves
+// nothing else does.
+func TestRepairRelationshipOriginsLegacyOnlyFixtureIsDoctorCleanAfterApply(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	resolver := PathResolver{StateHome: stateHome}
+	ctx := context.Background()
+	if _, err := Initialize(ctx, root, resolver); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	projectID := projectIDForTest(t, store, root)
+	for _, origin := range legacyRelationshipOrigins() {
+		insertRelationshipWithOrigin(t, store, projectID, "relationship-"+origin, origin)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	applied, err := RepairRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Apply: true})
+	if err != nil {
+		t.Fatalf("RepairRelationshipOrigins(apply) error = %v", err)
+	}
+	if applied.BackupPath == "" {
+		t.Fatal("BackupPath is empty for an applied reclassification")
+	}
+	if len(applied.ForeignOrigins) != 0 {
+		t.Fatalf("ForeignOrigins = %#v, want none in a legacy-only fixture", applied.ForeignOrigins)
+	}
+	for _, reclassification := range applied.Reclassified {
+		if reclassification.Matched != 1 || reclassification.Updated != 1 {
+			t.Fatalf("reclassification = %#v, want exactly one row matched and updated", reclassification)
+		}
+	}
+
+	store = openTestStore(t, root, stateHome)
+	defer store.Close()
+	for _, origin := range legacyRelationshipOrigins() {
+		assertRelationshipOrigin(t, store, "relationship-"+origin, "command")
+	}
+	diagnostics, err := inspectRelationshipOriginInvariants(ctx, store)
+	if err != nil {
+		t.Fatalf("inspectRelationshipOriginInvariants() error = %v", err)
+	}
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v, want doctor clean after repairing a legacy-only database", diagnostics)
+	}
+}
+
+func TestRepairRelationshipOriginsFailedWriteAfterBackupPreservesBackupPath(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
 	resolver := PathResolver{StateHome: stateHome}
@@ -596,9 +735,9 @@ END
 		t.Fatalf("Close() error = %v", err)
 	}
 
-	result, err := RepairMissingRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
+	result, err := RepairRelationshipOrigins(ctx, root, resolver, RelationshipOriginRepairOptions{Origin: "imported", Apply: true})
 	if err == nil {
-		t.Fatal("RepairMissingRelationshipOrigins() error = nil, want forced post-backup failure")
+		t.Fatal("RepairRelationshipOrigins() error = nil, want forced post-backup failure")
 	}
 	var repairErr *RelationshipOriginRepairError
 	if !errors.As(err, &repairErr) {
