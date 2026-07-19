@@ -536,3 +536,61 @@ func writeIntakeListHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf intake list [--json]", "Project each unresolved logical item exactly once with provenance and exact read commands; no ranking, promotion, or disposition is chosen.",
 		"--json       Output intake items and project identity as JSON")
 }
+
+func writeStateMigrateDeferralsHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf state migrate deferrals [--dry-run|--apply] [--json]", "Convert historical journal deferrals into canonical deferred Intents. Dry-run writes nothing; apply verifies a whole-database backup first, preserves every legacy row, links historical decision/spark provenance, and is rerunnable.",
+		"--dry-run    Report the project-specific conversion manifest without writing",
+		"--apply      Convert after creating and verifying a whole-database backup",
+		"--json       Output the conversion manifest, counts, backup, and project identity as JSON")
+}
+
+func (r Runner) runStateMigrateDeferrals(args []string, out io.Writer, runtime state.Runtime) error {
+	dryRun := false
+	apply := false
+	jsonOutput := false
+	for _, arg := range args {
+		switch arg {
+		case "--dry-run":
+			dryRun = true
+		case "--apply":
+			apply = true
+		case "--json":
+			jsonOutput = true
+		default:
+			return fmt.Errorf("unknown option %q", arg)
+		}
+	}
+	if dryRun == apply {
+		return fmt.Errorf("state migrate deferrals requires exactly one of --dry-run or --apply")
+	}
+	projectRoot, err := r.requireIntentSQLiteState("state migrate deferrals", runtime)
+	if err != nil {
+		return err
+	}
+	result, err := state.ConvertLegacyDeferrals(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, apply)
+	if err != nil {
+		return err
+	}
+	if jsonOutput {
+		return writeJSON(out, result)
+	}
+	fmt.Fprintf(out, "action: %s\n", result.Action)
+	if result.BackupPath != "" {
+		fmt.Fprintf(out, "backup: %s (verified: %t)\n", result.BackupPath, result.BackupVerified)
+	}
+	fmt.Fprintf(out, "convertible: %d\nalready converted: %d\nunparseable: %d\n", result.Convertible, result.AlreadyConverted, result.Unparseable)
+	for _, row := range result.Rows {
+		line := fmt.Sprintf("%s  %s", row.Action, row.OperationKey)
+		if row.IntentAlias != "" {
+			line += "  -> " + row.IntentAlias
+		} else if row.IntentID != "" {
+			line += "  -> " + row.IntentID
+		}
+		if row.Reason != "" {
+			line += "  (" + row.Reason + ")"
+		}
+		fmt.Fprintln(out, line)
+	}
+	writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+	return nil
+}

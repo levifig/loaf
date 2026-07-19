@@ -3145,6 +3145,7 @@ func (r Runner) runStateMigrate(args []string, out io.Writer, runtime state.Runt
 		"schema":             writeStateMigrateSchemaHelp,
 		"markdown":           writeStateMigrateMarkdownHelp,
 		"storage-home":       writeStateMigrateStorageHomeHelp,
+		"deferrals":          writeStateMigrateDeferralsHelp,
 	}) {
 		return nil
 	}
@@ -3155,6 +3156,8 @@ func (r Runner) runStateMigrate(args []string, out io.Writer, runtime state.Runt
 		return r.runJournalFirstMigration(args[1:], out, runtime, "loaf state migrate journal-first")
 	case "schema":
 		return r.runSchemaUpgrade(args[1:], out, runtime, "loaf state migrate schema")
+	case "deferrals":
+		return r.runStateMigrateDeferrals(args[1:], out, runtime)
 	case "markdown":
 		return r.runStateMigrateMarkdown(args[1:], out, runtime)
 	case "storage-home":

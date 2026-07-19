@@ -199,6 +199,11 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--apply", Description: "Apply pending schema upgrades after creating and verifying a backup"},
 					{Flags: "--json", Description: "Output schema upgrade action, versions, pending migrations, backup, and verification as JSON"},
 				}},
+				{Name: "migrate deferrals", Description: "Convert historical journal deferrals into canonical deferred Intents; apply is backup-first, provenance-linking, legacy-preserving, and rerunnable", Options: []cliReferenceOption{
+					{Flags: "--dry-run", Description: "Report the project-specific conversion manifest without writing"},
+					{Flags: "--apply", Description: "Convert after creating and verifying a whole-database backup"},
+					{Flags: "--json", Description: "Output the conversion manifest, counts, backup, and project identity as JSON"},
+				}},
 				{Name: "migrate lifecycle-statuses", Description: "Normalize legacy lifecycle statuses in SQLite", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview status normalization on a temporary database copy"},
 					{Flags: "--apply", Description: "Normalize live SQLite statuses after creating a backup"},
@@ -829,6 +834,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 				{Flags: "--fix", Description: "Offer each safe repair and prompt y/N before applying it"},
 				{Flags: "--force", Description: "With --fix, apply every offered repair without prompting"},
 				{Flags: "--verbose", Description: "Print each check name even when passing"},
+				{Flags: "--json", Description: "Output the identical check set as read-only JSON; never prompts or repairs"},
 			},
 		},
 	}
