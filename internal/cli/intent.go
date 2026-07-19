@@ -471,3 +471,68 @@ func writeIntentDetail(out io.Writer, intent state.IntentDetail) {
 	}
 	fmt.Fprintf(out, "read: loaf intent show %s\n", ref)
 }
+
+func (r Runner) runIntake(args []string, out io.Writer, runtime state.Runtime) error {
+	if len(args) == 0 || isHelpArg(args) {
+		writeIntakeHelp(out)
+		return nil
+	}
+	if writeNestedHelp(out, args, map[string]func(io.Writer){
+		"list": writeIntakeListHelp,
+	}) {
+		return nil
+	}
+	switch args[0] {
+	case "list":
+		jsonOutput := false
+		for _, arg := range args[1:] {
+			if arg == "--json" {
+				jsonOutput = true
+				continue
+			}
+			return fmt.Errorf("unknown option %q", arg)
+		}
+		projectRoot, err := r.requireIntentSQLiteState("intake list", runtime)
+		if err != nil {
+			return err
+		}
+		result, err := state.ListIntake(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
+		if err != nil {
+			return err
+		}
+		if jsonOutput {
+			return writeJSON(out, result)
+		}
+		if len(result.Items) == 0 {
+			fmt.Fprintln(out, "intake is empty")
+		}
+		for _, item := range result.Items {
+			descriptor := item.Status
+			if item.Disposition != "" {
+				descriptor = item.Disposition
+			}
+			ref := item.Alias
+			if ref == "" {
+				ref = item.ID
+			}
+			fmt.Fprintf(out, "%-15s %-9s %s\n", item.Kind, descriptor, item.Title)
+			fmt.Fprintf(out, "  read: %s\n", item.ReadCommand)
+			_ = ref
+		}
+		writeProjectMutationContext(out, "", result.DatabaseScope, result.DatabasePath, result.ProjectID, result.ProjectName, result.ProjectCurrentPath)
+		return nil
+	default:
+		return unknownSubcommandError("intake", args[0])
+	}
+}
+
+func writeIntakeHelp(out io.Writer) {
+	writeCommandGroupHelp(out, "loaf intake <subcommand> [options]", "Read the deterministic local intake projection. The CLI reports facts; triage judgment stays with humans and Skills.", []subcommandHelpItem{
+		{Name: "list", Summary: "List unresolved sparks, ideas, brainstorms, intents, and legacy deferrals"},
+	})
+}
+
+func writeIntakeListHelp(out io.Writer) {
+	writeUsageHelp(out, "loaf intake list [--json]", "Project each unresolved logical item exactly once with provenance and exact read commands; no ranking, promotion, or disposition is chosen.",
+		"--json       Output intake items and project identity as JSON")
+}

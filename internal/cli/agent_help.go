@@ -292,6 +292,13 @@ func agentHelpCommands() []agentHelpCommand {
 			},
 		},
 		{
+			Name:        "intake",
+			Description: "Read the deterministic local intake projection of unresolved capture and tracked work; the CLI never ranks, promotes, or chooses a disposition",
+			Subcommands: []agentHelpSubcommand{
+				{Name: "list", Description: "Project each unresolved spark, idea, brainstorm, intent, and unmigrated legacy deferral exactly once with provenance and exact read commands", Options: []agentHelpOption{{Flags: "--json", Description: "Output intake items and project identity as JSON"}}},
+			},
+		},
+		{
 			Name:        "exploration",
 			Description: "Manage relational Exploration continuity through immutable portable checkpoints; no lifecycle status or current pointer exists",
 			Subcommands: []agentHelpSubcommand{

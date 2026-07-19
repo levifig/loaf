@@ -83,6 +83,7 @@ var basicCommandAuthorityPrefixes = []commandAuthorityPrefix{
 	{tokens: []string{"intent", "list"}},
 	{tokens: []string{"intent", "show"}},
 	{tokens: []string{"exploration", "list"}},
+	{tokens: []string{"intake", "list"}},
 	{tokens: []string{"conversation", "list"}},
 	{tokens: []string{"spark", "capture"}},
 	{tokens: []string{"spark", "list"}},

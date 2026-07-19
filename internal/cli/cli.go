@@ -305,6 +305,8 @@ func (r Runner) Run(args []string) error {
 		dispatchErr = r.runIdea(args[1:], out, runtime)
 	case "intent":
 		dispatchErr = r.runIntent(args[1:], out, runtime)
+	case "intake":
+		dispatchErr = r.runIntake(args[1:], out, runtime)
 	case "exploration":
 		dispatchErr = r.runExploration(args[1:], out, runtime)
 	case "conversation":
@@ -402,6 +404,7 @@ func writeRootHelp(out io.Writer) {
 	fmt.Fprintln(out, "  intent        Manage tracked Intent")
 	fmt.Fprintln(out, "  exploration   Manage Exploration continuity")
 	fmt.Fprintln(out, "  conversation  Manage conversation provenance")
+	fmt.Fprintln(out, "  intake        Read the local intake projection")
 	fmt.Fprintln(out, "  task          Manage tasks")
 	fmt.Fprintln(out, "  spec          Manage specs")
 	fmt.Fprintln(out, "  report        Manage reports")

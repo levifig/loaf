@@ -673,6 +673,13 @@ func cliReferenceCommands() []cliReferenceCommand {
 			},
 		},
 		{
+			Name:        "intake",
+			Description: "Read the deterministic local intake projection; triage judgment stays with humans and Skills",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "list", Description: "Project each unresolved spark, idea, brainstorm, intent, and unmigrated legacy deferral exactly once with provenance and exact read commands", Options: []cliReferenceOption{{Flags: "--json", Description: "Output intake items and project identity as JSON"}}},
+			},
+		},
+		{
 			Name:        "exploration",
 			Description: "Manage relational Exploration continuity: immutable portable checkpoints, no lifecycle status, no current pointer",
 			Subcommands: []cliReferenceSubcommand{
