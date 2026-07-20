@@ -6,6 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-alpha.12] - 2026-07-20
+
 ### Changed
 
 - Codex-managed guidance, hooks, and execpolicy rules now render the stable PATH entrypoint (for example `/opt/homebrew/bin/loaf`) instead of the versioned Homebrew Cellar target, so package upgrades no longer invalidate installed policy or strand running Codex tasks; symlink-target validation against forbidden roots is unchanged and now covers both symlink directions (#127).
