@@ -107,10 +107,10 @@ For each spec file (active and archive) with a `linear_parent:` frontmatter key:
 1. Call `get_issue` with the issue identifier. If it 404s or returns
    archived/deleted, flag as **orphaned linear_parent** — the local spec
    references a Linear issue that no longer exists.
-2. If the spec's local status is `done` or `archived`, verify the Linear
-   parent issue is in a `completed`-type state. If not (e.g., still "In
-   Progress"), flag as **status mismatch** — "Spec marked complete locally
-   but Linear parent ENG-198 is still 'In Progress'."
+2. If the spec's local status is `done` (or legacy `complete`) or `archived`,
+   verify the Linear parent issue is in a `completed`-type state. If not
+   (e.g., still "In Progress"), flag as **status mismatch** — "Spec marked
+   complete locally but Linear parent ENG-198 is still 'In Progress'."
 3. If the spec's local status is `in_progress` and the Linear parent is
    already `completed`, flag the inverse — spec likely needs to be moved to
    `done` and archived.
