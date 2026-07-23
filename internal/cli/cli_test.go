@@ -12419,6 +12419,73 @@ status: in_progress
 	assertNoStateDatabase(t, workingDir, stateHome)
 }
 
+func TestRunnerSpecArchiveCanonicalizesNestedSpecStatusWhenMarkdownOnly(t *testing.T) {
+	workingDir := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	writeCLIAgentsFile(t, workingDir, "specs/archive/SPEC-001-complete.md", `---
+id: SPEC-001
+title: Complete Spec
+status: complete
+---
+# Complete Spec
+`)
+	writeCLIAgentsFile(t, workingDir, "specs/SPEC-002-draft.md", `---
+id: SPEC-002
+title: Draft Spec
+status: drafting
+---
+# Draft Spec
+`)
+	writeCLIAgentsFile(t, workingDir, "TASKS.json", `{
+  "version": 1,
+  "tasks": {},
+  "specs": {
+    "SPEC-001": {
+      "title": "Complete Spec",
+      "status": "complete",
+      "file": "archive/SPEC-001-complete.md"
+    },
+    "SPEC-002": {
+      "title": "Draft Spec",
+      "status": "drafting",
+      "file": "SPEC-002-draft.md"
+    }
+  }
+}`)
+
+	var jsonOut bytes.Buffer
+	err := Runner{
+		Stdout:     &jsonOut,
+		WorkingDir: workingDir,
+		StateHome:  stateHome,
+	}.Run([]string{"spec", "archive", "SPEC-001", "SPEC-002", "--json"})
+	if err != nil {
+		t.Fatalf("spec archive markdown --json error = %v", err)
+	}
+	archive := decodeSpecArchiveResult(t, jsonOut.Bytes())
+	if len(archive.Archived) != 0 {
+		t.Fatalf("Archived = %#v, want none", archive.Archived)
+	}
+	if len(archive.Skipped) != 2 || archive.Skipped[0].Ref != "SPEC-001" || archive.Skipped[1].Ref != "SPEC-002" {
+		t.Fatalf("Skipped = %#v, want SPEC-001 and SPEC-002 skips", archive.Skipped)
+	}
+	archived := archive.Skipped[0]
+	if archived.Reason != "already archived" || archived.Previous != "done" || archived.Status != "done" {
+		t.Fatalf("Skipped[0] = %#v, want already-archived skip with canonical done statuses", archived)
+	}
+	if archived.Spec == nil || archived.Spec.Status != "done" {
+		t.Fatalf("Skipped[0].Spec = %#v, want nested spec status canonicalized to done", archived.Spec)
+	}
+	draft := archive.Skipped[1]
+	if draft.Reason != "status is draft, must be done" || draft.Previous != "draft" || draft.Status != "draft" {
+		t.Fatalf("Skipped[1] = %#v, want draft skip with canonical draft statuses", draft)
+	}
+	if draft.Spec == nil || draft.Spec.Status != "draft" {
+		t.Fatalf("Skipped[1].Spec = %#v, want nested spec status canonicalized to draft", draft.Spec)
+	}
+	assertNoStateDatabase(t, workingDir, stateHome)
+}
+
 func TestRunnerSpecArchiveReportsInvalidSQLiteState(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
 	stateHome := t.TempDir()

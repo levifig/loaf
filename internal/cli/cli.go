@@ -8194,7 +8194,7 @@ func markdownSpecArchive(rootPath string, refs []string) (state.SpecArchiveResul
 		title := jsonObjectString(entry, "title")
 		status := jsonObjectString(entry, "status")
 		canonical := state.LifecycleStatusForDisplay(state.LifecycleEntitySpec, status)
-		spec := state.TraceEntity{Kind: "spec", ID: ref, Alias: ref, Title: title, Status: status}
+		spec := state.TraceEntity{Kind: "spec", ID: ref, Alias: ref, Title: title, Status: canonical}
 		if !state.LifecycleStatusMatches(state.LifecycleEntitySpec, status, state.LifecycleStatusDone) {
 			result.Skipped = append(result.Skipped, state.SpecArchiveItem{Spec: &spec, Ref: ref, Previous: canonical, Status: canonical, Reason: fmt.Sprintf("status is %s, must be done", canonical)})
 			continue
