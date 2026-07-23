@@ -130,7 +130,7 @@ status: complete
 	}
 	summary := decodeHousekeepingSummary(t, jsonOut.Bytes())
 	assertCLIProjectContext(t, workingDir, summary.ContractVersion, summary.DatabaseScope, summary.DatabasePath, summary.ProjectID, summary.ProjectName, summary.ProjectCurrentPath)
-	if summary.Sections["specs"].ByStatus["complete"] != 1 || summary.Sections["tasks"].ByStatus["done"] != 1 {
+	if summary.Sections["specs"].ByStatus["done"] != 1 || summary.Sections["tasks"].ByStatus["done"] != 1 {
 		t.Fatalf("summary = %#v, want SQLite spec/task lifecycle counts", summary)
 	}
 
