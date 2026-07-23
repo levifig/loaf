@@ -270,22 +270,28 @@ func runNativeRenderDrift(context checkHookContext, cwd string) checkResult {
 		return result
 	}
 	root := firstNonEmpty(strings.TrimSpace(cwd), ".")
-	for _, dir := range []string{filepath.Join(root, ".agents", "specs"), filepath.Join(root, ".agents", "reports")} {
-		entries, err := os.ReadDir(dir)
+	for _, target := range []struct {
+		dir  string
+		kind string
+	}{
+		{dir: filepath.Join(root, ".agents", "specs"), kind: "spec"},
+		{dir: filepath.Join(root, ".agents", "reports"), kind: "report"},
+	} {
+		entries, err := os.ReadDir(target.dir)
 		if os.IsNotExist(err) {
 			continue
 		}
 		if err != nil {
 			result.Passed = false
 			result.Blocked = true
-			result.Errors = append(result.Errors, fmt.Sprintf("Read render directory %s: %v", dir, err))
+			result.Errors = append(result.Errors, fmt.Sprintf("Read render directory %s: %v", target.dir, err))
 			continue
 		}
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 				continue
 			}
-			path := filepath.Join(dir, entry.Name())
+			path := filepath.Join(target.dir, entry.Name())
 			content, err := os.ReadFile(path)
 			if err != nil {
 				result.Passed = false
@@ -301,7 +307,7 @@ func runNativeRenderDrift(context checkHookContext, cwd string) checkResult {
 				result.Passed = false
 				result.Blocked = true
 				result.Errors = append(result.Errors, fmt.Sprintf("Durable render %s is invalid: %v", renderDriftRelativePath(root, path), err))
-				result.Findings = append(result.Findings, "Edit via `loaf <entity> edit`, then run `loaf <entity> finalize`.")
+				result.Findings = append(result.Findings, renderDriftRemediation(target.kind, path))
 				continue
 			}
 			if rerendered != string(content) {
@@ -309,11 +315,16 @@ func runNativeRenderDrift(context checkHookContext, cwd string) checkResult {
 				result.Blocked = true
 				result.Errors = append(result.Errors, fmt.Sprintf("Durable render drift detected in %s", renderDriftRelativePath(root, path)))
 				result.Findings = append(result.Findings, "Committed render is not byte-identical to its deterministic self-render.")
-				result.Findings = append(result.Findings, "Edit via `loaf <entity> edit`, then run `loaf <entity> finalize`.")
+				result.Findings = append(result.Findings, renderDriftRemediation(target.kind, path))
 			}
 		}
 	}
 	return result
+}
+
+func renderDriftRemediation(kind string, path string) string {
+	ref := firstNonEmpty(artifactBodyRefFromPath(path), "<ref>")
+	return fmt.Sprintf("Edit via `loaf %s edit %s --body-file <path>`, then run `loaf %s finalize %s`.", kind, ref, kind, ref)
 }
 
 var ephemeralProvenanceRefRE = regexp.MustCompile(`\.agents/(?:tasks|ideas|sparks|sessions|brainstorms|drafts)/(?:archive/)?[A-Za-z0-9][^\s)'"]*|\.agents/TASKS\.json`)
@@ -335,6 +346,7 @@ func runNativeEphemeralProvenance(context checkHookContext, cwd string) checkRes
 		result.Passed = false
 		result.Blocked = true
 		result.Errors = append(result.Errors, "Tracked ephemeral Markdown is not allowed after SQLite cutover")
+		result.Errors = append(result.Errors, ephemeralUntrackCommand(tracked))
 		result.Findings = append(result.Findings, tracked...)
 		return result
 	}
@@ -350,6 +362,8 @@ func runNativeEphemeralProvenance(context checkHookContext, cwd string) checkRes
 		result.Errors = append(result.Errors, fmt.Sprintf("Read active specs: %v", err))
 		return result
 	}
+	var danglingRefs []string
+	seenDanglingRefs := map[string]bool{}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") || strings.HasPrefix(entry.Name(), "SPEC-045-") {
 			continue
@@ -367,13 +381,28 @@ func runNativeEphemeralProvenance(context checkHookContext, cwd string) checkRes
 				result.Passed = false
 				result.Blocked = true
 				result.Findings = append(result.Findings, fmt.Sprintf("%s:%d: %s", renderDriftRelativePath(root, path), lineNumber+1, strings.TrimSpace(line)))
+				if ref := firstNonEmpty(artifactBodyRefFromPath(path), "<ref>"); !seenDanglingRefs[ref] {
+					seenDanglingRefs[ref] = true
+					danglingRefs = append(danglingRefs, ref)
+				}
 			}
 		}
 	}
 	if len(result.Findings) > 0 {
 		result.Errors = append(result.Errors, "Dangling active-spec provenance points at ephemeral Markdown slated for SQLite cutover")
+		for _, ref := range danglingRefs {
+			result.Errors = append(result.Errors, specEditRemediationCommand(ref))
+		}
 	}
 	return result
+}
+
+func ephemeralUntrackCommand(paths []string) string {
+	return fmt.Sprintf("Untrack with `git rm --cached %s`, commit the removal, then push again.", strings.Join(paths, " "))
+}
+
+func specEditRemediationCommand(ref string) string {
+	return fmt.Sprintf("Fix %s: `loaf spec edit %s --body-file <path>` then `loaf spec finalize %s`, or `loaf spec archive %s` if the spec is obsolete.", ref, ref, ref, ref)
 }
 
 func trackedEphemeralMarkdownPaths(root string) ([]string, error) {
@@ -568,6 +597,8 @@ func bashCommandWritesPath(command string, path string) bool {
 	return false
 }
 
+var artifactBodySpecRefRE = regexp.MustCompile(`^SPEC-\d+`)
+
 func artifactBodyWriteCommand(kind string, path string) string {
 	ref := artifactBodyRefFromPath(path)
 	switch kind {
@@ -582,9 +613,15 @@ func artifactBodyWriteCommand(kind string, path string) string {
 	case "plan":
 		return "loaf plan new --title <title> --body-file <path>"
 	case "report":
+		if stem := artifactBodyStemFromPath(path); strings.HasPrefix(stem, "report-") {
+			return "loaf report edit " + stem + " --body-file <path>"
+		}
 		return "loaf report create <slug> --body-file <path>"
 	case "spec":
-		return "loaf spec show " + firstNonEmpty(ref, "<ref>") + " --json"
+		if artifactBodySpecRefRE.MatchString(ref) {
+			return "loaf spec edit " + ref + " --body-file <path>"
+		}
+		return "loaf spec new <slug> --title <title> --body-file <path>"
 	case "task":
 		return "loaf task update " + firstNonEmpty(ref, "<ref>") + " --status <status>"
 	default:
@@ -592,8 +629,12 @@ func artifactBodyWriteCommand(kind string, path string) string {
 	}
 }
 
+func artifactBodyStemFromPath(path string) string {
+	return strings.TrimSuffix(filepath.Base(normalizeHookPath(path)), ".md")
+}
+
 func artifactBodyRefFromPath(path string) string {
-	stem := strings.TrimSuffix(filepath.Base(normalizeHookPath(path)), ".md")
+	stem := artifactBodyStemFromPath(path)
 	if matches := regexp.MustCompile(`^(SPEC-\d+|TASK-\d+)`).FindStringSubmatch(stem); len(matches) == 2 {
 		return matches[1]
 	}

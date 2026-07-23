@@ -2,10 +2,13 @@ package state
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/levifig/loaf/internal/project"
 )
 
 func TestCreateSpecStoresBodyAndAllocatesAlias(t *testing.T) {
@@ -220,6 +223,328 @@ func hasRelatedSpec(related []TraceEntity, alias string) bool {
 		}
 	}
 	return false
+}
+
+func TestEditSpecBodyUpdatesBodyAndRecordsEvent(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	created, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:    "edit-target",
+		Title:   "Edit Target",
+		Body:    "Original body.",
+		SetBody: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateSpec() error = %v", err)
+	}
+
+	edited, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+		Ref:  "SPEC-001",
+		Body: "Edited body.",
+	})
+	if err != nil {
+		t.Fatalf("EditSpecBody() error = %v", err)
+	}
+	if edited.Spec.Alias != "SPEC-001" || edited.Imported || edited.EventID == "" || edited.ContentHash == "" {
+		t.Fatalf("edited = %#v, want non-imported edit with event id and content hash", edited)
+	}
+
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-001")
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Body != "Edited body." || !show.Spec.HasBody {
+		t.Fatalf("Spec = %#v, want edited body with HasBody", show.Spec)
+	}
+	assertBodyEventCount(t, root, stateHome, "spec", created.Spec.ID, "body_edited", 1)
+	assertBodyEventCount(t, root, stateHome, "spec", created.Spec.ID, "body_imported", 0)
+}
+
+func TestEditSpecBodyImportsLegacySourceOnFirstEdit(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	// A spec with a provisioned source path but no SQLite body row: the legacy
+	// file is the only holder of the prose until the first edit imports it.
+	created, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:  "legacy-import",
+		Title: "Legacy Import",
+	})
+	if err != nil {
+		t.Fatalf("CreateSpec() error = %v", err)
+	}
+	writeAgentsFile(t, root.Path(), "specs/SPEC-001-legacy-import.md", "---\nid: SPEC-001\nstatus: draft\ntitle: Legacy Import\n---\n\nLegacy prose body.\n\n<!-- loaf:render kind=spec contract=durable-doc-v1 -->\n")
+
+	edited, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+		Ref:  "SPEC-001",
+		Body: "Edited after import.",
+	})
+	if err != nil {
+		t.Fatalf("EditSpecBody() error = %v", err)
+	}
+	if !edited.Imported {
+		t.Fatalf("edited = %#v, want Imported true on first edit of legacy source", edited)
+	}
+	assertBodyEventCount(t, root, stateHome, "spec", created.Spec.ID, "body_imported", 1)
+	assertBodyEventCount(t, root, stateHome, "spec", created.Spec.ID, "body_edited", 1)
+
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-001")
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Body != "Edited after import." || !show.Spec.HasBody {
+		t.Fatalf("Spec = %#v, want edited body after import", show.Spec)
+	}
+}
+
+func TestEditSpecBodyRefusesWhenLegacySourceDiverges(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	if _, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:    "diverge-check",
+		Title:   "Diverge Check",
+		Body:    "Original body.",
+		SetBody: true,
+	}); err != nil {
+		t.Fatalf("CreateSpec() error = %v", err)
+	}
+	fileContent := "---\nid: SPEC-001\nstatus: draft\ntitle: Diverge Check\n---\n\nHand-edited divergent prose.\n\n<!-- loaf:render kind=spec contract=durable-doc-v1 -->\n"
+	writeAgentsFile(t, root.Path(), "specs/SPEC-001-diverge-check.md", fileContent)
+
+	_, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+		Ref:  "SPEC-001",
+		Body: "Replacement body.",
+	})
+	if err == nil {
+		t.Fatal("EditSpecBody() error = nil, want divergence refusal")
+	}
+	for _, want := range []string{"no longer matches the SQLite body", "loaf spec finalize", "--force"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("EditSpecBody() error = %q, want containing %q", err, want)
+		}
+	}
+
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-001")
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Body != "Original body." {
+		t.Fatalf("Body = %q, want unchanged SQLite body after refusal", show.Spec.Body)
+	}
+	assertSpecSourceFileBytes(t, root, "SPEC-001-diverge-check.md", fileContent)
+}
+
+func TestEditSpecBodyForceOverridesDivergence(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	if _, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:    "force-override",
+		Title:   "Force Override",
+		Body:    "Original body.",
+		SetBody: true,
+	}); err != nil {
+		t.Fatalf("CreateSpec() error = %v", err)
+	}
+	fileContent := "---\nid: SPEC-001\nstatus: draft\ntitle: Force Override\n---\n\nHand-edited divergent prose.\n\n<!-- loaf:render kind=spec contract=durable-doc-v1 -->\n"
+	writeAgentsFile(t, root.Path(), "specs/SPEC-001-force-override.md", fileContent)
+
+	edited, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+		Ref:   "SPEC-001",
+		Body:  "Forced replacement.",
+		Force: true,
+	})
+	if err != nil {
+		t.Fatalf("EditSpecBody(force) error = %v", err)
+	}
+	if edited.EventID == "" {
+		t.Fatalf("edited = %#v, want recorded edit event", edited)
+	}
+
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-001")
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Body != "Forced replacement." {
+		t.Fatalf("Body = %q, want forced replacement body", show.Spec.Body)
+	}
+	// Force proceeds in SQLite only; the stale file is untouched until finalize.
+	assertSpecSourceFileBytes(t, root, "SPEC-001-force-override.md", fileContent)
+}
+
+func TestEditSpecBodyRefusesStaleRenderWithoutFinalize(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	if _, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:    "stale-render",
+		Title:   "Stale Render",
+		Body:    "Body A.",
+		SetBody: true,
+	}); err != nil {
+		t.Fatalf("CreateSpec() error = %v", err)
+	}
+
+	if _, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{Ref: "SPEC-001", Body: "Body B."}); err != nil {
+		t.Fatalf("EditSpecBody(B) error = %v", err)
+	}
+	if _, err := FinalizeDurableArtifact(context.Background(), root, PathResolver{StateHome: stateHome}, DurableFinalizeOptions{Kind: "spec", Ref: "SPEC-001"}); err != nil {
+		t.Fatalf("FinalizeDurableArtifact() error = %v", err)
+	}
+	if _, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{Ref: "SPEC-001", Body: "Body C."}); err != nil {
+		t.Fatalf("EditSpecBody(C) error = %v", err)
+	}
+
+	// Accepted limitation: without a finalize after the previous edit the render
+	// on disk is stale, so the next edit reads as a divergence and refuses.
+	_, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{Ref: "SPEC-001", Body: "Body D."})
+	if err == nil || !strings.Contains(err.Error(), "no longer matches the SQLite body") {
+		t.Fatalf("EditSpecBody(D) error = %v, want stale-render refusal", err)
+	}
+
+	if _, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{Ref: "SPEC-001", Body: "Body D.", Force: true}); err != nil {
+		t.Fatalf("EditSpecBody(D, force) error = %v", err)
+	}
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-001")
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Body != "Body D." {
+		t.Fatalf("Body = %q, want Body D. after forced edit", show.Spec.Body)
+	}
+}
+
+func TestEditSpecBodyMissingRefFails(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	if _, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+		Ref:  "SPEC-404",
+		Body: "Body for nobody.",
+	}); err == nil {
+		t.Fatal("EditSpecBody(missing) error = nil, want unresolved ref failure")
+	}
+
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+	var bodies, events int
+	if err := store.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM artifact_bodies`).Scan(&bodies); err != nil {
+		t.Fatalf("count artifact bodies error = %v", err)
+	}
+	if err := store.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM events WHERE event_type IN ('body_imported', 'body_edited')`).Scan(&events); err != nil {
+		t.Fatalf("count body events error = %v", err)
+	}
+	if bodies != 0 || events != 0 {
+		t.Fatalf("bodies = %d, body events = %d; want untouched database", bodies, events)
+	}
+}
+
+func TestEditSpecBodyRoundTripsThroughFinalize(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	cases := []struct {
+		name string
+		body string
+	}{
+		{name: "crlf-line-endings", body: "Line one.\r\nLine two.\r\nLine three."},
+		{name: "trailing-newlines", body: "Trailing prose.\n\n\n"},
+		{name: "bare-separator-mid-body", body: "Intro prose.\n\n---\n\nOutro prose."},
+		{name: "unicode", body: "Café ☕ — naïve 日本語 prose."},
+	}
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			created, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+				Slug: fmt.Sprintf("round-trip-%d", i+1),
+			})
+			if err != nil {
+				t.Fatalf("CreateSpec() error = %v", err)
+			}
+			if _, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+				Ref:  created.Spec.Alias,
+				Body: tc.body,
+			}); err != nil {
+				t.Fatalf("EditSpecBody() error = %v", err)
+			}
+			render, err := FinalizeDurableArtifact(context.Background(), root, PathResolver{StateHome: stateHome}, DurableFinalizeOptions{
+				Kind: "spec",
+				Ref:  created.Spec.Alias,
+			})
+			if err != nil {
+				t.Fatalf("FinalizeDurableArtifact() error = %v", err)
+			}
+			content, err := os.ReadFile(render.Path)
+			if err != nil {
+				t.Fatalf("ReadFile(%s) error = %v", render.Path, err)
+			}
+			rerendered, err := ReRenderDurableRender(string(content))
+			if err != nil {
+				t.Fatalf("ReRenderDurableRender() error = %v", err)
+			}
+			if rerendered != string(content) {
+				t.Fatalf("re-render diverged from finalized file:\nfile:\n%q\nre-render:\n%q", content, rerendered)
+			}
+			doc, err := ParseDurableRender(string(content))
+			if err != nil {
+				t.Fatalf("ParseDurableRender() error = %v", err)
+			}
+			if doc.Body != normalizeDurableBody(tc.body) {
+				t.Fatalf("parsed body = %q, want normalized %q", doc.Body, normalizeDurableBody(tc.body))
+			}
+		})
+	}
+}
+
+func assertBodyEventCount(t *testing.T, root project.Root, stateHome string, entityKind string, entityID string, eventType string, want int) {
+	t.Helper()
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+
+	var got int
+	if err := store.db.QueryRowContext(context.Background(), `
+SELECT COUNT(*)
+FROM events
+WHERE project_id = ? AND entity_kind = ? AND entity_id = ? AND event_type = ?
+`, projectIDForTest(t, store, root), entityKind, entityID, eventType).Scan(&got); err != nil {
+		t.Fatalf("count %s events error = %v", eventType, err)
+	}
+	if got != want {
+		t.Fatalf("%s event count = %d, want %d", eventType, got, want)
+	}
+}
+
+func assertSpecSourceFileBytes(t *testing.T, root project.Root, filename string, want string) {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join(root.Path(), ".agents", "specs", filename))
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", filename, err)
+	}
+	if string(content) != want {
+		t.Fatalf("source file %s changed:\ngot:\n%q\nwant:\n%q", filename, content, want)
+	}
 }
 
 func TestCreateSpecFinalizeRendersSlugFilename(t *testing.T) {

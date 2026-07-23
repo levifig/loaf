@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -118,8 +119,13 @@ func TestReportLifecycleRejectsInvalidTransitionsWithoutMutation(t *testing.T) {
 	if _, err := FinalizeReport(context.Background(), root, PathResolver{StateHome: stateHome}, "report-transition-check"); err != nil {
 		t.Fatalf("FinalizeReport() error = %v", err)
 	}
-	if _, err := FinalizeReport(context.Background(), root, PathResolver{StateHome: stateHome}, "report-transition-check"); err == nil || !strings.Contains(err.Error(), "not draft") {
-		t.Fatalf("FinalizeReport(done) error = %v, want not draft", err)
+	// Finalize of a done report is idempotent, not a rejected transition.
+	refinalized, err := FinalizeReport(context.Background(), root, PathResolver{StateHome: stateHome}, "report-transition-check")
+	if err != nil {
+		t.Fatalf("FinalizeReport(done) error = %v, want idempotent success", err)
+	}
+	if refinalized.Previous != "done" || refinalized.Status != "done" || refinalized.EventID != "" {
+		t.Fatalf("FinalizeReport(done) = %#v, want done result without a new event", refinalized)
 	}
 	assertReportStatus(t, root, stateHome, "report-transition-check", "done")
 
@@ -130,6 +136,133 @@ func TestReportLifecycleRejectsInvalidTransitionsWithoutMutation(t *testing.T) {
 		t.Fatalf("ArchiveReport(archived) error = %v, want not done", err)
 	}
 	assertReportStatus(t, root, stateHome, "report-transition-check", "archived")
+}
+
+func TestEditReportBodyUpdatesBodyAndRoundTrips(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	created, err := CreateReport(context.Background(), root, PathResolver{StateHome: stateHome}, ReportCreateOptions{
+		Slug:    "edit-roundtrip",
+		Kind:    "audit",
+		Body:    "Original report body.",
+		SetBody: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateReport() error = %v", err)
+	}
+
+	edited, err := EditReportBody(context.Background(), root, PathResolver{StateHome: stateHome}, ReportEditOptions{
+		Ref:  created.Report.Alias,
+		Body: "Edited report body.",
+	})
+	if err != nil {
+		t.Fatalf("EditReportBody() error = %v", err)
+	}
+	if edited.Report.Alias != "report-edit-roundtrip" || edited.Imported || edited.EventID == "" || edited.ContentHash == "" {
+		t.Fatalf("edited = %#v, want non-imported edit with event id and content hash", edited)
+	}
+	assertBodyEventCount(t, root, stateHome, "report", created.Report.ID, "body_edited", 1)
+
+	show, err := ShowReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias)
+	if err != nil {
+		t.Fatalf("ShowReport() error = %v", err)
+	}
+	if show.Report.Body != "Edited report body." || !show.Report.HasBody {
+		t.Fatalf("Report = %#v, want edited body with HasBody", show.Report)
+	}
+
+	render, err := FinalizeDurableArtifact(context.Background(), root, PathResolver{StateHome: stateHome}, DurableFinalizeOptions{
+		Kind: "report",
+		Ref:  created.Report.Alias,
+	})
+	if err != nil {
+		t.Fatalf("FinalizeDurableArtifact() error = %v", err)
+	}
+	content, err := os.ReadFile(render.Path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", render.Path, err)
+	}
+	rerendered, err := ReRenderDurableRender(string(content))
+	if err != nil {
+		t.Fatalf("ReRenderDurableRender() error = %v", err)
+	}
+	if rerendered != string(content) {
+		t.Fatalf("re-render diverged from finalized file:\nfile:\n%q\nre-render:\n%q", content, rerendered)
+	}
+	doc, err := ParseDurableRender(string(content))
+	if err != nil {
+		t.Fatalf("ParseDurableRender() error = %v", err)
+	}
+	if doc.Body != "Edited report body." {
+		t.Fatalf("parsed body = %q, want edited report body", doc.Body)
+	}
+}
+
+func TestFinalizeReportIsIdempotentWhenAlreadyDone(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	created, err := CreateReport(context.Background(), root, PathResolver{StateHome: stateHome}, ReportCreateOptions{Slug: "idempotent-finalize"})
+	if err != nil {
+		t.Fatalf("CreateReport() error = %v", err)
+	}
+	if _, err := FinalizeReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias); err != nil {
+		t.Fatalf("FinalizeReport() error = %v", err)
+	}
+
+	again, err := FinalizeReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias)
+	if err != nil {
+		t.Fatalf("FinalizeReport(done) error = %v, want idempotent success", err)
+	}
+	if again.Previous != "done" || again.Status != "done" || again.EventID != "" || again.Report.Status != "done" {
+		t.Fatalf("again = %#v, want done result without a transition or new event", again)
+	}
+	assertReportStatus(t, root, stateHome, created.Report.Alias, "done")
+	// Exactly one draft -> done event: the re-finalize recorded nothing.
+	assertReportEvent(t, root, stateHome, created.Report.ID, "draft", "done", "recorded by report finalize")
+}
+
+func TestShowReportReportsHasBody(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	withoutBody, err := CreateReport(context.Background(), root, PathResolver{StateHome: stateHome}, ReportCreateOptions{Slug: "no-body"})
+	if err != nil {
+		t.Fatalf("CreateReport(no-body) error = %v", err)
+	}
+	show, err := ShowReport(context.Background(), root, PathResolver{StateHome: stateHome}, withoutBody.Report.Alias)
+	if err != nil {
+		t.Fatalf("ShowReport(no-body) error = %v", err)
+	}
+	if show.Report.HasBody || show.Report.Body != "" {
+		t.Fatalf("Report = %#v, want HasBody false without a body", show.Report)
+	}
+
+	withBody, err := CreateReport(context.Background(), root, PathResolver{StateHome: stateHome}, ReportCreateOptions{
+		Slug:    "with-body",
+		Body:    "Report body.",
+		SetBody: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateReport(with-body) error = %v", err)
+	}
+	show, err = ShowReport(context.Background(), root, PathResolver{StateHome: stateHome}, withBody.Report.Alias)
+	if err != nil {
+		t.Fatalf("ShowReport(with-body) error = %v", err)
+	}
+	if !show.Report.HasBody || show.Report.Body != "Report body." {
+		t.Fatalf("Report = %#v, want HasBody true with body", show.Report)
+	}
 }
 
 func TestReportLifecycleValidationAndAliasCollisions(t *testing.T) {
