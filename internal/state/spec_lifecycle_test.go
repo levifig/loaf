@@ -264,6 +264,91 @@ func TestEditSpecBodyUpdatesBodyAndRecordsEvent(t *testing.T) {
 	assertBodyEventCount(t, root, stateHome, "spec", created.Spec.ID, "body_imported", 0)
 }
 
+func TestEditSpecBodyStripsFullDurableRenderInput(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	if _, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:    "render-strip",
+		Title:   "Render Strip",
+		Body:    "Original body.",
+		SetBody: true,
+	}); err != nil {
+		t.Fatalf("CreateSpec() error = %v", err)
+	}
+
+	// The render-drift remediation names the committed render itself as the
+	// --body-file path, so the edit input is a complete durable render.
+	render, err := RenderDurableDocument(DurableRenderDocument{
+		Kind: "spec",
+		Fields: []DurableRenderField{
+			{Key: "id", Value: "SPEC-001"},
+			{Key: "status", Value: "draft"},
+			{Key: "title", Value: "Render Strip"},
+		},
+		Body: "Inner prose from the committed render.",
+	})
+	if err != nil {
+		t.Fatalf("RenderDurableDocument() error = %v", err)
+	}
+
+	if _, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+		Ref:  "SPEC-001",
+		Body: render,
+	}); err != nil {
+		t.Fatalf("EditSpecBody() error = %v", err)
+	}
+
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-001")
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Body != "Inner prose from the committed render." {
+		t.Fatalf("Body = %q, want inner render body only", show.Spec.Body)
+	}
+	if strings.HasPrefix(show.Spec.Body, "---") || strings.Contains(show.Spec.Body, "loaf:render") {
+		t.Fatalf("Body = %q, want no frontmatter and no render stamp", show.Spec.Body)
+	}
+}
+
+func TestEditSpecBodyKeepsNonRenderFrontmatterVerbatim(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	if _, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:    "verbatim-frontmatter",
+		Title:   "Verbatim Frontmatter",
+		Body:    "Original body.",
+		SetBody: true,
+	}); err != nil {
+		t.Fatalf("CreateSpec() error = %v", err)
+	}
+
+	// Starts with "---" but has no render stamp, so it is not a durable render:
+	// only a complete render is stripped; everything else is stored verbatim.
+	body := "---\nlooks: like frontmatter\n---\n\nProse that intentionally opens with a divider."
+	if _, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+		Ref:  "SPEC-001",
+		Body: body,
+	}); err != nil {
+		t.Fatalf("EditSpecBody() error = %v", err)
+	}
+
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, "SPEC-001")
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Body != body {
+		t.Fatalf("Body = %q, want verbatim input %q", show.Spec.Body, body)
+	}
+}
+
 func TestEditSpecBodyImportsLegacySourceOnFirstEdit(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()
@@ -428,6 +513,87 @@ func TestEditSpecBodyRefusesStaleRenderWithoutFinalize(t *testing.T) {
 	}
 	if show.Spec.Body != "Body D." {
 		t.Fatalf("Body = %q, want Body D. after forced edit", show.Spec.Body)
+	}
+}
+
+func TestEditSpecBodyGuardsHandEditedRenderWithoutSourcePath(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	created, err := CreateSpec(context.Background(), root, PathResolver{StateHome: stateHome}, SpecCreateOptions{
+		Slug:    "no-source-guard",
+		Title:   "No Source Guard",
+		Body:    "Original spec body.",
+		SetBody: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateSpec() error = %v", err)
+	}
+	// A spec without a body source row (the migrated-spec shape) finalizes to
+	// the alias-derived render path, which the edit guard must inspect.
+	store := openTestStore(t, root, stateHome)
+	if _, err := store.db.ExecContext(context.Background(), `UPDATE specs SET body_source_id = NULL WHERE project_id = ? AND id = ?`, projectIDForTest(t, store, root), created.Spec.ID); err != nil {
+		store.Close()
+		t.Fatalf("clear spec body_source_id error = %v", err)
+	}
+	store.Close()
+
+	render, err := FinalizeDurableArtifact(context.Background(), root, PathResolver{StateHome: stateHome}, DurableFinalizeOptions{Kind: "spec", Ref: created.Spec.Alias})
+	if err != nil {
+		t.Fatalf("FinalizeDurableArtifact() error = %v", err)
+	}
+	if render.RelativePath != ".agents/specs/SPEC-001.md" {
+		t.Fatalf("RelativePath = %q, want alias-derived render path", render.RelativePath)
+	}
+
+	content, err := os.ReadFile(render.Path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", render.Path, err)
+	}
+	handEdited := strings.Replace(string(content), "Original spec body.", "Hand-edited render prose.", 1)
+	if handEdited == string(content) {
+		t.Fatalf("render content missing stored body:\n%s", content)
+	}
+	if err := os.WriteFile(render.Path, []byte(handEdited), 0o600); err != nil {
+		t.Fatalf("WriteFile(%s) error = %v", render.Path, err)
+	}
+
+	_, err = EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+		Ref:  created.Spec.Alias,
+		Body: "Replacement body.",
+	})
+	if err == nil {
+		t.Fatal("EditSpecBody(hand-edited render) error = nil, want divergence refusal")
+	}
+	for _, want := range []string{"no longer matches the SQLite body", "loaf spec finalize", "--force"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("EditSpecBody() error = %q, want containing %q", err, want)
+		}
+	}
+	show, err := ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, created.Spec.Alias)
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Body != "Original spec body." {
+		t.Fatalf("Body = %q, want unchanged SQLite body after refusal", show.Spec.Body)
+	}
+
+	if _, err := EditSpecBody(context.Background(), root, PathResolver{StateHome: stateHome}, SpecEditOptions{
+		Ref:   created.Spec.Alias,
+		Body:  "Forced replacement.",
+		Force: true,
+	}); err != nil {
+		t.Fatalf("EditSpecBody(force) error = %v", err)
+	}
+	show, err = ShowSpec(context.Background(), root, PathResolver{StateHome: stateHome}, created.Spec.Alias)
+	if err != nil {
+		t.Fatalf("ShowSpec() error = %v", err)
+	}
+	if show.Spec.Body != "Forced replacement." {
+		t.Fatalf("Body = %q, want forced replacement body", show.Spec.Body)
 	}
 }
 

@@ -260,6 +260,21 @@ func durableSourceBodyForm(content []byte) string {
 	return markdownArtifactBodyContent(content)
 }
 
+// editBodyForm normalizes the incoming body of a sanctioned edit. Blocking-hook
+// remediations name the committed render itself as the `--body-file` path, so
+// when the whole input parses as a valid durable render the stored body is the
+// parsed document's Body — frontmatter and render stamp are machine-regenerated
+// by finalize, making the strip lossless. Anything else is stored verbatim:
+// unlike durableSourceBodyForm, this never strips arbitrary leading frontmatter
+// from input that is not a complete durable render (e.g. prose that starts with
+// "---" but carries no render stamp).
+func editBodyForm(body string) string {
+	if doc, err := ParseDurableRender(body); err == nil {
+		return doc.Body
+	}
+	return body
+}
+
 // sourceBodiesDiverge compares bodies in the renderer's normalized form: the
 // renderer normalizes CRLF and trims edge whitespace, so a raw byte comparison
 // would report false divergence for round-tripped content.
@@ -311,12 +326,18 @@ type artifactBodyEditOutcome struct {
 	EventID     string
 }
 
-// editArtifactBody applies a sanctioned body edit: on first edit of a body
-// that lives only in a legacy source file it imports that body into SQLite, it
-// refuses when the legacy file and the stored body diverge (unless forced),
-// then upserts the new body, touches the entity row, and records a body_edited
-// event. It mutates SQLite only; finalize rewrites the durable render.
-func (s *Store) editArtifactBody(ctx context.Context, rootPath string, projectID string, entityKind string, entityTable string, entityID string, display string, bodySourceID sql.NullString, sourcePath sql.NullString, body string, force bool) (artifactBodyEditOutcome, error) {
+// editArtifactBody applies a sanctioned body edit: it normalizes the incoming
+// body via editBodyForm (so passing a committed durable render stores only its
+// prose), on first edit of a body that lives only in a legacy source file it
+// imports that body into SQLite, it refuses when the legacy file and the
+// stored body diverge (unless forced), then upserts the new body, touches the
+// entity row, and records a body_edited event. Native artifacts carry no
+// legacy source path, so renderPath names the canonical durable render as the
+// divergence-guard fallback: a hand-edited or hand-mangled render refuses the
+// same way a diverged legacy source does. It mutates SQLite only; finalize
+// rewrites the durable render.
+func (s *Store) editArtifactBody(ctx context.Context, rootPath string, projectID string, entityKind string, entityTable string, entityID string, display string, bodySourceID sql.NullString, sourcePath sql.NullString, renderPath string, body string, force bool) (artifactBodyEditOutcome, error) {
+	body = editBodyForm(body)
 	row, hasRow, err := s.ReadArtifactBody(ctx, projectID, entityKind, entityID, ArtifactBodyKindMarkdown)
 	if err != nil {
 		return artifactBodyEditOutcome{}, err
@@ -343,6 +364,26 @@ func (s *Store) editArtifactBody(ctx context.Context, rootPath string, projectID
 
 	if hasRow && fileExists && sourceBodiesDiverge(fileForm, row.Content) && !force {
 		return artifactBodyEditOutcome{}, fmt.Errorf("legacy source %s no longer matches the SQLite body for %s; refusing so neither side is silently lost: run `loaf %s finalize %s` to rewrite the file from SQLite, or re-run with --force to edit the SQLite body anyway (the next finalize overwrites the file)", relPath, display, entityKind, display)
+	}
+
+	if relPath == "" && strings.TrimSpace(renderPath) != "" {
+		renderRel := filepath.ToSlash(strings.TrimSpace(renderPath))
+		path, err := validatedSourceFilePath(rootPath, renderRel)
+		if err != nil {
+			return artifactBodyEditOutcome{}, err
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return artifactBodyEditOutcome{}, fmt.Errorf("read %s render %s: %w", entityKind, renderRel, err)
+		}
+		if err == nil && !force {
+			// A render that no longer parses was hand-mangled, so it must trip
+			// the guard exactly like a parseable render with divergent prose.
+			doc, parseErr := ParseDurableRender(string(raw))
+			if parseErr != nil || sourceBodiesDiverge(doc.Body, row.Content) {
+				return artifactBodyEditOutcome{}, fmt.Errorf("durable render %s no longer matches the SQLite body for %s; refusing so neither side is silently lost: run `loaf %s finalize %s` to rewrite the render from SQLite, or re-run with --force to edit the SQLite body anyway (the next finalize overwrites the render)", renderRel, display, entityKind, display)
+			}
+		}
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)

@@ -111,13 +111,14 @@ func (s *Store) EditReportBody(ctx context.Context, root project.Root, options R
 		return ReportEditResult{}, fmt.Errorf("report edit target %q resolved to %s, not report", options.Ref, entity.Kind)
 	}
 
+	var status string
 	var bodySourceID, sourcePath sql.NullString
 	err = s.db.QueryRowContext(ctx, `
-SELECT reports.body_source_id, sources.path
+SELECT reports.status, reports.body_source_id, sources.path
 FROM reports
 LEFT JOIN sources ON sources.id = reports.body_source_id
 WHERE reports.project_id = ? AND reports.id = ?
-`, projectID, entity.ID).Scan(&bodySourceID, &sourcePath)
+`, projectID, entity.ID).Scan(&status, &bodySourceID, &sourcePath)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ReportEditResult{}, fmt.Errorf("report %q not found in SQLite state", firstNonEmpty(entity.Alias, options.Ref))
 	}
@@ -125,7 +126,23 @@ WHERE reports.project_id = ? AND reports.id = ?
 		return ReportEditResult{}, fmt.Errorf("read report body source: %w", err)
 	}
 
-	outcome, err := s.editArtifactBody(ctx, root.Path(), projectID, "report", "reports", entity.ID, firstNonEmpty(entity.Alias, options.Ref), bodySourceID, sourcePath, options.Body, options.Force)
+	display := firstNonEmpty(entity.Alias, options.Ref)
+	// Rejecting before any mutation keeps archived reports whole: `loaf report
+	// finalize` refuses archived reports, so an accepted edit could never reach
+	// the durable render and would strand in SQLite.
+	if LifecycleStatusMatches(LifecycleEntityReport, status, LifecycleStatusArchived) {
+		return ReportEditResult{}, fmt.Errorf("report %q is archived and cannot be edited: `loaf report finalize` does not refresh archived renders, so the edit would never reach the durable render; leave the archived render as the historical record, or create a follow-up report with `loaf report create`", display)
+	}
+
+	renderPath := ""
+	if !sourcePath.Valid || strings.TrimSpace(sourcePath.String) == "" {
+		_, rel, err := durableRenderGitFile(root, "report", display, nil)
+		if err != nil {
+			return ReportEditResult{}, err
+		}
+		renderPath = rel
+	}
+	outcome, err := s.editArtifactBody(ctx, root.Path(), projectID, "report", "reports", entity.ID, display, bodySourceID, sourcePath, renderPath, options.Body, options.Force)
 	if err != nil {
 		return ReportEditResult{}, err
 	}

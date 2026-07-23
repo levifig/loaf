@@ -202,6 +202,234 @@ func TestEditReportBodyUpdatesBodyAndRoundTrips(t *testing.T) {
 	}
 }
 
+func TestEditReportBodyStripsFullDurableRenderInput(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	created, err := CreateReport(context.Background(), root, PathResolver{StateHome: stateHome}, ReportCreateOptions{
+		Slug:    "render-strip",
+		Kind:    "audit",
+		Body:    "Original report body.",
+		SetBody: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateReport() error = %v", err)
+	}
+
+	// The render-drift remediation names the committed render itself as the
+	// --body-file path, so the edit input is a complete durable render.
+	render, err := RenderDurableDocument(DurableRenderDocument{
+		Kind: "report",
+		Fields: []DurableRenderField{
+			{Key: "id", Value: created.Report.Alias},
+			{Key: "report_kind", Value: "audit"},
+			{Key: "status", Value: "draft"},
+			{Key: "title", Value: "Render Strip"},
+		},
+		Body: "Inner prose from the committed render.",
+	})
+	if err != nil {
+		t.Fatalf("RenderDurableDocument() error = %v", err)
+	}
+
+	if _, err := EditReportBody(context.Background(), root, PathResolver{StateHome: stateHome}, ReportEditOptions{
+		Ref:  created.Report.Alias,
+		Body: render,
+	}); err != nil {
+		t.Fatalf("EditReportBody() error = %v", err)
+	}
+
+	show, err := ShowReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias)
+	if err != nil {
+		t.Fatalf("ShowReport() error = %v", err)
+	}
+	if show.Report.Body != "Inner prose from the committed render." {
+		t.Fatalf("Body = %q, want inner render body only", show.Report.Body)
+	}
+	if strings.HasPrefix(show.Report.Body, "---") || strings.Contains(show.Report.Body, "loaf:render") {
+		t.Fatalf("Body = %q, want no frontmatter and no render stamp", show.Report.Body)
+	}
+}
+
+func TestEditReportBodyGuardsHandEditedDurableRender(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	created, err := CreateReport(context.Background(), root, PathResolver{StateHome: stateHome}, ReportCreateOptions{
+		Slug:    "render-guard",
+		Kind:    "audit",
+		Body:    "Original report body.",
+		SetBody: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateReport() error = %v", err)
+	}
+	if _, err := FinalizeReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias); err != nil {
+		t.Fatalf("FinalizeReport() error = %v", err)
+	}
+	render, err := FinalizeDurableArtifact(context.Background(), root, PathResolver{StateHome: stateHome}, DurableFinalizeOptions{Kind: "report", Ref: created.Report.Alias})
+	if err != nil {
+		t.Fatalf("FinalizeDurableArtifact() error = %v", err)
+	}
+
+	// An unmodified render matches the stored body, so the edit is clean.
+	if _, err := EditReportBody(context.Background(), root, PathResolver{StateHome: stateHome}, ReportEditOptions{
+		Ref:  created.Report.Alias,
+		Body: "Second report body.",
+	}); err != nil {
+		t.Fatalf("EditReportBody(clean) error = %v", err)
+	}
+	if _, err := FinalizeDurableArtifact(context.Background(), root, PathResolver{StateHome: stateHome}, DurableFinalizeOptions{Kind: "report", Ref: created.Report.Alias}); err != nil {
+		t.Fatalf("FinalizeDurableArtifact(refresh) error = %v", err)
+	}
+
+	content, err := os.ReadFile(render.Path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", render.Path, err)
+	}
+	handEdited := strings.Replace(string(content), "Second report body.", "Hand-edited render prose.", 1)
+	if handEdited == string(content) {
+		t.Fatalf("render content missing stored body:\n%s", content)
+	}
+	if err := os.WriteFile(render.Path, []byte(handEdited), 0o600); err != nil {
+		t.Fatalf("WriteFile(%s) error = %v", render.Path, err)
+	}
+
+	_, err = EditReportBody(context.Background(), root, PathResolver{StateHome: stateHome}, ReportEditOptions{
+		Ref:  created.Report.Alias,
+		Body: "Third report body.",
+	})
+	if err == nil {
+		t.Fatal("EditReportBody(hand-edited render) error = nil, want divergence refusal")
+	}
+	for _, want := range []string{"no longer matches the SQLite body", "loaf report finalize", "--force"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("EditReportBody() error = %q, want containing %q", err, want)
+		}
+	}
+	show, err := ShowReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias)
+	if err != nil {
+		t.Fatalf("ShowReport() error = %v", err)
+	}
+	if show.Report.Body != "Second report body." {
+		t.Fatalf("Body = %q, want unchanged SQLite body after refusal", show.Report.Body)
+	}
+
+	edited, err := EditReportBody(context.Background(), root, PathResolver{StateHome: stateHome}, ReportEditOptions{
+		Ref:   created.Report.Alias,
+		Body:  "Forced report body.",
+		Force: true,
+	})
+	if err != nil {
+		t.Fatalf("EditReportBody(force) error = %v", err)
+	}
+	if edited.EventID == "" {
+		t.Fatalf("edited = %#v, want recorded edit event", edited)
+	}
+	show, err = ShowReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias)
+	if err != nil {
+		t.Fatalf("ShowReport() error = %v", err)
+	}
+	if show.Report.Body != "Forced report body." {
+		t.Fatalf("Body = %q, want forced replacement body", show.Report.Body)
+	}
+}
+
+func TestEditReportBodyTreatsUnparseableRenderAsDivergent(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	created, err := CreateReport(context.Background(), root, PathResolver{StateHome: stateHome}, ReportCreateOptions{
+		Slug:    "mangled-render",
+		Kind:    "audit",
+		Body:    "Original report body.",
+		SetBody: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateReport() error = %v", err)
+	}
+	render, err := FinalizeDurableArtifact(context.Background(), root, PathResolver{StateHome: stateHome}, DurableFinalizeOptions{Kind: "report", Ref: created.Report.Alias})
+	if err != nil {
+		t.Fatalf("FinalizeDurableArtifact() error = %v", err)
+	}
+	// A hand-mangled render (stamp stripped, frontmatter gone) must trip the
+	// guard even though its prose can no longer be compared.
+	if err := os.WriteFile(render.Path, []byte("Original report body.\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile(%s) error = %v", render.Path, err)
+	}
+
+	_, err = EditReportBody(context.Background(), root, PathResolver{StateHome: stateHome}, ReportEditOptions{
+		Ref:  created.Report.Alias,
+		Body: "Replacement body.",
+	})
+	if err == nil || !strings.Contains(err.Error(), "no longer matches the SQLite body") {
+		t.Fatalf("EditReportBody(mangled render) error = %v, want divergence refusal", err)
+	}
+
+	if _, err := EditReportBody(context.Background(), root, PathResolver{StateHome: stateHome}, ReportEditOptions{
+		Ref:   created.Report.Alias,
+		Body:  "Replacement body.",
+		Force: true,
+	}); err != nil {
+		t.Fatalf("EditReportBody(force) error = %v", err)
+	}
+}
+
+func TestEditReportBodyRejectsArchivedReportBeforeMutation(t *testing.T) {
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(context.Background(), root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+
+	created, err := CreateReport(context.Background(), root, PathResolver{StateHome: stateHome}, ReportCreateOptions{
+		Slug:    "archived-edit",
+		Kind:    "audit",
+		Body:    "Archived report body.",
+		SetBody: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateReport() error = %v", err)
+	}
+	if _, err := FinalizeReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias); err != nil {
+		t.Fatalf("FinalizeReport() error = %v", err)
+	}
+	if _, err := ArchiveReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias); err != nil {
+		t.Fatalf("ArchiveReport() error = %v", err)
+	}
+
+	_, err = EditReportBody(context.Background(), root, PathResolver{StateHome: stateHome}, ReportEditOptions{
+		Ref:  created.Report.Alias,
+		Body: "Stranded edit body.",
+	})
+	if err == nil {
+		t.Fatal("EditReportBody(archived) error = nil, want archived refusal")
+	}
+	for _, want := range []string{"archived", "historical record"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("EditReportBody(archived) error = %q, want containing %q", err, want)
+		}
+	}
+
+	show, err := ShowReport(context.Background(), root, PathResolver{StateHome: stateHome}, created.Report.Alias)
+	if err != nil {
+		t.Fatalf("ShowReport() error = %v", err)
+	}
+	if show.Report.Body != "Archived report body." {
+		t.Fatalf("Body = %q, want unchanged body after archived refusal", show.Report.Body)
+	}
+	assertBodyEventCount(t, root, stateHome, "report", created.Report.ID, "body_edited", 0)
+}
+
 func TestFinalizeReportIsIdempotentWhenAlreadyDone(t *testing.T) {
 	root := projectRoot(t)
 	stateHome := t.TempDir()

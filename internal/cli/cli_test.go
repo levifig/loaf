@@ -13523,6 +13523,9 @@ Markdown report body.
 	if show.Report.Title != "Fallback Report" || show.Report.Kind != "audit" || !strings.Contains(show.Report.Body, "Markdown report body.") {
 		t.Fatalf("show.Report = %#v, want markdown fallback report", show.Report)
 	}
+	if !show.Report.HasBody {
+		t.Fatalf("show.Report = %#v, want HasBody true for non-empty markdown body", show.Report)
+	}
 	if show.ContractVersion != 0 || show.DatabaseScope != "" {
 		t.Fatalf("show context = %#v, want markdown fallback without SQLite context", show)
 	}

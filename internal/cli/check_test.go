@@ -656,11 +656,13 @@ func TestRunnerCheckEphemeralProvenanceEmitsSpecEditRemediation(t *testing.T) {
 	for _, want := range []string{
 		"loaf spec edit SPEC-001 --body-file <path>",
 		"loaf spec finalize SPEC-001",
-		"loaf spec archive SPEC-001",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("output = %#v, want errors containing %q", output, want)
 		}
+	}
+	if strings.Contains(joined, "loaf spec archive") {
+		t.Fatalf("output = %#v, want no archive suggestion (archive cannot clear the gate)", output)
 	}
 }
 
@@ -772,6 +774,45 @@ func TestRunnerCheckRenderDriftBlocksHandEditedRender(t *testing.T) {
 	} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("render-drift output = %#v, want %q", output, want)
+		}
+	}
+	if strings.Contains(joined, "Committed render is invalid") {
+		t.Fatalf("render-drift output = %#v, want drifted-render remediation, not the invalid-render one", output)
+	}
+}
+
+func TestRunnerCheckRenderDriftInvalidRenderPrescribesFinalize(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	writeCheckFile(t, repo, ".agents/specs/SPEC-001-render.md", "---\ntitle: Render Drift\nid: SPEC-001\n---\n\n# Render Drift\n\n<!-- loaf:render kind=spec contract=bogus-v9 -->\n")
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: repo,
+	}.Run([]string{"check", "--hook", "render-drift", "--json"})
+	var exitErr ExitError
+	if !errors.As(err, &exitErr) || exitErr.Code != 2 {
+		t.Fatalf("render-drift error = %v, want exit code 2", err)
+	}
+	var output checkJSONOutput
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("Unmarshal(%q) error = %v", stdout.String(), err)
+	}
+	joined := strings.Join(append(output.Errors, output.Findings...), "\n")
+	for _, want := range []string{
+		".agents/specs/SPEC-001-render.md",
+		"Committed render is invalid",
+		"loaf spec finalize SPEC-001",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("render-drift output = %#v, want %q", output, want)
+		}
+	}
+	// Editing a malformed render round-trips it into the body as prose, so the
+	// remediation must never route through spec edit --body-file.
+	for _, reject := range []string{"loaf spec edit", "--body-file"} {
+		if strings.Contains(joined, reject) {
+			t.Fatalf("render-drift output = %#v, want no %q for invalid renders", output, reject)
 		}
 	}
 }
@@ -961,6 +1002,9 @@ func TestRunnerCheckArtifactBodyWriteAllowsExplicitExceptions(t *testing.T) {
 }
 
 func TestArtifactBodyWriteCommandEmitsConcreteVerbs(t *testing.T) {
+	root := t.TempDir()
+	existingReport := ".agents/reports/20260512-122202-research-spec-track-convention-surface.md"
+	writeCheckFile(t, root, existingReport, "# Report\n")
 	cases := []struct {
 		kind string
 		path string
@@ -973,6 +1017,7 @@ func TestArtifactBodyWriteCommandEmitsConcreteVerbs(t *testing.T) {
 		{kind: "idea", path: ".agents/ideas/IDEA-001-example.md", want: "loaf idea capture --title <title> --body-file <path>"},
 		{kind: "plan", path: ".agents/plans/PLAN-001-cutover.md", want: "loaf plan new --title <title> --body-file <path>"},
 		{kind: "report", path: ".agents/reports/report-audit.md", want: "loaf report edit report-audit --body-file <path>"},
+		{kind: "report", path: existingReport, want: "loaf report edit 20260512-122202-research-spec-track-convention-surface --body-file <path>"},
 		{kind: "report", path: ".agents/reports/2026-07-01-audit.md", want: "loaf report create <slug> --body-file <path>"},
 		{kind: "spec", path: ".agents/specs/SPEC-055-x.md", want: "loaf spec edit SPEC-055 --body-file <path>"},
 		{kind: "spec", path: ".agents/specs/new-idea.md", want: "loaf spec new <slug> --title <title> --body-file <path>"},
@@ -981,7 +1026,7 @@ func TestArtifactBodyWriteCommandEmitsConcreteVerbs(t *testing.T) {
 	covered := map[string]bool{}
 	for _, tc := range cases {
 		covered[tc.kind] = true
-		got := artifactBodyWriteCommand(tc.kind, tc.path)
+		got := artifactBodyWriteCommand(tc.kind, tc.path, root)
 		if got != tc.want {
 			t.Fatalf("artifactBodyWriteCommand(%q, %q) = %q, want %q", tc.kind, tc.path, got, tc.want)
 		}
@@ -993,6 +1038,43 @@ func TestArtifactBodyWriteCommandEmitsConcreteVerbs(t *testing.T) {
 		if !covered[kind] {
 			t.Fatalf("artifactBodyPathDirs[%q] kind %q has no artifactBodyWriteCommand coverage", dir, kind)
 		}
+	}
+}
+
+func TestArtifactBodyWriteCommandRoutesExistingReportRenderToEdit(t *testing.T) {
+	root := t.TempDir()
+	path := ".agents/reports/20260512-122202-research-spec-track-convention-surface.md"
+
+	if got, want := artifactBodyWriteCommand("report", path, root), "loaf report create <slug> --body-file <path>"; got != want {
+		t.Fatalf("artifactBodyWriteCommand(report, absent %q) = %q, want %q", path, got, want)
+	}
+
+	writeCheckFile(t, root, path, "# Report\n")
+	want := "loaf report edit 20260512-122202-research-spec-track-convention-surface --body-file <path>"
+	if got := artifactBodyWriteCommand("report", path, root); got != want {
+		t.Fatalf("artifactBodyWriteCommand(report, existing %q) = %q, want %q", path, got, want)
+	}
+}
+
+func TestArtifactBodyWriteCommandPrefersReportFrontmatterID(t *testing.T) {
+	root := t.TempDir()
+	path := ".agents/reports/20260512-122202-research-audit.md"
+	writeCheckFile(t, root, path, "---\nid: report-audit-007\ntitle: Audit\nstatus: draft\n---\n\n# Audit\n")
+
+	want := "loaf report edit report-audit-007 --body-file <path>"
+	if got := artifactBodyWriteCommand("report", path, root); got != want {
+		t.Fatalf("artifactBodyWriteCommand(report, existing %q) = %q, want frontmatter id ref %q", path, got, want)
+	}
+}
+
+func TestArtifactBodyWriteCommandFallsBackToStemWithoutFrontmatterID(t *testing.T) {
+	root := t.TempDir()
+	path := ".agents/reports/20260512-122202-research-audit.md"
+	writeCheckFile(t, root, path, "---\ntitle: Audit\nstatus: draft\n---\n\n# Audit\n")
+
+	want := "loaf report edit 20260512-122202-research-audit --body-file <path>"
+	if got := artifactBodyWriteCommand("report", path, root); got != want {
+		t.Fatalf("artifactBodyWriteCommand(report, existing %q) = %q, want filename-stem ref %q", path, got, want)
 	}
 }
 
@@ -1105,7 +1187,7 @@ func TestEphemeralProvenanceSkipsLoafCommandsInWedgedRepo(t *testing.T) {
 
 	for _, command := range []string{
 		"loaf spec edit SPEC-001 --body-file .agents/specs/SPEC-001-example.md",
-		"loaf spec archive SPEC-001",
+		"loaf spec finalize SPEC-001",
 	} {
 		for _, hook := range []string{"ephemeral-provenance", "artifact-body-write"} {
 			var stdout bytes.Buffer

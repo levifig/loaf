@@ -111,7 +111,7 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 	var result checkResult
 	switch options.hook {
 	case "artifact-body-write":
-		result = runNativeArtifactBodyWriteGuard(context)
+		result = runNativeArtifactBodyWriteGuard(context, runtimeRoot)
 	case "check-secrets":
 		result = runNativeCheckSecrets(context)
 	case "ephemeral-provenance":
@@ -235,9 +235,10 @@ var artifactBodyPathDirs = map[string]string{
 
 var artifactBodyWriteBashPathRE = regexp.MustCompile(`(?:^|[\s"'=])(\.agents/(?:brainstorms|councils|drafts|handoffs|ideas|plans|reports|specs|tasks)(?:/archive)?/[^\s"'` + "`" + `;|&<>]+\.md)`)
 
-func runNativeArtifactBodyWriteGuard(context checkHookContext) checkResult {
+func runNativeArtifactBodyWriteGuard(context checkHookContext, cwd string) checkResult {
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
-	for _, target := range artifactBodyWriteTargets(context) {
+	root := firstNonEmpty(strings.TrimSpace(cwd), ".")
+	for _, target := range artifactBodyWriteTargets(context, root) {
 		if artifactBodyWriteAllowed(target.path, target.content) {
 			continue
 		}
@@ -307,7 +308,7 @@ func runNativeRenderDrift(context checkHookContext, cwd string) checkResult {
 				result.Passed = false
 				result.Blocked = true
 				result.Errors = append(result.Errors, fmt.Sprintf("Durable render %s is invalid: %v", renderDriftRelativePath(root, path), err))
-				result.Findings = append(result.Findings, renderDriftRemediation(target.kind, path))
+				result.Findings = append(result.Findings, renderDriftInvalidRenderRemediation(target.kind, path))
 				continue
 			}
 			if rerendered != string(content) {
@@ -325,6 +326,14 @@ func runNativeRenderDrift(context checkHookContext, cwd string) checkResult {
 func renderDriftRemediation(kind string, path string) string {
 	ref := firstNonEmpty(artifactBodyRefFromPath(path), "<ref>")
 	return fmt.Sprintf("Edit via `loaf %s edit %s --body-file <path>`, then run `loaf %s finalize %s`.", kind, ref, kind, ref)
+}
+
+// renderDriftInvalidRenderRemediation handles renders that no longer parse: the
+// edit path would store the malformed render verbatim as prose, so the only
+// safe prescription is regenerating the render from the SQLite body.
+func renderDriftInvalidRenderRemediation(kind string, path string) string {
+	ref := firstNonEmpty(artifactBodyRefFromPath(path), "<ref>")
+	return fmt.Sprintf("Committed render is invalid; run `loaf %s finalize %s` to rewrite it from the SQLite body.", kind, ref)
 }
 
 var ephemeralProvenanceRefRE = regexp.MustCompile(`\.agents/(?:tasks|ideas|sparks|sessions|brainstorms|drafts)/(?:archive/)?[A-Za-z0-9][^\s)'"]*|\.agents/TASKS\.json`)
@@ -402,7 +411,7 @@ func ephemeralUntrackCommand(paths []string) string {
 }
 
 func specEditRemediationCommand(ref string) string {
-	return fmt.Sprintf("Fix %s: `loaf spec edit %s --body-file <path>` then `loaf spec finalize %s`, or `loaf spec archive %s` if the spec is obsolete.", ref, ref, ref, ref)
+	return fmt.Sprintf("Fix %s: `loaf spec edit %s --body-file <path>` then `loaf spec finalize %s`.", ref, ref, ref)
 }
 
 func trackedEphemeralMarkdownPaths(root string) ([]string, error) {
@@ -438,10 +447,10 @@ func renderDriftRelativePath(root string, path string) string {
 	return filepath.ToSlash(rel)
 }
 
-func artifactBodyWriteTargets(context checkHookContext) []artifactBodyWriteTarget {
+func artifactBodyWriteTargets(context checkHookContext, root string) []artifactBodyWriteTarget {
 	tool := checkContextToolName(context)
 	if tool == "Bash" {
-		return artifactBodyWriteBashTargets(checkContextCommand(context))
+		return artifactBodyWriteBashTargets(checkContextCommand(context), root)
 	}
 	if tool != "Edit" && tool != "Write" && tool != "MultiEdit" {
 		return nil
@@ -455,12 +464,12 @@ func artifactBodyWriteTargets(context checkHookContext) []artifactBodyWriteTarge
 	return []artifactBodyWriteTarget{{
 		path:    path,
 		kind:    kind,
-		command: artifactBodyWriteCommand(kind, path),
+		command: artifactBodyWriteCommand(kind, path, root),
 		content: checkContextContent(context),
 	}}
 }
 
-func artifactBodyWriteBashTargets(command string) []artifactBodyWriteTarget {
+func artifactBodyWriteBashTargets(command string, root string) []artifactBodyWriteTarget {
 	if strings.TrimSpace(command) == "" || bashCommandUsesLoafCLI(command) {
 		return nil
 	}
@@ -478,7 +487,7 @@ func artifactBodyWriteBashTargets(command string) []artifactBodyWriteTarget {
 		targets = append(targets, artifactBodyWriteTarget{
 			path:    artifactBodyRelativePath(match[1]),
 			kind:    kind,
-			command: artifactBodyWriteCommand(kind, match[1]),
+			command: artifactBodyWriteCommand(kind, match[1], root),
 			content: command,
 		})
 	}
@@ -599,7 +608,7 @@ func bashCommandWritesPath(command string, path string) bool {
 
 var artifactBodySpecRefRE = regexp.MustCompile(`^SPEC-\d+`)
 
-func artifactBodyWriteCommand(kind string, path string) string {
+func artifactBodyWriteCommand(kind string, path string, root string) string {
 	ref := artifactBodyRefFromPath(path)
 	switch kind {
 	case "brainstorm", "draft":
@@ -613,7 +622,12 @@ func artifactBodyWriteCommand(kind string, path string) string {
 	case "plan":
 		return "loaf plan new --title <title> --body-file <path>"
 	case "report":
-		if stem := artifactBodyStemFromPath(path); strings.HasPrefix(stem, "report-") {
+		stem := artifactBodyStemFromPath(path)
+		if _, err := os.Stat(filepath.Join(root, artifactBodyRelativePath(path))); err == nil {
+			// An existing render resolves as a report alias; create would duplicate it.
+			return "loaf report edit " + existingReportRef(root, path) + " --body-file <path>"
+		}
+		if strings.HasPrefix(stem, "report-") {
 			return "loaf report edit " + stem + " --body-file <path>"
 		}
 		return "loaf report create <slug> --body-file <path>"
@@ -631,6 +645,19 @@ func artifactBodyWriteCommand(kind string, path string) string {
 
 func artifactBodyStemFromPath(path string) string {
 	return strings.TrimSuffix(filepath.Base(normalizeHookPath(path)), ".md")
+}
+
+// existingReportRef mirrors readMarkdownReport's alias resolution: the
+// frontmatter id wins over the filename stem, so the emitted edit command
+// targets the ref the report commands actually resolve.
+func existingReportRef(root string, path string) string {
+	stem := artifactBodyStemFromPath(path)
+	body, err := os.ReadFile(filepath.Join(root, artifactBodyRelativePath(path)))
+	if err != nil {
+		return stem
+	}
+	frontmatter, _ := parseKnowledgeFrontmatter(body)
+	return firstNonEmpty(firstFieldValue(frontmatter["id"]), stem)
 }
 
 func artifactBodyRefFromPath(path string) string {

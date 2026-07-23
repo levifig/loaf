@@ -251,7 +251,16 @@ WHERE specs.project_id = ? AND specs.id = ?
 		return SpecEditResult{}, fmt.Errorf("read spec body source: %w", err)
 	}
 
-	outcome, err := s.editArtifactBody(ctx, root.Path(), projectID, "spec", "specs", entity.ID, firstNonEmpty(entity.Alias, options.Ref), bodySourceID, sourcePath, options.Body, options.Force)
+	display := firstNonEmpty(entity.Alias, options.Ref)
+	renderPath := ""
+	if !sourcePath.Valid || strings.TrimSpace(sourcePath.String) == "" {
+		_, rel, err := durableRenderGitFile(root, "spec", display, nil)
+		if err != nil {
+			return SpecEditResult{}, err
+		}
+		renderPath = rel
+	}
+	outcome, err := s.editArtifactBody(ctx, root.Path(), projectID, "spec", "specs", entity.ID, display, bodySourceID, sourcePath, renderPath, options.Body, options.Force)
 	if err != nil {
 		return SpecEditResult{}, err
 	}

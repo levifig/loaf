@@ -10541,6 +10541,7 @@ func markdownReportShow(rootPath string, ref string) (state.ReportShow, error) {
 			Status:    item.Status,
 			Sources:   []state.TraceSource{{Path: item.SourcePath}},
 			Body:      body,
+			HasBody:   strings.TrimSpace(body) != "",
 			CreatedAt: updatedAt,
 			UpdatedAt: updatedAt,
 		},
