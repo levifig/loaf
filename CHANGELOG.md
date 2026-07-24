@@ -6,6 +6,10 @@ is a Loaf workflow staging section for curated entries before release.
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [2.0.0-alpha.13] - 2026-07-24
+
 ### Changed
 
 - Markdown re-import treats SQLite as the status authority: statuses are insert-only (a real normalized status fills only a stored `unknown`), archived entities stay archived through any number of re-imports, and kept-vs-incoming divergences are reported in the result instead of silently applied (#132).
