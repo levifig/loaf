@@ -1,7 +1,10 @@
 package state
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -64,8 +67,106 @@ func NewMarkdownMigrationPreviewResult(plan MarkdownMigrationPlan, root project.
 }
 
 // PreviewMarkdownMigration inspects .agents without mutating files or SQLite state.
+// Doctor and inventory-only dry-run use this cheap path; simulation uses
+// SimulateMarkdownMigration instead.
 func PreviewMarkdownMigration(root project.Root) (MarkdownMigrationPlan, error) {
 	return inventoryMarkdownMigration(root)
+}
+
+const markdownInventoryOnlyWarning = "inventory-only: conflict detection requires an initialized SQLite project; no import_report"
+
+// SimulateMarkdownMigration runs dry-run dispatch: when the database exists and
+// the project is registered, it snapshots the live DB and runs the full apply
+// pipeline against the snapshot; otherwise it returns an honestly labeled
+// inventory-only plan with no import_report. Simulation performs no Inspect
+// gate — behind-schema databases surface the same typed RequireCurrentSchema
+// error as apply.
+func SimulateMarkdownMigration(ctx context.Context, root project.Root, resolver PathResolver) (MarkdownMigrationResult, error) {
+	livePath, err := resolver.DatabasePath(root)
+	if err != nil {
+		return MarkdownMigrationResult{}, err
+	}
+
+	info, err := os.Stat(livePath)
+	if os.IsNotExist(err) {
+		return inventoryMarkdownMigrationResult(root, livePath)
+	}
+	if err != nil {
+		return MarkdownMigrationResult{}, fmt.Errorf("stat state database: %w", err)
+	}
+	if info.IsDir() {
+		return MarkdownMigrationResult{}, fmt.Errorf("state database path is a directory: %s", livePath)
+	}
+
+	registered, err := markdownMigrationProjectRegistered(ctx, livePath, root)
+	if err != nil {
+		return MarkdownMigrationResult{}, err
+	}
+	if !registered {
+		return inventoryMarkdownMigrationResult(root, livePath)
+	}
+
+	snapshotPath, cleanup, err := createMarkdownSimulationSnapshot(ctx, livePath)
+	if err != nil {
+		return MarkdownMigrationResult{}, err
+	}
+	defer cleanup()
+
+	result, err := ApplyMarkdownMigration(ctx, root, PathResolver{DatabaseFile: snapshotPath})
+	if err != nil {
+		return MarkdownMigrationResult{}, err
+	}
+	result.Applied = false
+	result.Action = MarkdownMigrationActionSimulate
+	result.Mode = MarkdownMigrationModeSimulation
+	result.DatabasePath = livePath
+	return result, nil
+}
+
+func markdownMigrationProjectRegistered(ctx context.Context, databasePath string, root project.Root) (bool, error) {
+	store, err := OpenStoreReadOnly(databasePath)
+	if err != nil {
+		return false, fmt.Errorf("open state database for simulation dispatch: %w", err)
+	}
+	defer store.Close()
+
+	_, err = store.LookupProjectIdentityForRoot(ctx, root)
+	if err == nil {
+		return true, nil
+	}
+	var unregistered *UnregisteredProjectIdentityError
+	if errors.As(err, &unregistered) || errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return false, err
+}
+
+func inventoryMarkdownMigrationResult(root project.Root, databasePath string) (MarkdownMigrationResult, error) {
+	plan, err := inventoryMarkdownMigration(root)
+	if err != nil {
+		return MarkdownMigrationResult{}, err
+	}
+	hasWarning := false
+	for _, warning := range plan.Warnings {
+		if warning == markdownInventoryOnlyWarning {
+			hasWarning = true
+			break
+		}
+	}
+	if !hasWarning {
+		plan.Warnings = append(plan.Warnings, markdownInventoryOnlyWarning)
+	}
+	return MarkdownMigrationResult{
+		MarkdownMigrationPlan: plan,
+		DatabaseScope:         "global",
+		ImportScope:           "project",
+		DatabasePath:          databasePath,
+		ProjectName:           filepath.Base(root.Path()),
+		ProjectCurrentPath:    root.Path(),
+		Action:                MarkdownMigrationActionSimulate,
+		Mode:                  MarkdownMigrationModeInventory,
+		Applied:               false,
+	}, nil
 }
 
 // inventoryMarkdownMigration builds the file-inventory plan shared by preview
@@ -94,14 +195,14 @@ func inventoryMarkdownMigration(root project.Root) (MarkdownMigrationPlan, error
 		return plan, fmt.Errorf(".agents is not a directory: %s", agentsPath)
 	}
 
-	countKnownMarkdownFiles(agentsPath, "specs", &plan.Specs)
-	countKnownMarkdownFiles(agentsPath, "tasks", &plan.Tasks)
-	countKnownMarkdownFiles(agentsPath, "ideas", &plan.Ideas)
-	countKnownMarkdownFilesRecursive(agentsPath, "sessions", &plan.Sessions)
-	countKnownMarkdownFilesRecursive(agentsPath, "reports", &plan.Reports)
-	countBrainstorms(agentsPath, &plan.Brainstorms)
-	countShapingDrafts(agentsPath, &plan.ShapingDrafts)
-	countSparks(agentsPath, &plan.Sparks)
+	countKnownMarkdownFiles(agentsPath, "specs", &plan.Specs, &plan.Warnings)
+	countKnownMarkdownFiles(agentsPath, "tasks", &plan.Tasks, &plan.Warnings)
+	countKnownMarkdownFiles(agentsPath, "ideas", &plan.Ideas, &plan.Warnings)
+	countKnownMarkdownFilesRecursive(agentsPath, "sessions", &plan.Sessions, &plan.Warnings)
+	countKnownMarkdownFilesRecursive(agentsPath, "reports", &plan.Reports, &plan.Warnings)
+	countBrainstorms(agentsPath, &plan.Brainstorms, &plan.Warnings)
+	countShapingDrafts(agentsPath, &plan.ShapingDrafts, &plan.Warnings)
+	countSparks(agentsPath, &plan.Sparks, &plan.Warnings)
 	countRelationships(agentsPath, &plan.Relationships, &plan.Warnings)
 
 	disposition, err := classifySkippedFiles(agentsPath)
@@ -114,43 +215,49 @@ func inventoryMarkdownMigration(root project.Root) (MarkdownMigrationPlan, error
 	return plan, nil
 }
 
-func countKnownMarkdownFiles(agentsPath string, subdir string, count *int) {
+func countKnownMarkdownFiles(agentsPath string, subdir string, count *int, warnings *[]string) {
 	files, err := filepath.Glob(filepath.Join(agentsPath, subdir, "*.md"))
 	if err != nil {
+		*warnings = append(*warnings, fmt.Sprintf("could not list .agents/%s Markdown files: %v", subdir, err))
 		return
 	}
 	*count = len(files)
 }
 
-func countKnownMarkdownFilesRecursive(agentsPath string, subdir string, count *int) {
-	countKnownMarkdownFiles(agentsPath, subdir, count)
+func countKnownMarkdownFilesRecursive(agentsPath string, subdir string, count *int, warnings *[]string) {
+	countKnownMarkdownFiles(agentsPath, subdir, count, warnings)
 	files, err := filepath.Glob(filepath.Join(agentsPath, subdir, "archive", "*.md"))
 	if err != nil {
+		*warnings = append(*warnings, fmt.Sprintf("could not list .agents/%s/archive Markdown files: %v", subdir, err))
 		return
 	}
 	*count += len(files)
 }
 
-func countBrainstorms(agentsPath string, count *int) {
+func countBrainstorms(agentsPath string, count *int, warnings *[]string) {
 	files, err := filepath.Glob(filepath.Join(agentsPath, "drafts", "*brainstorm*.md"))
 	if err != nil {
+		*warnings = append(*warnings, fmt.Sprintf("could not list brainstorm drafts: %v", err))
 		return
 	}
 	*count = len(files)
 }
 
-func countShapingDrafts(agentsPath string, count *int) {
+func countShapingDrafts(agentsPath string, count *int, warnings *[]string) {
 	files, err := filepath.Glob(filepath.Join(agentsPath, "drafts", "*.md"))
 	if err != nil {
+		*warnings = append(*warnings, fmt.Sprintf("could not list shaping drafts: %v", err))
 		return
 	}
 	for _, path := range files {
 		content, err := os.ReadFile(path)
 		if err != nil {
+			*warnings = append(*warnings, fmt.Sprintf("could not read %s for shaping-draft count: %v", inventoryAgentsRel(agentsPath, path), err))
 			continue
 		}
 		rel, err := filepath.Rel(agentsPath, path)
 		if err != nil {
+			*warnings = append(*warnings, fmt.Sprintf("could not relativize shaping draft path %s: %v", path, err))
 			continue
 		}
 		rel = filepath.ToSlash(filepath.Join(".agents", rel))
@@ -160,19 +267,34 @@ func countShapingDrafts(agentsPath string, count *int) {
 	}
 }
 
-func countSparks(agentsPath string, count *int) {
+func countSparks(agentsPath string, count *int, warnings *[]string) {
 	re := regexp.MustCompile(`(?m)\bspark\([^)]+\):`)
 	sessionFiles, err := filepath.Glob(filepath.Join(agentsPath, "sessions", "*.md"))
 	if err != nil {
+		*warnings = append(*warnings, fmt.Sprintf("could not list session files for spark count: %v", err))
 		return
 	}
-	for _, path := range sessionFiles {
+	archiveFiles, err := filepath.Glob(filepath.Join(agentsPath, "sessions", "archive", "*.md"))
+	if err != nil {
+		*warnings = append(*warnings, fmt.Sprintf("could not list archived session files for spark count: %v", err))
+		archiveFiles = nil
+	}
+	for _, path := range append(sessionFiles, archiveFiles...) {
 		content, err := os.ReadFile(path)
 		if err != nil {
+			*warnings = append(*warnings, fmt.Sprintf("could not read %s for spark count: %v", inventoryAgentsRel(agentsPath, path), err))
 			continue
 		}
 		*count += len(re.FindAll(content, -1))
 	}
+}
+
+func inventoryAgentsRel(agentsPath, path string) string {
+	rel, err := filepath.Rel(agentsPath, path)
+	if err != nil {
+		return path
+	}
+	return filepath.ToSlash(filepath.Join(".agents", rel))
 }
 
 func countRelationships(agentsPath string, count *int, warnings *[]string) {

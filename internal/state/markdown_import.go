@@ -17,7 +17,8 @@ import (
 	"github.com/levifig/loaf/internal/project"
 )
 
-// MarkdownMigrationResult is the structured result for a markdown migration apply.
+// MarkdownMigrationResult is the structured result for a markdown migration
+// apply or dry-run (simulate / inventory).
 type MarkdownMigrationResult struct {
 	MarkdownMigrationPlan
 	ImportReport         *ImportReport `json:"import_report,omitempty"`
@@ -28,6 +29,7 @@ type MarkdownMigrationResult struct {
 	ProjectName          string        `json:"project_name"`
 	ProjectCurrentPath   string        `json:"project_current_path"`
 	Action               string        `json:"action"`
+	Mode                 string        `json:"mode,omitempty"`
 	Applied              bool          `json:"applied"`
 	BackupPath           string        `json:"backup_path,omitempty"`
 	RollbackManifestPath string        `json:"rollback_manifest_path,omitempty"`
@@ -36,8 +38,12 @@ type MarkdownMigrationResult struct {
 }
 
 const (
-	MarkdownMigrationActionApply  = "apply"
-	MarkdownMigrationActionResume = "resume"
+	MarkdownMigrationActionApply    = "apply"
+	MarkdownMigrationActionResume   = "resume"
+	MarkdownMigrationActionSimulate = "simulate"
+
+	MarkdownMigrationModeSimulation = "simulation"
+	MarkdownMigrationModeInventory  = "inventory"
 )
 
 type taskIndexEntry struct {

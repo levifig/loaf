@@ -3562,7 +3562,7 @@ func (r Runner) runMarkdownMigration(args []string, out io.Writer, runtime state
 		return nil
 	}
 
-	plan, err := state.PreviewMarkdownMigration(projectRoot)
+	result, err := state.SimulateMarkdownMigration(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome})
 	if err != nil {
 		if options.jsonOutput {
 			return writeJSONCommandError(out, command, err)
@@ -3570,18 +3570,15 @@ func (r Runner) runMarkdownMigration(args []string, out io.Writer, runtime state
 		return err
 	}
 	if options.jsonOutput {
-		databasePath, err := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(projectRoot)
-		if err != nil {
-			return writeJSONCommandError(out, command, err)
-		}
-		return writeJSON(out, state.NewMarkdownMigrationPreviewResult(plan, projectRoot, databasePath))
+		return writeJSON(out, result)
 	}
-
-	databasePath, err := (state.PathResolver{StateHome: r.StateHome}).DatabasePath(projectRoot)
-	if err != nil {
-		return err
+	// Human rendering of mode/import_report is U4; keep the inventory-shaped
+	// preview printer for now and surface simulation project identity when present.
+	if result.Mode == state.MarkdownMigrationModeSimulation && result.ProjectID != "" {
+		writeMarkdownMigrationResultHuman(out, displayCommand+" --dry-run", result)
+		return nil
 	}
-	writeMarkdownMigrationPreviewHuman(out, displayCommand+" --dry-run", projectRoot, databasePath, plan)
+	writeMarkdownMigrationPreviewHuman(out, displayCommand+" --dry-run", projectRoot, result.DatabasePath, result.MarkdownMigrationPlan)
 	return nil
 }
 
