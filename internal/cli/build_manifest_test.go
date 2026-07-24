@@ -35,7 +35,7 @@ func TestTargetAdapterManifestIsDeterministicAndInstructionDigestIgnoresVersion(
 		CapabilityContractVersion: 3,
 		Adapters:                  []string{"z-adapter-v1", "a-adapter-v1"},
 		Artifacts: []targetAdapterArtifact{
-			{ID: "managed-instructions", Kind: "instruction", Destination: "project-instructions", SHA256: fencedContentFingerprint(generateFencedContent("1.0.0"))},
+			{ID: "managed-instructions", Kind: "instruction", Destination: "project-instructions", SHA256: fencedContentFingerprint(generateFencedContent())},
 			{ID: "hook-file:hooks/z.sh", Kind: "hook-file", SourcePath: "hooks/z.sh", Destination: "hooks/z.sh", SHA256: strings.Repeat("b", 64), Mode: &hookMode},
 		},
 	}
@@ -56,7 +56,7 @@ func TestTargetAdapterManifestIsDeterministicAndInstructionDigestIgnoresVersion(
 	if strings.Join(parsed.Adapters, ",") != "a-adapter-v1,z-adapter-v1" {
 		t.Fatalf("sorted adapters = %v", parsed.Adapters)
 	}
-	if got, want := parsed.Artifacts[1].SHA256, fencedContentFingerprint(generateFencedContent("99.0.0")); got != want {
+	if got, want := parsed.Artifacts[1].SHA256, fencedContentFingerprint(generateFencedContent()); got != want {
 		t.Fatalf("instruction digest = %s, want version-independent %s", got, want)
 	}
 }
