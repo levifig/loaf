@@ -45,11 +45,22 @@ func markdownSimulationSnapshotError(err error) error {
 	}
 }
 
+// markdownSimulationSnapshotOps contains per-invocation seams used by
+// deterministic tests. Public callers pass nil.
+type markdownSimulationSnapshotOps struct {
+	// afterVacuum runs after VACUUM INTO succeeds and before structural verify.
+	afterVacuum func(snapshotPath string) error
+}
+
 // createMarkdownSimulationSnapshot VACUUM INTOs a loaf-owned temp file.
 // Cleanup is registered before creation so partial/ENOSPC/cancel leaves no
 // orphan. Hard-fails on integrity_check / foreign_key_check; journal-search
 // readiness is not gated (the apply pipeline rebuilds FTS).
 func createMarkdownSimulationSnapshot(ctx context.Context, livePath string) (snapshotPath string, cleanup func(), err error) {
+	return createMarkdownSimulationSnapshotWithOps(ctx, livePath, nil)
+}
+
+func createMarkdownSimulationSnapshotWithOps(ctx context.Context, livePath string, ops *markdownSimulationSnapshotOps) (snapshotPath string, cleanup func(), err error) {
 	tempDir, err := os.MkdirTemp("", "loaf-markdown-simulate-*")
 	if err != nil {
 		return "", nil, markdownSimulationSnapshotError(fmt.Errorf("create snapshot temp dir: %w", err))
@@ -76,6 +87,12 @@ func createMarkdownSimulationSnapshot(ctx context.Context, livePath string) (sna
 	if err := vacuumSQLiteInto(ctx, livePath, snapshotPath); err != nil {
 		cleanup()
 		return "", func() {}, markdownSimulationSnapshotError(err)
+	}
+	if ops != nil && ops.afterVacuum != nil {
+		if err := ops.afterVacuum(snapshotPath); err != nil {
+			cleanup()
+			return "", func() {}, markdownSimulationSnapshotError(err)
+		}
 	}
 	if err := verifySQLiteSnapshotStructural(ctx, snapshotPath); err != nil {
 		cleanup()

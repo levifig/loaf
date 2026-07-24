@@ -3,7 +3,13 @@ package state
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/levifig/loaf/internal/project"
 )
 
 func TestOriginMatchesMigrationFingerprint(t *testing.T) {
@@ -397,6 +403,122 @@ WHERE project_id = ? AND from_entity_kind = 'spark' AND from_entity_id = ? AND r
 	if toID != ideaB {
 		t.Fatalf("refreshed target = %q, want %q", toID, ideaB)
 	}
+
+	// Competing manual relationship with an "imported from ..." reason must survive
+	// origin='imported'-only refresh (Decision 7 ownership).
+	manualID := "manual-spark-competing-rel"
+	manualReason := "imported from hand curation note"
+	manualCreated := "2026-01-01T00:00:00Z"
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO relationships (
+  id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id,
+  relationship_type, reason, origin, created_at, updated_at
+) VALUES (?, ?, 'spark', ?, 'idea', ?, 'mentions', ?, 'manual', ?, ?)
+`, manualID, result.ProjectID, sparkID, ideaA, manualReason, manualCreated, manualCreated); err != nil {
+		t.Fatalf("seed manual competing relationship: %v", err)
+	}
+	before := readRelationshipRow(t, store, manualID)
+	if _, err := store.ImportMarkdown(ctx, root); err != nil {
+		t.Fatalf("reimport with manual competitor error = %v", err)
+	}
+	after := readRelationshipRow(t, store, manualID)
+	if !relationshipRowsEqual(before, after) {
+		t.Fatalf("manual competing relationship mutated: before=%#v after=%#v", before, after)
+	}
+}
+
+func TestImportMarkdownArtifactRefreshPreservesManualImportedFromReason(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	writeAgentsFile(t, root.Path(), "ideas/20260724-target.md", `---
+title: Target
+---
+# Target
+`)
+	writeAgentsFile(t, root.Path(), "specs/SPEC-040-rel.md", `---
+id: SPEC-040
+title: Rel Spec
+derived_from: .agents/ideas/20260724-target.md
+---
+# Rel Spec
+`)
+
+	result, err := ApplyMarkdownMigration(ctx, root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("ApplyMarkdownMigration() error = %v", err)
+	}
+	store, err := OpenStore(result.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+
+	specID := stableMigrationID("spec", result.ProjectID, "SPEC-040")
+	ideaID := stableMigrationID("idea", result.ProjectID, "20260724-target")
+	manualID := "manual-artifact-competing-rel"
+	manualReason := "imported from curated review"
+	manualCreated := "2026-02-02T00:00:00Z"
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO relationships (
+  id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id,
+  relationship_type, reason, origin, created_at, updated_at
+) VALUES (?, ?, 'spec', ?, 'idea', ?, 'mentions', ?, 'manual', ?, ?)
+`, manualID, result.ProjectID, specID, ideaID, manualReason, manualCreated, manualCreated); err != nil {
+		t.Fatalf("seed manual competing relationship: %v", err)
+	}
+	before := readRelationshipRow(t, store, manualID)
+	if _, err := store.ImportMarkdown(ctx, root); err != nil {
+		t.Fatalf("reimport error = %v", err)
+	}
+	after := readRelationshipRow(t, store, manualID)
+	if !relationshipRowsEqual(before, after) {
+		t.Fatalf("manual competing relationship mutated: before=%#v after=%#v", before, after)
+	}
+	var importedCount int
+	if err := store.db.QueryRowContext(ctx, `
+SELECT COUNT(*) FROM relationships
+WHERE project_id = ? AND from_entity_kind = 'spec' AND from_entity_id = ? AND origin = 'imported'
+`, result.ProjectID, specID).Scan(&importedCount); err != nil {
+		t.Fatalf("count imported: %v", err)
+	}
+	if importedCount < 1 {
+		t.Fatalf("imported relationships = %d, want at least 1 after refresh", importedCount)
+	}
+}
+
+func readRelationshipRow(t *testing.T, store *Store, id string) map[string]string {
+	t.Helper()
+	var projectID, fromKind, fromID, toKind, toID, relType, createdAt, updatedAt string
+	var reason, origin, sourceID, sourceField sql.NullString
+	if err := store.db.QueryRowContext(context.Background(), `
+SELECT project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id,
+       relationship_type, reason, origin, source_id, source_field, created_at, updated_at
+FROM relationships WHERE id = ?
+`, id).Scan(&projectID, &fromKind, &fromID, &toKind, &toID, &relType, &reason, &origin, &sourceID, &sourceField, &createdAt, &updatedAt); err != nil {
+		t.Fatalf("read relationship %s: %v", id, err)
+	}
+	nullOr := func(v sql.NullString) string {
+		if !v.Valid {
+			return "<nil>"
+		}
+		return v.String
+	}
+	return map[string]string{
+		"id":                id,
+		"project_id":        projectID,
+		"from_entity_kind":  fromKind,
+		"from_entity_id":    fromID,
+		"to_entity_kind":    toKind,
+		"to_entity_id":      toID,
+		"relationship_type": relType,
+		"reason":            nullOr(reason),
+		"origin":            nullOr(origin),
+		"source_id":         nullOr(sourceID),
+		"source_field":      nullOr(sourceField),
+		"created_at":        createdAt,
+		"updated_at":        updatedAt,
+	}
 }
 
 func TestApplyMarkdownMigrationIncludesImportReport(t *testing.T) {
@@ -427,4 +549,82 @@ func assertOriginMechanism(t *testing.T, store *Store, journalID string, want st
 	if got != want {
 		t.Fatalf("origin %s mechanism = %q, want %q", journalID, got, want)
 	}
+}
+
+func TestApplyMarkdownMigrationPostImportWalkFailureKeepsApplied(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	writeAgentsFile(t, root.Path(), "ideas/20260724-post.md", "# Idea\n")
+
+	result, err := applyMarkdownMigration(ctx, root, PathResolver{StateHome: stateHome}, &markdownApplyOperations{
+		afterImportCommitted: func(projectRoot project.Root) error {
+			return errors.New("forced post-import walk failure")
+		},
+	})
+	if err != nil {
+		t.Fatalf("applyMarkdownMigration() error = %v", err)
+	}
+	if !result.Applied {
+		t.Fatal("Applied = false, want true after committed import")
+	}
+	if result.ImportReport == nil {
+		t.Fatal("ImportReport is nil")
+	}
+	found := false
+	for _, warning := range result.Warnings {
+		if strings.Contains(warning, "forced post-import walk failure") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("Warnings = %#v, want post-import failure warning", result.Warnings)
+	}
+}
+
+func TestPreviewMarkdownMigrationWarnsOnUnreadableTaskFile(t *testing.T) {
+	root := projectRoot(t)
+	writeAgentsFile(t, root.Path(), "tasks/TASK-050-unread.md", `---
+id: TASK-050
+spec: SPEC-050
+---
+# Task
+`)
+	taskPath := filepath.Join(root.Path(), ".agents", "tasks", "TASK-050-unread.md")
+	// Replace the file with a directory so ReadFile fails portably (chmod 0 is
+	// still readable for the owner on macOS).
+	if err := os.Remove(taskPath); err != nil {
+		t.Fatalf("Remove() error = %v", err)
+	}
+	if err := os.Mkdir(taskPath, 0o755); err != nil {
+		t.Fatalf("Mkdir() error = %v", err)
+	}
+
+	plan, err := PreviewMarkdownMigration(root)
+	if err != nil {
+		t.Fatalf("PreviewMarkdownMigration() error = %v", err)
+	}
+	found := false
+	for _, warning := range plan.Warnings {
+		if strings.Contains(warning, "TASK-050-unread.md") && strings.Contains(warning, "relationship count") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("Warnings = %#v, want unreadable task relationship-count warning", plan.Warnings)
+	}
+}
+
+func relationshipRowsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for key, value := range a {
+		if b[key] != value {
+			return false
+		}
+	}
+	return true
 }

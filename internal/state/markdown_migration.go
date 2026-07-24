@@ -112,6 +112,11 @@ func markdownMigrationProjectRegistered(ctx context.Context, databasePath string
 	if errors.As(err, &unregistered) || errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
+	// Pre-0003 databases lack project_paths. Treat as unregistered so dry-run
+	// falls back to inventory — no Inspect gate (Decision 3 / Decision 8).
+	if isMissingProjectIdentitySchema(err) {
+		return false, nil
+	}
 	return false, err
 }
 
@@ -145,7 +150,7 @@ func inventoryMarkdownMigrationResult(root project.Root, databasePath string) (M
 
 // inventoryMarkdownMigration builds the file-inventory plan shared by preview
 // and apply. Apply must not call PreviewMarkdownMigration; it calls this helper
-// after the import transaction commits.
+// before opening the import transaction.
 func inventoryMarkdownMigration(root project.Root) (MarkdownMigrationPlan, error) {
 	agentsPath := filepath.Join(root.Path(), ".agents")
 	plan := MarkdownMigrationPlan{
@@ -275,8 +280,8 @@ func countRelationships(agentsPath string, count *int, warnings *[]string) {
 	indexPath := filepath.Join(agentsPath, "TASKS.json")
 	content, err := os.ReadFile(indexPath)
 	if err != nil {
-		*count += countTaskDependencyLines(agentsPath)
-		*count += countArtifactFrontmatterRelationships(agentsPath)
+		*count += countTaskDependencyLines(agentsPath, warnings)
+		*count += countArtifactFrontmatterRelationships(agentsPath, warnings)
 		return
 	}
 
@@ -288,8 +293,8 @@ func countRelationships(agentsPath string, count *int, warnings *[]string) {
 	}
 	if err := json.Unmarshal(content, &index); err != nil {
 		*warnings = append(*warnings, fmt.Sprintf("could not parse .agents/TASKS.json: %v", err))
-		*count += countTaskDependencyLines(agentsPath)
-		*count += countArtifactFrontmatterRelationships(agentsPath)
+		*count += countTaskDependencyLines(agentsPath, warnings)
+		*count += countArtifactFrontmatterRelationships(agentsPath, warnings)
 		return
 	}
 	for _, task := range index.Tasks {
@@ -298,18 +303,20 @@ func countRelationships(agentsPath string, count *int, warnings *[]string) {
 		}
 		*count += len(task.DependsOn)
 	}
-	*count += countArtifactFrontmatterRelationships(agentsPath)
+	*count += countArtifactFrontmatterRelationships(agentsPath, warnings)
 }
 
-func countTaskDependencyLines(agentsPath string) int {
+func countTaskDependencyLines(agentsPath string, warnings *[]string) int {
 	files, err := filepath.Glob(filepath.Join(agentsPath, "tasks", "*.md"))
 	if err != nil {
+		*warnings = append(*warnings, fmt.Sprintf("could not list .agents/tasks Markdown files for relationship count: %v", err))
 		return 0
 	}
 	total := 0
 	for _, path := range files {
 		content, err := os.ReadFile(path)
 		if err != nil {
+			*warnings = append(*warnings, fmt.Sprintf("could not read %s for relationship count: %v", inventoryAgentsRel(agentsPath, path), err))
 			continue
 		}
 		total += countTaskFrontmatterRelationships(content)
@@ -317,10 +324,14 @@ func countTaskDependencyLines(agentsPath string) int {
 	return total
 }
 
-func countArtifactFrontmatterRelationships(agentsPath string) int {
+func countArtifactFrontmatterRelationships(agentsPath string, warnings *[]string) int {
 	total := 0
-	_ = filepath.WalkDir(agentsPath, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".md") {
+	walkErr := filepath.WalkDir(agentsPath, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			*warnings = append(*warnings, fmt.Sprintf("could not walk %s for relationship count: %v", inventoryAgentsRel(agentsPath, path), err))
+			return nil
+		}
+		if entry.IsDir() || !strings.HasSuffix(path, ".md") {
 			return nil
 		}
 		if !isKnownAgentsFile(agentsPath, path) {
@@ -328,6 +339,7 @@ func countArtifactFrontmatterRelationships(agentsPath string) int {
 		}
 		content, err := os.ReadFile(path)
 		if err != nil {
+			*warnings = append(*warnings, fmt.Sprintf("could not read %s for relationship count: %v", inventoryAgentsRel(agentsPath, path), err))
 			return nil
 		}
 		frontmatter := parseFrontmatterMap(content)
@@ -336,6 +348,9 @@ func countArtifactFrontmatterRelationships(agentsPath string) int {
 		}
 		return nil
 	})
+	if walkErr != nil {
+		*warnings = append(*warnings, fmt.Sprintf("could not walk .agents for relationship count: %v", walkErr))
+	}
 	return total
 }
 

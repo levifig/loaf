@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/levifig/loaf/internal/project"
 )
 
 func TestSimulateMarkdownMigrationProducesImportReport(t *testing.T) {
@@ -187,24 +189,40 @@ func TestCreateMarkdownSimulationSnapshotCleansUpOnVerifyFailure(t *testing.T) {
 		t.Fatalf("Initialize() error = %v", err)
 	}
 
-	// Corrupt the live DB so VACUUM INTO succeeds but structural verify fails.
-	// Dropping sqlite_master is not feasible; instead write a non-sqlite file
-	// as the "live" path after initializing a real DB is wrong. Use a path that
-	// VACUUM can read but then replace snapshot verify by using an invalid
-	// source that openStoreReadOnlyForBackup rejects — that exercises cleanup
-	// on creation failure before a partial file remains.
-	missing := filepath.Join(t.TempDir(), "missing.sqlite")
-	_, cleanup, err := createMarkdownSimulationSnapshot(ctx, missing)
+	var capturedDir string
+	_, cleanup, err := createMarkdownSimulationSnapshotWithOps(ctx, status.DatabasePath, &markdownSimulationSnapshotOps{
+		afterVacuum: func(snapshotPath string) error {
+			capturedDir = filepath.Dir(snapshotPath)
+			file, openErr := os.OpenFile(snapshotPath, os.O_RDWR, 0)
+			if openErr != nil {
+				return openErr
+			}
+			defer file.Close()
+			if _, writeErr := file.WriteAt(bytes.Repeat([]byte{0xFF}, 4096), 100); writeErr != nil {
+				return writeErr
+			}
+			return nil
+		},
+	})
 	if err == nil {
 		cleanup()
-		t.Fatal("createMarkdownSimulationSnapshot() error = nil, want failure")
+		t.Fatal("createMarkdownSimulationSnapshotWithOps() error = nil, want structural verify failure")
 	}
 	var snapErr *MarkdownSimulationSnapshotError
 	if !errors.As(err, &snapErr) || snapErr.Code != MarkdownSimulationSnapshotFailedCode {
 		t.Fatalf("error = %v (%T), want MarkdownSimulationSnapshotError", err, err)
 	}
+	if !strings.Contains(err.Error(), "integrity_check") && !strings.Contains(err.Error(), "open snapshot for verification") {
+		t.Fatalf("error = %v, want integrity verify failure", err)
+	}
+	if capturedDir == "" {
+		t.Fatal("afterVacuum did not capture snapshot dir")
+	}
+	if _, statErr := os.Stat(capturedDir); !os.IsNotExist(statErr) {
+		t.Fatalf("snapshot temp dir residue after verify failure: %v", statErr)
+	}
 
-	// Also ensure a successful snapshot is removed by cleanup and leaves no siblings.
+	// Successful snapshot cleanup still removes siblings.
 	path, cleanup, err := createMarkdownSimulationSnapshot(ctx, status.DatabasePath)
 	if err != nil {
 		t.Fatalf("createMarkdownSimulationSnapshot() error = %v", err)
@@ -225,6 +243,55 @@ func TestCreateMarkdownSimulationSnapshotCleansUpOnVerifyFailure(t *testing.T) {
 	}
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Fatalf("snapshot temp dir still present: %v", err)
+	}
+}
+
+func TestSimulateMarkdownMigrationInventoryWhenPre0003Schema(t *testing.T) {
+	ctx := context.Background()
+	root, err := project.ResolveRoot(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveRoot() error = %v", err)
+	}
+	resolver := PathResolver{StateHome: t.TempDir()}
+	databasePath, err := resolver.DatabasePath(root)
+	if err != nil {
+		t.Fatalf("DatabasePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0o700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	store, err := OpenStore(databasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	if err := ApplyMigrations(ctx, store.db, SchemaMigrations()[:2]); err != nil {
+		_ = store.Close()
+		t.Fatalf("apply pre-0003 migrations: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	writeAgentsFile(t, root.Path(), "ideas/20260724-pre0003.md", "# Idea\n")
+
+	result, err := SimulateMarkdownMigration(ctx, root, resolver)
+	if err != nil {
+		t.Fatalf("SimulateMarkdownMigration() error = %v", err)
+	}
+	if result.Mode != MarkdownMigrationModeInventory {
+		t.Fatalf("Mode = %q, want %q", result.Mode, MarkdownMigrationModeInventory)
+	}
+	if result.ImportReport != nil {
+		t.Fatalf("ImportReport = %#v, want nil", result.ImportReport)
+	}
+	found := false
+	for _, warning := range result.Warnings {
+		if warning == markdownInventoryOnlyWarning {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("Warnings = %#v, want inventory-only note", result.Warnings)
 	}
 }
 

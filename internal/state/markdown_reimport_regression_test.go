@@ -277,6 +277,21 @@ harness_session_id: hsid-fts
 	if !strings.Contains(simErr.Error(), needle) || !strings.Contains(applyErr.Error(), needle) {
 		t.Fatalf("error class mismatch:\n  sim=%v\n  apply=%v", simErr, applyErr)
 	}
+	simUnderlying := innermostErrorMessage(simErr)
+	applyUnderlying := innermostErrorMessage(applyErr)
+	if simUnderlying != applyUnderlying {
+		t.Fatalf("underlying SQLite errors differ:\n  sim=%q\n  apply=%q", simUnderlying, applyUnderlying)
+	}
+}
+
+func innermostErrorMessage(err error) string {
+	for {
+		unwrapped := errors.Unwrap(err)
+		if unwrapped == nil {
+			return err.Error()
+		}
+		err = unwrapped
+	}
 }
 
 func TestCreateMarkdownSimulationSnapshotUnwritableTemp(t *testing.T) {

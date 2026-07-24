@@ -75,12 +75,33 @@ type markdownImporter struct {
 	report *ImportReport
 }
 
+// markdownApplyOperations contains per-invocation seams used by deterministic
+// tests. Public callers pass nil; no mutable process-global hooks are involved.
+type markdownApplyOperations struct {
+	// afterImportCommitted runs after ImportMarkdown commits successfully.
+	// Errors degrade to plan.Warnings so Applied stays true.
+	afterImportCommitted func(root project.Root) error
+}
+
 // ApplyMarkdownMigration initializes SQLite state and imports structurally
 // knowable .agents artifacts without mutating source Markdown files.
-// Inventory and import_report come from the committed import path; apply does
-// not call PreviewMarkdownMigration.
+// Inventory is computed before the import transaction opens; import_report
+// comes from the committed import. Apply does not call PreviewMarkdownMigration.
+// Post-commit file-access failures never fail an already-committed import —
+// they degrade to plan warnings.
 func ApplyMarkdownMigration(ctx context.Context, root project.Root, resolver PathResolver) (MarkdownMigrationResult, error) {
+	return applyMarkdownMigration(ctx, root, resolver, nil)
+}
+
+func applyMarkdownMigration(ctx context.Context, root project.Root, resolver PathResolver, ops *markdownApplyOperations) (MarkdownMigrationResult, error) {
 	status, err := Initialize(ctx, root, resolver)
+	if err != nil {
+		return MarkdownMigrationResult{}, err
+	}
+
+	// Inventory before opening the import transaction so a successful commit
+	// cannot be reported as failure by a later .agents walk error.
+	plan, err := inventoryMarkdownMigration(root)
 	if err != nil {
 		return MarkdownMigrationResult{}, err
 	}
@@ -95,10 +116,13 @@ func ApplyMarkdownMigration(ctx context.Context, root project.Root, resolver Pat
 	if err != nil {
 		return MarkdownMigrationResult{}, err
 	}
-	plan, err := inventoryMarkdownMigration(root)
-	if err != nil {
-		return MarkdownMigrationResult{}, err
+
+	if ops != nil && ops.afterImportCommitted != nil {
+		if afterErr := ops.afterImportCommitted(root); afterErr != nil {
+			plan.Warnings = append(plan.Warnings, fmt.Sprintf("post-import inventory access failed: %v", afterErr))
+		}
 	}
+
 	return MarkdownMigrationResult{
 		MarkdownMigrationPlan: plan,
 		ImportReport:          &report,
@@ -916,13 +940,17 @@ ON CONFLICT(id) DO UPDATE SET
 	return nil
 }
 
+// deleteImportedRelationships removes only origin='imported' edges for the
+// from-entity. Manual relationships whose reason happens to start with
+// "imported from" are owned by the user and must survive refresh (Decision 7).
+// Artifacts and per-spark refresh share this helper — do not fork the predicate.
 func (m markdownImporter) deleteImportedRelationships(ctx context.Context, fromKind string, fromID string) error {
 	_, err := m.tx.ExecContext(ctx, `
 DELETE FROM relationships
 WHERE project_id = ?
   AND from_entity_kind = ?
   AND from_entity_id = ?
-  AND (origin = 'imported' OR reason LIKE 'imported from %')
+  AND origin = 'imported'
 `, m.projectID, fromKind, fromID)
 	if err != nil {
 		return fmt.Errorf("delete imported relationships for %s %s: %w", fromKind, fromID, err)
