@@ -131,7 +131,7 @@ func runDoctorChecksJSON(ctx doctorContext, cliVersion string) doctorJSONOutput 
 		CLIVersion:      cliVersion,
 		Checks:          []doctorJSONCheck{},
 	}
-	for _, check := range doctorChecks(cliVersion) {
+	for _, check := range doctorChecks() {
 		result := safeRunDoctorCheck(check, ctx)
 		output.Checks = append(output.Checks, doctorJSONCheck{
 			Name:        check.Name,
@@ -203,7 +203,7 @@ func runDoctorChecks(out io.Writer, ctx doctorContext, options doctorOptions, cl
 	handledRepairs := map[string]string{}
 	fmt.Fprintf(out, "\n%s\n\n", ansiBold("loaf doctor"))
 
-	for _, check := range doctorChecks(cliVersion) {
+	for _, check := range doctorChecks() {
 		result := safeRunDoctorCheck(check, ctx)
 		printDoctorCheckLine(out, check, result, options)
 
@@ -289,7 +289,7 @@ func printDoctorRepairSkipped(out io.Writer, check doctorCheck, reason string) {
 	fmt.Fprintf(out, "    %s Repair for %s skipped (%s): %s\n", ansiYellow("→"), check.Name, repair, reason)
 }
 
-func doctorChecks(cliVersion string) []doctorCheck {
+func doctorChecks() []doctorCheck {
 	return []doctorCheck{
 		checkCanonicalAgentsFile(),
 		checkLegacyAgentsFile(),
