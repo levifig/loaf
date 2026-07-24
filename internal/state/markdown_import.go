@@ -20,7 +20,8 @@ import (
 // MarkdownMigrationResult is the structured result for a markdown migration apply.
 type MarkdownMigrationResult struct {
 	MarkdownMigrationPlan
-	DatabaseScope        string   `json:"database_scope"`
+	ImportReport         *ImportReport `json:"import_report,omitempty"`
+	DatabaseScope        string        `json:"database_scope"`
 	ImportScope          string   `json:"import_scope"`
 	DatabasePath         string   `json:"database_path"`
 	ProjectID            string   `json:"project_id"`
@@ -63,15 +64,16 @@ type markdownImporter struct {
 	taskIndex    map[string]taskIndexEntry
 	specIndex    map[string]specIndexEntry
 	sparkAliases map[string]string
+	// report accumulates in-transaction provenance/status outcomes.
+	// Shared pointer so value-receiver methods can mutate the same report.
+	report *ImportReport
 }
 
 // ApplyMarkdownMigration initializes SQLite state and imports structurally
 // knowable .agents artifacts without mutating source Markdown files.
+// Inventory and import_report come from the committed import path; apply does
+// not call PreviewMarkdownMigration.
 func ApplyMarkdownMigration(ctx context.Context, root project.Root, resolver PathResolver) (MarkdownMigrationResult, error) {
-	plan, err := PreviewMarkdownMigration(root)
-	if err != nil {
-		return MarkdownMigrationResult{}, err
-	}
 	status, err := Initialize(ctx, root, resolver)
 	if err != nil {
 		return MarkdownMigrationResult{}, err
@@ -83,11 +85,17 @@ func ApplyMarkdownMigration(ctx context.Context, root project.Root, resolver Pat
 	}
 	defer store.Close()
 
-	if err := store.ImportMarkdown(ctx, root); err != nil {
+	report, err := store.ImportMarkdown(ctx, root)
+	if err != nil {
+		return MarkdownMigrationResult{}, err
+	}
+	plan, err := inventoryMarkdownMigration(root)
+	if err != nil {
 		return MarkdownMigrationResult{}, err
 	}
 	return MarkdownMigrationResult{
 		MarkdownMigrationPlan: plan,
+		ImportReport:          &report,
 		DatabaseScope:         "global",
 		ImportScope:           "project",
 		DatabasePath:          status.DatabasePath,
@@ -99,15 +107,22 @@ func ApplyMarkdownMigration(ctx context.Context, root project.Root, resolver Pat
 	}, nil
 }
 
-// ImportMarkdown imports .agents artifacts into an initialized state database.
-func (s *Store) ImportMarkdown(ctx context.Context, root project.Root) error {
+// ImportMarkdown imports .agents artifacts into an initialized state database
+// and returns the in-transaction import report.
+func (s *Store) ImportMarkdown(ctx context.Context, root project.Root) (ImportReport, error) {
+	return s.importMarkdown(ctx, root)
+}
+
+// importMarkdown runs the markdown import transaction and returns ImportReport.
+func (s *Store) importMarkdown(ctx context.Context, root project.Root) (ImportReport, error) {
+	report := emptyImportReport()
 	projectID, err := s.projectID(ctx, root)
 	if err != nil {
-		return err
+		return report, err
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin markdown import transaction: %w", err)
+		return report, fmt.Errorf("begin markdown import transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -119,17 +134,18 @@ func (s *Store) ImportMarkdown(ctx context.Context, root project.Root) error {
 		taskIndex:    loadTaskIndex(root.Path()),
 		specIndex:    loadSpecIndex(root.Path()),
 		sparkAliases: map[string]string{},
+		report:       &report,
 	}
 	if err := importer.importAll(ctx); err != nil {
-		return err
+		return emptyImportReport(), err
 	}
 	if _, err := rebuildAndVerifyJournalSearch(ctx, tx); err != nil {
-		return fmt.Errorf("rebuild journal search after markdown import: %w", err)
+		return emptyImportReport(), fmt.Errorf("rebuild journal search after markdown import: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit markdown import: %w", err)
+		return emptyImportReport(), fmt.Errorf("commit markdown import: %w", err)
 	}
-	return nil
+	return report, nil
 }
 
 func (m markdownImporter) importAll(ctx context.Context) error {
@@ -187,10 +203,12 @@ func (m markdownImporter) importSpecs(ctx context.Context, agentsPath string) er
 			return err
 		}
 		title := firstNonEmpty(meta.Title, artifact.Frontmatter["title"], artifact.Heading, alias)
-		status := firstNonEmpty(meta.Status, artifact.Frontmatter["status"], "unknown")
-		if canonical, ok := CanonicalLifecycleStatus(LifecycleEntitySpec, status); ok {
-			status = canonical
-		}
+		status := m.applyImportLifecycleStatus(
+			LifecycleEntitySpec,
+			id,
+			firstNonEmpty(meta.Status, artifact.Frontmatter["status"]),
+			"unknown",
+		)
 		if err := m.upsertSpec(ctx, id, title, status, sourceID); err != nil {
 			return err
 		}
@@ -239,7 +257,12 @@ func (m markdownImporter) importTasks(ctx context.Context, agentsPath string) er
 
 		id := stableMigrationID("task", m.projectID, alias)
 		title := firstNonEmpty(meta.Title, artifact.Frontmatter["title"], artifact.Heading, alias)
-		status := firstNonEmpty(meta.Status, artifact.Frontmatter["status"], "unknown")
+		status := m.applyImportLifecycleStatus(
+			LifecycleEntityTask,
+			id,
+			firstNonEmpty(meta.Status, artifact.Frontmatter["status"]),
+			"unknown",
+		)
 		priority := firstNonEmpty(meta.Priority, artifact.Frontmatter["priority"])
 		if err := m.upsertTask(ctx, id, specID, title, status, priority, sourceID); err != nil {
 			return err
@@ -296,7 +319,7 @@ func (m markdownImporter) importSimpleMarkdown(ctx context.Context, agentsPath s
 			return err
 		}
 		title := firstNonEmpty(artifact.Frontmatter["title"], artifact.Heading, alias)
-		status := firstNonEmpty(artifact.Frontmatter["status"], "open")
+		status := m.applyImportLifecycleStatus(kind, id, artifact.Frontmatter["status"], LifecycleStatusOpen)
 		if err := m.upsertSimpleEntity(ctx, table, id, title, status, sourceID); err != nil {
 			return err
 		}
@@ -412,7 +435,7 @@ func (m markdownImporter) importReports(ctx context.Context, agentsPath string) 
 			return err
 		}
 		title := firstNonEmpty(artifact.Frontmatter["title"], artifact.Heading, alias)
-		status := reportStatus(artifact)
+		status := m.applyImportLifecycleStatus(LifecycleEntityReport, id, reportSourceStatus(artifact), "unknown")
 		reportKind := firstNonEmpty(artifact.Frontmatter["type"], artifact.Frontmatter["report_kind"], artifact.Frontmatter["kind"], "markdown")
 		if err := m.upsertReport(ctx, id, reportKind, title, status, sourceID); err != nil {
 			return err
@@ -914,11 +937,19 @@ func firstHeading(content []byte) string {
 	return ""
 }
 
-func reportStatus(artifact sourceArtifact) string {
+// reportSourceStatus returns the raw incoming report status before classification.
+// Archive-directory placement is a real directory-derived source status, not no-opinion.
+func reportSourceStatus(artifact sourceArtifact) string {
 	if strings.HasPrefix(artifact.RelPath, ".agents/reports/archive/") {
-		return "archived"
+		return LifecycleStatusArchived
 	}
-	return firstNonEmpty(artifact.Frontmatter["status"], "unknown")
+	return artifact.Frontmatter["status"]
+}
+
+// reportStatus is retained for callers that want the post-default insert value
+// without going through the importer (tests / inventory helpers).
+func reportStatus(artifact sourceArtifact) string {
+	return classifyImportLifecycleStatus(LifecycleEntityReport, "", reportSourceStatus(artifact), "unknown").Status
 }
 
 func loadTaskIndex(rootPath string) map[string]taskIndexEntry {
