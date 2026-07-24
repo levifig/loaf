@@ -923,6 +923,9 @@ INSERT INTO journal_origins (
 }
 
 func (m markdownImporter) upsertRelationship(ctx context.Context, fromKind string, fromID string, toKind string, toID string, relationshipType string, reason string) error {
+	// loaf link derives the same deterministic id for a given tuple (link.go),
+	// so a manual edge collides here; the conflict WHERE keeps the importer
+	// from claiming rows it did not create (Decision 7 ownership).
 	id := stableMigrationID("relationship", m.projectID, fromKind, fromID, relationshipType, toKind, toID)
 	_, err := m.tx.ExecContext(ctx, `
 INSERT INTO relationships (id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id, relationship_type, reason, origin, source_id, source_field, created_at, updated_at)
@@ -933,6 +936,7 @@ ON CONFLICT(id) DO UPDATE SET
   source_id = excluded.source_id,
   source_field = excluded.source_field,
   updated_at = excluded.updated_at
+WHERE relationships.origin = 'imported'
 `, id, m.projectID, fromKind, fromID, toKind, toID, relationshipType, reason, "imported", nil, relationshipType, m.now, m.now)
 	if err != nil {
 		return fmt.Errorf("upsert relationship %s: %w", id, err)

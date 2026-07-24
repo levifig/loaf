@@ -487,6 +487,71 @@ WHERE project_id = ? AND from_entity_kind = 'spec' AND from_entity_id = ? AND or
 	}
 }
 
+func TestImportMarkdownSameTupleManualRelationshipKeepsOwnership(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	writeAgentsFile(t, root.Path(), "ideas/20260724-same-tuple.md", `---
+title: Same Tuple Target
+---
+# Same Tuple Target
+`)
+	writeAgentsFile(t, root.Path(), "specs/SPEC-041-same-tuple.md", `---
+id: SPEC-041
+title: Same Tuple Spec
+---
+# Same Tuple Spec
+`)
+
+	result, err := ApplyMarkdownMigration(ctx, root, PathResolver{StateHome: stateHome})
+	if err != nil {
+		t.Fatalf("ApplyMarkdownMigration() error = %v", err)
+	}
+	store, err := OpenStore(result.DatabasePath)
+	if err != nil {
+		t.Fatalf("OpenStore() error = %v", err)
+	}
+	defer store.Close()
+
+	// loaf link shares stableMigrationID with the importer, so a manual edge
+	// over the exact tuple the import derives collides on id, not just on
+	// semantics. Seed the manual row first, then make the import derive the
+	// same tuple and assert the conflict path leaves ownership untouched.
+	specID := stableMigrationID("spec", result.ProjectID, "SPEC-041")
+	ideaID := stableMigrationID("idea", result.ProjectID, "20260724-same-tuple")
+	sameTupleID := stableMigrationID("relationship", result.ProjectID, "spec", specID, "derived_from", "idea", ideaID)
+	manualReason := "linked by operator before reimport"
+	manualCreated := "2026-03-03T00:00:00Z"
+	if _, err := store.db.ExecContext(ctx, `
+INSERT INTO relationships (
+  id, project_id, from_entity_kind, from_entity_id, to_entity_kind, to_entity_id,
+  relationship_type, reason, origin, created_at, updated_at
+) VALUES (?, ?, 'spec', ?, 'idea', ?, 'derived_from', ?, 'manual', ?, ?)
+`, sameTupleID, result.ProjectID, specID, ideaID, manualReason, manualCreated, manualCreated); err != nil {
+		t.Fatalf("seed same-tuple manual relationship: %v", err)
+	}
+
+	writeAgentsFile(t, root.Path(), "specs/SPEC-041-same-tuple.md", `---
+id: SPEC-041
+title: Same Tuple Spec
+derived_from: .agents/ideas/20260724-same-tuple.md
+---
+# Same Tuple Spec
+`)
+
+	before := readRelationshipRow(t, store, sameTupleID)
+	if _, err := store.ImportMarkdown(ctx, root); err != nil {
+		t.Fatalf("reimport deriving same tuple error = %v", err)
+	}
+	after := readRelationshipRow(t, store, sameTupleID)
+	if !relationshipRowsEqual(before, after) {
+		t.Fatalf("same-tuple manual relationship claimed by importer: before=%#v after=%#v", before, after)
+	}
+	if after["origin"] != "manual" {
+		t.Fatalf("origin = %q, want manual", after["origin"])
+	}
+}
+
 func readRelationshipRow(t *testing.T, store *Store, id string) map[string]string {
 	t.Helper()
 	var projectID, fromKind, fromID, toKind, toID, relType, createdAt, updatedAt string
