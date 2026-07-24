@@ -40,32 +40,6 @@ type MarkdownMigrationFileNote struct {
 	Reason string `json:"reason"`
 }
 
-// MarkdownMigrationPreviewResult is the CLI-facing dry-run envelope for a
-// Markdown import preview. It does not imply initialized SQLite state.
-type MarkdownMigrationPreviewResult struct {
-	MarkdownMigrationPlan
-	DatabaseScope      string `json:"database_scope"`
-	ImportScope        string `json:"import_scope"`
-	DatabasePath       string `json:"database_path"`
-	ProjectName        string `json:"project_name"`
-	ProjectCurrentPath string `json:"project_current_path"`
-	Applied            bool   `json:"applied"`
-}
-
-// NewMarkdownMigrationPreviewResult adds global DB and project context to a
-// read-only Markdown migration preview without creating SQLite state.
-func NewMarkdownMigrationPreviewResult(plan MarkdownMigrationPlan, root project.Root, databasePath string) MarkdownMigrationPreviewResult {
-	return MarkdownMigrationPreviewResult{
-		MarkdownMigrationPlan: plan,
-		DatabaseScope:         "global",
-		ImportScope:           "project",
-		DatabasePath:          databasePath,
-		ProjectName:           filepath.Base(root.Path()),
-		ProjectCurrentPath:    root.Path(),
-		Applied:               false,
-	}
-}
-
 // PreviewMarkdownMigration inspects .agents without mutating files or SQLite state.
 // Doctor and inventory-only dry-run use this cheap path; simulation uses
 // SimulateMarkdownMigration instead.

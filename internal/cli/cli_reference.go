@@ -183,13 +183,13 @@ func cliReferenceCommands() []cliReferenceCommand {
 					{Flags: "--json", Description: "Output parity counts, backup verification, and repair result as JSON"},
 				}},
 				{Name: "migrate markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{
-					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
+					{Flags: "--dry-run", Description: "Simulate import on a disposable DB snapshot when registered; otherwise inventory-only"},
 					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},
 					{Flags: "--resume", Description: "Resume the Markdown import after an interrupted attempt"},
 					{Flags: "--backup", Description: "Create SQLite and .agents rollback backups during apply or resume"},
 					{Flags: "--remove-source", Description: "Remove ephemeral Markdown sources after a rollback backup"},
 					{Flags: "--rollback <manifest>", Description: "Restore .agents files from a rollback manifest"},
-					{Flags: "--json", Description: "Output migration contract, scope, project context, counts, and rollback fields as JSON"},
+					{Flags: "--json", Description: "Output migration contract, scope, project context, counts, mode, import_report when simulated, and rollback fields as JSON"},
 				}},
 				{Name: "migrate storage-home", Description: "Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview the storage-home migration"},
@@ -323,13 +323,13 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Run native migration workflows",
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{
-					{Flags: "--dry-run", Description: "Preview import counts without creating a database"},
+					{Flags: "--dry-run", Description: "Simulate import on a disposable DB snapshot when registered; otherwise inventory-only"},
 					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},
 					{Flags: "--resume", Description: "Resume the Markdown import after an interrupted attempt"},
 					{Flags: "--backup", Description: "Create SQLite and .agents rollback backups during apply or resume"},
 					{Flags: "--remove-source", Description: "Remove ephemeral Markdown sources after a rollback backup"},
 					{Flags: "--rollback <manifest>", Description: "Restore .agents files from a rollback manifest"},
-					{Flags: "--json", Description: "Output migration contract, scope, project context, counts, and rollback fields as JSON"},
+					{Flags: "--json", Description: "Output migration contract, scope, project context, counts, mode, import_report when simulated, and rollback fields as JSON"},
 				}},
 				{Name: "storage-home", Description: "Copy legacy XDG_STATE_HOME SQLite state into XDG_DATA_HOME", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Preview the storage-home migration"},
