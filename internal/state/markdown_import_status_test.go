@@ -85,21 +85,21 @@ func TestClassifyImportLifecycleStatusOutOfVocabulary(t *testing.T) {
 }
 
 func TestApplyImportLifecycleStatusRecordsOOVWarning(t *testing.T) {
-	warnings := []string{}
-	m := markdownImporter{outcomeWarnings: &warnings}
+	report := emptyImportReport()
+	m := markdownImporter{report: &report}
 	got := m.applyImportLifecycleStatus(LifecycleEntityTask, "task-1", "accepted", "unknown")
 	if got != "accepted" {
 		t.Fatalf("status = %q, want accepted", got)
 	}
-	if len(warnings) != 1 || !strings.Contains(warnings[0], "status accepted") || !strings.Contains(warnings[0], "task-1") {
-		t.Fatalf("warnings = %#v, want one accepted OOV warning", warnings)
+	if len(report.Warnings) != 1 || !strings.Contains(report.Warnings[0], "accepted") || !strings.Contains(report.Warnings[0], "task-1") {
+		t.Fatalf("warnings = %#v, want one accepted OOV warning", report.Warnings)
 	}
 	got = m.applyImportLifecycleStatus(LifecycleEntityIdea, "idea-1", "unknown", LifecycleStatusOpen)
 	if got != LifecycleStatusOpen {
 		t.Fatalf("explicit unknown idea = %q, want open", got)
 	}
-	if len(warnings) != 1 {
-		t.Fatalf("no-opinion must not append warning: %#v", warnings)
+	if len(report.Warnings) != 1 {
+		t.Fatalf("no-opinion must not append warning: %#v", report.Warnings)
 	}
 }
 
@@ -211,14 +211,14 @@ kind: shaping
 	}
 	defer store.Close()
 
-	warnings, err := store.importMarkdown(ctx, root)
+	report, err := store.importMarkdown(ctx, root)
 	if err != nil {
 		t.Fatalf("second importMarkdown() error = %v", err)
 	}
-	// Second apply is idempotent for status; OOV warnings still fire on each insert path.
+	// Existing-row OOV input keeps stored status and still warns.
 	for _, needle := range []string{"accepted", "pending", "cooking"} {
-		if !containsWarningNeedle(warnings, needle) {
-			t.Fatalf("second-import warnings %#v missing %s", warnings, needle)
+		if !containsWarningNeedle(report.Warnings, needle) {
+			t.Fatalf("second-import warnings %#v missing %s", report.Warnings, needle)
 		}
 	}
 
@@ -266,15 +266,15 @@ status: pending
 	}
 	defer store.Close()
 
-	warnings, err := store.importMarkdown(ctx, root)
+	report, err := store.importMarkdown(ctx, root)
 	if err != nil {
 		t.Fatalf("importMarkdown() error = %v", err)
 	}
-	if !containsWarningNeedle(warnings, "accepted") || !containsWarningNeedle(warnings, "pending") {
-		t.Fatalf("warnings = %#v, want accepted and pending OOV", warnings)
+	if !containsWarningNeedle(report.Warnings, "accepted") || !containsWarningNeedle(report.Warnings, "pending") {
+		t.Fatalf("warnings = %#v, want accepted and pending OOV", report.Warnings)
 	}
-	if containsWarningNeedle(warnings, "unknown") {
-		t.Fatalf("warnings = %#v must not warn on no-opinion", warnings)
+	if containsWarningNeedle(report.Warnings, "unknown") {
+		t.Fatalf("warnings = %#v must not warn on no-opinion", report.Warnings)
 	}
 	assertEntityStatus(t, store, "tasks", status.ProjectID, "task", "TASK-020", "accepted")
 	assertEntityStatus(t, store, "ideas", status.ProjectID, "idea", "idea-oov-only", "pending")

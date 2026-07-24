@@ -65,6 +65,13 @@ func NewMarkdownMigrationPreviewResult(plan MarkdownMigrationPlan, root project.
 
 // PreviewMarkdownMigration inspects .agents without mutating files or SQLite state.
 func PreviewMarkdownMigration(root project.Root) (MarkdownMigrationPlan, error) {
+	return inventoryMarkdownMigration(root)
+}
+
+// inventoryMarkdownMigration builds the file-inventory plan shared by preview
+// and apply. Apply must not call PreviewMarkdownMigration; it calls this helper
+// after the import transaction commits.
+func inventoryMarkdownMigration(root project.Root) (MarkdownMigrationPlan, error) {
 	agentsPath := filepath.Join(root.Path(), ".agents")
 	plan := MarkdownMigrationPlan{
 		ContractVersion: StateJSONContractVersion,
