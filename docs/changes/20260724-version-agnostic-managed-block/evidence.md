@@ -40,7 +40,7 @@ git diff --exit-code -- dist plugins
 node cli/scripts/verify-go-artifacts.mjs
 ```
 
-Result: all PASS. Post-build `bin/native/darwin-arm64/loaf` and `plugins/loaf/bin/native/darwin-arm64/loaf` both hash to `06c9baba4ab5a570df6b8e1f7deba3fc346c24b832882e49563108efe7d11d36`, matching the three re-recorded U8 receipts above. `verify-go-artifacts` reports synchronized. Tracked `dist/` and `plugins/` content trees are clean vs HEAD aside from the committed native binary bytes under `plugins/loaf/bin/native/`.
+Result: all PASS. Post-build `bin/native/darwin-arm64/loaf` and `plugins/loaf/bin/native/darwin-arm64/loaf` both hash to `06c9baba4ab5a570df6b8e1f7deba3fc346c24b832882e49563108efe7d11d36`, matching the three re-recorded U8 receipts above. `verify-go-artifacts` reports synchronized. `git diff --exit-code -- dist plugins` is clean.
 
 ## V4 — Isolated install smoke
 
