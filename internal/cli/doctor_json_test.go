@@ -68,7 +68,7 @@ func TestDoctorJSONMatchesHumanChecksAndNeverMutates(t *testing.T) {
 		t.Fatal("JSON doctor mutated the project tree")
 	}
 
-	checks := doctorChecks(cliVersion)
+	checks := doctorChecks()
 	if len(jsonResult.Checks) != len(checks) {
 		t.Fatalf("JSON checks = %d, want %d", len(jsonResult.Checks), len(checks))
 	}
