@@ -77,17 +77,17 @@
     },
     {
       "id": "status.read",
-      "native_semantic": "github.issue-state-and-state-reason",
+      "native_semantic": "github.issue-state-and-project-status",
       "availability": "runtime",
       "maximum_fidelity": "exact",
-      "requires": {"before": ["destination.scope"], "execute": ["issue.state.read", "issue.state_reason.read"], "after": []}
+      "requires": {"before": ["destination.scope"], "execute": ["issue.state.read", "issue.state_reason.read", "project.item.read", "project.status.read"], "after": []}
     },
     {
       "id": "status.transition",
-      "native_semantic": "github.issue-state-and-state-reason",
+      "native_semantic": "github.issue-state-and-project-status",
       "availability": "runtime",
       "maximum_fidelity": "exact",
-      "requires": {"before": ["issue.read", "issue.state.read", "issue.state_reason.read"], "execute": ["issue.state.write"], "after": ["issue.read", "issue.state.read", "issue.state_reason.read", "issue.duplicate_of.read"]}
+      "requires": {"before": ["issue.read", "issue.state.read", "issue.state_reason.read", "project.item.read", "project.status.read", "project.status.options.list"], "execute": ["issue.state.write", "project.item.write", "project.status.write"], "after": ["issue.read", "issue.state.read", "issue.state_reason.read", "issue.duplicate_of.read", "project.item.read", "project.status.read"]}
     },
     {
       "id": "comment.list",

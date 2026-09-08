@@ -1,16 +1,16 @@
 ---
 name: triage
 description: >-
-  Triages canonical native tracker candidates without creating a local intake
-  queue. Use when deciding which existing records should advance, defer, close,
-  or return to discovery. Produces verified native dispositions and explicit
-  gaps.
+  Triages private sparks and ideas plus existing native tracker candidates
+  without creating a local intake queue. Use when publishing intent to Backlog,
+  or when deciding which existing records should advance, defer, close, or
+  return to discovery. Produces verified native dispositions and explicit gaps.
 version: 0.5.0
 ---
 
 # Triage
 
-Operate only on native tracker candidates through [`project-management/v1`](../project-management/SKILL.md). Triage decides disposition from current evidence; it does not maintain a parallel queue or invent universal workflow states.
+Operate through [`project-management/v1`](../project-management/SKILL.md). Triage owns two jobs: dispose existing native candidates, and deliberately publish private sparks or ideas as public Backlog intent. It does not maintain a parallel Loaf queue or invent universal workflow states.
 
 ## Contents
 
@@ -24,7 +24,7 @@ Operate only on native tracker candidates through [`project-management/v1`](../p
 - As the first action, run `loaf journal log "skill(triage): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
 - Confirm the exact native destination and candidate references before reading or mutating.
 - Read each candidate, its current workflow state, and relevant recent comments before deciding.
-- Route an unrecorded raw direction to pitch or shape; do not capture it in a local issue or intake ledger.
+- An unrecorded raw direction stays a spark or idea, goes to pitch, or is published as tracker Backlog intent when the human chooses. Do not capture it in a local issue or intake ledger. Publishing creates a native record in the uncommitted lane (GitHub: destination Project Status Backlog; Linear: the team's uncommitted/backlog state, or Triage inbox when that inbox is configured), then resolves the private capture against that native id.
 - Base dispositions on evidence, strategic fit supplied by the user or project context, duplication, readiness, and blockers.
 - Prefer the next complete rideable operator journey over isolated component layers. If a candidate is foundation work, retain its explicit link to the immediate journey that consumes it; triage does not invent or shape that journey.
 - Read valid native workflow states before any transition. Never assume names such as backlog, canceled, or done exist.
@@ -44,11 +44,13 @@ Operate only on native tracker candidates through [`project-management/v1`](../p
 
 | Evidence | Disposition |
 |----------|-------------|
+| Private spark or idea worth sharing | Publish as Backlog intent; resolve the capture against the native id |
+| Private spark or idea not worth sharing | Keep private or archive |
 | Problem still unclear | Return to pitch |
-| Narrative clear, contract incomplete | Advance to shape |
+| Narrative clear, not selected | Advance to shape; do not move to Todo unless the human selects it |
 | Duplicate or superseded | Use supported native fields/state and explain with evidence |
 | Blocked by missing decision | Preserve native state or use a supported deferred state |
-| Ready and already shaped | Leave canonical fields intact; hand to implement |
+| Ready, shaped, and selected | Leave canonical fields intact; hand to implement |
 
 ## Topics
 

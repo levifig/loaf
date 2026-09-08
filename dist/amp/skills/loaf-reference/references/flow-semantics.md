@@ -1,6 +1,10 @@
 # Flow Semantics
 
-The vNext Loaf Flow is `pitch → shape → implement → ship → release`. Triage decides which captured direction enters the Flow, and orchestration coordinates bounded execution without acquiring work authority.
+The vNext Loaf Flow is `pitch → shape → implement → ship → release`. Triage publishes private captures onto the tracker and disposes existing native candidates. Orchestration coordinates bounded execution without acquiring work authority.
+
+Loaf optimizes for coherent outcomes and reliable continuation across people, agents, sessions, and tools. Preserve intent in shared, durable context without turning every idea into a commitment. Before execution, resolve the uncertainties that materially determine value and scope, then give the executor enough context and autonomy to deliver a small, end-to-end useful result. Pull work deliberately, limit concurrent commitments, and judge progress by working outcomes and evidence rather than activity or ticket counts. When discoveries invalidate the direction, reconsider it instead of extending execution by default. The issue tracker is the shared memory and coordination surface — not a transcript dump, and not a command queue merely because an item exists.
+
+A native record may hold public intent without being selected work. Backlog (or the provider's uncommitted lane) is published memory: thin or rich, with no promise of execution. Todo is shaped and selected. `/implement` starts only from selected work. Sparks and ideas stay private until triage publishes them.
 
 ## Rideable Progress
 
@@ -12,10 +16,10 @@ Rideable increments sharpen the existing problem narrative, native tracker work 
 
 | Ceremony | Reads | Produces |
 |----------|-------|----------|
-| Pitch | Human context and relevant live tracker context | A problem narrative |
-| Triage | Candidate native tracker records and problem narratives | A disposition on the native record |
-| Shape | Problem narrative plus current native state | A complete work contract on the tracker record |
-| Implement | Live work contract and repository state | Code, verification evidence, and tracker updates |
+| Pitch | Human context and relevant live tracker context | A problem narrative; may fill an existing intent record |
+| Triage | Private captures and candidate native tracker records | Keep, archive, publish as Backlog intent, hand to pitch, or hand to shape |
+| Shape | Problem narrative plus current native state | A complete work contract on the tracker record; optional same-turn move to Todo when the human selects the work |
+| Implement | Live selected work contract and repository state | Code, verification evidence, and tracker updates; bare invocation reports the unblocked Todo frontier and does not start |
 | Ship | Live contract, candidate change, and evidence | A quality verdict and verified tracker transition |
 | Release | Already-landed work and release evidence | A release outcome recorded on native work |
 

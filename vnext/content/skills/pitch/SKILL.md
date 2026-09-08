@@ -23,6 +23,7 @@ Discover the problem with the user, then render the [problem narrative](../../te
 - Treat a proposed solution as evidence about the problem, not as an accepted implementation.
 - Read an existing native record when the user supplies a reference or when duplicate context materially affects the pitch.
 - Do not create shared work during pitch unless the human explicitly says to file it. That publish is the triage action: a native intent record in Backlog, not Todo. Otherwise fill an existing native record or hand the narrative and destination uncertainty to shape. Discovery may keep a solution as a hypothesis; speculative is not authorized.
+- Render the narrative with the template's headings and completed prose. Omit template field-marker comments and authoring instructions from chat responses and saved narratives; the markers belong only in the template source.
 - Read [Interview Guide](references/interview-guide.md) when the initial request is solution-heavy or crosses several problem domains.
 
 ## Verification

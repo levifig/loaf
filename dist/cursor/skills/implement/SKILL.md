@@ -23,7 +23,7 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 ## Critical Rules
 
 - As the first action, run `loaf journal log "skill(implement): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
-- Re-read the native work record, completion criteria, hierarchy, dependencies, status, and recent relevant comments before planning.
+- Re-read the native work record, completion criteria, hierarchy, dependencies, status, and recent relevant comments before planning. If the record is Backlog intent or otherwise unselected, refuse and do not start. If invoked with no issue id, report the unblocked Todo frontier (selected, unblocked native records) and do not start unless the human named an issue or said to do that one.
 - Confirm the live contract makes Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals concrete. If it describes layers or future-only machinery instead, return it to shape.
 - Inspect repository instructions and affected code before editing. Treat existing changes as user-owned.
 - If the live contract is incomplete or implementation changes its intended outcome, stop and return it to shape instead of silently redefining work.
@@ -48,6 +48,8 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 
 | Condition | Action |
 |-----------|--------|
+| Unselected / Backlog intent | Refuse; do not start |
+| Bare invocation | Report the unblocked Todo frontier; do not start |
 | Contract gap | Return to shape with the exact gap |
 | External blocker | Preserve code state and report observed blocker evidence |
 | Independent bounded tasks | Coordinate through orchestration when authorized |
