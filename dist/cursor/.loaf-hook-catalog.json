@@ -12,14 +12,15 @@
         "timeout": 30,
         "matcher": "Edit|Write|Bash",
         "failClosed": true,
-        "command": "loaf check --hook artifact-body-write"
+        "command": "loaf check --hook artifact-body-write --json"
       },
       "signatures": [
         [
           "loaf",
           "check",
           "--hook",
-          "artifact-body-write"
+          "artifact-body-write",
+          "--json"
         ]
       ],
       "stems": [
@@ -38,14 +39,15 @@
         "timeout": 30,
         "matcher": "Edit|Write|Bash",
         "failClosed": true,
-        "command": "loaf check --hook check-secrets"
+        "command": "loaf check --hook check-secrets --json"
       },
       "signatures": [
         [
           "loaf",
           "check",
           "--hook",
-          "check-secrets"
+          "check-secrets",
+          "--json"
         ]
       ],
       "stems": [
@@ -64,14 +66,15 @@
         "timeout": 600,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook security-audit"
+        "command": "loaf check --hook security-audit --json"
       },
       "signatures": [
         [
           "loaf",
           "check",
           "--hook",
-          "security-audit"
+          "security-audit",
+          "--json"
         ]
       ],
       "stems": [
@@ -90,14 +93,15 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook validate-infra-safety"
+        "command": "loaf check --hook validate-infra-safety --json"
       },
       "signatures": [
         [
           "loaf",
           "check",
           "--hook",
-          "validate-infra-safety"
+          "validate-infra-safety",
+          "--json"
         ]
       ],
       "stems": [
@@ -116,14 +120,15 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook validate-sql-safety"
+        "command": "loaf check --hook validate-sql-safety --json"
       },
       "signatures": [
         [
           "loaf",
           "check",
           "--hook",
-          "validate-sql-safety"
+          "validate-sql-safety",
+          "--json"
         ]
       ],
       "stems": [
@@ -142,7 +147,7 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook render-drift",
+        "command": "loaf check --hook render-drift --json",
         "if": "Bash(git push:*)"
       },
       "signatures": [
@@ -150,7 +155,8 @@
           "loaf",
           "check",
           "--hook",
-          "render-drift"
+          "render-drift",
+          "--json"
         ]
       ],
       "stems": [
@@ -169,7 +175,7 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook ephemeral-provenance",
+        "command": "loaf check --hook ephemeral-provenance --json",
         "if": "Bash(git push:*)"
       },
       "signatures": [
@@ -177,7 +183,8 @@
           "loaf",
           "check",
           "--hook",
-          "ephemeral-provenance"
+          "ephemeral-provenance",
+          "--json"
         ]
       ],
       "stems": [
@@ -196,7 +203,7 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook artifact-names",
+        "command": "loaf check --hook artifact-names --json",
         "if": "Bash(git commit:*)"
       },
       "signatures": [
@@ -204,7 +211,8 @@
           "loaf",
           "check",
           "--hook",
-          "artifact-names"
+          "artifact-names",
+          "--json"
         ]
       ],
       "stems": [
@@ -223,14 +231,15 @@
         "timeout": 10,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook github-account"
+        "command": "loaf check --hook github-account --json"
       },
       "signatures": [
         [
           "loaf",
           "check",
           "--hook",
-          "github-account"
+          "github-account",
+          "--json"
         ]
       ],
       "stems": [
@@ -248,7 +257,7 @@
         "loaf-managed": true,
         "timeout": 60,
         "matcher": "Bash",
-        "command": "loaf check --hook validate-push --advisory",
+        "command": "loaf check --hook validate-push --advisory --json",
         "if": "Bash(git push:*)"
       },
       "signatures": [
@@ -257,7 +266,8 @@
           "check",
           "--hook",
           "validate-push",
-          "--advisory"
+          "--advisory",
+          "--json"
         ]
       ],
       "stems": [
@@ -275,7 +285,7 @@
         "loaf-managed": true,
         "timeout": 5,
         "matcher": "Bash",
-        "command": "loaf check --hook workflow-pre-pr --advisory",
+        "command": "loaf check --hook workflow-pre-pr --advisory --json",
         "if": "Bash(gh pr create:*)"
       },
       "signatures": [
@@ -284,7 +294,8 @@
           "check",
           "--hook",
           "workflow-pre-pr",
-          "--advisory"
+          "--advisory",
+          "--json"
         ]
       ],
       "stems": [
@@ -349,7 +360,7 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook validate-commit",
+        "command": "loaf check --hook validate-commit --json",
         "if": "Bash(git commit:*)"
       },
       "signatures": [
@@ -357,7 +368,8 @@
           "loaf",
           "check",
           "--hook",
-          "validate-commit"
+          "validate-commit",
+          "--json"
         ]
       ],
       "stems": [
@@ -375,14 +387,15 @@
         "loaf-managed": true,
         "timeout": 5,
         "matcher": "Edit|Write",
-        "command": "loaf check --hook kb-staleness-nudge"
+        "command": "loaf check --hook kb-staleness-nudge --json"
       },
       "signatures": [
         [
           "loaf",
           "check",
           "--hook",
-          "kb-staleness-nudge"
+          "kb-staleness-nudge",
+          "--json"
         ],
         [
           "bash",

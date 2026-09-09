@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -571,14 +572,14 @@ func nativeCursorHookCommand(hook nativeBuildHook) string {
 	if hook.instruction != "" {
 		return `cat "$HOME/.cursor/hooks/` + hook.instruction + `"`
 	}
-	if nativeBuildCursorBinaryPathHooks[hook.id] {
-		if hook.command == "" {
-			return "loaf check --hook " + hook.id + nativeCheckAdvisorySuffix(hook)
+	if hook.command != "" {
+		if strings.HasPrefix(hook.command, "loaf check --hook ") && !slices.Contains(strings.Fields(hook.command), "--json") {
+			return hook.command + " --json"
 		}
 		return hook.command
 	}
-	if hook.command != "" {
-		return hook.command
+	if nativeBuildCursorBinaryPathHooks[hook.id] {
+		return "loaf check --hook " + hook.id + nativeCheckAdvisorySuffix(hook) + " --json"
 	}
 	script := strings.TrimPrefix(hook.script, "hooks/")
 	base := "$HOME/.cursor/hooks"

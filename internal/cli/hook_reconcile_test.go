@@ -200,7 +200,7 @@ func TestHookForeignDriftIsDetectedByValueAndOrder(t *testing.T) {
 }
 
 // The prior live Cursor file retires obsolete hooks and updates the old shell
-// nudge once. A subsequent reconcile must leave the converged file alone.
+// nudge and pre-JSON checks once. A subsequent reconcile leaves it alone.
 func TestHookReconcileLeavesTheConvergedCursorFileAlone(t *testing.T) {
 	fixture := newCursorHookFixture(t)
 	live := string(testHookFixture(t, "cursor-hooks-live.json"))
@@ -210,8 +210,13 @@ func TestHookReconcileLeavesTheConvergedCursorFileAlone(t *testing.T) {
 	actions := fixture.apply(t)
 
 	description := describeHookActions(actions)
-	if len(actions) != 5 || !strings.Contains(description, "remove hook:postToolUse") || !strings.Contains(description, "remove hook:preToolUse") || !strings.Contains(description, "update hook:postToolUse/kb-staleness-nudge") || !strings.Contains(description, "add hook:preToolUse/validate-infra-safety") || !strings.Contains(description, "add hook:preToolUse/validate-sql-safety") {
-		t.Fatalf("actions = %s, want two retirements, the native nudge update, and the two new safety hooks", description)
+	if len(actions) != 15 || !strings.Contains(description, "remove hook:postToolUse") || !strings.Contains(description, "remove hook:preToolUse") || !strings.Contains(description, "update hook:postToolUse/kb-staleness-nudge") || !strings.Contains(description, "add hook:preToolUse/validate-infra-safety") || !strings.Contains(description, "add hook:preToolUse/validate-sql-safety") {
+		t.Fatalf("actions = %s, want two retirements, the native nudge update, ten JSON updates, and two new safety hooks", description)
+	}
+	for _, hookID := range []string{"artifact-body-write", "check-secrets", "security-audit", "render-drift", "ephemeral-provenance", "artifact-names", "github-account", "validate-push", "workflow-pre-pr", "validate-commit"} {
+		if !testHookHasAction(actions, hookActionUpdate, hookID) {
+			t.Fatalf("actions = %s, want JSON transport update for %s", description, hookID)
+		}
 	}
 	if actions := fixture.apply(t); len(actions) != 0 {
 		t.Fatalf("converged file changed: %s", describeHookActions(actions))
@@ -1899,21 +1904,12 @@ func (f hookFixture) rewriteEntry(t *testing.T, event string, hookID string, mut
 
 func testHookEntryIsHook(t *testing.T, catalog hookCatalog, event string, hookID string, entry map[string]any) bool {
 	t.Helper()
-	for _, candidate := range catalog.Entries {
-		if candidate.Event != event || candidate.HookID != hookID {
-			continue
-		}
-		value, err := canonicalHookValue(entry)
-		if err != nil {
-			t.Fatalf("canonicalize entry error = %v", err)
-		}
-		template, err := decodeHookJSONValue(candidate.Template)
-		if err != nil {
-			t.Fatalf("decode template error = %v", err)
-		}
-		return reflect.DeepEqual(value, template)
+	recognition := testHookRecognition(t, catalog.Target, catalog)
+	pairing, err := pairHookEventEntries(recognition, event, []map[string]any{entry})
+	if err != nil {
+		t.Fatalf("identify fixture entry: %v", err)
 	}
-	return false
+	return len(pairing.paired) == 1 && pairing.paired[0].hookID == hookID
 }
 
 // testHookCursorFileWithout renders what a 0.2.20 install looks like after the
@@ -1930,6 +1926,7 @@ func testHookCursorFileWithout(t *testing.T, hookIDs ...string) string {
 		t.Fatalf("decode live Cursor fixture error = %v", err)
 	}
 	catalog := testRepoHookCatalog(t, "cursor")
+	removed := map[string]bool{}
 	events := value["hooks"].(map[string]any)
 	for event, raw := range events {
 		var kept []any
@@ -1938,6 +1935,7 @@ func testHookCursorFileWithout(t *testing.T, hookIDs ...string) string {
 			drop := false
 			for hookID := range deleted {
 				if testHookEntryIsHook(t, catalog, event, hookID, entry) {
+					removed[hookID] = true
 					drop = true
 					break
 				}
@@ -1947,6 +1945,11 @@ func testHookCursorFileWithout(t *testing.T, hookIDs ...string) string {
 			}
 		}
 		events[event] = kept
+	}
+	for hookID := range deleted {
+		if !removed[hookID] {
+			t.Fatalf("historical Cursor fixture has no entry for %s", hookID)
+		}
 	}
 	encoded, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {

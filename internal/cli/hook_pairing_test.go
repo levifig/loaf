@@ -14,7 +14,7 @@ func TestHookPairingMatchesTheCurrentDesiredTemplate(t *testing.T) {
 		"timeout":      30,
 		"matcher":      "Edit|Write|Bash",
 		"failClosed":   true,
-		"command":      "loaf check --hook check-secrets",
+		"command":      "loaf check --hook check-secrets --json",
 	}
 
 	outcome, err := pairHookEventEntries(recognition, "preToolUse", []map[string]any{entry})
@@ -101,7 +101,7 @@ func TestHookPairingLeavesTheDisabledLookalikeForeign(t *testing.T) {
 func TestHookPairingConvergesDuplicateOwnedEntries(t *testing.T) {
 	recognition := testHookRecognition(t, "cursor", testRepoHookCatalog(t, "cursor"))
 	entries := []map[string]any{
-		{loafHookMarker: true, "timeout": 30, "matcher": "Edit|Write|Bash", "failClosed": true, "command": "loaf check --hook check-secrets"},
+		{loafHookMarker: true, "timeout": 30, "matcher": "Edit|Write|Bash", "failClosed": true, "command": "loaf check --hook check-secrets --json"},
 		{"matcher": "Bash", "command": "loaf check --hook check-secrets --advisory"},
 		{"matcher": "Edit|Write", "command": "loaf task refresh"},
 	}
@@ -184,8 +184,8 @@ func TestHookPairingReportsCommandsCarryingTwoIdentities(t *testing.T) {
 	}
 }
 
-// The captured live file still pairs after the nudge's shell-to-native change;
-// the other current entries match templates and foreign entries stay outside.
+// Preserve the captured live input: pre-JSON checks still pair by identity,
+// the shell nudge pairs by signature, and foreign entries stay outside.
 func TestHookPairingOverTheLiveCursorFile(t *testing.T) {
 	recognition := testHookRecognition(t, "cursor", testRepoHookCatalog(t, "cursor"))
 	events := testHookEventEntries(t, testHookFixture(t, "cursor-hooks-live.json"))
@@ -207,6 +207,8 @@ func TestHookPairingOverTheLiveCursorFile(t *testing.T) {
 			wantPass := hookPairingTemplate
 			if pairing.hookID == "kb-staleness-nudge" {
 				wantPass = hookPairingSignature
+			} else if command, _ := entries[pairing.index]["command"].(string); strings.HasPrefix(command, "loaf check --hook ") {
+				wantPass = hookPairingStem
 			}
 			if pairing.pass != wantPass {
 				t.Fatalf("%s/%s paired through %q, want %q", event, pairing.hookID, pairing.pass, wantPass)

@@ -7,42 +7,42 @@
         "timeout": 30,
         "matcher": "Edit|Write|Bash",
         "failClosed": true,
-        "command": "loaf check --hook artifact-body-write"
+        "command": "loaf check --hook artifact-body-write --json"
       },
       {
         "loaf-managed": true,
         "timeout": 30,
         "matcher": "Edit|Write|Bash",
         "failClosed": true,
-        "command": "loaf check --hook check-secrets"
+        "command": "loaf check --hook check-secrets --json"
       },
       {
         "loaf-managed": true,
         "timeout": 600,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook security-audit"
+        "command": "loaf check --hook security-audit --json"
       },
       {
         "loaf-managed": true,
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook validate-infra-safety"
+        "command": "loaf check --hook validate-infra-safety --json"
       },
       {
         "loaf-managed": true,
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook validate-sql-safety"
+        "command": "loaf check --hook validate-sql-safety --json"
       },
       {
         "loaf-managed": true,
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook render-drift",
+        "command": "loaf check --hook render-drift --json",
         "if": "Bash(git push:*)"
       },
       {
@@ -50,7 +50,7 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook ephemeral-provenance",
+        "command": "loaf check --hook ephemeral-provenance --json",
         "if": "Bash(git push:*)"
       },
       {
@@ -58,7 +58,7 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook artifact-names",
+        "command": "loaf check --hook artifact-names --json",
         "if": "Bash(git commit:*)"
       },
       {
@@ -66,20 +66,20 @@
         "timeout": 10,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook github-account"
+        "command": "loaf check --hook github-account --json"
       },
       {
         "loaf-managed": true,
         "timeout": 60,
         "matcher": "Bash",
-        "command": "loaf check --hook validate-push --advisory",
+        "command": "loaf check --hook validate-push --advisory --json",
         "if": "Bash(git push:*)"
       },
       {
         "loaf-managed": true,
         "timeout": 5,
         "matcher": "Bash",
-        "command": "loaf check --hook workflow-pre-pr --advisory",
+        "command": "loaf check --hook workflow-pre-pr --advisory --json",
         "if": "Bash(gh pr create:*)"
       },
       {
@@ -101,7 +101,7 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
-        "command": "loaf check --hook validate-commit",
+        "command": "loaf check --hook validate-commit --json",
         "if": "Bash(git commit:*)"
       }
     ],
@@ -110,7 +110,7 @@
         "loaf-managed": true,
         "timeout": 5,
         "matcher": "Edit|Write",
-        "command": "loaf check --hook kb-staleness-nudge"
+        "command": "loaf check --hook kb-staleness-nudge --json"
       },
       {
         "loaf-managed": true,
