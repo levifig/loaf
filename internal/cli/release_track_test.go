@@ -354,6 +354,63 @@ func TestReleaseCutRecordsMembersAndDryRunWritesNothing(t *testing.T) {
 	}
 }
 
+func TestReleaseCutPlacesGeneratedSectionInExistingChangelogWithoutUnreleased(t *testing.T) {
+	repo, stateHome := releaseTrackFixture(t)
+	legacyChangelog := strings.Join([]string{
+		"# Changelog",
+		"",
+		"Project-specific introduction.",
+		"",
+		"## [1.0.0] - 2025-01-01",
+		"",
+		"- Initial release",
+		"",
+		"## [0.9.0] - 2024-12-01",
+		"",
+		"- Preview release",
+		"",
+	}, "\n")
+	writeFile(t, filepath.Join(repo, "CHANGELOG.md"), legacyChangelog)
+	gitCLI(t, repo, "add", "CHANGELOG.md")
+	gitCLI(t, repo, "commit", "-m", "docs: retain legacy changelog layout")
+
+	if _, err := runIssue(t, repo, stateHome, "new", "Fix release placement"); err != nil {
+		t.Fatalf("issue new error = %v", err)
+	}
+	if _, err := runIssue(t, repo, stateHome, "status", "LOAF-1", "done"); err != nil {
+		t.Fatalf("status error = %v", err)
+	}
+	writeFile(t, filepath.Join(repo, "release.txt"), "release\n")
+	gitCLI(t, repo, "add", "release.txt")
+	gitCLI(t, repo, "commit", "-m", "fix: place generated release LOAF-1")
+
+	beforeDryRun := readFileBytes(t, filepath.Join(repo, "CHANGELOG.md"))
+	if output, err := runReleaseTrack(t, repo, stateHome, "cut", "--dry-run", "--no-gh"); err != nil {
+		t.Fatalf("release cut --dry-run error = %v\n%s", err, output)
+	}
+	if afterDryRun := readFileBytes(t, filepath.Join(repo, "CHANGELOG.md")); !bytes.Equal(afterDryRun, beforeDryRun) {
+		t.Fatal("dry-run mutated a changelog without an Unreleased section")
+	}
+
+	gitCLI(t, repo, "tag", "v1.0.1")
+	if output, err := runReleaseTrack(t, repo, stateHome, "cut", "--no-tag", "--no-gh", "--base", "v1.0.0"); err != nil {
+		t.Fatalf("release cut error = %v\n%s", err, output)
+	}
+	updated := string(readFileBytes(t, filepath.Join(repo, "CHANGELOG.md")))
+	for _, want := range []string{"Project-specific introduction.", "- Initial release", "- Preview release", "## [Unreleased]", "- _No unreleased changes yet._"} {
+		if !strings.Contains(updated, want) {
+			t.Fatalf("updated changelog missing %q:\n%s", want, updated)
+		}
+	}
+	unreleased := strings.Index(updated, "## [Unreleased]")
+	newRelease := strings.Index(updated, "## [1.0.1]")
+	firstHistorical := strings.Index(updated, "## [1.0.0]")
+	secondHistorical := strings.Index(updated, "## [0.9.0]")
+	if !(unreleased < newRelease && newRelease < firstHistorical && firstHistorical < secondHistorical) {
+		t.Fatalf("release order is not Unreleased, new, then historical:\n%s", updated)
+	}
+}
+
 func TestReleaseCutIncludesPrereleaseByReference(t *testing.T) {
 	repo, stateHome := releaseTrackFixture(t)
 	if _, err := runIssue(t, repo, stateHome, "new", "Alpha"); err != nil {
@@ -1114,4 +1171,3 @@ func TestReleaseCutVersionFlagDryRun(t *testing.T) {
 		t.Fatalf("dry-run should target explicit 0.5.0, not suggested 0.4.0:\n%s", out)
 	}
 }
-

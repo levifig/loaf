@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -51,7 +52,6 @@ func TestReleaseLegacyFlagsFailWithGuidance(t *testing.T) {
 		}
 	}
 }
-
 
 // commitBootstrapAgentsFiles records genesis .agents/ files (e.g. loaf.conf) so
 // release cut's clean-tree gate passes after state init.
@@ -149,6 +149,92 @@ func TestInsertReleaseChangelogUsesDraftWhenUnreleasedEmpty(t *testing.T) {
 	}
 }
 
+func TestInsertReleaseChangelogCreatesUnreleasedBeforeFirstExistingRelease(t *testing.T) {
+	existing := strings.Join([]string{
+		"# Changelog",
+		"",
+		"Project-specific introduction.",
+		"",
+		"## [1.0.0] - 2025-01-01",
+		"",
+		"- Initial release",
+		"",
+		"## [0.9.0] - 2024-12-01",
+		"",
+		"- Preview release",
+		"",
+	}, "\n")
+	drafted := "## [1.1.0] - 2026-09-04\n\n### Fixed\n- Preserve newest-first changelog order"
+
+	got := insertReleaseChangelog(existing, drafted)
+
+	for _, want := range []string{"Project-specific introduction.", "- Initial release", "- Preview release", "## [Unreleased]", "- _No unreleased changes yet._", drafted} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("updated changelog missing %q:\n%s", want, got)
+		}
+	}
+	unreleased := strings.Index(got, "## [Unreleased]")
+	newRelease := strings.Index(got, "## [1.1.0]")
+	firstHistorical := strings.Index(got, "## [1.0.0]")
+	secondHistorical := strings.Index(got, "## [0.9.0]")
+	if !(unreleased < newRelease && newRelease < firstHistorical && firstHistorical < secondHistorical) {
+		t.Fatalf("release order is not Unreleased, new, then historical:\n%s", got)
+	}
+	for _, heading := range []string{"## [Unreleased]", "## [1.1.0]", "## [1.0.0]", "## [0.9.0]"} {
+		if count := strings.Count(got, heading); count != 1 {
+			t.Fatalf("heading %q occurs %d times, want once:\n%s", heading, count, got)
+		}
+	}
+}
+
+func TestWriteReleaseChangelogPreservesExistingBytes(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		for _, trailing := range []string{"", newline, newline + newline} {
+			t.Run(fmt.Sprintf("newline=%q/trailing=%q", newline, trailing), func(t *testing.T) {
+				root := t.TempDir()
+				header := "# Changelog" + newline + newline + "Introduction.  " + newline + newline
+				history := "## [1.0.0] - 2025-01-01" + newline + newline + "- Original note.  " + trailing
+				path := filepath.Join(root, "CHANGELOG.md")
+				writeFile(t, path, header+history)
+				drafted := "## [1.1.0] - 2026-09-04\n\n- Fix placement"
+				if err := writeReleaseChangelog(root, drafted); err != nil {
+					t.Fatal(err)
+				}
+				got := string(readFileBytes(t, path))
+				insertion := "## [Unreleased]\n\n- _No unreleased changes yet._\n\n" + drafted + "\n\n"
+				if want := header + insertion + history; got != want {
+					t.Fatalf("changelog changed outside insertion site:\ngot  %q\nwant %q", got, want)
+				}
+			})
+		}
+	}
+}
+
+func TestWriteReleaseChangelogWithoutHistory(t *testing.T) {
+	drafted := "## [1.0.0] - 2026-09-04\n\n- Initial release"
+	for _, existing := range []string{"", "# Changelog", "# Changelog\n\nIntroduction.\n"} {
+		t.Run(fmt.Sprintf("existing=%q", existing), func(t *testing.T) {
+			root := t.TempDir()
+			path := filepath.Join(root, "CHANGELOG.md")
+			writeFile(t, path, existing)
+			if err := writeReleaseChangelog(root, drafted); err != nil {
+				t.Fatal(err)
+			}
+			got := string(readFileBytes(t, path))
+			if !strings.HasPrefix(got, existing) || !strings.Contains(got, "## [Unreleased]\n\n- _No unreleased changes yet._\n\n"+drafted) {
+				t.Fatalf("missing preserved introduction or new release: %q", got)
+			}
+		})
+	}
+	root := t.TempDir()
+	if err := writeReleaseChangelog(root, drafted); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(readFileBytes(t, filepath.Join(root, "CHANGELOG.md"))); got != createReleaseChangelog(drafted) {
+		t.Fatalf("new changelog differs from existing document generator: %q", got)
+	}
+}
+
 func TestValidateExplicitReleaseVersionAllowsHigherMinor(t *testing.T) {
 	if err := validateExplicitReleaseVersion("0.3.1", "minor", "0.5.0"); err != nil {
 		t.Fatalf("0.5.0 should be allowed for minor bump from 0.3.1: %v", err)
@@ -168,4 +254,3 @@ func TestValidateExplicitReleaseVersionRejectsInvalidSemver(t *testing.T) {
 		t.Fatalf("expected invalid version error, got %v", err)
 	}
 }
-
