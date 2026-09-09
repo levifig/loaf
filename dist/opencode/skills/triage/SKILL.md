@@ -34,6 +34,7 @@ Bare invocation is the ceremony. Inventory first, show candidates, wait for a pi
 - Never say "publish." The disposition is move to Backlog, keep, archive, pitch, or shape.
 - Do not move anything to Backlog until the human picks by table index, native id, or an explicit "all of these." Multiple picks in one turn are allowed.
 - Adopt an existing native record that already represents the candidate. Do not mint a second Issue.
+- Tracker bodies carry shared provenance only: a related native issue, the dogfood or session reason, a public URL. Never write Loaf-internal ids onto the tracker — idea aliases (`IDEA-…`), spark aliases (`SPARK-…`), `idea:hex`, SQLite row ids, or journal entry ids. Resolve the private capture against the native id in Loaf; that link stays private.
 - Base dispositions on evidence, strategic fit supplied by the user or project context, duplication, readiness, and blockers.
 - Prefer the next complete rideable operator journey over isolated component layers. If a candidate is foundation work, retain its explicit link to the immediate journey that consumes it; triage does not invent or shape that journey.
 - Read valid native workflow states before any transition. Never assume names such as backlog, canceled, or done exist.
@@ -73,6 +74,7 @@ If destination config is incomplete, still show the table. Name the gap after th
 - Every mutation used a runtime-supported provider operation and was verified by readback.
 - No candidate disappeared because one independent mutation failed.
 - Ambiguous destination, permissions, or workflow mapping is reported without mutation, after the table.
+- Created or adopted tracker bodies contain no Loaf-internal idea, spark, or SQLite identifiers.
 - The final result distinguishes moved to Backlog, kept, archived, pitched, shaped, deferred, closed, unchanged, failed, and indeterminate records in provider-native terms.
 - Comparisons distinguish complete operator outcomes from enabling layers without treating foundation depth as product progress.
 
