@@ -1,11 +1,12 @@
 ---
 name: documentation-standards
 description: >-
-  Covers ADRs, API documentation, changelogs, documentation review, and Mermaid
-  diagrams. Use when writing ADRs, documenting APIs, maintaining changelogs,
-  reviewing documentation quality, or creating architecture diagrams. Not for
-  inline code comments (use code style guides) or project READMEs (use
-  project-specific conventions).
+  Covers API documentation, changelogs, documentation review, architecture
+  formatting, and Mermaid diagrams. Use when documenting APIs, maintaining
+  changelogs, reviewing document quality, checking a topic's presentation, or
+  creating an architecture diagram. Not for architectural choices, current-model
+  audits, or documentation migration (use architecture), inline code comments,
+  or project READMEs.
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 version: 0.5.0
@@ -13,7 +14,7 @@ version: 0.5.0
 
 # Documentation Standards
 
-Standards for ADRs, API docs, changelogs, and diagrams.
+Formatting and quality standards for architecture documents, API docs, changelogs, and diagrams. The architecture skill owns the documentation model, topic structure, rationale, maintenance, and migration rules.
 
 ## Contents
 - Critical Rules
@@ -81,6 +82,6 @@ After committing, consider updating CHANGELOG.md with meaningful release-facing 
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
-| Documentation | `references/documentation.md` | Writing ADRs, API docs, changelogs |
+| Documentation | `references/documentation.md` | Formatting architecture topics, API docs, and changelogs |
 | Documentation Review | `references/documentation-review.md` | Reviewing documentation quality and completeness |
 | Diagrams | `references/diagrams.md` | Creating Mermaid diagrams, visualizing architecture |

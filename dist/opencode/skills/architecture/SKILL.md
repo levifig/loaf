@@ -1,212 +1,141 @@
 ---
 name: architecture
 description: >-
-  Creates Architecture Decision Records for architecturally significant
-  decisions — choices that affect the system's structure, key quality
-  attributes, dependencies, interfaces, or construction techniques, or that are
-  difficult to reverse. Captures the rationale for a single such choice and its
-  alternatives so future debate has the why preserved. Not for development
-  patterns or implementation evidence (use shape for SPECs), guiding principles
-  (update ARCHITECTURE.md or VISION.md), workflow conventions (document in the
-  owning skill), or local choices changeable in a single PR (log a
-  `decision(scope)` entry to the project journal instead). ADRs are living
-  records — when a decision evolves, revise the record in place with a dated
-  revision note; supersession is reserved for topic splits and recategorization.
+  Explains, evaluates, and maintains living, topic-based architecture and its
+  rationale. Use when choosing system direction, evaluating a rare ADR, auditing
+  documentation drift, or migrating an ADR corpus. Produces current architecture
+  docs and deliberately selected decision records, not work plans or tracker
+  identity.
 subtask: false
 version: 0.5.0
 ---
 
 # Architecture
 
+Maintain the current architectural model with memory of why it exists. The default unit of documentation is a topic that evolves. Rare, narrowly scoped ADRs preserve consequential choices when a separate record adds value.
+
 ## Contents
+
 - Critical Rules
 - Verification
 - Quick Reference
 - Topics
 
-Guides decision-making for **architecturally significant** choices through structured interviews, options analysis, and Architecture Decision Records. ADRs are **rare yet binding** — they record the rationale for choices that shape the system's structure, quality attributes, dependencies, interfaces, or construction techniques, and that the team agrees to honor until explicitly revised or retired. Most technical decisions do not warrant an ADR; the skill routes those to their proper destination (project journal, SPEC, ARCHITECTURE.md, or owning skill) and stops.
-
-Stabilizes canonical vocabulary in `docs/knowledge/glossary.md` when load-bearing terms surface mid-interview — additive to ADR creation, never a gate on it.
-
 ## Critical Rules
 
-### The Bar
+### Select the mode and authority
 
-ADRs are reserved for **architecturally significant** decisions — those affecting:
+- As the first action, log the invocation: `loaf journal log "skill(architecture): <intent and scope>"`. If unavailable, report that limitation; do not substitute a tracker write.
+- **Explain** — answer from relevant code, documents, and applicable decisions. Distinguish historical rationale from current authority. Do not create an artifact unless requested.
+- **Audit** — compare architecture documentation with current evidence and report findings by default. Apply changes only when requested. Read [Auditing and Migration](references/auditing-and-migration.md).
+- **Decide/update** — clarify unresolved material choices, compare credible alternatives, and record the agreed model in the smallest suitable architecture home. A request to evaluate options is not approval to adopt one.
+- **Migrate** — consolidate existing records into topics only when migration is requested. Read [Auditing and Migration](references/auditing-and-migration.md); do not infer a migration from an ordinary explanation or update.
 
-- **Structure** (system boundaries, modules, layering)
-- **Quality attributes** (performance, security, reliability, scalability)
-- **Dependencies** (external services, libraries with broad reach, runtime/language commitments)
-- **Interfaces** (public APIs, contracts between teams, cross-system protocols)
-- **Construction techniques** (build system, deployment model, testing strategy at the system level)
+Discover repository instructions, canonical architecture paths, and relevant code before acting. Read applicable existing ADRs as evidence and respect their still-current constraints; their presence alone does not require creating more ADRs. Follow explicit repository conventions without imposing a migration. Use [Decision Records](references/decision-records.md) when evaluating or authoring an exceptional ADR, and [Legacy ADRs](references/legacy-adrs.md) only when interpreting or maintaining Loaf's historical format.
 
-…**or** are **difficult to reverse** in the project's current state (would require coordination beyond a single PR — schema migration, contract change, multi-skill update, external-tool retraining).
+Reuse explicit user choices and delegated authority. Ask only when an unresolved choice materially affects outcome, scope, safety, compatibility, or a public contract. Do not reopen settled decisions through a mandatory interview. Scale independent review to consequential unresolved risk, not routine explanation or editorial repair.
 
-The bar is a **disjunction**: either canonical-domain effect, or difficulty of reversal, satisfies it (Microsoft Well-Architected). The Triage Gate below operationalizes the bar more strictly — `(Q1 OR Q2) AND Q3` — to keep ADRs rare and binding.
+### Maintain topics, not a decision catalogue
 
-The bar is constant. **The number of decisions clearing it scales with project maturity.** Projects still exploring their foundational shape clear the bar rarely — usually only foundational shape commitments (language/runtime/standard adoption, primary architectural shape). Mature projects clear it more often as cost-of-change rises across the codebase. **When in doubt while the project is still exploring its foundations, prefer SPEC over ADR** — SPECs evolve freely; ADR revisions are dated, deliberate acts. In exploratory projects, foundational commitments typically pass via Q2's "Later" prong — the future-cost is the reason to record the rationale while it's fresh, not the current-cost.
+The default home is `docs/architecture/<topic>.md`, with `docs/ARCHITECTURE.md` as a concise system map and navigation entry point. Respect an explicitly established equivalent layout. Use descriptive, stable topic slugs, not decision numbers, work IDs, or timestamps. Prefer updating an existing topic; create or split a file only when the subject needs its own explanation. A small project can remain a single overview until it needs deeper topics.
 
-**An ADR captures a choice.** At least one credible alternative was considered and rejected. Without alternatives, you have a principle, vision, or aspiration — record those in `ARCHITECTURE.md` or `VISION.md` instead. The presence of an "Alternatives Considered" section in the ADR template is structural, not optional.
+Keep substantive detail in one owning topic and link to it from the overview and related documents. When a decision has a separate ADR, keep its detailed decision rationale there; the topic states the current constraint and links to the record. Do not maintain duplicate explanations in topics, ADRs, and knowledge files, or convert every old ADR into a separately renamed topic.
 
-### Triage Gate
+Document what future work needs to understand or preserve: system boundaries, quality attributes, broad dependencies, interfaces, construction or delivery choices, and their rationale. Significance and documentation depth require judgment, not a Boolean gate, PR-size test, or document quota. Early exploratory projects usually need less formal documentation; maturity can increase the amount of durable context, not the ceremony.
 
-Before grilling, confirm with the user that the decision passes the gate:
+Use [the topic template](templates/architecture-topic.md) as optional writing prompts. Cover what is useful:
 
-1. **Architectural significance** — does it affect *structure, quality attributes, dependencies, interfaces, or construction techniques*?
-2. **Cost of divergence** — if the team casually diverged from this, what's the consequence? Either:
-   - **Now:** multi-PR coordination, security regression, contract or interface break
-   - **Later:** this is a foundational shape commitment (runtime/language/standard adoption, primary boundary) whose future reversal cost is the reason to record the rationale now
-3. **Rationale durability** — when this debate returns in 18 months, would the team need the *why* reconstructed, or is it self-evident from the code?
+- Current model, scope, and applicability.
+- Rationale, important tradeoffs, and credible alternatives actually considered.
+- Constraints and invariants that changes must preserve or explicitly revise.
+- Evidence of implemented behaviour and any agreed but unimplemented direction.
+- Links to the relevant code, tests, and technical references.
 
-**Gate logic: `(Q1 OR Q2) AND Q3` → proceed to grilling and ADR.**
+Do not invent alternatives, historical dates, approval, or evidence to fill a section. A glossary is supporting evidence, not higher authority; flag conflicts with current decisions rather than blocking on glossary maintenance.
 
-Q1 and Q2 form a disjunction (matches Microsoft's bar — either canonical-domain effect or difficulty-of-reversal qualifies). Q3 is required regardless: even an architecturally significant or hard-to-reverse decision doesn't need an ADR if its rationale is self-evident from the code itself. Failing the gate → route per the table below and stop.
+### Keep ADRs exceptional, not obsolete
 
-| Decision shape | Destination |
-|---|---|
-| Passes the gate | **ADR** (`docs/decisions/`) |
-| Development pattern, direction, implementation evidence | SPEC via shape |
-| Guiding principle, philosophy, operating model (stance, not architectural choice) | `ARCHITECTURE.md` / `VISION.md` (mutable, reflect-revisable) |
-| Workflow convention, skill-specific lore | Owning skill's `SKILL.md` or references |
-| Local choice, single-PR scope, no consequence to divergence | Log a `decision(scope)` entry to the project journal + code comment if needed |
+An ADR records one consequential choice, its original circumstances, the credible alternatives actually weighed, and the tradeoff deliberately accepted. Narrow scope means one decision, not necessarily small impact. A subsystem description, routine implementation update, workflow convention, or release is not itself a reason for an ADR.
 
-### Skip ADR When
+Keep rationale in the topic unless separate review and preservation of a particular commitment materially help future work. Consider non-obvious tradeoffs, costly reversal or divergence, and significant authority, security, interoperability, or runtime commitments. These are judgment prompts, not a Boolean gate or quota. An early foundational choice can merit a record; a mature project still makes many changes that do not. Maturity does not prescribe frequency or ceremony.
 
-- Decision is a convention or naming preference — no measurable effect on architecture (fails the architectural-significance test)
-- Decision is a stance, principle, philosophy, or vision — even if alternatives are named, the choice is being made on philosophical or operational grounds rather than architectural ones (specific quality attributes, dependencies, interfaces, or construction techniques). Record in `ARCHITECTURE.md` or `VISION.md` (strategic), where principles can evolve via reflect. ADRs are dated, deliberate records reserved for architectural choices.
-- Decision is workflow lore belonging to a specific skill — document in that skill, not in `docs/decisions/`
-- Decision is exploration of alternatives without a chosen direction — that's a SPEC via shape; the ADR comes after if the chosen direction is architecturally significant
-- Decision can be changed in a single PR with no downstream coordination — log a `decision(scope)` entry to the project journal and a code comment if needed
-- Rationale is aesthetic ("looks/feels better", "scans nicer", "more consistent visually") — never an ADR
+Propose a record when warranted, explaining why the topic's rationale is insufficient. Create it only when the user selects that proposal, explicitly requests the ADR, or repository instructions authorize that scoped authoring. Do not ask again merely to ratify an already explicit request. Choosing a document format never supplies approval for an unresolved architectural choice.
 
-### Lifecycle
+Start agent retrieval from the current topic, then follow relevant decision links. Easy generation is not evidence that another record is useful. Check applicability and implementation evidence; do not reopen settled debate, resurrect obsolete constraints, or treat an Accepted label as proof of delivery. See [Decision Records](references/decision-records.md) for history and replacement rules.
 
-ADRs are **living records** — each one carries the *current* decision on its topic, revised in place under the same ID. Git history is the archive; the working tree carries only current truth. Evolving a decision does not require a new record: rewriting an existing ADR destroys nothing, because every prior state is one `git log` away, and it keeps every existing citation of the ID truthful.
+### Keep current truth and relevant memory
 
-Five statuses: `Proposed` | `Accepted` | `Rejected` | `Deprecated` | `Superseded`.
+Revise continuing topics in place. Git preserves previous wording; retain relevant rejected alternatives and their reasons beside the current model so readers need not reconstruct them from history. Remove obsolete claims from active guidance without erasing rationale that still explains the design. A topic can contain several related decisions and can be split or merged when the architecture warrants it.
 
-**Revising a record** (the default evolution path):
-- Rewrite the record in place — same ID, same file. Update the title if the decision's shape changed.
-- Date the change: set `revised:` in frontmatter and append one line to a `## Revisions` section (chronological, one line per material change).
-- Accrete alternatives: the framing being replaced and any newly rejected paths join `## Alternatives Considered` — this is the "we already weighed that" memory that stops re-litigation.
-- Cosmetic edits (typos, broken links) don't bump `revised:`.
+Do not impose ADR IDs, five-state lifecycles, mandatory frontmatter, or per-document revision ledgers on topics. Follow explicit repository metadata requirements; otherwise, dates and change summaries belong in Git and the project journal. Never mark a document reviewed without checking its content.
 
-**Frontmatter schema:**
+Distinguish **implemented behaviour**, **agreed direction not yet implemented**, and **unresolved proposals**. Implementation gaps do not invalidate an agreed choice, and agreement does not prove delivery. Keep unchosen ideas in exploration or proposed work, not stated as the current architectural model. Bind constraints only to their actual applicability: a legacy format can remain supported without governing new authoring.
 
-```yaml
----
-id: ADR-NNN
-title: "..."
-status: Proposed | Accepted | Rejected | Deprecated | Superseded
-date: YYYY-MM-DD            # creation / proposal
-revised: YYYY-MM-DD         # optional — latest material revision (mirrors ## Revisions)
-accepted_date: YYYY-MM-DD   # optional — only if differs from `date`
-rejected_date: YYYY-MM-DD   # required iff status is Rejected
-deprecated_date: YYYY-MM-DD # required iff status is Deprecated
-supersedes: ADR-NNN         # optional — points back to the ADR this replaces
-superseded_by: ADR-NNN      # required iff status is Superseded
----
-```
+### Review affected surfaces when architecture changes
 
-Frontmatter encodes the structured *what* and *when*. Context for *why* belongs in the body (`## Revisions` / `## Deprecated` / `## Rejected`). Don't duplicate `reason` or `migrated_to` as frontmatter fields — they're prose.
+For a material change, trace affected code, tests, documentation, skills, and compatibility obligations. Reconcile them within the authorized scope, or name precise remaining gaps and follow-up work. Documentation approval does not authorize implementation, tracker mutations, data migration, or a broader codebase rewrite. Do not quietly weaken the documented model to match accidental drift, or claim implementation follows merely because the document changed.
 
-**Supersession and deprecation are reserved for structural changes, not evolution:**
+This skill owns the convention, topic format, and migration rules. Other workflows consume them:
 
-- **Supersede** when a topic genuinely splits (one record becomes two) or a new record absorbs another's domain — set `supersedes:` on the new record and `superseded_by:` on the old one; both stay in `docs/decisions/`. `## Superseded` on the old record is optional; the linkage carries the structural relationship.
-- **Deprecate** when a record is recategorized — the underlying choice still holds, but the artifact-classification was wrong (it was actually a principle, convention, or workflow lore). The **required** `## Deprecated` section explains why and points to the new home. Nothing was replaced; only the classification changed.
-- **Reject** a `Proposed` record the team explicitly decided against. The **required** `## Rejected` section explains why and what was chosen instead (if anything). A `Rejected` ADR is a record of "we weighed this and chose against it" — useful when the same idea resurfaces. Keep them.
+- **Shape** identifies architectural implications and unresolved choices without automatically creating documents.
+- **Implement** maintains affected topics within the authorized change.
+- **Ship** checks architectural claims and remaining gaps against the actual diff and evidence.
+- **Reflect** incorporates durable learning into existing topics and routes exceptional ADR candidates here rather than automatically producing records.
 
-Revision is healthy. The bar for *writing* an ADR is high; once written, the bar for *quietly diverging from* it is just as high — divergence means a dated revision (or a supersession on topic split), never drift the record doesn't reflect.
+No new runtime, registry, or automated drift checker is implied. Perform a scoped evidence review using existing tools.
 
-**When a record changes, sweep its surfaces.** A revision that changes what the decision binds — code paths, docs, skills — names the affected surfaces and the realignment work in its Consequences. (A mechanical `covers:`-style drift check is future work; until it exists, the sweep is authored.)
+### Route other material to its owner
 
-**Always**
-- Run the Triage Gate before grilling. If the gate fails — `(Q1 OR Q2) AND Q3` is not satisfied — route to the destination in the table and stop.
-- When a decision is architecturally significant but routes elsewhere (SPEC, ARCHITECTURE.md, owning skill), help the user place it in the right destination. The skill's job is correct routing, not just ADR creation.
-- Read existing VISION.md, ARCHITECTURE.md, and ADRs before proposing changes
-- Read `docs/knowledge/glossary.md` at interview start (via `loaf kb glossary list`); use canonical terms throughout
-- When fuzzy/drifted language surfaces, challenge inline; if a load-bearing term emerges, offer `loaf kb glossary upsert` or `stabilize`
-- Follow the shared interview protocol in [templates/grilling.md](templates/grilling.md)
-- Present multiple options with pros/cons and "fits when" context
-- Wait for explicit user decision before proceeding with documentation
-- Log decision to the project journal: `loaf journal log "decision(architecture): ADR-NNN adopted for X"`
+| Material | Destination |
+|----------|-------------|
+| Current system map | Architecture overview, linking to owning topics |
+| Architectural model, constraint, or significant choice with lasting rationale | Existing architecture topic; create one only when needed |
+| Shared implementation scope, sequencing, completion criteria, hierarchy, or status | Provider-neutral shaping workflow and the selected native tracker through its harness-owned connection |
+| Technical design useful to implementers | Existing design/reference home, linked from the native work record when useful; never a second work identity |
+| Product purpose, principle, or product-scope boundary | Vision document |
+| Strategic bets, journey priorities, product deferrals, or learning sought | Strategy document |
+| Workflow convention or reusable method | Owning skill or nearby guidance |
+| Local implementation detail or evidence | Code, types, tests, comments, or the project journal |
 
-**Never**
-- Make architectural decisions without user input
-- Contradict an existing record without revising it — divergence means a dated revision (or supersession on topic split), never quiet drift
-- Proceed past the Triage Gate when it fails — i.e., when neither Q1 nor Q2 affirms, or when Q3 fails. ADRs require `(Q1 OR Q2) AND Q3`.
-- Create ADRs without user approval, even when the user requests one — if the decision fails the Triage Gate, propose the correct destination and decline the ADR
-- Use the word "irreversible" — software decisions can always be reversed via revision or supersession; the operative criterion is "difficult to reverse"
-- ADR-ify aesthetic preferences, naming conventions, workflow lore, or guiding principles — those have other homes (see Skip ADR When)
-- Revise a record without dating it — every material change sets `revised:` and appends a `## Revisions` line; git history is the archive, the revision note is the reader's signal
-- Block ADR creation on glossary state — glossary mutations are additive and opt-in
-- Call `loaf kb glossary propose` (reserved for upstream ambiguity-resolving skills)
+### Preserve invariants while relocating detail
+
+Keep current invariants and applicability in the owning topic, with durable rationale, tradeoffs, and consequences there or in its linked exceptional ADR. Put exact schemas, codecs, algorithms, limits, fixtures, incident narratives, and migration steps beside their implementation or in an existing technical reference. Before removing detail, identify its destination, preserve a truthful link, and verify that no security, storage, recovery, or compatibility guarantee disappears.
+
+Use product or domain names in maintained prose. Treat identifiers embedded in code paths, stored schemas, serialized bytes, key derivation, signatures, authentication transcripts, or supported archives as compatibility contracts. An editorial rename never authorizes changing them.
 
 ## Verification
 
-After work completes, verify:
-- Triage Gate ran before any grilling; gate passed `(Q1 OR Q2) AND Q3` before proceeding
-- Decision passes the bar: architecturally significant (canonical domains) OR difficult to reverse (cost of divergence)
-- ADR captures rationale, not exploration (exploration belongs in a SPEC)
-- If the decision evolved an existing record, the revision is dated (`revised:` frontmatter + `## Revisions` entry) and the replaced framing joined Alternatives Considered; genuine supersession carries `supersedes:`/`superseded_by:` linkage
-- ADR created using template at [templates/adr.md](templates/adr.md)
-- ARCHITECTURE.md updated with new constraints and ADR reference
-- ADR number assigned sequentially (ls docs/decisions/ADR-*.md for next number)
-- Council convened if decision affects multiple domains
-- Glossary read at interview start; any load-bearing term surfaced was offered for `stabilize` or `upsert`
+- The requested mode and authority were respected without unnecessary artifacts, migration, or questioning.
+- Current code, applicable decisions, and the repository's actual canonical documentation paths were inspected.
+- Topics describe the current model and relevant rationale, tradeoffs, alternatives, constraints, and applicability without duplicated authority.
+- Implemented behaviour, agreed pending direction, and unresolved proposals are distinguished; no approval or implementation evidence was invented.
+- A material change includes an affected-surface review and explicit remaining gaps; follow-up work did not exceed authorization.
+- Any new ADR was deliberately authorized, captures one consequential choice, and adds value beyond the topic's rationale; topics gained no mandatory ADR numbering, metadata, or revision ledger.
+- Current topic applicability and linked ADR history agree; original decision context was not silently rewritten into a different choice.
+- Shared work routes only to the selected native tracker through the provider-neutral workflow; no local mirror or synchronization record was created.
+- Schema, wire, cryptographic, credential, archive, and source-path identifiers were preserved unless separately inventoried and migrated.
+- Navigation and links resolve, legacy references are handled honestly, and relevant repository checks pass.
 
 ## Quick Reference
 
-### Routing Cheat Sheet
-
-| Decision shape | Destination |
-|---|---|
-| Passes the gate | **ADR** (`docs/decisions/`) |
-| Development pattern, direction, implementation evidence | SPEC via shape |
-| Guiding principle, philosophy, operating model (stance, not architectural choice) | `ARCHITECTURE.md` / `VISION.md` (mutable, reflect-revisable) |
-| Workflow convention, skill-specific lore | Owning skill's `SKILL.md` or references |
-| Local choice, single-PR scope, no consequence to divergence | Log a `decision(scope)` entry to the project journal + code comment if needed |
-
-### ADR Numbering
-
-```bash
-ls docs/decisions/ADR-*.md 2>/dev/null | \
-  grep -oE 'ADR-[0-9]+' | sort -t- -k2 -n | tail -1 | awk -F- '{print $2 + 1}'
-```
-
-Start with `ADR-001` if none exist.
-
-### Council Triggers
-
-Convene when: multiple domains affected, conflicting team opinions, high reversal cost, novel problem, or user requests deliberation.
-
-### Evaluation Criteria
-
-For each option: alignment with VISION/ARCHITECTURE, complexity added, reversibility, team capability, maintenance cost.
-
-### Glossary Mutation Policy
-
-This skill *stabilizes* terms — promote a previously-proposed candidate, or write a canonical term directly when one emerges mid-interview.
-
-| Verb | When |
-|------|------|
-| `loaf kb glossary list` | At interview start (via grilling protocol) |
-| `loaf kb glossary check <term>` | When a term's status is in question during the interview |
-| `loaf kb glossary stabilize <term>` | A previously-proposed candidate has firmed up into a load-bearing decision |
-| `loaf kb glossary upsert <term> --definition <d> --avoid <list>` | A load-bearing term emerges fresh and is canonical from the outset |
-
-`propose` is reserved for upstream skills that resolve ambiguity (e.g., a future shape evolution) — do not call it here.
+| Situation | Action |
+|-----------|--------|
+| Explain a choice | Read its topic and evidence; answer without writing |
+| Same topic, model evolves | Revise in place, retain relevant rationale, review affected surfaces |
+| Useful architectural learning | Integrate into the owning topic; do not create a decision event |
+| Agreed direction is not implemented | State the gap separately from shipped behaviour |
+| Existing ADR corpus | Read applicable constraints; migrate only when requested |
+| Consequential choice may need a separate record | Evaluate the exceptional ADR mode; propose only when it adds value |
+| Explicit ADR convention or request | Use scoped decision-record guidance and the repository's actual format |
 
 ## Topics
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
-| ADR Template | [templates/adr.md](templates/adr.md) | Creating new architecture decision records |
-| Grilling Protocol | [templates/grilling.md](templates/grilling.md) | Running the structured interview, including glossary discipline |
-| Council Workflow | `council/SKILL.md` | Multi-agent deliberation for complex decisions |
-| Documentation | `documentation-standards/references/documentation.md` | ADR formatting and standards |
-| Canonical ADR sources | [https://adr.github.io/](https://adr.github.io/) | Reference for ADR practice; format hub |
-| AWS ADR Process | [AWS prescriptive guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html) | "Architecturally significant" framing, separate-design-from-decision principle |
-| Microsoft Well-Architected ADR | [Azure docs](https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record) | "Difficult to reverse" criterion, append-only log discipline |
-| Nygard original | [Documenting Architecture Decisions (2011)](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions.html) | Foundational article; supersession lifecycle |
-| Architecturally Significant Requirements | [Wikipedia](https://en.wikipedia.org/wiki/Architecturally_significant_requirements) | ASR test — measurable effect on architecture |
+| Topic template | [templates/architecture-topic.md](templates/architecture-topic.md) | Writing or revising a topic using optional prompts |
+| Decision records | [references/decision-records.md](references/decision-records.md) | Evaluating, authoring, or replacing a rare, single-choice ADR |
+| Decision record template | [templates/decision-record.md](templates/decision-record.md) | Writing an authorized ADR when the repository has no template |
+| Auditing and migration | [references/auditing-and-migration.md](references/auditing-and-migration.md) | Auditing current truth or consolidating an existing corpus into topics |
+| Legacy ADRs | [references/legacy-adrs.md](references/legacy-adrs.md) | Maintaining Loaf's historical living-record convention or interpreting its status during migration |
+| Legacy ADR template | [templates/legacy-adr.md](templates/legacy-adr.md) | Preserving the historical Loaf format when the repository explicitly retains it |
+| Documentation | `documentation-standards/references/documentation.md` | Applying repository documentation conventions |

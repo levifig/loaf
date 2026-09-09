@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,6 +30,9 @@ type knowledgeFile struct {
 	DependsOn            frontmatterField
 	ImplementationStatus frontmatterField
 	HasFrontmatter       bool
+	Architecture         bool
+	DocumentError        string
+	ReadError            string
 }
 
 type frontmatterField struct {
@@ -60,6 +64,7 @@ type kbStalenessResult struct {
 
 type kbStatusSummary struct {
 	TotalFiles         int            `json:"total_files"`
+	ArchitectureFiles  int            `json:"architecture_files"`
 	FilesWithCovers    int            `json:"files_with_covers"`
 	FilesWithoutCovers int            `json:"files_without_covers"`
 	Stale              int            `json:"stale"`
@@ -214,7 +219,7 @@ func writeKbHelp(out io.Writer) {
 		"",
 		"Subcommands:",
 		"  status      Show knowledge base overview",
-		"  validate    Validate knowledge file frontmatter",
+		"  validate    Validate knowledge metadata and basic architecture structure",
 		"  check       Check knowledge file staleness against git history",
 		"  review      Mark a knowledge file as reviewed today",
 		"  init        Initialize knowledge base directories and QMD collections",
@@ -224,11 +229,11 @@ func writeKbHelp(out io.Writer) {
 }
 
 func writeKbStatusHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf kb status [--json]", "Show knowledge base overview.", "--json       Output knowledge file totals, coverage counts, stale count, review age, and directories as JSON")
+	writeUsageHelp(out, "loaf kb status [--json]", "Show knowledge and architecture document totals; coverage and review metrics apply only to knowledge files.", "--json       Output document totals, architecture count, knowledge coverage, stale count, review age, and directories as JSON")
 }
 
 func writeKbValidateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf kb validate [--json]", "Validate knowledge file frontmatter.", "--json       Output per-file frontmatter errors and warnings as JSON")
+	writeUsageHelp(out, "loaf kb validate [--json]", "Validate knowledge metadata; architecture documents need a nonempty body and closed frontmatter if present. Does not validate architectural correctness or ADR conventions.", "--json       Output per-file errors and warnings as JSON")
 }
 
 func writeKbCheckHelp(out io.Writer) {
@@ -514,9 +519,40 @@ func (r Runner) runKbReview(args []string, out io.Writer, runtimeRoot string) er
 	if err != nil {
 		return err
 	}
-	body, err := os.ReadFile(absPath)
+	if isArchitectureDocument(relPath) {
+		message := fmt.Sprintf("Cannot mark architecture documents as knowledge reviewed: %s", relPath)
+		if options.jsonOutput {
+			if err := writeJSON(out, map[string]string{"error": message}); err != nil {
+				return err
+			}
+			return ExitError{Code: 1}
+		}
+		return fmt.Errorf("%s", message)
+	}
+	// Classify the real destination, including symlinked parent directories.
+	// Legitimate aliases to knowledge remain supported, but cannot change an
+	// architecture document's role or write outside the current repository.
+	absPath, err = filepath.EvalSymlinks(absPath)
 	if err != nil {
-		return fmt.Errorf("file not found: %s", relPath)
+		return fmt.Errorf("cannot resolve knowledge file %s: %w", relPath, err)
+	}
+	resolvedRoot, err := filepath.EvalSymlinks(gitRoot)
+	if err != nil {
+		return err
+	}
+	resolvedRel, err := filepath.Rel(resolvedRoot, absPath)
+	if err != nil {
+		return err
+	}
+	if resolvedRel == ".." || strings.HasPrefix(resolvedRel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("refusing to review a file outside the repository: %s", relPath)
+	}
+	if isArchitectureDocument(resolvedRel) {
+		return fmt.Errorf("refusing to mark architecture documents as knowledge reviewed: %s", relPath)
+	}
+	body, err := readRegularFileNoFollow(absPath, projectFileReadLimit)
+	if err != nil {
+		return fmt.Errorf("cannot read knowledge file %s: %w", relPath, err)
 	}
 	frontmatter, ok := parseKnowledgeFrontmatter(body)
 	if !ok || !frontmatter["topics"].Array || len(frontmatter["topics"].Values) == 0 {
@@ -539,7 +575,7 @@ func (r Runner) runKbReview(args []string, out io.Writer, runtimeRoot string) er
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(absPath, updated, info.Mode().Perm()); err != nil {
+	if err := writeFileAtomically(absPath, updated, info.Mode().Perm()); err != nil {
 		return err
 	}
 	updatedFrontmatter, ok := parseKnowledgeFrontmatter(updated)
@@ -756,7 +792,7 @@ func resolveKBFilePath(gitRoot string, filePath string) (string, string, error) 
 
 func initializeNativeKB(gitRoot string) (kbInitResult, error) {
 	var result kbInitResult
-	for _, dir := range []string{"docs/knowledge", "docs/decisions"} {
+	for _, dir := range defaultKBDirectories() {
 		fullPath := filepath.Join(gitRoot, filepath.FromSlash(dir))
 		status := "exists"
 		if _, err := os.Stat(fullPath); err != nil {
@@ -785,6 +821,7 @@ func initializeNativeKB(gitRoot string) (kbInitResult, error) {
 		existing := stringSet(qmdListCollections())
 		collections := []kbInitQMDCollection{
 			{Collection: repoName + "-knowledge", Path: filepath.Join(gitRoot, "docs", "knowledge")},
+			{Collection: repoName + "-architecture", Path: filepath.Join(gitRoot, "docs", "architecture")},
 			{Collection: repoName + "-decisions", Path: filepath.Join(gitRoot, "docs", "decisions")},
 		}
 		for _, collection := range collections {
@@ -1352,7 +1389,7 @@ func trimBlankLines(value string) string {
 
 func defaultNativeKBConfigJSON() map[string]any {
 	return map[string]any{
-		"local":                    []string{"docs/knowledge", "docs/decisions"},
+		"local":                    defaultKBDirectories(),
 		"staleness_threshold_days": float64(30),
 		"imports":                  []string{},
 	}
@@ -1398,7 +1435,7 @@ func stringSet(values []string) map[string]bool {
 
 func loadNativeKbConfig(gitRoot string) kbConfig {
 	defaultConfig := kbConfig{
-		Local:                  []string{"docs/knowledge", "docs/decisions"},
+		Local:                  defaultKBDirectories(),
 		StalenessThresholdDays: 30,
 	}
 	body, err := os.ReadFile(filepath.Join(gitRoot, ".agents", "loaf.json"))
@@ -1416,6 +1453,11 @@ func loadNativeKbConfig(gitRoot string) kbConfig {
 	}
 	if len(parsed.Knowledge.Local) > 0 {
 		defaultConfig.Local = append([]string(nil), parsed.Knowledge.Local...)
+		// Older initializers persisted this exact default pair. Expand it at read
+		// time without rewriting the config or changing custom directory lists.
+		if len(defaultConfig.Local) == 2 && defaultConfig.Local[0] == "docs/knowledge" && defaultConfig.Local[1] == "docs/decisions" {
+			defaultConfig.Local = defaultKBDirectories()
+		}
 	}
 	if parsed.Knowledge.StalenessThresholdDays > 0 {
 		defaultConfig.StalenessThresholdDays = parsed.Knowledge.StalenessThresholdDays
@@ -1425,21 +1467,43 @@ func loadNativeKbConfig(gitRoot string) kbConfig {
 
 func loadNativeKnowledgeFiles(gitRoot string, config kbConfig, errOut io.Writer, includeInvalid bool) []knowledgeFile {
 	var files []knowledgeFile
+	seen := map[string]bool{}
+	load := func(absPath string) {
+		if seen[absPath] {
+			return
+		}
+		seen[absPath] = true
+		if file, ok := loadNativeKnowledgeFile(gitRoot, absPath, errOut, includeInvalid); ok {
+			files = append(files, file)
+		}
+	}
 	for _, dir := range config.Local {
 		absDir := filepath.Join(gitRoot, filepath.FromSlash(dir))
-		entries, err := os.ReadDir(absDir)
-		if err != nil {
-			fmt.Fprintf(errOut, "  %swarn:%s KB directory not found: %s\n", ansiYellowStart(), ansiReset(), dir)
-			continue
-		}
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
+		if filepath.Clean(dir) == filepath.Join("docs", "architecture") {
+			overview := filepath.Join(gitRoot, "docs", "ARCHITECTURE.md")
+			if _, err := os.Lstat(overview); !os.IsNotExist(err) {
+				load(overview)
 			}
-			absPath := filepath.Join(absDir, entry.Name())
-			file, ok := loadNativeKnowledgeFile(gitRoot, absPath, errOut, includeInvalid)
-			if ok {
-				files = append(files, file)
+		}
+		err := filepath.WalkDir(absDir, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				fmt.Fprintf(errOut, "  %swarn:%s Cannot read KB path %s: %v\n", ansiYellowStart(), ansiReset(), path, err)
+				// Default homes are optional until the project needs them. A
+				// failure inside an existing tree is never a successful check.
+				if includeInvalid && !(path == absDir && os.IsNotExist(err) && isDefaultKBDirectory(dir)) {
+					files = append(files, unreadableKBFile(gitRoot, path, err))
+				}
+				return nil
+			}
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+				load(path)
+			}
+			return nil
+		})
+		if err != nil {
+			fmt.Fprintf(errOut, "  %swarn:%s Cannot scan KB directory %s: %v\n", ansiYellowStart(), ansiReset(), dir, err)
+			if includeInvalid {
+				files = append(files, unreadableKBFile(gitRoot, absDir, err))
 			}
 		}
 	}
@@ -1458,7 +1522,13 @@ func loadNativeKnowledgeFile(gitRoot string, absPath string, errOut io.Writer, i
 	rel = filepath.ToSlash(rel)
 	if err != nil {
 		fmt.Fprintf(errOut, "  %swarn:%s Failed to parse %s: %v\n", ansiYellowStart(), ansiReset(), rel, err)
+		if includeInvalid {
+			return unreadableKBFile(gitRoot, absPath, err), true
+		}
 		return knowledgeFile{}, false
+	}
+	if isArchitectureDocument(rel) {
+		return knowledgeFile{Path: absPath, RelativePath: rel, Architecture: true, DocumentError: architectureDocumentError(body)}, true
 	}
 	frontmatter, ok := parseKnowledgeFrontmatter(body)
 	if !ok {
@@ -1623,6 +1693,10 @@ func summarizeKnowledgeFiles(ctx context.Context, gitRoot string, files []knowle
 			dir = "."
 		}
 		summary.Directories[dir]++
+		if file.Architecture {
+			summary.ArchitectureFiles++
+			continue
+		}
 		if len(file.Covers.Values) > 0 {
 			summary.FilesWithCovers++
 			if stalenessForKnowledgeFile(ctx, gitRoot, file).IsStale {
@@ -1634,7 +1708,7 @@ func summarizeKnowledgeFiles(ctx context.Context, gitRoot string, files []knowle
 			reviewedCount++
 		}
 	}
-	summary.FilesWithoutCovers = summary.TotalFiles - summary.FilesWithCovers
+	summary.FilesWithoutCovers = summary.TotalFiles - summary.ArchitectureFiles - summary.FilesWithCovers
 	if reviewedCount > 0 {
 		summary.AvgReviewAgeDays = int(float64(totalAgeDays)/float64(reviewedCount) + 0.5)
 	}
@@ -1652,6 +1726,9 @@ func parseReviewedDate(value string) (time.Time, bool) {
 func stalenessResults(ctx context.Context, gitRoot string, files []knowledgeFile) []kbStalenessResult {
 	results := make([]kbStalenessResult, 0, len(files))
 	for _, file := range files {
+		if file.Architecture {
+			continue
+		}
 		results = append(results, stalenessForKnowledgeFile(ctx, gitRoot, file))
 	}
 	return results
@@ -1705,6 +1782,9 @@ func parseKbGitLog(output []byte) (int, string, string) {
 func filterKnowledgeFilesCovering(files []knowledgeFile, filePath string) []knowledgeFile {
 	var matched []knowledgeFile
 	for _, file := range files {
+		if file.Architecture {
+			continue
+		}
 		for _, pattern := range file.Covers.Values {
 			if kbGlobMatches(pattern, filePath) {
 				matched = append(matched, file)
@@ -1758,6 +1838,18 @@ func validateNativeKnowledgeFiles(gitRoot string, files []knowledgeFile) []kbVal
 			File:     file.RelativePath,
 			Errors:   []kbValidationIssue{},
 			Warnings: []kbValidationIssue{},
+		}
+		if file.ReadError != "" {
+			result.Errors = append(result.Errors, kbValidationIssue{Field: "read", Message: file.ReadError})
+			results = append(results, result)
+			continue
+		}
+		if file.Architecture {
+			if file.DocumentError != "" {
+				result.Errors = append(result.Errors, kbValidationIssue{Field: "document", Message: file.DocumentError})
+			}
+			results = append(results, result)
+			continue
 		}
 		if !file.Topics.Set {
 			result.Errors = append(result.Errors, kbValidationIssue{Field: "topics", Message: "Missing required field"})
@@ -2018,7 +2110,8 @@ func pluralSuffix(count int) string {
 func writeKbStatus(out io.Writer, summary kbStatusSummary) {
 	fmt.Fprintf(out, "\n  %s\n\n", ansiBold("loaf kb status"))
 	fmt.Fprintf(out, "  Files:    %s\n", ansiBold(fmt.Sprint(summary.TotalFiles)))
-	fmt.Fprintf(out, "  Covers:   %s with %s without\n", ansiGreen(fmt.Sprint(summary.FilesWithCovers)), ansiGray(fmt.Sprint(summary.FilesWithoutCovers)))
+	fmt.Fprintf(out, "  Architecture: %d (excluded from coverage and review metrics)\n", summary.ArchitectureFiles)
+	fmt.Fprintf(out, "  Covers:   %s with %s without (knowledge only)\n", ansiGreen(fmt.Sprint(summary.FilesWithCovers)), ansiGray(fmt.Sprint(summary.FilesWithoutCovers)))
 	if summary.Stale > 0 {
 		fmt.Fprintf(out, "  Stale:    %s\n", ansiRed(fmt.Sprint(summary.Stale)))
 	} else {

@@ -1,14 +1,16 @@
-# Substrate E2E Threat Model (LOAF-66)
+# Shipped Sync Protocol Threat Model (Compatibility)
 
 Decision Date: 2026-08-26
-Status: Accepted
+Status: compatibility record
 
 ## Scope of this document
 
-LOAF-66 ships the **local crypto contract**: HKDF project-key derivation with a
+This document describes the shipped pre-cutover synchronization and local-crypto contract. It is retained for operational compatibility and historical security review; it is not the accepted destination protocol. See the [Private Sync Threat Model](private-sync-threat-model.md) and [Private Synchronization](../architecture/private-synchronization.md) for the current architecture.
+
+The shipped local-crypto contract includes HKDF project-key derivation with a
 generation read ring, AEAD wire envelopes, Emergency Kit recovery, and typed
-admin vs project-client credentials. It does **not** implement the sync relay,
-attach ceremony, or authorization enforcement.
+admin vs project-client credentials. That contract does **not** by itself
+implement the sync relay, attach ceremony, or authorization enforcement.
 
 ## Server-visible metadata (v1 design target)
 

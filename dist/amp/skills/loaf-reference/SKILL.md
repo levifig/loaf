@@ -1,9 +1,9 @@
 ---
 name: loaf-reference
 description: >-
-  Explains vNext Loaf Flow authority, artifacts, and ceremony boundaries. Use
-  when deciding where work belongs or how one Flow stage hands evidence to
-  another. Not for provider-specific tracker operations.
+  Explains Loaf Flow authority, artifacts, and ceremony boundaries. Use when
+  deciding where work belongs or how one Flow stage hands evidence to another.
+  Not for provider-specific tracker operations.
 version: 0.5.0
 ---
 

@@ -15,20 +15,19 @@ last_reviewed: '2026-09-04'
 
 # Build System
 
-Loaf compiles skills, agents, and hooks from a single source tree into multiple target-specific formats.
+Loaf packages shared skills, agents, and hooks for supported harnesses. [Skill Portability](../architecture/skill-portability.md) owns the shared-authoring model, rationale, and validation boundaries; this guide covers build mechanics.
 
 ## Key Rules
 
-- **Single source, multiple outputs.** Content is authored in `content/`. The build system transforms it per-target.
-- **Shared intermediate.** Skills compile to `dist/skills/`, then each target reads that normalized content.
+- **Shared intermediate.** Skills from `content/` compile to `dist/skills/`, with tracker-native Flow and provider sources from `vnext/content/` overlaid before each target reads the common content.
 - **Targets are additive.** Each target gets what it supports — Claude Code gets everything, while Codex gets skills plus its policy template and current-schema SessionStart context hook.
 - **Sidecars carry target-specific fields.** SKILL.md has standard fields only. `.claude-code.yaml`, `.opencode.yaml`, etc. carry extensions. Build merges them.
-- **Shared templates distribute at build time.** `content/templates/` files (`session.md`, `adr.md`) are copied to specified skills via `shared-templates` in `targets.yaml`.
-- **Command substitution.** `{{IMPLEMENT_CMD}}`, `{{ORCHESTRATE_CMD}}` placeholders in skill content are replaced per-target (e.g., `/implement` for Claude Code, OpenCode command name for OpenCode).
+- **Shared templates distribute at build time.** `content/templates/` files (`journal.md`, `grilling.md`) are copied to specified skills via `shared-templates` in `targets.yaml`. The Flow overlay separately projects its shared templates into consuming packages. Architecture templates live in the Architecture skill itself.
+- **No skill-prose substitution.** Target builders preserve common bodies and labeled harness sections. The shared intermediate may project template paths; executable integration artifacts may have install-time placeholders. Neither permits per-target rewriting of skill instructions.
 
 ## Build Flow
 
-`loaf build` (or `npm run build`) -> Go dispatcher in `internal/cli/build.go` -> loads `hooks.yaml` + `targets.yaml` -> builds shared skills intermediate to `dist/skills/` -> calls each native target builder in `internal/cli/build_{target}.go` -> output to `plugins/` or `dist/{target}/`.
+`make build` runs the native `cmd/loafdev` build workflow: compile the runtime, generate the CLI reference, build content, and verify artifacts. `loaf build` dispatches through `internal/cli/build.go`, loads `hooks.yaml` and `targets.yaml`, builds the shared skills intermediate in `dist/skills/`, and calls each target builder to produce `plugins/` or `dist/{target}/`.
 
 ## Targets
 
@@ -42,7 +41,7 @@ Loaf compiles skills, agents, and hooks from a single source tree into multiple 
 
 ### Notes
 
-- **Claude Code** bundles a self-contained `loaf` binary in `plugins/loaf/bin/loaf` for hook execution. Hooks are registered in `hooks/hooks.json` because `plugin.json` silently drops non-matcher session events.
+- **Claude Code** ships content and a runtime-discovery shell shim, not a bundled native binary. The shim's fixed-location fallbacks remain a gap against the [PATH-only runtime contract](../architecture/runtime-and-delivery.md). Hooks are registered in `hooks/hooks.json` because `plugin.json` silently drops non-matcher session events.
 - **OpenCode and Amp** generate runtime plugins (`hooks.ts` / `.amp/plugins/loaf.ts`) that implement enforcement hooks via subprocess calls to `loaf check`. Amp also copies the authored mode plugin `.amp/plugins/loaf-modes.ts`, which registers `Loaf Medium`, `Loaf Ultra`, and the pinned delegation tools as a separate managed artifact. The orchestrator and oracle agents are GPT-6 Astra (medium/xhigh and high); review stays on GPT-5.6 Luna at max; the implementation agent is Grok 4.6 with Fast and no reasoning-effort pin.
 - **Codex** generates a current-schema `.codex/hooks.json` SessionStart matcher group because Codex `0.144.1` rejects Loaf's legacy flat hook projection; the command and `commandWindows` placeholders are rendered to trusted absolute paths at install. POSIX installs retain the exact two-field command shape and omit the Windows variant; Windows installs render both fields to the same `cmd.exe /C` outer-wrapped command. Isolated `CODEX_HOME` startup on `darwin-arm64` is model-visible smoke-proven; global-home installation, resume, clear, compact, Windows runtime behavior, and completion remain separately unproven. The separately opted-in basic command policy renders one absolute-executable prefix per explicitly classified leaf, while body/file-consuming leaves and path-taking `change check` remain operator-gated. Other harness adapters are not implied.
 - **MCP servers** are not bundled. `loaf install` detects and recommends MCPs at install time; integration state stored in `.agents/loaf.json`.
@@ -61,8 +60,9 @@ Claude Code has a split registration model: `plugin.json` handles the plugin man
 
 | Script | Command | Purpose |
 |--------|---------|---------|
-| `cli/scripts/smoke-test.js` | `npm run test:smoke` | Validates built hook artifacts across supported targets (structure, `if` conditions, `failClosed` flags). Run after build changes. |
-| `cli/scripts/eval-skill-routing.mjs` | `npm run eval:routing` | Tests whether Claude routes prompts to correct skills. Requires `ANTHROPIC_API_KEY`. Use `--model` for cheaper runs, `--skill` to test one skill. |
+| `cmd/loafdev` | `make build` / `make verify` | Builds the native runtime and generated content, then verifies artifacts. Use `LOAF_DEV_LINK=0` to keep the active runtime unchanged. |
+| `cli/scripts/smoke-test.js` | `node cli/scripts/smoke-test.js` | Validates built hook artifacts across supported targets (structure, `if` conditions, `failClosed` flags). Run after build changes. |
+| `cli/scripts/eval-skill-routing.mjs` | `node cli/scripts/eval-skill-routing.mjs` | Tests whether Claude routes prompts to correct skills. Requires `ANTHROPIC_API_KEY`. Use `--model` for cheaper runs, `--skill` to test one skill. |
 
 **Smoke test** is a build output integration test for script-level artifact assertions that are not yet worth moving into native Go tests. **Routing eval** is a non-deterministic quality tool for tuning skill descriptions; test cases need updating when skills are added/removed/renamed.
 

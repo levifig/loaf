@@ -103,7 +103,7 @@ Always check project context first. Rate findings: **High** (official/verified),
 **Trigger:** Specific topic or question
 
 1. **Interview** (one question at a time, with a recommendation, using your harness's structured question tool if it has one): what are you trying to understand? What context do you have? What decision will this inform?
-2. Check project context first (ADRs, ARCHITECTURE, the project journal)
+2. Check project context first (architecture overview and relevant topics, applicable legacy decisions, the project journal)
 3. Apply confidence hierarchy for external sources
 4. For a transient review artifact, use `loaf report generate` when an existing
    SQLite-backed export kind fits; for authored long-form research, create a

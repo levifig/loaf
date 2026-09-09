@@ -7,8 +7,7 @@
 # Format: template-filename: [list of skill names that receive it]
 shared-templates:
   journal.md: [implement, orchestration, housekeeping, bootstrap]
-  adr.md: [architecture, reflect]
-  grilling.md: [architecture, refactor-deepen]
+  grilling.md: [refactor-deepen]
 
 targets:
   claude-code:

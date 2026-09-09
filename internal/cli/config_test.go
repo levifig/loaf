@@ -49,7 +49,7 @@ func TestRunnerConfigCheckFixCreatesProjectConfig(t *testing.T) {
 		t.Fatalf("config = %#v, want schema version and initialized timestamp", config)
 	}
 	knowledge := config["knowledge"].(map[string]any)
-	if strings.Join(jsonStrings(t, knowledge["local"]), ",") != "docs/knowledge,docs/decisions" {
+	if strings.Join(jsonStrings(t, knowledge["local"]), ",") != "docs/knowledge,docs/architecture,docs/decisions" {
 		t.Fatalf("knowledge = %#v, want default local dirs", knowledge)
 	}
 	integrations := config["integrations"].(map[string]any)

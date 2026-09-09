@@ -18,16 +18,16 @@ last_reviewed: '2026-07-14'
 
 # Skill Architecture
 
-Skills are the primary knowledge delivery mechanism. Each skill is a directory following the Agent Skills open standard.
+Skills are the primary knowledge delivery mechanism. [Skill Portability](../architecture/skill-portability.md) owns the package-format choice, shared-authoring model, and rationale; this guide covers authoring layout and conventions.
 
 ## Key Rules
 
 - **SKILL.md contains standard fields only.** `name`, `description`, `license`, `compatibility`, `metadata`. No tool-specific fields.
-- **Sidecar files carry extensions.** `.claude-code.yaml` for Claude Code fields (`user-invocable`, `agent`, `context: fork`). `.opencode.yaml` for OpenCode commands. Target-specific sidecars are merged at build time.
+- **Sidecar files carry extensions.** `SKILL.claude-code.yaml` carries authorized Claude Code fields such as `user-invocable`, `model`, and `context`; `SKILL.opencode.yaml` carries authorized OpenCode metadata. The target's exact field ownership is enforced by the [build checker](../../internal/cli/build_skill_invariance.go).
 - **Descriptions drive routing.** The model uses the description to choose from 100+ skills. Must start with action verb (third-person), include user-intent phrases, negative routing for confusable skills.
 - **References are one level deep.** All references link from SKILL.md, never from other references. No nested chains.
 - **Templates are structural artifacts.** `templates/` hold format templates (frontmatter schema, section headings). `references/` hold knowledge docs (conventions, patterns).
-- **Command substitution.** `{{IMPLEMENT_CMD}}` and `{{ORCHESTRATE_CMD}}` placeholders are replaced per-target at build time.
+- **Author harness differences explicitly.** Use neutral workflow names in common prose and labeled product sections or a harness table for distinct invocation forms. Builders do not substitute commands in skill prose.
 
 ## Skill Structure
 
@@ -40,7 +40,7 @@ content/skills/{name}/
 └── templates/                # Artifact templates (loaded on demand)
 ```
 
-Skills compile to a shared intermediate at `dist/skills/` (base frontmatter, command substitution, shared templates merged), then each target reads from the intermediate.
+Skills compile to a shared intermediate at `dist/skills/`, with shared templates projected into consuming packages and tracker-native Flow/provider sources overlaid from `vnext/content/`. Each target then packages the same common content; see [Build System](build-system.md).
 
 ## Journal Self-Logging
 
@@ -59,10 +59,10 @@ The `/wrap` skill reads recent entries to check whether housekeeping or other pe
 
 | Template | Distributed To |
 |----------|---------------|
-| `session.md` | implement, orchestration, housekeeping, bootstrap |
-| `adr.md` | architecture, reflect |
+| `journal.md` | implement, orchestration, housekeeping, bootstrap |
+| `grilling.md` | refactor-deepen |
 
-Skill-specific templates live in `content/skills/{name}/templates/` and are not shared. SKILL.md references templates with links: `[templates/session.md](templates/session.md)`.
+Skill-specific templates live in `content/skills/{name}/templates/`. Architecture owns its [topic and decision-record templates](../../content/skills/architecture/templates/); Reflect uses Architecture's guidance rather than receiving a shared ADR template. A skill references a distributed template by its projected relative path; see the authored [journal template](../../content/templates/journal.md). Tracker-native Flow templates are separately projected by the common overlay before target packaging.
 
 ## Agent Profiles
 

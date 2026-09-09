@@ -1,5 +1,5 @@
 // Package credential defines the three structurally distinct private-sync
-// credential classes selected by ADR-031.
+// credential classes described in docs/architecture/private-synchronization.md.
 package credential
 
 import (

@@ -1,4 +1,5 @@
-// Package crypto implements the fixed cryptographic suite selected by ADR-031.
+// Package crypto implements the fixed cryptographic suite documented in
+// docs/security/private-sync-threat-model.md.
 package crypto
 
 import (

@@ -13,11 +13,32 @@ last_reviewed: '2026-07-14'
 
 # Knowledge Management Design
 
-The knowledge management feature: `loaf kb` commands + knowledge-base skill + QMD integration + lifecycle hooks.
+## Contents
+
+- Naming Conventions
+- Knowledge File Schema
+- Staleness Detection
+- Growth Loops
+- Memory Surface Boundary
+- GridSight as Reference Implementation
+- Search Instead of Sync
+- QMD Integration
+- Knowledge Lifetimes
+- Knowledge as Extended Agent Memory
+- Memory Surface Policy
+- Personal Knowledge Graduation
+- The Boundary Test: What Goes Where
+- Staleness Detection Mitigations
+- Cross-Project: local-covers
+- Cross-Project: Tightly-Coupled Repos
+- Optional QMD Integration
+- Cross-References
+
+This guide covers `loaf kb` metadata and retrieval mechanics. [Authority Boundaries](../architecture/authority-boundaries.md#knowledge-and-tool-boundaries) owns knowledge authority and optional tool policy; the [architecture overview](../ARCHITECTURE.md) is the entry point for current architectural models and rationale.
 
 ## Naming Conventions
 
-Storage uses full words: `docs/knowledge/` and `docs/decisions/` for directories, `{repo-folder}-knowledge` and `{repo-folder}-decisions` for QMD collections. The two names are similar in length and scan well together — `kb` versus `decisions` would create visual asymmetry, and `decisions` is more accessible to non-engineers than `adrs`.
+Current repository conventions use `docs/knowledge/` for maintained domain guidance, `docs/architecture/` for living architecture topics, and `docs/decisions/` for deliberately retained narrow decisions. Full-word paths were chosen for readability rather than abbreviated `kb` or ADR-specific `adrs`; these are naming conventions, not immutable architecture. QMD setup uses `{repo-folder}-knowledge`, `{repo-folder}-architecture`, and `{repo-folder}-decisions` collections.
 
 The CLI shorthand is `kb`: `loaf kb check`, not `loaf knowledge check`. The full word is for storage (durable, read by humans and tools); the abbreviation is for typing (ergonomic, used dozens of times a day). ADR files keep the `ADR-XXX` prefix — that's the record format, not the directory name.
 
@@ -36,9 +57,10 @@ implementation_status: in-progress              # Optional
 ---
 ```
 
-## Staleness Detection (Core Innovation)
+## Staleness Detection
 
-No AI coding tool does this today. The `covers:` field links knowledge to code paths:
+The `covers:` field links knowledge to code paths:
+
 1. Parse `covers:` globs → expand to matching files
 2. Query `git log --since={last_reviewed}` for those files
 3. If commits exist → knowledge is potentially stale
@@ -64,14 +86,14 @@ This reminds the agent that exploration artifacts exist and may need processing.
 - "You modified paths covered by knowledge files. Any updates needed?"
 - "This conversation involved exploration. Any sparks worth noting?"
 
-There is no SessionEnd journal hook, so this nudge lives at the PreCompact journal-flush point and in the voluntary `/wrap` checkpoint rather than a conversation-close event. If the conversation produced a brainstorm document, it reminds about the `## Sparks` section.
+There is no SessionEnd journal hook, so this nudge lives at the PreCompact journal-flush point and in the voluntary `/wrap` checkpoint rather than a conversation-close event. Current spark capture belongs to its owning skill and private continuity; historical brainstorm sections do not define a required lifecycle.
 
 ## Memory Surface Boundary
 
 Knowledge can accumulate across surfaces that serve different owners:
 
 - `docs/knowledge/` holds structured project knowledge.
-- `docs/decisions/` holds immutable architectural decisions.
+- `docs/architecture/` holds evolving architectural models and rationale; `docs/decisions/` holds deliberately selected narrow records under Architecture's history convention.
 - Personal agent memory holds user-level preferences and cross-project context.
 - The project journal holds durable events and optional synthesis.
 - Conversation context holds temporary working hypotheses.
@@ -89,16 +111,25 @@ The knowledge system was first prototyped in GridSight (`gridsight-core-gds`). K
 
 What GridSight lacked (and Loaf adds): `covers:` field for staleness automation, QMD for retrieval, growth loops via hooks, CLI for management.
 
-## Key Insight: Search Instead of Sync
+## Search Instead of Sync
 
 Cross-project knowledge sharing doesn't require copying or vendoring. Index knowledge where it lives and make it searchable. QMD collections are pointers, not copies. One source of truth per file, many consumers, zero drift. Like how Google solved "information spread across the web" — index it, don't centralize it.
 
 ## QMD Integration
 
-QMD handles retrieval (collections, search, MCP). Loaf wraps QMD for setup + adds lifecycle:
-- `loaf kb init` → `qmd collection add` + context
+Existing Loaf commands can use QMD for retrieval setup:
+
+- `loaf kb init` → local directories and config, plus `qmd collection add` when available
 - `loaf kb import` → `qmd collection add` for external repo + `.agents/loaf.json` update
-- Collection naming: `{repo-folder}-knowledge`, `{repo-folder}-decisions`
+- Collection naming: `{repo-folder}-knowledge`, `{repo-folder}-architecture`, `{repo-folder}-decisions`
+
+The [initializer](../../internal/cli/kb.go) creates all three directories and registers their collections only when QMD is available; rerunning it adds missing collections without replacing existing ones. The import path requires QMD collection registration. The standalone `docs/ARCHITECTURE.md` overview is discovered by native KB commands, but is not part of these directory-scoped QMD collections.
+
+Native discovery recursively scans Markdown under the configured `knowledge.local` directories. Defaults include all three directories; enabling `docs/architecture` also discovers the optional `docs/ARCHITECTURE.md` overview. The exact old generated list `["docs/knowledge", "docs/decisions"]` expands to the new defaults at read time without rewriting the config. Other custom lists remain unchanged. Plain Markdown under the standard architecture and decisions paths is included, including index documents; ordinary knowledge files still require discoverable frontmatter.
+
+`loaf kb validate` applies knowledge metadata rules only to knowledge files. For architecture topics, the overview, and retained decisions, it checks only a nonempty document body and terminated frontmatter when present. It does not enforce knowledge fields, ADR numbering, particular headings, YAML semantics, or architectural correctness. File and subtree read failures appear in validation results and fail the command; absent default document directories remain optional. The Architecture skill and the repository's retained decision convention govern substantive review.
+
+`loaf kb status` reports total documents and an `architecture_files` count. Coverage counts, staleness, and review age apply only to knowledge files; `loaf kb check` excludes architecture documents, and `loaf kb review` refuses them even if they carry historical knowledge metadata. Review checks the resolved destination as well as the supplied path, supports aliases to knowledge within the repository, and refuses destinations outside it. Do not add `topics` or `last_reviewed` to architecture documents for tooling compatibility. This scoped runtime correction does not certify this guide's older operational claims or reset its review date.
 
 `loaf kb glossary` is the Markdown-backed terminology surface. It supports
 canonical terms, aliases, candidate terms, and stabilization without moving
@@ -114,28 +145,29 @@ PERSISTENT (this person)     — crosses all projects, grows over career
 
 | Lifetime | What | Where |
 |----------|------|-------|
-| **Persistent** | User preferences, expertise, patterns | `~/.config/claude/` (CLAUDE.md, PROFILE.md, memory/) |
-| **Durable** | Domain knowledge, conventions, decisions | `docs/knowledge/` + `docs/decisions/` + CLAUDE.md |
+| **Persistent** | User preferences, expertise, patterns | User-managed harness instructions or memory |
+| **Durable** | Domain knowledge, conventions, architecture | `docs/knowledge/`, `docs/architecture/`, selected `docs/decisions/`, and root `AGENTS.md` |
 | **Ephemeral** | Active work context, working hypotheses | Conversation context |
 
 Flow: persistent informs durable, durable informs ephemeral. Upward: conversation insights consolidate into durable knowledge, and durable patterns may graduate to persistent memory.
 
 ## Knowledge as Extended Agent Memory
 
-The knowledge base is primarily for agents — it's their extended memory. This includes not just domain rules and conventions, but also roadmap context, future implementation plans, and strategic direction. Agents use this to make informed decisions aligned with project goals.
+The knowledge base supplies agents with domain rules and cross-cutting context. Link to strategy, owning architecture topics, and canonical tracker work rather than duplicating future plans, scope, or status here.
 
 ## Memory Surface Policy
 
 | Surface | Contains |
 |---------|----------|
-| `docs/knowledge/` | Domain rules, contracts, architectural patterns, roadmap context |
-| `docs/decisions/` | Immutable ADRs |
-| `MEMORY.md` | User preferences, session pointers |
+| `docs/knowledge/` | Domain guidance and technical references |
+| `docs/architecture/` | Current architectural model and rationale |
+| `docs/decisions/` | Rare, deliberately selected single-choice records |
+| User-managed memory | Preferences and continuity under the user's chosen harness policy |
 | Project journal | Durable project events and optional synthesis |
 | Conversation context | Ephemeral work context |
-| Serena memories | **Deprecated for knowledge** — code analysis state only |
+| Additional harness memory tools | User-managed; not Loaf's canonical knowledge or private-continuity store |
 
-**Serena:** Keep code intelligence tools (find_symbol, get_symbols_overview). Deprecate memory system for knowledge persistence — with knowledge files + MEMORY.md, Serena memories become a redundant third layer.
+Loaf does not prescribe a Serena-specific memory policy. The user may choose additional memory tools; neither this guide nor a documentation migration authorizes erasing or repurposing their data.
 
 ## Personal Knowledge Graduation
 
@@ -144,7 +176,7 @@ Personal knowledge grows through correction, not capture. When you say "don't us
 The graduation path:
 ```
 Per-project correction → repeated across N projects → pattern recognized →
-suggested promotion to global CLAUDE.md → user approves → permanent
+suggested promotion to user-managed global instructions → user approves → permanent
 ```
 
 This is a convention and documentation boundary, not an automated cross-project pattern detector. The skill documents what belongs in personal agent instructions versus project knowledge; promotion still requires user approval.
@@ -155,11 +187,11 @@ This is a convention and documentation boundary, not an automated cross-project 
 |---------|----------|---------------|
 | **Code** (docstrings, types) | What the code does | Is it self-documenting? → stays in code |
 | **Knowledge files** | Domain rules, cross-cutting context | Requires context beyond the code? → knowledge file |
-| **ADRs** | Why we chose this approach | Is it an architectural decision? → ADR |
-| **CLAUDE.md** | Agent instructions, conventions | Is it about how agents should behave? → CLAUDE.md |
+| **Architecture topics** | Current model and why it has this shape | Architectural model or rationale? → owning topic; Architecture evaluates exceptional ADRs |
+| **AGENTS.md** | Project agent instructions, conventions | Is it about project agent behavior? → root AGENTS.md |
 | **MEMORY.md** | User preferences, session pointers | Is it personal/ephemeral? → MEMORY.md |
 
-CLAUDE.md references knowledge files but never duplicates their content.
+Root AGENTS.md references knowledge files but never duplicates their content. Verified harness compatibility paths do not become a second real instruction body.
 
 ## Staleness Detection Mitigations
 
@@ -198,17 +230,17 @@ For tightly-coupled project families (e.g., GDS core + modules), the simplest ap
 
 QMD collections + `loaf kb import` are for loosely-coupled sharing where symlinks aren't practical.
 
-## QMD Lightweight Mode
+## Optional QMD Integration
 
 QMD works without models (BM25-only):
 - `qmd collection add/remove`, `qmd search`, `qmd get`, `qmd update` — no models needed
 - `qmd embed` (embeddings) and `qmd query` (hybrid+reranking) — need ~2GB of GGUF models
-- Loaf can depend on QMD but only require lightweight mode. Semantic search is opt-in.
+- Existing Loaf commands may integrate with QMD when it is available, but QMD is not a mandatory knowledge backend. Semantic search is opt-in.
 
 ## Cross-References
 
-- [agent-harness-vision.md](agent-harness-vision.md) — how agents use the knowledge system
-- [cli-design.md](cli-design.md) — the `loaf kb` commands
-- [../decisions/ADR-003-qmd-as-retrieval-backend.md](../decisions/ADR-003-qmd-as-retrieval-backend.md) — QMD decision
-- [../ARCHITECTURE.md#authorship-model--agents-create-humans-curate](../ARCHITECTURE.md#authorship-model--agents-create-humans-curate) — authoring model
+- [skill-architecture.md](skill-architecture.md) — how knowledge packages are authored and distributed
+- [work-model.md](work-model.md) — how maintained knowledge relates to tracker work, Git, and private continuity
+- [Knowledge and tool boundaries](../architecture/authority-boundaries.md#knowledge-and-tool-boundaries) — optional retrieval and user-managed memory
+- [../ARCHITECTURE.md#authority-model](../ARCHITECTURE.md#authority-model) — authority model
 - Full brainstorm: SQLite brainstorm/spark records or an explicitly durable report

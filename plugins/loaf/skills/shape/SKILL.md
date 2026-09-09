@@ -27,6 +27,7 @@ Route the ephemeral [work contract](templates/work-contract.md) once into canoni
 - Confirm the destination, runtime capabilities, and whether a matching native record already exists before creation.
 - If creation returns an ambiguous result, search and re-read native state; never repeat the create blindly.
 - Preserve the problem narrative's intent while removing solution assumptions not required by constraints.
+- Identify architectural implications and unresolved choices using the architecture skill; shaping does not automatically create an architecture document or decision record.
 - Make the rideable increment concrete in the existing native definition and criteria: Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals. These are required decisions, not required native headings or a new schema.
 - Set the title through the native work field, then fill every definition-packet field. Definition of done uses observable criteria; out of scope names what this work deliberately will not solve.
 - Keep hierarchy and dependencies in their native relationship fields, not in comments or body prose alone.

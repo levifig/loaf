@@ -3,50 +3,48 @@
 ## Contents
 - Core Principle
 - Document Hierarchy
-- Architecture Decision Records
+- Architecture Documentation
 - API Documentation
 - Project Changelog
 - Micro-Changelog
 - Critical Rules
 
-Project documentation conventions, ADR format, and API doc rules.
+Project documentation presentation and API doc rules. Architecture policy belongs to the architecture skill.
 
 ## Core Principle
 
-**Document after shipping, not before.** API documentation reflects ONLY what is implemented and released. Future features belong in Linear issues, not docs.
+**API documentation follows implementation.** API specifications describe implemented and released behavior. Accepted architecture may precede implementation when the record labels that gap honestly; shared work and delivery status belong in the selected native tracker.
 
 ## Document Hierarchy
 
+Discover the repository's canonical documentation paths. The following is an example shape, not a required root layout:
+
 ```
 docs/
-├── PRD.md                # What the product should be (vision)
-├── ARCHITECTURE.md       # How the product is built (design)
-├── IMPLEMENTATION.md     # What the product currently is (status)
+├── VISION.md             # Product purpose and scope
+├── STRATEGY.md           # Current bets and learning sought
+├── ARCHITECTURE.md       # System map and topic navigation
 ├── QUICK_REFERENCE.md    # One-page command reference
 ├── api/                  # API docs (implemented features only)
 │   ├── openapi.yaml
 │   └── endpoints/
-└── decisions/            # Architecture Decision Records
-    ├── ADR000-template.md
-    └── ADR001-*.md
+└── architecture/         # Living topics, owned by the architecture skill
+    ├── authority-boundaries.md
+    └── persistence.md
 ```
 
 | Document | Purpose | Updates When |
 |----------|---------|--------------|
-| **PRD.md** | Product vision (timeless) | Vision changes |
-| **ARCHITECTURE.md** | Technical design | Architecture changes |
-| **IMPLEMENTATION.md** | Current status | Features ship |
+| **VISION.md** | Product purpose and scope | Vision changes |
+| **STRATEGY.md** | Bets and learning sought | Strategy changes |
+| **Architecture overview and topics** | Current model and rationale | Architecture or supporting evidence changes |
 | **API docs** | Implemented endpoints | Features ship |
 
-## Architecture Decision Records
+## Architecture Documentation
 
-ADRs are owned by the `architecture` skill. Use
-`content/skills/architecture/templates/adr.md` as the single template and route
-ADR lifecycle, numbering, supersession, and triage-gate questions there.
+The [architecture skill](../../architecture/SKILL.md) owns the convention, topic template, rationale preservation, affected-surface review, and migration. Use its guidance rather than inventing a second architecture format here. This reference owns presentation and documentation quality only.
 
-**When to write:** Technology choices, architectural patterns, integration
-approaches, security decisions. **Skip for:** library version updates, bug
-fixes, performance tweaks, style changes.
+Keep headings descriptive and links navigable. Do not impose ADR sections, numbering, lifecycle metadata, or a micro-changelog on architecture topics. Architecture owns exceptional ADR selection and decision history as well as legacy-format guidance; follow the repository's actual format for a deliberately selected record.
 
 ## API Documentation
 
@@ -114,7 +112,7 @@ Examples:
 ```markdown
 ### Changed
 
-- **Breaking:** resolve `.agents/` from the main worktree in linked checkouts ([ADR-013](docs/decisions/ADR-013-agentic-state-storage-model.md))
+- **Breaking:** migrate private continuity across linked worktrees ([Private Continuity](docs/architecture/private-continuity.md))
 - Document release guardrails for post-merge tagging ([#50](https://github.com/levifig/loaf/pull/50))
 
 ### Added
@@ -135,7 +133,7 @@ Generated changelog text is a draft. Before release:
 
 ## Micro-Changelog
 
-Track changes at the **bottom** of individual documents:
+When the repository explicitly requires document-local changelogs, place them at the **bottom** of the relevant documents. Do not introduce them by default; architecture topics follow the architecture skill's history convention.
 
 ```markdown
 ---
@@ -150,6 +148,6 @@ Track changes at the **bottom** of individual documents:
 
 ## Critical Rules
 
-**Always:** Last Updated timestamp (YYYY-MM-DD), micro-changelog at bottom, reference files not inline code, keep docs minimal.
+**Always:** Follow the repository's established date and changelog conventions; keep docs minimal and move substantial conditional detail into linked references.
 
 **Never:** Document APIs before they ship, include `.agents/` links outside `.agents/` artifacts, use lengthy code samples, add planning details to docs.

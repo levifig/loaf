@@ -27,6 +27,7 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 - Read Todo from the destination tracker's native lane (GitHub: destination Project Status), not from Issue open/closed and not from a different provider's MCP. An authenticated `gh` that can see the destination repo and Project is a GitHub connection. Linear MCP in the same session does not mean GitHub is unavailable.
 - Confirm the live contract makes Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals concrete. If it describes layers or future-only machinery instead, return it to shape.
 - Inspect repository instructions and affected code before editing. Treat existing changes as user-owned.
+- For architectural changes, follow the architecture skill's topic-maintenance and affected-surface review rules within the authorized scope; do not automatically create a decision record.
 - If the live contract is incomplete or implementation changes its intended outcome, stop and return it to shape instead of silently redefining work.
 - Start each testable behavior with a focused failing test when practical, implement the minimum passing change, and keep refactoring behavior-neutral.
 - Preserve the rideable journey across commits and delegation. Include only machinery exercised by its end-to-end path; reduce breadth before integrity.

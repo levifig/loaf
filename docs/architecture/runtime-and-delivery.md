@@ -1,0 +1,42 @@
+# Runtime and Delivery
+
+## Current Model
+
+Go implements Loaf-owned deterministic operations: command dispatch, project identity, persistent state, migrations, diagnostics, filesystem safety, content builds, and recovery. Skills guide judgment; the runtime does not own shared tracker work or provider credentials. [Authority Boundaries](authority-boundaries.md) defines those responsibilities.
+
+[The Go runtime decision](../decisions/ADR-014-go-for-stateful-runtime.md) preserves the language choice and its TypeScript and Rust alternatives. A single native command gives hooks and users the same implementation. This retains the useful direction of the earlier unified-CLI proposal without adopting its local-task authority, TUI, GUI, or speculative product scope. Fragmented shell and language-specific scripts are not independent product entrypoints; future interfaces require separate evidence and design.
+
+The public runtime, development launcher, build, release, and packaging tools are Go. The [Makefile](../../Makefile) delegates to [`cmd/loafdev`](../../cmd/loafdev/) and [`internal/devtool`](../../internal/devtool/). `package.json` remains distribution metadata, not an npm execution surface. Node remains for harness capability runners and emitted TypeScript checks, not for running or installing Loaf.
+
+## Native Delivery Direction and Gaps
+
+The agreed destination is native binaries delivered through GitHub Release artifacts, a verified installer, Homebrew, and harness integrations. Users should not need Node or a Go toolchain merely to run Loaf. Installation must preserve artifact provenance and establish one effective upgrade owner, preventing package managers, installers, and plugins from overwriting one another ambiguously.
+
+Native archive/checksum packaging, a curl installer, Homebrew tooling, and Claude plugin onboarding are implemented. Their presence does not prove every platform's live install, signature verification, plugin/runtime compatibility, package-manager ownership, update, rollback, or recovery journey. Native cross-platform builds, signing, publication, installation, and safe updates remain maintenance obligations, not consequences supplied by choosing Go.
+
+The [release workflow](../../.github/workflows/release.yml) builds and uploads release assets and can update a separate Homebrew tap; [native development tooling](../../internal/devtool/) creates archives and checksums. Native binaries are no longer tracked; generated content is. The Claude plugin currently emits a shell shim that discovers an installed runtime instead of bundling binaries. Its `LOAF_BIN` override and fixed-location fallbacks are implementation gaps against the agreed PATH-only contract, not exceptions to it.
+
+Harness invocations must use `loaf` from user-managed PATH. The user chooses and upgrades the runtime; content installation must not pin, deploy, or silently select a private binary. Missing or incapable runtimes should produce actionable install/upgrade guidance. Runtime compatibility must be checked against required capabilities rather than pressuring users to upgrade an older but capable installation.
+
+Continuing npm delivery was rejected because it kept Node as the product entrypoint after the native runtime migration. Building from source during installation would avoid publishing a platform matrix but require a Go toolchain on every user machine and weaken repeatable installation. Neither replaces native delivery.
+
+## Reviewed Source and Release Evidence
+
+The [verify-only CI decision](../decisions/ADR-012-ci-verify-only-build-artifacts.md) preserves the reason CI must not repair or push changes to reviewed source branches. Tracked generated content stays with the source that produced it until a replacement delivery path is proven. This does not require tracking release binaries: automation may build, sign, and publish artifacts from reviewed source without modifying that source branch. A separate tap update is distribution metadata, not a repair commit to Loaf's reviewed source.
+
+Verification evidence must identify the content it vouches for and become stale when that content changes. Branch ancestry alone is insufficient: merges and rebases can preserve or change content independently of topology. Retired cohort receipts and their exact digest schema do not become a universal evidence database or another release authority. Current build, review, and ship checks own executable freshness rules.
+
+## Version Identity
+
+Loaf uses major-zero Semantic Versioning (`0.y.z`) until it deliberately declares a stable `1.0.0` public contract. A release identifies a coherent set of already-landed work; it does not create or advance a planning cohort. Minor-versus-patch judgment during major zero and the `1.0.0` readiness bar remain release decisions, with clear compatibility notes needed for users.
+
+Arc-boundary releases were rejected because they exposed retired planning machinery. Build provenance is distinct from the product version: `go build -buildvcs=true` embeds the source revision and dirty state, and the [native entrypoint](../../cmd/loaf/main.go) reads that stamp rather than trusting a mutable sidecar. Development versions may display `+g<short-sha>.dirty`; release metadata and tracked generated content retain the [package version](../../package.json). Missing or malformed provenance is reported as absent rather than invented. Executable timestamps and sidecar identities were rejected because copying a binary or moving HEAD could mislabel its source.
+
+Development builds stage the requested binaries before publication. Existing opt-out-able development activation can retarget Loaf's user-local launcher pointer after a successful build; it never replaces an unrelated PATH entry. That developer facility is separate from harness content installation. Use `LOAF_DEV_LINK=0` for isolated builds that must leave the user's runtime selection untouched.
+
+## Implementation References
+
+- [Public command entrypoint and tests](../../cmd/loaf/) and [Go command implementation](../../internal/cli/) carry the native runtime.
+- [Build verification workflow](../../.github/workflows/build.yml) checks tracked generated drift; [Skill Portability](skill-portability.md) owns common content and target adaptation.
+- [Release tooling](../../internal/devtool/) owns archive construction, tag classification, provenance injection, and artifact checks.
+- [Tracker-native release method](../../vnext/content/skills/release/SKILL.md) owns release operation; the [strategy](../STRATEGY.md) names unresolved delivery judgments without making them shipped behavior.

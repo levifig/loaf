@@ -1,6 +1,6 @@
 # Grilling Protocol
 
-Shared interview-protocol template for skills that need to grill a user (or themselves) before producing an artifact. Distributed by `targets.yaml` to skills that conduct relentless interviews — currently `architecture` and `refactor-deepen`. `shape` is intentionally **not** a consumer (see deferral rationale in `20260501-231923-shape-glossary-evolution-deferred`).
+Shared interview-protocol template for skills that need to grill a user (or themselves) before producing an artifact. Distributed by `targets.yaml` to `refactor-deepen`. Architecture uses targeted clarification instead: it must respect settled choices and delegated judgment rather than imposing this protocol. `shape` is intentionally **not** a consumer (see deferral rationale in `20260501-231923-shape-glossary-evolution-deferred`).
 
 ## Contents
 - The Four Mechanics

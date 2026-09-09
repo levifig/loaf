@@ -41,7 +41,7 @@ Use the [Linear skill](../../linear/SKILL.md) when implementation work needs Lin
 
 ## Diagram Consideration
 
-For multi-file or multi-service changes, consider adding architecture diagrams to the issue, a report, ADR, or implementation notes.
+For multi-file or multi-service changes, consider adding architecture diagrams to the work record, a report, the owning architecture topic, or implementation notes. Follow the architecture skill for durable architectural guidance.
 
 ### When to Create Diagrams
 
@@ -60,7 +60,7 @@ Ask yourself:
 2. Is there a data flow that needs to be understood?
 3. Would a visual help communicate the approach?
 
-If yes to any, capture the diagram in a durable artifact such as a report, ADR, or implementation note, and log the reference with `loaf journal log`.
+If yes to any, capture the diagram in the appropriate owning topic, report, or implementation note, and log the reference with `loaf journal log`.
 
 ### Diagram Template
 

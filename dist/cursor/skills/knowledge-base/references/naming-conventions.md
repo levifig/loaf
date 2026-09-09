@@ -12,15 +12,14 @@ docs/
 │   ├── build-system.md
 │   ├── thermal-physics.md
 │   └── knowledge-management-design.md
-└── decisions/          # Architecture Decision Records (immutable)
-    ├── ADR-001-some-decision.md
-    └── ADR-004-knowledge-naming-convention.md
+└── architecture/       # Current architecture and rationale
+    ├── authority-boundaries.md
+    └── persistence.md
 ```
 
 - `docs/knowledge/` for domain knowledge files
-- `docs/decisions/` for ADRs
-- These directory names are deliberate: `knowledge` and `decisions` are
-  unambiguous, similar in length, and scan well together
+- Architecture homes and topic naming follow the architecture skill; do not apply the knowledge-file lifecycle or schema to them
+- Existing ADR locations and references remain valid until an explicitly authorized migration
 
 ## Filename Rules
 
@@ -52,7 +51,6 @@ The abbreviation `kb` is for typing (CLI commands).
 When indexed by QMD:
 
 - `{repo-folder}-knowledge` for knowledge files
-- `{repo-folder}-decisions` for ADRs
+- Preserve existing architecture or legacy ADR collection names unless their migration is requested
 
-Example: a repo in `~/Code/gridsight-core-gds/` produces collections
-`gridsight-core-gds-knowledge` and `gridsight-core-gds-decisions`.
+Example: a repo in `~/Code/gridsight-core-gds/` uses `gridsight-core-gds-knowledge` for its knowledge files. Changing documentation conventions does not itself authorize reconfiguring search collections.

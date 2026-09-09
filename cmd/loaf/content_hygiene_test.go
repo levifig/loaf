@@ -130,18 +130,44 @@ func TestSkillContentHygieneMarkdownStructure(t *testing.T) {
 	}
 }
 
-func TestDocumentationStandardsDoesNotDuplicateADRTemplate(t *testing.T) {
+func TestArchitectureResourceOwnership(t *testing.T) {
 	root := repoRoot(t)
-	rel := filepath.FromSlash("content/skills/documentation-standards/references/documentation.md")
-	body := readTextFile(t, filepath.Join(root, rel))
-	for _, forbidden := range []string{"### ADR Template", "# ADR-XXX: Title"} {
-		if strings.Contains(body, forbidden) {
-			t.Fatalf("%s still publishes duplicate ADR authority %q", filepath.ToSlash(rel), forbidden)
-		}
+	links := regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
+	for _, tc := range []struct {
+		source string
+		target string
+	}{
+		{"content/skills/documentation-standards/references/documentation.md", "content/skills/architecture/SKILL.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/templates/architecture-topic.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/templates/legacy-adr.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/references/auditing-and-migration.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/references/legacy-adrs.md"},
+	} {
+		t.Run(tc.target, func(t *testing.T) {
+			source := filepath.Join(root, filepath.FromSlash(tc.source))
+			target := filepath.Join(root, filepath.FromSlash(tc.target))
+			info, err := os.Stat(target)
+			if err != nil {
+				t.Fatalf("architecture resource %s: %v", tc.target, err)
+			}
+			if !info.Mode().IsRegular() {
+				t.Fatalf("architecture resource %s is not a regular file", tc.target)
+			}
+			for _, link := range links.FindAllStringSubmatch(readTextFile(t, source), -1) {
+				if filepath.Join(filepath.Dir(source), filepath.FromSlash(link[1])) == target {
+					return
+				}
+			}
+			t.Fatalf("%s has no resolving link to %s", tc.source, tc.target)
+		})
 	}
-	for _, required := range []string{"architecture", "templates/adr.md"} {
-		if !strings.Contains(body, required) {
-			t.Fatalf("%s missing ADR authority pointer %q", filepath.ToSlash(rel), required)
+	for _, retired := range []string{
+		"content/templates/adr.md",
+		"content/skills/reflect/templates/adr.md",
+		"content/skills/documentation-standards/templates/adr.md",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(retired))); !os.IsNotExist(err) {
+			t.Errorf("obsolete duplicate architecture resource %s: stat = %v, want absent", retired, err)
 		}
 	}
 }
@@ -287,12 +313,14 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"Idea, Spec, Tasks, Code, Learnings",
 				"pipeline's three-artifact model",
 				"A pipeline that prevents scope creep",
+				"## vNext Direction",
+				"`/shape` turns a brief into a bounded Change",
 			},
 			required: []string{
-				"The Loaf Flow runs pitch → shape → implement → ship → release, at two scales.",
-				"`/shape` turns a brief into a bounded Change",
-				"Change artifacts and compatible task records keep intent and execution inspectable",
-				"Changes define the intended outcome, boundaries, and proof before implementation",
+				"The Loaf Flow is pitch → shape → implement → ship → release.",
+				"The selected native tracker owns shared work identity",
+				"Loaf does not proxy provider traffic",
+				"Scratchpad is deferred",
 			},
 		},
 		{
@@ -303,13 +331,14 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"1. **Journal continuity** (proven: SPEC-056",
 				"4. **Agent routing enforcement** (next: SPEC-022)",
 				"## What We Do Not Know Yet",
+				"## vNext Reset",
 			},
 			required: []string{
-				"## Proven Principles",
-				"**Continuity belongs to the project journal, not a session lifecycle.**",
-				"**Loaf Flow completeness.**",
-				"Existing spec and task records remain supported compatibility surfaces",
-				"## Open Questions",
+				"## Strategic Commitments",
+				"### Private continuity without session machinery",
+				"## Delivery Sequence",
+				"## Open Decisions",
+				"Historical local issues, tasks, Changes, release cohorts, and receipts are migration or compatibility inputs",
 			},
 		},
 		{
@@ -321,13 +350,14 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"/shape → SPEC file",
 				"## Journal Model (SPEC-056)",
 				"One concern per task.",
+				"Loaf uses Change artifacts for new bounded work.",
 			},
 			required: []string{
-				"# Work Records",
-				"Loaf uses Change artifacts for new bounded work.",
-				"## Current Workflow",
-				"Primary bounded-work contract for new work",
-				"These identifiers document provenance, not current workflow instructions.",
+				"# Work Records and Compatibility",
+				"## Current Shared Work",
+				"New shared work lives only in the selected native tracker.",
+				"These surfaces preserve access to existing data",
+				"Migration never introduces background push/pull",
 			},
 		},
 		{
@@ -337,13 +367,16 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"The transition shape is a Go front controller",
 				"### Mode-Aware Skills (Linear-Native Mode, ADR-011)",
 				"The project journal is the **only** session-related structure (SPEC-056).",
-			},
-			required: []string{
-				"### Native Stateful Runtime (ADR-014)",
-				"ADR and SPEC identifiers cited in this document serve only as decision and work provenance.",
-				"### Tracker-Native Work Records",
 				"## Change-First Execution Model",
 				"New bounded work uses a Change as its primary contract.",
+			},
+			required: []string{
+				"## Authority Model",
+				"## Shipped and Pending Boundaries",
+				"## Loaf Flow",
+				"## Compatibility Names",
+				"entry point to owning architecture topics",
+				"agreement is not proof of public or complete implementation",
 			},
 		},
 		{

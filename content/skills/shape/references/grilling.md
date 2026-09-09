@@ -2,7 +2,7 @@
 
 The interview technique for `[KU]` entries — known unknowns precise enough to phrase as a question. Imported from the reviewed `grill-me` / `grill-with-docs` pattern, sharpened with architectural-impact ordering.
 
-This is a distinct, shape-specific technique — not the shared `templates/grilling.md` used by `architecture` and `refactor-deepen`. That template's glossary-mutation duty doesn't fit shape's ambiguity-resolving step (see the rationale it documents); shape's grilling stays scoped to fog entries and never writes to the domain glossary.
+This is a distinct, shape-specific technique — not the shared `templates/grilling.md` used by `refactor-deepen`. That template's glossary-mutation duty doesn't fit shape's ambiguity-resolving step (see the rationale it documents); shape's grilling stays scoped to fog entries and never writes to the domain glossary. Architecture uses targeted clarification and does not import either grilling protocol.
 
 ## The Mechanic
 

@@ -24,7 +24,7 @@ project-scoped log, "cross-session" reference is just querying the journal.
 ### Skip Referencing When
 
 - Starting genuinely new, unrelated work
-- The decision already lives in an ADR (reference the ADR directly)
+- The decision already lives in a current architecture topic or other canonical document (read and reference that home directly)
 - Context would create more noise than value
 - The decision was superseded or invalidated
 
@@ -38,9 +38,7 @@ loaf journal show <entry-id>
 loaf journal recent --branch <related-branch>
 ```
 
-Durable decisions should already be promoted to ADRs, spec changelogs, or
-reports — prefer those canonical homes over re-deriving from raw entries. The
-journal is the index; the artifact is the authority.
+Prefer the current owning architecture topic or other canonical document over re-deriving decisions from raw journal entries. The architecture skill owns placement and revision rules. A historical report or ADR can explain provenance without remaining the current authority.
 
 ## What to Import
 
@@ -48,7 +46,7 @@ Import the distilled outcome, not the process. A one-line note in the current
 conversation is usually enough:
 
 ```bash
-loaf journal log "discover(context): reusing token-rotation decision from ADR-007 (15-min window)"
+loaf journal log "discover(context): reusing the current token-rotation policy from docs/architecture/authentication.md"
 ```
 
 Import a broader context summary only when the problem space is complex, the
@@ -63,15 +61,14 @@ If a prior decision conflicts with the current approach:
    - Different context? Proceed with the new approach.
    - Same context? Understand why the original decision was made.
 2. Log the change if deviating; convene a council if uncertainty remains.
-3. Update the ADR if an architectural decision changes, marking the old one
-   superseded.
+3. Follow the architecture skill to reconcile the owning topic and affected surfaces within the authorized scope; do not automatically create or supersede an ADR.
 
 ## Anti-Patterns
 
 | Don't | Do Instead |
 |-------|------------|
-| Re-derive decisions from raw entries | Read the ADR/spec/report the journal points to |
-| Paste large prior context into the journal | Reference the artifact by stable ID |
+| Re-derive decisions from raw entries | Read the current owning document the journal points to |
+| Paste large prior context into the journal | Reference the document path or stable identifier |
 | Reference without reading | Review imported content for current relevance |
 | Import stale or superseded decisions | Verify the decision still holds |
 | Over-import | Bring in only what the current work needs |

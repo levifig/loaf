@@ -1,6 +1,6 @@
 # Flow Semantics
 
-The vNext Loaf Flow is `pitch → shape → implement → ship → release`. Triage moves private captures onto tracker Backlog and disposes existing native candidates. Orchestration coordinates bounded execution without acquiring work authority.
+The Loaf Flow is `pitch → shape → implement → ship → release`. Triage moves private captures onto tracker Backlog and disposes existing native candidates. Orchestration coordinates bounded execution without acquiring work authority.
 
 Loaf optimizes for coherent outcomes and reliable continuation across people, agents, sessions, and tools. Preserve intent in shared, durable context without turning every idea into a commitment. Before execution, resolve the uncertainties that materially determine value and scope, then give the executor enough context and autonomy to deliver a small, end-to-end useful result. Pull work deliberately, limit concurrent commitments, and judge progress by working outcomes and evidence rather than activity or ticket counts. When discoveries invalidate the direction, reconsider it instead of extending execution by default. The issue tracker is the shared memory and coordination surface — not a transcript dump, and not a command queue merely because an item exists.
 
