@@ -1,34 +1,12 @@
 # Architecture Decision Records
 
-Immutable records of significant architectural decisions.
+Start with the [architecture overview](../ARCHITECTURE.md). Living topics own the current system model; the records below preserve two narrow choices whose original circumstances and alternatives remain useful across later implementation changes.
 
-| ADR | Title | Status | Date |
-|-----|-------|--------|------|
-| [ADR-001](ADR-001-agent-skills-standard.md) | Agent Skills Standard | Accepted | 2025-12-01 |
-| [ADR-002](ADR-002-multi-target-build.md) | Multi-Target Build System | Accepted | 2025-12-01 |
-| [ADR-003](ADR-003-qmd-as-retrieval-backend.md) | QMD as Retrieval Backend | Proposed | 2026-03-14 |
-| [ADR-004](ADR-004-knowledge-naming-convention.md) | Knowledge Naming Convention | Deprecated | 2026-03-14 |
-| [ADR-005](ADR-005-loaf-cli-evolution.md) | Loaf CLI Evolution | Proposed | 2026-03-14 |
-| [ADR-006](ADR-006-agent-creates-human-curates.md) | Agent-Creates, Human-Curates Model | Deprecated | 2026-03-14 |
-| [ADR-007](ADR-007-project-config-location.md) | Project Config in .agents/loaf.json | Proposed | 2026-03-14 |
-| [ADR-008](ADR-008-serena-memory-deprecation.md) | Deprecate Serena Memory for Knowledge | Proposed | 2026-03-14 |
-| [ADR-009](ADR-009-sparks-convention.md) | Sparks Convention in Brainstorm Documents | Deprecated | 2026-03-14 |
-| [ADR-010](ADR-010-agents-md-consolidation.md) | Consolidate Prompt Overlay Around AGENTS.md | Superseded | 2026-04-17 |
-| [ADR-011](ADR-011-linear-native-mode.md) | Linear-Native Mode — Deliberation vs Execution Split | Accepted | 2026-04-22 |
-| [ADR-012](ADR-012-ci-verify-only-build-artifacts.md) | CI as Verifier, Not Fixer (Build Artifacts) | Accepted | 2026-04-30 |
-| [ADR-013](ADR-013-agentic-state-storage-model.md) | Agentic State Is Project-Scoped, Not Branch-Scoped | Accepted | 2026-05-19 |
-| [ADR-014](ADR-014-go-for-stateful-runtime.md) | Go for Loaf Stateful Runtime | Accepted | 2026-05-28 |
-| [ADR-015](ADR-015-portable-launcher-during-go-port.md) | Portable Launcher During Go Port | Accepted | 2026-05-29 |
-| [ADR-016](ADR-016-artifact-storage-trichotomy.md) | Artifact Storage Trichotomy — Nouns in SQLite, Verbs in Git, Markdown is a Render | Accepted | 2026-06-24 |
-| [ADR-017](ADR-017-ephemeral-agent-markdown-cutover.md) | Ephemeral Agent Markdown Cutover | Accepted | 2026-06-25 |
-| [ADR-018](ADR-018-global-agents-install-convention.md) | Global Agents Install Convention | Accepted | 2026-06-25 |
-| [ADR-019](ADR-019-journal-first-session-model.md) | Journal-first: the project journal replaces the session entity | Accepted | 2026-07-04 |
-| [ADR-020](ADR-020-root-agents-md-canonical.md) | Root AGENTS.md as the Canonical Project Instruction File | Accepted | 2026-07-15 |
-| [ADR-021](ADR-021-markdown-reimport-authority.md) | Markdown re-import authority — fingerprint reclaim, insert-only status, snapshot simulation | Accepted | 2026-07-24 |
-| [ADR-022](ADR-022-change-anatomy-and-release-cohorts.md) | Change anatomy — role-named narrative, task-file state, and release cohorts via target_release | Deprecated | 2026-07-28 |
-| [ADR-023](ADR-023-execution-provenance-and-cohort-receipts.md) | Execution provenance and cohort receipts — git as the witness, verify as the only runner | Deprecated | 2026-07-28 |
-| [ADR-029](ADR-029-fact-envelope-sync-contract.md) | Fact envelope as the grow-only sync contract | Accepted | 2026-08-26 |
-| [ADR-030](ADR-030-vnext-continuity-persistence.md) | vNext continuity persists as SQLite-backed typed facts | Accepted | 2026-08-29 |
-| [ADR-031](ADR-031-vnext-private-sync.md) | vNext private sync uses signed E2E fact envelopes and an opaque relay | Accepted | 2026-08-29 |
+| Decision | Why Keep a Separate Record | Owning Topic |
+|----------|----------------------------|--------------|
+| [Use Go for the Loaf Runtime](ADR-014-go-for-stateful-runtime.md) | Preserves the runtime-language commitment and the TypeScript/Rust tradeoffs separately from delivery mechanics | [Runtime and Delivery](../architecture/runtime-and-delivery.md) |
+| [CI Verifies Source Artifacts Instead of Repairing Branches](ADR-012-ci-verify-only-build-artifacts.md) | Preserves the branch-protection failure and rejected auto-repair approaches across changing publication paths | [Runtime and Delivery](../architecture/runtime-and-delivery.md#reviewed-source-and-release-evidence) |
 
-See [../knowledge/](../knowledge/) for domain knowledge files.
+New standalone ADRs are rare, deliberately selected records of one consequential choice, not a catalogue of subsystems or routine changes. Acceptance records agreed direction, not proof of implementation.
+
+Migrated and retired records have been removed after preserving their useful content in topics or owning guidance. Their original text and prior applicability remain in Git history; no redirect or tombstone catalogue is maintained.

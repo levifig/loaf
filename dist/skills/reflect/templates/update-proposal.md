@@ -1,9 +1,9 @@
-# Strategic Document Update Proposal Template
+# Reflection Update Proposal Template
 
-Use this structure for each document that needs updating after reflection.
+Use these prompts for a justified update to an existing strategic document or architecture topic. The response is the default home for proposals; do not create a proposal file or ADR automatically. Architecture owns exceptional ADR selection and format. If no durable change is warranted, explain that instead of filling this template.
 
 ```markdown
-## Proposed Update: [DOCUMENT].md
+## Proposed Update: [Actual owning document path]
 
 ### Section: [Section Name]
 
@@ -14,9 +14,12 @@ Use this structure for each document that needs updating after reflection.
 > [New text]
 
 **Evidence:**
-- [What we learned that justifies this]
-- [Reference to spec/journal entry]
+- [Observed result and supporting code/test, native tracker record, journal entry, or commit]
+- [Inferred lesson, clearly distinguished from the observation]
+
+**Decision boundary:**
+- [Evidence correction, proposed model change, or candidate to route to Architecture? State any unresolved choice or missing approval.]
 
 **Impact:**
-- [How this affects future work]
+- [Affected surfaces, rationale to retain or link, and remaining implementation/evidence gaps]
 ```

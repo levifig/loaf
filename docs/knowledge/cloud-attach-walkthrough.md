@@ -1,5 +1,7 @@
 # Cloud and CI Attach Walkthrough
 
+> **Compatibility guide:** This walkthrough exercises the shipped synchronization surface. The accepted private-continuity protocol has pre-cutover code and tests but no public destination attach, network sync, or serve journey. See [Private Synchronization](../architecture/private-synchronization.md) and the [Private Sync Threat Model](../security/private-sync-threat-model.md).
+
 ## Contents
 
 - Overview

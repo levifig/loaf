@@ -357,7 +357,7 @@ func ensureLoafConfigDefaults(config map[string]any, now time.Time) ([]string, [
 func ensureKnowledgeConfigDefaults(knowledge map[string]any, errors *[]string) []string {
 	var updated []string
 	if value, ok := knowledge["local"]; !ok {
-		knowledge["local"] = []string{"docs/knowledge", "docs/decisions"}
+		knowledge["local"] = defaultKBDirectories()
 		updated = append(updated, "knowledge.local")
 	} else if !jsonArrayOfStrings(value) {
 		*errors = append(*errors, "knowledge.local must be an array of strings")

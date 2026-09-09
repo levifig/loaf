@@ -41,8 +41,17 @@ const SKILLS_DIR = join(process.cwd(), "content", "skills");
 
 const TEST_CASES = {
   architecture: [
-    "Create an ADR for the caching approach",
+    "Update our caching architecture topic with the current model and rationale",
     "Should this project use PostgreSQL or SQLite?",
+    "Explain which component owns shared work and why; do not edit",
+    "Audit the architecture docs against code and report drift without editing",
+    "Migrate our numbered ADR corpus into living architecture topics",
+    "We chose SQLite; update the existing persistence topic without another interview",
+    "Review which code, tests, and docs a changed architecture decision affects",
+    "Our repository explicitly requires ADRs; revise the existing caching ADR",
+    "Does keeping the relay outside the plaintext trust boundary merit one narrow ADR?",
+    "We approved a standalone ADR for choosing Go; record that choice and link the current runtime topic",
+    "We are a mature project now; should that change how often we create ADRs?",
     "Evaluate the tradeoffs for this technical decision",
   ],
   bootstrap: [
@@ -83,7 +92,7 @@ const TEST_CASES = {
     "Track hypotheses for this production bug",
   ],
   "documentation-standards": [
-    "Write an ADR for this decision",
+    "Review this architecture topic's formatting and links without evaluating its design",
     "Update the API documentation conventions",
     "Create a Mermaid diagram for this architecture doc",
   ],
@@ -176,6 +185,8 @@ const TEST_CASES = {
     "What did we learn from shipping this?",
     "Integrate learnings from the last sprint",
     "Update our practices based on this completed work",
+    "Reflect on the shipped caching change and propose topic updates only if the evidence warrants them",
+    "What did our dogfood run actually show, and which conclusions are still only inferences?",
   ],
   release: [
     "Cut a release from main",
@@ -326,13 +337,37 @@ const CONFLICT_PROBES = [
     group: "architecture-shape",
     choices: ["architecture", "shape"],
     expected: "architecture",
-    prompt: "Record an ADR for the SQLite versus markdown storage decision",
+    prompt: "Update the current persistence architecture topic with why SQLite was chosen over markdown",
   },
   {
     group: "architecture-shape",
     choices: ["architecture", "shape"],
     expected: "shape",
     prompt: "Turn this rough storage idea into a bounded Change with risks and scope",
+  },
+  {
+    group: "architecture-documentation-standards",
+    choices: ["architecture", "documentation-standards"],
+    expected: "architecture",
+    prompt: "Consolidate these old ADRs into living architecture topics without losing their rationale",
+  },
+  {
+    group: "architecture-knowledge-base",
+    choices: ["architecture", "knowledge-base"],
+    expected: "architecture",
+    prompt: "Where should we maintain the current storage model, its invariants, and rejected alternatives?",
+  },
+  {
+    group: "architecture-reflect",
+    choices: ["architecture", "reflect"],
+    expected: "reflect",
+    prompt: "What did the shipped operator journey teach us, and which strategic documents need updating?",
+  },
+  {
+    group: "architecture-reflect",
+    choices: ["architecture", "reflect"],
+    expected: "architecture",
+    prompt: "Evaluate whether our costly runtime commitment deserves a separate ADR rather than only topic rationale",
   },
   {
     group: "idea-shape",
@@ -398,7 +433,7 @@ const CONFLICT_PROBES = [
     group: "foundations-git-workflow-documentation-standards",
     choices: ["foundations", "git-workflow", "documentation-standards"],
     expected: "documentation-standards",
-    prompt: "Update the ADR and API documentation style guide for this change",
+    prompt: "Update the architecture and API documentation formatting style guide for this change",
   },
 ];
 

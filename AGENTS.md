@@ -249,7 +249,7 @@ description: >-
 
 ### Templates
 
-Artifact format templates (session renders, ADRs, journal entries) live in `templates/` directories. SKILL.md references them with links instead of embedding inline.
+Artifact format templates (architecture topics, journal entries) live in `templates/` directories. SKILL.md references them with links instead of embedding inline. The architecture skill owns topic and exceptional decision-record templates, plus the legacy template for repositories that retain Loaf's historical ADR convention.
 
 **Skill-specific templates:** `content/skills/{name}/templates/` — templates unique to one skill.
 
@@ -259,7 +259,7 @@ Artifact format templates (session renders, ADRs, journal entries) live in `temp
 # targets.yaml
 shared-templates:
   journal.md: [implement, orchestration, housekeeping, bootstrap]
-  adr.md: [architecture, reflect]
+  grilling.md: [refactor-deepen]
 ```
 
 **Reference pattern in SKILL.md:**

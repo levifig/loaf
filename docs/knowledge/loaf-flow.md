@@ -16,7 +16,7 @@ consumers:
   - implementer
   - reviewer
   - researcher
-last_reviewed: '2026-08-31'
+last_reviewed: '2026-09-05'
 ---
 
 # The Loaf Flow
@@ -41,13 +41,13 @@ pitch → shape → implement → ship → release
 
 | Stage | Reads | Produces |
 |-------|-------|----------|
-| **pitch** | Human context and relevant live tracker context | A problem narrative; no shared work record |
-| **shape** | Problem narrative and current native tracker state | A bounded work contract on one canonical native record |
-| **implement** | Live native contract and repository state | Code and observed verification evidence |
+| **pitch** | Human context and relevant live tracker context | A problem narrative; may fill an existing intent record |
+| **shape** | Problem narrative and current native tracker state | A bounded work contract; Todo only when the human selects the work |
+| **implement** | Live selected native contract and repository state | Code and observed verification evidence; bare invocation only reports the unblocked Todo frontier |
 | **ship** | Live contract, candidate diff, and evidence | A quality verdict and verified native transition when authorized |
 | **release** | Already-landed work, Git history, and live native records | A verified repository-native release outcome |
 
-Triage decides which existing native candidates advance, defer, close, or return to discovery. Orchestration coordinates bounded execution against the same live contract. Neither owns another queue or work unit.
+Triage moves private captures to Backlog and decides which existing native candidates advance, defer, close, or return to discovery. Backlog preserves public intent without authorizing execution; Todo is shaped and selected. A richly written record is not automatically selected, and implement never infers a work choice from the branch. Orchestration coordinates bounded execution against the same live contract. Neither owns another queue or work unit.
 
 ## Authority Boundary
 
@@ -72,10 +72,10 @@ Breadth may shrink; integrity may not. Foundation work stays beside the immediat
 
 | Scale | Pitch output | Shape or bootstrap action |
 |-------|--------------|---------------------------|
-| Existing project and one direction | Ephemeral problem narrative | Shape creates or updates one canonical native tracker record and verifies readback |
+| Existing project and one direction | Problem narrative, optionally on an existing intent record | Triage moves intent to Backlog; shape defines the canonical work contract and verifies readback; selection is explicit |
 | New project | `docs/BRIEF.md` as a frozen intake snapshot | Bootstrap extracts operating documents and offers user-confirmed native backlog records for independently rideable concepts |
 
-At either scale, pitch remains problem-space discovery. It can name the first useful journey but does not design the entry point, implementation, proof, or decomposition. Shape owns those decisions and writes them once to the tracker.
+At either scale, pitch remains problem-space discovery. It can retain a possible solution as a hypothesis without selecting it for execution. Shape bounds the entry point, implementation, proof, and decomposition and writes the agreed definition once to the tracker.
 
 ## Problem-space vs solution-space
 
@@ -87,15 +87,15 @@ At either scale, pitch remains problem-space discovery. It can name the first us
 
 ## Supporting Techniques and Continuity
 
-Explore and brainstorm are agent techniques for uncertainty and divergence; they do not mint shared work. Sparks, ideas, journal entries, wraps, handoffs, and derived context remain private Loaf continuity. When a captured direction becomes shared work, pitch or shape routes it once into the selected tracker through the provider skill.
+Explore and brainstorm are agent techniques for uncertainty and divergence; they do not mint shared work. Sparks, ideas, journal entries, wraps, handoffs, and derived context remain private Loaf continuity. Triage owns moving captures to tracker Backlog through the provider skill; an explicit filing request during pitch performs that same path. Moving intent to Backlog does not authorize execution.
 
-If the configured tracker connection or a required native capability is unavailable, tracker-mutating Flow steps stop clearly. They never fall back to a local issue authority. Scratchpad is deferred from the immediate vNext Flow and is not an execution or continuity dependency.
+If the configured tracker connection or a required native capability is unavailable, tracker-mutating Flow steps stop clearly. They never fall back to a local issue authority. Scratchpad is deferred from the current Flow and is not an execution or continuity dependency.
 
 ## Operating links
 
 | Topic | Where |
 |-------|--------|
-| vNext ceremony and continuity semantics | [Flow semantics](../../vnext/content/skills/loaf-reference/references/flow-semantics.md) |
+| Current ceremony and continuity semantics | [Flow semantics](../../vnext/content/skills/loaf-reference/references/flow-semantics.md) |
 | Work and service authority | [Authority model](../../vnext/content/skills/loaf-reference/references/authority-model.md) |
 | Stable provider behavior | [Project management](../../vnext/content/skills/project-management/SKILL.md) |
 | Contributor provider boundary | [Provider modules](../../vnext/content/skills/project-management/references/provider-modules.md) |

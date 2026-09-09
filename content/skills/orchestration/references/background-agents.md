@@ -72,7 +72,7 @@ Track background work with durable references:
 1. Log the spawn with `loaf journal log "todo(background): started <id> for <task>"`.
 2. Ask the background agent to write a report under `.agents/reports/`.
 3. When complete, log `discover(background): <id> wrote <report>`.
-4. Process findings into issues, ADRs, or report verdicts as appropriate.
+4. Process findings into native work or report verdicts as appropriate; use the architecture skill to integrate durable architectural findings into their owning topics.
 
 Use a stable ID such as `bg-YYYYMMDD-HHMMSS-description` in the prompt and journal entries.
 

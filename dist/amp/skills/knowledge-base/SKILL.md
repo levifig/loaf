@@ -4,8 +4,8 @@ description: >-
   Provides guidance for creating, updating, and reviewing project knowledge
   files. Covers frontmatter schema, naming conventions, staleness detection via
   covers: field, and the review workflow. Not for retrieval or search (use QMD
-  directly), architectural decisions (use ADRs), or agent instructions (use
-  AGENTS.md).
+  directly), architectural models or rationale (use architecture), or agent
+  instructions (use AGENTS.md).
 version: 0.5.0
 ---
 
@@ -30,18 +30,18 @@ domain knowledge that lives in `docs/knowledge/` and persists across sessions.
 - Use kebab-case filenames in `docs/knowledge/`
 - Add `covers:` globs when the knowledge maps to specific code paths
 - Run `loaf kb validate` before committing new knowledge files
-- Mark files reviewed with `loaf kb review` after updating
+- Mark files reviewed with `loaf kb review` only after checking their substantive content against current evidence; a routine edit alone does not justify a new review date
 
 ### Never
 - Duplicate code documentation in knowledge files
 - Use date prefixes on knowledge filenames (unlike sessions or ideas)
 - Use overly broad `covers:` globs that trigger constant staleness alerts
 - Skip the `last_reviewed` field -- it is required for the lifecycle to work
-- Store knowledge files outside `docs/knowledge/` (ADRs go in `docs/decisions/`)
+- Store knowledge files outside `docs/knowledge/`; architecture topics use the architecture skill's own home and convention, not this skill's knowledge-file schema
 
 ## Verification
 
-- Run `loaf kb validate` to confirm frontmatter is valid (required fields, correct types, valid globs)
+- Run `loaf kb validate` to check knowledge metadata and basic architecture document structure; resolve reported read failures before treating validation as complete
 - Run `loaf kb check` to confirm no covered code paths have changed since last review
 - Verify `covers:` globs are precise enough to avoid false-positive staleness alerts
 
@@ -50,8 +50,8 @@ domain knowledge that lives in `docs/knowledge/` and persists across sessions.
 | Surface | Contains | Decision Test |
 |---------|----------|---------------|
 | **Code** (docstrings, types) | What the code does | Is it self-documenting? |
-| **Knowledge files** | Domain rules, cross-cutting context, roadmap | Requires context beyond the code? |
-| **ADRs** | Why we chose this approach | Is it an architectural decision? |
+| **Knowledge files** | Domain rules and cross-cutting context | Requires context beyond the code? |
+| **Architecture topics** | Current system model and why it has this shape | Does it describe architecture or its rationale? Follow the architecture skill |
 | **AGENTS.md** | Agent instructions, conventions | Is it about how agents should behave? |
 | **MEMORY.md** | User preferences, session pointers | Is it personal or ephemeral? |
 
@@ -78,12 +78,12 @@ Create a knowledge file when information:
    the codebase, not localized to one function
 3. **Would be lost between sessions** -- insights that an agent needs repeatedly but
    cannot derive from code alone
-4. **Serves as extended agent memory** -- roadmap context, implementation plans,
-   strategic direction that informs decisions
+4. **Supplies durable domain context** -- rules and operational knowledge that inform decisions across conversations
 
 Do NOT create knowledge files for:
 - Self-documenting code (types, docstrings, comments are sufficient)
-- One-off architectural decisions (write an ADR instead)
+- Architectural models or their rationale (route to the architecture skill and existing owning topic)
+- Shared work scope, implementation sequencing, completion criteria, or status (use the canonical native tracker); strategic bets belong in strategy
 - Agent behavior instructions (put those in AGENTS.md)
 - User preferences or session pointers (those belong in MEMORY.md)
 
@@ -146,8 +146,7 @@ Shows knowledge files where covered code paths have changed since `last_reviewed
 loaf kb validate
 ```
 
-Checks all knowledge files for valid frontmatter: required fields present,
-correct types, valid glob patterns.
+Checks knowledge files for required metadata and dates, with warnings for unmatched coverage globs and missing references. Architecture topics, the overview, and retained decisions follow their own convention: this command checks only a nonempty body and closed frontmatter when present, not architectural correctness or a universal ADR schema. Read failures appear in validation results and fail the command; absent default document directories are allowed.
 
 ### Review a File
 
@@ -155,8 +154,7 @@ correct types, valid glob patterns.
 loaf kb review <file>
 ```
 
-After reading and updating a knowledge file, mark it as reviewed. This updates
-the `last_reviewed` date to today.
+After substantively verifying a knowledge file, mark it as reviewed. This updates `last_reviewed` to today. Architecture documents are excluded, including aliases that resolve to an architecture path; their maintenance belongs to Architecture. Do not bump review dates merely to silence stale warnings.
 
 ### Overview
 
@@ -164,5 +162,4 @@ the `last_reviewed` date to today.
 loaf kb status
 ```
 
-Summary of all knowledge files: total count, stale count, files missing
-`covers:`, last review dates.
+Summary of discovered knowledge and architecture documents. The total includes architecture topics, the overview, and retained decisions; coverage counts, staleness, and review age apply only to knowledge files. `loaf kb check` likewise excludes architecture documents.

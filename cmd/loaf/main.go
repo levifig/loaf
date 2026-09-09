@@ -63,7 +63,7 @@ func readBuildInfo() *debug.BuildInfo {
 }
 
 // devBuildIdentity reads the source commit and working-tree state that
-// `go build -buildvcs=true` stamps into the binary (build-go.mjs passes the
+// `go build -buildvcs=true` stamps into the binary (loafdev build-go passes the
 // flag; go.mod pins a toolchain that stamps linked worktrees). The identity is
 // mechanical: it describes the bytes that were compiled, so it cannot drift
 // from them the way a commit recorded in a separate file could. Release builds

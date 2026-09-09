@@ -43,7 +43,7 @@ type DevLinkOptions struct {
 }
 
 // RefreshDevBuildLink makes the last successful dev build the active CLI
-// (ADR-026): it retargets $XDG_DATA_HOME/loaf/current-dev-launcher at the
+// (docs/architecture/runtime-and-delivery.md): it retargets $XDG_DATA_HOME/loaf/current-dev-launcher at the
 // checkout's bin/loaf and creates ~/.local/bin/loaf only when that name is
 // absent, as a symlink to the pointer. A real file, directory, or any other
 // symlink at the PATH name is never replaced, and failures warn rather than

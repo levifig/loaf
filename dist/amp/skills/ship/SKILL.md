@@ -41,6 +41,7 @@ Evaluate the candidate against the live [work contract](templates/work-contract.
 - Dogfood and safety/integrity evidence match the contract, and learning plus remaining deferrals are reported honestly.
 - Required focused, affected, full-suite, format, lint, static-analysis, and build gates were run in proportion to risk.
 - All findings have an evidence-backed disposition and fixes were re-reviewed.
+- Affected architectural claims and implementation gaps were checked against the diff and evidence using the architecture skill's maintenance rules; a documentation update alone is not proof of delivery.
 - Any native transition matches the observed landed state and was confirmed by readback.
 
 ## Quick Reference

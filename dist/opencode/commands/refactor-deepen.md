@@ -183,8 +183,7 @@ surface adds plugin-level detection, this rule can switch to it.
 ## Verification
 
 - The project journal contains a `skill(refactor-deepen):` entry as the first action
-- `docs/knowledge/glossary.md`, `docs/decisions/ADR-*.md`, and
-  `docs/ARCHITECTURE.md` were read before the candidate list was presented
+- The glossary, architecture overview, relevant owning topics, and applicable legacy decisions were read before the candidate list was presented, using the repository's actual paths
 - Every candidate module name was checked via `loaf kb glossary check` before
   being proposed
 - Output uses the eight source terms verbatim — zero occurrences of
@@ -247,8 +246,7 @@ architecture and exploratory flows.
 
 ## Process
 
-1. **Read context.** Open `docs/knowledge/glossary.md` (via `loaf kb glossary
-   list`), `docs/decisions/ADR-*.md`, and `docs/ARCHITECTURE.md`. Read
+1. **Read context.** Read the glossary (via `loaf kb glossary list`), architecture overview, relevant owning topics, and applicable legacy decisions using the repository's actual paths. Follow the architecture skill for current authority and documentation conventions. Read
    [references/language.md](references/language.md) and
    [references/deepening.md](references/deepening.md).
 2. **Survey candidates.** Walk the target module/area. Produce a numbered list
@@ -294,6 +292,6 @@ architecture and exploratory flows.
 
 ## Related Skills
 
-- **architecture** — Stabilizes glossary terms during ADR interviews; consumes the same `grilling.md` template
+- **architecture** — Explains, audits, and records durable architecture decisions; it no longer consumes refactor-deepen's relentless interview template
 - **knowledge-base** — Owns the underlying KB and glossary CLI verbs
 - **implement** — Where generic refactors (rename, extract, restructure) belong

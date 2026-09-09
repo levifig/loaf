@@ -27,7 +27,7 @@ func TestRunnerKbStatusJSONUsesNativeKnowledgeFiles(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &summary); err != nil {
 		t.Fatalf("Unmarshal(%q) error = %v", stdout.String(), err)
 	}
-	if summary.TotalFiles != 2 || summary.FilesWithCovers != 1 || summary.FilesWithoutCovers != 1 || summary.Stale != 0 {
+	if summary.TotalFiles != 2 || summary.ArchitectureFiles != 1 || summary.FilesWithCovers != 1 || summary.FilesWithoutCovers != 0 || summary.Stale != 0 {
 		t.Fatalf("summary = %#v, want two files with one covered fresh file", summary)
 	}
 	if summary.AvgReviewAgeDays != 0 {
@@ -360,8 +360,8 @@ func TestRunnerKbInitCreatesDirsAndConfigNatively(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 		t.Fatalf("Unmarshal(%q) error = %v", stdout.String(), err)
 	}
-	if len(result.Directories) != 2 || result.Directories[0].Status != "created" || result.Directories[1].Status != "created" {
-		t.Fatalf("directories = %#v, want two created directories", result.Directories)
+	if len(result.Directories) != 3 || result.Directories[0].Status != "created" || result.Directories[1].Status != "created" || result.Directories[2].Status != "created" {
+		t.Fatalf("directories = %#v, want three created directories", result.Directories)
 	}
 	if result.Config.Path != ".agents/loaf.json" || result.Config.Status != "created" {
 		t.Fatalf("config = %#v, want created .agents/loaf.json", result.Config)
@@ -369,7 +369,7 @@ func TestRunnerKbInitCreatesDirsAndConfigNatively(t *testing.T) {
 	if result.QMD.Available || len(result.QMD.Collections) != 0 {
 		t.Fatalf("qmd = %#v, want unavailable with no collections", result.QMD)
 	}
-	for _, dir := range []string{"docs/knowledge", "docs/decisions"} {
+	for _, dir := range []string{"docs/knowledge", "docs/architecture", "docs/decisions"} {
 		if _, err := os.Stat(filepath.Join(repo, filepath.FromSlash(dir))); err != nil {
 			t.Fatalf("Stat(%s) error = %v", dir, err)
 		}
@@ -388,7 +388,7 @@ func TestRunnerKbInitCreatesDirsAndConfigNatively(t *testing.T) {
 	if err := json.Unmarshal(body, &config); err != nil {
 		t.Fatalf("Unmarshal config error = %v\n%s", err, string(body))
 	}
-	if strings.Join(config.Knowledge.Local, ",") != "docs/knowledge,docs/decisions" || config.Knowledge.StalenessThresholdDays != 30 || config.Knowledge.Imports == nil {
+	if strings.Join(config.Knowledge.Local, ",") != "docs/knowledge,docs/architecture,docs/decisions" || config.Knowledge.StalenessThresholdDays != 30 || config.Knowledge.Imports == nil {
 		t.Fatalf("config knowledge = %#v, want default KB config", config.Knowledge)
 	}
 }
@@ -449,14 +449,14 @@ func TestRunnerKbInitRegistersQMDCollectionsNatively(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 		t.Fatalf("Unmarshal(%q) error = %v", stdout.String(), err)
 	}
-	if !result.QMD.Available || len(result.QMD.Collections) != 2 {
-		t.Fatalf("qmd = %#v, want available with two collections", result.QMD)
+	if !result.QMD.Available || len(result.QMD.Collections) != 3 {
+		t.Fatalf("qmd = %#v, want available with three collections", result.QMD)
 	}
-	if result.QMD.Collections[0].Status != "exists" || result.QMD.Collections[1].Status != "registered" {
-		t.Fatalf("collections = %#v, want existing knowledge and registered decisions", result.QMD.Collections)
+	if result.QMD.Collections[0].Status != "exists" || result.QMD.Collections[1].Status != "registered" || result.QMD.Collections[2].Status != "registered" {
+		t.Fatalf("collections = %#v, want existing knowledge and registered architecture and decisions", result.QMD.Collections)
 	}
-	if len(registered) != 1 || registered[0].Collection != repoName+"-decisions" || registered[0].Path != filepath.Join(repo, "docs", "decisions") {
-		t.Fatalf("registered = %#v, want decisions collection", registered)
+	if len(registered) != 2 || registered[0].Collection != repoName+"-architecture" || registered[0].Path != filepath.Join(repo, "docs", "architecture") || registered[1].Collection != repoName+"-decisions" || registered[1].Path != filepath.Join(repo, "docs", "decisions") {
+		t.Fatalf("registered = %#v, want architecture and decisions collections", registered)
 	}
 }
 
@@ -594,7 +594,7 @@ func TestRunnerKbImportRegistersCollectionAndUpdatesConfigNatively(t *testing.T)
 	if err := json.Unmarshal(body, &config); err != nil {
 		t.Fatalf("Unmarshal config error = %v\n%s", err, string(body))
 	}
-	if strings.Join(config.Knowledge.Local, ",") != "docs/knowledge,docs/decisions" || config.Knowledge.StalenessThresholdDays != 30 {
+	if strings.Join(config.Knowledge.Local, ",") != "docs/knowledge,docs/architecture,docs/decisions" || config.Knowledge.StalenessThresholdDays != 30 {
 		t.Fatalf("knowledge defaults = %#v, want default KB config", config.Knowledge)
 	}
 	if len(config.Knowledge.Imports) != 1 || config.Knowledge.Imports[0].Name != "other" {

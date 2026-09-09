@@ -41,7 +41,7 @@ Enforcement hooks without explicit `type:` auto-dispatch as `loaf check --hook <
 | UserPromptSubmit | Every user message | No | Context injection, orchestration conventions |
 | TaskCompleted | Task marked complete | No | Journal auto-entry for task events |
 
-There is no SessionEnd or Stop journal obligation: the SessionEnd hook is absent, and no hook writes back to a session record. The general Stop-circularity caution still governs any future stateful hook; see [ARCHITECTURE.md](../ARCHITECTURE.md#hook-type-behavioral-constraints).
+There is no SessionEnd or Stop journal obligation: the SessionEnd hook is absent, and no hook writes back to a session record. The general Stop-circularity caution still governs any future stateful hook; see [Hook Type Behavioral Constraints](#hook-type-behavioral-constraints).
 
 ### Hook JSON Context
 
@@ -106,7 +106,7 @@ Instruction files live in `content/hooks/instructions/` and are rendered into ho
 
 ## Prompt Hooks
 
-Inject inline text into the model's context. Prompt hooks are binary gates — any non-empty LLM response blocks the action. Use only for validation that returns empty on success, never for advisory nudges. See [ARCHITECTURE.md](../ARCHITECTURE.md#hook-type-behavioral-constraints) for full behavioral constraints.
+Inject inline text into the model's context. Prompt hooks are binary gates — any non-empty LLM response blocks the action. Use only for validation that returns empty on success, never for advisory nudges. See [Hook Type Behavioral Constraints](#hook-type-behavioral-constraints) for the full list.
 
 | Hook | Event/Condition | Purpose |
 |------|-----------------|---------|
@@ -162,7 +162,7 @@ The former shared Bash helpers (`json-parser.sh`, `config-reader.sh`, `agent-det
 
 ## Hook Type Behavioral Constraints
 
-Hook types have hard behavioral limits. See [ARCHITECTURE.md](../ARCHITECTURE.md#hook-type-behavioral-constraints) for the full list. Key constraints:
+Hook types have hard behavioral limits. Key constraints:
 
 - **Prompt hooks** are binary gates — any non-empty LLM response blocks. Never use for advisory guidance.
 - **Agent hooks** are read-only (no Edit/Write/Bash). Max 50 turns.

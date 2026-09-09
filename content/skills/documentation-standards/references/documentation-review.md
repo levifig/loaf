@@ -2,7 +2,7 @@
 
 ## Contents
 - Quick Documentation Check
-- ADR Review
+- Architecture Presentation Review
 - API Documentation Review
 - Changelog Review
 - Quality Indicators
@@ -20,18 +20,19 @@ For every documentation change:
 [ ] No outdated information
 ```
 
-## ADR Review
+## Architecture Presentation Review
 
-Every ADR must have:
+Use the architecture skill for substantive model, rationale, applicability, drift, and migration review. For presentation:
 
 ```
-[ ] Descriptive title
-[ ] Status: Proposed/Accepted/Deprecated/Superseded
-[ ] Context: Why this decision was needed
-[ ] Decision: What was decided (uses "We will...")
-[ ] Consequences: Trade-offs and impacts
-[ ] Alternatives: At least one alternative considered
+[ ] Descriptive topic title and clear navigation
+[ ] Related subjects linked instead of duplicated
+[ ] Code and technical-reference links resolve
+[ ] Implemented behaviour and agreed pending direction are visibly distinguished
+[ ] No forced ADR metadata or headings unless explicitly required
 ```
+
+For deliberately selected ADRs, check the repository's actual template through Architecture's decision-record guidance; use its legacy guidance only for that historical convention. Do not invent alternatives to satisfy a presentation checklist.
 
 ## API Documentation Review
 

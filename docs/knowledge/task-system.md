@@ -1,137 +1,78 @@
 ---
 topics:
-  - changes
-  - tasks
-  - specs
+  - trackers
+  - compatibility
   - journal
-  - orchestration
 covers:
-  - docs/changes/**/*.md
-  - .agents/specs/**/*.md
   - internal/cli/cli.go
   - internal/state/task_*.go
-  - content/skills/pitch/**/*
-  - content/skills/breakdown/**/*
-  - content/skills/implement/**/*
-  - content/skills/orchestration/**/*
+  - docs/changes/**/*.md
+  - .agents/specs/**/*.md
+  - vnext/content/skills/project-management/**/*
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-07-30'
+last_reviewed: 2026-09-05
 ---
 
-# Work Records
+# Work Records and Compatibility
 
-Loaf uses Change artifacts for new bounded work. Existing specs and tasks remain durable compatibility records with supported CLI surfaces, while the project journal records what happened across conversations. The Change anatomy, task-packet discipline, derived states, and release cohorts are documented in [work-model.md](work-model.md); the ceremony front door and both-scale flow in [loaf-flow.md](loaf-flow.md) (rationale: ADR-022, ADR-023, ADR-025); this document covers the CLI and compatibility records around them.
+## Contents
 
-## Current Workflow
+- Current Shared Work
+- Shipped Compatibility Surfaces
+- Migration Rules
+- Project Journal
+- Cross-References
 
-```
-/pitch (problem-space brief) → /shape (contract + packets) → /implement → review → /ship → /release
-         ↓ promote capture in place via loaf change init <slug>
-  docs/changes/YYYYMMDD-slug/  (change.json + brief.md → shape.md + tasks/)
-                                      ↓
-                              loaf change check
-                                      ↓
-                               project journal
-```
+## Current Shared Work
 
-`/pitch` authors the brief (change `brief.md` via `loaf change init <slug> --brief`, or project `docs/BRIEF.md`); `/shape` consumes it and promotes capture-only folders; explore/brainstorm are agent techniques, not slash front doors. `/release` publishes already-landed work separately; changes declaring a `target_release` gate their version's stable cut (see work-model.md). The change PR is the change's whole life — one change, one PR, merged when everything is done; per-task PRs remain the exception for genuinely multi-integration changes.
+New shared work lives only in the selected native tracker. The Loaf Flow is pitch → shape → implement → ship → release. Shape creates or updates the canonical tracker work contract through the selected `project-management/v1` provider skill and a connection already exposed by the harness.
 
-## Record Types
+The tracker owns identity, definition, definition of done, out-of-scope, status, hierarchy, dependencies, assignment, and collaboration. Git owns code, tests, deliberately authored documents, promoted artifacts, and implementation history. Loaf owns Flow methods and private continuity.
 
-| Record | Location | Purpose |
-|--------|----------|---------|
-| Change | `docs/changes/YYYYMMDD-slug/` | Primary bounded-work contract for new work: `change.json` identity, `shape.md` contract, `tasks/` packets (legacy single-file `change.md` supported until the removal boundary) |
-| Task | SQLite (`loaf task show/list`) | Existing durable work items with criteria, relationships, and status |
-| Spec | `.agents/specs/SPEC-XXX-slug.md` | Existing bounded-work records retained for compatibility and deliberate conversion |
-| Journal | SQLite (`loaf journal recent/show`) | Project-scoped decisions, discoveries, commits, and execution context |
+No current workflow falls back to a local issue when a tracker is unavailable. A mutating Flow step stops with the missing capability or connection rather than creating a second authority.
 
-`loaf change check` validates Change structure and reports derived executability; `loaf change check --require-executable` requires the implementation contract to be complete. Existing `loaf spec` and `loaf task` commands continue to operate on their records, but they do not define the default artifact for newly shaped work.
+## Shipped Compatibility Surfaces
 
-## Working Rules
+The public CLI still contains local `change`, `issue`, `task`, `spec`, `plan`, `intent`, and related commands. Historical repositories may also contain:
 
-- **Bound the outcome before implementation.** State the problem, scope, rabbit holes, implementation units, verification contract, and definition of done in the Change.
-- **Keep implementation units coherent.** Use branches, commits, and pull requests as containment boundaries that can be reviewed and landed independently without inventing generic sequencing labels.
-- **Use tasks when they carry durable value.** A task should represent one concern with observable completion and explicit relationships; do not create task ceremony merely to mirror a Change section.
-- **Keep progress derived where possible.** Git, pull requests, checks, and journal entries are the evidence. Do not add mutable progress fields to Change frontmatter.
-- **Preserve compatibility records deliberately.** Existing specs and tasks remain supported until converted; do not rewrite or delete them just to make the vocabulary look current.
+- `docs/changes/YYYYMMDD-slug/` Change folders;
+- `.agents/specs/SPEC-*.md` records;
+- SQLite issue, task, plan, intent, and release rows;
+- task packets, cohorts, verification receipts, and rendered projections.
 
-## CLI Commands
+These surfaces preserve access to existing data and support deliberate migration. They are not the work authority for new shared work and must not be synchronized bidirectionally with a tracker.
 
-### `loaf change`
+Compatibility commands should be read according to their shipped `--help` and tests. Their presence does not override tracker-native guidance in the current Flow skills.
 
-| Subcommand | Purpose |
-|------------|---------|
-| `init <slug>` | Scaffold `docs/changes/<YYYYMMDD>-<slug>/` (`change.json` + `shape.md` + seeded `tasks/`). `--brief` creates capture-only (`change.json` + `brief.md`). Re-running ordinary `init` on a capture-only folder promotes in place (preserves brief and metadata, materializes `shape.md` + `tasks/`); fully materialized folders still reject as duplicates |
-| `check [path]` | Validate a Change (both layouts) and report derived executability; pass an explicit folder path when the capture is not on the current branch |
-| `check [path] --json` | Machine-readable validation used by pitch/bootstrap pre-landing guards (state + violations) |
-| `check [path] --require-executable` | Fail unless the implementation contract is structurally executable |
-| `list [--target <X.Y.Z>]` | Units/cohort projection: layout, target, derived state |
-| `tasks --json [path]` | Stable-ID task index with relations and derived completion |
-| `show [path]` | Layout, target, derived state, and PR set from squash subjects |
-| `verify [path]` | Run declared criteria; write `receipts/verify.json` (cohort members) |
-| `report new <slug> --kind <kind>` | Stamp an authored report shell under `reports/` (closed registry) |
+## Migration Rules
 
-### `loaf task`
+A migration from historical local work to the native tracker is one-time, agentic, and verified:
 
-| Subcommand | Purpose |
-|------------|---------|
-| `list` | Show task board grouped by status |
-| `list --status <status>` | Filter tasks to one status |
-| `show <id>` | Display single task details |
-| `status` | Summary counts |
-| `create` | Create new task |
-| `update <id>` | Update metadata such as status, priority, relationships, and spec linkage |
-| `archive [ids...]` | Archive completed tasks in SQLite state |
-| `refresh` | Compatibility diagnostic; no-op in SQLite-backed projects |
-| `sync` | Compatibility diagnostic; no-op in SQLite-backed projects |
+1. Resolve the exact source records and destination tracker project.
+2. Preview the proposed mapping without mutation.
+3. Preserve source bytes, stable identifiers, provenance, relationships, and status semantics needed for recovery.
+4. Create or update tracker records through the selected provider skill and harness-owned connection.
+5. Read back every material write and reconcile ambiguous or unsupported records explicitly.
+6. Record the completed cutover and stop writing the local work representation.
 
-### `loaf spec`
+Migration never introduces background push/pull, reconciliation queues, credential storage, provider mappings, or a writable local twin. The shipped Linear compatibility integration is historical behavior, not the provider-neutral current architecture.
 
-| Subcommand | Purpose |
-|------------|---------|
-| `list` | Show existing specs with status |
-| `archive [ids...]` | Move completed specs to `archive/` |
+Legacy Markdown import and database cutover mechanics retain exact-byte backups, hashes, transactional database writes, rerunnable decisions, and explicit rollback. Restoring files is a distinct operator-controlled action; it is not described as database-transactional.
 
-### `loaf journal`
+## Project Journal
 
-| Subcommand | Purpose |
-|------------|---------|
-| `log [entry]` | Append a project-scoped journal entry |
-| `recent` | Show the recent journal timeline (`--branch`, `--since-last-wrap`) |
-| `search <query>` | Full-text search across the project journal |
-| `show <id>` | Read one journal entry |
-| `context` | Emit the layered continuity digest (latest wrap, branch entries, and open tasks) |
-| `export` | Export the journal to Markdown or JSONL |
+The journal is private continuity, not shared work. Entries are project-scoped facts tagged with an opaque harness conversation correlation value. There is no session entity, lifecycle, status, open or close operation, or rotation.
 
-## Storage Provenance and Compatibility
+A wrap is an optional synthesis entry. Context is derived at read time. Linked work references may help an operator resume, but live tracker state is read from the tracker rather than mirrored into continuity.
 
-The SQLite cutover recorded by historical work identity `SPEC-045` moved ephemeral task, idea, spark, brainstorm, and draft records into the global state store. `.agents/TASKS.json` and the corresponding ephemeral Markdown directories are rollback material, not compatibility mirrors. `findAgentsDir()` remains relevant for durable `.agents/` content such as existing specs, reports, councils, handoffs, and project config.
-
-Do not recreate `.agents/TASKS.json` as an index. `loaf state restore-ephemerals <backup-id>` may restore it only when explicitly undoing the cutover, and `loaf check --hook ephemeral-provenance` detects tracked ephemeral files that return outside that rollback procedure.
-
-Stale branches may still carry deleted ephemeral files. Rebase or merge current main, keep the deletion side for `.agents/{tasks,ideas,sparks,sessions,brainstorms,drafts}/` and `.agents/TASKS.json`, then run `loaf check --hook ephemeral-provenance`. If rollback is intentional, restore and re-import through the supported state commands rather than maintaining hand-edited mirrors.
-
-The journal-first model was established by historical work identity `SPEC-056`, which superseded the session router associated with `SPEC-032`. These identifiers document provenance, not current workflow instructions.
-
-## Journal Model
-
-The project journal is the only session-related structure. There is no session entity, status, or lifecycle.
-
-- **Project-scoped events, correlated by harness id.** `journal_entries` rows carry `project_id NOT NULL` and an opaque `harness_session_id` that groups one conversation's entries. Nobody opens, closes, or transitions anything.
-- **Concurrency-safe by construction.** Conversations across branches, worktrees, or harnesses may interleave rows with different `harness_session_id` tags without a mutable router.
-- **Wrap is an optional checkpoint.** `loaf journal log "wrap(scope): …"` records synthesis worth saving; a conversation that ends without one still leaves a valid journal.
-- **Continuity is derived and ephemeral.** The SessionStart hook runs `loaf journal context --from-hook` to emit a read-time digest that is shown and discarded. Subagent invocations with `agent_id` present exit silently and write nothing.
-
-## Linear Integration
-
-Linear is an optional task backend. When `integrations.linear.enabled` is true in `.agents/loaf.json`, compatible spec/task workflows use Linear issues for execution visibility; when it is false or absent, they use local `loaf task` records. Git-canonical deliberation artifacts remain with the code rather than being re-hosted in the tracker.
+Private continuity also includes sparks, ideas, explorations, decisions, findings, and handoffs. Scratchpad remains deferred. Temporary reports are not continuity records by default.
 
 ## Cross-References
 
-- [work-model.md](work-model.md) — the Change anatomy, task packets, derived states, and release cohorts
-- [loaf-flow.md](loaf-flow.md) — pitch → shape → implement → ship → release at both scales
-- [cli-design.md](cli-design.md) — CLI design philosophy and command patterns
-- [knowledge-management-design.md](knowledge-management-design.md) — knowledge system conventions
-- [../changes/](../changes/) — retained Change contracts
+- [Shared Work Model](work-model.md)
+- [Loaf Flow](loaf-flow.md)
+- [Architecture](../ARCHITECTURE.md)
+- [Authority Boundaries](../architecture/authority-boundaries.md)
+- [Private Continuity: Journal and Resumption](../architecture/private-continuity.md#journal-and-resumption)

@@ -2,6 +2,8 @@
 
 Human-review guide for wiring unattended attach on ephemeral cloud hosts. V-tier checks cover bootstrap script markers and install layout; this document is the H-tier review surface for operator setup.
 
+> **Compatibility guide:** This is the operator path for the shipped synchronization surface. It is not the accepted destination protocol or proof that the destination network attach journey is public. See [Private Synchronization](../architecture/private-synchronization.md) and the [Private Sync Threat Model](../security/private-sync-threat-model.md).
+
 ## Contents
 
 - Prerequisites
@@ -59,4 +61,4 @@ H-tier review (not gated by `loaf issue verify`):
 - [ ] Attach refusal paths understood: identity mismatch, revoked token, gross HLC skew
 - [ ] Sync relay reachable from cloud network; TLS preferred (use `--allow-insecure-http` only in dev)
 
-Related: [cloud-attach-walkthrough.md](../knowledge/cloud-attach-walkthrough.md) (step-by-step for Cursor Cloud, Amp, and GitHub Actions CI), `internal/cli/cloud_environment_bootstrap.go`, `docs/security/substrate-e2e-threat-model.md`, ADR-029 fact envelope sync contract.
+Related: [cloud-attach-walkthrough.md](../knowledge/cloud-attach-walkthrough.md) (step-by-step for Cursor Cloud, Amp, and GitHub Actions CI), `internal/cli/cloud_environment_bootstrap.go`, and the [shipped protocol compatibility threat model](../security/substrate-e2e-threat-model.md).

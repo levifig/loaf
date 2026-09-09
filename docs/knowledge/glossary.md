@@ -2,103 +2,63 @@
 type: glossary
 topics:
   - glossary
-last_reviewed: 2026-08-10
+last_reviewed: 2026-09-05
 ---
-## Canonical Terms
 
-### Skill
+# Canonical Terms
 
-A domain-knowledge unit following the Agent Skills standard. Loaf's universal knowledge layer — distributed across all build targets without target-specific code. Skills under `content/skills/` are auto-discovered at build time; `config/hooks.yaml` registers hook instances with an owning skill, never the skill roster itself.
+## Skill
 
-_Avoid_: module, knowledge file, doc
+A unit of method or domain knowledge following the Agent Skills standard. Shared skill bodies are portable; harness-specific facts belong in labeled sections, sidecars, builders, or adapters.
 
-### Target
+## Target
 
-A build output destination: claude-code, opencode, cursor, codex, amp. Each target has its own native builder in `internal/cli/build_{target}.go`.
+A harness build destination: Claude Code, OpenCode, Cursor, Codex, or Amp. A target adapts shared authored content to a product's native packaging and capabilities.
 
-_Avoid_: platform, backend, tool
+## Sidecar
 
-### Sidecar
+A target-specific file that adds product-only metadata or configuration to a shared source without changing the common body.
 
-A target-specific YAML file that extends a SKILL.md with target-only fields (e.g., SKILL.claude-code.yaml for user-invocable, argument-hint). Merged into the build output for that target only.
+## Shared Template
 
-_Avoid_: extension, override, plugin file
+A template under `content/templates/` distributed to multiple skills through `config/targets.yaml`. Examples include the ADR and grilling templates.
 
-### Shared Template
+## Loaf Flow
 
-A markdown template at content/templates/ that is distributed to multiple skills at build time per the shared-templates registration in config/targets.yaml. Examples: session.md, adr.md, grilling.md.
+The methods pitch → shape → implement → ship → release. Loaf owns their methodology and templates. The native tracker owns shared work; Git owns implementation; ship is the quality gate; release describes already-landed work.
 
-_Avoid_: common template, global template
+## Native Tracker
 
-### Change
+The configured external collaboration system that owns shared work identity, definition, definition of done, out-of-scope, status, hierarchy, dependencies, assignment, and collaboration.
 
-The bounded-work unit: a folder under docs/changes/YYYYMMDD-slug/ holding change.json (identity), role-named narrative (shape.md required; brief/plan/design optional), tasks/, research/, and reports/. The slug is the identity; one change rides one PR (ADR-022).
+## Provider Skill
 
-_Avoid_: spec (reserved for .agents/specs/ records), plan (reserved for plan.md), CR
+A provider-specific implementation of the `project-management/v1` contract. It guides an agent using a connection already exposed and authenticated by the harness. It does not make Loaf a provider proxy or credential store.
 
-### Brief
+## Work Contract
 
-The problem-space document for a Change (`brief.md`) or project (`docs/BRIEF.md`). Authored by `/pitch` (or seeded at capture); may accrete parked problem-space concepts until shaping; freezes when `shape.md` exists; superseded by the contract; never mechanically load-bearing. Shared skeleton: problem, who has it, current alternatives, value proposition, constraints, sequencing, sources, open questions (ADR-025).
+The bounded definition of a shared work item in the native tracker: problem, intended outcome, definition of done, out-of-scope, and supported relationships. It is not a parallel local spec.
 
-_Avoid_: pitch.md, pseudo-shape, solution design
+## Rideable Increment
 
-### Pitch
+A narrow, useful, end-to-end operator journey that preserves security, determinism, recovery, and data safety. Completing a horizontal layer without a usable journey is not a rideable increment.
 
-The human-invoked problem-discovery ceremony (`/pitch`). Grills the problem register and authors a brief at change or project scale; never writes `shape.md`, never seeds `tasks/`, never auto-runs shape or bootstrap. Agents never initiate a pitch (ADR-025).
+## Private Continuity
 
-_Avoid_: explore-as-front-door, brainstorm-as-front-door, automatic pitching
+One operator's project-scoped journal entries and wraps, sparks, ideas, explorations, decisions, findings, and handoffs. It is separate from tracker work and Git artifacts. Context is derived at read time, and no session entity or lifecycle exists.
 
-### Loaf Flow
+## Report
 
-The ceremony pipeline: pitch → shape → implement → ship → release, at change scale and project scale. Pitch owns problem-space; shape owns solution-space. Explore and brainstorm sit as agent-side techniques inside the flow, not as user slash entry points. Operating account: [loaf-flow.md](loaf-flow.md) and [work-model.md](work-model.md).
+A temporary skill output persisted only when it must outlive the response. The producing skill owns its template. Housekeeping may recommend cleanup or promotion, but the user approves destructive or durable changes. A report is not a universal Loaf record type or synchronization domain.
 
-_Avoid_: mandatory ceremony for every tiny fix (pitch is optional at change scale)
+## One-Time Migration
 
-### Task Packet
+A verified transition from a supported historical representation to its current authority. It preserves required bytes and provenance, validates the destination, and provides rollback. It does not establish ongoing synchronization or dual authority.
 
-A tasks/TASK-NNN-slug.md file: a self-sufficient delegation brief with objective, scope boundaries, context pointers, checkbox steps, and verification. Numbered locally to its owning change; a task is a commit, not a PR. Committed unchecked before execution so checkbox flips in delivering commits are the evidence.
+## Promoted Artifact
 
-_Avoid_: ticket, issue, task entity
+An intentionally durable document or output committed to Git through an explicit user-approved promotion. It is no longer temporary report output.
 
-### Capture Promotion
+## Compatibility Surface
 
-`loaf change init <slug>` completing a capture-only folder in place: brief.md and change.json values preserved verbatim, shape.md and seeded tasks/ instantiated. Duplicate rejection remains for fully materialized folders (ADR-025, Decision 12 of the pitch-entrypoint change).
-
-_Avoid_: skill-side template copy, new CLI verb for promote
-
-### Release Cohort
-
-All changes declaring the same target_release. The cohort is the **target-version bucket** — derived, never declared as a graph. Cutting that version stable requires every member executed at flip grade and receipt-verified; a retarget is a reviewable diff, surfaced and never blocked.
-
-_Avoid_: milestone, train, roadmap planner
-
-### Flip Grade
-
-The gating tier of execution provenance: a commit whose diff carries a true unchecked→checked checkbox transition (same hunk, same normalized label, outside code fences) in a change's tasks/ plus a path outside docs/changes/. Path grade (task-file edit + outside path, no transition required) feeds display states only.
-
-_Avoid_: checkbox count, completion percentage
-
-### Verification Receipt
-
-receipts/verify.json — the committed cache of loaf change verify: criteria digest, verified commit, cwd, and per-criterion command, exit, output digest, and ok. Required current and all-passing for cohort members at stable finalization; the gate never runs criteria itself (ADR-023).
-
-_Avoid_: credential, attestation, proof-of-work
-
-### Derived State Ladder
-
-The display states computed from artifacts and history — captured → shaped → executable → executing → complete, plus verified for cohort members. Shared by list, show, and check; nothing stores a status anywhere. Brief-only folders derive captured regardless of brief richness.
-
-_Avoid_: workflow status, lifecycle stage, pitched-state machinery
-
-### Arc
-
-A release cohort viewed as narrative: the linked Changes that complete together into one X release. Synonym of Release Cohort (ADR-022: the cohort is the arc); a standalone unpinned Change is an arc of one.
-
-## Candidates
-
-
-## Relationships
-
-
-## Flagged ambiguities
-
+Shipped commands, files, schema labels, archive identifiers, or protocol bytes retained so existing users and data remain safe while current architecture is integrated. Compatibility does not make a retired workflow authoritative for new work.

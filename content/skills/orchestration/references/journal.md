@@ -109,7 +109,7 @@ After compaction, a branch switch, or a long gap:
 | Don't | Do Instead |
 |-------|------------|
 | Wait to log everything at the end | Log significant facts as they happen |
-| Store decisions only in chat context | Log them and promote durable ones to ADR/issue body/report/docs |
+| Store decisions only in chat context | Log them and use the architecture skill for durable architectural rationale; route other material to its owning work record or document |
 | Write a placeholder wrap out of ceremony | Wrap only when there's synthesis worth saving |
 | Treat a missing wrap as an open loop | A conversation without a wrap is complete and valid |
 | Pass a session alias to delegated agents | Nothing to pass — the harness id is automatic |

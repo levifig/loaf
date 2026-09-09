@@ -1,81 +1,54 @@
 ---
 id: ADR-014
-title: Go for Loaf stateful runtime
+title: Use Go for the Loaf Runtime
 status: Accepted
 date: 2026-05-28
+revised: 2026-09-05
 ---
 
-# ADR-014: Go for Loaf Stateful Runtime
-
-## Decision
-
-Loaf's stateful runtime and SQLite-backed operational state will be implemented in Go.
-
-The public `loaf` command should move toward a Go front controller: Go owns command dispatch and implements new stateful behavior directly, while unmigrated TypeScript commands are delegated through a compatibility bridge during migration. The bridge is transitional. It exists to avoid a big-bang rewrite, not to make TypeScript and Go equal long-term runtime peers.
-
-SPEC-040's SQLite work starts in Go. The first implementation slice introduces the Go runtime foundation, SQLite lifecycle, project identity, and `loaf state` commands before any existing command family is rewritten.
+# ADR-014: Use Go for the Loaf Runtime
 
 ## Context
 
-Loaf currently ships a TypeScript CLI bundled by `tsup` and distributed through npm/plugin artifacts. That has worked for content transformation, target builds, installers, and filesystem checks, but SPEC-040 changes the center of gravity. SQLite-backed operational state turns Loaf from a content-oriented CLI into a durable local state engine.
+Loaf's deterministic operations include persistent state, migrations, diagnostics, filesystem safety, builds, and recovery. They need a stable native runtime with a bounded dependency surface and cross-platform packaging.
 
-That shift changes the runtime criteria:
+## Decision
 
-- Dependency surface and supply-chain risk matter more because the state layer becomes trusted infrastructure.
-- Distribution should be simple for hook execution, plugin bundles, and future non-Node hosts.
-- SQLite integration needs a stable, testable, cross-platform story.
-- The CLI will increasingly own protocol work, migrations, storage, and state transitions, not just generate files.
+Implement the public Loaf runtime in Go. The runtime owns deterministic Loaf operations; it does not own shared tracker work or provider credentials. JavaScript may remain development and packaging tooling where useful, but it is not a peer product runtime.
 
-Node now has `node:sqlite`, but the API was still marked experimental in the Node 22 line and release-candidate in current documentation at the time of this decision. Third-party Node SQLite packages add native install and packaging concerns. Go does not include SQLite in the standard library, but it gives Loaf a smaller runtime shape: one compiled binary, strong standard-library coverage, first-party vulnerability tooling, and straightforward cross-platform distribution.
+This decision absorbed the useful unified-command direction from the former ADR-005 without inheriting that proposal's speculative scope. [Runtime and Delivery](../architecture/runtime-and-delivery.md) owns the current runtime boundary, delivery model, and implementation gaps.
 
 ## Consequences
 
 ### Positive
 
-- **Smaller runtime contract.** Users and hooks can eventually run one native `loaf` binary without requiring Node for stateful commands.
-- **Lower dependency pressure.** Go's standard library covers most CLI, filesystem, HTTP, crypto, JSON, and process needs, reducing pressure to add packages for routine work.
-- **Better supply-chain posture.** Go modules plus `govulncheck` give Loaf a first-party path for vulnerability checks against reachable code.
-- **Cleaner SQLite foundation.** The SQLite driver becomes an explicit architectural dependency with measurable acceptance criteria rather than an incidental npm package choice.
-- **Incremental migration.** A Go front controller lets new stateful commands land in Go while existing TypeScript commands keep working until migrated.
+- Hooks and users share one native command implementation.
+- Persistent and recovery-sensitive behavior can use explicit typed packages and tests.
 
 ### Negative
 
-- **Two-runtime transition.** During migration, the public command may need to ship a Go binary plus bundled TypeScript fallback assets.
-- **Build and release complexity increases before it decreases.** CI, release artifacts, npm packaging, plugin bundles, and local development all need Go wiring while TypeScript remains present.
-- **SQLite still requires a dependency decision.** Go's `database/sql` is standard, but SQLite requires a driver. Driver choice must weigh cgo, cross-compilation, dependency count, binary size, maintenance, and vulnerability surface.
-- **Implementation capacity shifts.** Existing TypeScript command patterns cannot be mechanically copied; Go code needs idiomatic package boundaries, error handling, and tests.
+- Native artifacts require a supported cross-platform build, signing, and distribution pipeline.
+- SQLite and any other third-party runtime dependency require deliberate review.
 
 ### Neutral
 
-- Existing TypeScript build and content-generation code remains valid until deliberately migrated or retired.
-- This decision does not require rewriting all existing commands before SPEC-040 begins.
-- This decision does not choose the SQLite driver. That choice belongs to SPEC-040 Track 0.
+- The development build may continue to use Node scripts until separately replaced.
 
 ## Alternatives Considered
 
-### Stay on TypeScript with `node:sqlite`
+### TypeScript runtime with built-in or third-party SQLite
 
-This would avoid introducing a second language and would keep the current build system simpler. It was rejected for the stateful runtime because the Node SQLite surface was not mature enough to make it the foundation for Loaf's operational store, and it keeps Loaf tied to Node for the commands most likely to run inside hooks and future runtime surfaces.
+This retained one language but kept stateful product execution tied to Node and its packaging surface.
 
-### Stay on TypeScript with a third-party SQLite package
+### Rust runtime
 
-This would use a more established SQLite package than `node:sqlite`, but it adds npm supply-chain exposure and likely native install or bundling complexity. It was rejected because SPEC-040 is specifically the moment where dependency/security posture should improve, not become more fragile.
+Rust offered strong low-level guarantees but more implementation complexity than Loaf's CLI and state model required.
 
-### Rewrite the entire CLI in Go before SQLite
+## Implementation Status
 
-This would produce a clean single-runtime codebase, but it is too much unrelated change before proving the state model. It was rejected because the migration would be broad, risky, and slow to validate. SQLite Track A is the right proving slice.
+See [Runtime and Delivery](../architecture/runtime-and-delivery.md#current-model) for current implementation and delivery evidence. This record preserves the runtime-language commitment and alternatives, not a second evolving delivery specification.
 
-### Use Rust for the stateful runtime
+## Revisions
 
-Rust offers strong safety and distribution properties, but it raises implementation complexity and does not match Loaf's operational need as directly as Go. Loaf needs a pragmatic, dependency-light CLI/runtime substrate more than maximum low-level control.
-
-## Follow-on
-
-- Amend SPEC-040 so Track 0 introduces the Go runtime foundation and front-controller migration strategy.
-- Choose the SQLite driver in SPEC-040 Track 0 using explicit security, packaging, and cross-platform criteria.
-- Update build/release workflows only when implementation begins; this ADR does not change current shipped artifacts by itself.
-
-## Related
-
-- [SPEC-040](../../.agents/specs/SPEC-040-sqlite-backed-loaf-operational-state.md) - SQLite-backed Loaf operational state
-- [ADR-013](ADR-013-agentic-state-storage-model.md) - Agentic state is project-scoped, not branch-scoped
+- 2026-09-05 — Removed the completed TypeScript bridge plan, bounded runtime authority, and recorded ADR-005 absorption.
+- 2026-09-05 — Retained the narrow language decision; moved current delivery context to its topic and removed the supersession link to the retired proposal, whose text remains in Git.
