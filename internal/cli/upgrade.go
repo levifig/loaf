@@ -36,6 +36,8 @@ type upgradeOptions struct {
 	help        bool
 	dryRun      bool
 	json        bool
+	selects     []string
+	selections  []scopedArtifactRef
 }
 
 func (r Runner) runUpgrade(args []string, out io.Writer, runtimeRoot string) error {
@@ -46,6 +48,9 @@ func (r Runner) runUpgrade(args []string, out io.Writer, runtimeRoot string) err
 	if options.help {
 		writeUpgradeHelp(out)
 		return nil
+	}
+	if len(options.selections) > 0 {
+		return r.runScopedUpgrade(options, out, runtimeRoot)
 	}
 
 	loafRoot, err := r.resolveInstalledDistributionRoot()
@@ -70,6 +75,12 @@ func (r Runner) runUpgrade(args []string, out io.Writer, runtimeRoot string) err
 	}
 
 	if options.dryRun {
+		if options.interactive {
+			planOptions.resolvedUpgradeTargets = append([]string{}, targets...)
+			if refreshClaudeCode {
+				planOptions.resolvedUpgradeTargets = append(planOptions.resolvedUpgradeTargets, claudeCodeInstallTarget)
+			}
+		}
 		return r.runInstallDryRun(planOptions, out, loafRoot, projectRoot.Path(), version, distRoot, tools, hasClaudeCode, assumeYes, planUpgradeProjectPart(detection))
 	}
 
@@ -163,6 +174,12 @@ func parseUpgradeArgs(args []string) (upgradeOptions, error) {
 			options.yes = &value
 		case "--help", "-h":
 			options.help = true
+		case "--select":
+			if i+1 >= len(args) {
+				return upgradeOptions{}, fmt.Errorf("--select requires target/id")
+			}
+			i++
+			options.selects = append(options.selects, args[i])
 		default:
 			return upgradeOptions{}, fmt.Errorf("unknown upgrade option %q", arg)
 		}
@@ -170,6 +187,17 @@ func parseUpgradeArgs(args []string) (upgradeOptions, error) {
 	if options.json && !options.dryRun {
 		return upgradeOptions{}, fmt.Errorf("--json requires --dry-run")
 	}
+	if len(options.selects) > 0 && options.target != "" {
+		return upgradeOptions{}, fmt.Errorf("--select cannot be combined with --to; qualify each artifact as target/id")
+	}
+	if len(options.selects) > 0 && options.interactive {
+		return upgradeOptions{}, fmt.Errorf("--select cannot be combined with --interactive; qualify each artifact as target/id")
+	}
+	refs, err := parseScopedArtifactRefs(options.selects)
+	if err != nil {
+		return upgradeOptions{}, err
+	}
+	options.selections = refs
 	return options, nil
 }
 
@@ -182,13 +210,14 @@ func (o upgradeOptions) installPlanOptions() installOptions {
 		target = ""
 	}
 	return installOptions{
-		target:  target,
-		targets: withoutString(o.targets, upgradeAllTargets),
-		upgrade: true,
-		yes:     o.yes,
-		dryRun:  o.dryRun,
-		json:    o.json,
-		command: upgradeCommandName,
+		target:     target,
+		targets:    withoutString(o.targets, upgradeAllTargets),
+		upgrade:    true,
+		yes:        o.yes,
+		dryRun:     o.dryRun,
+		json:       o.json,
+		command:    upgradeCommandName,
+		selections: o.selections,
 	}
 }
 
@@ -220,11 +249,18 @@ func (r Runner) selectUpgradeTargets(options upgradeOptions, tools []detectedIns
 	}
 	var targets []string
 	refreshClaudeCode := false
-	for _, target := range options.targets {
+	requested := options.targets
+	if len(requested) == 0 {
+		requested = splitInstallTargets(options.target)
+	}
+	for _, target := range requested {
 		if target == upgradeAllTargets {
 			return nil, false, fmt.Errorf("--to all cannot be combined with other targets")
 		}
 		if target == claudeCodeInstallTarget {
+			if !hasClaudeCode {
+				return nil, false, fmt.Errorf("Claude Code CLI (claude) is not on PATH; install Claude Code before upgrading its plugin")
+			}
 			// The plugin lives in Claude Code's own cache and is refreshed through
 			// the claude CLI by runUpgrade; there is no content target to sync.
 			refreshClaudeCode = hasClaudeCode
@@ -492,8 +528,13 @@ func writeUpgradeHelp(out io.Writer) {
 		"Options:",
 		"  --to <targets>  Filter the global part to already-installed targets, comma-separated (or \"all\", the default)",
 		"  -i, --interactive  Pick targets from a checklist",
-		"  --dry-run      Report the plan without writing anything",
-		"  --json         Emit the dry-run plan as a single JSON document (requires --dry-run)",
+		"  --select <ref>    Apply one target/id artifact (repeatable). IDs are not globally unique.",
+		"                    Qualifier is skills, cursor, opencode, codex, or amp. Does not stamp",
+		"                    .loaf-version. Generated hook commands stay `loaf …` on PATH;",
+		"                    apply fails closed if PATH loaf is missing or lacks required",
+		"                    check hooks or standalone check commands.",
+		"  --dry-run         Report the plan without writing anything",
+		"  --json            Emit the dry-run plan as a single JSON document (requires --dry-run)",
 		"  -y, --yes      Assume yes to safe project-file symlink migrations and destructive deprecation cleanup",
 		"  --no-yes       Force prompt-style declines in non-interactive mode",
 		"  -h, --help     Show help",

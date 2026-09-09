@@ -68,7 +68,7 @@ func TestRunnerInstallOutsideALoafProjectAsksBeforeDeploying(t *testing.T) {
 		}
 		assertInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "9.8.7-test.1\n")
 		body := string(readFileBytes(t, filepath.Join(root, "AGENTS.md")))
-		if !strings.Contains(body, "<!-- loaf:managed:start sha256=") {
+		if !strings.Contains(body, "<!-- loaf:managed:start -->") {
 			t.Fatalf("AGENTS.md = %q, want the managed section deployed after consent", body)
 		}
 		config := readInstallCommandJSON(t, filepath.Join(root, ".agents", "loaf.json"))

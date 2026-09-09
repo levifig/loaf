@@ -41,6 +41,22 @@ func TestHookPairingMatchesAHistoricalSignature(t *testing.T) {
 	}
 }
 
+func TestHookPairingMigratesShellNudgeToNativeIdentity(t *testing.T) {
+	recognition := testHookRecognition(t, "cursor", testRepoHookCatalog(t, "cursor"))
+	entries := []map[string]any{
+		{"command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh", "matcher": "Edit|Write"},
+		{"command": "loaf check --hook kb-staleness-nudge", "matcher": "Edit|Write"},
+		{"command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh.bak", "matcher": "Edit|Write"},
+	}
+	outcome, err := pairHookEventEntries(recognition, "postToolUse", entries)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(outcome.paired) != 1 || outcome.paired[0].hookID != "kb-staleness-nudge" || outcome.paired[0].pass != hookPairingSignature || len(outcome.duplicates) != 1 || len(outcome.foreign) != 1 {
+		t.Fatalf("pairing = %#v", outcome)
+	}
+}
+
 // Decision 3's security property: enforcement weakened by hand pairs to its
 // hook ID so the next reconcile converges it, rather than orphaning as foreign
 // and surviving the upgrade.
@@ -168,8 +184,8 @@ func TestHookPairingReportsCommandsCarryingTwoIdentities(t *testing.T) {
 	}
 }
 
-// The whole live file: the 17 shipped entries pair to their identities through
-// the template pass, and all 33 foreign entries stay outside pairing entirely.
+// The captured live file still pairs after the nudge's shell-to-native change;
+// the other current entries match templates and foreign entries stay outside.
 func TestHookPairingOverTheLiveCursorFile(t *testing.T) {
 	recognition := testHookRecognition(t, "cursor", testRepoHookCatalog(t, "cursor"))
 	events := testHookEventEntries(t, testHookFixture(t, "cursor-hooks-live.json"))
@@ -188,8 +204,12 @@ func TestHookPairingOverTheLiveCursorFile(t *testing.T) {
 		retired += len(outcome.retired)
 		foreign += len(outcome.foreign)
 		for _, pairing := range outcome.paired {
-			if pairing.pass != hookPairingTemplate {
-				t.Fatalf("%s/%s paired through %q, want the in-sync template pass", event, pairing.hookID, pairing.pass)
+			wantPass := hookPairingTemplate
+			if pairing.hookID == "kb-staleness-nudge" {
+				wantPass = hookPairingSignature
+			}
+			if pairing.pass != wantPass {
+				t.Fatalf("%s/%s paired through %q, want %q", event, pairing.hookID, pairing.pass, wantPass)
 			}
 			paired[event] = append(paired[event], pairing.hookID)
 		}

@@ -3,7 +3,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
@@ -76,6 +76,16 @@ function run(command, args, cwd, env = {}, timeout = 180000) {
     stdio: ["ignore", "pipe", "pipe"],
   });
   return { status: result.status ?? 1, stdout: result.stdout ?? "", stderr: result.stderr ?? "", error: result.error };
+}
+
+export function buildCandidate(dbPath, runner = run) {
+  const env = {
+    LOAF_DB: dbPath, LOAF_DEV_LINK: "0", LOAF_BUILD_TARGETS: platform, LOAF_NATIVE_ARTIFACT_DRY_RUN: "0",
+    PATH: `${join(candidateNativeRoot, platform)}${delimiter}${process.env.PATH ?? ""}`,
+  };
+  if (runner("go", ["run", "./cmd/loafdev", "build-go"], repoRoot, env).status !== 0) throw new Error("candidate Go build failed");
+  if (runner("loaf", ["build", "--target", "codex"], repoRoot, env).status !== 0) throw new Error("candidate Codex build failed");
+  return env;
 }
 
 function sha256(path) {
@@ -154,10 +164,7 @@ function main(argv = process.argv.slice(2)) {
     mkdirSync(stateDir, { recursive: true, mode: 0o700 });
     chmodSync(tempRoot, 0o700);
     chmodSync(codexHome, 0o700);
-    const buildGo = run("npm", ["run", "build:go"], repoRoot);
-    if (buildGo.status !== 0) throw new Error("candidate Go build failed");
-    const buildCodex = run("bin/loaf", ["build", "--target", "codex"], repoRoot);
-    if (buildCodex.status !== 0) throw new Error("candidate Codex build failed");
+    const buildEnv = buildCandidate(dbPath);
     candidateBinary = nativeBinaryPath();
     const version = run(client, ["--version"], repoRoot);
     if (version.status !== 0 || !codexVersionMatches(version.stdout, expectedVersion)) throw new Error(`installed Codex version does not match ${expectedVersion}`);
@@ -173,10 +180,10 @@ function main(argv = process.argv.slice(2)) {
     const hookCommand = shellQuote(wrapperPath) + " journal context --from-hook --codex-hook";
     sourceHooks.hooks.SessionStart = sourceHooks.hooks.SessionStart.map((group) => ({
       ...group,
-      hooks: group.hooks.map((hook) => ({ ...hook, command: hook.command.replace("{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook", hookCommand) })),
+      hooks: group.hooks.map((hook) => ({ ...hook, command: hook.command.replace(/.* journal context --from-hook --codex-hook/, hookCommand) })),
     }));
     writeFileSync(join(codexHome, "hooks.json"), `${JSON.stringify(sourceHooks, null, 2)}\n`, { mode: 0o600 });
-    const candidateEnv = { CODEX_HOME: codexHome, LOAF_DB: dbPath };
+    const candidateEnv = { ...buildEnv, CODEX_HOME: codexHome };
     if (run(candidateBinary, ["state", "init", "--json"], disposableRepo, candidateEnv).status !== 0) throw new Error("isolated Loaf state initialization failed");
     if (run(candidateBinary, ["journal", "log", `discover(smoke): ${marker}`], disposableRepo, candidateEnv).status !== 0) throw new Error("isolated journal marker write failed");
     const codexArgs = buildCodexArgs(codexModel);

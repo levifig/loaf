@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
@@ -43,6 +43,33 @@ export function parseClaudeStreamOutput(raw, marker) {
 export function claudeVersionMatches(output, expectedVersion) {
   const match = output.trim().match(/^([0-9]+\.[0-9]+\.[0-9]+) \(Claude Code\)$/);
   return match?.[1] === expectedVersion;
+}
+
+export function candidateRuntimeEnvironment(candidateBinary, dbPath, inheritedPATH = process.env.PATH ?? "") {
+  return {
+    LOAF_DB: dbPath,
+    LOAF_DEV_LINK: "0",
+    LOAF_BUILD_TARGETS: platform,
+    LOAF_NATIVE_ARTIFACT_DRY_RUN: "0",
+    LOAF_BIN: undefined,
+    PATH: [dirname(candidateBinary), inheritedPATH].filter(Boolean).join(delimiter),
+  };
+}
+
+export function verifyCandidatePATH(candidateBinary, envPATH) {
+  const filename = process.platform === "win32" ? "loaf.exe" : "loaf";
+  for (const directory of envPATH.split(delimiter).filter(Boolean)) {
+    const executable = resolve(directory, filename);
+    try {
+      accessSync(executable, constants.X_OK);
+      if (!statSync(executable).isFile()) continue;
+    } catch {
+      continue;
+    }
+    if (realpathSync(executable) !== realpathSync(candidateBinary)) throw new Error("PATH does not resolve the candidate loaf binary");
+    return candidateBinary;
+  }
+  throw new Error("candidate loaf is not executable on PATH");
 }
 
 function run(command, args, cwd, env = {}, timeout = 120000) {
@@ -92,27 +119,31 @@ function main(argv = process.argv.slice(2)) {
   mkdirSync(dbDir, { recursive: true });
   const dbPath = join(dbDir, "loaf.sqlite");
   const candidatePlugin = join(repoRoot, candidatePluginPath);
-  const candidateShim = join(candidatePlugin, "bin", "loaf");
-  const candidateBinaryPath = join("bin", "native", platform, "loaf");
+  const candidateBinaryPath = join("bin", "native", platform, process.platform === "win32" ? "loaf.exe" : "loaf");
   const candidateBinary = join(repoRoot, candidateBinaryPath);
+  const candidateEnv = candidateRuntimeEnvironment(candidateBinary, dbPath);
   let smoke;
   let failure;
   let cleanupSucceeded = false;
   try {
-    const buildGo = run("npm", ["run", "build:go"], repoRoot);
+    const buildGo = run("go", ["run", "./cmd/loafdev", "build-go"], repoRoot, candidateEnv);
     if (buildGo.status !== 0) throw new Error("candidate Go build failed");
-    const buildClaude = run("bin/loaf", ["build", "--target", "claude-code"], repoRoot);
-    if (buildClaude.status !== 0) throw new Error("candidate Claude build failed");
-    if (!existsSync(candidateShim)) throw new Error("candidate plugin shim is missing");
     if (!existsSync(candidateBinary)) throw new Error("candidate native binary is missing");
+    verifyCandidatePATH(candidateBinary, candidateEnv.PATH);
+    const buildClaude = run("loaf", ["build", "--target", "claude-code"], repoRoot, candidateEnv);
+    if (buildClaude.status !== 0) throw new Error("candidate Claude build failed");
+    if (existsSync(join(candidatePlugin, "bin"))) throw new Error("candidate Claude plugin must not ship an executable");
+    const candidateDigests = {
+      hooks_path: "plugins/loaf/hooks/hooks.json",
+      hooks_sha256: sha256(join(candidatePlugin, "hooks", "hooks.json")),
+      native_binary_path: candidateBinaryPath.split(sep).join("/"),
+      native_binary_sha256: sha256(candidateBinary),
+    };
     const version = run(client, ["--version"], repoRoot);
     if (version.status !== 0 || !claudeVersionMatches(version.stdout, expectedVersion)) throw new Error(`installed Claude Code version does not match ${expectedVersion}`);
     if (run("git", ["init", "-q"], disposableRepo).status !== 0) throw new Error("disposable Git initialization failed");
-    // The plugin shim resolves the CLI through LOAF_BIN first, so the smoke
-    // exercises the candidate binary rather than whatever loaf is on PATH.
-    const candidateEnv = { LOAF_DB: dbPath, LOAF_BIN: candidateBinary };
-    if (run(candidateBinary, ["state", "init", "--json"], disposableRepo, candidateEnv).status !== 0) throw new Error("isolated Loaf state initialization failed");
-    if (run(candidateBinary, ["journal", "log", `discover(smoke): ${marker}`], disposableRepo, candidateEnv).status !== 0) throw new Error("isolated journal marker write failed");
+    if (run("loaf", ["state", "init", "--json"], disposableRepo, candidateEnv).status !== 0) throw new Error("isolated Loaf state initialization failed");
+    if (run("loaf", ["journal", "log", `discover(smoke): ${marker}`], disposableRepo, candidateEnv).status !== 0) throw new Error("isolated journal marker write failed");
     const claudeArgs = [
       "--plugin-dir", "<repo>/plugins/loaf",
       "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
@@ -126,8 +157,10 @@ function main(argv = process.argv.slice(2)) {
       "--output-format", "stream-json", "-p", "Reply with exactly the unique marker present in Loaf continuity context, and nothing else.",
     ], disposableRepo, candidateEnv);
     const parsed = parseClaudeStreamOutput(claude.stdout, marker);
+    const resolvedBinary = verifyCandidatePATH(candidateBinary, candidateEnv.PATH);
+    if (sha256(candidateBinary) !== candidateDigests.native_binary_sha256 || sha256(join(candidatePlugin, "hooks", "hooks.json")) !== candidateDigests.hooks_sha256) throw new Error("candidate artifacts changed during the smoke");
     smoke = {
-      evidence_version: 3,
+      evidence_version: 4,
       timestamp,
       target: "claude-code",
       surface: "cli",
@@ -138,22 +171,17 @@ function main(argv = process.argv.slice(2)) {
       adapter: "claude-session-start-v1",
       mode: "explicit-plugin-dir",
       invocation: { command: "claude", args: claudeArgs, cwd: "<disposable-repo>" },
-      setup: ["build candidate Go binary and Claude plugin", "point LOAF_BIN at the candidate binary for the plugin shim", "create disposable Git repository", "initialize absolute disposable LOAF_DB", "write random marker to isolated journal"],
+      setup: ["build candidate with Go and LOAF_DEV_LINK=0", "prepend candidate directory to PATH and verify resolution", "create disposable Git repository", "initialize absolute disposable LOAF_DB", "write random marker to isolated journal"],
       candidate_plugin_path: candidatePluginPath,
+      runtime_lookup: "PATH",
+      resolved_binary_path: relative(repoRoot, resolvedBinary).split(sep).join("/"),
       exit_code: claude.status,
       stderr_empty: claude.stderr.length === 0,
       model_visible_marker_observed: parsed.hookObservation.additional_context_marker,
       assistant_marker_match: parsed.assistantMarkerMatch,
       marker,
       hook_observation: parsed.hookObservation,
-      candidate_artifacts: {
-        hooks_path: "plugins/loaf/hooks/hooks.json",
-        hooks_sha256: sha256(join(repoRoot, "plugins/loaf/hooks/hooks.json")),
-        shim_path: relative(repoRoot, candidateShim).split(sep).join("/"),
-        shim_sha256: sha256(candidateShim),
-        native_binary_path: candidateBinaryPath.split(sep).join("/"),
-        native_binary_sha256: sha256(candidateBinary),
-      },
+      candidate_artifacts: candidateDigests,
     };
     if (claude.status !== 0 || claude.stderr.length !== 0 || !parsed.hookObservation.additional_context_marker || !parsed.assistantMarkerMatch) throw new Error("model-visible marker smoke did not pass");
   } catch (error) {

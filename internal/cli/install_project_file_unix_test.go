@@ -62,7 +62,7 @@ func TestReadRegularFileRefusesAFifoWithoutBlocking(t *testing.T) {
 
 // TestUpgradeRefusesAFifoAtTheManagedProjectFile is the apply side. The fenced
 // write is the one that would have hung, and its refusal is the same refusal a
-// malformed fingerprint gets: nothing written, the project part abandoned, a
+// malformed marker gets: nothing written, the project part abandoned, a
 // non-zero exit.
 func TestUpgradeRefusesAFifoAtTheManagedProjectFile(t *testing.T) {
 	root, home := setupUpgradeFixture(t)

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
 
@@ -41,6 +42,16 @@ function run(command, args, cwd, env = {}, timeout = 120000) {
   return { status: result.status ?? 1, stdout: result.stdout ?? "", stderr: result.stderr ?? "", error: result.error };
 }
 
+export function buildCandidate(dbPath, runner = run) {
+  const env = {
+    LOAF_DB: dbPath, LOAF_DEV_LINK: "0", LOAF_BUILD_TARGETS: platform, LOAF_NATIVE_ARTIFACT_DRY_RUN: "0",
+    PATH: `${dirname(join(repoRoot, candidateBinaryPath))}${delimiter}${process.env.PATH ?? ""}`,
+  };
+  if (runner("go", ["run", "./cmd/loafdev", "build-go"], repoRoot, env).status !== 0) throw new Error("candidate Go build failed");
+  if (runner("loaf", ["build", "--target", "cursor"], repoRoot, env).status !== 0) throw new Error("candidate Cursor target build failed");
+  return env;
+}
+
 function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
@@ -65,12 +76,18 @@ function candidateArtifacts() {
 }
 
 function main(argv = process.argv.slice(2)) {
+  const tempRoot = mkdtempSync(join(tmpdir(), "loaf-cursor-preflight-"));
+  try {
+    runPreflight(argv, join(tempRoot, "loaf.sqlite"));
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+  }
+}
+
+function runPreflight(argv, dbPath) {
   const { client, expectedVersion, receiptPath } = parseRunnerArgs(argv);
   const timestamp = new Date().toISOString();
-  const buildGo = run("npm", ["run", "build:go"], repoRoot);
-  if (buildGo.status !== 0) throw new Error("candidate Go build failed");
-  const buildCursor = run("bin/loaf", ["build", "--target", "cursor"], repoRoot);
-  if (buildCursor.status !== 0) throw new Error("candidate Cursor target build failed");
+  buildCandidate(dbPath);
   const artifacts = candidateArtifacts();
   const version = run(client, ["--version"], repoRoot);
   const help = run(client, ["--help"], repoRoot);

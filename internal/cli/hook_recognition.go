@@ -387,8 +387,10 @@ func hookManagedDestinations(configDir string, manifest targetAdapterManifest) [
 	return destinations
 }
 
-// hookTokenQuote records how a token's first character was quoted, which is the
-// only thing that decides whether the expansions at the front of a word happen.
+// hookTokenQuote records how a token's first fragment was quoted. Expansions
+// at the front of a word follow this value; mixed later fragments are tracked
+// separately so callers do not treat a leading quote as a claim about the
+// whole word.
 type hookTokenQuote int
 
 const (
@@ -397,13 +399,14 @@ const (
 	hookTokenSingleQuoted
 )
 
-// hookCommandToken is one shell word plus the quoting its first character
-// carried. The quoting is kept rather than dropped because two commands that
-// tokenize identically can still mean different things: `$HOME/x` names a path
-// and `'$HOME/x'` names a literal filename that no expansion turns into one.
+// hookCommandToken is one shell word plus the quoting that produced it.
+// quote is the first fragment's quoting. mixed is true when a later
+// concatenated fragment used a different quoting style, so quote is not a
+// claim that the entire word is literal.
 type hookCommandToken struct {
 	value string
 	quote hookTokenQuote
+	mixed bool
 }
 
 // hookCommandTokens splits a POSIX shell command into words. Callers that hold
@@ -437,18 +440,25 @@ func hookCommandTokensForOS(command string, goos string) ([]hookCommandToken, bo
 	var current strings.Builder
 	started := false
 	leading := hookTokenUnquoted
+	mixed := false
 	begin := func(quote hookTokenQuote) {
 		if !started {
 			leading = quote
 			started = true
+			mixed = false
+			return
+		}
+		if quote != leading {
+			mixed = true
 		}
 	}
 	flush := func() {
 		if started {
-			tokens = append(tokens, hookCommandToken{value: current.String(), quote: leading})
+			tokens = append(tokens, hookCommandToken{value: current.String(), quote: leading, mixed: mixed})
 			current.Reset()
 			started = false
 			leading = hookTokenUnquoted
+			mixed = false
 		}
 	}
 	runes := []rune(command)

@@ -115,7 +115,7 @@ Diagnosis becomes enablement-aware with five states: disabled-and-correctly-abse
 - Hook catalog emission: the per-target builders (`build_cursor`/`build_codex` paths) plus a reader in `internal/cli`.
 - Reconciler: `internal/cli`, replacing the hook-projection branches in `install_plan.go`, `install_target.go` (`mergeHookFiles`/`mergeCodexHookFiles`), and `build_manifest.go` (digest/refusal helpers).
 - Verb surface: `internal/cli/hooks.go` (`runHooks`), registered in `cli.go` dispatch, consuming the catalog.
-- Fixtures: sanitized raw captures of the live machine's hooks files exist at `research/fixtures/codex-hooks-live.json` and `research/fixtures/cursor-hooks-live.json` (usernames normalized), alongside the derived classification and the predicate-free before/after comparator `research/compare_hook_files.py` that TASK-005 invokes. The classification script is marked as 0.2.20-predicate provenance evidence, not the acceptance oracle.
+- Fixtures: sanitized raw captures of the live machine's hooks files exist at `research/fixtures/codex-hooks-live.json` and `research/fixtures/cursor-hooks-live.json` (usernames normalized), alongside the derived classification JSON, HTML report, and canary outputs. The obsolete Python utilities (`classify_hook_entries.py`, `compare_hook_files.py`, `render_conflict_report.py`) were deleted from HEAD; Git retains them. They are not a runtime surface and do not need a Go port.
 
 ### Risks
 
@@ -147,7 +147,7 @@ The state-dedupe Change (docs/changes/20260807-state-dedupe, in flight) owns the
 - **V3.** The Change stays structurally executable. Command: `loaf change check docs/changes/20260808-hooks-entry-reconciliation`. Expect: exit 0.
 
 - **H1.** Canary evidence shows the first upgrade to this Change's release absorbing the Codex `session-start-loaf` entry as disabled (no re-add, no refusal), and a second run reporting nothing to do.
-- **H2.** Evidence shows every non-Loaf entry in both live files value-identical and order-stable across the upgrade — the Codex herdr entry and all 33 Cursor foreign entries (32 legacy-generation plus one herdr) — proven by `research/compare_hook_files.py` output whose reported differences name only expected Loaf entries.
+- **H2.** Evidence shows every non-Loaf entry in both live files value-identical and order-stable across the upgrade — the Codex herdr entry and all 33 Cursor foreign entries (32 legacy-generation plus one herdr) — proven by the recorded `research/canary/comparator-output.txt` (the obsolete comparator script was deleted from HEAD; Git retains it).
 - **H3.** `loaf hooks disable` / `enable` round-trip on a real, already-converged target edits exactly one entry in the file and nothing else, and its output names every action taken.
 - **H4.** `loaf config check` on the canary reports the disabled Codex hook as healthy-absent, not missing.
 

@@ -603,8 +603,8 @@ Configure target-specific behavior and sidecars.
 - [Claude Code Skills Best Practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
 
-<!-- loaf:managed:start sha256=dd1528fbcd47b62e9cf4e5943d2deb78e5118e60a0111608eed79b07cca4d873 -->
-<!-- Maintained by loaf install/upgrade - do not edit manually -->
+<!-- loaf:managed:start -->
+<!-- Maintained by loaf install/upgrade; edits inside this section are overwritten. Put custom instructions outside it. -->
 ## Loaf Framework
 
 **Journal Entry Types:**
@@ -626,7 +626,7 @@ Loaf never configures provider authentication, calls a provider API itself, prox
 
 **Journal Discipline:**
 Before completing any response that includes edits, commits, or significant decisions, log journal entries using `loaf journal log "type(scope): description"`. Entry types: `decision`, `discover`, `wrap`. Do not defer journaling - log before responding.
-In Codex Auto mode, when the user explicitly installed the managed basic-command policy, use the exact path-pinned Loaf executable in the managed `CODEX_HOME/AGENTS.md` block; do not substitute a bare `loaf`. The policy authorizes only explicitly classified basic Loaf command leaves and does not grant unclassified/operator commands, a bare Loaf namespace, or general filesystem access. Other harness adapters are not implied.
+In Codex Auto mode, when the user explicitly installed the managed basic-command policy, use the PATH `loaf` command for classified leaves, including `loaf journal log --execpolicy-safe` for journal writes. Do not substitute an absolute executable pin or a shell/environment wrapper. The policy authorizes only explicitly classified basic Loaf command leaves and does not grant unclassified/operator commands, a bare Loaf namespace, or general filesystem access. Global instructions remain user-owned; no Loaf block in `CODEX_HOME/AGENTS.md` is required. Other harness adapters are not implied.
 
 See the Loaf `orchestration` skill for full details.
 <!-- loaf:managed:end -->

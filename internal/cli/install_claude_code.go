@@ -15,7 +15,7 @@ import (
 // Loaf distribution with Claude Code's plugin system. Claude Code plugins ship
 // content and hooks only, so this target writes nothing itself: it asks the
 // `claude` CLI to add the distribution as a marketplace and install the plugin
-// from it. The plugin's bin/loaf shim then runs whichever loaf is installed.
+// from it. Plugin hooks resolve the user-managed loaf on PATH.
 const claudeCodeInstallTarget = "claude-code"
 
 // claudePluginCLI is the seam to `claude plugin ...`. Production execs the
@@ -340,11 +340,11 @@ func (r Runner) planClaudeCodeTarget(loafRoot string, upgrade bool, hasClaudeCod
 	return entry, true
 }
 
-// writeClaudeCodeRuntimeAdvice reminds the operator that the plugin's shim
-// needs a loaf on PATH: the plugin carries no binary of its own.
+// writeClaudeCodeRuntimeAdvice reminds the operator that plugin hooks need a
+// loaf on PATH: the plugin carries no executable of its own.
 func writeClaudeCodeRuntimeAdvice(out io.Writer) {
 	if installCommandExists("loaf") {
 		return
 	}
-	fmt.Fprintf(out, "  %s loaf is not on PATH; the plugin's hooks run the installed loaf, so add it to PATH or set LOAF_BIN\n", ansiYellow("⚠"))
+	fmt.Fprintf(out, "  %s loaf is not on PATH; install loaf and add it to the PATH available to Claude Code before using the plugin's hooks\n", ansiYellow("⚠"))
 }

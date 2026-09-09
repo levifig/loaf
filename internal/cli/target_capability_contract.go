@@ -40,6 +40,8 @@ type TargetCapabilitySmokeEvidence struct {
 	Invocation                 TargetCapabilitySmokeInvocation `json:"invocation"`
 	Setup                      []string                        `json:"setup"`
 	CandidatePluginPath        string                          `json:"candidate_plugin_path"`
+	RuntimeLookup              string                          `json:"runtime_lookup"`
+	ResolvedBinaryPath         string                          `json:"resolved_binary_path"`
 	FailureReason              string                          `json:"failure_reason,omitempty"`
 	ExitCode                   int                             `json:"exit_code"`
 	StderrEmpty                bool                            `json:"stderr_empty"`
@@ -64,13 +66,8 @@ type TargetCapabilitySmokeHook struct {
 }
 
 type TargetCapabilitySmokeArtifacts struct {
-	HooksPath   string `json:"hooks_path"`
-	HooksSHA256 string `json:"hooks_sha256"`
-	// ShimPath and ShimSHA256 are set by the Claude receipt only: the plugin
-	// ships a shim at plugins/loaf/bin/loaf that resolves an installed loaf,
-	// and the smoke points it at the candidate binary through LOAF_BIN.
-	ShimPath           string `json:"shim_path,omitempty"`
-	ShimSHA256         string `json:"shim_sha256,omitempty"`
+	HooksPath          string `json:"hooks_path"`
+	HooksSHA256        string `json:"hooks_sha256"`
 	NativeBinaryPath   string `json:"native_binary_path"`
 	NativeBinarySHA256 string `json:"native_binary_sha256"`
 }
@@ -665,11 +662,9 @@ func validateInstalledSmokeEvidence(root string, record TargetCapabilityRecord, 
 	} else if !errors.Is(err, io.EOF) {
 		return fmt.Errorf("installed-smoke evidence trailing data: %w", err)
 	}
-	// Version 3 records the plugin shim beside the hooks and pins the candidate
-	// binary the shim resolved through LOAF_BIN. Version 2 pinned a native
-	// binary inside the plugin, which the plugin no longer ships, so those
-	// receipts are stale by construction and must be re-recorded.
-	if smoke.EvidenceVersion != 3 {
+	// Version 4 proves PATH resolution of the candidate. Earlier receipts used
+	// a plugin runtime or shim override and cannot prove the current journey.
+	if smoke.EvidenceVersion != 4 {
 		return fmt.Errorf("unsupported installed-smoke evidence version %d (re-record with the current Claude smoke runner)", smoke.EvidenceVersion)
 	}
 	if _, err := time.Parse(time.RFC3339, smoke.Timestamp); err != nil || !strings.HasSuffix(smoke.Timestamp, "Z") {
@@ -703,14 +698,17 @@ func validateInstalledSmokeEvidence(root string, record TargetCapabilityRecord, 
 	if artifacts.HooksPath != "plugins/loaf/hooks/hooks.json" {
 		return fmt.Errorf("installed-smoke hooks path %q is not the candidate Claude hooks artifact", artifacts.HooksPath)
 	}
-	if artifacts.ShimPath != "plugins/loaf/bin/loaf" {
-		return fmt.Errorf("installed-smoke shim path %q is not the candidate Claude plugin shim", artifacts.ShimPath)
-	}
 	expectedNativeBinaryPath := filepath.ToSlash(filepath.Join("bin", "native", record.Platform, "loaf"))
+	if strings.HasPrefix(record.Platform, "win32-") {
+		expectedNativeBinaryPath += ".exe"
+	}
 	if artifacts.NativeBinaryPath != expectedNativeBinaryPath {
 		return fmt.Errorf("installed-smoke native binary path %q, want %q", artifacts.NativeBinaryPath, expectedNativeBinaryPath)
 	}
-	for name, value := range map[string]string{"hooks_sha256": artifacts.HooksSHA256, "shim_sha256": artifacts.ShimSHA256, "native_binary_sha256": artifacts.NativeBinarySHA256} {
+	if smoke.RuntimeLookup != "PATH" || smoke.ResolvedBinaryPath != artifacts.NativeBinaryPath {
+		return errors.New("installed-smoke PATH resolution must identify the candidate native binary")
+	}
+	for name, value := range map[string]string{"hooks_sha256": artifacts.HooksSHA256, "native_binary_sha256": artifacts.NativeBinarySHA256} {
 		if !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(value) {
 			return fmt.Errorf("installed-smoke %s must be a lowercase SHA-256", name)
 		}
@@ -721,7 +719,6 @@ func validateInstalledSmokeEvidence(root string, record TargetCapabilityRecord, 
 		digest string
 	}{
 		{"hooks", artifacts.HooksPath, artifacts.HooksSHA256},
-		{"shim", artifacts.ShimPath, artifacts.ShimSHA256},
 		{"native binary", artifacts.NativeBinaryPath, artifacts.NativeBinarySHA256},
 	} {
 		actual, err := sha256CandidateArtifact(root, artifact.path)

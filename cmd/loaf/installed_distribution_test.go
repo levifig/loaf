@@ -75,8 +75,8 @@ func TestInstalledDistributionUpgradeAuthorityFromStaleCheckout(t *testing.T) {
 		t.Fatalf("installed skill = %q, must not come from the stale checkout dist/", skill)
 	}
 	fenced := readFixtureFile(t, filepath.Join(staleCheckout, "AGENTS.md"))
-	if !strings.Contains(fenced, "<!-- loaf:managed:start sha256=") || !strings.Contains(fenced, "## Loaf Framework") {
-		t.Fatalf("project AGENTS.md fenced section = %q, want sha256-only managed section from installed binary", fenced)
+	if !strings.Contains(fenced, "<!-- loaf:managed:start -->") || !strings.Contains(fenced, "## Loaf Framework") {
+		t.Fatalf("project AGENTS.md fenced section = %q, want plain managed section from installed binary", fenced)
 	}
 	if strings.Contains(fenced, "<!-- loaf:managed:start v") {
 		t.Fatalf("project AGENTS.md fenced section = %q, must not embed a version stamp", fenced)

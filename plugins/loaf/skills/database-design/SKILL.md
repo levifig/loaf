@@ -65,6 +65,12 @@ Exact equality only                  → Hash (rare)
 | Query Optimization | [query-optimization.md](references/query-optimization.md) | Debugging slow queries, N+1 detection |
 | Indexing | [indexing.md](references/indexing.md) | Choosing index types, composite index order |
 
+## Available Checks
+
+| Check | Usage | Description |
+|-------|-------|-------------|
+| SQL safety hook | `loaf check --hook validate-sql-safety` | Blocks DROP DATABASE/TABLE/SCHEMA and TRUNCATE; warns on DELETE without WHERE and ALTER TABLE ... DROP COLUMN. Malformed hook payloads fail closed. |
+
 ## When to Use This Skill
 
 - Designing new tables or modifying existing schemas

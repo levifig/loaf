@@ -1,7 +1,6 @@
 package devtool
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -18,8 +17,8 @@ type VerifyOptions struct {
 
 // VerifyArtifacts checks that a build left the distribution consistent: the
 // bin/loaf entry point and a native binary per requested target exist, and
-// the Claude Code plugin ships exactly its shim (equal to the embedded source)
-// with no native runtime of its own. Binaries carry a -buildvcs stamp, so two
+// the Claude Code plugin ships hooks with no executable of its own. Binaries
+// carry a -buildvcs stamp, so two
 // builds of the same source differ by design; nothing here compares bytes
 // against a rebuild.
 func VerifyArtifacts(options VerifyOptions) error {
@@ -39,9 +38,8 @@ func VerifyArtifacts(options VerifyOptions) error {
 	}
 
 	required := []string{
-		"internal/cli/claude_plugin_shim.sh",
 		"bin/loaf",
-		"plugins/loaf/bin/loaf",
+		"plugins/loaf/hooks/hooks.json",
 	}
 	for _, target := range targets {
 		required = append(required, filepath.ToSlash(filepath.Join("bin", "native", target.RuntimeID, target.BinaryName())))
@@ -57,20 +55,11 @@ func VerifyArtifacts(options VerifyOptions) error {
 			return fmt.Errorf("missing required artifact: %s", rel)
 		}
 	}
-	shim, err := os.ReadFile(filepath.Join(root, "internal", "cli", "claude_plugin_shim.sh"))
-	if err != nil {
-		return err
-	}
-	published, err := os.ReadFile(filepath.Join(root, "plugins", "loaf", "bin", "loaf"))
-	if err != nil {
-		return err
-	}
-	if !bytes.Equal(shim, published) {
-		return fmt.Errorf("plugins/loaf/bin/loaf is stale; run make build")
-	}
-	for _, rel := range []string{"plugins/loaf/bin/native", "plugins/loaf/bin/package.json", "bin/package.json"} {
+	for _, rel := range []string{"plugins/loaf/bin", "bin/package.json"} {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err == nil {
-			return fmt.Errorf("%s must not exist; the plugin ships no native runtime and the Node launcher is gone. Run make build", rel)
+			return fmt.Errorf("%s must not exist; the plugin uses PATH loaf and ships no executable. Run make build", rel)
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("inspect retired artifact %s: %w", rel, err)
 		}
 	}
 	fmt.Fprintln(stdout, "Go command artifacts are present and synchronized.")

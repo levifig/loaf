@@ -241,8 +241,8 @@ func TestRunnerBuildTargetCodexRunsNativeTarget(t *testing.T) {
 	if len(hooks.Hooks.SessionStart) != 1 || hooks.Hooks.SessionStart[0].Matcher != "startup|resume|clear|compact" {
 		t.Fatalf("codex hooks = %q, want one SessionStart matcher group", hooksJSON)
 	}
-	if len(hooks.Hooks.SessionStart[0].Hooks) != 1 || hooks.Hooks.SessionStart[0].Hooks[0].Command != "{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook" || hooks.Hooks.SessionStart[0].Hooks[0].CommandWindows != "{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook" {
-		t.Fatalf("codex hooks = %q, want unresolved path-pinned adapter command", hooksJSON)
+	if len(hooks.Hooks.SessionStart[0].Hooks) != 1 || hooks.Hooks.SessionStart[0].Hooks[0].Command != "loaf journal context --from-hook --codex-hook" || hooks.Hooks.SessionStart[0].Hooks[0].CommandWindows != "loaf journal context --from-hook --codex-hook" {
+		t.Fatalf("codex hooks = %q, want PATH loaf adapter command", hooksJSON)
 	}
 	if strings.Contains(hooksJSON, "version") || strings.Contains(hooksJSON, "loaf check --hook") {
 		t.Fatalf("codex hooks = %q, want no legacy version or enforcement handlers", hooksJSON)
@@ -320,6 +320,8 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 		"return { action: 'allow' }",
 		"raw: rawInput",
 		`"command": "loaf check --hook check-secrets"`,
+		`"command": "loaf check --hook validate-infra-safety"`,
+		`"command": "loaf check --hook validate-sql-safety"`,
 		`"command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/pre-merge.md\""`,
 		`const postToolHooks: Record<string, HookEntry[]> = {`,
 		`"script": "post-tool/kb-staleness-nudge.sh"`,
@@ -683,9 +685,141 @@ func TestGeneratedAmpActiveSkillsContainNoLegacyWorkAuthority(t *testing.T) {
 			}
 		}
 	}
-	if _, err := os.Stat(filepath.Join(root, "dist", "opencode", "plugins", "hooks", "pre-tool", "orchestration-detect-linear-magic.py")); !os.IsNotExist(err) {
-		t.Errorf("retired OpenCode detect-linear-magic script remains in generated output: %v", err)
+	manifest := readBuildFileString(t, filepath.Join(root, "dist", "opencode", ".loaf-target-manifest.json"))
+	for _, name := range retiredOpenCodePreToolScripts {
+		if _, err := os.Stat(filepath.Join(root, "content", "hooks", "pre-tool", name)); !os.IsNotExist(err) {
+			t.Errorf("retired pre-tool source %s remains: %v", name, err)
+		}
+		if _, err := os.Stat(filepath.Join(root, "dist", "opencode", "plugins", "hooks", "pre-tool", name)); !os.IsNotExist(err) {
+			t.Errorf("retired OpenCode pre-tool script %s remains in generated output: %v", name, err)
+		}
+		if strings.Contains(manifest, name) {
+			t.Errorf("OpenCode manifest still lists retired pre-tool script %s", name)
+		}
 	}
+	for _, name := range retiredFoundationsSkillScripts {
+		for _, dir := range []string{
+			filepath.Join("content", "skills", "foundations", "scripts"),
+			filepath.Join("dist", "skills", "foundations", "scripts"),
+			filepath.Join("dist", "opencode", "skills", "foundations", "scripts"),
+			filepath.Join("dist", "cursor", "skills", "foundations", "scripts"),
+			filepath.Join("dist", "codex", "skills", "foundations", "scripts"),
+			filepath.Join("dist", "amp", "skills", "foundations", "scripts"),
+			filepath.Join("plugins", "loaf", "skills", "foundations", "scripts"),
+		} {
+			if _, err := os.Stat(filepath.Join(root, dir, name)); !os.IsNotExist(err) {
+				t.Errorf("retired foundations script %s remains in %s: %v", name, dir, err)
+			}
+		}
+	}
+	for _, name := range retiredOrchestrationSkillScripts {
+		for _, dir := range []string{
+			filepath.Join("content", "skills", "orchestration", "scripts"),
+			filepath.Join("dist", "skills", "orchestration", "scripts"),
+			filepath.Join("dist", "opencode", "skills", "orchestration", "scripts"),
+			filepath.Join("dist", "cursor", "skills", "orchestration", "scripts"),
+			filepath.Join("dist", "codex", "skills", "orchestration", "scripts"),
+			filepath.Join("dist", "amp", "skills", "orchestration", "scripts"),
+			filepath.Join("plugins", "loaf", "skills", "orchestration", "scripts"),
+		} {
+			if _, err := os.Stat(filepath.Join(root, dir, name)); !os.IsNotExist(err) {
+				t.Errorf("retired orchestration script %s remains in %s: %v", name, dir, err)
+			}
+		}
+	}
+	for _, name := range retiredInfraSkillScripts {
+		for _, dir := range []string{
+			filepath.Join("content", "skills", "infrastructure-management", "scripts"),
+			filepath.Join("dist", "skills", "infrastructure-management", "scripts"),
+			filepath.Join("dist", "opencode", "skills", "infrastructure-management", "scripts"),
+			filepath.Join("dist", "cursor", "skills", "infrastructure-management", "scripts"),
+			filepath.Join("dist", "codex", "skills", "infrastructure-management", "scripts"),
+			filepath.Join("dist", "amp", "skills", "infrastructure-management", "scripts"),
+			filepath.Join("plugins", "loaf", "skills", "infrastructure-management", "scripts"),
+		} {
+			if _, err := os.Stat(filepath.Join(root, dir, name)); !os.IsNotExist(err) {
+				t.Errorf("retired infrastructure script %s remains in %s: %v", name, dir, err)
+			}
+		}
+	}
+	for _, name := range retiredPowerSkillScripts {
+		for _, dir := range []string{
+			filepath.Join("content", "skills", "power-systems-modeling", "scripts"),
+			filepath.Join("dist", "skills", "power-systems-modeling", "scripts"),
+			filepath.Join("dist", "opencode", "skills", "power-systems-modeling", "scripts"),
+			filepath.Join("dist", "cursor", "skills", "power-systems-modeling", "scripts"),
+			filepath.Join("dist", "codex", "skills", "power-systems-modeling", "scripts"),
+			filepath.Join("dist", "amp", "skills", "power-systems-modeling", "scripts"),
+			filepath.Join("plugins", "loaf", "skills", "power-systems-modeling", "scripts"),
+		} {
+			if _, err := os.Stat(filepath.Join(root, dir, name)); !os.IsNotExist(err) {
+				t.Errorf("retired power-systems script %s remains in %s: %v", name, dir, err)
+			}
+		}
+	}
+	for _, name := range retiredUnregisteredSafetyHookScripts {
+		for _, path := range []string{
+			filepath.Join("content", "hooks", "subagent", name),
+			filepath.Join("dist", "opencode", "plugins", "hooks", "subagent", name),
+			filepath.Join("plugins", "loaf", "hooks", name),
+		} {
+			if _, err := os.Stat(filepath.Join(root, path)); !os.IsNotExist(err) {
+				t.Errorf("retired safety hook script remains at %s: %v", path, err)
+			}
+		}
+		if strings.Contains(manifest, name) {
+			t.Errorf("OpenCode manifest still lists retired safety hook script %s", name)
+		}
+	}
+}
+
+// retiredOpenCodePreToolScripts are leftover content/hooks copies that OpenCode
+// used to ship because it copies the whole hooks tree. The builder deletes the
+// output directory before copying, so production has no cleanup loop; this list
+// is the regression assertion that those names stay gone.
+var retiredOpenCodePreToolScripts = []string{
+	"orchestration-detect-linear-magic.py",
+	"foundations-check-" + "sec" + "rets.sh",
+	"foundations-validate-push.sh",
+	"orchestration-validate-commit.py",
+}
+
+var retiredFoundationsSkillScripts = []string{
+	"check-commit-msg.sh",
+	"check-" + "sec" + "rets.sh",
+	"check-changelog-format.sh",
+	"validate-compliance.py",
+	"check-test-naming.sh",
+	"check-python-style.py",
+}
+
+var retiredInfraSkillScripts = []string{
+	"check-dockerfile.sh",
+	"validate-k8s-manifest.py",
+}
+
+var retiredPowerSkillScripts = []string{
+	"validate-bounds.py",
+	"convert-units.py",
+	"check-standard-refs.sh",
+}
+
+var retiredUnregisteredSafetyHookScripts = []string{
+	"validate-infra-safety.sh",
+	"validate-sql-safety.sh",
+}
+
+var retiredOrchestrationSkillScripts = []string{
+	"new-session.sh",
+	"git-context-summary.sh",
+	"extract-magic-words.sh",
+	"new-council.sh",
+	"validate-council.py",
+	"format-progress.sh",
+	"check-linear-format.py",
+	"suggest-team.py",
+	"get-config.py",
+	"validate-roadmap.py",
 }
 
 func TestGeneratedRefactorDeepenRelativeLinksResolveInEveryTarget(t *testing.T) {
@@ -842,6 +976,8 @@ func TestRunnerBuildTargetCursorRunsNativeTarget(t *testing.T) {
 		`"command": "loaf check --hook check-secrets"`,
 		`"command": "loaf check --hook ephemeral-provenance"`,
 		`"command": "loaf check --hook github-account"`,
+		`"command": "loaf check --hook validate-infra-safety"`,
+		`"command": "loaf check --hook validate-sql-safety"`,
 		`"command": "loaf check --hook validate-push --advisory"`,
 		`"command": "loaf check --hook workflow-pre-pr --advisory"`,
 		`"command": "cat \"$HOME/.cursor/hooks/instructions/pre-merge.md\""`,
@@ -961,6 +1097,8 @@ func TestRunnerBuildTargetOpenCodeRunsNativeTarget(t *testing.T) {
 		"const stdout = result.stdout.trim()",
 		"output.push(stdout)",
 		`"command": "loaf check --hook check-secrets"`,
+		`"command": "loaf check --hook validate-infra-safety"`,
+		`"command": "loaf check --hook validate-sql-safety"`,
 		`"command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/pre-merge.md\""`,
 		`"script": "post-tool/kb-staleness-nudge.sh"`,
 	} {
@@ -1054,17 +1192,19 @@ func TestRunnerBuildTargetClaudeCodeRunsNativeTarget(t *testing.T) {
 	hooksJSON := readBuildFileString(t, filepath.Join(root, "plugins", "loaf", "hooks", "hooks.json"))
 	for _, want := range []string{
 		`"PreToolUse": [`,
-		`"command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook check-secrets"`,
-		`"command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook ephemeral-provenance"`,
-		`"command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook github-account"`,
-		`"command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook validate-push --advisory"`,
-		`"command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" check --hook workflow-pre-pr --advisory"`,
+		`"command": "loaf check --hook check-secrets"`,
+		`"command": "loaf check --hook ephemeral-provenance"`,
+		`"command": "loaf check --hook github-account"`,
+		`"command": "loaf check --hook validate-infra-safety"`,
+		`"command": "loaf check --hook validate-sql-safety"`,
+		`"command": "loaf check --hook validate-push --advisory"`,
+		`"command": "loaf check --hook workflow-pre-pr --advisory"`,
 		`"command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/instructions/pre-merge.md\""`,
 		`"PostToolUse": [`,
-		`"command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" task refresh"`,
+		`"command": "loaf task refresh"`,
 		`"command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/kb-staleness-nudge.sh"`,
 		`"SessionStart": [`,
-		`"command": "\"${CLAUDE_PLUGIN_ROOT}/bin/loaf\" journal context --from-hook --claude-code"`,
+		`"command": "loaf journal context --from-hook --claude-code"`,
 	} {
 		if !strings.Contains(hooksJSON, want) {
 			t.Fatalf("claude hooks.json = %q, want %q", hooksJSON, want)
@@ -1072,6 +1212,8 @@ func TestRunnerBuildTargetClaudeCodeRunsNativeTarget(t *testing.T) {
 	}
 	for _, reject := range []string{
 		`check --hook check-secrets --advisory`,
+		`check --hook validate-infra-safety --advisory`,
+		`check --hook validate-sql-safety --advisory`,
 		`bash ${CLAUDE_PLUGIN_ROOT}/hooks/.`,
 	} {
 		if strings.Contains(hooksJSON, reject) {
@@ -1084,19 +1226,12 @@ func TestRunnerBuildTargetClaudeCodeRunsNativeTarget(t *testing.T) {
 	if readBuildFileString(t, filepath.Join(root, "plugins", "loaf", "SETUP.md")) != "# Setup\n" {
 		t.Fatalf("SETUP.md copy mismatch")
 	}
-	if got := readBuildFileString(t, filepath.Join(root, "plugins", "loaf", "bin", "loaf")); got != claudePluginShim {
-		t.Fatalf("plugin bin/loaf = %q, want the embedded shim", got)
-	}
-	if info, err := os.Stat(filepath.Join(root, "plugins", "loaf", "bin", "loaf")); err != nil || info.Mode().Perm()&0o111 == 0 {
-		t.Fatalf("plugin bin/loaf must be executable: info=%v err=%v", info, err)
-	}
-	for _, rel := range []string{filepath.Join("bin", "native"), filepath.Join("bin", "package.json")} {
+	for _, rel := range []string{"bin"} {
 		if _, err := os.Stat(filepath.Join(root, "plugins", "loaf", rel)); !os.IsNotExist(err) {
 			t.Fatalf("plugins/loaf/%s must not exist; the plugin ships no native runtime (err=%v)", filepath.ToSlash(rel), err)
 		}
 	}
 	for _, path := range []string{
-		filepath.Join(root, "plugins", "loaf", "bin", "loaf"),
 		filepath.Join(root, "plugins", "loaf", "package.json"),
 		filepath.Join(root, "plugins", "loaf", ".lsp.json"),
 	} {
@@ -2092,7 +2227,7 @@ func TestNativeBuildUnresolvedPlaceholdersAllowsInstallTimeCodexTokens(t *testin
 	rules := filepath.Join(root, "dist", "codex", ".codex", "rules", "loaf.rules.tmpl")
 	mkdirAll(t, filepath.Dir(hooks))
 	mkdirAll(t, filepath.Dir(rules))
-	writeFile(t, hooks, "{\n  \"hooks\": {\n    \"SessionStart\": [{\n      \"matcher\": \"startup|resume|clear|compact\",\n      \"hooks\": [{\n        \"type\": \"command\",\n        \"command\": \"{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook\",\n        \"commandWindows\": \"{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook\"\n      }]\n    }]\n  }\n}\n")
+	writeFile(t, hooks, "{\n  \"hooks\": {\n    \"SessionStart\": [{\n      \"matcher\": \"startup|resume|clear|compact\",\n      \"hooks\": [{\n        \"type\": \"command\",\n        \"command\": \"loaf journal context --from-hook --codex-hook\",\n        \"commandWindows\": \"loaf journal context --from-hook --codex-hook\"\n      }]\n    }]\n  }\n}\n")
 	writeFile(t, rules, "# Loaf Codex policy\n{{LOAF_BASIC_RULES}}\n")
 
 	if err := validateNativeBuildUnresolvedPlaceholders(root, "codex"); err != nil {
@@ -2647,6 +2782,18 @@ func seedNativeCodexBuildFixture(t *testing.T, root string) {
 		"      timeout: 600000",
 		"      failClosed: true",
 		"      description: Run security audit on bash commands",
+		"    - id: validate-infra-safety",
+		"      matcher: \"Bash\"",
+		"      blocking: true",
+		"      timeout: 30000",
+		"      failClosed: true",
+		"      description: Block destructive infra commands",
+		"    - id: validate-sql-safety",
+		"      matcher: \"Bash\"",
+		"      blocking: true",
+		"      timeout: 30000",
+		"      failClosed: true",
+		"      description: Block destructive SQL",
 		"    - id: ephemeral-provenance",
 		"      matcher: \"Bash\"",
 		"      if: \"Bash(git push:*)\"",

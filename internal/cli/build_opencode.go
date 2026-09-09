@@ -66,14 +66,7 @@ func buildNativeOpenCodeTarget(root string) error {
 	if err := generateNativeOpenCodePlugin(filepath.Join(root, "config", "hooks.yaml"), dist, version); err != nil {
 		return err
 	}
-	if err := copyNativeBuildDir(filepath.Join(srcDir, "hooks"), filepath.Join(dist, "plugins", "hooks"), nil, false); err != nil {
-		return err
-	}
-	retired := filepath.Join(dist, "plugins", "hooks", "pre-tool", "orchestration-detect-linear-magic.py")
-	if err := os.Remove(retired); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("remove retired hook %s: %w", retired, err)
-	}
-	return nil
+	return copyNativeBuildDir(filepath.Join(srcDir, "hooks"), filepath.Join(dist, "plugins", "hooks"), nil, false)
 }
 
 func generateNativeOpenCodeCommands(root string, version string) error {

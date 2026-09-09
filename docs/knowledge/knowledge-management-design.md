@@ -6,7 +6,7 @@ topics:
   - covers
   - growth-loops
 covers:
-  - internal/cli/kb.go
+  - internal/cli/kb*.go
   - docs/knowledge/*.md
 last_reviewed: '2026-07-14'
 ---
@@ -70,7 +70,7 @@ The `covers:` field links knowledge to code paths:
 
 ## Growth Loops
 
-**Staleness → Review → Update.** Code edited → `covers:` match → agent nudged → reviews or updates → resets `last_reviewed`.
+**Staleness → Review → Update.** Code edited → `covers:` match → agent nudged → verifies substantive content against current evidence and corrects it as needed → marks reviewed. An edit alone does not justify resetting `last_reviewed`.
 
 **Conversation → Consolidation → Knowledge.** Before compaction or at an optional wrap → agent identifies durable learning → agent creates or updates a knowledge file → human reviews.
 
@@ -197,10 +197,10 @@ Root AGENTS.md references knowledge files but never duplicates their content. Ve
 
 | Risk | Mitigation |
 |------|-----------|
-| Alert fatigue (too many nudges) | Cooldown: max 1 nudge per knowledge file per session |
-| Broad globs = constant nudging | Threshold: only nudge if >N days since review OR >N commits |
+| Alert fatigue (too many nudges) | Native `loaf check --hook kb-staleness-nudge` uses disposable cache markers per document, project, and harness conversation ID; without an ID, the fallback is per project and branch per UTC day |
+| Broad globs = constant nudging | Use precise coverage globs; the current hook nudges when covered commits exist since review, not after a configurable commit-count or age threshold |
 | Agent updates incorrectly | Advisory: "Consider reviewing" not "I've updated it" |
-| Configurable thresholds | `staleness_threshold_days` in `.agents/loaf.json` |
+| Configuration assumptions | The current nudge reads local knowledge coverage; `staleness_threshold_days` does not gate its notifications |
 
 ## Cross-Project: `local-covers`
 

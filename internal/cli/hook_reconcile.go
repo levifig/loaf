@@ -87,6 +87,7 @@ type hookReconciler struct {
 	executable         string
 	executableErr      error
 	executableResolved bool
+	selectedIDs        map[string]bool
 
 	// lock is held from the first state read through file publication; recorded
 	// carries the actions the record half already took, so the report a caller
@@ -176,6 +177,7 @@ func newHookReconciler(options targetInstallOptions) (*hookReconciler, error) {
 		resolveExecutable: func() (string, error) {
 			return trustedCodexJournalExecutable(options.ProjectRoot, options.CodexRuleOperations)
 		},
+		selectedIDs: options.SelectedHookIDs,
 	}
 	return reconciler, nil
 }
@@ -601,7 +603,7 @@ func (r *hookReconciler) computeProjection(records hookRecords) (hookProjection,
 // in which a later hand-deletion could be read as intent.
 func (r *hookReconciler) planAbsorption(records hookRecords, outcomes map[string]hookPairingOutcome, owned int, projection *hookProjection) map[string]bool {
 	disabled := map[string]bool{}
-	if records.absorbed {
+	if r.selectedIDs != nil || records.absorbed {
 		return disabled
 	}
 	priorInstall := r.priorProjection || owned > 0
@@ -639,6 +641,10 @@ func (r *hookReconciler) projectEvent(event string, outcome hookPairingOutcome, 
 	replaced := map[int]json.RawMessage{}
 	var added []json.RawMessage
 
+	if r.selectedIDs != nil {
+		outcome.duplicates = nil
+		outcome.retired = nil
+	}
 	for _, duplicate := range outcome.duplicates {
 		removed[duplicate.index] = true
 		projection.actions = append(projection.actions, hookAction{
@@ -664,6 +670,9 @@ func (r *hookReconciler) projectEvent(event string, outcome hookPairingOutcome, 
 		paired[pairing.hookID] = pairing
 	}
 	for _, entry := range r.catalog.entriesForEvent(event) {
+		if !r.selected("hook:" + event + "/" + entry.HookID) {
+			continue
+		}
 		pairing, present := paired[entry.HookID]
 		enabled := records.enabled(entry.Event, entry.HookID) && !disabled[hookRecordKey(entry.Event, entry.HookID)]
 		switch {
@@ -767,22 +776,26 @@ func (r *hookReconciler) trustedExecutable() (string, error) {
 	return r.executable, r.executableErr
 }
 
-// desiredEntry is the entry this version wants at an identity. The catalog
-// carries the install-time executable placeholder for targets that pin an
-// absolute path; everything else is already the desired shape.
+// desiredEntry is the entry this version wants at an identity. Cursor,
+// OpenCode, Amp, Claude Code, and Codex stay bare `loaf` on PATH. Leftover
+// {{LOAF_EXECUTABLE}} Codex templates still normalize to that PATH command.
 func (r *hookReconciler) desiredEntry(entry hookCatalogEntry) (json.RawMessage, error) {
-	if !bytes.Contains(entry.Template, []byte(codexJournalExecutablePlaceholder)) {
-		return entry.Template, nil
+	template := entry.Template
+	if isCodexJournalHookTemplate(template) {
+		rendered, err := renderCodexHookExecutableForOS(template, r.goos)
+		if err != nil {
+			return nil, fmt.Errorf("render %s hook %s: %w", r.target, entry.HookID, err)
+		}
+		template = rendered
 	}
-	executable, err := r.trustedExecutable()
-	if err != nil {
-		return nil, err
+	return template, nil
+}
+
+func (r *hookReconciler) selected(id string) bool {
+	if r.selectedIDs == nil {
+		return true
 	}
-	rendered, err := renderCodexHookExecutableForOS(entry.Template, executable, r.goos)
-	if err != nil {
-		return nil, fmt.Errorf("render %s hook %s: %w", r.target, entry.HookID, err)
-	}
-	return rendered, nil
+	return r.selectedIDs[id]
 }
 
 // reconciledEvents is every section pairing has to look at: the ones the file

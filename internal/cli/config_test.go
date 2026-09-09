@@ -209,7 +209,7 @@ func TestFixConfigTargetHooksRetainsProjectRootFromNestedWorkingDirectory(t *tes
 	}
 }
 
-func TestRunnerConfigCheckFixFromNestedDirectoryRefusesProjectRootExecutable(t *testing.T) {
+func TestRunnerConfigCheckFixFromNestedDirectoryRendersPathLoafWithoutProjectPin(t *testing.T) {
 	gitPath, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatalf("LookPath(git) error = %v", err)
@@ -225,8 +225,8 @@ func TestRunnerConfigCheckFixFromNestedDirectoryRefusesProjectRootExecutable(t *
 	}
 	writeInstallFile(t, filepath.Join(projectRoot, ".agents", "loaf.json"), `{"version":"1.0.0","initialized":"2026-07-13T00:00:00Z","knowledge":{"local":["docs/knowledge","docs/decisions"],"staleness_threshold_days":30,"imports":[]},"integrations":{"linear":{"enabled":false},"serena":{"enabled":false}}}`+"\n")
 	writeInstallFile(t, filepath.Join(projectRoot, "dist", "codex", ".codex", "hooks.json"), `{"hooks":{"SessionStart":[{"matcher":"startup|resume|clear|compact","hooks":[{"type":"command","command":"{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook","commandWindows":"{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook"}]}]}}`+"\n")
-	// The shipped Codex identity, placeholder and all: the refusal under test is
-	// what happens when reconciliation tries to render it.
+	// A leftover placeholder plus a project-root binary must not pin that
+	// binary. Generated Codex hooks stay PATH loaf.
 	installTestHookDistribution(t, projectRoot, "codex", testCodexHookCatalogSource())
 	writeInstallFile(t, filepath.Join(home, ".codex", loafInstallMarkerFile), "old\n")
 	writeInstallFile(t, filepath.Join(home, ".codex", "hooks.json"), `{"hooks":{}}`+"\n")
@@ -237,20 +237,16 @@ func TestRunnerConfigCheckFixFromNestedDirectoryRefusesProjectRootExecutable(t *
 	}
 
 	var output bytes.Buffer
-	runErr := (Runner{Stdout: &output, WorkingDir: nestedWorkingDir, Executable: distributionFixtureExecutable(projectRoot)}).Run([]string{"config", "check", "--fix", "--json"})
-	var exitErr ExitError
-	if !errors.As(runErr, &exitErr) || exitErr.Code != 2 {
-		t.Fatalf("nested config check --fix error = %v, want trust refusal exit 2", runErr)
+	if runErr := (Runner{Stdout: &output, WorkingDir: nestedWorkingDir, Executable: distributionFixtureExecutable(projectRoot)}).Run([]string{"config", "check", "--fix", "--json"}); runErr != nil {
+		t.Fatalf("nested config check --fix error = %v\n%s", runErr, output.String())
 	}
-	var result configCheckResult
-	if decodeErr := json.Unmarshal(output.Bytes(), &result); decodeErr != nil {
-		t.Fatalf("Unmarshal(nested config check output) error = %v\n%s", decodeErr, output.String())
+	hooks := string(readFileBytes(t, filepath.Join(home, ".codex", "hooks.json")))
+	if !strings.Contains(hooks, `"command": "`+codexJournalHookCommandTemplate+`"`) {
+		t.Fatalf("installed Codex hooks = %s, want PATH loaf journal context", hooks)
 	}
-	joinedErrors := strings.Join(result.Errors, "\n")
-	if !strings.Contains(joinedErrors, "inside forbidden path") || !strings.Contains(joinedErrors, projectRoot) {
-		t.Fatalf("nested config check errors = %q, want project-root executable trust refusal", joinedErrors)
+	if strings.Contains(hooks, fakeLoaf) || strings.Contains(hooks, codexJournalExecutablePlaceholder) || strings.Contains(hooks, projectRoot) {
+		t.Fatalf("installed Codex hooks = %s, want no project-root pin", hooks)
 	}
-	assertInstallFile(t, filepath.Join(home, ".codex", "hooks.json"), `{"hooks":{}}`+"\n")
 }
 
 // The five states, all at once, on one installed target. Nothing about the two

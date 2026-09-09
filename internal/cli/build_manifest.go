@@ -40,6 +40,10 @@ type targetAdapterManifest struct {
 	CapabilityContractVersion int                     `json:"capability_contract_version"`
 	Adapters                  []string                `json:"adapters"`
 	Artifacts                 []targetAdapterArtifact `json:"artifacts"`
+	// RetiredArtifactIDs records adapter identities this install previously
+	// retired, so a later scoped --select of the same ID can stay an
+	// idempotent preserve instead of being fabricated for any unknown string.
+	RetiredArtifactIDs []string `json:"retired_artifact_ids,omitempty"`
 
 	// carriedObsoleteHookRow records that the manifest as read from disk still
 	// held one of the retired rows. It is deliberately unexported and unmarshal-
@@ -528,6 +532,18 @@ func validateTargetAdapterManifest(manifest targetAdapterManifest) error {
 			return fmt.Errorf("invalid target adapter artifact digest for %q", artifact.ID)
 		}
 	}
+	if len(manifest.RetiredArtifactIDs) > 0 {
+		if !sort.StringsAreSorted(manifest.RetiredArtifactIDs) {
+			return fmt.Errorf("retired artifact ids must be sorted")
+		}
+		seenRetired := map[string]bool{}
+		for _, id := range manifest.RetiredArtifactIDs {
+			if id == "" || seenRetired[id] || seenIDs[id] {
+				return fmt.Errorf("invalid retired artifact id %q", id)
+			}
+			seenRetired[id] = true
+		}
+	}
 	return nil
 }
 
@@ -540,6 +556,7 @@ func validTargetAdapterPath(path string) bool {
 
 func writeTargetAdapterManifest(path string, manifest targetAdapterManifest) error {
 	sort.Strings(manifest.Adapters)
+	sort.Strings(manifest.RetiredArtifactIDs)
 	sort.Slice(manifest.Artifacts, func(i, j int) bool { return manifest.Artifacts[i].ID < manifest.Artifacts[j].ID })
 	if err := validateTargetAdapterManifest(manifest); err != nil {
 		return err
@@ -737,6 +754,214 @@ func syncTargetAdapterManifest(options targetInstallOptions) error {
 	return nil
 }
 
+// syncSelectedTargetAdapterArtifacts mutates only the named adapter artifacts
+// and merges those rows into the installed manifest. Unselected rows stay as
+// they are. The target version marker is never written.
+func syncSelectedTargetAdapterArtifacts(options targetInstallOptions, selectedIDs []string) error {
+	if len(selectedIDs) == 0 {
+		return nil
+	}
+	wanted := map[string]bool{}
+	for _, id := range selectedIDs {
+		wanted[id] = true
+	}
+	buildPath := filepath.Join(options.DistDir, targetBuildManifestFile)
+	desired, err := readTargetAdapterManifest(buildPath)
+	if err != nil {
+		return err
+	}
+	if desired.Target != options.Target {
+		return fmt.Errorf("target adapter manifest target %q does not match install target %q", desired.Target, options.Target)
+	}
+	installedPath := filepath.Join(options.ConfigDir, targetInstallManifestFile)
+	installed := targetAdapterManifest{Target: options.Target, Version: desired.Version, PackageVersion: installedPackageVersion(installedPath, desired), CapabilityContractVersion: desired.CapabilityContractVersion, Adapters: desired.Adapters}
+	if _, err := os.Lstat(installedPath); err == nil {
+		installed, err = readTargetAdapterManifest(installedPath)
+		if err != nil {
+			return err
+		}
+		if installed.Target != options.Target {
+			return fmt.Errorf("installed target adapter manifest target %q does not match %q", installed.Target, options.Target)
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	desiredByID := targetAdapterArtifactsByID(desired.Artifacts)
+	installedByID := targetAdapterArtifactsByID(installed.Artifacts)
+	states := map[string]targetAdapterSnapshot{}
+	var selectedDesired []targetAdapterArtifact
+	var selectedRetired []targetAdapterArtifact
+	for _, artifact := range desired.Artifacts {
+		if skipTargetAdapterArtifact(artifact) || !wanted[artifact.ID] {
+			continue
+		}
+		if err := verifyTargetAdapterSource(options, artifact); err != nil {
+			return err
+		}
+		path, err := targetAdapterDestination(options, artifact)
+		if err != nil {
+			return err
+		}
+		snapshot, err := readTargetAdapterSnapshot(path)
+		if err != nil {
+			return err
+		}
+		states[path] = snapshot
+		if snapshot.exists {
+			owned := installedByID[artifact.ID]
+			matchesInstalled := owned.ID != "" && targetAdapterSnapshotMatchesArtifact(owned, snapshot)
+			matchesDesired, err := targetAdapterSnapshotMatchesDesired(options, artifact, snapshot)
+			if err != nil {
+				return err
+			}
+			if !matchesInstalled && !matchesDesired && owned.ID != "" {
+				return fmt.Errorf("managed target artifact %q was modified; refusing to overwrite or remove", artifact.ID)
+			}
+			if owned.ID == "" && !matchesDesired && !targetAdapterLegacyOwnership(options.Target, artifact, snapshot.body) {
+				return fmt.Errorf("target artifact destination %q exists and is not managed by Loaf", artifact.Destination)
+			}
+		}
+		selectedDesired = append(selectedDesired, artifact)
+	}
+	for _, artifact := range installed.Artifacts {
+		if skipTargetAdapterArtifact(artifact) || !wanted[artifact.ID] {
+			continue
+		}
+		if _, keep := desiredByID[artifact.ID]; keep {
+			continue
+		}
+		path, err := targetAdapterDestination(options, artifact)
+		if err != nil {
+			return err
+		}
+		snapshot, err := readTargetAdapterSnapshot(path)
+		if err != nil {
+			return err
+		}
+		states[path] = snapshot
+		if snapshot.exists && !targetAdapterSnapshotMatchesArtifact(artifact, snapshot) {
+			return fmt.Errorf("managed target artifact %q was modified; refusing to remove", artifact.ID)
+		}
+		selectedRetired = append(selectedRetired, artifact)
+	}
+	manifestSnapshot, err := readTargetAdapterSnapshot(installedPath)
+	if err != nil {
+		return err
+	}
+	mutated := make([]targetAdapterSnapshot, 0, len(states)+1)
+	mutatedPaths := map[string]bool{}
+	fail := func(cause error) error {
+		return rollbackTargetAdapterMutations(cause, mutated, options.TargetAdapterOps)
+	}
+	for _, artifact := range selectedRetired {
+		path, err := targetAdapterDestination(options, artifact)
+		if err != nil {
+			return fail(err)
+		}
+		if err := ensureTargetAdapterSnapshotUnchanged(path, states[path]); err != nil {
+			return fail(err)
+		}
+		if err := removeTargetAdapterArtifact(options, artifact); err != nil {
+			_ = recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths)
+			return fail(err)
+		}
+		if err := recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths); err != nil {
+			return fail(err)
+		}
+	}
+	mergedByID := targetAdapterArtifactsByID(installed.Artifacts)
+	for _, artifact := range selectedDesired {
+		path, err := targetAdapterDestination(options, artifact)
+		if err != nil {
+			return fail(err)
+		}
+		if err := ensureTargetAdapterSnapshotUnchanged(path, states[path]); err != nil {
+			return fail(err)
+		}
+		published, err := publishSelectedTargetAdapterArtifact(options, artifact)
+		if err != nil {
+			_ = recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths)
+			return fail(err)
+		}
+		if err := recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths); err != nil {
+			return fail(err)
+		}
+		mergedByID[artifact.ID] = published
+	}
+	retiredIDs := map[string]bool{}
+	for _, id := range installed.RetiredArtifactIDs {
+		retiredIDs[id] = true
+	}
+	for _, artifact := range selectedRetired {
+		delete(mergedByID, artifact.ID)
+		retiredIDs[artifact.ID] = true
+	}
+	for _, artifact := range selectedDesired {
+		delete(retiredIDs, artifact.ID)
+	}
+	merged := installed
+	merged.RetiredArtifactIDs = sortedRetiredAdapterIDs(retiredIDs)
+	merged.Artifacts = make([]targetAdapterArtifact, 0, len(mergedByID))
+	for _, artifact := range mergedByID {
+		merged.Artifacts = append(merged.Artifacts, artifact)
+	}
+	if err := ensureTargetAdapterSnapshotUnchanged(installedPath, manifestSnapshot); err != nil {
+		return fail(err)
+	}
+	if err := writeTargetAdapterManifest(installedPath, merged); err != nil {
+		writeErr := fmt.Errorf("write installed target adapter manifest: %w", err)
+		if stateErr := recordTargetAdapterMutation(installedPath, manifestSnapshot, &mutated, mutatedPaths); stateErr != nil {
+			writeErr = fmt.Errorf("%w; inspect installed target adapter manifest after publication: %v", writeErr, stateErr)
+		}
+		return fail(writeErr)
+	}
+	return nil
+}
+
+func installedPackageVersion(path string, desired targetAdapterManifest) string {
+	if _, err := os.Lstat(path); err == nil {
+		return ""
+	}
+	return desired.PackageVersion
+}
+
+func targetAdapterSnapshotMatchesDesired(options targetInstallOptions, artifact targetAdapterArtifact, snapshot targetAdapterSnapshot) (bool, error) {
+	body, err := desiredAdapterBody(options, artifact)
+	if err != nil {
+		return false, err
+	}
+	rewritten := artifact
+	rewritten.SHA256 = sha256Bytes(body)
+	return targetAdapterSnapshotMatchesArtifact(rewritten, snapshot), nil
+}
+
+func publishSelectedTargetAdapterArtifact(options targetInstallOptions, artifact targetAdapterArtifact) (targetAdapterArtifact, error) {
+	body, err := desiredAdapterBody(options, artifact)
+	if err != nil {
+		return targetAdapterArtifact{}, err
+	}
+	destination, err := targetAdapterDestination(options, artifact)
+	if err != nil {
+		return targetAdapterArtifact{}, err
+	}
+	if artifact.Mode == nil {
+		return targetAdapterArtifact{}, fmt.Errorf("target adapter artifact %q has no bound mode", artifact.ID)
+	}
+	if err := writeFileAtomically(destination, body, fs.FileMode(*artifact.Mode)); err != nil {
+		return targetAdapterArtifact{}, fmt.Errorf("publish target adapter artifact %q: %w", artifact.ID, err)
+	}
+	published := artifact
+	published.SHA256 = sha256Bytes(body)
+	snapshot, err := readTargetAdapterSnapshot(destination)
+	if err != nil {
+		return targetAdapterArtifact{}, err
+	}
+	if !targetAdapterSnapshotMatchesArtifact(published, snapshot) {
+		return targetAdapterArtifact{}, fmt.Errorf("published target adapter artifact %q failed content or mode verification", artifact.ID)
+	}
+	return published, nil
+}
+
 // skipTargetAdapterArtifact names the one artifact the whole-file machinery
 // does not handle: managed instructions live inside a project file rather than
 // at a destination of their own. A target's shared hooks file is not on this
@@ -804,6 +1029,18 @@ func describeTargetAdapterSnapshot(snapshot targetAdapterSnapshot) string {
 		return "absent"
 	}
 	return fmt.Sprintf("present mode=%#o sha256=%s", snapshot.mode, sha256Bytes(snapshot.body))
+}
+
+func sortedRetiredAdapterIDs(ids map[string]bool) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(ids))
+	for id := range ids {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func targetAdapterArtifactsByID(artifacts []targetAdapterArtifact) map[string]targetAdapterArtifact {

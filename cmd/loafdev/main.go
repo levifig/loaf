@@ -96,7 +96,7 @@ Commands:
   build-go            Compile bin/native/<target>/loaf for LOAF_BUILD_TARGETS (default: this host)
                       and publish bin/loaf; non-release builds relink the dev launcher pointer
   build               build-go, then regenerate the CLI reference, build content targets, verify
-  verify-artifacts    Check bin/ and the Claude Code plugin shim are present and consistent
+  verify-artifacts    Check native binaries and content-only Claude Code plugin artifacts
   release             build for every release platform (or LOAF_RELEASE_TARGETS)
   package             Write dist/release archives and checksums.txt from bin/native
   classify-tag <tag>  Print tag=/ref=/dev= for the release workflow; malformed tags fail

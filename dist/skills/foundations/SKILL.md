@@ -17,7 +17,7 @@ Engineering foundations for consistent, high-quality code.
 - Verification
 - Quick Reference
 - Topics
-- Available Scripts
+- Available Checks
 - Naming Conventions
 - Test Patterns
 
@@ -98,12 +98,29 @@ Engineering foundations for consistent, high-quality code.
 | Production Readiness | [references/production-readiness.md](references/production-readiness.md) | Validating services are ready for production |
 | Rideable Increments | [references/rideable-increments.md](references/rideable-increments.md) | Shaping, implementing, reviewing, or sequencing complete operator journeys |
 
-## Available Scripts
+## Available Checks
 
-| Script | Usage | Description |
-|--------|-------|-------------|
-| `scripts/check-python-style.py` | `check-python-style.py <dir>` | Check Python style (type hints, docstrings) |
-| `scripts/check-test-naming.sh` | `check-test-naming.sh <dir>` | Check test file/function naming |
+| Check | Command | Notes |
+|-------|---------|-------|
+| Commit message | `loaf check commit-msg <file>` or `loaf check commit-msg -` | File or stdin. Same conventional-commit engine as `loaf check --hook validate-commit`. Hook JSON is not accepted. |
+| Secrets tree scan | `loaf check secrets [dir]` | Walks a directory for assignment-style secrets, `.env` files, and key filenames. Different from the hook payload scan. |
+| Micro-changelog | `loaf check changelog <file.md>` | Document `## Changelog` schema. `validate-push` / `workflow-pre-pr` do not replace this. |
+| Compliance checklist | `loaf check compliance <file.md>` | Requires every `- [ ]` box to be checked. A file with no boxes passes. |
+| Python test naming | `loaf check test-naming [dir]` | Real gate for file, function, and fixture names. The former script always exited 0. |
+| Legacy ADR | `loaf kb validate --legacy-adr <file>` | Already native. |
+
+### Python style
+
+The former `check-python-style.py` helper walked the Python AST for type hints, docstrings, bare `except:`, `print()`, and logger context fields. A faithful Go port needs a Python parser; this checkpoint does not add that dependency and does not ship a regex stand-in. Use project linters, and enable the mapped rules in project ruff and pyright configuration — they are not implied by a default install:
+
+| Former AST check | Mapped tooling |
+|------------------|----------------|
+| Public function missing return type hints | ruff `ANN201` |
+| Public function missing parameter type hints | ruff `ANN001` or pyright `reportMissingParameterType` |
+| Public function, method, or class missing docstring | ruff `D103`, `D102`, `D101` |
+| Bare `except:` | ruff `E722` |
+| `print()` instead of structured logging | ruff `T201` |
+| Logger call without keyword context fields | Skill convention only; no standard ruff/pyright rule |
 
 ## Naming Conventions
 

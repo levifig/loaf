@@ -26,6 +26,7 @@ Convene multi-agent councils for complex decisions requiring diverse expert pers
 - Wait for explicit user decision — council advises, user decides
 - Archive council after decision recorded in the journal
 - Log decision to the project journal: `loaf journal log "decision(scope): council outcome and user's choice"`
+- Create the artifact with `loaf council new --title <title> --body-file <path>`
 
 **Never**
 - Use even number of agents (risks ties)
@@ -37,7 +38,7 @@ Convene multi-agent councils for complex decisions requiring diverse expert pers
 ## Verification
 
 After work completes, verify:
-- Council file created at `.agents/councils/{YYYYMMDD}-{HHMMSS}-{topic}.md`
+- Council created with `loaf council new --title <title> --body-file <path>` as `.agents/councils/COUNCIL-YYYYMMDD-slug.md`
 - All 5-7 agents spawned and perspectives collected
 - Synthesis includes consensus points, disagreements, trade-offs
 - User decision recorded in council file
@@ -81,20 +82,19 @@ not executable work, and belong with specs in git.
 
 When a council resolves an issue's open questions:
 
-- Include the issue ID in council frontmatter (e.g., `issue: LOAF-42`). This
-  is already the common pattern.
-- If the issue is tracked in Linear (tracker authority), also include the
-  tracker key (e.g., `linear_parent: ENG-198`) in council frontmatter so a
-  reader on Linear can trace back to the deliberation.
+- Create the artifact with `loaf council new --title <title> --body-file <path>`.
+  The CLI writes `id`, `title`, `status`, and `created`.
+- Record the tracker or issue ref in the council body so a reader can trace
+  back to the deliberation. Do not invent a second tracker-owned record.
 - Do not post council content to the Linear parent issue. A brief one-line
-  reference ("Resolved via council 2026-04-21 — see .agents/councils/…") in
-  a sub-issue comment is sufficient if the council drove a specific task
+  reference ("Resolved via council — see `.agents/councils/…`") in a
+  sub-issue comment is sufficient if the council drove a specific task
   decision.
 
 ## Topics
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
-| Council Template | [templates/council.md](templates/council.md) | Creating council files |
+| Council Template | [templates/council.md](templates/council.md) | Drafting the body for `loaf council new --body-file` |
 | Composition | `council/SKILL.md` | Selecting council agents |
 | Delegation | `orchestration/references/delegation.md` | Spawning subagents |

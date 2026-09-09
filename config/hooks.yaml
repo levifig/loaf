@@ -12,8 +12,8 @@
 # the harness payload on stdin and exit silently for subagent invocations
 # (normalized agent identity present).
 #
-# Enforcement hooks (9) are implemented via `loaf check --hook <id>`:
-#   - artifact-body-write, check-secrets, ephemeral-provenance, github-account, render-drift, validate-push, validate-commit, workflow-pre-pr, security-audit
+# Enforcement hooks (11) are implemented via `loaf check --hook <id>`:
+#   - artifact-body-write, check-secrets, ephemeral-provenance, github-account, render-drift, validate-push, validate-commit, workflow-pre-pr, security-audit, validate-infra-safety, validate-sql-safety
 #
 # Migrated to skill instructions (removed from hooks.yaml):
 #   - Language hooks: python-*, typescript-*, rails-*
@@ -47,6 +47,22 @@ hooks:
       timeout: 600000
       failClosed: true
       description: Run security audit on bash commands
+
+    - id: validate-infra-safety
+      skill: infrastructure-management
+      matcher: "Bash"
+      blocking: true
+      timeout: 30000
+      failClosed: true
+      description: Block destructive kubectl, terraform, docker, helm, and rm -rf system-path commands
+
+    - id: validate-sql-safety
+      skill: database-design
+      matcher: "Bash"
+      blocking: true
+      timeout: 30000
+      failClosed: true
+      description: Block DROP/TRUNCATE and warn on DELETE without WHERE or DROP COLUMN
 
     - id: render-drift
       skill: orchestration
@@ -136,7 +152,8 @@ hooks:
     # Knowledge Base - Staleness nudge (side-effect)
     - id: kb-staleness-nudge
       skill: knowledge-base
-      script: hooks/post-tool/kb-staleness-nudge.sh
+      type: command
+      command: loaf check --hook kb-staleness-nudge
       matcher: "Edit|Write"
       timeout: 5000
       description: Track covered edits and nudge when covered knowledge is stale

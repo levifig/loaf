@@ -11,7 +11,7 @@
       "id": "managed-instructions",
       "kind": "instruction",
       "destination": "project-instructions",
-      "sha256": "dd1528fbcd47b62e9cf4e5943d2deb78e5118e60a0111608eed79b07cca4d873"
+      "sha256": "6f2d9dbe5b9113b8ab8b42a83e3b1e32225c58ca4511ede3148f62344c6fe0b2"
     },
     {
       "id": "plugin:.amp/plugins/loaf-modes.ts",
@@ -26,7 +26,7 @@
       "kind": "plugin",
       "source_path": ".amp/plugins/loaf.ts",
       "destination": "plugins/loaf.ts",
-      "sha256": "85e089a04952ec652fb892077f30735a5414b158e45d0f89ddfd229e2f282ffb",
+      "sha256": "32fd2d44dbf1afe38d2c29957b4b5f56a9d4f594d137965763f21566526f5411",
       "mode": 420
     }
   ]

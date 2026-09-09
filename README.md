@@ -210,7 +210,7 @@ loaf install -i                       # pick from a checklist
 loaf install --to cursor,claude-code  # name targets
 ```
 
-For Claude Code, the installed distribution registers itself as the `levifig-loaf` marketplace and installs `loaf@levifig-loaf` through the `claude` CLI, so the plugin content always matches the binary that runs its hooks. Commands are scoped under `loaf:` (for example `/loaf:implement`). The plugin ships content and hooks only; its `bin/loaf` shim runs the installed CLI and reports a non-blocking error with an install hint if none is found. Adding `levifig/loaf` from GitHub with `/plugin marketplace add` still works and tracks `main`, but the content then comes from GitHub rather than from your installed version.
+For Claude Code, the installed distribution registers itself as the `levifig-loaf` marketplace and installs `loaf@levifig-loaf` through the `claude` CLI. Commands are scoped under `loaf:` (for example `/loaf:implement`). The plugin ships content and hooks only; hooks invoke `loaf` from your PATH, without a bundled runtime, private pin, or fallback path. You manage the runtime version and must make it available to Claude Code. Installation warns when it is missing; plugin installation does not install or upgrade the runtime. Adding `levifig/loaf` from GitHub with `/plugin marketplace add` still works and tracks `main`, but the content then comes from GitHub rather than from your installed distribution.
 
 ### Keep it current
 

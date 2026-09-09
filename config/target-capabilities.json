@@ -17,12 +17,13 @@
           {
             "name": "startup",
             "trigger": "SessionStart:startup",
-            "status": "supported",
-            "model_visible": true,
+            "status": "candidate",
+            "model_visible": false,
+            "reason": "The historical version-2 receipt describes retired plugin-native hooks; a fresh version-4 PATH receipt for the current candidate is pending.",
             "evidence": {
-              "source": "docs/changes/20260808-hooks-entry-reconciliation/research/claude-code-2.1.226-plugin-startup-smoke.json",
-              "level": "installed-smoke",
-              "summary": "Claude Code 2.1.226 startup smoke returned SessionStart additionalContext and the isolated marker was model-visible exactly."
+              "source": "internal/cli/build_claude_code.go",
+              "level": "candidate-build",
+              "summary": "The candidate builds bare PATH SessionStart hooks; current installed model-visible delivery has not been re-recorded."
             }
           },
           {
@@ -256,12 +257,13 @@
           {
             "name": "startup",
             "trigger": "SessionStart:startup",
-            "status": "supported",
-            "model_visible": true,
+            "status": "candidate",
+            "model_visible": false,
+            "reason": "The historical installed receipt no longer matches the generated hooks; a fresh model-visible receipt for the current candidate is pending.",
             "evidence": {
-              "source": "docs/changes/20260808-hooks-entry-reconciliation/research/codex-0.147.0-isolated-startup-smoke.json",
-              "level": "installed-smoke",
-              "summary": "Codex 0.147.0 isolated CODEX_HOME startup smoke observed exact native SessionStart hookSpecificOutput and the random marker was returned by the model."
+              "source": "internal/cli/build_codex.go",
+              "level": "candidate-build",
+              "summary": "The candidate builds PATH SessionStart hooks; current installed model-visible delivery has not been re-recorded."
             }
           },
           {
@@ -337,19 +339,20 @@
           {
             "name": "request",
             "trigger": "experimental.chat.system.transform",
-            "status": "supported",
-            "model_visible": true,
+            "status": "candidate",
+            "model_visible": false,
+            "reason": "The historical installed receipt no longer matches the generated hooks; a fresh model-visible receipt for the current candidate is pending.",
             "evidence": {
-              "source": "docs/changes/20260808-hooks-entry-reconciliation/research/opencode-1.18.13-isolated-request-smoke.json",
-              "level": "installed-smoke",
-              "summary": "OpenCode 1.18.13 isolated-XDG request smoke returned the exact random continuity marker through the model-visible plugin system transformation."
+              "source": "internal/cli/build_opencode.go",
+              "level": "candidate-build",
+              "summary": "The candidate builds the request-context plugin; current installed model-visible delivery has not been re-recorded."
             }
           },
           {
             "name": "startup",
             "status": "unsupported",
             "model_visible": false,
-            "reason": "OpenCode has no native distinct startup signal; request transformation is the only installed model-visible context proof.",
+            "reason": "OpenCode has no native distinct startup signal; context delivery uses request transformation.",
             "evidence": {
               "source": "docs/changes/20260710-journal-reliability-foundation/research/target-capability-survey.md",
               "level": "source",

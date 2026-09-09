@@ -1,10 +1,43 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { claudeVersionMatches, parseClaudeStreamOutput } from "./smoke-claude-code-startup.mjs";
+import { delimiter, join } from "node:path";
+import { claudeVersionMatches, parseClaudeStreamOutput, candidateRuntimeEnvironment, verifyCandidatePATH } from "./smoke-claude-code-startup.mjs";
 import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
+
+test("candidate runtime uses PATH, isolates state and never selects a private override", () => {
+  const env = candidateRuntimeEnvironment("/candidate/bin/loaf", "/scratch/loaf.sqlite", "/user/bin");
+  assert.equal(env.PATH, `/candidate/bin${delimiter}/user/bin`);
+  assert.equal(env.LOAF_DB, "/scratch/loaf.sqlite");
+  assert.equal(env.LOAF_DEV_LINK, "0");
+  assert.equal(env.LOAF_BUILD_TARGETS, `${process.platform}-${process.arch}`);
+  assert.equal(env.LOAF_NATIVE_ARTIFACT_DRY_RUN, "0");
+  assert.equal(env.LOAF_BIN, undefined);
+});
+
+test("PATH proof refuses shadowed, nonexecutable and absent candidates", () => {
+  const root = mkdtempSync(join(tmpdir(), "loaf-path-proof-"));
+  const candidateDir = join(root, "candidate");
+  const otherDir = join(root, "other");
+  const filename = process.platform === "win32" ? "loaf.exe" : "loaf";
+  const binary = join(candidateDir, filename);
+  try {
+    mkdirSync(candidateDir);
+    mkdirSync(otherDir);
+    writeFileSync(binary, "candidate", { mode: 0o755 });
+    writeFileSync(join(otherDir, filename), "other", { mode: 0o755 });
+    assert.equal(verifyCandidatePATH(binary, `${candidateDir}${delimiter}${otherDir}`), binary);
+    assert.throws(() => verifyCandidatePATH(binary, `${otherDir}${delimiter}${candidateDir}`), /does not resolve the candidate/);
+    assert.throws(() => verifyCandidatePATH(binary, ""), /not executable on PATH/);
+    if (process.platform !== "win32") {
+      chmodSync(binary, 0o644);
+      assert.throws(() => verifyCandidatePATH(binary, candidateDir), /not executable on PATH/);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("parses native SessionStart output and exact assistant marker", () => {
   const marker = "LOAF_CLAUDE_STARTUP_SMOKE_ABCDEF123456";

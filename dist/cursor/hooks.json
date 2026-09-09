@@ -28,6 +28,20 @@
         "timeout": 30,
         "matcher": "Bash",
         "failClosed": true,
+        "command": "loaf check --hook validate-infra-safety"
+      },
+      {
+        "loaf-managed": true,
+        "timeout": 30,
+        "matcher": "Bash",
+        "failClosed": true,
+        "command": "loaf check --hook validate-sql-safety"
+      },
+      {
+        "loaf-managed": true,
+        "timeout": 30,
+        "matcher": "Bash",
+        "failClosed": true,
         "command": "loaf check --hook render-drift",
         "if": "Bash(git push:*)"
       },
@@ -96,7 +110,7 @@
         "loaf-managed": true,
         "timeout": 5,
         "matcher": "Edit|Write",
-        "command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh"
+        "command": "loaf check --hook kb-staleness-nudge"
       },
       {
         "loaf-managed": true,

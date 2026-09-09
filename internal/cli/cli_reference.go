@@ -67,6 +67,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Refresh Loaf in place: harness content sync plus deprecation cleanup anywhere, and project-surface refresh only inside a detected Loaf repo",
 			Options: []cliReferenceOption{
 				{Flags: "--to <target>", Description: `Filter the harness sync to one already-installed target (or "all"); an uninstalled target is an error pointing at loaf install --to`},
+				{Flags: "--select <target/id>", Description: "Apply one target/id artifact (repeatable). IDs are not globally unique. Does not stamp .loaf-version. Generated hook commands stay `loaf …` on PATH; apply fails closed if PATH loaf is missing or lacks required check hooks or standalone check commands."},
 				{Flags: "--dry-run", Description: "Report the deterministic non-mutating plan: per-artifact actions, preserved conflicts, deprecations, project-file effects, whether the project part is in scope, and consent requirements"},
 				{Flags: "--json", Description: "With --dry-run, emit the plan as one JSON document with exact follow-up commands, project_part, and consent_required"},
 				{Flags: "-y, --yes", Description: "Assume 'yes' to safe migrations and destructive deprecation cleanup"},
@@ -610,8 +611,11 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Description: "Knowledge base management",
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "glossary", Description: "Domain glossary mutation and lookup"},
-				{Name: "validate", Description: "Validate knowledge file frontmatter", Options: []cliReferenceOption{{Flags: "--json", Description: "Output per-file frontmatter errors and warnings as JSON"}}},
-				{Name: "status", Description: "Show knowledge base overview", Options: []cliReferenceOption{{Flags: "--json", Description: "Output knowledge file totals, coverage counts, stale count, review age, and directories as JSON"}}},
+				{Name: "validate", Description: "Validate knowledge metadata and basic architecture structure", Options: []cliReferenceOption{
+					{Flags: "--legacy-adr <file>...", Description: "Validate explicit files against Loaf's historical ADR convention; no repository required"},
+					{Flags: "--json", Description: "Output per-file document and frontmatter errors and warnings as JSON"},
+				}},
+				{Name: "status", Description: "Show knowledge and architecture overview", Options: []cliReferenceOption{{Flags: "--json", Description: "Output document totals, architecture count, knowledge coverage, stale count, review age, and directories as JSON"}}},
 				{Name: "check", Description: "Check knowledge file staleness against git history", Options: []cliReferenceOption{
 					{Flags: "--file <path>", Description: "Reverse lookup: find knowledge files covering this path"},
 					{Flags: "--json", Description: "Output per-file staleness, coverage, commit, and review metadata as JSON"},
@@ -889,7 +893,19 @@ func cliReferenceCommands() []cliReferenceCommand {
 		},
 		{
 			Name:        "check",
-			Description: "Run enforcement hook checks",
+			Description: "Run enforcement hook checks and standalone validators",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "commit-msg", Description: "Validate a commit message from a file or stdin", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "sec" + "rets", Description: "Scan a directory tree for hardcoded assignments and key files", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "changelog", Description: "Validate a document micro-changelog section", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "compliance", Description: "Require every markdown checklist box to be checked", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "test-naming", Description: "Check Python test file, function, and fixture naming", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "dockerfile", Description: "Validate Dockerfile best practices", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "k8s-manifest", Description: "Check Kubernetes manifest required fields with regex probes", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "bounds", Description: "Validate physics values against physical bounds", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "units", Description: "Convert power-system units", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "standard-refs", Description: "Check CIGRE/IEEE citations in Python physics files", Options: []cliReferenceOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+			},
 			Options: []cliReferenceOption{
 				{Flags: "--hook <id>", Description: "Registered hook ID to run"},
 				{Flags: "--json", Description: "Output hook result, pass/block status, exit code, warnings, errors, and findings as JSON"},

@@ -88,7 +88,7 @@ Names and one-line purposes only. Run `loaf <command> --help` for options, argum
 | `loaf tag` | Manage tags in native SQLite state | list, show, add, remove |
 | `loaf bundle` | Manage bundles in native SQLite state | list, create, update, show, add, remove |
 | `loaf link` | Manage explicit relationships in native SQLite state | create, list, remove |
-| `loaf check` | Run enforcement hook checks | — |
+| `loaf check` | Run enforcement hook checks and standalone validators | commit-msg, secrets, changelog, compliance, test-naming, dockerfile, k8s-manifest, bounds, units, standard-refs |
 | `loaf doctor` | Diagnose Loaf project alignment (symlinks, stale files, managed content, and leftover migration work) | — |
 
 ## Topics

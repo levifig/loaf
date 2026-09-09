@@ -20,9 +20,10 @@ const (
 	codexJournalGuidanceRelativePath     = "AGENTS.md"
 	codexJournalRuleManifest             = ".loaf-managed-rules.json"
 	codexJournalExecutablePlaceholder    = "{{LOAF_EXECUTABLE}}"
+	codexPathLoafCommandName             = "loaf"
 	codexJournalHookMatcher              = "startup|resume|clear|compact"
 	codexJournalHookCommandSuffix        = " journal context --from-hook --codex-hook"
-	codexJournalHookCommandTemplate      = "loaf" + codexJournalHookCommandSuffix
+	codexJournalHookCommandTemplate      = codexPathLoafCommandName + codexJournalHookCommandSuffix
 	codexJournalGuidanceStart            = "<!-- loaf:managed:codex-basic-commands:start -->"
 	codexJournalGuidanceEnd              = "<!-- loaf:managed:codex-basic-commands:end -->"
 	codexLegacyGuidanceStart             = "<!-- loaf:managed:codex-auto-journal:start -->"
@@ -50,161 +51,43 @@ func installCodexJournalRule(options targetInstallOptions, codexHome string) err
 }
 
 func installCodexJournalRuleWithOperations(options targetInstallOptions, codexHome string, operations *codexRuleInstallOperations) error {
-	rulesDir := filepath.Join(codexHome, "rules")
-	ruleDest := filepath.Join(rulesDir, codexJournalRuleRelativePath)
-	manifestPath := filepath.Join(rulesDir, codexJournalRuleManifest)
-	guidanceDest := filepath.Join(codexHome, codexJournalGuidanceRelativePath)
-	templatePath := filepath.Join(options.DistDir, ".codex", "rules", codexJournalRuleTemplateRelativePath)
-
-	manifest, err := readCodexManagedRuleManifest(manifestPath)
+	options.CodexHome = codexHome
+	if operations != nil {
+		options.CodexRuleOperations = operations
+	}
+	decisions, err := planCodexJournalRule(options)
 	if err != nil {
 		return err
 	}
-	ownedRuleSHA, ownedRule := manifest.ownedDigest(codexJournalRuleRelativePath)
-	ownedGuidanceSHA, ownedGuidance := manifest.ownedDigest(codexJournalGuidanceRelativePath)
-	legacyCapability, err := detectLegacyCodexJournalCapability(ruleDest, guidanceDest)
-	if err != nil {
-		return err
-	}
-	if options.Upgrade && !options.CodexBasicCommands && legacyCapability {
-		if ownedRule || ownedGuidance {
-			return retireCodexJournalCapability(ruleDest, guidanceDest, manifestPath, manifest, ownedRule, ownedRuleSHA, ownedGuidanceSHA, ownedGuidance)
+	for _, decision := range decisions {
+		if decision.Action == planActionConflict {
+			return fmt.Errorf("%s: %s", decision.ID, decision.Detail)
 		}
-		return fmt.Errorf("legacy Codex journal-only capability requires explicit --codex-basic-commands or recorded Loaf ownership before upgrade")
 	}
-
-	templateBody, templateErr := os.ReadFile(templatePath)
-	templateExists := templateErr == nil
-	if templateErr != nil && !os.IsNotExist(templateErr) {
-		return fmt.Errorf("read generated Codex journal rule template: %w", templateErr)
-	}
-	// A stale owned install can be retired without resolving the current
-	// executable. This is important when PATH has been removed or rebound.
-	if !templateExists {
-		if options.CodexBasicCommands {
-			return fmt.Errorf("generated Codex journal rule template is missing at %s", templatePath)
-		}
-		if options.Upgrade && (ownedRule || ownedGuidance) {
-			return retireCodexJournalCapability(ruleDest, guidanceDest, manifestPath, manifest, ownedRule, ownedRuleSHA, ownedGuidanceSHA, ownedGuidance)
-		}
+	if !scopedPolicyDecisionsNeedApply(decisions) {
 		return nil
 	}
-
-	needsConvergence := options.CodexBasicCommands || (options.Upgrade && (ownedRule || ownedGuidance))
-	if !needsConvergence {
-		return nil
-	}
-	executable, err := trustedCodexJournalExecutable(options.ProjectRoot, operations)
-	if err != nil {
+	txn := newScopedTxn()
+	if err := txn.backup(codexPolicyOwnershipManifestPath(options)); err != nil {
 		return err
 	}
-	renderedRule, err := renderCodexJournalRule(string(templateBody), executable)
-	if err != nil {
+	for _, decision := range decisions {
+		if scopedPolicyActionWrites(decision.Action) {
+			if err := txn.backup(decision.Destination); err != nil {
+				return err
+			}
+		}
+	}
+	if err := publishSelectedCodexPolicyArtifacts(options, decisions); err != nil {
+		if rollbackErr := txn.rollback(); rollbackErr != nil {
+			return fmt.Errorf("%w; rollback: %v", err, rollbackErr)
+		}
 		return err
 	}
-	guidanceBlock := generateCodexJournalGuidance(executable)
-	newRuleSHA := sha256Bytes([]byte(renderedRule))
-	newGuidanceSHA := sha256Bytes([]byte(guidanceBlock))
-
-	currentRule, ruleExists, err := readOptionalInstallFile(ruleDest, "installed Codex journal rule")
-	if err != nil {
-		return err
-	}
-	if ruleExists {
-		currentSHA := sha256Bytes(currentRule)
-		switch {
-		case ownedRule && currentSHA == ownedRuleSHA:
-			// Expected old managed content; converge below.
-		case ownedRule && currentSHA == newRuleSHA:
-			// An interrupted rule write can be adopted and recorded below.
-		case !ownedRule && options.CodexBasicCommands && currentSHA == newRuleSHA:
-			// An interrupted first install can be adopted and recorded below.
-		case !ownedRule && options.CodexBasicCommands:
-			return fmt.Errorf("refusing to overwrite unowned Codex rule %s", ruleDest)
-		case ownedRule:
-			return fmt.Errorf("refusing to overwrite modified Loaf-owned Codex rule %s", ruleDest)
-		default:
-			return nil
-		}
-	}
-
-	guidanceContent, guidanceExists, err := readOptionalInstallFile(guidanceDest, "Codex journal guidance")
-	if err != nil {
-		return err
-	}
-	guidanceText := string(guidanceContent)
-	if err := validateCodexJournalGuidanceStructure(guidanceText); err != nil {
-		return fmt.Errorf("inspect Codex journal guidance: %w", err)
-	}
-	guidanceRange, hasGuidance := findCodexJournalGuidance(guidanceText)
-	currentGuidance := ""
-	if hasGuidance {
-		currentGuidance = guidanceText[guidanceRange.start:guidanceRange.end]
-	}
-	switch {
-	case ownedGuidance && hasGuidance && sha256Bytes([]byte(currentGuidance)) == ownedGuidanceSHA:
-		// Expected old managed content; replace below.
-	case ownedGuidance && hasGuidance && sha256Bytes([]byte(currentGuidance)) == newGuidanceSHA:
-		// An interrupted guidance write can be adopted and recorded below.
-	case !ownedGuidance && hasGuidance && currentGuidance == guidanceBlock:
-		// An interrupted first install can be adopted and recorded below.
-	case ownedGuidance:
-		return fmt.Errorf("refusing to overwrite modified Loaf-owned Codex guidance block in %s", guidanceDest)
-	case hasGuidance:
-		return fmt.Errorf("refusing to overwrite unowned Codex guidance block in %s", guidanceDest)
-	}
-
-	updatedGuidance := guidanceText
-	guidanceChanged := false
-	switch {
-	case hasGuidance:
-		if currentGuidance != guidanceBlock {
-			updatedGuidance = replaceCodexJournalGuidance(guidanceText, guidanceRange, guidanceBlock)
-			guidanceChanged = true
-		}
-	case guidanceExists:
-		updatedGuidance = appendCodexJournalGuidance(guidanceText, guidanceBlock)
-		guidanceChanged = true
-	default:
-		updatedGuidance = guidanceBlock
-		guidanceChanged = true
-	}
-
-	// Publish model guidance before enabling the outside-sandbox rule. An
-	// interrupted first install may leave harmless guidance, never a hidden
-	// active capability.
-	if guidanceChanged {
-		if err := writeFileAtomically(guidanceDest, []byte(updatedGuidance), 0o644); err != nil {
-			return fmt.Errorf("install Codex journal guidance: %w", err)
-		}
-	}
-	if !ruleExists || string(currentRule) != renderedRule {
-		if err := writeFileAtomically(ruleDest, []byte(renderedRule), 0o644); err != nil {
-			return fmt.Errorf("install Codex journal rule: %w", err)
-		}
-	}
-	manifest.set(codexJournalRuleRelativePath, newRuleSHA)
-	manifest.set(codexJournalGuidanceRelativePath, newGuidanceSHA)
-	if err := writeCodexManagedRuleManifest(manifestPath, manifest); err != nil {
-		return fmt.Errorf("record Codex journal rule ownership: %w", err)
-	}
-	return nil
+	return txn.cleanup()
 }
 
-func detectLegacyCodexJournalCapability(rulePath string, guidancePath string) (bool, error) {
-	guidance, guidanceExists, err := readOptionalInstallFile(guidancePath, "Codex journal guidance")
-	if err != nil {
-		return false, err
-	}
-	if guidanceExists {
-		guidanceText := string(guidance)
-		if strings.Contains(guidanceText, codexJournalGuidanceStart) || strings.Contains(guidanceText, codexJournalGuidanceEnd) {
-			return false, nil
-		}
-		if strings.Contains(guidanceText, codexLegacyGuidanceStart) || strings.Contains(guidanceText, codexLegacyGuidanceEnd) {
-			return true, nil
-		}
-	}
+func detectLegacyCodexJournalCapability(rulePath string) (bool, error) {
 	rule, ruleExists, err := readOptionalInstallFile(rulePath, "installed Codex journal rule")
 	if err != nil {
 		return false, err
@@ -216,7 +99,7 @@ func detectLegacyCodexJournalCapability(rulePath string, guidancePath string) (b
 }
 
 // readOptionalInstallFile reads a file under the harness's own config home —
-// the installed rule, and the AGENTS.md Loaf merges its guidance block into.
+// the installed rule, and legacy AGENTS.md guidance eligible for retirement.
 // Absence is a fact the callers act on; anything else is a refusal, because
 // every one of them decides a rewrite of the same path from what comes back.
 func readOptionalInstallFile(path string, description string) ([]byte, bool, error) {
@@ -230,65 +113,13 @@ func readOptionalInstallFile(path string, description string) ([]byte, bool, err
 	return nil, false, fmt.Errorf("read %s: %w", description, refuseProjectFileRead(err))
 }
 
-func retireCodexJournalCapability(ruleDest string, guidanceDest string, manifestPath string, manifest codexManagedRuleManifest, ownedRule bool, ownedRuleSHA string, ownedGuidanceSHA string, ownedGuidance bool) error {
-	if ownedRule {
-		currentRule, ruleExists, err := readOptionalInstallFile(ruleDest, "installed Codex journal rule")
-		if err != nil {
-			return err
-		}
-		if ruleExists && sha256Bytes(currentRule) != ownedRuleSHA {
-			return fmt.Errorf("refusing to remove modified Loaf-owned Codex rule %s", ruleDest)
-		}
-		// Retire the exact owned rule before inspecting guidance. If guidance is
-		// malformed or locally modified, the capability is still inactive.
-		if ruleExists {
-			if err := os.Remove(ruleDest); err != nil {
-				return fmt.Errorf("remove stale Codex journal rule: %w", err)
-			}
-		}
-		manifest.remove(codexJournalRuleRelativePath)
-		if err := writeCodexManagedRuleManifest(manifestPath, manifest); err != nil {
-			return fmt.Errorf("record retired Codex journal rule ownership: %w", err)
-		}
-	}
-	guidanceContent, _, err := readOptionalInstallFile(guidanceDest, "Codex journal guidance")
-	if err != nil {
-		return err
-	}
-	guidanceText := string(guidanceContent)
-	if err := validateCodexJournalGuidanceStructure(guidanceText); err != nil {
-		return fmt.Errorf("inspect Codex journal guidance: %w", err)
-	}
-	guidanceRange, hasGuidance := findCodexJournalGuidance(guidanceText)
-	if hasGuidance && !ownedGuidance {
-		return fmt.Errorf("refusing to remove Codex journal guidance without recorded ownership in %s", guidanceDest)
-	}
-	if ownedGuidance {
-		if !hasGuidance || sha256Bytes([]byte(guidanceText[guidanceRange.start:guidanceRange.end])) != ownedGuidanceSHA {
-			return fmt.Errorf("refusing to remove modified Loaf-owned Codex guidance block in %s", guidanceDest)
-		}
-	}
-	if hasGuidance && ownedGuidance {
-		updated := removeCodexJournalGuidance(guidanceText, guidanceRange)
-		if err := writeFileAtomically(guidanceDest, []byte(updated), 0o644); err != nil {
-			return fmt.Errorf("remove stale Codex journal guidance: %w", err)
-		}
-	}
-	manifest.remove(codexJournalRuleRelativePath)
-	manifest.remove(codexJournalGuidanceRelativePath)
-	return writeCodexManagedRuleManifest(manifestPath, manifest)
-}
-
-func renderCodexJournalRule(template string, executable string) (string, error) {
-	if !filepath.IsAbs(executable) {
-		return "", fmt.Errorf("cannot render Codex journal rule with non-absolute Loaf executable %q", executable)
-	}
+func renderCodexJournalRule(template string) (string, error) {
 	rendered := template
 	if strings.Contains(rendered, codexBasicRulesPlaceholder) {
-		rendered = strings.ReplaceAll(rendered, codexBasicRulesPlaceholder, renderCodexBasicRules(executable))
+		rendered = strings.ReplaceAll(rendered, codexBasicRulesPlaceholder, renderCodexBasicRules())
 	}
 	if strings.Contains(rendered, codexJournalExecutablePlaceholder) {
-		rendered = strings.ReplaceAll(rendered, codexJournalExecutablePlaceholder, strconv.Quote(executable))
+		rendered = strings.ReplaceAll(rendered, codexJournalExecutablePlaceholder, strconv.Quote(codexPathLoafCommandName))
 	}
 	if rendered == template {
 		return "", fmt.Errorf("Codex journal rule template is missing %s or %s", codexBasicRulesPlaceholder, codexJournalExecutablePlaceholder)
@@ -299,11 +130,11 @@ func renderCodexJournalRule(template string, executable string) (string, error) 
 	return rendered, nil
 }
 
-func renderCodexBasicRules(executable string) string {
+func renderCodexBasicRules() string {
 	var rendered strings.Builder
 	for _, prefix := range BasicCommandAuthorityPrefixes() {
 		rendered.WriteString("prefix_rule(\n    pattern = [")
-		rendered.WriteString(strconv.Quote(executable))
+		rendered.WriteString(strconv.Quote(codexPathLoafCommandName))
 		for _, token := range prefix {
 			rendered.WriteString(", ")
 			rendered.WriteString(strconv.Quote(token))
@@ -311,21 +142,6 @@ func renderCodexBasicRules(executable string) string {
 		rendered.WriteString("],\n    decision = \"allow\",\n)\n")
 	}
 	return rendered.String()
-}
-
-func generateCodexJournalGuidance(executable string) string {
-	return "\n" + strings.Join([]string{
-		codexJournalGuidanceStart,
-		"<!-- Maintained by loaf install/upgrade - do not edit manually -->",
-		"## Loaf Codex basic command policy",
-		"",
-		"When Codex Auto mode records a durable decision, use this exact command; do not substitute a bare `loaf` command or a shell/environment wrapper:",
-		"",
-		"`" + journalContextShellQuote(executable) + " journal log --execpolicy-safe \"type(scope): description\"`",
-		"",
-		"The rule permits only explicitly classified basic Loaf command leaves, including routine state-plane operations and approved readers. It does not authorize unclassified or operator commands, a bare Loaf namespace, or a general Loaf data-directory writable root. Other harness adapters are not implied by this Codex policy.",
-		codexJournalGuidanceEnd,
-	}, "\n") + "\n"
 }
 
 type codexJournalGuidanceRange struct{ start, end int }
@@ -379,14 +195,6 @@ func validateCodexJournalGuidanceStructure(content string) error {
 		return fmt.Errorf("Loaf-managed guidance end marker precedes its start marker")
 	}
 	return nil
-}
-
-func appendCodexJournalGuidance(content string, block string) string {
-	return content + block
-}
-
-func replaceCodexJournalGuidance(content string, r codexJournalGuidanceRange, block string) string {
-	return content[:r.start] + block + content[r.end:]
 }
 
 func removeCodexJournalGuidance(content string, r codexJournalGuidanceRange) string {
@@ -459,6 +267,152 @@ func readCodexManagedRuleManifest(path string) (codexManagedRuleManifest, error)
 	return manifest, nil
 }
 
+func scopedPolicyDecisionsNeedApply(decisions []artifactPlanDecision) bool {
+	for _, decision := range decisions {
+		if scopedPolicyActionWrites(decision.Action) {
+			return true
+		}
+	}
+	return false
+}
+
+func codexPolicyOwnershipManifestPath(options targetInstallOptions) string {
+	return filepath.Join(effectiveCodexHome(options), "rules", codexJournalRuleManifest)
+}
+
+func publishSelectedCodexPolicyArtifacts(options targetInstallOptions, decisions []artifactPlanDecision) error {
+	var selected []artifactPlanDecision
+	for _, decision := range decisions {
+		if !isCodexPolicyDecision(decision) || !scopedPolicyActionWrites(decision.Action) {
+			continue
+		}
+		selected = append(selected, decision)
+	}
+	if len(selected) == 0 {
+		return nil
+	}
+	manifestPath := codexPolicyOwnershipManifestPath(options)
+	manifest, err := readCodexManagedRuleManifest(manifestPath)
+	if err != nil {
+		return err
+	}
+	for _, decision := range selected {
+		if decision.Action == planActionRetire {
+			if err := retireSelectedCodexPolicyArtifact(options, decision, &manifest); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := publishSelectedCodexPolicyArtifact(options, decision, &manifest); err != nil {
+			return err
+		}
+	}
+	if err := writeCodexManagedRuleManifest(manifestPath, manifest); err != nil {
+		return fmt.Errorf("record Codex journal rule ownership: %w", err)
+	}
+	return nil
+}
+
+func publishSelectedCodexPolicyArtifact(options targetInstallOptions, decision artifactPlanDecision, manifest *codexManagedRuleManifest) error {
+	path, err := resolveDecisionPath(options, decision)
+	if err != nil {
+		return err
+	}
+	live := ""
+	if current, exists, err := readOptionalInstallFile(path, "selected Codex policy"); err != nil {
+		return err
+	} else if exists {
+		live = string(current)
+	}
+	desired, err := desiredCodexPolicyContent(options, decision, live)
+	if err != nil {
+		return err
+	}
+	if err := writeFileAtomically(path, desired, 0o644); err != nil {
+		return fmt.Errorf("publish selected Codex policy %s: %w", decision.ID, err)
+	}
+	switch decision.Kind {
+	case "codex-rule":
+		manifest.set(codexJournalRuleRelativePath, sha256Bytes(desired))
+	case "codex-guidance":
+		return fmt.Errorf("global Codex guidance is retired and cannot be published")
+	default:
+		return fmt.Errorf("unsupported Codex policy kind %q", decision.Kind)
+	}
+	return nil
+}
+
+// Read and validate the owned bytes again at apply time; a retirement plan is
+// not authority to remove foreign or subsequently modified policy.
+func readOwnedCodexPolicyForRetirement(path string, kind string, manifest codexManagedRuleManifest) ([]byte, bool, error) {
+	name, description := codexJournalRuleRelativePath, "rule"
+	switch kind {
+	case "codex-rule":
+	case "codex-guidance":
+		name, description = codexJournalGuidanceRelativePath, "guidance block"
+	default:
+		return nil, false, fmt.Errorf("unsupported Codex policy kind %q", kind)
+	}
+	digest, owned := manifest.ownedDigest(name)
+	if !owned {
+		return nil, false, nil
+	}
+	current, exists, err := readOptionalInstallFile(path, "selected Codex policy retirement")
+	if err != nil {
+		return nil, true, err
+	}
+	if kind == "codex-rule" && !exists {
+		return nil, true, nil
+	}
+	ownedContent := current
+	if kind == "codex-guidance" {
+		if err := validateCodexJournalGuidanceStructure(string(current)); err != nil {
+			return nil, true, err
+		}
+		guidanceRange, found := findCodexJournalGuidance(string(current))
+		if !found {
+			return nil, true, fmt.Errorf("refusing to remove modified Loaf-owned Codex guidance block in %s", path)
+		}
+		ownedContent = current[guidanceRange.start:guidanceRange.end]
+	}
+	if sha256Bytes(ownedContent) != digest {
+		return nil, true, fmt.Errorf("refusing to remove modified Loaf-owned Codex %s in %s", description, path)
+	}
+	return current, true, nil
+}
+
+func retireSelectedCodexPolicyArtifact(options targetInstallOptions, decision artifactPlanDecision, manifest *codexManagedRuleManifest) error {
+	path, err := resolveDecisionPath(options, decision)
+	if err != nil {
+		return err
+	}
+	current, owned, err := readOwnedCodexPolicyForRetirement(path, decision.Kind, *manifest)
+	if err != nil {
+		return err
+	}
+	if !owned {
+		return nil
+	}
+	switch decision.Kind {
+	case "codex-rule":
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("retire selected Codex rule %s: %w", decision.ID, err)
+		}
+		manifest.remove(codexJournalRuleRelativePath)
+	case "codex-guidance":
+		text := string(current)
+		if guidanceRange, ok := findCodexJournalGuidance(text); ok {
+			if err := writeFileAtomically(path, []byte(removeCodexJournalGuidance(text, guidanceRange)), 0o644); err != nil {
+				return fmt.Errorf("retire selected Codex guidance %s: %w", decision.ID, err)
+			}
+		}
+		manifest.remove(codexJournalGuidanceRelativePath)
+	default:
+		return fmt.Errorf("unsupported Codex policy kind %q", decision.Kind)
+	}
+	return nil
+}
+
 func writeCodexManagedRuleManifest(path string, manifest codexManagedRuleManifest) error {
 	if manifest.Version == 0 {
 		manifest.Version = 1
@@ -508,14 +462,13 @@ func validateCodexJournalExecutable(projectRoot string) error {
 	return err
 }
 
-// trustedCodexJournalExecutable resolves the loaf PATH entry into the path
-// rendered across Codex-managed surfaces (AGENTS.md guidance, the hooks.json
-// command, and loaf.rules execpolicy prefixes). The returned render path is
-// the absolute PATH entrypoint without symlink resolution, so upgrades that
-// retarget the entrypoint (a Homebrew Cellar repoint) never invalidate
-// rendered policy. Validation strictness is unchanged: the canonical
-// EvalSymlinks target must exist and stay outside forbidden roots, and both
-// the render and canonical paths must be guidance-safe.
+// trustedCodexJournalExecutable resolves the loaf PATH entry for fail-closed
+// install/upgrade of the Codex basic-command policy and for recording a
+// trusted path that still recognizes older absolute-pin installs. Generated
+// hooks and rules render the PATH command name `loaf`, not this
+// absolute entrypoint. Validation still requires the PATH binary to exist
+// outside forbidden roots, and both the entrypoint and canonical paths must
+// be guidance-safe.
 func trustedCodexJournalExecutable(projectRoot string, operations *codexRuleInstallOperations) (string, error) {
 	if projectRoot == "" {
 		projectRoot, _ = os.Getwd()

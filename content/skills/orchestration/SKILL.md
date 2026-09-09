@@ -46,7 +46,7 @@ Use the `linear` skill for MCP selection, reads and mutations, update formatting
 ## Verification
 
 - Verify `loaf journal recent` / `loaf journal context` reflect the current work
-- Validate council files with `validate-council.py` before concluding
+- Create and read council artifacts with `loaf council new` / `loaf council show` / `loaf council list` — do not run retired helper scripts
 - When Linear participates, verify the Linear skill's read-before-write and outcome-reporting contract
 
 ## Quick Reference
@@ -54,7 +54,7 @@ Use the `linear` skill for MCP selection, reads and mutations, update formatting
 | Task | Action |
 |------|--------|
 | Multi-step work | Log the intent, spawn agents |
-| Complex decision | Convene council (5-7 agents, odd) |
+| Complex decision | Convene council (5-7 agents, odd); persist with `loaf council new` |
 | Linear work | Use the Linear skill; keep Loaf issue execution authoritative |
 | Feature planning | Size by complexity, shape before building |
 | Agent selection | Match domain expertise to task |
@@ -109,7 +109,7 @@ This skill uses paths from `.agents/loaf.json`:
 | Artifact | Location | Archive | Naming |
 |----------|----------|---------|--------|
 | Journal | Global SQLite (`loaf journal recent/search`) | N/A — continuous project-scoped log | Project-scoped, harness-id tagged |
-| Councils | `.agents/councils/` | `.agents/councils/archive/` | `YYYYMMDD-HHMMSS-topic.md` |
+| Councils | `.agents/councils/` | `.agents/councils/archive/` | `COUNCIL-YYYYMMDD-slug.md` via `loaf council new` |
 | Handoffs | `.agents/handoffs/` | delete after deprecated | Created by handoff |
 | Reports | `.agents/reports/` | N/A | `YYYYMMDD-HHMMSS-subject.md` |
 | Issues | SQLite (`loaf issue show/list`) | `cancelled` / `duplicate` via `loaf issue status` | Alias or opaque id |

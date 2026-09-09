@@ -39,7 +39,7 @@ Domain knowledge for overhead transmission line physics, thermal ratings, and me
 
 - Confirm all physical parameters are validated against bounds before computation
 - Verify standard citations are present in code comments for thermal formulas
-- Run `scripts/validate-bounds.py` to check parameter values against physical limits
+- Run `loaf check bounds` to check parameter values against physical limits
 
 ## Quick Reference
 
@@ -59,13 +59,13 @@ Domain knowledge for overhead transmission line physics, thermal ratings, and me
 | Electrical Properties | [references/electrical-properties.md](references/electrical-properties.md) | Resistance, sag, catenary formulas and calculations |
 | Standards Reference | [references/standards-reference.md](references/standards-reference.md) | Industry standards summary (CIGRE, IEEE, IEC, EN) |
 
-## Available Scripts
+## Available Checks
 
-| Script | Usage | Description |
-|--------|-------|-------------|
-| `scripts/validate-bounds.py` | `validate-bounds.py -t conductor_temp -v 85` | Validate physics values against bounds |
-| `scripts/convert-units.py` | `convert-units.py 25 C K` | Convert between units (temp, length, power, speed) |
-| `scripts/check-standard-refs.sh` | `check-standard-refs.sh <dir>` | Check for proper CIGRE/IEEE citations in code |
+| Check | Usage | Description |
+|-------|-------|-------------|
+| Bounds | `loaf check bounds -t conductor_temp -v 85` | Validate physics values against bounds. `--unit K` converts temperature first. |
+| Units | `loaf check units 25 C K` | Convert between units (temp, length, power, speed) |
+| Standard refs | `loaf check standard-refs [dir]` | Check for CIGRE/IEEE citations and section numbers in Python files |
 
 ## Default Standard
 

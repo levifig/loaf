@@ -3,7 +3,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { dirname, join, resolve, sep } from "node:path";
+import { delimiter, dirname, join, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
@@ -103,6 +103,17 @@ function buildEnvironment() {
   for (const key of safeEnvironmentKeys) if (process.env[key] !== undefined) env[key] = process.env[key];
   if (process.env.HOME !== undefined) env.HOME = process.env.HOME;
   if (process.env.USERPROFILE !== undefined) env.USERPROFILE = process.env.USERPROFILE;
+  return env;
+}
+
+export function buildCandidate(dbPath, runner = run) {
+  const env = {
+    ...buildEnvironment(),
+    LOAF_DB: dbPath, LOAF_DEV_LINK: "0", LOAF_BUILD_TARGETS: platform, LOAF_NATIVE_ARTIFACT_DRY_RUN: "0",
+    PATH: `${dirname(join(repoRoot, candidateNativePath))}${delimiter}${process.env.PATH ?? ""}`,
+  };
+  if (runner("go", ["run", "./cmd/loafdev", "build-go"], repoRoot, env).status !== 0) throw new Error("candidate Go build failed");
+  if (runner("loaf", ["build", "--target", "opencode"], repoRoot, env).status !== 0) throw new Error("candidate OpenCode target build failed");
   return env;
 }
 
@@ -246,11 +257,7 @@ function main(argv = process.argv.slice(2)) {
   try {
     mkdirSync(disposableRepo, { recursive: true, mode: 0o700 });
     mkdirSync(stateDir, { recursive: true, mode: 0o700 });
-    const buildEnv = buildEnvironment();
-    const buildGo = run("npm", ["run", "build:go"], repoRoot, buildEnv);
-    if (buildGo.status !== 0) throw new Error("candidate Go build failed");
-    const buildOpenCode = run("bin/loaf", ["build", "--target", "opencode"], repoRoot, buildEnv);
-    if (buildOpenCode.status !== 0) throw new Error("candidate OpenCode target build failed");
+    buildCandidate(dbPath);
     artifacts = candidateArtifacts();
     smoke.candidate_artifacts = { hooks_path: artifacts.hooks_path, hooks_sha256: artifacts.hooks_sha256, native_binary_path: artifacts.native_binary_path, native_binary_sha256: artifacts.native_binary_sha256 };
     if (!existsSync(candidateBinary)) throw new Error("candidate native binary is missing");

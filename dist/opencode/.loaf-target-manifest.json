@@ -48,65 +48,17 @@
       "mode": 420
     },
     {
-      "id": "hook-file:plugins/hooks/post-tool/kb-staleness-nudge.sh",
-      "kind": "hook-file",
-      "source_path": "plugins/hooks/post-tool/kb-staleness-nudge.sh",
-      "destination": "plugins/hooks/post-tool/kb-staleness-nudge.sh",
-      "sha256": "2eb14c3143b78d62cdcef56a12ea714472898ec49e54d4e53e217f0e5668cb5e",
-      "mode": 493
-    },
-    {
-      "id": "hook-file:plugins/hooks/pre-tool/foundations-check-secrets.sh",
-      "kind": "hook-file",
-      "source_path": "plugins/hooks/pre-tool/foundations-check-secrets.sh",
-      "destination": "plugins/hooks/pre-tool/foundations-check-secrets.sh",
-      "sha256": "d70f76833d27a30460c8de390ad7f7743fa6c0edb22444be01fbfcd091199921",
-      "mode": 493
-    },
-    {
-      "id": "hook-file:plugins/hooks/pre-tool/foundations-validate-push.sh",
-      "kind": "hook-file",
-      "source_path": "plugins/hooks/pre-tool/foundations-validate-push.sh",
-      "destination": "plugins/hooks/pre-tool/foundations-validate-push.sh",
-      "sha256": "c86c7158cd61be0be5f5052966d20e3a3df2b12d03f99902f7f396d7481838f2",
-      "mode": 493
-    },
-    {
-      "id": "hook-file:plugins/hooks/pre-tool/orchestration-validate-commit.py",
-      "kind": "hook-file",
-      "source_path": "plugins/hooks/pre-tool/orchestration-validate-commit.py",
-      "destination": "plugins/hooks/pre-tool/orchestration-validate-commit.py",
-      "sha256": "ad16667fdc28ec1595aba184b21faf56d41e5c9f3086ca20fd135d8dd0b21c7d",
-      "mode": 493
-    },
-    {
-      "id": "hook-file:plugins/hooks/subagent/validate-infra-safety.sh",
-      "kind": "hook-file",
-      "source_path": "plugins/hooks/subagent/validate-infra-safety.sh",
-      "destination": "plugins/hooks/subagent/validate-infra-safety.sh",
-      "sha256": "1e1d1d25367e0ae643d3880597a1e88a1a7a1469e9b987e242d20783aaed6497",
-      "mode": 493
-    },
-    {
-      "id": "hook-file:plugins/hooks/subagent/validate-sql-safety.sh",
-      "kind": "hook-file",
-      "source_path": "plugins/hooks/subagent/validate-sql-safety.sh",
-      "destination": "plugins/hooks/subagent/validate-sql-safety.sh",
-      "sha256": "f3dc96bb160540e08bfa75e6c604087222c003a7abf8d9fd77800997375fd681",
-      "mode": 493
-    },
-    {
       "id": "managed-instructions",
       "kind": "instruction",
       "destination": "project-instructions",
-      "sha256": "dd1528fbcd47b62e9cf4e5943d2deb78e5118e60a0111608eed79b07cca4d873"
+      "sha256": "6f2d9dbe5b9113b8ab8b42a83e3b1e32225c58ca4511ede3148f62344c6fe0b2"
     },
     {
       "id": "plugin:plugins/hooks.ts",
       "kind": "plugin",
       "source_path": "plugins/hooks.ts",
       "destination": "plugins/hooks.ts",
-      "sha256": "1d7dd39bcfe6741990086e879ac4b8d0faa52752d4fd7b4995e5a50d3be7a16f",
+      "sha256": "4239097ad74987d64e750ad3cb0bb970c3a7f3a3016e01ff27d70e78dd2a7690",
       "mode": 420
     }
   ]
