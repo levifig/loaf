@@ -551,7 +551,7 @@ func insertReleaseChangelog(existing string, releaseSection string) string {
 		}
 	}
 	if unreleased == -1 {
-		return ""
+		return insertReleaseChangelogWithoutUnreleased(lines, releaseSection)
 	}
 	nextRelease := len(lines)
 	for i := unreleased + 1; i < len(lines); i++ {
@@ -565,6 +565,31 @@ func insertReleaseChangelog(existing string, releaseSection string) string {
 	result := append([]string{}, lines[:unreleased+1]...)
 	result = append(result, "", "- _No unreleased changes yet._", "", releaseBlock, "")
 	result = append(result, lines[nextRelease:]...)
+	return strings.Join(result, "\n")
+}
+
+func insertReleaseChangelogWithoutUnreleased(lines []string, releaseSection string) string {
+	firstRelease := len(lines)
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "## [") {
+			firstRelease = i
+			break
+		}
+	}
+
+	result := append([]string{}, lines[:firstRelease]...)
+	if len(result) > 0 && strings.TrimSpace(result[len(result)-1]) != "" {
+		result = append(result, "")
+	}
+	result = append(result,
+		"## [Unreleased]",
+		"",
+		"- _No unreleased changes yet._",
+		"",
+		releaseSection,
+		"",
+	)
+	result = append(result, lines[firstRelease:]...)
 	return strings.Join(result, "\n")
 }
 
