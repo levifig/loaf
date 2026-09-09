@@ -171,7 +171,7 @@ func TestTrackerSkillGitHubMappingUsesNativeIssueSemantics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"repository Issues", "native sub-issue relationships", "native issue dependencies", "state_reason", "runtime capabilities"} {
+	for _, want := range []string{"repository Issues", "native sub-issue relationships", "native issue dependencies", "state_reason", "Projects v2", "runtime capabilities"} {
 		if !strings.Contains(string(skill), want) {
 			t.Fatalf("GitHub skill missing native-semantics rule %q", want)
 		}
@@ -195,14 +195,14 @@ func TestTrackerSkillGitHubDuplicateTransitionRequiresNativeRelationshipReadback
 		if mapping.ID != "status.transition" {
 			continue
 		}
-		for _, capability := range []string{"issue.read", "issue.state.read", "issue.state_reason.read"} {
+		for _, capability := range []string{"issue.read", "issue.state.read", "issue.state_reason.read", "project.item.read", "project.status.read", "project.status.options.list"} {
 			if !stringInSlice(capability, mapping.Requires.Before) {
-				t.Fatalf("status.transition before = %v, want %q for duplicate-target type discrimination", mapping.Requires.Before, capability)
+				t.Fatalf("status.transition before = %v, want %q for duplicate-target type discrimination and Project Status", mapping.Requires.Before, capability)
 			}
 		}
-		for _, capability := range []string{"issue.read", "issue.state.read", "issue.state_reason.read", "issue.duplicate_of.read"} {
+		for _, capability := range []string{"issue.read", "issue.state.read", "issue.state_reason.read", "issue.duplicate_of.read", "project.item.read", "project.status.read"} {
 			if !stringInSlice(capability, mapping.Requires.After) {
-				t.Fatalf("status.transition after = %v, want %q for native duplicate relationship readback", mapping.Requires.After, capability)
+				t.Fatalf("status.transition after = %v, want %q for native duplicate relationship and Project Status readback", mapping.Requires.After, capability)
 			}
 		}
 		return
@@ -703,8 +703,8 @@ func canonicalGitHubProviderOperations() []providerOperationMapping {
 		{ID: "hierarchy.change", NativeSemantic: "github.issue-parent-and-sub-issues", Availability: "runtime", MaximumFidelity: "exact", Requires: providerOperationRequirements{Before: []string{"issue.parent.read", "issue.sub_issues.read"}, Execute: []string{"issue.parent.write"}, After: []string{"issue.parent.read", "issue.sub_issues.read"}}},
 		{ID: "dependency.read", NativeSemantic: "github.issue-blocked-by-and-blocking", Availability: "runtime", MaximumFidelity: "exact", Requires: providerOperationRequirements{Before: []string{"destination.scope"}, Execute: []string{"issue.blocked_by.read", "issue.blocking.read"}, After: []string{}}},
 		{ID: "dependency.change", NativeSemantic: "github.issue-blocked-by-and-blocking", Availability: "runtime", MaximumFidelity: "exact", Requires: providerOperationRequirements{Before: []string{"issue.blocked_by.read", "issue.blocking.read"}, Execute: []string{"issue.blocked_by.write"}, After: []string{"issue.blocked_by.read", "issue.blocking.read"}}},
-		{ID: "status.read", NativeSemantic: "github.issue-state-and-state-reason", Availability: "runtime", MaximumFidelity: "exact", Requires: providerOperationRequirements{Before: []string{"destination.scope"}, Execute: []string{"issue.state.read", "issue.state_reason.read"}, After: []string{}}},
-		{ID: "status.transition", NativeSemantic: "github.issue-state-and-state-reason", Availability: "runtime", MaximumFidelity: "exact", Requires: providerOperationRequirements{Before: []string{"issue.read", "issue.state.read", "issue.state_reason.read"}, Execute: []string{"issue.state.write"}, After: []string{"issue.read", "issue.state.read", "issue.state_reason.read", "issue.duplicate_of.read"}}},
+		{ID: "status.read", NativeSemantic: "github.issue-state-and-project-status", Availability: "runtime", MaximumFidelity: "exact", Requires: providerOperationRequirements{Before: []string{"destination.scope"}, Execute: []string{"issue.state.read", "issue.state_reason.read", "project.item.read", "project.status.read"}, After: []string{}}},
+		{ID: "status.transition", NativeSemantic: "github.issue-state-and-project-status", Availability: "runtime", MaximumFidelity: "exact", Requires: providerOperationRequirements{Before: []string{"issue.read", "issue.state.read", "issue.state_reason.read", "project.item.read", "project.status.read", "project.status.options.list"}, Execute: []string{"issue.state.write", "project.item.write", "project.status.write"}, After: []string{"issue.read", "issue.state.read", "issue.state_reason.read", "issue.duplicate_of.read", "project.item.read", "project.status.read"}}},
 		{ID: "comment.list", NativeSemantic: "github.issue-comments", Availability: "runtime", MaximumFidelity: "exact", Requires: providerOperationRequirements{Before: []string{"issue.read"}, Execute: []string{"issue.comment.read"}, After: []string{}}},
 		{ID: "comment.append", NativeSemantic: "github.issue-comment", Availability: "runtime", MaximumFidelity: "exact", Requires: providerOperationRequirements{Before: []string{"issue.read", "issue.comment.read"}, Execute: []string{"issue.comment.write"}, After: []string{"issue.read", "issue.comment.read"}}},
 	}

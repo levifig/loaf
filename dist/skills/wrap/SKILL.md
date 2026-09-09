@@ -125,11 +125,11 @@ When called near ship or release, wrap runs the same steps but keeps PR landing 
 
 ## Suggests Next
 
-After the wrap-up report, suggest housekeeping if it wasn't run this session and artifacts need attention. When sparks or open ideas need problem discovery before shaping, point at triage (disposition hand to pitch) rather than treating explore or brainstorm as the next front-door workflow.
+After the wrap-up report, suggest housekeeping if it wasn't run this session and artifacts need attention. When sparks or open ideas need a Backlog move or problem discovery, point at triage rather than treating explore or brainstorm as the next front-door workflow. Session-next may name an unblocked Todo item; wrap does not file Issues or pick tomorrow's build from Backlog.
 
 ## Related Skills
 
-- **triage** — process sparks and ideas captured this session
+- **triage** — process sparks and ideas captured this session (keep, archive, or move to Backlog)
 - **pitch** — problem-discovery when a session crystallized a concept that still needs a brief
 - **housekeeping** — archive lifecycle-complete artifacts after the wrap
 
@@ -159,6 +159,6 @@ Use backtick formatting for code identifiers, file paths, issue IDs, version num
 - Stale KB files
 
 **What's Next**
-- Run triage to process ideas (hand problem-discovery items to pitch)
+- Run triage to process ideas (move to Backlog or hand problem-discovery items to pitch)
 - Follow-ups from this session's work
 ```

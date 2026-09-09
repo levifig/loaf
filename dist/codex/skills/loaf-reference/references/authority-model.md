@@ -6,7 +6,7 @@ One responsibility has one canonical owner. Loaf guides the agent; it does not s
 
 | Authority | Owns | Does not own |
 |-----------|------|--------------|
-| Tracker | Work identity, definition, definition of done, hierarchy, dependencies, workflow state, assignment, collaboration | Loaf continuity, credentials, code |
+| Tracker | Work identity, definition, definition of done, hierarchy, dependencies, workflow state including uncommitted intent vs selected work, assignment, collaboration | Loaf continuity, credentials, code |
 | Harness | Connection exposure, credentials, execution, model and tool boundaries | Work semantics or tracker state |
 | Loaf | Flow ceremonies, skills, templates, profiles, private continuity, and temporary skill-artifact conventions | Shared work records, report lifecycle state, or connection credentials |
 | Git | Code and deliberately promoted artifacts | Workflow state or private continuity |

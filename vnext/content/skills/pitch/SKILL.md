@@ -22,7 +22,8 @@ Discover the problem with the user, then render the [problem narrative](../../te
 - Seek the first rideable journey: identify the smallest useful end-to-end change for a real operator without designing it. Sequence useful outcomes, never storage, backend, API, UI, or verification layers.
 - Treat a proposed solution as evidence about the problem, not as an accepted implementation.
 - Read an existing native record when the user supplies a reference or when duplicate context materially affects the pitch.
-- Do not create shared work during pitch. Hand the narrative and destination uncertainty to shape.
+- Do not create shared work during pitch unless the human explicitly says to file it. That publish is the triage action: a native intent record in Backlog, not Todo. Otherwise fill an existing native record or hand the narrative and destination uncertainty to shape. Discovery may keep a solution as a hypothesis; speculative is not authorized.
+- Render the narrative with the template's headings and completed prose. Omit template field-marker comments and authoring instructions from chat responses and saved narratives; the markers belong only in the template source.
 - Read [Interview Guide](references/interview-guide.md) when the initial request is solution-heavy or crosses several problem domains.
 
 ## Verification
@@ -32,7 +33,7 @@ Discover the problem with the user, then render the [problem narrative](../../te
 - The first useful operator journey is nameable, and any sequencing is expressed as outcomes rather than component layers.
 - Proposed implementation details are separated from constraints and evidence.
 - Existing tracker context is attributed to its native reference and has not been copied into a second work authority.
-- The handoff states whether shape should create a native record or update an existing one.
+- The handoff states whether shape should create a native record, update an existing one, or leave an unshaped Backlog intent in place.
 
 ## Quick Reference
 

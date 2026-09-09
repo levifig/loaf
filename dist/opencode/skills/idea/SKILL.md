@@ -4,8 +4,8 @@ description: >-
   Captures ideas into structured nuggets for later evaluation. Use when the user
   says "I have an idea" or "note this down." Also activate when a specific
   actionable concept crystallizes during conversation. Ideas and sparks stay
-  capture primitives routed through triage, which files worth-keeping items as
-  backlog issues or hands them to pitch or shape. Not for problem discovery (use
+  capture primitives routed through triage, which may move worth-keeping items
+  to Backlog or hand them to pitch or shape. Not for problem discovery (use
   pitch), processing the intake queue (use triage), shaping a bounded issue (use
   shape), or agent-side divergent inquiry when direction is undecided (use
   explore as a technique).
@@ -58,7 +58,7 @@ Capture ideas quickly with minimal friction.
 
 ## Purpose
 
-Ideas are raw nuggets — unprocessed, unshaped, but worth remembering. The goal is **speed of capture**, not thoroughness. An idea is retained material, nothing more: filing it as a backlog issue, handing it to pitch for problem discovery, handing it to shape when already well-understood, or archiving it are triage dispositions chosen later by the user.
+Ideas are raw nuggets — unprocessed, unshaped, but worth remembering. The goal is **speed of capture**, not thoroughness. An idea is retained material, nothing more: moving it to tracker Backlog, handing it to pitch for problem discovery, handing it to shape when already well-understood, or archiving it are triage dispositions chosen later by the user. Idea never files a tracker Issue.
 
 ---
 
@@ -82,7 +82,7 @@ Ideas are raw nuggets — unprocessed, unshaped, but worth remembering. The goal
 
 ## Related Skills
 
-- **triage** — process the intake queue and choose dispositions (file as backlog issue, hand to pitch, or hand to shape)
+- **triage** — process private captures and choose dispositions (move to Backlog, hand to pitch, or hand to shape)
 - **pitch** — problem-discovery ceremony when a captured idea needs a brief before shaping
 - **shape** — develop a well-understood direction into a bounded issue
 - **explore** — agent technique when direction is genuinely undecided (not a user front door)
