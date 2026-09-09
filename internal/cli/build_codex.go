@@ -331,7 +331,7 @@ func buildNativeCodexTarget(root string) error {
 
 // copyNativeCodexRules copies the Loaf-owned Codex policy template into the
 // target bundle. Rendering is deliberately deferred until installation, when
-// the trusted absolute Loaf executable is known.
+// PATH loaf prefixes are expanded for each classified basic-command leaf.
 func copyNativeCodexRules(root string, dist string) error {
 	src := filepath.Join(root, "content", "codex", "rules", "loaf.rules.tmpl")
 	body, err := readRegularFileNoFollow(src, projectFileReadLimit)
@@ -772,10 +772,10 @@ type nativeCodexHookProjection struct {
 }
 
 // nativeCodexHookProjections describes what Codex 0.144.1 accepts: matcher
-// groups with nested command handlers. The executable stays a placeholder here;
-// install renders it to a trusted absolute Loaf binary once the path is known
-// and can be pinned. Windows parity is concrete rather than asserted — the
-// template carries command and commandWindows with identical values.
+// groups with nested command handlers. Generated commands stay PATH `loaf`.
+// Windows parity is concrete rather than asserted — the template carries
+// command and commandWindows with identical values; POSIX install omits the
+// Windows field.
 func nativeCodexHookProjections() []nativeCodexHookProjection {
 	return []nativeCodexHookProjection{{
 		event:  "SessionStart",
@@ -784,8 +784,8 @@ func nativeCodexHookProjections() []nativeCodexHookProjection {
 			Matcher: codexJournalHookMatcher,
 			Hooks: []nativeCodexCommandHookJSON{{
 				Type:           "command",
-				Command:        codexJournalExecutablePlaceholder + codexJournalHookCommandSuffix,
-				CommandWindows: codexJournalExecutablePlaceholder + codexJournalHookCommandSuffix,
+				Command:        codexJournalHookCommandTemplate,
+				CommandWindows: codexJournalHookCommandTemplate,
 			}},
 		},
 	}}

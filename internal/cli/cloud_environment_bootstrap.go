@@ -10,6 +10,12 @@ import (
 
 // Cloud project-environment bootstrap for Cursor Cloud Agents and Amp Orbs.
 //
+// The four bootstrap scripts are an explicit keep exception for the repository
+// contract this package encodes (environment.json / Orb setup-resume paths).
+// Tests that require those paths prove this repo's contract, not that the
+// hosts require Bash. Replacing the files would need those hosts to accept a
+// non-shell entry; that is unproven here.
+//
 // Harness surfaces ride `loaf install` under LOAF_PROJECT_ENV=1 (project-local
 // .cursor/, .amp/, .agents/skills/), not user-level ~/.cursor or hooks.json.
 //

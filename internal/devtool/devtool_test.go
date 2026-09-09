@@ -362,13 +362,11 @@ func TestPackageWritesArchivesAndChecksums(t *testing.T) {
 	}
 }
 
-func TestVerifyArtifactsRequiresTheShimAndForbidsAPluginRuntime(t *testing.T) {
+func TestVerifyArtifactsRequiresPATHRuntimeAndForbidsPluginExecutables(t *testing.T) {
 	root := fixtureRoot(t)
-	shim := "#!/bin/sh\nexec loaf \"$@\"\n"
-	writeFixture(t, filepath.Join(root, "internal", "cli", "claude_plugin_shim.sh"), shim)
 	writeFixture(t, filepath.Join(root, "bin", "loaf"), "binary")
 	writeFixture(t, filepath.Join(root, "bin", "native", "linux-x64", "loaf"), "binary")
-	writeFixture(t, filepath.Join(root, "plugins", "loaf", "bin", "loaf"), shim)
+	writeFixture(t, filepath.Join(root, "plugins", "loaf", "hooks", "hooks.json"), "{}")
 	env := Env{"LOAF_VERIFY_TARGETS": "linux-x64"}
 	var stdout bytes.Buffer
 	if err := VerifyArtifacts(VerifyOptions{RootDir: root, Env: env, Runner: &recordingRunner{}, Stdout: &stdout}); err != nil {
@@ -379,15 +377,15 @@ func TestVerifyArtifactsRequiresTheShimAndForbidsAPluginRuntime(t *testing.T) {
 		t.Fatalf("plugin runtime error = %v", err)
 	}
 	os.RemoveAll(filepath.Join(root, "plugins", "loaf", "bin", "native"))
-	writeFixture(t, filepath.Join(root, "plugins", "loaf", "bin", "loaf"), shim+"# edited\n")
-	if err := VerifyArtifacts(VerifyOptions{RootDir: root, Env: env, Runner: &recordingRunner{}, Stdout: &stdout}); err == nil || !strings.Contains(err.Error(), "stale") {
-		t.Fatalf("stale shim error = %v", err)
+	writeFixture(t, filepath.Join(root, "plugins", "loaf", "bin", "loaf"), "#!/bin/sh\nexec loaf \"$@\"\n")
+	if err := VerifyArtifacts(VerifyOptions{RootDir: root, Env: env, Runner: &recordingRunner{}, Stdout: &stdout}); err == nil || !strings.Contains(err.Error(), "must not exist") {
+		t.Fatalf("leftover shim error = %v", err)
 	}
 	stdout.Reset()
 	if err := VerifyArtifacts(VerifyOptions{RootDir: root, Env: Env{"LOAF_VERIFY_TARGETS": "darwin-arm64,win32-x64", "LOAF_NATIVE_ARTIFACT_DRY_RUN": "1"}, Runner: &recordingRunner{}, Stdout: &stdout}); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"bin/native/darwin-arm64/loaf", "bin/native/win32-x64/loaf.exe", "plugins/loaf/bin/loaf"} {
+	for _, want := range []string{"bin/native/darwin-arm64/loaf", "bin/native/win32-x64/loaf.exe", "plugins/loaf/hooks/hooks.json"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("dry run = %q, want %q", stdout.String(), want)
 		}

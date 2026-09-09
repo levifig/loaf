@@ -35,7 +35,7 @@ loaf journal log "skill(implement): TASK-005 — canary acceptance evidence"
 ## Steps
 
 - [x] Snapshot both live files; run the built `loaf upgrade`; capture output.
-- [x] Run `research/compare_hook_files.py` on each before/after pair and assert its reported differences name only expected Loaf entries (per the upgrade output and `loaf hooks list`); no drift-refusal text; Codex `session-start-loaf` absorbed as disabled (record present with `absorbed_at`, entry still absent, absorption marker durable); every non-Loaf entry value-identical and order-stable — the Codex herdr entry and all 33 Cursor foreign entries (32 legacy-generation plus one herdr).
+- [x] Compare each before/after pair (historical `research/compare_hook_files.py`, now deleted from HEAD; Git retains it) and assert the recorded differences name only expected Loaf entries (per the upgrade output and `loaf hooks list`); no drift-refusal text; Codex `session-start-loaf` absorbed as disabled (record present with `absorbed_at`, entry still absent, absorption marker durable); every non-Loaf entry value-identical and order-stable — the Codex herdr entry and all 33 Cursor foreign entries (32 legacy-generation plus one herdr). Evidence remains in `research/canary/`.
 - [x] Re-run upgrade; assert no actions reported and no second absorption.
 - [x] Verb round-trip on Codex: `enable` restores exactly the `session-start-loaf` entry, `disable` removes exactly it; herdr untouched throughout; `absorbed_at` unchanged by the toggles.
 - [x] `loaf config check`: disabled Codex hook reports healthy-absent (H4).

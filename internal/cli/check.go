@@ -83,22 +83,31 @@ var nativeCheckSecretPatterns = []secretPattern{
 }
 
 var validCheckHooks = map[string]bool{
-	"artifact-body-write":  true,
-	"artifact-names":       true,
-	"check-secrets":        true,
-	"ephemeral-provenance": true,
-	"github-account":       true,
-	"render-drift":         true,
-	"validate-push":        true,
-	"workflow-pre-pr":      true,
-	"validate-commit":      true,
-	"security-audit":       true,
+	"artifact-body-write":   true,
+	"artifact-names":        true,
+	"check-secrets":         true,
+	"ephemeral-provenance":  true,
+	"github-account":        true,
+	"kb-staleness-nudge":    true,
+	"render-drift":          true,
+	"validate-push":         true,
+	"workflow-pre-pr":       true,
+	"validate-commit":       true,
+	"security-audit":        true,
+	"validate-infra-safety": true,
+	"validate-sql-safety":   true,
 }
 
 func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error {
 	if isHelpArg(args) {
 		writeCheckHelp(out)
 		return nil
+	}
+	if writeNestedHelp(out, args, checkOperatorHelpWriters()) {
+		return nil
+	}
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		return r.runCheckOperator(args[0], args[1:], out, runtimeRoot)
 	}
 	options, err := parseCheckArgs(args)
 	if err != nil {
@@ -110,31 +119,42 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 	if !validCheckHooks[options.hook] {
 		return fmt.Errorf("Unknown hook: %s", options.hook)
 	}
-	context := r.readCheckContext()
+	if options.hook == "kb-staleness-nudge" {
+		return r.runKbStalenessNudge(out, runtimeRoot, options)
+	}
+	context, payloadErr := r.readCheckContextFor(options.hook)
 	var result checkResult
-	switch options.hook {
-	case "artifact-body-write":
-		result = runNativeArtifactBodyWriteGuard(context, runtimeRoot)
-	case "artifact-names":
-		result = runNativeArtifactNames(context, runtimeRoot)
-	case "check-secrets":
-		result = runNativeCheckSecrets(context)
-	case "ephemeral-provenance":
-		result = runNativeEphemeralProvenance(context, runtimeRoot)
-	case "github-account":
-		result = runNativeGitHubAccount(context, runtimeRoot)
-	case "render-drift":
-		result = runNativeRenderDrift(context, runtimeRoot)
-	case "validate-commit":
-		result = runNativeValidateCommit(context, runtimeRoot)
-	case "security-audit":
-		result = runNativeSecurityAudit(context, runtimeRoot)
-	case "workflow-pre-pr":
-		result = runNativeWorkflowPrePR(context, runtimeRoot)
-	case "validate-push":
-		result = runNativeValidatePush(context, runtimeRoot)
-	default:
-		return fmt.Errorf("Unknown hook: %s", options.hook)
+	if payloadErr != nil {
+		result = blockedCheckResult(payloadErr.Error())
+	} else {
+		switch options.hook {
+		case "artifact-body-write":
+			result = runNativeArtifactBodyWriteGuard(context, runtimeRoot)
+		case "artifact-names":
+			result = runNativeArtifactNames(context, runtimeRoot)
+		case "check-secrets":
+			result = runNativeCheckSecrets(context)
+		case "ephemeral-provenance":
+			result = runNativeEphemeralProvenance(context, runtimeRoot)
+		case "github-account":
+			result = runNativeGitHubAccount(context, runtimeRoot)
+		case "render-drift":
+			result = runNativeRenderDrift(context, runtimeRoot)
+		case "validate-commit":
+			result = runNativeValidateCommit(context, runtimeRoot)
+		case "security-audit":
+			result = runNativeSecurityAudit(context, runtimeRoot)
+		case "workflow-pre-pr":
+			result = runNativeWorkflowPrePR(context, runtimeRoot)
+		case "validate-push":
+			result = runNativeValidatePush(context, runtimeRoot)
+		case "validate-infra-safety":
+			result = runNativeValidateInfraSafety(context)
+		case "validate-sql-safety":
+			result = runNativeValidateSQLSafety(context)
+		default:
+			return fmt.Errorf("Unknown hook: %s", options.hook)
+		}
 	}
 	if options.jsonOutput {
 		if err := writeCheckJSON(out, options.hook, result, options.advisory); err != nil {
@@ -150,7 +170,21 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 }
 
 func writeCheckHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf check --hook <id> [--advisory] [--json]", "Run one registered hook check.", "--hook      Hook id: artifact-body-write, check-secrets, ephemeral-provenance, github-account, render-drift, validate-commit, security-audit, workflow-pre-pr, validate-push", "--advisory  Surface findings without blocking: always exit 0, even when the check fails", "--json      Output hook result, pass/block status, exit code, warnings, errors, and findings as JSON")
+	fmt.Fprintln(out, "Usage: loaf check --hook <id> [--advisory] [--json]")
+	fmt.Fprintln(out, "       loaf check <subcommand> [<path>|-] [--json]")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Run one registered hook check, or a standalone validator.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Subcommands:")
+	for _, item := range checkOperatorHelpItems() {
+		fmt.Fprintf(out, "  %-14s %s\n", item.Name, item.Summary)
+	}
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Options:")
+	fmt.Fprintln(out, "  --hook      Hook id: "+strings.Join(sortedKeys(validCheckHooks), ", "))
+	fmt.Fprintln(out, "  --advisory  Surface findings without blocking: always exit 0, even when the check fails")
+	fmt.Fprintln(out, "  --json      Output hook result, pass/block status, exit code, warnings, errors, and findings as JSON")
+	fmt.Fprintln(out, "  -h, --help  Show help")
 }
 
 func parseCheckArgs(args []string) (checkOptions, error) {
@@ -174,22 +208,57 @@ func parseCheckArgs(args []string) (checkOptions, error) {
 	return options, nil
 }
 
-func (r Runner) readCheckContext() checkHookContext {
+func (r Runner) readCheckContextFor(hook string) (checkHookContext, error) {
+	strict := hook == "validate-infra-safety" || hook == "validate-sql-safety"
+	return r.parseCheckContext(strict)
+}
+
+func (r Runner) parseCheckContext(strict bool) (checkHookContext, error) {
 	reader := firstReader(r.Stdin, os.Stdin)
 	if file, ok := reader.(*os.File); ok {
 		if info, err := file.Stat(); err == nil && info.Mode()&os.ModeCharDevice != 0 {
-			return checkHookContext{}
+			return checkHookContext{}, nil
 		}
 	}
-	body, err := io.ReadAll(reader)
-	if err != nil || len(strings.TrimSpace(string(body))) == 0 {
-		return checkHookContext{}
+	if reader == nil {
+		if strict {
+			return checkHookContext{}, fmt.Errorf("unreadable hook payload")
+		}
+		return checkHookContext{}, nil
+	}
+	body, err := io.ReadAll(io.LimitReader(reader, projectFileReadLimit+1))
+	// Every enforcement hook must distinguish an uninspected oversized payload
+	// from empty input, even if the reader also returned an error with the data.
+	if int64(len(body)) > projectFileReadLimit {
+		return checkHookContext{}, fmt.Errorf("unreadable hook payload: exceeds the project read limit")
+	}
+	if err != nil {
+		if strict {
+			return checkHookContext{}, fmt.Errorf("unreadable hook payload: %w", err)
+		}
+		return checkHookContext{}, nil
+	}
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return checkHookContext{}, nil
 	}
 	var context checkHookContext
 	if err := json.Unmarshal(body, &context); err != nil {
-		return checkHookContext{}
+		if strict {
+			return checkHookContext{}, fmt.Errorf("malformed hook payload")
+		}
+		return checkHookContext{}, nil
 	}
-	return context
+	return context, nil
+}
+
+func blockedCheckResult(message string) checkResult {
+	return checkResult{
+		Passed:   false,
+		Blocked:  true,
+		Warnings: []string{},
+		Errors:   []string{message},
+		Findings: []string{},
+	}
 }
 
 func runNativeCheckSecrets(context checkHookContext) checkResult {
@@ -745,6 +814,14 @@ func runNativeValidateCommit(context checkHookContext, cwd string) checkResult {
 	if message == "" {
 		return result
 	}
+	return evaluateCommitMessage(message, cwd)
+}
+
+// evaluateCommitMessage is the shared conventional-commit engine used by the
+// validate-commit hook and the operator file/stdin command. Do not add a
+// second set of type or attribution rules beside it.
+func evaluateCommitMessage(message, cwd string) checkResult {
+	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
 	if !conventionalCommitRE.MatchString(message) {
 		result.Passed = false
 		result.Blocked = true
@@ -1749,7 +1826,10 @@ func writeCheckText(out io.Writer, errOut io.Writer, hook string, result checkRe
 		for _, warning := range result.Warnings {
 			fmt.Fprintf(out, "   WARN: %s\n", warning)
 		}
-		return
+	} else {
+		fmt.Fprintf(out, "%s %s: passed\n", ansiGreen("ok"), ansiBold(hook))
 	}
-	fmt.Fprintf(out, "%s %s: passed\n", ansiGreen("ok"), ansiBold(hook))
+	for _, finding := range result.Findings {
+		fmt.Fprintf(out, "   %s %s\n", ansiGray("-"), finding)
+	}
 }

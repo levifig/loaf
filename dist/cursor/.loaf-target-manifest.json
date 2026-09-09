@@ -48,18 +48,10 @@
       "mode": 420
     },
     {
-      "id": "hook-file:hooks/post-tool/kb-staleness-nudge.sh",
-      "kind": "hook-file",
-      "source_path": "hooks/post-tool/kb-staleness-nudge.sh",
-      "destination": "hooks/post-tool/kb-staleness-nudge.sh",
-      "sha256": "2eb14c3143b78d62cdcef56a12ea714472898ec49e54d4e53e217f0e5668cb5e",
-      "mode": 493
-    },
-    {
       "id": "managed-instructions",
       "kind": "instruction",
       "destination": "project-instructions",
-      "sha256": "dd1528fbcd47b62e9cf4e5943d2deb78e5118e60a0111608eed79b07cca4d873"
+      "sha256": "6f2d9dbe5b9113b8ab8b42a83e3b1e32225c58ca4511ede3148f62344c6fe0b2"
     }
   ]
 }

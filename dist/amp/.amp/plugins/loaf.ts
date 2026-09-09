@@ -530,6 +530,18 @@ const preToolHooks: Record<string, HookEntry[]> = {
       "failClosed": true
     },
     {
+      "id": "validate-infra-safety",
+      "command": "loaf check --hook validate-infra-safety",
+      "timeout": 30000,
+      "failClosed": true
+    },
+    {
+      "id": "validate-sql-safety",
+      "command": "loaf check --hook validate-sql-safety",
+      "timeout": 30000,
+      "failClosed": true
+    },
+    {
       "id": "render-drift",
       "command": "loaf check --hook render-drift",
       "timeout": 30000,
@@ -597,7 +609,7 @@ const postToolHooks: Record<string, HookEntry[]> = {
   "Edit|Write": [
     {
       "id": "kb-staleness-nudge",
-      "script": "post-tool/kb-staleness-nudge.sh",
+      "command": "loaf check --hook kb-staleness-nudge",
       "timeout": 5000,
       "failClosed": false
     }

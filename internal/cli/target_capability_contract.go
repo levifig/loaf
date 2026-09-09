@@ -2,8 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,8 +22,8 @@ type TargetCapabilityEvidenceRecord struct {
 }
 
 // TargetCapabilitySmokeEvidence is the strict, structured receipt emitted by
-// the reproducible installed-smoke runner. It authenticates only one exact
-// target/surface/version/mode claim and intentionally carries no transcript.
+// the reproducible installed-smoke runner. It describes one historical
+// observation, not compatibility of the current build, and carries no transcript.
 type TargetCapabilitySmokeEvidence struct {
 	EvidenceVersion            int                             `json:"evidence_version"`
 	Timestamp                  string                          `json:"timestamp"`
@@ -40,6 +38,8 @@ type TargetCapabilitySmokeEvidence struct {
 	Invocation                 TargetCapabilitySmokeInvocation `json:"invocation"`
 	Setup                      []string                        `json:"setup"`
 	CandidatePluginPath        string                          `json:"candidate_plugin_path"`
+	RuntimeLookup              string                          `json:"runtime_lookup"`
+	ResolvedBinaryPath         string                          `json:"resolved_binary_path"`
 	FailureReason              string                          `json:"failure_reason,omitempty"`
 	ExitCode                   int                             `json:"exit_code"`
 	StderrEmpty                bool                            `json:"stderr_empty"`
@@ -64,13 +64,8 @@ type TargetCapabilitySmokeHook struct {
 }
 
 type TargetCapabilitySmokeArtifacts struct {
-	HooksPath   string `json:"hooks_path"`
-	HooksSHA256 string `json:"hooks_sha256"`
-	// ShimPath and ShimSHA256 are set by the Claude receipt only: the plugin
-	// ships a shim at plugins/loaf/bin/loaf that resolves an installed loaf,
-	// and the smoke points it at the candidate binary through LOAF_BIN.
-	ShimPath           string `json:"shim_path,omitempty"`
-	ShimSHA256         string `json:"shim_sha256,omitempty"`
+	HooksPath          string `json:"hooks_path"`
+	HooksSHA256        string `json:"hooks_sha256"`
 	NativeBinaryPath   string `json:"native_binary_path"`
 	NativeBinarySHA256 string `json:"native_binary_sha256"`
 }
@@ -168,9 +163,9 @@ type TargetCompletionCapabilityRecord struct {
 	Evidence             TargetCapabilityEvidenceRecord `json:"evidence"`
 }
 
-// TargetCapabilityRecord is one exact tested harness surface/version evidence
-// record. It is record-only: builders and hook adapters are not derived from
-// this data.
+// TargetCapabilityRecord records evidence for a harness surface. Version is
+// historical provenance and must agree with a cited smoke receipt (including
+// unknown), not the installed harness. Builders and adapters do not consume it.
 type TargetCapabilityRecord struct {
 	Target        string                           `json:"target"`
 	Surface       string                           `json:"surface"`
@@ -262,8 +257,8 @@ var reservedCapabilityScopeNames = map[string]struct{}{
 }
 
 // LoadTargetCapabilityEvidence reads and strictly validates a passive target
-// evidence-record registry. Unknown fields, trailing JSON, unknown registry
-// versions, and invalid records are rejected before consumption.
+// evidence-record registry, not a runtime compatibility allowlist. Unknown
+// fields, trailing JSON, unknown schema versions, and invalid records are rejected.
 func LoadTargetCapabilityEvidence(path string) (TargetCapabilityEvidenceContract, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -308,7 +303,7 @@ func DecodeTargetCapabilityEvidence(data []byte) (TargetCapabilityEvidenceContra
 }
 
 // ValidateTargetCapabilityEvidence enforces the version-3 passive evidence
-// record schema without permitting wildcard versions or unsupported claims.
+// record schema without permitting version ranges or unsupported claims.
 func ValidateTargetCapabilityEvidence(contract TargetCapabilityEvidenceContract) error {
 	if contract.ContractVersion != TargetCapabilityEvidenceContractVersion {
 		return fmt.Errorf("unsupported target capability contract version %d", contract.ContractVersion)
@@ -369,8 +364,8 @@ func validateTargetCapabilityRecord(record TargetCapabilityRecord) error {
 	if strings.TrimSpace(record.Version) == "" {
 		return errors.New("version is required")
 	}
-	if !isExactCapabilityVersion(record.Version) {
-		return fmt.Errorf("version %q must be one exact tested version, not a wildcard or range", record.Version)
+	if !isCapabilityVersionObservation(record.Version) {
+		return fmt.Errorf("version %q must be an observed version or unknown, not a wildcard or range", record.Version)
 	}
 	platform := strings.ToLower(strings.TrimSpace(record.Platform))
 	if !canonicalCapabilityPlatformPattern.MatchString(platform) {
@@ -665,11 +660,9 @@ func validateInstalledSmokeEvidence(root string, record TargetCapabilityRecord, 
 	} else if !errors.Is(err, io.EOF) {
 		return fmt.Errorf("installed-smoke evidence trailing data: %w", err)
 	}
-	// Version 3 records the plugin shim beside the hooks and pins the candidate
-	// binary the shim resolved through LOAF_BIN. Version 2 pinned a native
-	// binary inside the plugin, which the plugin no longer ships, so those
-	// receipts are stale by construction and must be re-recorded.
-	if smoke.EvidenceVersion != 3 {
+	// Version 4 proves PATH resolution of the candidate. Earlier receipts used
+	// a plugin runtime or shim override and cannot prove the current journey.
+	if smoke.EvidenceVersion != 4 {
 		return fmt.Errorf("unsupported installed-smoke evidence version %d (re-record with the current Claude smoke runner)", smoke.EvidenceVersion)
 	}
 	if _, err := time.Parse(time.RFC3339, smoke.Timestamp); err != nil || !strings.HasSuffix(smoke.Timestamp, "Z") {
@@ -703,35 +696,23 @@ func validateInstalledSmokeEvidence(root string, record TargetCapabilityRecord, 
 	if artifacts.HooksPath != "plugins/loaf/hooks/hooks.json" {
 		return fmt.Errorf("installed-smoke hooks path %q is not the candidate Claude hooks artifact", artifacts.HooksPath)
 	}
-	if artifacts.ShimPath != "plugins/loaf/bin/loaf" {
-		return fmt.Errorf("installed-smoke shim path %q is not the candidate Claude plugin shim", artifacts.ShimPath)
-	}
 	expectedNativeBinaryPath := filepath.ToSlash(filepath.Join("bin", "native", record.Platform, "loaf"))
+	if strings.HasPrefix(record.Platform, "win32-") {
+		expectedNativeBinaryPath += ".exe"
+	}
 	if artifacts.NativeBinaryPath != expectedNativeBinaryPath {
 		return fmt.Errorf("installed-smoke native binary path %q, want %q", artifacts.NativeBinaryPath, expectedNativeBinaryPath)
 	}
-	for name, value := range map[string]string{"hooks_sha256": artifacts.HooksSHA256, "shim_sha256": artifacts.ShimSHA256, "native_binary_sha256": artifacts.NativeBinarySHA256} {
+	if smoke.RuntimeLookup != "PATH" || smoke.ResolvedBinaryPath != artifacts.NativeBinaryPath {
+		return errors.New("installed-smoke PATH resolution must identify the candidate native binary")
+	}
+	for name, value := range map[string]string{"hooks_sha256": artifacts.HooksSHA256, "native_binary_sha256": artifacts.NativeBinarySHA256} {
 		if !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(value) {
 			return fmt.Errorf("installed-smoke %s must be a lowercase SHA-256", name)
 		}
 	}
-	for _, artifact := range []struct {
-		name   string
-		path   string
-		digest string
-	}{
-		{"hooks", artifacts.HooksPath, artifacts.HooksSHA256},
-		{"shim", artifacts.ShimPath, artifacts.ShimSHA256},
-		{"native binary", artifacts.NativeBinaryPath, artifacts.NativeBinarySHA256},
-	} {
-		actual, err := sha256CandidateArtifact(root, artifact.path)
-		if err != nil {
-			return fmt.Errorf("hash installed-smoke %s artifact: %w", artifact.name, err)
-		}
-		if actual != artifact.digest {
-			return fmt.Errorf("installed-smoke %s SHA-256 %s does not match current candidate %s", artifact.name, artifact.digest, actual)
-		}
-	}
+	// Digests identify the bytes observed then; current artifacts need not exist
+	// or match. Install ownership and release integrity are checked separately.
 	return nil
 }
 
@@ -834,22 +815,8 @@ func validateOpenCodeInstalledSmokeEvidence(root string, record TargetCapability
 			return fmt.Errorf("OpenCode installed-smoke %s must be a lowercase SHA-256", name)
 		}
 	}
-	for _, artifact := range []struct {
-		name   string
-		path   string
-		digest string
-	}{
-		{"hooks", artifacts.HooksPath, artifacts.HooksSHA256},
-		{"native binary", artifacts.NativeBinaryPath, artifacts.NativeBinarySHA256},
-	} {
-		actual, err := sha256CandidateArtifact(root, artifact.path)
-		if err != nil {
-			return fmt.Errorf("hash OpenCode installed-smoke %s artifact: %w", artifact.name, err)
-		}
-		if actual != artifact.digest {
-			return fmt.Errorf("OpenCode installed-smoke %s SHA-256 %s does not match current candidate %s", artifact.name, artifact.digest, actual)
-		}
-	}
+	// Digests identify the bytes observed then; current artifacts need not exist
+	// or match. Install ownership and release integrity are checked separately.
 	return nil
 }
 
@@ -941,22 +908,8 @@ func validateCodexInstalledSmokeEvidence(root string, record TargetCapabilityRec
 	if smoke.CandidateArtifacts.NativeBinaryPath != expectedNativeBinaryPath {
 		return fmt.Errorf("Codex installed-smoke native binary path %q, want %q", smoke.CandidateArtifacts.NativeBinaryPath, expectedNativeBinaryPath)
 	}
-	for _, artifact := range []struct {
-		name   string
-		path   string
-		digest string
-	}{
-		{"hooks", smoke.CandidateArtifacts.HooksPath, smoke.CandidateArtifacts.HooksSHA256},
-		{"native binary", smoke.CandidateArtifacts.NativeBinaryPath, smoke.CandidateArtifacts.NativeBinarySHA256},
-	} {
-		actual, err := sha256CandidateArtifact(root, artifact.path)
-		if err != nil {
-			return fmt.Errorf("hash Codex installed-smoke %s artifact: %w", artifact.name, err)
-		}
-		if actual != artifact.digest {
-			return fmt.Errorf("Codex installed-smoke %s SHA-256 %s does not match current candidate %s", artifact.name, artifact.digest, actual)
-		}
-	}
+	// Digests identify the bytes observed then; current artifacts need not exist
+	// or match. Install ownership and release integrity are checked separately.
 	return nil
 }
 
@@ -991,28 +944,6 @@ func validateCodexInstalledSmokeInvocation(invocation TargetCapabilitySmokeInvoc
 	return nil
 }
 
-// sha256CandidateArtifact authenticates a candidate artifact path under root
-// before hashing. The path must resolve component-wise to a regular file with
-// no symlink intermediates; os.ReadFile is only used after that check so a
-// matching-hash symlink cannot pass the gate and later be committed as a link.
-func sha256CandidateArtifact(root, relative string) (string, error) {
-	rel := filepath.FromSlash(relative)
-	abs, err := requireRegularFilePath(root, rel, relative)
-	if err != nil {
-		return "", err
-	}
-	return sha256File(abs)
-}
-
-func sha256File(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	digest := sha256.Sum256(data)
-	return hex.EncodeToString(digest[:]), nil
-}
-
 func validateDeferredTargetCapabilityRecord(deferred DeferredTargetCapabilityRecord) error {
 	if strings.TrimSpace(deferred.Target) == "" {
 		return errors.New("target is required")
@@ -1032,8 +963,8 @@ func validateDeferredTargetCapabilityRecord(deferred DeferredTargetCapabilityRec
 	return nil
 }
 
-func isExactCapabilityVersion(version string) bool {
-	return capabilityExactVersionPattern.MatchString(version)
+func isCapabilityVersionObservation(version string) bool {
+	return version == "unknown" || capabilityObservedVersionPattern.MatchString(version)
 }
 
-var capabilityExactVersionPattern = regexp.MustCompile(`^[0-9]+(?:\.[0-9]+)+(?:-[A-Za-z0-9]+)?$`)
+var capabilityObservedVersionPattern = regexp.MustCompile(`^[0-9]+(?:\.[0-9]+)+(?:[-+][A-Za-z0-9.-]+)*$`)

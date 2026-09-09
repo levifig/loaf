@@ -672,19 +672,8 @@ func checkFencedContent() doctorCheck {
 				}
 			}
 			existingBody := content[section.bodyStart:section.end]
-			actualSHA := sha256Hex(existingBody)
-			generatedFingerprint := fencedContentFingerprint(generateFencedContent())
-
-			// Tamper first (Decision 6): stored sha present and disagrees with actual body.
-			if section.fingerprint != "" && section.fingerprint != actualSHA {
-				return doctorResult{
-					Status:  doctorWarn,
-					Message: "Fenced section was modified (stored fingerprint does not match body)",
-					Detail:  "Reconcile hand edits with the managed section before upgrading; `loaf upgrade` will refuse to overwrite this state.",
-				}
-			}
-			// Drift second: intact or sha-less section whose body differs from generated.
-			if actualSHA != generatedFingerprint {
+			_, generatedBody, _ := strings.Cut(generateFencedContent(), "\n")
+			if existingBody != generatedBody {
 				return doctorResult{
 					Status:  doctorWarn,
 					Message: "Fenced section content differs from installed loaf",

@@ -70,6 +70,8 @@ Bootstrap scripts in this repository export `LOAF_PROJECT_ENV=1`. Cursor Cloud d
 
 ## Cursor Cloud Agents
 
+Keeping the four bootstrap scripts is an explicit exception for this repository's current Cursor Cloud / Amp Orb contract. Local tests that require those paths do not prove the hosts require Bash.
+
 This repository ships Cursor Cloud bootstrap artifacts:
 
 | File | Role |

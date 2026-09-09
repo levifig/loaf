@@ -316,7 +316,7 @@ func TestPlanFencedSectionMatrixActions(t *testing.T) {
 	}{
 		{"new_match_skipped", generated + "\n", "skipped"},
 		{"new_differ_updated", "<!-- loaf:managed:start sha256=" + oldFP + " -->\n" + oldBody + "\n", "updated"},
-		{"new_tamper_error", "<!-- loaf:managed:start sha256=" + generatedFP + " -->\ntampered\n" + fencedEndMarker + "\n", "error"},
+		{"edited_body_updated", "<!-- loaf:managed:start sha256=" + generatedFP + " -->\nedited\n" + fencedEndMarker + "\n", "updated"},
 		{"legacy_sha_transition", "<!-- loaf:managed:start v1.2.3 sha256=" + generatedFP + " -->\n" + generatedBody + "\n", "updated"},
 		{"legacy_v_only", "<!-- loaf:managed:start v1.2.3 -->\nold\n" + fencedEndMarker + "\n", "updated"},
 		{"absent_created", "", "created"},

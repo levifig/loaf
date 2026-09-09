@@ -32,6 +32,8 @@ Copy the emitted client wire (single line) into the cloud secret store as `LOAF_
 
 ## Cursor Cloud Agents
 
+The four bootstrap scripts (`.cursor/loaf-cloud-install.sh`, `.cursor/loaf-cloud-start.sh`, `.agents/setup`, `.agents/resume`) are an **explicit keep exception**. Tests that require those paths prove this repository's contract, not that Cursor Cloud or Amp Orb require Bash. Replacing them would need those hosts to accept a non-shell entry; that is unproven here.
+
 1. Ensure `.cursor/environment.json` points install/start at `.cursor/loaf-cloud-install.sh` and `.cursor/loaf-cloud-start.sh` (validated by `TestCloudEnvironmentBootstrapArtifactsInstallCLI`).
 2. Add project environment variables in the Cursor Cloud project settings:
    - `LOAF_PROJECT_ENV=1`

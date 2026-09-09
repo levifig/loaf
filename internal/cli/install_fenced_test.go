@@ -24,7 +24,7 @@ func TestGenerateFencedContentIsJournalFirst(t *testing.T) {
 	if !strings.Contains(content, "loaf journal log") {
 		t.Fatalf("fenced content missing `loaf journal log` guidance:\n%s", content)
 	}
-	if !strings.Contains(content, "exact path-pinned Loaf executable") || !strings.Contains(content, "CODEX_HOME/AGENTS.md") || !strings.Contains(content, "Codex Auto mode") {
+	if !strings.Contains(content, "PATH `loaf` command") || !strings.Contains(content, "CODEX_HOME/AGENTS.md") || !strings.Contains(content, "Codex Auto mode") {
 		t.Fatalf("fenced content missing conditional Codex basic-command guidance:\n%s", content)
 	}
 	if !strings.Contains(content, "loaf journal log/recent/search/context") {
@@ -36,8 +36,8 @@ func TestGenerateFencedContentIsJournalFirst(t *testing.T) {
 	if strings.Contains(content, "skills/orchestration/SKILL.md") {
 		t.Fatalf("fenced content references repo-relative dead link skills/orchestration/SKILL.md:\n%s", content)
 	}
-	if !strings.Contains(content, "<!-- loaf:managed:start sha256=") {
-		t.Fatalf("fenced content missing sha256-only start marker:\n%s", content)
+	if !strings.Contains(content, "<!-- loaf:managed:start -->") || strings.Contains(content, "sha256=") {
+		t.Fatalf("fenced content missing plain start marker:\n%s", content)
 	}
 	if strings.Contains(content, "<!-- loaf:managed:start v") {
 		t.Fatalf("fenced content still embeds a version stamp:\n%s", content)
@@ -68,8 +68,8 @@ func TestInstallFencedSectionCreatesAppendsAndSkipsNoChurn(t *testing.T) {
 		t.Fatalf("create result = %#v, want created with version", result)
 	}
 	body := string(readFileBytes(t, target))
-	if !strings.Contains(body, "<!-- loaf:managed:start sha256=") || !strings.Contains(body, "## Loaf Framework") {
-		t.Fatalf("created fenced body = %q, want managed section with sha256-only marker", body)
+	if !strings.Contains(body, "<!-- loaf:managed:start -->") || !strings.Contains(body, "## Loaf Framework") {
+		t.Fatalf("created fenced body = %q, want managed section with plain marker", body)
 	}
 	if strings.Contains(body, "<!-- loaf:managed:start v") {
 		t.Fatalf("created body still has version stamp: %q", body)
@@ -86,7 +86,7 @@ func TestInstallFencedSectionCreatesAppendsAndSkipsNoChurn(t *testing.T) {
 		t.Fatalf("append result = %#v, want appended", result)
 	}
 	body = string(readFileBytes(t, plain))
-	if !strings.HasPrefix(body, "# Project Notes\n\n<!-- loaf:managed:start sha256=") {
+	if !strings.HasPrefix(body, "# Project Notes\n\n<!-- loaf:managed:start -->") {
 		t.Fatalf("appended body = %q, want notes before fenced section", body)
 	}
 
@@ -147,22 +147,22 @@ func TestInstallFencedSectionMatrixRows(t *testing.T) {
 			checkAfter: func(t *testing.T, body string) {
 				t.Helper()
 				if strings.Contains(body, "old content") || strings.Contains(body, "<!-- loaf:managed:start v") {
-					t.Fatalf("updated body = %q, want generated content with sha256-only header", body)
+					t.Fatalf("updated body = %q, want generated content with plain header", body)
 				}
-				if !strings.Contains(body, "<!-- loaf:managed:start sha256="+generatedFP) {
-					t.Fatalf("updated body missing generated fingerprint: %q", body)
+				if !strings.Contains(body, "<!-- loaf:managed:start -->") {
+					t.Fatalf("updated body missing plain header: %q", body)
 				}
 			},
 		},
 		{
-			name:    "new_form_tampered_refused",
-			seed:    "<!-- loaf:managed:start sha256=" + generatedFP + " -->\ntampered\n" + fencedEndMarker + "\n",
-			wantErr: "was modified",
+			name:       "sha_body_edits_refreshed",
+			seed:       "<!-- loaf:managed:start sha256=" + generatedFP + " -->\nedited\n" + fencedEndMarker + "\n",
+			wantAction: "updated",
 		},
 		{
-			name:    "legacy_sha_tampered_refused",
-			seed:    "<!-- loaf:managed:start v1.2.3 sha256=" + generatedFP + " -->\ntampered\n" + fencedEndMarker + "\n",
-			wantErr: "was modified",
+			name:       "legacy_sha_body_edits_refreshed",
+			seed:       "<!-- loaf:managed:start v1.2.3 sha256=" + generatedFP + " -->\nedited\n" + fencedEndMarker + "\n",
+			wantAction: "updated",
 		},
 		{
 			name:       "legacy_sha_match_match_transition_updated",
@@ -173,7 +173,7 @@ func TestInstallFencedSectionMatrixRows(t *testing.T) {
 				if strings.Contains(body, "<!-- loaf:managed:start v") {
 					t.Fatalf("transition left version stamp: %q", body)
 				}
-				if !strings.Contains(body, "<!-- loaf:managed:start sha256="+generatedFP) {
+				if !strings.Contains(body, "<!-- loaf:managed:start -->") {
 					t.Fatalf("transition missing new-form header: %q", body)
 				}
 			},
@@ -233,8 +233,8 @@ func TestInstallFencedSectionLegacyTransitionThenIdempotent(t *testing.T) {
 		t.Fatalf("transition = %#v, %v, want updated", result, err)
 	}
 	afterTransition := string(readFileBytes(t, target))
-	if strings.Contains(afterTransition, "<!-- loaf:managed:start v") || !strings.Contains(afterTransition, "<!-- loaf:managed:start sha256="+fp) {
-		t.Fatalf("after transition = %q, want sha256-only header", afterTransition)
+	if strings.Contains(afterTransition, "<!-- loaf:managed:start v") || !strings.Contains(afterTransition, "<!-- loaf:managed:start -->") {
+		t.Fatalf("after transition = %q, want plain header", afterTransition)
 	}
 
 	result, err = installFencedSection(target, "2.0.0-alpha.14", true)
@@ -297,7 +297,7 @@ func TestFencedPlanApplyParityMatrix(t *testing.T) {
 	}
 }
 
-func TestInstallFencedSectionMigratesLegacyAndProtectsFingerprintedBody(t *testing.T) {
+func TestInstallFencedSectionMigratesLegacyAndRefreshesEditedBody(t *testing.T) {
 	root := realpath(t, t.TempDir())
 	target := filepath.Join(root, "AGENTS.md")
 	legacy := "# Before\n\n<!-- loaf:managed:start v1.2.3 -->\nold managed content\n<!-- loaf:managed:end -->\n\n# After\n"
@@ -307,8 +307,8 @@ func TestInstallFencedSectionMigratesLegacyAndProtectsFingerprintedBody(t *testi
 		t.Fatalf("legacy migration = %#v, %v, want updated", result, err)
 	}
 	body := string(readFileBytes(t, target))
-	if !strings.HasPrefix(body, "# Before\n\n") || !strings.HasSuffix(body, "\n\n# After\n") || !strings.Contains(body, "sha256=") {
-		t.Fatalf("legacy migration did not preserve prose or add fingerprint: %q", body)
+	if !strings.HasPrefix(body, "# Before\n\n") || !strings.HasSuffix(body, "\n\n# After\n") || !strings.Contains(body, "<!-- loaf:managed:start -->") {
+		t.Fatalf("legacy migration did not preserve prose or use plain header: %q", body)
 	}
 	if strings.Contains(body, "<!-- loaf:managed:start v") {
 		t.Fatalf("legacy migration left version stamp: %q", body)
@@ -320,9 +320,10 @@ func TestInstallFencedSectionMigratesLegacyAndProtectsFingerprintedBody(t *testi
 	}
 	tampered := body[:section.bodyStart] + "tampered\n" + body[section.bodyStart:]
 	writeInstallFile(t, target, tampered)
-	if _, err := installFencedSection(target, "1.2.3", true); err == nil || !strings.Contains(err.Error(), "was modified") {
-		t.Fatalf("tampered fingerprinted body error = %v, want conflict", err)
+	if result, err := installFencedSection(target, "1.2.3", true); err != nil || result.Action != "updated" {
+		t.Fatalf("edited body refresh = %#v, %v, want updated", result, err)
 	}
+	assertInstallFile(t, target, body)
 }
 
 func TestInstallFencedSectionUpdatesSameVersionWhenOwnedBodyDiffers(t *testing.T) {
@@ -343,14 +344,14 @@ func TestInstallFencedSectionRejectsMalformedFingerprint(t *testing.T) {
 		t.Run(token[:6], func(t *testing.T) {
 			target := filepath.Join(t.TempDir(), "AGENTS.md")
 			writeInstallFile(t, target, "<!-- loaf:managed:start v1.2.3 "+token+" -->\nbody\n<!-- loaf:managed:end -->\n")
-			if _, err := installFencedSection(target, "1.2.3", true); err == nil || !strings.Contains(err.Error(), "malformed fingerprint") {
+			if _, err := installFencedSection(target, "1.2.3", true); err == nil || !strings.Contains(err.Error(), "malformed start marker") {
 				t.Fatalf("malformed token %q error = %v, want conflict", token, err)
 			}
 		})
 	}
 }
 
-func TestParseFencedStartHeaderAcceptsThreeForms(t *testing.T) {
+func TestParseFencedStartHeaderAcceptsPlainAndLegacyForms(t *testing.T) {
 	sha := strings.Repeat("a", 64)
 	cases := []struct {
 		line        string
@@ -358,6 +359,7 @@ func TestParseFencedStartHeaderAcceptsThreeForms(t *testing.T) {
 		wantSHA     string
 		wantOK      bool
 	}{
+		{"<!-- loaf:managed:start -->", "", "", true},
 		{"<!-- loaf:managed:start sha256=" + sha + " -->", "", sha, true},
 		{"<!-- loaf:managed:start v1.2.3 sha256=" + sha + " -->", "1.2.3", sha, true},
 		{"<!-- loaf:managed:start v1.2.3 -->", "1.2.3", "", true},
@@ -500,7 +502,7 @@ func TestInstallFencedSectionsForTargetsStopsAtTheFirstFailure(t *testing.T) {
 	root := realpath(t, t.TempDir())
 	claudeFile := filepath.Join(root, ".claude", "CLAUDE.md")
 	mkdirAll(t, filepath.Dir(claudeFile))
-	tampered := tamperedFencedAgentsBody()
+	tampered := malformedFencedAgentsBody()
 	writeInstallFile(t, claudeFile, tampered)
 
 	results, err := installFencedSectionsForTargets([]string{"claude-code", "cursor"}, root, "2.0.0-test.1", true)
@@ -543,5 +545,5 @@ func legacyStampedFencedContent(version string) string {
 		panic("generated content missing section")
 	}
 	body := content[section.bodyStart:section.end]
-	return "<!-- loaf:managed:start v" + version + " sha256=" + section.fingerprint + " -->\n" + body
+	return "<!-- loaf:managed:start v" + version + " sha256=" + sha256Hex(body) + " -->\n" + body
 }

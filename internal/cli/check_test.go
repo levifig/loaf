@@ -25,9 +25,14 @@ func TestRunnerCheckHelp(t *testing.T) {
 		t.Fatalf("check --help error = %v", err)
 	}
 	output := stdout.String()
-	for _, want := range []string{"Usage: loaf check --hook <id> [--advisory] [--json]", "--hook", "--advisory", "--json", "validate-commit"} {
+	for _, want := range []string{"Usage: loaf check --hook <id> [--advisory] [--json]", "--hook", "--advisory", "--json", "validate-commit", "artifact-names"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("stdout = %q, want %q", output, want)
+		}
+	}
+	for id := range validCheckHooks {
+		if !strings.Contains(output, id) {
+			t.Fatalf("stdout = %q, missing hook id %q", output, id)
 		}
 	}
 }

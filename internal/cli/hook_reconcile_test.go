@@ -199,8 +199,8 @@ func TestHookForeignDriftIsDetectedByValueAndOrder(t *testing.T) {
 	}
 }
 
-// The prior live Cursor file converges by removing the two hooks retired by
-// the tracker-native cutover.
+// The prior live Cursor file retires obsolete hooks and updates the old shell
+// nudge once. A subsequent reconcile must leave the converged file alone.
 func TestHookReconcileLeavesTheConvergedCursorFileAlone(t *testing.T) {
 	fixture := newCursorHookFixture(t)
 	live := string(testHookFixture(t, "cursor-hooks-live.json"))
@@ -209,8 +209,12 @@ func TestHookReconcileLeavesTheConvergedCursorFileAlone(t *testing.T) {
 
 	actions := fixture.apply(t)
 
-	if len(actions) != 2 || !strings.Contains(describeHookActions(actions), "remove hook:postToolUse") || !strings.Contains(describeHookActions(actions), "remove hook:preToolUse") {
-		t.Fatalf("actions = %s, want removal of the two retired hooks", describeHookActions(actions))
+	description := describeHookActions(actions)
+	if len(actions) != 5 || !strings.Contains(description, "remove hook:postToolUse") || !strings.Contains(description, "remove hook:preToolUse") || !strings.Contains(description, "update hook:postToolUse/kb-staleness-nudge") || !strings.Contains(description, "add hook:preToolUse/validate-infra-safety") || !strings.Contains(description, "add hook:preToolUse/validate-sql-safety") {
+		t.Fatalf("actions = %s, want two retirements, the native nudge update, and the two new safety hooks", description)
+	}
+	if actions := fixture.apply(t); len(actions) != 0 {
+		t.Fatalf("converged file changed: %s", describeHookActions(actions))
 	}
 }
 
@@ -715,7 +719,7 @@ func TestHookReconcileWaitsForTheLockAndThenProceeds(t *testing.T) {
 }
 
 // Windows parity is concrete rather than asserted: the entry the reconciler
-// writes there carries command and commandWindows with the same cmd.exe form,
+// writes there carries command and commandWindows as the same PATH loaf form,
 // and recognizing it back is what makes the second run a no-op.
 func TestHookReconcileProjectsWindowsCommandParity(t *testing.T) {
 	fixture := newCodexHookFixture(t)
@@ -741,10 +745,7 @@ func TestHookReconcileProjectsWindowsCommandParity(t *testing.T) {
 		t.Fatalf("eventEntries error = %v", err)
 	}
 	handler := entries[0]["hooks"].([]any)[0].(map[string]any)
-	want, err := codexWindowsJournalContextCommand(executable)
-	if err != nil {
-		t.Fatalf("codexWindowsJournalContextCommand error = %v", err)
-	}
+	want := codexJournalHookCommandTemplate
 	if handler["command"] != want || handler["commandWindows"] != want {
 		t.Fatalf("handler = %#v, want command and commandWindows both %q", handler, want)
 	}
@@ -757,9 +758,7 @@ func TestHookReconcileProjectsWindowsCommandParity(t *testing.T) {
 		t.Fatalf("actions = %s, want the Windows projection recognized as converged", describeHookActions(actions))
 	}
 
-	// Loaf moves. The entry written against the old path is still recognized —
-	// the recorded trusted path says so — and converges to the new one in place
-	// rather than being orphaned beside a second group.
+	// PATH identity is stable across an entrypoint move, so rotation is a no-op.
 	rotated := `C:\Program Files\loaf\loaf.exe`
 	moved := windows()
 	moved.resolveExecutable = func() (string, error) { return rotated, nil }
@@ -767,8 +766,8 @@ func TestHookReconcileProjectsWindowsCommandParity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("rotated apply error = %v", err)
 	}
-	if len(actions) != 1 || actions[0].action != hookActionUpdate {
-		t.Fatalf("actions = %s, want the moved executable converged in place", describeHookActions(actions))
+	if len(actions) != 0 {
+		t.Fatalf("actions = %s, want PATH loaf unchanged after entrypoint rotation", describeHookActions(actions))
 	}
 	file, err = readHookFile(fixture.hooks)
 	if err != nil {
@@ -779,15 +778,11 @@ func TestHookReconcileProjectsWindowsCommandParity(t *testing.T) {
 		t.Fatalf("eventEntries error = %v", err)
 	}
 	if len(entries) != 1 {
-		t.Fatalf("entries = %#v, want the rotation to converge one entry rather than add another", entries)
+		t.Fatalf("entries = %#v, want one PATH loaf entry after rotation", entries)
 	}
 	handler = entries[0]["hooks"].([]any)[0].(map[string]any)
-	want, err = codexWindowsJournalContextCommand(rotated)
-	if err != nil {
-		t.Fatalf("codexWindowsJournalContextCommand error = %v", err)
-	}
 	if handler["command"] != want || handler["commandWindows"] != want {
-		t.Fatalf("handler = %#v, want both command fields rotated to %q", handler, want)
+		t.Fatalf("handler = %#v, want both command fields still %q", handler, want)
 	}
 }
 
@@ -2080,9 +2075,8 @@ func testCursorHookCatalogSource() hookCatalogSource {
 	}
 }
 
-// testCodexHookCatalogSource is the one identity Codex ships, as the build
-// emits it: a matcher group carrying the install-time executable placeholder on
-// both the POSIX and Windows commands.
+// testCodexHookCatalogSource is the one identity Codex ships. The leftover
+// {{LOAF_EXECUTABLE}} form is still accepted and rendered to PATH loaf.
 func testCodexHookCatalogSource() hookCatalogSource {
 	command := codexJournalExecutablePlaceholder + codexJournalHookCommandSuffix
 	return hookCatalogSource{

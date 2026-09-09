@@ -161,7 +161,7 @@ func TestDetectLoafRepoTreatsAMalformedFenceHeaderAsLegacy(t *testing.T) {
 	}{
 		{name: "garbage in the header", header: "not-a-version garbage"},
 		{name: "truncated fingerprint", header: "sha256=" + strings.Repeat("a", 12)},
-		{name: "no header fields at all", header: ""},
+		{name: "unknown header field", header: "owner=someone"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			dir := t.TempDir()

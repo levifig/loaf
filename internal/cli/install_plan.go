@@ -43,6 +43,8 @@ type installDryRunPlan struct {
 	Mcp              []mcpPlanEntry           `json:"mcp"`
 	FollowUpCommands []string                 `json:"follow_up_commands"`
 	ConsentRequired  bool                     `json:"consent_required"`
+	Selections       []string                 `json:"selections,omitempty"`
+	VersionStamp     string                   `json:"version_stamp,omitempty"`
 }
 
 // projectPartPlan reports the Loaf-repo detector gate that decides whether the
@@ -66,11 +68,15 @@ type targetDistributionPlan struct {
 }
 
 type artifactPlanDecision struct {
-	ID          string `json:"id"`
-	Kind        string `json:"kind"`
-	Destination string `json:"destination"`
-	Action      string `json:"action"`
-	Detail      string `json:"detail,omitempty"`
+	ID            string `json:"id"`
+	Kind          string `json:"kind"`
+	Destination   string `json:"destination"`
+	Action        string `json:"action"`
+	Detail        string `json:"detail,omitempty"`
+	Diff          string `json:"diff,omitempty"`
+	Desired       string `json:"-"`
+	LiveSHA256    string `json:"live_sha256,omitempty"`
+	DesiredSHA256 string `json:"desired_sha256,omitempty"`
 }
 
 type deprecationPlanEntry struct {
@@ -166,17 +172,11 @@ func (r Runner) buildInstallDryRunPlan(options installOptions, loafRoot string, 
 	defer releaseHookState()
 	buildNeeded := false
 	var plannedOptions []targetInstallOptions
-	if options.upgrade && hasClaudeCode && !containsString(selectedTargets, claudeCodeInstallTarget) {
-		// Upgrade refreshes the plugin only when this distribution installed it;
-		// the planner decides that from Claude Code's own state.
-		if entry, include := r.planClaudeCodeTarget(loafRoot, true, hasClaudeCode); include {
-			plan.Targets = append(plan.Targets, entry)
-		}
-	}
 	for _, target := range selectedTargets {
 		if target == claudeCodeInstallTarget {
-			entry, _ := r.planClaudeCodeTarget(loafRoot, options.upgrade, hasClaudeCode)
-			plan.Targets = append(plan.Targets, entry)
+			if entry, include := r.planClaudeCodeTarget(loafRoot, options.upgrade, hasClaudeCode); include {
+				plan.Targets = append(plan.Targets, entry)
+			}
 			continue
 		}
 		distDir := filepath.Join(distRoot, target)
@@ -197,16 +197,18 @@ func (r Runner) buildInstallDryRunPlan(options installOptions, loafRoot string, 
 			continue
 		}
 		installOpts := targetInstallOptions{
-			Target:             target,
-			DistDir:            distDir,
-			ConfigDir:          configDir,
-			Upgrade:            options.upgrade,
-			CodexBasicCommands: options.codexBasicCommands,
-			Version:            version,
-			HomeDir:            layoutHome,
-			CodexHome:          resolveInstallCodexHome(configDir),
-			ProjectRoot:        projectRoot,
-			HookState:          hookState,
+			Target:              target,
+			DistDir:             distDir,
+			ConfigDir:           configDir,
+			Upgrade:             options.upgrade,
+			CodexBasicCommands:  options.codexBasicCommands,
+			Version:             version,
+			HomeDir:             layoutHome,
+			CodexHome:           resolveInstallCodexHome(configDir),
+			ProjectRoot:         projectRoot,
+			HookState:           hookState,
+			SelectedHookIDs:     selectedHookIDsForTarget(options.selections, target),
+			SelectedArtifactIDs: selectedArtifactIDsForTarget(options.selections, target),
 		}
 		plannedOptions = append(plannedOptions, installOpts)
 		decisions, err := planTargetDistribution(installOpts)
@@ -467,6 +469,9 @@ func planManagedSkills(src string, dest string) ([]artifactPlanDecision, error) 
 		}
 		destination := filepath.Join(dest, skill)
 		if _, err := os.Lstat(destination); os.IsNotExist(err) {
+			// The directory is gone, but its ownership entry still needs to
+			// retire and remain addressable by an explicit scoped selection.
+			decisions = append(decisions, artifactPlanDecision{ID: "skill:" + skill, Kind: "skill", Destination: destination, Action: planActionRetire, Detail: "retire ownership of absent skill"})
 			continue
 		} else if err != nil {
 			return nil, err
@@ -526,6 +531,7 @@ func planTargetAdapterArtifacts(options targetInstallOptions) ([]artifactPlanDec
 			return nil, err
 		}
 		decisions = append(decisions, hookActionPlanDecisions(reconciler, actions)...)
+		decisions = append(decisions, selectedHookPreserveDecisions(reconciler, options.SelectedHookIDs, decisions)...)
 	}
 
 	for _, artifact := range desired.Artifacts {
@@ -551,7 +557,10 @@ func planTargetAdapterArtifacts(options targetInstallOptions) ([]artifactPlanDec
 			decisions = append(decisions, decision)
 			continue
 		}
-		matchesDesired := targetAdapterSnapshotMatchesArtifact(artifact, snapshot)
+		matchesDesired, err := targetAdapterSnapshotMatchesDesired(options, artifact, snapshot)
+		if err != nil {
+			return nil, err
+		}
 		if owned {
 			matchesInstalled := targetAdapterSnapshotMatchesArtifact(installedByID[artifact.ID], snapshot)
 			switch {
@@ -609,100 +618,102 @@ func planTargetAdapterArtifacts(options targetInstallOptions) ([]artifactPlanDec
 		}
 		decisions = append(decisions, decision)
 	}
+	preserved, err := selectedRetiredAdapterPreserveDecisions(options, desiredByID, installedByID, installed.RetiredArtifactIDs, decisions)
+	if err != nil {
+		return nil, err
+	}
+	decisions = append(decisions, preserved...)
 	sort.SliceStable(decisions, func(i, j int) bool { return decisions[i].ID < decisions[j].ID })
 	return decisions, nil
 }
 
-// planCodexJournalRule mirrors the decisions of
-// installCodexJournalRuleWithOperations for the managed Codex rule + guidance
-// block. It never resolves or writes anything destructive; when convergence is
-// needed it uses the same read-only trusted-executable resolution and template
-// rendering the apply path uses.
+// planCodexJournalRule plans permission rules independently of retired global
+// guidance. It performs read-only ownership checks and fails closed when rule
+// convergence requires an unavailable PATH loaf.
 func planCodexJournalRule(options targetInstallOptions) ([]artifactPlanDecision, error) {
 	codexHome := effectiveCodexHome(options)
-	rulesDir := filepath.Join(codexHome, "rules")
-	ruleDest := filepath.Join(rulesDir, codexJournalRuleRelativePath)
-	manifestPath := filepath.Join(rulesDir, codexJournalRuleManifest)
-	guidanceDest := filepath.Join(codexHome, codexJournalGuidanceRelativePath)
-	templatePath := filepath.Join(options.DistDir, ".codex", "rules", codexJournalRuleTemplateRelativePath)
-
-	manifest, err := readCodexManagedRuleManifest(manifestPath)
+	ruleDest := filepath.Join(codexHome, "rules", codexJournalRuleRelativePath)
+	manifest, err := readCodexManagedRuleManifest(codexPolicyOwnershipManifestPath(options))
 	if err != nil {
 		return nil, err
 	}
+	guidance := planRetiredCodexGuidance(filepath.Join(codexHome, codexJournalGuidanceRelativePath), manifest)
+	rule := artifactPlanDecision{ID: "codex-rule:loaf.rules", Kind: "codex-rule", Destination: ruleDest}
 	ownedRuleSHA, ownedRule := manifest.ownedDigest(codexJournalRuleRelativePath)
-	ownedGuidanceSHA, ownedGuidance := manifest.ownedDigest(codexJournalGuidanceRelativePath)
-	legacyCapability, err := detectLegacyCodexJournalCapability(ruleDest, guidanceDest)
+	// Guidance ownership never elects permission-rule installation.
+	if !options.CodexBasicCommands && !(options.Upgrade && ownedRule) {
+		rule.Action = planActionPreserve
+		return []artifactPlanDecision{rule, guidance}, nil
+	}
+	templatePath := filepath.Join(options.DistDir, ".codex", "rules", codexJournalRuleTemplateRelativePath)
+	templateBody, templateErr := os.ReadFile(templatePath)
+	if templateErr != nil && !os.IsNotExist(templateErr) {
+		return nil, fmt.Errorf("read generated Codex journal rule template: %w", templateErr)
+	}
+	legacy, err := detectLegacyCodexJournalCapability(ruleDest)
 	if err != nil {
 		return nil, err
 	}
-
-	retireDecisions := []artifactPlanDecision{
-		{ID: "codex-rule:loaf.rules", Kind: "codex-rule", Destination: ruleDest, Action: planActionRetire},
-		{ID: "codex-rule:AGENTS.md", Kind: "codex-guidance", Destination: guidanceDest, Action: planActionRetire},
+	if (os.IsNotExist(templateErr) || legacy) && options.Upgrade && !options.CodexBasicCommands {
+		retired := planCodexPolicyRetirements([]artifactPlanDecision{rule}, manifest)
+		return append(retired, guidance), nil
 	}
-
-	if options.Upgrade && !options.CodexBasicCommands && legacyCapability {
-		if ownedRule || ownedGuidance {
-			return retireDecisions, nil
-		}
-		return []artifactPlanDecision{{
-			ID: "codex-rule:loaf.rules", Kind: "codex-rule", Destination: ruleDest, Action: planActionConflict,
-			Detail: "legacy Codex journal-only capability requires explicit --codex-basic-commands or recorded Loaf ownership before upgrade",
-		}}, nil
+	if os.IsNotExist(templateErr) {
+		rule.Action, rule.Detail = planActionConflict, "generated Codex journal rule template is missing"
+		return []artifactPlanDecision{rule, guidance}, nil
 	}
-
-	templateExists := fileExistsForInstall(templatePath)
-	if !templateExists {
-		if options.CodexBasicCommands {
-			return []artifactPlanDecision{{
-				ID: "codex-rule:loaf.rules", Kind: "codex-rule", Destination: ruleDest, Action: planActionConflict,
-				Detail: "generated Codex journal rule template is missing",
-			}}, nil
-		}
-		if options.Upgrade && (ownedRule || ownedGuidance) {
-			return retireDecisions, nil
-		}
-		return nil, nil
+	if _, err := trustedCodexJournalExecutable(options.ProjectRoot, options.CodexRuleOperations); err != nil {
+		rule.Action = planActionConflict
+		rule.Detail = err.Error() + ". " + pathLoafInstallUpgradeGuidance()
+		return []artifactPlanDecision{rule, guidance}, nil
 	}
-
-	needsConvergence := options.CodexBasicCommands || (options.Upgrade && (ownedRule || ownedGuidance))
-	if !needsConvergence {
-		return nil, nil
-	}
-
-	executable, err := trustedCodexJournalExecutable(options.ProjectRoot, options.CodexRuleOperations)
-	if err != nil {
-		// A stale owned install can still be retired without resolving the
-		// executable, matching the apply path's intent.
-		if options.Upgrade && !options.CodexBasicCommands && (ownedRule || ownedGuidance) {
-			return retireDecisions, nil
-		}
-		return []artifactPlanDecision{{
-			ID: "codex-rule:loaf.rules", Kind: "codex-rule", Destination: ruleDest, Action: planActionConflict, Detail: err.Error(),
-		}}, nil
-	}
-	templateBody, err := os.ReadFile(templatePath)
-	if err != nil {
-		return nil, fmt.Errorf("read generated Codex journal rule template: %w", err)
-	}
-	renderedRule, err := renderCodexJournalRule(string(templateBody), executable)
+	renderedRule, err := renderCodexJournalRule(string(templateBody))
 	if err != nil {
 		return nil, err
 	}
-	guidanceBlock := generateCodexJournalGuidance(executable)
-	newRuleSHA := sha256Bytes([]byte(renderedRule))
-	newGuidanceSHA := sha256Bytes([]byte(guidanceBlock))
+	rule, err = planCodexRuleFile(ruleDest, options, ownedRule, ownedRuleSHA, sha256Bytes([]byte(renderedRule)))
+	if err != nil {
+		return nil, err
+	}
+	return []artifactPlanDecision{rule, guidance}, nil
+}
 
-	ruleDecision, err := planCodexRuleFile(ruleDest, options, ownedRule, ownedRuleSHA, newRuleSHA)
-	if err != nil {
-		return nil, err
+// Global instructions are user-owned. Only an intact, recorded block in a
+// regular file can be retired; guidance drift must not block independent rules.
+func planRetiredCodexGuidance(path string, manifest codexManagedRuleManifest) artifactPlanDecision {
+	decision := artifactPlanDecision{ID: "codex-rule:AGENTS.md", Kind: "codex-guidance", Destination: path, Action: planActionPreserve}
+	if _, owned := manifest.ownedDigest(codexJournalGuidanceRelativePath); !owned {
+		return decision
 	}
-	guidanceDecision, err := planCodexGuidanceFile(guidanceDest, ownedGuidance, ownedGuidanceSHA, guidanceBlock, newGuidanceSHA)
-	if err != nil {
-		return nil, err
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		decision.Detail = "preserving absent, unreadable, or non-regular global instructions; guidance is no longer managed"
+		return decision
 	}
-	return []artifactPlanDecision{ruleDecision, guidanceDecision}, nil
+	if _, _, err := readOwnedCodexPolicyForRetirement(path, decision.Kind, manifest); err != nil {
+		decision.Detail = "preserving changed global guidance; guidance is no longer managed"
+		return decision
+	}
+	decision.Action = planActionRetire
+	decision.Detail = "remove only the unchanged Loaf-owned global guidance block"
+	return decision
+}
+
+func planCodexPolicyRetirements(decisions []artifactPlanDecision, manifest codexManagedRuleManifest) []artifactPlanDecision {
+	for i := range decisions {
+		_, owned, err := readOwnedCodexPolicyForRetirement(decisions[i].Destination, decisions[i].Kind, manifest)
+		switch {
+		case err != nil:
+			decisions[i].Action = planActionConflict
+			decisions[i].Detail = err.Error()
+		case !owned:
+			decisions[i].Action = planActionPreserve
+			decisions[i].Detail = "preserving unowned Codex policy"
+		default:
+			decisions[i].Action = planActionRetire
+		}
+	}
+	return decisions
 }
 
 func planCodexRuleFile(ruleDest string, options targetInstallOptions, ownedRule bool, ownedRuleSHA string, newRuleSHA string) (artifactPlanDecision, error) {
@@ -717,6 +728,8 @@ func planCodexRuleFile(ruleDest string, options targetInstallOptions, ownedRule 
 	}
 	currentSHA := sha256Bytes(currentRule)
 	switch {
+	case currentSHA == newRuleSHA && ((ownedRule && ownedRuleSHA != newRuleSHA) || (!ownedRule && options.CodexBasicCommands)):
+		decision.Action = planActionUpdate
 	case currentSHA == newRuleSHA:
 		decision.Action = planActionPreserve
 	case ownedRule && currentSHA == ownedRuleSHA:
@@ -729,45 +742,6 @@ func planCodexRuleFile(ruleDest string, options targetInstallOptions, ownedRule 
 		decision.Detail = "refusing to overwrite modified Loaf-owned Codex rule"
 	default:
 		decision.Action = planActionNone
-	}
-	return decision, nil
-}
-
-func planCodexGuidanceFile(guidanceDest string, ownedGuidance bool, ownedGuidanceSHA string, guidanceBlock string, newGuidanceSHA string) (artifactPlanDecision, error) {
-	decision := artifactPlanDecision{ID: "codex-rule:AGENTS.md", Kind: "codex-guidance", Destination: guidanceDest}
-	guidanceContent, guidanceExists, err := readOptionalInstallFile(guidanceDest, "Codex journal guidance")
-	if err != nil {
-		return decision, err
-	}
-	guidanceText := string(guidanceContent)
-	if err := validateCodexJournalGuidanceStructure(guidanceText); err != nil {
-		decision.Action = planActionConflict
-		decision.Detail = fmt.Sprintf("inspect Codex journal guidance: %v", err)
-		return decision, nil
-	}
-	guidanceRange, hasGuidance := findCodexJournalGuidance(guidanceText)
-	currentGuidance := ""
-	if hasGuidance {
-		currentGuidance = guidanceText[guidanceRange.start:guidanceRange.end]
-	}
-	switch {
-	case hasGuidance && sha256Bytes([]byte(currentGuidance)) == newGuidanceSHA:
-		decision.Action = planActionPreserve
-	case hasGuidance && currentGuidance == guidanceBlock:
-		decision.Action = planActionPreserve
-	case ownedGuidance && hasGuidance && sha256Bytes([]byte(currentGuidance)) == ownedGuidanceSHA:
-		decision.Action = planActionUpdate
-	case ownedGuidance && hasGuidance:
-		decision.Action = planActionConflict
-		decision.Detail = "refusing to overwrite modified Loaf-owned Codex guidance block"
-	case hasGuidance:
-		decision.Action = planActionConflict
-		decision.Detail = "refusing to overwrite unowned Codex guidance block"
-	case guidanceExists:
-		decision.Action = planActionUpdate
-		decision.Detail = "appending managed guidance block"
-	default:
-		decision.Action = planActionCreate
 	}
 	return decision, nil
 }
@@ -1030,13 +1004,9 @@ func planFencedSection(targetFile string, version string) (string, string) {
 	switch {
 	case hasSection:
 		if section.malformedHeader {
-			return "error", "managed Loaf section has a malformed fingerprint; refusing to overwrite"
+			return "error", "managed Loaf section has a malformed start marker; refusing to overwrite"
 		}
-		existingBody := content[section.bodyStart:section.end]
-		switch disposeFencedSection(section, existingBody, fencedContentFingerprint(newContent)) {
-		case fencedDispositionTampered:
-			return "error", "managed Loaf section was modified; refusing to overwrite"
-		case fencedDispositionSkip:
+		if content[section.start:section.end] == newContent {
 			return "skipped", "Loaf framework section already current (v" + version + ")"
 		}
 		return "updated", "Update Loaf framework section (v" + version + ")"
@@ -1144,9 +1114,21 @@ func planCommandName(options installOptions) string {
 // Codex basic-command policy is an install-time opt-in, so it is never part of
 // an apply command.
 func installPlanApplyCommand(options installOptions, consentRequired bool) string {
+	if len(options.selections) > 0 {
+		return scopedFollowUpCommand(options.selections)
+	}
+	target := options.target
+	if options.upgrade && options.resolvedUpgradeTargets != nil {
+		// There is no non-interactive spelling for "no global targets". Never
+		// advertise the unfiltered upgrade when the picker selected none.
+		if len(options.resolvedUpgradeTargets) == 0 {
+			return ""
+		}
+		target = strings.Join(options.resolvedUpgradeTargets, ",")
+	}
 	parts := []string{"loaf", planCommandName(options)}
-	if options.target != "" {
-		parts = append(parts, "--to", options.target)
+	if target != "" {
+		parts = append(parts, "--to", target)
 	}
 	if consentRequired {
 		parts = append(parts, "--yes")
@@ -1185,6 +1167,15 @@ func writeInstallDryRunHuman(out io.Writer, plan installDryRunPlan) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, ansiBold("loaf "+plan.Command+" --dry-run"))
 	fmt.Fprintf(out, "  %s\n\n", ansiGray("Plan only — no files, manifests, config, or state will change."))
+	if len(plan.Selections) > 0 {
+		fmt.Fprintf(out, "  %s\n", ansiBold("Scoped selections"))
+		for _, sel := range plan.Selections {
+			fmt.Fprintf(out, "    %s\n", sel)
+		}
+		if plan.VersionStamp != "" {
+			fmt.Fprintf(out, "  %s %s\n\n", ansiGray("version stamp"), plan.VersionStamp)
+		}
+	}
 
 	if len(plan.Targets) == 0 {
 		fmt.Fprintf(out, "  %s\n", ansiGray("No installed targets to upgrade"))
@@ -1193,6 +1184,7 @@ func writeInstallDryRunHuman(out io.Writer, plan installDryRunPlan) {
 		fmt.Fprintf(out, "  %s\n", ansiBold("Skills"))
 		for _, artifact := range plan.Skills {
 			fmt.Fprintf(out, "    %s %s %s%s\n", planActionGlyph(artifact.Action), artifact.Action, artifact.ID, planDetailSuffix(artifact.Detail))
+			writePlanDiff(out, artifact.Diff)
 		}
 		fmt.Fprintln(out)
 	}
@@ -1207,6 +1199,7 @@ func writeInstallDryRunHuman(out io.Writer, plan installDryRunPlan) {
 		}
 		for _, artifact := range target.Artifacts {
 			fmt.Fprintf(out, "    %s %s %s%s\n", planActionGlyph(artifact.Action), artifact.Action, artifact.ID, planDetailSuffix(artifact.Detail))
+			writePlanDiff(out, artifact.Diff)
 		}
 		fmt.Fprintln(out)
 	}
@@ -1308,4 +1301,106 @@ func planDetailSuffix(detail string) string {
 		return ""
 	}
 	return " " + ansiGray("— "+detail)
+}
+
+func selectedRetiredAdapterPreserveDecisions(options targetInstallOptions, desiredByID map[string]targetAdapterArtifact, installedByID map[string]targetAdapterArtifact, recordedRetired []string, existing []artifactPlanDecision) ([]artifactPlanDecision, error) {
+	if options.SelectedArtifactIDs == nil {
+		return nil, nil
+	}
+	seen := map[string]bool{}
+	for _, decision := range existing {
+		seen[decision.ID] = true
+	}
+	retired := map[string]bool{}
+	for _, id := range recordedRetired {
+		retired[id] = true
+	}
+	var extra []artifactPlanDecision
+	ids := make([]string, 0, len(options.SelectedArtifactIDs))
+	for id := range options.SelectedArtifactIDs {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		if seen[id] || strings.HasPrefix(id, "hook:") {
+			continue
+		}
+		if !strings.HasPrefix(id, "hook-file:") && !strings.HasPrefix(id, "plugin:") {
+			continue
+		}
+		if _, keep := desiredByID[id]; keep {
+			continue
+		}
+		destination := destinationFromAdapterID(id)
+		if artifact, owned := installedByID[id]; owned {
+			if artifact.Destination != "" {
+				destination = artifact.Destination
+			}
+			path, err := targetAdapterDestination(options, artifact)
+			if err != nil {
+				return nil, err
+			}
+			info, err := os.Lstat(path)
+			if err == nil && info.Mode().IsRegular() {
+				continue
+			}
+			if err != nil && !os.IsNotExist(err) {
+				return nil, err
+			}
+			extra = append(extra, artifactPlanDecision{ID: id, Kind: artifact.Kind, Destination: destination, Action: planActionPreserve, Detail: "already retired"})
+			continue
+		}
+		if !retired[id] {
+			continue
+		}
+		kind := "hook-file"
+		if strings.HasPrefix(id, "plugin:") {
+			kind = "plugin"
+		}
+		extra = append(extra, artifactPlanDecision{ID: id, Kind: kind, Destination: destination, Action: planActionPreserve, Detail: "already retired"})
+	}
+	return extra, nil
+}
+
+func destinationFromAdapterID(id string) string {
+	if dest, ok := strings.CutPrefix(id, "hook-file:"); ok {
+		return dest
+	}
+	if dest, ok := strings.CutPrefix(id, "plugin:"); ok {
+		return dest
+	}
+	return ""
+}
+
+func writePlanDiff(out io.Writer, diff string) {
+	if strings.TrimSpace(diff) == "" {
+		return
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(diff, "\n"), "\n") {
+		fmt.Fprintf(out, "      %s\n", ansiGray(line))
+	}
+}
+
+func selectedHookPreserveDecisions(reconciler *hookReconciler, selected map[string]bool, existing []artifactPlanDecision) []artifactPlanDecision {
+	if selected == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, decision := range existing {
+		seen[decision.ID] = true
+	}
+	var extra []artifactPlanDecision
+	for _, entry := range reconciler.catalog.Entries {
+		id := "hook:" + entry.Event + "/" + entry.HookID
+		if !selected[id] || seen[id] {
+			continue
+		}
+		extra = append(extra, artifactPlanDecision{
+			ID:          id,
+			Kind:        "hook-entry",
+			Destination: reconciler.path,
+			Action:      planActionPreserve,
+		})
+	}
+	return extra
 }

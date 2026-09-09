@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-const requiredOptions = ["client", "expected-version", "receipt"];
+const requiredOptions = ["client", "receipt"];
 const safeIdentityPattern = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$/;
 
 export function parseRunnerArgs(argv, optionalOptions = []) {
@@ -19,7 +19,6 @@ export function parseRunnerArgs(argv, optionalOptions = []) {
   }
   for (const name of requiredOptions) if (!Object.hasOwn(values, name)) throw new Error(`missing required option --${name}`);
   if (values.client === "" || values.client.startsWith("-") || /[\0\r\n]/.test(values.client)) throw new Error("--client must be a safe executable name or path");
-  if (!safeIdentityPattern.test(values["expected-version"])) throw new Error("--expected-version must be an exact safe identity");
   if (values.receipt === "" || /[\0\r\n]/.test(values.receipt) || !values.receipt.endsWith(".json")) throw new Error("--receipt must be a safe JSON path");
   const optional = {};
   for (const name of optionalOptions) {
@@ -29,10 +28,17 @@ export function parseRunnerArgs(argv, optionalOptions = []) {
   }
   return {
     client: values.client,
-    expectedVersion: values["expected-version"],
     receiptPath: resolve(values.receipt),
     optional,
   };
+}
+
+// Version output is provenance, never permission to execute a smoke. An
+// unavailable or unfamiliar identity cannot substitute for capability proof.
+export function observedClientVersion(result, pattern = /^(\S+)$/) {
+  if (result.status !== 0) return "unknown";
+  const token = result.stdout?.trim().match(pattern)?.[1];
+  return typeof token === "string" && /^[0-9]+(?:\.[0-9]+)+(?:[-+][A-Za-z0-9.-]+)*$/.test(token) ? token : "unknown";
 }
 
 export function publishReceiptIfSuccessful(receiptPath, receipt, successful) {

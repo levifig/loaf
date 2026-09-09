@@ -13241,7 +13241,7 @@ func TestRunnerAgentHelpIsNative(t *testing.T) {
 		}
 	}
 	for option, wants := range map[string][]string{
-		"kb status --json":   {"knowledge file totals", "coverage counts", "directories"},
+		"kb status --json":   {"document totals", "architecture count", "knowledge coverage", "directories"},
 		"kb validate --json": {"frontmatter errors", "warnings"},
 		"kb check --json":    {"staleness", "coverage", "commit", "review metadata"},
 		"kb review --json":   {"updated knowledge frontmatter"},

@@ -563,11 +563,10 @@ declare module '@ampcode/plugin' {
 }
 
 // nativeBuildInstallTimePlaceholders are {{TOKEN}} forms that generated non-skill
-// artifacts may still carry at build time because install resolves them once the
-// trusted absolute Loaf executable is known. Any other {{TOKEN}} in those
-// artifacts is a stray placeholder and fails the build.
+// artifacts may still carry at build time because install expands them into
+// PATH `loaf` command prefixes. Any other {{TOKEN}} in those artifacts is a
+// stray placeholder and fails the build.
 var nativeBuildInstallTimePlaceholders = map[string]bool{
-	"{{LOAF_EXECUTABLE}}":  true,
 	"{{LOAF_BASIC_RULES}}": true,
 }
 

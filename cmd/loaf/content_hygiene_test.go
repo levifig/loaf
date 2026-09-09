@@ -81,6 +81,33 @@ func TestSkillContentHygieneStaleReferences(t *testing.T) {
 			forbidden: []string{"CLAUDE.md", ".agents/AGENTS.md"},
 			required:  []string{"AGENTS.md"},
 		},
+		{
+			rel: "content/skills/orchestration/SKILL.md",
+			forbidden: []string{
+				"validate-council.py",
+				"new-session.sh",
+				"YYYYMMDD-HHMMSS-topic.md",
+			},
+			required: []string{
+				"loaf journal log",
+				"loaf journal context",
+				"loaf council new",
+			},
+		},
+		{
+			rel: "content/skills/council/SKILL.md",
+			forbidden: []string{
+				"YYYYMMDD}-{HHMMSS}",
+				"new-council.sh",
+				"validate-council.py",
+			},
+			required: []string{"loaf council new"},
+		},
+		{
+			rel:       "content/skills/council/templates/council.md",
+			forbidden: []string{"YYYYMMDD-HHMMSS-<topic-slug>.md"},
+			required:  []string{"loaf council new"},
+		},
 	}
 
 	for _, tc := range cases {
@@ -175,18 +202,27 @@ func TestArchitectureResourceOwnership(t *testing.T) {
 func TestSkillHelperExecutableContracts(t *testing.T) {
 	root := repoRoot(t)
 
-	validatorRel := filepath.FromSlash("content/skills/infrastructure-management/scripts/validate-k8s-manifest.py")
-	validator := readTextFile(t, filepath.Join(root, validatorRel))
-	for _, forbidden := range []string{"import yaml", "yaml.safe_load"} {
-		if strings.Contains(validator, forbidden) {
-			t.Fatalf("%s still depends on undeclared PyYAML via %q", filepath.ToSlash(validatorRel), forbidden)
+	for _, retired := range []string{
+		"content/skills/infrastructure-management/scripts/check-dockerfile.sh",
+		"content/skills/infrastructure-management/scripts/validate-k8s-manifest.py",
+		"content/skills/power-systems-modeling/scripts/validate-bounds.py",
+		"content/skills/power-systems-modeling/scripts/convert-units.py",
+		"content/skills/power-systems-modeling/scripts/check-standard-refs.sh",
+		"content/hooks/subagent/validate-infra-safety.sh",
+		"content/hooks/subagent/validate-sql-safety.sh",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(retired))); !os.IsNotExist(err) {
+			t.Errorf("retired helper %s remains: %v", retired, err)
 		}
 	}
 
 	powerSkillDir := filepath.Join(root, "content", "skills", "power-systems-modeling")
-	sidecar := readTextFile(t, filepath.Join(powerSkillDir, "SKILL.claude-code.yaml"))
-	if hasShellScripts(t, filepath.Join(powerSkillDir, "scripts")) && !allowedToolsCanRunShellScripts(sidecar) {
-		t.Fatalf("power-systems-modeling ships .sh helpers but sidecar allowed-tools cannot run shell scripts")
+	scriptsDir := filepath.Join(powerSkillDir, "scripts")
+	if info, err := os.Stat(scriptsDir); err == nil && info.IsDir() {
+		sidecar := readTextFile(t, filepath.Join(powerSkillDir, "SKILL.claude-code.yaml"))
+		if hasShellScripts(t, scriptsDir) && !allowedToolsCanRunShellScripts(sidecar) {
+			t.Fatalf("power-systems-modeling ships .sh helpers but sidecar allowed-tools cannot run shell scripts")
+		}
 	}
 }
 
@@ -197,26 +233,52 @@ func TestOrchestrationScriptSurfaceClassifiesEveryHelper(t *testing.T) {
 	surface := readTextFile(t, filepath.Join(root, surfaceRel))
 
 	var missing []string
-	err := filepath.WalkDir(scriptsDir, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
+	if info, err := os.Stat(scriptsDir); err == nil && info.IsDir() {
+		err := filepath.WalkDir(scriptsDir, func(path string, entry os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			name := entry.Name()
+			if !strings.Contains(surface, name) {
+				missing = append(missing, name)
+			}
 			return nil
+		})
+		if err != nil {
+			t.Fatalf("WalkDir(%s) error = %v", scriptsDir, err)
 		}
-		name := entry.Name()
+	} else if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("Stat(%s) error = %v", scriptsDir, err)
+	}
+
+	for _, name := range retiredOrchestrationSkillScripts {
 		if !strings.Contains(surface, name) {
 			missing = append(missing, name)
 		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("WalkDir(%s) error = %v", scriptsDir, err)
 	}
 	sort.Strings(missing)
 	if len(missing) > 0 {
 		t.Fatalf("%s does not classify orchestration helpers: %s", filepath.ToSlash(surfaceRel), strings.Join(missing, ", "))
 	}
+}
+
+// retiredOrchestrationSkillScripts are the Checkpoint 3 helpers. They must stay
+// named in script-surface.md after deletion so the disposition record cannot
+// silently drop a row.
+var retiredOrchestrationSkillScripts = []string{
+	"new-session.sh",
+	"git-context-summary.sh",
+	"extract-magic-words.sh",
+	"new-council.sh",
+	"validate-council.py",
+	"format-progress.sh",
+	"check-linear-format.py",
+	"suggest-team.py",
+	"get-config.py",
+	"validate-roadmap.py",
 }
 
 func TestOrchestrationDuplicateAuthorityReferencesRetired(t *testing.T) {

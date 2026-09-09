@@ -38,17 +38,20 @@ func TestBuildNativeCodexFailsWhenJournalRuleTemplateMissing(t *testing.T) {
 	}
 }
 
-func TestRenderCodexJournalRuleRendersOnePinnedPrefixPerBasicLeaf(t *testing.T) {
+func TestRenderCodexJournalRuleRendersOnePathLoafPrefixPerBasicLeaf(t *testing.T) {
 	template := "# policy\n" + codexBasicRulesPlaceholder + "\n"
-	rendered, err := renderCodexJournalRule(template, "/opt/loaf/bin/loaf")
+	rendered, err := renderCodexJournalRule(template)
 	if err != nil {
 		t.Fatalf("render Codex policy: %v", err)
 	}
 	if strings.Contains(rendered, codexBasicRulesPlaceholder) || strings.Contains(rendered, codexJournalExecutablePlaceholder) {
 		t.Fatalf("rendered policy = %q, want no unresolved placeholders", rendered)
 	}
+	if strings.Contains(rendered, "/opt/") || strings.Contains(rendered, "'/") {
+		t.Fatalf("rendered policy = %q, want PATH loaf not an absolute pin", rendered)
+	}
 	for _, prefix := range BasicCommandAuthorityPrefixes() {
-		needle := "pattern = [\"/opt/loaf/bin/loaf\""
+		needle := "pattern = [\"loaf\""
 		for _, token := range prefix {
 			needle += ", " + fmt.Sprintf("%q", token)
 		}
@@ -198,29 +201,20 @@ func TestInstallCodexJournalRuleRendersSymlinkedEntrypointAcrossSurfaces(t *test
 	if err != nil {
 		t.Fatalf("read rendered rule: %v", err)
 	}
-	if !strings.Contains(string(rule), strconv.Quote(entrypoint)) || strings.Contains(string(rule), "cellar-1.0") {
-		t.Fatalf("rendered rule = %q, want entrypoint prefixes without canonicalized segment", rule)
+	if !strings.Contains(string(rule), strconv.Quote(codexPathLoafCommandName)) || strings.Contains(string(rule), entrypoint) || strings.Contains(string(rule), "cellar-1.0") {
+		t.Fatalf("rendered rule = %q, want PATH loaf prefixes without an absolute pin", rule)
 	}
-	guidance, err := os.ReadFile(filepath.Join(fixture.codexHome, codexJournalGuidanceRelativePath))
-	if err != nil {
-		t.Fatalf("read rendered guidance: %v", err)
-	}
-	if !strings.Contains(string(guidance), journalContextShellQuote(entrypoint)+" journal log --execpolicy-safe") || strings.Contains(string(guidance), "cellar-1.0") {
-		t.Fatalf("rendered guidance = %q, want entrypoint command without canonicalized segment", guidance)
-	}
-	// The third surface: the hook entry reconciliation would project. It renders
-	// from the same trusted resolution, so the entrypoint survives here too.
-	executable, err := trustedCodexJournalExecutable(filepath.Join(fixture.root, "project"), operations)
-	if err != nil {
+	assertInstallPathMissing(t, filepath.Join(fixture.codexHome, codexJournalGuidanceRelativePath))
+	if _, err := trustedCodexJournalExecutable(filepath.Join(fixture.root, "project"), operations); err != nil {
 		t.Fatalf("trusted executable error = %v", err)
 	}
 	template := json.RawMessage(`{"matcher":"startup|resume|clear|compact","hooks":[{"type":"command","command":"{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook"}]}`)
-	entry, err := renderCodexHookExecutableForOS(template, executable, "darwin")
+	entry, err := renderCodexHookExecutableForOS(template, "darwin")
 	if err != nil {
-		t.Fatalf("render hook entry with symlinked entrypoint: %v", err)
+		t.Fatalf("render hook entry with leftover placeholder: %v", err)
 	}
-	if !strings.Contains(string(entry), journalContextShellQuote(entrypoint)+codexJournalHookCommandSuffix) || strings.Contains(string(entry), "cellar-1.0") {
-		t.Fatalf("rendered hook entry = %q, want entrypoint command without canonicalized segment", entry)
+	if !strings.Contains(string(entry), codexJournalHookCommandTemplate) || strings.Contains(string(entry), entrypoint) || strings.Contains(string(entry), "cellar-1.0") {
+		t.Fatalf("rendered hook entry = %q, want PATH loaf command without an absolute pin", entry)
 	}
 }
 
@@ -284,12 +278,12 @@ func TestCodexJournalRuleExecpolicyClassification(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read source rule: %v", err)
 	}
-	rendered, err := renderCodexJournalRule(string(body), "/usr/local/bin/loaf")
+	rendered, err := renderCodexJournalRule(string(body))
 	if err != nil {
 		t.Fatalf("render Codex rule: %v", err)
 	}
 	writeFile(t, rulePath, rendered)
-	trusted := "/usr/local/bin/loaf"
+	trusted := "loaf"
 	for _, tc := range []struct {
 		name string
 		args []string
@@ -299,7 +293,8 @@ func TestCodexJournalRuleExecpolicyClassification(t *testing.T) {
 		{name: "ordinary-log", args: []string{trusted, "journal", "log", "decision(scope): message"}, want: ""},
 		{name: "from-hook", args: []string{trusted, "journal", "log", "--execpolicy-safe", "--from-hook"}, want: "allow"},
 		{name: "detect-linear", args: []string{trusted, "journal", "log", "--execpolicy-safe", "--detect-linear"}, want: "allow"},
-		{name: "bare-loaf", args: []string{"loaf", "journal", "log", "--execpolicy-safe", "decision(scope): message"}, want: ""},
+		{name: "namespace-only", args: []string{"loaf"}, want: ""},
+		{name: "absolute-pin", args: []string{"/usr/local/bin/loaf", "journal", "log", "--execpolicy-safe", "decision(scope): message"}, want: ""},
 		{name: "alternate-absolute", args: []string{"/usr/bin/loaf", "journal", "log", "--execpolicy-safe", "decision(scope): message"}, want: ""},
 		{name: "unsafed-log", args: []string{"loaf", "journal", "log", "decision(scope): message"}, want: ""},
 		{name: "journal", args: []string{trusted, "journal"}, want: ""},
@@ -370,7 +365,7 @@ func TestInstallCodexJournalRuleExplicitOptInOwnsAndUpgrades(t *testing.T) {
 	if err := fixture.install(t, false, true); err != nil {
 		t.Fatalf("owned upgrade error = %v", err)
 	}
-	expected, err := renderCodexJournalRule(updated, filepath.Join(fixture.root, "trusted-bin", "loaf"))
+	expected, err := renderCodexJournalRule(updated)
 	if err != nil {
 		t.Fatalf("render updated rule: %v", err)
 	}
@@ -435,18 +430,19 @@ func TestInstallCodexJournalRuleRecoversInterruptedOwnershipWrites(t *testing.T)
 		}
 	})
 
-	t.Run("adopts exact guidance body after first install interruption", func(t *testing.T) {
+	t.Run("preserves unowned legacy guidance without adopting it", func(t *testing.T) {
 		fixture := newCodexRuleInstallFixture(t)
 		guidancePath := filepath.Join(fixture.codexHome, codexJournalGuidanceRelativePath)
-		block := generateCodexJournalGuidance(filepath.Join(fixture.root, "trusted-bin", "loaf"))
+		block := generateCodexJournalGuidance()
 		writeInstallFile(t, guidancePath, block)
 		if err := fixture.install(t, true, false); err != nil {
 			t.Fatalf("adopt exact guidance: %v", err)
 		}
 		manifest := readCodexRuleManifestTest(t, fixture.manifest())
-		if digest, ok := manifest.ownedDigest(codexJournalGuidanceRelativePath); !ok || digest != sha256Bytes([]byte(block)) {
-			t.Fatalf("manifest = %#v, want adopted guidance digest", manifest)
+		if _, ok := manifest.ownedDigest(codexJournalGuidanceRelativePath); ok {
+			t.Fatalf("manifest = %#v, must not adopt global guidance", manifest)
 		}
+		assertInstallFile(t, guidancePath, block)
 	})
 
 	t.Run("heals stale manifest after upgrade interruption", func(t *testing.T) {
@@ -456,7 +452,7 @@ func TestInstallCodexJournalRuleRecoversInterruptedOwnershipWrites(t *testing.T)
 		}
 		updated := fixture.sourceBody() + "# updated\n"
 		writeFile(t, fixture.source(), updated)
-		renderedUpdated, err := renderCodexJournalRule(updated, filepath.Join(fixture.root, "trusted-bin", "loaf"))
+		renderedUpdated, err := renderCodexJournalRule(updated)
 		if err != nil {
 			t.Fatalf("render updated rule: %v", err)
 		}
@@ -471,56 +467,30 @@ func TestInstallCodexJournalRuleRecoversInterruptedOwnershipWrites(t *testing.T)
 	})
 }
 
-func TestInstallCodexJournalRuleManagesGlobalGuidanceAndPreservesUserContent(t *testing.T) {
-	fixture := newCodexRuleInstallFixture(t)
-	guidancePath := filepath.Join(fixture.codexHome, codexJournalGuidanceRelativePath)
-	writeInstallFile(t, guidancePath, "# My Codex instructions\n\nKeep this text.\n")
-	if err := fixture.installWithExecutable(t, filepath.Join(fixture.root, "trusted-bin", "loaf-v1"), true, false); err != nil {
-		t.Fatalf("explicit install: %v", err)
+func TestInstallCodexJournalRulePreservesUserGlobalInstructions(t *testing.T) {
+	f := newCodexRuleInstallFixture(t)
+	path := filepath.Join(f.codexHome, "AGENTS.md")
+	body := "# My Codex instructions\n\nKeep this text.\n"
+	writeInstallFile(t, path, body)
+	if err := f.install(t, true, false); err != nil {
+		t.Fatal(err)
 	}
-	body, err := os.ReadFile(guidancePath)
-	if err != nil {
-		t.Fatalf("read global guidance: %v", err)
+	if err := f.install(t, false, true); err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(string(body), "Keep this text.") || !strings.Contains(string(body), journalContextShellQuote(filepath.Join(fixture.root, "trusted-bin", "loaf-v1"))+" journal log --execpolicy-safe") {
-		t.Fatalf("global guidance = %q, want preserved user content and absolute command", body)
-	}
-	r, ok := findCodexJournalGuidance(string(body))
-	if !ok {
-		t.Fatal("global guidance missing managed block")
-	}
-	manifest := readCodexRuleManifestTest(t, fixture.manifest())
-	if digest, ok := manifest.ownedDigest(codexJournalGuidanceRelativePath); !ok || digest != sha256Bytes([]byte(string(body)[r.start:r.end])) {
-		t.Fatalf("guidance manifest = %#v, want managed block digest", manifest)
-	}
-
-	if err := fixture.installWithExecutable(t, filepath.Join(fixture.root, "trusted-bin", "loaf-v2"), false, true); err != nil {
-		t.Fatalf("owned guidance update: %v", err)
-	}
-	body, err = os.ReadFile(guidancePath)
-	if err != nil {
-		t.Fatalf("read updated global guidance: %v", err)
-	}
-	if !strings.Contains(string(body), journalContextShellQuote(filepath.Join(fixture.root, "trusted-bin", "loaf-v2"))+" journal log --execpolicy-safe") || !strings.Contains(string(body), "Keep this text.") {
-		t.Fatalf("updated global guidance = %q, want user content and new absolute command", body)
-	}
+	assertInstallFile(t, path, body)
 }
 
-func TestInstallCodexJournalRuleRefusesModifiedGlobalGuidance(t *testing.T) {
-	fixture := newCodexRuleInstallFixture(t)
-	if err := fixture.installWithExecutable(t, filepath.Join(fixture.root, "trusted-bin", "loaf-v1"), true, false); err != nil {
-		t.Fatalf("explicit install: %v", err)
+func TestInstallCodexJournalRulePreservesModifiedGlobalGuidance(t *testing.T) {
+	f := newCodexRuleInstallFixture(t)
+	seedLegacyCodexGuidance(t, f, "")
+	path := filepath.Join(f.codexHome, "AGENTS.md")
+	body := strings.Replace(readFileString(t, path), "exact command", "locally changed command", 1)
+	writeInstallFile(t, path, body)
+	if err := f.install(t, true, false); err != nil {
+		t.Fatal(err)
 	}
-	guidancePath := filepath.Join(fixture.codexHome, codexJournalGuidanceRelativePath)
-	body, err := os.ReadFile(guidancePath)
-	if err != nil {
-		t.Fatalf("read guidance: %v", err)
-	}
-	modified := strings.Replace(string(body), "exact command", "locally changed command", 1)
-	writeInstallFile(t, guidancePath, modified)
-	if err := fixture.installWithExecutable(t, filepath.Join(fixture.root, "trusted-bin", "loaf-v2"), false, true); err == nil || !strings.Contains(err.Error(), "modified Loaf-owned Codex guidance") {
-		t.Fatalf("modified guidance error = %v, want refusal", err)
-	}
+	assertInstallFile(t, path, body)
 }
 
 func TestInstallCodexJournalRuleRetiresRuleAndGuidanceWithoutResolvingExecutable(t *testing.T) {
@@ -530,6 +500,7 @@ func TestInstallCodexJournalRuleRetiresRuleAndGuidanceWithoutResolvingExecutable
 	if err := fixture.installWithExecutable(t, filepath.Join(fixture.root, "trusted-bin", "loaf-v1"), true, false); err != nil {
 		t.Fatalf("explicit install: %v", err)
 	}
+	seedLegacyCodexGuidance(t, fixture, "# user guidance\n")
 	if err := os.Remove(fixture.source()); err != nil {
 		t.Fatalf("remove template: %v", err)
 	}
@@ -551,32 +522,30 @@ func TestInstallCodexJournalRuleRetiresRuleAndGuidanceWithoutResolvingExecutable
 	}
 }
 
-func TestRetirementRemovesOwnedRuleBeforeModifiedGuidanceConflict(t *testing.T) {
-	fixture := newCodexRuleInstallFixture(t)
-	if err := fixture.installWithExecutable(t, filepath.Join(fixture.root, "trusted-bin", "loaf-v1"), true, false); err != nil {
-		t.Fatalf("explicit install: %v", err)
+func TestRetirementRemovesOwnedRuleButPreservesModifiedGuidance(t *testing.T) {
+	f := newCodexRuleInstallFixture(t)
+	if err := f.install(t, true, false); err != nil {
+		t.Fatal(err)
 	}
-	guidancePath := filepath.Join(fixture.codexHome, codexJournalGuidanceRelativePath)
-	body, err := os.ReadFile(guidancePath)
-	if err != nil {
-		t.Fatalf("read guidance: %v", err)
+	seedLegacyCodexGuidance(t, f, "")
+	path := filepath.Join(f.codexHome, "AGENTS.md")
+	body := strings.Replace(readFileString(t, path), "exact command", "locally changed command", 1)
+	writeInstallFile(t, path, body)
+	if err := os.Remove(f.source()); err != nil {
+		t.Fatal(err)
 	}
-	writeInstallFile(t, guidancePath, strings.Replace(string(body), "exact command", "locally modified command", 1))
-	if err := os.Remove(fixture.source()); err != nil {
-		t.Fatalf("remove template: %v", err)
+	noPath := &codexRuleInstallOperations{lookPath: func(string) (string, error) { return "", fmt.Errorf("PATH unavailable") }}
+	if err := installCodexJournalRuleWithOperations(f.options(false, true), f.codexHome, noPath); err != nil {
+		t.Fatal(err)
 	}
-	noPath := &codexRuleInstallOperations{lookPath: func(string) (string, error) { return "", fmt.Errorf("PATH intentionally unavailable") }}
-	err = installCodexJournalRuleWithOperations(fixture.options(false, true), fixture.codexHome, noPath)
-	if err == nil || !strings.Contains(err.Error(), "modified Loaf-owned Codex guidance") {
-		t.Fatalf("retirement error = %v, want modified-guidance conflict", err)
+	assertInstallPathMissing(t, f.dest())
+	assertInstallFile(t, path, body)
+	manifest := readCodexRuleManifestTest(t, f.manifest())
+	if _, owned := manifest.ownedDigest(codexJournalRuleRelativePath); owned {
+		t.Fatal("rule ownership retained")
 	}
-	assertInstallPathMissing(t, fixture.dest())
-	manifest := readCodexRuleManifestTest(t, fixture.manifest())
-	if _, ok := manifest.ownedDigest(codexJournalRuleRelativePath); ok {
-		t.Fatalf("manifest = %#v, want retired rule ownership removed despite guidance conflict", manifest)
-	}
-	if _, ok := manifest.ownedDigest(codexJournalGuidanceRelativePath); !ok {
-		t.Fatalf("manifest = %#v, want conflicted guidance ownership retained", manifest)
+	if _, owned := manifest.ownedDigest(codexJournalGuidanceRelativePath); !owned {
+		t.Fatal("preserved guidance record lost")
 	}
 }
 
@@ -587,6 +556,7 @@ func TestRetirementWithGuidanceOnlyOwnershipPreservesUserRuleBytes(t *testing.T)
 	}
 	userRule := "# user-owned rule\nprefix_rule(pattern=[\"git\"], decision=\"allow\")\n"
 	writeInstallFile(t, fixture.dest(), userRule)
+	seedLegacyCodexGuidance(t, fixture, "# user guidance\n")
 	manifest := readCodexRuleManifestTest(t, fixture.manifest())
 	manifest.remove(codexJournalRuleRelativePath)
 	if err := writeCodexManagedRuleManifest(fixture.manifest(), manifest); err != nil {
@@ -603,7 +573,7 @@ func TestRetirementWithGuidanceOnlyOwnershipPreservesUserRuleBytes(t *testing.T)
 }
 
 func TestCodexJournalGuidanceEditsPreserveUserBytesExactly(t *testing.T) {
-	block := generateCodexJournalGuidance("/opt/loaf/bin/loaf")
+	block := generateCodexJournalGuidance()
 	for _, original := range []string{
 		"",
 		"prefix \t\n\n  \n",
@@ -618,7 +588,7 @@ func TestCodexJournalGuidanceEditsPreserveUserBytesExactly(t *testing.T) {
 		if !ok {
 			t.Fatalf("appended guidance missing managed range: %q", appended)
 		}
-		replaced := replaceCodexJournalGuidance(appended, r, generateCodexJournalGuidance("/opt/loaf/bin/loaf-v2"))
+		replaced := replaceCodexJournalGuidance(appended, r, generateCodexJournalGuidance())
 		if !strings.HasPrefix(replaced, original) {
 			t.Fatalf("replace changed user bytes: original=%q replaced=%q", original, replaced)
 		}
@@ -640,6 +610,7 @@ func TestRetirementPreservesPreexistingEmptyGuidanceFile(t *testing.T) {
 	if err := fixture.installWithExecutable(t, filepath.Join(fixture.root, "trusted-bin", "loaf-v1"), true, false); err != nil {
 		t.Fatalf("explicit install: %v", err)
 	}
+	seedLegacyCodexGuidance(t, fixture, "")
 	if err := os.Remove(fixture.source()); err != nil {
 		t.Fatalf("remove template: %v", err)
 	}
@@ -663,6 +634,7 @@ func TestInstallCodexJournalRuleRetiresOrphanedOwnedGuidance(t *testing.T) {
 	if err := fixture.installWithExecutable(t, filepath.Join(fixture.root, "trusted-bin", "loaf-v1"), true, false); err != nil {
 		t.Fatalf("explicit install: %v", err)
 	}
+	seedLegacyCodexGuidance(t, fixture, "# user guidance\n")
 	manifest := readCodexRuleManifestTest(t, fixture.manifest())
 	manifest.remove(codexJournalRuleRelativePath)
 	if err := writeCodexManagedRuleManifest(fixture.manifest(), manifest); err != nil {
@@ -688,7 +660,7 @@ func TestInstallCodexJournalRuleRetiresOrphanedOwnedGuidance(t *testing.T) {
 }
 
 func TestValidateCodexJournalGuidanceStructureRejectsMalformedOrDuplicateBlocks(t *testing.T) {
-	block := generateCodexJournalGuidance("/usr/local/bin/loaf")
+	block := generateCodexJournalGuidance()
 	for _, test := range []struct {
 		name string
 		body string
@@ -753,6 +725,119 @@ func TestReadCodexManagedRuleManifestRejectsDuplicatePaths(t *testing.T) {
 	}
 }
 
+func TestDesiredCodexPolicyContentRendersPathLoafAndPreservesUserGuidance(t *testing.T) {
+	root := t.TempDir()
+	template := "# policy\n" + codexBasicRulesPlaceholder + "\n"
+	writeInstallFile(t, filepath.Join(root, ".codex", "rules", codexJournalRuleTemplateRelativePath), template)
+	options := targetInstallOptions{DistDir: root}
+	rule, err := desiredCodexPolicyContent(options, artifactPlanDecision{Kind: "codex-rule", ID: "codex-rule:loaf.rules"}, "")
+	if err != nil {
+		t.Fatalf("desired Codex rule: %v", err)
+	}
+	if !strings.Contains(string(rule), strconv.Quote(codexPathLoafCommandName)+`, "journal", "log", "--execpolicy-safe"`) || strings.Contains(string(rule), "/opt/") || strings.Contains(string(rule), "{{") {
+		t.Fatalf("desired rule = %q, want PATH loaf prefixes", rule)
+	}
+	live := "# user Codex instructions\n"
+	if _, err := desiredCodexPolicyContent(options, artifactPlanDecision{Kind: "codex-guidance", ID: "codex-rule:AGENTS.md"}, live); err == nil {
+		t.Fatal("retired global guidance must not be generated")
+	}
+}
+
+func TestInstallCodexJournalRuleUpgradesUnmodifiedPinnedRuleToPathLoaf(t *testing.T) {
+	fixture := newCodexRuleInstallFixture(t)
+	pinned := filepath.Join(fixture.root, "trusted-bin", "loaf")
+	oldRule := "# Loaf Codex policy\n" + legacyPinnedCodexBasicRules(pinned)
+	oldGuidance := legacyPinnedCodexJournalGuidance(pinned)
+	writeInstallFile(t, fixture.dest(), oldRule)
+	writeInstallFile(t, filepath.Join(fixture.codexHome, codexJournalGuidanceRelativePath), oldGuidance)
+	manifest := codexManagedRuleManifest{Version: 1}
+	manifest.set(codexJournalRuleRelativePath, sha256Bytes([]byte(oldRule)))
+	manifest.set(codexJournalGuidanceRelativePath, sha256Bytes([]byte(oldGuidance)))
+	if err := writeCodexManagedRuleManifest(fixture.manifest(), manifest); err != nil {
+		t.Fatalf("write pinned ownership: %v", err)
+	}
+	if err := fixture.install(t, false, true); err != nil {
+		t.Fatalf("owned path-pin upgrade: %v", err)
+	}
+	body := string(readFileBytes(t, fixture.dest()))
+	if strings.Contains(body, pinned) || !strings.Contains(body, strconv.Quote(codexPathLoafCommandName)+`, "journal", "log", "--execpolicy-safe"`) {
+		t.Fatalf("upgraded rule = %q, want PATH loaf prefixes without the old pin", body)
+	}
+	guidance := string(readFileBytes(t, filepath.Join(fixture.codexHome, codexJournalGuidanceRelativePath)))
+	if guidance != "" {
+		t.Fatalf("upgraded guidance = %q, want obsolete owned block retired", guidance)
+	}
+}
+
+func TestInstallCodexJournalRuleIgnoresMissingOwnedGuidance(t *testing.T) {
+	f := newCodexRuleInstallFixture(t)
+	if err := f.install(t, true, false); err != nil {
+		t.Fatal(err)
+	}
+	seedLegacyCodexGuidance(t, f, "")
+	path := filepath.Join(f.codexHome, "AGENTS.md")
+	writeInstallFile(t, path, "# User instructions\n")
+	if err := f.install(t, false, true); err != nil {
+		t.Fatal(err)
+	}
+	assertInstallFile(t, path, "# User instructions\n")
+}
+
+func TestPlanCodexGuidancePreservesMissingOwnedBlock(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "AGENTS.md")
+	writeInstallFile(t, path, "# User instructions\n")
+	manifest := codexManagedRuleManifest{Version: 1}
+	manifest.set(codexJournalGuidanceRelativePath, sha256Bytes([]byte("absent block")))
+	if got := planRetiredCodexGuidance(path, manifest); got.Action != planActionPreserve {
+		t.Fatalf("decision = %#v", got)
+	}
+}
+
+func TestInstallCodexJournalRulePreservesModifiedPinnedRule(t *testing.T) {
+	fixture := newCodexRuleInstallFixture(t)
+	pinned := filepath.Join(fixture.root, "trusted-bin", "loaf")
+	oldRule := "# Loaf Codex policy\n" + legacyPinnedCodexBasicRules(pinned)
+	writeInstallFile(t, fixture.dest(), oldRule+"\n# local edit\n")
+	manifest := codexManagedRuleManifest{Version: 1}
+	manifest.set(codexJournalRuleRelativePath, sha256Bytes([]byte(oldRule)))
+	if err := writeCodexManagedRuleManifest(fixture.manifest(), manifest); err != nil {
+		t.Fatalf("write pinned ownership: %v", err)
+	}
+	if err := fixture.install(t, false, true); err == nil || !strings.Contains(err.Error(), "modified") {
+		t.Fatalf("modified pinned upgrade error = %v, want refusal", err)
+	}
+	assertInstallFile(t, fixture.dest(), oldRule+"\n# local edit\n")
+}
+
+func legacyPinnedCodexBasicRules(executable string) string {
+	var rendered strings.Builder
+	for _, prefix := range BasicCommandAuthorityPrefixes() {
+		rendered.WriteString("prefix_rule(\n    pattern = [")
+		rendered.WriteString(strconv.Quote(executable))
+		for _, token := range prefix {
+			rendered.WriteString(", ")
+			rendered.WriteString(strconv.Quote(token))
+		}
+		rendered.WriteString("],\n    decision = \"allow\",\n)\n")
+	}
+	return rendered.String()
+}
+
+func legacyPinnedCodexJournalGuidance(executable string) string {
+	return "\n" + strings.Join([]string{
+		codexJournalGuidanceStart,
+		"<!-- Maintained by loaf install/upgrade - do not edit manually -->",
+		"## Loaf Codex basic command policy",
+		"",
+		"When Codex Auto mode records a durable decision, use this exact command; do not substitute a bare `loaf` command or a shell/environment wrapper:",
+		"",
+		"`" + journalContextShellQuote(executable) + " journal log --execpolicy-safe \"type(scope): description\"`",
+		"",
+		"The rule permits only explicitly classified basic Loaf command leaves, including routine state-plane operations and approved readers. It does not authorize unclassified or operator commands, a bare Loaf namespace, or a general Loaf data-directory writable root. Other harness adapters are not implied by this Codex policy.",
+		codexJournalGuidanceEnd,
+	}, "\n") + "\n"
+}
+
 type codexRuleInstallFixture struct {
 	root      string
 	codexHome string
@@ -788,7 +873,7 @@ func (f codexRuleInstallFixture) sourceBody() string {
 }
 
 func (f codexRuleInstallFixture) renderedBody() string {
-	body, err := renderCodexJournalRule(f.sourceBody(), filepath.Join(f.root, "trusted-bin", "loaf"))
+	body, err := renderCodexJournalRule(f.sourceBody())
 	if err != nil {
 		return ""
 	}
@@ -863,4 +948,28 @@ func readCodexRuleManifestTest(t *testing.T, path string) codexManagedRuleManife
 		t.Fatalf("read manifest: %v", err)
 	}
 	return manifest
+}
+
+// Legacy guidance construction is retained only for migration fixtures.
+func generateCodexJournalGuidance() string {
+	return "\n" + strings.Join([]string{
+		codexJournalGuidanceStart,
+		"<!-- Maintained by loaf install/upgrade - do not edit manually -->",
+		"## Loaf Codex basic command policy",
+		"",
+		"When Codex Auto mode records a durable decision, use this exact PATH command; do not substitute an absolute executable pin or a shell/environment wrapper:",
+		"",
+		"`" + codexPathLoafCommandName + " journal log --execpolicy-safe \"type(scope): description\"`",
+		"",
+		"The rule permits only explicitly classified basic Loaf command leaves, including routine state-plane operations and approved readers. It does not authorize unclassified or operator commands, a bare Loaf namespace, or a general Loaf data-directory writable root. Other harness adapters are not implied by this Codex policy.",
+		codexJournalGuidanceEnd,
+	}, "\n") + "\n"
+}
+
+func appendCodexJournalGuidance(content string, block string) string {
+	return content + block
+}
+
+func replaceCodexJournalGuidance(content string, r codexJournalGuidanceRange, block string) string {
+	return content[:r.start] + block + content[r.end:]
 }

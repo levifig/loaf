@@ -233,7 +233,7 @@ func writeKbStatusHelp(out io.Writer) {
 }
 
 func writeKbValidateHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf kb validate [--json]", "Validate knowledge metadata; architecture documents need a nonempty body and closed frontmatter if present. Does not validate architectural correctness or ADR conventions.", "--json       Output per-file errors and warnings as JSON")
+	writeUsageHelp(out, "loaf kb validate [--legacy-adr <file>...] [--json]", "Validate knowledge metadata and basic architecture document structure. Does not validate architectural correctness. Legacy ADR conventions apply only with --legacy-adr.", "--legacy-adr  Validate explicit files against Loaf's historical ADR convention; no repository required", "--json        Output per-file errors and warnings as JSON")
 }
 
 func writeKbCheckHelp(out io.Writer) {
@@ -479,18 +479,23 @@ func (r Runner) runKbCheck(args []string, out io.Writer, errOut io.Writer, runti
 }
 
 func (r Runner) runKbValidate(args []string, out io.Writer, errOut io.Writer, runtimeRoot string) error {
-	jsonOutput, err := parseJSONOnly(args)
+	options, err := parseKbValidateArgs(args)
 	if err != nil {
 		return err
 	}
-	gitRoot, err := resolveGitRootForKB(runtimeRoot)
-	if err != nil {
-		return err
+	var results []kbValidationResult
+	if options.legacyADR {
+		results = validateLegacyADRFiles(runtimeRoot, options.files)
+	} else {
+		gitRoot, err := resolveGitRootForKB(runtimeRoot)
+		if err != nil {
+			return err
+		}
+		config := loadNativeKbConfig(gitRoot)
+		files := loadNativeKnowledgeFiles(gitRoot, config, errOut, true)
+		results = validateNativeKnowledgeFiles(gitRoot, files)
 	}
-	config := loadNativeKbConfig(gitRoot)
-	files := loadNativeKnowledgeFiles(gitRoot, config, errOut, true)
-	results := validateNativeKnowledgeFiles(gitRoot, files)
-	if jsonOutput {
+	if options.jsonOutput {
 		if err := writeJSON(out, results); err != nil {
 			return err
 		}
@@ -498,7 +503,7 @@ func (r Runner) runKbValidate(args []string, out io.Writer, errOut io.Writer, ru
 		writeKbValidation(out, results)
 	}
 	if countValidationErrors(results) > 0 {
-		if jsonOutput {
+		if options.jsonOutput {
 			return ExitError{Code: 1}
 		}
 		return fmt.Errorf("kb validation failed: %d error(s)", countValidationErrors(results))

@@ -26,6 +26,7 @@ scraping human-readable text:
 - `loaf state doctor --json` / `loaf state status --json` — SQLite health and readiness
 - `loaf issue check <ref> --json` — derived readiness, coverage, and containment
 - `loaf check --hook <id> --json` — one enforcement hook's result
+- `loaf check commit-msg|secrets|changelog|compliance|test-naming|dockerfile|k8s-manifest|bounds|units|standard-refs --json` — standalone validators (file/stdin, directory tree, or domain CLI; not hook JSON)
 - `loaf kb check --json` — knowledge staleness against git history
 - `loaf issue list --json` / `loaf journal recent --json` — current work and timeline
 - `loaf migrate markdown --dry-run --json` — `mode` (`simulation`/`inventory`) plus `import_report` when simulated

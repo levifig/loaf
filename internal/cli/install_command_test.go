@@ -37,8 +37,8 @@ func TestRunnerInstallExplicitCursorTargetRunsNatively(t *testing.T) {
 		t.Fatalf("root AGENTS.md must be a real file: info=%v err=%v", info, statErr)
 	}
 	canonical := string(readFileBytes(t, filepath.Join(root, "AGENTS.md")))
-	if !strings.Contains(canonical, "## Loaf Framework") || !strings.Contains(canonical, "<!-- loaf:managed:start sha256=") || strings.Contains(canonical, "<!-- loaf:managed:start v") {
-		t.Fatalf("canonical AGENTS.md = %q, want native fenced section with sha256-only marker", canonical)
+	if !strings.Contains(canonical, "## Loaf Framework") || !strings.Contains(canonical, "<!-- loaf:managed:start -->") || strings.Contains(canonical, "<!-- loaf:managed:start v") {
+		t.Fatalf("canonical AGENTS.md = %q, want native fenced section with plain marker", canonical)
 	}
 	config := readInstallCommandJSON(t, filepath.Join(root, ".agents", "loaf.json"))
 	integrations := config["integrations"].(map[string]any)

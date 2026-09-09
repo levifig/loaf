@@ -137,10 +137,12 @@ func TestPublicBinaryDispatchesStateVersionAndReleasePreflightNatively(t *testin
 	workingDir := realpath(t, t.TempDir())
 	dataHome := t.TempDir()
 	legacyStateHome := t.TempDir()
-	output, err := runBinary(binary, workingDir, envWith(
+	env := envWith(
+		"LOAF_DB=",
 		"XDG_DATA_HOME="+dataHome,
 		"XDG_STATE_HOME="+legacyStateHome,
-	), "state", "path")
+	)
+	output, err := runBinary(binary, workingDir, env, "state", "path")
 	if err != nil {
 		t.Fatalf("loaf state path error = %v\n%s", err, output)
 	}
@@ -152,7 +154,8 @@ func TestPublicBinaryDispatchesStateVersionAndReleasePreflightNatively(t *testin
 		t.Fatalf("state path = %q, want outside working dir %q", statePath, workingDir)
 	}
 
-	output, err = runBinary(binary, repoRoot, envWith(), "version")
+	// The checkout is build input, not runtime state for this dispatch test.
+	output, err = runBinary(binary, workingDir, env, "version")
 	if err != nil {
 		t.Fatalf("loaf version error = %v\n%s", err, output)
 	}
@@ -162,7 +165,7 @@ func TestPublicBinaryDispatchesStateVersionAndReleasePreflightNatively(t *testin
 		}
 	}
 
-	output, err = runBinary(binary, workingDir, envWith(), "release", "--post-merge")
+	output, err = runBinary(binary, workingDir, env, "release", "--post-merge")
 	if err == nil {
 		t.Fatalf("loaf release --post-merge error = nil, want suggest/cut guidance\n%s", output)
 	}
@@ -373,7 +376,10 @@ func TestPublicBinaryRootHelpAndUnknownCommandAreNative(t *testing.T) {
 		t.Fatalf("go build ./cmd/loaf error = %v\n%s", err, output)
 	}
 
-	output, err := runBinary(binary, repoRoot, envWith())
+	// Runtime project discovery must not depend on the developer's checkout.
+	workingDir := realpath(t, t.TempDir())
+	env := envWith("LOAF_DB=" + filepath.Join(t.TempDir(), "loaf.sqlite"))
+	output, err := runBinary(binary, workingDir, env)
 	if err != nil {
 		t.Fatalf("loaf root help error = %v\n%s", err, output)
 	}
@@ -383,7 +389,7 @@ func TestPublicBinaryRootHelpAndUnknownCommandAreNative(t *testing.T) {
 		}
 	}
 
-	output, err = runBinary(binary, repoRoot, envWith(), "not-a-command")
+	output, err = runBinary(binary, workingDir, env, "not-a-command")
 	if err == nil {
 		t.Fatalf("loaf not-a-command error = nil, want exit error\n%s", output)
 	}
@@ -396,7 +402,7 @@ func TestPublicBinaryRootHelpAndUnknownCommandAreNative(t *testing.T) {
 		t.Fatalf("unknown-command output = %q, want native error without fallback lookup", output)
 	}
 
-	output, err = runBinary(binary, repoRoot, envWith(), "--agent-help")
+	output, err = runBinary(binary, workingDir, env, "--agent-help")
 	if err != nil {
 		t.Fatalf("loaf --agent-help error = %v\n%s", err, output)
 	}

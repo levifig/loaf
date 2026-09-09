@@ -1,72 +1,45 @@
 # Script Surface
 
 ## Contents
-- Current Efficiency
-- CLI Migration Rule
-- Candidate Commands
-- Retired Session Scripts
-- Keep as Skill-Local Scripts
+- Retirement Rule
+- Retired Helpers
+- Existing Commands
 
-Orchestration still carries useful helper scripts, but several now duplicate
-behavior that has become core Loaf runtime behavior. Prefer CLI commands when
-the operation is shared across skills, appears in hooks, mutates `.agents/`
-state, or needs stable tests and error messages.
+Orchestration no longer ships helper scripts. Shared operations use existing
+`loaf` commands. Session and tracker helpers were retired rather than recreated.
 
-## Current Efficiency
+## Retirement Rule
 
-The orchestration skill is split into a compact `SKILL.md` plus references,
-which is directionally efficient for routing. The inefficient part is the
-script surface:
+A helper gets a recorded native replacement or an evidence-backed retirement.
+Do not restore local tracker authority, session lifecycles, or `loaf linear *`
+commands that wrap a provider. Do not fold a git status dump into
+`loaf journal context` — the continuity digest is not that dump.
 
-- The source currently has 10 orchestration scripts out of 22 skill-local
-  scripts overall.
-- Several scripts overlap existing `loaf journal`, `loaf issue`, `loaf check`,
-  and Linear-aware behavior.
-- Shell/Python helpers are harder to discover than `loaf <noun> <verb>` and
-  are not consistently covered by CLI tests.
+Keep a script only when it is still invoked and can stay a tiny local CLI with
+no provider API. None of the former orchestration helpers met that bar.
 
-Keep scripts only when they are narrow examples or skill-local adapters.
+## Retired Helpers
 
-## CLI Migration Rule
+| Script | Disposition | Why |
+|--------|-------------|-----|
+| `new-session.sh` | Retired | Already a stub. There is no session to create. Log with `loaf journal log`; read continuity with `loaf journal context`. |
+| `git-context-summary.sh` | Retired | Unused git dump (uncommitted files, recent commits, ahead/behind). `loaf journal context` already names the branch and journal branch recency. The digest is not this dump. |
+| `extract-magic-words.sh` | Retired | Overlaps `loaf journal log --detect-linear`. No remaining caller needed a second read-only listing or a Linear client. |
+| `new-council.sh` | Existing command | Use `loaf council new --title <title> --body-file <path>` (or `--message`). Do not recreate `YYYYMMDD-HHMMSS-topic.md` or a `council:` frontmatter block. |
+| `validate-council.py` | Retired | Validated the obsolete filename/frontmatter ceremony (PyYAML). `loaf council show` / `loaf council list` read the current artifact contract. |
+| `format-progress.sh` | Retired | Unused Linear paste formatter. No remaining caller. Do not invent `loaf linear format-progress`. |
+| `check-linear-format.py` | Retired | Unused Linear comment linter. No remaining caller and no provider API to wrap. |
+| `suggest-team.py` | Retired | Linear team routing against local config, with a stub workspace-teams fetch. The Linear skill and harness MCP own team selection. No new tracker client. |
+| `get-config.py` | Retired | Linear `.agents/config.json` lookup (comments even named `loaf.json`). `loaf config check` owns Loaf config; there is no `loaf config get`. |
+| `validate-roadmap.py` | Retired (explicit exception) | Roadmaps are not first-class (bootstrap: series-prep is not roadmap planning). Not kept as a silent skill-local script. If roadmap artifacts become first-class, add a narrow local `loaf` validator then — not a tracker client. |
 
-Move a script into the Loaf CLI when at least two are true:
+## Existing Commands
 
-- It creates, validates, archives, or mutates `.agents/` state.
-- It is referenced by hooks or another skill.
-- It needs stable JSON output or machine-readable exit codes.
-- It duplicates logic already present in `cli/`.
-- Users would reasonably try `loaf <noun> <verb>` before locating a script.
-
-Leave a script in the skill when it is one-off glue, an example transcript
-transform, or depends on harness-only context unavailable to the CLI.
-
-## Candidate Commands
-
-| Current Script | Candidate CLI | Priority | Rationale |
-|----------------|---------------|----------|-----------|
-| `validate-council.py` | `loaf council validate <file>` | High | Council lifecycle should not depend on direct script execution. |
-| `new-council.sh` | `loaf council create` | High | Creates first-class `.agents/councils/` artifacts. |
-| `check-linear-format.py` | `loaf linear check-format` | Medium | Linear hygiene should be reusable outside orchestration. |
-| `format-progress.sh` | `loaf linear format-progress` | Medium | Useful user-facing formatter with simple inputs. |
-| `extract-magic-words.sh` | `loaf linear refs` | Medium | Git-to-Linear reference extraction is runtime behavior. |
-| `git-context-summary.sh` | `loaf journal context` | Medium | The continuity digest already surfaces git-derived context. |
-| `get-config.py` | `loaf config get` | Medium | Configuration lookup is cross-skill. |
-| `suggest-team.py` | `loaf linear suggest-team` | Low | Needs clearer Linear-native contract before promotion. |
-
-## Retired Session Scripts
-
-The journal-first model deleted the session entity, so the scripts built on it
-are gone (not migrated). `validate-session.py` validated a session-status
-vocabulary (`active`/`stopped`/`done`/`archived`) that no longer exists;
-`extract-decisions.py` and `list-session-decisions.sh` parsed a session *file*
-and produced Serena decision-memory-at-archive — a model with no successor.
-Decisions now live in the journal (`loaf journal search`) and in durable
-artifacts (ADRs, spec changelogs, reports). There is no session to create, so
-`new-session.sh` remains only as a stub that redirects to `loaf journal log`.
-
-## Keep as Skill-Local Scripts
-
-| Script | Reason |
-|--------|--------|
-| `new-session.sh` | Obsolete stub; redirects callers to `loaf journal log` / `loaf journal context`. |
-| `validate-roadmap.py` | Planning-reference utility; promote only if roadmap artifacts become first-class. |
+| Need | Command |
+|------|---------|
+| Log work | `loaf journal log "type(scope): description"` |
+| Continuity digest | `loaf journal context` |
+| Detect commit magic words | `loaf journal log --detect-linear` |
+| Create a council artifact | `loaf council new --title <title> --body-file <path>` |
+| Read councils | `loaf council show` / `loaf council list` |
+| Loaf project config | `loaf config check` |

@@ -93,7 +93,7 @@ func TestRunnerSetupDeploysProjectSurfacesItJustScaffolded(t *testing.T) {
 		t.Fatalf("setup output = %q, want the project it just scaffolded to be deployed, not skipped", stdout.String())
 	}
 	body := string(readFileBytes(t, filepath.Join(target, "AGENTS.md")))
-	if !strings.Contains(body, "## Loaf Framework") || !strings.Contains(body, "<!-- loaf:managed:start sha256=") {
+	if !strings.Contains(body, "## Loaf Framework") || !strings.Contains(body, "<!-- loaf:managed:start -->") {
 		t.Fatalf("AGENTS.md = %q, want the managed Loaf section deployed by setup", body)
 	}
 }

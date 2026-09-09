@@ -12,7 +12,7 @@
       "kind": "hook-file",
       "source_path": "hooks/hooks.json",
       "destination": "hooks/hooks.json",
-      "sha256": "953175072a844f44adfe1e62dcccd21cd2428bf163c328925b075a6e72d80cf0",
+      "sha256": "5b3e202ea63840468716a41c24f1ad27820b1bc3eb336353eeef06798c48dc33",
       "mode": 420
     },
     {
@@ -56,34 +56,10 @@
       "mode": 420
     },
     {
-      "id": "hook-file:hooks/kb-staleness-nudge.sh",
-      "kind": "hook-file",
-      "source_path": "hooks/kb-staleness-nudge.sh",
-      "destination": "hooks/kb-staleness-nudge.sh",
-      "sha256": "2eb14c3143b78d62cdcef56a12ea714472898ec49e54d4e53e217f0e5668cb5e",
-      "mode": 493
-    },
-    {
-      "id": "hook-file:hooks/validate-infra-safety.sh",
-      "kind": "hook-file",
-      "source_path": "hooks/validate-infra-safety.sh",
-      "destination": "hooks/validate-infra-safety.sh",
-      "sha256": "1e1d1d25367e0ae643d3880597a1e88a1a7a1469e9b987e242d20783aaed6497",
-      "mode": 493
-    },
-    {
-      "id": "hook-file:hooks/validate-sql-safety.sh",
-      "kind": "hook-file",
-      "source_path": "hooks/validate-sql-safety.sh",
-      "destination": "hooks/validate-sql-safety.sh",
-      "sha256": "f3dc96bb160540e08bfa75e6c604087222c003a7abf8d9fd77800997375fd681",
-      "mode": 493
-    },
-    {
       "id": "managed-instructions",
       "kind": "instruction",
       "destination": "project-instructions",
-      "sha256": "dd1528fbcd47b62e9cf4e5943d2deb78e5118e60a0111608eed79b07cca4d873"
+      "sha256": "6f2d9dbe5b9113b8ab8b42a83e3b1e32225c58ca4511ede3148f62344c6fe0b2"
     }
   ]
 }

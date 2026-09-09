@@ -13,7 +13,7 @@ import (
 const (
 	fencedStartMarker = "<!-- loaf:managed:start"
 	fencedEndMarker   = "<!-- loaf:managed:end -->"
-	fencedWarning     = "<!-- Maintained by loaf install/upgrade - do not edit manually -->"
+	fencedWarning     = "<!-- Maintained by loaf install/upgrade; edits inside this section are overwritten. Put custom instructions outside it. -->"
 )
 
 var fencedTargetFiles = map[string]string{
@@ -29,8 +29,6 @@ var fencedVersionField = regexp.MustCompile(`^v([\d.]+(?:-[-\w.]+)?)$`)
 type fencedSectionRange struct {
 	start           int
 	end             int
-	version         string // non-empty only for legacy headers; retained to detect legacy forms
-	fingerprint     string
 	malformedHeader bool
 	bodyStart       int
 }
@@ -39,32 +37,6 @@ type fencedInstallResult struct {
 	Action  string
 	Version string
 	Error   string
-}
-
-// fencedSectionDisposition is the shared plan/apply decision for an existing
-// managed section whose header already parsed successfully (not malformed).
-type fencedSectionDisposition int
-
-const (
-	fencedDispositionSkip fencedSectionDisposition = iota
-	fencedDispositionUpdate
-	fencedDispositionTampered
-)
-
-// disposeFencedSection implements the normative header decision matrix from the
-// version-agnostic-managed-block Change. Both installFencedSection (apply) and
-// planFencedSection (dry-run) must consume this helper — Decision 8.
-func disposeFencedSection(section fencedSectionRange, existingBody string, generatedFingerprint string) fencedSectionDisposition {
-	actualSHA := sha256Hex(existingBody)
-	if section.fingerprint != "" && section.fingerprint != actualSHA {
-		return fencedDispositionTampered
-	}
-	// Skip requires new-form header (sha256= only, no version stamp) and a
-	// fingerprint that matches both the actual body and the generated constant.
-	if section.version == "" && section.fingerprint != "" && section.fingerprint == generatedFingerprint {
-		return fencedDispositionSkip
-	}
-	return fencedDispositionUpdate
 }
 
 func installFencedSection(targetFile string, version string, upgrade bool) (fencedInstallResult, error) {
@@ -91,27 +63,14 @@ func installFencedSection(targetFile string, version string, upgrade bool) (fenc
 	switch {
 	case hasSection:
 		if section.malformedHeader {
-			return fencedInstallResult{}, fmt.Errorf("managed Loaf section in %s has a malformed fingerprint; refusing to overwrite", targetFile)
+			return fencedInstallResult{}, fmt.Errorf("managed Loaf section in %s has a malformed start marker; refusing to overwrite", targetFile)
 		}
-		existingBody := content[section.bodyStart:section.end]
-		switch disposeFencedSection(section, existingBody, fencedContentFingerprint(newContent)) {
-		case fencedDispositionTampered:
-			return fencedInstallResult{}, fmt.Errorf("managed Loaf section in %s was modified; refusing to overwrite", targetFile)
-		case fencedDispositionSkip:
+		if content[section.start:section.end] == newContent {
 			return fencedInstallResult{Action: "skipped", Version: version}, nil
 		}
-		before := strings.TrimRight(content[:section.start], " \t\r\n")
-		after := strings.TrimLeft(content[section.end:], " \t\r\n")
-		updated := before
-		if updated != "" {
-			updated += "\n\n"
-		}
-		updated += newContent
-		if after != "" {
-			updated += "\n\n" + after
-		} else {
-			updated += "\n"
-		}
+		// The markers delimit Loaf-owned bytes. Preserve everything outside
+		// them exactly, including user whitespace.
+		updated := content[:section.start] + newContent + content[section.end:]
 		if err := writeFileAtomically(targetFile, []byte(updated), fencedWriteMode(targetFile, true)); err != nil {
 			return fencedInstallResult{}, err
 		}
@@ -227,7 +186,7 @@ func findFencedSectionRange(content string) (fencedSectionRange, bool) {
 	}
 	startLineEnd := strings.Index(content[start:start+lineEnd], "-->")
 	if startLineEnd >= 0 && start+startLineEnd < start+endStart {
-		version, sha, valid := parseFencedStartHeader(content[start : start+startLineEnd+3])
+		_, _, valid := parseFencedStartHeader(content[start : start+startLineEnd+3])
 		if !valid {
 			return fencedSectionRange{start: start, end: end, malformedHeader: true}, true
 		}
@@ -235,7 +194,7 @@ func findFencedSectionRange(content string) (fencedSectionRange, bool) {
 		if bodyStart < end && content[bodyStart] == '\n' {
 			bodyStart++
 		}
-		return fencedSectionRange{start: start, end: end, version: version, fingerprint: sha, bodyStart: bodyStart}, true
+		return fencedSectionRange{start: start, end: end, bodyStart: bodyStart}, true
 	}
 	return fencedSectionRange{start: start, end: end, malformedHeader: true}, true
 }
@@ -245,7 +204,10 @@ func parseFencedStartHeader(line string) (string, string, bool) {
 		return "", "", false
 	}
 	fields := strings.Fields(strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(line, fencedStartMarker), "-->")))
-	if len(fields) < 1 || len(fields) > 2 {
+	if len(fields) == 0 {
+		return "", "", true
+	}
+	if len(fields) > 2 {
 		return "", "", false
 	}
 	const shaPrefix = "sha256="
@@ -257,7 +219,7 @@ func parseFencedStartHeader(line string) (string, string, bool) {
 	}
 
 	if len(fields) == 1 {
-		// New form: sha256=<hex> alone.
+		// Legacy: sha256=<hex> alone. Parsed for migration, not ownership.
 		if sha, ok := parseSHA(fields[0]); ok {
 			return "", sha, true
 		}
@@ -317,12 +279,12 @@ func generateFencedContent() string {
 		"",
 		"**Journal Discipline:**",
 		"Before completing any response that includes edits, commits, or significant decisions, log journal entries using `loaf journal log \"type(scope): description\"`. Entry types: `decision`, `discover`, `wrap`. Do not defer journaling - log before responding.",
-		"In Codex Auto mode, when the user explicitly installed the managed basic-command policy, use the exact path-pinned Loaf executable in the managed `CODEX_HOME/AGENTS.md` block; do not substitute a bare `loaf`. The policy authorizes only explicitly classified basic Loaf command leaves and does not grant unclassified/operator commands, a bare Loaf namespace, or general filesystem access. Other harness adapters are not implied.",
+		"In Codex Auto mode, when the user explicitly installed the managed basic-command policy, use the PATH `loaf` command for classified leaves, including `loaf journal log --execpolicy-safe` for journal writes. Do not substitute an absolute executable pin or a shell/environment wrapper. The policy authorizes only explicitly classified basic Loaf command leaves and does not grant unclassified/operator commands, a bare Loaf namespace, or general filesystem access. Global instructions remain user-owned; no Loaf block in `CODEX_HOME/AGENTS.md` is required. Other harness adapters are not implied.",
 		"",
 		"See the Loaf `orchestration` skill for full details.",
 		fencedEndMarker,
 	}, "\n")
-	return "<!-- loaf:managed:start sha256=" + sha256Hex(body) + " -->\n" + body
+	return "<!-- loaf:managed:start -->\n" + body
 }
 
 func fencedContentFingerprint(content string) string {

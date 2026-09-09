@@ -104,12 +104,14 @@ Infrastructure patterns for containerization, orchestration, CI/CD pipelines, an
 | CI/CD | `references/ci-cd.md` | Building GitHub Actions workflows, caching, secrets |
 | Troubleshooting | `references/troubleshooting.md` | Debugging CI failures, version conflicts, cache issues |
 
-## Available Scripts
+## Available Checks
 
-| Script | Usage | Description |
-|--------|-------|-------------|
-| `scripts/check-dockerfile.sh` | `check-dockerfile.sh <file>` | Validate Dockerfile best practices |
-| `scripts/validate-k8s-manifest.py` | `validate-k8s-manifest.py <file>` | Check K8s manifest for required fields |
+| Check | Usage | Description |
+|-------|-------|-------------|
+| Dockerfile | `loaf check dockerfile [file]` | Validate Dockerfile best practices. Defaults to `Dockerfile`. |
+| Kubernetes manifest | `loaf check k8s-manifest <file>` | Regex field probes for required security/resource settings. Not a YAML parse. |
+| Infra safety hook | `loaf check --hook validate-infra-safety` | Blocks destructive kubectl/terraform/docker/rm and warns on helm uninstall. Malformed hook payloads fail closed. |
+| SQL safety hook | `loaf check --hook validate-sql-safety` | Blocks DROP/TRUNCATE; warns on DELETE without WHERE and DROP COLUMN. Malformed hook payloads fail closed. |
 
 ## CI Failure Triage
 

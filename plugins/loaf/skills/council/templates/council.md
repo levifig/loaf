@@ -1,21 +1,7 @@
-# Council File Template
+# Council Body Template
 
-**Location:** `.agents/councils/YYYYMMDD-HHMMSS-<topic-slug>.md`
-
-```yaml
----
-council:
-  topic: "[Clear decision description]"
-  created: "[ISO timestamp]"
-  status: in_progress
-  composition:
-    - [agent1]
-    - [agent2]
-    - [agent3]
-    - [agent4]
-    - [agent5]
-  linear_issue: "[ISSUE-ID if applicable]"
----
+Use as `--body-file` for `loaf council new --title "<decision>" --body-file <path>`.
+The CLI writes `.agents/councils/COUNCIL-YYYYMMDD-slug.md` with `id`, `title`, `status`, and `created`.
 
 # Council: [Topic]
 
@@ -62,4 +48,3 @@ council:
 ### [Timestamp] - Council Convened
 Agents: [list]
 Composition selected by orchestrator.
-```

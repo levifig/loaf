@@ -132,6 +132,9 @@ func hookCatalogGenerationCohorts(target string) []hookCatalogCohort {
 // generation. Closed by construction: every line is a shape a release actually
 // shipped, never a guess at what one might have.
 var hookCatalogHistoricalCommands = map[string][]string{
+	"cursor/kb-staleness-nudge": {
+		"bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh",
+	},
 	"cursor/session-start-loaf": {
 		"loaf journal context",
 		"loaf journal context --from-hook",

@@ -925,7 +925,7 @@ func TestRunnerKbSubcommandHelpIsNative(t *testing.T) {
 		want string
 	}{
 		{name: "status", args: []string{"kb", "status", "--help"}, want: "Usage: loaf kb status [--json]"},
-		{name: "validate", args: []string{"kb", "validate", "--help"}, want: "Usage: loaf kb validate [--json]"},
+		{name: "validate", args: []string{"kb", "validate", "--help"}, want: "Usage: loaf kb validate [--legacy-adr <file>...] [--json]"},
 		{name: "check", args: []string{"kb", "check", "--help"}, want: "Usage: loaf kb check [--file <path>] [--json]"},
 		{name: "review", args: []string{"kb", "review", "--help"}, want: "Usage: loaf kb review <file> [--json]"},
 		{name: "init", args: []string{"kb", "init", "--help"}, want: "Usage: loaf kb init [--json]"},

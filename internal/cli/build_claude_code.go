@@ -1,7 +1,6 @@
 package cli
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -213,7 +212,7 @@ func buildNativeClaudeCodeTarget(root string) error {
 			return err
 		}
 	}
-	if err := writeNativeClaudePluginRuntime(pluginDir, version); err != nil {
+	if err := writeNativeClaudePluginPackage(pluginDir, version); err != nil {
 		return err
 	}
 	return nil
@@ -422,9 +421,9 @@ func nativeClaudeHookCommand(hook nativeBuildHook) string {
 	}
 	if nativeClaudeBinaryPathHooks[hook.id] {
 		if hook.command == "" {
-			return `"${CLAUDE_PLUGIN_ROOT}/bin/loaf" check --hook ` + hook.id + nativeCheckAdvisorySuffix(hook)
+			return "loaf check --hook " + hook.id + nativeCheckAdvisorySuffix(hook)
 		}
-		return strings.ReplaceAll(hook.command, "loaf", `"${CLAUDE_PLUGIN_ROOT}/bin/loaf"`)
+		return hook.command
 	}
 	if hook.command != "" {
 		return strings.ReplaceAll(hook.command, "${CLAUDE_PLUGIN_ROOT}", "${CLAUDE_PLUGIN_ROOT}")
@@ -456,6 +455,8 @@ var nativeClaudeBinaryPathHooks = map[string]bool{
 	"validate-commit":         true,
 	"workflow-pre-pr":         true,
 	"security-audit":          true,
+	"validate-infra-safety":   true,
+	"validate-sql-safety":     true,
 	"session-start-loaf":      true,
 	"session-end-loaf":        true,
 	"session-context-inject":  true,
@@ -512,24 +513,8 @@ func copyNativeClaudeHooks(hooks []nativeBuildHook, srcDir string, pluginDir str
 	return copyNativeBuildDir(filepath.Join(srcDir, "hooks", "instructions"), filepath.Join(hooksDir, "instructions"), nil, false)
 }
 
-// claudePluginShim is the plugin's bin/loaf. The marketplace plugin ships
-// content and hooks only and resolves an installed loaf CLI at run time, so
-// no native binary is committed or copied into plugins/.
-//
-//go:embed claude_plugin_shim.sh
-var claudePluginShim string
-
-// writeNativeClaudePluginRuntime writes the plugin's runtime surface: bin/loaf,
-// the shim every generated hook command invokes as
-// "${CLAUDE_PLUGIN_ROOT}/bin/loaf", and the plugin package manifest.
-func writeNativeClaudePluginRuntime(pluginDir string, version string) error {
-	binDir := filepath.Join(pluginDir, "bin")
-	if err := os.MkdirAll(binDir, 0o755); err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(binDir, "loaf"), []byte(claudePluginShim), 0o755); err != nil {
-		return err
-	}
+// The plugin carries content only; hook commands resolve the user's PATH loaf.
+func writeNativeClaudePluginPackage(pluginDir string, version string) error {
 	body, err := json.MarshalIndent(struct {
 		Name    string `json:"name"`
 		Version string `json:"version"`

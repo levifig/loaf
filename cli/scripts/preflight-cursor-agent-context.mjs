@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
-import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
+import { observedClientVersion, parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../..");
@@ -13,20 +14,16 @@ const platform = `${process.platform}-${process.arch}`;
 const candidateHooksPath = "dist/cursor/hooks.json";
 const candidateBinaryPath = `bin/native/${platform}/loaf`;
 
-export function classifyCursorPreflight(versionOutput, helpOutput, expectedVersion) {
-  const observedVersion = versionOutput.trim();
-  const exactVersion = observedVersion === expectedVersion;
+export function classifyCursorPreflight(versionResult, helpOutput) {
+  const observedVersion = observedClientVersion(versionResult);
   const noSessionPersistence = helpOutput.includes("--no-session-persistence");
   return {
     observedVersion,
-    exactVersion,
     noSessionPersistence,
     smokeExecuted: false,
-    blocker: !exactVersion
-      ? `installed cursor-agent version ${observedVersion || "<missing>"} does not match ${expectedVersion}`
-      : !noSessionPersistence
-        ? "installed cursor-agent does not expose --no-session-persistence; refusing a model-visible smoke that could persist session state globally"
-        : "smoke implementation is not enabled for this installed CLI",
+    blocker: !noSessionPersistence
+      ? "installed cursor-agent does not expose --no-session-persistence; refusing a model-visible smoke that could persist session state globally"
+      : "smoke implementation is not enabled for this installed CLI",
   };
 }
 
@@ -39,6 +36,16 @@ function run(command, args, cwd, env = {}, timeout = 120000) {
     maxBuffer: 16 * 1024 * 1024,
   });
   return { status: result.status ?? 1, stdout: result.stdout ?? "", stderr: result.stderr ?? "", error: result.error };
+}
+
+export function buildCandidate(dbPath, runner = run) {
+  const env = {
+    LOAF_DB: dbPath, LOAF_DEV_LINK: "0", LOAF_BUILD_TARGETS: platform, LOAF_NATIVE_ARTIFACT_DRY_RUN: "0",
+    PATH: `${dirname(join(repoRoot, candidateBinaryPath))}${delimiter}${process.env.PATH ?? ""}`,
+  };
+  if (runner("go", ["run", "./cmd/loafdev", "build-go"], repoRoot, env).status !== 0) throw new Error("candidate Go build failed");
+  if (runner("loaf", ["build", "--target", "cursor"], repoRoot, env).status !== 0) throw new Error("candidate Cursor target build failed");
+  return env;
 }
 
 function sha256(path) {
@@ -65,21 +72,26 @@ function candidateArtifacts() {
 }
 
 function main(argv = process.argv.slice(2)) {
-  const { client, expectedVersion, receiptPath } = parseRunnerArgs(argv);
+  const tempRoot = mkdtempSync(join(tmpdir(), "loaf-cursor-preflight-"));
+  try {
+    runPreflight(argv, join(tempRoot, "loaf.sqlite"));
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+  }
+}
+
+function runPreflight(argv, dbPath) {
+  const { client, receiptPath } = parseRunnerArgs(argv);
   const timestamp = new Date().toISOString();
-  const buildGo = run("npm", ["run", "build:go"], repoRoot);
-  if (buildGo.status !== 0) throw new Error("candidate Go build failed");
-  const buildCursor = run("bin/loaf", ["build", "--target", "cursor"], repoRoot);
-  if (buildCursor.status !== 0) throw new Error("candidate Cursor target build failed");
+  buildCandidate(dbPath);
   const artifacts = candidateArtifacts();
   const version = run(client, ["--version"], repoRoot);
   const help = run(client, ["--help"], repoRoot);
-  if (version.status !== 0 || help.status !== 0) throw new Error("installed cursor-agent version/help preflight failed");
-  const preflight = classifyCursorPreflight(version.stdout, help.stdout, expectedVersion);
-  if (!preflight.exactVersion) throw new Error(preflight.blocker);
+  if (help.status !== 0) throw new Error("installed cursor-agent help preflight failed");
+  const preflight = classifyCursorPreflight(version, help.stdout);
   if (preflight.noSessionPersistence) throw new Error("installed cursor-agent exposes --no-session-persistence, but a model-visible isolated smoke is not implemented");
   const smoke = {
-    evidence_version: 2,
+    evidence_version: 3,
     timestamp,
     target: "cursor",
     surface: "cursor-agent",
@@ -96,7 +108,6 @@ function main(argv = process.argv.slice(2)) {
     ],
     candidate_target_path: "dist/cursor",
     smoke_executed: preflight.smokeExecuted,
-    cli_version_exact: preflight.exactVersion,
     no_session_persistence_supported: preflight.noSessionPersistence,
     candidate_artifacts: artifacts,
     blocker: preflight.blocker,

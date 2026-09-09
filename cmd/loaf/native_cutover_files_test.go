@@ -107,12 +107,9 @@ func TestNativeCutoverPackageAndSourceGuards(t *testing.T) {
 		}
 	}
 
-	// Root bin/ is an ignored build output: a checkout carries no launcher or
-	// native binary there until `npm run build:go` runs. The committed Claude
-	// Code plugin ships a shim at bin/loaf that resolves an installed loaf and
-	// no native runtime of its own.
-	assertExecutableFile(t, filepath.Join(root, "plugins", "loaf", "bin", "loaf"))
-	for _, rel := range []string{"plugins/loaf/bin/native", "plugins/loaf/bin/package.json"} {
+	// Root bin/ is an ignored build output created by make build-go. The
+	// Claude plugin carries content only; hooks use the user's PATH runtime.
+	for _, rel := range []string{"plugins/loaf/bin", "internal/cli/claude_plugin_shim.sh"} {
 		assertPathMissing(t, root, rel)
 	}
 	for _, rel := range []string{"dist-cli", "bin/dist-cli", "plugins/loaf/dist-cli"} {

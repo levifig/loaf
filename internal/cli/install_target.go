@@ -113,6 +113,15 @@ type targetInstallOptions struct {
 	// install/upgrade sets it after syncCanonicalManagedSkills has already
 	// performed the one write per destination for the run.
 	SkipSkillsSync bool
+	// SelectedHookIDs, when non-nil, limits hook projection to those identities
+	// (`hook:<event>/<id>`). Nil means every catalog identity, which is the
+	// whole-target install/upgrade path.
+	SelectedHookIDs map[string]bool
+	// SelectedArtifactIDs, when non-nil, is every selected plan ID for this
+	// target. Verifiably retired adapter IDs — still owned but absent, or
+	// recorded in retired_artifact_ids — are planned as preserve so a second
+	// scoped apply stays a no-op. Unknown IDs are not fabricated.
+	SelectedArtifactIDs map[string]bool
 }
 
 type installTargetRecord struct {
@@ -1023,6 +1032,180 @@ func syncManagedSkillsDirIfExists(src string, dest string) (returnErr error) {
 	return out
 }
 
+// syncSelectedManagedSkills updates only the named skills. Unselected skills,
+// including an unrelated modified-managed pitch skill, are left byte-identical.
+// A conflict on a selected skill refuses the whole call before any write.
+func syncSelectedManagedSkills(src string, dest string, selected []string) (returnErr error) {
+	if len(selected) == 0 {
+		return nil
+	}
+	if !dirExistsForInstall(src) {
+		return fmt.Errorf("selected skills source %s does not exist", src)
+	}
+	if err := os.MkdirAll(dest, 0o755); err != nil {
+		return err
+	}
+	previous, err := readManagedSkillsState(dest)
+	if err != nil {
+		return err
+	}
+	if err := validateSelectedLegacySkills(previous, selected); err != nil {
+		return err
+	}
+	wanted := map[string]bool{}
+	for _, name := range selected {
+		wanted[name] = true
+	}
+	current := map[string]string{}
+	for name := range wanted {
+		source := filepath.Join(src, name)
+		if _, err := os.Lstat(source); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		digest, err := hashInstallSkillTree(source)
+		if err != nil {
+			return fmt.Errorf("hash source skill %q: %w", name, err)
+		}
+		current[name] = digest
+	}
+	conflicts := map[string]string{}
+	for name := range wanted {
+		recorded, owned := previous.digests[name]
+		if !owned || previous.legacy {
+			if _, err := os.Lstat(filepath.Join(dest, name)); err == nil && !owned {
+				conflicts[name] = fmt.Sprintf("skill destination %q already exists and is not managed by Loaf", name)
+			} else if err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			continue
+		}
+		actual, err := hashInstallSkillTree(filepath.Join(dest, name))
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return fmt.Errorf("managed skill %q cannot be verified: %w", name, err)
+		}
+		if actual != recorded && actual != current[name] {
+			conflicts[name] = fmt.Sprintf("managed skill %q was modified; refusing to overwrite or remove", name)
+		}
+	}
+	if len(conflicts) > 0 {
+		names := make([]string, 0, len(conflicts))
+		for name := range conflicts {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		out := &skillSyncConflictsError{Conflicts: make([]skillSyncConflict, 0, len(names))}
+		for _, name := range names {
+			out.Conflicts = append(out.Conflicts, skillSyncConflict{Skill: name, Reason: conflicts[name]})
+		}
+		return out
+	}
+
+	stageRoot, err := os.MkdirTemp(filepath.Dir(dest), "."+filepath.Base(dest)+".loaf-scoped-skills-")
+	if err != nil {
+		return err
+	}
+	retainStageRoot := false
+	defer func() {
+		if !retainStageRoot {
+			if cleanupErr := os.RemoveAll(stageRoot); cleanupErr != nil && returnErr == nil {
+				returnErr = cleanupErr
+			}
+		}
+	}()
+	for name, digest := range current {
+		staged := filepath.Join(stageRoot, "desired", name)
+		if err := copyInstallSkillTree(filepath.Join(src, name), staged); err != nil {
+			return fmt.Errorf("stage skill %q: %w", name, err)
+		}
+		stagedDigest, err := hashInstallSkillTree(staged)
+		if err != nil || stagedDigest != digest {
+			if err != nil {
+				return fmt.Errorf("verify staged skill %q: %w", name, err)
+			}
+			return fmt.Errorf("verify staged skill %q: source changed during install", name)
+		}
+	}
+	for name := range wanted {
+		if _, keep := current[name]; keep {
+			continue
+		}
+		retain, err := retireManagedSkill(filepath.Join(dest, name), filepath.Join(stageRoot, "backups", name), previous.digests[name], previous.legacy)
+		if retain {
+			retainStageRoot = true
+		}
+		if err != nil {
+			return err
+		}
+	}
+	for name, digest := range current {
+		installed := filepath.Join(dest, name)
+		if actual, err := hashInstallSkillTree(installed); err == nil && actual == digest {
+			continue
+		} else if err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("verify managed skill %q before publish: %w", name, err)
+		}
+		_, owned := previous.digests[name]
+		retain, err := publishStagedSkill(filepath.Join(stageRoot, "desired", name), installed, filepath.Join(stageRoot, "backups", name), previous.digests[name], digest, previous.legacy, owned)
+		if retain {
+			retainStageRoot = true
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	manifestSkills := map[string]string{}
+	for name, digest := range previous.digests {
+		manifestSkills[name] = digest
+	}
+	for name, digest := range current {
+		manifestSkills[name] = digest
+	}
+	for name := range wanted {
+		if _, keep := current[name]; !keep {
+			delete(manifestSkills, name)
+		}
+	}
+	names := make([]string, 0, len(manifestSkills))
+	for name := range manifestSkills {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	manifest := managedSkillsManifestV2{Version: 2, Skills: make([]managedSkillDigest, 0, len(names))}
+	for _, name := range names {
+		manifest.Skills = append(manifest.Skills, managedSkillDigest{Name: name, SHA256: manifestSkills[name]})
+	}
+	return writeManagedSkillsManifest(dest, manifest)
+}
+
+// Name-only ownership cannot be carried into the digest manifest without
+// claiming unselected live content as a verified baseline.
+func validateSelectedLegacySkills(previous managedSkillsState, selected []string) error {
+	if !previous.legacy || len(selected) == 0 {
+		return nil
+	}
+	wanted := make(map[string]bool, len(selected))
+	for _, name := range selected {
+		wanted[name] = true
+	}
+	var unselected []string
+	for name := range previous.digests {
+		if !wanted[name] {
+			unselected = append(unselected, name)
+		}
+	}
+	if len(unselected) == 0 {
+		return nil
+	}
+	sort.Strings(unselected)
+	return fmt.Errorf("cannot partially migrate name-only skill ownership; unselected legacy skills: %s; review and explicitly select every legacy skill together before retrying", strings.Join(unselected, ", "))
+}
+
 func listInstallSkillDirs(path string) ([]string, error) {
 	if err := requireInstallSkillsSourcePath(path); err != nil {
 		return nil, err
@@ -1566,11 +1749,20 @@ func installRecordPath(homeDir string, target string) string {
 	return filepath.Join(homeDir, ".agents", "loaf", "install-targets", target+".json")
 }
 
-func renderCodexHookExecutable(rawHook json.RawMessage, executable string) (json.RawMessage, error) {
-	return renderCodexHookExecutableForOS(rawHook, executable, runtime.GOOS)
+func renderCodexHookExecutable(rawHook json.RawMessage) (json.RawMessage, error) {
+	return renderCodexHookExecutableForOS(rawHook, runtime.GOOS)
 }
 
-func renderCodexHookExecutableForOS(rawHook json.RawMessage, executable string, goos string) (json.RawMessage, error) {
+func isCodexJournalHookTemplateCommand(command string) bool {
+	return command == codexJournalExecutablePlaceholder+codexJournalHookCommandSuffix || command == codexJournalHookCommandTemplate
+}
+
+func isCodexJournalHookTemplate(rawHook json.RawMessage) bool {
+	return bytes.Contains(rawHook, []byte(codexJournalHookCommandSuffix)) &&
+		(bytes.Contains(rawHook, []byte(codexJournalExecutablePlaceholder)) || bytes.Contains(rawHook, []byte(codexJournalHookCommandTemplate)))
+}
+
+func renderCodexHookExecutableForOS(rawHook json.RawMessage, goos string) (json.RawMessage, error) {
 	hook, err := decodeCodexHookObject(rawHook)
 	if err != nil {
 		return nil, err
@@ -1591,27 +1783,20 @@ func renderCodexHookExecutableForOS(rawHook json.RawMessage, executable string, 
 		if !ok {
 			return nil, errors.New("Loaf Codex matcher group command must be a string")
 		}
-		if command != codexJournalExecutablePlaceholder+codexJournalHookCommandSuffix && command != codexJournalHookCommandTemplate {
+		if !isCodexJournalHookTemplateCommand(command) {
 			return nil, errors.New("Loaf Codex matcher group contains an unexpected command")
 		}
 		rawWindowsCommand, hasWindowsCommand := handler["commandWindows"]
 		if hasWindowsCommand {
 			windowsCommand, ok := rawWindowsCommand.(string)
-			if !ok || (windowsCommand != codexJournalExecutablePlaceholder+codexJournalHookCommandSuffix && windowsCommand != codexJournalHookCommandTemplate) {
+			if !ok || !isCodexJournalHookTemplateCommand(windowsCommand) {
 				return nil, errors.New("Loaf Codex matcher group contains an unexpected Windows command")
 			}
 		}
+		handler["command"] = codexJournalHookCommandTemplate
 		if goos == "windows" {
-			renderedWindowsCommand, err := codexWindowsJournalContextCommand(executable)
-			if err != nil {
-				return nil, err
-			}
-			handler["command"] = renderedWindowsCommand
-			handler["commandWindows"] = renderedWindowsCommand
-		} else {
-			handler["command"] = journalContextShellQuote(executable) + codexJournalHookCommandSuffix
-		}
-		if hasWindowsCommand && goos != "windows" {
+			handler["commandWindows"] = codexJournalHookCommandTemplate
+		} else if hasWindowsCommand {
 			delete(handler, "commandWindows")
 		}
 	}

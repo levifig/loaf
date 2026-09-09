@@ -156,7 +156,7 @@ func TestClaudeSessionStartRejectsSelectorsAndOutputOverrides(t *testing.T) {
 	}
 }
 
-func TestNativeClaudeLifecyclePayloadPinsBinaryAndConsolidatesCompaction(t *testing.T) {
+func TestNativeClaudeLifecyclePayloadUsesPathLoafAndConsolidatesCompaction(t *testing.T) {
 	hooks, err := readNativeBuildHooks("../../config/hooks.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -169,15 +169,15 @@ func TestNativeClaudeLifecyclePayloadPinsBinaryAndConsolidatesCompaction(t *test
 	if !ok {
 		t.Fatalf("SessionStart hook = %#v, want command hook", payload.Hooks.SessionStart[0].Hooks[0])
 	}
-	if !strings.Contains(start.Command, `${CLAUDE_PLUGIN_ROOT}/bin/loaf" journal context --from-hook --claude-code`) {
-		t.Fatalf("SessionStart command = %q, want plugin-binary pinning and Claude adapter", start.Command)
+	if !strings.Contains(start.Command, `loaf journal context --from-hook --claude-code`) {
+		t.Fatalf("SessionStart command = %q, want PATH loaf and Claude adapter", start.Command)
 	}
 	if len(payload.Hooks.PreCompact) != 1 {
 		t.Fatalf("PreCompact groups = %#v, want one guidance hook", payload.Hooks.PreCompact)
 	}
 	preCompact, ok := payload.Hooks.PreCompact[0].Hooks[0].(nativeClaudeSessionCommandHookJSON)
-	if !ok || !strings.Contains(preCompact.Command, `${CLAUDE_PLUGIN_ROOT}/bin/loaf" journal context for-compact`) {
-		t.Fatalf("PreCompact hook = %#v, want plugin-binary pinning", payload.Hooks.PreCompact[0].Hooks[0])
+	if !ok || !strings.Contains(preCompact.Command, `loaf journal context for-compact`) {
+		t.Fatalf("PreCompact hook = %#v, want PATH loaf", payload.Hooks.PreCompact[0].Hooks[0])
 	}
 	if len(payload.Hooks.PostCompact) != 0 {
 		t.Fatalf("PostCompact groups = %#v, want no Claude continuity handler", payload.Hooks.PostCompact)

@@ -30,7 +30,6 @@ LOAF_RELEASE_BASE_URL="${LOAF_RELEASE_BASE_URL:-https://github.com/levifig/loaf/
 LOAF_VERSION="${LOAF_VERSION:-}"
 skip_harness_install="${LOAF_SKIP_HARNESS_INSTALL:-0}"
 uninstall=0
-install_args=()
 
 say() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 note() { printf '  \033[90m○\033[0m %s\n' "$*"; }
@@ -43,7 +42,7 @@ while [ $# -gt 0 ]; do
     --version=*) LOAF_VERSION="${1#--version=}"; shift ;;
     --no-install) skip_harness_install=1; shift ;;
     --uninstall) uninstall=1; shift ;;
-    --) shift; install_args=("$@"); break ;;
+    --) shift; break ;;
     -h|--help) sed -n '2,25p' "$0" 2>/dev/null || true; exit 0 ;;
     *) fail "unknown option $1" ;;
   esac
@@ -162,9 +161,11 @@ if [ "$skip_harness_install" = 1 ]; then
 fi
 
 printf '\n'
+# Keep passthrough arguments in "$@": Bash 3.2 treats empty arrays as unset
+# under nounset, while empty positional arguments remain safe to expand.
 if [ -f "$LOAF_HOME/.installed-once" ]; then
-  "$loaf_bin" upgrade "${install_args[@]}"
+  "$loaf_bin" upgrade "$@"
 else
-  "$loaf_bin" install "${install_args[@]}"
+  "$loaf_bin" install "$@"
   : > "$LOAF_HOME/.installed-once"
 fi

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -65,7 +66,8 @@ func buildFakeRelease(t *testing.T, target string, corruptChecksum bool) fakeRel
 	t.Helper()
 	stub := "#!/bin/sh\n" +
 		"if [ \"$1\" = \"--version\" ]; then echo \"loaf " + installScriptVersion + "\"; exit 0; fi\n" +
-		"printf '%s\\n' \"$*\" >> \"${LOAF_STUB_LOG:?}\"\n"
+		"printf '%s\\n' \"$*\" >> \"${LOAF_STUB_LOG:?}\"\n" +
+		"printf '%s\\0' \"$@\" >> \"${LOAF_STUB_ARGV_LOG:?}\"\n"
 	root := "loaf_" + installScriptVersion + "_" + target
 	var buffer strings.Builder
 	gz := gzip.NewWriter(&buffer)
@@ -131,6 +133,7 @@ func newInstallScriptRun(t *testing.T, server *httptest.Server) installScriptRun
 		"LOAF_BIN_DIR="+run.binDir,
 		"LOAF_RELEASE_BASE_URL="+server.URL,
 		"LOAF_STUB_LOG="+run.stubLog,
+		"LOAF_STUB_ARGV_LOG="+run.stubLog+".argv",
 		"LOAF_VERSION=",
 		"TMPDIR="+realpath(t, t.TempDir()),
 	)
@@ -139,7 +142,12 @@ func newInstallScriptRun(t *testing.T, server *httptest.Server) installScriptRun
 
 func (run installScriptRun) exec(t *testing.T, repo string, args ...string) (string, error) {
 	t.Helper()
-	cmd := exec.Command("bash", append([]string{filepath.Join(repo, "install.sh")}, args...)...)
+	bash := "bash"
+	if runtime.GOOS == "darwin" {
+		// Exercise the shipped Bash even when a newer version shadows it on PATH.
+		bash = "/bin/bash"
+	}
+	cmd := exec.Command(bash, append([]string{filepath.Join(repo, "install.sh")}, args...)...)
 	cmd.Dir = run.home
 	cmd.Env = run.env
 	output, err := cmd.CombinedOutput()
@@ -218,6 +226,43 @@ func TestInstallScriptRefusesACorruptArchiveAndLeavesNothingBehind(t *testing.T)
 	}
 	if run.stubCalls(t) != "" {
 		t.Fatal("loaf install ran despite the refused download")
+	}
+}
+
+func TestInstallScriptPreservesHandoffArguments(t *testing.T) {
+	requireInstallScriptTools(t)
+	repo := repoRoot(t)
+	server := serveFakeRelease(t, buildFakeRelease(t, installScriptTarget(t), false))
+	for _, test := range []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{name: "no arguments"},
+		{name: "empty passthrough", args: []string{"--"}},
+		{name: "installer flags only", args: []string{"--version", installScriptVersion}},
+		{name: "target selection", args: []string{"--", "--to", "cursor,codex"}, want: []string{"--to", "cursor,codex"}},
+		{name: "literal boundaries", args: []string{"--", "", "two words", "*"}, want: []string{"", "two words", "*"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			run := newInstallScriptRun(t, server)
+			var want []string
+			for _, command := range []string{"install", "upgrade"} {
+				output, err := run.exec(t, repo, test.args...)
+				if err != nil {
+					t.Fatalf("%s handoff: %v\n%s", command, err, output)
+				}
+				want = append(want, command)
+				want = append(want, test.want...)
+				body, err := os.ReadFile(run.stubLog + ".argv")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got := strings.Split(strings.TrimSuffix(string(body), "\x00"), "\x00"); !reflect.DeepEqual(got, want) {
+					t.Fatalf("handoff arguments = %#v, want %#v", got, want)
+				}
+			}
+		})
 	}
 }
 

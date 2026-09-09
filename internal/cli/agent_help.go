@@ -70,6 +70,7 @@ func agentHelpCommands() []agentHelpCommand {
 			Description: "Refresh Loaf in place: harness content sync plus deprecation cleanup anywhere, and project-surface refresh only inside a detected Loaf repo",
 			Options: []agentHelpOption{
 				{Flags: "--to <target>", Description: "Filter the harness sync to one already-installed target, or all; an uninstalled target is an error pointing at loaf install --to"},
+				{Flags: "--select <target/id>", Description: "Apply one target/id artifact (repeatable). IDs are not globally unique. Does not stamp .loaf-version. Generated hooks stay `loaf …` on PATH; missing or too-old PATH loaf fails closed, including standalone check commands."},
 				{Flags: "--dry-run", Description: "Report the deterministic non-mutating plan, including whether the project part is in scope, without writing files, manifests, config, or state"},
 				{Flags: "--json", Description: "With --dry-run, emit the plan as one JSON document with exact follow-up commands, project_part, and consent_required"},
 				{Flags: "-y, --yes", Description: "Assume yes to safe project-file symlink migrations and destructive deprecation cleanup"},
@@ -239,8 +240,11 @@ func agentHelpCommands() []agentHelpCommand {
 			Name:        "kb",
 			Description: "Knowledge base management",
 			Subcommands: []agentHelpSubcommand{
-				{Name: "status", Description: "Show knowledge base status", Options: []agentHelpOption{{Flags: "--json", Description: "Output knowledge file totals, coverage counts, stale count, review age, and directories as JSON"}}},
-				{Name: "validate", Description: "Validate knowledge file frontmatter", Options: []agentHelpOption{{Flags: "--json", Description: "Output per-file frontmatter errors and warnings as JSON"}}},
+				{Name: "status", Description: "Show knowledge and architecture status", Options: []agentHelpOption{{Flags: "--json", Description: "Output document totals, architecture count, knowledge coverage, stale count, review age, and directories as JSON"}}},
+				{Name: "validate", Description: "Validate knowledge metadata and basic architecture structure", Options: []agentHelpOption{
+					{Flags: "--legacy-adr <file>...", Description: "Validate explicit files against Loaf's historical ADR convention; no repository required"},
+					{Flags: "--json", Description: "Output per-file document and frontmatter errors and warnings as JSON"},
+				}},
 				{Name: "check", Description: "Check knowledge staleness", Options: []agentHelpOption{{Flags: "--file <path>", Description: "Reverse lookup: find knowledge files covering this path"}, {Flags: "--json", Description: "Output per-file staleness, coverage, commit, and review metadata as JSON"}}},
 				{Name: "review", Description: "Mark knowledge files reviewed", Options: []agentHelpOption{{Flags: "--json", Description: "Output updated knowledge frontmatter as JSON"}}},
 				{Name: "init", Description: "Initialize knowledge directories", Options: []agentHelpOption{{Flags: "--json", Description: "Output directory actions, config status, and QMD collections as JSON"}}},
@@ -250,7 +254,19 @@ func agentHelpCommands() []agentHelpCommand {
 		},
 		{
 			Name:        "check",
-			Description: "Run hook checks",
+			Description: "Run hook checks and standalone validators",
+			Subcommands: []agentHelpSubcommand{
+				{Name: "commit-msg", Description: "Validate a commit message from a file or stdin", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "sec" + "rets", Description: "Scan a directory tree for hardcoded assignments and key files", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "changelog", Description: "Validate a document micro-changelog section", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "compliance", Description: "Require every markdown checklist box to be checked", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "test-naming", Description: "Check Python test file, function, and fixture naming", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "dockerfile", Description: "Validate Dockerfile best practices", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "k8s-manifest", Description: "Check Kubernetes manifest required fields with regex probes", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "bounds", Description: "Validate physics values against physical bounds", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "units", Description: "Convert power-system units", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+				{Name: "standard-refs", Description: "Check CIGRE/IEEE citations in Python physics files", Options: []agentHelpOption{{Flags: "--json", Description: "Output pass/fail, exit code, warnings, errors, and findings as JSON"}}},
+			},
 			Options: []agentHelpOption{
 				{Flags: "--hook <id>", Description: "Run one registered hook"},
 				{Flags: "--json", Description: "Output hook result, pass/block status, exit code, warnings, errors, and findings as JSON"},

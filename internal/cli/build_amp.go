@@ -584,6 +584,8 @@ var nativeBuildRuntimePluginCheckHooks = map[string]bool{
 	"validate-commit":         true,
 	"workflow-pre-pr":         true,
 	"security-audit":          true,
+	"validate-infra-safety":   true,
+	"validate-sql-safety":     true,
 }
 
 func marshalNativeAmpHookMap(groups []nativeAmpHookGroup) string {

@@ -138,6 +138,8 @@ loaf kb check
 
 Shows knowledge files where covered code paths have changed since `last_reviewed`.
 
+The advisory edit hook runs `loaf check --hook kb-staleness-nudge` directly, without Bash or Python. It accepts hook JSON on stdin or in `TOOL_INPUT`, stays quiet for irrelevant input and unavailable Git, and never marks a file reviewed. Disposable cache markers suppress repeated nudges per document, project, and harness conversation ID. When the harness supplies no conversation ID, the fallback is per project and branch per UTC day; neither marker is a session record or lifecycle.
+
 ### Validate Frontmatter
 
 ```bash

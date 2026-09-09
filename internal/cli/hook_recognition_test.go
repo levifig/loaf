@@ -430,6 +430,37 @@ func TestHookCommandTokensRespectsQuoting(t *testing.T) {
 	}
 }
 
+func TestHookCommandTokensRecordsMixedQuoting(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		command string
+		index   int
+		mixed   bool
+		quote   hookTokenQuote
+	}{
+		{command: `echo 'prefix'"$(kubectl delete namespace review-demo)"`, index: 1, mixed: true, quote: hookTokenSingleQuoted},
+		{command: `echo 'prefix'$(kubectl delete namespace review-demo)`, index: 1, mixed: true, quote: hookTokenSingleQuoted},
+		{command: `echo '$(kubectl delete namespace review-demo)'`, index: 1, mixed: false, quote: hookTokenSingleQuoted},
+		{command: `echo "$(kubectl delete namespace review-demo)"`, index: 1, mixed: false, quote: hookTokenDoubleQuoted},
+		{command: `rg -n 'DROP TABLE' internal`, index: 2, mixed: false, quote: hookTokenSingleQuoted},
+	}
+	for _, tc := range cases {
+		t.Run(tc.command, func(t *testing.T) {
+			tokens, ok := hookCommandTokensForOS(tc.command, "")
+			if !ok {
+				t.Fatalf("tokenize %q failed", tc.command)
+			}
+			if tc.index >= len(tokens) {
+				t.Fatalf("tokens=%#v, want index %d", tokens, tc.index)
+			}
+			token := tokens[tc.index]
+			if token.mixed != tc.mixed || token.quote != tc.quote {
+				t.Fatalf("token=%#v, want mixed=%v quote=%v", token, tc.mixed, tc.quote)
+			}
+		})
+	}
+}
+
 func TestContainsHookTokenSequenceMatchesWholeTokensOnly(t *testing.T) {
 	haystack := []string{"check", "--hook", "check-secrets-disabled"}
 	if containsHookTokenSequence(haystack, []string{"--hook", "check-secrets"}) {

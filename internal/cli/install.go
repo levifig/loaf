@@ -51,6 +51,12 @@ type installOptions struct {
 	// the seam the shared plan builder reads to stay command-aware; see
 	// planCommandName for how an unset value resolves.
 	command string
+	// selections, when non-empty, restricts upgrade to those target/id pairs
+	// and takes the scoped apply path instead of whole-target convergence.
+	selections []scopedArtifactRef
+	// Non-nil means runUpgrade already resolved the interactive picker, even when
+	// the user selected no harnesses. Planning must not select or prompt again.
+	resolvedUpgradeTargets []string
 }
 
 type detectedInstallTool struct {
@@ -402,13 +408,14 @@ func (r Runner) selectedInstallTargets(options installOptions, tools []detectedI
 	case options.interactive:
 		return r.promptInstallTargets(tools, hasClaudeCode, out)
 	case options.upgrade:
-		var targets []string
-		for _, tool := range tools {
-			if tool.installed {
-				targets = append(targets, tool.key)
-			}
+		if options.resolvedUpgradeTargets != nil {
+			return options.resolvedUpgradeTargets, nil
 		}
-		return targets, nil
+		targets, refreshClaude, err := r.selectUpgradeTargets(upgradeOptions{target: options.target, targets: options.targets}, tools, hasClaudeCode, out)
+		if refreshClaude && len(options.selections) == 0 {
+			targets = append(targets, claudeCodeInstallTarget)
+		}
+		return targets, err
 	case options.target == "" || options.target == "all":
 		// The default is every harness this machine has: onboarding should not
 		// interrogate; `-i` is there for narrowing.

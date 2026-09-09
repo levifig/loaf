@@ -244,7 +244,7 @@ func TestRunnerDoctorWarningsDoNotFail(t *testing.T) {
 	}
 }
 
-func TestCheckFencedContentPassDriftTamperAndPrecedence(t *testing.T) {
+func TestCheckFencedContentPassAndRefreshableDrift(t *testing.T) {
 	generated := generateFencedContent()
 	generatedFP := fencedContentFingerprint(generated)
 	section, ok := findFencedSectionRange(generated)
@@ -268,8 +268,8 @@ func TestCheckFencedContentPassDriftTamperAndPrecedence(t *testing.T) {
 		{name: "legacy_v_only_matching_pass", body: "<!-- loaf:managed:start v9.8.7-test.1 -->\n" + generatedBody + "\n", wantStatus: doctorPass, wantMessage: "Fenced section content matches installed loaf"},
 		{name: "drift_intact_sha", body: "<!-- loaf:managed:start sha256=" + oldFP + " -->\n" + oldBody + "\n", wantStatus: doctorWarn, wantMessage: "Fenced section content differs from installed loaf", wantDetail: "loaf upgrade", reject: "was modified"},
 		{name: "drift_legacy_v_only", body: "<!-- loaf:managed:start v9.8.7-test.1 -->\n" + fencedWarning + "\nSample fenced content.\n" + fencedEndMarker + "\n", wantStatus: doctorWarn, wantMessage: "Fenced section content differs from installed loaf", wantDetail: "loaf upgrade"},
-		{name: "tamper_new_form", body: "<!-- loaf:managed:start sha256=" + generatedFP + " -->\ntampered\n" + fencedEndMarker + "\n", wantStatus: doctorWarn, wantMessage: "Fenced section was modified", wantDetail: "will refuse", reject: "loaf upgrade` to refresh"},
-		{name: "tamper_over_drift_joint", body: "<!-- loaf:managed:start sha256=" + oldFP + " -->\ntampered and drifted\n" + fencedEndMarker + "\n", wantStatus: doctorWarn, wantMessage: "Fenced section was modified", reject: "content differs from installed loaf"},
+		{name: "edited_sha_body", body: "<!-- loaf:managed:start sha256=" + generatedFP + " -->\nedited\n" + fencedEndMarker + "\n", wantStatus: doctorWarn, wantMessage: "Fenced section content differs from installed loaf", wantDetail: "loaf upgrade", reject: "will refuse"},
+		{name: "edited_drifted_sha_body", body: "<!-- loaf:managed:start sha256=" + oldFP + " -->\nedited and drifted\n" + fencedEndMarker + "\n", wantStatus: doctorWarn, wantMessage: "Fenced section content differs from installed loaf", wantDetail: "loaf upgrade", reject: "will refuse"},
 		{name: "malformed_fingerprint", body: "<!-- loaf:managed:start v9.8.7-test.1 sha256=bad -->\nbody\n<!-- loaf:managed:end -->\n", wantStatus: doctorWarn, wantMessage: "No loaf:managed fenced section"},
 		{name: "malformed_header", body: "<!-- loaf:managed:start v9.8.7-test.1 extra -->\nbody\n<!-- loaf:managed:end -->\n", wantStatus: doctorWarn, wantMessage: "No loaf:managed fenced section"},
 	} {

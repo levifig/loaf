@@ -1207,8 +1207,8 @@ func TestInstallTargetCodexUsesCodexHomeForHooksAndSharedSkillsHome(t *testing.T
 		t.Fatalf("codex Loaf SessionStart group = %#v, want one command handler", loafGroup)
 	}
 	loafCommand, ok := loafHandlers[0].(map[string]any)["command"].(string)
-	if !ok || strings.Contains(loafCommand, codexJournalExecutablePlaceholder) || !strings.Contains(loafCommand, " journal context --from-hook --codex-hook") || !strings.HasPrefix(loafCommand, "'/") {
-		t.Fatalf("codex Loaf command = %#v, want absolute path-pinned command", loafHandlers[0])
+	if !ok || loafCommand != codexJournalHookCommandTemplate {
+		t.Fatalf("codex Loaf command = %#v, want PATH loaf command", loafHandlers[0])
 	}
 	if stop, ok := hooks.Hooks["Stop"]; !ok || len(stop) != 0 {
 		t.Fatalf("codex hooks = %#v, want explicitly empty Stop event preserved", hooks.Hooks)
@@ -1248,8 +1248,8 @@ func TestInstallTargetCodexRendersRealGeneratedHookPath(t *testing.T) {
 		t.Fatalf("read generated Codex hooks error = %v", err)
 	}
 	generated := string(generatedBody)
-	if !strings.Contains(generated, codexJournalExecutablePlaceholder+codexJournalHookCommandSuffix) || strings.Contains(generated, codexJournalHookCommandTemplate) {
-		t.Fatalf("generated Codex hooks = %q, want only the install-time executable placeholder", generated)
+	if !strings.Contains(generated, `"command": "`+codexJournalHookCommandTemplate+`"`) || strings.Contains(generated, codexJournalExecutablePlaceholder) {
+		t.Fatalf("generated Codex hooks = %q, want PATH loaf command", generated)
 	}
 
 	home := filepath.Join(root, "home")
@@ -1279,8 +1279,8 @@ func TestInstallTargetCodexRendersRealGeneratedHookPath(t *testing.T) {
 		t.Fatalf("installed Codex handlers = %#v, want one command handler", groups[0]["hooks"])
 	}
 	command, ok := handlers[0].(map[string]any)["command"].(string)
-	if !ok || strings.Contains(command, codexJournalExecutablePlaceholder) || command == codexJournalHookCommandTemplate || strings.HasPrefix(command, "loaf ") || !strings.HasPrefix(command, "'/") || !strings.HasSuffix(command, codexJournalHookCommandSuffix) {
-		t.Fatalf("installed Codex command = %#v, want an absolute path-pinned command without placeholder or PATH bare loaf", handlers[0])
+	if !ok || command != codexJournalHookCommandTemplate {
+		t.Fatalf("installed Codex command = %#v, want PATH loaf command", handlers[0])
 	}
 	if runtime.GOOS != "windows" {
 		if _, ok := handlers[0].(map[string]any)["commandWindows"]; ok {
@@ -1356,10 +1356,9 @@ func TestCodexHookUint64RejectsLossyFloatValues(t *testing.T) {
 	}
 }
 
-func TestCodexHookExecutableRenderingUsesLiteralCanonicalShellQuote(t *testing.T) {
-	path := "/trusted/Loaf $release/o'brien/loaf"
+func TestCodexHookExecutableRenderingUsesPathLoaf(t *testing.T) {
 	raw := json.RawMessage(`{"matcher":"startup|resume|clear|compact","hooks":[{"type":"command","command":"{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook"}]}`)
-	rendered, err := renderCodexHookExecutable(raw, path)
+	rendered, err := renderCodexHookExecutable(raw)
 	if err != nil {
 		t.Fatalf("renderCodexHookExecutable error = %v", err)
 	}
@@ -1369,19 +1368,21 @@ func TestCodexHookExecutableRenderingUsesLiteralCanonicalShellQuote(t *testing.T
 	}
 	handlers := hook["hooks"].([]any)
 	command := handlers[0].(map[string]any)["command"].(string)
-	want := journalContextShellQuote(path) + codexJournalHookCommandSuffix
-	if command != want || !isExactCodexJournalHookCommand(command) {
-		t.Fatalf("rendered command = %q, want canonical literal %q", command, want)
+	if command != codexJournalHookCommandTemplate || !isExactCodexJournalHookCommand(command) {
+		t.Fatalf("rendered command = %q, want PATH loaf %q", command, codexJournalHookCommandTemplate)
 	}
-	if strings.Contains(command, codexJournalExecutablePlaceholder) {
-		t.Fatalf("rendered command retained placeholder: %q", command)
+	if strings.Contains(command, codexJournalExecutablePlaceholder) || strings.HasPrefix(command, "'/") {
+		t.Fatalf("rendered command retained a pin: %q", command)
+	}
+	legacy := journalContextShellQuote("/trusted/Loaf $release/o'brien/loaf") + codexJournalHookCommandSuffix
+	if !isExactCodexJournalHookCommand(legacy) {
+		t.Fatalf("legacy quoted absolute command = %q, want still recognized as owned", legacy)
 	}
 }
 
-func TestCodexWindowsHookExecutableRenderingUsesCmdOuterQuote(t *testing.T) {
-	path := `C:\Program Files (x86)\Loaf & Co\loaf.exe`
+func TestCodexWindowsHookExecutableRenderingUsesPathLoaf(t *testing.T) {
 	raw := json.RawMessage(`{"matcher":"startup|resume|clear|compact","hooks":[{"type":"command","command":"{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook","commandWindows":"{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook"}]}`)
-	rendered, err := renderCodexHookExecutableForOS(raw, path, "windows")
+	rendered, err := renderCodexHookExecutableForOS(raw, "windows")
 	if err != nil {
 		t.Fatalf("renderCodexHookExecutableForOS error = %v", err)
 	}
@@ -1394,26 +1395,16 @@ func TestCodexWindowsHookExecutableRenderingUsesCmdOuterQuote(t *testing.T) {
 	if !ok {
 		t.Fatalf("rendered handler = %#v, want commandWindows", handler)
 	}
-	want := `""C:\Program Files (x86)\Loaf & Co\loaf.exe" journal context --from-hook --codex-hook"`
+	want := codexJournalHookCommandTemplate
 	if windowsCommand != want || !isExactCodexJournalHookCommandWindows(windowsCommand) {
-		t.Fatalf("rendered commandWindows = %q, want canonical cmd.exe command %q", windowsCommand, want)
+		t.Fatalf("rendered commandWindows = %q, want PATH loaf %q", windowsCommand, want)
 	}
 	if handler["command"] != want || handler["command"] != windowsCommand {
-		t.Fatalf("rendered command = %#v, want same canonical cmd.exe command as commandWindows", handler["command"])
+		t.Fatalf("rendered command = %#v, want same PATH loaf command as commandWindows", handler["command"])
 	}
-	rotatedPath := `C:\Loaf\v2\loaf.exe`
-	rotated, err := renderCodexHookExecutableForOS(raw, rotatedPath, "windows")
-	if err != nil {
-		t.Fatalf("render rotated Codex hook error = %v", err)
-	}
-	var rotatedHook map[string]any
-	if err := json.Unmarshal(rotated, &rotatedHook); err != nil {
-		t.Fatal(err)
-	}
-	rotatedHandler := rotatedHook["hooks"].([]any)[0].(map[string]any)
-	rotatedWant := `""C:\Loaf\v2\loaf.exe" journal context --from-hook --codex-hook"`
-	if rotatedHandler["command"] != rotatedWant || rotatedHandler["commandWindows"] != rotatedWant {
-		t.Fatalf("rotated handler = %#v, want both command fields updated atomically", rotatedHandler)
+	legacy := `""C:\Program Files (x86)\Loaf & Co\loaf.exe" journal context --from-hook --codex-hook"`
+	if !isExactCodexJournalHookCommandWindows(legacy) {
+		t.Fatalf("legacy Windows command = %q, want still recognized as owned", legacy)
 	}
 	ownedHook := map[string]any{"matcher": codexJournalHookMatcher, "hooks": []any{handler}}
 	if owned, conflict := codexHookOwnershipForOS(ownedHook, "windows"); !owned || conflict {

@@ -47,6 +47,12 @@ func TestTargetCapabilityEvidenceContractLoadsCurrentRecords(t *testing.T) {
 	}
 }
 
+func TestTargetCapabilityEvidenceCurrentSourcesValidate(t *testing.T) {
+	if _, err := LoadTargetCapabilityEvidence(testTargetCapabilityEvidencePath(t)); err != nil {
+		t.Fatalf("current capability evidence sources: %v", err)
+	}
+}
+
 func TestTargetCapabilityEvidenceCurrentModesAndTriggers(t *testing.T) {
 	contract := loadTestTargetCapabilityEvidence(t)
 	byIdentity := map[string]TargetCapabilityRecord{}
@@ -58,8 +64,8 @@ func TestTargetCapabilityEvidenceCurrentModesAndTriggers(t *testing.T) {
 		t.Fatalf("Claude adapter = %q", claude.Context.Adapter)
 	}
 	claudeModes := modeEvidenceByName(claude.Context.Modes)
-	if startup := claudeModes["startup"]; startup.Status != "supported" || !startup.ModelVisible || startup.Trigger != "SessionStart:startup" || startup.Evidence.Level != "installed-smoke" {
-		t.Fatalf("Claude startup = %#v, want installed-smoke model-visible support", startup)
+	if startup := claudeModes["startup"]; startup.Status != "candidate" || startup.ModelVisible || startup.Trigger != "SessionStart:startup" || startup.Evidence.Level != "candidate-build" || !strings.Contains(startup.Reason, "version-4") {
+		t.Fatalf("Claude startup = %#v, want candidate pending fresh PATH evidence", startup)
 	}
 	for _, name := range []string{"resume", "clear", "compact"} {
 		mode := claudeModes[name]
@@ -86,8 +92,8 @@ func TestTargetCapabilityEvidenceCurrentModesAndTriggers(t *testing.T) {
 
 	codex := byIdentity["codex\x00cli"]
 	codexModes := modeEvidenceByName(codex.Context.Modes)
-	if mode := codexModes["startup"]; mode.Status != "supported" || !mode.ModelVisible || mode.Trigger != "SessionStart:startup" || mode.Evidence.Level != "installed-smoke" {
-		t.Fatalf("Codex startup = %#v, want installed-smoke model-visible support", mode)
+	if mode := codexModes["startup"]; mode.Status != "candidate" || mode.ModelVisible || mode.Trigger != "SessionStart:startup" || mode.Evidence.Level != "candidate-build" || mode.Evidence.Source != "internal/cli/build_codex.go" || !strings.Contains(mode.Reason, "fresh") {
+		t.Fatalf("Codex startup = %#v, want candidate pending fresh installed evidence", mode)
 	}
 	for _, name := range []string{"resume", "clear", "compact"} {
 		mode := codexModes[name]
@@ -97,8 +103,8 @@ func TestTargetCapabilityEvidenceCurrentModesAndTriggers(t *testing.T) {
 	}
 	opencode := byIdentity["opencode\x00cli"]
 	opencodeModes := modeEvidenceByName(opencode.Context.Modes)
-	if mode := opencodeModes["request"]; mode.Trigger != "experimental.chat.system.transform" || mode.Status != "supported" || !mode.ModelVisible || mode.Evidence.Level != "installed-smoke" {
-		t.Fatalf("OpenCode request = %#v, want installed-smoke model-visible support", mode)
+	if mode := opencodeModes["request"]; mode.Trigger != "experimental.chat.system.transform" || mode.Status != "candidate" || mode.ModelVisible || mode.Evidence.Level != "candidate-build" || mode.Evidence.Source != "internal/cli/build_opencode.go" || !strings.Contains(mode.Reason, "fresh") {
+		t.Fatalf("OpenCode request = %#v, want candidate pending fresh installed evidence", mode)
 	}
 	if mode := opencodeModes["startup"]; mode.Trigger != "" || mode.Status != "unsupported" || mode.ModelVisible || mode.Reason == "" {
 		t.Fatalf("OpenCode startup = %#v, want unsupported without distinct trigger", mode)
@@ -220,19 +226,26 @@ func TestTargetCapabilityEvidenceRejectsInvalidClaims(t *testing.T) {
 		{name: "duplicate mode names", mutate: func(contract *TargetCapabilityEvidenceContract) {
 			contract.Records[0].Context.Modes = append(contract.Records[0].Context.Modes, contract.Records[0].Context.Modes[0])
 		}, want: "duplicate mode name"},
-		{name: "wildcard version", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[0].Version = "2.x" }, want: "exact tested version"},
+		{name: "wildcard version", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[0].Version = "2.x" }, want: "observed version or unknown"},
 		{name: "missing fallback", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[0].Fallback = "" }, want: "fallback is required"},
 		{name: "arbitrary installed mode", mutate: func(contract *TargetCapabilityEvidenceContract) {
 			contract.Records[0].InstalledMode = "installed-runtime"
 		}, want: "not a supported artifact-loading mode"},
 		{name: "missing completion reason", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[0].Completion.Reason = "" }, want: "reason is required"},
 		{name: "supported mode not visible", mutate: func(contract *TargetCapabilityEvidenceContract) {
+			contract.Records[0].Context.Modes[0].Status = "supported"
 			contract.Records[0].Context.Modes[0].ModelVisible = false
 		}, want: "supported mode requires model_visible=true"},
 		{name: "supported mode wrong evidence", mutate: func(contract *TargetCapabilityEvidenceContract) {
+			contract.Records[0].Context.Modes[0].Status = "supported"
+			contract.Records[0].Context.Modes[0].ModelVisible = true
+			contract.Records[0].Context.Modes[0].Reason = ""
 			contract.Records[0].Context.Modes[0].Evidence.Level = "source"
 		}, want: "supported mode requires installed-smoke evidence"},
 		{name: "supported mode has reason", mutate: func(contract *TargetCapabilityEvidenceContract) {
+			contract.Records[0].Context.Modes[0].Status = "supported"
+			contract.Records[0].Context.Modes[0].ModelVisible = true
+			contract.Records[0].Context.Modes[0].Evidence.Level = "installed-smoke"
 			contract.Records[0].Context.Modes[0].Reason = "not allowed"
 		}, want: "supported mode must not include reason"},
 		{name: "candidate mode visible", mutate: func(contract *TargetCapabilityEvidenceContract) {
@@ -372,17 +385,17 @@ func TestTargetCapabilityEvidenceLoadRequiresRetainedRegularSources(t *testing.T
 	})
 }
 
-func TestExactCapabilityVersionGrammar(t *testing.T) {
-	valid := []string{"2.1.220", "3.11.19", "2026.05.09-0afadcc", "0.145.0", "1.18.7", "0.0.1783873056-g278461", "1.2.3-alpha9"}
+func TestCapabilityVersionObservationGrammar(t *testing.T) {
+	valid := []string{"unknown", "2.1.220", "3.11.19", "2026.05.09-0afadcc", "0.145.0", "1.18.7", "0.0.1783873056-g278461", "1.2.3-alpha9", "1.2.3-alpha.1+build.2"}
 	for _, version := range valid {
-		if !isExactCapabilityVersion(version) {
-			t.Errorf("isExactCapabilityVersion(%q) = false, want true", version)
+		if !isCapabilityVersionObservation(version) {
+			t.Errorf("isCapabilityVersionObservation(%q) = false, want true", version)
 		}
 	}
-	invalid := []string{"1.2.?", "unknown", "TBD", "latest", "current", "1.2.3 || 1.2.4", "1.*", "1.2.x", " 1.2.3", "1.2.3 ", "1.2.3/4", ">=1.2.3"}
+	invalid := []string{"1.2.?", "TBD", "latest", "current", "1.2.3 || 1.2.4", "1.*", "1.2.x", " 1.2.3", "1.2.3 ", "1.2.3/4", ">=1.2.3"}
 	for _, version := range invalid {
-		if isExactCapabilityVersion(version) {
-			t.Errorf("isExactCapabilityVersion(%q) = true, want false", version)
+		if isCapabilityVersionObservation(version) {
+			t.Errorf("isCapabilityVersionObservation(%q) = true, want false", version)
 		}
 	}
 }
@@ -504,12 +517,8 @@ func TestTargetCapabilityEvidenceJSONRoundTripKeepsStrictShape(t *testing.T) {
 	}
 }
 
-// TestValidateInstalledSmokeEvidencePinsHooksShimAndCandidateBinary pins the
-// version-3 Claude receipt: the plugin ships a shim instead of a native
-// binary, so the receipt must name the shim beside the hooks and pin the
-// candidate binary the shim resolved through LOAF_BIN, and every digest must
-// match the current candidate tree.
-func TestValidateInstalledSmokeEvidencePinsHooksShimAndCandidateBinary(t *testing.T) {
+// Receipts describe historical observations, not the current candidate tree.
+func TestValidateInstalledSmokeEvidencePreservesPATHProvenance(t *testing.T) {
 	record := capabilityTestRecord(t, "claude-code", "cli")
 	var mode ModeEvidence
 	for _, candidate := range record.Context.Modes {
@@ -529,21 +538,22 @@ func TestValidateInstalledSmokeEvidencePinsHooksShimAndCandidateBinary(t *testin
 	}
 	nativeRel := "bin/native/" + record.Platform + "/loaf"
 	writeReceiptArtifact(t, root, "plugins/loaf/hooks/hooks.json", hooks)
-	writeReceiptArtifact(t, root, "plugins/loaf/bin/loaf", []byte(claudePluginShim))
 	writeReceiptArtifact(t, root, nativeRel, []byte("candidate binary\n"))
 
 	receipt := func() map[string]any {
 		return map[string]any{
-			"evidence_version": 3,
-			"timestamp":        "2026-09-06T00:00:00Z",
-			"target":           record.Target,
-			"surface":          record.Surface,
-			"version":          record.Version,
-			"platform":         record.Platform,
-			"installed_mode":   record.InstalledMode,
-			"context_mode":     mode.Name,
-			"adapter":          record.Context.Adapter,
-			"mode":             "explicit-plugin-dir",
+			"evidence_version":     4,
+			"runtime_lookup":       "PATH",
+			"resolved_binary_path": nativeRel,
+			"timestamp":            "2026-09-06T00:00:00Z",
+			"target":               record.Target,
+			"surface":              record.Surface,
+			"version":              record.Version,
+			"platform":             record.Platform,
+			"installed_mode":       record.InstalledMode,
+			"context_mode":         mode.Name,
+			"adapter":              record.Context.Adapter,
+			"mode":                 "explicit-plugin-dir",
 			"invocation": map[string]any{
 				"command": "claude",
 				"args": []string{
@@ -555,7 +565,7 @@ func TestValidateInstalledSmokeEvidencePinsHooksShimAndCandidateBinary(t *testin
 				},
 				"cwd": "<disposable-repo>",
 			},
-			"setup":                         []string{"build candidate", "point LOAF_BIN at the candidate binary for the plugin shim"},
+			"setup":                         []string{"build candidate", "prepend candidate directory to PATH and verify resolution"},
 			"candidate_plugin_path":         "plugins/loaf",
 			"exit_code":                     0,
 			"stderr_empty":                  true,
@@ -571,8 +581,6 @@ func TestValidateInstalledSmokeEvidencePinsHooksShimAndCandidateBinary(t *testin
 			"candidate_artifacts": map[string]any{
 				"hooks_path":           "plugins/loaf/hooks/hooks.json",
 				"hooks_sha256":         sha256Hex(string(hooks)),
-				"shim_path":            "plugins/loaf/bin/loaf",
-				"shim_sha256":          sha256Hex(claudePluginShim),
 				"native_binary_path":   nativeRel,
 				"native_binary_sha256": sha256Hex("candidate binary\n"),
 			},
@@ -591,19 +599,23 @@ func TestValidateInstalledSmokeEvidencePinsHooksShimAndCandidateBinary(t *testin
 	}
 
 	if err := validate(t, receipt()); err != nil {
-		t.Fatalf("valid version-3 receipt rejected: %v", err)
+		t.Fatalf("valid version-4 receipt rejected: %v", err)
 	}
 
-	stale := receipt()
-	stale["evidence_version"] = 2
-	if err := validate(t, stale); err == nil || !strings.Contains(err.Error(), "version 2") {
-		t.Fatalf("version-2 receipt error = %v, want an unsupported-version refusal", err)
+	for _, version := range []int{2, 3} {
+		stale := receipt()
+		stale["evidence_version"] = version
+		if err := validate(t, stale); err == nil || !strings.Contains(err.Error(), "unsupported installed-smoke evidence version") {
+			t.Fatalf("version-%d receipt error = %v, want an unsupported-version refusal", version, err)
+		}
 	}
 
-	wrongShim := receipt()
-	wrongShim["candidate_artifacts"].(map[string]any)["shim_path"] = "plugins/loaf/bin/native/" + record.Platform + "/loaf"
-	if err := validate(t, wrongShim); err == nil || !strings.Contains(err.Error(), "shim path") {
-		t.Fatalf("wrong shim path error = %v, want a shim path refusal", err)
+	for _, field := range []string{"runtime_lookup", "resolved_binary_path"} {
+		wrongPATH := receipt()
+		wrongPATH[field] = "other"
+		if err := validate(t, wrongPATH); err == nil || !strings.Contains(err.Error(), "PATH resolution") {
+			t.Fatalf("wrong %s error = %v, want a PATH resolution refusal", field, err)
+		}
 	}
 
 	oldNativePath := receipt()
@@ -612,11 +624,27 @@ func TestValidateInstalledSmokeEvidencePinsHooksShimAndCandidateBinary(t *testin
 		t.Fatalf("plugin-native path error = %v, want the candidate bin/native path to be required", err)
 	}
 
-	// The shim on disk changes after the receipt was recorded: the digest no
-	// longer matches the candidate and the receipt is stale.
-	writeReceiptArtifact(t, root, "plugins/loaf/bin/loaf", []byte(claudePluginShim+"# edited\n"))
-	if err := validate(t, receipt()); err == nil || !strings.Contains(err.Error(), "shim SHA-256") {
-		t.Fatalf("edited shim error = %v, want a shim digest mismatch", err)
+	writeReceiptArtifact(t, root, nativeRel, []byte("different binary\n"))
+	if err := validate(t, receipt()); err != nil {
+		t.Fatalf("rebuilding a binary invalidated historical evidence: %v", err)
+	}
+	writeReceiptArtifact(t, root, nativeRel, []byte("candidate binary\n"))
+	writeReceiptArtifact(t, root, "plugins/loaf/hooks/hooks.json", []byte("{}\n"))
+	if err := validate(t, receipt()); err != nil {
+		t.Fatalf("rebuilding hooks invalidated historical evidence: %v", err)
+	}
+	if err := os.Remove(filepath.Join(root, nativeRel)); err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(t, receipt()); err != nil {
+		t.Fatalf("historical evidence requires a current native binary: %v", err)
+	}
+	for _, field := range []string{"hooks_sha256", "native_binary_sha256"} {
+		malformed := receipt()
+		malformed["candidate_artifacts"].(map[string]any)[field] = "not-a-digest"
+		if err := validate(t, malformed); err == nil {
+			t.Fatalf("malformed %s was accepted", field)
+		}
 	}
 }
 
@@ -628,5 +656,63 @@ func writeReceiptArtifact(t *testing.T, root string, rel string, body []byte) {
 	}
 	if err := os.WriteFile(path, body, 0o755); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestHistoricalInstalledSmokeEvidenceDoesNotRequireCurrentArtifacts(t *testing.T) {
+	for _, tt := range []struct {
+		target, receipt string
+		validate        func(string, TargetCapabilityRecord, ModeEvidence) error
+	}{
+		{"codex", "codex-0.147.0-isolated-startup-smoke.json", validateCodexInstalledSmokeEvidence},
+		{"opencode", "opencode-1.18.13-isolated-request-smoke.json", validateOpenCodeInstalledSmokeEvidence},
+	} {
+		t.Run(tt.target, func(t *testing.T) {
+			record := capabilityTestRecord(t, tt.target, "cli")
+			path := filepath.Join(testRepositoryRoot(t), "docs/changes/20260808-hooks-entry-reconciliation/research", tt.receipt)
+			original := readSmokeReceiptRaw(t, path)
+			mode := ModeEvidence{Name: original["context_mode"].(string), Evidence: TargetCapabilityEvidenceRecord{Source: "receipt.json"}}
+			root := t.TempDir() // Only the receipt is retained; no native binary or hooks.
+			for _, test := range []struct {
+				name   string
+				mutate func(map[string]any, *TargetCapabilityRecord)
+				valid  bool
+			}{
+				{name: "historical receipt", valid: true},
+				{name: "unknown observed version", valid: true, mutate: func(raw map[string]any, record *TargetCapabilityRecord) {
+					raw["version"], record.Version = "unknown", "unknown"
+				}},
+				{name: "mislabeled historical version", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) { raw["version"] = "99.0.0" }},
+				{name: "missing marker proof", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) { raw["model_visible_marker_observed"] = false }},
+				{name: "failed invocation", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) { raw["exit_code"] = 1 }},
+				{name: "unsafe invocation", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) {
+					raw["invocation"].(map[string]any)["args"] = []string{"unsafe"}
+				}},
+				{name: "malformed digest", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) {
+					raw["candidate_artifacts"].(map[string]any)["hooks_sha256"] = "invalid"
+				}},
+				{name: "artifact traversal", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) {
+					raw["candidate_artifacts"].(map[string]any)["native_binary_path"] = "../loaf"
+				}},
+			} {
+				t.Run(test.name, func(t *testing.T) {
+					raw := readSmokeReceiptRaw(t, path)
+					currentRecord := record
+					if test.mutate != nil {
+						test.mutate(raw, &currentRecord)
+					}
+					body, err := json.Marshal(raw)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(root, "receipt.json"), body, 0o600); err != nil {
+						t.Fatal(err)
+					}
+					if err := tt.validate(root, currentRecord, mode); (err == nil) != test.valid {
+						t.Fatalf("validation error = %v, want valid=%v", err, test.valid)
+					}
+				})
+			}
+		})
 	}
 }

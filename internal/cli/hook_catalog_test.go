@@ -35,14 +35,43 @@ func TestHookCatalogIsEmittedForCursorAndCodexBuilds(t *testing.T) {
 		events[entry.HookID] = entry.Event
 	}
 	for hookID, want := range map[string]string{
-		"check-secrets":       "preToolUse",
-		"workflow-pre-merge":  "preToolUse",
-		"generate-task-board": "postToolUse",
-		"kb-staleness-nudge":  "postToolUse",
-		"session-start-loaf":  "sessionStart",
+		"check-secrets":         "preToolUse",
+		"validate-infra-safety": "preToolUse",
+		"validate-sql-safety":   "preToolUse",
+		"workflow-pre-merge":    "preToolUse",
+		"generate-task-board":   "postToolUse",
+		"kb-staleness-nudge":    "postToolUse",
+		"session-start-loaf":    "sessionStart",
 	} {
 		if events[hookID] != want {
 			t.Fatalf("cursor catalog event for %s = %q, want %q", hookID, events[hookID], want)
+		}
+	}
+	for _, hookID := range []string{"validate-infra-safety", "validate-sql-safety"} {
+		found := false
+		for _, entry := range cursor.Entries {
+			if entry.HookID != hookID {
+				continue
+			}
+			found = true
+			raw, err := decodeHookJSONValue(entry.Template)
+			if err != nil {
+				t.Fatalf("decode %s template: %v", hookID, err)
+			}
+			template, ok := raw.(map[string]any)
+			if !ok {
+				t.Fatalf("%s template = %#v, want object", hookID, raw)
+			}
+			command, _ := template["command"].(string)
+			if command != "loaf check --hook "+hookID {
+				t.Fatalf("%s command = %q, want blocking loaf check without --advisory", hookID, command)
+			}
+			if template["failClosed"] != true {
+				t.Fatalf("%s failClosed = %#v, want true", hookID, template["failClosed"])
+			}
+		}
+		if !found {
+			t.Fatalf("cursor catalog missing %s", hookID)
 		}
 	}
 
@@ -53,8 +82,8 @@ func TestHookCatalogIsEmittedForCursorAndCodexBuilds(t *testing.T) {
 	if len(codex.Entries) != 1 || codex.Entries[0].Event != "SessionStart" || codex.Entries[0].HookID != "session-start-loaf" {
 		t.Fatalf("codex catalog entries = %#v, want the single SessionStart identity", codex.Entries)
 	}
-	if !strings.Contains(string(codex.Entries[0].Template), codexJournalExecutablePlaceholder) {
-		t.Fatalf("codex catalog template = %s, want the install-time executable placeholder", codex.Entries[0].Template)
+	if !strings.Contains(string(codex.Entries[0].Template), codexJournalHookCommandTemplate) || strings.Contains(string(codex.Entries[0].Template), codexJournalExecutablePlaceholder) {
+		t.Fatalf("codex catalog template = %s, want PATH loaf command", codex.Entries[0].Template)
 	}
 }
 

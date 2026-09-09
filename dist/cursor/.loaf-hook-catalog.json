@@ -83,6 +83,58 @@
     },
     {
       "event": "preToolUse",
+      "hook_id": "validate-infra-safety",
+      "type": "command",
+      "template": {
+        "loaf-managed": true,
+        "timeout": 30,
+        "matcher": "Bash",
+        "failClosed": true,
+        "command": "loaf check --hook validate-infra-safety"
+      },
+      "signatures": [
+        [
+          "loaf",
+          "check",
+          "--hook",
+          "validate-infra-safety"
+        ]
+      ],
+      "stems": [
+        [
+          "--hook",
+          "validate-infra-safety"
+        ]
+      ]
+    },
+    {
+      "event": "preToolUse",
+      "hook_id": "validate-sql-safety",
+      "type": "command",
+      "template": {
+        "loaf-managed": true,
+        "timeout": 30,
+        "matcher": "Bash",
+        "failClosed": true,
+        "command": "loaf check --hook validate-sql-safety"
+      },
+      "signatures": [
+        [
+          "loaf",
+          "check",
+          "--hook",
+          "validate-sql-safety"
+        ]
+      ],
+      "stems": [
+        [
+          "--hook",
+          "validate-sql-safety"
+        ]
+      ]
+    },
+    {
+      "event": "preToolUse",
       "hook_id": "render-drift",
       "type": "command",
       "template": {
@@ -323,9 +375,15 @@
         "loaf-managed": true,
         "timeout": 5,
         "matcher": "Edit|Write",
-        "command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh"
+        "command": "loaf check --hook kb-staleness-nudge"
       },
       "signatures": [
+        [
+          "loaf",
+          "check",
+          "--hook",
+          "kb-staleness-nudge"
+        ],
         [
           "bash",
           "$HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh"
@@ -333,7 +391,8 @@
       ],
       "stems": [
         [
-          "$HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh"
+          "--hook",
+          "kb-staleness-nudge"
         ]
       ]
     },

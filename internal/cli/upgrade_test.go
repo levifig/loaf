@@ -70,7 +70,7 @@ func TestRunnerUpgradeInsideALoafProjectRefreshesProjectSurfaces(t *testing.T) {
 		t.Fatalf("upgrade output = %q, want the detection basis printed", output)
 	}
 	body := string(readFileBytes(t, filepath.Join(root, "AGENTS.md")))
-	if !strings.Contains(body, "<!-- loaf:managed:start sha256=") {
+	if !strings.Contains(body, "<!-- loaf:managed:start -->") {
 		t.Fatalf("AGENTS.md = %q, want the managed fenced section refreshed", body)
 	}
 	config := readInstallCommandJSON(t, filepath.Join(root, ".agents", "loaf.json"))
@@ -169,7 +169,7 @@ func TestRunnerUpgradePreservesAnUnparseableProjectConfig(t *testing.T) {
 				t.Fatalf("upgrade output = %q, want the parse failure and the path reported", output)
 			}
 			// The rest of the project part still ran.
-			if !strings.Contains(string(readFileBytes(t, filepath.Join(root, "AGENTS.md"))), "<!-- loaf:managed:start sha256=") {
+			if !strings.Contains(string(readFileBytes(t, filepath.Join(root, "AGENTS.md"))), "<!-- loaf:managed:start -->") {
 				t.Fatalf("AGENTS.md missing its managed section; the fenced write must still happen")
 			}
 		})
@@ -200,7 +200,7 @@ func TestRunnerUpgradePreservesAnUnparseableProjectConfig(t *testing.T) {
 func TestRunnerUpgradeStopsTheProjectPartAfterAFenceError(t *testing.T) {
 	root, home := setupUpgradeFixture(t)
 	installUpgradeFixtureTarget(t, root, home, "cursor")
-	tampered := tamperedFencedAgentsBody()
+	tampered := malformedFencedAgentsBody()
 	agentsPath := filepath.Join(root, "AGENTS.md")
 	writeInstallFile(t, agentsPath, tampered)
 
@@ -293,7 +293,7 @@ func TestRunnerUpgradeToNarrowsTheGlobalSyncOnly(t *testing.T) {
 		}
 	}
 	body := string(readFileBytes(t, filepath.Join(root, "AGENTS.md")))
-	if !strings.Contains(body, "<!-- loaf:managed:start sha256=") {
+	if !strings.Contains(body, "<!-- loaf:managed:start -->") {
 		t.Fatalf("AGENTS.md = %q, want the managed fenced section refreshed", body)
 	}
 }
@@ -487,12 +487,10 @@ func runUpgradeExpectingExitError(t *testing.T, root string, args ...string) str
 	return stdout.String()
 }
 
-// tamperedFencedAgentsBody is a complete managed section whose recorded
-// fingerprint does not describe its body — the shape install and upgrade refuse
-// to overwrite.
-func tamperedFencedAgentsBody() string {
-	_, body, _ := strings.Cut(generateFencedContent(), "\n")
-	return "# Project\n\n" + fencedStartMarker + " sha256=" + strings.Repeat("b", 64) + " -->\n" + body + "\n"
+// malformedFencedAgentsBody has duplicate markers, so its ownership boundary
+// is ambiguous and install/upgrade must refuse to replace it.
+func malformedFencedAgentsBody() string {
+	return "# Project\n\n" + generateFencedContent() + "\n" + generateFencedContent() + "\n"
 }
 
 func runUpgradeWithStdin(t *testing.T, root string, stdin string, args ...string) string {

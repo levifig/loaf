@@ -12,14 +12,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook",
-            "commandWindows": "{{LOAF_EXECUTABLE}} journal context --from-hook --codex-hook"
+            "command": "loaf journal context --from-hook --codex-hook",
+            "commandWindows": "loaf journal context --from-hook --codex-hook"
           }
         ]
       },
       "signatures": [
         [
-          "{{LOAF_EXECUTABLE}}",
+          "loaf",
           "journal",
           "context",
           "--from-hook",
