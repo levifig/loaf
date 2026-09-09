@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
-import { claudeVersionMatches, parseClaudeStreamOutput, candidateRuntimeEnvironment, verifyCandidatePATH } from "./smoke-claude-code-startup.mjs";
-import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
+import { claudeVersion, parseClaudeStreamOutput, candidateRuntimeEnvironment, verifyCandidatePATH } from "./smoke-claude-code-startup.mjs";
+import { observedClientVersion, parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
 
 test("candidate runtime uses PATH, isolates state and never selects a private override", () => {
   const env = candidateRuntimeEnvironment("/candidate/bin/loaf", "/scratch/loaf.sqlite", "/user/bin");
@@ -56,23 +56,35 @@ test("rejects a stream without SessionStart hook response", () => {
   assert.throws(() => parseClaudeStreamOutput(JSON.stringify({ type: "result", result: "no hook" }), "marker"), /SessionStart hook response/);
 });
 
-test("requires the exact Claude Code version token", () => {
-  assert.equal(claudeVersionMatches("9.8.7 (Claude Code)\n", "9.8.7"), true);
-  assert.equal(claudeVersionMatches("9.8.70 (Claude Code)", "9.8.7"), false);
-  assert.equal(claudeVersionMatches("Claude Code 9.8.7", "9.8.7"), false);
+test("records the observed Claude version without a version allowlist", () => {
+  for (const version of ["9.8.7", "9.8.70", "10.0.0-preview.1+build.2"]) {
+    assert.equal(claudeVersion({ status: 0, stdout: `${version} (Claude Code)\n` }), version);
+  }
+  assert.equal(claudeVersion({ status: 0, stdout: "unfamiliar identity" }), "unknown");
+  assert.equal(claudeVersion({ status: 1, stdout: "9.8.7 (Claude Code)" }), "unknown");
+});
+
+test("unavailable or malformed version output is unknown, not a capability refusal", () => {
+  for (const result of [
+    { status: 127, stdout: "9.8.7" }, { status: null }, { status: 0 },
+    { status: 0, stdout: "" }, { status: 0, stdout: "2.x" },
+    { status: 0, stdout: "unfamiliar build\nwith diagnostics" },
+  ]) assert.equal(observedClientVersion(result), "unknown");
 });
 
 test("requires one safe value for every runner option", () => {
-  const parsed = parseRunnerArgs(["--client", "/opt/claude", "--expected-version", "9.8.7", "--receipt", "proof.json"]);
+  const observed = parseRunnerArgs(["--client", "claude", "--receipt", "proof.json"]);
+  assert.equal(observed.client, "claude");
+  assert.equal(observed.expectedVersion, undefined);
+  const parsed = parseRunnerArgs(["--client", "/opt/claude", "--receipt", "proof.json"]);
   assert.equal(parsed.client, "/opt/claude");
-  assert.equal(parsed.expectedVersion, "9.8.7");
   assert.ok(parsed.receiptPath.endsWith("proof.json"));
   assert.throws(() => parseRunnerArgs(["--client", "claude"]), /missing required option/);
-  assert.throws(() => parseRunnerArgs(["--client", "claude", "--client", "other", "--expected-version", "9.8.7", "--receipt", "proof.json"]), /duplicate option/);
-  assert.throws(() => parseRunnerArgs(["--unknown", "value", "--client", "claude", "--expected-version", "9.8.7", "--receipt", "proof.json"]), /unknown option/);
-  assert.throws(() => parseRunnerArgs(["--client", "claude\nunsafe", "--expected-version", "9.8.7", "--receipt", "proof.json"]), /safe executable/);
-  assert.throws(() => parseRunnerArgs(["--client", "claude", "--expected-version", "9.8.7 unsafe", "--receipt", "proof.json"]), /exact safe identity/);
-  assert.throws(() => parseRunnerArgs(["--client", "claude", "--expected-version", "9.8.7", "--receipt", "proof.txt"]), /safe JSON path/);
+  assert.throws(() => parseRunnerArgs(["--client", "claude", "--client", "other", "--receipt", "proof.json"]), /duplicate option/);
+  assert.throws(() => parseRunnerArgs(["--unknown", "value", "--client", "claude", "--receipt", "proof.json"]), /unknown option/);
+  assert.throws(() => parseRunnerArgs(["--client", "claude\nunsafe", "--receipt", "proof.json"]), /safe executable/);
+  assert.throws(() => parseRunnerArgs(["--client", "claude", "--expected-version", "9.8.7", "--receipt", "proof.json"]), /unknown option --expected-version/);
+  assert.throws(() => parseRunnerArgs(["--client", "claude", "--receipt", "proof.txt"]), /safe JSON path/);
 });
 
 test("publishes success atomically and preserves an existing receipt on failure", () => {

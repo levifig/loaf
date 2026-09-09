@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
-import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
+import { observedClientVersion, parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../..");
@@ -14,20 +14,16 @@ const platform = `${process.platform}-${process.arch}`;
 const candidateHooksPath = "dist/cursor/hooks.json";
 const candidateBinaryPath = `bin/native/${platform}/loaf`;
 
-export function classifyCursorPreflight(versionOutput, helpOutput, expectedVersion) {
-  const observedVersion = versionOutput.trim();
-  const exactVersion = observedVersion === expectedVersion;
+export function classifyCursorPreflight(versionResult, helpOutput) {
+  const observedVersion = observedClientVersion(versionResult);
   const noSessionPersistence = helpOutput.includes("--no-session-persistence");
   return {
     observedVersion,
-    exactVersion,
     noSessionPersistence,
     smokeExecuted: false,
-    blocker: !exactVersion
-      ? `installed cursor-agent version ${observedVersion || "<missing>"} does not match ${expectedVersion}`
-      : !noSessionPersistence
-        ? "installed cursor-agent does not expose --no-session-persistence; refusing a model-visible smoke that could persist session state globally"
-        : "smoke implementation is not enabled for this installed CLI",
+    blocker: !noSessionPersistence
+      ? "installed cursor-agent does not expose --no-session-persistence; refusing a model-visible smoke that could persist session state globally"
+      : "smoke implementation is not enabled for this installed CLI",
   };
 }
 
@@ -85,18 +81,17 @@ function main(argv = process.argv.slice(2)) {
 }
 
 function runPreflight(argv, dbPath) {
-  const { client, expectedVersion, receiptPath } = parseRunnerArgs(argv);
+  const { client, receiptPath } = parseRunnerArgs(argv);
   const timestamp = new Date().toISOString();
   buildCandidate(dbPath);
   const artifacts = candidateArtifacts();
   const version = run(client, ["--version"], repoRoot);
   const help = run(client, ["--help"], repoRoot);
-  if (version.status !== 0 || help.status !== 0) throw new Error("installed cursor-agent version/help preflight failed");
-  const preflight = classifyCursorPreflight(version.stdout, help.stdout, expectedVersion);
-  if (!preflight.exactVersion) throw new Error(preflight.blocker);
+  if (help.status !== 0) throw new Error("installed cursor-agent help preflight failed");
+  const preflight = classifyCursorPreflight(version, help.stdout);
   if (preflight.noSessionPersistence) throw new Error("installed cursor-agent exposes --no-session-persistence, but a model-visible isolated smoke is not implemented");
   const smoke = {
-    evidence_version: 2,
+    evidence_version: 3,
     timestamp,
     target: "cursor",
     surface: "cursor-agent",
@@ -113,7 +108,6 @@ function runPreflight(argv, dbPath) {
     ],
     candidate_target_path: "dist/cursor",
     smoke_executed: preflight.smokeExecuted,
-    cli_version_exact: preflight.exactVersion,
     no_session_persistence_supported: preflight.noSessionPersistence,
     candidate_artifacts: artifacts,
     blocker: preflight.blocker,

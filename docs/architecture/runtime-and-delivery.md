@@ -20,11 +20,21 @@ Harness invocations must use `loaf` from user-managed PATH. The user chooses and
 
 Continuing npm delivery was rejected because it kept Node as the product entrypoint after the native runtime migration. Building from source during installation would avoid publishing a platform matrix but require a Go toolchain on every user machine and weaken repeatable installation. Neither replaces native delivery.
 
+## Compatibility and Verification
+
+The agreed delivery model is Plugin + Skills + CLI: plugins provide native packaging where available, shared skills carry methods, and the PATH CLI implements deterministic behavior. Keep harness-specific code limited to boundaries that genuinely differ, such as discovery, hook payloads, and permission configuration. These boundaries need verification; shared behavior does not need recertification across every harness version.
+
+Compatibility depends on required behavior, not exact version identity. Check the commands, flags, payload contracts, and safety capabilities an operation needs. An unfamiliar version alone must not block use or trigger an upgrade demand. Missing required behavior or an unproven safety boundary still requires a refusal or an explicit limitation; removing version gates does not establish compatibility by assumption.
+
+Use deterministic regression and package tests by default. Scope live smokes to materially changed adapters or protocols, newly supported boundaries, or suspected regressions. A routine harness update, unrelated CLI change, or new build stamp does not by itself require a full live-harness matrix. Versions and binary hashes remain useful historical provenance, not an evergreen support whitelist. This does not relax archive integrity, signature, ownership-digest, or rollback checks.
+
+[Scoped PATH preflight](../../internal/cli/upgrade_path_loaf.go) checks required command capabilities. Optional [smoke runners](../../cli/scripts/capability-runner-utils.mjs) require `--client` and `--receipt`, not `--expected-version`; they record the observed version or `unknown` without using it to qualify compatibility. Their invocation, isolation, cleanup, and proof requirements remain independent of version discovery. The [passive evidence validator](../../internal/cli/target_capability_contract.go) checks retained receipt structure, historical identity, artifact-path and digest format, and boundary-specific observations without reading or matching today's build artifacts. A record must still agree with its cited receipt's version to prevent historical mislabeling; neither is consulted by install or upgrade as a runtime allowlist. No replacement registry is introduced.
+
 ## Reviewed Source and Release Evidence
 
 The [verify-only CI decision](../decisions/ADR-012-ci-verify-only-build-artifacts.md) preserves the reason CI must not repair or push changes to reviewed source branches. Tracked generated content stays with the source that produced it until a replacement delivery path is proven. This does not require tracking release binaries: automation may build, sign, and publish artifacts from reviewed source without modifying that source branch. A separate tap update is distribution metadata, not a repair commit to Loaf's reviewed source.
 
-Verification evidence must identify the content it vouches for and become stale when that content changes. Branch ancestry alone is insufficient: merges and rebases can preserve or change content independently of topology. Retired cohort receipts and their exact digest schema do not become a universal evidence database or another release authority. Current build, review, and ship checks own executable freshness rules.
+Verification evidence must identify what it vouches for. A receipt remains a historical observation of those bytes; it is not proof of an untested replacement. Assess changes to the behavior or boundary under test before requiring new compatibility evidence, rather than treating every version or binary digest change as a reason for full recertification. Branch ancestry alone is insufficient: merges and rebases can preserve or change content independently of topology. Retired cohort receipts and their exact digest schema do not become a universal evidence database or another release authority. Current build, review, and ship checks own executable freshness rules.
 
 ## Version Identity
 

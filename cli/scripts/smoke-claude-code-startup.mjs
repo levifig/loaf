@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
+import { observedClientVersion, parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../..");
@@ -40,9 +40,8 @@ export function parseClaudeStreamOutput(raw, marker) {
   };
 }
 
-export function claudeVersionMatches(output, expectedVersion) {
-  const match = output.trim().match(/^([0-9]+\.[0-9]+\.[0-9]+) \(Claude Code\)$/);
-  return match?.[1] === expectedVersion;
+export function claudeVersion(result) {
+  return observedClientVersion(result, /^(\S+) \(Claude Code\)$/);
 }
 
 export function candidateRuntimeEnvironment(candidateBinary, dbPath, inheritedPATH = process.env.PATH ?? "") {
@@ -93,7 +92,7 @@ function sha256(path) {
 }
 
 function main(argv = process.argv.slice(2)) {
-  const { client, expectedVersion, receiptPath } = parseRunnerArgs(argv);
+  const { client, receiptPath } = parseRunnerArgs(argv);
   const marker = `LOAF_CLAUDE_STARTUP_SMOKE_${randomBytes(6).toString("hex").toUpperCase()}`;
   if (!markerPattern.test(marker)) throw new Error("generated marker does not match the required format");
   const timestamp = new Date().toISOString();
@@ -140,7 +139,6 @@ function main(argv = process.argv.slice(2)) {
       native_binary_sha256: sha256(candidateBinary),
     };
     const version = run(client, ["--version"], repoRoot);
-    if (version.status !== 0 || !claudeVersionMatches(version.stdout, expectedVersion)) throw new Error(`installed Claude Code version does not match ${expectedVersion}`);
     if (run("git", ["init", "-q"], disposableRepo).status !== 0) throw new Error("disposable Git initialization failed");
     if (run("loaf", ["state", "init", "--json"], disposableRepo, candidateEnv).status !== 0) throw new Error("isolated Loaf state initialization failed");
     if (run("loaf", ["journal", "log", `discover(smoke): ${marker}`], disposableRepo, candidateEnv).status !== 0) throw new Error("isolated journal marker write failed");
@@ -164,7 +162,7 @@ function main(argv = process.argv.slice(2)) {
       timestamp,
       target: "claude-code",
       surface: "cli",
-      version: expectedVersion,
+      version: claudeVersion(version),
       platform,
       installed_mode: "plugin-dir",
       context_mode: "startup",

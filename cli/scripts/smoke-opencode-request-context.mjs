@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { delimiter, dirname, join, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
+import { observedClientVersion, parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../..");
@@ -24,10 +24,6 @@ const setupSteps = [
 ];
 
 const safeEnvironmentKeys = ["LANG", "LC_ALL", "PATH", "TERM", "TZ"];
-
-export function opencodeVersionMatches(output, expectedVersion) {
-  return output.trim() === expectedVersion;
-}
 
 export function collectTextValues(value, texts = []) {
   if (Array.isArray(value)) {
@@ -185,13 +181,13 @@ process.exitCode = result.status ?? 1;
   chmodSync(wrapperPath, 0o700);
 }
 
-function baseReceipt(marker, invocation, artifacts, expectedVersion) {
+function baseReceipt(marker, invocation, artifacts) {
   return {
     evidence_version: 2,
     timestamp: new Date().toISOString(),
     target: "opencode",
     surface: "cli",
-    version: expectedVersion,
+    version: "unknown",
     platform,
     installed_mode: "isolated-xdg",
     context_mode: "request",
@@ -214,7 +210,7 @@ function baseReceipt(marker, invocation, artifacts, expectedVersion) {
 }
 
 function main(argv = process.argv.slice(2)) {
-  const { client, expectedVersion, receiptPath } = parseRunnerArgs(argv);
+  const { client, receiptPath } = parseRunnerArgs(argv);
   const marker = `LOAF_OPENCODE_REQUEST_SMOKE_${randomBytes(6).toString("hex").toUpperCase()}`;
   if (!markerPattern.test(marker)) throw new Error("generated marker does not match the required format");
   const tempRoot = mkdtempSync(join(tmpdir(), "loaf-opencode-request-context-smoke-"));
@@ -231,7 +227,7 @@ function main(argv = process.argv.slice(2)) {
     cwd: "<disposable-repo>",
   };
   let artifacts = { hooks_path: candidateHooksPath, hooks_sha256: "", native_binary_path: candidateNativePath, native_binary_sha256: "" };
-  let smoke = baseReceipt(marker, invocation, artifacts, expectedVersion);
+  let smoke = baseReceipt(marker, invocation, artifacts);
   let cleanupSucceeded = false;
   let failure;
   const cleanup = () => {
@@ -264,7 +260,7 @@ function main(argv = process.argv.slice(2)) {
     const pluginURL = pathToFileURL(candidatePlugin).href;
     const env = disposableEnvironment(tempRoot, dbPath, pluginURL);
     const version = run(client, ["--version"], repoRoot, env);
-    if (version.status !== 0 || !opencodeVersionMatches(version.stdout, expectedVersion)) throw new Error(`installed OpenCode version does not match ${expectedVersion}`);
+    smoke.version = observedClientVersion(version);
     if (run("git", ["init", "-q"], disposableRepo, env).status !== 0) throw new Error("disposable Git initialization failed");
     if (run(candidateBinary, ["state", "init", "--json"], disposableRepo, env).status !== 0) throw new Error("isolated Loaf state initialization failed");
     if (run(candidateBinary, ["journal", "log", `discover(smoke): ${marker}`], disposableRepo, env).status !== 0) throw new Error("isolated journal marker write failed");

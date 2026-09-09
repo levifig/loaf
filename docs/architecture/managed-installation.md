@@ -6,7 +6,7 @@ Loaf installs shared methods into harness-owned environments without taking owne
 
 The repository-root `AGENTS.md` is the canonical real project instruction file. Harness adapters may expose verified compatibility paths, but not a second independently maintained instruction body. The marked project section belongs entirely to Loaf: upgrade replaces differing content, including manual edits, without a stored fingerprint. Custom instructions belong outside the markers and are preserved. Layout repairs must preserve content and use the tested backup and repair paths rather than treating an old location as disposable.
 
-Ownership must be proven before updating or cleaning an installed entry. A shared directory is not wholly Loaf-owned merely because it contains Loaf skills. Exact paths, precedence, supported compatibility links, plugin exceptions, repair prompts, and migration details belong to version-tested adapters. A new harness capability or path change needs current evidence, not extrapolation from another product.
+Ownership must be proven before updating or cleaning an installed entry. A shared directory is not wholly Loaf-owned merely because it contains Loaf skills. Exact paths, precedence, supported compatibility links, plugin exceptions, repair prompts, and migration details belong to contract-tested adapters. A new harness capability or path change needs relevant evidence, not extrapolation from another product or recertification solely because a version number changed. [Runtime and Delivery](runtime-and-delivery.md#compatibility-and-verification) owns the verification policy.
 
 ## Rationale and Tradeoffs
 

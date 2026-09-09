@@ -226,7 +226,7 @@ func TestTargetCapabilityEvidenceRejectsInvalidClaims(t *testing.T) {
 		{name: "duplicate mode names", mutate: func(contract *TargetCapabilityEvidenceContract) {
 			contract.Records[0].Context.Modes = append(contract.Records[0].Context.Modes, contract.Records[0].Context.Modes[0])
 		}, want: "duplicate mode name"},
-		{name: "wildcard version", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[0].Version = "2.x" }, want: "exact tested version"},
+		{name: "wildcard version", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[0].Version = "2.x" }, want: "observed version or unknown"},
 		{name: "missing fallback", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[0].Fallback = "" }, want: "fallback is required"},
 		{name: "arbitrary installed mode", mutate: func(contract *TargetCapabilityEvidenceContract) {
 			contract.Records[0].InstalledMode = "installed-runtime"
@@ -385,17 +385,17 @@ func TestTargetCapabilityEvidenceLoadRequiresRetainedRegularSources(t *testing.T
 	})
 }
 
-func TestExactCapabilityVersionGrammar(t *testing.T) {
-	valid := []string{"2.1.220", "3.11.19", "2026.05.09-0afadcc", "0.145.0", "1.18.7", "0.0.1783873056-g278461", "1.2.3-alpha9"}
+func TestCapabilityVersionObservationGrammar(t *testing.T) {
+	valid := []string{"unknown", "2.1.220", "3.11.19", "2026.05.09-0afadcc", "0.145.0", "1.18.7", "0.0.1783873056-g278461", "1.2.3-alpha9", "1.2.3-alpha.1+build.2"}
 	for _, version := range valid {
-		if !isExactCapabilityVersion(version) {
-			t.Errorf("isExactCapabilityVersion(%q) = false, want true", version)
+		if !isCapabilityVersionObservation(version) {
+			t.Errorf("isCapabilityVersionObservation(%q) = false, want true", version)
 		}
 	}
-	invalid := []string{"1.2.?", "unknown", "TBD", "latest", "current", "1.2.3 || 1.2.4", "1.*", "1.2.x", " 1.2.3", "1.2.3 ", "1.2.3/4", ">=1.2.3"}
+	invalid := []string{"1.2.?", "TBD", "latest", "current", "1.2.3 || 1.2.4", "1.*", "1.2.x", " 1.2.3", "1.2.3 ", "1.2.3/4", ">=1.2.3"}
 	for _, version := range invalid {
-		if isExactCapabilityVersion(version) {
-			t.Errorf("isExactCapabilityVersion(%q) = true, want false", version)
+		if isCapabilityVersionObservation(version) {
+			t.Errorf("isCapabilityVersionObservation(%q) = true, want false", version)
 		}
 	}
 }
@@ -517,10 +517,8 @@ func TestTargetCapabilityEvidenceJSONRoundTripKeepsStrictShape(t *testing.T) {
 	}
 }
 
-// TestValidateInstalledSmokeEvidencePinsHooksShimAndCandidateBinary pins the
-// A version-4 Claude receipt proves candidate resolution through PATH and
-// hashes hooks and the native binary against the current candidate tree.
-func TestValidateInstalledSmokeEvidencePinsHooksAndPATHCandidateBinary(t *testing.T) {
+// Receipts describe historical observations, not the current candidate tree.
+func TestValidateInstalledSmokeEvidencePreservesPATHProvenance(t *testing.T) {
 	record := capabilityTestRecord(t, "claude-code", "cli")
 	var mode ModeEvidence
 	for _, candidate := range record.Context.Modes {
@@ -627,13 +625,26 @@ func TestValidateInstalledSmokeEvidencePinsHooksAndPATHCandidateBinary(t *testin
 	}
 
 	writeReceiptArtifact(t, root, nativeRel, []byte("different binary\n"))
-	if err := validate(t, receipt()); err == nil || !strings.Contains(err.Error(), "native binary SHA-256") {
-		t.Fatalf("edited binary error = %v, want a binary digest mismatch", err)
+	if err := validate(t, receipt()); err != nil {
+		t.Fatalf("rebuilding a binary invalidated historical evidence: %v", err)
 	}
 	writeReceiptArtifact(t, root, nativeRel, []byte("candidate binary\n"))
 	writeReceiptArtifact(t, root, "plugins/loaf/hooks/hooks.json", []byte("{}\n"))
-	if err := validate(t, receipt()); err == nil || !strings.Contains(err.Error(), "hooks SHA-256") {
-		t.Fatalf("edited hooks error = %v, want a hooks digest mismatch", err)
+	if err := validate(t, receipt()); err != nil {
+		t.Fatalf("rebuilding hooks invalidated historical evidence: %v", err)
+	}
+	if err := os.Remove(filepath.Join(root, nativeRel)); err != nil {
+		t.Fatal(err)
+	}
+	if err := validate(t, receipt()); err != nil {
+		t.Fatalf("historical evidence requires a current native binary: %v", err)
+	}
+	for _, field := range []string{"hooks_sha256", "native_binary_sha256"} {
+		malformed := receipt()
+		malformed["candidate_artifacts"].(map[string]any)[field] = "not-a-digest"
+		if err := validate(t, malformed); err == nil {
+			t.Fatalf("malformed %s was accepted", field)
+		}
 	}
 }
 
@@ -645,5 +656,63 @@ func writeReceiptArtifact(t *testing.T, root string, rel string, body []byte) {
 	}
 	if err := os.WriteFile(path, body, 0o755); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestHistoricalInstalledSmokeEvidenceDoesNotRequireCurrentArtifacts(t *testing.T) {
+	for _, tt := range []struct {
+		target, receipt string
+		validate        func(string, TargetCapabilityRecord, ModeEvidence) error
+	}{
+		{"codex", "codex-0.147.0-isolated-startup-smoke.json", validateCodexInstalledSmokeEvidence},
+		{"opencode", "opencode-1.18.13-isolated-request-smoke.json", validateOpenCodeInstalledSmokeEvidence},
+	} {
+		t.Run(tt.target, func(t *testing.T) {
+			record := capabilityTestRecord(t, tt.target, "cli")
+			path := filepath.Join(testRepositoryRoot(t), "docs/changes/20260808-hooks-entry-reconciliation/research", tt.receipt)
+			original := readSmokeReceiptRaw(t, path)
+			mode := ModeEvidence{Name: original["context_mode"].(string), Evidence: TargetCapabilityEvidenceRecord{Source: "receipt.json"}}
+			root := t.TempDir() // Only the receipt is retained; no native binary or hooks.
+			for _, test := range []struct {
+				name   string
+				mutate func(map[string]any, *TargetCapabilityRecord)
+				valid  bool
+			}{
+				{name: "historical receipt", valid: true},
+				{name: "unknown observed version", valid: true, mutate: func(raw map[string]any, record *TargetCapabilityRecord) {
+					raw["version"], record.Version = "unknown", "unknown"
+				}},
+				{name: "mislabeled historical version", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) { raw["version"] = "99.0.0" }},
+				{name: "missing marker proof", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) { raw["model_visible_marker_observed"] = false }},
+				{name: "failed invocation", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) { raw["exit_code"] = 1 }},
+				{name: "unsafe invocation", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) {
+					raw["invocation"].(map[string]any)["args"] = []string{"unsafe"}
+				}},
+				{name: "malformed digest", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) {
+					raw["candidate_artifacts"].(map[string]any)["hooks_sha256"] = "invalid"
+				}},
+				{name: "artifact traversal", mutate: func(raw map[string]any, _ *TargetCapabilityRecord) {
+					raw["candidate_artifacts"].(map[string]any)["native_binary_path"] = "../loaf"
+				}},
+			} {
+				t.Run(test.name, func(t *testing.T) {
+					raw := readSmokeReceiptRaw(t, path)
+					currentRecord := record
+					if test.mutate != nil {
+						test.mutate(raw, &currentRecord)
+					}
+					body, err := json.Marshal(raw)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(root, "receipt.json"), body, 0o600); err != nil {
+						t.Fatal(err)
+					}
+					if err := tt.validate(root, currentRecord, mode); (err == nil) != test.valid {
+						t.Fatalf("validation error = %v, want valid=%v", err, test.valid)
+					}
+				})
+			}
+		})
 	}
 }

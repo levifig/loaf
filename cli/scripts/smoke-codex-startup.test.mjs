@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { delimiter, join } from "node:path";
-import { buildCandidate, buildCodexArgs, codexVersionMatches, parseCodexHookObservation, parseCodexJSONL, shellQuote } from "./smoke-codex-startup.mjs";
+import { buildCandidate, buildCodexArgs, codexVersion, parseCodexHookObservation, parseCodexJSONL, shellQuote } from "./smoke-codex-startup.mjs";
 import { parseRunnerArgs } from "./capability-runner-utils.mjs";
 
 test("candidate build uses native Go and isolated non-linking host runtime", () => {
@@ -78,15 +78,17 @@ test("selects the requested model on the command line", () => {
 });
 
 test("accepts an optional model identity and rejects an unsafe one", () => {
-  const base = ["--client", "codex", "--expected-version", "9.8.7", "--receipt", "proof.json"];
+  const base = ["--client", "codex", "--receipt", "proof.json"];
   assert.equal(parseRunnerArgs(base, ["codex-model"]).optional["codex-model"], undefined);
   assert.equal(parseRunnerArgs([...base, "--codex-model", "gpt-5.3-codex-spark"], ["codex-model"]).optional["codex-model"], "gpt-5.3-codex-spark");
   assert.throws(() => parseRunnerArgs([...base, "--codex-model", "-evil"], ["codex-model"]), /exact safe identity/);
   assert.throws(() => parseRunnerArgs([...base, "--codex-model", "model"]), /unknown option/);
 });
 
-test("requires the exact Codex CLI version token", () => {
-  assert.equal(codexVersionMatches("codex-cli 9.8.7\n", "9.8.7"), true);
-  assert.equal(codexVersionMatches("codex-cli 9.8.70\n", "9.8.7"), false);
-  assert.equal(codexVersionMatches("other-cli 9.8.7\n", "9.8.7"), false);
+test("records Codex version provenance without certifying compatibility", () => {
+  for (const version of ["9.8.7", "9.8.70", "10.0.0-alpha.1+build.2"]) {
+    assert.equal(codexVersion({ status: 0, stdout: `codex-cli ${version}\n` }), version);
+  }
+  assert.equal(codexVersion({ status: 0, stdout: "other-cli 9.8.7" }), "unknown");
+  assert.equal(codexVersion({ status: 127, stdout: "codex-cli 9.8.7" }), "unknown");
 });

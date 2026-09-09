@@ -22,7 +22,7 @@ This model does not choose the CLI's implementation language or user-facing dist
 
 - Keep one authored body for each skill, with its references and templates. Do not introduce a target identity or second-stage prose rewrite on the skill-copy path.
 - Restrict target-specific skill frontmatter differences to the fields and exact values that the target's sidecar authorizes. Other frontmatter and skill resources remain comparable across targets; build-version stamps must agree.
-- Validate both the common package and each target adaptation when shared content changes. Cross-target equality complements, rather than replaces, native artifact validation and routing evaluation.
+- Validate the common package and affected target adaptations with deterministic tests when shared content changes. Cross-target equality complements native artifact validation and relevant routing evaluation; it does not require repeating shared behavior tests in every live harness. Follow the [compatibility and verification policy](runtime-and-delivery.md#compatibility-and-verification) for boundary-specific live checks.
 - Treat the supported target roster as implementation detail, not a permanently fixed architectural choice. Adding a target must preserve the shared authoring contract.
 
 ## Implementation and Boundaries

@@ -22,17 +22,18 @@ test("failed native build prevents target publication", () => {
 });
 
 test("classifies an unsafe Cursor preflight without claiming execution", () => {
-  const preflight = classifyCursorPreflight("candidate-42\n", "Usage: agent\n", "candidate-42");
-  assert.equal(preflight.exactVersion, true);
+  const preflight = classifyCursorPreflight({ status: 0, stdout: "2026.09.02-c22c1a3\n" }, "Usage: agent\n");
+  assert.equal(preflight.observedVersion, "2026.09.02-c22c1a3");
   assert.equal(preflight.noSessionPersistence, false);
   assert.equal(preflight.smokeExecuted, false);
   assert.match(preflight.blocker, /no-session-persistence/);
 });
 
-test("rejects an unexpected installed version before any smoke", () => {
-  const preflight = classifyCursorPreflight("unexpected\n", "--no-session-persistence\n", "candidate-42");
-  assert.equal(preflight.exactVersion, false);
+test("an unknown version does not mask capability observations or claim a smoke", () => {
+  const preflight = classifyCursorPreflight({ status: 127 }, "--no-session-persistence\n");
+  assert.equal(preflight.observedVersion, "unknown");
   assert.equal(preflight.noSessionPersistence, true);
   assert.equal(preflight.smokeExecuted, false);
-  assert.match(preflight.blocker, /does not match/);
+  assert.match(preflight.blocker, /smoke implementation is not enabled/);
+  assert.match(classifyCursorPreflight({ status: 0, stdout: "unfamiliar" }, "").blocker, /does not expose --no-session-persistence/);
 });

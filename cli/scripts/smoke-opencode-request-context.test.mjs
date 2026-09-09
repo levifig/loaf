@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { delimiter, join } from "node:path";
-import { buildCandidate, collectTextValues, modelVisibleProof, opencodeVersionMatches, parseOpenCodeJSONL, sanitizeError, sanitizedStderr } from "./smoke-opencode-request-context.mjs";
+import { buildCandidate, collectTextValues, modelVisibleProof, parseOpenCodeJSONL, sanitizeError, sanitizedStderr } from "./smoke-opencode-request-context.mjs";
+import { observedClientVersion } from "./capability-runner-utils.mjs";
 
 test("candidate build uses native Go and isolated non-linking host runtime", () => {
   const calls = [];
@@ -21,11 +22,11 @@ test("failed native build prevents target publication", () => {
   assert.equal(calls.length, 1);
 });
 
-test("requires the exact OpenCode version token", () => {
-  assert.equal(opencodeVersionMatches("9.8.7\n", "9.8.7"), true);
-  assert.equal(opencodeVersionMatches("9.8.70", "9.8.7"), false);
-  assert.equal(opencodeVersionMatches("v9.8.7", "9.8.7"), false);
-  assert.equal(opencodeVersionMatches("9.8.7-dev", "9.8.7"), false);
+test("records OpenCode versions as observations, including prereleases", () => {
+  for (const version of ["9.8.7", "9.8.70", "9.8.7-dev", "9.8.7-dev.2+build.3"]) {
+    assert.equal(observedClientVersion({ status: 0, stdout: `${version}\n` }), version);
+  }
+  assert.equal(observedClientVersion({ status: 0, stdout: "unfamiliar identity" }), "unknown");
 });
 
 test("recursively extracts only string values at text keys", () => {

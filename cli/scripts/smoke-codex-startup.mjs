@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
+import { observedClientVersion, parseRunnerArgs, publishReceiptIfSuccessful } from "./capability-runner-utils.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../..");
@@ -15,9 +15,8 @@ const candidateHooksPath = "dist/codex/.codex/hooks.json";
 const candidateNativeRoot = join(repoRoot, "bin", "native");
 const markerPattern = /^LOAF_CODEX_STARTUP_SMOKE_[A-F0-9]{12}$/;
 
-export function codexVersionMatches(output, expectedVersion) {
-  const match = output.match(/(?:^|\s)codex-cli\s+([0-9]+\.[0-9]+\.[0-9]+)(?:\s|$)/);
-  return match?.[1] === expectedVersion;
+export function codexVersion(result) {
+  return observedClientVersion(result, /^codex-cli\s+(\S+)$/);
 }
 
 export function shellQuote(value) {
@@ -129,7 +128,7 @@ process.exitCode = result.status ?? 1;
 }
 
 function main(argv = process.argv.slice(2)) {
-  const { client, expectedVersion, receiptPath, optional } = parseRunnerArgs(argv, ["codex-model"]);
+  const { client, receiptPath, optional } = parseRunnerArgs(argv, ["codex-model"]);
   const codexModel = optional["codex-model"];
   const marker = `LOAF_CODEX_STARTUP_SMOKE_${randomBytes(6).toString("hex").toUpperCase()}`;
   if (!markerPattern.test(marker)) throw new Error("generated marker does not match the required format");
@@ -167,7 +166,6 @@ function main(argv = process.argv.slice(2)) {
     const buildEnv = buildCandidate(dbPath);
     candidateBinary = nativeBinaryPath();
     const version = run(client, ["--version"], repoRoot);
-    if (version.status !== 0 || !codexVersionMatches(version.stdout, expectedVersion)) throw new Error(`installed Codex version does not match ${expectedVersion}`);
     if (run("git", ["init", "-q"], disposableRepo).status !== 0) throw new Error("disposable Git initialization failed");
     const authPath = join(process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex"), "auth.json");
     if (!existsSync(authPath)) throw new Error("installed Codex auth.json is unavailable");
@@ -198,7 +196,7 @@ function main(argv = process.argv.slice(2)) {
       timestamp,
       target: "codex",
       surface: "cli",
-      version: expectedVersion,
+      version: codexVersion(version),
       platform,
       installed_mode: "isolated-codex-home",
       context_mode: "startup",
