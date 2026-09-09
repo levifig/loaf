@@ -318,15 +318,28 @@ func publishSelectedCodexPolicyArtifact(options targetInstallOptions, decision a
 	if err != nil {
 		return err
 	}
-	live := ""
-	if current, exists, err := readOptionalInstallFile(path, "selected Codex policy"); err != nil {
-		return err
-	} else if exists {
-		live = string(current)
-	}
-	desired, err := desiredCodexPolicyContent(options, decision, live)
+	current, exists, err := readOptionalInstallFile(path, "selected Codex policy")
 	if err != nil {
 		return err
+	}
+	desired, err := desiredCodexPolicyContent(options, decision, string(current))
+	if err != nil {
+		return err
+	}
+	if exists {
+		recorded, owned := manifest.ownedDigest(codexJournalRuleRelativePath)
+		actual := sha256Bytes(current)
+		// Recheck after preceding transaction phases: the earlier plan does
+		// not authorize overwriting a newly created or modified user file.
+		alreadyDesired := actual == sha256Bytes(desired) && (owned || options.CodexBasicCommands)
+		if !alreadyDesired {
+			if !owned {
+				return fmt.Errorf("refusing to overwrite unowned Codex rule in %s", path)
+			}
+			if actual != recorded {
+				return fmt.Errorf("refusing to overwrite modified Loaf-owned Codex rule in %s", path)
+			}
+		}
 	}
 	if err := writeFileAtomically(path, desired, 0o644); err != nil {
 		return fmt.Errorf("publish selected Codex policy %s: %w", decision.ID, err)
