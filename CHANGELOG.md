@@ -57,6 +57,7 @@ One operator's durable memory â€” journal, wraps, handoffs, refs, verification â
 
 ### Fixed
 
+- Let the bootstrap installer hand off to `loaf install` and `loaf upgrade` without extra arguments on macOS's system Bash, while preserving empty and spaced passthrough arguments.
 - The Homebrew formula installs `vnext/content` and `.claude-plugin` into the keg alongside the rest of the distribution, so a Homebrew-installed Loaf carries the tracker-native Flow content and can register itself as the Claude Code marketplace.
 - `loaf upgrade` leaves vendor skills outside Loaf's ownership silent and untouched instead of reporting a recurring externalized-skill migration notice ([#220](https://github.com/levifig/loaf/issues/220)).
 - `loaf release cut` preserves operator-curated `[Unreleased]` changelog prose as the release body instead of replacing it with auto-drafted issue notes; drafted notes are used only when unreleased is empty or stub-only.
