@@ -145,8 +145,8 @@ var hookCatalogHistoricalCommands = map[string][]string{
 	},
 }
 
-// hookCatalogVariantFlags are trailing flags the builders append per target or
-// per blocking mode. Identity stems exclude them so an entry whose enforcement
+// hookCatalogVariantFlags are trailing target, enforcement, or output flags.
+// Identity stems exclude them so an entry whose enforcement
 // was weakened by hand — `--advisory` added to a fail-closed check — still
 // pairs to its hook ID and converges instead of orphaning as foreign.
 var hookCatalogVariantFlags = map[string]bool{
@@ -154,6 +154,7 @@ var hookCatalogVariantFlags = map[string]bool{
 	"--claude-code":   true,
 	"--codex-hook":    true,
 	"--cursor-hook":   true,
+	"--json":          true,
 	"--opencode-hook": true,
 }
 

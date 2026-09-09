@@ -63,8 +63,8 @@ func TestHookCatalogIsEmittedForCursorAndCodexBuilds(t *testing.T) {
 				t.Fatalf("%s template = %#v, want object", hookID, raw)
 			}
 			command, _ := template["command"].(string)
-			if command != "loaf check --hook "+hookID {
-				t.Fatalf("%s command = %q, want blocking loaf check without --advisory", hookID, command)
+			if command != "loaf check --hook "+hookID+" --json" {
+				t.Fatalf("%s command = %q, want JSON loaf check without --advisory", hookID, command)
 			}
 			if template["failClosed"] != true {
 				t.Fatalf("%s failClosed = %#v, want true", hookID, template["failClosed"])
