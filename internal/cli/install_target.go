@@ -1049,6 +1049,9 @@ func syncSelectedManagedSkills(src string, dest string, selected []string) (retu
 	if err != nil {
 		return err
 	}
+	if err := validateSelectedLegacySkills(previous, selected); err != nil {
+		return err
+	}
 	wanted := map[string]bool{}
 	for _, name := range selected {
 		wanted[name] = true
@@ -1178,6 +1181,29 @@ func syncSelectedManagedSkills(src string, dest string, selected []string) (retu
 		manifest.Skills = append(manifest.Skills, managedSkillDigest{Name: name, SHA256: manifestSkills[name]})
 	}
 	return writeManagedSkillsManifest(dest, manifest)
+}
+
+// Name-only ownership cannot be carried into the digest manifest without
+// claiming unselected live content as a verified baseline.
+func validateSelectedLegacySkills(previous managedSkillsState, selected []string) error {
+	if !previous.legacy || len(selected) == 0 {
+		return nil
+	}
+	wanted := make(map[string]bool, len(selected))
+	for _, name := range selected {
+		wanted[name] = true
+	}
+	var unselected []string
+	for name := range previous.digests {
+		if !wanted[name] {
+			unselected = append(unselected, name)
+		}
+	}
+	if len(unselected) == 0 {
+		return nil
+	}
+	sort.Strings(unselected)
+	return fmt.Errorf("cannot partially migrate name-only skill ownership; unselected legacy skills: %s; review and explicitly select every legacy skill together before retrying", strings.Join(unselected, ", "))
 }
 
 func listInstallSkillDirs(path string) ([]string, error) {

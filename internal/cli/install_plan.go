@@ -469,6 +469,9 @@ func planManagedSkills(src string, dest string) ([]artifactPlanDecision, error) 
 		}
 		destination := filepath.Join(dest, skill)
 		if _, err := os.Lstat(destination); os.IsNotExist(err) {
+			// The directory is gone, but its ownership entry still needs to
+			// retire and remain addressable by an explicit scoped selection.
+			decisions = append(decisions, artifactPlanDecision{ID: "skill:" + skill, Kind: "skill", Destination: destination, Action: planActionRetire, Detail: "retire ownership of absent skill"})
 			continue
 		} else if err != nil {
 			return nil, err

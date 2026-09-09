@@ -74,6 +74,21 @@ func (r Runner) buildScopedUpgradePlan(options installOptions, loafRoot string, 
 	}
 	plan.VersionStamp = "none"
 	plan.FollowUpCommands = []string{scopedFollowUpCommand(refs)}
+	checkedSkillStores := map[string]bool{}
+	for _, skill := range plan.Skills {
+		dest := filepath.Dir(skill.Destination)
+		if checkedSkillStores[dest] {
+			continue
+		}
+		checkedSkillStores[dest] = true
+		previous, err := readManagedSkillsState(dest)
+		if err != nil {
+			return installDryRunPlan{}, err
+		}
+		if err := validateSelectedLegacySkills(previous, selectedSkillNames(refs)); err != nil {
+			return installDryRunPlan{}, fmt.Errorf("skills at %s: %w", dest, err)
+		}
+	}
 	hookState, releaseHookState := r.hookStateForPlan(projectRoot)
 	defer releaseHookState()
 	if err := enrichScopedPlanDiffs(&plan, hookState, projectRoot, version, distRoot, tools, refs); err != nil {
