@@ -23,7 +23,8 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 ## Critical Rules
 
 - As the first action, run `loaf journal log "skill(implement): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
-- Re-read the native work record, completion criteria, hierarchy, dependencies, status, and recent relevant comments before planning. If the record is Backlog intent or otherwise unselected, refuse and do not start. If invoked with no issue id, report the unblocked Todo frontier (selected, unblocked native records) and do not start unless the human named an issue or said to do that one.
+- Re-read the native work record, completion criteria, hierarchy, dependencies, status, and recent relevant comments before planning. If the record is Backlog intent or otherwise unselected, refuse and do not start. If invoked with no issue id, report the unblocked Todo frontier (selected, unblocked native records) and do not start unless the human named an issue or said to do that one. Never infer the issue from the current branch, worktree name, or open editor. In Progress is not the frontier.
+- Read Todo from the destination tracker's native lane (GitHub: destination Project Status), not from Issue open/closed and not from a different provider's MCP. An authenticated `gh` that can see the destination repo and Project is a GitHub connection. Linear MCP in the same session does not mean GitHub is unavailable.
 - Confirm the live contract makes Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals concrete. If it describes layers or future-only machinery instead, return it to shape.
 - Inspect repository instructions and affected code before editing. Treat existing changes as user-owned.
 - If the live contract is incomplete or implementation changes its intended outcome, stop and return it to shape instead of silently redefining work.
@@ -49,7 +50,9 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 | Condition | Action |
 |-----------|--------|
 | Unselected / Backlog intent | Refuse; do not start |
-| Bare invocation | Report the unblocked Todo frontier; do not start |
+| Bare invocation | Report the unblocked Todo frontier from the destination tracker; do not start; do not infer from the branch |
+| Branch or worktree looks like an issue | Ignore it unless the human named that issue |
+| Linear MCP present, GitHub is the tracker | Use `gh` / GitHub connection; do not claim GitHub is unavailable |
 | Contract gap | Return to shape with the exact gap |
 | External blocker | Preserve code state and report observed blocker evidence |
 | Independent bounded tasks | Coordinate through orchestration when authorized |
