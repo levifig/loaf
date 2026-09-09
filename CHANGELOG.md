@@ -58,6 +58,7 @@ One operator's durable memory â€” journal, wraps, handoffs, refs, verification â
 
 ### Fixed
 
+- `loaf doctor` reports same-version changes to installed harness content using the upgrade planner, with actionable diagnostics and no automatic repair ([#218](https://github.com/levifig/loaf/issues/218)).
 - Cursor check hooks request JSON output so successful checks do not block tools with an invalid-response error; genuine findings retain their blocking exit status ([#238](https://github.com/levifig/loaf/issues/238)).
 - Let the bootstrap installer hand off to `loaf install` and `loaf upgrade` without extra arguments on macOS's system Bash, while preserving empty and spaced passthrough arguments.
 - The Homebrew formula installs `vnext/content` and `.claude-plugin` into the keg alongside the rest of the distribution, so a Homebrew-installed Loaf carries the tracker-native Flow content and can register itself as the Claude Code marketplace.
