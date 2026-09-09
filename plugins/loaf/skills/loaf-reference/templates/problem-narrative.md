@@ -1,6 +1,6 @@
 # Problem Narrative
 
-Use this artifact to carry discovery into shaping. Replace every placeholder; preserve the field markers so validation can distinguish the contract from prose. In Desired Outcome, name the first useful end-to-end journey a real operator could complete without prescribing its component design.
+Use this template to carry discovery into shaping. Fill every field with observed or explicitly uncertain information. Field-marker comments are metadata for validating this template source; preserve them when editing the template, but omit them and these authoring instructions from generated narratives, including chat responses and saved documents. In Desired Outcome, name the first useful end-to-end journey a real operator could complete without prescribing its component design.
 
 <!-- loaf:field problem -->
 ## Problem
