@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -22,6 +23,7 @@ func harnessDriftHome(t *testing.T) string {
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, ".local", "share"))
 	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
 	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 	return home
@@ -79,6 +81,280 @@ func TestHarnessContentDriftDoctorReportsEachMarkerState(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHarnessContentDriftDoctorUsesUpgradePlanForSameVersionAdapterDrift(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		mutate func(t *testing.T, path string)
+	}{
+		{
+			name: "byte drift",
+			mutate: func(t *testing.T, path string) {
+				writeInstallFile(t, path, "// modified after install\n")
+			},
+		},
+		{
+			name: "mode drift",
+			mutate: func(t *testing.T, path string) {
+				if err := os.Chmod(path, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			home, distributionRoot, pluginPath := harnessDriftAmpPlannerFixture(t)
+			testCase.mutate(t, pluginPath)
+			beforeBody := readFileBytes(t, pluginPath)
+			beforeMode := fileModeForTest(t, pluginPath)
+
+			result := checkHarnessContentDrift().Run(doctorContext{
+				projectRoot:      home,
+				distributionRoot: distributionRoot,
+				cliVersion:       harnessDriftBinaryFixtureVersion,
+				stateHome:        t.TempDir(),
+			})
+
+			if got := readFileBytes(t, pluginPath); !bytes.Equal(got, beforeBody) {
+				t.Fatal("harness-content-drift diagnosis changed installed adapter bytes")
+			}
+			if got := fileModeForTest(t, pluginPath); got != beforeMode {
+				t.Fatalf("harness-content-drift diagnosis changed installed adapter mode from %v to %v", beforeMode, got)
+			}
+			if result.Status != doctorFail {
+				t.Fatalf("harness-content-drift result = %#v, want fail for planner conflict", result)
+			}
+			for _, want := range []string{"Amp", "plugin:loaf", "conflict", "loaf upgrade --dry-run", "plugins/loaf.ts", "managed target artifact was modified"} {
+				if !strings.Contains(result.Detail, want) {
+					t.Fatalf("harness-content-drift detail = %q, want containing %q", result.Detail, want)
+				}
+			}
+		})
+	}
+}
+
+func TestHarnessContentDriftDoctorKeepsSameVersionExactAdapterQuiet(t *testing.T) {
+	home, distributionRoot, _ := harnessDriftAmpPlannerFixture(t)
+	result := checkHarnessContentDrift().Run(doctorContext{
+		projectRoot:      home,
+		distributionRoot: distributionRoot,
+		cliVersion:       harnessDriftBinaryFixtureVersion,
+		stateHome:        t.TempDir(),
+	})
+
+	if result.Status != doctorPass {
+		t.Fatalf("harness-content-drift result = %#v, want pass for exact adapter", result)
+	}
+	if strings.Contains(result.Detail, "planner:") {
+		t.Fatalf("healthy preserve decisions must stay quiet, detail = %q", result.Detail)
+	}
+}
+
+func TestHarnessContentDriftPlannerFindingMatchesHumanAndJSONDoctor(t *testing.T) {
+	home, distributionRoot, pluginPath := harnessDriftAmpPlannerFixture(t)
+	writeInstallFile(t, pluginPath, "// modified after install\n")
+	projectRoot := realpath(t, t.TempDir())
+	stateHome := t.TempDir()
+	before := hashInstallFixtureTrees(t, home, distributionRoot, projectRoot, stateHome)
+
+	for _, testCase := range []struct {
+		name string
+		args []string
+	}{
+		{name: "human", args: []string{"doctor"}},
+		{name: "json", args: []string{"doctor", "--json"}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var output bytes.Buffer
+			err := Runner{
+				Stdout:     &output,
+				WorkingDir: projectRoot,
+				StateHome:  stateHome,
+				Executable: distributionFixtureExecutable(distributionRoot),
+			}.Run(testCase.args)
+			if err == nil {
+				t.Fatal("doctor error = nil, want planner conflict to fail diagnosis")
+			}
+			if testCase.name == "json" {
+				var report doctorJSONOutput
+				if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+					t.Fatalf("invalid doctor JSON: %v", err)
+				}
+				found := false
+				for _, check := range report.Checks {
+					if check.Name == "harness-content-drift" {
+						found = check.Status == string(doctorFail) && !check.Fixable
+					}
+				}
+				if !found {
+					t.Fatalf("JSON lacks a report-only harness conflict: %#v", report.Checks)
+				}
+			}
+			for _, want := range []string{"harness-content-drift", "Amp", "plugin:loaf", "conflict", "loaf upgrade --dry-run"} {
+				if !strings.Contains(stripANSI(output.String()), want) {
+					t.Fatalf("doctor output = %q, want containing %q", output.String(), want)
+				}
+			}
+		})
+	}
+	if after := hashInstallFixtureTrees(t, home, distributionRoot, projectRoot, stateHome); after != before {
+		t.Fatal("human or JSON doctor changed fixture files")
+	}
+}
+
+func TestHarnessDoctorReportsSharedSkillDriftWithoutMutation(t *testing.T) {
+	for _, modified := range []bool{false, true} {
+		t.Run(map[bool]string{false: "desired update", true: "operator edit"}[modified], func(t *testing.T) {
+			home, distributionRoot, _ := harnessDriftAmpPlannerFixture(t)
+			src := filepath.Join(distributionRoot, "dist", "amp", "skills")
+			dest := filepath.Join(home, ".agents", "skills")
+			writeInstallFile(t, filepath.Join(src, "foundations", "SKILL.md"), "# Original\n")
+			if err := syncManagedSkillsDirIfExists(src, dest); err != nil {
+				t.Fatal(err)
+			}
+			wantStatus, wantAction := doctorWarn, planActionUpdate
+			changed := filepath.Join(src, "foundations", "SKILL.md")
+			if modified {
+				changed = filepath.Join(dest, "foundations", "SKILL.md")
+				wantStatus, wantAction = doctorFail, planActionConflict
+			}
+			writeInstallFile(t, changed, "# Changed\n")
+			stateHome := t.TempDir()
+			before := hashInstallFixtureTrees(t, home, distributionRoot, stateHome)
+			result := checkHarnessContentDrift().Run(doctorContext{
+				projectRoot: home, distributionRoot: distributionRoot,
+				cliVersion: harnessDriftBinaryFixtureVersion, stateHome: stateHome,
+			})
+			if result.Status != wantStatus || !strings.Contains(result.Detail, "Managed skills planner: "+wantAction+" skill:foundations") {
+				t.Fatalf("doctor = %#v, want %s for shared skill %s", result, wantStatus, wantAction)
+			}
+			if after := hashInstallFixtureTrees(t, home, distributionRoot, stateHome); after != before {
+				t.Fatal("shared-skill diagnosis changed fixture files")
+			}
+		})
+	}
+}
+
+func TestHarnessDoctorMatchesUpgradePlanWithoutMutatingFixtures(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		mutate     func(t *testing.T, distributionRoot, pluginPath string)
+		wantAction string
+		wantStatus doctorStatus
+		wantError  bool
+	}{
+		{name: "healthy", wantAction: planActionPreserve, wantStatus: doctorPass},
+		{name: "modified adapter", wantAction: planActionConflict, wantStatus: doctorFail, mutate: func(t *testing.T, distributionRoot, pluginPath string) {
+			writeInstallFile(t, pluginPath, "// operator edit\n")
+		}},
+		{name: "same-version content update", wantAction: planActionUpdate, wantStatus: doctorWarn, mutate: func(t *testing.T, distributionRoot, pluginPath string) {
+			dist := filepath.Join(distributionRoot, "dist", "amp")
+			body := "export default function updatedLoaf() {}\n"
+			writeInstallFile(t, filepath.Join(dist, "plugins", "loaf.ts"), body)
+			writeTestTargetAdapterManifest(t, dist, "amp", []map[string]string{{
+				"id": "plugin:loaf", "kind": "plugin", "source_path": "plugins/loaf.ts", "destination": "plugins/loaf.ts", "sha256": sha256Hex(body),
+			}})
+		}},
+		{name: "missing ownership", wantAction: planActionConflict, wantStatus: doctorFail, mutate: func(t *testing.T, distributionRoot, pluginPath string) {
+			if err := os.Remove(filepath.Join(filepath.Dir(filepath.Dir(pluginPath)), targetInstallManifestFile)); err != nil {
+				t.Fatal(err)
+			}
+			writeInstallFile(t, pluginPath, "// foreign adapter\n")
+		}},
+		{name: "symlinked adapter", wantStatus: doctorFail, wantError: true, mutate: func(t *testing.T, distributionRoot, pluginPath string) {
+			target := filepath.Join(distributionRoot, "foreign.ts")
+			writeInstallFile(t, target, "// foreign content\n")
+			if err := os.Remove(pluginPath); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(target, pluginPath); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{name: "corrupt desired digest", wantStatus: doctorFail, wantError: true, mutate: func(t *testing.T, distributionRoot, pluginPath string) {
+			writeInstallFile(t, filepath.Join(distributionRoot, "dist", "amp", "plugins", "loaf.ts"), "// unrecorded desired edit\n")
+		}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			home, distributionRoot, pluginPath := harnessDriftAmpPlannerFixture(t)
+			stateHome := t.TempDir()
+			if testCase.mutate != nil {
+				testCase.mutate(t, distributionRoot, pluginPath)
+			}
+			before := hashInstallFixtureTrees(t, home, distributionRoot, stateHome)
+			ctx := doctorContext{projectRoot: home, distributionRoot: distributionRoot, cliVersion: harnessDriftBinaryFixtureVersion, stateHome: stateHome}
+			result := checkHarnessContentDrift().Run(ctx)
+			if result.Status != testCase.wantStatus || result.Fixable {
+				t.Fatalf("doctor = %#v, want report-only %s", result, testCase.wantStatus)
+			}
+			if repeat := checkHarnessContentDrift().Run(ctx); repeat != result {
+				t.Fatalf("doctor changed between reads: %#v then %#v", result, repeat)
+			}
+			plan, err := (Runner{WorkingDir: home, StateHome: stateHome}).buildInstallDryRunPlan(
+				installOptions{upgrade: true, dryRun: true, command: upgradeCommandName},
+				distributionRoot, home, harnessDriftBinaryFixtureVersion, filepath.Join(distributionRoot, "dist"), detectInstallTools(), false, false, nil,
+			)
+			if (err != nil) != testCase.wantError {
+				t.Fatalf("upgrade planner error = %v, wantError %t", err, testCase.wantError)
+			}
+			if err != nil {
+				if !strings.Contains(result.Detail, err.Error()) {
+					t.Fatalf("doctor detail %q omits planner error %q", result.Detail, err)
+				}
+			} else {
+				action := ""
+				for _, target := range plan.Targets {
+					for _, artifact := range target.Artifacts {
+						if target.Target == "amp" && artifact.ID == "plugin:loaf" {
+							action = artifact.Action
+						}
+					}
+				}
+				if action != testCase.wantAction {
+					t.Fatalf("upgrade action = %q, want %q", action, testCase.wantAction)
+				}
+				if action != planActionPreserve && (!strings.Contains(result.Detail, action+" plugin:loaf") || !strings.Contains(result.Detail, "loaf upgrade --dry-run")) {
+					t.Fatalf("doctor detail %q omits actionable planner decision", result.Detail)
+				}
+			}
+			if after := hashInstallFixtureTrees(t, home, distributionRoot, stateHome); after != before {
+				t.Fatal("diagnosis changed home, distribution, or state files")
+			}
+		})
+	}
+}
+
+func harnessDriftAmpPlannerFixture(t *testing.T) (home string, distributionRoot string, pluginPath string) {
+	t.Helper()
+	home = harnessDriftHome(t)
+	distributionRoot = harnessDriftDistribution(t, harnessDriftBinaryFixtureVersion)
+	ampDist := filepath.Join(distributionRoot, "dist", "amp")
+	desiredPlugin := "export default function loaf() {}\n"
+	writeInstallFile(t, filepath.Join(ampDist, "plugins", "loaf.ts"), desiredPlugin)
+	writeTestTargetAdapterManifest(t, ampDist, "amp", []map[string]string{{
+		"id":          "plugin:loaf",
+		"kind":        "plugin",
+		"source_path": "plugins/loaf.ts",
+		"destination": "plugins/loaf.ts",
+		"sha256":      sha256Hex(desiredPlugin),
+	}})
+
+	ampConfig := filepath.Join(home, ".config", "amp")
+	harnessDriftInstalledHarness(t, ampConfig, harnessDriftBinaryFixtureVersion)
+	writeInstallFile(t, filepath.Join(ampConfig, targetInstallManifestFile), string(readFileBytes(t, filepath.Join(ampDist, targetBuildManifestFile))))
+	pluginPath = filepath.Join(ampConfig, "plugins", "loaf.ts")
+	writeInstallFile(t, pluginPath, desiredPlugin)
+	return home, distributionRoot, pluginPath
+}
+
+func fileModeForTest(t *testing.T, path string) os.FileMode {
+	t.Helper()
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info.Mode().Perm()
 }
 
 func TestHarnessContentDriftDoctorSkipsWithoutSubject(t *testing.T) {
