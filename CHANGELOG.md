@@ -1,78 +1,51 @@
 # Changelog
 
-This project follows [Common Changelog](https://common-changelog.org/) and
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html). `## [Unreleased]`
-is a Loaf workflow staging section for curated entries before release.
+This project follows [Common Changelog](https://common-changelog.org/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Unreleased section describes landed changes awaiting publication; dated sections preserve historical behavior, not current workflow guidance.
 
 ## [Unreleased]
 
-### Personal memory substrate (LOAF-62)
-
-One operator's durable memory — journal, wraps, handoffs, refs, verification — converges across laptops, cloud agents, and CI through E2E-encrypted facts on a self-hostable relay, or hard-refuses Loaf-flow work when attach is impossible. Local SQLite stays a full local-first replica; sync is a convergent relay, not authority transfer. The fleet agrees on the fact envelope (see [Private Synchronization](docs/architecture/private-synchronization.md)), not a shared SQLite schema; writers append through one chokepoint and projections fold latest-event-wins. This legacy-runtime update ships grow-only facts, sync server and client, attach-or-refuse, identity evidence, schema 25 migration, scratchpad coordination, refs-and-contracts cutover, and closeout projection fixes ([#207](https://github.com/levifig/loaf/pull/207)).
+The current workflow uses your native tracker for shared work and the PATH-installed CLI for private continuity and checks. Older local-work commands remain compatibility surfaces, not a parallel tracker. The separate vNext runtime remains introspection-only; its integrated skills do not imply that every planned persistence or synchronization journey has cut over.
 
 ### Changed
 
-- GitHub as the canonical tracker maps workflow through Issues plus a required Projects v2 Status board (Backlog is public intent, Todo is selected work). Flow skills move sparks through triage, refuse `/implement` on unselected Backlog records, and treat a missing Project as a configuration gap rather than Issue open/closed ([#237](https://github.com/levifig/loaf/issues/237)).
-- `/triage` shows a numbered candidate table and waits for an index pick before moving anything to Backlog; it does not call that move "publish". Tracker bodies get shared provenance only — never Loaf-internal idea or spark ids ([#237](https://github.com/levifig/loaf/issues/237)).
-- Bare `/implement` reports the unblocked Todo frontier from destination Project Status and does not infer work from the branch. A working `gh` is a GitHub connection even when Linear MCP is also present ([#237](https://github.com/levifig/loaf/issues/237)).
-- Treat harness versions and smoke artifact digests as historical provenance, not current-build compatibility gates. Optional smoke runners now take `--client` and `--receipt` without `--expected-version`; unavailable version output is recorded as `unknown`. Required behavior, safety, installation ownership, and release integrity checks remain in place.
-- Maintain current architecture and rationale in `docs/architecture/` topics, with rare, narrow decision records. Architecture and Reflect guidance now distinguish current constraints, historical rationale, and implementation gaps; `loaf kb` discovers and validates architecture documents without imposing the legacy ADR schema.
-- Run maintained checks and power-modeling utilities through native `loaf check` commands. Retire duplicate and obsolete Bash/Python helpers without reintroducing local tracker authority or session lifecycles; legacy ADR-format checks remain explicitly opt-in through `loaf kb validate --legacy-adr`.
-- Refresh only explicitly selected harness artifacts with `loaf upgrade --select <target/id>`. Scoped updates preserve unrelated content and version markers, recheck ownership under the reconciliation lock, roll back on failure, and refuse missing or incapable PATH runtimes without installing a private binary. Codex policy remains classified-leaf-only and no longer requires global `AGENTS.md` guidance; project Loaf sections refresh by direct content comparison while preserving surrounding user text.
-- `loaf install` and `loaf upgrade` default to every harness available: install onboards each detected tool (and Claude Code's plugin when the `claude` CLI is present) without a per-tool interview, upgrade refreshes every installed one. `-i` opens a numbered checklist to narrow the set (Enter keeps all, `none` skips), and `--to` accepts comma-separated targets such as `cursor,codex,claude-code`.
-- `loaf install --to claude-code` onboards Claude Code from the installed distribution: it registers the distribution as the `levifig-loaf` marketplace and installs `loaf@levifig-loaf` through the `claude` CLI, idempotently and without replacing a marketplace of the same name that points elsewhere. `loaf install --to all` includes it when `claude` is on `PATH`, `loaf upgrade` refreshes a plugin this distribution installed, and the dry-run plan reports both actions. Release archives now ship `.claude-plugin/marketplace.json` so an installed Loaf can serve as its own marketplace.
-- The Claude Code marketplace plugin ships content and bare PATH `loaf` hook commands, with no bundled native runtime, shell shim, `LOAF_BIN` override, or fixed-location fallback. Users manage the runtime separately. `make verify` rejects plugin executables, and Claude smoke receipts use evidence version 4 to identify PATH resolution and the observed hooks and binary; earlier receipts describe their original bundled-runtime or shim journey, not PATH resolution.
-- Development builds carry their identity inside the binary. `loafdev build-go` compiles with `go build -buildvcs=true`, `go.mod` pins `go1.27.1` because `go1.26.6` stamped nothing inside a linked worktree, and `loaf --version` reports `<version>+g<short-sha>`, adding `.dirty` when the working tree had uncommitted changes at compile time. Native targets are staged and published only after every requested target compiles; the last successful non-release build owns the user-local launcher pointer, claims `~/.local/bin/loaf` only when that name is absent, never replaces operator-owned paths, and `LOAF_DEV_LINK=0` opts out. Root `bin/` is no longer tracked and is regenerated by `make build-go`. Release tags that are not strict SemVer fail resolve instead of being skipped as dev identities.
-- Make complete, useful operator journeys the unit of Loaf strategy, shaping, implementation, review, and release progress; foundation work now stays tied to the immediate slice that exercises it.
-- Git workflow guidance treats working commits as implementation checkpoints, squash-merges one reviewed shippable root per PR, assembles related stacked work with verified fast-forwards, and preserves merge commits only for explicitly justified durable topology ([#211](https://github.com/levifig/loaf/issues/211)).
-- **Breaking:** The distroless sync-server image now binds HTTP `:8080` instead of `:8443`. Terminate TLS at a reverse proxy, or pass `--tls-cert` and `--tls-key` to `loaf serve`.
-- **Breaking:** `loaf serve` refuses ports `443` and `8443` unless `--tls-cert` and `--tls-key` are set, so `LoafToken` / `LoafAdmin` credentials are not sent on a TLS-looking cleartext listener ([#198](https://github.com/levifig/loaf/pull/198)).
-- `loaf issue start` walks to the shippable root of the issue tree. Only that root gets `issue/<root-alias>` and a worktree; starting a child creates or joins the root workspace and marks the child active. `loaf issue stop` on a child that does not own a worktree names the root ([#166](https://github.com/levifig/loaf/pull/166)).
-- Mutable-core state — journal, sparks, ideas, handoffs, refs, releases, and verification — writes as grow-only event facts with latest-event-wins projections instead of direct SQLite row authority ([#177](https://github.com/levifig/loaf/pull/177), [#202](https://github.com/levifig/loaf/pull/202)).
-- Flow skills, contract machinery, and verification operate on provider-qualified authority refs; internal issue rows render out to branch authority ([#174](https://github.com/levifig/loaf/pull/174), [#182](https://github.com/levifig/loaf/pull/182), [#200](https://github.com/levifig/loaf/pull/200)).
-- Decision records re-home to ledger question/resolution facts instead of decision issues ([#205](https://github.com/levifig/loaf/pull/205)).
-- Every project-scoped table is classified (synced minimal core, local archive, machine-local, gone) and fossil relationship edges are pruned ([#179](https://github.com/levifig/loaf/pull/179)).
-- Reports, councils, and shaping drafts are file-backed; the CLI serves them from disk instead of SQLite document rows ([#175](https://github.com/levifig/loaf/pull/175)).
+- **Breaking:** Serve the sync relay over HTTP on port 8080 by default; require TLS certificates for ports 443 and 8443, or terminate TLS at a reverse proxy ([#198](https://github.com/levifig/loaf/pull/198)).
+- Keep GitHub Backlog distinct from selected Todo work: triage requires a human choice before filing, shape does not select work automatically, and bare implement reports the unblocked Todo frontier without starting ([#242](https://github.com/levifig/loaf/pull/242)).
+- Use tracker-native work definitions and provider skills for the current Flow, with one-time legacy migration kept separate from ongoing collaboration ([#225](https://github.com/levifig/loaf/pull/225)).
+- Maintain current design and rationale in architecture topics; reserve separate decision records for rare, narrow commitments, and make legacy ADR validation explicitly opt-in ([#243](https://github.com/levifig/loaf/pull/243)).
+- Resolve harness commands through user-managed PATH; keep Claude plugins content-only and provide install or upgrade guidance when required CLI capabilities are unavailable ([#244](https://github.com/levifig/loaf/pull/244)).
+- Limit upgrades to selected artifacts with `loaf upgrade --select <target/id>`, preserving unrelated content, checking ownership under a lock, and rolling back failures without advancing whole-install version stamps ([#244](https://github.com/levifig/loaf/pull/244)).
+- Refresh project-owned Loaf instruction sections by content comparison while preserving surrounding text, and keep Codex's opt-in command policy independent of global AGENTS guidance ([#244](https://github.com/levifig/loaf/pull/244)).
+- Onboard detected harnesses and refresh installed harnesses by default; offer an interactive checklist or explicit target selection when a narrower change is needed ([#235](https://github.com/levifig/loaf/pull/235)).
+- Show source revision and dirty state in development builds, preserve the last successful native build on compilation failure, and allow `LOAF_DEV_LINK=0` to leave the user's active runtime untouched ([#231](https://github.com/levifig/loaf/pull/231)).
+- Verify required behavior instead of exact harness versions; retain version and hash observations as historical evidence without requiring a new live-harness matrix for every build ([#244](https://github.com/levifig/loaf/pull/244)).
+- Keep reports, councils, and shaping drafts file-backed rather than treating SQLite document rows as their authority ([#175](https://github.com/levifig/loaf/pull/175)).
 
 ### Added
 
-- `install.sh`, a `bash -c "$(curl -fsSL …/install.sh)"` installer for macOS and Linux: it downloads the platform archive from GitHub Releases, verifies it against `checksums.txt`, unpacks under `$LOAF_HOME/releases/<version>`, links `$LOAF_BIN_DIR/loaf` to the current release without ever replacing a link it did not create, and runs `loaf install` (or `loaf upgrade` on later runs). `LOAF_VERSION`, `LOAF_HOME`, `LOAF_BIN_DIR`, `--no-install`, `--uninstall`, and `--` passthrough are supported.
-- vNext Loaf baseline lands as a reviewed, non-activating integration: tracker-native Flow with modular provider skills, one-time tracker export and isolated continuity rehearsal, skill-owned reports, managed harness install and reconciliation, Amp native delegation, and isolated continuity, migration, credentials, crypto, sync, and relay libraries with contract tests. The normal executable keeps the legacy continuity runtime and the vNext command stays introspection-only; npm and release artifacts retain the authored `vnext/content` ([#225](https://github.com/levifig/loaf/pull/225)).
-- Self-hostable sync relay (`loaf serve`) stores opaque ciphertext blobs and auth tokens only — never keys or plaintext semantics ([#183](https://github.com/levifig/loaf/pull/183)).
-- Client sync engine queues local facts, pulls by arrival cursor, detects env-seq gaps with loud warnings, and refreshes projections after pull ([#184](https://github.com/levifig/loaf/pull/184)).
-- Grow-only fact envelope with versioned cleartext contract and E2E payload; replay builds projections ordered by `(hlc, env_id, id)` ([#177](https://github.com/levifig/loaf/pull/177)).
-- Project identity is an internal UUID with attachment evidence; mirrors and renames never mint a duplicate universe, and `loaf state doctor` names duplicate-universe drift ([#181](https://github.com/levifig/loaf/pull/181), [#192](https://github.com/levifig/loaf/pull/192)).
-- Attach-or-refuse ceremony with auth setup/link, SessionStart gate, and HLC skew checks; cloud project environments bootstrap for Cursor and Amp ([#173](https://github.com/levifig/loaf/pull/173), [#185](https://github.com/levifig/loaf/pull/185), [#187](https://github.com/levifig/loaf/pull/187), [#190](https://github.com/levifig/loaf/pull/190)).
-- Schema migration 0025 replays sparks, ideas, handoffs, refs, worktree bindings, verification receipts, and releases onto event facts with verified lossless replay ([#202](https://github.com/levifig/loaf/pull/202), [#203](https://github.com/levifig/loaf/pull/203)).
-- Scratchpad effort-scoped coordination: `loaf scratchpad append|read|list|claim|release`, closed fact kinds, SSE/long-poll fanout on `loaf serve`, logical close, and admin-only prune scoped to the owning account ([#180](https://github.com/levifig/loaf/pull/180), [#194](https://github.com/levifig/loaf/pull/194), [#197](https://github.com/levifig/loaf/pull/197), [#201](https://github.com/levifig/loaf/pull/201)).
-- Tracker-steering issue bootstrap mints branch and PR refs as authority ([#193](https://github.com/levifig/loaf/pull/193)).
-- First-class, harness-neutral Linear provider skill that maps `project-management/v1` operations onto Linear through whichever Linear connection the harness already exposes, reads before mutating, and produces verified native outcomes; Loaf never installs, connects, or authenticates the connection.
-- Amp builds, install, and upgrades now distribute Loaf Medium/Ultra and their pinned delegate tools as a separate digest-managed plugin. Medium/Ultra and the oracle delegate pin `openai/gpt-6-astra` at medium, xhigh, and high; review stays on `openai/gpt-5.6-luna` at max for independent model diversity; the implementation agent stays on `xai/grok-4.6` with Fast and does not set a reasoning effort. Unrecorded exact-digest predecessor copies of `loaf-modes.ts` are adopted once; any other byte remains foreign ([#229](https://github.com/levifig/loaf/pull/229)).
-- `loaf release cut --version <X.Y.Z>` cuts an explicit semver that must be greater than the current version and at least the minimum for the derived bump (LOAF-62).
+- Install native archives on macOS and Linux with a checksum-verifying bootstrap installer that preserves unrelated PATH entries and hands managed-content changes to the CLI ([#235](https://github.com/levifig/loaf/pull/235)).
+- Onboard Claude Code through its native plugin manager from an installed distribution, with explicit refusal when a same-named marketplace belongs to another source ([#234](https://github.com/levifig/loaf/pull/234)).
+- Run commit-message, secrets, changelog, compliance, test-naming, Dockerfile, Kubernetes, bounds, units, and standards-reference checks through native `loaf check` commands ([#244](https://github.com/levifig/loaf/pull/244)).
+- Offer opt-in encrypted replication of the legacy runtime's private records through a self-hostable relay, with attachment checks, identity diagnostics, and reconstruction of synced projections ([#207](https://github.com/levifig/loaf/pull/207)).
+- Provide legacy-runtime scratchpad coordination with account-scoped pruning and relay notifications; this does not establish scratchpad as part of the unactivated vNext continuity model ([#194](https://github.com/levifig/loaf/pull/194), [#201](https://github.com/levifig/loaf/pull/201)).
+- Provide Amp orchestration modes and native delegation integrations while preserving foreign or modified plugin files ([#229](https://github.com/levifig/loaf/pull/229)).
 
 ### Removed
 
-- npm and the Node launcher. The build, release, packaging, artifact verification, Homebrew formula, and release-tag classification scripts under `cli/scripts/` are now Go in `internal/devtool`, run through `go run ./cmd/loafdev` and the Makefile (`make build`, `make test`, `make release`). `bin/loaf` is the native binary itself, so hooks and the dev launcher pointer no longer pass through Node. `package.json` stays only as the distribution manifest; Node remains a development dependency solely for the harness capability runners and emitted TypeScript plugin checks.
-- Findings, verdicts, and runs schema and CLI surface (migration 0018) ([#176](https://github.com/levifig/loaf/pull/176)).
-- SQLite document-layer authority for reports, councils, and shaping drafts ([#175](https://github.com/levifig/loaf/pull/175)).
+- Remove npm and the Node launcher from CLI delivery; build and package through Go and Make while retaining JavaScript/TypeScript only where harness adapters and development checks still require them ([#236](https://github.com/levifig/loaf/pull/236)).
+- Retire duplicated Bash/Python helpers and obsolete local-session orchestration; retain only explicitly justified bootstrap scripts that acquire or attach the native runtime ([#244](https://github.com/levifig/loaf/pull/244)).
+- Remove obsolete findings, verdict, and run commands and their legacy state tables ([#176](https://github.com/levifig/loaf/pull/176)).
 
 ### Fixed
 
-- Scoped skill upgrades preserve the installed harness cohort's canonical metadata and use the same source for preview and apply, avoiding repeated updates and lost OpenCode settings ([#230](https://github.com/levifig/loaf/issues/230)).
-- `loaf release cut` inserts a fresh Unreleased stub and generated release before historical releases when an existing changelog has no Unreleased section, preserving newest-first order and existing prose ([#114](https://github.com/levifig/loaf/issues/114)).
-- `loaf doctor` reports same-version changes to installed harness content using the upgrade planner, with actionable diagnostics and no automatic repair ([#218](https://github.com/levifig/loaf/issues/218)).
-- Cursor check hooks request JSON output so successful checks do not block tools with an invalid-response error; genuine findings retain their blocking exit status ([#238](https://github.com/levifig/loaf/issues/238)).
-- Let the bootstrap installer hand off to `loaf install` and `loaf upgrade` without extra arguments on macOS's system Bash, while preserving empty and spaced passthrough arguments.
-- The Homebrew formula installs `vnext/content` and `.claude-plugin` into the keg alongside the rest of the distribution, so a Homebrew-installed Loaf carries the tracker-native Flow content and can register itself as the Claude Code marketplace.
-- `loaf upgrade` leaves vendor skills outside Loaf's ownership silent and untouched instead of reporting a recurring externalized-skill migration notice ([#220](https://github.com/levifig/loaf/issues/220)).
-- `loaf release cut` preserves operator-curated `[Unreleased]` changelog prose as the release body instead of replacing it with auto-drafted issue notes; drafted notes are used only when unreleased is empty or stub-only.
-- Sync refresh rebuilds ref, worktree, and verification projections from pulled facts so a receiving replica shows CLI-facing mappings, start bindings, and receipts ([#204](https://github.com/levifig/loaf/pull/204)).
-- Repeated work-contract mapping and receipt upserts reuse the existing projection row id as the fact SubjectID, so a second render-out of the same ref rebuilds without colliding on the unique key ([#206](https://github.com/levifig/loaf/pull/206)).
-- Sync-server admin `DELETE` of facts is scoped to projects the authenticating account has minted a connection token for, so a second tenant cannot delete another tenant's blobs ([#198](https://github.com/levifig/loaf/pull/198)).
-- `loaf issue start` on a child refuses if the root workspace is missing or the root is already `done` / archived, instead of joining a stale or closed workspace.
-- `loaf issue verify` runs in the invoking worktree ([#172](https://github.com/levifig/loaf/pull/172)).
-- Homebrew formula generation pins an explicit `version` so older `brew` does not infer `64` from `darwin-arm64` in the asset URL.
-- CI workflows use Node 24 Actions (`actions/checkout@v7`, `actions/setup-node@v7`, `actions/setup-go@v7`) so runs stop warning about deprecated Node 20.
+- Preserve canonical shared-skill metadata across scoped preview and apply so already-current installations stop reporting repeated updates ([#248](https://github.com/levifig/loaf/pull/248)).
+- Report same-version installed-content drift in `loaf doctor` without silently repairing it ([#228](https://github.com/levifig/loaf/pull/228)).
+- Emit Cursor check responses in the expected JSON format without weakening genuine blocking findings ([#245](https://github.com/levifig/loaf/pull/245)).
+- Preserve curated release notes and newest-first changelog ordering in the legacy release command ([#208](https://github.com/levifig/loaf/pull/208), [#246](https://github.com/levifig/loaf/pull/246)).
+- Keep pitch template metadata out of authored problem narratives ([#247](https://github.com/levifig/loaf/pull/247)).
+- Preserve unrelated vendor skills during upgrades and avoid recurring migration notices for content Loaf does not own ([#220](https://github.com/levifig/loaf/issues/220)).
+- Preserve empty and spaced installer arguments on macOS's system Bash, and include the Claude marketplace and tracker-native skills in Homebrew distributions ([#235](https://github.com/levifig/loaf/pull/235)).
+- Rebuild synced reference and verification projections without duplicate identity collisions, and restrict relay deletion to the authenticated account's projects ([#204](https://github.com/levifig/loaf/pull/204), [#206](https://github.com/levifig/loaf/pull/206), [#198](https://github.com/levifig/loaf/pull/198)).
+- Keep legacy child-issue work in its root workspace, refuse missing or closed roots, and run verification in the invoking worktree ([#166](https://github.com/levifig/loaf/pull/166), [#172](https://github.com/levifig/loaf/pull/172)).
 
 ## [0.3.1] - 2026-08-17
 
@@ -80,12 +53,12 @@ One operator's durable memory — journal, wraps, handoffs, refs, verification �
 
 - Local issue aliases derive from the project slug (`VCAM-1`, `CROSSFADE-1`). `LOAF` is only the fallback for unnameable paths and the loaf repo itself. Project bootstrap records `issue.authority` and `issue.prefix` in `.agents/loaf.json` (`loaf init`, and `loaf config check --fix` when creating a missing file). `loaf issue identity --prefix` / `--authority` persist that choice; for Linear the prefix is the team key and local aliases are not rewritten. `--align` rewrites a leaked `LOAF-*` prefix and writes the result back to loaf.json. `loaf doctor` and `loaf state doctor` name leak, missing config, and config drift.
 - `loaf issue retitle` replaces an issue title. `loaf issue edit` stays body-only.
-- `loaf issue absorb` turns leftover SQLite work into a fresh issue, or dismisses it, without unfreezing the old write commands. A single ref stays leftover-open only. `--all` projects the current project's open tasks and non-terminal intents; `--all --history` also mints done tasks as done issues and archived tasks as cancelled issues, and refuses when the project already has independently created issues. `--dry-run` rehearses the projector. The old alias stays provenance only. Freeze errors name the 0.5.0 horizon. `loaf doctor` and `loaf state doctor` inventory leftover SQLite work and name `loaf issue absorb --all [--history] --dry-run`; they do not mint. Housekeeping and orchestration name leftover absorb instead of treating leftover rows as read-only ([#165](https://github.com/levifig/loaf/pull/165), LOAF-42).
+- `loaf issue absorb` turns leftover SQLite work into a fresh issue, or dismisses it, without unfreezing the old write commands. A single ref stays leftover-open only. `--all` projects the current project's open tasks and non-terminal intents; `--all --history` also mints done tasks as done issues and archived tasks as cancelled issues, and refuses when the project already has independently created issues. `--dry-run` rehearses the projector. The old alias stays provenance only. Freeze errors name the 0.5.0 horizon. `loaf doctor` and `loaf state doctor` inventory leftover SQLite work and name `loaf issue absorb --all [--history] --dry-run`; they do not mint. Housekeeping and orchestration name leftover absorb instead of treating leftover rows as read-only ([#165](https://github.com/levifig/loaf/pull/165)).
 
 ## [0.3.0] - 2026-08-17
 
 ### Unified Issue work model
-- Unify the Loaf work model on one recursive Issue entity (#164) (0032852a): Change, spec, task, and Intent collapse into Issue and Release. New `loaf issue` CLI with definition-of-done criteria, derived readiness, issue-bound worktrees, and Linear identity delegation. Releases become retroactive (`loaf release suggest` / `cut`). `loaf change` and `loaf spec` are retired; `loaf task` and `loaf intent` writes are frozen with deprecation redirects pending the LOAF-42 migration.
+- Unify the Loaf work model on one recursive Issue entity (#164) (0032852a): Change, spec, task, and Intent collapse into Issue and Release. New `loaf issue` CLI with definition-of-done criteria, derived readiness, issue-bound worktrees, and Linear identity delegation. Releases become retroactive (`loaf release suggest` / `cut`). `loaf change` and `loaf spec` are retired; `loaf task` and `loaf intent` writes are frozen with deprecation redirects pending the legacy issue migration.
 
 ### Unattributed
 - Capture the main-push-policy brief (1333443f)
@@ -349,8 +322,8 @@ One operator's durable memory — journal, wraps, handoffs, refs, verification �
 
 ### Changed
 
-- **Breaking: the session entity is gone; the project journal is now the only session-related structure (SPEC-056).** Journal entries are project-scoped events tagged with an opaque `harness_session_id`, with no session lifecycle, statuses, or rotation — so concurrent conversations across branches, worktrees, and harnesses are conflict-free by construction. `wrap` becomes an optional checkpoint entry written only when a conversation holds synthesis worth saving; nothing is ever "unwrapped." Continuity is a derived, ephemeral digest (latest wrap + recent branch entries + open tasks) emitted at conversation start and never persisted.
-- Converged the strategic docs with the journal-first model and recorded the decision as ADR-019; ADR-007/010/013/016/017 carry amendment clarifiers, and the superseded SPEC-048/SPEC-049 are archived.
+- **Breaking: the session entity is gone; the project journal is now the only session-related structure.** Journal entries are project-scoped events tagged with an opaque `harness_session_id`, with no session lifecycle, statuses, or rotation — so concurrent conversations across branches, worktrees, and harnesses are conflict-free by construction. `wrap` becomes an optional checkpoint entry written only when a conversation holds synthesis worth saving; nothing is ever "unwrapped." Continuity is a derived, ephemeral digest (latest wrap + recent branch entries + open tasks) emitted at conversation start and never persisted.
+- Converged the strategic docs with the journal-first model and recorded the decision as ADR-019; ADR-007/010/013/016/017 carry amendment clarifiers, and the superseded session-lifecycle specifications are archived.
 
 ### Added
 
@@ -373,23 +346,23 @@ One operator's durable memory — journal, wraps, handoffs, refs, verification �
 
 ### Added
 
-- Added build metadata (short git commit + UTC build timestamp) to `loaf --version` / `loaf version`, injected at link time via `-ldflags "-X main.buildCommit=... -X main.buildDate=..."` and wired into the release workflow. The semver identifier is unchanged; build info renders as `loaf <version> (built <date> · git <commit>)` only on release builds, while plain `go build`, `go run`, and `go test` keep the clean `loaf <version>` line (TASK-21).
-- Added `loaf spec new` — the sanctioned SQLite-native spec-create path (mirrors `loaf report create`): `<slug> --title [--id SPEC-NNN] [--source] [--body-file|--body -|--message]`, id auto-allocation across SQLite rows and on-disk specs, and `has_body` in `loaf spec show`. New specs are authored in SQLite and rendered to git via `loaf spec finalize`, so authoring never trips the `artifact-body-write` gate (SPEC-055 Track 1).
+- Added build metadata (short git commit + UTC build timestamp) to `loaf --version` / `loaf version`, injected at link time via `-ldflags "-X main.buildCommit=... -X main.buildDate=..."` and wired into the release workflow. The semver identifier is unchanged; build info renders as `loaf <version> (built <date> · git <commit>)` only on release builds, while plain `go build`, `go run`, and `go test` keep the clean `loaf <version>` line.
+- Added `loaf spec new` — the sanctioned SQLite-native spec-create path (mirrors `loaf report create`): `<slug> --title [--id SPEC-NNN] [--source] [--body-file|--body -|--message]`, id auto-allocation across SQLite rows and on-disk specs, and `has_body` in `loaf spec show`. New specs are authored in SQLite and rendered to git via `loaf spec finalize`, so authoring never trips the `artifact-body-write` gate.
 - Added `loaf spec new --branch <name> --related <SPEC-A,SPEC-B>` to record a spec's branch and related-spec links; `branch`, `source`, and resolved `related` specs are now queryable via `loaf spec show` (stored in SQLite — branch/source as columns, related as `related_to` relationships; durable-render contract unchanged). The `loaf spec show` file-path label is renamed `source:`→`render:` to disambiguate from the new provenance `source`.
 - Added `loaf spec status <ref> <new-status>` — set/transition a spec's lifecycle status (validates the canonical vocabulary, writes a `status_changed` event), closing the gap where specs could not move `draft→implementing→complete` via CLI.
 - Added guarded `loaf spec delete <ref> [--yes]` and `loaf project delete <project-id> [--yes]` — cascade-deleting removal for global-DB entities (refuse without `--yes`, print what was removed, leave finalized git renders in place).
 - Added a `LOAF_DB` env override for the global SQLite database path so dev/smoke runs can isolate from production state (documented in `.agents/AGENTS.md`).
-- Added a CI gate that runs `CGO_ENABLED=0 go build ./...` and `govulncheck` (closes the unproven half of SPEC-043's CGO-free + vulnerability-scan condition).
-- Added an N-writer journal concurrency stress test proving no journal writes are dropped under contention (SPEC-043 concurrency condition).
-- Added a two-`$XDG_DATA_HOME` byte-identical durable-render test (SPEC-044 acceptance condition).
+- Added a CI gate that runs `CGO_ENABLED=0 go build ./...` and `govulncheck`.
+- Added an N-writer journal concurrency stress test proving no journal writes are dropped under contention.
+- Added a two-`$XDG_DATA_HOME` byte-identical durable-render test.
 
 ### Fixed
 
 - Corrected the stale `config/targets.yaml` amp target comment to reflect that Amp is a first-class target emitting skills plus an auto-generated TypeScript runtime plugin, not an experimental skills-only target.
-- Aligned SPEC-049 frontmatter status to `complete`, matching sibling specs and the canonical spec lifecycle vocabulary.
+- Aligned lifecycle-specification frontmatter status to `complete`, matching sibling specs and the canonical spec lifecycle vocabulary.
 - Renumbered the duplicate `ADR-017` install-convention decision to `ADR-018` and listed it in the decisions README.
 - Corrected ADR-017 to record that ADRs and knowledge live under `docs/`, not `.agents/`, fixing an ADR-013 factual error.
-- Made `migrate markdown --remove-source` atomic: it now byte-verifies the entire ephemeral set before deleting any file, so a later-file mismatch leaves earlier files intact (SPEC-045 "deletes nothing on failure" invariant for the reusable primitive).
+- Made `migrate markdown --remove-source` atomic: it now byte-verifies the entire ephemeral set before deleting any file, so a later-file mismatch leaves earlier files intact.
 
 ## [0.1.53] - 2026-06-25
 
@@ -407,46 +380,46 @@ One operator's durable memory — journal, wraps, handoffs, refs, verification �
 
 ### Added
 
-- Added SPEC-052 install-destination parity for Codex, Cursor, OpenCode, and Amp, including a documented `~/.agents/skills` capability table and install records for relocated targets.
-- Added the SPEC-049 reversible `loaf state migrate lifecycle-statuses` migration with copy-run dry-run, live-backup apply, rollback manifest, and top-level `loaf migrate lifecycle-statuses` alias.
-- Added the SPEC-049 canonical lifecycle status registry for Loaf state entities, including per-entity validators and explicit exclusions for finding and run domain vocabularies.
+- Added install-destination parity for Codex, Cursor, OpenCode, and Amp, including a documented `~/.agents/skills` capability table and install records for relocated targets.
+- Added the reversible `loaf state migrate lifecycle-statuses` migration with copy-run dry-run, live-backup apply, rollback manifest, and top-level `loaf migrate lifecycle-statuses` alias.
+- Added the canonical lifecycle status registry for Loaf state entities, including per-entity validators and explicit exclusions for finding and run domain vocabularies.
 
 ### Changed
 
-- SPEC-052 updates `loaf install` to write OpenCode and Amp skills to the shared `~/.agents/skills` convention, preserve foreign shared skills, and relocate old Loaf-owned per-harness skill homes through the SPEC-053 upgrade manifest.
-- Trimmed duplicated skill guidance and stale references in SPEC-050, including orchestration authority handoffs, ADR-source de-duplication, helper-script contract checks, and generated CLI/session reference coverage.
-- Refreshed the SPEC-051 skill routing eval harness and description rewrite validation scaffolding, including dry-run suite checks and conflict-pair probes for measured routing work.
-- SPEC-049 lifecycle write paths now emit canonical statuses such as `done`, `paused`, and `in_progress` while tolerating legacy current rows until migration.
-- SPEC-049 lifecycle list, show, export, and help surfaces now display canonical statuses while accepting legacy status filters during the migration window.
-- SPEC-049 generated CLI reference output and report templates now document canonical lifecycle statuses, including report `done` and the lifecycle-status migration command.
+- Update `loaf install` to write OpenCode and Amp skills to the shared `~/.agents/skills` convention, preserve foreign shared skills, and relocate old Loaf-owned per-harness skill homes through the upgrade manifest.
+- Trimmed duplicated skill guidance and stale references, including orchestration authority handoffs, ADR-source de-duplication, helper-script contract checks, and generated CLI/session reference coverage.
+- Refreshed the skill routing eval harness and description rewrite validation scaffolding, including dry-run suite checks and conflict-pair probes for measured routing work.
+- Canonical lifecycle write paths now emit canonical statuses such as `done`, `paused`, and `in_progress` while tolerating legacy current rows until migration.
+- Canonical lifecycle list, show, export, and help surfaces now display canonical statuses while accepting legacy status filters during the migration window.
+- Generated CLI reference output and report templates now document canonical lifecycle statuses, including report `done` and the lifecycle-status migration command.
 
 ## [0.1.51] - 2026-06-25
 
 ### Added
 
-- Added the SPEC-054 rich artifact entity model for reports, findings, verdicts, and provenance runs, including row-shaped JSON imports and multi-format finding exports.
-- Added SPEC-046 docs Tier-2 indexing and cross-project search, including `loaf docs index`, docs search locators, stale-index refresh, and branch-aware docs results.
-- Added deterministic durable document rendering and finalization in SPEC-044, including scratch/final render commands, self-consistency drift checks, and CI/build drift validation.
-- Added SQLite-native artifact bodies and Tier-1 FTS search in SPEC-043, including artifact body schema, dual-source Markdown fallback, body write verbs, direct-write guardrails, and generated CLI reference coverage.
+- Added the rich artifact entity model for reports, findings, verdicts, and provenance runs, including row-shaped JSON imports and multi-format finding exports.
+- Added docs Tier-2 indexing and cross-project search, including `loaf docs index`, docs search locators, stale-index refresh, and branch-aware docs results.
+- Added deterministic durable document rendering and finalization, including scratch/final render commands, self-consistency drift checks, and CI/build drift validation.
+- Added SQLite-native artifact bodies and Tier-1 FTS search, including artifact body schema, dual-source Markdown fallback, body write verbs, direct-write guardrails, and generated CLI reference coverage.
 
 ### Changed
 
-- Completed SPEC-047 build integrity and parity hardening, including real JS/TS output validation, first-class Amp TypeScript plugin output, Gemini target removal, Codex hook semantics, OpenCode command reachability, and cross-harness parity linting.
-- Converged session workflow guidance in SPEC-048 around SQLite-backed session state, native session journal commands, and render-on-demand Markdown artifacts across skills, templates, agents, and generated targets.
-- SPEC-053 adds the breaking-change migration mechanism: `loaf install --upgrade` now reports externalized vendor skills and requires `--yes` before destructive deprecation cleanup, while `librarian` is available as the durable artifact handler across supported harnesses.
-- SPEC-045 adds `loaf state restore-ephemerals <manifest|backup-dir|backup-id>` to restore and stage ephemeral `.agents` Markdown rollback backups with checksum verification and JSON output before destructive cutover work.
-- SPEC-045 adds `loaf state verify-ephemerals <manifest|backup-dir|backup-id>` to fail closed when ephemeral `.agents` Markdown no longer matches its rollback backup bytes, creating a byte barrier for cutover CI.
-- SPEC-045 adds `loaf check --hook ephemeral-provenance` to guard active specs against dangling ephemeral Markdown provenance after cutover, with ADR-017 recording the SQLite-only ephemeral artifact decision.
-- SPEC-045 makes ephemeral agent artifacts SQLite-only: 422 tracked `.agents` task/session/idea/draft files and `.agents/TASKS.json` were removed from git after a rollback backup and byte barrier, with restore available through `loaf state restore-ephemerals`.
-- SPEC-045 updates `loaf state doctor --json` to report whether the post-cutover ephemeral Markdown surface is clear, including explicit zero counts for legacy ephemeral Markdown files and `.agents/TASKS.json` presence.
-- SPEC-045 changes `loaf session enrich <ref>` to record a native SQLite journal checkpoint linked to the requested session instead of recreating or editing session Markdown.
+- Completed build integrity and parity hardening, including real JS/TS output validation, first-class Amp TypeScript plugin output, Gemini target removal, Codex hook semantics, OpenCode command reachability, and cross-harness parity linting.
+- Converged session workflow guidance around SQLite-backed session state, native session journal commands, and render-on-demand Markdown artifacts across skills, templates, agents, and generated targets.
+- Add the breaking-change migration mechanism: `loaf install --upgrade` now reports externalized vendor skills and requires `--yes` before destructive deprecation cleanup, while `librarian` is available as the durable artifact handler across supported harnesses.
+- Add `loaf state restore-ephemerals <manifest|backup-dir|backup-id>` to restore and stage ephemeral `.agents` Markdown rollback backups with checksum verification and JSON output before destructive cutover work.
+- Add `loaf state verify-ephemerals <manifest|backup-dir|backup-id>` to fail closed when ephemeral `.agents` Markdown no longer matches its rollback backup bytes, creating a byte barrier for cutover CI.
+- Add `loaf check --hook ephemeral-provenance` to guard active specs against dangling ephemeral Markdown provenance after cutover, with ADR-017 recording the SQLite-only ephemeral artifact decision.
+- Make ephemeral agent artifacts SQLite-only: 422 tracked `.agents` task/session/idea/draft files and `.agents/TASKS.json` were removed from git after a rollback backup and byte barrier, with restore available through `loaf state restore-ephemerals`.
+- Update `loaf state doctor --json` to report whether the post-cutover ephemeral Markdown surface is clear, including explicit zero counts for legacy ephemeral Markdown files and `.agents/TASKS.json` presence.
+- Change `loaf session enrich <ref>` to record a native SQLite journal checkpoint linked to the requested session instead of recreating or editing session Markdown.
 
 ## [0.1.50] - 2026-06-14
 
 ### Changed
 
 - Added Homebrew-ready release packaging and CI/CD so tagged Loaf releases can build native archives, upload checksummed assets, and update `levifig/homebrew-tap`.
-- Completed the boring-reliable state/CLI audit, tying the single global SQLite database contract, durable project identity, repair guidance, backup/export/restore evidence, backend/Linear diagnostics, human help, and agent JSON surfaces to tests, docs, SPEC-040, native cutover guardrails, and live primary-checkout dogfood.
+- Completed the boring-reliable state/CLI audit, tying the single global SQLite database contract, durable project identity, repair guidance, backup/export/restore evidence, backend/Linear diagnostics, human help, and agent JSON surfaces to tests, docs, native cutover guardrails, and live primary-checkout dogfood.
 - State, project, repair, backup, and migration terminal help now names the JSON contract fields instead of using generic `Output JSON`, including readiness, diagnostics, repair plans, backup restore guidance, migration context, durable project identity, and applied status.
 - Utility and knowledge-base help surfaces now describe `kb`, `check`, `housekeeping`, and `trace` JSON output in terms of knowledge metadata, hook results, cleanup sections/signals, traced entities, global database scope, and project identity across agent help, command help, and generated CLI reference output.
 - Entity-family help surfaces now describe `brainstorm`, `idea`, `spark`, `tag`, `bundle`, and `link` JSON output in terms of global database scope, project identity, relationships, events, tags, and bundle membership across agent help, command help, and generated CLI reference output.
@@ -691,7 +664,7 @@ One operator's durable memory — journal, wraps, handoffs, refs, verification �
 
 ### Fixed
 
-- `.agents/loaf.json` reads and writes from a linked git worktree now follow the SPEC-036 centralization to the main worktree, so `loaf release --pre-merge` (and other consumers of `loaf.json`) no longer fail with "No version files found" when invoked from a migrated linked worktree.
+- `.agents/loaf.json` reads and writes from a linked git worktree now follow configuration centralization to the main worktree, so `loaf release --pre-merge` (and other consumers of `loaf.json`) no longer fail with "No version files found" when invoked from a migrated linked worktree.
 - `agents-config` now throws an actionable error (instead of silently writing a stale shadow config) when a linked worktree's recorded main has been removed, mirroring the diagnostic surfaced by `loaf migrate worktree-storage`.
 - `workflow-pre-pr` no longer treats backtick-quoted `## [Unreleased]` mentions in CHANGELOG prose as the real section header, so PRs whose intro text references the staging area no longer false-block with "empty Unreleased section".
 
@@ -812,7 +785,7 @@ Users with active `git worktree add` linked worktrees containing `.agents/` cont
 ## [0.1.35] - 2026-04-30
 
 ### Added
-- Add artifact journal entry types (TASK-103) (9443c355)
+- Add artifact journal entry types (9443c355)
 
 ## [0.1.34] - 2026-04-30
 
@@ -847,7 +820,7 @@ Users with active `git worktree add` linked worktrees containing `.agents/` cont
 
 ## [0.1.32] - 2026-04-29
 
-Note: An earlier iteration of this release explored a configurable soul catalog with a `loaf soul` CLI; that work was reviewed in-flight and pivoted away from before merge — the lore decoupling stands, the soul layer does not. See the SPEC-033 archive for the full exploration.
+Note: An earlier iteration of this release explored a configurable soul catalog with a `loaf soul` CLI; that work was reviewed in-flight and pivoted away from before merge — the lore decoupling stands, the soul layer does not. See the archived design discussion for the full exploration.
 
 ### Changed
 - Agent profile prompts (`implementer`, `reviewer`, `researcher`, `librarian`) describe themselves functionally — no Warden/Fellowship lore in profile bodies.
@@ -1126,7 +1099,7 @@ Note: An earlier iteration of this release explored a configurable soul catalog 
 ## [0.1.12] - 2026-04-06
 
 ### Fixed
-- Three advisory hooks (pre-merge, pre-push, post-merge) broken since SPEC-020 — `json-parser.sh` dependency deleted but hooks not migrated
+- Three advisory hooks (pre-merge, pre-push, post-merge) broken after the earlier hook cleanup — `json-parser.sh` dependency deleted but hooks not migrated
 
 ### Changed
 - New `instruction:` field in hooks.yaml — hooks that output static files now use native `if` conditions instead of bash JSON parsing
@@ -1151,7 +1124,7 @@ Note: An earlier iteration of this release explored a configurable soul catalog 
 - `AgentsConfig`/`readAgentsConfig` renamed to `LoafConfig`/`readLoafConfig`
 - `/cleanup` skill and `loaf cleanup` CLI command renamed to `/housekeeping` and `loaf housekeeping`
 - Session journal nudge hooks changed from advisory to imperative ("REQUIRED" before responding)
-- 4 knowledge base files rewritten for post-SPEC-020 architecture (hook-system, build-system, task-system, skill-architecture)
+- 4 knowledge base files rewritten for the updated hook architecture (hook-system, build-system, task-system, skill-architecture)
 
 ### Removed
 - `mcpServers` section from plugin.json and Claude Code build target
@@ -1191,13 +1164,13 @@ Note: An earlier iteration of this release explored a configurable soul catalog 
 ## [0.1.8] - 2026-03-31
 
 ### Changed
-- All 30 skill descriptions rewritten to fit Claude Code's 250-char truncation budget (SPEC-014 follow-up)
+- All 30 skill descriptions rewritten to fit Claude Code's 250-char truncation budget
 - Removed `/ship` alias skill — `/release` already triggers on "ship it"
 
 ## [0.1.7] - 2026-03-30
 
 ### Added
-- `/release` skill — orchestrates squash merge ritual: pre-flight, docs freshness, housekeeping, version bump, merge, cleanup (SPEC-019)
+- `/release` skill — orchestrates squash merge ritual: pre-flight, docs freshness, housekeeping, version bump, merge, cleanup
 - `/ship` alias for `/release` — ergonomic "ship it" invocation
 - `loaf release --bump <type>` — skip interactive bump prompt for non-interactive use
 - `loaf release --base <ref>` — scope commits to a branch instead of last tag
@@ -1212,28 +1185,28 @@ Note: An earlier iteration of this release explored a configurable soul catalog 
 ## [0.1.6] - 2026-03-30
 
 ### Added
-- 4 focused skills extracted from foundations: git-workflow, debugging, security-compliance, documentation-standards (SPEC-014)
-- 3 functional profile agents: implementer (Smith), reviewer (Sentinel), researcher (Ranger) with enforced tool boundaries (SPEC-014)
-- SOUL.md — Warden identity (Arandil) for coordinator sessions (SPEC-014)
-- Self-healing SessionStart hook that restores SOUL.md from canonical template if missing (SPEC-014)
+- 4 focused skills extracted from foundations: git-workflow, debugging, security-compliance, documentation-standards
+- 3 functional profile agents: implementer (Smith), reviewer (Sentinel), researcher (Ranger) with enforced tool boundaries
+- SOUL.md — Warden identity (Arandil) for coordinator sessions
+- Self-healing SessionStart hook that restores SOUL.md from canonical template if missing
 
 ### Changed
-- Foundations skill slimmed to code style, TDD, verification, review, and production readiness (SPEC-014)
-- All 29 skill descriptions rewritten with action verb openers, user-intent phrases, negative routing, and success criteria (SPEC-014)
-- Hook `skill:` fields reassigned to match new skill boundaries (SPEC-014)
-- Hook agent predicates updated from role-agent IDs to profile names across 12 hook scripts (SPEC-014)
-- OpenCode session hooks now stored as arrays, fixing collision where only the last hook per event survived (SPEC-014)
-- ARCHITECTURE.md updated to document profile model and Warden identity (SPEC-014)
+- Foundations skill slimmed to code style, TDD, verification, review, and production readiness
+- All 29 skill descriptions rewritten with action verb openers, user-intent phrases, negative routing, and success criteria
+- Hook `skill:` fields reassigned to match new skill boundaries
+- Hook agent predicates updated from role-agent IDs to profile names across 12 hook scripts
+- OpenCode session hooks now stored as arrays, fixing collision where only the last hook per event survived
+- ARCHITECTURE.md updated to document profile model and Warden identity
 
 ### Removed
-- 8 role-based agents: pm, backend-dev, frontend-dev, dba, devops, qa, design, power-systems (SPEC-014)
-- `{{AGENT:...}}` substitution system from build pipeline (SPEC-014)
-- Legacy `plugin-groups` section from hooks.yaml (SPEC-014)
+- 8 role-based agents: pm, backend-dev, frontend-dev, dba, devops, qa, design, power-systems
+- `{{AGENT:...}}` substitution system from build pipeline
+- Legacy `plugin-groups` section from hooks.yaml
 
 ## [0.1.5] - 2026-03-29
 
 ### Added
-- `loaf cleanup` command — scan `.agents/` artifacts and recommend cleanup actions (SPEC-012)
+- `loaf cleanup` command — scan `.agents/` artifacts and recommend cleanup actions
   - Covers all 7 artifact types: sessions, tasks, specs, plans, drafts, councils, reports
   - `--dry-run` and `--sessions`/`--specs`/`--plans`/`--drafts` filters
   - Non-TTY pipe-safe output (behaves like `--dry-run` when piped)
@@ -1244,9 +1217,9 @@ Note: An earlier iteration of this release explored a configurable soul catalog 
 - Shared prompt helpers (`askYesNo`, `askChoice`, `isTTY`) in `cli/lib/prompts.ts`
 - Pre-merge prompt hook for squash merge conventions (clean body, no auto-dump)
 - Prompt hook support in build system (Claude Code target; filtered for other targets)
-- Advisory `/reflect` suggestion in `/implement` AFTER phase when session has extractable learnings (SPEC-011)
-- Post-implementation reflection flag in `/shape` Step 9 for sessions with strategic tensions (SPEC-011)
-- `/reflect` recommendation in `/cleanup` extraction checks before archiving decision-rich sessions (SPEC-011)
+- Advisory `/reflect` suggestion in `/implement` AFTER phase when session has extractable learnings
+- Post-implementation reflection flag in `/shape` Step 9 for sessions with strategic tensions
+- `/reflect` recommendation in `/cleanup` extraction checks before archiving decision-rich sessions
 
 ### Changed
 - Spec cleanup (task archival, spec archival) moved to pre-merge on the feature branch instead of post-merge on main
@@ -1265,8 +1238,8 @@ Note: An earlier iteration of this release explored a configurable soul catalog 
 - `loaf task sync --push` — push JSON metadata to .md frontmatter (reverse sync)
 - Tasks section in `/cleanup` skill with drift detection and CLI-based archival
 - Archive step in post-merge housekeeping hook
-- SPEC-016 draft: Council Advisory Redesign
-- `loaf version` subcommand showing version, Node.js, built targets, and content stats (TASK-020)
+- Draft council advisory redesign
+- `loaf version` subcommand showing version, Node.js, built targets, and content stats
 
 ### Changed
 - Post-merge hook split into pre-merge checklist (changelog, version, build) and post-merge housekeeping (archival, cleanup)
@@ -1277,31 +1250,31 @@ Note: An earlier iteration of this release explored a configurable soul catalog 
 ## [0.1.3] - 2026-03-27
 
 ### Added
-- Workflow enforcement hooks: pre-PR (conditional blocker), post-merge (housekeeping checklist), pre-push (branch safety) (SPEC-015)
+- Workflow enforcement hooks: pre-PR (conditional blocker), post-merge (housekeeping checklist), pre-push (branch safety)
 - Project-level CHANGELOG.md in Keep a Changelog format with retroactive entries
 - Hook library functions `parse_command` and `parse_exit_code` in json-parser.sh
 
 ## [0.1.2] - 2026-03-27
 
 ### Added
-- `/bootstrap` skill and `loaf setup` CLI command for 0-to-1 project setup (SPEC-013)
+- `/bootstrap` skill and `loaf setup` CLI command for 0-to-1 project setup
 
 ## [0.1.1] - 2026-03-25
 
 ### Added
-- Knowledge management system with staleness tracking and lifecycle hooks (SPEC-009)
+- Knowledge management system with staleness tracking and lifecycle hooks
 - `loaf task` and `loaf spec` CLI commands with managed markdown data model
 - `loaf task list --active` flag for filtering in-progress tasks
 - `loaf release` command with pre-release versioning support
 - `loaf init` command with safe project scaffolding
 - `loaf install` command replacing the shell-based installer
 - Vitest test infrastructure and task management tests
-- TypeScript build system replacing the shell-based builder (SPEC-008)
+- TypeScript build system replacing the shell-based builder
 - Loaf CLI v2.0.0 skeleton and source reorganization
 
 ### Fixed
 - Post-merge housekeeping steps added to implement skill
-- Code review findings from SPEC-008 implementation addressed
+- Address code review findings from the CLI rewrite
 - Redundant root CLAUDE.md symlink removed
 
 ## [0.1.0] - 2026-03-15
