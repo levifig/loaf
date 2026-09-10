@@ -58,6 +58,7 @@ One operator's durable memory â€” journal, wraps, handoffs, refs, verification â
 
 ### Fixed
 
+- Scoped skill upgrades preserve the installed harness cohort's canonical metadata and use the same source for preview and apply, avoiding repeated updates and lost OpenCode settings ([#230](https://github.com/levifig/loaf/issues/230)).
 - `loaf release cut` inserts a fresh Unreleased stub and generated release before historical releases when an existing changelog has no Unreleased section, preserving newest-first order and existing prose ([#114](https://github.com/levifig/loaf/issues/114)).
 - `loaf doctor` reports same-version changes to installed harness content using the upgrade planner, with actionable diagnostics and no automatic repair ([#218](https://github.com/levifig/loaf/issues/218)).
 - Cursor check hooks request JSON output so successful checks do not block tools with an invalid-response error; genuine findings retain their blocking exit status ([#238](https://github.com/levifig/loaf/issues/238)).
