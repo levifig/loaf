@@ -12,7 +12,7 @@ This README describes the current source tree. Until its next release is publish
 
 **Private continuity** — A project-scoped SQLite journal records decisions, discoveries, and optional wrap summaries across conversations and worktrees. There is no session entity to open or close. Startup context is derived from the journal and Git; useful resumption depends on recording meaningful context, not retaining a second work queue.
 
-**Tracker-native workflow** — Pitch → shape → implement → ship → release keeps discovery, selected work, review, and publication distinct. GitHub and Linear provider skills use connections already available in your harness; Loaf does not configure their credentials or synchronize a parallel local issue database. On GitHub, the selected board's Status distinguishes noncommittal Backlog from selected Todo work.
+**Tracker-native workflow** — Pitch → shape → implement → ship → release keeps discovery, selected work, review, and publication distinct. GitHub and Linear provider skills use connections already available in your harness; Loaf never synchronizes a parallel local issue database, and does not configure their credentials. On GitHub, the selected board's Status distinguishes noncommittal Backlog from selected Todo work.
 
 **Profile-based agents** — Functional profiles are defined by tool access, not job titles. A Smith with `python-development` skills becomes a backend engineer; the same Smith with `infrastructure-management` becomes a DevOps engineer. Skills determine what an agent knows; the profile determines what it can touch.
 
@@ -61,7 +61,7 @@ Implement a shaped issue through a started worktree and pull request, review the
 |---------|--------------|
 | `/implement` | Execute a shaped issue with orchestrated agent delegation |
 | `/ship` | Review, verify, and land one PR — the sole quality gate; tracker contract and verification evidence form the PR body |
-| `/release` | Prepare and publish already-landed work through Git and the repository's release tooling, with explicit publication approval |
+| `/release` | Prepare and publish already-landed work retroactively through Git and the repository's release tooling, with explicit publication approval |
 
 ### Preserve Learning
 

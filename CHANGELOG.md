@@ -10,6 +10,7 @@ The current workflow uses your native tracker for shared work and the PATH-insta
 
 - **Breaking:** Serve the sync relay over HTTP on port 8080 by default; require TLS certificates for ports 443 and 8443, or terminate TLS at a reverse proxy ([#198](https://github.com/levifig/loaf/pull/198)).
 - Keep GitHub Backlog distinct from selected Todo work: triage requires a human choice before filing, shape does not select work automatically, and bare implement reports the unblocked Todo frontier without starting ([#242](https://github.com/levifig/loaf/pull/242)).
+- Name the GitHub Projects v2 board by title, or as the project board when that title matches the repository; never as `Project #N` or a user-scoped `users/<login>/projects/<n>` path. This repository records GitHub as its tracker with destination `levifig/loaf` and the Loaf board.
 - Use tracker-native work definitions and provider skills for the current Flow, with one-time legacy migration kept separate from ongoing collaboration ([#225](https://github.com/levifig/loaf/pull/225)).
 - Maintain current design and rationale in architecture topics; reserve separate decision records for rare, narrow commitments, and make legacy ADR validation explicitly opt-in ([#243](https://github.com/levifig/loaf/pull/243)).
 - Resolve harness commands through user-managed PATH; keep Claude plugins content-only and provide install or upgrade guidance when required CLI capabilities are unavailable ([#244](https://github.com/levifig/loaf/pull/244)).
