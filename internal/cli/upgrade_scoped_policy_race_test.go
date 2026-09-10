@@ -10,9 +10,7 @@ import (
 func TestScopedCodexPolicyPreservesLateEdits(t *testing.T) {
 	for _, action := range []string{"update", "create"} {
 		t.Run(action, func(t *testing.T) {
-			originalPath := os.Getenv("PATH")
 			root, home, rulePath, _ := setupScopedCodexPolicyFixture(t)
-			t.Setenv("PATH", originalPath)
 			if err := copyDirContentsForInstall(filepath.Join(root, "dist", "cursor", "skills"), filepath.Join(root, "dist", "codex", "skills")); err != nil {
 				t.Fatal(err)
 			}

@@ -100,9 +100,7 @@ func TestCodexRulesDoNotRequireGlobalGuidance(t *testing.T) {
 }
 
 func TestScopedCodexRuleUpgradeIgnoresSymlinkedGlobalGuidance(t *testing.T) {
-	originalPath := os.Getenv("PATH")
 	root, home, rulePath, old := setupScopedCodexPolicyFixture(t)
-	t.Setenv("PATH", originalPath)
 	path := filepath.Join(home, ".codex", "AGENTS.md")
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)

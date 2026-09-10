@@ -1,4 +1,4 @@
-name: Build Distributions
+name: CI Spot Checks and Distribution Integrity
 
 on:
   push:
@@ -19,13 +19,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      LOAF_DEV_LINK: '0'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # Full history: the change gate and its tests read committed history
-          # (provenance, retention replay, the grandfathered dogfood conversion).
+          # Preserve provenance for the native build and durable render checks.
           fetch-depth: 0
 
       - name: Setup Go
@@ -33,48 +35,14 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Node and Bun serve only the harness capability runners and the emitted
-      # TypeScript plugin checks. Loaf itself has no JavaScript dependencies.
+      # Node validates emitted JavaScript. TypeScript uses the runner's existing
+      # tsc; verify-generated fails explicitly if it is unavailable.
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: '22'
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Build all targets
-        run: make build
-
-      - name: Verify Go tests
-        run: go test ./...
-
-      - name: Verify capability runner tests
-        run: make capability-tests
-
-      - name: Verify CGO-free build
-        run: CGO_ENABLED=0 go build ./...
-
-      - name: Run govulncheck
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
-
-      - name: Verify durable render drift
-        run: bin/loaf check --hook render-drift --json
-
-      - name: Verify build artifacts are in sync
-        run: |
-          go run ./cmd/loafdev verify-artifacts
-          if ! git diff --quiet -- dist/ plugins/ .claude-plugin/; then
-            echo "ERROR: Build artifacts are out of sync with source."
-            echo ""
-            echo "Files affected:"
-            git diff --stat -- dist/ plugins/ .claude-plugin/
-            echo ""
-            echo "Diff (first 200 lines):"
-            git diff -- dist/ plugins/ .claude-plugin/ | head -200
-            echo ""
-            echo "Run 'make build' locally and commit the resulting changes alongside"
-            echo "the source changes that produced them (per AGENTS.md convention)."
-            exit 1
-          fi
-          echo "Build artifacts are in sync with source."
+      # Comprehensive Go/static/adapter tests run locally with verify-local.
+      # CI retains only bounded spots plus source-to-distribution integrity.
+      - name: Verify spot checks and generated artifacts
+        run: make ci-check

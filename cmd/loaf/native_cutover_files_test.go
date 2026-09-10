@@ -125,17 +125,22 @@ func TestReleaseWorkflowVerifiesEvidenceBeforeStampedBuild(t *testing.T) {
 	}
 
 	workflow := string(body)
-	verifyTests := strings.Index(workflow, "      - name: Verify tests\n")
-	testCommand := strings.Index(workflow, "        run: go test ./...\n")
+	verifyTests := strings.Index(workflow, "      - name: Verify release integrity spot checks\n")
+	testCommand := strings.Index(workflow, "        run: make release-smoke\n")
 	buildRelease := strings.Index(workflow, "      - name: Build release targets\n")
 	stampCommit := strings.Index(workflow, "          export LOAF_BUILD_COMMIT=\"$(git rev-parse --short=7 HEAD)\"\n")
 	buildCommand := strings.Index(workflow, "          go run ./cmd/loafdev release\n")
 	packageRelease := strings.Index(workflow, "      - name: Package release archives\n")
-	if verifyTests < 0 || testCommand < 0 || buildRelease < 0 || stampCommit < 0 || buildCommand < 0 || packageRelease < 0 {
+	verifyChecksums := strings.Index(workflow, "        run: sha256sum --check --strict checksums.txt\n")
+	uploadAssets := strings.Index(workflow, "      - name: Upload release assets\n")
+	if verifyTests < 0 || testCommand < 0 || buildRelease < 0 || stampCommit < 0 || buildCommand < 0 || packageRelease < 0 || verifyChecksums < 0 || uploadAssets < 0 {
 		t.Fatalf("release workflow is missing its evidence verification or checked-out-tree release build contract")
 	}
-	if !(verifyTests < testCommand && testCommand < buildRelease && buildRelease < stampCommit && stampCommit < buildCommand && buildCommand < packageRelease) {
-		t.Fatalf("release workflow must verify evidence before stamping and packaging the checked-out tree")
+	if !(verifyTests < testCommand && testCommand < buildRelease && buildRelease < stampCommit && stampCommit < buildCommand && buildCommand < packageRelease && packageRelease < verifyChecksums && verifyChecksums < uploadAssets) {
+		t.Fatalf("release workflow must check delivery behavior before stamping the checked-out tree and verify packaged checksums before upload")
+	}
+	if strings.Contains(workflow, "run: go test ./...") || strings.Contains(workflow, "run: make verify-local") {
+		t.Fatalf("release workflow must use bounded delivery checks; comprehensive tests run locally")
 	}
 	if strings.Count(workflow, "LOAF_BUILD_COMMIT") != 1 || strings.Count(workflow, "LOAF_BUILD_DATE") != 1 {
 		t.Fatalf("release workflow must confine build metadata to the release build step")
