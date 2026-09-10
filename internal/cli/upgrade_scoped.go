@@ -154,36 +154,31 @@ func (r Runner) applyScopedUpgrade(out io.Writer, planned installDryRunPlan, opt
 		}
 	}()
 
-	defaults, layoutHome := resolveInstallLayout(projectRoot)
-	toolByKey := installToolsByKey(tools)
+	_, layoutHome := resolveInstallLayout(projectRoot)
 	hookState, releaseHookState := r.hookStateForApply(projectRoot)
 	defer releaseHookState()
 
 	skillNames := selectedSkillNames(refs)
 	if len(skillNames) > 0 {
-		groups, err := groupSkillsInstallByDestination(scopedTargetOptions(refs, defaults, toolByKey, distRoot, version, layoutHome, projectRoot, hookState))
-		if err != nil {
-			txn.failed = err
-			return err
-		}
-		for _, group := range groups {
-			source, err := selectCanonicalSkillsSource(group.Options)
-			if err != nil {
-				txn.failed = err
-				return err
+		seenDestinations := map[string]bool{}
+		for _, skill := range rechecked.Skills {
+			destination := filepath.Dir(skill.Destination)
+			if seenDestinations[destination] {
+				continue
 			}
-			src := filepath.Join(source.DistDir, "skills")
-			if err := txn.backup(filepath.Join(group.Destination, loafSkillManifestFile)); err != nil {
+			seenDestinations[destination] = true
+			src := filepath.Dir(skill.skillSource)
+			if err := txn.backup(filepath.Join(destination, loafSkillManifestFile)); err != nil {
 				txn.failed = err
 				return err
 			}
 			for _, name := range skillNames {
-				if err := txn.backup(filepath.Join(group.Destination, name)); err != nil {
+				if err := txn.backup(filepath.Join(destination, name)); err != nil {
 					txn.failed = err
 					return err
 				}
 			}
-			if err := syncSelectedManagedSkills(src, group.Destination, skillNames); err != nil {
+			if err := syncSelectedManagedSkills(src, destination, skillNames); err != nil {
 				txn.failed = err
 				return err
 			}
@@ -332,63 +327,6 @@ func summarizeScopedPlan(plan installDryRunPlan) string {
 		}
 	}
 	return b.String()
-}
-
-func scopedTargetOptions(refs []scopedArtifactRef, defaults map[string]string, toolByKey map[string]detectedInstallTool, distRoot string, version string, home string, projectRoot string, hookState hookStateResolver) []targetInstallOptions {
-	seen := map[string]bool{}
-	var options []targetInstallOptions
-	for _, ref := range refs {
-		if ref.Target == scopedSkillsTarget {
-			continue
-		}
-		if seen[ref.Target] {
-			continue
-		}
-		seen[ref.Target] = true
-		configDir := defaults[ref.Target]
-		if tool, ok := toolByKey[ref.Target]; ok && tool.configDir != "" {
-			configDir = tool.configDir
-		}
-		options = append(options, targetInstallOptions{
-			Target:         ref.Target,
-			DistDir:        filepath.Join(distRoot, ref.Target),
-			ConfigDir:      configDir,
-			Upgrade:        true,
-			Version:        version,
-			HomeDir:        home,
-			CodexHome:      resolveInstallCodexHome(configDir),
-			ProjectRoot:    projectRoot,
-			SkipSkillsSync: true,
-			HookState:      hookState,
-		})
-	}
-	if len(options) == 0 {
-		// Skills-only selections still need a destination group. Use cursor if
-		// present, otherwise the first installed target, so the shared store
-		// resolves the same way upgrade does.
-		for _, target := range []string{"cursor", "opencode", "codex", "amp"} {
-			configDir := defaults[target]
-			if tool, ok := toolByKey[target]; ok && tool.configDir != "" {
-				configDir = tool.configDir
-			}
-			if configDir == "" {
-				continue
-			}
-			options = append(options, targetInstallOptions{
-				Target:         target,
-				DistDir:        filepath.Join(distRoot, target),
-				ConfigDir:      configDir,
-				Upgrade:        true,
-				Version:        version,
-				HomeDir:        home,
-				ProjectRoot:    projectRoot,
-				SkipSkillsSync: true,
-				HookState:      hookState,
-			})
-			break
-		}
-	}
-	return options
 }
 
 func applySelectedHookEntries(options targetInstallOptions) error {
@@ -797,11 +735,12 @@ func desiredAdapterBody(options targetInstallOptions, artifact targetAdapterArti
 }
 
 func enrichScopedPlanDiffs(plan *installDryRunPlan, hookState hookStateResolver, projectRoot string, version string, distRoot string, tools []detectedInstallTool, refs []scopedArtifactRef) error {
-	defaults, layoutHome := resolveInstallLayout(projectRoot)
-	toolByKey := installToolsByKey(tools)
+	_, layoutHome := resolveInstallLayout(projectRoot)
 	for i, skill := range plan.Skills {
-		name, _ := strings.CutPrefix(skill.ID, "skill:")
-		src := scopedSkillSource(refs, defaults, toolByKey, distRoot, version, layoutHome, projectRoot, name)
+		src := skill.skillSource
+		if src == "" {
+			return fmt.Errorf("selected skill %s has no resolved canonical source", skill.ID)
+		}
 		dest := skill.Destination
 		diff, liveHash, desiredHash, err := skillTreeDiff(src, dest)
 		if err != nil {
@@ -916,18 +855,6 @@ func desiredTextFromTree(root string) (string, error) {
 	})
 	return b.String(), err
 }
-func scopedSkillSource(refs []scopedArtifactRef, defaults map[string]string, toolByKey map[string]detectedInstallTool, distRoot string, version string, home string, projectRoot string, skill string) string {
-	options := scopedTargetOptions(refs, defaults, toolByKey, distRoot, version, home, projectRoot, nil)
-	if len(options) == 0 {
-		return ""
-	}
-	source, err := selectCanonicalSkillsSource(options)
-	if err != nil {
-		return filepath.Join(options[0].DistDir, "skills", skill)
-	}
-	return filepath.Join(source.DistDir, "skills", skill)
-}
-
 func skillTreeDiff(src string, dest string) (string, string, string, error) {
 	desiredHash, err := hashInstallSkillTree(src)
 	if err != nil && !os.IsNotExist(err) {

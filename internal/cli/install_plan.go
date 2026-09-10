@@ -68,6 +68,9 @@ type targetDistributionPlan struct {
 }
 
 type artifactPlanDecision struct {
+	// skillSource is resolved with the installed cohort during classification.
+	// Scoped diff and apply reuse it instead of choosing from artifact selections.
+	skillSource   string
 	ID            string `json:"id"`
 	Kind          string `json:"kind"`
 	Destination   string `json:"destination"`
@@ -497,6 +500,9 @@ func planManagedSkills(src string, dest string) ([]artifactPlanDecision, error) 
 			detail = reason
 		}
 		decisions = append(decisions, artifactPlanDecision{ID: "skill:" + skill, Kind: "skill", Destination: destination, Action: action, Detail: detail})
+	}
+	for i := range decisions {
+		decisions[i].skillSource = filepath.Join(src, strings.TrimPrefix(decisions[i].ID, "skill:"))
 	}
 	sort.SliceStable(decisions, func(i, j int) bool { return decisions[i].ID < decisions[j].ID })
 	return decisions, nil
