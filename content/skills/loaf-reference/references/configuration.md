@@ -24,11 +24,18 @@ These are decisions, not defaults. The CLI cannot guess them — ask, then recor
 - **GitHub account** — `integrations.github.account`, the login the project's `gh`
   commands must run as. The `github-account` enforcement hook checks it against
   `gh auth status`; a mismatch tells the user to run `gh auth switch`.
+- **GitHub destination** — when GitHub is the canonical tracker, also record
+  `integrations.github.repository` (`owner/name`) and `integrations.github.board`
+  (the Projects v2 board **title**). If that title matches the repository or Loaf
+  project, agents should call it the project board. Never record or speak
+  `Project #N`. There is no CLI setter; hand-edit, then `loaf config check --json`.
 - **Issue identity** — `issue.authority` (`local`, `linear`, or `github`) and
   `issue.prefix`. Prefix is the local alias token (`VCAM`) or, when authority is
   `linear`, the Linear team key (`ENG`). `loaf init` and a newly created loaf.json
   record a derived local prefix; `loaf issue identity --prefix` / `--authority`
-  is the setter. `--fix` never invents these on an existing file.
+  is the setter. `--fix` never invents these on an existing file. When GitHub is
+  the tracker, set `--authority github` and keep local `LOAF-*` rows as leftover
+  compatibility until an explicit migrate.
 - **Tracker / integration election** — `integrations.linear.enabled` and the other `integrations.*` toggles. Linear execution identity is `issue.authority`, not the historical skill-mode toggle. When Linear is active, record the exact server exposed by the harness as `integrations.linear.mcp_server_name`. The Linear or bootstrap skill records this project-owned value; Loaf does not install or authenticate the MCP.
 - **Which harnesses to install** — the targets passed to `loaf install --to <target>`
   (or `--to all`).

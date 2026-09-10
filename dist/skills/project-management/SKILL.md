@@ -17,7 +17,7 @@ Use the closed [`project-management/v1`](contract.json) operation vocabulary. Th
 ## Critical Rules
 
 - Discover only connections the harness already exposes. Never install, authenticate, or configure one.
-- Select and report the exact native destination before mutation. A provider name alone is not a destination.
+- Select and report the exact native destination before mutation. A provider name alone is not a destination. On GitHub, name the board by title; if the title matches the repository or Loaf project, call it the project board. Never report `Project #N`.
 - Discover runtime capabilities before choosing an operation or fidelity.
 - Read the destination or target record before every write, including duplicate detection before creation.
 - Re-read authoritative native state after every mutation.

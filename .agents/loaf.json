@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "initialized": "2026-07-06T22:22:46Z",
   "issue": {
-    "authority": "local",
+    "authority": "github",
     "prefix": "LOAF"
   },
   "knowledge": {
@@ -15,7 +15,9 @@
   },
   "integrations": {
     "github": {
-      "account": "levifig"
+      "account": "levifig",
+      "repository": "levifig/loaf",
+      "board": "Loaf"
     },
     "linear": {
       "enabled": false

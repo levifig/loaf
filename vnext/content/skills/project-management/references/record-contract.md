@@ -5,7 +5,7 @@
 ## Operation Sequence
 
 1. Run `connection.discover` over connections already visible to the harness.
-2. Select one exact native destination; stop if the choice changes workspace, team, or GitHub Project and remains ambiguous. When GitHub is the tracker, the destination includes the repository and the Projects v2 board.
+2. Select one exact native destination; stop if the choice changes workspace, team, or named GitHub board and remains ambiguous. When GitHub is the tracker, the destination includes the repository and the Projects v2 board, identified by board title (or “the project board” when that title matches the repository or Loaf project). Never identify a GitHub board as `Project #N`.
 3. Run `capability.discover` and select the highest honest fidelity for the requested operation.
 4. Read current native state.
 5. Route each requested semantic once to its canonical native field and apply one bounded mutation when requested and authorized.
@@ -33,7 +33,7 @@ Creation includes a prior search or destination read for an existing matching re
 - `definition.write` routes the ephemeral work-contract packet into canonical problem, completion, exclusion, verification, and risk fields. The packet is not stored or copied as a monolithic shadow artifact.
 - `hierarchy.change` changes parent/child structure.
 - `dependency.change` changes blocking or related-work edges.
-- `status.transition` selects a valid native workflow state after reading available states. On GitHub that is Issue open/closed together with destination Project Status; missing Project is a configuration gap, not an open/closed stand-in for Todo.
+- `status.transition` selects a valid native workflow state after reading available states. On GitHub that is Issue open/closed together with board Status; a missing board is a configuration gap, not an open/closed stand-in for Todo.
 - `comment.append` adds collaboration or evidence only.
 
 When a provider or connection lacks an exact mapping, report the lower fidelity. Do not encode a relationship in prose, claim a status through a comment, or replace a canonical definition with an activity note. Unsupported hierarchy or dependency semantics remain unsupported; prose is not a substitute.

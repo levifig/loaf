@@ -30,7 +30,7 @@ Bare invocation is the ceremony. Inventory first, show candidates, wait for a pi
 - Confirm the exact native destination and candidate references before reading or mutating.
 - Show candidates to the human before any recommendation or mutation. The human never has to fish an idea out of the journal or a CLI dump.
 - Read each candidate, its current workflow state, and relevant recent comments before deciding.
-- An unrecorded raw direction stays a spark or idea, goes to pitch, or moves to tracker Backlog when the human chooses. Do not capture it in a local issue or intake ledger. Moving to Backlog creates or adopts a native record in the uncommitted lane (GitHub: destination Project Status Backlog; Linear: the team's uncommitted/backlog state, or Triage inbox when that inbox is configured), then resolves the private capture against that native id.
+- An unrecorded raw direction stays a spark or idea, goes to pitch, or moves to tracker Backlog when the human chooses. Do not capture it in a local issue or intake ledger. Moving to Backlog creates or adopts a native record in the uncommitted lane (GitHub: board Status Backlog; Linear: the team's uncommitted/backlog state, or Triage inbox when that inbox is configured), then resolves the private capture against that native id.
 - Never say "publish." The disposition is move to Backlog, keep, archive, pitch, or shape.
 - Do not move anything to Backlog until the human picks by table index, native id, or an explicit "all of these." Multiple picks in one turn are allowed.
 - Adopt an existing native record that already represents the candidate. Do not mint a second Issue.
@@ -65,7 +65,7 @@ On a bare `/triage` or "let's triage," do this before recommending:
 
 When the human replies `3`, `1, 4`, `1-3`, or `all ideas to Backlog`, only then create or adopt native records, set Backlog, and resolve the private captures. Search for duplicates first.
 
-If destination config is incomplete, still show the table. Name the gap after the candidate, not instead of it. A missing recorded Project is a configuration gap to prompt; it is not a reason to hide the idea. A working harness GitHub connection (`gh`, MCP, or equivalent) that can see the destination repo and Project is enough.
+If destination config is incomplete, still show the table. Name the gap after the candidate, not instead of it. A missing recorded board is a configuration gap to prompt; it is not a reason to hide the idea. A working harness GitHub connection (`gh`, MCP, or equivalent) that can see the destination repository and named board is enough. Refer to that board by title, not as `Project #N`.
 
 ## Verification
 

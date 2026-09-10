@@ -15,7 +15,7 @@ consumers:
   - implementer
   - reviewer
   - researcher
-last_reviewed: 2026-09-05
+last_reviewed: 2026-09-10
 ---
 
 # Shared Work Model
@@ -46,7 +46,7 @@ The shared-work flow is:
 4. **Ship** verifies the implementation, reviews the result, and updates tracker status only after provider readback.
 5. **Release** groups coherent work that has already landed into a published version.
 
-Triage may move private captures to tracker Backlog before selection; pitch can fill an existing intent record. An explicit filing request during pitch uses that same triage path. These are methods, not duplicate lifecycle records. Provider-specific field names and state transitions stay in the provider skill; GitHub lanes come from the configured Project Status, not Issue open/closed.
+Triage may move private captures to tracker Backlog before selection; pitch can fill an existing intent record. An explicit filing request during pitch uses that same triage path. These are methods, not duplicate lifecycle records. Provider-specific field names and state transitions stay in the provider skill; GitHub lanes come from the named board's Status, not Issue open/closed. Refer to that board by title, or as the project board when the title matches the repository — never as `Project #N`.
 
 ## Work Contract
 
