@@ -9,15 +9,20 @@ See [README.md](README.md) for what Loaf is and how to install it.
 ## Quick Start
 
 ```bash
-make build                     # Build the native CLI + all targets (Go only; no npm)
-loaf build                     # After the initial build, use the CLI directly
-loaf install                   # Onboard every detected harness
+LOAF_DEV_LINK=0 make build      # Build the native CLI + content without switching the user's PATH runtime
+bin/loaf build                 # Rebuild content with this checkout's CLI
+bin/loaf upgrade --dry-run      # Preview changes to existing installations
 ```
+
+Use the Go toolchain declared in `go.mod`. Node and optional TypeScript tooling remain for harness plugin checks and capability tests; npm is not a build or install entry point. `make build` without `LOAF_DEV_LINK=0` may activate this checkout's development binary through Loaf's existing launcher pointer. Never change a user's runtime selection as a side effect of verification.
+
+`loaf install` has no dry-run mode. Applying onboarding with `bin/loaf install` is a separate, explicitly scoped action that changes live harness content; use isolated homes in tests.
 
 ## Project Structure
 
 ```
 cmd/loaf/main.go                # CLI entry point (func main → internal/cli Runner)
+cmd/loafdev/main.go             # Repository build, package, and release tooling
 
 internal/                       # CLI implementation (Go)
 ├── cli/                        # Command surface: Runner dispatch (cli.go), one runX per command
@@ -26,20 +31,22 @@ internal/                       # CLI implementation (Go)
 │   ├── check.go                # loaf check
 │   ├── install.go              # loaf install
 │   └── journal.go              # loaf journal
-├── state/                      # SQLite-backed state (journal, issues, findings, ...)
+├── devtool/                    # Native build, archive, checksum, and Homebrew tooling
+├── state/                      # SQLite continuity, identity, migrations, and compatibility
 └── project/                    # Project identity and root resolution
 
-cli/                            # Node-side build tooling (not the CLI itself)
-├── runtime/loaf-launcher.cjs   # Node launcher shim (copied to bin/loaf)
-└── scripts/                    # build-go, build-release, verify-go-artifacts, etc.
+cli/scripts/                   # Remaining harness capability runners and tests
 
-bin/loaf                        # Installed Node launcher; execs the native binary in bin/native/
+bin/loaf                       # Generated native executable; bin/ is not tracked
 
 content/                        # Distributable content
 ├── skills/{name}/SKILL.md      # Domain knowledge + references/ + templates/
 ├── templates/                  # Shared templates (distributed at build time)
 ├── agents/{name}.md            # Functional profiles (tool boundaries + behavioral contracts)
-└── hooks/{pre,post}-tool/      # Hook scripts
+└── hooks/instructions/         # Static hook guidance; maintained checks live in Go
+
+vnext/content/                 # Tracker-native Flow overrides used by the content build
+docs/architecture/             # Living design and rationale, organized by topic
 
 config/                         # Build configuration
 ├── hooks.yaml                  # Hook definitions
@@ -54,13 +61,13 @@ config/                         # Build configuration
 |-----------|----------|----------|
 | Skills | `content/skills/{name}/` | `SKILL.md` |
 | Agents | `content/agents/{name}.md` | - |
-| Hooks | `content/hooks/{pre,post}-tool/` | - |
+| Hooks | `internal/cli/check*.go`, `content/hooks/instructions/` | `config/hooks.yaml` |
 | Config | `config/` | `hooks.yaml`, `targets.yaml` |
 | CLI | `internal/cli/` | `cli.go` |
 
 ## Agent Profiles
 
-See [SOUL.md](../SOUL.md) for the Warden identity and fellowship conventions.
+See [SOUL.md](.agents/SOUL.md) for the Warden identity and fellowship conventions. The host's available tools and permission controls determine actual enforcement.
 
 | Profile | Concept | Tool Access | Use For |
 |---------|---------|-------------|---------|
@@ -74,11 +81,13 @@ See [SOUL.md](../SOUL.md) for the Warden identity and fellowship conventions.
 
 **Add skill:** Create `content/skills/{name}/SKILL.md` (and optional `SKILL.claude-code.yaml` sidecar). Skills are auto-discovered from `content/skills/` at build time — do not register the skill itself in `hooks.yaml`.
 
-**Add hook:** Create script in `content/hooks/{pre,post}-tool/`, register the hook instance in `hooks.yaml` with `skill:` pointing at the owning skill. Skills that ship no hooks need no `hooks.yaml` entry.
+**Add hook:** Implement maintained deterministic behavior in the native CLI with regression tests, then register the hook in `config/hooks.yaml` with `skill:` pointing at its owner. An entry without an explicit script or command dispatches to `loaf check --hook <id>`. Use static instruction files for guidance, not new Bash/Python helpers. Skills that ship no hooks need no hook entry.
 
 **Add template:** Create in `content/skills/{name}/templates/` (skill-specific) or `content/templates/` + register in `shared-templates` in `targets.yaml`
 
 **Add target:** Create `internal/cli/build_{target}.go`, add the name to `defaultBuildTargets` and the target switch in `internal/cli/build.go` (see `build_amp.go` for the pattern)
+
+**Update architecture:** Keep current design, constraints, and rationale in `docs/architecture/` topics. Use a separate decision record only for an exceptional, narrow commitment whose context needs durable preservation. Git retains superseded text; do not keep obsolete ADRs as a competing description of current design. Architecture and Reflect own this policy.
 
 ## Skill Development
 
@@ -87,10 +96,10 @@ See [SOUL.md](../SOUL.md) for the Warden identity and fellowship conventions.
 User-invocable workflow skills must log their invocation to the project journal as their first action. Include context — arguments, intent, or what triggered the invocation:
 
 ```bash
-loaf journal log "skill(shape): shaping auth token rotation into LOAF-42"
+loaf journal log "skill(shape): shaping auth token rotation in the selected native issue"
 loaf journal log "skill(housekeeping): routine cleanup, no specific trigger"
 loaf journal log "skill(wrap): end-of-conversation checkpoint"
-loaf journal log "skill(implement): LOAF-42 — journal-first hook rewrite"
+loaf journal log "skill(implement): native hook rewrite for the selected issue"
 ```
 
 There is no start step and no "active session" to find — the current branch and an opaque `harness_session_id` are attached automatically. This creates an audit trail of which skills ran; `/wrap` reads recent entries to check whether housekeeping or other periodic skills were run.
@@ -423,14 +432,14 @@ There are no session statuses: nothing is `active`, `paused`, `stopped`, `done`,
 
 **Entry Format:**
 ```markdown
-[YYYY-MM-DD HH:MM] skill(implement): implementing LOAF-42
+[YYYY-MM-DD HH:MM] skill(implement): implementing the selected native issue
 [YYYY-MM-DD HH:MM] decision(scope): chose X because Y
 [YYYY-MM-DD HH:MM] commit(abc1234): message
 [YYYY-MM-DD HH:MM] discover(scope): learned Z from file/path
 [YYYY-MM-DD HH:MM] wrap(scope): tried X, abandoned because Y, next is Z
 ```
 
-See [templates/journal.md](../content/templates/journal.md) for the full entry-type table and format rules.
+See [templates/journal.md](content/templates/journal.md) for the full entry-type table and format rules.
 
 ## Build System
 
@@ -455,6 +464,8 @@ make build-go                  # Build the native binary; claim ~/.local/bin/loa
 make build                     # Binary + CLI reference + all content targets, then verify
 make typecheck                 # Compile check (go test ./... -run=^$)
 make test                      # Run Go tests (go test ./...)
+make vet                       # Static Go checks
+make capability-tests          # Test adapter runners; does not launch a live harness session
 go run ./cmd/loafdev --help    # The build, release, packaging, and tag tooling behind the Makefile
 ```
 
@@ -462,21 +473,14 @@ There is no npm. `package.json` remains only as the distribution manifest (name,
 
 ### Dev Isolation (avoid polluting the global DB)
 
-The global SQLite DB resolves via `XDG_DATA_HOME` to `~/.local/share/loaf/loaf.sqlite`.
-Any real `loaf` command — dogfooding, manual smokes, scratch experiments — writes to
-that production database unless redirected. Before running the real binary against
-throwaway state, set `LOAF_DB` to an absolute path on a temp file:
+The global SQLite DB resolves via `XDG_DATA_HOME` to `~/.local/share/loaf/loaf.sqlite`. Real CLI commands can open or write that production database unless redirected. Before dogfooding against throwaway state, set `LOAF_DB` to an absolute temporary path:
 
 ```bash
 export LOAF_DB="$(mktemp -d)/loaf.sqlite"
 loaf journal recent      # operates on the isolated DB
-rm -f "$LOAF_DB"         # clean up when done
 ```
 
-When `LOAF_DB` is set to an absolute path it is used verbatim as the SQLite file
-and overrides `XDG_DATA_HOME`. A relative value is ignored (standard XDG resolution
-applies). Go unit tests isolate via temp dirs and `t.Setenv`, so no global state is
-touched during `go test`.
+When `LOAF_DB` is an absolute path it overrides `XDG_DATA_HOME`; a relative value is ignored. This isolates database state, not harness homes: install/upgrade testing must also use isolated target directories. Go unit tests use temporary directories and `t.Setenv`.
 
 ### Targets
 
@@ -485,14 +489,15 @@ touched during `go test`.
 | claude-code | `plugins/loaf/` | Merges sidecars into output |
 | opencode | `dist/opencode/` | Skills, agents, and commands (from skills) |
 | cursor | `dist/cursor/` | Skills, agents, and hooks |
-| codex | `dist/codex/` | Skills only |
+| codex | `dist/codex/` | Skills, hook configuration, and opt-in classified command policy |
 | amp | `dist/amp/` | Skills, runtime plugin |
 
 ### Before Committing
 
-- [ ] `loaf build` succeeds
+- [ ] `LOAF_DEV_LINK=0 make build` succeeds without switching the user's runtime
 - [ ] `make typecheck` passes
 - [ ] `make test` passes
+- [ ] `make vet` passes; affected adapter tests pass
 - [ ] If tracked build artifacts in `dist/` or `plugins/` changed, commit them with the source changes that produced them
 - [ ] Frontmatter has required fields
 - [ ] New skills live under `content/skills/` (auto-discovered at build); only hook instances are registered in `hooks.yaml`
@@ -501,6 +506,8 @@ touched during `go test`.
 - [ ] Template links resolve (no broken `templates/` paths)
 - [ ] No Windows-style paths
 
+Verify required capabilities, payloads, ownership, and rollback behavior. Do not require a new live-harness matrix merely because a harness version or build stamp changed. See [Runtime and Delivery](docs/architecture/runtime-and-delivery.md) for the boundary-specific verification policy.
+
 ## Configuration
 
 ### Hook Model
@@ -508,10 +515,10 @@ touched during `go test`.
 Two types of hooks serve different purposes:
 
 **Enforcement Hooks** — Quality gates that block bad actions:
-- Run automatically at git lifecycle points (pre-commit, pre-push)
-- Example: Secrets scanning, linting, type checking
+- Run at supported harness tool boundaries; command matchers can target actions such as `git commit` or `git push`
+- Examples: secrets scanning and destructive-command checks
 - Can be run manually via `loaf check`
-- Exit non-zero to block the action
+- Blocking checks exit non-zero; advisory checks report without blocking
 - Hooks without explicit `script:` or `command:` auto-dispatch as `loaf check --hook <id>`
 
 **Skill Instruction Hooks** — Context injection at tool invocation:
@@ -522,13 +529,15 @@ Two types of hooks serve different purposes:
 
 ### Hook Dispatch Mechanisms
 
-Three dispatch types control how a hook executes:
+Hook dispatch depends on the registered entry and the target adapter:
 
 | Type | Field | Behavior |
 |------|-------|----------|
-| `script` (default) | `script:` | Runs a shell script |
+| Native check | No explicit script or command | Runs `loaf check --hook <id>` |
 | `command` | `command:` | Runs a CLI command (e.g., `loaf journal log --from-hook`) |
+| Instruction | `instruction:` | Emits a static instruction file through the target adapter |
 | `prompt` | `prompt:` | Injects text directly to the AI model |
+| Legacy script | `script:` | Compatibility only; do not add maintained Bash/Python implementations |
 
 ### Hook Fields
 
@@ -536,7 +545,7 @@ Three dispatch types control how a hook executes:
 |-------|----------|-------|
 | `id` | Yes | Unique hook identifier |
 | `skill` | Yes | Owning skill name |
-| `type` | No | `script` (default), `command`, or `prompt` |
+| `type` | No | Adapter dispatch type; use native check defaults for maintained enforcement |
 | `matcher` | No | Tool name filter: `"Edit\|Write\|Bash"` |
 | `if` | No | Conditional matcher, e.g., `"Bash(git commit:*)"` — hook only runs when invocation matches |
 | `failClosed` | No | `true` to block the action on hook failure (enforcement hooks) |
@@ -549,17 +558,13 @@ Register hooks with their `skill:` field pointing to the relevant skill:
 
 ```yaml
 hooks:
-  pre-commit:
-    - id: scan-secrets
-      skill: security-compliance
-      script: hooks/pre-commit/scan-secrets.sh
   pre-tool:
     - id: check-secrets
-      skill: foundations
-      type: command
-      command: loaf check --hook check-secrets
+      skill: security-compliance
       failClosed: true
-      matcher: "Bash"
+      blocking: true
+      matcher: "Edit|Write|Bash"
+      timeout: 30000
     - id: journal-nudge
       skill: orchestration
       type: prompt
@@ -594,8 +599,11 @@ Configure target-specific behavior and sidecars.
 
 - Version in `package.json`
 - Build injects version into output files
-- Bump version before release commits
+- Change the version only with explicit approval; keep manifest, generated content, release heading, and tag consistent
 - Use semantic versioning
+- Curate `CHANGELOG.md` for users: aggregate landed behavior, explain compatibility changes, and cite public references rather than internal work IDs
+- Prepare and verify native archives with `LOAF_DEV_LINK=0 make release` and `make package`; these build artifacts but do not publish
+- Tagging, publishing GitHub releases, and updating the Homebrew tap require explicit authorization
 
 ## Related Documentation
 

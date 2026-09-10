@@ -2,21 +2,23 @@
 
 > "Why have just a slice when you can get the whole loaf?"
 
-Loaf is an opinionated agentic framework that gives AI coding assistants structured knowledge, enforced tool boundaries, and a coherent workflow from idea to implementation to learning. Write your skills once, deploy to Claude Code, OpenCode, Cursor, Codex, and Amp.
+Loaf brings shared skills, a native Go CLI, and tracker-native workflows to Claude Code, OpenCode, Cursor, Codex, and Amp. Skills guide judgment, the CLI handles deterministic checks and private continuity, and your tracker owns shared work.
+
+This README describes the current source tree. Until its next release is published, installation from GitHub Releases or Homebrew may provide an earlier version; see the [published releases](https://github.com/levifig/loaf/releases) and [unreleased changes](CHANGELOG.md#unreleased).
 
 ## Why Loaf?
 
 **Portable knowledge** — Skills cover workflows, engineering standards, and language expertise. Build once, deploy to supported AI coding tools without rewriting anything.
 
-**Project journal model** — A single SQLite-backed journal captures decisions and progress across every conversation, project-scoped and correlated by an opaque harness id. There is no session entity to open or close, so concurrent conversations across branches and worktrees stay conflict-free. Handoff artifacts live separately in `.agents/handoffs/`. Work survives context loss, compaction, and `/clear`.
+**Private continuity** — A project-scoped SQLite journal records decisions, discoveries, and optional wrap summaries across conversations and worktrees. There is no session entity to open or close. Startup context is derived from the journal and Git; useful resumption depends on recording meaningful context, not retaining a second work queue.
 
-**Tracker-native workflow** — The Loaf Flow is pitch → shape → implement → ship → release. `/pitch` authors a problem-space narrative; `/shape` creates or updates the canonical native tracker work contract through the selected provider skill. The tracker owns identity, body, definition of done, status, hierarchy, assignment, and collaboration. `/implement` uses repository-native Git mechanics; `/ship` is the sole quality gate and updates the native record after verification; `/release` cuts retroactively. Loaf never synchronizes a parallel local issue database with the tracker.
+**Tracker-native workflow** — Pitch → shape → implement → ship → release keeps discovery, selected work, review, and publication distinct. GitHub and Linear provider skills use connections already available in your harness; Loaf does not configure their credentials or synchronize a parallel local issue database. On GitHub, the selected board's Status distinguishes noncommittal Backlog from selected Todo work.
 
 **Profile-based agents** — Functional profiles are defined by tool access, not job titles. A Smith with `python-development` skills becomes a backend engineer; the same Smith with `infrastructure-management` becomes a DevOps engineer. Skills determine what an agent knows; the profile determines what it can touch.
 
-**Conversation continuity** — Pick up exactly where you left off with full traceability. The project journal captures decisions and progress in SQLite; a derived, ephemeral contract-v2 digest emits named journal and Git-derived active-truth layers with explicit availability and diagnostics at conversation start. Native tracker work is read through the selected provider and harness connection, never mirrored into this local digest. Explicit transfer packets live in `.agents/handoffs/` until housekeeping deletes them after deprecation.
+**Living architecture** — Keep current design and rationale in topic-based `docs/architecture/` documents. Architecture and Reflect update that current account; separate decision records are rare and narrow, while Git preserves superseded text.
 
-**Hooks as quality gates** — Two hook types: enforcement hooks (pre-commit secrets scanning, pre-push linting) block bad commits automatically; skill instruction hooks inject context at tool invocation time. Language-aware and automatic.
+**Native checks** — Supported harness hooks invoke `loaf` from your PATH for secrets, destructive-command safety, naming, and other checks. Blocking checks refuse the matching action; advisory checks provide guidance. These tool hooks do not imply repository-wide Git-hook enforcement outside the harness.
 
 ## Workflow
 
@@ -24,20 +26,20 @@ Loaf keeps intent, implementation, and learning connected:
 
 ```mermaid
 flowchart LR
-    idea["/idea · spark<br/><i>capture — offline-safe, no ID</i>"] --> triage["/triage"]
-    pitch["/pitch<br/><i>problem discovery</i>"] --> shape
-    triage -- promote --> shape["/shape<br/><b>native tracker work</b>: body · DoD · out-of-scope"]
-    shape -- "criterion earns its own DoD<br/>provider-native child" --> shape
-    shape -- "sharp question" --> decision["native decision work"]
-    decision -- answered --> shape
-    shape -- ready --> build["/implement<br/>Git worktree · branch · PR"]
-    build --> ship["/ship<br/><b>the sole quality gate</b>"]
-    ship -- merge --> main[("main")]
-    main -. "reads landed since last tag" .-> release["/release<br/>suggest → cut"]
-    release -- "tag · notes · members as fact" --> main
+    idea["Private idea or spark"] --> triage["Triage"]
+    triage -- "human chooses to file" --> backlog["Native tracker · Backlog"]
+    pitch["Pitch · discover the problem"] --> shape["Shape · define the work"]
+    backlog --> shape
+    shape -- "human selects" --> todo["Native tracker · Todo"]
+    todo --> build["Implement · Git branch and PR"]
+    build --> ship["Ship · review and verify"]
+    ship -- "authorized merge" --> main[("Landed code")]
+    main --> release["Release · notes, artifacts, publication"]
 ```
 
-Everything left of ship plans **forward** and can be re-planned freely in the canonical tracker. Provider-native hierarchy is used only when supported with exact fidelity; questions too foggy to act on stay as prose until they sharpen. The release track reads **backward** from what actually landed. The private journal records continuity; `/reflect` and an optional `/wrap` preserve what the work taught.
+Filing an idea does not authorize implementation. Shaping a definition does not select it into Todo by itself, and bare `/implement` reports the unblocked Todo frontier without starting. Ship is the sole quality gate; release reads backward from already-landed work. Reflect and an optional wrap preserve what the work taught.
+
+The slash forms below are shorthand: Claude Code's plugin uses `/loaf:name` (for example `/loaf:shape`); other supported harnesses use `/name` where they expose skill commands.
 
 ### Pitch and Shape
 
@@ -59,7 +61,7 @@ Implement a shaped issue through a started worktree and pull request, review the
 |---------|--------------|
 | `/implement` | Execute a shaped issue with orchestrated agent delegation |
 | `/ship` | Review, verify, and land one PR — the sole quality gate; tracker contract and verification evidence form the PR body |
-| `/release` | Cut a retroactive release from already-landed issues (`loaf release suggest` / `cut`) |
+| `/release` | Prepare and publish already-landed work through Git and the repository's release tooling, with explicit publication approval |
 
 ### Preserve Learning
 
@@ -84,14 +86,17 @@ CLI commands that support the workflow:
 | `loaf check` | Run enforcement hooks manually |
 | `loaf project` | Manage durable project identity (show, rename, move) |
 | `loaf issue` | Frozen legacy local-issue and one-time migration compatibility; not ongoing tracker work |
-| `loaf kb` | Knowledge base management |
+| `loaf kb` | Discover and validate project knowledge, including architecture topics |
 | `loaf journal` | Project journal: log, recent, search, show, context, export |
 | `loaf housekeeping` | Review and archive agent artifacts |
-| `loaf release` | Cut a retroactive release: `suggest` the range, `cut` the version |
+| `loaf upgrade --dry-run` | Inspect managed-content updates and conflicts before applying |
+| `loaf upgrade --select <target/id>` | Apply only explicitly selected managed artifacts |
+
+Historical `loaf issue` and `loaf release suggest/cut` commands remain compatibility surfaces. They do not replace the native tracker or define the current Release skill's publication authority.
 
 ## Profiles
 
-Loaf uses functional profiles defined by mechanically enforced tool boundaries — not role titles, not domain labels. What an agent *can do* is fixed by its profile. What it *knows* comes from skills loaded at spawn time.
+Loaf defines functional agent profiles by intended tool boundaries, with domain knowledge supplied by skills. Enforcement depends on the host's agent and permission mechanisms; a profile name alone is not a sandbox.
 
 | Profile | Role | Tool Access | What It Does |
 |---------|------|-------------|--------------|
@@ -100,7 +105,7 @@ Loaf uses functional profiles defined by mechanically enforced tool boundaries �
 | **Ranger** | Researcher | Read + web | Scouts far, gathers intelligence, reports structured findings. |
 | **Librarian** | Librarian | Read + Edit (.agents/) | Tends the project journal and durable `.agents/` artifacts, including wrap checkpoints. Does not forge code or scout. |
 
-The main conversation is the **Warden** — it coordinates and delegates but never implements directly. See [SOUL.md](.agents/SOUL.md) for the full fellowship identity.
+The coordinating conversation is the **Warden**. Delegation follows the active harness's tools and the project's instructions; independent reviews remain read-only.
 
 ## Skills
 
@@ -117,7 +122,7 @@ Skills you invoke directly to drive work forward.
 | `release` | Cutting a retroactive release from already-landed issues |
 | `research` | Investigating questions, comparing options |
 | `strategy` | Discovering or updating strategic direction |
-| `architecture` | Creating Architecture Decision Records |
+| `architecture` | Maintaining current architecture topics and exceptional, narrow decision records |
 | `idea` | Quick capture of ideas for later evaluation |
 | `triage` | Review and process intake queue (sparks + raw ideas); may hand to pitch or shape |
 | `reflect` | Integrating learnings into strategic docs |
@@ -125,6 +130,7 @@ Skills you invoke directly to drive work forward.
 | `handoff` | Creating disposable transfer packets in `.agents/handoffs/` |
 | `bootstrap` | Bootstrapping new or existing projects (initial issue arc after pitched BRIEF) |
 | `linear` | Mapping `project-management/v1` operations to Linear through the harness's already-configured, authenticated native connection |
+| `github` | Mapping native issues and the selected GitHub board's workflow through an already-authenticated harness connection |
 | `wrap` | Optional end-of-conversation checkpoint: shipped, pending, next |
 
 Explore and brainstorm are agent techniques (not user slash entry); agents reach for them when direction is undecided — human entry intent routes to `/pitch`.
@@ -176,8 +182,10 @@ Build once, deploy everywhere. Skills are the universal layer; profiles and hook
 | Claude Code | ✓ | ✓ | ✓ | Primary |
 | OpenCode | ✓ | ✓ | ✓ | Full support |
 | Cursor | ✓ | ✓ | ✓ | Full support |
-| Codex | — | ✓ | Fallback | Skills + opt-in basic command policy |
-| Amp | — | ✓ | — | Skills + runtime plugin |
+| Codex | — | ✓ | ✓ | Skills, hooks, and opt-in classified command policy |
+| Amp | — | ✓ | Runtime plugin | Skills and native delegation integrations |
+
+Compatibility is checked by required capabilities, not a whitelist of exact harness versions. Full Node/JavaScript removal is not complete: some harness adapters and development checks still use TypeScript/JavaScript. The Loaf executable and maintained migrated helpers are native Go.
 
 ## Getting Started
 
@@ -191,7 +199,7 @@ macOS and Linux, one line:
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/levifig/loaf/main/install.sh)"
 ```
 
-It downloads the release archive for your platform, verifies it against the release's `checksums.txt`, unpacks it under `~/.local/share/loaf/releases/<version>`, links `~/.local/bin/loaf`, and runs `loaf install`. Re-run the same line to move to a newer release. `LOAF_VERSION=0.5.0` pins a version, `--no-install` skips the harness step, `--uninstall` removes what it installed, and a `~/.local/bin/loaf` it did not create is never replaced.
+It downloads the release archive for your platform, verifies it against the release's `checksums.txt`, unpacks it under `~/.local/share/loaf/releases/<version>`, links `~/.local/bin/loaf`, and runs `loaf install`. Re-run it to acquire a newer release, or set `LOAF_VERSION` to an already-published version. `--no-install` skips harness changes; `--uninstall` removes installer-owned files. An existing PATH entry it does not own is never replaced. The bootstrap script needs Bash and download/archive tools; running the installed Loaf CLI needs neither Node nor a Go toolchain.
 
 Or with Homebrew:
 
@@ -210,15 +218,41 @@ loaf install -i                       # pick from a checklist
 loaf install --to cursor,claude-code  # name targets
 ```
 
-For Claude Code, the installed distribution registers itself as the `levifig-loaf` marketplace and installs `loaf@levifig-loaf` through the `claude` CLI. Commands are scoped under `loaf:` (for example `/loaf:implement`). The plugin ships content and hooks only; hooks invoke `loaf` from your PATH, without a bundled runtime, private pin, or fallback path. You manage the runtime version and must make it available to Claude Code. Installation warns when it is missing; plugin installation does not install or upgrade the runtime. Adding `levifig/loaf` from GitHub with `/plugin marketplace add` still works and tracks `main`, but the content then comes from GitHub rather than from your installed distribution.
+For Claude Code, choose one content source:
+
+- **Installed distribution:** `loaf install --to claude-code` registers that distribution as the `levifig-loaf` marketplace and installs `loaf@levifig-loaf`. Keep the source directory available while registered.
+- **GitHub main:** `claude plugin marketplace add levifig/loaf` followed by `claude plugin install loaf@levifig-loaf --scope user` lets Claude maintain its own checkout of current source. This can be newer than the latest CLI release.
+
+These are alternatives, not two simultaneous owners. Loaf refuses to replace a same-named marketplace pointing elsewhere. Inspect existing registrations before changing channels; native marketplace removal also uninstalls its plugins.
+
+The Claude plugin ships content and hooks only. Commands use `/loaf:name`, and hooks invoke bare `loaf` from user-managed PATH without a bundled binary, private pin, or fallback. You choose the runtime and upgrade it when required capabilities are missing. Plugin installation does not acquire or switch that runtime.
 
 ### Keep it current
 
 ```bash
-loaf upgrade
+loaf upgrade --dry-run
+loaf upgrade                  # Apply after reviewing the plan
 ```
 
-This refreshes every installed harness and the Claude Code plugin from the installed distribution. To update the binary itself, re-run the install one-liner or `brew upgrade loaf`; `loaf upgrade` tells you which one applies.
+`loaf upgrade` refreshes managed content; it does not replace your PATH executable. Update that binary through its owner, such as the installer or `brew upgrade loaf`.
+
+For a GitHub-backed Claude marketplace, refresh it through Claude instead:
+
+```bash
+claude plugin marketplace update levifig-loaf
+claude plugin update loaf@levifig-loaf --scope user
+```
+
+Restart existing Claude sessions after a plugin refresh. A distribution-driven Loaf upgrade will report a conflict for a differently sourced Claude marketplace; narrow other harness updates with `--to cursor,opencode,codex,amp` as appropriate.
+
+When only selected artifacts should change, use plan IDs from the dry run:
+
+```bash
+loaf upgrade --select skills/skill:architecture --dry-run
+loaf upgrade --select skills/skill:architecture
+```
+
+Scoped upgrades preserve unselected artifacts and version stamps, recheck ownership under a lock, and roll back on failure. Modified or foreign files are not disposable. Missing or incapable PATH runtimes produce install/upgrade guidance; an older but capable runtime is acceptable.
 
 ### Upgrading Existing Projects
 
@@ -255,12 +289,14 @@ Activating a verified copy is a manual, quiesced operator procedure, not an auto
 |--------|----------|
 | OpenCode | `~/.config/opencode/` or `~/.opencode/` |
 | Cursor | `~/.cursor/` |
-| Codex | `$CODEX_HOME/skills/` or `~/.codex/skills/` |
+| Shared skills | `~/.agents/skills/` for supported store-sharing harnesses |
+| Claude Code | Claude-managed marketplace and plugin cache |
+| Codex | `$CODEX_HOME` or `~/.codex/` for hooks/policy; shared skills where supported |
 | Amp | `~/.amp/` plus configured skill/plugin locations |
 
 ## Integrations
 
-**MCP Servers:** Configure Linear directly in each harness and expose one account-specific server per project; the Linear and bootstrap skills record its name in `.agents/loaf.json` but do not install or authenticate it. **Optional:** Serena provides semantic editing for large codebases and can be configured through `loaf install`.
+**Tracker connections:** Select GitHub or Linear through an already-authenticated connection exposed by your harness. GitHub workflows require the exact repository and a selected board with Backlog, Todo, In Progress, and Done lanes; In Review is supported when present. Provider credentials and live work remain outside Loaf's CLI. **Optional:** Serena provides semantic editing and can be configured through the install flow.
 
 **Claude Code LSP Servers:** gopls, pyright, typescript-language-server, solargraph
 
@@ -269,7 +305,7 @@ Activating a verified copy is a manual, quiesced operator procedure, not an auto
 ```bash
 git clone https://github.com/levifig/loaf.git
 cd loaf
-make build
+LOAF_DEV_LINK=0 make build
 ```
 
 A development build carries its source commit inside the binary (`loaf --version` reports `<version>+g<short-sha>`, plus `.dirty` when the tree had uncommitted changes) and updates Loaf's user-local launcher pointer (`$XDG_DATA_HOME/loaf/current-dev-launcher`). `~/.local/bin/loaf` is created only when that name is absent, as a symlink to the pointer, so the last worktree built becomes the active CLI when the PATH name is free. Set `LOAF_DEV_LINK=0` to opt out; an existing real file, directory, or any other symlink is never overwritten. Activation is best-effort and never fails a successful native build. A failed multi-target rebuild leaves the previous successful `bin/native` binaries in place. Root `bin/` is a build output and is not tracked.
@@ -279,13 +315,13 @@ See [AGENTS.md](AGENTS.md) for development guidelines.
 ```bash
 make typecheck       # Compile check
 make test            # Run tests
-loaf build           # Build all targets (after the initial make build)
-loaf install         # Onboard detected harnesses from this checkout
+bin/loaf build       # Rebuild content using this checkout's executable
+bin/loaf upgrade --dry-run  # Preview existing-install changes from this checkout
 ```
 
-Everything runs through Go and `make`; there is no npm. Node is needed only for the harness capability runners under `cli/scripts/`.
+Build, release, and packaging orchestration runs through Go and `make`; there is no npm install step. Use the Go toolchain declared in `go.mod`. Node remains for harness capability-runner tests and emitted JavaScript checks; TypeScript checks require `tsc` in CI or when explicitly enabled. `make capability-tests` tests the runners without launching live harness sessions.
 
-**Testing locally:** run `loaf install` from the checkout after `make build`. It registers the checkout as the Claude Code marketplace and installs the other harnesses from `dist/`; `loaf install -i` picks a subset.
+**Testing locally:** distribution content is resolved from the executable, not the working directory. Use `bin/loaf` for this checkout after building with `LOAF_DEV_LINK=0`. When live onboarding is explicitly intended, `bin/loaf install -i` selects harnesses and applies changes; install has no dry-run mode. Claude registration is refused if the same marketplace name already points elsewhere. Use isolated homes for installation tests so verification does not change your live setup.
 
 ## License
 
