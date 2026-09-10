@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+- _No unreleased changes yet._
+
+## [0.5.0] - 2026-09-10
+
 The current workflow uses your native tracker for shared work and the PATH-installed CLI for private continuity and checks. Older local-work commands remain compatibility surfaces, not a parallel tracker. The separate vNext runtime remains introspection-only; its integrated skills do not imply that every planned persistence or synchronization journey has cut over.
 
 ### Changed
