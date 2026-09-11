@@ -5,6 +5,7 @@
 ## Operation Sequence
 
 1. Run `connection.discover` over connections already visible to the harness.
+   Prefer a usable GitHub MCP matching `integrations.github.account` when GitHub is the tracker, and select that connection before resource access. If none is available or the connector identity is missing, ambiguous, or mismatched, an installed authenticated `gh` available to the main agent is a valid exposed connection before asking the user to configure MCP. Verify MCP identity through the connector and `gh` identity separately; `gh` is not MCP evidence. Unrelated Linear MCP does not decide GitHub destination.
 2. Select one exact native destination; stop if the choice changes workspace, team, or named GitHub board and remains ambiguous. When GitHub is the tracker, the destination includes the repository and the Projects v2 board, identified by board title (or “the project board” when that title matches the repository or Loaf project). Never identify a GitHub board as `Project #N`.
 3. Run `capability.discover` and select the highest honest fidelity for the requested operation.
 4. Read current native state.

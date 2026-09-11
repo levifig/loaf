@@ -29,6 +29,7 @@ An unavailable native concept stays `unsupported`. Do not emulate hierarchy in c
 ## Connection Boundary
 
 The module discovers only connections already exposed by the harness. It never installs or authenticates a connector, requests provider credentials, calls provider HTTP APIs itself, proxies traffic through Loaf, or stores ongoing local-to-native mappings.
+An installed authenticated provider CLI such as `gh` may already be exposed to the main agent; Loaf does not own a provider client. Select the GitHub connection that matches `integrations.github.account` before resource access. MCP actor identity is the selected connector's own principal; `gh` identity is not MCP evidence. The project-manager execution remains connector-only; `gh` fallback is main-agent authority and does not bypass the account requirement or permissions.
 
 ## Contributor Verification
 
