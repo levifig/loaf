@@ -626,6 +626,10 @@ Configure target-specific behavior and sidecars.
 Shared work identity, definition, definition of done, status, hierarchy, assignment, and collaboration live only in the configured native tracker. Use the selected `project-management/v1` provider skill through a connection already exposed and authenticated by the harness.
 Loaf never configures provider authentication, calls a provider API itself, proxies tracker traffic, or keeps an ongoing local-to-tracker mapping. Local-to-tracker synchronization does not exist. A legacy local project may be moved once through an explicit, agentic, verified migration; ongoing work then remains tracker-native.
 
+**Before Implementation:**
+Before substantive edits, including ordinary fixes and regression tests, use the configured project-management provider to search for and reuse or create a native issue, then verify its scope, completion criteria, and selected state. Honor an existing explicit implementation request without asking for selection again; issue creation or Backlog alone is not selection. Load the loaf-reference skill's Flow Semantics for the canonical rule and narrow exceptions.
+Read-only discovery and purely incidental corrections with no behavior, meaning, requirement, or scope change may proceed first; a one-line bug or security fix is substantive. If the tracker or required readback is unavailable, report the blocker and continue only permitted discovery unless the user explicitly overrides this prerequisite. Never substitute a local shadow tracker or configure authentication.
+
 **CLI Commands:**
 - `loaf journal log/recent/search/context` - Project journal
 - `loaf check` - Run enforcement hooks

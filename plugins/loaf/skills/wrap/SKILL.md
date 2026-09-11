@@ -43,6 +43,7 @@ An optional checkpoint before the conversation ends — the conscious review of 
   and knowledge note preservation. The main wrap flow remains responsible for
   user-facing decisions and commit/push prompts.
 - A wrap is optional. Write a `wrap(scope)` entry only when there is synthesis worth saving; a conversation that ends without one leaves a perfectly valid journal. Nothing is ever ended or archived — archival is housekeeping's job
+- Load the project-management skill and apply its Capture Deferred Work rule to any concrete actionable loose ends still unfiled; capture is mandatory even when the optional wrap checkpoint is skipped.
 
 ## Verification
 
@@ -72,7 +73,7 @@ Before anything else, complete the journal for this conversation:
 1. **Review what wasn't logged** — scan the conversation for anything not yet recorded:
    - Decisions — design choices, trade-offs, direction changes not yet logged as `decision()` entries
    - Discoveries — anything learned that future conversations would benefit from
-   - Todos — action items that came up but weren't captured
+   - Todos — action items that came up but weren't captured in the native tracker; journal context does not replace the required issue
 2. **Log each** via `loaf journal log` before proceeding. This is the last chance — the journal IS the external memory.
 
 ### Step 2: Gather Data
@@ -127,7 +128,7 @@ When called near ship or release, wrap runs the same steps but keeps PR landing 
 
 ## Suggests Next
 
-After the wrap-up report, suggest housekeeping if it wasn't run this session and artifacts need attention. When sparks or open ideas need a Backlog move or problem discovery, point at triage rather than treating explore or brainstorm as the next front-door workflow. Session-next may name an unblocked Todo item; wrap does not file Issues or pick tomorrow's build from Backlog.
+After the wrap-up report, suggest housekeeping if it wasn't run this session and artifacts need attention. When sparks or open ideas need a Backlog move or problem discovery, point at triage rather than treating explore or brainstorm as the next front-door workflow. Concrete actionable follow-ups must already have verified native issue links or explicit unfiled blockers. Session-next may name an unblocked Todo item; wrap does not pick tomorrow's build from Backlog.
 
 ## Related Skills
 

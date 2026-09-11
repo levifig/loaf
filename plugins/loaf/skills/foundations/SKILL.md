@@ -31,6 +31,8 @@ Engineering foundations for consistent, high-quality code.
 - Use type hints on all public functions
 - Validate inputs at trust boundaries
 - Deliver [rideable increments](references/rideable-increments.md): complete, useful operator journeys whose breadth is narrow without weakening integrity
+- Before substantive edits, including ordinary fixes and regression tests, establish and verify a selected native issue. Load the loaf-reference skill's Flow Semantics for the canonical prerequisite and narrow exceptions, then use the project-management skill for provider operations. Honor an existing explicit implementation request without asking for selection again; an issue in Backlog alone is not selected work.
+- Before a final response or handoff, load the project-management skill and apply its Capture Deferred Work rule to concrete deferred or out-of-scope findings; do not leave actionable future work only in prose or the journal.
 
 ### Never
 

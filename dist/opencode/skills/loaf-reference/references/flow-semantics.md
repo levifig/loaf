@@ -6,6 +6,16 @@ Loaf optimizes for coherent outcomes and reliable continuation across people, ag
 
 A native record may hold public intent without being selected work. Backlog (or the provider's uncommitted lane) is shared memory: thin or rich, with no promise of execution. Todo is shaped and selected. `/implement` starts only from selected work. Sparks and ideas stay private until triage moves them to Backlog.
 
+## Before Substantive Implementation
+
+Establish a selected native issue before substantive edits, including regression-test edits, even for ordinary requests such as "fix this bug" that name no workflow or issue. Load the project-management skill and use the configured provider connection to search for and reuse a matching issue, or create one when none covers the work. Read back the issue's scope, observable completion criteria, and selected workflow state before editing. An existing issue covers incidental related work; do not create a ticket for every edit. Subagents receive the verified native reference and contract before making substantive edits; a harness task identifier is not a substitute.
+
+An explicit user instruction to implement a concrete change selects that work: establish or update its contract, reflect the selection in the native workflow, and verify it without asking for the same confirmation again. Creating an issue, adding it to Backlog, or seeing an open issue does not by itself select it. If the request only asks to capture an idea or inspect candidates, do not infer execution authority.
+
+Read-only discovery, inspection, and running existing checks are allowed before an issue is established; diagnosing a problem does not authorize editing its fix. A purely incidental spelling, whitespace, or formatting correction may proceed without an issue only when it changes no behavior, requirement, meaning, or scope. Changing installation instructions, policy, expected test behavior, or semantic formatting is substantive. A one-line bug or security fix is substantive regardless of its size.
+
+If the connection, required workflow capability, or authoritative readback is unavailable or indeterminate, report the blocker and continue only permitted discovery. Substantive edits require an explicit user override of this prerequisite; record its scope honestly and never claim an issue or selection was verified. Do not configure authentication or introduce a local shadow tracker. These exceptions waive only this prerequisite, not other authority or safety requirements.
+
 ## Rideable Progress
 
 Every bounded milestone is a complete, useful operator journey: a real rider starts from a named entry point, reaches an observable outcome, and can use the result safely today. Narrow breadth before weakening integrity. Security, determinism, recovery, honest failure, and data safety still apply to the smallest slice; real dogfood and the learning it produces earn later complexity.

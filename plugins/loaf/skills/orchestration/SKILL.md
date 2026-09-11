@@ -45,6 +45,7 @@ Coordinate agents around the same native reference and work contract. The main a
 - Delivered commits, diffs, and test claims were independently inspected.
 - Provider mutations used the same common contract as main-agent execution and were verified by native readback.
 - The consolidated result names disagreements, accepted findings, rejected findings with evidence, and remaining risk.
+- Before its final response or handoff, the main agent loads the project-management skill and applies its Capture Deferred Work rule to concrete deferred findings returned by any agent; an agent report alone is not capture.
 - Any persisted report uses a skill-owned template, does not overwrite an existing file, and is referenced in the harness return.
 
 ## Quick Reference

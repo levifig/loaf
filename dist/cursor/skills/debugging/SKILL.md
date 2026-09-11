@@ -30,6 +30,7 @@ Systematic debugging methodology with hypothesis tracking.
 - Root cause is identified and documented, not just the symptom
 - The fix is validated by reproducing the original failure scenario and confirming it no longer occurs
 - For flaky tests: the test passes reliably across multiple consecutive runs after the fix
+- Before reporting the investigation complete, load the project-management skill and apply its Capture Deferred Work rule to any concrete unresolved cause, residual defect, or deferred correction.
 
 ## Topics
 

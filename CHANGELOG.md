@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+### Changed
+
+- Require verified selected native issues before substantive implementation, including ordinary fix requests, and capture concrete deferred work in native issues before handoff. Honor existing explicit selection without asking again; preserve read-only discovery, narrowly incidental corrections, and explicit user overrides ([#252](https://github.com/levifig/loaf/issues/252)).
+
 ### Fixed
 
 - Keep static prompt and compaction guidance available in linked worktrees with divergent `.agents` files, while preserving migration checks for state access; report recognized CLI commands accurately when migration is required ([#254](https://github.com/levifig/loaf/issues/254)).

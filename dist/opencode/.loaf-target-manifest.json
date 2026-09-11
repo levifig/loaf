@@ -51,7 +51,7 @@
       "id": "managed-instructions",
       "kind": "instruction",
       "destination": "project-instructions",
-      "sha256": "6f2d9dbe5b9113b8ab8b42a83e3b1e32225c58ca4511ede3148f62344c6fe0b2"
+      "sha256": "5403297367a1e20ac96e6382b6858a7072986da5be1d9fa5396624d046a8e9b8"
     },
     {
       "id": "plugin:plugins/hooks.ts",
