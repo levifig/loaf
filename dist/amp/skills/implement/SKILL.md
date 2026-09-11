@@ -23,7 +23,8 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 ## Critical Rules
 
 - As the first action, run `loaf journal log "skill(implement): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
-- Re-read the native work record, completion criteria, hierarchy, dependencies, status, and recent relevant comments before planning. If the record is Backlog intent or otherwise unselected, refuse and do not start. If invoked with no issue id, report the unblocked Todo frontier (selected, unblocked native records) and do not start unless the human named an issue or said to do that one. Never infer the issue from the current branch, worktree name, or open editor. In Progress is not the frontier.
+- Before substantive edits, including regression tests, load the loaf-reference skill's Flow Semantics and apply its native issue prerequisite and narrow exceptions. For an explicit concrete implementation request without an issue ID, use project-management to find or create the covering contract and verify its scope, criteria, and selected state without asking for the same selection again.
+- Re-read the native work record, completion criteria, hierarchy, dependencies, status, and recent relevant comments before planning. If the record is Backlog intent or otherwise unselected and the human has not selected its implementation, refuse and do not start. A bare invocation without a concrete implementation request reports the unblocked Todo frontier (selected, unblocked native records) and does not start. Never infer the issue from the current branch, worktree name, or open editor. In Progress is not the frontier.
 - Read Todo from the destination tracker's native lane (GitHub: board Status), not from Issue open/closed and not from a different provider's MCP. An authenticated `gh` that can see the destination repository and named board is a GitHub connection. Linear MCP in the same session does not mean GitHub is unavailable.
 - Confirm the live contract makes Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals concrete. If it describes layers or future-only machinery instead, return it to shape.
 - Inspect repository instructions and affected code before editing. Treat existing changes as user-owned.
@@ -45,13 +46,15 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 - The implementation diff contains no unrequested authority, dependency, schema, or public-interface expansion.
 - Commit references and working-tree state are reported exactly; uncommitted or unverified work is labeled.
 - The live tracker record was read again before handoff to ship.
+- Before the final response or handoff, load the project-management skill and apply its Capture Deferred Work rule to concrete deferred or out-of-scope work.
 
 ## Quick Reference
 
 | Condition | Action |
 |-----------|--------|
 | Unselected / Backlog intent | Refuse; do not start |
-| Bare invocation | Report the unblocked Todo frontier from the destination tracker; do not start; do not infer from the branch |
+| Bare invocation without a concrete implementation request | Report the unblocked Todo frontier from the destination tracker; do not start; do not infer from the branch |
+| Explicit concrete implementation request without an issue ID | Find or create its native contract and verify scope, criteria, and selection before substantive edits |
 | Branch or worktree looks like an issue | Ignore it unless the human named that issue |
 | Linear MCP present, GitHub is the tracker | Use `gh` / GitHub connection; do not claim GitHub is unavailable |
 | Contract gap | Return to shape with the exact gap |

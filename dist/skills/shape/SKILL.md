@@ -25,7 +25,7 @@ Route the ephemeral [work contract](templates/work-contract.md) once into canoni
 - Set the title through the native work field, then fill every definition-packet field. Definition of done uses observable criteria; out of scope names what this work deliberately will not solve.
 - Keep hierarchy and dependencies in their native relationship fields, not in comments or body prose alone.
 - Decompose only when a child earns an independently verifiable definition of done. Read [Decomposition](references/decomposition.md) before changing hierarchy.
-- Read back the native record, definition, hierarchy, dependencies, and current status before declaring it ready. Writing the definition does not select the work. Move to Todo in the same turn only when the human says to select it; otherwise leave Backlog intent in place.
+- Read back the native record, definition, hierarchy, dependencies, and current status before declaring it ready. Writing the definition does not select the work. Move to Todo in the same turn when the human selects the work, including an existing explicit request to implement that concrete change; do not ask for the same selection again. Otherwise leave Backlog intent in place.
 - The main agent executes common operations through the selected provider skill; delegation never changes semantics or authority.
 
 ## Verification
