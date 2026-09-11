@@ -29,3 +29,7 @@ The former project-configuration proposal remains unresolved; moving it here doe
 The exact repository filename, supported fields, precedence, identity binding, and mutation rules still need design against real operator journeys before loaders, schemas, or credential inputs change. The current [config command](../../internal/cli/config.go) and [project-resolution package](../../internal/project/) are compatibility evidence, not approval of a new precedence model.
 
 The alternatives already considered remain useful: a mandatory `.agents/loaf.json` offers discoverability but conflates defaults, identity, and secret-adjacent inputs; a package-manifest location couples configuration to Node; environment-only configuration supports automation but lacks a reviewable home for shareable defaults. No replacement is chosen by this refactor. Shared work to resolve the proposal belongs in the native tracker, not another local specification identity.
+
+## Unresolved Optional Skill Packaging Proposal
+
+Optional language/domain skill packaging remains an unresolved proposal. Earlier work considered recommended or curated optional packs and externally maintained vendor skills, but did not settle install profiles, source pinning and provenance, update semantics, or de-selection cleanup. Existing user and third-party copies remain protected by installation ownership rules; this proposal does not authorize removing them or reintroducing the retired `externalized_skills` manifest field. Shared work to resolve these choices belongs in the native tracker.

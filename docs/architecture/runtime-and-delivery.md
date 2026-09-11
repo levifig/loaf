@@ -8,6 +8,8 @@ Go implements Loaf-owned deterministic operations: command dispatch, project ide
 
 The public runtime, development launcher, build, release, and packaging tools are Go. The [Makefile](../../Makefile) delegates to [`cmd/loafdev`](../../cmd/loafdev/) and [`internal/devtool`](../../internal/devtool/). `package.json` remains distribution metadata, not an npm execution surface. Node remains for harness capability runners and emitted TypeScript checks, not for running or installing Loaf.
 
+SQLite uses the [ncruces `database/sql` driver](../../internal/state/store.go), and [native builds](../../internal/devtool/buildgo.go) set `CGO_ENABLED=0` without requiring a platform SQLite library. The original driver evaluation accepted a larger native binary to avoid cgo cross-compilation friction and the alternative modernc driver's dependency graph and libc-version coupling.
+
 ## Native Delivery Direction and Gaps
 
 The agreed destination is native binaries delivered through GitHub Release artifacts, a verified installer, Homebrew, and harness integrations. Users should not need Node or a Go toolchain merely to run Loaf. Installation must preserve artifact provenance and establish one effective upgrade owner, preventing package managers, installers, and plugins from overwriting one another ambiguously.

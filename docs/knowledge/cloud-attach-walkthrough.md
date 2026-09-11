@@ -127,7 +127,7 @@ Amp uses `.agents/setup` (fresh orb) and `.agents/resume` (wake) instead of Curs
 | File | Role |
 |------|------|
 | `.agents/setup` | Builds CLI, runs `loaf install --to amp` |
-| `.agents/resume` | Re-runs project-environment install on wake |
+| `.agents/resume` | Re-runs project-environment install on wake, then attaches when `LOAF_CLIENT_TOKEN` is configured |
 
 ### Operator setup
 
@@ -135,22 +135,14 @@ Amp uses `.agents/setup` (fresh orb) and `.agents/resume` (wake) instead of Curs
    - `LOAF_CLIENT_TOKEN` — bundled wire from `loaf auth link`
    - `LOAF_PROJECT_ENV` — `1`
    - `LOAF_SYNC_URL` — optional
-2. Optionally add attach pre-warm to `.agents/resume` (same pattern as Cursor start):
-
-```bash
-if [[ -n "${LOAF_CLIENT_TOKEN:-}" ]]; then
-  loaf attach
-fi
-```
-
-The committed `.agents/resume` currently re-installs harness surfaces only; attach can run explicitly in the orb session or via the optional resume hook above.
+2. The committed `.agents/resume` already runs `loaf attach` after installation when `LOAF_CLIENT_TOKEN` is configured. After fresh setup, run attach explicitly before commands that require the attached environment.
 
 ### What happens on orb prepare
 
 **Setup** (`.agents/setup`):
 
 ```bash
-npm ci && npm run build:go   # when native binary missing
+go run ./cmd/loafdev build-go   # when bin/loaf or the host native binary is missing
 export PATH="$ROOT/bin:$PATH"
 export LOAF_PROJECT_ENV=1
 loaf install --to amp --yes
@@ -162,9 +154,12 @@ loaf install --to amp --yes
 export PATH="$ROOT/bin:$PATH"
 export LOAF_PROJECT_ENV=1
 loaf install --to amp --yes
+if [[ -n "${LOAF_CLIENT_TOKEN:-}" ]]; then
+  loaf attach
+fi
 ```
 
-Run attach once per session after setup/resume when the secret is present:
+After fresh setup, run attach when the secret is present; resume already performs this step:
 
 ```bash
 loaf attach

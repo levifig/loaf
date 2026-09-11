@@ -8,6 +8,7 @@
   "knowledge": {
     "local": [
       "docs/knowledge",
+      "docs/architecture",
       "docs/decisions"
     ],
     "staleness_threshold_days": 30,
