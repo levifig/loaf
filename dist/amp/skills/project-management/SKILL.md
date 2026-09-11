@@ -23,6 +23,7 @@ Use the closed [`project-management/v1`](contract.json) operation vocabulary. Th
 ## Critical Rules
 
 - Discover only connections the harness already exposes. Never install, authenticate, or configure one.
+- Prefer an already configured usable GitHub MCP that matches `integrations.github.account`. Select that connection before resource access. Otherwise an installed authenticated `gh` in the main agent's permitted shell, including `gh api`, is a valid exposed GitHub capability before asking the user to configure MCP. Unrelated Linear MCP does not determine GitHub authority. MCP actor identity comes from the selected connector; `gh` identity is not MCP evidence. Unusable MCP may fall back to `gh` only for the main agent, which must separately verify the `gh` actor without bypassing the account requirement or permissions. Connector-only execution stays connector-only.
 - Select and report the exact native destination before mutation. A provider name alone is not a destination. On GitHub, name the board by title; if the title matches the repository or Loaf project, call it the project board. Never report `Project #N`.
 - Discover runtime capabilities before choosing an operation or fidelity.
 - Read the destination or target record before every write, including duplicate detection before creation.

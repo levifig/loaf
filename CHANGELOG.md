@@ -11,6 +11,7 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 ### Fixed
 
 - Keep prompt and compaction guidance and SQLite journal commands available in linked worktrees when configuration or unrelated artifacts differ. Restrict migration refusals to storage the command consumes, identify affected paths, and preserve recovery checks without creating implicit migration markers; keep command diagnostics accurate ([#251](https://github.com/levifig/loaf/issues/251), [#254](https://github.com/levifig/loaf/issues/254)).
+- Prefer an already configured GitHub MCP matching `integrations.github.account`; otherwise use installed authenticated `gh` (including `gh api`) through the main agent. Verify MCP identity through the connector and `gh` identity separately before tracker operations.
 
 ## [0.5.0] - 2026-09-10
 

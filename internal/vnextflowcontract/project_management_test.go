@@ -176,9 +176,124 @@ func TestTrackerSkillGitHubMappingUsesNativeIssueSemantics(t *testing.T) {
 			t.Fatalf("GitHub skill missing native-semantics rule %q", want)
 		}
 	}
-	for _, forbidden := range []string{"GITHUB_TOKEN", "gh api", "http.Client", "loaf issue", "label.write"} {
+	for _, forbidden := range []string{"GITHUB_TOKEN", "http.Client", "loaf issue", "label.write"} {
 		if strings.Contains(string(skill), forbidden) {
 			t.Fatalf("GitHub skill contains forbidden transport or fallback %q", forbidden)
+		}
+	}
+}
+
+func TestTrackerSkillGitHubGuidanceCodifiesAuthenticatedGhFallback(t *testing.T) {
+	t.Parallel()
+
+	content := os.DirFS("../../vnext/content")
+	skill, err := fs.ReadFile(content, "skills/github/SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(skill)
+	for _, want := range []string{
+		"Prefer an already configured, usable GitHub MCP that matches the intended account",
+		"installed authenticated `gh`",
+		"main agent's permitted shell",
+		"`gh api`",
+		"before asking the user to configure MCP",
+		"Unrelated Linear MCP does not determine",
+		"`integrations.github.account`",
+		"Select the connection matching the intended account before any resource access",
+		"does not bypass the account requirement or observed permissions",
+		"Resolve the host from explicit project configuration or user context",
+		"never from the repository owner",
+		"Verify actor identity through the selected connection's own transport",
+		"a `gh` identity is not evidence of the MCP actor",
+		"If the connector identity is missing, ambiguous, or mismatched, that MCP connection is unusable",
+		"must separately verify the `gh` actor in the same shell context",
+		"`gh api --hostname <host> user --jq .login`",
+		"environment overrides",
+		"Stop on a mismatched or unverifiable identity",
+		"Repeat actor verification through the actual chosen transport immediately before mutations, after known context changes, and on same-connection readback",
+		"explicit repository and host",
+		"Do not authenticate, refresh, or globally switch accounts",
+		"`github-account` hook",
+		"does not change, bypass, or isolate that hook",
+		"cannot eliminate a concurrent switching race",
+		"cannot prove the mutation actor",
+		"If concurrent switching makes identity uncertain, stop",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("GitHub skill missing gh-fallback guidance %q", want)
+		}
+	}
+	if strings.Contains(body, "Prefer an already configured, usable GitHub MCP") &&
+		strings.Contains(body, "`gh api --hostname <host> user --jq .login`") &&
+		!strings.Contains(body, "a `gh` identity is not evidence of the MCP actor") {
+		t.Fatal("GitHub skill prefers MCP but treats gh identity as the MCP actor")
+	}
+	if strings.Contains(body, "`gh api --hostname <host> user --jq .login`") &&
+		!strings.Contains(body, "`integrations.github.account`") {
+		t.Fatal("GitHub skill verifies a gh actor without selecting integrations.github.account")
+	}
+}
+
+func TestTrackerSkillProjectManagementClarifiesGitHubGhFallbackWithoutExpandingProjectManager(t *testing.T) {
+	t.Parallel()
+
+	content := os.DirFS("../../vnext/content")
+	files := map[string][]string{
+		"skills/project-management/SKILL.md": {
+			"Prefer an already configured usable GitHub MCP that matches `integrations.github.account`",
+			"Select that connection before resource access",
+			"installed authenticated `gh`",
+			"main agent's permitted shell",
+			"`gh api`",
+			"before asking the user to configure MCP",
+			"Unrelated Linear MCP does not determine GitHub authority",
+			"MCP actor identity comes from the selected connector",
+			"`gh` identity is not MCP evidence",
+			"Unusable MCP may fall back to `gh` only for the main agent",
+			"without bypassing the account requirement or permissions",
+			"Connector-only execution stays connector-only",
+		},
+		"skills/project-management/references/record-contract.md": {
+			"Prefer a usable GitHub MCP matching `integrations.github.account`",
+			"select that connection before resource access",
+			"installed authenticated `gh` available to the main agent",
+			"Verify MCP identity through the connector and `gh` identity separately",
+			"`gh` is not MCP evidence",
+			"Unrelated Linear MCP does not decide GitHub destination",
+		},
+		"skills/project-management/references/provider-modules.md": {
+			"installed authenticated provider CLI such as `gh`",
+			"main agent",
+			"Loaf does not own a provider client",
+			"Select the GitHub connection that matches `integrations.github.account` before resource access",
+			"MCP actor identity is the selected connector's own principal",
+			"`gh` identity is not MCP evidence",
+			"project-manager execution remains connector-only",
+			"`gh` fallback is main-agent authority",
+			"does not bypass the account requirement or permissions",
+		},
+	}
+	for path, wantFragments := range files {
+		body, err := fs.ReadFile(content, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(body)
+		for _, want := range wantFragments {
+			if !strings.Contains(text, want) {
+				t.Fatalf("%s missing gh-fallback guidance %q", path, want)
+			}
+		}
+	}
+
+	profile, err := fs.ReadFile(content, "agents/project-manager.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"`gh`", "gh api", "permitted shell"} {
+		if strings.Contains(string(profile), forbidden) {
+			t.Fatalf("project-manager profile gained gh fallback authority via %q", forbidden)
 		}
 	}
 }
