@@ -55,6 +55,8 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.dev != 'true'
     runs-on: ubuntu-latest
+    env:
+      LOAF_DEV_LINK: '0'
 
     steps:
       - name: Checkout
@@ -85,8 +87,10 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Verify tests
-        run: go test ./...
+      # Full verification belongs to make verify-local before tagging. Release
+      # automation checks its own delivery boundary, then constructs artifacts.
+      - name: Verify release integrity spot checks
+        run: make release-smoke
 
       - name: Build release targets
         shell: bash
@@ -97,6 +101,10 @@ jobs:
 
       - name: Package release archives
         run: go run ./cmd/loafdev package
+
+      - name: Verify archive checksums
+        working-directory: dist/release
+        run: sha256sum --check --strict checksums.txt
 
       - name: Upload release assets
         env:

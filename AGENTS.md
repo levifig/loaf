@@ -462,10 +462,14 @@ loaf journal context           # Emit the layered continuity digest
 ```bash
 make build-go                  # Build the native binary; claim ~/.local/bin/loaf via Loaf's launcher pointer when that name is absent
 make build                     # Binary + CLI reference + all content targets, then verify
+make verify-local              # Full local test/static/adapter/build gate; forces LOAF_DEV_LINK=0
+make ci-check                  # Reproduce default remote spot and integrity checks locally
+make ci-smoke                  # Only the bounded remote Go test selection
 make typecheck                 # Compile check (go test ./... -run=^$)
-make test                      # Run Go tests (go test ./...)
+make test                      # Run all Go tests without cached results (go test -count=1 ./...)
 make vet                       # Static Go checks
 make capability-tests          # Test adapter runners; does not launch a live harness session
+make vulncheck                 # Network-backed local audit; before release or after dependency changes
 go run ./cmd/loafdev --help    # The build, release, packaging, and tag tooling behind the Makefile
 ```
 
@@ -482,6 +486,8 @@ loaf journal recent      # operates on the isolated DB
 
 When `LOAF_DB` is an absolute path it overrides `XDG_DATA_HOME`; a relative value is ignored. This isolates database state, not harness homes: install/upgrade testing must also use isolated target directories. Go unit tests use temporary directories and `t.Setenv`.
 
+Clear a dogfooding `LOAF_DB` override before the unit suite (`env -u LOAF_DB make verify-local`), so it cannot redirect tests away from their fixture-owned databases. An isolated `XDG_DATA_HOME` may be used as a fallback without overriding each fixture's selected path.
+
 ### Targets
 
 | Target | Output | Notes |
@@ -494,10 +500,8 @@ When `LOAF_DB` is an absolute path it overrides `XDG_DATA_HOME`; a relative valu
 
 ### Before Committing
 
-- [ ] `LOAF_DEV_LINK=0 make build` succeeds without switching the user's runtime
-- [ ] `make typecheck` passes
-- [ ] `make test` passes
-- [ ] `make vet` passes; affected adapter tests pass
+- [ ] `make verify-local` passes: uncached full Go tests, compile/vet checks, CGO-free build, all deterministic adapter runner tests, and validated generated content without switching the user's runtime; Node and `tsc` must already be available
+- [ ] Before release or after dependency changes, `make vulncheck` passes; report unavailable network access as an unverified check, never a pass
 - [ ] If tracked build artifacts in `dist/` or `plugins/` changed, commit them with the source changes that produced them
 - [ ] Frontmatter has required fields
 - [ ] New skills live under `content/skills/` (auto-discovered at build); only hook instances are registered in `hooks.yaml`
@@ -506,7 +510,7 @@ When `LOAF_DB` is an absolute path it overrides `XDG_DATA_HOME`; a relative valu
 - [ ] Template links resolve (no broken `templates/` paths)
 - [ ] No Windows-style paths
 
-Verify required capabilities, payloads, ownership, and rollback behavior. Do not require a new live-harness matrix merely because a harness version or build stamp changed. See [Runtime and Delivery](docs/architecture/runtime-and-delivery.md) for the boundary-specific verification policy.
+Comprehensive verification belongs locally. Default remote CI runs `make ci-check`, a bounded spot selection plus generated-content and CGO-free build integrity; release automation runs delivery-specific spots and constructs/verifies artifacts. Neither is evidence of a full suite pass. Verify required capabilities, payloads, ownership, and rollback behavior locally. Do not require a new live-harness matrix merely because a harness version or build stamp changed. See [Runtime and Delivery](docs/architecture/runtime-and-delivery.md) for the boundary-specific verification policy.
 
 ## Configuration
 

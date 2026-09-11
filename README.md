@@ -313,13 +313,16 @@ A development build carries its source commit inside the binary (`loaf --version
 See [AGENTS.md](AGENTS.md) for development guidelines.
 
 ```bash
-make typecheck       # Compile check
-make test            # Run tests
+make verify-local    # Full Go tests, static checks, adapter tests, and build validation
+make ci-check        # Reproduce the bounded remote checks locally
+make vulncheck       # Network-backed vulnerability audit; run before release or after dependency changes
 bin/loaf build       # Rebuild content using this checkout's executable
 bin/loaf upgrade --dry-run  # Preview existing-install changes from this checkout
 ```
 
-Build, release, and packaging orchestration runs through Go and `make`; there is no npm install step. Use the Go toolchain declared in `go.mod`. Node remains for harness capability-runner tests and emitted JavaScript checks; TypeScript checks require `tsc` in CI or when explicitly enabled. `make capability-tests` tests the runners without launching live harness sessions.
+Build, release, and packaging orchestration runs through Go and `make`; there is no npm install step. Use the Go toolchain declared in `go.mod`. `make verify-local` requires Node and the existing TypeScript compiler (`tsc`) on PATH, runs all deterministic adapter tests without launching live harness sessions, and sets `LOAF_DEV_LINK=0` for its build. Review regenerated content and include it with the source that produced it. `make ci-check` additionally requires generated files to match the Git index, as they must in a clean CI checkout. Individual `test`, `typecheck`, `vet`, `cgo-free`, `capability-tests`, and `verify-generated` targets remain available for focused work.
+
+Most verification runs locally before review and tagging. Default CI runs a fixed set of uncached smoke tests plus CGO-free build, generated-content validation, and drift checks; `make ci-smoke` runs only the selected tests. Each smoke package has a two-minute test timeout, and the default CI job has a ten-minute total limit including setup and compilation. Release automation runs only `make release-smoke` before constructing all platform archives, checking version and checksums, and publishing. It does not replace comprehensive local verification. See [Runtime and Delivery](docs/architecture/runtime-and-delivery.md) for the check selection and boundary policy.
 
 **Testing locally:** distribution content is resolved from the executable, not the working directory. Use `bin/loaf` for this checkout after building with `LOAF_DEV_LINK=0`. When live onboarding is explicitly intended, `bin/loaf install -i` selects harnesses and applies changes; install has no dry-run mode. Claude registration is refused if the same marketplace name already points elsewhere. Use isolated homes for installation tests so verification does not change your live setup.
 

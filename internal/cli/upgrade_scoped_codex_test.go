@@ -51,9 +51,7 @@ func TestReviewScopedCodexPolicyActuallyUpdates(t *testing.T) {
 }
 
 func TestReviewScopedCodexPolicyRunner(t *testing.T) {
-	originalPath := os.Getenv("PATH")
 	root, home, rulePath, old := setupScopedCodexPolicyFixture(t)
-	t.Setenv("PATH", originalPath)
 	var out strings.Builder
 	runner := Runner{WorkingDir: root, Executable: distributionFixtureExecutable(root), Stdout: &out}
 	args := []string{"upgrade", "--select", "codex/codex-rule:loaf.rules", "--select", "codex/codex-rule:AGENTS.md"}
@@ -70,9 +68,7 @@ func TestReviewScopedCodexPolicyRunner(t *testing.T) {
 }
 
 func TestScopedCodexPolicyApplyConverges(t *testing.T) {
-	originalPath := os.Getenv("PATH")
 	root, home, rulePath, old := setupScopedCodexPolicyFixture(t)
-	t.Setenv("PATH", originalPath)
 	args := []string{"upgrade", "--select", "codex/codex-rule:loaf.rules", "--select", "codex/codex-rule:AGENTS.md"}
 	runInstallCapture(t, root, args...)
 	firstRule := readFileString(t, rulePath)
@@ -95,9 +91,7 @@ func TestScopedCodexPolicyApplyConverges(t *testing.T) {
 }
 
 func TestScopedCodexPolicyApplyRollsBackOnFault(t *testing.T) {
-	originalPath := os.Getenv("PATH")
 	root, home, rulePath, old := setupScopedCodexPolicyFixture(t)
-	t.Setenv("PATH", originalPath)
 	oldGuidance := readFileString(t, filepath.Join(home, ".codex", "AGENTS.md"))
 	oldManifest := readFileString(t, filepath.Join(home, ".codex", "rules", codexJournalRuleManifest))
 	t.Cleanup(func() { scopedApplyTestFault = nil })
@@ -162,9 +156,37 @@ func TestSelectedAdapterIDsForTargetOmitCodexPolicy(t *testing.T) {
 	}
 }
 
+func TestScopedCodexPolicyFixtureWithoutInstalledLoaf(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	root, home, _, _ := setupScopedCodexPolicyFixture(t)
+	if _, err := trustedCodexJournalExecutable(root, nil); err != nil {
+		t.Fatalf("fixture must supply its own trusted PATH runtime: %v", err)
+	}
+	runInstallCapture(t, root, "upgrade", "--select", "codex/codex-rule:loaf.rules", "--select", "codex/codex-rule:AGENTS.md")
+	assertScopedCodexPolicyPublished(t, home)
+}
+
 func setupScopedCodexPolicyFixture(t *testing.T) (string, string, string, string) {
 	t.Helper()
 	root, home := setupScopedUpgradeFixture(t)
+	// Policy validation rejects runtimes in the simulated project and OS temp
+	// roots. Use a disposable workspace runtime so the real trust check runs
+	// without depending on an installed loaf or weakening its forbidden roots.
+	workspace, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeRoot, err := os.MkdirTemp(workspace, ".loaf-codex-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(runtimeRoot); err != nil {
+			t.Errorf("remove fixture runtime: %v", err)
+		}
+	})
+	writeCapablePathLoaf(t, runtimeRoot)
+	t.Setenv("PATH", filepath.Join(runtimeRoot, "path-bin"))
 	codexHome := filepath.Join(home, ".codex")
 	t.Setenv("CODEX_HOME", codexHome)
 	dist := filepath.Join(root, "dist", "codex")
