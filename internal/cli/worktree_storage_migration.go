@@ -236,6 +236,13 @@ func shouldRefuseCommandNative(args []string, cwd string) bool {
 	if len(args) == 0 {
 		return false
 	}
+	// These exact hook leaves emit static guidance without reading or writing
+	// project storage. Do not block prompt submission (or create a .moved-to
+	// pointer) merely to emit instructions. State-backed context and journal
+	// operations still require the worktree storage gate below.
+	if len(args) == 3 && args[0] == "journal" && args[1] == "context" && (args[2] == "for-prompt" || args[2] == "for-compact") {
+		return false
+	}
 	for _, arg := range args {
 		switch arg {
 		case "--help", "-h", "--version", "-v":
@@ -267,30 +274,48 @@ func unknownTopLevelCommandNative(args []string) string {
 
 func knownTopLevelCommandNative(command string) bool {
 	switch command {
-	case "brainstorm",
+	case "attach",
+		"auth",
+		"brainstorm",
 		"build",
 		"bundle",
-		"change",
 		"check",
+		"config",
+		"conversation",
+		"council",
 		"doctor",
+		"docs",
+		"exploration",
+		"handoff",
+		"hooks",
 		"housekeeping",
 		"harness",
 		"idea",
 		"init",
 		"install",
+		"intake",
+		"intent",
+		"issue",
+		"journal",
 		"kb",
 		"link",
 		"migrate",
+		"plan",
+		"project",
 		"release",
+		"render",
 		"report",
-		"session",
+		"scratchpad",
+		"search",
+		"serve",
 		"setup",
 		"spark",
-		"spec",
 		"state",
+		"sync",
 		"tag",
 		"task",
 		"trace",
+		"upgrade",
 		"version":
 		return true
 	default:

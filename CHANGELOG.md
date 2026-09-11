@@ -4,7 +4,9 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
-- _No unreleased changes yet._
+### Fixed
+
+- Keep static prompt and compaction guidance available in linked worktrees with divergent `.agents` files, while preserving migration checks for state access; report recognized CLI commands accurately when migration is required ([#254](https://github.com/levifig/loaf/issues/254)).
 
 ## [0.5.0] - 2026-09-10
 
