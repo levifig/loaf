@@ -232,27 +232,28 @@ func TestPublicBinaryMigrateWorktreeStorageHelpAndDebugNatively(t *testing.T) {
 	}
 }
 
-func TestPublicBinaryPreA3WorktreeRefusalNudgeNatively(t *testing.T) {
+func TestPublicBinaryWorktreeStorageGateNatively(t *testing.T) {
 	repoRoot := repoRoot(t)
 	binary := buildLoafBinary(t, repoRoot)
+	env := envWith("LOAF_DB="+filepath.Join(t.TempDir(), "loaf.sqlite"), "XDG_DATA_HOME="+t.TempDir(), "XDG_STATE_HOME="+t.TempDir())
+	assertNoMarker := func(root string) {
+		t.Helper()
+		if _, err := os.Lstat(filepath.Join(root, ".agents", ".moved-to")); !os.IsNotExist(err) {
+			t.Fatalf("implicit migration marker in %s: %v", root, err)
+		}
+	}
 
 	main := createMainRepo(t, "nudge-identical")
 	linked := addLinkedWorktree(t, main, "nudge-identical")
 	seedIdenticalAgentsCheckout(t, main, linked)
-	output, err := runBinary(binary, linked, envWith(), "doctor")
+	output, err := runBinary(binary, linked, env, "doctor")
 	if exitCode(err) == 2 {
 		t.Fatalf("loaf doctor in identical worktree hit pre-A3 refusal\n%s", output)
 	}
-	if strings.Contains(output, "Linked worktrees keep .agents/") {
+	if strings.Contains(output, "canonical storage") {
 		t.Fatalf("identical worktree output = %q, want no pre-A3 refusal", output)
 	}
-	raw, err := os.ReadFile(filepath.Join(linked, ".agents", ".moved-to"))
-	if err != nil {
-		t.Fatalf("ReadFile(.moved-to) error = %v", err)
-	}
-	if string(raw) != main+"\n" {
-		t.Fatalf(".moved-to = %q, want %q", raw, main+"\n")
-	}
+	assertNoMarker(linked)
 
 	main = createMainRepo(t, "nudge-divergent")
 	linked = addLinkedWorktree(t, main, "nudge-divergent")
@@ -260,69 +261,100 @@ func TestPublicBinaryPreA3WorktreeRefusalNudgeNatively(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(linked, ".agents", "AGENTS.md"), []byte("# Divergent\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile(divergent AGENTS.md) error = %v", err)
 	}
-	output, err = runBinary(binary, linked, envWith(), "journal", "recent")
-	if exitCode(err) != 2 {
-		t.Fatalf("loaf journal recent divergent exit = %d, want 2\n%s", exitCode(err), output)
-	}
-	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
-		if !strings.Contains(output, want) {
-			t.Fatalf("divergent refusal output = %q, want %q", output, want)
+	for _, args := range [][]string{{"state", "init"}, {"journal", "log", "decision(test): canonical journal"}, {"journal", "recent"}} {
+		output, err = runBinary(binary, linked, env, args...)
+		if err != nil {
+			t.Fatalf("loaf %v with divergent instructions: %v\n%s", args, err, output)
 		}
+	}
+	output, err = runBinary(binary, main, env, "journal", "recent")
+	if err != nil || !strings.Contains(output, "canonical journal") {
+		t.Fatalf("main did not share linked journal: %v\n%s", err, output)
+	}
+	assertNoMarker(linked)
+	if raw, err := os.ReadFile(filepath.Join(linked, ".agents", "AGENTS.md")); err != nil || string(raw) != "# Divergent\n" {
+		t.Fatalf("instructions changed: %q, %v", raw, err)
+	}
+	reportPath := filepath.Join(linked, ".agents", "reports", "report-codex-handoff-journal-first-audit.md")
+	if err := os.WriteFile(reportPath, []byte("# Divergent report\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	output, err = runBinary(binary, linked, env, "report", "list")
+	if exitCode(err) != 2 {
+		t.Fatalf("report list exit = %d, want 2\n%s", exitCode(err), output)
+	}
+	for _, want := range []string{reportPath, "divergent storage", "loaf migrate worktree-storage", "entire .agents/"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("report refusal output = %q, want %q", output, want)
+		}
+	}
+	assertNoMarker(linked)
+	if raw, err := os.ReadFile(reportPath); err != nil || string(raw) != "# Divergent report\n" {
+		t.Fatalf("report changed: %q, %v", raw, err)
 	}
 
 	main = createMainRepo(t, "nudge-refuse")
 	linked = addLinkedWorktree(t, main, "nudge-refuse")
 	seedPreA3WorktreeLayout(t, linked)
-	output, err = runBinary(binary, linked, envWith(), "journal", "recent")
+	output, err = runBinary(binary, linked, env, "migrate", "markdown")
 	if exitCode(err) != 2 {
-		t.Fatalf("loaf journal recent exit = %d, want 2\n%s", exitCode(err), output)
+		t.Fatalf("loaf migrate markdown exit = %d, want 2\n%s", exitCode(err), output)
 	}
-	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage", "LOAF_DEBUG_RESOLVE"} {
+	for _, want := range []string{filepath.Join(linked, ".agents", "sessions", "20260519-120000-session.md"), "local-only storage", "loaf migrate worktree-storage", "LOAF_DEBUG_RESOLVE"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("refusal output = %q, want %q", output, want)
 		}
 	}
 
+	assertNoMarker(linked)
+
 	main = createMainRepo(t, "nudge-unknown")
 	linked = addLinkedWorktree(t, main, "nudge-unknown")
 	seedPreA3WorktreeLayout(t, linked)
-	output, err = runBinary(binary, linked, envWith(), "not-a-command")
-	if exitCode(err) != 2 {
-		t.Fatalf("loaf not-a-command exit = %d, want 2\n%s", exitCode(err), output)
+	output, err = runBinary(binary, linked, env, "not-a-command")
+	if exitCode(err) != 1 {
+		t.Fatalf("loaf not-a-command exit = %d, want 1\n%s", exitCode(err), output)
 	}
-	for _, want := range []string{"unknown command 'not-a-command'", "Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"unknown command 'not-a-command'"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("unknown-command refusal output = %q, want %q", output, want)
 		}
 	}
 
+	assertNoMarker(linked)
+	if strings.Contains(output, "loaf migrate worktree-storage") {
+		t.Fatalf("unknown command emitted unrelated migration guidance: %s", output)
+	}
+
 	main = createMainRepo(t, "nudge-allow")
 	linked = addLinkedWorktree(t, main, "nudge-allow")
 	seedPreA3WorktreeLayout(t, linked)
-	output, err = runBinary(binary, linked, envWith(), "migrate", "worktree-storage")
+	output, err = runBinary(binary, linked, env, "migrate", "worktree-storage")
 	if err != nil {
 		t.Fatalf("loaf migrate worktree-storage error = %v\n%s", err, output)
 	}
-	if !strings.Contains(output, "Dry run") || strings.Contains(output, "Linked worktrees keep .agents/") {
+	if !strings.Contains(output, "Dry run") || strings.Contains(output, "canonical storage") {
 		t.Fatalf("migrate allowlist output = %q, want dry-run without refusal", output)
 	}
+
+	assertNoMarker(linked)
 
 	for _, allowed := range [][]string{{"--help"}, {"--version"}} {
 		main = createMainRepo(t, "nudge-allow-"+strings.TrimPrefix(allowed[0], "--"))
 		linked = addLinkedWorktree(t, main, "nudge-allow-"+strings.TrimPrefix(allowed[0], "--"))
 		seedPreA3WorktreeLayout(t, linked)
-		output, err = runBinary(binary, linked, envWith(), allowed...)
+		output, err = runBinary(binary, linked, env, allowed...)
 		if err != nil {
 			t.Fatalf("loaf %v error = %v\n%s", allowed, err, output)
 		}
-		if strings.Contains(output, "Linked worktrees keep .agents/") {
+		if strings.Contains(output, "canonical storage") {
 			t.Fatalf("allowlisted %v output = %q, want no refusal", allowed, output)
 		}
 	}
 
 	main = createMainRepo(t, "nudge-main")
-	output, err = runBinary(binary, main, envWith(), "version")
-	if exitCode(err) == 2 || strings.Contains(output, "Linked worktrees keep .agents/") {
+	output, err = runBinary(binary, main, env, "version")
+	if exitCode(err) == 2 || strings.Contains(output, "canonical storage") {
 		t.Fatalf("main checkout output = %q, error = %v, want no pre-A3 refusal", output, err)
 	}
 
@@ -334,8 +366,8 @@ func TestPublicBinaryPreA3WorktreeRefusalNudgeNatively(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(linked, ".agents", ".moved-to"), []byte(main+"\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile(.moved-to) error = %v", err)
 	}
-	output, err = runBinary(binary, linked, envWith(), "version")
-	if exitCode(err) == 2 || strings.Contains(output, "Linked worktrees keep .agents/") {
+	output, err = runBinary(binary, linked, env, "version")
+	if exitCode(err) == 2 || strings.Contains(output, "canonical storage") {
 		t.Fatalf("migrated linked worktree output = %q, error = %v, want no pre-A3 refusal", output, err)
 	}
 
@@ -345,8 +377,8 @@ func TestPublicBinaryPreA3WorktreeRefusalNudgeNatively(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(linked, ".agents", ".moved-to"), []byte("/this/does/not/exist\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile(stale .moved-to) error = %v", err)
 	}
-	output, err = runBinary(binary, linked, envWith(), "journal", "recent")
-	if exitCode(err) != 2 || !strings.Contains(output, "Linked worktrees keep .agents/") {
+	output, err = runBinary(binary, linked, env, "report", "list")
+	if exitCode(err) != 2 || !strings.Contains(output, "canonical storage") {
 		t.Fatalf("stale pointer output = %q, error = %v, want pre-A3 refusal", output, err)
 	}
 }

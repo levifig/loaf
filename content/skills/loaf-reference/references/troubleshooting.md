@@ -20,6 +20,12 @@ matches the symptom:
 Rule of thumb: config → the JSON config file and hooks; `state doctor` → the
 database; `doctor` → the checkout's Loaf wiring.
 
+## Linked worktree storage refusals
+
+A refusal names the storage path and why the selected command cannot safely use its canonical main-checkout copy. Reconcile those files manually or inspect `loaf migrate worktree-storage`, which is a read-only preview. This explicit migration covers the entire `.agents/` tree, including configuration and unrelated artifacts. Review every move and conflict before `--apply`; applying moves files and removes losing copies under the selected conflict policy. Preserve any versions you need separately before applying.
+
+Ordinary configuration and artifacts may differ between checkouts. SQLite journal commands do not require legacy Markdown migration; report/council operations and remaining Markdown consumers protect the storage they actually use. Classification never creates `.moved-to`. If a refusal names an invalid marker, symlink, interrupted staging path, or missing main checkout, follow the specific recovery diagnostic before retrying.
+
 ## Isolating a throwaway database
 
 Every real `loaf` command writes the global SQLite database
