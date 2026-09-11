@@ -67,15 +67,15 @@ config/                         # Build configuration
 
 ## Agent Profiles
 
-See [SOUL.md](.agents/SOUL.md) for the Warden identity and fellowship conventions. The host's available tools and permission controls determine actual enforcement.
+Profiles describe intended responsibilities and tool boundaries. Actual access and enforcement come from the host's available tools and permission controls; do not treat a profile as mechanically restricted unless the host enforces that boundary.
 
-| Profile | Concept | Tool Access | Use For |
-|---------|---------|-------------|---------|
-| **implementer** | Smith (Dwarf) | Full write | Code, tests, config, docs — speciality via skills |
-| **reviewer** | Sentinel (Elf) | Read-only | Audits, reviews — mechanical independence |
-| **researcher** | Ranger (Human) | Read + web | Research, comparison — structured reports |
-| **librarian** | Librarian (Ent) | Read + Edit (.agents/) | Project journal, durable artifacts, wrap checkpoints, pre-compaction preservation |
-| **background-runner** | System | Read + Edit | Async non-blocking tasks |
+| Profile | Intended tool boundary | Use For |
+|---------|------------------------|---------|
+| **implementer** | Full write | Code, tests, config, docs — speciality via skills |
+| **reviewer** | Read-only | Audits, reviews — intended independence from implementation |
+| **researcher** | Read + web | Research, comparison — structured reports |
+| **librarian** | Read + Edit (.agents/) | Project journal, durable artifacts, wrap checkpoints, pre-compaction preservation |
+| **background-runner** | Read + Edit | Async non-blocking tasks |
 
 ## Common Tasks
 
