@@ -5,26 +5,30 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"syscall"
+
+	"github.com/levifig/loaf/internal/project"
+	"github.com/levifig/loaf/internal/state"
 )
 
 const worktreeBackPointerFile = ".moved-to"
 const worktreePartialSuffix = ".partial.loaf-migrate"
 const debugResolveEnv = "LOAF_DEBUG_RESOLVE"
 
-const preA3RefusalMessageNative = `This worktree has unmigrated agentic state under .agents/.
-Linked worktrees keep .agents/ in the main worktree, so this command is refused
-until you run:
+const preA3RefusalMessageNative = `Reconcile the named storage paths manually, or inspect a dry-run preview:
 
-    loaf migrate worktree-storage         # dry-run preview
-    loaf migrate worktree-storage --apply # perform the migration
+    loaf migrate worktree-storage
 
-(Tip: set LOAF_DEBUG_RESOLVE=1 to see git probe diagnostics if the refusal seems unexpected.)`
+That explicit migration covers the entire .agents/ tree, including configuration.
+Review its conflict choices before --apply; applying can replace or remove copies.
+(Tip: set LOAF_DEBUG_RESOLVE=1 to see git probe diagnostics.)`
 
 type worktreeConflictPolicy string
 
@@ -32,14 +36,6 @@ const (
 	worktreeConflictNewer    worktreeConflictPolicy = "newer"
 	worktreeConflictMain     worktreeConflictPolicy = "main"
 	worktreeConflictWorktree worktreeConflictPolicy = "worktree"
-)
-
-type worktreeAgentsState string
-
-const (
-	worktreeAgentsNone                worktreeAgentsState = "none"
-	worktreeAgentsIdenticalCheckout   worktreeAgentsState = "identical-checkout"
-	worktreeAgentsDivergentLocalState worktreeAgentsState = "divergent-local-state"
 )
 
 type worktreeMigrationOptions struct {
@@ -232,34 +228,255 @@ func runWorktreeStorageMigration(cwd string, options worktreeMigrationOptions) w
 	}
 }
 
-func shouldRefuseCommandNative(args []string, cwd string) bool {
+// Only commands that consume canonical Markdown storage need the legacy gate.
+// SQLite continuity and Git-authored configuration are separate authorities.
+func worktreeCommandStoragePaths(args []string) []string {
+	if len(args) < 2 {
+		return nil
+	}
+	switch args[0] {
+	case "task":
+		switch args[1] {
+		case "list", "show", "status", "refresh", "sync":
+			return []string{"tasks", "specs", "TASKS.json"}
+		}
+	case "report":
+		if args[1] == "generate" {
+			if options, err := parseReportGenerateArgs(args[2:]); err == nil && options.kind == state.ExportKindReleaseReadiness {
+				return []string{"reports"}
+			}
+		}
+		switch args[1] {
+		case "list", "show", "render", "create", "edit", "finalize", "archive":
+			return []string{"reports"}
+		}
+	case "council":
+		switch args[1] {
+		case "new", "show", "list":
+			return []string{"councils"}
+		}
+	case "search":
+		if options, err := parseSearchArgs(args[1:]); err == nil && !options.allProjects {
+			return []string{"reports"}
+		}
+	case "trace":
+		return []string{"reports", "councils", "drafts"}
+	case "render":
+		if args[1] == "sweep" {
+			return []string{"specs", "reports"}
+		}
+	case "migrate":
+		if args[1] == "markdown" || args[1] == "vnext-rehearsal" {
+			return legacyMarkdownStoragePaths()
+		}
+	case "state":
+		if len(args) > 2 && args[1] == "export" && args[2] == "release-readiness" {
+			return []string{"reports"}
+		}
+		if args[1] == "restore-ephemerals" || args[1] == "verify-ephemerals" {
+			return legacyMarkdownStoragePaths()
+		}
+		if args[1] == "migrate" && len(args) > 2 && args[2] == "markdown" {
+			return legacyMarkdownStoragePaths()
+		}
+	}
+	return nil
+}
+
+func legacyMarkdownStoragePaths() []string {
+	return []string{"tasks", "specs", "ideas", "sessions", "drafts", "reports", "sparks", "brainstorms", "TASKS.json"}
+}
+
+func worktreeCommandNeedsRoot(args []string) bool {
 	if len(args) == 0 {
 		return false
 	}
-	// These exact hook leaves emit static guidance without reading or writing
-	// project storage. Do not block prompt submission (or create a .moved-to
-	// pointer) merely to emit instructions. State-backed context and journal
-	// operations still require the worktree storage gate below.
-	if len(args) == 3 && args[0] == "journal" && args[1] == "context" && (args[2] == "for-prompt" || args[2] == "for-compact") {
-		return false
-	}
 	for _, arg := range args {
-		switch arg {
-		case "--help", "-h", "--version", "-v":
+		if arg == "--help" || arg == "-h" {
 			return false
 		}
 	}
-	switch args[0] {
-	case "migrate", "help":
+	if len(args) == 3 && args[0] == "journal" && args[1] == "context" && (args[2] == "for-prompt" || args[2] == "for-compact") {
 		return false
-	case "harness":
-		// Global harness maintenance does not read or mutate pre-A3 project
-		// storage. A project-bound cloud install does, so it must wait until the
-		// worktree storage migration resolves the canonical project root.
-		return projectEnvironmentActive() && detectPreA3StateNative(cwd)
-	default:
-		return detectPreA3StateNative(cwd)
 	}
+	switch args[0] {
+	case "help", "version", "--version", "-v", "--agent-help", "build", "serve":
+		return false
+	case "auth":
+		return len(args) > 1 && (args[1] == "attach" || args[1] == "link")
+	case "harness":
+		return projectEnvironmentActive()
+	}
+	return knownTopLevelCommandNative(args[0])
+}
+
+func shouldRefuseCommandNative(args []string, cwd string) bool {
+	return (Runner{}).worktreeStorageRefusal(args, cwd) != ""
+}
+
+func (r Runner) worktreeStorageRefusal(args []string, cwd string) string {
+	if !worktreeCommandNeedsRoot(args) {
+		return ""
+	}
+	// Root identity remains necessary even for SQLite commands; never register
+	// a missing main checkout as a new project rooted in the linked checkout.
+	if missing := detectMainMissingForRefusalNative(cwd); missing != "" {
+		return missing
+	}
+	paths := worktreeCommandStoragePaths(args)
+	if args[0] == "housekeeping" {
+		paths = []string{"reports", "drafts"}
+		if root, err := project.ResolveRoot(cwd); err == nil {
+			if status, err := state.Inspect(root, state.PathResolver{StateHome: r.StateHome}); err == nil && status.Mode == state.ModeMarkdownOnly {
+				paths = nil
+				for _, section := range markdownHousekeepingSectionSpecs {
+					relative := strings.Split(filepath.ToSlash(section.relativeDir), "/")[0]
+					if !slices.Contains(paths, relative) {
+						paths = append(paths, relative)
+					}
+				}
+			}
+		}
+	}
+	if len(paths) == 0 {
+		return ""
+	}
+	wtRoot := findWorktreeRootNative(cwd)
+	mainRoot := findMainWorktreeRootNative(cwd)
+	if wtRoot == "" || mainRoot == "" {
+		return ""
+	}
+	localAgents := filepath.Join(wtRoot, ".agents")
+	mainAgents := filepath.Join(mainRoot, ".agents")
+	conflicts := worktreeStorageConflicts(localAgents, mainAgents, mainRoot, paths)
+	if len(conflicts) == 0 {
+		return ""
+	}
+	if args[0] == "task" {
+		root, err := project.ResolveRoot(cwd)
+		if err == nil {
+			status, err := state.Inspect(root, state.PathResolver{StateHome: r.StateHome})
+			// Dispatch owns invalid/unavailable SQLite diagnostics. Only the actual
+			// Markdown fallback reads these files.
+			if err != nil || status.Mode != state.ModeMarkdownOnly {
+				return ""
+			}
+		}
+	}
+	return "This command consumes canonical storage that conflicts with this linked worktree:\n  " + strings.Join(conflicts, "\n  ") + "\n\n" + preA3RefusalMessageNative
+}
+
+// Classification never writes a back-pointer, changes sources, or follows
+// symlinks. Git tracking is deliberately irrelevant: tracked legacy storage
+// can still contain data absent from the canonical checkout.
+func worktreeStorageConflicts(localAgents, mainAgents, mainRoot string, paths []string) []string {
+	var conflicts []string
+	for _, dir := range []string{localAgents, mainAgents} {
+		info, err := os.Lstat(dir)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return []string{fmt.Sprintf("%s: cannot inspect storage: %v", dir, err)}
+		}
+		if !info.IsDir() {
+			return []string{dir + ": storage root is not a directory or is a symlink; reconcile manually"}
+		}
+	}
+	pointerPath := filepath.Join(localAgents, worktreeBackPointerFile)
+	if info, err := os.Lstat(pointerPath); err == nil {
+		if !info.Mode().IsRegular() {
+			return []string{pointerPath + ": unsupported migration marker; reconcile manually"}
+		}
+		pointer, err := os.ReadFile(pointerPath)
+		if err != nil || strings.TrimSpace(string(pointer)) == "" || normalizePathForComparisonNative(strings.TrimSpace(string(pointer))) != normalizePathForComparisonNative(mainRoot) {
+			return []string{pointerPath + ": invalid or stale migration target; reconcile with " + mainRoot}
+		}
+	} else if !os.IsNotExist(err) {
+		return []string{fmt.Sprintf("%s: cannot read migration marker: %v", pointerPath, err)}
+	}
+	for _, rel := range paths {
+		for _, dir := range []string{localAgents, mainAgents} {
+			partial := filepath.Join(dir, rel+worktreePartialSuffix)
+			if _, err := os.Lstat(partial); err == nil {
+				conflicts = append(conflicts, partial+": interrupted migration staging path; recover manually before retrying")
+			}
+		}
+		// Canonical-only staging paths and symlinks also make this storage
+		// unsafe; they must not disappear merely because the local tree is empty.
+		canonicalPath := filepath.Join(mainAgents, rel)
+		err := filepath.WalkDir(canonicalPath, func(path string, entry fs.DirEntry, err error) error {
+			if os.IsNotExist(err) && path == canonicalPath {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if strings.HasSuffix(entry.Name(), worktreePartialSuffix) {
+				conflicts = append(conflicts, path+": interrupted migration staging path; recover manually before retrying")
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+			} else if entry.Type()&os.ModeSymlink != 0 || (!entry.IsDir() && !entry.Type().IsRegular()) {
+				conflicts = append(conflicts, path+": unsupported canonical storage file or symlink; reconcile manually")
+			}
+			return nil
+		})
+		if err != nil {
+			conflicts = append(conflicts, fmt.Sprintf("%s: cannot inspect canonical storage: %v", canonicalPath, err))
+		}
+		localPath := filepath.Join(localAgents, rel)
+		err = filepath.WalkDir(localPath, func(path string, entry fs.DirEntry, err error) error {
+			if os.IsNotExist(err) && path == localPath {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if strings.HasSuffix(entry.Name(), worktreePartialSuffix) {
+				conflicts = append(conflicts, path+": interrupted migration staging path; recover manually before retrying")
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if entry.Type()&os.ModeSymlink != 0 || (!entry.IsDir() && !entry.Type().IsRegular()) {
+				conflicts = append(conflicts, path+": unsupported storage file or symlink; reconcile manually")
+				return nil
+			}
+			relative, err := filepath.Rel(localAgents, path)
+			if err != nil {
+				return err
+			}
+			canonical := filepath.Join(mainAgents, relative)
+			info, err := os.Lstat(canonical)
+			if err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			if info != nil && (info.Mode()&os.ModeSymlink != 0 || (!info.IsDir() && !info.Mode().IsRegular()) || info.IsDir() != entry.IsDir()) {
+				conflicts = append(conflicts, canonical+": canonical storage type differs or is a symlink; reconcile manually")
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			if os.IsNotExist(err) {
+				conflicts = append(conflicts, path+": local-only storage (absent from "+canonical+")")
+				return nil
+			}
+			if !filesHaveSameContent(path, canonical) {
+				conflicts = append(conflicts, path+": divergent storage (differs from "+canonical+")")
+			}
+			return nil
+		})
+		if err != nil {
+			conflicts = append(conflicts, fmt.Sprintf("%s: cannot inspect storage: %v", localPath, err))
+		}
+	}
+	return conflicts
 }
 
 func unknownTopLevelCommandNative(args []string) string {
@@ -344,73 +561,6 @@ func detectMainMissingForRefusalNative(startDir string) string {
 		return buildMainMissingMessageNative(pointerMainRoot, exists)
 	}
 	return ""
-}
-
-func detectPreA3StateNative(startDir string) bool {
-	wtRoot := findWorktreeRootNative(startDir)
-	if wtRoot == "" {
-		return false
-	}
-	localAgents := filepath.Join(wtRoot, ".agents")
-	if _, err := os.Stat(localAgents); err != nil {
-		return false
-	}
-	mainRoot := findMainWorktreeRootNative(wtRoot)
-	if mainRoot == "" {
-		return false
-	}
-	mainAgents := filepath.Join(mainRoot, ".agents")
-
-	switch classifyWorktreeAgentsStateNative(localAgents, mainAgents, mainRoot) {
-	case worktreeAgentsNone:
-		return false
-	case worktreeAgentsIdenticalCheckout:
-		_ = writeWorktreeBackPointerNative(localAgents, mainRoot)
-		return false
-	default:
-		return true
-	}
-}
-
-func classifyWorktreeAgentsStateNative(localAgents string, mainAgents string, mainRoot string) worktreeAgentsState {
-	pointer := readBackPointerNative(localAgents)
-	pointerMatchesMain := false
-	if pointer != "" {
-		if _, err := os.Stat(pointer); err != nil {
-			return worktreeAgentsDivergentLocalState
-		}
-		pointerMatchesMain = normalizePathForComparisonNative(pointer) == normalizePathForComparisonNative(mainRoot)
-		if !pointerMatchesMain {
-			return worktreeAgentsDivergentLocalState
-		}
-	}
-
-	files := enumerateWorktreeAgentFiles(localAgents)
-	if len(findWorktreeSymlinkPaths(localAgents)) > 0 {
-		return worktreeAgentsDivergentLocalState
-	}
-	if len(files) == 0 {
-		return worktreeAgentsNone
-	}
-
-	for _, rel := range files {
-		localFile := filepath.Join(localAgents, filepath.FromSlash(rel))
-		mainFile := filepath.Join(mainAgents, filepath.FromSlash(rel))
-		if _, err := os.Stat(mainFile); err != nil {
-			return worktreeAgentsDivergentLocalState
-		}
-		if !filesHaveSameContent(localFile, mainFile) {
-			return worktreeAgentsDivergentLocalState
-		}
-	}
-	return worktreeAgentsIdenticalCheckout
-}
-
-func writeWorktreeBackPointerNative(localAgents string, mainRoot string) error {
-	if err := os.MkdirAll(localAgents, 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(localAgents, worktreeBackPointerFile), []byte(mainRoot+"\n"), 0o644)
 }
 
 func formatWorktreeMigrationResult(result worktreeMigrationResult, apply bool) string {
@@ -529,6 +679,9 @@ func readGitdirPointerMainRootNative(wtRoot string) string {
 			continue
 		}
 		gitdir := strings.TrimSpace(strings.TrimPrefix(line, "gitdir:"))
+		if !filepath.IsAbs(gitdir) {
+			gitdir = filepath.Clean(filepath.Join(wtRoot, gitdir))
+		}
 		needle := string(filepath.Separator) + ".git" + string(filepath.Separator) + "worktrees" + string(filepath.Separator)
 		idx := strings.LastIndex(gitdir, needle)
 		if idx <= 0 {

@@ -10,7 +10,7 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ### Fixed
 
-- Keep static prompt and compaction guidance available in linked worktrees with divergent `.agents` files, while preserving migration checks for state access; report recognized CLI commands accurately when migration is required ([#254](https://github.com/levifig/loaf/issues/254)).
+- Keep prompt and compaction guidance and SQLite journal commands available in linked worktrees when configuration or unrelated artifacts differ. Restrict migration refusals to storage the command consumes, identify affected paths, and preserve recovery checks without creating implicit migration markers; keep command diagnostics accurate ([#251](https://github.com/levifig/loaf/issues/251), [#254](https://github.com/levifig/loaf/issues/254)).
 
 ## [0.5.0] - 2026-09-10
 

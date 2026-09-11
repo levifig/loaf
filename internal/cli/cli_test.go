@@ -625,6 +625,8 @@ func TestRunnerAllowsFreshWorktreeWithIdenticalAgentsCheckout(t *testing.T) {
 	main := initCLIGitRepo(t)
 	linked := addCLILinkedWorktree(t, main, "fresh-identical-agents")
 	seedCLIIdenticalAgentsCheckout(t, main, linked)
+	mkdirAll(t, filepath.Join(linked, ".agents", "reports"))
+	mkdirAll(t, filepath.Join(main, ".agents", "reports"))
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
@@ -639,15 +641,11 @@ func TestRunnerAllowsFreshWorktreeWithIdenticalAgentsCheckout(t *testing.T) {
 	}); ok && exitErr.ExitCode() == 2 && exitErr.Silent() {
 		t.Fatalf("doctor in fresh identical worktree hit pre-A3 refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
 	}
-	if strings.Contains(stderr.String(), "Linked worktrees keep .agents/") || strings.Contains(stdout.String(), "Linked worktrees keep .agents/") {
+	if strings.Contains(stderr.String(), "canonical storage") || strings.Contains(stdout.String(), "canonical storage") {
 		t.Fatalf("fresh identical worktree output contained migration refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
 	}
-	raw, err := os.ReadFile(filepath.Join(linked, ".agents", worktreeBackPointerFile))
-	if err != nil {
-		t.Fatalf("ReadFile(.moved-to) error = %v", err)
-	}
-	if string(raw) != main+"\n" {
-		t.Fatalf(".moved-to = %q, want %q", raw, main+"\n")
+	if _, err := os.Lstat(filepath.Join(linked, ".agents", worktreeBackPointerFile)); !os.IsNotExist(err) {
+		t.Fatalf("classification created marker: %v", err)
 	}
 
 	stdout.Reset()
@@ -663,29 +661,28 @@ func TestRunnerAllowsFreshWorktreeWithIdenticalAgentsCheckout(t *testing.T) {
 	}); ok && exitErr.ExitCode() == 2 && exitErr.Silent() {
 		t.Fatalf("second doctor in bootstrapped identical worktree hit pre-A3 refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
 	}
-	if strings.Contains(stderr.String(), "Linked worktrees keep .agents/") || strings.Contains(stdout.String(), "Linked worktrees keep .agents/") {
+	if strings.Contains(stderr.String(), "canonical storage") || strings.Contains(stdout.String(), "canonical storage") {
 		t.Fatalf("second identical worktree output contained migration refusal\nstdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
 	}
-	raw, err = os.ReadFile(filepath.Join(linked, ".agents", worktreeBackPointerFile))
-	if err != nil {
-		t.Fatalf("ReadFile(.moved-to) after second run error = %v", err)
+	if _, err := os.Lstat(filepath.Join(linked, ".agents", worktreeBackPointerFile)); !os.IsNotExist(err) {
+		t.Fatalf("classification created marker: %v", err)
 	}
-	if string(raw) != main+"\n" {
-		t.Fatalf(".moved-to after second run = %q, want %q", raw, main+"\n")
-	}
+
 }
 
 func TestRunnerRefusesLinkedWorktreeWithLocalOnlyAgentsFile(t *testing.T) {
 	main := initCLIGitRepo(t)
 	linked := addCLILinkedWorktree(t, main, "local-only-agents")
 	seedCLIIdenticalAgentsCheckout(t, main, linked)
-	writeFile(t, filepath.Join(linked, ".agents", "local-only.md"), "# Local Only\n")
+	mkdirAll(t, filepath.Join(linked, ".agents", "reports"))
+	mkdirAll(t, filepath.Join(main, ".agents", "reports"))
+	writeFile(t, filepath.Join(linked, ".agents", "reports", "local-only.md"), "# Local Only\n")
 	var stderr bytes.Buffer
 
 	err := Runner{
 		Stderr:     &stderr,
 		WorkingDir: linked,
-	}.Run([]string{"journal", "recent"})
+	}.Run([]string{"report", "list"})
 
 	exitErr, ok := err.(interface {
 		ExitCode() int
@@ -694,7 +691,7 @@ func TestRunnerRefusesLinkedWorktreeWithLocalOnlyAgentsFile(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"canonical storage", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -705,13 +702,16 @@ func TestRunnerRefusesLinkedWorktreeWithDivergentAgentsFile(t *testing.T) {
 	main := initCLIGitRepo(t)
 	linked := addCLILinkedWorktree(t, main, "divergent-agents")
 	seedCLIIdenticalAgentsCheckout(t, main, linked)
-	writeFile(t, filepath.Join(linked, ".agents", "AGENTS.md"), "# Worktree Override\n")
+	mkdirAll(t, filepath.Join(linked, ".agents", "reports"))
+	mkdirAll(t, filepath.Join(main, ".agents", "reports"))
+	writeFile(t, filepath.Join(main, ".agents", "reports", "divergent.md"), "# Main report\n")
+	writeFile(t, filepath.Join(linked, ".agents", "reports", "divergent.md"), "# Worktree Override\n")
 	var stderr bytes.Buffer
 
 	err := Runner{
 		Stderr:     &stderr,
 		WorkingDir: linked,
-	}.Run([]string{"journal", "recent"})
+	}.Run([]string{"report", "list"})
 
 	exitErr, ok := err.(interface {
 		ExitCode() int
@@ -720,7 +720,7 @@ func TestRunnerRefusesLinkedWorktreeWithDivergentAgentsFile(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"canonical storage", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -731,14 +731,16 @@ func TestRunnerRefusesLinkedWorktreeWithValidPointerAndDivergentAgentsFile(t *te
 	main := initCLIGitRepo(t)
 	linked := addCLILinkedWorktree(t, main, "valid-pointer-divergent-agents")
 	seedCLIIdenticalAgentsCheckout(t, main, linked)
+	mkdirAll(t, filepath.Join(linked, ".agents", "reports"))
+	mkdirAll(t, filepath.Join(main, ".agents", "reports"))
 	writeFile(t, filepath.Join(linked, ".agents", worktreeBackPointerFile), main+"\n")
-	writeFile(t, filepath.Join(linked, ".agents", "local-only.md"), "# Local Only\n")
+	writeFile(t, filepath.Join(linked, ".agents", "reports", "local-only.md"), "# Local Only\n")
 	var stderr bytes.Buffer
 
 	err := Runner{
 		Stderr:     &stderr,
 		WorkingDir: linked,
-	}.Run([]string{"journal", "recent"})
+	}.Run([]string{"report", "list"})
 
 	exitErr, ok := err.(interface {
 		ExitCode() int
@@ -747,7 +749,7 @@ func TestRunnerRefusesLinkedWorktreeWithValidPointerAndDivergentAgentsFile(t *te
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"canonical storage", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -761,9 +763,11 @@ func TestRunnerRefusesLinkedWorktreeWithSymlinkAgentsFile(t *testing.T) {
 	main := initCLIGitRepo(t)
 	linked := addCLILinkedWorktree(t, main, "symlink-agents")
 	seedCLIIdenticalAgentsCheckout(t, main, linked)
-	writeFile(t, filepath.Join(main, ".agents", "linked.md"), "target\n")
+	mkdirAll(t, filepath.Join(linked, ".agents", "reports"))
+	mkdirAll(t, filepath.Join(main, ".agents", "reports"))
+	writeFile(t, filepath.Join(main, ".agents", "reports", "linked.md"), "target\n")
 	writeFile(t, filepath.Join(linked, "target.md"), "target\n")
-	if err := os.Symlink("../target.md", filepath.Join(linked, ".agents", "linked.md")); err != nil {
+	if err := os.Symlink("../target.md", filepath.Join(linked, ".agents", "reports", "linked.md")); err != nil {
 		t.Fatalf("Symlink() error = %v", err)
 	}
 	var stderr bytes.Buffer
@@ -771,7 +775,7 @@ func TestRunnerRefusesLinkedWorktreeWithSymlinkAgentsFile(t *testing.T) {
 	err := Runner{
 		Stderr:     &stderr,
 		WorkingDir: linked,
-	}.Run([]string{"journal", "recent"})
+	}.Run([]string{"report", "list"})
 
 	exitErr, ok := err.(interface {
 		ExitCode() int
@@ -780,7 +784,7 @@ func TestRunnerRefusesLinkedWorktreeWithSymlinkAgentsFile(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"canonical storage", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -793,9 +797,9 @@ func TestRunnerRefusesLinkedWorktreeWithOnlySymlinkAgentsFile(t *testing.T) {
 	}
 	main := initCLIGitRepo(t)
 	linked := addCLILinkedWorktree(t, main, "symlink-only-agents")
-	mkdirAll(t, filepath.Join(linked, ".agents"))
+	mkdirAll(t, filepath.Join(linked, ".agents", "reports"))
 	writeFile(t, filepath.Join(linked, "target.md"), "target\n")
-	if err := os.Symlink("../target.md", filepath.Join(linked, ".agents", "linked.md")); err != nil {
+	if err := os.Symlink("../target.md", filepath.Join(linked, ".agents", "reports", "linked.md")); err != nil {
 		t.Fatalf("Symlink() error = %v", err)
 	}
 	var stderr bytes.Buffer
@@ -803,7 +807,7 @@ func TestRunnerRefusesLinkedWorktreeWithOnlySymlinkAgentsFile(t *testing.T) {
 	err := Runner{
 		Stderr:     &stderr,
 		WorkingDir: linked,
-	}.Run([]string{"journal", "recent"})
+	}.Run([]string{"report", "list"})
 
 	exitErr, ok := err.(interface {
 		ExitCode() int
@@ -812,7 +816,7 @@ func TestRunnerRefusesLinkedWorktreeWithOnlySymlinkAgentsFile(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"canonical storage", "loaf migrate worktree-storage"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -823,12 +827,14 @@ func TestRunnerRefusesPreA3LinkedWorktreeBeforeDispatch(t *testing.T) {
 	main := initCLIGitRepo(t)
 	linked := addCLILinkedWorktree(t, main, "pre-a3-refusal")
 	seedCLIWorktreeAgents(t, linked)
+	mkdirAll(t, filepath.Join(linked, ".agents", "reports"))
+	writeFile(t, filepath.Join(linked, ".agents", "reports", "local.md"), "# Local report\n")
 	var stderr bytes.Buffer
 
 	err := Runner{
 		Stderr:     &stderr,
 		WorkingDir: linked,
-	}.Run([]string{"journal", "recent"})
+	}.Run([]string{"report", "list"})
 
 	exitErr, ok := err.(interface {
 		ExitCode() int
@@ -837,7 +843,7 @@ func TestRunnerRefusesPreA3LinkedWorktreeBeforeDispatch(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
 		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
 	}
-	for _, want := range []string{"Linked worktrees keep .agents/", "loaf migrate worktree-storage", "LOAF_DEBUG_RESOLVE"} {
+	for _, want := range []string{"canonical storage", "loaf migrate worktree-storage", "LOAF_DEBUG_RESOLVE"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -848,6 +854,8 @@ func TestRunnerRefusesPreA3LinkedWorktreeWithUnknownCommandFeedback(t *testing.T
 	main := initCLIGitRepo(t)
 	linked := addCLILinkedWorktree(t, main, "pre-a3-unknown")
 	seedCLIWorktreeAgents(t, linked)
+	mkdirAll(t, filepath.Join(linked, ".agents", "reports"))
+	writeFile(t, filepath.Join(linked, ".agents", "reports", "local.md"), "# Local report\n")
 	var stderr bytes.Buffer
 
 	err := Runner{
@@ -859,10 +867,10 @@ func TestRunnerRefusesPreA3LinkedWorktreeWithUnknownCommandFeedback(t *testing.T
 		ExitCode() int
 		Silent() bool
 	})
-	if !ok || exitErr.ExitCode() != 2 || !exitErr.Silent() {
-		t.Fatalf("Run() error = %#v, want silent exit code 2", err)
+	if !ok || exitErr.ExitCode() != 1 || !exitErr.Silent() {
+		t.Fatalf("Run() error = %#v, want silent exit code 1", err)
 	}
-	for _, want := range []string{"unknown command 'not-a-command'", "Linked worktrees keep .agents/", "loaf migrate worktree-storage"} {
+	for _, want := range []string{"unknown command 'not-a-command'"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
@@ -12967,8 +12975,8 @@ func TestHarnessReconcilePreA3GateSeparatesGlobalAndProjectLayouts(t *testing.T)
 		t.Fatal("global harness reconcile was blocked by project storage migration")
 	}
 	t.Setenv(projectEnvironmentEnv, "1")
-	if !shouldRefuseCommandNative([]string{"harness", "reconcile", "--target", "amp"}, linked) {
-		t.Fatal("project-bound harness reconcile bypassed pre-A3 storage migration")
+	if shouldRefuseCommandNative([]string{"harness", "reconcile", "--target", "amp"}, linked) {
+		t.Fatal("project-bound harness reconcile was blocked by unrelated legacy files")
 	}
 }
 

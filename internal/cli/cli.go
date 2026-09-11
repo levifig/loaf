@@ -199,15 +199,8 @@ func (r Runner) Run(args []string) error {
 	if err != nil {
 		return err
 	}
-	if shouldRefuseCommandNative(args, workingDir.Path()) {
-		if unknown := unknownTopLevelCommandNative(args); unknown != "" {
-			fmt.Fprintf(errOut, "error: unknown command '%s'\n\n", unknown)
-		}
-		if mainMissing := detectMainMissingForRefusalNative(workingDir.Path()); mainMissing != "" {
-			fmt.Fprintln(errOut, mainMissing)
-		} else {
-			fmt.Fprintln(errOut, preA3RefusalMessageNative)
-		}
+	if refusal := r.worktreeStorageRefusal(args, workingDir.Path()); refusal != "" {
+		fmt.Fprintln(errOut, refusal)
 		return ExitError{Code: 2}
 	}
 	runtime := state.NewRuntime(workingDir)

@@ -9,7 +9,7 @@ import (
 )
 
 func TestStaticJournalGuidanceInNestedLinkedWorktree(t *testing.T) {
-	for _, scenario := range []string{"identical-checkout", "main-config-edited", "divergent-task", "local-only-task"} {
+	for _, scenario := range []string{"identical-checkout", "main-config-edited", "branch-config-diff", "divergent-task", "local-only-task"} {
 		t.Run(scenario, func(t *testing.T) {
 			main := initCLIGitRepo(t)
 			mkdirAll(t, filepath.Join(main, ".agents", "tasks"))
@@ -20,8 +20,12 @@ func TestStaticJournalGuidanceInNestedLinkedWorktree(t *testing.T) {
 			linked := filepath.Join(main, ".claude", "worktrees", "review")
 			gitCLI(t, main, "worktree", "add", "-b", "review", linked)
 			switch scenario {
-			case "main-config-edited":
+			case "main-config-edited", "branch-config-diff":
 				writeFile(t, filepath.Join(main, ".agents", "loaf.json"), "{\"version\":\"0.5.0\"}\n")
+				if scenario == "branch-config-diff" {
+					gitCLI(t, main, "add", ".agents/loaf.json")
+					gitCLI(t, main, "-c", "user.name=Loaf Test", "-c", "user.email=loaf@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "configuration on another branch")
+				}
 			case "divergent-task":
 				writeFile(t, filepath.Join(linked, ".agents", "tasks", "legacy.md"), "# Changed task\n")
 			case "local-only-task":
@@ -74,28 +78,41 @@ func TestStaticJournalGuidanceInNestedLinkedWorktree(t *testing.T) {
 					t.Fatalf("guidance created %s: %v", path, err)
 				}
 			}
-			if scenario == "identical-checkout" {
-				if shouldRefuseCommandNative([]string{"journal", "recent"}, linked) {
-					t.Fatal("identical checkout requires migration")
-				}
-				return
+			var initOut bytes.Buffer
+			if err := (Runner{WorkingDir: linked, StateHome: stateHome, Stdout: &initOut}).Run([]string{"state", "init"}); err != nil {
+				t.Fatal(err)
 			}
 			for _, args := range [][]string{
-				{"journal", "recent"}, {"journal", "log", "decision(test): keep state protected"},
+				{"journal", "recent"}, {"journal", "log", "decision(test): use canonical SQLite"},
 				{"journal", "context", "--from-hook"}, {"journal", "context", "for-resumption"},
-				{"journal", "context", "for-prompt", "--unexpected"}, {"journal", "context", "for-compact", "--unexpected"},
-				{"journal", "context", "for-prompt", "--claude-code"},
 			} {
 				var stdout, stderr bytes.Buffer
 				err := (Runner{WorkingDir: linked, StateHome: stateHome, Stdin: strings.NewReader(`{}`), Stdout: &stdout, Stderr: &stderr}).Run(args)
-				exitErr, ok := err.(ExitError)
-				if !ok || exitErr.Code != 2 || !strings.Contains(stderr.String(), "loaf migrate worktree-storage") {
-					t.Fatalf("%v = %v; stderr: %q, want migration refusal", args, err, stderr.String())
+				if err != nil {
+					t.Fatalf("%v: %v; stderr: %s", args, err, stderr.String())
 				}
-				if strings.Contains(stderr.String(), "unknown command") {
-					t.Fatalf("%v incorrectly reported unknown command: %s", args, stderr.String())
+				if strings.Contains(stderr.String(), "loaf migrate worktree-storage") {
+					t.Fatalf("SQLite command refused: %s", stderr.String())
 				}
 			}
+			var mainOut bytes.Buffer
+			if err := (Runner{WorkingDir: main, StateHome: stateHome, Stdout: &mainOut}).Run([]string{"journal", "recent"}); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(mainOut.String(), "use canonical SQLite") {
+				t.Fatalf("main journal does not share linked identity: %s", mainOut.String())
+			}
+
+			for path, want := range before {
+				raw, err := os.ReadFile(path)
+				if err != nil || string(raw) != want {
+					t.Fatalf("SQLite operation changed %s: %q, %v", path, raw, err)
+				}
+			}
+			if _, err := os.Lstat(filepath.Join(linked, ".agents", worktreeBackPointerFile)); !os.IsNotExist(err) {
+				t.Fatalf("SQLite command created marker: %v", err)
+			}
+
 		})
 	}
 }
