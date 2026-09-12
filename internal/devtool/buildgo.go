@@ -19,9 +19,6 @@ type BuildGoOptions struct {
 	// Builder compiles one target into dest. Nil means `go build`; tests inject
 	// a stand-in that writes fixture bytes.
 	Builder func(dest string, target Target, env Env) error
-	// Linker publishes the dev launcher pointer after a successful non-release
-	// build. Nil means RefreshDevBuildLink; tests inject a recorder.
-	Linker func(launcher string) DevLinkResult
 	// HostTarget overrides the platform bin/loaf is copied from. Nil means the
 	// running process's GOOS/GOARCH.
 	HostTarget *Target
@@ -61,17 +58,13 @@ func IsReleaseBuild(env Env) bool {
 // into bin/native/<target>/, staging every binary first so a failing target
 // leaves the previously published set intact. bin/loaf becomes a copy of the
 // host platform's binary: it is the distribution's entry point, and since the
-// Node launcher is gone it is the native binary itself. Non-release builds
-// then point Loaf's user-local dev launcher at it.
+// Node launcher is gone it is the native binary itself. Builds never retarget
+// the development launcher; use Install for explicit activation.
 func BuildGo(options BuildGoOptions) error {
 	root := options.RootDir
 	stdout := options.Stdout
 	if stdout == nil {
 		stdout = os.Stdout
-	}
-	stderr := options.Stderr
-	if stderr == nil {
-		stderr = os.Stderr
 	}
 	env := options.Env.With(map[string]string{"CGO_ENABLED": "0"}).With(PinnedToolchainEnv(root))
 	runner := options.Runner
@@ -82,12 +75,6 @@ func BuildGo(options BuildGoOptions) error {
 	if builder == nil {
 		builder = func(dest string, target Target, env Env) error {
 			return runner.Run(root, env.With(map[string]string{"GOOS": target.GOOS, "GOARCH": target.GOARCH}), "go", GoBuildArgs(dest, env)...)
-		}
-	}
-	linker := options.Linker
-	if linker == nil {
-		linker = func(launcher string) DevLinkResult {
-			return RefreshDevBuildLink(launcher, DevLinkOptions{Env: env, Warn: func(message string) { fmt.Fprintln(stderr, message) }})
 		}
 	}
 
@@ -163,14 +150,6 @@ func BuildGo(options BuildGoOptions) error {
 	// lingering in checkouts that predate the change.
 	_ = os.Remove(filepath.Join(root, "bin", "package.json"))
 
-	if runtime.GOOS != "windows" && !IsReleaseBuild(env) && env["LOAF_DEV_LINK"] != "0" {
-		if _, err := os.Stat(launcher); err == nil {
-			result := linker(launcher)
-			if result.Status == DevLinkLinked {
-				fmt.Fprintf(stdout, "✓ Linked latest dev build: %s -> %s\n", result.Link, launcher)
-			}
-		}
-	}
 	return nil
 }
 

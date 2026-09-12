@@ -9,12 +9,12 @@ See [README.md](README.md) for what Loaf is and how to install it.
 ## Quick Start
 
 ```bash
-LOAF_DEV_LINK=0 make build      # Build the native CLI + content without switching the user's PATH runtime
+make build                      # Build the native CLI + content without switching the user's PATH runtime
 bin/loaf build                 # Rebuild content with this checkout's CLI
 bin/loaf upgrade --dry-run      # Preview changes to existing installations
 ```
 
-Use the Go toolchain declared in `go.mod`. Node and optional TypeScript tooling remain for harness plugin checks and capability tests; npm is not a build or install entry point. `make build` without `LOAF_DEV_LINK=0` may activate this checkout's development binary through Loaf's existing launcher pointer. Never change a user's runtime selection as a side effect of verification.
+Use the Go toolchain declared in `go.mod`. Node and optional TypeScript tooling remain for harness plugin checks and capability tests; npm is not a build or install entry point. `make` and `make build` compile and verify this checkout without activating the development launcher. Use `make install` to activate `bin/loaf` through `~/.local/bin/loaf` and Loaf's existing launcher pointer. Never change a user's runtime selection as a side effect of verification. `LOAF_DEV_LINK=0` remains a harmless no-op on builds.
 
 `loaf install` has no dry-run mode. Applying onboarding with `bin/loaf install` is a separate, explicitly scoped action that changes live harness content; use isolated homes in tests.
 
@@ -460,9 +460,11 @@ loaf journal context           # Emit the layered continuity digest
 ### Development
 
 ```bash
-make build-go                  # Build the native binary; claim ~/.local/bin/loaf via Loaf's launcher pointer when that name is absent
-make build                     # Binary + CLI reference + all content targets, then verify
-make verify-local              # Full local test/static/adapter/build gate; forces LOAF_DEV_LINK=0
+make build                     # Binary + CLI reference + all content targets, then verify; does not activate PATH
+make build-cli                 # Compile the native executable only
+make build-go                  # Compatibility alias for make build-cli
+make install                   # Complete build and verification, then activate this checkout through ~/.local/bin/loaf
+make verify-local              # Full local test/static/adapter/build gate; does not activate PATH
 make ci-check                  # Reproduce default remote spot and integrity checks locally
 make ci-smoke                  # Only the bounded remote Go test selection
 make typecheck                 # Compile check (go test ./... -run=^$)
@@ -606,7 +608,7 @@ Configure target-specific behavior and sidecars.
 - Change the version only with explicit approval; keep manifest, generated content, release heading, and tag consistent
 - Use semantic versioning
 - Curate `CHANGELOG.md` for users: aggregate landed behavior, explain compatibility changes, and cite public references rather than internal work IDs
-- Prepare and verify native archives with `LOAF_DEV_LINK=0 make release` and `make package`; these build artifacts but do not publish
+- Prepare and verify native archives with `make release` and `make package`; these build artifacts but do not publish. `LOAF_DEV_LINK=0` remains a harmless no-op.
 - Tagging, publishing GitHub releases, and updating the Homebrew tap require explicit authorization
 
 ## Related Documentation

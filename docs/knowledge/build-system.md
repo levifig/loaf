@@ -10,7 +10,7 @@ covers:
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-09-04'
+last_reviewed: '2026-09-12'
 ---
 
 # Build System
@@ -60,7 +60,7 @@ Claude Code has a split registration model: `plugin.json` handles the plugin man
 
 | Script | Command | Purpose |
 |--------|---------|---------|
-| `cmd/loafdev` | `make build` / `make verify` | Builds the native runtime and generated content, then verifies artifacts. Use `LOAF_DEV_LINK=0` to keep the active runtime unchanged. |
+| `cmd/loafdev` | `make build` / `make verify` | Builds the native runtime and generated content, then verifies artifacts. Ordinary builds do not activate the development launcher; use `make install` to point `~/.local/bin/loaf` at this checkout. `LOAF_DEV_LINK=0` remains a harmless leftover. |
 | `cli/scripts/smoke-test.js` | `node cli/scripts/smoke-test.js` | Validates built hook artifacts across supported targets (structure, `if` conditions, `failClosed` flags). Run after build changes. |
 | `cli/scripts/eval-skill-routing.mjs` | `node cli/scripts/eval-skill-routing.mjs` | Tests whether Claude routes prompts to correct skills. Requires `ANTHROPIC_API_KEY`. Use `--model` for cheaper runs, `--skill` to test one skill. |
 
