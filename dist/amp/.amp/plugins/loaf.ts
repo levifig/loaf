@@ -265,9 +265,13 @@ import { promisify as delegationPromisify } from 'node:util';
 
 const delegationExec = delegationPromisify(delegationExecFile);
 type DelegationCommand = (command: string, args: string[], cwd?: string) => Promise<string>;
-type DelegationRole = 'implementation' | 'review';
-type DelegationGuard = { role: DelegationRole; root: string; sealed: boolean };
+type DelegationGuard = { root: string; sealed: boolean };
 type DelegationToolCall = Pick<ToolCallEvent, 'toolUseID' | 'tool' | 'input'> & { thread: { id: string } };
+const nativeBuiltinModes = ['low', 'medium', 'high', 'ultra'] as const;
+const grokModel = 'xai/grok-4.6';
+const implementationTools = ['Read', 'apply_patch'] as const;
+const implementationInstructions = 'These child instructions replace only inherited self-log, provider, and test-execution workflow that this child cannot run. They do not license ignoring repository safety or style. Respect repository constraints. Author and update code plus necessary regression tests. The main agent executes test, build, and lint commands and evaluates results. Do not recursively delegate or spawn another agent. Implement only the supplied bounded native tracker contract in the current worktree. You have only Read and apply_patch. Use absolute paths for Read and every apply_patch file and Move header. Do not seek shell, provider, or delegation tools. Report changed files and the checks main must run. The main agent owns the journal, tracker, Git, command execution, and acceptance.';
+const nativeModePolicy = 'Stay in this native Amp mode. Investigate, plan, assess, coordinate, use the tracker, and run tests here. Delegate all implementation, including fixes and test writing, through loaf_delegate to a fresh Grok 4.6 Fast child. Do not implement locally if loaf_delegate is missing or fails. Use native Oracle for read-only review and advice. The Review button remains unchanged. Review-only requests do not authorize fixes; send authorized findings to a fresh loaf_delegate child, not the reviewer. Repeated Ship should reuse valid contract, diff, test, and review evidence and rerun only stale or missing checks. Do not infer commit, push, or merge authority. Native Low, Medium, High, Ultra, Oracle, and Subagents Auto settings stay untouched.';
 
 async function delegationCommand(command: string, args: string[], cwd?: string): Promise<string> {
   const result = await delegationExec(command, args, { cwd, timeout: 10000, maxBuffer: 1024 * 1024 });
@@ -297,6 +301,44 @@ function delegationContained(root: string, path: string): boolean {
   return suffix !== '' && suffix !== '..' && !suffix.startsWith('..' + sep) && !isAbsolute(suffix) && !suffix.split(sep).includes('.git');
 }
 
+type NativeModeThread = {
+  agent?: () => Promise<{ definition?: { kind?: string; mode?: string } }>;
+  parentThreadID?: () => Promise<string | null>;
+};
+
+function isNativeBuiltinMode(mode: string | undefined): mode is typeof nativeBuiltinModes[number] {
+  return mode === 'low' || mode === 'medium' || mode === 'high' || mode === 'ultra';
+}
+
+export async function loafNativeModeContext(_event: unknown, ctx: { thread?: NativeModeThread }): Promise<{ message?: { content: string; display: false } } | Record<string, never>> {
+  try {
+    if (typeof ctx.thread?.agent !== 'function' || typeof ctx.thread.parentThreadID !== 'function') return {};
+    const [agent, parent] = await Promise.all([ctx.thread.agent(), ctx.thread.parentThreadID()]);
+    // Current reported parent plus builtin definition only. Amp may return null
+    // after a parent is deleted, so an orphaned builtin indistinguishable from a
+    // parentless builtin can receive this policy. This is not lifetime ancestry
+    // or an OS sandbox.
+    if (parent !== null) return {};
+    if (agent.definition?.kind !== 'builtin-agent' || !isNativeBuiltinMode(agent.definition.mode)) return {};
+    return { message: { content: nativeModePolicy, display: false } };
+  } catch {
+    return {};
+  }
+}
+
+function grokCatalogReady(catalog: unknown): boolean {
+  if (!catalog || typeof catalog !== 'object') return false;
+  const names = 'builtinToolNames' in catalog ? catalog.builtinToolNames : undefined;
+  const models = 'models' in catalog ? catalog.models : undefined;
+  if (!Array.isArray(names) || names.some(name => typeof name !== 'string') || implementationTools.some(tool => !names.includes(tool))) return false;
+  if (!Array.isArray(models)) return false;
+  return models.some(model => {
+    if (!model || typeof model !== 'object' || !('id' in model) || model.id !== grokModel) return false;
+    const capabilities = 'capabilities' in model ? model.capabilities : undefined;
+    return !!capabilities && typeof capabilities === 'object' && 'tools' in capabilities && capabilities.tools === true;
+  });
+}
+
 // This is a trusted-host, single-plugin-runtime boundary, not an OS sandbox or a
 // cross-process lock. Keep guards after completion so a resumed child cannot write.
 export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCommand = delegationCommand): {
@@ -308,7 +350,7 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
   const check = async (event: DelegationToolCall): Promise<string | undefined> => {
     const guard = children.get(event.thread.id);
     if (!guard) return undefined;
-    if (guard.sealed || guard.role === 'review') return 'Loaf child has no tool authority.';
+    if (guard.sealed) return 'Loaf child has no tool authority.';
     if (event.tool !== 'Read' && event.tool !== 'apply_patch') return 'Loaf implementation child allows only Read and apply_patch.';
     try {
       let paths: string[];
@@ -351,14 +393,14 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
   }
   const tool: PluginToolDefinition = {
     name: 'loaf_delegate',
-    description: 'Delegate one native tracker contract in the current local Git worktree. Implementation has Read/apply_patch only with absolute paths; review has no tools and needs a complete immutable snapshot in packet. The main agent owns shell/tests, providers, acceptance, and exclusion of parent or unrelated writers. Inherits the current native Amp mode; no model selection. Prevents overlapping delegated implementers in this plugin runtime only; not an OS sandbox. Returns child identity, packet digest and turn evidence, never acceptance.',
+    description: 'Delegate one bounded native tracker implementation in the current local Git worktree to a fresh Grok 4.6 Fast child. Implementation has Read/apply_patch only with absolute paths. Review is not a loaf_delegate role; use native Oracle. The main agent owns shell/tests, providers, acceptance, and exclusion of parent or unrelated writers. Prevents overlapping delegated implementers in this plugin runtime only; not an OS sandbox. Returns child identity, packet digest and turn evidence, never acceptance.',
     inputSchema: {
       type: 'object', additionalProperties: false,
       properties: {
-        role: { type: 'string', enum: ['implementation', 'review'] },
+        role: { type: 'string', enum: ['implementation'] },
         native_ref: { type: 'string', description: 'Canonical tracker record reference already read by the main agent.' },
         worktree: { type: 'string', description: 'Absolute path of the existing current Amp Git worktree.' },
-        packet: { type: 'string', description: 'Live contract and bounded task; for review include exact immutable diff, sources and test evidence.' },
+        packet: { type: 'string', description: 'Live contract and bounded implementation task. Do not use this tool for review.' },
       },
       required: ['role', 'native_ref', 'worktree', 'packet'],
     },
@@ -384,20 +426,18 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
       };
       const receipt: Record<string, unknown> = { acceptance: 'main-agent-required', parent_thread_id: ctx.thread.id };
       try {
-        if (input.role !== 'implementation' && input.role !== 'review') throw new Error('role must be implementation or review');
+        if (input.role === 'review') throw new Error('loaf_delegate is implementation-only; use native Oracle for read-only review.');
+        if (input.role !== 'implementation') throw new Error('role must be implementation');
         for (const field of ['native_ref', 'worktree', 'packet']) {
           if (typeof input[field] !== 'string' || !(input[field] as string).trim()) throw new Error(`${field} must be nonempty`);
         }
-        const { role } = input;
         const worktree = input.worktree as string;
         const packet = input.packet as string;
         if (!isAbsolute(worktree)) throw new Error('worktree must be absolute');
-        if (role === 'implementation') {
-          if (writer) throw new Error('An implementation child is active or its stop is uncertain; inspect it before continuing.');
-          writer = true;
-          acquired = true;
-        }
-        if (typeof amp.createAgent !== 'function' || typeof ctx.thread.agent !== 'function' ||
+        if (writer) throw new Error('An implementation child is active or its stop is uncertain; inspect it before continuing.');
+        writer = true;
+        acquired = true;
+        if (typeof amp.createAgent !== 'function' || typeof ctx.thread.agent !== 'function' || typeof ctx.thread.parentThreadID !== 'function' ||
             typeof ctx.thread.state?.subscribe !== 'function' || typeof ctx.thread.state?.get !== 'function' ||
             typeof amp.helpers?.filePathFromURI !== 'function' || typeof amp.helpers?.filesModifiedByToolCall !== 'function') {
           throw new Error('Installed Amp lacks required stable delegation APIs.');
@@ -419,29 +459,25 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
         if (parentStopped) throw new Error('Parent turn stopped before child creation.');
         const agent = await ctx.thread.agent();
         const mode = agent.definition.kind === 'builtin-agent' ? agent.definition.mode : undefined;
-        if (!mode || !['low', 'medium', 'high', 'ultra', 'smart', 'deep', 'rush'].includes(mode)) {
-          throw new Error('Select a built-in Amp mode before delegation; custom model or effort overrides cannot be inherited safely.');
+        // Current reported parent plus builtin definition only. Amp may return
+        // null after a parent is deleted, so an orphaned builtin that looks
+        // parentless can qualify. This is not lifetime ancestry or an OS sandbox.
+        // Our Grok child remains custom with Read/apply_patch only, including
+        // after parent deletion.
+        if (!isNativeBuiltinMode(mode) || await ctx.thread.parentThreadID() !== null) {
+          throw new Error('loaf_delegate is for a currently parentless builtin Amp mode; currently parented, custom, and unknown callers cannot implement.');
         }
-        const tools = role === 'implementation' ? ['Read', 'apply_patch'] : [];
-        if (tools.length) {
-          const catalog: unknown = JSON.parse(await command('amp', ['plugins', 'show-agent-options', '--json']));
-          const names = catalog && typeof catalog === 'object' && 'builtinToolNames' in catalog ? catalog.builtinToolNames : undefined;
-          if (!Array.isArray(names) || names.some(name => typeof name !== 'string') || tools.some(tool => !names.includes(tool))) {
-            throw new Error('Installed Amp does not expose the required minimal tool catalog.');
-          }
-        }
+        const catalog: unknown = JSON.parse(await command('amp', ['plugins', 'show-agent-options', '--json']));
+        if (!grokCatalogReady(catalog)) throw new Error('Installed Amp does not expose xai/grok-4.6 with tools plus the required Read and apply_patch catalog.');
         if (parentStopped) throw new Error('Parent turn stopped before child creation.');
-        Object.assign(receipt, { native_ref: input.native_ref, role, worktree: root, native_mode: mode, requested_tools: tools, packet_sha256: createHash('sha256').update(packet).digest('hex') });
+        Object.assign(receipt, { native_ref: input.native_ref, role: 'implementation', worktree: root, native_mode: mode, requested_model: grokModel, requested_features: ['fast'], requested_tools: implementationTools, packet_sha256: createHash('sha256').update(packet).digest('hex') });
         const childAgent = amp.createAgent({
-          extends: mode, tools,
-          instructions: role === 'review'
-            ? 'Review only the supplied immutable snapshot. You have no tools. Cite precise source lines and missing evidence; do not approve work beyond that snapshot. The main agent decides acceptance.'
-            : 'Implement only the supplied bounded native tracker contract in the current worktree. You have only Read and apply_patch. Use absolute paths for Read and every apply_patch file and Move header. Do not seek shell, provider, or delegation tools. Return changed paths and evidence needed from main-agent tests. The main agent owns tests, Git, tracker operations and acceptance.',
+          name: 'loaf-implementation-agent', model: grokModel, features: ['fast'], tools: [...implementationTools], instructions: implementationInstructions,
         });
         if (typeof childAgent.createThread !== 'function') throw new Error('Installed Amp cannot create a native child.');
         child = await childAgent.createThread({ parentThreadID: ctx.thread.id, executor: 'local', visibility: 'private' });
         receipt.child_thread_id = child.id;
-        guard = { role, root, sealed: false };
+        guard = { root, sealed: false };
         children.set(child.id, guard);
         if (parentStopped) throw new Error('Parent turn stopped during child creation.');
         if (typeof child.waitForResponse !== 'function' || typeof child.appendUserMessage !== 'function' || typeof child.cancel !== 'function' || typeof child.state?.get !== 'function') {
@@ -627,8 +663,9 @@ const postToolHooks: Record<string, HookEntry[]> = {
 
 export default function (amp: PluginAPI) {
   const delegation = registerLoafDelegation(amp);
-  amp.on('agent.start', async (event) => {
+  amp.on('agent.start', async (event, ctx) => {
     if (delegation.owns(event.thread.id)) return {};
+    const policy = await loafNativeModeContext(event, ctx);
     const result = await runHook('harness', '', 'managed-content-reconcile', 'loaf harness reconcile --target amp --json', undefined, undefined, 10000, false);
     const detail = (result.stdout || result.stderr).trim();
     if (result.exitCode !== 0) {
@@ -643,7 +680,7 @@ export default function (amp: PluginAPI) {
         console.warn(`[loaf] Managed-content reconcile returned an unreadable receipt: ${detail}`);
       }
     }
-    return {};
+    return policy;
   });
 
   amp.on('tool.call', async (event: AmpToolCallEvent) => {

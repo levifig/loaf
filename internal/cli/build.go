@@ -410,6 +410,8 @@ declare module '@ampcode/plugin' {
     model?: string;
     instructions?: string;
     tools?: readonly string[] | 'all' | { include?: readonly string[] | 'all'; add?: readonly string[]; exclude?: readonly string[] };
+    features?: readonly string[];
+    name?: string;
   }
   export type AgentDefinition =
     | { readonly kind: 'builtin-agent'; mode: BuiltinAgentMode }
@@ -435,6 +437,7 @@ declare module '@ampcode/plugin' {
   export interface PluginThread {
     id: string;
     agent(): Promise<Agent>;
+    parentThreadID(): Promise<string | null>;
     readonly state: Observable<ThreadState> & { get(): Promise<ThreadState> };
     waitForResponse(options?: { timeoutMs?: number }): Promise<ThreadAssistantMessage>;
     appendUserMessage(message: { type: 'user-message'; content: string }, options?: { steer?: boolean }): Promise<void>;
@@ -554,7 +557,7 @@ declare module '@ampcode/plugin' {
     registerAgentMode(definition: AgentModeDefinition): void;
     registerTool(definition: PluginToolDefinition): Subscription;
     registerTool(definition: ToolDefinition): void;
-    on(event: 'agent.start', handler: (event: AgentStartEvent) => AgentStartResult | Promise<AgentStartResult>): Subscription;
+    on(event: 'agent.start', handler: (event: AgentStartEvent, ctx: { thread: PluginThread }) => AgentStartResult | Promise<AgentStartResult>): Subscription;
     on(event: 'tool.call', handler: (event: ToolCallEvent) => ToolCallResult | Promise<ToolCallResult>): Subscription;
     on(event: 'tool.result', handler: (event: ToolResultEvent) => void | Promise<void>): Subscription;
   }

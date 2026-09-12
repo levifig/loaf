@@ -443,8 +443,9 @@ const postToolHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(p
 
 func nativeAmpPluginBody() string {
 	body := `  const delegation = registerLoafDelegation(amp);
-  amp.on('agent.start', async (event) => {
+  amp.on('agent.start', async (event, ctx) => {
     if (delegation.owns(event.thread.id)) return {};
+    const policy = await loafNativeModeContext(event, ctx);
     const result = await runHook('harness', '', 'managed-content-reconcile', 'loaf harness reconcile --target amp --json', undefined, undefined, 10000, false);
     const detail = (result.stdout || result.stderr).trim();
     if (result.exitCode !== 0) {
@@ -459,7 +460,7 @@ func nativeAmpPluginBody() string {
         console.warn(%%BT%%[loaf] Managed-content reconcile returned an unreadable receipt: ${detail}%%BT%%);
       }
     }
-    return {};
+    return policy;
   });
 
   amp.on('tool.call', async (event: AmpToolCallEvent) => {
