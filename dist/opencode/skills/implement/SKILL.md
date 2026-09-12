@@ -30,7 +30,7 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 - Confirm the live contract makes Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals concrete. If it describes layers or future-only machinery instead, return it to shape.
 - Inspect repository instructions and affected code before editing. Treat existing changes as user-owned.
 - For architectural changes, follow the architecture skill's topic-maintenance and affected-surface review rules within the authorized scope; do not automatically create a decision record.
-- If the live contract is incomplete or implementation changes its intended outcome, stop and return it to shape instead of silently redefining work.
+- Distinguish a material gap from technical discretion. Routine in-scope implementation details stay implementer decisions. A clear unmet criterion, ordinary defect, or obtainable missing in-scope evidence stays with implement; do not bounce ordinary fixes to shaping or absorb unauthorized scope here. If the live contract is missing substance needed to deliver or review, or implementation would change promised outcome, criteria, safety, dependencies, or the basis of selected or resourced work, stop and return it to shape instead of silently redefining work. Unchanged criteria with unexpectedly expanded work still change the commitment. Material means uncertainty or change in what was promised or authorized, not the severity of an in-scope coding bug. Material changes need applicable authorization, an updated canonical definition with readback, and a retained reason and impact; assignment, write access, or reviewer role alone is not approval. Pause affected work when required approval is missing. Inaccessible required proof or absent authority is blocked; do not waive the criterion.
 - Start each testable behavior with a focused failing test when practical, implement the minimum passing change, and keep refactoring behavior-neutral.
 - Preserve the rideable journey across commits and delegation. Include only machinery exercised by its end-to-end path; reduce breadth before integrity.
 - Keep commits cohesive and atomic only when the user or governing workflow authorizes commits. Never infer permission to push, merge, or publish.
@@ -40,7 +40,7 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 
 ## Verification
 
-- Every completion criterion is mapped to current evidence or an explicit remaining gap.
+- Every completion criterion is mapped to current evidence or an explicit remaining gap. A remaining material gap — unclear or changed contract substance, or a material scope or commitment shift — returns to shape. A clear unmet criterion, ordinary defect, or obtainable missing in-scope evidence stays with implement. Inaccessible required proof or absent authority is blocked; do not waive the criterion.
 - The named rider can complete the journey through its real entry point, and observed dogfood plus safety/integrity evidence match the live contract.
 - No added foundation or abstraction waits on an unspecified future consumer.
 - Focused tests, affected package tests, formatting, lint or static analysis, and the relevant build were actually run and their outputs read.
@@ -58,7 +58,9 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 | Explicit concrete implementation request without an issue ID | Find or create its native contract and verify scope, criteria, and selection before substantive edits |
 | Branch or worktree looks like an issue | Ignore it unless the human named that issue |
 | Linear MCP present, GitHub is the tracker | Use `gh` / GitHub connection; do not claim GitHub is unavailable |
-| Contract gap | Return to shape with the exact gap |
+| Clear unmet criterion, ordinary defect, obtainable missing in-scope evidence, or other in-scope technical work | Stay in implement; do not bounce to shape |
+| Unclear or changed contract substance, or material scope or commitment shift | Return to shape with the exact gap; do not invent intent or absorb unauthorized scope |
+| Inaccessible required proof or absent authority | Blocked; do not waive the criterion |
 | External blocker | Preserve code state and report observed blocker evidence |
 | Independent bounded tasks | Coordinate through orchestration when authorized |
 | Review finding | Add a regression test, fix, and re-run affected gates |

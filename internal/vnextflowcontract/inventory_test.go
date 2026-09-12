@@ -179,6 +179,7 @@ func canonicalContentInventory() []contentInventoryEntry {
 		{Path: "skills/shape/SKILL.md"},
 		{Path: "skills/shape/references", Directory: true},
 		{Path: "skills/shape/references/decomposition.md"},
+		{Path: "skills/shape/references/reviewable-criteria.md"},
 		{Path: "skills/ship", Directory: true},
 		{Path: "skills/ship/SKILL.md"},
 		{Path: "skills/triage", Directory: true},

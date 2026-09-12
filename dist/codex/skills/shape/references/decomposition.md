@@ -1,6 +1,6 @@
 # Decomposition
 
-Decomposition changes native work structure, so it must preserve a rideable journey and improve independent verification rather than merely shorten a description.
+Decomposition changes native work structure, so it must preserve a rideable journey and improve independent verification rather than merely shorten a description. Slice by independently useful operator journeys that native coordination can own; do not slice per skill, ceremony, or verification layer, and do not create children as bookkeeping.
 
 ## Rideability Before Mechanics
 
