@@ -305,10 +305,10 @@ Activating a verified copy is a manual, quiesced operator procedure, not an auto
 ```bash
 git clone https://github.com/levifig/loaf.git
 cd loaf
-LOAF_DEV_LINK=0 make build
+make build
 ```
 
-A development build carries its source commit inside the binary (`loaf --version` reports `<version>+g<short-sha>`, plus `.dirty` when the tree had uncommitted changes) and updates Loaf's user-local launcher pointer (`$XDG_DATA_HOME/loaf/current-dev-launcher`). `~/.local/bin/loaf` is created only when that name is absent, as a symlink to the pointer, so the last worktree built becomes the active CLI when the PATH name is free. Set `LOAF_DEV_LINK=0` to opt out; an existing real file, directory, or any other symlink is never overwritten. Activation is best-effort and never fails a successful native build. A failed multi-target rebuild leaves the previous successful `bin/native` binaries in place. Root `bin/` is a build output and is not tracked.
+A development build carries its source commit inside the binary (`loaf --version` reports `<version>+g<short-sha>`, plus `.dirty` when the tree had uncommitted changes). `make` and `make build` compile, generate, and verify this checkout without retargeting PATH. `make build-cli` compiles only the executable; `make build-go` remains a compatibility alias. `make install` runs that complete build and verification, then activates this checkout through Loaf's user-local launcher pointer (`$XDG_DATA_HOME/loaf/current-dev-launcher`) and `~/.local/bin/loaf` when that name is absent. An existing real file, directory, Homebrew install, or any other symlink is never overwritten; activation failure is an install error. Rebuilding an already-linked checkout still replaces `bin/loaf` in place, so the installed command's bytes change even though the pointer is untouched. `LOAF_DEV_LINK=0` and `LOAF_DEV_LINK=1` no longer change build behavior. A failed multi-target rebuild leaves the previous successful `bin/native` binaries in place. Root `bin/` is a build output and is not tracked.
 
 See [AGENTS.md](AGENTS.md) for development guidelines.
 
@@ -320,11 +320,11 @@ bin/loaf build       # Rebuild content using this checkout's executable
 bin/loaf upgrade --dry-run  # Preview existing-install changes from this checkout
 ```
 
-Build, release, and packaging orchestration runs through Go and `make`; there is no npm install step. Use the Go toolchain declared in `go.mod`. `make verify-local` requires Node and the existing TypeScript compiler (`tsc`) on PATH, runs all deterministic adapter tests without launching live harness sessions, and sets `LOAF_DEV_LINK=0` for its build. Review regenerated content and include it with the source that produced it. `make ci-check` additionally requires generated files to match the Git index, as they must in a clean CI checkout. Individual `test`, `typecheck`, `vet`, `cgo-free`, `capability-tests`, and `verify-generated` targets remain available for focused work.
+Build, release, and packaging orchestration runs through Go and `make`; there is no npm install step. Use the Go toolchain declared in `go.mod`. `make verify-local` requires Node and the existing TypeScript compiler (`tsc`) on PATH, runs all deterministic adapter tests without launching live harness sessions, and does not activate the development launcher. Review regenerated content and include it with the source that produced it. `make ci-check` additionally requires generated files to match the Git index, as they must in a clean CI checkout. Individual `test`, `typecheck`, `vet`, `cgo-free`, `capability-tests`, and `verify-generated` targets remain available for focused work.
 
 Most verification runs locally before review and tagging. Default CI runs a fixed set of uncached smoke tests plus CGO-free build, generated-content validation, and drift checks; `make ci-smoke` runs only the selected tests. Each smoke package has a two-minute test timeout, and the default CI job has a ten-minute total limit including setup and compilation. Release automation runs only `make release-smoke` before constructing all platform archives, checking version and checksums, and publishing. It does not replace comprehensive local verification. See [Runtime and Delivery](docs/architecture/runtime-and-delivery.md) for the check selection and boundary policy.
 
-**Testing locally:** distribution content is resolved from the executable, not the working directory. Use `bin/loaf` for this checkout after building with `LOAF_DEV_LINK=0`. When live onboarding is explicitly intended, `bin/loaf install -i` selects harnesses and applies changes; install has no dry-run mode. Claude registration is refused if the same marketplace name already points elsewhere. Use isolated homes for installation tests so verification does not change your live setup.
+**Testing locally:** distribution content is resolved from the executable, not the working directory. Use `bin/loaf` for this checkout after `make build`. When live onboarding is explicitly intended, `bin/loaf install -i` selects harnesses and applies changes; that harness install is separate from `make install` and has no dry-run mode. Claude registration is refused if the same marketplace name already points elsewhere. Use isolated homes for installation tests so verification does not change your live setup.
 
 ## License
 

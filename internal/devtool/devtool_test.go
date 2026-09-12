@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 type recordingRunner struct {
@@ -52,6 +54,18 @@ func readFixture(t *testing.T, path string) string {
 		return ""
 	}
 	return string(body)
+}
+
+func resolvedSymlink(t *testing.T, path string) string {
+	t.Helper()
+	target, err := os.Readlink(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(filepath.Dir(path), target)
+	}
+	return filepath.Clean(target)
 }
 
 func TestGoBuildArgsCarryReleaseMetadataOnlyWhenSet(t *testing.T) {
@@ -100,16 +114,11 @@ func TestBuildGoPublishesEveryTargetOnlyWhenAllCompile(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	linked := 0
 	err = BuildGo(BuildGoOptions{
-		RootDir: root, Env: Env{"LOAF_BUILD_TARGETS": "linux-x64,win32-x64", "HOME": root}, Runner: &recordingRunner{}, Stdout: &stdout, Stderr: &bytes.Buffer{}, HostTarget: &host,
+		RootDir: root, Env: Env{"LOAF_BUILD_TARGETS": "linux-x64,win32-x64", "LOAF_DEV_LINK": "1", "HOME": root}, Runner: &recordingRunner{}, Stdout: &stdout, Stderr: &bytes.Buffer{}, HostTarget: &host,
 		Builder: func(dest string, target Target, env Env) error {
 			writeFixture(t, dest, "new-"+target.RuntimeID)
 			return nil
-		},
-		Linker: func(launcher string) DevLinkResult {
-			linked++
-			return DevLinkResult{Status: DevLinkLinked, Link: "/tmp/loaf"}
 		},
 	})
 	if err != nil {
@@ -120,9 +129,6 @@ func TestBuildGoPublishesEveryTargetOnlyWhenAllCompile(t *testing.T) {
 	}
 	if got := readFixture(t, filepath.Join(root, "bin", "loaf")); got != "new-linux-x64" {
 		t.Fatalf("bin/loaf = %q, want the host platform binary", got)
-	}
-	if runtime.GOOS != "windows" && linked != 1 {
-		t.Fatalf("dev link refreshed %d times, want 1", linked)
 	}
 	if !strings.Contains(stdout.String(), "Published Loaf entry point") {
 		t.Fatalf("stdout = %q, want the entry point line", stdout.String())
@@ -135,16 +141,17 @@ func TestBuildGoSkipsTheDevLinkForReleaseBuildsAndOptOuts(t *testing.T) {
 	for _, env := range []Env{
 		{"LOAF_BUILD_TARGETS": "linux-x64", "LOAF_BUILD_COMMIT": "abc1234", "HOME": root},
 		{"LOAF_BUILD_TARGETS": "linux-x64", "LOAF_DEV_LINK": "0", "HOME": root},
+		{"LOAF_BUILD_TARGETS": "linux-x64", "LOAF_DEV_LINK": "1", "HOME": root},
+		{"LOAF_BUILD_TARGETS": "linux-x64", "HOME": root},
 	} {
-		linked := 0
 		err := BuildGo(BuildGoOptions{
 			RootDir: root, Env: env, Runner: &recordingRunner{}, Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}, HostTarget: &host,
 			Builder: func(dest string, target Target, env Env) error { writeFixture(t, dest, "bin"); return nil },
-			Linker:  func(string) DevLinkResult { linked++; return DevLinkResult{Status: DevLinkLinked} },
 		})
-		if err != nil || linked != 0 {
-			t.Fatalf("env %v: err=%v linked=%d, want no link", env, err, linked)
+		if err != nil {
+			t.Fatalf("env %v: err=%v, want no activation", env, err)
 		}
+		assertNoPublicDevLink(t, root)
 	}
 }
 
@@ -154,7 +161,6 @@ func TestBuildGoDryRunTouchesNothing(t *testing.T) {
 	err := BuildGo(BuildGoOptions{
 		RootDir: root, Env: Env{"LOAF_BUILD_TARGETS": "linux-x64,win32-x64,linux-x64", "LOAF_NATIVE_ARTIFACT_DRY_RUN": "1"}, Runner: &recordingRunner{}, Stdout: &stdout, Stderr: &bytes.Buffer{},
 		Builder: func(string, Target, Env) error { t.Fatal("builder ran during dry run"); return nil },
-		Linker:  func(string) DevLinkResult { t.Fatal("linker ran during dry run"); return DevLinkResult{} },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -191,11 +197,17 @@ func TestRefreshDevBuildLinkOwnsOnlyItsOwnPointer(t *testing.T) {
 	if got := RefreshDevBuildLink(second, DevLinkOptions{Home: home}); got.Status != DevLinkLinked {
 		t.Fatalf("second link = %#v", got)
 	}
-	if target, _ := os.Readlink(link); target != pointer {
-		t.Fatalf("public link -> %q, want the pointer", target)
+	if target, err := os.Readlink(link); err != nil || filepath.IsAbs(target) {
+		t.Fatalf("public link should be relative, got %q err=%v", target, err)
 	}
-	if target, _ := os.Readlink(pointer); target != second {
-		t.Fatalf("pointer -> %q, want the last build", target)
+	if resolved := resolvedSymlink(t, link); resolved != pointer {
+		t.Fatalf("public link resolves to %q, want the pointer", resolved)
+	}
+	if target, err := os.Readlink(pointer); err != nil || filepath.IsAbs(target) {
+		t.Fatalf("pointer should be relative, got %q err=%v", target, err)
+	}
+	if resolved := resolvedSymlink(t, pointer); resolved != second {
+		t.Fatalf("pointer resolves to %q, want the last build", resolved)
 	}
 
 	// A real file, an unrelated symlink, and a legacy checkout link are never displaced.
@@ -218,6 +230,12 @@ func TestRefreshDevBuildLinkOwnsOnlyItsOwnPointer(t *testing.T) {
 		if name == "legacy checkout" && !strings.Contains(warnings[0], "already points at a Loaf checkout") {
 			t.Fatalf("legacy warning = %q", warnings[0])
 		}
+		if name == "legacy checkout" && !strings.Contains(warnings[0], "make install") {
+			t.Fatalf("legacy warning = %q, want make install", warnings[0])
+		}
+		if resolved := resolvedSymlink(t, pointer); resolved != second {
+			t.Fatalf("%s retargeted the pointer to %q", name, resolved)
+		}
 	}
 	os.Remove(link)
 	got := RefreshDevBuildLink(second, DevLinkOptions{Home: home, Warn: func(string) {}, Symlink: func(target, dest string) error {
@@ -228,6 +246,293 @@ func TestRefreshDevBuildLinkOwnsOnlyItsOwnPointer(t *testing.T) {
 	}})
 	if got.Status != DevLinkFailed {
 		t.Fatalf("permission failure result = %#v, want failed without panic", got)
+	}
+}
+
+func TestRefreshDevBuildLinkPreservesOldPointerWhenFinalPublicClaimFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("dev links are skipped on Windows")
+	}
+	home := t.TempDir()
+	launcher := func(name string) string {
+		path := filepath.Join(home, name, "bin", "loaf")
+		writeFixture(t, filepath.Join(home, name, "package.json"), `{"name":"loaf"}`)
+		writeFixture(t, path, "#!/bin/sh\n")
+		return path
+	}
+	link := filepath.Join(home, ".local", "bin", "loaf")
+	pointer := filepath.Join(home, ".local", "share", "loaf", "current-dev-launcher")
+	first, second := launcher("first"), launcher("second")
+	if got := RefreshDevBuildLink(first, DevLinkOptions{Home: home}); got.Status != DevLinkLinked {
+		t.Fatalf("first link = %#v", got)
+	}
+	if resolved := resolvedSymlink(t, pointer); resolved != first {
+		t.Fatalf("pointer after first = %q, want %s", resolved, first)
+	}
+
+	got := RefreshDevBuildLink(second, DevLinkOptions{
+		Home: home,
+		BeforeReplacePointer: func() {
+			os.Remove(link)
+			if err := os.WriteFile(link, []byte("operator-owned\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		},
+	})
+	if got.Status != DevLinkConflict && got.Status != DevLinkFailed {
+		t.Fatalf("late public claim result = %#v, want conflict or failed", got)
+	}
+	if resolved := resolvedSymlink(t, pointer); resolved != first {
+		t.Fatalf("late public claim retargeted pointer to %q, want first launcher %s", resolved, first)
+	}
+	if got := readFixture(t, link); got != "operator-owned\n" {
+		t.Fatalf("foreign public entry mutated: %q", got)
+	}
+}
+
+func TestRefreshDevBuildLinkPreservesForeignReplacementOfCreatedPublic(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("dev links are skipped on Windows")
+	}
+	home := t.TempDir()
+	launcher := func(name string) string {
+		path := filepath.Join(home, name, "bin", "loaf")
+		writeFixture(t, filepath.Join(home, name, "package.json"), `{"name":"loaf"}`)
+		writeFixture(t, path, "#!/bin/sh\n")
+		return path
+	}
+	link := filepath.Join(home, ".local", "bin", "loaf")
+	pointer := filepath.Join(home, ".local", "share", "loaf", "current-dev-launcher")
+	first, second := launcher("first"), launcher("second")
+	if got := RefreshDevBuildLink(first, DevLinkOptions{Home: home}); got.Status != DevLinkLinked {
+		t.Fatalf("first link = %#v", got)
+	}
+	if err := os.Remove(link); err != nil {
+		t.Fatal(err)
+	}
+	if resolved := resolvedSymlink(t, pointer); resolved != first {
+		t.Fatalf("pointer after removing public = %q, want %s", resolved, first)
+	}
+
+	got := RefreshDevBuildLink(second, DevLinkOptions{
+		Home: home,
+		BeforeReplacePointer: func() {
+			if err := os.Remove(link); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(link, []byte("operator-owned\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		},
+	})
+	if got.Status != DevLinkConflict && got.Status != DevLinkFailed {
+		t.Fatalf("stolen created public result = %#v, want conflict or failed", got)
+	}
+	if resolved := resolvedSymlink(t, pointer); resolved != first {
+		t.Fatalf("stolen created public retargeted pointer to %q, want first launcher %s", resolved, first)
+	}
+	if got := readFixture(t, link); got != "operator-owned\n" {
+		t.Fatalf("foreign public entry mutated: %q", got)
+	}
+}
+
+func TestRefreshDevBuildLinkDoesNotRemoveForeignReplacementAfterCreatingPublic(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("dev links are skipped on Windows")
+	}
+	home := t.TempDir()
+	launcher := func(name string) string {
+		path := filepath.Join(home, name, "bin", "loaf")
+		writeFixture(t, filepath.Join(home, name, "package.json"), `{"name":"loaf"}`)
+		writeFixture(t, path, "#!/bin/sh\n")
+		return path
+	}
+	link := filepath.Join(home, ".local", "bin", "loaf")
+	pointer := filepath.Join(home, ".local", "share", "loaf", "current-dev-launcher")
+	first, second := launcher("first"), launcher("second")
+	if got := RefreshDevBuildLink(first, DevLinkOptions{Home: home}); got.Status != DevLinkLinked {
+		t.Fatalf("first link = %#v", got)
+	}
+	if err := os.Remove(link); err != nil {
+		t.Fatal(err)
+	}
+
+	got := RefreshDevBuildLink(second, DevLinkOptions{
+		Home: home,
+		Warn: func(string) {},
+		Symlink: func(target, dest string) error {
+			if dest == link {
+				if err := os.Symlink(target, dest); err != nil {
+					return err
+				}
+				if err := os.Remove(dest); err != nil {
+					return err
+				}
+				return os.WriteFile(dest, []byte("operator-owned\n"), 0o755)
+			}
+			return os.Symlink(target, dest)
+		},
+	})
+	if got.Status != DevLinkConflict && got.Status != DevLinkFailed {
+		t.Fatalf("create-time replacement result = %#v, want conflict or failed", got)
+	}
+	if resolved := resolvedSymlink(t, pointer); resolved != first {
+		t.Fatalf("create-time replacement retargeted pointer to %q, want first launcher %s", resolved, first)
+	}
+	if got := readFixture(t, link); got != "operator-owned\n" {
+		t.Fatalf("foreign public entry mutated: %q", got)
+	}
+}
+
+func TestRefreshDevBuildLinkPreservesForeignEntriesUnderConcurrentActivation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("dev links are skipped on Windows")
+	}
+	home := t.TempDir()
+	launcher := func(name string) string {
+		path := filepath.Join(home, name, "bin", "loaf")
+		writeFixture(t, filepath.Join(home, name, "package.json"), `{"name":"loaf"}`)
+		writeFixture(t, path, "#!/bin/sh\n")
+		return path
+	}
+	link := filepath.Join(home, ".local", "bin", "loaf")
+	pointer := filepath.Join(home, ".local", "share", "loaf", "current-dev-launcher")
+	first, second := launcher("first"), launcher("second")
+	if got := RefreshDevBuildLink(first, DevLinkOptions{Home: home}); got.Status != DevLinkLinked {
+		t.Fatalf("first link = %#v", got)
+	}
+
+	foreignPublic := filepath.Join(home, "other", "loaf")
+	writeFixture(t, foreignPublic, "foreign-public\n")
+	os.Remove(link)
+	if err := os.Symlink(foreignPublic, link); err != nil {
+		t.Fatal(err)
+	}
+	foreignPointer := filepath.Join(home, "other", "pointer")
+	writeFixture(t, foreignPointer, "foreign-pointer\n")
+	os.Remove(pointer)
+	if err := os.MkdirAll(filepath.Dir(pointer), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pointer, []byte("regular-pointer\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	results := make([]DevLinkResult, 2)
+	start := make(chan struct{})
+	for i, dest := range []string{first, second} {
+		wg.Add(1)
+		go func(i int, dest string) {
+			defer wg.Done()
+			<-start
+			results[i] = RefreshDevBuildLink(dest, DevLinkOptions{Home: home, Warn: func(string) {}})
+		}(i, dest)
+	}
+	close(start)
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("concurrent activations did not finish")
+	}
+	for i, got := range results {
+		if got.Status == DevLinkLinked {
+			t.Fatalf("activation %d replaced foreign entries: %#v", i, got)
+		}
+	}
+	if got := readLink(t, link); got != foreignPublic {
+		t.Fatalf("foreign public symlink mutated: %q", got)
+	}
+	if got := readFixture(t, pointer); got != "regular-pointer\n" {
+		t.Fatalf("foreign pointer file mutated: %q", got)
+	}
+}
+
+func TestRefreshDevBuildLinkPublishesPointerUnderConcurrentActivation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("dev links are skipped on Windows")
+	}
+	home := t.TempDir()
+	launcher := func(name string) string {
+		path := filepath.Join(home, name, "bin", "loaf")
+		writeFixture(t, filepath.Join(home, name, "package.json"), `{"name":"loaf"}`)
+		writeFixture(t, path, "#!/bin/sh\n")
+		return path
+	}
+	link := filepath.Join(home, ".local", "bin", "loaf")
+	pointer := filepath.Join(home, ".local", "share", "loaf", "current-dev-launcher")
+	first, second := launcher("first"), launcher("second")
+
+	var wg sync.WaitGroup
+	results := make([]DevLinkResult, 2)
+	start := make(chan struct{})
+	for i, dest := range []string{first, second} {
+		wg.Add(1)
+		go func(i int, dest string) {
+			defer wg.Done()
+			<-start
+			results[i] = RefreshDevBuildLink(dest, DevLinkOptions{Home: home, Warn: func(string) {}})
+		}(i, dest)
+	}
+	close(start)
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("concurrent activations did not finish")
+	}
+	for i, got := range results {
+		if got.Status != DevLinkLinked {
+			t.Fatalf("activation %d = %#v, want linked", i, got)
+		}
+	}
+	if resolved := resolvedSymlink(t, link); resolved != pointer {
+		t.Fatalf("public link resolves to %q, want the pointer", resolved)
+	}
+	resolved := resolvedSymlink(t, pointer)
+	if resolved != first && resolved != second {
+		t.Fatalf("pointer resolves to %q, want one of the concurrent launchers", resolved)
+	}
+}
+
+func TestRefreshDevBuildLinkReportsPointerPathOnRegularFileConflict(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("dev links are skipped on Windows")
+	}
+	home := t.TempDir()
+	launcher := filepath.Join(home, "checkout", "bin", "loaf")
+	writeFixture(t, filepath.Join(home, "checkout", "package.json"), `{"name":"loaf"}`)
+	writeFixture(t, launcher, "#!/bin/sh\n")
+	public := filepath.Join(home, ".local", "bin", "loaf")
+	pointer := filepath.Join(home, ".local", "share", "loaf", "current-dev-launcher")
+	writeFixture(t, pointer, "operator-owned-pointer\n")
+	got := RefreshDevBuildLink(launcher, DevLinkOptions{Home: home, Warn: func(string) {}})
+	if got.Status != DevLinkConflict {
+		t.Fatalf("result = %#v, want conflict", got)
+	}
+	if got.Link != public {
+		t.Fatalf("Link = %q, want public %s", got.Link, public)
+	}
+	if got.Pointer != pointer {
+		t.Fatalf("Pointer = %q, want %s", got.Pointer, pointer)
+	}
+	if got.Err == nil || !strings.Contains(got.Err.Error(), pointer) {
+		t.Fatalf("conflict Err = %v, want the pointer path", got.Err)
+	}
+	if strings.Contains(got.Err.Error(), public) && !strings.Contains(got.Err.Error(), pointer) {
+		t.Fatalf("conflict Err reported public path without pointer: %v", got.Err)
+	}
+	if got := readFixture(t, pointer); got != "operator-owned-pointer\n" {
+		t.Fatalf("foreign pointer mutated: %q", got)
 	}
 }
 

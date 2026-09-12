@@ -32,10 +32,12 @@ func run(args []string) error {
 	env := devtool.EnvFromOS()
 	build := devtool.BuildOptions{RootDir: root, Env: env, Stdout: os.Stdout, Stderr: os.Stderr}
 	switch args[0] {
-	case "build-go":
+	case "build-cli", "build-go":
 		return devtool.BuildGo(devtool.BuildGoOptions{RootDir: root, Env: env, Stdout: os.Stdout, Stderr: os.Stderr})
 	case "build":
 		return devtool.Build(build)
+	case "install":
+		return devtool.Install(devtool.InstallOptions{RootDir: root, Env: env, Stdout: os.Stdout, Stderr: os.Stderr})
 	case "verify-artifacts":
 		return devtool.VerifyArtifacts(devtool.VerifyOptions{RootDir: root, Env: env, Stdout: os.Stdout})
 	case "release":
@@ -93,9 +95,11 @@ func parseHomebrewArgs(args []string) (devtool.HomebrewOptions, error) {
 const usage = `Usage: go run ./cmd/loafdev <command>
 
 Commands:
-  build-go            Compile bin/native/<target>/loaf for LOAF_BUILD_TARGETS (default: this host)
-                      and publish bin/loaf; non-release builds relink the dev launcher pointer
-  build               build-go, then regenerate the CLI reference, build content targets, verify
+  build-cli           Compile bin/native/<target>/loaf for LOAF_BUILD_TARGETS (default: this host)
+                      and publish bin/loaf without activating the development launcher
+  build-go            Compatibility alias for build-cli
+  build               build-cli, then regenerate the CLI reference, build content targets, verify
+  install             complete build and verification, then activate this checkout through ~/.local/bin/loaf
   verify-artifacts    Check native binaries and content-only Claude Code plugin artifacts
   release             build for every release platform (or LOAF_RELEASE_TARGETS)
   package             Write dist/release archives and checksums.txt from bin/native
@@ -105,6 +109,7 @@ Commands:
 Environment:
   LOAF_BUILD_TARGETS, LOAF_VERIFY_TARGETS, LOAF_RELEASE_TARGETS   comma-separated target lists
   LOAF_BUILD_COMMIT, LOAF_BUILD_DATE                              release metadata (release workflow only)
-  LOAF_DEV_LINK=0                                                 do not touch the dev launcher pointer
-  LOAF_NATIVE_ARTIFACT_DRY_RUN=1, LOAF_RELEASE_DRY_RUN=1          report instead of acting
+  LOAF_DEV_LINK=0                                                 retained no-op for existing isolated build invocations
+  LOAF_NATIVE_ARTIFACT_DRY_RUN=1                                  report-only for build-cli/build-go, install, and artifact verification
+  LOAF_RELEASE_DRY_RUN=1                                          report-only for release
 `

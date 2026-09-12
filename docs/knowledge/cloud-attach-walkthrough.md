@@ -94,7 +94,7 @@ This repository ships Cursor Cloud bootstrap artifacts:
 **Install/build phase** (`.cursor/loaf-cloud-install.sh`):
 
 ```bash
-npm ci && npm run build:go   # when native binary missing for host
+make build-cli   # when native binary missing for host
 export PATH="$ROOT/bin:$PATH"
 export LOAF_PROJECT_ENV=1
 loaf install --to cursor --yes
@@ -193,18 +193,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
       - name: Build Loaf CLI
         run: |
-          npm ci
-          npm run build:go
+          make build-cli
           echo "$PWD/bin" >> "$GITHUB_PATH"
 
       - name: Attach to substrate

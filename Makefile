@@ -1,17 +1,25 @@
 # Loaf development entry points. Everything runs through Go; there is no npm.
-#   make build     compile the native binary, regenerate the CLI reference, build content, verify
+#   make / make build  compile the native binary, regenerate the CLI reference, build content, verify
+#   make build-cli compile the native executable only
+#   make install   complete build and verification, then activate this checkout
 #   make test      go test ./...
-#   make verify-local  comprehensive local checks, without activating the CLI
+#   make verify-local  comprehensive local checks, without activating the development launcher
 #   make ci-smoke      bounded remote spot checks, also runnable locally
-.PHONY: build build-go verify release package test typecheck vet capability-tests verify-local verify-generated cgo-free ci-check ci-smoke release-smoke vulncheck clean
+.PHONY: build build-cli build-go install verify release package test typecheck vet capability-tests verify-local verify-generated cgo-free ci-check ci-smoke release-smoke vulncheck clean
 
 GO ?= go
 
 build:
 	$(GO) run ./cmd/loafdev build
 
+build-cli:
+	$(GO) run ./cmd/loafdev build-cli
+
 build-go:
 	$(GO) run ./cmd/loafdev build-go
+
+install:
+	$(GO) run ./cmd/loafdev install
 
 verify:
 	$(GO) run ./cmd/loafdev verify-artifacts
