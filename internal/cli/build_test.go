@@ -1630,6 +1630,30 @@ func TestNativeBuildValidationAcceptsAmpHookPluginSurface(t *testing.T) {
 	}
 }
 
+func TestNativeBuildValidationAcceptsAmpAgentDisplayWithoutColor(t *testing.T) {
+	requireTypeScriptCompiler(t)
+	root := realpath(t, t.TempDir())
+	mkdirAll(t, filepath.Join(root, "dist", "amp", ".amp", "plugins"))
+	writeFile(t, filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf.ts"), strings.Join([]string{
+		"import type { PluginAPI, CreateAgentConfig } from '@ampcode/plugin';",
+		"",
+		"export default function (amp: PluginAPI) {",
+		"  const config: CreateAgentConfig = { model: 'xai/grok-4.6', display: { label: 'implementer' } };",
+		"  amp.createAgent(config);",
+		"}",
+		"",
+	}, "\n"))
+	t.Setenv("LOAF_VALIDATE_TYPESCRIPT", "1")
+
+	warnings, err := validateNativeBuildArtifacts(root, "amp")
+	if err != nil {
+		t.Fatalf("validateNativeBuildArtifacts(amp agent display without color) error = %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %#v, want none when CreateAgentConfig accepts label-only display", warnings)
+	}
+}
+
 func requireTypeScriptCompiler(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath("tsc"); err != nil {

@@ -101,6 +101,7 @@ test('native child is pinned Grok Fast with minimal tools and returns provenance
   assert.deepEqual(agent.features, ['fast']);
   assert.equal(agent.reasoningEffort, undefined);
   assert.equal(agent.extends, undefined);
+  assert.deepEqual(agent.display, { label: 'implementer' });
   assert.deepEqual(f.calls.find(([name]) => name === 'thread')[1], { parentThreadID: 'T-parent', executor: 'local', visibility: 'private' });
   assert.ok(await f.guard.check({ thread: { id: 'T-child' }, tool: 'Read', input: { path: join(f.root, 'source') } }));
 });
