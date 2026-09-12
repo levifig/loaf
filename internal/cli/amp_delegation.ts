@@ -214,7 +214,7 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
         if (parentStopped) throw new Error('Parent turn stopped before child creation.');
         Object.assign(receipt, { native_ref: input.native_ref, role: 'implementation', worktree: root, native_mode: mode, requested_model: grokModel, requested_features: ['fast'], requested_tools: implementationTools, packet_sha256: createHash('sha256').update(packet).digest('hex') });
         const childAgent = amp.createAgent({
-          name: 'loaf-implementation-agent', model: grokModel, features: ['fast'], tools: [...implementationTools], instructions: implementationInstructions,
+          name: 'loaf-implementation-agent', model: grokModel, features: ['fast'], tools: [...implementationTools], instructions: implementationInstructions, display: { label: 'implementer' },
         });
         if (typeof childAgent.createThread !== 'function') throw new Error('Installed Amp cannot create a native child.');
         child = await childAgent.createThread({ parentThreadID: ctx.thread.id, executor: 'local', visibility: 'private' });
