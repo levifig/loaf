@@ -17,6 +17,8 @@ This method sharpens existing briefs, canonical tracker work contracts, criteria
 
 Every shaped milestone or work unit makes these concrete in its existing contract. Use natural prose and criteria; the labels below are a thinking aid, not mandatory native tracker headings.
 
+An existing journey restored by maintenance is valid. One exercise, check, or dogfood pass may supply several answers or evidence. Do not invent a research or adoption program to fill the table.
+
 | Element | Concrete answer |
 |---------|-----------------|
 | **Rider** | The real operator who receives the value, in a named context |
@@ -54,7 +56,7 @@ Ask these during shaping, implementation checkpoints, review, shipping, and refl
 | Stage | Use the method to |
 |-------|-------------------|
 | **pitch** | Frame the first valuable operator journey without prematurely designing it |
-| **shape** | Make the increment contract concrete on the canonical tracker record and decompose by complete slices |
+| **shape** | Make the increment contract concrete on the canonical tracker record and decompose by independently useful slices |
 | **implement** | Preserve the journey while landing atomic commits and reject unused machinery |
 | **ship** | Verify that the rider can complete the journey and that proof matches the claims |
 | **release** | Describe progress by the larger real journey now possible, not layers completed |

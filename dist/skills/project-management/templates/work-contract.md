@@ -3,7 +3,7 @@
 This is an ephemeral semantic packet for one bounded write to canonical native tracker fields. Replace every placeholder, route each field once, and then verify the native record. Do not store or copy this packet as a second work record. Route the title directly to the tracker's native title field; route hierarchy and dependencies through their native relationship operations.
 
 <!-- loaf:rideable-increment-contract -->
-Make the rideable increment concrete inside the existing fields, without adding native headings or schema: identify the Rider in Problem; express the complete Journey, Entry point, and observable Outcome through Definition of Done; put real Dogfood, Safety/integrity proof, and Learning sought in Verification; and name explicit Deferrals in Out of Scope. Risks carries threats to that journey and its integrity.
+Make the rideable increment concrete inside the existing fields, without adding native headings or schema: identify the Rider in Problem; express the complete Journey, Entry point, and observable Outcome through Definition of Done; put real Dogfood, Safety/integrity proof, and Learning sought in Verification; and name explicit Deferrals in Out of Scope. Risks carries threats to that journey and its integrity. Write only enough for an implementer to deliver and a reviewer to evaluate independently. Reuse known context; ask only material unanswered choices. Criteria name relevant conditions, observable results, preservation boundaries, and obtainable evidence or judgment; they do not prescribe files, functions, Gherkin, or one test per checkbox. Out of Scope prevents likely expansion. Solo and team share these five fields.
 
 <!-- loaf:field problem -->
 ## Problem

@@ -1751,6 +1751,45 @@ func TestRideableIncrementDoctrineAndContractShipToEveryTarget(t *testing.T) {
 	}
 }
 
+func TestReviewableCriteriaReferenceAndWorkContractGuidanceShipToEveryTarget(t *testing.T) {
+	root := setupIsolatedRepositoryBuildRoot(t)
+	repo := testRepositoryRoot(t)
+	if err := os.Symlink(filepath.Join(repo, "vnext"), filepath.Join(root, "vnext")); err != nil {
+		t.Fatalf("Symlink(vnext) error = %v", err)
+	}
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatalf("build error = %v\n%s", err, stdout.String())
+	}
+
+	criteriaRel := filepath.Join("shape", "references", "reviewable-criteria.md")
+	criteriaSource := readBuildFileString(t, filepath.Join(repo, "vnext", "content", "skills", criteriaRel))
+	workContractSource := readBuildFileString(t, filepath.Join(repo, "vnext", "content", "templates", "work-contract.md"))
+	for _, target := range defaultBuildTargets {
+		skillsRoot := nativeBuildSkillTreeDir(root, target)
+		if got := readBuildFileString(t, filepath.Join(skillsRoot, criteriaRel)); got != criteriaSource {
+			t.Errorf("%s %s differs from canonical authored reviewable-criteria reference", target, filepath.ToSlash(criteriaRel))
+		}
+		shape := readBuildFileString(t, filepath.Join(skillsRoot, "shape", "SKILL.md"))
+		if !strings.Contains(shape, "references/reviewable-criteria.md") {
+			t.Errorf("%s generated shape skill does not link the reviewable-criteria reference", target)
+		}
+		workContract := readBuildFileString(t, filepath.Join(skillsRoot, "shape", "templates", "work-contract.md"))
+		if workContract != workContractSource {
+			t.Errorf("%s generated work contract differs from the shared authored template", target)
+		}
+		if got := strings.Count(workContract, "<!-- loaf:field "); got != 5 {
+			t.Errorf("%s generated work contract has %d semantic fields, want the unchanged 5-field contract", target, got)
+		}
+		for _, skill := range []string{"project-management", "loaf-reference", "ship"} {
+			projected := readBuildFileString(t, filepath.Join(skillsRoot, skill, "templates", "work-contract.md"))
+			if projected != workContractSource {
+				t.Errorf("%s generated %s work-contract projection differs from the shared authored template", target, skill)
+			}
+		}
+	}
+}
+
 func TestLabeledHarnessSectionsRenderVerbatim(t *testing.T) {
 	// Contract: labeled harness sections are authored content that ships
 	// byte-identical on every target. Product tokens must appear inside their

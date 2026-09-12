@@ -67,6 +67,47 @@ func TestFlowCeremonyContractRejectsAuthorityDrift(t *testing.T) {
 	}
 }
 
+func TestShapeCeremonyDeclaresExplicitSelectionTransition(t *testing.T) {
+	t.Parallel()
+
+	manifest := canonicalCeremonyManifest()
+	var shape ceremonyContract
+	for _, ceremony := range manifest.Ceremonies {
+		if ceremony.Name == "shape" {
+			shape = ceremony
+			break
+		}
+	}
+	if shape.Name == "" {
+		t.Fatal("shape ceremony missing from canonical contract")
+	}
+	transitionAfterRead := false
+	for index, operation := range shape.TrackerOperations {
+		if operation == "status.read" && index+1 < len(shape.TrackerOperations) && shape.TrackerOperations[index+1] == "status.transition" {
+			transitionAfterRead = true
+			break
+		}
+	}
+	if !transitionAfterRead {
+		t.Fatalf("shape tracker_operations = %v, want status.transition immediately after status.read for same-turn explicit selection", shape.TrackerOperations)
+	}
+
+	omitted := canonicalCeremonyManifest()
+	for index, ceremony := range omitted.Ceremonies {
+		if ceremony.Name != "shape" {
+			continue
+		}
+		filtered := make([]string, 0, len(ceremony.TrackerOperations))
+		for _, operation := range ceremony.TrackerOperations {
+			if operation != "status.transition" {
+				filtered = append(filtered, operation)
+			}
+		}
+		omitted.Ceremonies[index].TrackerOperations = filtered
+	}
+	assertContractFinding(t, validateCeremonyDeclarations(omitted), "ceremony.contract", "external canonical contract")
+}
+
 func validateCeremonyDeclarations(manifest flowManifest) []finding {
 	workflowSkills := make(map[string]struct{})
 	for _, skill := range manifest.Skills {
@@ -158,7 +199,7 @@ func canonicalCeremonies() []ceremonyContract {
 	return []ceremonyContract{
 		{Name: "pitch", Skill: "pitch", Input: "human-context", Output: "problem-narrative", Template: "problem-narrative", TrackerOperations: []string{"connection.discover", "capability.discover", "work.read", "comment.list"}},
 		{Name: "triage", Skill: "triage", Input: "native-work-candidates", Output: "native-dispositions", Template: "tracker-update", TrackerOperations: []string{"connection.discover", "capability.discover", "work.read", "work.update", "status.read", "status.transition", "comment.list", "comment.append"}},
-		{Name: "shape", Skill: "shape", Input: "problem-narrative", Output: "work-contract", Template: "work-contract", TrackerOperations: []string{"connection.discover", "capability.discover", "work.read", "work.create", "work.update", "definition.write", "hierarchy.read", "hierarchy.change", "dependency.read", "dependency.change", "status.read"}},
+		{Name: "shape", Skill: "shape", Input: "problem-narrative", Output: "work-contract", Template: "work-contract", TrackerOperations: []string{"connection.discover", "capability.discover", "work.read", "work.create", "work.update", "definition.write", "hierarchy.read", "hierarchy.change", "dependency.read", "dependency.change", "status.read", "status.transition"}},
 		{Name: "implement", Skill: "implement", Input: "work-contract", Output: "implementation-evidence", Template: "tracker-update", TrackerOperations: []string{"connection.discover", "capability.discover", "work.read", "hierarchy.read", "dependency.read", "status.read", "status.transition", "comment.list", "comment.append"}},
 		{Name: "ship", Skill: "ship", Input: "implementation-evidence", Output: "quality-verdict", Template: "tracker-update", TrackerOperations: []string{"connection.discover", "capability.discover", "work.read", "hierarchy.read", "dependency.read", "status.read", "status.transition", "comment.list", "comment.append"}},
 		{Name: "release", Skill: "release", Input: "landed-work", Output: "release-outcome", Template: "tracker-update", TrackerOperations: []string{"connection.discover", "capability.discover", "work.read", "work.update", "status.read", "comment.list", "comment.append"}},
