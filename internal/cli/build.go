@@ -412,6 +412,7 @@ declare module '@ampcode/plugin' {
     tools?: readonly string[] | 'all' | { include?: readonly string[] | 'all'; add?: readonly string[]; exclude?: readonly string[] };
     features?: readonly string[];
     name?: string;
+    display?: AgentDisplay;
   }
   export type AgentDefinition =
     | { readonly kind: 'builtin-agent'; mode: BuiltinAgentMode }
@@ -485,7 +486,7 @@ declare module '@ampcode/plugin' {
 
   export interface AgentDisplay {
     label: string;
-    color: string;
+    color?: string;
   }
 
   export interface AgentConfig {
