@@ -71,6 +71,7 @@ async function runHook(
   payload?: string,
   timeout: number = 60000,
   failClosed: boolean = false,
+  cwd: string = process.cwd(),
 ): Promise<HookResult> {
   const env = {
     ...process.env,
@@ -84,7 +85,7 @@ async function runHook(
     // If hook has direct command (e.g., 'loaf check ...'), execute it
     if (command) {
       const child = execFile('bash', ['-c', command], {
-        cwd: process.cwd(),
+        cwd,
         env,
         encoding: 'utf-8',
         timeout,
@@ -114,7 +115,7 @@ async function runHook(
       const scriptPath = join(__dirname, 'hooks', script);
       const interpreter = script.endsWith('.py') ? 'python3' : 'bash';
       const child = execFile(interpreter, [scriptPath], {
-        cwd: process.cwd(),
+        cwd,
         env,
         encoding: 'utf-8',
         timeout,
@@ -663,10 +664,52 @@ const postToolHooks: Record<string, HookEntry[]> = {
 
 export default function (amp: PluginAPI) {
   const delegation = registerLoafDelegation(amp);
+  function ampWorkspaceDir(): { path?: string; error?: string } {
+    const workspaceRoot = amp.system?.workspaceRoot;
+    if (!workspaceRoot) return { error: 'Amp workspace is unavailable' };
+    if (typeof amp.helpers?.filePathFromURI !== 'function') {
+      return { error: 'Amp workspace is unavailable' };
+    }
+    try {
+      const path = amp.helpers.filePathFromURI(workspaceRoot);
+      if (typeof path !== 'string' || !path) return { error: 'Amp workspace is unavailable' };
+      return { path };
+    } catch (error: any) {
+      return { error: error?.message || 'Amp workspace is unavailable' };
+    }
+  }
+
+  function resolveAmpHookCwd(explicitDir?: string): { cwd?: string; error?: string } {
+    if (typeof explicitDir === 'string' && explicitDir) {
+      if (isAbsolute(explicitDir)) return { cwd: explicitDir };
+      const workspace = ampWorkspaceDir();
+      if (!workspace.path) {
+        return { error: workspace.error || 'Amp workspace is unavailable; cannot resolve relative shell directory' };
+      }
+      return { cwd: resolve(workspace.path, explicitDir) };
+    }
+    const workspace = ampWorkspaceDir();
+    if (!workspace.path) {
+      return { error: workspace.error || 'Amp workspace is unavailable' };
+    }
+    return { cwd: workspace.path };
+  }
+
+  function ampHelperShellDir(event: AmpToolCallEvent): string | undefined {
+    if (event.tool !== 'Bash' && event.tool !== 'shell_command') return undefined;
+    const shellCommand = amp.helpers.shellCommandFromToolCall(event);
+    return typeof shellCommand?.dir === 'string' && shellCommand.dir ? shellCommand.dir : undefined;
+  }
+
   amp.on('agent.start', async (event, ctx) => {
     if (delegation.owns(event.thread.id)) return {};
     const policy = await loafNativeModeContext(event, ctx);
-    const result = await runHook('harness', '', 'managed-content-reconcile', 'loaf harness reconcile --target amp --json', undefined, undefined, 10000, false);
+    const directory = resolveAmpHookCwd();
+    if (directory.error || !directory.cwd) {
+      console.warn(`[loaf] Managed-content reconcile skipped: ${directory.error || 'Amp workspace is unavailable'}`);
+      return policy;
+    }
+    const result = await runHook('harness', '', 'managed-content-reconcile', 'loaf harness reconcile --target amp --json', undefined, undefined, 10000, false, directory.cwd);
     const detail = (result.stdout || result.stderr).trim();
     if (result.exitCode !== 0) {
       console.warn(`[loaf] Managed-content reconcile failed without blocking this session: ${detail || ('exit ' + result.exitCode)}`);
@@ -694,7 +737,11 @@ export default function (amp: PluginAPI) {
       if (!matchesTool(toolName, matcher)) continue;
       for (const hook of hookList) {
         if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
-        const result = await runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
+        const directory = resolveAmpHookCwd(ampHelperShellDir(event));
+        if (directory.error || !directory.cwd) {
+          return { action: 'reject-and-continue', message: directory.error || 'Amp workspace is unavailable' };
+        }
+        const result = await runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed, directory.cwd);
 
         if (result.exitCode === 2) {
           return { action: 'reject-and-continue', message: result.stderr };
@@ -717,7 +764,12 @@ export default function (amp: PluginAPI) {
       if (!matchesTool(toolName, matcher)) continue;
       for (const hook of hookList) {
         if (!matchesIfCondition(toolName, toolInput, hook.if)) continue;
-        const result = await runHook('post-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed);
+        const directory = resolveAmpHookCwd(ampHelperShellDir(event));
+        if (directory.error || !directory.cwd) {
+          console.warn(`[loaf] Post-hook ${hook.id} skipped: ${directory.error || 'Amp workspace is unavailable'}`);
+          continue;
+        }
+        const result = await runHook('post-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed, directory.cwd);
 
         if (result.exitCode !== 0) {
           console.warn(`[loaf] Post-hook ${hook.id} error (exit ${result.exitCode}): ${result.stderr}`);

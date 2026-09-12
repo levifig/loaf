@@ -26,7 +26,7 @@
       "kind": "plugin",
       "source_path": ".amp/plugins/loaf.ts",
       "destination": "plugins/loaf.ts",
-      "sha256": "96c75a17ee65d36fde30fa1ae62587effab58e9ed9b92257563e0d2151481841",
+      "sha256": "6f2fb1924ab06b69c63ce569d8d1d62aad85b1bfed5b0a7e0390b151c0534c64",
       "mode": 420
     }
   ]

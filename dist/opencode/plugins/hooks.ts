@@ -70,6 +70,7 @@ async function runHook(
   payload?: string,
   timeout: number = 60000,
   failClosed: boolean = false,
+  cwd: string = process.cwd(),
 ): Promise<HookResult> {
   const env = {
     ...process.env,
@@ -83,7 +84,7 @@ async function runHook(
     // If hook has direct command (e.g., 'loaf check ...'), execute it
     if (command) {
       const child = execFile('bash', ['-c', command], {
-        cwd: process.cwd(),
+        cwd,
         env,
         encoding: 'utf-8',
         timeout,
@@ -113,7 +114,7 @@ async function runHook(
       const scriptPath = join(__dirname, 'hooks', script);
       const interpreter = script.endsWith('.py') ? 'python3' : 'bash';
       const child = execFile(interpreter, [scriptPath], {
-        cwd: process.cwd(),
+        cwd,
         env,
         encoding: 'utf-8',
         timeout,
