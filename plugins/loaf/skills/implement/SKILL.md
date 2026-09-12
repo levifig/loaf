@@ -71,7 +71,7 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 
 ### Amp
 
-When delegating through the managed `loaf_delegate` tool, read [Amp native delegation](../orchestration/references/amp-native-delegation.md). Keep tracker operations, shell commands, tests, and acceptance with the main agent. An incompatible delegation result does not authorize selecting another mode or broadening child tools.
+When using native Amp Low, Medium, High, or Ultra, keep investigation, planning, tracker work, tests, and acceptance in the main thread. Send all implementation, including fixes and test writing, through `loaf_delegate` to a fresh Grok 4.6 Fast child with only Read and apply_patch in the current local workspace. Use native Oracle for read-only review and advice; the Review button remains unchanged. An incompatible or missing delegate does not authorize local implementation or another model. Native mode, Oracle, and Subagents Auto settings stay untouched. Reload or restart loads changed plugin bytes, but a persisted custom-mode definition is not rewritten; select builtin Low, Medium, High, or Ultra, or start a new builtin thread. Read [Amp native delegation](../orchestration/references/amp-native-delegation.md).
 
 ## Topics
 

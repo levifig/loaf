@@ -39,5 +39,6 @@ targets:
     output: dist/amp/
     # First-class Amp target
     # Skills (standard SKILL.md, no sidecar merge) + auto-generated runtime
-    # plugins at .amp/plugins/loaf.ts (hooks) and .amp/plugins/loaf-modes.ts
-    # (Loaf Medium, Loaf Ultra, and pinned delegation tools)
+    # plugins at .amp/plugins/loaf.ts (hooks, native-mode policy, and pinned Grok
+    # implementation) and .amp/plugins/loaf-modes.ts (inert compatibility artifact;
+    # no custom modes or custom reviewer/oracle)

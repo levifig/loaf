@@ -306,8 +306,9 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 		"return 'Edit';",
 		"amp.helpers.shellCommandFromToolCall(event)",
 		"normalizedInput.cwd = shellCommand.dir",
-		"amp.on('agent.start', async (event) =>",
+		"amp.on('agent.start', async (event, ctx) =>",
 		"const delegation = registerLoafDelegation(amp)",
+		"const policy = await loafNativeModeContext(event, ctx)",
 		"await delegation.check(event)",
 		"loaf harness reconcile --target amp --json",
 		"Managed-content reconcile failed without blocking this session",
@@ -376,7 +377,7 @@ func TestRunnerBuildTargetAmpCopiesAuthoredModesPlugin(t *testing.T) {
 	assertNativeAmpModesPluginContracts(t, built)
 	hookPlugin := readBuildFileString(t, filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf.ts"))
 	if strings.Contains(hookPlugin, "registerAgentMode") || strings.Contains(hookPlugin, "delegate_implementation") {
-		t.Fatalf("hook plugin = %q, want modes/delegation kept in loaf-modes.ts", hookPlugin)
+		t.Fatalf("hook plugin = %q, want no retired Loaf mode or review-delegate registrations", hookPlugin)
 	}
 }
 
@@ -1508,9 +1509,19 @@ func TestNativeBuildTypeScriptAmbientCreateThreadOverloadOrder(t *testing.T) {
 	if !strings.Contains(ambient, "content?: string | ThreadAssistantMessage['content']") {
 		t.Fatal("AgentThreadResponse content must include string and Amp block-array shapes")
 	}
+	for _, want := range []string{
+		"parentThreadID(): Promise<string | null>",
+		"features?: readonly string[]",
+		"name?: string",
+		"on(event: 'agent.start', handler: (event: AgentStartEvent, ctx: { thread: PluginThread }) => AgentStartResult | Promise<AgentStartResult>): Subscription",
+	} {
+		if !strings.Contains(ambient, want) {
+			t.Fatalf("ambient types missing %q", want)
+		}
+	}
 }
 
-func TestAuthoredAmpModesPluginExtractsPinnedAgentText(t *testing.T) {
+func TestAuthoredAmpModesPluginIsInertCompatibilityStub(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skipf("node not found: %v", err)
@@ -1520,7 +1531,21 @@ func TestAuthoredAmpModesPluginExtractsPinnedAgentText(t *testing.T) {
 	cmd.Dir = root
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("loaf-modes extract test failed: %v\n%s", err, output)
+		t.Fatalf("loaf-modes retirement test failed: %v\n%s", err, output)
+	}
+}
+
+func TestNativeAmpDelegationAdapter(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skipf("node not found: %v", err)
+	}
+	root := testRepositoryRoot(t)
+	cmd := exec.Command(node, "--experimental-strip-types", "--test", "internal/cli/amp_delegation.test.mjs")
+	cmd.Dir = root
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("amp delegation adapter test failed: %v\n%s", err, output)
 	}
 }
 
@@ -2764,30 +2789,9 @@ func seedNativeCodexBuildFixture(t *testing.T, root string) {
 	mkdirAll(t, filepath.Join(root, "content", "amp", "plugins"))
 	writeFile(t, filepath.Join(root, "content", "codex", "rules", "loaf.rules.tmpl"), "# Loaf Codex policy\n{{LOAF_BASIC_RULES}}\n")
 	writeFile(t, filepath.Join(root, "content", "amp", "plugins", "loaf-modes.ts"), strings.Join([]string{
-		`// @amp-agent-mode {"key":"loaf-medium","label":"Loaf Medium"}`,
-		`// @amp-agent-mode {"key":"loaf-ultra","label":"Loaf Ultra"}`,
+		"export const description = 'Compatibility stub. Managed Amp routing now lives in loaf.ts; this plugin registers no modes, agents, tools, or hooks.';",
 		"",
-		"const IMPLEMENTATION_MODEL = 'xai/grok-4.6';",
-		"const REVIEW_MODEL = 'openai/gpt-5.6-luna';",
-		"const ORCHESTRATOR_MODEL = 'openai/gpt-6-astra';",
-		"const ORACLE_MODEL = 'openai/gpt-6-astra';",
-		"const implementationAgent = {",
-		"  name: 'loaf-implementation-agent',",
-		"  model: 'xai/grok-4.6',",
-		"  features: ['fast'],",
-		"};",
-		"const review = { name: 'loaf-review-agent', model: 'openai/gpt-5.6-luna', reasoningEffort: 'max' };",
-		"const oracle = { name: 'loaf-oracle-agent', model: 'openai/gpt-6-astra', reasoningEffort: 'high' };",
-		"const medium = { name: 'loaf-medium', model: 'openai/gpt-6-astra', reasoningEffort: 'medium' };",
-		"const ultra = { name: 'loaf-ultra', model: 'openai/gpt-6-astra', reasoningEffort: 'xhigh' };",
-		"function registerPinnedTool(definition: { name: string }): void {",
-		"  void definition;",
-		"}",
-		"// Grok 4.6 with Fast",
-		"registerPinnedTool({ name: 'delegate_implementation' });",
-		"registerPinnedTool({ name: 'delegate_review' });",
-		"registerPinnedTool({ name: 'consult_oracle' });",
-		"throw new Error('There is no silent fallback and no local fallback.');",
+		"export default function () {}",
 		"",
 	}, "\n"))
 	writeFile(t, filepath.Join(root, "config", "targets.yaml"), strings.Join([]string{
@@ -3356,62 +3360,20 @@ func ampManifestPluginDestinations(t *testing.T, artifacts []any) map[string]str
 func assertNativeAmpModesPluginContracts(t *testing.T, plugin string) {
 	t.Helper()
 	for _, want := range []string{
-		`// @amp-agent-mode {"key":"loaf-medium","label":"Loaf Medium"}`,
-		`// @amp-agent-mode {"key":"loaf-ultra","label":"Loaf Ultra"}`,
-		"const IMPLEMENTATION_MODEL = 'xai/grok-4.6'",
-		"const REVIEW_MODEL = 'openai/gpt-5.6-luna'",
-		"const ORCHESTRATOR_MODEL = 'openai/gpt-6-astra'",
-		"const ORACLE_MODEL = 'openai/gpt-6-astra'",
-		"name: 'loaf-medium'",
-		"reasoningEffort: 'medium'",
-		"name: 'loaf-ultra'",
-		"reasoningEffort: 'xhigh'",
-		"features: ['fast']",
-		"name: 'loaf-implementation-agent'",
-		"name: 'loaf-review-agent'",
-		"name: 'loaf-oracle-agent'",
-		"name: 'delegate_implementation'",
-		"name: 'delegate_review'",
-		"name: 'consult_oracle'",
-		"There is no silent fallback and no local fallback.",
-		"Grok 4.6 with Fast",
+		"export const description = 'Compatibility stub. Managed Amp routing now lives in loaf.ts; this plugin registers no modes, agents, tools, or hooks.';",
+		"export default function () {}",
 	} {
 		if !strings.Contains(plugin, want) {
 			t.Fatalf("amp modes plugin missing %q", want)
 		}
 	}
-	if strings.Contains(plugin, "openai/gpt-5.6-sol") || strings.Contains(plugin, "GPT-5.6 Sol") {
-		t.Fatal("amp modes plugin still pins GPT-5.6 Sol as the main/oracle model")
-	}
-	implementationBlock := nativeAmpModesNamedBlock(t, plugin, "loaf-implementation-agent", "loaf-review-agent")
-	if strings.Contains(implementationBlock, "reasoningEffort") {
-		t.Fatalf("implementation agent block = %q, want no reasoningEffort", implementationBlock)
-	}
-	if !strings.Contains(implementationBlock, "model: 'xai/grok-4.6'") || !strings.Contains(implementationBlock, "features: ['fast']") {
-		t.Fatalf("implementation agent block = %q, want Grok 4.6 with Fast", implementationBlock)
-	}
-	reviewBlock := nativeAmpModesNamedBlock(t, plugin, "loaf-review-agent", "loaf-oracle-agent")
-	if !strings.Contains(reviewBlock, "model: 'openai/gpt-5.6-luna'") || !strings.Contains(reviewBlock, "reasoningEffort: 'max'") {
-		t.Fatalf("review agent block = %q, want Luna max", reviewBlock)
-	}
-	if strings.Contains(reviewBlock, "reasoningEffort: 'xhigh'") {
-		t.Fatalf("review agent block = %q, want max instead of xhigh", reviewBlock)
-	}
-	oracleBlock := nativeAmpModesNamedBlock(t, plugin, "loaf-oracle-agent", "loaf-medium")
-	if !strings.Contains(oracleBlock, "model: 'openai/gpt-6-astra'") || !strings.Contains(oracleBlock, "reasoningEffort: 'high'") {
-		t.Fatalf("oracle agent block = %q, want Astra high", oracleBlock)
-	}
-	mediumBlock := nativeAmpModesNamedBlock(t, plugin, "loaf-medium", "loaf-ultra")
-	if !strings.Contains(mediumBlock, "model: 'openai/gpt-6-astra'") || !strings.Contains(mediumBlock, "reasoningEffort: 'medium'") {
-		t.Fatalf("medium orchestrator block = %q, want Astra medium", mediumBlock)
-	}
-	ultraBlock := nativeAmpModesNamedBlock(t, plugin, "loaf-ultra", "delegate_implementation")
-	if !strings.Contains(ultraBlock, "model: 'openai/gpt-6-astra'") || !strings.Contains(ultraBlock, "reasoningEffort: 'xhigh'") {
-		t.Fatalf("ultra orchestrator block = %q, want Astra xhigh", ultraBlock)
-	}
-	for _, unwanted := range []string{"high+fast", "high reasoning with Fast", "Grok 4.6 (high reasoning"} {
+	for _, unwanted := range []string{
+		"registerAgentMode", "registerTool", "createAgent", "amp.on", "@amp-agent-mode",
+		"delegate_implementation", "delegate_review", "consult_oracle", "loaf-medium", "loaf-ultra",
+		"openai/gpt-5.6-luna", "openai/gpt-6-astra",
+	} {
 		if strings.Contains(plugin, unwanted) {
-			t.Fatalf("amp modes plugin contains obsolete Grok effort wording %q", unwanted)
+			t.Fatalf("amp modes plugin still contains retired registration %q", unwanted)
 		}
 	}
 }

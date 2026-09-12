@@ -18,7 +18,7 @@
       "kind": "plugin",
       "source_path": ".amp/plugins/loaf-modes.ts",
       "destination": "plugins/loaf-modes.ts",
-      "sha256": "19836ad3669ffc3b1ec7a2cde05dc914848a4148235e1bfa312bee38ee5b5efc",
+      "sha256": "6855aa771d5f35b3837abcaaacffffb5881cba60b42978ec81cc30d57aab4ffe",
       "mode": 420
     },
     {
@@ -26,7 +26,7 @@
       "kind": "plugin",
       "source_path": ".amp/plugins/loaf.ts",
       "destination": "plugins/loaf.ts",
-      "sha256": "32fd2d44dbf1afe38d2c29957b4b5f56a9d4f594d137965763f21566526f5411",
+      "sha256": "402030ddb9d93280d398fa26fae9ebca794b2d446121b1ca5e839db31abb3a3e",
       "mode": 420
     }
   ]
