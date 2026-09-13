@@ -6,12 +6,13 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ### Changed
 
-- Route Amp implementation through native Low, Medium, High, and Ultra with a fresh Grok 4.6 Fast `loaf_delegate` child and native Oracle review, retiring Loaf Medium, Loaf Ultra, and copied custom review oracles while keeping the existing `loaf-modes.ts` install artifact as an inert compatibility plugin ([#266](https://github.com/levifig/loaf/issues/266)).
+- Route Amp implementation through native Low, Medium, High, and Ultra with a fresh Grok 4.6 Fast `loaf_delegate` child labelled exactly `implementer` and native Oracle review, retiring Loaf Medium, Loaf Ultra, and copied custom review oracles while keeping the existing `loaf-modes.ts` install artifact as an inert compatibility plugin ([#266](https://github.com/levifig/loaf/issues/266)).
 - Require verified selected native issues before substantive implementation, including ordinary fix requests, and capture concrete deferred work in native issues before handoff. Honor existing explicit selection without asking again; preserve read-only discovery, narrowly incidental corrections, and explicit user overrides ([#252](https://github.com/levifig/loaf/issues/252)).
 - Keep ordinary `make`/`make build` work from retargeting the development launcher; compile the executable with `make build-cli`, and activate a checkout only through explicit `make install` after complete verification ([#271](https://github.com/levifig/loaf/issues/271)).
 
 ### Fixed
 
+- Run Amp hooks in the shell execution directory or current workspace rather than the installed plugin directory, avoiding false missing-changelog errors while preserving checks ([#279](https://github.com/levifig/loaf/issues/279)).
 - Keep prompt and compaction guidance and SQLite journal commands available in linked worktrees when configuration or unrelated artifacts differ. Restrict migration refusals to storage the command consumes, identify affected paths, and preserve recovery checks without creating implicit migration markers; keep command diagnostics accurate ([#251](https://github.com/levifig/loaf/issues/251), [#254](https://github.com/levifig/loaf/issues/254)).
 - Prefer an already configured GitHub MCP matching `integrations.github.account`; otherwise use installed authenticated `gh` (including `gh api`) through the main agent. Verify MCP identity through the connector and `gh` identity separately before tracker operations.
 
