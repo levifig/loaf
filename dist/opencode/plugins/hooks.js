@@ -33,14 +33,7 @@ const execFileAsync = promisify(execFile);
  * @param failClosed - When true, subprocess errors block the action
  * @returns Hook result with exit code, output, and error information
  */
-interface HookResult {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-  error?: string;
-}
-
-function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: unknown): string | undefined {
+function serializeHookPayload(toolName, toolInput, rawInput) {
   const normalizedToolInput =
     toolInput && typeof toolInput === 'object'
       ? toolInput
@@ -61,34 +54,34 @@ function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: u
   }
 }
 
-function isClosedPipeError(error: any): boolean {
+function isClosedPipeError(error) {
   const code = error && error.code;
   return code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED' || code === 'ERR_STREAM_PREMATURE_CLOSE' || code === 'ERR_STREAM_WRITE_AFTER_END';
 }
 
-function observeHookChild(child: any, payload: string | undefined, failClosed: boolean): Promise<HookResult> {
+function observeHookChild(child, payload, failClosed) {
   return new Promise((resolve) => {
     let stdoutStr = '';
     let stderrStr = '';
-    let stdinError: Error | undefined;
+    let stdinError;
     let settled = false;
 
-    const finish = (result: HookResult) => {
+    const finish = (result) => {
       if (settled) return;
       settled = true;
       resolve(result);
     };
 
-    child.stdout?.on('data', (data: string) => { stdoutStr += data; });
-    child.stderr?.on('data', (data: string) => { stderrStr += data; });
+    child.stdout?.on('data', (data) => { stdoutStr += data; });
+    child.stderr?.on('data', (data) => { stderrStr += data; });
 
     if (child.stdin) {
-      child.stdin.on('error', (err: Error) => {
+      child.stdin.on('error', (err) => {
         if (!isClosedPipeError(err)) stdinError = err;
       });
     }
 
-    child.on('error', (err: Error) => {
+    child.on('error', (err) => {
       finish({
         exitCode: failClosed ? 2 : 1,
         stdout: stdoutStr,
@@ -97,7 +90,7 @@ function observeHookChild(child: any, payload: string | undefined, failClosed: b
       });
     });
 
-    child.on('close', (code: number | null) => {
+    child.on('close', (code) => {
       const exitCode = code ?? 1; // null means signal-killed; fail closed
       if (exitCode === 2) {
         finish({ exitCode, stdout: stdoutStr, stderr: stderrStr });
@@ -118,12 +111,12 @@ function observeHookChild(child: any, payload: string | undefined, failClosed: b
     if (payload && child.stdin) {
       try {
         child.stdin.write(payload);
-      } catch (err: any) {
+      } catch (err) {
         if (!isClosedPipeError(err)) stdinError = err;
       }
       try {
         child.stdin.end();
-      } catch (err: any) {
+      } catch (err) {
         if (!isClosedPipeError(err)) stdinError = err;
       }
     }
@@ -131,16 +124,16 @@ function observeHookChild(child: any, payload: string | undefined, failClosed: b
 }
 
 async function runHook(
-  hookType: string,
-  toolName: string,
-  hookId: string,
-  command?: string,
-  script?: string,
-  payload?: string,
-  timeout: number = 60000,
-  failClosed: boolean = false,
-  cwd: string = process.cwd(),
-): Promise<HookResult> {
+  hookType,
+  toolName,
+  hookId,
+  command,
+  script,
+  payload,
+  timeout = 60000,
+  failClosed = false,
+  cwd = process.cwd(),
+) {
   const env = {
     ...process.env,
     LOAF_HOOK_TYPE: hookType,
@@ -175,7 +168,7 @@ async function runHook(
     }
 
     return { exitCode: 1, stdout: '', stderr: 'No command or script specified' };
-  } catch (error: any) {
+  } catch (error) {
     return {
       exitCode: failClosed ? 2 : 1,
       stdout: '',
@@ -192,7 +185,7 @@ async function runHook(
  *   - Union pattern: "Edit|Write" matches either
  *   - Exact match: "Edit" matches only "Edit"
  */
-function matchesTool(toolName: string, pattern: string): boolean {
+function matchesTool(toolName, pattern) {
   if (!toolName || !pattern) return false;
 
   const patterns = pattern.split('|');
@@ -205,7 +198,7 @@ function matchesTool(toolName: string, pattern: string): boolean {
   });
 }
 
-function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: string | undefined): boolean {
+function matchesIfCondition(toolName, toolInput, ifCondition) {
   if (!ifCondition) return true;
 
   // Parse pattern like "Bash(gh pr merge:*)" or "Bash(git push:*)"
@@ -216,8 +209,8 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
   const [, expectedTool, commandPattern] = match;
   if (toolName !== expectedTool) return false;
 
-  const input = toolInput as Record<string, unknown> | undefined;
-  const command = (input?.command || input?.file_path) as string | undefined;
+  const input = toolInput && typeof toolInput === 'object' ? toolInput : undefined;
+  const command = input?.command || input?.file_path;
   if (!command) return false;
 
   // Handle glob patterns with :* suffix (e.g., "git commit:*" means "starts with git commit")
@@ -250,16 +243,7 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
 // Hook Data
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface HookEntry {
-  id: string;
-  command?: string;
-  script?: string;
-  timeout: number;
-  failClosed: boolean;
-  if?: string;
-}
-
-const preToolHooks: Record<string, HookEntry[]> = {
+const preToolHooks = {
   "Edit|Write|Bash": [
     {
       "id": "artifact-body-write",
@@ -357,7 +341,7 @@ const preToolHooks: Record<string, HookEntry[]> = {
   ]
 };
 
-const postToolHooks: Record<string, HookEntry[]> = {
+const postToolHooks = {
   "Edit|Write": [
     {
       "id": "kb-staleness-nudge",
@@ -377,7 +361,7 @@ const postToolHooks: Record<string, HookEntry[]> = {
   ]
 };
 
-const sessionHooks: Record<string, HookEntry[]> = {
+const sessionHooks = {
   "sessionstart": [
     {
       "id": "session-start-loaf",
@@ -412,15 +396,9 @@ const sessionHooks: Record<string, HookEntry[]> = {
   ]
 };
 
-type OpenCodeClient = {
-  session: {
-    get(input: { path: { id: string } }): Promise<{ data?: { parentID?: string } }>;
-  };
-};
-
 const openCodeSessionLookupWarning = '[loaf] OpenCode session lookup unavailable; context delivery suppressed';
 
-function normalizeOpenCodeToolName(toolName: string): string {
+function normalizeOpenCodeToolName(toolName) {
   switch (toolName) {
     case 'bash':
       return 'Bash';
@@ -433,7 +411,7 @@ function normalizeOpenCodeToolName(toolName: string): string {
   }
 }
 
-async function isOpenCodeRootSession(client: OpenCodeClient, sessionID: string): Promise<boolean> {
+async function isOpenCodeRootSession(client, sessionID) {
   if (!sessionID) return false;
   try {
     const response = await client.session.get({ path: { id: sessionID } });
@@ -441,7 +419,7 @@ async function isOpenCodeRootSession(client: OpenCodeClient, sessionID: string):
       console.warn(openCodeSessionLookupWarning);
       return false;
     }
-    const data = response.data as { parentID?: unknown };
+    const data = response.data;
     if ('parentID' in data && data.parentID !== undefined) {
       if (typeof data.parentID !== 'string') {
         console.warn(openCodeSessionLookupWarning);
@@ -456,7 +434,7 @@ async function isOpenCodeRootSession(client: OpenCodeClient, sessionID: string):
   }
 }
 
-function serializeOpenCodeLifecyclePayload(sessionID: string, lifecycleEvent: string): string {
+function serializeOpenCodeLifecyclePayload(sessionID, lifecycleEvent) {
   return JSON.stringify({
     target: 'opencode',
     session_id: sessionID,
@@ -464,7 +442,7 @@ function serializeOpenCodeLifecyclePayload(sessionID: string, lifecycleEvent: st
   });
 }
 
-async function runOpenCodeSessionHooks(hooks: HookEntry[] | undefined, sessionID: string, lifecycleEvent: string, output: string[]): Promise<void> {
+async function runOpenCodeSessionHooks(hooks, sessionID, lifecycleEvent, output) {
   if (!hooks) return;
   const hookPayload = serializeOpenCodeLifecyclePayload(sessionID, lifecycleEvent);
   for (const hook of hooks) {
@@ -478,11 +456,11 @@ async function runOpenCodeSessionHooks(hooks: HookEntry[] | undefined, sessionID
   }
 }
 
-export default async function AgentSkillsPlugin({ client, $ }: { client: OpenCodeClient; $?: unknown }) {
+export default async function AgentSkillsPlugin({ client, $ }) {
   void $;
   return {
     // Pre-tool hook handler
-    'tool.execute.before': async (input: { tool: string; sessionID: string; callID: string }, output: { args: unknown }) => {
+    'tool.execute.before': async (input, output) => {
       const toolName = normalizeOpenCodeToolName(input.tool);
       const toolInput = output.args;
       if (!toolName) return;
@@ -510,7 +488,7 @@ export default async function AgentSkillsPlugin({ client, $ }: { client: OpenCod
     },
 
     // Post-tool hook handler
-    'tool.execute.after': async (input: { tool: string; sessionID: string; callID: string; args: unknown }, output: { title?: string; output?: string; metadata?: unknown }) => {
+    'tool.execute.after': async (input, output) => {
       const toolName = normalizeOpenCodeToolName(input.tool);
       const toolInput = input.args;
       if (!toolName) return;
@@ -532,13 +510,13 @@ export default async function AgentSkillsPlugin({ client, $ }: { client: OpenCod
     },
 
     // Request and compaction context handlers
-    'experimental.chat.system.transform': async (input: { sessionID?: string; model?: unknown }, output: { system: string[] }) => {
+    'experimental.chat.system.transform': async (input, output) => {
       const sessionID = input?.sessionID;
       if (!sessionID || !(await isOpenCodeRootSession(client, sessionID))) return;
       await runOpenCodeSessionHooks(sessionHooks.sessionstart, sessionID, 'system.transform', output.system);
     },
 
-    'experimental.session.compacting': async (input: { sessionID: string }, output: { context: string[]; prompt?: string }) => {
+    'experimental.session.compacting': async (input, output) => {
       const sessionID = input?.sessionID;
       if (!sessionID || !(await isOpenCodeRootSession(client, sessionID))) return;
       await runOpenCodeSessionHooks(sessionHooks.postcompact, sessionID, 'session.compacting', output.context);

@@ -14,19 +14,19 @@
       "sha256": "5403297367a1e20ac96e6382b6858a7072986da5be1d9fa5396624d046a8e9b8"
     },
     {
-      "id": "plugin:.amp/plugins/loaf-modes.ts",
+      "id": "plugin:.amp/plugins/loaf-modes.js",
       "kind": "plugin",
-      "source_path": ".amp/plugins/loaf-modes.ts",
-      "destination": "plugins/loaf-modes.ts",
-      "sha256": "6855aa771d5f35b3837abcaaacffffb5881cba60b42978ec81cc30d57aab4ffe",
+      "source_path": ".amp/plugins/loaf-modes.js",
+      "destination": "plugins/loaf-modes.js",
+      "sha256": "0a202a1ea170e42cb8c0ed229d92fef703dff78c5b4b8c9741f5fec1a84804f1",
       "mode": 420
     },
     {
-      "id": "plugin:.amp/plugins/loaf.ts",
+      "id": "plugin:.amp/plugins/loaf.js",
       "kind": "plugin",
-      "source_path": ".amp/plugins/loaf.ts",
-      "destination": "plugins/loaf.ts",
-      "sha256": "939fcefd1e06d4929d279bc694561dbc94245724f178c640d62acfb29ed39039",
+      "source_path": ".amp/plugins/loaf.js",
+      "destination": "plugins/loaf.js",
+      "sha256": "2fc76b76c43d4af142ac8706334168e52237c3a55bc46b8c5ded88488ff30c0c",
       "mode": 420
     }
   ]

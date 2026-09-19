@@ -4,10 +4,9 @@
  * @version 0.5.0
  */
 
-import type { PluginAPI } from '@ampcode/plugin';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { join, dirname } from 'path';
+import { join, dirname, isAbsolute, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -34,14 +33,7 @@ const execFileAsync = promisify(execFile);
  * @param failClosed - When true, subprocess errors block the action
  * @returns Hook result with exit code, output, and error information
  */
-interface HookResult {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-  error?: string;
-}
-
-function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: unknown): string | undefined {
+function serializeHookPayload(toolName, toolInput, rawInput) {
   const normalizedToolInput =
     toolInput && typeof toolInput === 'object'
       ? toolInput
@@ -62,34 +54,34 @@ function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: u
   }
 }
 
-function isClosedPipeError(error: any): boolean {
+function isClosedPipeError(error) {
   const code = error && error.code;
   return code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED' || code === 'ERR_STREAM_PREMATURE_CLOSE' || code === 'ERR_STREAM_WRITE_AFTER_END';
 }
 
-function observeHookChild(child: any, payload: string | undefined, failClosed: boolean): Promise<HookResult> {
+function observeHookChild(child, payload, failClosed) {
   return new Promise((resolve) => {
     let stdoutStr = '';
     let stderrStr = '';
-    let stdinError: Error | undefined;
+    let stdinError;
     let settled = false;
 
-    const finish = (result: HookResult) => {
+    const finish = (result) => {
       if (settled) return;
       settled = true;
       resolve(result);
     };
 
-    child.stdout?.on('data', (data: string) => { stdoutStr += data; });
-    child.stderr?.on('data', (data: string) => { stderrStr += data; });
+    child.stdout?.on('data', (data) => { stdoutStr += data; });
+    child.stderr?.on('data', (data) => { stderrStr += data; });
 
     if (child.stdin) {
-      child.stdin.on('error', (err: Error) => {
+      child.stdin.on('error', (err) => {
         if (!isClosedPipeError(err)) stdinError = err;
       });
     }
 
-    child.on('error', (err: Error) => {
+    child.on('error', (err) => {
       finish({
         exitCode: failClosed ? 2 : 1,
         stdout: stdoutStr,
@@ -98,7 +90,7 @@ function observeHookChild(child: any, payload: string | undefined, failClosed: b
       });
     });
 
-    child.on('close', (code: number | null) => {
+    child.on('close', (code) => {
       const exitCode = code ?? 1; // null means signal-killed; fail closed
       if (exitCode === 2) {
         finish({ exitCode, stdout: stdoutStr, stderr: stderrStr });
@@ -119,12 +111,12 @@ function observeHookChild(child: any, payload: string | undefined, failClosed: b
     if (payload && child.stdin) {
       try {
         child.stdin.write(payload);
-      } catch (err: any) {
+      } catch (err) {
         if (!isClosedPipeError(err)) stdinError = err;
       }
       try {
         child.stdin.end();
-      } catch (err: any) {
+      } catch (err) {
         if (!isClosedPipeError(err)) stdinError = err;
       }
     }
@@ -132,16 +124,16 @@ function observeHookChild(child: any, payload: string | undefined, failClosed: b
 }
 
 async function runHook(
-  hookType: string,
-  toolName: string,
-  hookId: string,
-  command?: string,
-  script?: string,
-  payload?: string,
-  timeout: number = 60000,
-  failClosed: boolean = false,
-  cwd: string = process.cwd(),
-): Promise<HookResult> {
+  hookType,
+  toolName,
+  hookId,
+  command,
+  script,
+  payload,
+  timeout = 60000,
+  failClosed = false,
+  cwd = process.cwd(),
+) {
   const env = {
     ...process.env,
     LOAF_HOOK_TYPE: hookType,
@@ -176,7 +168,7 @@ async function runHook(
     }
 
     return { exitCode: 1, stdout: '', stderr: 'No command or script specified' };
-  } catch (error: any) {
+  } catch (error) {
     return {
       exitCode: failClosed ? 2 : 1,
       stdout: '',
@@ -193,7 +185,7 @@ async function runHook(
  *   - Union pattern: "Edit|Write" matches either
  *   - Exact match: "Edit" matches only "Edit"
  */
-function matchesTool(toolName: string, pattern: string): boolean {
+function matchesTool(toolName, pattern) {
   if (!toolName || !pattern) return false;
 
   const patterns = pattern.split('|');
@@ -206,7 +198,7 @@ function matchesTool(toolName: string, pattern: string): boolean {
   });
 }
 
-function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: string | undefined): boolean {
+function matchesIfCondition(toolName, toolInput, ifCondition) {
   if (!ifCondition) return true;
 
   // Parse pattern like "Bash(gh pr merge:*)" or "Bash(git push:*)"
@@ -217,8 +209,8 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
   const [, expectedTool, commandPattern] = match;
   if (toolName !== expectedTool) return false;
 
-  const input = toolInput as Record<string, unknown> | undefined;
-  const command = (input?.command || input?.file_path) as string | undefined;
+  const input = toolInput && typeof toolInput === 'object' ? toolInput : undefined;
+  const command = input?.command || input?.file_path;
   if (!command) return false;
 
   // Handle glob patterns with :* suffix (e.g., "git commit:*" means "starts with git commit")
@@ -247,20 +239,7 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
 }
 
 
-interface AmpToolCallEvent {
-  toolUseID: string;
-  tool: string;
-  input: Record<string, unknown>;
-  thread: { id: string };
-}
-
-interface AmpToolResultEvent extends AmpToolCallEvent {
-  status: 'done' | 'error' | 'cancelled';
-  error?: string;
-  output?: unknown;
-}
-
-function normalizeAmpToolName(toolName: string): string {
+function normalizeAmpToolName(toolName) {
   switch (toolName) {
     case 'shell_command':
       return 'Bash';
@@ -274,7 +253,7 @@ function normalizeAmpToolName(toolName: string): string {
   }
 }
 
-function normalizeAmpToolInput(amp: PluginAPI, event: AmpToolCallEvent): Record<string, unknown> {
+function normalizeAmpToolInput(amp, event) {
   const rawInput = event.input && typeof event.input === 'object' ? event.input : {};
   const normalizedToolName = normalizeAmpToolName(event.tool);
   if (normalizedToolName !== 'Bash' || (event.tool !== 'Bash' && event.tool !== 'shell_command')) {
@@ -284,7 +263,7 @@ function normalizeAmpToolInput(amp: PluginAPI, event: AmpToolCallEvent): Record<
   const shellCommand = amp.helpers.shellCommandFromToolCall(event);
   if (!shellCommand) return rawInput;
 
-  const normalizedInput: Record<string, unknown> = {
+  const normalizedInput = {
     command: shellCommand.command,
   };
   if (shellCommand.dir) normalizedInput.cwd = shellCommand.dir;
@@ -292,29 +271,25 @@ function normalizeAmpToolInput(amp: PluginAPI, event: AmpToolCallEvent): Record<
 }
 
 
-import type { PluginAPI as DelegationAPI, PluginToolContext, PluginToolDefinition, PluginThread, Subscription, ToolCallEvent } from '@ampcode/plugin';
 import { execFile as delegationExecFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { lstat, realpath } from 'node:fs/promises';
-import { dirname as delegationDirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { dirname as delegationDirname, isAbsolute as delegationIsAbsolute, relative, resolve as delegationResolve, sep } from 'node:path';
 import { promisify as delegationPromisify } from 'node:util';
 
 const delegationExec = delegationPromisify(delegationExecFile);
-type DelegationCommand = (command: string, args: string[], cwd?: string) => Promise<string>;
-type DelegationGuard = { root: string; sealed: boolean };
-type DelegationToolCall = Pick<ToolCallEvent, 'toolUseID' | 'tool' | 'input'> & { thread: { id: string } };
-const nativeBuiltinModes = ['low', 'medium', 'high', 'ultra'] as const;
+const nativeBuiltinModes = ['low', 'medium', 'high', 'ultra'];
 const grokModel = 'xai/grok-4.6';
-const implementationTools = ['Read', 'apply_patch'] as const;
+const implementationTools = ['Read', 'apply_patch'];
 const implementationInstructions = 'These child instructions replace only inherited self-log, provider, and test-execution workflow that this child cannot run. They do not license ignoring repository safety or style. Respect repository constraints. Author and update code plus necessary regression tests. The main agent executes test, build, and lint commands and evaluates results. Do not recursively delegate or spawn another agent. Implement only the supplied bounded native tracker contract in the current worktree. You have only Read and apply_patch. Use absolute paths for Read and every apply_patch file and Move header. Do not seek shell, provider, or delegation tools. Report changed files and the checks main must run. The main agent owns the journal, tracker, Git, command execution, and acceptance.';
 const nativeModePolicy = 'Stay in this native Amp mode. Investigate, plan, assess, coordinate, use the tracker, and run tests here. Delegate all implementation, including fixes and test writing, through loaf_delegate to a fresh Grok 4.6 Fast child. Do not implement locally if loaf_delegate is missing or fails. Use native Oracle for read-only review and advice. The Review button remains unchanged. Review-only requests do not authorize fixes; send authorized findings to a fresh loaf_delegate child, not the reviewer. Repeated Ship should reuse valid contract, diff, test, and review evidence and rerun only stale or missing checks. Do not infer commit, push, or merge authority. Native Low, Medium, High, Ultra, Oracle, and Subagents Auto settings stay untouched.';
 
-async function delegationCommand(command: string, args: string[], cwd?: string): Promise<string> {
+async function delegationCommand(command, args, cwd) {
   const result = await delegationExec(command, args, { cwd, timeout: 10000, maxBuffer: 1024 * 1024 });
   return result.stdout.trim();
 }
 
-async function delegationCanonicalPath(path: string): Promise<string> {
+async function delegationCanonicalPath(path) {
   try {
     return await realpath(path);
   } catch (error) {
@@ -328,25 +303,20 @@ async function delegationCanonicalPath(path: string): Promise<string> {
     }
     const parent = delegationDirname(path);
     if (parent === path) throw error;
-    return resolve(await delegationCanonicalPath(parent), relative(parent, path));
+    return delegationResolve(await delegationCanonicalPath(parent), relative(parent, path));
   }
 }
 
-function delegationContained(root: string, path: string): boolean {
+function delegationContained(root, path) {
   const suffix = relative(root, path);
-  return suffix !== '' && suffix !== '..' && !suffix.startsWith('..' + sep) && !isAbsolute(suffix) && !suffix.split(sep).includes('.git');
+  return suffix !== '' && suffix !== '..' && !suffix.startsWith('..' + sep) && !delegationIsAbsolute(suffix) && !suffix.split(sep).includes('.git');
 }
 
-type NativeModeThread = {
-  agent?: () => Promise<{ definition?: { kind?: string; mode?: string } }>;
-  parentThreadID?: () => Promise<string | null>;
-};
-
-function isNativeBuiltinMode(mode: string | undefined): mode is typeof nativeBuiltinModes[number] {
+function isNativeBuiltinMode(mode) {
   return mode === 'low' || mode === 'medium' || mode === 'high' || mode === 'ultra';
 }
 
-export async function loafNativeModeContext(_event: unknown, ctx: { thread?: NativeModeThread }): Promise<{ message?: { content: string; display: false } } | Record<string, never>> {
+export async function loafNativeModeContext(_event, ctx) {
   try {
     if (typeof ctx.thread?.agent !== 'function' || typeof ctx.thread.parentThreadID !== 'function') return {};
     const [agent, parent] = await Promise.all([ctx.thread.agent(), ctx.thread.parentThreadID()]);
@@ -362,7 +332,7 @@ export async function loafNativeModeContext(_event: unknown, ctx: { thread?: Nat
   }
 }
 
-function grokCatalogReady(catalog: unknown): boolean {
+function grokCatalogReady(catalog) {
   if (!catalog || typeof catalog !== 'object') return false;
   const names = 'builtinToolNames' in catalog ? catalog.builtinToolNames : undefined;
   const models = 'models' in catalog ? catalog.models : undefined;
@@ -377,21 +347,18 @@ function grokCatalogReady(catalog: unknown): boolean {
 
 // This is a trusted-host, single-plugin-runtime boundary, not an OS sandbox or a
 // cross-process lock. Keep guards after completion so a resumed child cannot write.
-export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCommand = delegationCommand): {
-  owns: (id: string) => boolean;
-  check: (event: DelegationToolCall) => Promise<string | undefined>;
-} {
-  const children = new Map<string, DelegationGuard>();
+export function registerLoafDelegation(amp, command = delegationCommand) {
+  const children = new Map();
   let writer = false;
-  const check = async (event: DelegationToolCall): Promise<string | undefined> => {
+  const check = async (event) => {
     const guard = children.get(event.thread.id);
     if (!guard) return undefined;
     if (guard.sealed) return 'Loaf child has no tool authority.';
     if (event.tool !== 'Read' && event.tool !== 'apply_patch') return 'Loaf implementation child allows only Read and apply_patch.';
     try {
-      let paths: string[];
+      let paths;
       if (event.tool === 'Read') {
-        if (typeof event.input.path !== 'string' || !isAbsolute(event.input.path)) return 'Loaf requires an absolute Read path.';
+        if (typeof event.input.path !== 'string' || !delegationIsAbsolute(event.input.path)) return 'Loaf requires an absolute Read path.';
         paths = [event.input.path];
       } else {
         // Amp's helper can omit relative paths and Move sources. This bounded
@@ -399,11 +366,11 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
         const patch = event.input.patchText;
         if (typeof patch !== 'string') return 'Loaf requires apply_patch.patchText with absolute file paths.';
         const headers = patch.split('\n').filter(line => line.startsWith('*** '));
-        const declared: string[] = [];
+        const declared = [];
         for (const header of headers) {
           if (['*** Begin Patch', '*** End Patch', '*** End of File'].includes(header)) continue;
           const match = /^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$/.exec(header);
-          if (!match || match[1] !== match[1].trim() || !isAbsolute(match[1])) return 'Loaf requires known patch headers and absolute file paths.';
+          if (!match || match[1] !== match[1].trim() || !delegationIsAbsolute(match[1])) return 'Loaf requires known patch headers and absolute file paths.';
           declared.push(match[1]);
         }
         if (!declared.length) return 'Loaf cannot verify every patch path.';
@@ -412,7 +379,7 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
         paths = [...declared, ...modified.map(uri => amp.helpers.filePathFromURI(uri))];
       }
       for (const path of paths) {
-        const absolute = resolve(guard.root, path);
+        const absolute = delegationResolve(guard.root, path);
         if (!delegationContained(guard.root, absolute) || !delegationContained(guard.root, await delegationCanonicalPath(absolute))) {
           return 'Loaf child path is outside its worktree or targets Git metadata.';
         }
@@ -427,7 +394,7 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
     console.warn('[loaf] Native delegation unavailable: installed Amp has no tool registration API.');
     return { owns: id => children.has(id), check };
   }
-  const tool: PluginToolDefinition = {
+  const tool = {
     name: 'loaf_delegate',
     description: 'Delegate one bounded native tracker implementation in the current local Git worktree to a fresh Grok 4.6 Fast child. Implementation has Read/apply_patch only with absolute paths. Review is not a loaf_delegate role; use native Oracle. The main agent owns shell/tests, providers, acceptance, and exclusion of parent or unrelated writers. Prevents overlapping delegated implementers in this plugin runtime only; not an OS sandbox. Returns child identity, packet digest and turn evidence, never acceptance.',
     inputSchema: {
@@ -440,36 +407,36 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
       },
       required: ['role', 'native_ref', 'worktree', 'packet'],
     },
-    execute: async (input: Record<string, unknown>, ctx: PluginToolContext): Promise<string> => {
-      let child: PluginThread | undefined;
-      let guard: DelegationGuard | undefined;
+    execute: async (input, ctx) => {
+      let child;
+      let guard;
       let acquired = false;
       let stopped = false;
       let parentStopped = false;
       let submissionPending = false;
-      let parentSubscription: Subscription | undefined;
-      let cancellation: Promise<void> | undefined;
-      let interrupt: (error: Error) => void = () => {};
-      const interrupted = new Promise<never>((_resolve, reject) => { interrupt = reject; });
+      let parentSubscription;
+      let cancellation;
+      let interrupt = () => {};
+      const interrupted = new Promise((_resolve, reject) => { interrupt = reject; });
       // Cancellation can arrive during preflight, before the promise is raced.
       void interrupted.catch(() => {});
-      const cancelChild = (again = false): Promise<void> => {
+      const cancelChild = (again = false) => {
         if (guard) guard.sealed = true;
         if ((!cancellation || again) && child) {
           try { cancellation = child.cancel().catch(() => {}); } catch { cancellation = Promise.resolve(); }
         }
         return cancellation ?? Promise.resolve();
       };
-      const receipt: Record<string, unknown> = { acceptance: 'main-agent-required', parent_thread_id: ctx.thread.id };
+      const receipt = { acceptance: 'main-agent-required', parent_thread_id: ctx.thread.id };
       try {
         if (input.role === 'review') throw new Error('loaf_delegate is implementation-only; use native Oracle for read-only review.');
         if (input.role !== 'implementation') throw new Error('role must be implementation');
         for (const field of ['native_ref', 'worktree', 'packet']) {
-          if (typeof input[field] !== 'string' || !(input[field] as string).trim()) throw new Error(`${field} must be nonempty`);
+          if (typeof input[field] !== 'string' || !input[field].trim()) throw new Error(`${field} must be nonempty`);
         }
-        const worktree = input.worktree as string;
-        const packet = input.packet as string;
-        if (!isAbsolute(worktree)) throw new Error('worktree must be absolute');
+        const worktree = input.worktree;
+        const packet = input.packet;
+        if (!delegationIsAbsolute(worktree)) throw new Error('worktree must be absolute');
         if (writer) throw new Error('An implementation child is active or its stop is uncertain; inspect it before continuing.');
         writer = true;
         acquired = true;
@@ -478,7 +445,7 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
             typeof amp.helpers?.filePathFromURI !== 'function' || typeof amp.helpers?.filesModifiedByToolCall !== 'function') {
           throw new Error('Installed Amp lacks required stable delegation APIs.');
         }
-        const observeParent = (state: string): void => {
+        const observeParent = (state) => {
           if (state !== 'idle' && state !== 'error') return;
           parentStopped = true;
           void cancelChild();
@@ -503,7 +470,7 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
         if (!isNativeBuiltinMode(mode) || await ctx.thread.parentThreadID() !== null) {
           throw new Error('loaf_delegate is for a currently parentless builtin Amp mode; currently parented, custom, and unknown callers cannot implement.');
         }
-        const catalog: unknown = JSON.parse(await command('amp', ['plugins', 'show-agent-options', '--json']));
+        const catalog = JSON.parse(await command('amp', ['plugins', 'show-agent-options', '--json']));
         if (!grokCatalogReady(catalog)) throw new Error('Installed Amp does not expose xai/grok-4.6 with tools plus the required Read and apply_patch catalog.');
         if (parentStopped) throw new Error('Parent turn stopped before child creation.');
         Object.assign(receipt, { native_ref: input.native_ref, role: 'implementation', worktree: root, native_mode: mode, requested_model: grokModel, requested_features: ['fast'], requested_tools: implementationTools, packet_sha256: createHash('sha256').update(packet).digest('hex') });
@@ -541,7 +508,7 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
         const text = result.reply.content.filter(block => block.type === 'text').map(block => block.text).join('\n');
         return JSON.stringify({ ...receipt, status: 'turn-complete', signal: 'waitForResponse running-to-idle', text });
       } catch (error) {
-        let state: string | undefined;
+        let state;
         const unresolvedSubmission = submissionPending;
         if (child) {
           await cancelChild();
@@ -570,16 +537,7 @@ export function registerLoafDelegation(amp: DelegationAPI, command: DelegationCo
 // Hook Data
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface HookEntry {
-  id: string;
-  command?: string;
-  script?: string;
-  timeout: number;
-  failClosed: boolean;
-  if?: string;
-}
-
-const preToolHooks: Record<string, HookEntry[]> = {
+const preToolHooks = {
   "Edit|Write|Bash": [
     {
       "id": "artifact-body-write",
@@ -677,7 +635,7 @@ const preToolHooks: Record<string, HookEntry[]> = {
   ]
 };
 
-const postToolHooks: Record<string, HookEntry[]> = {
+const postToolHooks = {
   "Edit|Write": [
     {
       "id": "kb-staleness-nudge",
@@ -697,9 +655,9 @@ const postToolHooks: Record<string, HookEntry[]> = {
   ]
 };
 
-export default function (amp: PluginAPI) {
+export default function (amp) {
   const delegation = registerLoafDelegation(amp);
-  function ampWorkspaceDir(): { path?: string; error?: string } {
+  function ampWorkspaceDir() {
     const workspaceRoot = amp.system?.workspaceRoot;
     if (!workspaceRoot) return { error: 'Amp workspace is unavailable' };
     if (typeof amp.helpers?.filePathFromURI !== 'function') {
@@ -709,12 +667,12 @@ export default function (amp: PluginAPI) {
       const path = amp.helpers.filePathFromURI(workspaceRoot);
       if (typeof path !== 'string' || !path) return { error: 'Amp workspace is unavailable' };
       return { path };
-    } catch (error: any) {
+    } catch (error) {
       return { error: error?.message || 'Amp workspace is unavailable' };
     }
   }
 
-  function resolveAmpHookCwd(explicitDir?: string): { cwd?: string; error?: string } {
+  function resolveAmpHookCwd(explicitDir) {
     if (typeof explicitDir === 'string' && explicitDir) {
       if (isAbsolute(explicitDir)) return { cwd: explicitDir };
       const workspace = ampWorkspaceDir();
@@ -730,7 +688,7 @@ export default function (amp: PluginAPI) {
     return { cwd: workspace.path };
   }
 
-  function ampHelperShellDir(event: AmpToolCallEvent): string | undefined {
+  function ampHelperShellDir(event) {
     if (event.tool !== 'Bash' && event.tool !== 'shell_command') return undefined;
     const shellCommand = amp.helpers.shellCommandFromToolCall(event);
     return typeof shellCommand?.dir === 'string' && shellCommand.dir ? shellCommand.dir : undefined;
@@ -761,7 +719,7 @@ export default function (amp: PluginAPI) {
     return policy;
   });
 
-  amp.on('tool.call', async (event: AmpToolCallEvent) => {
+  amp.on('tool.call', async (event) => {
     const rejection = await delegation.check(event);
     if (rejection) return { action: 'reject-and-continue', message: rejection };
     const toolName = normalizeAmpToolName(event.tool);
@@ -790,7 +748,7 @@ export default function (amp: PluginAPI) {
     return { action: 'allow' };
   });
 
-  amp.on('tool.result', async (event: AmpToolResultEvent) => {
+  amp.on('tool.result', async (event) => {
     const toolName = normalizeAmpToolName(event.tool);
     const toolInput = normalizeAmpToolInput(amp, event);
     const hookPayload = serializeHookPayload(toolName, toolInput, event);
