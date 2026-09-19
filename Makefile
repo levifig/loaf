@@ -5,7 +5,7 @@
 #   make test      go test ./...
 #   make verify-local  comprehensive local checks, without activating the development launcher
 #   make ci-smoke      bounded remote spot checks, also runnable locally
-.PHONY: build build-cli build-go install verify release package test typecheck vet capability-tests verify-local verify-generated cgo-free ci-check ci-smoke release-smoke vulncheck clean
+.PHONY: build build-cli build-go install verify release package test typecheck vet capability-tests require-node-24 verify-local verify-generated cgo-free ci-check ci-smoke release-smoke vulncheck clean
 
 GO ?= go
 
@@ -52,11 +52,11 @@ verify-local:
 	$(MAKE) capability-tests
 	$(MAKE) verify-generated
 
-# tsc is an existing optional build tool; comprehensive verification requires
-# it rather than accepting the normal interactive build's skip warning.
+# Node 24+ is the development baseline for JavaScript adapter syntax checks
+# and capability runners. Ordinary builds do not activate PATH.
 verify-generated:
-	@command -v tsc >/dev/null || { echo "verify-generated requires the existing TypeScript compiler (tsc) on PATH" >&2; exit 1; }
-	LOAF_DEV_LINK=0 LOAF_VALIDATE_TYPESCRIPT=1 $(MAKE) build
+	@$(MAKE) require-node-24
+	LOAF_DEV_LINK=0 $(MAKE) build
 	bin/loaf check --hook render-drift --json
 
 # Exact names make additions deliberate. These spot checks cover native command
@@ -83,9 +83,14 @@ vulncheck:
 	$(GO) run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 # Harness capability runners still execute under Node; they drive external
-# CLIs and read their JSON streams. They need no package install.
+# CLIs and read their JSON streams. They need no package install or tsc.
+require-node-24:
+	@command -v node >/dev/null || { echo "Loaf development requires Node 24 or later on PATH" >&2; exit 1; }
+	@node -e 'const major = Number.parseInt(process.versions.node, 10); if (!Number.isInteger(major) || major < 24) { console.error("Loaf development requires Node 24 or later; found " + process.version); process.exit(1); }'
+
 capability-tests:
-	node --experimental-strip-types --test cli/scripts/smoke-claude-code-startup.test.mjs cli/scripts/smoke-codex-startup.test.mjs cli/scripts/smoke-opencode-request-context.test.mjs cli/scripts/preflight-cursor-agent-context.test.mjs internal/cli/amp_delegation.test.mjs
+	@$(MAKE) require-node-24
+	node --test cli/scripts/smoke-claude-code-startup.test.mjs cli/scripts/smoke-codex-startup.test.mjs cli/scripts/smoke-opencode-request-context.test.mjs cli/scripts/preflight-cursor-agent-context.test.mjs internal/cli/amp_delegation.test.mjs
 
 clean:
 	rm -rf bin dist/release

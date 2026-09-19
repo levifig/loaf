@@ -27,10 +27,18 @@ const (
 const obsoleteHookProjectionKind = "hook-projection"
 
 const (
-	ampModesPluginArtifactID        = "plugin:.amp/plugins/loaf-modes.ts"
-	ampModesPluginSourcePath        = ".amp/plugins/loaf-modes.ts"
-	ampModesPluginDestination       = "plugins/loaf-modes.ts"
-	ampModesPluginPredecessorSHA256 = "27ff4c82dbb0cd21b6f9ff694e20017fe62653521d23d5b586ba8f3457b64c5f"
+	ampModesPluginArtifactID          = "plugin:.amp/plugins/loaf-modes.js"
+	ampModesPluginSourcePath          = ".amp/plugins/loaf-modes.js"
+	ampModesPluginDestination         = "plugins/loaf-modes.js"
+	ampModesPluginPredecessorID       = "plugin:.amp/plugins/loaf-modes.ts"
+	ampModesPluginPredecessorPath     = "plugins/loaf-modes.ts"
+	ampModesPluginPredecessorSHA256   = "27ff4c82dbb0cd21b6f9ff694e20017fe62653521d23d5b586ba8f3457b64c5f"
+	ampHookPluginArtifactID           = "plugin:.amp/plugins/loaf.js"
+	ampHookPluginPredecessorID        = "plugin:.amp/plugins/loaf.ts"
+	ampHookPluginPredecessorPath      = "plugins/loaf.ts"
+	openCodeHookPluginArtifactID      = "plugin:plugins/hooks.js"
+	openCodeHookPluginPredecessorID   = "plugin:plugins/hooks.ts"
+	openCodeHookPluginPredecessorPath = "plugins/hooks.ts"
 )
 
 type targetAdapterManifest struct {
@@ -214,11 +222,164 @@ func collectTargetAdapterArtifacts(target string, outputDir string) ([]targetAda
 
 func managedAmpPluginSource(sourcePath string) bool {
 	switch sourcePath {
-	case ".amp/plugins/loaf.ts", ".amp/plugins/loaf-modes.ts":
+	case ".amp/plugins/loaf.js", ".amp/plugins/loaf-modes.js":
 		return true
 	default:
 		return false
 	}
+}
+
+type targetAdapterSuccessor struct {
+	legacyID          string
+	legacyDestination string
+}
+
+func targetAdapterJavaScriptSuccessor(artifact targetAdapterArtifact) (targetAdapterSuccessor, bool) {
+	switch artifact.ID {
+	case ampHookPluginArtifactID:
+		return targetAdapterSuccessor{legacyID: ampHookPluginPredecessorID, legacyDestination: ampHookPluginPredecessorPath}, true
+	case ampModesPluginArtifactID:
+		return targetAdapterSuccessor{legacyID: ampModesPluginPredecessorID, legacyDestination: ampModesPluginPredecessorPath}, true
+	case openCodeHookPluginArtifactID:
+		return targetAdapterSuccessor{legacyID: openCodeHookPluginPredecessorID, legacyDestination: openCodeHookPluginPredecessorPath}, true
+	default:
+		return targetAdapterSuccessor{}, false
+	}
+}
+
+func targetAdapterLegacyDestination(options targetInstallOptions, successor targetAdapterSuccessor) (string, error) {
+	return targetAdapterDestination(options, targetAdapterArtifact{
+		Kind:        "plugin",
+		Destination: successor.legacyDestination,
+	})
+}
+
+func inspectTargetAdapterLegacyPath(path string) (exists bool, symlink bool, dangling bool, body []byte, err error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, false, false, nil, nil
+		}
+		return false, false, false, nil, err
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		target, readErr := os.Readlink(path)
+		if readErr != nil {
+			return true, true, true, nil, nil
+		}
+		resolved := target
+		if !filepath.IsAbs(target) {
+			resolved = filepath.Join(filepath.Dir(path), target)
+		}
+		if _, statErr := os.Stat(resolved); statErr != nil {
+			return true, true, true, nil, nil
+		}
+		return true, true, false, nil, nil
+	}
+	if !info.Mode().IsRegular() {
+		return true, false, false, nil, fmt.Errorf("legacy adapter path %q is not a regular file", path)
+	}
+	body, err = os.ReadFile(path)
+	if err != nil {
+		return true, false, false, nil, err
+	}
+	return true, false, false, body, nil
+}
+
+func targetAdapterLegacyConflictDetail(successor targetAdapterSuccessor, symlink bool, dangling bool) string {
+	if dangling {
+		return fmt.Sprintf("legacy adapter %s is a dangling symlink at %s; restore or remove it before migrating to JavaScript", successor.legacyID, successor.legacyDestination)
+	}
+	if symlink {
+		return fmt.Sprintf("legacy adapter %s is a symlink at %s; refusing an unsafe JavaScript transition", successor.legacyID, successor.legacyDestination)
+	}
+	return fmt.Sprintf("legacy adapter %s exists at %s and is not proven Loaf-owned; refusing to remove it while installing the JavaScript replacement", successor.legacyID, successor.legacyDestination)
+}
+
+func targetAdapterMayRetireLegacyJavaScriptPredecessor(target string, successor targetAdapterSuccessor, body []byte) bool {
+	synthetic := targetAdapterArtifact{Kind: "plugin", ID: successor.legacyID, Destination: successor.legacyDestination}
+	if targetAdapterLegacyOwnership(target, synthetic, body) {
+		return true
+	}
+	return successor.legacyID == ampModesPluginPredecessorID && sha256Bytes(body) == ampModesPluginPredecessorSHA256
+}
+
+func removeJavaScriptAdapterPredecessors(options targetInstallOptions, desired targetAdapterManifest, installedByID map[string]targetAdapterArtifact, states map[string]targetAdapterSnapshot, mutated *[]targetAdapterSnapshot, mutatedPaths map[string]bool, fail func(error) error) error {
+	for _, artifact := range desired.Artifacts {
+		successor, ok := targetAdapterJavaScriptSuccessor(artifact)
+		if !ok {
+			continue
+		}
+		if _, owned := installedByID[successor.legacyID]; owned {
+			continue
+		}
+		path, err := targetAdapterLegacyDestination(options, successor)
+		if err != nil {
+			return fail(err)
+		}
+		exists, symlink, dangling, body, err := inspectTargetAdapterLegacyPath(path)
+		if err != nil {
+			return fail(err)
+		}
+		if !exists {
+			continue
+		}
+		if dangling || symlink || !targetAdapterMayRetireLegacyJavaScriptPredecessor(options.Target, successor, body) {
+			return fail(fmt.Errorf("%s", targetAdapterLegacyConflictDetail(successor, symlink, dangling)))
+		}
+		if err := ensureTargetAdapterSnapshotUnchanged(path, states[path]); err != nil {
+			return fail(err)
+		}
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			_ = recordTargetAdapterMutation(path, states[path], mutated, mutatedPaths)
+			return fail(err)
+		}
+		if err := recordTargetAdapterMutation(path, states[path], mutated, mutatedPaths); err != nil {
+			return fail(err)
+		}
+	}
+	return nil
+}
+
+func collectJavaScriptAdapterSuccessors(options targetInstallOptions, desired targetAdapterManifest, installedByID map[string]targetAdapterArtifact, states map[string]targetAdapterSnapshot) error {
+	for _, artifact := range desired.Artifacts {
+		successor, ok := targetAdapterJavaScriptSuccessor(artifact)
+		if !ok {
+			continue
+		}
+		path, err := targetAdapterLegacyDestination(options, successor)
+		if err != nil {
+			return err
+		}
+		exists, symlink, dangling, body, err := inspectTargetAdapterLegacyPath(path)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			continue
+		}
+		owned := installedByID[successor.legacyID]
+		if owned.ID != "" {
+			snapshot, err := readTargetAdapterSnapshot(path)
+			if err != nil {
+				return err
+			}
+			states[path] = snapshot
+			if snapshot.exists && !targetAdapterSnapshotMatchesArtifact(owned, snapshot) {
+				return fmt.Errorf("managed target artifact %q was modified; refusing to remove", successor.legacyID)
+			}
+			continue
+		}
+		if dangling || symlink || !targetAdapterMayRetireLegacyJavaScriptPredecessor(options.Target, successor, body) {
+			return fmt.Errorf("%s", targetAdapterLegacyConflictDetail(successor, symlink, dangling))
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		states[path] = targetAdapterSnapshot{path: path, exists: true, body: body, mode: info.Mode().Perm()}
+	}
+	return nil
 }
 
 func appendTargetAdapterArtifact(artifacts *[]targetAdapterArtifact, seen map[string]bool, target string, outputDir string, sourcePath string) error {
@@ -237,7 +398,7 @@ func appendTargetAdapterArtifact(artifacts *[]targetAdapterArtifact, seen map[st
 		kind = "plugin"
 		destination = "plugins/" + filepath.Base(filepath.FromSlash(sourcePath))
 	case "opencode":
-		if sourcePath == "plugins/hooks.ts" {
+		if sourcePath == "plugins/hooks.js" {
 			kind = "plugin"
 		}
 	}
@@ -647,6 +808,9 @@ func syncTargetAdapterManifest(options targetInstallOptions) error {
 		}
 		return fmt.Errorf("target artifact destination %q exists and is not managed by Loaf", artifact.Destination)
 	}
+	if err := collectJavaScriptAdapterSuccessors(options, desired, installedByID, states); err != nil {
+		return err
+	}
 	manifestSnapshot, err := readTargetAdapterSnapshot(installedPath)
 	if err != nil {
 		return err
@@ -710,6 +874,9 @@ func syncTargetAdapterManifest(options targetInstallOptions) error {
 		if operationErr != nil {
 			return fail(operationErr)
 		}
+	}
+	if err := removeJavaScriptAdapterPredecessors(options, desired, installedByID, states, &mutated, mutatedPaths, fail); err != nil {
+		return err
 	}
 	for _, artifact := range desired.Artifacts {
 		if skipTargetAdapterArtifact(artifact) {

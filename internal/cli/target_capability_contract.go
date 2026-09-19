@@ -803,8 +803,8 @@ func validateOpenCodeInstalledSmokeEvidence(root string, record TargetCapability
 		return errors.New("OpenCode installed-smoke evidence marker is not a valid request-smoke marker")
 	}
 	artifacts := smoke.CandidateArtifacts
-	if artifacts.HooksPath != "dist/opencode/plugins/hooks.ts" {
-		return fmt.Errorf("OpenCode installed-smoke hooks path %q is not the candidate OpenCode plugin artifact", artifacts.HooksPath)
+	if artifacts.HooksPath != "dist/opencode/plugins/hooks.js" && artifacts.HooksPath != "dist/opencode/plugins/hooks.ts" {
+		return fmt.Errorf("OpenCode installed-smoke hooks path %q is not a recognized OpenCode plugin artifact", artifacts.HooksPath)
 	}
 	expectedNativeBinaryPath := filepath.ToSlash(filepath.Join("bin", "native", record.Platform, "loaf"))
 	if artifacts.NativeBinaryPath != expectedNativeBinaryPath {

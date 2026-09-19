@@ -216,10 +216,26 @@ func selectedArtifactIDsForTarget(refs []scopedArtifactRef, target string) map[s
 	for _, ref := range refs {
 		if ref.Target == target {
 			ids[ref.ID] = true
+			for _, predecessor := range javascriptAdapterPredecessorIDs(ref.ID) {
+				ids[predecessor] = true
+			}
 		}
 	}
 	if len(ids) == 0 {
 		return nil
 	}
 	return ids
+}
+
+func javascriptAdapterPredecessorIDs(id string) []string {
+	switch id {
+	case ampHookPluginArtifactID:
+		return []string{ampHookPluginPredecessorID}
+	case ampModesPluginArtifactID:
+		return []string{ampModesPluginPredecessorID}
+	case openCodeHookPluginArtifactID:
+		return []string{openCodeHookPluginPredecessorID}
+	default:
+		return nil
+	}
 }

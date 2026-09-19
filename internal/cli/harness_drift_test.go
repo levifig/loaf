@@ -125,7 +125,7 @@ func TestHarnessContentDriftDoctorUsesUpgradePlanForSameVersionAdapterDrift(t *t
 			if result.Status != doctorFail {
 				t.Fatalf("harness-content-drift result = %#v, want fail for planner conflict", result)
 			}
-			for _, want := range []string{"Amp", "plugin:loaf", "conflict", "loaf upgrade --dry-run", "plugins/loaf.ts", "managed target artifact was modified"} {
+			for _, want := range []string{"Amp", "plugin:loaf", "conflict", "loaf upgrade --dry-run", "plugins/loaf.js", "managed target artifact was modified"} {
 				if !strings.Contains(result.Detail, want) {
 					t.Fatalf("harness-content-drift detail = %q, want containing %q", result.Detail, want)
 				}
@@ -251,9 +251,9 @@ func TestHarnessDoctorMatchesUpgradePlanWithoutMutatingFixtures(t *testing.T) {
 		{name: "same-version content update", wantAction: planActionUpdate, wantStatus: doctorWarn, mutate: func(t *testing.T, distributionRoot, pluginPath string) {
 			dist := filepath.Join(distributionRoot, "dist", "amp")
 			body := "export default function updatedLoaf() {}\n"
-			writeInstallFile(t, filepath.Join(dist, "plugins", "loaf.ts"), body)
+			writeInstallFile(t, filepath.Join(dist, "plugins", "loaf.js"), body)
 			writeTestTargetAdapterManifest(t, dist, "amp", []map[string]string{{
-				"id": "plugin:loaf", "kind": "plugin", "source_path": "plugins/loaf.ts", "destination": "plugins/loaf.ts", "sha256": sha256Hex(body),
+				"id": "plugin:loaf", "kind": "plugin", "source_path": "plugins/loaf.js", "destination": "plugins/loaf.js", "sha256": sha256Hex(body),
 			}})
 		}},
 		{name: "missing ownership", wantAction: planActionConflict, wantStatus: doctorFail, mutate: func(t *testing.T, distributionRoot, pluginPath string) {
@@ -273,7 +273,7 @@ func TestHarnessDoctorMatchesUpgradePlanWithoutMutatingFixtures(t *testing.T) {
 			}
 		}},
 		{name: "corrupt desired digest", wantStatus: doctorFail, wantError: true, mutate: func(t *testing.T, distributionRoot, pluginPath string) {
-			writeInstallFile(t, filepath.Join(distributionRoot, "dist", "amp", "plugins", "loaf.ts"), "// unrecorded desired edit\n")
+			writeInstallFile(t, filepath.Join(distributionRoot, "dist", "amp", "plugins", "loaf.js"), "// unrecorded desired edit\n")
 		}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -331,19 +331,19 @@ func harnessDriftAmpPlannerFixture(t *testing.T) (home string, distributionRoot 
 	distributionRoot = harnessDriftDistribution(t, harnessDriftBinaryFixtureVersion)
 	ampDist := filepath.Join(distributionRoot, "dist", "amp")
 	desiredPlugin := "export default function loaf() {}\n"
-	writeInstallFile(t, filepath.Join(ampDist, "plugins", "loaf.ts"), desiredPlugin)
+	writeInstallFile(t, filepath.Join(ampDist, "plugins", "loaf.js"), desiredPlugin)
 	writeTestTargetAdapterManifest(t, ampDist, "amp", []map[string]string{{
 		"id":          "plugin:loaf",
 		"kind":        "plugin",
-		"source_path": "plugins/loaf.ts",
-		"destination": "plugins/loaf.ts",
+		"source_path": "plugins/loaf.js",
+		"destination": "plugins/loaf.js",
 		"sha256":      sha256Hex(desiredPlugin),
 	}})
 
 	ampConfig := filepath.Join(home, ".config", "amp")
 	harnessDriftInstalledHarness(t, ampConfig, harnessDriftBinaryFixtureVersion)
 	writeInstallFile(t, filepath.Join(ampConfig, targetInstallManifestFile), string(readFileBytes(t, filepath.Join(ampDist, targetBuildManifestFile))))
-	pluginPath = filepath.Join(ampConfig, "plugins", "loaf.ts")
+	pluginPath = filepath.Join(ampConfig, "plugins", "loaf.js")
 	writeInstallFile(t, pluginPath, desiredPlugin)
 	return home, distributionRoot, pluginPath
 }

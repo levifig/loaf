@@ -36,7 +36,7 @@ func TestNativeAmpRunHookHandlesClosedStdinWithoutCrashing(t *testing.T) {
 	root := realpath(t, t.TempDir())
 	writeNativeAmpHookStdinProbe(t, root)
 
-	cmd := exec.Command(node, "--experimental-strip-types", "probe.ts")
+	cmd := exec.Command(node, "probe.js")
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(), "LOAF_DB=")
 	output, err := cmd.CombinedOutput()
@@ -106,8 +106,8 @@ func TestNativeAmpRunHookHandlesClosedStdinWithoutCrashing(t *testing.T) {
 func TestNativeAmpAndOpenCodeGeneratedPluginsEmbedClosedStdinHandling(t *testing.T) {
 	root := testRepositoryRoot(t)
 	for _, rel := range []string{
-		filepath.Join("dist", "amp", ".amp", "plugins", "loaf.ts"),
-		filepath.Join("dist", "opencode", "plugins", "hooks.ts"),
+		filepath.Join("dist", "amp", ".amp", "plugins", "loaf.js"),
+		filepath.Join("dist", "opencode", "plugins", "hooks.js"),
 	} {
 		body := readBuildFileString(t, filepath.Join(root, rel))
 		for _, want := range []string{
@@ -134,7 +134,7 @@ func TestNativeAmpAndOpenCodeGeneratedHookEntriesHandleClosedStdin(t *testing.T)
 	root := realpath(t, t.TempDir())
 	writeNativeGeneratedHookStdinProbe(t, root)
 
-	cmd := exec.Command(node, "--experimental-strip-types", "generated-probe.ts")
+	cmd := exec.Command(node, "generated-probe.js")
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(), "LOAF_DB=", "LOAF_REPO_ROOT="+repo)
 	output, err := cmd.CombinedOutput()
@@ -176,7 +176,7 @@ func writeNativeAmpHookStdinProbe(t *testing.T, root string) {
 	mkdirAll(t, filepath.Join(root, "hooks"))
 	writeFile(t, filepath.Join(root, "hooks", "early-exit.sh"), "#!/bin/sh\nexit 0\n")
 	writeFile(t, filepath.Join(root, "hooks", "consume.sh"), "#!/bin/sh\ncat\n")
-	writeFile(t, filepath.Join(root, "probe.ts"), nativeAmpHookStdinProbeSource())
+	writeFile(t, filepath.Join(root, "probe.js"), nativeAmpHookStdinProbeSource())
 }
 
 func writeNativeGeneratedHookStdinProbe(t *testing.T, root string) {
@@ -186,7 +186,7 @@ func writeNativeGeneratedHookStdinProbe(t *testing.T, root string) {
 	if err := os.Chmod(filepath.Join(root, "bin", "loaf"), 0o755); err != nil {
 		t.Fatalf("chmod loaf stub: %v", err)
 	}
-	writeFile(t, filepath.Join(root, "generated-probe.ts"), nativeGeneratedHookStdinProbeSource())
+	writeFile(t, filepath.Join(root, "generated-probe.js"), nativeGeneratedHookStdinProbeSource())
 }
 
 func nativeAmpHookStdinProbeSource() string {
@@ -198,11 +198,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 ` + nativeAmpCoreFunctions() + `
 
-const unhandled: { type: string; code?: string; message: string }[] = [];
-process.on('uncaughtException', (error: any) => {
+const unhandled = [];
+process.on('uncaughtException', (error) => {
   unhandled.push({ type: 'uncaughtException', code: error?.code, message: error?.message || String(error) });
 });
-process.on('unhandledRejection', (error: any) => {
+process.on('unhandledRejection', (error) => {
   unhandled.push({ type: 'unhandledRejection', code: error?.code, message: error?.message || String(error) });
 });
 
@@ -210,7 +210,7 @@ const largePayload = 'x'.repeat(1024 * 1024);
 const missingPath = join(__dirname, 'missing-bin');
 
 async function main() {
-  const cases: Record<string, HookResult> = {};
+  const cases = {};
   cases['command-consume'] = await runHook('pre-tool', 'Bash', 'consume', 'cat', undefined, 'payload-ok', 5000, false, __dirname);
   cases['command-early-exit'] = await runHook('pre-tool', 'Bash', 'early', 'exit 0', undefined, largePayload, 5000, true, __dirname);
   cases['script-early-exit'] = await runHook('pre-tool', 'Bash', 'early-script', undefined, 'early-exit.sh', largePayload, 5000, true, __dirname);
@@ -248,27 +248,27 @@ const repoRoot = process.env.LOAF_REPO_ROOT;
 const previousPath = process.env.PATH;
 process.env.PATH = join(process.cwd(), 'bin') + (previousPath ? ':' + previousPath : '');
 
-const unhandled: { type: string; code?: string; message: string }[] = [];
-process.on('uncaughtException', (error: any) => {
+const unhandled = [];
+process.on('uncaughtException', (error) => {
   unhandled.push({ type: 'uncaughtException', code: error?.code, message: error?.message || String(error) });
 });
-process.on('unhandledRejection', (error: any) => {
+process.on('unhandledRejection', (error) => {
   unhandled.push({ type: 'unhandledRejection', code: error?.code, message: error?.message || String(error) });
 });
 
 const largeCommand = 'gh pr create --title probe --body ' + 'x'.repeat(1024 * 1024);
 
 async function main() {
-  const { default: initializeAmp } = await import(pathToFileURL(join(repoRoot, 'dist/amp/.amp/plugins/loaf.ts')).href);
-  const { default: initializeOpenCode } = await import(pathToFileURL(join(repoRoot, 'dist/opencode/plugins/hooks.ts')).href);
+  const { default: initializeAmp } = await import(pathToFileURL(join(repoRoot, 'dist/amp/.amp/plugins/loaf.js')).href);
+  const { default: initializeOpenCode } = await import(pathToFileURL(join(repoRoot, 'dist/opencode/plugins/hooks.js')).href);
 
   const ampHandlers = new Map();
   initializeAmp({
     registerTool() {},
-    on(event: string, handler: unknown) { ampHandlers.set(event, handler); },
+    on(event, handler) { ampHandlers.set(event, handler); },
     helpers: {
-      filePathFromURI: (uri: URL | string) => new URL(uri).pathname,
-      shellCommandFromToolCall: (event: { input: { command: string; cwd?: string } }) => ({ command: event.input.command, dir: event.input.cwd }),
+      filePathFromURI: (uri) => new URL(uri).pathname,
+      shellCommandFromToolCall: (event) => ({ command: event.input.command, dir: event.input.cwd }),
     },
     system: { workspaceRoot: pathToFileURL(process.cwd()) },
   });

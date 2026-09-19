@@ -11,7 +11,7 @@ import { observedClientVersion, parseRunnerArgs, publishReceiptIfSuccessful } fr
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../..");
 const platform = `${process.platform}-${process.arch}`;
-const candidateHooksPath = "dist/opencode/plugins/hooks.ts";
+const candidateHooksPath = "dist/opencode/plugins/hooks.js";
 const candidateNativePath = `bin/native/${platform}/loaf`;
 const markerPattern = /^LOAF_OPENCODE_REQUEST_SMOKE_[A-F0-9]{12}$/;
 const prompt = "Reply with exactly the unique marker present in Loaf continuity context, and nothing else.";

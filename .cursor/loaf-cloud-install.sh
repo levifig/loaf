@@ -19,9 +19,15 @@ NATIVE="$ROOT/bin/native/${os}-${arch}/loaf"
 
 # bin/loaf is the host platform's binary; require both it and the native
 # binary for this host before skipping the build (cloud agents are typically
-# linux-*, not darwin). The build is Go only; there is no npm.
+# linux-*, not darwin). The CLI build is Go only; there is no npm or tsc.
 if [[ ! -x "$ROOT/bin/loaf" || ! -x "$NATIVE" ]]; then
   go run ./cmd/loafdev build-go
+fi
+
+if command -v node >/dev/null 2>&1; then
+  node -e 'const major = Number.parseInt(process.versions.node, 10); if (!Number.isInteger(major) || major < 24) { console.error("Loaf development verification requires Node 24 or later; found " + process.version + ". The CLI build itself is Go only."); process.exit(0); }'
+else
+  echo "Node 24+ is required for Loaf development verification (JavaScript adapter checks and capability tests). The CLI build itself is Go only." >&2
 fi
 
 export PATH="$ROOT/bin:$PATH"

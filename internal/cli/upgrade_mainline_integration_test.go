@@ -53,13 +53,13 @@ func TestScopedUpgradePreservesUnselectedAmpModesAndOwnership(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
 	dist := filepath.Join(root, "dist", "amp")
 	config := filepath.Join(home, ".config", "amp")
-	hookID := "plugin:.amp/plugins/loaf.ts"
+	hookID := "plugin:.amp/plugins/loaf.js"
 	writeDistribution := func(hooks, modes string) {
 		t.Helper()
-		writeInstallFile(t, filepath.Join(dist, ".amp", "plugins", "loaf.ts"), hooks)
-		writeInstallFile(t, filepath.Join(dist, ".amp", "plugins", "loaf-modes.ts"), modes)
+		writeInstallFile(t, filepath.Join(dist, ".amp", "plugins", "loaf.js"), hooks)
+		writeInstallFile(t, filepath.Join(dist, ".amp", "plugins", "loaf-modes.js"), modes)
 		writeTestTargetAdapterManifest(t, dist, "amp", []map[string]string{
-			{"id": hookID, "kind": "plugin", "source_path": ".amp/plugins/loaf.ts", "destination": "plugins/loaf.ts", "sha256": sha256Hex(hooks)},
+			{"id": hookID, "kind": "plugin", "source_path": ".amp/plugins/loaf.js", "destination": "plugins/loaf.js", "sha256": sha256Hex(hooks)},
 			{"id": ampModesPluginArtifactID, "kind": "plugin", "source_path": ampModesPluginSourcePath, "destination": ampModesPluginDestination, "sha256": sha256Hex(modes)},
 		})
 	}
@@ -73,11 +73,11 @@ func TestScopedUpgradePreservesUnselectedAmpModesAndOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 	ownedModes := targetAdapterArtifactsByID(before.Artifacts)[ampModesPluginArtifactID]
-	writeInstallFile(t, filepath.Join(config, "plugins", "loaf-modes.ts"), "user-edited modes\n")
+	writeInstallFile(t, filepath.Join(config, "plugins", "loaf-modes.js"), "user-edited modes\n")
 	writeDistribution("export const hooks = 2;\n", "export const modes = 2;\n")
 	runInstallCapture(t, root, "upgrade", "--select", "amp/"+hookID)
-	assertInstallFile(t, filepath.Join(config, "plugins", "loaf.ts"), "export const hooks = 2;\n")
-	assertInstallFile(t, filepath.Join(config, "plugins", "loaf-modes.ts"), "user-edited modes\n")
+	assertInstallFile(t, filepath.Join(config, "plugins", "loaf.js"), "export const hooks = 2;\n")
+	assertInstallFile(t, filepath.Join(config, "plugins", "loaf-modes.js"), "user-edited modes\n")
 	assertInstallFile(t, filepath.Join(config, loafInstallMarkerFile), "0.5.0\n")
 	after, err := readTargetAdapterManifest(filepath.Join(config, targetInstallManifestFile))
 	if err != nil {

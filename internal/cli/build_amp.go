@@ -103,15 +103,15 @@ func generateNativeAmpPlugin(hooksPath string, dist string, version string) erro
 	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(pluginDir, "loaf.ts"), []byte(renderNativeAmpPlugin(hooks, version)), 0o644)
+	return os.WriteFile(filepath.Join(pluginDir, "loaf.js"), []byte(renderNativeAmpPlugin(hooks, version)), 0o644)
 }
 
 func copyNativeAmpModesPlugin(root string, pluginDir string) error {
-	src := filepath.Join(root, "content", "amp", "plugins", "loaf-modes.ts")
+	src := filepath.Join(root, "content", "amp", "plugins", "loaf-modes.js")
 	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		return err
 	}
-	if err := copyNativeBuildFile(src, filepath.Join(pluginDir, "loaf-modes.ts")); err != nil {
+	if err := copyNativeBuildFile(src, filepath.Join(pluginDir, "loaf-modes.js")); err != nil {
 		return fmt.Errorf("copy amp modes plugin: %w", err)
 	}
 	return nil
@@ -123,7 +123,7 @@ func renderNativeAmpPlugin(hooks []nativeBuildHook, version string) string {
 		nativeAmpToolHelpers() + "\n\n" +
 		nativeAmpDelegation + "\n\n" +
 		nativeAmpHookDataWithoutSession(hooks) + "\n\n" +
-		"export default function (amp: PluginAPI) {\n" + nativeAmpPluginBody() + "\n}"
+		"export default function (amp) {\n" + nativeAmpPluginBody() + "\n}"
 }
 
 func nativeAmpHeader(version string) string {
@@ -133,10 +133,9 @@ func nativeAmpHeader(version string) string {
  * @version ` + version + `
  */
 
-import type { PluginAPI } from '@ampcode/plugin';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { join, dirname } from 'path';
+import { join, dirname, isAbsolute, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -165,14 +164,7 @@ func nativeAmpCoreFunctions() string {
  * @param failClosed - When true, subprocess errors block the action
  * @returns Hook result with exit code, output, and error information
  */
-interface HookResult {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-  error?: string;
-}
-
-function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: unknown): string | undefined {
+function serializeHookPayload(toolName, toolInput, rawInput) {
   const normalizedToolInput =
     toolInput && typeof toolInput === 'object'
       ? toolInput
@@ -193,34 +185,34 @@ function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: u
   }
 }
 
-function isClosedPipeError(error: any): boolean {
+function isClosedPipeError(error) {
   const code = error && error.code;
   return code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED' || code === 'ERR_STREAM_PREMATURE_CLOSE' || code === 'ERR_STREAM_WRITE_AFTER_END';
 }
 
-function observeHookChild(child: any, payload: string | undefined, failClosed: boolean): Promise<HookResult> {
+function observeHookChild(child, payload, failClosed) {
   return new Promise((resolve) => {
     let stdoutStr = '';
     let stderrStr = '';
-    let stdinError: Error | undefined;
+    let stdinError;
     let settled = false;
 
-    const finish = (result: HookResult) => {
+    const finish = (result) => {
       if (settled) return;
       settled = true;
       resolve(result);
     };
 
-    child.stdout?.on('data', (data: string) => { stdoutStr += data; });
-    child.stderr?.on('data', (data: string) => { stderrStr += data; });
+    child.stdout?.on('data', (data) => { stdoutStr += data; });
+    child.stderr?.on('data', (data) => { stderrStr += data; });
 
     if (child.stdin) {
-      child.stdin.on('error', (err: Error) => {
+      child.stdin.on('error', (err) => {
         if (!isClosedPipeError(err)) stdinError = err;
       });
     }
 
-    child.on('error', (err: Error) => {
+    child.on('error', (err) => {
       finish({
         exitCode: failClosed ? 2 : 1,
         stdout: stdoutStr,
@@ -229,7 +221,7 @@ function observeHookChild(child: any, payload: string | undefined, failClosed: b
       });
     });
 
-    child.on('close', (code: number | null) => {
+    child.on('close', (code) => {
       const exitCode = code ?? 1; // null means signal-killed; fail closed
       if (exitCode === 2) {
         finish({ exitCode, stdout: stdoutStr, stderr: stderrStr });
@@ -250,12 +242,12 @@ function observeHookChild(child: any, payload: string | undefined, failClosed: b
     if (payload && child.stdin) {
       try {
         child.stdin.write(payload);
-      } catch (err: any) {
+      } catch (err) {
         if (!isClosedPipeError(err)) stdinError = err;
       }
       try {
         child.stdin.end();
-      } catch (err: any) {
+      } catch (err) {
         if (!isClosedPipeError(err)) stdinError = err;
       }
     }
@@ -263,16 +255,16 @@ function observeHookChild(child: any, payload: string | undefined, failClosed: b
 }
 
 async function runHook(
-  hookType: string,
-  toolName: string,
-  hookId: string,
-  command?: string,
-  script?: string,
-  payload?: string,
-  timeout: number = 60000,
-  failClosed: boolean = false,
-  cwd: string = process.cwd(),
-): Promise<HookResult> {
+  hookType,
+  toolName,
+  hookId,
+  command,
+  script,
+  payload,
+  timeout = 60000,
+  failClosed = false,
+  cwd = process.cwd(),
+) {
   const env = {
     ...process.env,
     LOAF_HOOK_TYPE: hookType,
@@ -307,7 +299,7 @@ async function runHook(
     }
 
     return { exitCode: 1, stdout: '', stderr: 'No command or script specified' };
-  } catch (error: any) {
+  } catch (error) {
     return {
       exitCode: failClosed ? 2 : 1,
       stdout: '',
@@ -324,7 +316,7 @@ async function runHook(
  *   - Union pattern: "Edit|Write" matches either
  *   - Exact match: "Edit" matches only "Edit"
  */
-function matchesTool(toolName: string, pattern: string): boolean {
+function matchesTool(toolName, pattern) {
   if (!toolName || !pattern) return false;
 
   const patterns = pattern.split('|');
@@ -337,7 +329,7 @@ function matchesTool(toolName: string, pattern: string): boolean {
   });
 }
 
-function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: string | undefined): boolean {
+function matchesIfCondition(toolName, toolInput, ifCondition) {
   if (!ifCondition) return true;
 
   // Parse pattern like "Bash(gh pr merge:*)" or "Bash(git push:*)"
@@ -348,8 +340,8 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
   const [, expectedTool, commandPattern] = match;
   if (toolName !== expectedTool) return false;
 
-  const input = toolInput as Record<string, unknown> | undefined;
-  const command = (input?.command || input?.file_path) as string | undefined;
+  const input = toolInput && typeof toolInput === 'object' ? toolInput : undefined;
+  const command = input?.command || input?.file_path;
   if (!command) return false;
 
   // Handle glob patterns with :* suffix (e.g., "git commit:*" means "starts with git commit")
@@ -380,20 +372,7 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
 }
 
 func nativeAmpToolHelpers() string {
-	return `interface AmpToolCallEvent {
-  toolUseID: string;
-  tool: string;
-  input: Record<string, unknown>;
-  thread: { id: string };
-}
-
-interface AmpToolResultEvent extends AmpToolCallEvent {
-  status: 'done' | 'error' | 'cancelled';
-  error?: string;
-  output?: unknown;
-}
-
-function normalizeAmpToolName(toolName: string): string {
+	return `function normalizeAmpToolName(toolName) {
   switch (toolName) {
     case 'shell_command':
       return 'Bash';
@@ -407,7 +386,7 @@ function normalizeAmpToolName(toolName: string): string {
   }
 }
 
-function normalizeAmpToolInput(amp: PluginAPI, event: AmpToolCallEvent): Record<string, unknown> {
+function normalizeAmpToolInput(amp, event) {
   const rawInput = event.input && typeof event.input === 'object' ? event.input : {};
   const normalizedToolName = normalizeAmpToolName(event.tool);
   if (normalizedToolName !== 'Bash' || (event.tool !== 'Bash' && event.tool !== 'shell_command')) {
@@ -417,7 +396,7 @@ function normalizeAmpToolInput(amp: PluginAPI, event: AmpToolCallEvent): Record<
   const shellCommand = amp.helpers.shellCommandFromToolCall(event);
   if (!shellCommand) return rawInput;
 
-  const normalizedInput: Record<string, unknown> = {
+  const normalizedInput = {
     command: shellCommand.command,
   };
   if (shellCommand.dir) normalizedInput.cwd = shellCommand.dir;
@@ -434,20 +413,11 @@ func nativeAmpHookData(hooks []nativeBuildHook) string {
 // Hook Data
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface HookEntry {
-  id: string;
-  command?: string;
-  script?: string;
-  timeout: number;
-  failClosed: boolean;
-  if?: string;
-}
+const preToolHooks = ` + marshalNativeAmpHookMap(preTool) + `;
 
-const preToolHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(preTool) + `;
+const postToolHooks = ` + marshalNativeAmpHookMap(postTool) + `;
 
-const postToolHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(postTool) + `;
-
-const sessionHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(session) + `;`
+const sessionHooks = ` + marshalNativeAmpHookMap(session) + `;`
 }
 
 func nativeAmpHookDataWithoutSession(hooks []nativeBuildHook) string {
@@ -463,23 +433,14 @@ func nativeAmpHookDataWithoutSession(hooks []nativeBuildHook) string {
 // Hook Data
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface HookEntry {
-  id: string;
-  command?: string;
-  script?: string;
-  timeout: number;
-  failClosed: boolean;
-  if?: string;
-}
+const preToolHooks = ` + marshalNativeAmpHookMap(preTool) + `;
 
-const preToolHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(preTool) + `;
-
-const postToolHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(postTool) + `;`
+const postToolHooks = ` + marshalNativeAmpHookMap(postTool) + `;`
 }
 
 func nativeAmpPluginBody() string {
 	body := `  const delegation = registerLoafDelegation(amp);
-  function ampWorkspaceDir(): { path?: string; error?: string } {
+  function ampWorkspaceDir() {
     const workspaceRoot = amp.system?.workspaceRoot;
     if (!workspaceRoot) return { error: 'Amp workspace is unavailable' };
     if (typeof amp.helpers?.filePathFromURI !== 'function') {
@@ -489,12 +450,12 @@ func nativeAmpPluginBody() string {
       const path = amp.helpers.filePathFromURI(workspaceRoot);
       if (typeof path !== 'string' || !path) return { error: 'Amp workspace is unavailable' };
       return { path };
-    } catch (error: any) {
+    } catch (error) {
       return { error: error?.message || 'Amp workspace is unavailable' };
     }
   }
 
-  function resolveAmpHookCwd(explicitDir?: string): { cwd?: string; error?: string } {
+  function resolveAmpHookCwd(explicitDir) {
     if (typeof explicitDir === 'string' && explicitDir) {
       if (isAbsolute(explicitDir)) return { cwd: explicitDir };
       const workspace = ampWorkspaceDir();
@@ -510,7 +471,7 @@ func nativeAmpPluginBody() string {
     return { cwd: workspace.path };
   }
 
-  function ampHelperShellDir(event: AmpToolCallEvent): string | undefined {
+  function ampHelperShellDir(event) {
     if (event.tool !== 'Bash' && event.tool !== 'shell_command') return undefined;
     const shellCommand = amp.helpers.shellCommandFromToolCall(event);
     return typeof shellCommand?.dir === 'string' && shellCommand.dir ? shellCommand.dir : undefined;
@@ -541,7 +502,7 @@ func nativeAmpPluginBody() string {
     return policy;
   });
 
-  amp.on('tool.call', async (event: AmpToolCallEvent) => {
+  amp.on('tool.call', async (event) => {
     const rejection = await delegation.check(event);
     if (rejection) return { action: 'reject-and-continue', message: rejection };
     const toolName = normalizeAmpToolName(event.tool);
@@ -570,7 +531,7 @@ func nativeAmpPluginBody() string {
     return { action: 'allow' };
   });
 
-  amp.on('tool.result', async (event: AmpToolResultEvent) => {
+  amp.on('tool.result', async (event) => {
     const toolName = normalizeAmpToolName(event.tool);
     const toolInput = normalizeAmpToolInput(amp, event);
     const hookPayload = serializeHookPayload(toolName, toolInput, event);

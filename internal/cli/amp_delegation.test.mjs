@@ -5,10 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
-import { loafNativeModeContext, registerLoafDelegation } from './amp_delegation.ts';
+import { loafNativeModeContext, registerLoafDelegation } from './amp_delegation.js';
 
 test('generated plugin preserves normal hook dispatch when optional delegation registration fails', async t => {
-  const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.ts');
+  const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.js');
   t.mock.method(console, 'warn', () => {});
   const handlers = new Map();
   const amp = {
@@ -24,7 +24,7 @@ test('generated plugin preserves normal hook dispatch when optional delegation r
 });
 
 test('generated plugin injects native-mode policy through agent.start context', async t => {
-  const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.ts');
+  const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.js');
   const handlers = new Map();
   initialize({
     registerTool() {},
@@ -61,7 +61,7 @@ test('generated startup hook uses workspace rather than plugin process cwd', asy
   );
   process.env.PATH = `${binDir}:${previousPath ?? ''}`;
   process.env.LOAF_TEST_CWD_FILE = cwdFile;
-  const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.ts');
+  const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.js');
   const handlers = new Map();
   initialize({
     registerTool() {},
@@ -139,7 +139,7 @@ test('generated plugin runs real pre-PR in helper shell dir and falls back to wo
     input: { command: "gh pr create --title 'fix: probe' --body 'probe'", cwd },
     thread: { id: 'T-parent' },
   });
-  const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.ts');
+  const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.js');
   let helperDir;
   const handlers = new Map();
   initialize({
