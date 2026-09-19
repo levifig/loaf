@@ -12,6 +12,7 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ### Fixed
 
+- Keep Amp and OpenCode hook adapters alive when a child closes stdin before consuming the payload, while preserving exit status, output, rejection, spawn failure, and timeout handling ([#307](https://github.com/levifig/loaf/issues/307)).
 - Run Amp hooks in the shell execution directory or current workspace rather than the installed plugin directory, avoiding false missing-changelog errors while preserving checks ([#279](https://github.com/levifig/loaf/issues/279)).
 - Keep prompt and compaction guidance and SQLite journal commands available in linked worktrees when configuration or unrelated artifacts differ. Restrict migration refusals to storage the command consumes, identify affected paths, and preserve recovery checks without creating implicit migration markers; keep command diagnostics accurate ([#251](https://github.com/levifig/loaf/issues/251), [#254](https://github.com/levifig/loaf/issues/254)).
 - Prefer an already configured GitHub MCP matching `integrations.github.account`; otherwise use installed authenticated `gh` (including `gh api`) through the main agent. Verify MCP identity through the connector and `gh` identity separately before tracker operations.

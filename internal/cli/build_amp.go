@@ -193,6 +193,75 @@ function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: u
   }
 }
 
+function isClosedPipeError(error: any): boolean {
+  const code = error && error.code;
+  return code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED' || code === 'ERR_STREAM_PREMATURE_CLOSE' || code === 'ERR_STREAM_WRITE_AFTER_END';
+}
+
+function observeHookChild(child: any, payload: string | undefined, failClosed: boolean): Promise<HookResult> {
+  return new Promise((resolve) => {
+    let stdoutStr = '';
+    let stderrStr = '';
+    let stdinError: Error | undefined;
+    let settled = false;
+
+    const finish = (result: HookResult) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
+    child.stdout?.on('data', (data: string) => { stdoutStr += data; });
+    child.stderr?.on('data', (data: string) => { stderrStr += data; });
+
+    if (child.stdin) {
+      child.stdin.on('error', (err: Error) => {
+        if (!isClosedPipeError(err)) stdinError = err;
+      });
+    }
+
+    child.on('error', (err: Error) => {
+      finish({
+        exitCode: failClosed ? 2 : 1,
+        stdout: stdoutStr,
+        stderr: stderrStr || err.message,
+        error: err.message,
+      });
+    });
+
+    child.on('close', (code: number | null) => {
+      const exitCode = code ?? 1; // null means signal-killed; fail closed
+      if (exitCode === 2) {
+        finish({ exitCode, stdout: stdoutStr, stderr: stderrStr });
+        return;
+      }
+      if (stdinError) {
+        finish({
+          exitCode: failClosed ? 2 : (exitCode === 0 ? 1 : exitCode),
+          stdout: stdoutStr,
+          stderr: stderrStr || stdinError.message,
+          error: stdinError.message,
+        });
+        return;
+      }
+      finish({ exitCode, stdout: stdoutStr, stderr: stderrStr });
+    });
+
+    if (payload && child.stdin) {
+      try {
+        child.stdin.write(payload);
+      } catch (err: any) {
+        if (!isClosedPipeError(err)) stdinError = err;
+      }
+      try {
+        child.stdin.end();
+      } catch (err: any) {
+        if (!isClosedPipeError(err)) stdinError = err;
+      }
+    }
+  });
+}
+
 async function runHook(
   hookType: string,
   toolName: string,
@@ -221,24 +290,7 @@ async function runHook(
         encoding: 'utf-8',
         timeout,
       });
-      if (payload && child.stdin) {
-        child.stdin.write(payload);
-        child.stdin.end();
-      }
-
-      const result = await new Promise<HookResult>((resolve) => {
-        let stdoutStr = '';
-        let stderrStr = '';
-        child.stdout?.on('data', (data: string) => stdoutStr += data);
-        child.stderr?.on('data', (data: string) => stderrStr += data);
-        child.on('close', (code: number | null) => {
-          resolve({ exitCode: code ?? 1, stdout: stdoutStr, stderr: stderrStr }); // null means signal-killed; fail closed
-        });
-        child.on('error', (err: Error) => {
-          resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
-        });
-      });
-      return result;
+      return await observeHookChild(child, payload, failClosed);
     }
 
     // Otherwise run the script file
@@ -251,24 +303,7 @@ async function runHook(
         encoding: 'utf-8',
         timeout,
       });
-      if (payload && child.stdin) {
-        child.stdin.write(payload);
-        child.stdin.end();
-      }
-
-      const result = await new Promise<HookResult>((resolve) => {
-        let stdoutStr = '';
-        let stderrStr = '';
-        child.stdout?.on('data', (data: string) => stdoutStr += data);
-        child.stderr?.on('data', (data: string) => stderrStr += data);
-        child.on('close', (code: number | null) => {
-          resolve({ exitCode: code ?? 1, stdout: stdoutStr, stderr: stderrStr }); // null means signal-killed; fail closed
-        });
-        child.on('error', (err: Error) => {
-          resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
-        });
-      });
-      return result;
+      return await observeHookChild(child, payload, failClosed);
     }
 
     return { exitCode: 1, stdout: '', stderr: 'No command or script specified' };
