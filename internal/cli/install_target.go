@@ -453,16 +453,7 @@ func installAmpTarget(options targetInstallOptions) error {
 	} else {
 		pluginSrc := filepath.Join(options.DistDir, ".amp", "plugins", "loaf.js")
 		if fileExistsForInstall(pluginSrc) {
-			pluginsDest := options.AmpPluginsDir
-			if pluginsDest == "" {
-				pluginsDest = filepath.Join(options.ConfigDir, "plugins")
-			}
-			if err := os.MkdirAll(pluginsDest, 0o755); err != nil {
-				return err
-			}
-			if err := copyFileForInstall(pluginSrc, filepath.Join(pluginsDest, "loaf.js")); err != nil {
-				return err
-			}
+			return fmt.Errorf("amp JavaScript adapter %s requires a target adapter manifest; refusing a manifestless copy that would leave TypeScript predecessors unmanaged", ampHookPluginArtifactID)
 		}
 	}
 	if err := writeInstallMarker(options.ConfigDir, options.Version); err != nil {

@@ -130,6 +130,33 @@ func TestScopedUpgradeIgnoresUnrelatedPitchConflict(t *testing.T) {
 	}
 }
 
+func TestScopedUpgradeRollsBackNewSkillDirectory(t *testing.T) {
+	root, home := setupScopedUpgradeFixture(t)
+	skillDir := filepath.Join(home, ".agents", "skills", "foundations")
+	if err := os.RemoveAll(skillDir); err != nil {
+		t.Fatalf("RemoveAll(%s) error = %v", skillDir, err)
+	}
+	assertInstallPathMissing(t, skillDir)
+	t.Cleanup(func() { scopedApplyTestFault = nil })
+	scopedApplyTestFault = func(phase string) error {
+		if phase == "skills" {
+			if _, err := os.Stat(skillDir); err != nil {
+				t.Fatalf("new skill directory missing before rollback: %v", err)
+			}
+			return errors.New("injected skill apply failure")
+		}
+		return nil
+	}
+	var stdout strings.Builder
+	err := Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}.Run([]string{
+		"upgrade", "--select", "skills/skill:foundations",
+	})
+	if err == nil || !strings.Contains(err.Error(), "injected skill apply failure") {
+		t.Fatalf("error = %v\n%s, want injected skill failure", err, stdout.String())
+	}
+	assertInstallPathMissing(t, skillDir)
+}
+
 func TestScopedUpgradeRecoversMidApplyFailure(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
 	before := hashScopedSurfaces(t, home)

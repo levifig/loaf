@@ -1335,7 +1335,7 @@ func planJavaScriptAdapterSuccessors(options targetInstallOptions, desired targe
 	}
 	var extra []artifactPlanDecision
 	for _, artifact := range desired.Artifacts {
-		successor, ok := targetAdapterJavaScriptSuccessor(artifact)
+		successor, ok := targetAdapterJavaScriptSuccessor(options.Target, artifact)
 		if !ok || seen[successor.legacyID] {
 			continue
 		}
