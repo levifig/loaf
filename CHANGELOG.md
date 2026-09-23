@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+### Added
+
+- Bootstrap a pinned, checksum-verified Loaf release into external Amp Orb consumer projects without a Loaf checkout or Go toolchain, and fail readiness when the binary, Amp distribution, project identity, managed instructions, or effective Loaf sources cannot be proven ([#302](https://github.com/levifig/loaf/issues/302)).
+
 ### Changed
 
 - Let native Amp Low, Medium, High, and Ultra implement without a pinned Grok worker; keep ordinary Loaf hooks and native Oracle review unchanged ([#310](https://github.com/levifig/loaf/issues/310)).

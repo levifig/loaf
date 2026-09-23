@@ -122,6 +122,8 @@ loaf journal context --from-hook  # SessionStart path; fails closed when unattac
 
 ## Amp Orbs
 
+The commands below describe this Loaf source repository's development bootstrap. For DojoHQ or another external Loaf-enabled consumer with no Loaf checkout or Go toolchain, first install and prove the pinned release with [Amp Orb Consumer Bootstrap](../cloud/amp-orb-consumer-bootstrap.md). Private continuity attachment remains a separate step after that readiness proof.
+
 Amp uses `.agents/setup` (fresh orb) and `.agents/resume` (wake) instead of Cursor's environment.json.
 
 | File | Role |

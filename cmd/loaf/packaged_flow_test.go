@@ -50,6 +50,10 @@ func TestPackagedRebuildPreservesTrackerNativeFlow(t *testing.T) {
 		return output
 	}
 	run(source, filepath.Join(source, "bin/native", target, nativeName), "build", "--target", "codex")
+	// Release archives now carry an Amp content manifest, so every packaging
+	// fixture must produce the Amp distribution as well as the target under
+	// test before invoking loafdev package.
+	run(source, filepath.Join(source, "bin/native", target, nativeName), "build", "--target", "amp")
 	want := packagedTreeDigests(t, filepath.Join(source, "dist/codex/skills"))
 	if _, ok := want["project-management/contract.json"]; !ok {
 		t.Fatal("source build did not produce tracker-native Flow")

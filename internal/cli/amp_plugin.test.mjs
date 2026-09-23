@@ -13,7 +13,8 @@ test('generated plugin preserves ordinary hook dispatch when registerTool is una
   const amp = {
     registerTool() { throw new Error('duplicate registration'); },
     on(event, handler) { handlers.set(event, handler); },
-    helpers: { shellCommandFromToolCall: () => null },
+    helpers: { filePathFromURI: uri => fileURLToPath(uri), shellCommandFromToolCall: () => null },
+    system: { workspaceRoot: pathToFileURL(process.cwd()) },
   };
   assert.doesNotThrow(() => initialize(amp));
   assert.deepEqual([...handlers.keys()], ['agent.start', 'tool.call', 'tool.result']);
@@ -164,6 +165,17 @@ test('generated plugin runs real pre-PR in helper shell dir and falls back to wo
   for (const entry of log) assert.equal(await realpath(entry.cwd), await realpath(shellDir));
   assert.notEqual(await realpath(shellDir), workspace);
   assert.notEqual(await realpath(shellDir), await realpath(process.cwd()));
+
+  await writeFile(hookLog, '');
+  assert.deepEqual(await handlers.get('tool.call')({
+    toolUseID: 'pre-push',
+    tool: 'shell_command',
+    input: { command: 'git push origin HEAD' },
+    thread: { id: 'T-parent' },
+  }), { action: 'allow' });
+  log = await readLog();
+  assert.ok(log.some(entry => entry.hook === 'ephemeral-provenance'));
+  assert.equal(await realpath(log.find(entry => entry.hook === 'ephemeral-provenance').cwd), await realpath(shellDir));
 
   await writeFile(hookLog, '');
   helperDir = missingDir;

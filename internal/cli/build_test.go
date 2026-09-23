@@ -313,7 +313,8 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 		"receipt.outcome !== 'current'",
 		"amp.on('tool.call', async (event: AmpToolCallEvent) =>",
 		"amp.on('tool.result', async (event: AmpToolResultEvent) =>",
-		"return { action: 'reject-and-continue', message: result.stderr }",
+		"const readiness = await runAmpConsumerAgentCheck(workspace.path)",
+		"Loaf fail-closed hook ${hook.id} could not prove this tool call safe",
 		"return { action: 'allow' }",
 		"raw: rawInput",
 		`"command": "loaf check --hook check-secrets"`,
@@ -1532,6 +1533,97 @@ func TestNativeAmpPluginHooks(t *testing.T) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("amp plugin hook test failed: %v\n%s", err, output)
+	}
+}
+
+func TestNativeAmpPluginReadinessAndFailClosedSemantics(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skipf("node not found: %v", err)
+	}
+	root := testRepositoryRoot(t)
+	pluginPath := filepath.Join(t.TempDir(), "loaf.ts")
+	hooks := []nativeBuildHook{
+		{id: "test-fail-closed-2", matcher: "FailClosed2", command: "loaf fail-closed-2", timeout: 1000, failClosed: true, section: "pre-tool"},
+		{id: "test-fail-closed-3", matcher: "FailClosed3", command: "loaf fail-closed-3", timeout: 1000, failClosed: true, section: "pre-tool"},
+		{id: "test-fail-closed-signal", matcher: "FailClosedSignal", command: "loaf fail-closed-signal", timeout: 1000, failClosed: true, section: "pre-tool"},
+		{id: "test-fail-closed-timeout", matcher: "FailClosedTimeout", command: "loaf fail-closed-timeout", timeout: 50, failClosed: true, section: "pre-tool"},
+		{id: "test-advisory-2", matcher: "Advisory2", command: "loaf fail-closed-2", timeout: 1000, section: "pre-tool"},
+		{id: "test-advisory", matcher: "Advisory", command: "loaf advisory", timeout: 1000, section: "pre-tool"},
+	}
+	writeFile(t, pluginPath, renderNativeAmpPlugin(hooks, "test"))
+
+	cmd := exec.Command(node, "--experimental-strip-types", "--test", "internal/cli/amp_orb_plugin.test.mjs")
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "LOAF_AMP_PLUGIN_PATH="+pluginPath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("amp Orb plugin readiness test failed: %v\n%s", err, output)
+	}
+}
+
+func TestNativeOpenCodePluginExcludesAmpConsumerReadiness(t *testing.T) {
+	hooks, err := readNativeBuildHooks(filepath.Join(testRepositoryRoot(t), "config", "hooks.yaml"))
+	if err != nil {
+		t.Fatalf("readNativeBuildHooks error = %v", err)
+	}
+	plugin := renderNativeOpenCodePlugin(hooks, "test")
+	for _, unwanted := range []string{"AmpConsumerReadiness", "runAmpConsumerAgentCheck", "ampLstat", "loaf-orb.pin", "loaf-orb-bootstrap.sh", "loaf check --hook ephemeral-provenance"} {
+		if strings.Contains(plugin, unwanted) {
+			t.Fatalf("generated OpenCode plugin contains Amp-only content %q", unwanted)
+		}
+	}
+}
+
+func TestNativeAmpFailClosedPreToolHooksHaveExecutableDispatch(t *testing.T) {
+	root := testRepositoryRoot(t)
+	hooks, err := readNativeBuildHooks(filepath.Join(root, "config", "hooks.yaml"))
+	if err != nil {
+		t.Fatalf("readNativeBuildHooks error = %v", err)
+	}
+	for _, hook := range nativeAmpPreToolHooks(hooks) {
+		entry := nativeAmpHookEntryFor(hook)
+		if entry.FailClosed && entry.Command == "" && entry.Script == "" {
+			t.Errorf("fail-closed Amp pre-tool hook %q has no rendered command or script", entry.ID)
+		}
+	}
+	plugin := renderNativeAmpPlugin(hooks, "test")
+	if !strings.Contains(plugin, `"id": "ephemeral-provenance"`) || !strings.Contains(plugin, `"command": "loaf check --hook ephemeral-provenance"`) {
+		t.Fatal("generated Amp plugin does not render ephemeral-provenance with its native check command")
+	}
+}
+
+func TestNativeBuildValidationAcceptsGeneratedAmpPlugin(t *testing.T) {
+	requireTypeScriptCompiler(t)
+	root := realpath(t, t.TempDir())
+	pluginDir := filepath.Join(root, "dist", "amp", ".amp", "plugins")
+	mkdirAll(t, pluginDir)
+	writeFile(t, filepath.Join(pluginDir, "loaf.ts"), renderNativeAmpPlugin(nil, "test"))
+	t.Setenv("LOAF_VALIDATE_TYPESCRIPT", "1")
+
+	warnings, err := validateNativeBuildArtifacts(root, "amp")
+	if err != nil {
+		t.Fatalf("validateNativeBuildArtifacts(generated amp plugin) error = %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %#v, want none when generated Amp plugin typechecks", warnings)
+	}
+}
+
+func TestNativeBuildValidationAcceptsGeneratedOpenCodePlugin(t *testing.T) {
+	requireTypeScriptCompiler(t)
+	root := realpath(t, t.TempDir())
+	pluginDir := filepath.Join(root, "dist", "opencode", "plugins")
+	mkdirAll(t, pluginDir)
+	writeFile(t, filepath.Join(pluginDir, "hooks.ts"), renderNativeOpenCodePlugin(nil, "test"))
+	t.Setenv("LOAF_VALIDATE_TYPESCRIPT", "1")
+
+	warnings, err := validateNativeBuildArtifacts(root, "opencode")
+	if err != nil {
+		t.Fatalf("validateNativeBuildArtifacts(generated OpenCode plugin) error = %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %#v, want none when generated OpenCode plugin typechecks", warnings)
 	}
 }
 

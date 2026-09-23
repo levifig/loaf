@@ -6,6 +6,7 @@
 
 import type { PluginAPI } from '@ampcode/plugin';
 import { execFile } from 'child_process';
+import { lstat as ampLstat } from 'node:fs/promises';
 import { promisify } from 'util';
 import { join, dirname, isAbsolute, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -100,11 +101,11 @@ async function runHook(
         let stderrStr = '';
         child.stdout?.on('data', (data: string) => stdoutStr += data);
         child.stderr?.on('data', (data: string) => stderrStr += data);
-        child.on('close', (code: number | null) => {
-          resolve({ exitCode: code ?? 1, stdout: stdoutStr, stderr: stderrStr }); // null means signal-killed; fail closed
+        child.on('close', (code: number | null, signal?: string | null) => {
+          resolve({ exitCode: code ?? -1, stdout: stdoutStr, stderr: stderrStr, error: signal ? `terminated by signal ${signal}` : undefined });
         });
         child.on('error', (err: Error) => {
-          resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
+          resolve({ exitCode: -1, stdout: stdoutStr, stderr: stderrStr, error: err.message });
         });
       });
       return result;
@@ -130,22 +131,22 @@ async function runHook(
         let stderrStr = '';
         child.stdout?.on('data', (data: string) => stdoutStr += data);
         child.stderr?.on('data', (data: string) => stderrStr += data);
-        child.on('close', (code: number | null) => {
-          resolve({ exitCode: code ?? 1, stdout: stdoutStr, stderr: stderrStr }); // null means signal-killed; fail closed
+        child.on('close', (code: number | null, signal?: string | null) => {
+          resolve({ exitCode: code ?? -1, stdout: stdoutStr, stderr: stderrStr, error: signal ? `terminated by signal ${signal}` : undefined });
         });
         child.on('error', (err: Error) => {
-          resolve({ exitCode: failClosed ? 2 : 1, stdout: stdoutStr, stderr: stderrStr || err.message, error: err.message });
+          resolve({ exitCode: -1, stdout: stdoutStr, stderr: stderrStr, error: err.message });
         });
       });
       return result;
     }
 
-    return { exitCode: 1, stdout: '', stderr: 'No command or script specified' };
+    return { exitCode: -1, stdout: '', stderr: '', error: 'No command or script specified' };
   } catch (error: any) {
     return {
-      exitCode: failClosed ? 2 : 1,
+      exitCode: -1,
       stdout: '',
-      stderr: error.message,
+      stderr: '',
       error: error.message,
     };
   }
@@ -211,6 +212,58 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
   return regex.test(command);
 }
 
+
+interface AmpConsumerReadiness {
+  checked: boolean;
+  pinned: boolean;
+  ready: boolean;
+  message?: string;
+}
+
+async function runAmpConsumerAgentCheck(cwd: string): Promise<AmpConsumerReadiness> {
+  const pinPath = join(cwd, '.agents', 'loaf-orb.pin');
+  try {
+    await ampLstat(pinPath);
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') return { checked: true, pinned: false, ready: true };
+    return { checked: true, pinned: true, ready: false, message: 'Loaf cannot inspect the committed Amp Orb pin. Restore readable project files, then rerun the Orb setup or resume lifecycle.' };
+  }
+
+  const scriptPath = join(cwd, '.agents', 'loaf-orb-bootstrap.sh');
+  try {
+    await ampLstat(scriptPath);
+  } catch {
+    return { checked: true, pinned: true, ready: false, message: 'Pinned Loaf Amp consumer is missing .agents/loaf-orb-bootstrap.sh. Restore the committed bootstrap script and rerun the Orb setup or resume lifecycle.' };
+  }
+
+  const child = execFile(scriptPath, ['agent-check'], {
+    cwd,
+    env: process.env,
+    encoding: 'utf-8',
+    timeout: 10000,
+  });
+  const result = await new Promise<HookResult>((resolve) => {
+    let stdoutStr = '';
+    let stderrStr = '';
+    child.stdout?.on('data', (data: string) => stdoutStr += data);
+    child.stderr?.on('data', (data: string) => stderrStr += data);
+    child.on('close', (code: number | null, signal?: string | null) => {
+      resolve({ exitCode: code ?? -1, stdout: stdoutStr, stderr: stderrStr, error: signal ? `terminated by signal ${signal}` : undefined });
+    });
+    child.on('error', (error: Error) => {
+      resolve({ exitCode: -1, stdout: stdoutStr, stderr: stderrStr, error: error.message });
+    });
+  });
+  if (result.exitCode === 0) return { checked: true, pinned: true, ready: true };
+
+  const detail = result.exitCode >= 0 ? `agent-check exited ${result.exitCode}` : 'agent-check could not complete';
+  return {
+    checked: true,
+    pinned: true,
+    ready: false,
+    message: `Pinned Loaf Amp consumer is not ready: ${detail}. Rerun .agents/loaf-orb-bootstrap.sh through the Orb setup or resume lifecycle, then retry.`,
+  };
+}
 
 interface AmpToolCallEvent {
   toolUseID: string;
@@ -313,6 +366,7 @@ const preToolHooks: Record<string, HookEntry[]> = {
     },
     {
       "id": "ephemeral-provenance",
+      "command": "loaf check --hook ephemeral-provenance",
       "timeout": 30000,
       "failClosed": true,
       "if": "Bash(git push:*)"
@@ -432,6 +486,11 @@ export default function (amp: PluginAPI) {
       console.warn(`[loaf] Managed-content reconcile skipped: ${directory.error || 'Amp workspace is unavailable'}`);
       return {};
     }
+    const readiness = await runAmpConsumerAgentCheck(directory.cwd);
+    if (readiness.pinned && !readiness.ready) {
+      console.warn(`[loaf] ${readiness.message || 'Pinned Loaf Amp consumer is not ready.'} Tool calls will remain blocked until readiness is proven.`);
+      return {};
+    }
     const result = await runHook('harness', '', 'managed-content-reconcile', 'loaf harness reconcile --target amp --json', undefined, undefined, 10000, false, directory.cwd);
     const detail = (result.stdout || result.stderr).trim();
     if (result.exitCode !== 0) {
@@ -450,6 +509,14 @@ export default function (amp: PluginAPI) {
   });
 
   amp.on('tool.call', async (event: AmpToolCallEvent) => {
+    const workspace = ampWorkspaceDir();
+    if (!workspace.path) {
+      return { action: 'reject-and-continue', message: (workspace.error || 'Amp workspace is unavailable') + '; Loaf readiness cannot be proven.' };
+    }
+    const readiness = await runAmpConsumerAgentCheck(workspace.path);
+    if (readiness.pinned && !readiness.ready) {
+      return { action: 'reject-and-continue', message: readiness.message || 'Pinned Loaf Amp consumer is not ready. Rerun the Orb setup or resume lifecycle, then retry.' };
+    }
     const toolName = normalizeAmpToolName(event.tool);
     const toolInput = normalizeAmpToolInput(amp, event);
     const hookPayload = serializeHookPayload(toolName, toolInput, event);
@@ -464,12 +531,18 @@ export default function (amp: PluginAPI) {
         }
         const result = await runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed, directory.cwd);
 
+        const detail = (result.stderr || result.stdout || result.error || ('exit ' + result.exitCode)).trim();
         if (result.exitCode === 2) {
-          return { action: 'reject-and-continue', message: result.stderr };
+          return { action: 'reject-and-continue', message: detail || `Loaf hook ${hook.id} rejected this tool call.` };
         }
-
-        if (result.exitCode === 1) {
-          console.warn(`[loaf] Hook ${hook.id} error: ${result.stderr}`);
+        if (result.exitCode !== 0) {
+          if (hook.failClosed) {
+            return {
+              action: 'reject-and-continue',
+              message: `Loaf fail-closed hook ${hook.id} could not prove this tool call safe (${detail || ('exit ' + result.exitCode)}). Restore the Loaf runtime or resolve the hook failure, then retry.`,
+            };
+          }
+          console.warn(`[loaf] Advisory hook ${hook.id} failed without blocking (exit ${result.exitCode}): ${detail}`);
         }
       }
     }
