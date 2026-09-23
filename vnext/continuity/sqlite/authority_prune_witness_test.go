@@ -123,13 +123,14 @@ func TestCurrentSyncPruneWitnessAuthorityUnderBindingCancelsDuringLargeV2Scan(t 
 	got, err := store.CurrentSyncPruneWitnessAuthorityUnderBinding(
 		ctx, projectID, binding, binding.MembershipGeneration,
 	)
+	checks := ctx.Checks()
 	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("CurrentSyncPruneWitnessAuthorityUnderBinding(mid-scan cancellation) error = %v, want context.Canceled", err)
+		t.Fatalf("CurrentSyncPruneWitnessAuthorityUnderBinding(mid-scan cancellation) error = %v after %d context checks, want context.Canceled", err, checks)
 	}
 	if got.Binding != (SyncAuthorityBinding{}) || got.MembershipGeneration != 0 || got.Environments != nil {
 		t.Fatalf("mid-scan cancellation result = %#v, want no partial witnesses", got)
 	}
-	if checks := ctx.Checks(); checks < 128 {
+	if checks < 128 {
 		t.Fatalf("context checks = %d, want cancellation after scan progress", checks)
 	}
 }
