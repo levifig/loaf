@@ -214,7 +214,7 @@ func collectTargetAdapterArtifacts(target string, outputDir string) ([]targetAda
 
 func managedAmpPluginSource(sourcePath string) bool {
 	switch sourcePath {
-	case ".amp/plugins/loaf.ts", ".amp/plugins/loaf-modes.ts":
+	case ".amp/plugins/loaf.ts":
 		return true
 	default:
 		return false
@@ -593,6 +593,11 @@ func syncTargetAdapterManifest(options targetInstallOptions) error {
 	}
 	desiredByID := targetAdapterArtifactsByID(desired.Artifacts)
 	installedByID := targetAdapterArtifactsByID(installed.Artifacts)
+	if predecessor, ok, err := recognizedAmpModesPluginPredecessor(options, desiredByID, installedByID); err != nil {
+		return err
+	} else if ok {
+		installed.Artifacts = append(installed.Artifacts, predecessor)
+	}
 	states := map[string]targetAdapterSnapshot{}
 	desiredDestinations := map[string]bool{}
 	for _, artifact := range installed.Artifacts {
@@ -1183,8 +1188,10 @@ func targetAdapterLegacyOwnership(target string, artifact targetAdapterArtifact,
 // recovered private Amp modes plugin that predates packaged ownership. Loaf
 // may adopt only an unrecorded destination when the target is amp, the artifact
 // identity/source/destination are exactly the Loaf modes plugin, and the body
-// SHA-256 is the known predecessor. Any other byte, identity, or target stays
-// foreign. This does not broaden the generated-header heuristic.
+// SHA-256 is the known predecessor. The same exact predecessor can be retired
+// when the desired artifact is gone, rather than only adopted. Any other byte,
+// identity, or target stays foreign. This does not broaden the generated-header
+// heuristic.
 func ampModesPluginExactPredecessor(target string, artifact targetAdapterArtifact, body []byte) bool {
 	return target == "amp" &&
 		artifact.Kind == "plugin" &&
@@ -1192,6 +1199,49 @@ func ampModesPluginExactPredecessor(target string, artifact targetAdapterArtifac
 		artifact.SourcePath == ampModesPluginSourcePath &&
 		artifact.Destination == ampModesPluginDestination &&
 		sha256Bytes(body) == ampModesPluginPredecessorSHA256
+}
+
+func recognizedAmpModesPluginPredecessor(options targetInstallOptions, desiredByID, installedByID map[string]targetAdapterArtifact) (targetAdapterArtifact, bool, error) {
+	if options.Target != "amp" || options.SelectedArtifactIDs != nil {
+		return targetAdapterArtifact{}, false, nil
+	}
+	if _, ok := desiredByID[ampModesPluginArtifactID]; ok {
+		return targetAdapterArtifact{}, false, nil
+	}
+	if _, ok := installedByID[ampModesPluginArtifactID]; ok {
+		return targetAdapterArtifact{}, false, nil
+	}
+	artifact := targetAdapterArtifact{
+		ID:          ampModesPluginArtifactID,
+		Kind:        "plugin",
+		SourcePath:  ampModesPluginSourcePath,
+		Destination: ampModesPluginDestination,
+	}
+	path, err := targetAdapterDestination(options, artifact)
+	if err != nil {
+		return targetAdapterArtifact{}, false, err
+	}
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return targetAdapterArtifact{}, false, nil
+	}
+	if err != nil {
+		return targetAdapterArtifact{}, false, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > projectFileReadLimit {
+		return targetAdapterArtifact{}, false, nil
+	}
+	snapshot, err := readTargetAdapterSnapshot(path)
+	if err != nil {
+		return targetAdapterArtifact{}, false, nil
+	}
+	if !snapshot.exists || !ampModesPluginExactPredecessor(options.Target, artifact, snapshot.body) {
+		return targetAdapterArtifact{}, false, nil
+	}
+	mode := uint32(snapshot.mode.Perm())
+	artifact.Mode = &mode
+	artifact.SHA256 = ampModesPluginPredecessorSHA256
+	return artifact, true, nil
 }
 
 func publishTargetAdapterArtifact(options targetInstallOptions, artifact targetAdapterArtifact) error {

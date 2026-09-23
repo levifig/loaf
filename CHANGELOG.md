@@ -10,9 +10,13 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ### Changed
 
-- Route Amp implementation through native Low, Medium, High, and Ultra with a fresh Grok 4.6 Fast `loaf_delegate` child labelled exactly `implementer` and native Oracle review, retiring Loaf Medium, Loaf Ultra, and copied custom review oracles while keeping the existing `loaf-modes.ts` install artifact as an inert compatibility plugin ([#266](https://github.com/levifig/loaf/issues/266)).
+- Let native Amp Low, Medium, High, and Ultra implement without a pinned Grok worker; keep ordinary Loaf hooks and native Oracle review unchanged ([#310](https://github.com/levifig/loaf/issues/310)).
 - Require verified selected native issues before substantive implementation, including ordinary fix requests, and capture concrete deferred work in native issues before handoff. Honor existing explicit selection without asking again; preserve read-only discovery, narrowly incidental corrections, and explicit user overrides ([#252](https://github.com/levifig/loaf/issues/252)).
 - Keep ordinary `make`/`make build` work from retargeting the development launcher; compile the executable with `make build-cli`, and activate a checkout only through explicit `make install` after complete verification ([#271](https://github.com/levifig/loaf/issues/271)).
+
+### Removed
+
+- Retire the obsolete Amp `loaf-modes.ts` plugin on upgrade when its contents match a known Loaf-owned version, preserving modified and foreign files ([#309](https://github.com/levifig/loaf/issues/309)).
 
 ### Fixed
 
