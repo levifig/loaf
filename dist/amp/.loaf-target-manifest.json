@@ -14,19 +14,11 @@
       "sha256": "5403297367a1e20ac96e6382b6858a7072986da5be1d9fa5396624d046a8e9b8"
     },
     {
-      "id": "plugin:.amp/plugins/loaf-modes.ts",
-      "kind": "plugin",
-      "source_path": ".amp/plugins/loaf-modes.ts",
-      "destination": "plugins/loaf-modes.ts",
-      "sha256": "6855aa771d5f35b3837abcaaacffffb5881cba60b42978ec81cc30d57aab4ffe",
-      "mode": 420
-    },
-    {
       "id": "plugin:.amp/plugins/loaf.ts",
       "kind": "plugin",
       "source_path": ".amp/plugins/loaf.ts",
       "destination": "plugins/loaf.ts",
-      "sha256": "6f2fb1924ab06b69c63ce569d8d1d62aad85b1bfed5b0a7e0390b151c0534c64",
+      "sha256": "5308c9cb832c2f0df9eaf4a3ab0354b4c23bcbcd3d367d6898919dbaffd86bd6",
       "mode": 420
     }
   ]

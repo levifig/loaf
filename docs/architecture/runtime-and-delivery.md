@@ -26,7 +26,7 @@ Continuing npm delivery was rejected because it kept Node as the product entrypo
 
 The agreed delivery model is Plugin + Skills + CLI: plugins provide native packaging where available, shared skills carry methods, and the PATH CLI implements deterministic behavior. Keep harness-specific code limited to boundaries that genuinely differ, such as discovery, hook payloads, and permission configuration. These boundaries need verification; shared behavior does not need recertification across every harness version.
 
-Amp keeps two digest-bound plugin artifacts, `loaf.ts` and `loaf-modes.ts`, so install and upgrade continue to own the same destinations. Managed native-mode routing lives in `loaf.ts`. The `loaf-modes.ts` filename remains an inert compatibility plugin with no mode, agent, tool, or hook registrations.
+Amp emits one digest-bound plugin artifact, `loaf.ts`. Runtime `loaf.ts` provides ordinary hooks and does not override implementation or model routing. Upgrades retire matching previously owned `loaf-modes.ts` files and the known exact-digest unmanifested predecessor, while preserving unknown unmanifested files.
 
 Compatibility depends on required behavior, not exact version identity. Check the commands, flags, payload contracts, and safety capabilities an operation needs. An unfamiliar version alone must not block use or trigger an upgrade demand. Missing required behavior or an unproven safety boundary still requires a refusal or an explicit limitation; removing version gates does not establish compatibility by assumption.
 
