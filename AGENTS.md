@@ -348,7 +348,7 @@ Worked examples of genuine product-specific facts (keep as labeled content; do n
 
 - Fenced allowlist entries whose literal tokens differ by product (`foundations/references/permissions.md`)
 - Distinct spawn/configuration mechanisms (`orchestration/references/background-agents.md`)
-- Creating the Claude compatibility symlink `.claude/CLAUDE.md -> ../AGENTS.md` (the path is the fact; root `AGENTS.md` stays the canonical project-instructions name in prose)
+- The Claude Code `@AGENTS.md` import in a root `CLAUDE.md` for sessions that cannot read `AGENTS.md` directly, and the rule that a real `.claude/CLAUDE.md` suppresses direct `AGENTS.md` reading (the paths are the fact; root `AGENTS.md` stays the canonical project-instructions name in prose)
 - Review policy that must inspect both `AGENTS.md` and `CLAUDE.md` when both exist
 - Slash-command invocation forms that differ by channel (`/loaf:name` on Claude Code's plugin path vs bare `/name` elsewhere)
 

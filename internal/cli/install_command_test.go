@@ -246,7 +246,7 @@ func TestRunnerInstallInteractiveNoTargetsStillUpdatesClaudeProjectFile(t *testi
 		t.Fatalf("stdout = %q, want no targets selected", stdout.String())
 	}
 	canonical := filepath.Join(root, "AGENTS.md")
-	assertInstallSymlinkTarget(t, filepath.Join(root, ".claude", "CLAUDE.md"), canonical)
+	assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 	body := string(readFileBytes(t, canonical))
 	if !strings.Contains(body, "## Loaf Framework") {
 		t.Fatalf("canonical body = %q, want Claude project fenced section", body)

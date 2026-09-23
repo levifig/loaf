@@ -16,8 +16,11 @@ const (
 	fencedWarning     = "<!-- Maintained by loaf install/upgrade; edits inside this section are overwritten. Put custom instructions outside it. -->"
 )
 
+// fencedTargetFiles names each target's managed project file. Every target,
+// Claude Code included, shares root AGENTS.md: Claude Code reads it natively,
+// and the batch writer dedupes the shared path so the section lands once.
 var fencedTargetFiles = map[string]string{
-	"claude-code": ".claude/CLAUDE.md",
+	"claude-code": "AGENTS.md",
 	"cursor":      "AGENTS.md",
 	"codex":       "AGENTS.md",
 	"opencode":    "AGENTS.md",
@@ -137,12 +140,11 @@ func validateFencedStructure(content string) error {
 // alongside the error so the caller can still report what happened.
 //
 // Stopping is the point. A refusal is a statement about this project, not about
-// one harness: the targets share files — cursor, codex, opencode, and amp all
-// name AGENTS.md — and a fenced write is refused precisely when the file is not
-// currently Loaf's to manage. Carrying on past that let a refused write to
-// AGENTS.md be followed by creating .claude/CLAUDE.md for the next target in
-// the list, which is the half-deployed project both callers already stop for
-// once they see the failure.
+// one harness: the targets share files — every target names AGENTS.md — and a
+// fenced write is refused precisely when the file is not currently Loaf's to
+// manage. Carrying on past that would retry the refused file for the next
+// target, or write a half-deployed project both callers already stop for once
+// they see the failure.
 func installFencedSectionsForTargets(targets []string, projectRoot string, version string, upgrade bool) (map[string]fencedInstallResult, error) {
 	results := map[string]fencedInstallResult{}
 	writtenPaths := map[string]string{}

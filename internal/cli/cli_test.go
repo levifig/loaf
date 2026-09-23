@@ -890,6 +890,11 @@ func TestRunnerInitScaffoldsProjectNatively(t *testing.T) {
 	if err != nil {
 		t.Fatalf("init --no-symlinks error = %v", err)
 	}
+	// Claude Code reads root AGENTS.md natively; init never creates a
+	// .claude/CLAUDE.md that would shadow it.
+	if _, err := os.Lstat(filepath.Join(workingDir, ".claude", "CLAUDE.md")); !os.IsNotExist(err) {
+		t.Fatalf(".claude/CLAUDE.md Lstat err = %v, want absent after init", err)
+	}
 	for _, path := range []string{
 		"AGENTS.md",
 		".agents/loaf.json",

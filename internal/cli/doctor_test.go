@@ -57,18 +57,19 @@ func TestRunnerDoctorFixPromptsBeforeEachRepairAndAcceptsYes(t *testing.T) {
 	root := writeDoctorFixture(t, "9.8.7-test.1")
 	writeDoctorAgents(t, root, doctorFence("9.8.7-test.1"))
 	writeDoctorFile(t, filepath.Join(root, ".cursor", "rules", "loaf.mdc"), "legacy\n")
+	symlinkFile(t, "../.agents/AGENTS.md", filepath.Join(root, ".claude", "CLAUDE.md"))
 	var stdout bytes.Buffer
 
 	err := (Runner{Stdout: &stdout, Stdin: strings.NewReader("y\ny\n"), WorkingDir: root, Executable: distributionFixtureExecutable(root)}).Run([]string{"doctor", "--fix"})
 	if err != nil {
 		t.Fatalf("doctor --fix error = %v\n%s", err, stdout.String())
 	}
-	assertSymlinkTarget(t, filepath.Join(root, ".claude", "CLAUDE.md"), "../AGENTS.md")
+	assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 	if _, err := os.Lstat(filepath.Join(root, ".cursor", "rules", "loaf.mdc")); !os.IsNotExist(err) {
 		t.Fatalf("stale cursor file still exists: %v", err)
 	}
 	output := stripANSI(stdout.String())
-	for _, want := range []string{"Create .claude/CLAUDE.md", "Remove stale .cursor/rules/loaf.mdc", "[y/N]", "2 fixed", "5 passed", "3 skipped"} {
+	for _, want := range []string{"leave the path absent", "Removed .claude/CLAUDE.md symlink", "Remove stale .cursor/rules/loaf.mdc", "[y/N]", "2 fixed", "5 passed", "3 skipped"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("doctor --fix output = %q, want %q", output, want)
 		}
@@ -82,14 +83,16 @@ func TestRunnerDoctorFixDeclineLeavesFailureWithoutMutation(t *testing.T) {
 	writeDoctorFile(t, stale, "legacy\n")
 	var stdout bytes.Buffer
 
+	claude := filepath.Join(root, ".claude", "CLAUDE.md")
+	writeDoctorFile(t, claude, "# Claude Notes\n")
+
 	err := (Runner{Stdout: &stdout, Stdin: strings.NewReader("n\nn\n"), WorkingDir: root}).Run([]string{"doctor", "--fix"})
 	var exitErr ExitError
 	if !errors.As(err, &exitErr) || exitErr.Code != 1 {
 		t.Fatalf("doctor --fix error = %v, want exit code 1", err)
 	}
-	if pathExistsForDoctor(filepath.Join(root, ".claude", "CLAUDE.md")) == true {
-		t.Fatal("declined Claude repair mutated the checkout")
-	}
+	assertInstallFile(t, claude, "# Claude Notes\n")
+	assertInstallPathMissing(t, claude+".bak")
 	assertInstallFile(t, stale, "legacy\n")
 	output := stripANSI(stdout.String())
 	if !strings.Contains(output, "2 declined") || !strings.Contains(output, "2 failed") {
@@ -104,12 +107,19 @@ func TestRunnerDoctorFixSupportsMixedAnswersAcrossChecks(t *testing.T) {
 	writeDoctorFile(t, stale, "legacy\n")
 	var stdout bytes.Buffer
 
+	claude := filepath.Join(root, ".claude", "CLAUDE.md")
+	writeDoctorFile(t, claude, "# Claude Notes\n")
+
 	err := (Runner{Stdout: &stdout, Stdin: strings.NewReader("y\nn\n"), WorkingDir: root}).Run([]string{"doctor", "--fix"})
 	var exitErr ExitError
 	if !errors.As(err, &exitErr) || exitErr.Code != 1 {
 		t.Fatalf("doctor --fix error = %v, want exit code 1", err)
 	}
-	assertSymlinkTarget(t, filepath.Join(root, ".claude", "CLAUDE.md"), "../AGENTS.md")
+	assertInstallPathMissing(t, claude)
+	assertInstallFile(t, claude+".bak", "# Claude Notes\n")
+	if body := string(readFileBytes(t, filepath.Join(root, "AGENTS.md"))); !strings.Contains(body, "# Claude Notes") {
+		t.Fatalf("AGENTS.md = %q, want merged Claude notes", body)
+	}
 	assertInstallFile(t, stale, "legacy\n")
 	output := stripANSI(stdout.String())
 	if !strings.Contains(output, "1 fixed") || !strings.Contains(output, "1 declined") || !strings.Contains(output, "1 failed") {
@@ -138,7 +148,7 @@ func TestRunnerDoctorFixDeclinedClaudeMigrationIsNotOfferedAgain(t *testing.T) {
 	if prompts := strings.Count(output, "[y/N]"); prompts != 1 {
 		t.Fatalf("doctor --fix prompts = %d, want one logical Claude repair prompt\n%s", prompts, output)
 	}
-	if !strings.Contains(output, "already handled by claude-symlink") || !strings.Contains(output, "1 declined") {
+	if !strings.Contains(output, "already handled by claude-agents-md") || !strings.Contains(output, "1 declined") {
 		t.Fatalf("doctor --fix output = %q, want stable repair identity suppression", output)
 	}
 }
@@ -147,6 +157,7 @@ func TestRunnerDoctorFixForceRepairsWithoutPrompt(t *testing.T) {
 	root := writeDoctorFixture(t, "9.8.7-test.1")
 	writeDoctorAgents(t, root, doctorFence("9.8.7-test.1"))
 	writeDoctorFile(t, filepath.Join(root, ".cursor", "rules", "loaf.mdc"), "legacy\n")
+	symlinkFile(t, "../.agents/AGENTS.md", filepath.Join(root, ".claude", "CLAUDE.md"))
 	var stdout bytes.Buffer
 
 	err := (Runner{Stdout: &stdout, Stdin: strings.NewReader("n\nn\n"), WorkingDir: root}).Run([]string{"doctor", "--fix", "--force"})
@@ -156,6 +167,7 @@ func TestRunnerDoctorFixForceRepairsWithoutPrompt(t *testing.T) {
 	if output := stripANSI(stdout.String()); strings.Contains(output, "[y/N]") || !strings.Contains(output, "2 fixed") {
 		t.Fatalf("doctor --fix --force output = %q, want no prompts and both repairs", output)
 	}
+	assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 }
 
 func TestRunnerDoctorFixNonInteractiveSkipsRepairsSafely(t *testing.T) {
@@ -163,6 +175,8 @@ func TestRunnerDoctorFixNonInteractiveSkipsRepairsSafely(t *testing.T) {
 	writeDoctorAgents(t, root, doctorFence("9.8.7-test.1"))
 	stale := filepath.Join(root, ".cursor", "rules", "loaf.mdc")
 	writeDoctorFile(t, stale, "legacy\n")
+	claude := filepath.Join(root, ".claude", "CLAUDE.md")
+	symlinkFile(t, "../.agents/AGENTS.md", claude)
 	var stdout bytes.Buffer
 	input, writer, err := os.Pipe()
 	if err != nil {
@@ -176,9 +190,7 @@ func TestRunnerDoctorFixNonInteractiveSkipsRepairsSafely(t *testing.T) {
 	if !errors.As(err, &exitErr) || exitErr.Code != 1 {
 		t.Fatalf("doctor --fix error = %v, want exit code 1", err)
 	}
-	if pathExistsForDoctor(filepath.Join(root, ".claude", "CLAUDE.md")) {
-		t.Fatal("non-interactive doctor created Claude link")
-	}
+	assertRawSymlink(t, claude, "../.agents/AGENTS.md")
 	assertInstallFile(t, stale, "legacy\n")
 	output := stripANSI(stdout.String())
 	if !strings.Contains(output, "non-interactive") || !strings.Contains(output, "--fix --force") || !strings.Contains(output, "2 repairs skipped") || strings.Contains(output, "declined") || strings.Contains(output, "[y/N]") {
@@ -191,6 +203,8 @@ func TestRunnerDoctorFixDevNullIsNonInteractive(t *testing.T) {
 	writeDoctorAgents(t, root, doctorFence("9.8.7-test.1"))
 	stale := filepath.Join(root, ".cursor", "rules", "loaf.mdc")
 	writeDoctorFile(t, stale, "legacy\n")
+	claude := filepath.Join(root, ".claude", "CLAUDE.md")
+	symlinkFile(t, "../.agents/AGENTS.md", claude)
 	input, err := os.Open(os.DevNull)
 	if err != nil {
 		t.Fatal(err)
@@ -203,9 +217,7 @@ func TestRunnerDoctorFixDevNullIsNonInteractive(t *testing.T) {
 	if !errors.As(err, &exitErr) || exitErr.Code != 1 {
 		t.Fatalf("doctor --fix </dev/null error = %v, want exit code 1", err)
 	}
-	if pathExistsForDoctor(filepath.Join(root, ".claude", "CLAUDE.md")) {
-		t.Fatal("doctor --fix </dev/null created Claude link")
-	}
+	assertRawSymlink(t, claude, "../.agents/AGENTS.md")
 	assertInstallFile(t, stale, "legacy\n")
 	output := stripANSI(stdout.String())
 	if strings.Contains(output, "[y/N]") || strings.Contains(output, "declined") || !strings.Contains(output, "2 repairs skipped") || !strings.Contains(output, "non-interactive") {
@@ -313,7 +325,7 @@ func TestRunnerDoctorFixMigratesLegacyLayout(t *testing.T) {
 	if info, err := os.Lstat(filepath.Join(root, "AGENTS.md")); err != nil || info.Mode()&os.ModeSymlink != 0 {
 		t.Fatalf("root AGENTS.md must be a real file after migration: info=%v err=%v", info, err)
 	}
-	assertSymlinkTarget(t, filepath.Join(root, ".claude", "CLAUDE.md"), "../AGENTS.md")
+	assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 	for _, path := range []string{".agents/AGENTS.md.bak", ".claude/CLAUDE.md.bak"} {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(path))); err != nil {
 			t.Fatalf("doctor backup %s missing: %v", path, err)
@@ -345,7 +357,7 @@ func TestRunnerDoctorFixStripsDuplicateFencedSection(t *testing.T) {
 	if !strings.Contains(canonical, "trailing text") {
 		t.Fatalf("canonical = %q, want user text preserved", canonical)
 	}
-	assertSymlinkTarget(t, filepath.Join(root, ".claude", "CLAUDE.md"), "../AGENTS.md")
+	assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 }
 
 func TestRunnerDoctorFixReplacesDanglingLegacyRootSymlink(t *testing.T) {
@@ -361,7 +373,7 @@ func TestRunnerDoctorFixReplacesDanglingLegacyRootSymlink(t *testing.T) {
 	if err != nil || info.Mode()&os.ModeSymlink != 0 {
 		t.Fatalf("root AGENTS.md must be a real file after repair: info=%v err=%v", info, err)
 	}
-	assertSymlinkTarget(t, filepath.Join(root, ".claude", "CLAUDE.md"), "../AGENTS.md")
+	assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 }
 
 func TestRunnerDoctorRejectsDirectoryCanonical(t *testing.T) {

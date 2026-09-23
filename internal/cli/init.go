@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,8 +12,7 @@ import (
 )
 
 type initOptions struct {
-	symlinks bool
-	help     bool
+	help bool
 }
 
 type detectedStackItem struct {
@@ -96,11 +94,6 @@ func (r Runner) runInit(args []string, out io.Writer, runtimeRoot string) error 
 		fmt.Fprintln(out)
 	}
 
-	if options.symlinks {
-		if err := r.offerInitSymlinks(runtimeRoot, out); err != nil {
-			return err
-		}
-	}
 	writeInitSkillRecommendations(out, info)
 	fmt.Fprintln(out, "  ok Project initialized")
 	fmt.Fprintln(out)
@@ -112,11 +105,12 @@ func (r Runner) runInit(args []string, out io.Writer, runtimeRoot string) error 
 }
 
 func parseInitArgs(args []string) (initOptions, error) {
-	options := initOptions{symlinks: true}
+	options := initOptions{}
 	for _, arg := range args {
 		switch arg {
 		case "--no-symlinks":
-			options.symlinks = false
+			// Accepted for compatibility: init no longer offers the
+			// .claude/CLAUDE.md link, because Claude Code reads root AGENTS.md.
 		case "--help", "-h":
 			options.help = true
 		default:
@@ -133,7 +127,7 @@ func writeInitHelp(out io.Writer) {
 		"Initialize a project with Loaf structure.",
 		"",
 		"Options:",
-		"  --no-symlinks  Skip symlink creation prompts",
+		"  --no-symlinks  Accepted for compatibility; init creates no symlinks",
 		"  -h, --help     Show help",
 	}, "\n"))
 }
@@ -431,46 +425,6 @@ func writeInitDetected(out io.Writer, info initProjectInfo) {
 		}
 		fmt.Fprintf(out, "    %s %s\n", marker, item.label)
 	}
-}
-
-func (r Runner) offerInitSymlinks(root string, out io.Writer) error {
-	agentsPath := filepath.Join(root, "AGENTS.md")
-	if !pathExistsNative(agentsPath) {
-		return nil
-	}
-	if !readerIsTerminal(r.Stdin) {
-		return nil
-	}
-	reader := bufio.NewReader(firstReader(r.Stdin, os.Stdin))
-	fmt.Fprintln(out, "  Symlinks:")
-	claudePath := filepath.Join(root, ".claude", "CLAUDE.md")
-	if !pathExistsNative(claudePath) {
-		yes, err := askInitYesNo(reader, out, "    Create .claude/CLAUDE.md -> ../AGENTS.md? [y/N] ")
-		if err != nil {
-			return err
-		}
-		if yes {
-			if err := os.MkdirAll(filepath.Dir(claudePath), 0o755); err != nil {
-				return err
-			}
-			target, _ := filepath.Rel(filepath.Dir(claudePath), agentsPath)
-			if err := os.Symlink(target, claudePath); err != nil {
-				return err
-			}
-			fmt.Fprintln(out, "    ok Created .claude/CLAUDE.md")
-		}
-	}
-	fmt.Fprintln(out)
-	return nil
-}
-
-func askInitYesNo(reader *bufio.Reader, out io.Writer, question string) (bool, error) {
-	fmt.Fprint(out, question)
-	answer, err := reader.ReadString('\n')
-	if err != nil && len(answer) == 0 {
-		return false, err
-	}
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(answer)), "y"), nil
 }
 
 func readerIsTerminal(reader io.Reader) bool {

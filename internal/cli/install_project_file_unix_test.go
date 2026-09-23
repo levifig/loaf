@@ -238,8 +238,8 @@ func TestUpgradeDryRunReportsAFifoAtTheLegacyAgentsFile(t *testing.T) {
 }
 
 // TestUpgradeRefusesAFifoAtTheClaudeCompatibilityFile is the other half of the
-// same pass: the real file that is about to be merged into AGENTS.md and
-// replaced by a symlink.
+// same pass: the non-link .claude/CLAUDE.md that is about to be merged into
+// AGENTS.md and retired.
 func TestUpgradeRefusesAFifoAtTheClaudeCompatibilityFile(t *testing.T) {
 	root, home := setupUpgradeFixture(t)
 	writeFixtureClaudeCLI(t, root)
@@ -256,7 +256,7 @@ func TestUpgradeRefusesAFifoAtTheClaudeCompatibilityFile(t *testing.T) {
 	if !errors.As(result.err, &exitErr) || exitErr.Code == 0 {
 		t.Fatalf("upgrade error = %v, want a non-zero ExitError\n%s", result.err, result.output)
 	}
-	if !strings.Contains(result.output, "Failed to replace .claude/CLAUDE.md") {
+	if !strings.Contains(result.output, "Failed to migrate .claude/CLAUDE.md") {
 		t.Fatalf("upgrade output = %q, want the refused step named", result.output)
 	}
 	if !strings.Contains(result.output, "not a regular file") || !strings.Contains(result.output, "refusing to overwrite") {
@@ -414,7 +414,8 @@ func TestCodexUserConfigReadersRefuseAFifo(t *testing.T) {
 }
 
 // writeFixtureClaudeCLI puts a `claude` on the fixture PATH, which is the only
-// signal upgrade uses to decide the project wants a .claude/CLAUDE.md.
+// signal upgrade uses to decide the project uses Claude Code and so checks
+// whether a .claude/CLAUDE.md shadows root AGENTS.md.
 func writeFixtureClaudeCLI(t *testing.T, root string) {
 	t.Helper()
 	path := filepath.Join(root, "bin", "claude")

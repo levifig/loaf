@@ -62,7 +62,7 @@ Series-prep lives under Finalization (phase between Knowledge Base Scaffolding a
 - Useful BRIEF content has been extracted into operating documents (no future reader should need to open the BRIEF)
 - When `source: pitch`, the interview was gap-only (no re-excavation of already-specific problem sections)
 - When series-prep ran: each confirmed concept is a canonical native tracker backlog record created through the selected `project-management/v1` provider with a standalone problem-space body and a nameable operator outcome rather than a component layer; provider readback verified every native reference; no local work rows, folders, docs-only commits, branches, or auto-shape
-- Root `AGENTS.md` is a real file; on Claude Code, the compatibility symlink `.claude/CLAUDE.md -> ../AGENTS.md` exists (see Finalization)
+- Root `AGENTS.md` is a real file, bootstrap created no `.claude/CLAUDE.md`, and `loaf doctor` passes (see Finalization)
 - When a provider connection was active, `.agents/loaf.json` records its non-secret provider-namespaced routing hints; bootstrap did not install or authenticate it
 - Key decisions and interview outcomes were logged with `loaf journal log` and are readable with `loaf journal recent`
 
@@ -392,25 +392,25 @@ knowledge base structure.
 
 After scaffolding, ask the builder if they have other Loaf projects they would like to import knowledge from. Don't auto-detect -- ask explicitly.
 
-### 2. Claude Code Compatibility Symlink
+### 2. Project Instructions File
 
-Root `AGENTS.md` is the canonical project-instructions file on every harness. The `.claude/CLAUDE.md` path is Claude Code-specific — create and verify it only on that product. Read only the labeled section for the harness you are running.
+Root `AGENTS.md` is the canonical project-instructions file on every harness. Do not create `.claude/CLAUDE.md`. Read only the labeled section for the harness you are running.
 
 ### Claude Code
 
-Create the compatibility symlink so Claude Code also loads project instructions:
+Claude Code v2.1.277 and later reads root `AGENTS.md` directly, but only while no `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` is on the working path: a real file at any of those paths suppresses direct `AGENTS.md` reading. Leave `.claude/CLAUDE.md` absent. An existing `.claude/CLAUDE.md -> ../AGENTS.md` symlink is harmless because Claude Code reads the content once; leave it in place. If `.claude/CLAUDE.md` is a real file or links anywhere else, run `loaf doctor` and offer `loaf doctor --fix`, which merges its content into root `AGENTS.md`, keeps a backup, and leaves the path absent.
 
-```bash
-# .claude/CLAUDE.md -> ../AGENTS.md
-mkdir -p .claude
-ln -sf ../AGENTS.md .claude/CLAUDE.md
+Sessions that cannot read `AGENTS.md` directly (Claude Code before v2.1.277, Amazon Bedrock, or telemetry disabled) need an import instead. Only when the user confirms such a session, create a root `CLAUDE.md` whose content is the import line:
+
+```markdown
+@AGENTS.md
 ```
 
-If the symlink already exists and points at `../AGENTS.md`, skip silently. If it exists but points elsewhere, warn the user and ask before changing.
+Keep the import in root `CLAUDE.md`, never in `.claude/CLAUDE.md`, which `loaf doctor` treats as a file shadowing root `AGENTS.md`.
 
 ### Other harnesses
 
-Do not create `.claude/CLAUDE.md`. Ensure root `AGENTS.md` exists and is populated; that is the file every harness reads.
+Do not create `.claude/CLAUDE.md` or `CLAUDE.md`. Ensure root `AGENTS.md` exists and is populated; that is the file every harness reads.
 
 Before journal recording, when `.agents/loaf.json` exists, inspect provider connections exposed by the current harness. When the user selects one, preserve or record only non-secret provider-namespaced routing hints such as `integrations.<provider>.mcp_server_name`; preserve opaque provider-specific keys and unrelated fields. Ask before replacing a different recorded connection, and never install, connect, authenticate, or store credentials. For GitHub, also record the named Projects v2 board by title after the user confirms it, and stop if Status lanes for Backlog and Todo are not visible. Never record or speak `Project #N`.
 
@@ -487,7 +487,7 @@ When the interactive interview path is unavailable, bootstrap the operating docu
 2. Create `docs/VISION.md`, `docs/STRATEGY.md`, `docs/ARCHITECTURE.md` manually -- these are the load-bearing operating documents
 3. Populate `AGENTS.md` with build commands, test commands, and project structure
 4. Optionally snapshot intake (problem, users, constraints) to `docs/BRIEF.md` as a historical record -- not referenced again after bootstrap
-5. Create the Claude Code compatibility symlink when that harness is in use: `.claude/CLAUDE.md -> ../AGENTS.md`
+5. Do not create `.claude/CLAUDE.md`; Claude Code reads root `AGENTS.md` directly (see Finalization for the `@AGENTS.md` import fallback)
 6. Run `loaf kb init` if available, or create `docs/knowledge/` with a README
 
 ---

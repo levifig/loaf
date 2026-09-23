@@ -338,7 +338,7 @@ func harnessProseSubstitutionProbeSamples() []string {
 	return []string{
 		"Claude Code uses permission prompts.",
 		"Edit CLAUDE.md when needed.",
-		"Create `.claude/CLAUDE.md -> ../AGENTS.md`.",
+		"Leave `.claude/CLAUDE.md` absent so Claude Code reads `AGENTS.md`.",
 		"Use AskUserQuestionTool for interviews.",
 		"Use AskUserQuestion when clarifying.",
 		"Track work with TodoWrite and TodoRead.",

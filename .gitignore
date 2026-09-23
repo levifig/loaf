@@ -31,7 +31,6 @@ Thumbs.db
 
 # Claude Code ephemeral plans
 .claude/
-!.claude/CLAUDE.md
 
 # Agent work — track everything except ephemeral state
 .agents/transcripts/

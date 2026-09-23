@@ -877,17 +877,14 @@ func planInstallProjectSymlinks(projectRoot string, selectedTargets []string, ha
 	if !wantClaude && !wantRootAgents {
 		return entries
 	}
-	canonical := filepath.Join(projectRoot, "AGENTS.md")
 	rootAction, rootDetail, rootErr := planRootInstallAgentsFile(projectRoot, assumeYes)
 	entries = append(entries, projectFilePlanEntry{Path: "./AGENTS.md", Action: rootAction, Detail: rootDetail})
 	if rootErr {
 		return entries
 	}
 	if wantClaude {
-		linkPath := filepath.Join(projectRoot, ".claude", "CLAUDE.md")
-		relTarget := relativeInstallLinkTarget(linkPath, canonical)
-		action, detail := planInstallSymlink(linkPath, relTarget, ".claude/CLAUDE.md", canonical, assumeYes)
-		entries = append(entries, projectFilePlanEntry{Target: "claude-code", Path: ".claude/CLAUDE.md", Action: action, Detail: detail})
+		action, detail := planInstallClaudeInstructions(projectRoot, assumeYes)
+		entries = append(entries, projectFilePlanEntry{Target: "claude-code", Path: claudeInstructionsPath, Action: action, Detail: detail})
 	}
 	return entries
 }
@@ -947,34 +944,33 @@ func planRootInstallAgentsFile(projectRoot string, assumeYes bool) (string, stri
 	return "already-correct", "Canonical ./AGENTS.md already exists", false
 }
 
-// planInstallSymlink mirrors the read-only branch decisions of
-// ensureInstallSymlink.
-func planInstallSymlink(linkPath string, relativeTarget string, description string, canonicalPath string, assumeYes bool) (string, string) {
-	expectedAbs := filepath.Clean(filepath.Join(filepath.Dir(linkPath), relativeTarget))
-	if !installPathExists(linkPath) {
-		return "created", fmt.Sprintf("Create %s -> %s", description, relativeTarget)
+// planInstallClaudeInstructions mirrors the read-only branch decisions of
+// ensureInstallClaudeInstructions.
+func planInstallClaudeInstructions(projectRoot string, assumeYes bool) (string, string) {
+	claudePath := filepath.Join(projectRoot, filepath.FromSlash(claudeInstructionsPath))
+	canonical := filepath.Join(projectRoot, "AGENTS.md")
+	if !installPathExists(claudePath) {
+		return "already-correct", "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"
 	}
-	if installIsSymlink(linkPath) {
-		if installSymlinkPointsTo(linkPath, expectedAbs) {
-			return "already-correct", fmt.Sprintf("%s already points to %s", description, relativeTarget)
+	if installIsSymlink(claudePath) {
+		if installSymlinkPointsTo(claudePath, canonical) {
+			return "already-correct", ".claude/CLAUDE.md already points to ../AGENTS.md"
 		}
 		if !assumeYes {
-			return "skipped-no-tty", fmt.Sprintf("%s points to the wrong target; skipped in non-interactive mode", description)
+			return "skipped-no-tty", ".claude/CLAUDE.md points somewhere other than root AGENTS.md; skipped in non-interactive mode"
 		}
-		return "relinked", fmt.Sprintf("Relink %s -> %s", description, relativeTarget)
+		return "removed", "Remove the .claude/CLAUDE.md symlink so Claude Code reads root AGENTS.md"
 	}
 	if !assumeYes {
-		return "skipped-no-tty", fmt.Sprintf("%s exists as a real file; skipped in non-interactive mode", description)
+		return "skipped-no-tty", ".claude/CLAUDE.md exists as a real file; skipped in non-interactive mode"
 	}
-	if err := planProjectFileReadable(linkPath); err != nil {
-		return "error", fmt.Sprintf("Failed to replace %s: %v", description, err)
+	if err := planProjectFileReadable(claudePath); err != nil {
+		return "error", fmt.Sprintf("Failed to migrate .claude/CLAUDE.md: %v", err)
 	}
-	if canonicalPath != "" {
-		if err := planProjectFileReadable(canonicalPath); err != nil {
-			return "error", fmt.Sprintf("Failed to replace %s: %v", description, err)
-		}
+	if err := planProjectFileReadable(canonical); err != nil {
+		return "error", fmt.Sprintf("Failed to migrate .claude/CLAUDE.md: %v", err)
 	}
-	return "replaced-file", fmt.Sprintf("Back up %s and replace with a symlink -> %s", description, relativeTarget)
+	return "migrated", "Merge .claude/CLAUDE.md into root AGENTS.md, back it up, and leave the path absent"
 }
 
 // planInstallFencedSections mirrors installFencedSectionsForTargets +
@@ -1296,7 +1292,7 @@ func planActionGlyph(action string) string {
 	switch action {
 	case planActionCreate, planActionUpdate, hookActionAdd, "created", "appended", "updated", "relinked", "replaced-file", "migrated":
 		return ansiGreen("+")
-	case planActionRetire, hookActionRemove, "relocate":
+	case planActionRetire, hookActionRemove, "relocate", "removed":
 		return ansiYellow("-")
 	case planActionConflict, "error":
 		return ansiRed("✗")

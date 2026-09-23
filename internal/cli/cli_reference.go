@@ -115,7 +115,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Name:        "init",
 			Description: "Initialize a project with Loaf structure",
 			Options: []cliReferenceOption{
-				{Flags: "--no-symlinks", Description: "Skip symlink creation prompts"},
+				{Flags: "--no-symlinks", Description: "Accepted for compatibility; init creates no symlinks"},
 			},
 		},
 		{

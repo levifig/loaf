@@ -53,7 +53,7 @@ func agentHelpCommands() []agentHelpCommand {
 			Name:        "init",
 			Description: "Scaffold project agent files",
 			Options: []agentHelpOption{
-				{Flags: "--no-symlinks", Description: "Skip project instruction symlink setup"},
+				{Flags: "--no-symlinks", Description: "Accepted for compatibility; init creates no symlinks"},
 			},
 		},
 		{

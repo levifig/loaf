@@ -383,7 +383,7 @@ func writeInstallHelp(out io.Writer) {
 		"           itself as a plugin marketplace and installs the loaf plugin through",
 		"           the claude CLI; the plugin's hooks then run this installed loaf.",
 		"  Project  Deploys Loaf's project surfaces here: AGENTS.md and its managed",
-		"           section, the instruction symlinks, and the MCP recommendation",
+		"           section, instruction-file layout migrations, and the MCP recommendation",
 		"           record in .agents/loaf.json. Outside a Loaf repo install asks",
 		"           before writing anything; inside one it leaves the project alone.",
 		"",
@@ -581,11 +581,11 @@ type installProjectFileOutcome struct {
 	fenceFailed bool
 }
 
-// enforceInstallProjectFiles writes the managed project files: the instruction
-// symlinks first, then the fenced sections. That order is load-bearing rather
-// than incidental — the fence write resolves symlinks before choosing a path,
-// so `.claude/CLAUDE.md` must already point at `AGENTS.md` when it runs, or the
-// section lands in a real file the symlink pass would then offer to replace.
+// enforceInstallProjectFiles writes the managed project files: the root
+// AGENTS.md layout pass first, then the fenced sections. Every target's fenced
+// section, Claude Code's included, lands in root AGENTS.md, which Claude Code
+// reads natively; the layout pass only retires a .claude/CLAUDE.md that would
+// shadow it, and never creates one.
 func (r Runner) enforceInstallProjectFiles(out io.Writer, projectRoot string, selectedTargets []string, hasClaudeCode bool, assumeYes bool, version string, upgrade bool) installProjectFileOutcome {
 	symlinkResults := ensureProjectInstallSymlinks(projectRoot, selectedTargets, hasClaudeCode, installSymlinkOptions{
 		AssumeYes:      assumeYes,
@@ -646,10 +646,10 @@ func writeInstallSymlinkResults(out io.Writer, results map[string]installSymlink
 	for _, key := range sortedInstallSymlinkResultKeys(results) {
 		result := results[key]
 		switch result.Action {
-		case "created", "relinked", "replaced-file":
+		case "created", "replaced-file", "migrated", "removed":
 			fmt.Fprintf(out, "  %s %s\n", ansiGreen("✓"), result.Message)
 			wrote = true
-		case "declined-relink", "declined-replace":
+		case "declined-remove", "declined-replace":
 			fmt.Fprintf(out, "  %s %s\n", ansiYellow("⚠"), result.Message)
 			wrote = true
 		case "skipped-no-tty":
@@ -660,7 +660,7 @@ func writeInstallSymlinkResults(out io.Writer, results map[string]installSymlink
 		}
 	}
 	if anySkippedNoTTY {
-		fmt.Fprintf(out, "  %s\n", ansiGray("Note: symlinks not enforced (non-interactive); run loaf doctor to check."))
+		fmt.Fprintf(out, "  %s\n", ansiGray("Note: project instruction files not migrated (non-interactive); run loaf doctor to check."))
 		wrote = true
 	}
 	return wrote
