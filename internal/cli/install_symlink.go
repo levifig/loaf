@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,6 +39,31 @@ var agentsMDInstallTargets = map[string]bool{
 // that shadows root AGENTS.md whenever it holds anything but a link to it.
 const claudeInstructionsPath = ".claude/CLAUDE.md"
 
+// symlinkedClaudeDirTarget reports where a symlinked .claude directory points
+// when something exists at .claude/CLAUDE.md through it. Loaf never inspects or
+// repairs .claude/CLAUDE.md through a symlinked directory: a backup, merge
+// source, or removal there could land outside the project, and the lexical
+// ../AGENTS.md check would no longer name root AGENTS.md. A symlinked .claude
+// with nothing at CLAUDE.md shadows nothing and needs no refusal.
+func symlinkedClaudeDirTarget(projectRoot string) (string, bool) {
+	claudeDir := filepath.Join(projectRoot, ".claude")
+	if !installIsSymlink(claudeDir) {
+		return "", false
+	}
+	if !installPathExists(filepath.Join(projectRoot, filepath.FromSlash(claudeInstructionsPath))) {
+		return "", false
+	}
+	target := resolveInstallSymlinkTarget(claudeDir)
+	if target == "" {
+		target = "<unreadable>"
+	}
+	return target, true
+}
+
+func symlinkedClaudeDirMessage(target string) string {
+	return fmt.Sprintf(".claude is a symlink to %s; Loaf will not inspect or repair .claude/CLAUDE.md through it. Replace .claude with a real directory, or move CLAUDE.md out of it, then rerun", target)
+}
+
 // ensureInstallClaudeInstructions keeps Claude Code reading root AGENTS.md
 // natively. It never creates or relinks .claude/CLAUDE.md: an absent path and a
 // link to root AGENTS.md are both correct and left alone. A link elsewhere
@@ -48,6 +74,12 @@ const claudeInstructionsPath = ".claude/CLAUDE.md"
 func ensureInstallClaudeInstructions(projectRoot string, options installSymlinkOptions) installSymlinkResult {
 	claudePath := filepath.Join(projectRoot, filepath.FromSlash(claudeInstructionsPath))
 	canonical := filepath.Join(projectRoot, "AGENTS.md")
+	if target, symlinked := symlinkedClaudeDirTarget(projectRoot); symlinked {
+		message := symlinkedClaudeDirMessage(target)
+		result := installSymlinkError("error", message, errors.New(message))
+		result.Refused = true
+		return result
+	}
 	if !installPathExists(claudePath) {
 		return installSymlinkResult{Action: "already-correct", Message: "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"}
 	}

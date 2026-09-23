@@ -608,13 +608,14 @@ func (r Runner) enforceInstallProjectFiles(out io.Writer, projectRoot string, se
 	return outcome
 }
 
-// anyInstallSymlinkRefusal reports whether the symlink pass refused a path it
-// could not read whole. The fenced pass runs after it and writes into the same
-// files, so a refusal stops the pass here rather than letting the next writer
-// meet the same path.
+// anyInstallSymlinkRefusal reports whether the layout pass refused a path or
+// failed any step. The fenced pass runs after it and writes into the same
+// project, so any failure — a refused read, a failed removal, or a failed
+// migration — stops the pass here rather than letting the next writer run on a
+// layout the first pass could not settle.
 func anyInstallSymlinkRefusal(results map[string]installSymlinkResult) bool {
 	for _, result := range results {
-		if result.Refused {
+		if result.Refused || result.Action == "error" || result.Error != "" {
 			return true
 		}
 	}

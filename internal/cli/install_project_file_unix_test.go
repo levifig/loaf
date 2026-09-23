@@ -461,3 +461,41 @@ func mkfifoForTest(t *testing.T, path string) {
 		t.Skipf("Mkfifo(%s) unavailable here: %v", path, err)
 	}
 }
+
+// TestUpgradeStopsWhenTheClaudeLinkCannotBeRemoved pins that any failed step of
+// the layout pass, not only a refused read, stops the project part: the fenced
+// section is not written and upgrade exits non-zero.
+func TestUpgradeStopsWhenTheClaudeLinkCannotBeRemoved(t *testing.T) {
+	skipWithoutEnforcedPermissions(t)
+	root, home := setupUpgradeFixture(t)
+	writeFixtureClaudeCLI(t, root)
+	installUpgradeFixtureTarget(t, root, home, "cursor")
+	canonical := filepath.Join(root, "AGENTS.md")
+	stale := "# Project\n\n<!-- loaf:managed:start -->\nPrevious Loaf guidance\n" + fencedEndMarker + "\n"
+	writeInstallFile(t, canonical, stale)
+	writeInstallFile(t, filepath.Join(root, "docs", "claude.md"), "# Other\n")
+	claudeDir := filepath.Join(root, ".claude")
+	claudeLink := filepath.Join(claudeDir, "CLAUDE.md")
+	mkdirAll(t, claudeDir)
+	if err := os.Symlink("../docs/claude.md", claudeLink); err != nil {
+		t.Fatalf("Symlink error = %v", err)
+	}
+	chmodForTest(t, claudeDir, 0o555)
+
+	unit := ensureInstallClaudeInstructions(root, installSymlinkOptions{AssumeYes: true})
+	if unit.Action != "error" || !anyInstallSymlinkRefusal(map[string]installSymlinkResult{".claude/CLAUDE.md": unit}) {
+		t.Fatalf("ensureInstallClaudeInstructions() = %#v, want an error that stops the project pass", unit)
+	}
+
+	result := runInstallWithDeadline(t, root, "upgrade", "--yes")
+
+	var exitErr ExitError
+	if !errors.As(result.err, &exitErr) || exitErr.Code == 0 {
+		t.Fatalf("upgrade error = %v, want a non-zero ExitError\n%s", result.err, result.output)
+	}
+	if !strings.Contains(result.output, "Failed to remove .claude/CLAUDE.md") || !strings.Contains(result.output, "project surfaces incomplete") {
+		t.Fatalf("upgrade output = %q, want the failed removal named and the project part failed", result.output)
+	}
+	assertInstallFile(t, canonical, stale)
+	assertRawSymlink(t, claudeLink, "../docs/claude.md")
+}

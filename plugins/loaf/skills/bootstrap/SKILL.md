@@ -406,7 +406,7 @@ Sessions that cannot read `AGENTS.md` directly (Claude Code before v2.1.277, Ama
 @AGENTS.md
 ```
 
-Keep the import in root `CLAUDE.md`, never in `.claude/CLAUDE.md`, which `loaf doctor` treats as a file shadowing root `AGENTS.md`.
+Keep the import in root `CLAUDE.md`, never in `.claude/CLAUDE.md`, which `loaf doctor` treats as a file shadowing root `AGENTS.md`. `loaf doctor` warns, without changing anything, when a root `CLAUDE.md` or `CLAUDE.local.md` lacks an `@AGENTS.md` line, because Claude Code then skips root `AGENTS.md` and the Loaf managed section; add the line to that file.
 
 ### Other harnesses
 

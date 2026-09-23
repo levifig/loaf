@@ -311,6 +311,7 @@ func doctorChecks() []doctorCheck {
 		checkCanonicalAgentsFile(),
 		checkLegacyAgentsFile(),
 		checkClaudeInstructions(),
+		checkClaudeRootImport(),
 		checkStaleCursorMdc(),
 		checkFencedContent(),
 		checkDuplicateFencedSections(),
@@ -506,6 +507,14 @@ func checkClaudeInstructions() doctorCheck {
 			claudePath := filepath.Join(ctx.projectRoot, ".claude", "CLAUDE.md")
 			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
 
+			if target, symlinked := symlinkedClaudeDirTarget(ctx.projectRoot); symlinked {
+				return doctorResult{
+					Status:  doctorFail,
+					Message: ".claude is a symlink, so .claude/CLAUDE.md cannot be checked safely",
+					Detail:  symlinkedClaudeDirMessage(target) + " `loaf doctor`.",
+					Fixable: false,
+				}
+			}
 			if !pathExistsForDoctor(claudePath) {
 				return doctorResult{Status: doctorPass, Message: "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"}
 			}
@@ -548,6 +557,9 @@ func checkClaudeInstructions() doctorCheck {
 		Fix: func(ctx doctorContext, _ doctorResult) doctorFixResult {
 			claudePath := filepath.Join(ctx.projectRoot, ".claude", "CLAUDE.md")
 			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
+			if _, symlinked := symlinkedClaudeDirTarget(ctx.projectRoot); symlinked {
+				return doctorFixResult{Fixed: false, Message: "State no longer matches - re-run doctor"}
+			}
 			if !pathExistsForDoctor(claudePath) || symlinkPointsToForDoctor(claudePath, canonical) {
 				return doctorFixResult{Fixed: false, Message: "State no longer matches - re-run doctor"}
 			}
@@ -561,6 +573,69 @@ func checkClaudeInstructions() doctorCheck {
 			return retireDoctorClaudeFile(claudePath, canonical, ctx.projectRoot)
 		},
 	}
+}
+
+// claudeRootInstructionFiles are the project-root files whose presence makes
+// Claude Code skip its native reading of root AGENTS.md.
+var claudeRootInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md"}
+
+// checkClaudeRootImport warns when a root CLAUDE.md or CLAUDE.local.md would
+// hide root AGENTS.md, and with it the Loaf managed section, from Claude Code.
+// A file that imports AGENTS.md with an @AGENTS.md line, or a symlink to root
+// AGENTS.md, is the documented fallback and passes. It reads without following
+// links, only at the project root, and never modifies either file: those are
+// user-owned instructions, so the result is a warning, not a repair.
+func checkClaudeRootImport() doctorCheck {
+	return doctorCheck{
+		Name:        "claude-root-import",
+		Description: "Root CLAUDE.md and CLAUDE.local.md, when present, import root AGENTS.md",
+		Run: func(ctx doctorContext) doctorResult {
+			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
+			var present, missing []string
+			for _, name := range claudeRootInstructionFiles {
+				path := filepath.Join(ctx.projectRoot, name)
+				if !pathExistsForDoctor(path) {
+					continue
+				}
+				present = append(present, name)
+				if isSymlinkForDoctor(path) && symlinkPointsToForDoctor(path, canonical) {
+					continue
+				}
+				body, err := readRegularFileNoFollow(path, projectFileReadLimit)
+				if err == nil && importsRootAgentsFile(string(body)) {
+					continue
+				}
+				missing = append(missing, name)
+			}
+			if len(present) == 0 {
+				return doctorResult{Status: doctorPass, Message: "No root CLAUDE.md or CLAUDE.local.md"}
+			}
+			if len(missing) == 0 {
+				verb := " imports"
+				if len(present) > 1 {
+					verb = " import"
+				}
+				return doctorResult{Status: doctorPass, Message: "Root " + strings.Join(present, " and ") + verb + " AGENTS.md"}
+			}
+			return doctorResult{
+				Status:  doctorWarn,
+				Message: "Root " + strings.Join(missing, " and ") + " without an @AGENTS.md import",
+				Detail:  "Claude Code will not read root AGENTS.md, including the Loaf managed section, while a root CLAUDE.md or CLAUDE.local.md exists. Add an `@AGENTS.md` line to each listed file, or remove it. Doctor does not change these files.",
+			}
+		},
+	}
+}
+
+// importsRootAgentsFile reports whether a Claude instruction file carries a
+// standalone import line for root AGENTS.md.
+func importsRootAgentsFile(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		switch strings.TrimSpace(line) {
+		case "@AGENTS.md", "@./AGENTS.md":
+			return true
+		}
+	}
+	return false
 }
 
 func checkCanonicalAgentsFile() doctorCheck {
@@ -723,6 +798,9 @@ func checkDuplicateFencedSections() doctorCheck {
 		Run: func(ctx doctorContext) doctorResult {
 			claudePath := filepath.Join(ctx.projectRoot, ".claude", "CLAUDE.md")
 			agentsPath := filepath.Join(ctx.projectRoot, "AGENTS.md")
+			if _, symlinked := symlinkedClaudeDirTarget(ctx.projectRoot); symlinked {
+				return doctorResult{Status: doctorSkip, Message: ".claude is a symlink; see claude-agents-md"}
+			}
 			claudeIsReal := pathExistsForDoctor(claudePath) && !isSymlinkForDoctor(claudePath)
 			agentsIsReal := pathExistsForDoctor(agentsPath) && !isSymlinkForDoctor(agentsPath)
 			if !claudeIsReal || !agentsIsReal {
@@ -741,7 +819,7 @@ func checkDuplicateFencedSections() doctorCheck {
 		Fix: func(ctx doctorContext, _ doctorResult) doctorFixResult {
 			claudePath := filepath.Join(ctx.projectRoot, ".claude", "CLAUDE.md")
 			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
-			if !doctorFileExists(canonical) || !pathExistsForDoctor(claudePath) || isSymlinkForDoctor(claudePath) {
+			if _, symlinked := symlinkedClaudeDirTarget(ctx.projectRoot); symlinked || !doctorFileExists(canonical) || !pathExistsForDoctor(claudePath) || isSymlinkForDoctor(claudePath) {
 				return doctorFixResult{Fixed: false, Message: "State no longer matches - re-run doctor"}
 			}
 			return retireDoctorClaudeFile(claudePath, canonical, ctx.projectRoot)
@@ -961,7 +1039,7 @@ func retireClaudeInstructionsFile(claudePath string, body []byte, canonical stri
 	}
 	merged, err := mergeDoctorContentIntoCanonical(canonical, stripped, relSource)
 	if err == nil && !doctorFileExists(canonical) {
-		err = os.WriteFile(canonical, []byte{}, 0o644)
+		err = writeFileAtomically(canonical, []byte{}, 0o644)
 	}
 	if err != nil {
 		if rollbackErr := os.Rename(backup, claudePath); rollbackErr != nil {
@@ -980,26 +1058,31 @@ func projectRelativeSlashPath(projectRoot string, path string) string {
 	return filepath.ToSlash(rel)
 }
 
+// mergeDoctorContentIntoCanonical appends migrated user content to root
+// AGENTS.md. Every write goes through a temporary file and a rename, so a
+// failure leaves the existing AGENTS.md bytes intact for the caller's rollback.
+// An existing symlinked AGENTS.md is written at its resolved target, as before.
 func mergeDoctorContentIntoCanonical(canonical string, stripped string, relSource string) (bool, error) {
 	if stripped == "" {
 		return false, nil
 	}
 	if !doctorFileExists(canonical) {
-		if err := os.MkdirAll(filepath.Dir(canonical), 0o755); err != nil {
-			return false, err
-		}
-		return true, os.WriteFile(canonical, []byte(stripped+"\n"), 0o644)
+		return true, writeFileAtomically(canonical, []byte(stripped+"\n"), 0o644)
 	}
-	existing, err := readRegularFile(canonical, projectFileReadLimit)
+	writePath, err := canonicalFenceWritePath(canonical)
+	if err != nil {
+		return false, err
+	}
+	existing, err := readRegularFile(writePath, projectFileReadLimit)
 	if err != nil {
 		return false, refuseProjectFileRead(err)
 	}
 	trimmedExisting := strings.TrimRight(string(existing), " \t\r\n")
-	if trimmedExisting == "" {
-		return true, os.WriteFile(canonical, []byte(stripped+"\n"), 0o644)
+	body := stripped + "\n"
+	if trimmedExisting != "" {
+		body = trimmedExisting + "\n\n## Migrated from " + relSource + "\n\n" + stripped + "\n"
 	}
-	appended := trimmedExisting + "\n\n## Migrated from " + relSource + "\n\n" + stripped + "\n"
-	return true, os.WriteFile(canonical, []byte(appended), 0o644)
+	return true, writeFileAtomically(writePath, []byte(body), fencedWriteMode(writePath, true))
 }
 
 func stripDoctorLoafFence(content string) string {

@@ -69,7 +69,7 @@ func TestRunnerDoctorFixPromptsBeforeEachRepairAndAcceptsYes(t *testing.T) {
 		t.Fatalf("stale cursor file still exists: %v", err)
 	}
 	output := stripANSI(stdout.String())
-	for _, want := range []string{"leave the path absent", "Removed .claude/CLAUDE.md symlink", "Remove stale .cursor/rules/loaf.mdc", "[y/N]", "2 fixed", "5 passed", "3 skipped"} {
+	for _, want := range []string{"leave the path absent", "Removed .claude/CLAUDE.md symlink", "Remove stale .cursor/rules/loaf.mdc", "[y/N]", "2 fixed", "6 passed", "3 skipped"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("doctor --fix output = %q, want %q", output, want)
 		}

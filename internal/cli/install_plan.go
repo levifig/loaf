@@ -949,6 +949,9 @@ func planRootInstallAgentsFile(projectRoot string, assumeYes bool) (string, stri
 func planInstallClaudeInstructions(projectRoot string, assumeYes bool) (string, string) {
 	claudePath := filepath.Join(projectRoot, filepath.FromSlash(claudeInstructionsPath))
 	canonical := filepath.Join(projectRoot, "AGENTS.md")
+	if target, symlinked := symlinkedClaudeDirTarget(projectRoot); symlinked {
+		return "error", symlinkedClaudeDirMessage(target)
+	}
 	if !installPathExists(claudePath) {
 		return "already-correct", "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"
 	}
