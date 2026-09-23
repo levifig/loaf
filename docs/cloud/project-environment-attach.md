@@ -45,6 +45,8 @@ The four bootstrap scripts (`.cursor/loaf-cloud-install.sh`, `.cursor/loaf-cloud
 
 ## Amp Orbs
 
+This section documents the Loaf source repository's historical development bootstrap. An external project that consumes Loaf without its source tree or Go toolchain must use the pinned release path in [Amp Orb Consumer Bootstrap](amp-orb-consumer-bootstrap.md); do not copy this repository's source-build scripts into that consumer.
+
 1. Fresh orb: `.agents/setup` builds the CLI and runs `loaf install --to amp --yes`.
 2. Resume: `.agents/resume` re-runs install, then `loaf attach` when `LOAF_CLIENT_TOKEN` is set.
 3. Configure Amp project secrets / environment:

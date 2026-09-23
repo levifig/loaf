@@ -60,7 +60,7 @@ func Package(options PackageOptions) error {
 		}
 		packageName := "loaf_" + version + "_" + target.RuntimeID
 		archivePath := filepath.Join(outDir, packageName+".tar.gz")
-		digest, err := writeReleaseArchive(root, archivePath, packageName, nativeSource, target.BinaryName())
+		digest, err := writeReleaseArchive(root, archivePath, packageName, version, target.RuntimeID, nativeSource, target.BinaryName())
 		if err != nil {
 			return err
 		}
@@ -96,7 +96,110 @@ func manifestVersion(root string) (string, error) {
 var archiveFiles = []string{"package.json", "README.md", "CHANGELOG.md"}
 var archiveDirs = []string{"config", "content", "vnext/content", "dist", "plugins", ".claude-plugin"}
 
-func writeReleaseArchive(root, archivePath, packageName, nativeSource, binaryName string) (string, error) {
+type releaseManifest struct {
+	SchemaVersion  int                   `json:"schema_version"`
+	PackageVersion string                `json:"package_version"`
+	Target         string                `json:"target"`
+	Files          []releaseManifestFile `json:"files"`
+}
+
+type releaseManifestFile struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+	Mode   int64  `json:"mode"`
+}
+
+func buildReleaseManifest(root, version, target, nativeSource, binaryName string) ([]byte, error) {
+	files := []releaseManifestFile{}
+	add := func(source, archivePath string, mode int64) error {
+		info, err := os.Lstat(source)
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("release manifest source %s is not a regular file", source)
+		}
+		file, err := os.Open(source)
+		if err != nil {
+			return err
+		}
+		hasher := sha256.New()
+		_, copyErr := io.Copy(hasher, file)
+		closeErr := file.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+		files = append(files, releaseManifestFile{
+			Path:   archivePath,
+			SHA256: fmt.Sprintf("%x", hasher.Sum(nil)),
+			Mode:   mode,
+		})
+		return nil
+	}
+	if err := add(nativeSource, "bin/"+binaryName, 0o755); err != nil {
+		return nil, err
+	}
+
+	ampRoot := filepath.Join(root, "dist", "amp")
+	info, err := os.Lstat(ampRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("missing Amp distribution at dist/amp")
+		}
+		return nil, err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("Amp distribution dist/amp is not a directory")
+	}
+	err = filepath.WalkDir(ampRoot, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("Amp distribution entry %s is not a regular file", path)
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		mode := int64(0o644)
+		if info.Mode().Perm()&0o111 != 0 {
+			mode = 0o755
+		}
+		return add(path, filepath.ToSlash(rel), mode)
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	manifest := releaseManifest{
+		SchemaVersion:  1,
+		PackageVersion: version,
+		Target:         target,
+		Files:          files,
+	}
+	body, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(body, '\n'), nil
+}
+
+func writeReleaseArchive(root, archivePath, packageName, version, target, nativeSource, binaryName string) (string, error) {
+	manifest, err := buildReleaseManifest(root, version, target, nativeSource, binaryName)
+	if err != nil {
+		return "", err
+	}
 	file, err := os.Create(archivePath)
 	if err != nil {
 		return "", err
@@ -107,9 +210,12 @@ func writeReleaseArchive(root, archivePath, packageName, nativeSource, binaryNam
 	tw := tar.NewWriter(gz)
 
 	addFile := func(source, name string, mode int64) error {
-		info, err := os.Stat(source)
+		info, err := os.Lstat(source)
 		if err != nil {
 			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("release archive source %s is not a regular file", source)
 		}
 		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: info.Size(), ModTime: info.ModTime(), Typeflag: tar.TypeReg}); err != nil {
 			return err
@@ -122,7 +228,17 @@ func writeReleaseArchive(root, archivePath, packageName, nativeSource, binaryNam
 		_, err = io.Copy(tw, src)
 		return err
 	}
+	addBytes := func(body []byte, name string, mode int64) error {
+		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
+			return err
+		}
+		_, err := tw.Write(body)
+		return err
+	}
 	if err := addFile(nativeSource, packageName+"/bin/"+binaryName, 0o755); err != nil {
+		return "", err
+	}
+	if err := addBytes(manifest, packageName+"/loaf-release-manifest.json", 0o644); err != nil {
 		return "", err
 	}
 	for _, rel := range archiveFiles {
@@ -151,7 +267,8 @@ func writeReleaseArchive(root, archivePath, packageName, nativeSource, binaryNam
 				}
 				return nil
 			}
-			if entry.Name() == ".DS_Store" {
+			ampPrefix := filepath.Join(source, "amp") + string(os.PathSeparator)
+			if entry.Name() == ".DS_Store" && (dir != "dist" || !strings.HasPrefix(path, ampPrefix)) {
 				return nil
 			}
 			paths = append(paths, path)

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Project-owned Amp Orb setup entry point. Keep release acquisition in the
+# shared bootstrap so setup and resume cannot drift onto different trust paths.
+set -eu
+
+agents_dir=$(CDPATH='' cd "$(dirname "$0")" && pwd)
+exec "$agents_dir/loaf-orb-bootstrap.sh" setup
