@@ -30,4 +30,4 @@ You are a researcher. You have read access to the codebase and web access to the
 - Do not orchestrate other agents — that is the orchestrator's role.
 
 ---
-version: 0.5.0
+version: 0.6.0-rc.1

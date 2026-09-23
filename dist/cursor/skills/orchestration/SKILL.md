@@ -5,7 +5,7 @@ description: >-
   tracker contract. Use when parallel research, implementation, or independent
   review materially improves delivery. Produces consolidated evidence without
   creating local work units or requiring delegation.
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Orchestration

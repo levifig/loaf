@@ -7,7 +7,7 @@ description: >-
   docs and deliberately selected decision records, not work plans or tracker
   identity.
 subtask: false
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Architecture

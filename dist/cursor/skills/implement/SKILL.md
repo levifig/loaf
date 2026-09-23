@@ -5,7 +5,7 @@ description: >-
   verification. Use when a canonical record is complete and ready to build.
   Produces code, atomic history when authorized, and verified implementation
   evidence for ship.
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Implement

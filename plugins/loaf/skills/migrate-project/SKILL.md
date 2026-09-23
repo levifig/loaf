@@ -9,7 +9,7 @@ description: >-
   remote Loaf setup.
 user-invocable: true
 argument-hint: '[provider and destination project]'
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Migrate Project

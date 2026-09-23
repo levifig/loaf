@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+## [0.6.0-rc.1] - 2026-09-23
+
+This prerelease enables pinned, checksum-verified Loaf installation and readiness checks in fresh external Amp Orbs for consumer-project dogfooding. It is not a stable release: private continuity still has no cross-machine sync or attach path, and live adoption in a consumer project such as DojoHQ remains the next validation step.
+
 ### Added
 
 - Bootstrap a pinned, checksum-verified Loaf release into external Amp Orb consumer projects without a Loaf checkout or Go toolchain, and fail readiness when the binary, Amp distribution, project identity, managed instructions, or effective Loaf sources cannot be proven ([#302](https://github.com/levifig/loaf/issues/302)).
