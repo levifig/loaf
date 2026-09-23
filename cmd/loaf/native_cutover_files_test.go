@@ -132,12 +132,14 @@ func TestReleaseWorkflowVerifiesEvidenceBeforeStampedBuild(t *testing.T) {
 	buildCommand := strings.Index(workflow, "          go run ./cmd/loafdev release\n")
 	packageRelease := strings.Index(workflow, "      - name: Package release archives\n")
 	verifyChecksums := strings.Index(workflow, "        run: sha256sum --check --strict checksums.txt\n")
-	uploadAssets := strings.Index(workflow, "      - name: Upload release assets\n")
-	if verifyTests < 0 || testCommand < 0 || buildRelease < 0 || stampCommit < 0 || buildCommand < 0 || packageRelease < 0 || verifyChecksums < 0 || uploadAssets < 0 {
+	prepareDraft := strings.Index(workflow, "      - name: Prepare draft release\n")
+	uploadAssets := strings.Index(workflow, "      - name: Upload assets to draft release\n")
+	publishRelease := strings.Index(workflow, "      - name: Publish release\n")
+	if verifyTests < 0 || testCommand < 0 || buildRelease < 0 || stampCommit < 0 || buildCommand < 0 || packageRelease < 0 || verifyChecksums < 0 || prepareDraft < 0 || uploadAssets < 0 || publishRelease < 0 {
 		t.Fatalf("release workflow is missing its evidence verification or checked-out-tree release build contract")
 	}
-	if !(verifyTests < testCommand && testCommand < buildRelease && buildRelease < stampCommit && stampCommit < buildCommand && buildCommand < packageRelease && packageRelease < verifyChecksums && verifyChecksums < uploadAssets) {
-		t.Fatalf("release workflow must check delivery behavior before stamping the checked-out tree and verify packaged checksums before upload")
+	if !(verifyTests < testCommand && testCommand < buildRelease && buildRelease < stampCommit && stampCommit < buildCommand && buildCommand < packageRelease && packageRelease < verifyChecksums && verifyChecksums < prepareDraft && prepareDraft < uploadAssets && uploadAssets < publishRelease) {
+		t.Fatalf("release workflow must check delivery behavior before stamping the checked-out tree, verify packaged checksums, then prepare, upload, and publish in order")
 	}
 	if strings.Contains(workflow, "run: go test ./...") || strings.Contains(workflow, "run: make verify-local") {
 		t.Fatalf("release workflow must use bounded delivery checks; comprehensive tests run locally")
@@ -153,6 +155,29 @@ func TestReleaseWorkflowVerifiesEvidenceBeforeStampedBuild(t *testing.T) {
 	}
 	if strings.Contains(workflow, `g[0-9a-f]{7,40}`) || strings.Contains(workflow, ">= 1000000000") {
 		t.Fatalf("release workflow must not inline tag classification")
+	}
+	for _, want := range []string{
+		`precedence_version="${version%%+*}"`,
+		`if [[ "$precedence_version" == *-* ]]; then`,
+		`echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"`,
+		`gh release create "$RELEASE_TAG" "${create_args[@]}"`,
+		`create_args=(--verify-tag --draft --title "$RELEASE_TAG" --generate-notes)`,
+		`create_args+=(--prerelease)`,
+		`if [[ "$is_draft" != "true" ]]; then`,
+		`already published and immutable; refusing to replace its assets`,
+		`gh release upload "$RELEASE_TAG" dist/release/* --clobber`,
+		`gh release edit "$RELEASE_TAG" --prerelease="$RELEASE_PRERELEASE" --draft=false`,
+		`steps.version.outputs.prerelease != 'true'`,
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Fatalf("release workflow is missing immutable-release contract %q", want)
+		}
+	}
+	if strings.Contains(workflow, `gh release create "$RELEASE_TAG" dist/release/*`) {
+		t.Fatalf("release workflow must create a draft before uploading assets")
+	}
+	if strings.Count(workflow, `steps.version.outputs.prerelease != 'true'`) != 3 {
+		t.Fatalf("every Homebrew tap step must be disabled for prereleases")
 	}
 }
 

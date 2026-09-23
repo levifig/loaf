@@ -4,6 +4,9 @@
 # toolchain dependency.
 set -eu
 
+inherited_path=${PATH:-}
+inherited_project_env=${LOAF_PROJECT_ENV:-}
+
 fail() {
   printf '%s\n' "loaf-orb-bootstrap: $*" >&2
   exit 1
@@ -241,6 +244,7 @@ activate_user_bin() {
 user_bin_is_active() {
   loaf_link=$loaf_user_bin_dir/loaf
   [ -L "$loaf_link" ] || return 1
+  [ "$(readlink "$loaf_link")" = "$loaf_bin" ] || return 1
   resolved_link=$(resolve_path "$loaf_link") || return 1
   resolved_pinned=$(resolve_path "$loaf_bin") || return 1
   [ "$resolved_link" = "$resolved_pinned" ]
@@ -271,13 +275,36 @@ installed_release_is_verified() {
   [ "$(sed -n '1p' "$platform_path")" = "$platform" ] || return 1
 }
 
-run_readiness() {
+run_internal_readiness() {
   installed_release_is_verified || return 1
   user_bin_is_active || return 1
-  prepare_runtime_environment
   (
+    prepare_runtime_environment
     cd "$project_root"
     "$loaf_bin" harness readiness --target amp --pin "$pin_argument" --archive-sha256 "$verified_archive_sha256"
+  )
+}
+
+run_agent_check() {
+  [ "$inherited_project_env" = 1 ] || fail "Amp project environment must set LOAF_PROJECT_ENV=1"
+  [ -n "$inherited_path" ] || fail "Amp project environment PATH is missing"
+  installed_release_is_verified || fail "pinned Loaf release is missing or unverified"
+  user_bin_is_active || fail "project-owned Loaf user-bin activation is missing or stale"
+  (
+    PATH=$inherited_path
+    export PATH
+    LOAF_PROJECT_ENV=$inherited_project_env
+    export LOAF_PROJECT_ENV
+    inherited_command=$(command -v loaf) || fail "Amp project environment PATH does not resolve loaf"
+    [ "$inherited_command" = "$loaf_user_bin_dir/loaf" ] || fail "Amp project environment PATH does not select the project-owned loaf activation"
+    resolved_inherited=$(resolve_path "$inherited_command") || fail "Amp project environment loaf activation cannot be resolved"
+    resolved_pinned=$(resolve_path "$loaf_bin") || fail "pinned Loaf executable cannot be resolved"
+    [ "$resolved_inherited" = "$resolved_pinned" ] || fail "Amp project environment loaf does not resolve to the pinned release"
+    cd "$project_root"
+    if ! readiness_output=$("$loaf_bin" harness readiness --target amp --pin "$pin_argument" --archive-sha256 "$verified_archive_sha256" 2>&1); then
+      fail "pinned Loaf readiness check failed"
+    fi
+    [ -z "$readiness_output" ] || printf '%s\n' "$readiness_output"
   )
 }
 
@@ -380,8 +407,9 @@ install_verified_release() {
 
 repair_and_install() {
   acquire_bootstrap_lock
-  if run_readiness; then
-    return 0
+  if run_internal_readiness; then
+    run_agent_check
+    return
   fi
   install_verified_release
   installed_release_is_verified || fail "published release failed provenance verification"
@@ -390,24 +418,30 @@ repair_and_install() {
   (
     cd "$project_root"
     LOAF_PROJECT_ENV=1 "$loaf_bin" install --to amp --yes
-    "$loaf_bin" harness readiness --target amp --pin "$pin_argument" --archive-sha256 "$verified_archive_sha256"
   )
+  run_internal_readiness || fail "installed Loaf content did not become internally ready"
+  run_agent_check
 }
 
 case "${1:-}" in
   setup)
-    if run_readiness; then
-      exit 0
+    if run_internal_readiness; then
+      run_agent_check
+      exit
     fi
     repair_and_install
     ;;
   resume)
-    if run_readiness; then
-      exit 0
+    if run_internal_readiness; then
+      run_agent_check
+      exit
     fi
     repair_and_install
     ;;
+  agent-check)
+    run_agent_check
+    ;;
   *)
-    fail "usage: $0 setup|resume"
+    fail "usage: loaf-orb-bootstrap.sh setup|resume|agent-check"
     ;;
 esac

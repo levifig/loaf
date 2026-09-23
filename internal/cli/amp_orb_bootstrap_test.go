@@ -13,12 +13,13 @@ import (
 	"testing"
 )
 
-const ampOrbBootstrapTestVersion = "1.2.3-test.1"
+const ampOrbBootstrapTestVersion = "0.6.0-rc.1"
 
 type ampOrbBootstrapFixture struct {
 	project       string
 	orbHome       string
 	userBin       string
+	toolsDir      string
 	archive       string
 	archiveDigest string
 	curlLog       string
@@ -30,6 +31,10 @@ type ampOrbBootstrapFixture struct {
 
 func TestAmpOrbConsumerBootstrapSetupResumeAndIdempotence(t *testing.T) {
 	fixture := newAmpOrbBootstrapFixture(t, false)
+	lifecycleBefore := map[string]string{}
+	for _, name := range []string{"setup", "resume", "loaf-orb-bootstrap.sh"} {
+		lifecycleBefore[name] = ampOrbBootstrapReadFile(t, filepath.Join(fixture.project, ".agents", name))
+	}
 
 	if output, err := fixture.run(t, "setup"); err != nil {
 		t.Fatalf("setup error = %v\n%s", err, output)
@@ -62,7 +67,7 @@ func TestAmpOrbConsumerBootstrapSetupResumeAndIdempotence(t *testing.T) {
 	}
 	assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 1)
 	assertAmpOrbBootstrapLineCount(t, fixture.tarLog, 1)
-	assertAmpOrbBootstrapLineCount(t, fixture.loafLog, 2)
+	assertAmpOrbBootstrapLineCount(t, fixture.loafLog, 3)
 	if curlCall := ampOrbBootstrapReadFile(t, fixture.curlLog); !strings.Contains(curlCall, "--connect-timeout 10") || !strings.Contains(curlCall, "--max-time 120") {
 		t.Fatalf("curl call lacks bounded timeouts: %s", curlCall)
 	}
@@ -86,10 +91,154 @@ func TestAmpOrbConsumerBootstrapSetupResumeAndIdempotence(t *testing.T) {
 	}
 	assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 1)
 	assertAmpOrbBootstrapLineCount(t, fixture.tarLog, 1)
-	assertAmpOrbBootstrapLineCount(t, fixture.loafLog, 4)
+	assertAmpOrbBootstrapLineCount(t, fixture.loafLog, 7)
 	agentsAfter := ampOrbBootstrapReadFile(t, filepath.Join(fixture.project, "AGENTS.md"))
 	if agentsAfter != agentsBefore {
 		t.Fatalf("ready resume/setup changed consumer instructions:\nbefore:\n%s\nafter:\n%s", agentsBefore, agentsAfter)
+	}
+	for name, want := range lifecycleBefore {
+		if got := ampOrbBootstrapReadFile(t, filepath.Join(fixture.project, ".agents", name)); got != want {
+			t.Fatalf("lifecycle script %s changed during setup/resume", name)
+		}
+	}
+}
+
+func TestAmpOrbConsumerBootstrapAgentCheckReadyIsReadOnly(t *testing.T) {
+	fixture := newAmpOrbBootstrapFixture(t, false)
+	if output, err := fixture.run(t, "setup"); err != nil {
+		t.Fatalf("setup error = %v\n%s", err, output)
+	}
+	projectBefore := ampReadinessTreeSnapshot(t, fixture.project)
+	orbBefore := ampReadinessTreeSnapshot(t, fixture.orbHome)
+	curlBefore := ampOrbBootstrapLineCount(t, fixture.curlLog)
+	loafBefore := ampOrbBootstrapLineCount(t, fixture.loafLog)
+
+	if output, err := fixture.run(t, "agent-check"); err != nil {
+		t.Fatalf("agent-check error = %v\n%s", err, output)
+	}
+	if got := ampReadinessTreeSnapshot(t, fixture.project); got != projectBefore {
+		t.Fatal("agent-check mutated the consumer project")
+	}
+	if got := ampReadinessTreeSnapshot(t, fixture.orbHome); got != orbBefore {
+		t.Fatal("agent-check mutated the Orb release prefix")
+	}
+	if got := ampOrbBootstrapLineCount(t, fixture.curlLog); got != curlBefore {
+		t.Fatalf("agent-check curl count = %d, want %d", got, curlBefore)
+	}
+	if got := ampOrbBootstrapLineCount(t, fixture.loafLog); got != loafBefore+1 {
+		t.Fatalf("agent-check loaf call count = %d, want %d", got, loafBefore+1)
+	}
+}
+
+func TestAmpOrbConsumerBootstrapAgentCheckRejectsInheritedEnvironmentWithoutMutation(t *testing.T) {
+	tests := []struct {
+		name      string
+		overrides []string
+	}{
+		{name: "missing project environment", overrides: []string{"LOAF_PROJECT_ENV=0"}},
+		{name: "wrong PATH", overrides: []string{"PATH_WITHOUT_USER_BIN=1"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newAmpOrbBootstrapFixture(t, false)
+			if output, err := fixture.run(t, "setup"); err != nil {
+				t.Fatalf("setup error = %v\n%s", err, output)
+			}
+			projectBefore := ampReadinessTreeSnapshot(t, fixture.project)
+			orbBefore := ampReadinessTreeSnapshot(t, fixture.orbHome)
+			curlBefore := ampOrbBootstrapLineCount(t, fixture.curlLog)
+			loafBefore := ampOrbBootstrapLineCount(t, fixture.loafLog)
+			env := fixture.env
+			if test.overrides[0] == "PATH_WITHOUT_USER_BIN=1" {
+				env = ampOrbBootstrapEnvWith(env, "PATH="+fixture.toolsDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+			} else {
+				env = ampOrbBootstrapEnvWith(env, test.overrides...)
+			}
+			output, err := fixture.runWithEnv(t, "agent-check", env)
+			if err == nil || !strings.Contains(output, "Amp project environment") {
+				t.Fatalf("agent-check error = %v, output = %q", err, output)
+			}
+			if got := ampReadinessTreeSnapshot(t, fixture.project); got != projectBefore {
+				t.Fatal("failed agent-check mutated the consumer project")
+			}
+			if got := ampReadinessTreeSnapshot(t, fixture.orbHome); got != orbBefore {
+				t.Fatal("failed agent-check mutated the Orb release prefix")
+			}
+			if got := ampOrbBootstrapLineCount(t, fixture.curlLog); got != curlBefore {
+				t.Fatalf("failed agent-check curl count = %d, want %d", got, curlBefore)
+			}
+			if got := ampOrbBootstrapLineCount(t, fixture.loafLog); got != loafBefore {
+				t.Fatalf("failed agent-check loaf call count = %d, want %d", got, loafBefore)
+			}
+		})
+	}
+}
+
+func TestAmpOrbConsumerBootstrapAgentCheckRejectsMissingRuntime(t *testing.T) {
+	fixture := newAmpOrbBootstrapFixture(t, false)
+	projectBefore := ampReadinessTreeSnapshot(t, fixture.project)
+
+	output, err := fixture.run(t, "agent-check")
+	if err == nil || !strings.Contains(output, "pinned Loaf release") {
+		t.Fatalf("agent-check missing-runtime error = %v, output = %q", err, output)
+	}
+	assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 0)
+	if got := ampReadinessTreeSnapshot(t, fixture.project); got != projectBefore {
+		t.Fatal("missing-runtime agent-check mutated the consumer project")
+	}
+	if _, err := os.Lstat(fixture.orbHome); !os.IsNotExist(err) {
+		t.Fatalf("missing-runtime agent-check created Orb state: %v", err)
+	}
+}
+
+func TestAmpOrbConsumerBootstrapAgentCheckHidesReadinessDetails(t *testing.T) {
+	fixture := newAmpOrbBootstrapFixture(t, false)
+	if output, err := fixture.run(t, "setup"); err != nil {
+		t.Fatalf("setup error = %v\n%s", err, output)
+	}
+	env := ampOrbBootstrapEnvWith(fixture.env, "AMP_ORB_FORCE_READINESS_FAILURE=1")
+	output, err := fixture.runWithEnv(t, "agent-check", env)
+	if err == nil || !strings.Contains(output, "pinned Loaf readiness check failed") {
+		t.Fatalf("agent-check readiness error = %v, output = %q", err, output)
+	}
+	if strings.Contains(output, "private-machine-path") {
+		t.Fatalf("agent-check exposed captured readiness details: %q", output)
+	}
+	assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 1)
+}
+
+func TestAmpOrbConsumerBootstrapHealthyInternalsReportWrongEnvironmentWithoutDownload(t *testing.T) {
+	fixture := newAmpOrbBootstrapFixture(t, false)
+	if output, err := fixture.run(t, "setup"); err != nil {
+		t.Fatalf("setup error = %v\n%s", err, output)
+	}
+	wrongEnv := ampOrbBootstrapEnvWith(fixture.env, "LOAF_PROJECT_ENV=0")
+	for _, entry := range []string{"setup", "resume"} {
+		curlBefore := ampOrbBootstrapLineCount(t, fixture.curlLog)
+		output, err := fixture.runWithEnv(t, entry, wrongEnv)
+		if err == nil || !strings.Contains(output, "Amp project environment") {
+			t.Fatalf("%s wrong-environment error = %v, output = %q", entry, err, output)
+		}
+		if got := ampOrbBootstrapLineCount(t, fixture.curlLog); got != curlBefore {
+			t.Fatalf("%s downloaded with healthy internals: got %d curl calls, want %d", entry, got, curlBefore)
+		}
+	}
+}
+
+func TestAmpOrbConsumerBootstrapRepairThenChecksInheritedEnvironment(t *testing.T) {
+	fixture := newAmpOrbBootstrapFixture(t, false)
+	wrongEnv := ampOrbBootstrapEnvWith(fixture.env, "LOAF_PROJECT_ENV=0")
+
+	output, err := fixture.runWithEnv(t, "setup", wrongEnv)
+	if err == nil || !strings.Contains(output, "Amp project environment") {
+		t.Fatalf("repair setup error = %v, output = %q", err, output)
+	}
+	assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 1)
+	if _, err := os.Stat(filepath.Join(fixture.orbHome, "releases", ampOrbBootstrapTestVersion, "bin", "loaf")); err != nil {
+		t.Fatalf("repair did not publish pinned runtime: %v", err)
+	}
+	if output, err := fixture.run(t, "agent-check"); err != nil {
+		t.Fatalf("agent-check after repair error = %v\n%s", err, output)
 	}
 }
 
@@ -217,6 +366,34 @@ func TestAmpOrbConsumerBootstrapChecksumMismatchFailsBeforeExtraction(t *testing
 	}
 }
 
+func TestAmpOrbConsumerBootstrapGuideUsesOfficialDogfoodAndLiteralEnvironment(t *testing.T) {
+	guide := ampOrbBootstrapReadFile(t, filepath.Join(ampOrbBootstrapRepoRoot(t), "docs", "cloud", "amp-orb-consumer-bootstrap.md"))
+	for _, want := range []string{
+		"version=0.6.0-rc.1",
+		"official `v0.6.0-rc.1` GitHub release",
+		"LOAF_PROJECT_ENV=1",
+		"PATH=/home/user/.local/bin:<existing-path>",
+		"leave the project `PATH` setting unset",
+		"Omit `LOAF_BIN_DIR` for this default",
+		".agents/loaf-orb-bootstrap.sh agent-check",
+		"git status --porcelain",
+	} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("guide is missing %q", want)
+		}
+	}
+	for _, unwanted := range []string{
+		"PATH=/home/user/.local/bin:/usr/local/bin:/usr/bin:/bin",
+		"PATH=$HOME",
+		"PATH=${HOME",
+		"PATH=${LOAF_BIN_DIR",
+	} {
+		if strings.Contains(guide, unwanted) {
+			t.Errorf("guide relies on shell expansion in Amp PATH setting: %q", unwanted)
+		}
+	}
+}
+
 func newAmpOrbBootstrapFixture(t *testing.T, mismatch bool) ampOrbBootstrapFixture {
 	t.Helper()
 	for _, tool := range []string{"git", "sh", "tar"} {
@@ -264,6 +441,10 @@ case "${1:-}" in
     printf '%s\n' ready > "${AMP_ORB_READY:?}"
     ;;
   harness)
+    if [ "${AMP_ORB_FORCE_READINESS_FAILURE:-}" = 1 ]; then
+      printf '%s\n' 'private-machine-path' >&2
+      exit 9
+    fi
     [ -f "${AMP_ORB_READY:?}" ] || exit 2
     [ "$*" = "harness readiness --target amp --pin .agents/loaf-orb.pin --archive-sha256 ${AMP_ORB_ARCHIVE_SHA256:?}" ] || exit 83
     ;;
@@ -329,10 +510,11 @@ exec "${AMP_ORB_REAL_TAR:?}" "$@"
 		"XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
 		"LOAF_ORB_HOME="+orbHome,
 		"LOAF_BIN_DIR="+userBin,
+		"LOAF_PROJECT_ENV=1",
 		"LOAF_ORB_ISOLATED_TESTING=1",
 		"LOAF_ORB_TEST_RELEASE_BASE_URL=https://fixture.invalid/releases",
 		"TMPDIR="+filepath.Join(root, "tmp"),
-		"PATH="+toolsDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"PATH="+toolsDir+string(os.PathListSeparator)+userBin+string(os.PathListSeparator)+os.Getenv("PATH"),
 		"AMP_ORB_PROJECT="+project,
 		"AMP_ORB_ARCHIVE="+archive,
 		"AMP_ORB_ARCHIVE_SHA256="+digest,
@@ -346,16 +528,27 @@ exec "${AMP_ORB_REAL_TAR:?}" "$@"
 		t.Fatal(err)
 	}
 	return ampOrbBootstrapFixture{
-		project: project, orbHome: orbHome, userBin: userBin, archive: archive, archiveDigest: digest,
+		project: project, orbHome: orbHome, userBin: userBin, toolsDir: toolsDir, archive: archive, archiveDigest: digest,
 		curlLog: curlLog, tarLog: tarLog, loafLog: loafLog, readyMarker: readyMarker, env: env,
 	}
 }
 
 func (fixture ampOrbBootstrapFixture) run(t *testing.T, entry string) (string, error) {
 	t.Helper()
-	cmd := exec.Command("sh", "-c", `umask 077; exec sh "$1"`, "amp-orb-bootstrap-test", filepath.Join(fixture.project, ".agents", entry))
+	return fixture.runWithEnv(t, entry, fixture.env)
+}
+
+func (fixture ampOrbBootstrapFixture) runWithEnv(t *testing.T, entry string, env []string) (string, error) {
+	t.Helper()
+	path := filepath.Join(fixture.project, ".agents", entry)
+	args := []string{"-c", `umask 077; exec sh "$1"`, "amp-orb-bootstrap-test", path}
+	if entry == "agent-check" {
+		path = filepath.Join(fixture.project, ".agents", "loaf-orb-bootstrap.sh")
+		args = []string{"-c", `umask 077; exec sh "$1" agent-check`, "amp-orb-bootstrap-test", path}
+	}
+	cmd := exec.Command("sh", args...)
 	cmd.Dir = fixture.project
-	cmd.Env = fixture.env
+	cmd.Env = env
 	output, err := cmd.CombinedOutput()
 	return string(output), err
 }
@@ -434,6 +627,37 @@ func assertAmpOrbBootstrapLineCount(t *testing.T, path string, want int) {
 	if got := strings.Count(string(body), "\n"); got != want {
 		t.Fatalf("%s line count = %d, want %d; body=%q", path, got, want, body)
 	}
+}
+
+func ampOrbBootstrapLineCount(t *testing.T, path string) int {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return 0
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.Count(string(body), "\n")
+}
+
+func ampOrbBootstrapEnvWith(env []string, replacements ...string) []string {
+	replacementByKey := map[string]string{}
+	for _, replacement := range replacements {
+		key, _, _ := strings.Cut(replacement, "=")
+		replacementByKey[key] = replacement
+	}
+	result := make([]string, 0, len(env)+len(replacements))
+	for _, value := range env {
+		key, _, _ := strings.Cut(value, "=")
+		if _, replaced := replacementByKey[key]; !replaced {
+			result = append(result, value)
+		}
+	}
+	for _, replacement := range replacements {
+		result = append(result, replacement)
+	}
+	return result
 }
 
 func ampOrbBootstrapGit(t *testing.T, dir string, args ...string) {

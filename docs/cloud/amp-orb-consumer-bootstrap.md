@@ -28,7 +28,15 @@ Commit those four project-owned files and make the three scripts executable. Do 
 
 The bootstrap installs release bytes outside the checkout. Its default per-project user prefix is `${XDG_DATA_HOME:-$HOME/.local/share}/loaf/orb/<project.id>`. `LOAF_ORB_HOME` may select a different absolute Orb-local user prefix. The exact pinned release directory is `<prefix>/releases/<version>`.
 
-Amp starts the later agent process with project environment configuration rather than the transient environment exported by setup or resume. Configure that environment's `PATH` to include `${LOAF_BIN_DIR:-$HOME/.local/bin}`. The bootstrap safely maintains `<LOAF_BIN_DIR>/loaf` as a symlink to the exact pinned release binary, prepends that user bin for its own process, and proves ordinary `loaf` resolution reaches the pinned executable. It refuses to replace a regular file or a symlink owned by another installation; only a prior link into this project's Orb-local prefix is replaceable.
+Amp starts the later agent process from project settings, not from exports made inside setup or resume. Configure this non-secret project environment value literally; Amp project settings do not promise shell expansion:
+
+```text
+LOAF_PROJECT_ENV=1
+```
+
+Inspect `PATH` inside the real project Orb. If it already contains `/home/user/.local/bin`, leave the project `PATH` setting unset so Amp preserves its full inherited toolchain path. Otherwise, copy every existing entry exactly and prefix the literal user-bin directory; for example, if the observed value is `<existing-path>`, set `PATH=/home/user/.local/bin:<existing-path>` with the actual entries substituted literally. Do not replace it with a minimal system-only path, and do not use `$HOME` or another shell expression. Omit `LOAF_BIN_DIR` for this default. Set it only when the Orb needs a different absolute user-bin directory, and prefix that same literal directory to the preserved `PATH`.
+
+The bootstrap safely maintains the selected user-bin `loaf` as a symlink to the exact pinned release binary. It refuses to replace a regular file or a symlink owned by another installation; only a prior link into this project's Orb-local prefix is replaceable.
 
 ## Configure the pin
 
@@ -36,7 +44,7 @@ Amp starts the later agent process with project environment configuration rather
 
 ```text
 schema=1
-version=2.0.0-alpha.1
+version=0.6.0-rc.1
 archive.linux-x64.sha256=<64 lowercase hexadecimal characters>
 archive.linux-arm64.sha256=<64 lowercase hexadecimal characters>
 project.id=<durable Loaf project ID>
@@ -45,13 +53,13 @@ tracker.provider=github
 tracker.scope=owner/repository#board-name
 ```
 
-Take each archive checksum from the official GitHub release and review it as part of the pin change. `git.remote` is the unauthenticated `owner/repository` identity, not an HTTPS or SSH URL. Use a provider-native, non-secret tracker scope. The parser rejects missing, duplicate, unknown, empty, or malformed lines before using any value.
+Take each archive checksum from the immutable official `v0.6.0-rc.1` GitHub release and review it as part of the pin change. The tag carries the leading `v`; the pin's strict SemVer value does not. `git.remote` is the unauthenticated `owner/repository` identity, not an HTTPS or SSH URL. Use a provider-native, non-secret tracker scope. The parser rejects missing, duplicate, unknown, empty, unsafe, uncommitted, or malformed pin data before network access.
 
 The pin must not contain credentials, authenticated URLs, access tokens, machine paths, user names, email addresses, or other operator identity. Project and tracker identities are repository metadata; authentication stays in the Orb's secret store and harness-owned connection.
 
 ## Setup and resume
 
-Amp invokes `.agents/setup` for a fresh Orb and `.agents/resume` when waking an existing Orb. Both are small POSIX entry points into `.agents/loaf-orb-bootstrap.sh`.
+Amp invokes `.agents/setup` for a fresh Orb and `.agents/resume` when waking an existing Orb. Both are small POSIX entry points into `.agents/loaf-orb-bootstrap.sh`. The managed project plugin invokes `.agents/loaf-orb-bootstrap.sh agent-check` before agent tools become available.
 
 Setup performs this fail-closed sequence:
 
@@ -64,18 +72,25 @@ Setup performs this fail-closed sequence:
 7. Run `LOAF_PROJECT_ENV=1 <absolute-loaf> install --to amp --yes`.
 8. Run `<absolute-loaf> harness readiness --target amp --pin .agents/loaf-orb.pin --archive-sha256 <verified-checksum>`.
 
-Both setup and resume run full readiness first without taking a lock or changing files. A ready resume is entirely local and exits without a download, which keeps the normal path within Amp's roughly ten-second blocking resume window. A failed check acquires the project prefix's atomic `.bootstrap.lock`, records its PID owner, and reruns readiness once under the lock so a concurrent finisher avoids a duplicate download. A live owner is refused. A dead PID proves an orphaned lock, which the next process retires narrowly before acquiring its own lock; malformed or unexpectedly populated lock directories are refused rather than removed broadly. Only the current lock holder may reacquire, publish, activate, or install. Missing or failed locked readiness unconditionally reacquires the official archive, verifies its pinned checksum, atomically publishes the staged release, and only then runs install plus final readiness. That repair can exceed the blocking window; bounded download failure or any other failure must remain nonzero, and the setup/resume logs are authoritative. A receipt match alone never authorizes repair from existing bytes, and there is no unpinned repair path.
+Setup and resume capture their inherited `PATH` and `LOAF_PROJECT_ENV` before changing anything. They first prove internal state using the absolute pinned executable and a controlled subprocess environment. If internal state is healthy but the captured Amp project environment is wrong, they fail with an actionable environment error and do not download. If runtime or installed content is missing or damaged, they take the PID-owned lock, repair only from the verified archive, run the deterministic install, prove internal readiness, and finally prove the originally inherited agent environment. Lifecycle overlap can therefore never masquerade as agent readiness.
+
+`agent-check` is the plugin barrier: it is read-only, takes no lock, performs no download or install, and never repairs. It requires the committed safe pin, verified receipt/platform/manifest, the exact project-owned user-bin symlink, `LOAF_PROJECT_ENV=1`, and `command -v loaf` resolving through the inherited `PATH` to the pinned binary before it invokes absolute `loaf harness readiness` with the verified digest. Its refusals avoid printing machine paths or captured command output.
+
+A ready resume is local, but Amp gives resume only an approximately ten-second courtesy window; resume is not a barrier and may finish after the agent starts. The plugin's `agent-check`, not resume completion, gates tools. Snapshot restore may skip `.agents/setup` entirely, and edits to setup or the bootstrap do not affect existing snapshots until the operator deletes and recreates them. Keep the Amp project's optional pre-clone and pre-setup command fields empty; `.agents/setup` remains the committed lifecycle setup entry point. Amp Desktop does not use the Orb resume lifecycle and is irrelevant to this contract.
+
+A failed internal check acquires the project prefix's atomic `.bootstrap.lock`, records its PID owner, and reruns readiness once under the lock so a concurrent finisher avoids a duplicate download. A live owner is refused. A dead PID proves an orphaned lock, which the next process retires narrowly before acquiring its own lock; malformed or unexpectedly populated lock directories are refused rather than removed broadly. Only the current lock holder may reacquire, publish, activate, or install. A receipt match alone never authorizes repair from existing bytes, and there is no unpinned repair path.
 
 The release URL can be overridden only by setting both `LOAF_ORB_ISOLATED_TESTING=1` and `LOAF_ORB_TEST_RELEASE_BASE_URL` in a disposable test environment. Never set those variables on a real Orb.
 
 ## Upgrade a project
 
-Upgrade by one reviewed pin commit:
+Upgrade by one reviewed pin and generated-content commit:
 
 1. Change `version` and both architecture checksums together.
 2. Confirm the checksums against the assets of that exact official release.
-3. Run `.agents/setup`, or let the next `.agents/resume` repair readiness to the new pin.
-4. Commit any reviewed project-owned managed-content changes produced by `loaf install` together with the pin update.
+3. Invoke the new pinned absolute executable with `LOAF_PROJECT_ENV=1` and `install --to amp --yes` in a clean materialization environment.
+4. Review and commit the resulting project-local plugin, skills, managed `AGENTS.md` fence, skill/target ownership manifests, and `.agents/loaf/install-targets/amp.json` together with the pin update.
+5. Require `git status --porcelain` to be empty before deleting/recreating Orb snapshots or starting dogfood.
 
 The versioned prefix leaves the prior release available for rollback. Reverting the pin selects that version again; if its verified receipt is absent, setup reacquires and verifies it from the official release.
 
@@ -86,6 +101,8 @@ The committed pin is the project's reviewable provenance root. The bootstrap use
 Inside Amp's setup or resume lifecycle, readiness asks `amp orb id-token` for a short-lived project-scoped token and reads only its Amp `project_id` and optional `workspace_id` claims. It never persists or prints the token, and it ignores user, thread, and email claims. Outside an Orb lifecycle environment those Amp IDs are omitted with an explicit limitation; no identity is guessed. The committed `project.id` remains Loaf's continuity project identity and is intentionally distinct from Amp's project identifier.
 
 Neither the pin nor the scripts authenticate to GitHub or the selected tracker. Keep provider tokens, GitHub credentials, Amp credentials, and any Loaf connection material in the Orb secret store or harness-managed connection. Do not embed credentials in `git.remote`, `tracker.scope`, `LOAF_ORB_HOME`, or the release URL override.
+
+Private synchronization and attach are outside this bootstrap/readiness contract. Do not add sync credentials or attach behavior to these lifecycle scripts.
 
 ## Preserve consumer-owned instructions
 
@@ -98,6 +115,8 @@ The bootstrap never writes `AGENTS.md` itself. The absolute `loaf install --to a
 ```
 
 Consumer prose outside that fence remains consumer-owned and must be preserved byte-for-byte. A single well-formed managed fence may be updated in place. Duplicate managed fences, malformed fence boundaries, or ambiguous legacy instruction sources must refuse rather than overwrite or choose a source silently. Resolve the ambiguity in the consumer repository, then rerun setup.
+
+The complete deterministic install output is reviewed source in the consumer repository: `.amp/plugins/`, `.amp/.loaf-managed-target.json`, `.agents/skills/`, `.agents/skills/.loaf-managed-skills.json`, `.agents/loaf/install-targets/amp.json`, and the managed `AGENTS.md` fence. Commit it before Orb dogfood and start the Orb from a clean Git status. These bytes are derived from the pinned release and prove what Amp may load; they are not a tracker, runtime authority, or second work record.
 
 ## Disposable clean-room proof
 
@@ -128,15 +147,21 @@ git config user.name 'Loaf clean-room proof'
 git config user.email 'loaf-clean-room@example.invalid'
 git add .agents/loaf-orb.pin .agents/loaf-orb-bootstrap.sh .agents/setup .agents/resume AGENTS.md
 git commit -m 'Add pinned Amp Orb bootstrap'
-HOME="$proof_home" XDG_CONFIG_HOME="$proof_home/.config" LOAF_ORB_HOME="$orb_home" LOAF_BIN_DIR="$proof_root/user-bin" .agents/setup
+HOME="$proof_home" XDG_CONFIG_HOME="$proof_home/.config" LOAF_ORB_HOME="$orb_home" LOAF_BIN_DIR="$proof_root/user-bin" LOAF_PROJECT_ENV=1 PATH="$proof_root/user-bin:$PATH" .agents/setup
 grep -F 'consumer instructions: preserve this line' AGENTS.md
-HOME="$proof_home" XDG_CONFIG_HOME="$proof_home/.config" LOAF_ORB_HOME="$orb_home" LOAF_BIN_DIR="$proof_root/user-bin" .agents/resume
+git add AGENTS.md .amp .agents/skills .agents/loaf/install-targets/amp.json
+git commit -m 'Materialize pinned Loaf Amp integration'
+test -z "$(git status --porcelain)"
+HOME="$proof_home" XDG_CONFIG_HOME="$proof_home/.config" LOAF_ORB_HOME="$orb_home" LOAF_BIN_DIR="$proof_root/user-bin" LOAF_PROJECT_ENV=1 PATH="$proof_root/user-bin:$PATH" .agents/resume
+HOME="$proof_home" XDG_CONFIG_HOME="$proof_home/.config" LOAF_ORB_HOME="$orb_home" LOAF_BIN_DIR="$proof_root/user-bin" LOAF_PROJECT_ENV=1 PATH="$proof_root/user-bin:$PATH" .agents/loaf-orb-bootstrap.sh agent-check
+test -z "$(git status --porcelain)"
 ```
 
 Expected evidence:
 
-- Setup downloads one official archive, rejects any checksum mismatch before extraction, requires the manifest, installs beneath `$orb_home/releases/<version>`, activates `$proof_root/user-bin/loaf` to the exact pinned binary, preserves the sentinel, and reports readiness.
-- Resume invokes readiness first and performs no download when ready. An offline second resume is a useful proof of that property.
+- Setup downloads one official archive, rejects any checksum mismatch before extraction, requires the manifest, installs beneath `$orb_home/releases/<version>`, activates `$proof_root/user-bin/loaf` to the exact pinned binary, preserves the sentinel, and proves internal plus inherited-agent readiness.
+- The first setup materializes deterministic project integration for review and commit; it is preparation, not clean-Orb dogfood. Dogfood begins only from the clean commit containing those generated bytes.
+- Resume invokes internal readiness first and performs no download when ready, but `agent-check` remains the tool barrier. An offline second resume plus `agent-check` is a useful proof of that property.
 - Changing one checksum to another valid-looking 64-character digest makes fresh setup fail before extraction.
 - Adding a second managed fence or breaking one fence boundary makes install fail loudly without replacing consumer prose. Readiness also refuses a legacy name-only project skill ownership manifest, a foreign project-local Loaf plugin, or any duplicate effective Loaf skill/plugin source under the disposable global homes (`$HOME/.agents/skills`, `$HOME/.config/agents/skills`, `$XDG_CONFIG_HOME/amp/plugins`, or `$HOME/.amp/plugins`). Remove the legacy or duplicate source before continuing.
 - Replacing the pin with an unknown key, duplicate key, authenticated URL, path-shaped identity, uppercase checksum, or placeholder makes bootstrap fail before network access.
