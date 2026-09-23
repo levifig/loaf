@@ -640,6 +640,7 @@ const preToolHooks: Record<string, HookEntry[]> = {
     },
     {
       "id": "ephemeral-provenance",
+      "command": "loaf check --hook ephemeral-provenance",
       "timeout": 30000,
       "failClosed": true,
       "if": "Bash(git push:*)"

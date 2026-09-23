@@ -168,6 +168,18 @@ test('generated plugin runs real pre-PR in helper shell dir and falls back to wo
   assert.notEqual(await realpath(shellDir), await realpath(process.cwd()));
 
   await writeFile(hookLog, '');
+  const prePush = {
+    toolUseID: 'pre-push',
+    tool: 'shell_command',
+    input: { command: 'git push origin HEAD' },
+    thread: { id: 'T-parent' },
+  };
+  assert.deepEqual(await handlers.get('tool.call')(prePush), { action: 'allow' });
+  log = await readLog();
+  assert.ok(log.some(entry => entry.hook === 'ephemeral-provenance'));
+  assert.equal(await realpath(log.find(entry => entry.hook === 'ephemeral-provenance').cwd), await realpath(shellDir));
+
+  await writeFile(hookLog, '');
   helperDir = missingDir;
   const rejected = await handlers.get('tool.call')(prePr(shellDir));
   assert.equal(rejected.action, 'reject-and-continue');

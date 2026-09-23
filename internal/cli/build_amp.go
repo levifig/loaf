@@ -497,13 +497,7 @@ const sessionHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(se
 }
 
 func nativeAmpHookDataWithoutSession(hooks []nativeBuildHook) string {
-	var supportedPreTool []nativeBuildHook
-	for _, hook := range filterNativeBuildHooks(hooks, "pre-tool") {
-		if hook.id != "detect-linear-magic" {
-			supportedPreTool = append(supportedPreTool, hook)
-		}
-	}
-	preTool := nativeAmpGroupHooksByMatcher(supportedPreTool)
+	preTool := nativeAmpGroupHooksByMatcher(nativeAmpPreToolHooks(hooks))
 	postTool := nativeAmpGroupHooksByMatcher(filterNativeBuildHooks(hooks, "post-tool"))
 	return `// ─────────────────────────────────────────────────────────────────────────────
 // Hook Data
@@ -521,6 +515,20 @@ interface HookEntry {
 const preToolHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(preTool) + `;
 
 const postToolHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(postTool) + `;`
+}
+
+func nativeAmpPreToolHooks(hooks []nativeBuildHook) []nativeBuildHook {
+	var supported []nativeBuildHook
+	for _, hook := range filterNativeBuildHooks(hooks, "pre-tool") {
+		if hook.id == "detect-linear-magic" {
+			continue
+		}
+		if hook.id == "ephemeral-provenance" && hook.command == "" && hook.script == "" && hook.instruction == "" {
+			hook.command = "loaf check --hook ephemeral-provenance"
+		}
+		supported = append(supported, hook)
+	}
+	return supported
 }
 
 func nativeAmpPluginBody() string {

@@ -1586,11 +1586,33 @@ func TestNativeAmpPluginReadinessAndFailClosedSemantics(t *testing.T) {
 }
 
 func TestNativeOpenCodePluginExcludesAmpConsumerReadiness(t *testing.T) {
-	plugin := renderNativeOpenCodePlugin(nil, "test")
-	for _, unwanted := range []string{"AmpConsumerReadiness", "runAmpConsumerAgentCheck", "ampLstat", "loaf-orb.pin", "loaf-orb-bootstrap.sh"} {
+	hooks, err := readNativeBuildHooks(filepath.Join(testRepositoryRoot(t), "config", "hooks.yaml"))
+	if err != nil {
+		t.Fatalf("readNativeBuildHooks error = %v", err)
+	}
+	plugin := renderNativeOpenCodePlugin(hooks, "test")
+	for _, unwanted := range []string{"AmpConsumerReadiness", "runAmpConsumerAgentCheck", "ampLstat", "loaf-orb.pin", "loaf-orb-bootstrap.sh", "loaf check --hook ephemeral-provenance"} {
 		if strings.Contains(plugin, unwanted) {
-			t.Fatalf("generated OpenCode plugin contains Amp-only readiness symbol %q", unwanted)
+			t.Fatalf("generated OpenCode plugin contains Amp-only content %q", unwanted)
 		}
+	}
+}
+
+func TestNativeAmpFailClosedPreToolHooksHaveExecutableDispatch(t *testing.T) {
+	root := testRepositoryRoot(t)
+	hooks, err := readNativeBuildHooks(filepath.Join(root, "config", "hooks.yaml"))
+	if err != nil {
+		t.Fatalf("readNativeBuildHooks error = %v", err)
+	}
+	for _, hook := range nativeAmpPreToolHooks(hooks) {
+		entry := nativeAmpHookEntryFor(hook)
+		if entry.FailClosed && entry.Command == "" && entry.Script == "" {
+			t.Errorf("fail-closed Amp pre-tool hook %q has no rendered command or script", entry.ID)
+		}
+	}
+	plugin := renderNativeAmpPlugin(hooks, "test")
+	if !strings.Contains(plugin, `"id": "ephemeral-provenance"`) || !strings.Contains(plugin, `"command": "loaf check --hook ephemeral-provenance"`) {
+		t.Fatal("generated Amp plugin does not render ephemeral-provenance with its native check command")
 	}
 }
 
