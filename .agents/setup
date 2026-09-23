@@ -60,7 +60,6 @@ install_linux_toolchains() {
   esac
 
   GO_ROOT="$TOOL_ROOT/go-$GO_VERSION"
-  NODE_ROOT="$TOOL_ROOT/node-$NODE_VERSION"
   mkdir -p "$TOOL_ROOT"
 
   if [[ ! -x "$GO_ROOT/bin/go" ]] || [[ "$("$GO_ROOT/bin/go" version 2>/dev/null || true)" != "go version go${GO_VERSION} linux/${go_arch}" ]]; then
@@ -78,7 +77,16 @@ install_linux_toolchains() {
     rm -rf "$go_stage" "$go_archive"
   fi
 
-  if [[ ! -x "$NODE_ROOT/bin/node" ]] || [[ "$("$NODE_ROOT/bin/node" --version 2>/dev/null || true)" != "v$NODE_VERSION" ]]; then
+  local provided_node
+  provided_node="$(command -v node || true)"
+  if [[ -n "$provided_node" && "$(node --version 2>/dev/null || true)" == v22.* && -x "$(dirname "$provided_node")/npm" ]]; then
+    NODE_ROOT="$(cd "$(dirname "$provided_node")/.." && pwd)"
+  else
+    NODE_ROOT="$TOOL_ROOT/node-$NODE_VERSION"
+  fi
+
+  if [[ "$NODE_ROOT" == "$TOOL_ROOT/node-$NODE_VERSION" ]] &&
+    { [[ ! -x "$NODE_ROOT/bin/node" ]] || [[ "$("$NODE_ROOT/bin/node" --version 2>/dev/null || true)" != "v$NODE_VERSION" ]]; }; then
     local node_archive node_stage
     printf 'Downloading Node.js %s for linux/%s\n' "$NODE_VERSION" "$node_arch"
     node_archive="$(mktemp "$TOOL_ROOT/node.XXXXXX.tar.gz")"
