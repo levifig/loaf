@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+### Added
+
+- Bootstrap a pinned, checksum-verified Loaf release into external Amp Orb consumer projects without a Loaf checkout or Go toolchain, and fail readiness when the binary, Amp distribution, project identity, managed instructions, or effective Loaf sources cannot be proven ([#302](https://github.com/levifig/loaf/issues/302)).
+
 ### Changed
 
 - Route Amp implementation through native Low, Medium, High, and Ultra with a fresh Grok 4.6 Fast `loaf_delegate` child labelled exactly `implementer` and native Oracle review, retiring Loaf Medium, Loaf Ultra, and copied custom review oracles while keeping the existing `loaf-modes.ts` install artifact as an inert compatibility plugin ([#266](https://github.com/levifig/loaf/issues/266)).

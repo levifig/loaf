@@ -65,13 +65,14 @@ func newAmpReadinessFixture(t *testing.T) *ampReadinessFixture {
 		CapabilityContractVersion: TargetCapabilityEvidenceContractVersion,
 		Adapters:                  []string{"amp-plugin-v1"},
 		Artifacts: []targetAdapterArtifact{
-			{ID: "managed-instructions", Kind: "instruction", Destination: "project-instructions", SHA256: strings.Repeat("a", 64)},
+			{ID: "managed-instructions", Kind: "instruction", Destination: "project-instructions", SHA256: fencedContentFingerprint(generateFencedContent())},
 			{ID: "plugin:.amp/plugins/loaf.ts", Kind: "plugin", SourcePath: ".amp/plugins/loaf.ts", Destination: "plugins/loaf.ts", SHA256: pluginDigest, Mode: &mode},
 		},
 	}
 	if err := writeTargetAdapterManifest(filepath.Join(releaseRoot, "dist", "amp", targetBuildManifestFile), desired); err != nil {
 		t.Fatal(err)
 	}
+	ampReadinessWriteFile(t, filepath.Join(projectRoot, "AGENTS.md"), []byte("# Consumer instructions\n\nKeep this prose.\n\n"+generateFencedContent()+"\n"), 0o644)
 
 	ampDir := filepath.Join(projectRoot, ".amp")
 	if err := installAmpTarget(targetInstallOptions{
@@ -123,11 +124,14 @@ func TestAmpReadinessSuccessIsReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readiness error = %v, findings = %v", err, record.Findings)
 	}
-	if !record.Ready || record.ProjectID != "proj_test" || record.CanonicalRemote != "acme/ready" || record.AmpProjectScope != "acme/ready" || record.AmpWorkspaceScope != "" || record.AmpProjectID != "" || record.AmpWorkspaceID != "" || record.TrackerScope != "acme/ready#Loaf" || record.PackageVersion != ampReadinessTestVersion {
+	if !record.Ready || record.ProjectID != "proj_test" || record.CanonicalRemote != "acme/ready" || record.AmpProjectID != "" || record.AmpWorkspaceID != "" || record.TrackerScope != "acme/ready#Loaf" || record.PackageVersion != ampReadinessTestVersion {
 		t.Fatalf("record = %#v", record)
 	}
-	if len(record.Skills) != 1 || len(record.Plugins) != 1 || record.BinarySHA256 == "" || record.ReleaseManifestSHA256 == "" {
+	if len(record.Skills) != 1 || len(record.Plugins) != 1 || len(record.Instructions) != 1 || record.BinarySHA256 == "" || record.ReleaseManifestSHA256 == "" {
 		t.Fatalf("proof fields incomplete: %#v", record)
+	}
+	if record.BinaryPath != "<release>/bin/loaf" || record.ReleaseManifestPath != "<release>/loaf-release-manifest.json" || record.ArchiveSidecarPath != "<release>/.loaf-archive.sha256" || record.Skills[0].Path != "<project>/.agents/skills/foundations" || record.Plugins[0].Path != "<project>/.amp/plugins/loaf.ts" || record.Instructions[0].Path != "<project>/AGENTS.md" {
+		t.Fatalf("logical proof paths = %#v", record)
 	}
 	if after := ampReadinessTreeSnapshot(t, fixture.project); after != beforeProject {
 		t.Fatal("readiness mutated the project tree")
@@ -244,7 +248,9 @@ func TestAmpReadinessKeyRefusals(t *testing.T) {
 			ampReadinessWriteFile(t, filepath.Join(f.project, ".amp", "plugins", "loaf.ts"), []byte("foreign\n"), 0o644)
 		}, want: "plugin is missing, foreign, or stale"},
 		{name: "duplicate global source", mutate: func(f *ampReadinessFixture) {
-			ampReadinessWriteFile(t, filepath.Join(f.home, ".agents", "skills", "foundations", "SKILL.md"), []byte("duplicate\n"), 0o644)
+			xdg := filepath.Join(f.home, "custom-xdg")
+			t.Setenv("XDG_CONFIG_HOME", xdg)
+			ampReadinessWriteFile(t, filepath.Join(xdg, "agents", "skills", "foundations", "SKILL.md"), []byte("duplicate\n"), 0o644)
 		}, want: "duplicate global Loaf skill"},
 		{name: "remote mismatch", mutate: func(f *ampReadinessFixture) {
 			ampReadinessGit(t, f.project, "remote", "set-url", "origin", "https://github.com/acme/other.git")
@@ -281,11 +287,118 @@ func TestAmpReadinessRejectsUnsafeOrUncommittedPin(t *testing.T) {
 	fixture := newAmpReadinessFixture(t)
 	body := strings.Replace(string(ampReadinessReadFile(t, fixture.pin)), "git.remote=acme/ready", "git.remote=https://token@example.com/acme/ready", 1)
 	ampReadinessWriteFile(t, fixture.pin, []byte(body), 0o644)
+	ampReadinessGit(t, fixture.project, "add", "amp.pin")
+	ampReadinessGit(t, fixture.project, "commit", "-m", "commit unsafe pin fixture")
 	record, err := fixture.run(fixture.archive)
 	var exit ExitError
-	if !errors.As(err, &exit) || exit.Code != 2 || !strings.Contains(strings.Join(record.Findings, "\n"), "committed regular file") {
+	if !errors.As(err, &exit) || exit.Code != 2 || !strings.Contains(strings.Join(record.Findings, "\n"), "malformed or contains unsafe data") {
 		t.Fatalf("err = %v, findings = %v", err, record.Findings)
 	}
+}
+
+func TestAmpReadinessManagedInstructionsRefusals(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*ampReadinessFixture)
+		want   string
+	}{
+		{name: "missing", mutate: func(f *ampReadinessFixture) {
+			if err := os.Remove(filepath.Join(f.project, "AGENTS.md")); err != nil {
+				t.Fatal(err)
+			}
+		}, want: "instructions are missing"},
+		{name: "duplicate", mutate: func(f *ampReadinessFixture) {
+			path := filepath.Join(f.project, "AGENTS.md")
+			body := ampReadinessReadFile(t, path)
+			ampReadinessWriteFile(t, path, append(body, []byte("\n"+generateFencedContent()+"\n")...), 0o644)
+		}, want: "duplicate or malformed"},
+		{name: "stale", mutate: func(f *ampReadinessFixture) {
+			path := filepath.Join(f.project, "AGENTS.md")
+			body := strings.Replace(string(ampReadinessReadFile(t, path)), "## Loaf Framework", "## Stale Loaf Framework", 1)
+			ampReadinessWriteFile(t, path, []byte(body), 0o644)
+		}, want: "instructions are stale"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := newAmpReadinessFixture(t)
+			tc.mutate(fixture)
+			record, err := fixture.run(fixture.archive)
+			var exit ExitError
+			if !errors.As(err, &exit) || exit.Code != 2 || record.Ready || !strings.Contains(strings.Join(record.Findings, "\n"), tc.want) {
+				t.Fatalf("err = %v, findings = %v", err, record.Findings)
+			}
+			if tc.name != "missing" && !strings.Contains(string(ampReadinessReadFile(t, filepath.Join(fixture.project, "AGENTS.md"))), "Keep this prose") {
+				t.Fatal("consumer prose was not preserved")
+			}
+		})
+	}
+}
+
+func TestAmpReadinessOptionalContinuityConfig(t *testing.T) {
+	t.Run("missing is limitation", func(t *testing.T) {
+		fixture := newAmpReadinessFixture(t)
+		if err := os.Remove(filepath.Join(fixture.project, ".agents", "loaf.conf")); err != nil {
+			t.Fatal(err)
+		}
+		record, err := fixture.run(fixture.archive)
+		if err != nil || !record.Ready || record.ContinuityProjectID != "" || !strings.Contains(strings.Join(record.Limitations, "\n"), "loaf.conf is absent") {
+			t.Fatalf("err = %v, record = %#v", err, record)
+		}
+	})
+	t.Run("malformed is finding", func(t *testing.T) {
+		fixture := newAmpReadinessFixture(t)
+		ampReadinessWriteFile(t, filepath.Join(fixture.project, ".agents", "loaf.conf"), []byte("not-json\n"), 0o644)
+		record, err := fixture.run(fixture.archive)
+		var exit ExitError
+		if !errors.As(err, &exit) || exit.Code != 2 || !strings.Contains(strings.Join(record.Findings, "\n"), "malformed or unreadable") {
+			t.Fatalf("err = %v, findings = %v", err, record.Findings)
+		}
+	})
+	t.Run("mismatch is finding", func(t *testing.T) {
+		fixture := newAmpReadinessFixture(t)
+		ampReadinessWriteFile(t, filepath.Join(fixture.project, ".agents", "loaf.conf"), []byte("{\"conf_id\":\"conf_test\",\"project_id\":\"proj_other\"}\n"), 0o644)
+		record, err := fixture.run(fixture.archive)
+		var exit ExitError
+		if !errors.As(err, &exit) || exit.Code != 2 || !strings.Contains(strings.Join(record.Findings, "\n"), "does not match the pin") {
+			t.Fatalf("err = %v, findings = %v", err, record.Findings)
+		}
+	})
+}
+
+func TestAmpReadinessPinAndOriginHardening(t *testing.T) {
+	t.Run("symlink pin", func(t *testing.T) {
+		fixture := newAmpReadinessFixture(t)
+		target := fixture.pin + ".real"
+		ampReadinessWriteFile(t, target, ampReadinessReadFile(t, fixture.pin), 0o644)
+		if err := os.Remove(fixture.pin); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, fixture.pin); err != nil {
+			t.Fatal(err)
+		}
+		record, err := fixture.run(fixture.archive)
+		var exit ExitError
+		if !errors.As(err, &exit) || exit.Code != 2 || !strings.Contains(strings.Join(record.Findings, "\n"), "not a regular file") {
+			t.Fatalf("err = %v, findings = %v", err, record.Findings)
+		}
+	})
+	t.Run("non github origin", func(t *testing.T) {
+		fixture := newAmpReadinessFixture(t)
+		ampReadinessGit(t, fixture.project, "remote", "set-url", "origin", "https://gitlab.com/acme/ready.git")
+		record, err := fixture.run(fixture.archive)
+		var exit ExitError
+		if !errors.As(err, &exit) || exit.Code != 2 || !strings.Contains(strings.Join(record.Findings, "\n"), "canonical Git origin remote is unavailable") {
+			t.Fatalf("err = %v, findings = %v", err, record.Findings)
+		}
+	})
+	t.Run("ssh git user", func(t *testing.T) {
+		fixture := newAmpReadinessFixture(t)
+		ampReadinessGit(t, fixture.project, "remote", "set-url", "origin", "ssh://git@github.com/acme/ready.git")
+		record, err := fixture.run(fixture.archive)
+		if err != nil || !record.Ready || record.CanonicalRemote != "acme/ready" {
+			t.Fatalf("err = %v, record = %#v", err, record)
+		}
+	})
 }
 
 func (f *ampReadinessFixture) run(archive string) (ampReadinessRecord, error) {
@@ -296,6 +409,11 @@ func (f *ampReadinessFixture) run(archive string) (ampReadinessRecord, error) {
 		Executable: func() (string, error) { return f.binary, nil },
 	}
 	err := runner.Run([]string{"harness", "readiness", "--target", "amp", "--pin", f.pin, "--archive-sha256", archive, "--json"})
+	for _, privateRoot := range []string{f.project, f.release, f.home} {
+		if bytes.Contains(out.Bytes(), []byte(privateRoot)) || bytes.Contains(out.Bytes(), []byte(canonicalAmpReadinessPath(privateRoot))) {
+			f.t.Fatalf("readiness JSON leaked fixture root %q: %s", privateRoot, out.String())
+		}
+	}
 	var record ampReadinessRecord
 	if decodeErr := json.Unmarshal(out.Bytes(), &record); decodeErr != nil {
 		f.t.Fatalf("decode output %q: %v", out.String(), decodeErr)

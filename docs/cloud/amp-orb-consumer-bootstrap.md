@@ -57,14 +57,14 @@ Setup performs this fail-closed sequence:
 
 1. Parse and strictly validate all pin fields.
 2. Select the pinned `linux-x64` or `linux-arm64` checksum from the Orb architecture.
-3. Download `loaf_<version>_<platform>.tar.gz` from the official `levifig/loaf` GitHub release.
+3. Download `loaf_<version>_<platform>.tar.gz` from the official `levifig/loaf` GitHub release with bounded connect and total timeouts.
 4. Verify the archive with `shasum -a 256` or `sha256sum` before extraction.
-5. Require the expected release directory, executable `bin/loaf`, and `loaf-release-manifest.json`.
+5. Extract while preserving the archive's reviewed file modes, then require the expected release directory, executable `bin/loaf`, and `loaf-release-manifest.json`.
 6. Activate the release under the Orb-local user prefix, safely link it through the configured user bin, and prove `command -v loaf` resolves through that link to the exact pinned binary.
 7. Run `LOAF_PROJECT_ENV=1 <absolute-loaf> install --to amp --yes`.
 8. Run `<absolute-loaf> harness readiness --target amp --pin .agents/loaf-orb.pin --archive-sha256 <verified-checksum>`.
 
-Both setup and resume run full readiness first without taking a lock or changing files. A ready resume is entirely local and exits without a download, which keeps the normal path within Amp's roughly ten-second blocking resume window. A failed check acquires the project prefix's atomic `.bootstrap.lock`, fails loudly if another bootstrap owns it, and reruns readiness once under the lock so a concurrent finisher avoids a duplicate download. Only that lock holder may reacquire, publish, activate, or install. Missing or failed locked readiness unconditionally reacquires the official archive, verifies its pinned checksum, atomically publishes the staged release, and only then runs install plus final readiness. That repair can exceed the blocking window; a timeout or other failure must remain nonzero, and the setup/resume logs are authoritative. A receipt match alone never authorizes repair from existing bytes, and there is no unpinned repair path.
+Both setup and resume run full readiness first without taking a lock or changing files. A ready resume is entirely local and exits without a download, which keeps the normal path within Amp's roughly ten-second blocking resume window. A failed check acquires the project prefix's atomic `.bootstrap.lock`, records its PID owner, and reruns readiness once under the lock so a concurrent finisher avoids a duplicate download. A live owner is refused. A dead PID proves an orphaned lock, which the next process retires narrowly before acquiring its own lock; malformed or unexpectedly populated lock directories are refused rather than removed broadly. Only the current lock holder may reacquire, publish, activate, or install. Missing or failed locked readiness unconditionally reacquires the official archive, verifies its pinned checksum, atomically publishes the staged release, and only then runs install plus final readiness. That repair can exceed the blocking window; bounded download failure or any other failure must remain nonzero, and the setup/resume logs are authoritative. A receipt match alone never authorizes repair from existing bytes, and there is no unpinned repair path.
 
 The release URL can be overridden only by setting both `LOAF_ORB_ISOLATED_TESTING=1` and `LOAF_ORB_TEST_RELEASE_BASE_URL` in a disposable test environment. Never set those variables on a real Orb.
 

@@ -9,6 +9,48 @@ fail() {
   exit 1
 }
 
+safe_pin_value() {
+  safe_value=$1
+  [ "${#safe_value}" -le 256 ] || return 1
+  printf '%s\n' "$safe_value" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._:/+#-]{0,255}$' || return 1
+  case "$safe_value" in
+    *\\*|*@*|/*|~*|*..*|*://*) return 1 ;;
+  esac
+  safe_lower=$(printf '%s\n' "$safe_value" | tr '[:upper:]' '[:lower:]')
+  case "$safe_lower" in
+    *password*|*passwd*|*token*|*secret*|*credential*|*authorization*|*bearer*) return 1 ;;
+  esac
+}
+
+valid_semver() (
+  semver_value=$1
+  [ "$semver_value" != 0.0.0 ] || return 1
+  printf '%s\n' "$semver_value" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$' || return 1
+  semver_without_build=${semver_value%%+*}
+  semver_core=${semver_without_build%%-*}
+  semver_major=${semver_core%%.*}
+  semver_remainder=${semver_core#*.}
+  semver_minor=${semver_remainder%%.*}
+  semver_patch=${semver_remainder#*.}
+  [ "${#semver_major}" -le 9 ] && [ "${#semver_minor}" -le 9 ] && [ "${#semver_patch}" -le 9 ] || return 1
+  case "$semver_without_build" in
+    *-*) semver_prerelease=${semver_without_build#*-} ;;
+    *) return 0 ;;
+  esac
+  while :; do
+    semver_identifier=${semver_prerelease%%.*}
+    case "$semver_identifier" in
+      *[!0-9]*) ;;
+      0|[1-9]|[1-9][0-9]*) ;;
+      *) return 1 ;;
+    esac
+    case "$semver_prerelease" in
+      *.*) semver_prerelease=${semver_prerelease#*.} ;;
+      *) break ;;
+    esac
+  done
+)
+
 agents_dir=$(CDPATH='' cd "$(dirname "$0")" && pwd)
 project_root=$(CDPATH='' cd "$agents_dir/.." && pwd)
 pin_path="$agents_dir/loaf-orb.pin"
@@ -72,16 +114,23 @@ done < "$pin_path"
 
 [ "$line_count" -eq 8 ] || fail "pin must contain exactly eight lines"
 [ "$schema" = 1 ] || fail "pin schema must be 1"
-printf '%s\n' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?(\+[0-9A-Za-z][0-9A-Za-z.-]*)?$' || fail "invalid release version"
+valid_semver "$version" || fail "invalid release version"
 printf '%s\n' "$checksum_x64" | grep -Eq '^[0-9a-f]{64}$' || fail "invalid linux-x64 checksum"
 printf '%s\n' "$checksum_arm64" | grep -Eq '^[0-9a-f]{64}$' || fail "invalid linux-arm64 checksum"
+safe_pin_value "$project_id" || fail "unsafe project ID"
 printf '%s\n' "$project_id" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._:-]*$' || fail "invalid project ID"
-printf '%s\n' "$git_remote" | grep -Eq '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' || fail "git.remote must be an unauthenticated owner/repository name"
-printf '%s\n' "$tracker_provider" | grep -Eq '^[a-z][a-z0-9-]*$' || fail "invalid tracker provider"
-printf '%s\n' "$tracker_scope" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._:/#+-]*$' || fail "invalid tracker scope"
-case "$tracker_scope" in
-  *://*|[A-Za-z]:/*) fail "tracker scope must not be a URL or machine path" ;;
-esac
+safe_pin_value "$git_remote" || fail "unsafe git remote"
+printf '%s\n' "$git_remote" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$' || fail "git.remote must be an unauthenticated owner/repository name"
+safe_pin_value "$tracker_provider" || fail "unsafe tracker provider"
+printf '%s\n' "$tracker_provider" | grep -Eq '^[a-z][a-z0-9-]{0,63}$' || fail "invalid tracker provider"
+safe_pin_value "$tracker_scope" || fail "unsafe tracker scope"
+
+command -v git >/dev/null 2>&1 || fail "git is required"
+(
+  cd "$project_root"
+  git cat-file -e "HEAD:$pin_argument" >/dev/null 2>&1 &&
+    git diff --quiet HEAD -- "$pin_argument"
+) || fail "$pin_argument must match committed bytes"
 
 case "$(uname -s)" in
   Linux) ;;
@@ -161,12 +210,26 @@ activate_user_bin() {
   loaf_link=$loaf_user_bin_dir/loaf
   if [ -e "$loaf_link" ] || [ -L "$loaf_link" ]; then
     [ -L "$loaf_link" ] || fail "$loaf_link exists and is not a project-managed symlink"
-    existing_target=$(resolve_path "$loaf_link") || fail "cannot resolve existing $loaf_link symlink"
-    resolved_prefix=$(CDPATH='' cd "$orb_prefix" && pwd -P) || fail "cannot resolve Orb-local user prefix"
-    case "$existing_target" in
-      "$resolved_prefix"/releases/*/bin/loaf) ;;
-      *) fail "$loaf_link points outside this project's Orb-local prefix" ;;
+    existing_raw_target=$(readlink "$loaf_link") || fail "cannot read existing $loaf_link symlink"
+    existing_is_owned=0
+    case "$existing_raw_target" in
+      "$orb_prefix"/releases/*/bin/loaf)
+        existing_version=${existing_raw_target#"$orb_prefix"/releases/}
+        existing_version=${existing_version%/bin/loaf}
+        case "$existing_version" in
+          */*) ;;
+          *) valid_semver "$existing_version" && existing_is_owned=1 ;;
+        esac
+        ;;
     esac
+    if [ "$existing_is_owned" -ne 1 ] && [ -e "$loaf_link" ]; then
+      existing_target=$(resolve_path "$loaf_link") || fail "cannot resolve existing $loaf_link symlink"
+      resolved_prefix=$(CDPATH='' cd "$orb_prefix" && pwd -P) || fail "cannot resolve Orb-local user prefix"
+      case "$existing_target" in
+        "$resolved_prefix"/releases/*/bin/loaf) existing_is_owned=1 ;;
+      esac
+    fi
+    [ "$existing_is_owned" -eq 1 ] || fail "$loaf_link points outside this project's Orb-local prefix"
   fi
 
   temporary_link=$loaf_user_bin_dir/.loaf.new.$$
@@ -220,12 +283,14 @@ run_readiness() {
 
 cleanup_dir=
 lock_dir=$orb_prefix/.bootstrap.lock
+lock_owner_path=$lock_dir/owner.pid
 lock_acquired=0
 cleanup() {
   if [ -n "$cleanup_dir" ] && [ -d "$cleanup_dir" ]; then
     rm -rf "$cleanup_dir"
   fi
   if [ "$lock_acquired" -eq 1 ]; then
+    rm -f "$lock_owner_path"
     rmdir "$lock_dir" 2>/dev/null || printf '%s\n' "loaf-orb-bootstrap: warning: could not remove $lock_dir" >&2
     lock_acquired=0
   fi
@@ -237,9 +302,24 @@ acquire_bootstrap_lock() {
   mkdir -p "$orb_prefix"
   if mkdir "$lock_dir" 2>/dev/null; then
     lock_acquired=1
+    printf '%s\n' "$$" > "$lock_owner_path" || fail "cannot record bootstrap lock owner"
     return 0
   fi
-  fail "another setup or resume holds $lock_dir"
+  [ -f "$lock_owner_path" ] && [ ! -L "$lock_owner_path" ] || fail "bootstrap lock has no valid PID owner: $lock_dir"
+  [ "$(wc -l < "$lock_owner_path")" -eq 1 ] || fail "bootstrap lock has malformed PID owner: $lock_dir"
+  lock_owner=$(sed -n '1p' "$lock_owner_path")
+  printf '%s\n' "$lock_owner" | grep -Eq '^[1-9][0-9]*$' || fail "bootstrap lock has malformed PID owner: $lock_dir"
+  if kill -0 "$lock_owner" 2>/dev/null; then
+    fail "another setup or resume process $lock_owner holds $lock_dir"
+  fi
+  rm -f "$lock_owner_path" || fail "cannot retire stale bootstrap lock owner"
+  rmdir "$lock_dir" 2>/dev/null || fail "cannot retire stale bootstrap lock"
+  if mkdir "$lock_dir" 2>/dev/null; then
+    lock_acquired=1
+    printf '%s\n' "$$" > "$lock_owner_path" || fail "cannot record bootstrap lock owner"
+    return 0
+  fi
+  fail "another setup or resume acquired $lock_dir"
 }
 
 install_verified_release() {
@@ -269,9 +349,9 @@ install_verified_release() {
   mkdir -p "$unpack_dir"
 
   if [ "$release_base" = "$official_base" ]; then
-    curl --fail --location --silent --show-error --proto '=https' --tlsv1.2 --output "$archive_path" "$archive_url" || fail "release download failed"
+    curl --fail --location --silent --show-error --connect-timeout 10 --max-time 120 --retry 2 --retry-delay 1 --proto '=https' --tlsv1.2 --output "$archive_path" "$archive_url" || fail "release download failed"
   else
-    curl --fail --location --silent --show-error --output "$archive_path" "$archive_url" || fail "isolated-test release download failed"
+    curl --fail --location --silent --show-error --connect-timeout 10 --max-time 120 --retry 2 --retry-delay 1 --output "$archive_path" "$archive_url" || fail "isolated-test release download failed"
   fi
 
   case "$checksum_command" in
@@ -281,7 +361,7 @@ install_verified_release() {
   actual_sha256=${actual_sha256%% *}
   [ "$actual_sha256" = "$archive_sha256" ] || fail "archive checksum does not match the project pin"
 
-  tar -xzf "$archive_path" -C "$unpack_dir" || fail "release extraction failed"
+  tar -xpzf "$archive_path" -C "$unpack_dir" || fail "release extraction failed"
   unpacked_release=$unpack_dir/loaf_${version}_${platform}
   [ -d "$unpacked_release" ] || fail "archive is missing the expected release directory"
   [ -f "$unpacked_release/loaf-release-manifest.json" ] || fail "archive is missing loaf-release-manifest.json"

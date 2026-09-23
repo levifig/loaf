@@ -68,8 +68,6 @@ type ampReadinessRecord struct {
 	CanonicalRemote       string               `json:"canonical_remote,omitempty"`
 	TrackerProvider       string               `json:"tracker_provider,omitempty"`
 	TrackerScope          string               `json:"tracker_scope,omitempty"`
-	AmpProjectScope       string               `json:"amp_project_scope,omitempty"`
-	AmpWorkspaceScope     string               `json:"amp_workspace_scope,omitempty"`
 	AmpProjectID          string               `json:"amp_project_id,omitempty"`
 	AmpWorkspaceID        string               `json:"amp_workspace_id,omitempty"`
 	BinaryPath            string               `json:"binary_path,omitempty"`
@@ -81,8 +79,13 @@ type ampReadinessRecord struct {
 	PackageVersion        string               `json:"package_version,omitempty"`
 	Skills                []ampReadinessSource `json:"skills"`
 	Plugins               []ampReadinessSource `json:"plugins"`
+	Instructions          []ampReadinessSource `json:"instructions"`
 	Findings              []string             `json:"findings"`
 	Limitations           []string             `json:"limitations"`
+	projectRoot           string
+	releaseRoot           string
+	homeRoot              string
+	xdgRoot               string
 }
 
 type loafReleaseManifest struct {
@@ -179,6 +182,7 @@ func (r Runner) runAmpReadiness(args []string, out io.Writer) error {
 		ArchiveSHA256:   options.archiveSHA256,
 		Skills:          []ampReadinessSource{},
 		Plugins:         []ampReadinessSource{},
+		Instructions:    []ampReadinessSource{},
 		Findings:        []string{},
 		Limitations: []string{
 			"Amp exposes no deterministic runtime API for enumerating loaded skill and plugin sources; readiness proves the documented project-local and global filesystem search locations.",
@@ -200,6 +204,12 @@ func (r Runner) runAmpReadiness(args []string, out io.Writer) error {
 		return finishAmpReadiness(out, options.json, record)
 	}
 	projectRoot := root.Path()
+	record.projectRoot = projectRoot
+	record.homeRoot = installHome()
+	record.xdgRoot = os.Getenv("XDG_CONFIG_HOME")
+	if record.xdgRoot == "" && record.homeRoot != "" {
+		record.xdgRoot = filepath.Join(record.homeRoot, ".config")
+	}
 	pinPath, pinErr := resolveAmpReadinessPinPath(projectRoot, options.pinPath)
 	if pinErr != nil {
 		record.Findings = append(record.Findings, "pin must be a committed regular file inside the project: "+pinErr.Error())
@@ -210,7 +220,6 @@ func (r Runner) runAmpReadiness(args []string, out io.Writer) error {
 		} else {
 			record.ProjectID = pin.ProjectID
 			record.CanonicalRemote = pin.GitRemote
-			record.AmpProjectScope = pin.GitRemote
 			record.TrackerProvider = pin.TrackerProvider
 			record.TrackerScope = pin.TrackerScope
 			verifyAmpOrbIdentity(&record)
@@ -311,7 +320,9 @@ func validAmpOrbIdentity(value string) bool {
 func finishAmpReadiness(out io.Writer, jsonOutput bool, record ampReadinessRecord) error {
 	sort.Slice(record.Skills, func(i, j int) bool { return record.Skills[i].Path < record.Skills[j].Path })
 	sort.Slice(record.Plugins, func(i, j int) bool { return record.Plugins[i].Path < record.Plugins[j].Path })
+	sort.Slice(record.Instructions, func(i, j int) bool { return record.Instructions[i].Path < record.Instructions[j].Path })
 	record.Ready = len(record.Findings) == 0
+	redactAmpReadinessPaths(&record)
 	if jsonOutput {
 		if err := writeJSON(out, record); err != nil {
 			return err
@@ -331,6 +342,45 @@ func finishAmpReadiness(out io.Writer, jsonOutput bool, record ampReadinessRecor
 	return nil
 }
 
+func redactAmpReadinessPaths(record *ampReadinessRecord) {
+	logical := func(path string) string {
+		if path == "" {
+			return ""
+		}
+		candidates := []struct{ root, label string }{
+			{record.releaseRoot, "<release>"},
+			{record.projectRoot, "<project>"},
+			{record.xdgRoot, "$XDG_CONFIG_HOME"},
+			{record.homeRoot, "$HOME"},
+		}
+		clean := canonicalAmpReadinessPath(path)
+		for _, candidate := range candidates {
+			if candidate.root == "" {
+				continue
+			}
+			root := canonicalAmpReadinessPath(candidate.root)
+			if clean == root {
+				return candidate.label
+			}
+			if strings.HasPrefix(clean, root+string(filepath.Separator)) {
+				rel, err := filepath.Rel(root, clean)
+				if err == nil {
+					return candidate.label + "/" + filepath.ToSlash(rel)
+				}
+			}
+		}
+		return "<observed>/" + filepath.Base(clean)
+	}
+	record.BinaryPath = logical(record.BinaryPath)
+	record.ArchiveSidecarPath = logical(record.ArchiveSidecarPath)
+	record.ReleaseManifestPath = logical(record.ReleaseManifestPath)
+	for _, sources := range [][]ampReadinessSource{record.Skills, record.Plugins, record.Instructions} {
+		for i := range sources {
+			sources[i].Path = logical(sources[i].Path)
+		}
+	}
+}
+
 func resolveAmpReadinessPinPath(projectRoot, raw string) (string, error) {
 	if resolved, err := filepath.EvalSymlinks(projectRoot); err == nil {
 		projectRoot = resolved
@@ -344,16 +394,16 @@ func resolveAmpReadinessPinPath(projectRoot, raw string) (string, error) {
 		return "", err
 	}
 	abs = filepath.Clean(abs)
+	info, err := os.Lstat(abs)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&fs.ModeSymlink != 0 {
+		return "", fmt.Errorf("pin is not a regular file")
+	}
 	if resolved, resolveErr := filepath.EvalSymlinks(abs); resolveErr == nil {
 		abs = resolved
 	}
 	rel, err := filepath.Rel(projectRoot, abs)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == "." {
 		return "", fmt.Errorf("pin outside project")
-	}
-	info, err := os.Lstat(abs)
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&fs.ModeSymlink != 0 {
-		return "", fmt.Errorf("pin is not a regular file")
 	}
 	rel = filepath.ToSlash(rel)
 	cmd := exec.Command("git", "cat-file", "-e", "HEAD:"+rel)
@@ -466,7 +516,16 @@ func unsafeAmpReadinessRemote(raw string) bool {
 	}
 	if strings.Contains(raw, "://") {
 		parsed, err := url.Parse(raw)
-		return err != nil || parsed.User != nil || parsed.Hostname() == ""
+		if err != nil || parsed.Hostname() == "" {
+			return true
+		}
+		if parsed.User != nil {
+			_, password := parsed.User.Password()
+			if strings.ToLower(parsed.Scheme) != "ssh" || parsed.User.Username() != "git" || password {
+				return true
+			}
+		}
+		return false
 	}
 	if at := strings.Index(raw, "@"); at >= 0 && !strings.HasPrefix(raw, "git@") {
 		return true
@@ -501,7 +560,14 @@ func verifyAmpReadinessProjectIdentity(root project.Root, pin ampReadinessPin, r
 	} else if remote != pin.GitRemote {
 		record.Findings = append(record.Findings, "canonical Git origin remote does not match the pin")
 	}
-	if conf, err := project.ReadProjectConf(root); err == nil {
+	confPath := filepath.Join(root.Path(), ".agents", "loaf.conf")
+	if _, err := os.Lstat(confPath); os.IsNotExist(err) {
+		record.Limitations = append(record.Limitations, "Project continuity config .agents/loaf.conf is absent; continuity_project_id is omitted.")
+	} else if err != nil {
+		record.Findings = append(record.Findings, "project continuity config could not be inspected")
+	} else if conf, err := project.ReadProjectConf(root); err != nil {
+		record.Findings = append(record.Findings, "project continuity config is malformed or unreadable")
+	} else {
 		record.ContinuityProjectID = conf.ProjectID
 		if conf.ProjectID != pin.ProjectID {
 			record.Findings = append(record.Findings, "continuity project identity does not match the pin")
@@ -524,8 +590,12 @@ func canonicalAmpGitRemote(root project.Root) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	_, repository, ok := strings.Cut(normalized, "/")
-	if !ok || !validAmpPinnedRemote(repository) {
+	const githubPrefix = "github.com/"
+	if !strings.HasPrefix(normalized, githubPrefix) {
+		return "", fmt.Errorf("origin is not hosted on github.com")
+	}
+	repository := strings.TrimPrefix(normalized, githubPrefix)
+	if !validAmpPinnedRemote(repository) {
 		return "", fmt.Errorf("origin is not an owner/repository remote")
 	}
 	return repository, nil
@@ -537,6 +607,7 @@ func verifyAmpReadinessDistribution(r Runner, pin ampReadinessPin, suppliedArchi
 		record.Findings = append(record.Findings, "running installed distribution could not be resolved")
 		return
 	}
+	record.releaseRoot = root
 	record.PackageVersion = packageVersion(root)
 	if record.PackageVersion != pin.Version {
 		record.Findings = append(record.Findings, "running package version does not match the pin")
@@ -821,6 +892,7 @@ func verifyAmpPlugins(distDir, ampDir, pluginsDir, version string, record *ampRe
 		record.Findings = append(record.Findings, "project-local Amp ownership manifest is missing or stale")
 		return
 	}
+	verifyAmpManagedInstructions(filepath.Dir(ampDir), desired, installed, record)
 	expectedNames := map[string]bool{}
 	installedByID := map[string]targetAdapterArtifact{}
 	for _, artifact := range installed.Artifacts {
@@ -859,14 +931,68 @@ func verifyAmpPlugins(distDir, ampDir, pluginsDir, version string, record *ampRe
 	}
 }
 
+func verifyAmpManagedInstructions(projectRoot string, desired, installed targetAdapterManifest, record *ampReadinessRecord) {
+	find := func(manifest targetAdapterManifest) *targetAdapterArtifact {
+		for i := range manifest.Artifacts {
+			artifact := &manifest.Artifacts[i]
+			if artifact.ID == "managed-instructions" {
+				return artifact
+			}
+		}
+		return nil
+	}
+	instruction := find(desired)
+	owned := find(installed)
+	if instruction == nil || instruction.Kind != "instruction" || instruction.Destination != "project-instructions" || !isLowerSHA256(instruction.SHA256) {
+		record.Findings = append(record.Findings, "release Amp target manifest has no valid managed-instructions ownership")
+		return
+	}
+	if owned == nil || owned.Kind != instruction.Kind || owned.Destination != instruction.Destination || owned.SHA256 != instruction.SHA256 {
+		record.Findings = append(record.Findings, "project-local Amp managed-instructions ownership is missing or stale")
+		return
+	}
+	path := filepath.Join(projectRoot, "AGENTS.md")
+	body, err := readRegularFile(path, projectFileReadLimit)
+	if err != nil {
+		record.Findings = append(record.Findings, "project AGENTS.md managed Loaf instructions are missing or unreadable")
+		return
+	}
+	content := string(body)
+	if err := validateFencedStructure(content); err != nil {
+		record.Findings = append(record.Findings, "project AGENTS.md has duplicate or malformed Loaf managed fences")
+		return
+	}
+	section, ok := findFencedSectionRange(content)
+	if !ok || section.malformedHeader {
+		record.Findings = append(record.Findings, "project AGENTS.md has no well-formed Loaf managed fence")
+		return
+	}
+	digest := fencedContentFingerprint(content)
+	sourcePath := canonicalAmpReadinessPath(path)
+	projectPath := canonicalAmpReadinessPath(projectRoot)
+	if sourcePath != projectPath && !strings.HasPrefix(sourcePath, projectPath+string(filepath.Separator)) {
+		record.Findings = append(record.Findings, "project AGENTS.md managed Loaf instructions do not resolve to a project-local source")
+		return
+	}
+	record.Instructions = append(record.Instructions, ampReadinessSource{Path: sourcePath, SHA256: digest})
+	if digest != instruction.SHA256 {
+		record.Findings = append(record.Findings, "project AGENTS.md Loaf managed instructions are stale")
+	}
+}
+
 func verifyAmpGlobalDuplicates(projectRoot, skillsDir, pluginsDir string, skillNames []string, record *ampReadinessRecord) {
 	home := installHome()
 	if home == "" {
 		record.Findings = append(record.Findings, "HOME is unavailable for duplicate-source verification")
 		return
 	}
+	xdg := os.Getenv("XDG_CONFIG_HOME")
+	if xdg == "" {
+		xdg = filepath.Join(home, ".config")
+	}
+	globalSkillRoots := []string{filepath.Join(xdg, "agents", "skills"), filepath.Join(home, ".agents", "skills")}
 	for _, name := range skillNames {
-		for _, globalRoot := range []string{filepath.Join(home, ".config", "agents", "skills"), filepath.Join(home, ".agents", "skills")} {
+		for _, globalRoot := range globalSkillRoots {
 			candidate := filepath.Join(globalRoot, name)
 			if filepath.Clean(candidate) != filepath.Clean(filepath.Join(skillsDir, name)) && pathExistsLstat(candidate) {
 				if digest, err := hashInstallSkillTree(candidate); err == nil {
@@ -875,10 +1001,6 @@ func verifyAmpGlobalDuplicates(projectRoot, skillsDir, pluginsDir string, skillN
 				record.Findings = append(record.Findings, "duplicate global Loaf skill source is effective: "+name)
 			}
 		}
-	}
-	xdg := os.Getenv("XDG_CONFIG_HOME")
-	if xdg == "" {
-		xdg = filepath.Join(home, ".config")
 	}
 	for _, globalPlugins := range []string{filepath.Join(xdg, "amp", "plugins"), filepath.Join(home, ".amp", "plugins")} {
 		if filepath.Clean(globalPlugins) == filepath.Clean(pluginsDir) || strings.HasPrefix(filepath.Clean(globalPlugins), filepath.Clean(projectRoot)+string(filepath.Separator)) {

@@ -63,6 +63,12 @@ func TestAmpOrbConsumerBootstrapSetupResumeAndIdempotence(t *testing.T) {
 	assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 1)
 	assertAmpOrbBootstrapLineCount(t, fixture.tarLog, 1)
 	assertAmpOrbBootstrapLineCount(t, fixture.loafLog, 2)
+	if curlCall := ampOrbBootstrapReadFile(t, fixture.curlLog); !strings.Contains(curlCall, "--connect-timeout 10") || !strings.Contains(curlCall, "--max-time 120") {
+		t.Fatalf("curl call lacks bounded timeouts: %s", curlCall)
+	}
+	if tarCall := ampOrbBootstrapReadFile(t, fixture.tarLog); !strings.Contains(tarCall, "-xpzf") {
+		t.Fatalf("tar call does not preserve archive modes: %s", tarCall)
+	}
 
 	agentsBefore := ampOrbBootstrapReadFile(t, filepath.Join(fixture.project, "AGENTS.md"))
 	if !strings.Contains(agentsBefore, "consumer-owned introduction") || !strings.Contains(agentsBefore, "consumer-owned epilogue") {
@@ -85,6 +91,105 @@ func TestAmpOrbConsumerBootstrapSetupResumeAndIdempotence(t *testing.T) {
 	if agentsAfter != agentsBefore {
 		t.Fatalf("ready resume/setup changed consumer instructions:\nbefore:\n%s\nafter:\n%s", agentsBefore, agentsAfter)
 	}
+}
+
+func TestAmpOrbConsumerBootstrapRecoversOrphanLock(t *testing.T) {
+	fixture := newAmpOrbBootstrapFixture(t, false)
+	lockDir := filepath.Join(fixture.orbHome, ".bootstrap.lock")
+	ampOrbBootstrapWriteFile(t, filepath.Join(lockDir, "owner.pid"), []byte("99999999\n"), 0o644)
+
+	if output, err := fixture.run(t, "setup"); err != nil {
+		t.Fatalf("setup with orphan lock error = %v\n%s", err, output)
+	}
+	assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 1)
+	if _, err := os.Lstat(lockDir); !os.IsNotExist(err) {
+		t.Fatalf("orphan lock was not cleaned after setup: %v", err)
+	}
+}
+
+func TestAmpOrbConsumerBootstrapRefusesLiveLock(t *testing.T) {
+	fixture := newAmpOrbBootstrapFixture(t, false)
+	lockDir := filepath.Join(fixture.orbHome, ".bootstrap.lock")
+	owner := fmt.Sprintf("%d\n", os.Getpid())
+	ampOrbBootstrapWriteFile(t, filepath.Join(lockDir, "owner.pid"), []byte(owner), 0o644)
+
+	output, err := fixture.run(t, "setup")
+	if err == nil || !strings.Contains(output, "another setup or resume process") {
+		t.Fatalf("setup with live lock error = %v, output = %q", err, output)
+	}
+	assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 0)
+	if got := ampOrbBootstrapReadFile(t, filepath.Join(lockDir, "owner.pid")); got != owner {
+		t.Fatalf("live lock owner changed: got %q want %q", got, owner)
+	}
+}
+
+func TestAmpOrbConsumerBootstrapReplacesOwnedDanglingUserBinLink(t *testing.T) {
+	fixture := newAmpOrbBootstrapFixture(t, false)
+	dangling := filepath.Join(fixture.orbHome, "releases", "0.9.0", "bin", "loaf")
+	if err := os.Symlink(dangling, filepath.Join(fixture.userBin, "loaf")); err != nil {
+		t.Fatal(err)
+	}
+
+	if output, err := fixture.run(t, "setup"); err != nil {
+		t.Fatalf("setup with owned dangling link error = %v\n%s", err, output)
+	}
+	resolved, err := filepath.EvalSymlinks(filepath.Join(fixture.userBin, "loaf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(fixture.orbHome, "releases", ampOrbBootstrapTestVersion, "bin", "loaf")
+	want, err = filepath.EvalSymlinks(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved != want {
+		t.Fatalf("activated loaf = %s, want %s", resolved, want)
+	}
+}
+
+func TestAmpOrbConsumerBootstrapRejectsUnsafePinBeforeDownload(t *testing.T) {
+	tests := []struct {
+		name string
+		old  string
+		new  string
+	}{
+		{name: "semver leading zero", old: "version=" + ampOrbBootstrapTestVersion, new: "version=01.2.3"},
+		{name: "sensitive project identity", old: "project.id=project-test", new: "project.id=project-token"},
+		{name: "traversing remote", old: "git.remote=acme/consumer", new: "git.remote=acme/../consumer"},
+		{name: "URL tracker scope", old: "tracker.scope=acme/consumer#Loaf", new: "tracker.scope=https://example.invalid/scope"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newAmpOrbBootstrapFixture(t, false)
+			pinPath := filepath.Join(fixture.project, ".agents", "loaf-orb.pin")
+			body := ampOrbBootstrapReadFile(t, pinPath)
+			body = strings.Replace(body, test.old, test.new, 1)
+			ampOrbBootstrapWriteFile(t, pinPath, []byte(body), 0o644)
+			ampOrbBootstrapGit(t, fixture.project, "add", ".agents/loaf-orb.pin")
+			ampOrbBootstrapGit(t, fixture.project, "commit", "-m", "Mutate bootstrap pin")
+
+			if output, err := fixture.run(t, "setup"); err == nil {
+				t.Fatalf("unsafe pin succeeded; output=%q", output)
+			}
+			assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 0)
+			assertAmpOrbBootstrapLineCount(t, fixture.tarLog, 0)
+		})
+	}
+}
+
+func TestAmpOrbConsumerBootstrapRejectsUncommittedPinBeforeDownload(t *testing.T) {
+	fixture := newAmpOrbBootstrapFixture(t, false)
+	pinPath := filepath.Join(fixture.project, ".agents", "loaf-orb.pin")
+	body := ampOrbBootstrapReadFile(t, pinPath)
+	body = strings.Replace(body, "tracker.scope=acme/consumer#Loaf", "tracker.scope=acme/consumer#Other", 1)
+	ampOrbBootstrapWriteFile(t, pinPath, []byte(body), 0o644)
+
+	output, err := fixture.run(t, "setup")
+	if err == nil || !strings.Contains(output, "must match committed bytes") {
+		t.Fatalf("setup with uncommitted pin error = %v, output = %q", err, output)
+	}
+	assertAmpOrbBootstrapLineCount(t, fixture.curlLog, 0)
+	assertAmpOrbBootstrapLineCount(t, fixture.tarLog, 0)
 }
 
 func TestAmpOrbConsumerBootstrapChecksumMismatchFailsBeforeExtraction(t *testing.T) {
@@ -187,7 +292,7 @@ esac
 	ampOrbBootstrapWriteFile(t, filepath.Join(toolsDir, "uname"), []byte("#!/bin/sh\ncase \"${1:-}\" in -s) echo Linux ;; -m) echo x86_64 ;; *) exit 1 ;; esac\n"), 0o755)
 	ampOrbBootstrapWriteFile(t, filepath.Join(toolsDir, "curl"), []byte(`#!/bin/sh
 set -eu
-printf '%s\n' download >> "${AMP_ORB_CURL_LOG:?}"
+printf '%s\n' "$*" >> "${AMP_ORB_CURL_LOG:?}"
 output=
 while [ "$#" -gt 0 ]; do
   if [ "$1" = --output ]; then
@@ -207,7 +312,7 @@ printf '%s  %s\n' "${AMP_ORB_ARCHIVE_SHA256:?}" "$last"
 `), 0o755)
 	ampOrbBootstrapWriteFile(t, filepath.Join(toolsDir, "tar"), []byte(`#!/bin/sh
 set -eu
-printf '%s\n' extract >> "${AMP_ORB_TAR_LOG:?}"
+printf '%s\n' "$*" >> "${AMP_ORB_TAR_LOG:?}"
 exec "${AMP_ORB_REAL_TAR:?}" "$@"
 `), 0o755)
 
@@ -248,7 +353,7 @@ exec "${AMP_ORB_REAL_TAR:?}" "$@"
 
 func (fixture ampOrbBootstrapFixture) run(t *testing.T, entry string) (string, error) {
 	t.Helper()
-	cmd := exec.Command("sh", filepath.Join(fixture.project, ".agents", entry))
+	cmd := exec.Command("sh", "-c", `umask 077; exec sh "$1"`, "amp-orb-bootstrap-test", filepath.Join(fixture.project, ".agents", entry))
 	cmd.Dir = fixture.project
 	cmd.Env = fixture.env
 	output, err := cmd.CombinedOutput()
