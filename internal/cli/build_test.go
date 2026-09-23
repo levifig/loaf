@@ -318,7 +318,7 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 		"amp.on('tool.call', async (event: AmpToolCallEvent) =>",
 		"amp.on('tool.result', async (event: AmpToolResultEvent) =>",
 		"execFile(scriptPath, ['agent-check']",
-		"consumerReadiness.pinned && consumerReadiness.ready",
+		"const readiness = await runAmpConsumerAgentCheck(workspace.path)",
 		"Loaf fail-closed hook ${hook.id} could not prove this tool call safe",
 		"Advisory hook ${hook.id} failed without blocking",
 		"return { action: 'allow' }",

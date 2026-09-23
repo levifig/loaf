@@ -525,15 +525,6 @@ const postToolHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(p
 
 func nativeAmpPluginBody() string {
 	body := `  const delegation = registerLoafDelegation(amp);
-  let consumerReadiness: AmpConsumerReadiness = { checked: false, pinned: false, ready: false };
-
-  async function refreshConsumerReadiness(cwd: string, force: boolean = false): Promise<AmpConsumerReadiness> {
-    if (!force && consumerReadiness.checked && consumerReadiness.pinned && consumerReadiness.ready) {
-      return consumerReadiness;
-    }
-    consumerReadiness = await runAmpConsumerAgentCheck(cwd);
-    return consumerReadiness;
-  }
 
   function ampWorkspaceDir(): { path?: string; error?: string } {
     const workspaceRoot = amp.system?.workspaceRoot;
@@ -580,7 +571,7 @@ func nativeAmpPluginBody() string {
       console.warn(%%BT%%[loaf] Managed-content reconcile skipped: ${directory.error || 'Amp workspace is unavailable'}%%BT%%);
       return policy;
     }
-    const readiness = await refreshConsumerReadiness(directory.cwd, true);
+    const readiness = await runAmpConsumerAgentCheck(directory.cwd);
     if (readiness.pinned && !readiness.ready) {
       console.warn(%%BT%%[loaf] ${readiness.message || 'Pinned Loaf Amp consumer is not ready.'} Tool calls will remain blocked until readiness is proven.%%BT%%);
       return policy;
@@ -604,13 +595,12 @@ func nativeAmpPluginBody() string {
 
   amp.on('tool.call', async (event: AmpToolCallEvent) => {
     const workspace = ampWorkspaceDir();
-    if (workspace.path) {
-      const readiness = await refreshConsumerReadiness(workspace.path);
-      if (readiness.pinned && !readiness.ready) {
-        return { action: 'reject-and-continue', message: readiness.message || 'Pinned Loaf Amp consumer is not ready. Rerun the Orb setup or resume lifecycle, then retry.' };
-      }
-    } else if (consumerReadiness.pinned && !consumerReadiness.ready) {
-      return { action: 'reject-and-continue', message: consumerReadiness.message || 'Pinned Loaf Amp consumer readiness cannot be proven because the workspace is unavailable.' };
+    if (!workspace.path) {
+      return { action: 'reject-and-continue', message: (workspace.error || 'Amp workspace is unavailable') + '; Loaf readiness cannot be proven.' };
+    }
+    const readiness = await runAmpConsumerAgentCheck(workspace.path);
+    if (readiness.pinned && !readiness.ready) {
+      return { action: 'reject-and-continue', message: readiness.message || 'Pinned Loaf Amp consumer is not ready. Rerun the Orb setup or resume lifecycle, then retry.' };
     }
     const rejection = await delegation.check(event);
     if (rejection) return { action: 'reject-and-continue', message: rejection };
@@ -626,7 +616,7 @@ func nativeAmpPluginBody() string {
         if (directory.error || !directory.cwd) {
           return { action: 'reject-and-continue', message: directory.error || 'Amp workspace is unavailable' };
         }
-		const result = await runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed, directory.cwd);
+        const result = await runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed, directory.cwd);
 
         const detail = (result.stderr || result.stdout || result.error || ('exit ' + result.exitCode)).trim();
         if (result.exitCode === 2) {

@@ -19,15 +19,16 @@ const agentContext = {
 
 function initializePlugin(workspace) {
   const handlers = new Map();
-  initialize({
+  const amp = {
     registerTool() {},
     on(event, handler) { handlers.set(event, handler); },
     helpers: {
       filePathFromURI: uri => new URL(uri).pathname,
       shellCommandFromToolCall: () => null,
     },
-    system: { workspaceRoot: pathToFileURL(workspace) },
-  });
+  };
+  if (workspace) amp.system = { workspaceRoot: pathToFileURL(workspace) };
+  initialize(amp);
   return handlers;
 }
 
@@ -149,7 +150,7 @@ test('generated Amp plugin gates pinned consumers and applies fail-closed hook s
     assert.deepEqual(calls, ['agent-check', 'agent-check']);
   });
 
-  await t.test('ready state is cached for the session and allows tools', async () => {
+  await t.test('ready state is revalidated for every tool call', async () => {
     const workspace = join(fixtureRoot, 'ready');
     await writePinnedConsumer(workspace);
     await writeFile(callLog, '');
@@ -158,7 +159,28 @@ test('generated Amp plugin gates pinned consumers and applies fail-closed hook s
     await handlers.get('agent.start')({ thread: { id: 'T-main' }, message: 'probe', id: 'm3' }, agentContext);
     assert.deepEqual(await handlers.get('tool.call')(toolEvent()), { action: 'allow' });
     const calls = (await readFile(callLog, 'utf8')).trim().split('\n');
-    assert.equal(calls.filter(call => call === 'agent-check').length, 1);
+    assert.equal(calls.filter(call => call === 'agent-check').length, 2);
+  });
+
+  await t.test('bootstrap removal after startup blocks the next tool call', async () => {
+    const workspace = join(fixtureRoot, 'runtime-removed');
+    await writePinnedConsumer(workspace);
+    await writeFile(callLog, '');
+    process.env.LOAF_TEST_AGENT_CHECK = 'ready';
+    const handlers = initializePlugin(workspace);
+    await handlers.get('agent.start')({ thread: { id: 'T-main' }, message: 'probe', id: 'm-runtime' }, agentContext);
+    await rm(join(workspace, '.agents', 'loaf-orb-bootstrap.sh'));
+    const result = await handlers.get('tool.call')(toolEvent());
+    assert.equal(result.action, 'reject-and-continue');
+    assert.match(result.message, /missing \.agents\/loaf-orb-bootstrap\.sh/);
+  });
+
+  await t.test('first tool call without a workspace rejects', async () => {
+    const handlers = initializePlugin();
+    const result = await handlers.get('tool.call')(toolEvent());
+    assert.equal(result.action, 'reject-and-continue');
+    assert.match(result.message, /workspace is unavailable/i);
+    assert.match(result.message, /readiness cannot be proven/i);
   });
 
   await t.test('pin without bootstrap blocks', async () => {

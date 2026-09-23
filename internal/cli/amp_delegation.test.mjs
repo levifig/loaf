@@ -14,11 +14,14 @@ const generatedPluginURL = process.env.LOAF_AMP_PLUGIN_PATH
 test('generated plugin preserves normal hook dispatch when optional delegation registration fails', async t => {
   const { default: initialize } = await import(generatedPluginURL);
   t.mock.method(console, 'warn', () => {});
+  const workspace = await mkdtemp(join(tmpdir(), 'loaf-amp-unpinned-'));
+  t.after(() => rm(workspace, { recursive: true, force: true }));
   const handlers = new Map();
   const amp = {
     registerTool() { throw new Error('duplicate registration'); },
     on(event, handler) { handlers.set(event, handler); },
-    helpers: { shellCommandFromToolCall: () => null },
+    helpers: { filePathFromURI: uri => fileURLToPath(uri), shellCommandFromToolCall: () => null },
+    system: { workspaceRoot: pathToFileURL(workspace) },
   };
   assert.doesNotThrow(() => initialize(amp));
   assert.deepEqual([...handlers.keys()], ['agent.start', 'tool.call', 'tool.result']);

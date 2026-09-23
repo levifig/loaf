@@ -835,10 +835,44 @@ func verifyAmpInstallRecord(projectRoot, version, ampDir, skillsDir string) erro
 	if decoder.Decode(&record) != nil || decoder.Decode(&struct{}{}) != io.EOF {
 		return fmt.Errorf("invalid install record")
 	}
-	if record.Version != version || record.Target != "amp" || canonicalAmpReadinessPath(record.ConfigDir) != canonicalAmpReadinessPath(ampDir) || canonicalAmpReadinessPath(record.SkillsDir) != canonicalAmpReadinessPath(skillsDir) {
+	recordedAmpDir, recordedSkillsDir, err := resolveAmpInstallRecordPaths(projectRoot, record)
+	if err != nil || record.Version != version || record.Target != "amp" || canonicalAmpReadinessPath(recordedAmpDir) != canonicalAmpReadinessPath(ampDir) || canonicalAmpReadinessPath(recordedSkillsDir) != canonicalAmpReadinessPath(skillsDir) {
 		return fmt.Errorf("stale install record")
 	}
 	return nil
+}
+
+func resolveAmpInstallRecordPaths(projectRoot string, record installTargetRecord) (string, string, error) {
+	hasProjectPaths := record.ProjectConfigDir != "" || record.ProjectSkillsDir != ""
+	if !hasProjectPaths {
+		if record.ConfigDir == "" || record.SkillsDir == "" {
+			return "", "", fmt.Errorf("install record paths are missing")
+		}
+		return record.ConfigDir, record.SkillsDir, nil
+	}
+	if record.ConfigDir != "" || record.SkillsDir != "" || record.ProjectConfigDir == "" || record.ProjectSkillsDir == "" {
+		return "", "", fmt.Errorf("install record path modes are mixed")
+	}
+	configDir, err := resolveProjectInstallRecordPath(projectRoot, record.ProjectConfigDir)
+	if err != nil {
+		return "", "", err
+	}
+	skillsDir, err := resolveProjectInstallRecordPath(projectRoot, record.ProjectSkillsDir)
+	if err != nil {
+		return "", "", err
+	}
+	return configDir, skillsDir, nil
+}
+
+func resolveProjectInstallRecordPath(projectRoot, relative string) (string, error) {
+	if relative == "." || filepath.IsAbs(relative) || strings.Contains(relative, `\`) {
+		return "", fmt.Errorf("invalid project-relative install path")
+	}
+	local := filepath.FromSlash(relative)
+	if filepath.ToSlash(filepath.Clean(local)) != relative || relative == ".." || strings.HasPrefix(relative, "../") {
+		return "", fmt.Errorf("invalid project-relative install path")
+	}
+	return filepath.Join(projectRoot, local), nil
 }
 
 func canonicalAmpReadinessPath(path string) string {

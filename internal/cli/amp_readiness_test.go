@@ -141,6 +141,49 @@ func TestAmpReadinessSuccessIsReadOnly(t *testing.T) {
 	}
 }
 
+func TestAmpReadinessProjectInstallRecordSurvivesRepositoryRelocation(t *testing.T) {
+	fixture := newAmpReadinessFixture(t)
+	recordPath := installRecordPath(fixture.project, "amp")
+	recordBody := ampReadinessReadFile(t, recordPath)
+	if bytes.Contains(recordBody, []byte(fixture.project)) {
+		t.Fatalf("project install record leaked materialization path %q: %s", fixture.project, recordBody)
+	}
+	for _, want := range []string{`"project_config_dir": ".amp"`, `"project_skills_dir": ".agents/skills"`} {
+		if !bytes.Contains(recordBody, []byte(want)) {
+			t.Fatalf("project install record is missing %s: %s", want, recordBody)
+		}
+	}
+
+	ampReadinessGit(t, fixture.project, "add", ".")
+	ampReadinessGit(t, fixture.project, "commit", "-m", "materialize Amp integration")
+	relocated := filepath.Join(t.TempDir(), "relocated-project")
+	ampReadinessGit(t, filepath.Dir(relocated), "clone", fixture.project, relocated)
+	ampReadinessGit(t, relocated, "remote", "set-url", "origin", "https://github.com/acme/ready.git")
+
+	relocatedFixture := &ampReadinessFixture{
+		t:       t,
+		project: relocated,
+		home:    fixture.home,
+		release: fixture.release,
+		binary:  fixture.binary,
+		pin:     filepath.Join(relocated, "amp.pin"),
+		archive: fixture.archive,
+	}
+	record, err := relocatedFixture.run(relocatedFixture.archive)
+	if err != nil || !record.Ready {
+		t.Fatalf("relocated readiness error = %v, findings = %v", err, record.Findings)
+	}
+	cmd := exec.Command("git", "status", "--porcelain")
+	cmd.Dir = relocated
+	status, statusErr := cmd.Output()
+	if statusErr != nil {
+		t.Fatalf("git status in relocated project: %v", statusErr)
+	}
+	if len(status) != 0 {
+		t.Fatalf("relocated readiness dirtied project:\n%s", status)
+	}
+}
+
 func TestAmpReadinessDiscoversOrbProjectAndWorkspaceIdentity(t *testing.T) {
 	fixture := newAmpReadinessFixture(t)
 	ampOrbIdentityRequestTokenPath = filepath.Join(t.TempDir(), "workload-identity-request-token")
