@@ -91,7 +91,7 @@ func buildNativeAmpTarget(root string) error {
 	if err := generateNativeAmpPlugin(filepath.Join(root, "config", "hooks.yaml"), dist, version); err != nil {
 		return err
 	}
-	return copyNativeAmpModesPlugin(root, filepath.Join(dist, ".amp", "plugins"))
+	return nil
 }
 
 func generateNativeAmpPlugin(hooksPath string, dist string, version string) error {
@@ -106,22 +106,10 @@ func generateNativeAmpPlugin(hooksPath string, dist string, version string) erro
 	return os.WriteFile(filepath.Join(pluginDir, "loaf.ts"), []byte(renderNativeAmpPlugin(hooks, version)), 0o644)
 }
 
-func copyNativeAmpModesPlugin(root string, pluginDir string) error {
-	src := filepath.Join(root, "content", "amp", "plugins", "loaf-modes.ts")
-	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
-		return err
-	}
-	if err := copyNativeBuildFile(src, filepath.Join(pluginDir, "loaf-modes.ts")); err != nil {
-		return fmt.Errorf("copy amp modes plugin: %w", err)
-	}
-	return nil
-}
-
 func renderNativeAmpPlugin(hooks []nativeBuildHook, version string) string {
 	return nativeAmpHeader(version) + "\n\n" +
 		nativeAmpCoreFunctions() + "\n\n" +
 		nativeAmpToolHelpers() + "\n\n" +
-		nativeAmpDelegation + "\n\n" +
 		nativeAmpHookDataWithoutSession(hooks) + "\n\n" +
 		"export default function (amp: PluginAPI) {\n" + nativeAmpPluginBody() + "\n}"
 }
@@ -136,7 +124,7 @@ func nativeAmpHeader(version string) string {
 import type { PluginAPI } from '@ampcode/plugin';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { join, dirname } from 'path';
+import { join, dirname, isAbsolute, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -443,8 +431,7 @@ const postToolHooks: Record<string, HookEntry[]> = ` + marshalNativeAmpHookMap(p
 }
 
 func nativeAmpPluginBody() string {
-	body := `  const delegation = registerLoafDelegation(amp);
-  function ampWorkspaceDir(): { path?: string; error?: string } {
+	body := `  function ampWorkspaceDir(): { path?: string; error?: string } {
     const workspaceRoot = amp.system?.workspaceRoot;
     if (!workspaceRoot) return { error: 'Amp workspace is unavailable' };
     if (typeof amp.helpers?.filePathFromURI !== 'function') {
@@ -481,13 +468,11 @@ func nativeAmpPluginBody() string {
     return typeof shellCommand?.dir === 'string' && shellCommand.dir ? shellCommand.dir : undefined;
   }
 
-  amp.on('agent.start', async (event, ctx) => {
-    if (delegation.owns(event.thread.id)) return {};
-    const policy = await loafNativeModeContext(event, ctx);
+  amp.on('agent.start', async () => {
     const directory = resolveAmpHookCwd();
     if (directory.error || !directory.cwd) {
       console.warn(%%BT%%[loaf] Managed-content reconcile skipped: ${directory.error || 'Amp workspace is unavailable'}%%BT%%);
-      return policy;
+      return {};
     }
     const result = await runHook('harness', '', 'managed-content-reconcile', 'loaf harness reconcile --target amp --json', undefined, undefined, 10000, false, directory.cwd);
     const detail = (result.stdout || result.stderr).trim();
@@ -503,12 +488,10 @@ func nativeAmpPluginBody() string {
         console.warn(%%BT%%[loaf] Managed-content reconcile returned an unreadable receipt: ${detail}%%BT%%);
       }
     }
-    return policy;
+    return {};
   });
 
   amp.on('tool.call', async (event: AmpToolCallEvent) => {
-    const rejection = await delegation.check(event);
-    if (rejection) return { action: 'reject-and-continue', message: rejection };
     const toolName = normalizeAmpToolName(event.tool);
     const toolInput = normalizeAmpToolInput(amp, event);
     const hookPayload = serializeHookPayload(toolName, toolInput, event);

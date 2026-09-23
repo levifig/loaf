@@ -348,14 +348,17 @@ func TestCollectTargetAdapterArtifactsCollectsIndependentAmpPlugins(t *testing.T
 		}
 		got[artifact.Destination] = artifact.ID
 	}
-	if got["plugins/loaf.ts"] != "plugin:.amp/plugins/loaf.ts" || got["plugins/loaf-modes.ts"] != "plugin:.amp/plugins/loaf-modes.ts" {
-		t.Fatalf("artifacts = %#v, want independent loaf.ts and loaf-modes.ts plugins", artifacts)
+	if got["plugins/loaf.ts"] != "plugin:.amp/plugins/loaf.ts" {
+		t.Fatalf("artifacts = %#v, want the loaf.ts plugin", artifacts)
 	}
 	if _, ok := got["plugins/company.ts"]; ok {
 		t.Fatalf("artifacts = %#v, want Loaf-owned plugin files only", artifacts)
 	}
-	if len(got) != 2 {
-		t.Fatalf("artifacts = %#v, want exactly two Amp plugins", artifacts)
+	if _, ok := got["plugins/loaf-modes.ts"]; ok {
+		t.Fatalf("artifacts = %#v, want loaf-modes.ts excluded from the emitted Amp plugin allowlist", artifacts)
+	}
+	if len(got) != 1 {
+		t.Fatalf("artifacts = %#v, want exactly one Amp plugin", artifacts)
 	}
 }
 

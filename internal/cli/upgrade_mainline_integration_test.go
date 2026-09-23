@@ -88,6 +88,54 @@ func TestScopedUpgradePreservesUnselectedAmpModesAndOwnership(t *testing.T) {
 	}
 }
 
+func TestScopedUpgradePreservesUnmanifestedAmpModesPredecessor(t *testing.T) {
+	root, home := setupScopedUpgradeFixture(t)
+	dist := filepath.Join(root, "dist", "amp")
+	config := filepath.Join(home, ".config", "amp")
+	plugins := filepath.Join(config, "plugins")
+	hookID := "plugin:.amp/plugins/loaf.ts"
+	predecessor := testAmpModesPredecessor(t)
+	writeDistribution := func(hooks string) {
+		t.Helper()
+		writeInstallFile(t, filepath.Join(dist, ".amp", "plugins", "loaf.ts"), hooks)
+		writeTestTargetAdapterManifest(t, dist, "amp", []map[string]string{
+			{"id": hookID, "kind": "plugin", "source_path": ".amp/plugins/loaf.ts", "destination": "plugins/loaf.ts", "sha256": sha256Hex(hooks)},
+		})
+	}
+	writeDistribution("export const hooks = 1;\n")
+	if err := syncTargetAdapterManifest(targetInstallOptions{Target: "amp", DistDir: dist, ConfigDir: config, HomeDir: home, Version: "0.5.0"}); err != nil {
+		t.Fatal(err)
+	}
+	writeInstallFile(t, filepath.Join(config, loafInstallMarkerFile), "0.5.0\n")
+	before, err := readTargetAdapterManifest(filepath.Join(config, targetInstallManifestFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := targetAdapterArtifactsByID(before.Artifacts)[ampModesPluginArtifactID]; ok {
+		t.Fatalf("installed Amp artifacts = %#v, want no loaf-modes.ts row", before.Artifacts)
+	}
+	writeInstallFile(t, filepath.Join(plugins, "loaf-modes.ts"), predecessor)
+	writeDistribution("export const hooks = 2;\n")
+	preview := runInstallCapture(t, root, "upgrade", "--select", "amp/"+hookID, "--dry-run", "--json")
+	if strings.Contains(preview, ampModesPluginArtifactID) || strings.Contains(preview, "loaf-modes") {
+		t.Fatalf("selected loaf.ts preview claimed modes retirement:\n%s", preview)
+	}
+	if got := findScopedTargetArtifact(t, parseInstallPlanJSON(t, preview), "amp", hookID); got.Action != planActionUpdate {
+		t.Fatalf("selected loaf.ts preview action = %#v, want update", got)
+	}
+	runInstallCapture(t, root, "upgrade", "--select", "amp/"+hookID)
+	assertInstallFile(t, filepath.Join(plugins, "loaf.ts"), "export const hooks = 2;\n")
+	assertInstallFile(t, filepath.Join(plugins, "loaf-modes.ts"), predecessor)
+	assertInstallFile(t, filepath.Join(config, loafInstallMarkerFile), "0.5.0\n")
+	after, err := readTargetAdapterManifest(filepath.Join(config, targetInstallManifestFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := targetAdapterArtifactsByID(after.Artifacts)[ampModesPluginArtifactID]; ok {
+		t.Fatalf("scoped loaf.ts upgrade added modes row: %#v", after.Artifacts)
+	}
+}
+
 func TestScopedUpgradeRejectsLegacyWholeTargetBeforeWrites(t *testing.T) {
 	for _, dryRun := range []bool{true, false} {
 		t.Run(map[bool]string{true: "preview", false: "apply"}[dryRun], func(t *testing.T) {

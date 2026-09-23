@@ -79,7 +79,6 @@ func TestRunnerBuildRunsContentBuilderNatively(t *testing.T) {
 		filepath.Join(root, "dist", "codex", ".codex", "hooks.json"),
 		filepath.Join(root, "dist", "codex", hookCatalogFile),
 		filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf.ts"),
-		filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf-modes.ts"),
 	} {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("Stat(%s) error = %v", path, err)
@@ -119,15 +118,15 @@ func TestRunnerBuildRunsContentBuilderNatively(t *testing.T) {
 			wantArtifacts = 1
 		}
 		if target == "amp" {
-			wantArtifacts = 3
+			wantArtifacts = 2
 		}
 		if !ok || len(artifacts) < wantArtifacts {
 			t.Fatalf("%s manifest artifacts = %#v, want at least %d", target, manifest["artifacts"], wantArtifacts)
 		}
 		if target == "amp" {
 			got := ampManifestPluginDestinations(t, artifacts)
-			if got["plugins/loaf.ts"] != "plugin:.amp/plugins/loaf.ts" || got["plugins/loaf-modes.ts"] != "plugin:.amp/plugins/loaf-modes.ts" {
-				t.Fatalf("amp plugin artifacts = %#v, want independent loaf.ts and loaf-modes.ts plugins", artifacts)
+			if len(got) != 1 || got["plugins/loaf.ts"] != "plugin:.amp/plugins/loaf.ts" {
+				t.Fatalf("amp plugin artifacts = %#v, want exactly one loaf.ts plugin", artifacts)
 			}
 		}
 		var instruction map[string]any
@@ -306,10 +305,7 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 		"return 'Edit';",
 		"amp.helpers.shellCommandFromToolCall(event)",
 		"normalizedInput.cwd = shellCommand.dir",
-		"amp.on('agent.start', async (event, ctx) =>",
-		"const delegation = registerLoafDelegation(amp)",
-		"const policy = await loafNativeModeContext(event, ctx)",
-		"await delegation.check(event)",
+		"amp.on('agent.start', async () =>",
 		"loaf harness reconcile --target amp --json",
 		"Managed-content reconcile failed without blocking this session",
 		"Managed-content reconcile receipt",
@@ -342,6 +338,9 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 		"declare module '@ampcode/plugin'",
 		"detect-linear-magic",
 		"loaf journal log --detect-linear",
+		"registerLoafDelegation",
+		"loafNativeModeContext",
+		"delegation.check",
 	} {
 		if strings.Contains(plugin, unwanted) {
 			t.Fatalf("amp plugin = %q, must not contain obsolete projection %q", plugin, unwanted)
@@ -359,22 +358,23 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "dist", "amp", ".codex", "hooks.json")); !os.IsNotExist(err) {
 		t.Fatalf("amp hooks stat = %v, want Amp plugin target without Codex hooks", err)
 	}
-	modesPlugin := readBuildFileString(t, filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf-modes.ts"))
-	assertNativeAmpModesPluginContracts(t, modesPlugin)
+	if _, err := os.Stat(filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf-modes.ts")); !os.IsNotExist(err) {
+		t.Fatalf("amp loaf-modes.ts stat = %v, want Amp to emit only loaf.ts", err)
+	}
 }
 
-func TestRunnerBuildTargetAmpCopiesAuthoredModesPlugin(t *testing.T) {
+func TestRunnerBuildTargetAmpEmitsOnlyHookPlugin(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
 	var stdout bytes.Buffer
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build", "--target", "amp"}); err != nil {
 		t.Fatalf("build --target amp error = %v\n%s", err, stdout.String())
 	}
-	source := readBuildFileString(t, filepath.Join(root, "content", "amp", "plugins", "loaf-modes.ts"))
-	built := readBuildFileString(t, filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf-modes.ts"))
-	if built != source {
-		t.Fatalf("built loaf-modes.ts diverged from authored source")
+	if _, err := os.Stat(filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf.ts")); err != nil {
+		t.Fatalf("Stat(loaf.ts) error = %v, want the generated Amp hook plugin", err)
 	}
-	assertNativeAmpModesPluginContracts(t, built)
+	if _, err := os.Stat(filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf-modes.ts")); !os.IsNotExist(err) {
+		t.Fatalf("amp loaf-modes.ts stat = %v, want no copied modes plugin", err)
+	}
 	hookPlugin := readBuildFileString(t, filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf.ts"))
 	if strings.Contains(hookPlugin, "registerAgentMode") || strings.Contains(hookPlugin, "delegate_implementation") {
 		t.Fatalf("hook plugin = %q, want no retired Loaf mode or review-delegate registrations", hookPlugin)
@@ -1521,73 +1521,17 @@ func TestNativeBuildTypeScriptAmbientCreateThreadOverloadOrder(t *testing.T) {
 	}
 }
 
-func TestAuthoredAmpModesPluginIsInertCompatibilityStub(t *testing.T) {
+func TestNativeAmpPluginHooks(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skipf("node not found: %v", err)
 	}
 	root := testRepositoryRoot(t)
-	cmd := exec.Command(node, "--experimental-strip-types", "--test", "internal/cli/loaf-modes.extract.test.mjs")
+	cmd := exec.Command(node, "--experimental-strip-types", "--test", "internal/cli/amp_plugin.test.mjs")
 	cmd.Dir = root
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("loaf-modes retirement test failed: %v\n%s", err, output)
-	}
-}
-
-func TestNativeAmpDelegationAdapter(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skipf("node not found: %v", err)
-	}
-	root := testRepositoryRoot(t)
-	cmd := exec.Command(node, "--experimental-strip-types", "--test", "internal/cli/amp_delegation.test.mjs")
-	cmd.Dir = root
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("amp delegation adapter test failed: %v\n%s", err, output)
-	}
-}
-
-func TestNativeBuildValidationAcceptsAuthoredAmpModesPlugin(t *testing.T) {
-	requireTypeScriptCompiler(t)
-	root := realpath(t, t.TempDir())
-	pluginDir := filepath.Join(root, "dist", "amp", ".amp", "plugins")
-	mkdirAll(t, pluginDir)
-	source := filepath.Join(testRepositoryRoot(t), "content", "amp", "plugins", "loaf-modes.ts")
-	body, err := os.ReadFile(source)
-	if err != nil {
-		t.Fatalf("ReadFile(%s) error = %v", source, err)
-	}
-	writeFile(t, filepath.Join(pluginDir, "loaf-modes.ts"), string(body))
-	t.Setenv("LOAF_VALIDATE_TYPESCRIPT", "1")
-
-	warnings, err := validateNativeBuildArtifacts(root, "amp")
-	if err != nil {
-		t.Fatalf("validateNativeBuildArtifacts(amp modes) error = %v", err)
-	}
-	if len(warnings) != 0 {
-		t.Fatalf("warnings = %#v, want none when authored loaf-modes.ts typechecks", warnings)
-	}
-}
-
-func TestNativeBuildValidationAcceptsSeededAmpModesPluginInCI(t *testing.T) {
-	requireTypeScriptCompiler(t)
-	root := setupBuildCommandLoafRoot(t)
-	seedNativeCodexBuildFixture(t, root)
-	source := readBuildFileString(t, filepath.Join(root, "content", "amp", "plugins", "loaf-modes.ts"))
-	assertNativeAmpModesPluginContracts(t, source)
-	pluginDir := filepath.Join(root, "dist", "amp", ".amp", "plugins")
-	mkdirAll(t, pluginDir)
-	writeFile(t, filepath.Join(pluginDir, "loaf-modes.ts"), source)
-	t.Setenv("CI", "true")
-
-	warnings, err := validateNativeBuildArtifacts(root, "amp")
-	if err != nil {
-		t.Fatalf("validateNativeBuildArtifacts(amp seeded modes in CI) error = %v", err)
-	}
-	if len(warnings) != 0 {
-		t.Fatalf("warnings = %#v, want none when the synthetic loaf-modes.ts fixture typechecks under CI", warnings)
+		t.Fatalf("amp plugin hook test failed: %v\n%s", err, output)
 	}
 }
 
@@ -2810,14 +2754,7 @@ func seedNativeCodexBuildFixture(t *testing.T, root string) {
 	mkdirAll(t, filepath.Join(root, "content", "skills", "demo", "scripts"))
 	mkdirAll(t, filepath.Join(root, "content", "templates"))
 	mkdirAll(t, filepath.Join(root, "content", "codex", "rules"))
-	mkdirAll(t, filepath.Join(root, "content", "amp", "plugins"))
 	writeFile(t, filepath.Join(root, "content", "codex", "rules", "loaf.rules.tmpl"), "# Loaf Codex policy\n{{LOAF_BASIC_RULES}}\n")
-	writeFile(t, filepath.Join(root, "content", "amp", "plugins", "loaf-modes.ts"), strings.Join([]string{
-		"export const description = 'Compatibility stub. Managed Amp routing now lives in loaf.ts; this plugin registers no modes, agents, tools, or hooks.';",
-		"",
-		"export default function () {}",
-		"",
-	}, "\n"))
 	writeFile(t, filepath.Join(root, "config", "targets.yaml"), strings.Join([]string{
 		"shared-templates:",
 		"  session.md: [demo]",
@@ -3381,27 +3318,6 @@ func ampManifestPluginDestinations(t *testing.T, artifacts []any) map[string]str
 	return got
 }
 
-func assertNativeAmpModesPluginContracts(t *testing.T, plugin string) {
-	t.Helper()
-	for _, want := range []string{
-		"export const description = 'Compatibility stub. Managed Amp routing now lives in loaf.ts; this plugin registers no modes, agents, tools, or hooks.';",
-		"export default function () {}",
-	} {
-		if !strings.Contains(plugin, want) {
-			t.Fatalf("amp modes plugin missing %q", want)
-		}
-	}
-	for _, unwanted := range []string{
-		"registerAgentMode", "registerTool", "createAgent", "amp.on", "@amp-agent-mode",
-		"delegate_implementation", "delegate_review", "consult_oracle", "loaf-medium", "loaf-ultra",
-		"openai/gpt-5.6-luna", "openai/gpt-6-astra",
-	} {
-		if strings.Contains(plugin, unwanted) {
-			t.Fatalf("amp modes plugin still contains retired registration %q", unwanted)
-		}
-	}
-}
-
 func readBuildFileString(t *testing.T, path string) string {
 	t.Helper()
 	body, err := os.ReadFile(path)
@@ -3409,20 +3325,4 @@ func readBuildFileString(t *testing.T, path string) string {
 		t.Fatalf("ReadFile(%s) error = %v", path, err)
 	}
 	return string(body)
-}
-
-func nativeAmpModesNamedBlock(t *testing.T, plugin string, startName string, endName string) string {
-	t.Helper()
-	startMarker := "name: '" + startName + "'"
-	endMarker := "name: '" + endName + "'"
-	start := strings.Index(plugin, startMarker)
-	if start < 0 {
-		t.Fatalf("amp modes plugin missing %s", startName)
-	}
-	rest := plugin[start:]
-	end := strings.Index(rest, endMarker)
-	if end < 0 {
-		t.Fatalf("amp modes plugin %s block is unclosed before %s", startName, endName)
-	}
-	return rest[:end]
 }
