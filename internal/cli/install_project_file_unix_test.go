@@ -499,3 +499,52 @@ func TestUpgradeStopsWhenTheClaudeLinkCannotBeRemoved(t *testing.T) {
 	assertInstallFile(t, canonical, stale)
 	assertRawSymlink(t, claudeLink, "../docs/claude.md")
 }
+
+// TestUpgradeDryRunMirrorsTheStopAfterAClaudeLayoutRefusal pins the plan side
+// of the stop: after the .claude/CLAUDE.md refusal, the fenced write and the
+// MCP recommendation record are reported skipped, not planned.
+func TestUpgradeDryRunMirrorsTheStopAfterAClaudeLayoutRefusal(t *testing.T) {
+	root, home := setupUpgradeFixture(t)
+	writeFixtureClaudeCLI(t, root)
+	installUpgradeFixtureTarget(t, root, home, "cursor")
+	canonical := filepath.Join(root, "AGENTS.md")
+	stale := "# Project\n\n<!-- loaf:managed:start -->\nPrevious Loaf guidance\n" + fencedEndMarker + "\n"
+	writeInstallFile(t, canonical, stale)
+	outside := symlinkedClaudeDirWithFile(t, root)
+
+	result := runInstallWithDeadline(t, root, "upgrade", "--dry-run", "--json", "--yes")
+	if result.err != nil {
+		t.Fatalf("upgrade --dry-run --json error = %v\n%s", result.err, result.output)
+	}
+	plan := parseInstallPlanJSON(t, result.output)
+	layout, found := findInstallPlanEntry(plan, claudeInstructionsPath)
+	if !found || layout.Action != "error" || !strings.Contains(layout.Detail, ".claude is a symlink") {
+		t.Fatalf("layout entry = %#v (found=%v), want the symlinked-directory error", layout, found)
+	}
+	fencedEntries := 0
+	for _, entry := range plan.ProjectFiles {
+		if entry.Path == "AGENTS.md" {
+			fencedEntries++
+		}
+		if entry.Path == "AGENTS.md" || entry.Path == ".agents/loaf.json" {
+			if entry.Action != "skipped" || !strings.Contains(entry.Detail, claudeInstructionsPath+" failed first") {
+				t.Fatalf("project entry = %#v, want skipped after the layout error\nplan = %#v", entry, plan.ProjectFiles)
+			}
+		}
+	}
+	if fencedEntries == 0 {
+		t.Fatalf("plan = %#v, want the fenced AGENTS.md write reported as skipped", plan.ProjectFiles)
+	}
+	if record, ok := findInstallPlanEntry(plan, ".agents/loaf.json"); !ok || record.Action != "skipped" {
+		t.Fatalf("MCP record entry = %#v (found=%v), want skipped", record, ok)
+	}
+
+	// Apply agrees: it stops at the same step and writes neither.
+	applied := runInstallWithDeadline(t, root, "upgrade", "--yes")
+	var exitErr ExitError
+	if !errors.As(applied.err, &exitErr) || exitErr.Code == 0 {
+		t.Fatalf("upgrade error = %v, want a non-zero ExitError\n%s", applied.err, applied.output)
+	}
+	assertInstallFile(t, canonical, stale)
+	assertInstallFile(t, filepath.Join(outside, "CLAUDE.md"), "# Outside\n")
+}

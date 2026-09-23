@@ -564,13 +564,9 @@ func checkClaudeInstructions() doctorCheck {
 				return doctorFixResult{Fixed: false, Message: "State no longer matches - re-run doctor"}
 			}
 			if isSymlinkForDoctor(claudePath) {
-				actual := resolveSymlinkForDoctor(claudePath)
-				if err := os.Remove(claudePath); err != nil {
-					return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Could not remove .claude/CLAUDE.md: %v", err)}
-				}
-				return doctorFixResult{Fixed: true, Message: fmt.Sprintf("Removed .claude/CLAUDE.md symlink to %s", actual)}
+				return removeDoctorClaudeLink(ctx.projectRoot)
 			}
-			return retireDoctorClaudeFile(claudePath, canonical, ctx.projectRoot)
+			return retireDoctorClaudeFile(ctx.projectRoot, canonical)
 		},
 	}
 }
@@ -822,7 +818,7 @@ func checkDuplicateFencedSections() doctorCheck {
 			if _, symlinked := symlinkedClaudeDirTarget(ctx.projectRoot); symlinked || !doctorFileExists(canonical) || !pathExistsForDoctor(claudePath) || isSymlinkForDoctor(claudePath) {
 				return doctorFixResult{Fixed: false, Message: "State no longer matches - re-run doctor"}
 			}
-			return retireDoctorClaudeFile(claudePath, canonical, ctx.projectRoot)
+			return retireDoctorClaudeFile(ctx.projectRoot, canonical)
 		},
 	}
 }
@@ -1006,13 +1002,29 @@ func retireLegacyDoctorAgentsFile(projectRoot string) doctorFixResult {
 	return doctorFixResult{Fixed: true, Message: "Backed up legacy .agents/AGENTS.md to " + filepath.ToSlash(relBackup) + suffix}
 }
 
-func retireDoctorClaudeFile(claudePath string, canonical string, projectRoot string) doctorFixResult {
-	body, err := readRegularFileNoFollow(claudePath, projectFileReadLimit)
+func removeDoctorClaudeLink(projectRoot string) doctorFixResult {
+	root, err := os.OpenRoot(projectRoot)
 	if err != nil {
-		return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", refuseProjectFileRead(err))}
+		return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Could not remove .claude/CLAUDE.md: %v", err)}
 	}
-	relSource := projectRelativeSlashPath(projectRoot, claudePath)
-	backup, merged, err := retireClaudeInstructionsFile(claudePath, body, canonical, relSource)
+	defer root.Close()
+	actual, err := claudeInstructionsLinkTarget(root, projectRoot)
+	if err != nil {
+		return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Could not remove .claude/CLAUDE.md: %v", err)}
+	}
+	if err := removeClaudeInstructionsLink(root); err != nil {
+		return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Could not remove .claude/CLAUDE.md: %v", err)}
+	}
+	return doctorFixResult{Fixed: true, Message: fmt.Sprintf("Removed .claude/CLAUDE.md symlink to %s", actual)}
+}
+
+func retireDoctorClaudeFile(projectRoot string, canonical string) doctorFixResult {
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", err)}
+	}
+	defer root.Close()
+	backup, merged, err := retireClaudeInstructionsFile(root, canonical)
 	if err != nil {
 		return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", err)}
 	}
@@ -1022,32 +1034,8 @@ func retireDoctorClaudeFile(claudePath string, canonical string, projectRoot str
 	}
 	return doctorFixResult{
 		Fixed:   true,
-		Message: fmt.Sprintf("Moved %s to %s%s; Claude Code now reads root AGENTS.md", relSource, projectRelativeSlashPath(projectRoot, backup), suffix),
+		Message: fmt.Sprintf("Moved %s to %s%s; Claude Code now reads root AGENTS.md", claudeInstructionsPath, backup, suffix),
 	}
-}
-
-// retireClaudeInstructionsFile retires a real .claude/CLAUDE.md whose bytes the
-// caller already read without following a link. It moves the file to a
-// collision-safe backup first, then merges its user content (the managed fence
-// stripped) into root AGENTS.md, and restores the file if the merge fails. The
-// path is left absent so Claude Code reads root AGENTS.md natively.
-func retireClaudeInstructionsFile(claudePath string, body []byte, canonical string, relSource string) (string, bool, error) {
-	stripped := stripDoctorLoafFence(string(body))
-	backup := collisionSafeInstallBackupPath(claudePath)
-	if err := os.Rename(claudePath, backup); err != nil {
-		return "", false, err
-	}
-	merged, err := mergeDoctorContentIntoCanonical(canonical, stripped, relSource)
-	if err == nil && !doctorFileExists(canonical) {
-		err = writeFileAtomically(canonical, []byte{}, 0o644)
-	}
-	if err != nil {
-		if rollbackErr := os.Rename(backup, claudePath); rollbackErr != nil {
-			err = fmt.Errorf("%w (rollback failed: %v)", err, rollbackErr)
-		}
-		return "", false, err
-	}
-	return backup, merged, nil
 }
 
 func projectRelativeSlashPath(projectRoot string, path string) string {

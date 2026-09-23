@@ -77,3 +77,6 @@ func checkRegularFilePath(path string) error {
 	}
 	return nil
 }
+
+// rootRegularFileReadFlags has no O_NONBLOCK to add here; see openRegularFile.
+const rootRegularFileReadFlags = os.O_RDONLY

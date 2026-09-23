@@ -72,7 +72,6 @@ func symlinkedClaudeDirMessage(target string) string {
 // path is left absent. Both repairs need consent, as every project-file repair
 // does.
 func ensureInstallClaudeInstructions(projectRoot string, options installSymlinkOptions) installSymlinkResult {
-	claudePath := filepath.Join(projectRoot, filepath.FromSlash(claudeInstructionsPath))
 	canonical := filepath.Join(projectRoot, "AGENTS.md")
 	if target, symlinked := symlinkedClaudeDirTarget(projectRoot); symlinked {
 		message := symlinkedClaudeDirMessage(target)
@@ -80,17 +79,33 @@ func ensureInstallClaudeInstructions(projectRoot string, options installSymlinkO
 		result.Refused = true
 		return result
 	}
-	if !installPathExists(claudePath) {
+	if installIsSymlink(filepath.Join(projectRoot, ".claude")) {
+		// symlinkedClaudeDirTarget found nothing at CLAUDE.md through the link,
+		// so nothing shadows AGENTS.md and there is nothing to repair.
+		return installSymlinkResult{Action: "already-correct", Message: "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"}
+	}
+	// Every operation below goes through root, so none can leave the project
+	// even if .claude is swapped for a symlink after the refusal above.
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return installSymlinkReadRefusal("Failed to inspect .claude/CLAUDE.md", err)
+	}
+	defer root.Close()
+	info, exists, err := lstatClaudeInstructions(root)
+	if err != nil {
+		return installSymlinkReadRefusal("Failed to inspect .claude/CLAUDE.md", err)
+	}
+	if !exists {
 		return installSymlinkResult{Action: "already-correct", Message: "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"}
 	}
 
-	if installIsSymlink(claudePath) {
-		if installSymlinkPointsTo(claudePath, canonical) {
-			return installSymlinkResult{Action: "already-correct", Message: ".claude/CLAUDE.md already points to ../AGENTS.md"}
+	if info.Mode()&os.ModeSymlink != 0 {
+		actualTarget, err := claudeInstructionsLinkTarget(root, projectRoot)
+		if err != nil {
+			return installSymlinkReadRefusal("Failed to inspect .claude/CLAUDE.md", err)
 		}
-		actualTarget := resolveInstallSymlinkTarget(claudePath)
-		if actualTarget == "" {
-			actualTarget = "<unreadable>"
+		if actualTarget == filepath.Clean(canonical) {
+			return installSymlinkResult{Action: "already-correct", Message: ".claude/CLAUDE.md already points to ../AGENTS.md"}
 		}
 		approved := options.AssumeYes
 		if !approved {
@@ -107,7 +122,7 @@ func ensureInstallClaudeInstructions(projectRoot string, options installSymlinkO
 		if !approved {
 			return installSymlinkResult{Action: "declined-remove", Message: fmt.Sprintf("Left .claude/CLAUDE.md pointing at %s (Claude Code will not read root AGENTS.md)", actualTarget)}
 		}
-		if err := os.Remove(claudePath); err != nil {
+		if err := removeClaudeInstructionsLink(root); err != nil {
 			return installSymlinkError("error", fmt.Sprintf("Failed to remove .claude/CLAUDE.md: %v", err), err)
 		}
 		return installSymlinkResult{Action: "removed", Message: fmt.Sprintf("Removed .claude/CLAUDE.md symlink to %s; Claude Code reads root AGENTS.md", actualTarget)}
@@ -129,11 +144,7 @@ func ensureInstallClaudeInstructions(projectRoot string, options installSymlinkO
 		return installSymlinkResult{Action: "declined-replace", Message: "Left .claude/CLAUDE.md as a regular file (Claude Code will not read root AGENTS.md)"}
 	}
 
-	body, err := readRegularFileNoFollow(claudePath, projectFileReadLimit)
-	if err != nil {
-		return installSymlinkReadRefusal("Failed to migrate .claude/CLAUDE.md", refuseProjectFileRead(err))
-	}
-	backup, merged, err := retireClaudeInstructionsFile(claudePath, body, canonical, claudeInstructionsPath)
+	backup, merged, err := retireClaudeInstructionsFile(root, canonical)
 	if err != nil {
 		return installSymlinkReadRefusal("Failed to migrate .claude/CLAUDE.md", err)
 	}
@@ -143,8 +154,8 @@ func ensureInstallClaudeInstructions(projectRoot string, options installSymlinkO
 	}
 	return installSymlinkResult{
 		Action:     "migrated",
-		Message:    fmt.Sprintf("Moved .claude/CLAUDE.md to %s%s; Claude Code reads root AGENTS.md", projectRelativeSlashPath(projectRoot, backup), suffix),
-		BackupPath: backup,
+		Message:    fmt.Sprintf("Moved .claude/CLAUDE.md to %s%s; Claude Code reads root AGENTS.md", backup, suffix),
+		BackupPath: filepath.Join(projectRoot, filepath.FromSlash(backup)),
 		Merged:     merged,
 	}
 }

@@ -186,7 +186,11 @@ func (r Runner) buildInstallDryRunPlan(options installOptions, loafRoot string, 
 	if projectPart == nil || projectPart.InScope {
 		plan.ProjectFiles = planInstallProjectFiles(projectRoot, targetsInScope, hasClaudeCode, assumeYes, version)
 		if projectPart != nil {
-			plan.ProjectFiles = append(plan.ProjectFiles, planUpgradeMcpRecord(projectRoot))
+			if reason, failed := projectFilePlanFailure(plan.ProjectFiles); failed {
+				plan.ProjectFiles = append(plan.ProjectFiles, projectFilePlanEntry{Path: ".agents/loaf.json", Action: "skipped", Detail: reason})
+			} else {
+				plan.ProjectFiles = append(plan.ProjectFiles, planUpgradeMcpRecord(projectRoot))
+			}
 		}
 	}
 
@@ -857,17 +861,39 @@ func destructiveDeprecationAction(kind string) string {
 
 // planInstallProjectFiles mirrors enforceInstallProjectFiles: project symlinks
 // followed by the managed fenced section, all read-only.
+//
+// Apply stops the project part at the first failed layout step, so a layout
+// error in the plan turns every later fenced write into a skipped entry that
+// names the failure instead of a write apply would never make.
 func planInstallProjectFiles(projectRoot string, selectedTargets []string, hasClaudeCode bool, assumeYes bool, version string) []projectFilePlanEntry {
 	entries := planInstallProjectSymlinks(projectRoot, selectedTargets, hasClaudeCode, assumeYes)
 	fencedTargets := append([]string{}, selectedTargets...)
 	if hasClaudeCode {
 		fencedTargets = append([]string{"claude-code"}, fencedTargets...)
 	}
-	entries = append(entries, planInstallFencedSections(fencedTargets, projectRoot, version)...)
+	if reason, failed := projectFilePlanFailure(entries); failed {
+		for _, target := range fencedTargets {
+			entries = append(entries, projectFilePlanEntry{Target: target, Path: fencedTargetFiles[target], Action: "skipped", Detail: reason})
+		}
+	} else {
+		entries = append(entries, planInstallFencedSections(fencedTargets, projectRoot, version)...)
+	}
 	if entries == nil {
 		entries = []projectFilePlanEntry{}
 	}
 	return entries
+}
+
+// projectFilePlanFailure reports the first planned project-file step that
+// fails, phrased as the reason every later project write is skipped: apply
+// stops the project part at that step.
+func projectFilePlanFailure(entries []projectFilePlanEntry) (string, bool) {
+	for _, entry := range entries {
+		if entry.Action == "error" {
+			return fmt.Sprintf("Not written: %s failed first (%s); the project part stops there", entry.Path, entry.Detail), true
+		}
+	}
+	return "", false
 }
 
 func planInstallProjectSymlinks(projectRoot string, selectedTargets []string, hasClaudeCode bool, assumeYes bool) []projectFilePlanEntry {
