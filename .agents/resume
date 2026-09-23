@@ -6,6 +6,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 export PATH="$ROOT/bin:$PATH"
 export LOAF_PROJECT_ENV=1
+
+# This is a local idempotent repair when setup's project-environment artifacts
+# are already present; dependency and toolchain installation belongs in setup.
 loaf install --to amp --yes
 if [[ -n "${LOAF_CLIENT_TOKEN:-}" ]]; then
   loaf attach

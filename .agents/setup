@@ -1,11 +1,149 @@
 #!/usr/bin/env bash
 # Amp Orb setup script (LOAF-78). Runs once when a fresh orb is prepared.
-# Installs the Loaf CLI, then project-environment `loaf install --to amp`.
+# Installs the pinned development toolchain, warms dependencies, builds the
+# Loaf CLI, then project-environment `loaf install --to amp`.
 # Project attach token (LOAF-67): set LOAF_CLIENT_TOKEN from
 # `loaf auth link --project` via amp secrets / project environment.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+
+GO_VERSION=1.27.1
+NODE_VERSION=22.23.2
+TYPESCRIPT_VERSION=5.9.3
+TOOL_ROOT="$HOME/.local/share/loaf-orb"
+PROFILE="$HOME/.bash_profile"
+ENV_FILE="$TOOL_ROOT/env"
+
+step() {
+  local label="$1"
+  shift
+  local started=$SECONDS
+  printf '==> %s\n' "$label"
+  "$@"
+  printf '<== %s (%ss)\n' "$label" "$((SECONDS - started))"
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    printf 'Required command not found: %s\n' "$1" >&2
+    return 1
+  }
+}
+
+verify_sha256() {
+  local expected="$1"
+  local archive="$2"
+  printf '%s  %s\n' "$expected" "$archive" | sha256sum --check --status
+}
+
+install_linux_toolchains() {
+  local machine go_arch node_arch go_sha node_sha
+  machine="$(uname -m)"
+  case "$machine" in
+    x86_64)
+      go_arch=amd64
+      node_arch=x64
+      go_sha=63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445
+      node_sha=b294a556e639d64338823920e5866c21c02741742d2e1529ee1a225c1ec9252a
+      ;;
+    aarch64|arm64)
+      go_arch=arm64
+      node_arch=arm64
+      go_sha=3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec
+      node_sha=013b59cfd2819703a6f4a14ab891fc46fc2a4e3f5bcd92de3fb4929b43e35b30
+      ;;
+    *)
+      printf 'Unsupported Orb architecture: %s\n' "$machine" >&2
+      return 1
+      ;;
+  esac
+
+  GO_ROOT="$TOOL_ROOT/go-$GO_VERSION"
+  NODE_ROOT="$TOOL_ROOT/node-$NODE_VERSION"
+  mkdir -p "$TOOL_ROOT"
+
+  if [[ ! -x "$GO_ROOT/bin/go" ]] || [[ "$("$GO_ROOT/bin/go" version 2>/dev/null || true)" != "go version go${GO_VERSION} linux/${go_arch}" ]]; then
+    local go_archive go_stage
+    printf 'Downloading Go %s for linux/%s\n' "$GO_VERSION" "$go_arch"
+    go_archive="$(mktemp "$TOOL_ROOT/go.XXXXXX.tar.gz")"
+    go_stage="$(mktemp -d "$TOOL_ROOT/go.XXXXXX")"
+    curl --fail --location --silent --show-error \
+      "https://go.dev/dl/go${GO_VERSION}.linux-${go_arch}.tar.gz" \
+      --output "$go_archive"
+    verify_sha256 "$go_sha" "$go_archive"
+    tar -xzf "$go_archive" -C "$go_stage"
+    rm -rf "$GO_ROOT"
+    mv "$go_stage/go" "$GO_ROOT"
+    rm -rf "$go_stage" "$go_archive"
+  fi
+
+  if [[ ! -x "$NODE_ROOT/bin/node" ]] || [[ "$("$NODE_ROOT/bin/node" --version 2>/dev/null || true)" != "v$NODE_VERSION" ]]; then
+    local node_archive node_stage
+    printf 'Downloading Node.js %s for linux/%s\n' "$NODE_VERSION" "$node_arch"
+    node_archive="$(mktemp "$TOOL_ROOT/node.XXXXXX.tar.gz")"
+    node_stage="$(mktemp -d "$TOOL_ROOT/node.XXXXXX")"
+    curl --fail --location --silent --show-error \
+      "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.gz" \
+      --output "$node_archive"
+    verify_sha256 "$node_sha" "$node_archive"
+    tar -xzf "$node_archive" -C "$node_stage" --strip-components=1
+    rm -rf "$NODE_ROOT"
+    mv "$node_stage" "$NODE_ROOT"
+    rm -f "$node_archive"
+  fi
+}
+
+configure_toolchain() {
+  if [[ "$(uname -s)" == Linux ]]; then
+    if ! command -v curl >/dev/null || ! command -v sha256sum >/dev/null || ! command -v tar >/dev/null; then
+      sudo apt-get update -qq
+      sudo apt-get install -y curl ca-certificates coreutils tar
+    fi
+    install_linux_toolchains
+  else
+    require_command go
+    require_command node
+    require_command npm
+    GO_ROOT="$(cd "$(dirname "$(command -v go)")/.." && pwd)"
+    NODE_ROOT="$(cd "$(dirname "$(command -v node)")/.." && pwd)"
+  fi
+
+  export PATH="$GO_ROOT/bin:$NODE_ROOT/bin:$PATH"
+  local typescript_root="$TOOL_ROOT/typescript-$TYPESCRIPT_VERSION"
+  local typescript_bin="$typescript_root/node_modules/.bin/tsc"
+  if [[ ! -x "$typescript_bin" ]] || [[ "$($typescript_bin --version 2>/dev/null || true)" != "Version $TYPESCRIPT_VERSION" ]]; then
+    printf 'Installing TypeScript %s\n' "$TYPESCRIPT_VERSION"
+    "$NODE_ROOT/bin/npm" install --prefix "$typescript_root" --ignore-scripts \
+      --no-audit --no-fund "typescript@$TYPESCRIPT_VERSION"
+  fi
+
+  cat > "$ENV_FILE" <<EOF
+export PATH="$ROOT/bin:$GO_ROOT/bin:$NODE_ROOT/bin:$typescript_root/node_modules/.bin:\$PATH"
+EOF
+
+  local marker='# Orb development toolchain for Loaf'
+  if ! grep -Fqx "$marker" "$PROFILE" 2>/dev/null; then
+    mkdir -p "$(dirname "$PROFILE")"
+    cat >> "$PROFILE" <<EOF
+
+$marker
+if [[ "\${PWD:-}" == "$ROOT" && -r "$ENV_FILE" ]]; then
+  source "$ENV_FILE"
+fi
+EOF
+  fi
+
+  export PATH="$typescript_root/node_modules/.bin:$PATH"
+}
+
+if ! grep -Fqx "toolchain go$GO_VERSION" go.mod; then
+  printf 'Update .agents/setup for the Go toolchain declared in go.mod.\n' >&2
+  exit 1
+fi
+
+step "Configure Go, Node.js, and TypeScript" configure_toolchain
+step "Download Go modules" go mod download
 
 os="$(uname -s | tr '[:upper:]' '[:lower:]')"
 arch="$(uname -m)"
@@ -14,12 +152,19 @@ case "$arch" in
   aarch64|arm64) arch=arm64 ;;
 esac
 NATIVE="$ROOT/bin/native/${os}-${arch}/loaf"
+BUILD_MARKER="$ROOT/bin/.orb-build-commit"
+SOURCE_COMMIT="$(git rev-parse HEAD)"
 
-# bin/loaf is the host platform's binary; require both it and the native
-# binary for this host before skipping the build. The build is Go only.
-if [[ ! -x "$ROOT/bin/loaf" || ! -x "$NATIVE" ]]; then
-  go run ./cmd/loafdev build-go
+# A stale Orb snapshot can retain an executable from an older checkout. Rebuild
+# only when either executable is absent or its recorded source commit changed.
+if [[ ! -x "$ROOT/bin/loaf" || ! -x "$NATIVE" || ! -f "$BUILD_MARKER" ]] || \
+  [[ "$(cat "$BUILD_MARKER" 2>/dev/null || true)" != "$SOURCE_COMMIT" ]]; then
+  step "Build Loaf CLI" go run ./cmd/loafdev build-go
+  printf '%s\n' "$SOURCE_COMMIT" > "$BUILD_MARKER"
+else
+  printf '==> Loaf CLI already built for %s\n' "${SOURCE_COMMIT:0:12}"
 fi
+
 export PATH="$ROOT/bin:$PATH"
 export LOAF_PROJECT_ENV=1
-exec loaf install --to amp --yes
+step "Install Amp project environment" loaf install --to amp --yes

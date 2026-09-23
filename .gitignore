@@ -37,7 +37,16 @@ Thumbs.db
 .agents/transcripts/
 .agents/.loaf-state
 .agents/.moved-to
+.agents/.loaf-reconcile.lock
+.agents/loaf/
+.agents/skills/
 .agents/tmp/
+
+# Amp project-environment install and portal state
+.amp/.loaf-managed-target.json
+.amp/.loaf-version
+.amp/plugins/loaf.ts
+.amp/portals/*
 
 # Environment files
 .env
