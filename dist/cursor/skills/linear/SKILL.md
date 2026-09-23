@@ -5,7 +5,7 @@ description: >-
   exposed harness-native connection. Use when the selected canonical tracker is
   Linear. Produces verified native outcomes without configuring credentials or a
   provider client.
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Linear

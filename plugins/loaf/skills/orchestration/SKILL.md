@@ -7,7 +7,7 @@ description: >-
   creating local work units or requiring delegation.
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Glob, Grep, TodoWrite, TodoRead'
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Orchestration

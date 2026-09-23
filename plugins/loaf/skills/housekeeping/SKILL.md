@@ -7,7 +7,7 @@ description: >-
   recommendations and performs only explicitly approved dispositions.
 user-invocable: true
 argument-hint: '[reports|handoffs|worktrees|all]'
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Housekeeping

@@ -7,7 +7,7 @@ description: >-
   architecture topics, or concludes no update is needed. Not for
   pre-implementation strategy (use strategy) or choosing and recording an
   architectural commitment (use architecture).
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Reflect

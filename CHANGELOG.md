@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+## [0.6.0-rc.1] - 2026-09-23
+
+This prerelease enables pinned, checksum-verified Loaf installation and readiness checks in fresh external Amp Orbs for consumer-project dogfooding. It is not a stable release: the Orb bootstrap does not attach or sync private continuity, the vNext continuity model has no supported cross-machine sync or attach journey (the legacy relay commands remain compatibility surfaces), and live adoption in a consumer project such as DojoHQ remains the next validation step.
+
 ### Added
 
 - Bootstrap a pinned, checksum-verified Loaf release into external Amp Orb consumer projects without a Loaf checkout or Go toolchain, and fail readiness when the binary, Amp distribution, project identity, managed instructions, or effective Loaf sources cannot be proven ([#302](https://github.com/levifig/loaf/issues/302)).
@@ -16,7 +20,7 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ### Removed
 
-- Retire the obsolete Amp `loaf-modes.ts` plugin on upgrade when its contents match a known Loaf-owned version, preserving modified and foreign files ([#309](https://github.com/levifig/loaf/issues/309)).
+- **Breaking:** Retire the obsolete Amp `loaf-modes.ts` plugin on upgrade when its contents match a known Loaf-owned version, preserving modified and foreign files ([#309](https://github.com/levifig/loaf/issues/309)).
 
 ### Fixed
 
