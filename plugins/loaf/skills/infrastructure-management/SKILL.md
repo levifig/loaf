@@ -8,7 +8,7 @@ description: >-
   database-design), or security audits (use security-compliance).
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Infrastructure

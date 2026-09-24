@@ -8,7 +8,7 @@ description: >-
   identity.
 user-invocable: true
 argument-hint: '[topic, decision, or audit]'
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Architecture

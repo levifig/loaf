@@ -7,7 +7,7 @@ description: >-
   Produces a verified source-to-destination mapping receipt. Not for ongoing
   synchronization, provider authentication, private continuity transfer, or
   remote Loaf setup.
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Migrate Project

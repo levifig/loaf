@@ -34,4 +34,4 @@ You are an implementer. You have full write access to the codebase: code, tests,
 - Do not orchestrate other agents — that is the orchestrator's role.
 
 ---
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2

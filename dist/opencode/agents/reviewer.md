@@ -28,4 +28,4 @@ You are a reviewer. You have read-only access to the codebase. This is not a lim
 - Do not orchestrate other agents — that is the orchestrator's role.
 
 ---
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2

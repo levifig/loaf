@@ -4,6 +4,20 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+## [0.6.0-rc.2] - 2026-09-24
+
+This prerelease refreshes Amp and OpenCode hooks and lets current Claude Code sessions use root `AGENTS.md` directly. It provides updated release bytes for pinned consumer-project dogfooding; private continuity sync and attach are still outside the Orb bootstrap, and this is not a stable release.
+
+### Changed
+
+- Let Claude Code read root `AGENTS.md` without a required `.claude/CLAUDE.md` link. Install, upgrade, and doctor stop creating the link, preserve existing correct links, and back up and merge real-file instructions before leaving the path absent. Sessions that cannot read `AGENTS.md` directly can import it from a user-created `CLAUDE.md` ([#311](https://github.com/levifig/loaf/issues/311)).
+- Ship Amp and OpenCode hooks as plain JavaScript and require Node 24+ for development checks, without an npm or TypeScript compiler install ([#306](https://github.com/levifig/loaf/issues/306)).
+
+### Fixed
+
+- Handle closed hook stdin without crashing Amp or OpenCode adapters; keep blocking checks fail-closed ([#307](https://github.com/levifig/loaf/issues/307)).
+- Preserve cancellation while scanning sync prune witnesses ([#323](https://github.com/levifig/loaf/issues/323)).
+
 ## [0.6.0-rc.1] - 2026-09-23
 
 This prerelease enables pinned, checksum-verified Loaf installation and readiness checks in fresh external Amp Orbs for consumer-project dogfooding. It is not a stable release: the Orb bootstrap does not attach or sync private continuity, the vNext continuity model has no supported cross-machine sync or attach journey (the legacy relay commands remain compatibility surfaces), and live adoption in a consumer project such as DojoHQ remains the next validation step.
@@ -14,7 +28,6 @@ This prerelease enables pinned, checksum-verified Loaf installation and readines
 
 ### Changed
 
-- Standardize Loaf development on Go plus Node 24+, emit Amp and OpenCode hooks as plain JavaScript, and remove the TypeScript compiler from development gates while retaining native Amp modes and `package.json` distribution metadata ([#306](https://github.com/levifig/loaf/issues/306)).
 - Let native Amp Low, Medium, High, and Ultra implement without a pinned Grok worker; keep ordinary Loaf hooks and native Oracle review unchanged ([#310](https://github.com/levifig/loaf/issues/310)).
 - Require verified selected native issues before substantive implementation, including ordinary fix requests, and capture concrete deferred work in native issues before handoff. Honor existing explicit selection without asking again; preserve read-only discovery, narrowly incidental corrections, and explicit user overrides ([#252](https://github.com/levifig/loaf/issues/252)).
 - Keep ordinary `make`/`make build` work from retargeting the development launcher; compile the executable with `make build-cli`, and activate a checkout only through explicit `make install` after complete verification ([#271](https://github.com/levifig/loaf/issues/271)).

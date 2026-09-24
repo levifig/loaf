@@ -6,7 +6,7 @@ description: >-
   ceremony or deferred actionable finding needs native work through an
   already-configured harness connection. Not for configuring providers or
   storing work locally.
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Project Management

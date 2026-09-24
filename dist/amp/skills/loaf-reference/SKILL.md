@@ -4,7 +4,7 @@ description: >-
   Explains Loaf Flow authority, artifacts, and ceremony boundaries. Use when
   deciding where work belongs or how one Flow stage hands evidence to another.
   Not for provider-specific tracker operations.
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Loaf Reference
