@@ -10,7 +10,7 @@ covers:
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-09-19'
+last_reviewed: '2026-09-24'
 ---
 
 # Build System
@@ -70,3 +70,5 @@ Claude Code has a split registration model: `plugin.json` handles the plugin man
 
 - [skill-architecture.md](skill-architecture.md) — how skills are structured
 - [hook-system.md](hook-system.md) — how hooks are registered and distributed
+
+2026-09-24 01:53- Reviewed JavaScript adapter and Node 24 development-toolchain guidance.

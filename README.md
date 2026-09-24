@@ -183,7 +183,7 @@ Build once, deploy everywhere. Skills are the universal layer; profiles and hook
 | OpenCode | ✓ | ✓ | ✓ | Full support |
 | Cursor | ✓ | ✓ | ✓ | Full support |
 | Codex | — | ✓ | ✓ | Skills, hooks, and opt-in classified command policy |
-| Amp | — | ✓ | Runtime plugin | Skills and native delegation integrations |
+| Amp | — | ✓ | Runtime plugin | Skills and ordinary hooks; native modes and Oracle remain host-owned |
 
 Compatibility is checked by required capabilities, not a whitelist of exact harness versions. Amp and OpenCode adapters are plain JavaScript; Node 24+ remains for development checks and capability runners. The Loaf executable and maintained migrated helpers are native Go.
 
