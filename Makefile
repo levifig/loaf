@@ -90,7 +90,7 @@ require-node-24:
 
 capability-tests:
 	@$(MAKE) require-node-24
-	node --test cli/scripts/smoke-claude-code-startup.test.mjs cli/scripts/smoke-codex-startup.test.mjs cli/scripts/smoke-opencode-request-context.test.mjs cli/scripts/preflight-cursor-agent-context.test.mjs internal/cli/amp_delegation.test.mjs
+	node --test cli/scripts/smoke-claude-code-startup.test.mjs cli/scripts/smoke-codex-startup.test.mjs cli/scripts/smoke-opencode-request-context.test.mjs cli/scripts/preflight-cursor-agent-context.test.mjs internal/cli/amp_plugin.test.mjs
 
 clean:
 	rm -rf bin dist/release

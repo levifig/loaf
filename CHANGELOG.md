@@ -4,16 +4,27 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+## [0.6.0-rc.1] - 2026-09-23
+
+This prerelease enables pinned, checksum-verified Loaf installation and readiness checks in fresh external Amp Orbs for consumer-project dogfooding. It is not a stable release: the Orb bootstrap does not attach or sync private continuity, the vNext continuity model has no supported cross-machine sync or attach journey (the legacy relay commands remain compatibility surfaces), and live adoption in a consumer project such as DojoHQ remains the next validation step.
+
+### Added
+
+- Bootstrap a pinned, checksum-verified Loaf release into external Amp Orb consumer projects without a Loaf checkout or Go toolchain, and fail readiness when the binary, Amp distribution, project identity, managed instructions, or effective Loaf sources cannot be proven ([#302](https://github.com/levifig/loaf/issues/302)).
+
 ### Changed
 
-- Standardize Loaf development on Go plus Node 24+, emit Amp and OpenCode adapters as plain JavaScript, and remove the TypeScript compiler from development gates while preserving `package.json` distribution metadata ([#306](https://github.com/levifig/loaf/issues/306)).
-- Route Amp implementation through native Low, Medium, High, and Ultra with a fresh Grok 4.6 Fast `loaf_delegate` child labelled exactly `implementer` and native Oracle review, retiring Loaf Medium, Loaf Ultra, and copied custom review oracles while keeping the existing `loaf-modes.ts` install artifact as an inert compatibility plugin ([#266](https://github.com/levifig/loaf/issues/266)).
+- Standardize Loaf development on Go plus Node 24+, emit Amp and OpenCode hooks as plain JavaScript, and remove the TypeScript compiler from development gates while retaining native Amp modes and `package.json` distribution metadata ([#306](https://github.com/levifig/loaf/issues/306)).
+- Let native Amp Low, Medium, High, and Ultra implement without a pinned Grok worker; keep ordinary Loaf hooks and native Oracle review unchanged ([#310](https://github.com/levifig/loaf/issues/310)).
 - Require verified selected native issues before substantive implementation, including ordinary fix requests, and capture concrete deferred work in native issues before handoff. Honor existing explicit selection without asking again; preserve read-only discovery, narrowly incidental corrections, and explicit user overrides ([#252](https://github.com/levifig/loaf/issues/252)).
 - Keep ordinary `make`/`make build` work from retargeting the development launcher; compile the executable with `make build-cli`, and activate a checkout only through explicit `make install` after complete verification ([#271](https://github.com/levifig/loaf/issues/271)).
 
+### Removed
+
+- **Breaking:** Retire the obsolete Amp `loaf-modes.ts` plugin on upgrade when its contents match a known Loaf-owned version, preserving modified and foreign files ([#309](https://github.com/levifig/loaf/issues/309)).
+
 ### Fixed
 
-- Keep Amp and OpenCode hook adapters alive when a child closes stdin before consuming the payload, while preserving exit status, output, rejection, spawn failure, and timeout handling ([#307](https://github.com/levifig/loaf/issues/307)).
 - Run Amp hooks in the shell execution directory or current workspace rather than the installed plugin directory, avoiding false missing-changelog errors while preserving checks ([#279](https://github.com/levifig/loaf/issues/279)).
 - Keep prompt and compaction guidance and SQLite journal commands available in linked worktrees when configuration or unrelated artifacts differ. Restrict migration refusals to storage the command consumes, identify affected paths, and preserve recovery checks without creating implicit migration markers; keep command diagnostics accurate ([#251](https://github.com/levifig/loaf/issues/251), [#254](https://github.com/levifig/loaf/issues/254)).
 - Prefer an already configured GitHub MCP matching `integrations.github.account`; otherwise use installed authenticated `gh` (including `gh api`) through the main agent. Verify MCP identity through the connector and `gh` identity separately before tracker operations.

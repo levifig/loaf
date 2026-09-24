@@ -1,7 +1,13 @@
 package devtool
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -632,6 +638,7 @@ func TestPackageWritesArchivesAndChecksums(t *testing.T) {
 	writeFixture(t, filepath.Join(root, "package.json"), `{"name":"loaf","version":"1.2.3"}`)
 	writeFixture(t, filepath.Join(root, "vnext", "content", "skills", "linear", "SKILL.md"), "# Linear\n")
 	writeFixture(t, filepath.Join(root, "bin", "native", "linux-x64", "loaf"), "binary")
+	writeFixture(t, filepath.Join(root, "dist", "amp", "skills", "a.md"), "amp")
 	writeFixture(t, filepath.Join(root, "dist", "codex", "skills", "a.md"), "a")
 	writeFixture(t, filepath.Join(root, "dist", "release", "stale.txt"), "never packaged")
 	writeFixture(t, filepath.Join(root, ".claude-plugin", "marketplace.json"), `{"name":"levifig-loaf"}`)
@@ -664,6 +671,203 @@ func TestPackageWritesArchivesAndChecksums(t *testing.T) {
 	os.RemoveAll(filepath.Join(root, "vnext"))
 	if err := Package(PackageOptions{RootDir: root, Env: Env{"LOAF_RELEASE_TARGETS": "linux-x64"}, Stdout: &stdout}); err == nil || !strings.Contains(err.Error(), "missing tracker-native Flow content") {
 		t.Fatalf("missing Flow content error = %v", err)
+	}
+}
+
+type archivedFile struct {
+	body []byte
+	mode int64
+}
+
+func readArchiveFiles(t *testing.T, path string) map[string]archivedFile {
+	t.Helper()
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	gz, err := gzip.NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gz.Close()
+	files := map[string]archivedFile{}
+	reader := tar.NewReader(gz)
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[header.Name] = archivedFile{body: body, mode: header.Mode}
+	}
+	return files
+}
+
+func TestPackageEmbedsDeterministicAmpReleaseManifest(t *testing.T) {
+	root := fixtureRoot(t)
+	writeFixture(t, filepath.Join(root, "package.json"), `{"name":"loaf","version":"1.2.3"}`)
+	writeFixture(t, filepath.Join(root, "vnext", "content", "skills", "linear", "SKILL.md"), "# Linear\n")
+	native := filepath.Join(root, "bin", "native", "linux-x64", "loaf")
+	writeFixture(t, native, "native binary\n")
+	executable := filepath.Join(root, "dist", "amp", "bin", "runner")
+	writeFixture(t, executable, "#!/bin/sh\n")
+	regular := filepath.Join(root, "dist", "amp", "README.md")
+	writeFixture(t, regular, "Amp distribution\n")
+	if err := os.Chmod(regular, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	metadata := filepath.Join(root, "dist", "amp", ".DS_Store")
+	writeFixture(t, metadata, "regular file despite its name")
+	if err := os.Chmod(metadata, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := buildReleaseManifest(root, "1.2.3", "linux-x64", native, "loaf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := buildReleaseManifest(root, "1.2.3", "linux-x64", native, "loaf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first, second) {
+		t.Fatalf("manifest changed between identical builds:\n%s\n%s", first, second)
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(first, &raw); err != nil {
+		t.Fatal(err)
+	}
+	if len(raw) != 4 || raw["schema_version"] == nil || raw["package_version"] == nil || raw["target"] == nil || raw["files"] == nil {
+		t.Fatalf("manifest schema keys = %v", raw)
+	}
+	var manifest releaseManifest
+	if err := json.Unmarshal(first, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.SchemaVersion != 1 || manifest.PackageVersion != "1.2.3" || manifest.Target != "linux-x64" {
+		t.Fatalf("manifest identity = %#v", manifest)
+	}
+	wantPaths := []string{"bin/loaf", "dist/amp/.DS_Store", "dist/amp/README.md", "dist/amp/bin/runner"}
+	if len(manifest.Files) != len(wantPaths) {
+		t.Fatalf("manifest files = %#v, want paths %v", manifest.Files, wantPaths)
+	}
+	for i, want := range wantPaths {
+		if manifest.Files[i].Path != want {
+			t.Fatalf("manifest file %d path = %q, want %q", i, manifest.Files[i].Path, want)
+		}
+		var record map[string]json.RawMessage
+		body, err := json.Marshal(manifest.Files[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(body, &record); err != nil {
+			t.Fatal(err)
+		}
+		if len(record) != 3 || record["path"] == nil || record["sha256"] == nil || record["mode"] == nil {
+			t.Fatalf("file record schema = %v", record)
+		}
+	}
+
+	if err := Package(PackageOptions{RootDir: root, Env: Env{"LOAF_RELEASE_TARGETS": "linux-x64"}, Stdout: &bytes.Buffer{}}); err != nil {
+		t.Fatal(err)
+	}
+	packageRoot := "loaf_1.2.3_linux-x64/"
+	files := readArchiveFiles(t, filepath.Join(root, "dist", "release", "loaf_1.2.3_linux-x64.tar.gz"))
+	embedded := files[packageRoot+"loaf-release-manifest.json"]
+	if !bytes.Equal(embedded.body, first) || embedded.mode != 0o644 {
+		t.Fatalf("embedded manifest mode=%#o body=%s, want mode 0644 and generated bytes", embedded.mode, embedded.body)
+	}
+	for _, record := range manifest.Files {
+		if record.Path == "loaf-release-manifest.json" {
+			t.Fatal("manifest must not list itself")
+		}
+		archived, ok := files[packageRoot+record.Path]
+		if !ok {
+			t.Fatalf("manifest record %q has no archive entry", record.Path)
+		}
+		digest := sha256.Sum256(archived.body)
+		if got := hex.EncodeToString(digest[:]); got != record.SHA256 {
+			t.Fatalf("%s digest = %s, want %s", record.Path, record.SHA256, got)
+		}
+		wantMode := int64(0o644)
+		if archived.mode&0o111 != 0 {
+			wantMode = 0o755
+		}
+		if record.Mode != wantMode {
+			t.Fatalf("%s mode = %d, want %d", record.Path, record.Mode, wantMode)
+		}
+	}
+}
+
+func TestPackageRefusesInvalidAmpManifestInputs(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		set  func(t *testing.T, root string)
+		want string
+	}{
+		{
+			name: "missing Amp distribution",
+			set:  func(t *testing.T, root string) {},
+			want: "missing Amp distribution",
+		},
+		{
+			name: "Amp root is a regular file",
+			set: func(t *testing.T, root string) {
+				writeFixture(t, filepath.Join(root, "dist", "amp"), "not a directory")
+			},
+			want: "dist/amp is not a directory",
+		},
+		{
+			name: "Amp file is a symlink",
+			set: func(t *testing.T, root string) {
+				target := filepath.Join(root, "amp-target")
+				writeFixture(t, target, "target")
+				link := filepath.Join(root, "dist", "amp", "linked")
+				if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, link); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "is not a regular file",
+		},
+		{
+			name: "native binary is a symlink",
+			set: func(t *testing.T, root string) {
+				writeFixture(t, filepath.Join(root, "dist", "amp", "file"), "amp")
+				native := filepath.Join(root, "bin", "native", "linux-x64", "loaf")
+				if err := os.Remove(native); err != nil {
+					t.Fatal(err)
+				}
+				target := filepath.Join(root, "native-target")
+				writeFixture(t, target, "binary")
+				if err := os.Symlink(target, native); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "is not a regular file",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := fixtureRoot(t)
+			writeFixture(t, filepath.Join(root, "package.json"), `{"name":"loaf","version":"1.2.3"}`)
+			writeFixture(t, filepath.Join(root, "vnext", "content", "skills", "linear", "SKILL.md"), "# Linear\n")
+			writeFixture(t, filepath.Join(root, "bin", "native", "linux-x64", "loaf"), "binary")
+			test.set(t, root)
+			err := Package(PackageOptions{RootDir: root, Env: Env{"LOAF_RELEASE_TARGETS": "linux-x64"}, Stdout: &bytes.Buffer{}})
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Package error = %v, want %q", err, test.want)
+			}
+		})
 	}
 }
 

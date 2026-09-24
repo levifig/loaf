@@ -167,7 +167,11 @@ func readSyncPruneWitnessAuthorityV2(
 		}
 		environment, err := scanSyncEnvironmentCertificateV1(rows)
 		if err != nil {
+			ctxErr := ctx.Err()
 			rows.Close()
+			if ctxErr != nil {
+				return nil, ctxErr
+			}
 			return nil, err
 		}
 		if err := validateSyncAuthorityCandidateEnvironmentV2(environment, 0); err != nil ||

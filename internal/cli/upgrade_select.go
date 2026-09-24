@@ -254,8 +254,6 @@ func javascriptAdapterPredecessorIDs(target, id string) []string {
 	switch {
 	case target == "amp" && id == ampHookPluginArtifactID:
 		return []string{ampHookPluginPredecessorID}
-	case target == "amp" && id == ampModesPluginArtifactID:
-		return []string{ampModesPluginPredecessorID}
 	case target == "opencode" && id == openCodeHookPluginArtifactID:
 		return []string{openCodeHookPluginPredecessorID}
 	default:

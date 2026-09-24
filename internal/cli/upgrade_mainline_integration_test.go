@@ -76,10 +76,6 @@ func TestScopedUpgradeMigratesJavaScriptAdapterPredecessors(t *testing.T) {
 		{name: "amp-hook-modified", target: "amp", selectID: ampHookPluginArtifactID, sourcePath: ".amp/plugins/loaf.js", destination: "plugins/loaf.js", legacyID: ampHookPluginPredecessorID, legacySource: ".amp/plugins/loaf.ts", legacyDest: "plugins/loaf.ts", header: ampHeader, kind: predecessorModified},
 		{name: "amp-hook-foreign", target: "amp", selectID: ampHookPluginArtifactID, sourcePath: ".amp/plugins/loaf.js", destination: "plugins/loaf.js", legacyID: ampHookPluginPredecessorID, legacySource: ".amp/plugins/loaf.ts", legacyDest: "plugins/loaf.ts", header: ampHeader, kind: predecessorForeign},
 		{name: "amp-hook-unrecorded-symlink", target: "amp", selectID: ampHookPluginArtifactID, sourcePath: ".amp/plugins/loaf.js", destination: "plugins/loaf.js", legacyID: ampHookPluginPredecessorID, legacySource: ".amp/plugins/loaf.ts", legacyDest: "plugins/loaf.ts", header: ampHeader, kind: predecessorUnrecorded},
-		{name: "amp-modes-managed", target: "amp", selectID: ampModesPluginArtifactID, sourcePath: ".amp/plugins/loaf-modes.js", destination: "plugins/loaf-modes.js", legacyID: ampModesPluginPredecessorID, legacySource: ".amp/plugins/loaf-modes.ts", legacyDest: "plugins/loaf-modes.ts", header: "", kind: predecessorManaged},
-		{name: "amp-modes-modified", target: "amp", selectID: ampModesPluginArtifactID, sourcePath: ".amp/plugins/loaf-modes.js", destination: "plugins/loaf-modes.js", legacyID: ampModesPluginPredecessorID, legacySource: ".amp/plugins/loaf-modes.ts", legacyDest: "plugins/loaf-modes.ts", header: "", kind: predecessorModified},
-		{name: "amp-modes-foreign", target: "amp", selectID: ampModesPluginArtifactID, sourcePath: ".amp/plugins/loaf-modes.js", destination: "plugins/loaf-modes.js", legacyID: ampModesPluginPredecessorID, legacySource: ".amp/plugins/loaf-modes.ts", legacyDest: "plugins/loaf-modes.ts", header: "", kind: predecessorForeign},
-		{name: "amp-modes-unrecorded-symlink", target: "amp", selectID: ampModesPluginArtifactID, sourcePath: ".amp/plugins/loaf-modes.js", destination: "plugins/loaf-modes.js", legacyID: ampModesPluginPredecessorID, legacySource: ".amp/plugins/loaf-modes.ts", legacyDest: "plugins/loaf-modes.ts", header: "", kind: predecessorUnrecorded},
 		{name: "opencode-managed", target: "opencode", selectID: openCodeHookPluginArtifactID, sourcePath: "plugins/hooks.js", destination: "plugins/hooks.js", legacyID: openCodeHookPluginPredecessorID, legacySource: "plugins/hooks.ts", legacyDest: "plugins/hooks.ts", header: openCodeHeader, kind: predecessorManaged},
 		{name: "opencode-modified", target: "opencode", selectID: openCodeHookPluginArtifactID, sourcePath: "plugins/hooks.js", destination: "plugins/hooks.js", legacyID: openCodeHookPluginPredecessorID, legacySource: "plugins/hooks.ts", legacyDest: "plugins/hooks.ts", header: openCodeHeader, kind: predecessorModified},
 		{name: "opencode-foreign", target: "opencode", selectID: openCodeHookPluginArtifactID, sourcePath: "plugins/hooks.js", destination: "plugins/hooks.js", legacyID: openCodeHookPluginPredecessorID, legacySource: "plugins/hooks.ts", legacyDest: "plugins/hooks.ts", header: openCodeHeader, kind: predecessorForeign},
@@ -99,9 +95,6 @@ func TestScopedUpgradeMigratesJavaScriptAdapterPredecessors(t *testing.T) {
 			legacyBody := "export const predecessor = 1;\n"
 			if tc.header != "" {
 				legacyBody = tc.header + legacyBody
-			}
-			if tc.selectID == ampModesPluginArtifactID && tc.kind != predecessorForeign && tc.kind != predecessorUnrecorded {
-				legacyBody = testAmpModesPredecessor(t)
 			}
 			writeInstallFile(t, filepath.Join(dist, filepath.FromSlash(tc.sourcePath)), desired)
 			writeTestTargetAdapterManifest(t, dist, tc.target, []map[string]string{{
@@ -321,21 +314,21 @@ func TestScopedUpgradePreservesRecreatedPresentPredecessor(t *testing.T) {
 	}
 }
 
-func TestScopedUpgradePreservesUnselectedAmpModesAndOwnership(t *testing.T) {
+func TestScopedUpgradePreservesUnmanifestedAmpModesPredecessor(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
 	dist := filepath.Join(root, "dist", "amp")
 	config := filepath.Join(home, ".config", "amp")
-	hookID := "plugin:.amp/plugins/loaf.js"
-	writeDistribution := func(hooks, modes string) {
+	plugins := filepath.Join(config, "plugins")
+	hookID := ampHookPluginArtifactID
+	predecessor := testAmpModesPredecessor(t)
+	writeDistribution := func(hooks string) {
 		t.Helper()
 		writeInstallFile(t, filepath.Join(dist, ".amp", "plugins", "loaf.js"), hooks)
-		writeInstallFile(t, filepath.Join(dist, ".amp", "plugins", "loaf-modes.js"), modes)
 		writeTestTargetAdapterManifest(t, dist, "amp", []map[string]string{
 			{"id": hookID, "kind": "plugin", "source_path": ".amp/plugins/loaf.js", "destination": "plugins/loaf.js", "sha256": sha256Hex(hooks)},
-			{"id": ampModesPluginArtifactID, "kind": "plugin", "source_path": ampModesPluginSourcePath, "destination": ampModesPluginDestination, "sha256": sha256Hex(modes)},
 		})
 	}
-	writeDistribution("export const hooks = 1;\n", "export const modes = 1;\n")
+	writeDistribution("export const hooks = 1;\n")
 	if err := syncTargetAdapterManifest(targetInstallOptions{Target: "amp", DistDir: dist, ConfigDir: config, HomeDir: home, Version: "0.5.0"}); err != nil {
 		t.Fatal(err)
 	}
@@ -344,19 +337,28 @@ func TestScopedUpgradePreservesUnselectedAmpModesAndOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ownedModes := targetAdapterArtifactsByID(before.Artifacts)[ampModesPluginArtifactID]
-	writeInstallFile(t, filepath.Join(config, "plugins", "loaf-modes.js"), "user-edited modes\n")
-	writeDistribution("export const hooks = 2;\n", "export const modes = 2;\n")
+	if _, ok := targetAdapterArtifactsByID(before.Artifacts)[ampModesPluginArtifactID]; ok {
+		t.Fatalf("installed Amp artifacts = %#v, want no loaf-modes.ts row", before.Artifacts)
+	}
+	writeInstallFile(t, filepath.Join(plugins, "loaf-modes.ts"), predecessor)
+	writeDistribution("export const hooks = 2;\n")
+	preview := runInstallCapture(t, root, "upgrade", "--select", "amp/"+hookID, "--dry-run", "--json")
+	if strings.Contains(preview, ampModesPluginArtifactID) || strings.Contains(preview, "loaf-modes") {
+		t.Fatalf("selected loaf.js preview claimed modes retirement:\n%s", preview)
+	}
+	if got := findScopedTargetArtifact(t, parseInstallPlanJSON(t, preview), "amp", hookID); got.Action != planActionUpdate {
+		t.Fatalf("selected loaf.js preview action = %#v, want update", got)
+	}
 	runInstallCapture(t, root, "upgrade", "--select", "amp/"+hookID)
-	assertInstallFile(t, filepath.Join(config, "plugins", "loaf.js"), "export const hooks = 2;\n")
-	assertInstallFile(t, filepath.Join(config, "plugins", "loaf-modes.js"), "user-edited modes\n")
+	assertInstallFile(t, filepath.Join(plugins, "loaf.js"), "export const hooks = 2;\n")
+	assertInstallFile(t, filepath.Join(plugins, "loaf-modes.ts"), predecessor)
 	assertInstallFile(t, filepath.Join(config, loafInstallMarkerFile), "0.5.0\n")
 	after, err := readTargetAdapterManifest(filepath.Join(config, targetInstallManifestFile))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := targetAdapterArtifactsByID(after.Artifacts)[ampModesPluginArtifactID]; got.SHA256 != ownedModes.SHA256 {
-		t.Fatalf("unselected Amp modes ownership changed: %#v -> %#v", ownedModes, got)
+	if _, ok := targetAdapterArtifactsByID(after.Artifacts)[ampModesPluginArtifactID]; ok {
+		t.Fatalf("scoped loaf.js upgrade added modes row: %#v", after.Artifacts)
 	}
 }
 

@@ -534,7 +534,11 @@ func planTargetAdapterArtifacts(options targetInstallOptions) ([]artifactPlanDec
 	}
 	desiredByID := targetAdapterArtifactsByID(desired.Artifacts)
 	installedByID := targetAdapterArtifactsByID(installed.Artifacts)
-
+	if predecessor, ok, err := recognizedAmpModesPluginPredecessor(options, desiredByID, installedByID); err != nil {
+		return nil, err
+	} else if ok {
+		installed.Artifacts = append(installed.Artifacts, predecessor)
+	}
 	var decisions []artifactPlanDecision
 	desiredDestinations := map[string]bool{}
 

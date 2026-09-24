@@ -5,7 +5,7 @@ description: >-
   deciding where work belongs or how one Flow stage hands evidence to another.
   Not for provider-specific tracker operations.
 user-invocable: false
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Loaf Reference

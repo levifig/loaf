@@ -6,7 +6,7 @@ description: >-
   Backlog, or when deciding which existing records should advance, defer, close,
   or return to discovery. Produces verified native dispositions and explicit
   gaps.
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Triage

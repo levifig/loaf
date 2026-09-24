@@ -125,10 +125,12 @@ type targetInstallOptions struct {
 }
 
 type installTargetRecord struct {
-	Version   string `json:"version"`
-	Target    string `json:"target"`
-	ConfigDir string `json:"config_dir"`
-	SkillsDir string `json:"skills_dir,omitempty"`
+	Version          string `json:"version"`
+	Target           string `json:"target"`
+	ConfigDir        string `json:"config_dir,omitempty"`
+	SkillsDir        string `json:"skills_dir,omitempty"`
+	ProjectConfigDir string `json:"project_config_dir,omitempty"`
+	ProjectSkillsDir string `json:"project_skills_dir,omitempty"`
 }
 
 type managedSkillDigest struct {
@@ -1724,6 +1726,20 @@ func writeInstallRecord(options targetInstallOptions, skillsDir string) error {
 		ConfigDir: options.ConfigDir,
 		SkillsDir: skillsDir,
 	}
+	if projectEnvironmentActive() && options.Target == "amp" && options.ProjectRoot != "" {
+		projectConfigDir, err := projectRelativeInstallRecordPath(options.ProjectRoot, options.ConfigDir)
+		if err != nil {
+			return fmt.Errorf("record Amp config directory: %w", err)
+		}
+		projectSkillsDir, err := projectRelativeInstallRecordPath(options.ProjectRoot, skillsDir)
+		if err != nil {
+			return fmt.Errorf("record Amp skills directory: %w", err)
+		}
+		record.ConfigDir = ""
+		record.SkillsDir = ""
+		record.ProjectConfigDir = projectConfigDir
+		record.ProjectSkillsDir = projectSkillsDir
+	}
 	body, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
 		return err
@@ -1734,6 +1750,17 @@ func writeInstallRecord(options targetInstallOptions, skillsDir string) error {
 		return err
 	}
 	return os.WriteFile(path, body, 0o644)
+}
+
+func projectRelativeInstallRecordPath(projectRoot, path string) (string, error) {
+	if !filepath.IsAbs(projectRoot) || !filepath.IsAbs(path) {
+		return "", fmt.Errorf("project paths must be absolute")
+	}
+	relative, err := filepath.Rel(filepath.Clean(projectRoot), filepath.Clean(path))
+	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+		return "", fmt.Errorf("path must be inside the project root")
+	}
+	return filepath.ToSlash(relative), nil
 }
 
 func installRecordPath(homeDir string, target string) string {

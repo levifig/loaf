@@ -6,7 +6,7 @@ description: >-
   up, tidy `.agents/`, or decide what to retain. Produces artifact-by-artifact
   recommendations and performs only explicitly approved dispositions.
 subtask: false
-version: 0.5.0
+version: 0.6.0-rc.1
 ---
 
 # Housekeeping

@@ -1,0 +1,8 @@
+schema=1
+version=<release-version>
+archive.linux-x64.sha256=<64-lowercase-hex>
+archive.linux-arm64.sha256=<64-lowercase-hex>
+project.id=<durable-project-id>
+git.remote=<owner/repository>
+tracker.provider=<provider>
+tracker.scope=<provider-native-scope>

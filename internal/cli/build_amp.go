@@ -91,7 +91,7 @@ func buildNativeAmpTarget(root string) error {
 	if err := generateNativeAmpPlugin(filepath.Join(root, "config", "hooks.yaml"), dist, version); err != nil {
 		return err
 	}
-	return copyNativeAmpModesPlugin(root, filepath.Join(dist, ".amp", "plugins"))
+	return nil
 }
 
 func generateNativeAmpPlugin(hooksPath string, dist string, version string) error {
@@ -106,22 +106,11 @@ func generateNativeAmpPlugin(hooksPath string, dist string, version string) erro
 	return os.WriteFile(filepath.Join(pluginDir, "loaf.js"), []byte(renderNativeAmpPlugin(hooks, version)), 0o644)
 }
 
-func copyNativeAmpModesPlugin(root string, pluginDir string) error {
-	src := filepath.Join(root, "content", "amp", "plugins", "loaf-modes.js")
-	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
-		return err
-	}
-	if err := copyNativeBuildFile(src, filepath.Join(pluginDir, "loaf-modes.js")); err != nil {
-		return fmt.Errorf("copy amp modes plugin: %w", err)
-	}
-	return nil
-}
-
 func renderNativeAmpPlugin(hooks []nativeBuildHook, version string) string {
 	return nativeAmpHeader(version) + "\n\n" +
-		nativeAmpCoreFunctions() + "\n\n" +
+		nativeAmpCoreFunctionsWithFailureClassification() + "\n\n" +
+		nativeAmpConsumerReadiness() + "\n\n" +
 		nativeAmpToolHelpers() + "\n\n" +
-		nativeAmpDelegation + "\n\n" +
 		nativeAmpHookDataWithoutSession(hooks) + "\n\n" +
 		"export default function (amp) {\n" + nativeAmpPluginBody() + "\n}"
 }
@@ -134,6 +123,7 @@ func nativeAmpHeader(version string) string {
  */
 
 import { execFile } from 'child_process';
+import { lstat as ampLstat } from 'node:fs/promises';
 import { promisify } from 'util';
 import { join, dirname, isAbsolute, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -371,6 +361,77 @@ function matchesIfCondition(toolName, toolInput, ifCondition) {
 `
 }
 
+func nativeAmpCoreFunctionsWithFailureClassification() string {
+	core := nativeAmpCoreFunctions()
+	core = strings.ReplaceAll(core,
+		`    child.on('error', (err) => {
+      finish({
+        exitCode: failClosed ? 2 : 1,`,
+		`    child.on('error', (err) => {
+      finish({
+        exitCode: -1,`)
+	core = strings.Replace(core,
+		`    child.on('close', (code) => {
+      const exitCode = code ?? 1; // null means signal-killed; fail closed`,
+		`    child.on('close', (code, signal) => {
+      const exitCode = code ?? -1; // null means signal-killed; fail closed`, 1)
+	core = strings.Replace(core,
+		"    return { exitCode: 1, stdout: '', stderr: 'No command or script specified' };",
+		"    return { exitCode: -1, stdout: '', stderr: '', error: 'No command or script specified' };", 1)
+	core = strings.Replace(core,
+		"      exitCode: failClosed ? 2 : 1,\n      stdout: '',\n      stderr: error.message,",
+		"      exitCode: -1,\n      stdout: '',\n      stderr: '',", 1)
+	return strings.ReplaceAll(core, "%%BT%%", "`")
+}
+
+func nativeAmpConsumerReadiness() string {
+	readiness := `async function runAmpConsumerAgentCheck(cwd) {
+  const pinPath = join(cwd, '.agents', 'loaf-orb.pin');
+  try {
+    await ampLstat(pinPath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return { checked: true, pinned: false, ready: true };
+    return { checked: true, pinned: true, ready: false, message: 'Loaf cannot inspect the committed Amp Orb pin. Restore readable project files, then rerun the Orb setup or resume lifecycle.' };
+  }
+
+  const scriptPath = join(cwd, '.agents', 'loaf-orb-bootstrap.sh');
+  try {
+    await ampLstat(scriptPath);
+  } catch {
+    return { checked: true, pinned: true, ready: false, message: 'Pinned Loaf Amp consumer is missing .agents/loaf-orb-bootstrap.sh. Restore the committed bootstrap script and rerun the Orb setup or resume lifecycle.' };
+  }
+
+  const child = execFile(scriptPath, ['agent-check'], {
+    cwd,
+    env: process.env,
+    encoding: 'utf-8',
+    timeout: 10000,
+  });
+  const result = await new Promise((resolve) => {
+    let stdoutStr = '';
+    let stderrStr = '';
+    child.stdout?.on('data', (data) => stdoutStr += data);
+    child.stderr?.on('data', (data) => stderrStr += data);
+    child.on('close', (code, signal) => {
+      resolve({ exitCode: code ?? -1, stdout: stdoutStr, stderr: stderrStr, error: signal ? %%BT%%terminated by signal ${signal}%%BT%% : undefined });
+    });
+    child.on('error', (error) => {
+      resolve({ exitCode: -1, stdout: stdoutStr, stderr: stderrStr, error: error.message });
+    });
+  });
+  if (result.exitCode === 0) return { checked: true, pinned: true, ready: true };
+
+  const detail = result.exitCode >= 0 ? %%BT%%agent-check exited ${result.exitCode}%%BT%% : 'agent-check could not complete';
+  return {
+    checked: true,
+    pinned: true,
+    ready: false,
+    message: %%BT%%Pinned Loaf Amp consumer is not ready: ${detail}. Rerun .agents/loaf-orb-bootstrap.sh through the Orb setup or resume lifecycle, then retry.%%BT%%,
+  };
+}`
+	return strings.ReplaceAll(readiness, "%%BT%%", "`")
+}
+
 func nativeAmpToolHelpers() string {
 	return `function normalizeAmpToolName(toolName) {
   switch (toolName) {
@@ -421,13 +482,7 @@ const sessionHooks = ` + marshalNativeAmpHookMap(session) + `;`
 }
 
 func nativeAmpHookDataWithoutSession(hooks []nativeBuildHook) string {
-	var supportedPreTool []nativeBuildHook
-	for _, hook := range filterNativeBuildHooks(hooks, "pre-tool") {
-		if hook.id != "detect-linear-magic" {
-			supportedPreTool = append(supportedPreTool, hook)
-		}
-	}
-	preTool := nativeAmpGroupHooksByMatcher(supportedPreTool)
+	preTool := nativeAmpGroupHooksByMatcher(nativeAmpPreToolHooks(hooks))
 	postTool := nativeAmpGroupHooksByMatcher(filterNativeBuildHooks(hooks, "post-tool"))
 	return `// ─────────────────────────────────────────────────────────────────────────────
 // Hook Data
@@ -438,9 +493,22 @@ const preToolHooks = ` + marshalNativeAmpHookMap(preTool) + `;
 const postToolHooks = ` + marshalNativeAmpHookMap(postTool) + `;`
 }
 
+func nativeAmpPreToolHooks(hooks []nativeBuildHook) []nativeBuildHook {
+	var supported []nativeBuildHook
+	for _, hook := range filterNativeBuildHooks(hooks, "pre-tool") {
+		if hook.id == "detect-linear-magic" {
+			continue
+		}
+		if hook.id == "ephemeral-provenance" && hook.command == "" && hook.script == "" && hook.instruction == "" {
+			hook.command = "loaf check --hook ephemeral-provenance"
+		}
+		supported = append(supported, hook)
+	}
+	return supported
+}
+
 func nativeAmpPluginBody() string {
-	body := `  const delegation = registerLoafDelegation(amp);
-  function ampWorkspaceDir() {
+	body := `  function ampWorkspaceDir() {
     const workspaceRoot = amp.system?.workspaceRoot;
     if (!workspaceRoot) return { error: 'Amp workspace is unavailable' };
     if (typeof amp.helpers?.filePathFromURI !== 'function') {
@@ -477,13 +545,16 @@ func nativeAmpPluginBody() string {
     return typeof shellCommand?.dir === 'string' && shellCommand.dir ? shellCommand.dir : undefined;
   }
 
-  amp.on('agent.start', async (event, ctx) => {
-    if (delegation.owns(event.thread.id)) return {};
-    const policy = await loafNativeModeContext(event, ctx);
+  amp.on('agent.start', async () => {
     const directory = resolveAmpHookCwd();
     if (directory.error || !directory.cwd) {
       console.warn(%%BT%%[loaf] Managed-content reconcile skipped: ${directory.error || 'Amp workspace is unavailable'}%%BT%%);
-      return policy;
+      return {};
+    }
+    const readiness = await runAmpConsumerAgentCheck(directory.cwd);
+    if (readiness.pinned && !readiness.ready) {
+      console.warn(%%BT%%[loaf] ${readiness.message || 'Pinned Loaf Amp consumer is not ready.'} Tool calls will remain blocked until readiness is proven.%%BT%%);
+      return {};
     }
     const result = await runHook('harness', '', 'managed-content-reconcile', 'loaf harness reconcile --target amp --json', undefined, undefined, 10000, false, directory.cwd);
     const detail = (result.stdout || result.stderr).trim();
@@ -499,12 +570,18 @@ func nativeAmpPluginBody() string {
         console.warn(%%BT%%[loaf] Managed-content reconcile returned an unreadable receipt: ${detail}%%BT%%);
       }
     }
-    return policy;
+    return {};
   });
 
   amp.on('tool.call', async (event) => {
-    const rejection = await delegation.check(event);
-    if (rejection) return { action: 'reject-and-continue', message: rejection };
+    const workspace = ampWorkspaceDir();
+    if (!workspace.path) {
+      return { action: 'reject-and-continue', message: (workspace.error || 'Amp workspace is unavailable') + '; Loaf readiness cannot be proven.' };
+    }
+    const readiness = await runAmpConsumerAgentCheck(workspace.path);
+    if (readiness.pinned && !readiness.ready) {
+      return { action: 'reject-and-continue', message: readiness.message || 'Pinned Loaf Amp consumer is not ready. Rerun the Orb setup or resume lifecycle, then retry.' };
+    }
     const toolName = normalizeAmpToolName(event.tool);
     const toolInput = normalizeAmpToolInput(amp, event);
     const hookPayload = serializeHookPayload(toolName, toolInput, event);
@@ -519,12 +596,18 @@ func nativeAmpPluginBody() string {
         }
         const result = await runHook('pre-tool', toolName, hook.id, hook.command, hook.script, hookPayload, hook.timeout, hook.failClosed, directory.cwd);
 
+        const detail = (result.stderr || result.stdout || result.error || ('exit ' + result.exitCode)).trim();
         if (result.exitCode === 2) {
-          return { action: 'reject-and-continue', message: result.stderr };
+          return { action: 'reject-and-continue', message: detail || %%BT%%Loaf hook ${hook.id} rejected this tool call.%%BT%% };
         }
-
-        if (result.exitCode === 1) {
-          console.warn(%%BT%%[loaf] Hook ${hook.id} error: ${result.stderr}%%BT%%);
+        if (result.exitCode !== 0) {
+          if (hook.failClosed) {
+            return {
+              action: 'reject-and-continue',
+              message: %%BT%%Loaf fail-closed hook ${hook.id} could not prove this tool call safe (${detail || ('exit ' + result.exitCode)}). Restore the Loaf runtime or resolve the hook failure, then retry.%%BT%%,
+            };
+          }
+          console.warn(%%BT%%[loaf] Advisory hook ${hook.id} failed without blocking (exit ${result.exitCode}): ${detail}%%BT%%);
         }
       }
     }

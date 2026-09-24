@@ -1,7 +1,7 @@
 {
   "version": 1,
   "target": "amp",
-  "package_version": "0.5.0",
+  "package_version": "0.6.0-rc.1",
   "capability_contract_version": 3,
   "adapters": [
     "amp-plugin-v1"
@@ -14,19 +14,11 @@
       "sha256": "5403297367a1e20ac96e6382b6858a7072986da5be1d9fa5396624d046a8e9b8"
     },
     {
-      "id": "plugin:.amp/plugins/loaf-modes.js",
-      "kind": "plugin",
-      "source_path": ".amp/plugins/loaf-modes.js",
-      "destination": "plugins/loaf-modes.js",
-      "sha256": "0a202a1ea170e42cb8c0ed229d92fef703dff78c5b4b8c9741f5fec1a84804f1",
-      "mode": 420
-    },
-    {
       "id": "plugin:.amp/plugins/loaf.js",
       "kind": "plugin",
       "source_path": ".amp/plugins/loaf.js",
       "destination": "plugins/loaf.js",
-      "sha256": "2fc76b76c43d4af142ac8706334168e52237c3a55bc46b8c5ded88488ff30c0c",
+      "sha256": "29cadd43d9f680fef2a6a8fc059ecaa129592e4ad0f1c4e77eb15d247bbf9654",
       "mode": 420
     }
   ]

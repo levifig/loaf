@@ -37,6 +37,29 @@ func TestPackagedRebuildPreservesTrackerNativeFlow(t *testing.T) {
 	copyFixtureBinary(t, binary, filepath.Join(source, "bin", "loaf"))
 	writeFixtureFile(t, filepath.Join(source, "vnext/continuity/unshipped.go"), "package continuity\n")
 	env := append(isolatedInstallEnv(t), "LOAF_DEV_LINK=0", "LOAF_RELEASE_TARGETS="+target)
+	// Rebuilding the packaged Amp plugin validates JavaScript. Expose only the
+	// supported host Node executable, not npm or a TypeScript compiler.
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	toolBin := realpath(t, t.TempDir())
+	link, err := filepath.Rel(toolBin, node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(link, filepath.Join(toolBin, "node")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(toolBin, "node")); err != nil {
+		t.Fatalf("isolated Node executable: %v", err)
+	}
+	for i, entry := range env {
+		if strings.HasPrefix(entry, "PATH=") {
+			env[i] = "PATH=" + toolBin + string(os.PathListSeparator) + strings.TrimPrefix(entry, "PATH=")
+			break
+		}
+	}
 	run := func(dir, command string, args ...string) []byte {
 		t.Helper()
 		cmd := exec.Command(command, args...)
@@ -50,6 +73,10 @@ func TestPackagedRebuildPreservesTrackerNativeFlow(t *testing.T) {
 		return output
 	}
 	run(source, filepath.Join(source, "bin/native", target, nativeName), "build", "--target", "codex")
+	// Release archives now carry an Amp content manifest, so every packaging
+	// fixture must produce the Amp distribution as well as the target under
+	// test before invoking loafdev package.
+	run(source, filepath.Join(source, "bin/native", target, nativeName), "build", "--target", "amp")
 	want := packagedTreeDigests(t, filepath.Join(source, "dist/codex/skills"))
 	if _, ok := want["project-management/contract.json"]; !ok {
 		t.Fatal("source build did not produce tracker-native Flow")

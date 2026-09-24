@@ -324,7 +324,7 @@ func TestStripObsoleteHookProjectionRowsRefusesToIdentifyAmbiguousDocuments(t *t
 func TestCollectTargetAdapterArtifactsRejectsSymlinks(t *testing.T) {
 	root := realpath(t, t.TempDir())
 	writeInstallFile(t, filepath.Join(root, "plugins", "hooks.js"), "plugin\n")
-	if err := os.Symlink("hooks.js", filepath.Join(root, "plugins", "linked.ts")); err != nil {
+	if err := os.Symlink("hooks.js", filepath.Join(root, "plugins", "linked.js")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := collectTargetAdapterArtifacts("opencode", root); err == nil || !strings.Contains(err.Error(), "symlink") {
@@ -332,10 +332,10 @@ func TestCollectTargetAdapterArtifactsRejectsSymlinks(t *testing.T) {
 	}
 }
 
-func TestCollectTargetAdapterArtifactsCollectsIndependentAmpPlugins(t *testing.T) {
+func TestCollectTargetAdapterArtifactsCollectsSingleAmpPlugin(t *testing.T) {
 	root := realpath(t, t.TempDir())
 	writeInstallFile(t, filepath.Join(root, ".amp", "plugins", "loaf.js"), "hooks\n")
-	writeInstallFile(t, filepath.Join(root, ".amp", "plugins", "loaf-modes.js"), "modes\n")
+	writeInstallFile(t, filepath.Join(root, ".amp", "plugins", "loaf-modes.ts"), "modes\n")
 	writeInstallFile(t, filepath.Join(root, ".amp", "plugins", "company.ts"), "company\n")
 	artifacts, err := collectTargetAdapterArtifacts("amp", root)
 	if err != nil {
@@ -348,14 +348,17 @@ func TestCollectTargetAdapterArtifactsCollectsIndependentAmpPlugins(t *testing.T
 		}
 		got[artifact.Destination] = artifact.ID
 	}
-	if got["plugins/loaf.js"] != "plugin:.amp/plugins/loaf.js" || got["plugins/loaf-modes.js"] != "plugin:.amp/plugins/loaf-modes.js" {
-		t.Fatalf("artifacts = %#v, want independent loaf.js and loaf-modes.js plugins", artifacts)
+	if got["plugins/loaf.js"] != "plugin:.amp/plugins/loaf.js" {
+		t.Fatalf("artifacts = %#v, want the loaf.js plugin", artifacts)
 	}
 	if _, ok := got["plugins/company.ts"]; ok {
 		t.Fatalf("artifacts = %#v, want Loaf-owned plugin files only", artifacts)
 	}
-	if len(got) != 2 {
-		t.Fatalf("artifacts = %#v, want exactly two Amp plugins", artifacts)
+	if _, ok := got["plugins/loaf-modes.ts"]; ok {
+		t.Fatalf("artifacts = %#v, want loaf-modes.ts excluded from the emitted Amp plugin allowlist", artifacts)
+	}
+	if len(got) != 1 {
+		t.Fatalf("artifacts = %#v, want exactly one Amp plugin", artifacts)
 	}
 }
 
@@ -374,7 +377,7 @@ func TestAmpModesPluginExactPredecessorIsClosed(t *testing.T) {
 		t.Fatal("non-amp target adopted the predecessor digest")
 	}
 	wrongID := artifact
-	wrongID.ID = "plugin:.amp/plugins/loaf.js"
+	wrongID.ID = "plugin:.amp/plugins/loaf.ts"
 	if ampModesPluginExactPredecessor("amp", wrongID, body) {
 		t.Fatal("hook plugin identity adopted the modes predecessor digest")
 	}
