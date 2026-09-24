@@ -6,7 +6,7 @@ description: >-
   models, or tests. Provides patterns for modern Python development. Not for
   schema design (use database-design), infrastructure (use
   infrastructure-management), or frontend code (use typescript-development).
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Python Development

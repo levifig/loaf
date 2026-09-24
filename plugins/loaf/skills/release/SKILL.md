@@ -7,7 +7,7 @@ description: >-
   a local release ledger.
 user-invocable: true
 argument-hint: '[version, base, or release intent]'
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Release

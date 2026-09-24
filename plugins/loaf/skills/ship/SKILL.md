@@ -7,7 +7,7 @@ description: >-
   native transition when authorized.
 user-invocable: true
 argument-hint: '[PR number or URL]'
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Ship

@@ -6,7 +6,7 @@ description: >-
   or return to discovery. Produces verified native dispositions and explicit
   gaps.
 user-invocable: true
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Triage
