@@ -130,6 +130,33 @@ func TestScopedUpgradeIgnoresUnrelatedPitchConflict(t *testing.T) {
 	}
 }
 
+func TestScopedUpgradeRollsBackNewSkillDirectory(t *testing.T) {
+	root, home := setupScopedUpgradeFixture(t)
+	skillDir := filepath.Join(home, ".agents", "skills", "foundations")
+	if err := os.RemoveAll(skillDir); err != nil {
+		t.Fatalf("RemoveAll(%s) error = %v", skillDir, err)
+	}
+	assertInstallPathMissing(t, skillDir)
+	t.Cleanup(func() { scopedApplyTestFault = nil })
+	scopedApplyTestFault = func(phase string) error {
+		if phase == "skills" {
+			if _, err := os.Stat(skillDir); err != nil {
+				t.Fatalf("new skill directory missing before rollback: %v", err)
+			}
+			return errors.New("injected skill apply failure")
+		}
+		return nil
+	}
+	var stdout strings.Builder
+	err := Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}.Run([]string{
+		"upgrade", "--select", "skills/skill:foundations",
+	})
+	if err == nil || !strings.Contains(err.Error(), "injected skill apply failure") {
+		t.Fatalf("error = %v\n%s, want injected skill failure", err, stdout.String())
+	}
+	assertInstallPathMissing(t, skillDir)
+}
+
 func TestScopedUpgradeRecoversMidApplyFailure(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
 	before := hashScopedSurfaces(t, home)
@@ -433,7 +460,7 @@ func scopedUpgradeArgs() []string {
 		"--select", "cursor/hook:preToolUse/validate-infra-safety",
 		"--select", "cursor/hook:preToolUse/validate-sql-safety",
 		"--select", "opencode/hook-file:plugins/hooks/post-tool/kb-staleness-nudge.sh",
-		"--select", "opencode/plugin:plugins/hooks.ts",
+		"--select", "opencode/plugin:plugins/hooks.js",
 	}
 }
 
@@ -448,7 +475,7 @@ func setupScopedUpgradeFixture(t *testing.T) (string, string) {
 	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "pitch", "SKILL.md"), "# Pitch v1\n")
 	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "foundations", "SKILL.md"), "# Foundations v1\n")
 	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "pitch", "SKILL.md"), "# Pitch v1\n")
-	writeScopedPlugin(t, root, "opencode", "plugins/hooks.ts", "export const hooks = { kb: { script: 'post-tool/kb-staleness-nudge.sh' } }\n")
+	writeScopedPlugin(t, root, "opencode", "plugins/hooks.js", "export const hooks = { kb: { script: 'post-tool/kb-staleness-nudge.sh' } }\n")
 	installTestHookDistribution(t, root, "cursor", scopedCursorHookSources()...)
 
 	runInstallFixture(t, root, "install", "--to", "cursor", "--yes")
@@ -461,7 +488,7 @@ func setupScopedUpgradeFixture(t *testing.T) (string, string) {
 
 	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations v2\n")
 	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "foundations", "SKILL.md"), "# Foundations v2\n")
-	writeScopedPlugin(t, root, "opencode", "plugins/hooks.ts", "export const hooks = { kb: { command: 'loaf check --hook kb-staleness-nudge' }, infra: { command: 'loaf check --hook validate-infra-safety' } }\n")
+	writeScopedPlugin(t, root, "opencode", "plugins/hooks.js", "export const hooks = { kb: { command: 'loaf check --hook kb-staleness-nudge' }, infra: { command: 'loaf check --hook validate-infra-safety' } }\n")
 
 	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "0.5.0\n")
 	writeInstallFile(t, filepath.Join(home, ".config", "opencode", loafInstallMarkerFile), "0.5.0\n")
@@ -672,7 +699,7 @@ func assertScopedApplyConverged(t *testing.T, home string, plan installDryRunPla
 		t.Fatal("unselected stale validate-commit was rewritten")
 	}
 
-	plugin := readFileString(t, filepath.Join(home, ".config", "opencode", "plugins", "hooks.ts"))
+	plugin := readFileString(t, filepath.Join(home, ".config", "opencode", "plugins", "hooks.js"))
 	if !strings.Contains(plugin, "loaf check --hook kb-staleness-nudge") {
 		t.Fatalf("opencode plugin was not PATH loaf:\n%s", plugin)
 	}

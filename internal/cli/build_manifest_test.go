@@ -62,16 +62,16 @@ func TestTargetAdapterManifestIsDeterministic(t *testing.T) {
 }
 
 func TestReadTargetAdapterManifestRejectsUnsafeAndNonStrictShapes(t *testing.T) {
-	valid := `{"version":1,"target":"amp","package_version":"1.0.0","capability_contract_version":3,"adapters":["amp-plugin-v1"],"artifacts":[{"id":"managed-instructions","kind":"instruction","destination":"project-instructions","sha256":"` + strings.Repeat("a", 64) + `"},{"id":"plugin:.amp/plugins/loaf.ts","kind":"plugin","source_path":".amp/plugins/loaf.ts","destination":"plugins/loaf.ts","sha256":"` + strings.Repeat("b", 64) + `","mode":420}]}`
+	valid := `{"version":1,"target":"amp","package_version":"1.0.0","capability_contract_version":3,"adapters":["amp-plugin-v1"],"artifacts":[{"id":"managed-instructions","kind":"instruction","destination":"project-instructions","sha256":"` + strings.Repeat("a", 64) + `"},{"id":"plugin:.amp/plugins/loaf.js","kind":"plugin","source_path":".amp/plugins/loaf.js","destination":"plugins/loaf.js","sha256":"` + strings.Repeat("b", 64) + `","mode":420}]}`
 	for name, body := range map[string]string{
 		"unknown field":         strings.Replace(valid, `"target":"amp"`, `"target":"amp","unknown":true`, 1),
 		"duplicate key":         strings.Replace(valid, `"target":"amp"`, `"target":"amp","target":"amp"`, 1),
 		"trailing value":        valid + `{}`,
-		"traversal":             strings.Replace(valid, `"plugins/loaf.ts"`, `"../plugins/loaf.ts"`, 1),
-		"absolute":              strings.Replace(valid, `"plugins/loaf.ts"`, `"/plugins/loaf.ts"`, 1),
-		"backslash":             strings.Replace(valid, `"plugins/loaf.ts"`, `"plugins\\loaf.ts"`, 1),
+		"traversal":             strings.Replace(valid, `"plugins/loaf.js"`, `"../plugins/loaf.js"`, 1),
+		"absolute":              strings.Replace(valid, `"plugins/loaf.js"`, `"/plugins/loaf.js"`, 1),
+		"backslash":             strings.Replace(valid, `"plugins/loaf.js"`, `"plugins\\loaf.js"`, 1),
 		"uppercase digest":      strings.Replace(valid, strings.Repeat("b", 64), strings.Repeat("B", 64), 1),
-		"duplicate destination": strings.Replace(valid, `"project-instructions"`, `"plugins/loaf.ts"`, 1),
+		"duplicate destination": strings.Replace(valid, `"project-instructions"`, `"plugins/loaf.js"`, 1),
 		"unknown kind":          strings.Replace(valid, `"kind":"plugin"`, `"kind":"binary"`, 1),
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestReadTargetAdapterManifestRejectsUnsafeAndNonStrictShapes(t *testing.T) 
 
 func TestReadTargetAdapterManifestRequiresConcreteModesAndForbidsProjectionModes(t *testing.T) {
 	digest := strings.Repeat("a", 64)
-	valid := `{"version":1,"target":"opencode","package_version":"1.0.0","capability_contract_version":3,"adapters":["opencode-plugin-v1"],"artifacts":[{"id":"managed-instructions","kind":"instruction","destination":"project-instructions","sha256":"` + digest + `"},{"id":"plugin:plugins/hooks.ts","kind":"plugin","source_path":"plugins/hooks.ts","destination":"plugins/hooks.ts","sha256":"` + digest + `","mode":493}]}`
+	valid := `{"version":1,"target":"opencode","package_version":"1.0.0","capability_contract_version":3,"adapters":["opencode-plugin-v1"],"artifacts":[{"id":"managed-instructions","kind":"instruction","destination":"project-instructions","sha256":"` + digest + `"},{"id":"plugin:plugins/hooks.js","kind":"plugin","source_path":"plugins/hooks.js","destination":"plugins/hooks.js","sha256":"` + digest + `","mode":493}]}`
 	path := filepath.Join(t.TempDir(), "manifest.json")
 	writeInstallFile(t, path, valid)
 	if _, err := readTargetAdapterManifest(path); err != nil {
@@ -323,8 +323,8 @@ func TestStripObsoleteHookProjectionRowsRefusesToIdentifyAmbiguousDocuments(t *t
 
 func TestCollectTargetAdapterArtifactsRejectsSymlinks(t *testing.T) {
 	root := realpath(t, t.TempDir())
-	writeInstallFile(t, filepath.Join(root, "plugins", "hooks.ts"), "plugin\n")
-	if err := os.Symlink("hooks.ts", filepath.Join(root, "plugins", "linked.ts")); err != nil {
+	writeInstallFile(t, filepath.Join(root, "plugins", "hooks.js"), "plugin\n")
+	if err := os.Symlink("hooks.js", filepath.Join(root, "plugins", "linked.js")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := collectTargetAdapterArtifacts("opencode", root); err == nil || !strings.Contains(err.Error(), "symlink") {
@@ -332,9 +332,9 @@ func TestCollectTargetAdapterArtifactsRejectsSymlinks(t *testing.T) {
 	}
 }
 
-func TestCollectTargetAdapterArtifactsCollectsIndependentAmpPlugins(t *testing.T) {
+func TestCollectTargetAdapterArtifactsCollectsSingleAmpPlugin(t *testing.T) {
 	root := realpath(t, t.TempDir())
-	writeInstallFile(t, filepath.Join(root, ".amp", "plugins", "loaf.ts"), "hooks\n")
+	writeInstallFile(t, filepath.Join(root, ".amp", "plugins", "loaf.js"), "hooks\n")
 	writeInstallFile(t, filepath.Join(root, ".amp", "plugins", "loaf-modes.ts"), "modes\n")
 	writeInstallFile(t, filepath.Join(root, ".amp", "plugins", "company.ts"), "company\n")
 	artifacts, err := collectTargetAdapterArtifacts("amp", root)
@@ -348,8 +348,8 @@ func TestCollectTargetAdapterArtifactsCollectsIndependentAmpPlugins(t *testing.T
 		}
 		got[artifact.Destination] = artifact.ID
 	}
-	if got["plugins/loaf.ts"] != "plugin:.amp/plugins/loaf.ts" {
-		t.Fatalf("artifacts = %#v, want the loaf.ts plugin", artifacts)
+	if got["plugins/loaf.js"] != "plugin:.amp/plugins/loaf.js" {
+		t.Fatalf("artifacts = %#v, want the loaf.js plugin", artifacts)
 	}
 	if _, ok := got["plugins/company.ts"]; ok {
 		t.Fatalf("artifacts = %#v, want Loaf-owned plugin files only", artifacts)

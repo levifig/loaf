@@ -176,25 +176,25 @@ function testClaudeCode() {
 function testOpenCode() {
   console.log(`\n${cyan("OpenCode Target")}`);
   
-  const hooksPath = join(ROOT_DIR, "dist", "opencode", "plugins", "hooks.ts");
+  const hooksPath = join(ROOT_DIR, "dist", "opencode", "plugins", "hooks.js");
   
-  test("hooks.ts exists", () => {
-    assert(existsSync(hooksPath), "hooks.ts not found");
+  test("hooks.js exists", () => {
+    assert(existsSync(hooksPath), "hooks.js not found");
   });
   
   const hooksContent = readFileSync(hooksPath, "utf-8");
   
-  test("hooks.ts includes matchesIfCondition function", () => {
+  test("hooks.js includes matchesIfCondition function", () => {
     assert(hooksContent.includes("matchesIfCondition"), "matchesIfCondition function not found");
   });
   
-  test("hooks.ts checks hook.if condition", () => {
+  test("hooks.js checks hook.if condition", () => {
     assert(hooksContent.includes("hook.if"), "hook.if check not found");
     assert(hooksContent.includes("matchesIfCondition"), "matchesIfCondition call not found");
   });
   
-  test("hooks.ts includes journal-post-pr hook with if", () => {
-    // The generated TypeScript should include the if condition for journal hooks
+  test("hooks.js includes journal-post-pr hook with if", () => {
+    // The generated JavaScript should include the if condition for journal hooks
     assert(hooksContent.includes('"Bash(gh pr create:*)"') || hooksContent.includes("'Bash(gh pr create:*)'"), 
            "gh pr create:* if condition not found");
   });
@@ -231,10 +231,10 @@ function testCodex() {
 function testAmp() {
   console.log(`\n${cyan("Amp Target")}`);
   
-  const hooksPath = join(ROOT_DIR, "dist", "amp", ".amp", "plugins", "loaf.ts");
+  const hooksPath = join(ROOT_DIR, "dist", "amp", ".amp", "plugins", "loaf.js");
   
-  test("loaf.ts exists", () => {
-    assert(existsSync(hooksPath), "loaf.ts not found");
+  test("loaf.js exists", () => {
+    assert(existsSync(hooksPath), "loaf.js not found");
   });
   
   const hooksContent = readFileSync(hooksPath, "utf-8");

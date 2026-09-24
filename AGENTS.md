@@ -14,7 +14,7 @@ bin/loaf build                 # Rebuild content with this checkout's CLI
 bin/loaf upgrade --dry-run      # Preview changes to existing installations
 ```
 
-Use the Go toolchain declared in `go.mod`. Node and optional TypeScript tooling remain for harness plugin checks and capability tests; npm is not a build or install entry point. `make` and `make build` compile and verify this checkout without activating the development launcher. Use `make install` to activate `bin/loaf` through `~/.local/bin/loaf` and Loaf's existing launcher pointer. Never change a user's runtime selection as a side effect of verification. `LOAF_DEV_LINK=0` remains a harmless no-op on builds.
+Use the Go toolchain declared in `go.mod`. Node 24+ remains for harness plugin checks and capability tests; npm and `tsc` are not build or install entry points. `make` and `make build` compile and verify this checkout without activating the development launcher. Use `make install` to activate `bin/loaf` through `~/.local/bin/loaf` and Loaf's existing launcher pointer. Never change a user's runtime selection as a side effect of verification. `LOAF_DEV_LINK=0` remains a harmless no-op on builds.
 
 `loaf install` has no dry-run mode. Applying onboarding with `bin/loaf install` is a separate, explicitly scoped action that changes live harness content; use isolated homes in tests.
 
@@ -475,7 +475,7 @@ make vulncheck                 # Network-backed local audit; before release or a
 go run ./cmd/loafdev --help    # The build, release, packaging, and tag tooling behind the Makefile
 ```
 
-There is no npm. `package.json` remains only as the distribution manifest (name, version, license); Node is needed solely for the harness capability runners under `cli/scripts/` and the emitted TypeScript plugin checks.
+There is no npm. `package.json` remains only as the distribution manifest (name, version, license); Node 24+ is needed solely for the harness capability runners under `cli/scripts/` and emitted JavaScript adapter syntax checks.
 
 ### Dev Isolation (avoid polluting the global DB)
 
@@ -502,7 +502,7 @@ Clear a dogfooding `LOAF_DB` override before the unit suite (`env -u LOAF_DB mak
 
 ### Before Committing
 
-- [ ] `make verify-local` passes: uncached full Go tests, compile/vet checks, CGO-free build, all deterministic adapter runner tests, and validated generated content without switching the user's runtime; Node and `tsc` must already be available
+- [ ] `make verify-local` passes: uncached full Go tests, compile/vet checks, CGO-free build, all deterministic adapter runner tests, and validated generated content without switching the user's runtime; Node 24+ must already be available, and npm/`tsc` are not required
 - [ ] Before release or after dependency changes, `make vulncheck` passes; report unavailable network access as an unverified check, never a pass
 - [ ] If tracked build artifacts in `dist/` or `plugins/` changed, commit them with the source changes that produced them
 - [ ] Frontmatter has required fields

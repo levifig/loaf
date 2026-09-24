@@ -23,7 +23,7 @@ func TestRequiredPathLoafCheckHooksFromSelectedHookIDsAndSkillDiffs(t *testing.T
 				{ID: "hook:preToolUse/validate-sql-safety", Action: hookActionAdd},
 				{ID: "hook:postToolUse/kb-staleness-nudge", Action: hookActionUpdate},
 				{ID: "hook-file:hooks/post-tool/kb-staleness-nudge.sh", Action: planActionRetire},
-				{ID: "plugin:plugins/hooks.ts", Action: planActionUpdate, Diff: "+command: 'loaf check --hook kb-staleness-nudge'\n"},
+				{ID: "plugin:plugins/hooks.js", Action: planActionUpdate, Diff: "+command: 'loaf check --hook kb-staleness-nudge'\n"},
 			},
 		}},
 	})

@@ -4,7 +4,6 @@
  * @version 0.6.0-rc.1
  */
 
-import type { PluginAPI } from '@ampcode/plugin';
 import { execFile } from 'child_process';
 import { lstat as ampLstat } from 'node:fs/promises';
 import { promisify } from 'util';
@@ -35,14 +34,7 @@ const execFileAsync = promisify(execFile);
  * @param failClosed - When true, subprocess errors block the action
  * @returns Hook result with exit code, output, and error information
  */
-interface HookResult {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-  error?: string;
-}
-
-function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: unknown): string | undefined {
+function serializeHookPayload(toolName, toolInput, rawInput) {
   const normalizedToolInput =
     toolInput && typeof toolInput === 'object'
       ? toolInput
@@ -63,17 +55,86 @@ function serializeHookPayload(toolName: string, toolInput: unknown, rawInput?: u
   }
 }
 
+function isClosedPipeError(error) {
+  const code = error && error.code;
+  return code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED' || code === 'ERR_STREAM_PREMATURE_CLOSE' || code === 'ERR_STREAM_WRITE_AFTER_END';
+}
+
+function observeHookChild(child, payload, failClosed) {
+  return new Promise((resolve) => {
+    let stdoutStr = '';
+    let stderrStr = '';
+    let stdinError;
+    let settled = false;
+
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
+    child.stdout?.on('data', (data) => { stdoutStr += data; });
+    child.stderr?.on('data', (data) => { stderrStr += data; });
+
+    if (child.stdin) {
+      child.stdin.on('error', (err) => {
+        if (!isClosedPipeError(err)) stdinError = err;
+      });
+    }
+
+    child.on('error', (err) => {
+      finish({
+        exitCode: -1,
+        stdout: stdoutStr,
+        stderr: stderrStr || err.message,
+        error: err.message,
+      });
+    });
+
+    child.on('close', (code, signal) => {
+      const exitCode = code ?? -1; // null means signal-killed; fail closed
+      if (exitCode === 2) {
+        finish({ exitCode, stdout: stdoutStr, stderr: stderrStr });
+        return;
+      }
+      if (stdinError) {
+        finish({
+          exitCode: failClosed ? 2 : (exitCode === 0 ? 1 : exitCode),
+          stdout: stdoutStr,
+          stderr: stderrStr || stdinError.message,
+          error: stdinError.message,
+        });
+        return;
+      }
+      finish({ exitCode, stdout: stdoutStr, stderr: stderrStr });
+    });
+
+    if (payload && child.stdin) {
+      try {
+        child.stdin.write(payload);
+      } catch (err) {
+        if (!isClosedPipeError(err)) stdinError = err;
+      }
+      try {
+        child.stdin.end();
+      } catch (err) {
+        if (!isClosedPipeError(err)) stdinError = err;
+      }
+    }
+  });
+}
+
 async function runHook(
-  hookType: string,
-  toolName: string,
-  hookId: string,
-  command?: string,
-  script?: string,
-  payload?: string,
-  timeout: number = 60000,
-  failClosed: boolean = false,
-  cwd: string = process.cwd(),
-): Promise<HookResult> {
+  hookType,
+  toolName,
+  hookId,
+  command,
+  script,
+  payload,
+  timeout = 60000,
+  failClosed = false,
+  cwd = process.cwd(),
+) {
   const env = {
     ...process.env,
     LOAF_HOOK_TYPE: hookType,
@@ -91,24 +152,7 @@ async function runHook(
         encoding: 'utf-8',
         timeout,
       });
-      if (payload && child.stdin) {
-        child.stdin.write(payload);
-        child.stdin.end();
-      }
-
-      const result = await new Promise<HookResult>((resolve) => {
-        let stdoutStr = '';
-        let stderrStr = '';
-        child.stdout?.on('data', (data: string) => stdoutStr += data);
-        child.stderr?.on('data', (data: string) => stderrStr += data);
-        child.on('close', (code: number | null, signal?: string | null) => {
-          resolve({ exitCode: code ?? -1, stdout: stdoutStr, stderr: stderrStr, error: signal ? `terminated by signal ${signal}` : undefined });
-        });
-        child.on('error', (err: Error) => {
-          resolve({ exitCode: -1, stdout: stdoutStr, stderr: stderrStr, error: err.message });
-        });
-      });
-      return result;
+      return await observeHookChild(child, payload, failClosed);
     }
 
     // Otherwise run the script file
@@ -121,28 +165,11 @@ async function runHook(
         encoding: 'utf-8',
         timeout,
       });
-      if (payload && child.stdin) {
-        child.stdin.write(payload);
-        child.stdin.end();
-      }
-
-      const result = await new Promise<HookResult>((resolve) => {
-        let stdoutStr = '';
-        let stderrStr = '';
-        child.stdout?.on('data', (data: string) => stdoutStr += data);
-        child.stderr?.on('data', (data: string) => stderrStr += data);
-        child.on('close', (code: number | null, signal?: string | null) => {
-          resolve({ exitCode: code ?? -1, stdout: stdoutStr, stderr: stderrStr, error: signal ? `terminated by signal ${signal}` : undefined });
-        });
-        child.on('error', (err: Error) => {
-          resolve({ exitCode: -1, stdout: stdoutStr, stderr: stderrStr, error: err.message });
-        });
-      });
-      return result;
+      return await observeHookChild(child, payload, failClosed);
     }
 
     return { exitCode: -1, stdout: '', stderr: '', error: 'No command or script specified' };
-  } catch (error: any) {
+  } catch (error) {
     return {
       exitCode: -1,
       stdout: '',
@@ -159,7 +186,7 @@ async function runHook(
  *   - Union pattern: "Edit|Write" matches either
  *   - Exact match: "Edit" matches only "Edit"
  */
-function matchesTool(toolName: string, pattern: string): boolean {
+function matchesTool(toolName, pattern) {
   if (!toolName || !pattern) return false;
 
   const patterns = pattern.split('|');
@@ -172,7 +199,7 @@ function matchesTool(toolName: string, pattern: string): boolean {
   });
 }
 
-function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: string | undefined): boolean {
+function matchesIfCondition(toolName, toolInput, ifCondition) {
   if (!ifCondition) return true;
 
   // Parse pattern like "Bash(gh pr merge:*)" or "Bash(git push:*)"
@@ -183,8 +210,8 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
   const [, expectedTool, commandPattern] = match;
   if (toolName !== expectedTool) return false;
 
-  const input = toolInput as Record<string, unknown> | undefined;
-  const command = (input?.command || input?.file_path) as string | undefined;
+  const input = toolInput && typeof toolInput === 'object' ? toolInput : undefined;
+  const command = input?.command || input?.file_path;
   if (!command) return false;
 
   // Handle glob patterns with :* suffix (e.g., "git commit:*" means "starts with git commit")
@@ -213,18 +240,11 @@ function matchesIfCondition(toolName: string, toolInput: unknown, ifCondition: s
 }
 
 
-interface AmpConsumerReadiness {
-  checked: boolean;
-  pinned: boolean;
-  ready: boolean;
-  message?: string;
-}
-
-async function runAmpConsumerAgentCheck(cwd: string): Promise<AmpConsumerReadiness> {
+async function runAmpConsumerAgentCheck(cwd) {
   const pinPath = join(cwd, '.agents', 'loaf-orb.pin');
   try {
     await ampLstat(pinPath);
-  } catch (error: any) {
+  } catch (error) {
     if (error?.code === 'ENOENT') return { checked: true, pinned: false, ready: true };
     return { checked: true, pinned: true, ready: false, message: 'Loaf cannot inspect the committed Amp Orb pin. Restore readable project files, then rerun the Orb setup or resume lifecycle.' };
   }
@@ -242,15 +262,15 @@ async function runAmpConsumerAgentCheck(cwd: string): Promise<AmpConsumerReadine
     encoding: 'utf-8',
     timeout: 10000,
   });
-  const result = await new Promise<HookResult>((resolve) => {
+  const result = await new Promise((resolve) => {
     let stdoutStr = '';
     let stderrStr = '';
-    child.stdout?.on('data', (data: string) => stdoutStr += data);
-    child.stderr?.on('data', (data: string) => stderrStr += data);
-    child.on('close', (code: number | null, signal?: string | null) => {
+    child.stdout?.on('data', (data) => stdoutStr += data);
+    child.stderr?.on('data', (data) => stderrStr += data);
+    child.on('close', (code, signal) => {
       resolve({ exitCode: code ?? -1, stdout: stdoutStr, stderr: stderrStr, error: signal ? `terminated by signal ${signal}` : undefined });
     });
-    child.on('error', (error: Error) => {
+    child.on('error', (error) => {
       resolve({ exitCode: -1, stdout: stdoutStr, stderr: stderrStr, error: error.message });
     });
   });
@@ -265,20 +285,7 @@ async function runAmpConsumerAgentCheck(cwd: string): Promise<AmpConsumerReadine
   };
 }
 
-interface AmpToolCallEvent {
-  toolUseID: string;
-  tool: string;
-  input: Record<string, unknown>;
-  thread: { id: string };
-}
-
-interface AmpToolResultEvent extends AmpToolCallEvent {
-  status: 'done' | 'error' | 'cancelled';
-  error?: string;
-  output?: unknown;
-}
-
-function normalizeAmpToolName(toolName: string): string {
+function normalizeAmpToolName(toolName) {
   switch (toolName) {
     case 'shell_command':
       return 'Bash';
@@ -292,7 +299,7 @@ function normalizeAmpToolName(toolName: string): string {
   }
 }
 
-function normalizeAmpToolInput(amp: PluginAPI, event: AmpToolCallEvent): Record<string, unknown> {
+function normalizeAmpToolInput(amp, event) {
   const rawInput = event.input && typeof event.input === 'object' ? event.input : {};
   const normalizedToolName = normalizeAmpToolName(event.tool);
   if (normalizedToolName !== 'Bash' || (event.tool !== 'Bash' && event.tool !== 'shell_command')) {
@@ -302,7 +309,7 @@ function normalizeAmpToolInput(amp: PluginAPI, event: AmpToolCallEvent): Record<
   const shellCommand = amp.helpers.shellCommandFromToolCall(event);
   if (!shellCommand) return rawInput;
 
-  const normalizedInput: Record<string, unknown> = {
+  const normalizedInput = {
     command: shellCommand.command,
   };
   if (shellCommand.dir) normalizedInput.cwd = shellCommand.dir;
@@ -314,16 +321,7 @@ function normalizeAmpToolInput(amp: PluginAPI, event: AmpToolCallEvent): Record<
 // Hook Data
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface HookEntry {
-  id: string;
-  command?: string;
-  script?: string;
-  timeout: number;
-  failClosed: boolean;
-  if?: string;
-}
-
-const preToolHooks: Record<string, HookEntry[]> = {
+const preToolHooks = {
   "Edit|Write|Bash": [
     {
       "id": "artifact-body-write",
@@ -422,7 +420,7 @@ const preToolHooks: Record<string, HookEntry[]> = {
   ]
 };
 
-const postToolHooks: Record<string, HookEntry[]> = {
+const postToolHooks = {
   "Edit|Write": [
     {
       "id": "kb-staleness-nudge",
@@ -442,8 +440,8 @@ const postToolHooks: Record<string, HookEntry[]> = {
   ]
 };
 
-export default function (amp: PluginAPI) {
-  function ampWorkspaceDir(): { path?: string; error?: string } {
+export default function (amp) {
+  function ampWorkspaceDir() {
     const workspaceRoot = amp.system?.workspaceRoot;
     if (!workspaceRoot) return { error: 'Amp workspace is unavailable' };
     if (typeof amp.helpers?.filePathFromURI !== 'function') {
@@ -453,12 +451,12 @@ export default function (amp: PluginAPI) {
       const path = amp.helpers.filePathFromURI(workspaceRoot);
       if (typeof path !== 'string' || !path) return { error: 'Amp workspace is unavailable' };
       return { path };
-    } catch (error: any) {
+    } catch (error) {
       return { error: error?.message || 'Amp workspace is unavailable' };
     }
   }
 
-  function resolveAmpHookCwd(explicitDir?: string): { cwd?: string; error?: string } {
+  function resolveAmpHookCwd(explicitDir) {
     if (typeof explicitDir === 'string' && explicitDir) {
       if (isAbsolute(explicitDir)) return { cwd: explicitDir };
       const workspace = ampWorkspaceDir();
@@ -474,7 +472,7 @@ export default function (amp: PluginAPI) {
     return { cwd: workspace.path };
   }
 
-  function ampHelperShellDir(event: AmpToolCallEvent): string | undefined {
+  function ampHelperShellDir(event) {
     if (event.tool !== 'Bash' && event.tool !== 'shell_command') return undefined;
     const shellCommand = amp.helpers.shellCommandFromToolCall(event);
     return typeof shellCommand?.dir === 'string' && shellCommand.dir ? shellCommand.dir : undefined;
@@ -508,7 +506,7 @@ export default function (amp: PluginAPI) {
     return {};
   });
 
-  amp.on('tool.call', async (event: AmpToolCallEvent) => {
+  amp.on('tool.call', async (event) => {
     const workspace = ampWorkspaceDir();
     if (!workspace.path) {
       return { action: 'reject-and-continue', message: (workspace.error || 'Amp workspace is unavailable') + '; Loaf readiness cannot be proven.' };
@@ -549,7 +547,7 @@ export default function (amp: PluginAPI) {
     return { action: 'allow' };
   });
 
-  amp.on('tool.result', async (event: AmpToolResultEvent) => {
+  amp.on('tool.result', async (event) => {
     const toolName = normalizeAmpToolName(event.tool);
     const toolInput = normalizeAmpToolInput(amp, event);
     const hookPayload = serializeHookPayload(toolName, toolInput, event);

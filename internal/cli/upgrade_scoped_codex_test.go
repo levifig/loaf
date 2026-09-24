@@ -147,11 +147,11 @@ func TestSelectedAdapterIDsForTargetOmitCodexPolicy(t *testing.T) {
 	refs := []scopedArtifactRef{
 		{Target: "codex", ID: "codex-rule:loaf.rules"},
 		{Target: "codex", ID: "codex-rule:AGENTS.md"},
-		{Target: "codex", ID: "plugin:plugins/hooks.ts"},
+		{Target: "codex", ID: "plugin:plugins/hooks.js"},
 		{Target: "codex", ID: "hook:SessionStart/session-start-loaf"},
 	}
 	got := selectedAdapterIDsForTarget(refs, "codex")
-	if len(got) != 1 || got[0] != "plugin:plugins/hooks.ts" {
+	if len(got) != 1 || got[0] != "plugin:plugins/hooks.js" {
 		t.Fatalf("adapter IDs = %v, want only non-policy adapter rows", got)
 	}
 }

@@ -20,9 +20,9 @@ func TestHarnessReconcileUpgradesProjectBoundAmpContentFromRunningDistribution(t
 	sharedSkills := filepath.Join(root, ".agents", "skills")
 
 	writeInstallFile(t, filepath.Join(distDir, "skills", "linear", "SKILL.md"), "linear 0.5.0\n")
-	writeInstallFile(t, filepath.Join(distDir, ".amp", "plugins", "loaf.ts"), "plugin 0.5.0\n")
+	writeInstallFile(t, filepath.Join(distDir, ".amp", "plugins", "loaf.js"), "plugin 0.5.0\n")
 	writeTestTargetAdapterManifest(t, distDir, "amp", []map[string]string{{
-		"id": "plugin:.amp/plugins/loaf.ts", "kind": "plugin", "source_path": ".amp/plugins/loaf.ts", "destination": "plugins/loaf.ts", "sha256": sha256Hex("plugin 0.5.0\n"),
+		"id": "plugin:.amp/plugins/loaf.js", "kind": "plugin", "source_path": ".amp/plugins/loaf.js", "destination": "plugins/loaf.js", "sha256": sha256Hex("plugin 0.5.0\n"),
 	}})
 
 	writeInstallFile(t, filepath.Join(sharedSkills, "linear", "SKILL.md"), "linear 0.3.1\n")
@@ -33,14 +33,14 @@ func TestHarnessReconcileUpgradesProjectBoundAmpContentFromRunningDistribution(t
 	if err := writeManagedSkillsManifest(sharedSkills, managedSkillsManifestV2{Version: 2, Skills: []managedSkillDigest{{Name: "linear", SHA256: oldSkillDigest}}}); err != nil {
 		t.Fatal(err)
 	}
-	writeInstallFile(t, filepath.Join(configDir, "plugins", "loaf.ts"), "plugin 0.3.1\n")
+	writeInstallFile(t, filepath.Join(configDir, "plugins", "loaf.js"), "plugin 0.3.1\n")
 	writeInstallFile(t, filepath.Join(configDir, "plugins", "user.ts"), "user-owned plugin\n")
 	oldMode := uint32(0o644)
 	oldManifest := targetAdapterManifest{
 		Version: 1, Target: "amp", PackageVersion: "0.3.1", CapabilityContractVersion: 3,
 		Adapters: []string{"amp-plugin-v1"},
 		Artifacts: []targetAdapterArtifact{{
-			ID: "plugin:.amp/plugins/loaf.ts", Kind: "plugin", SourcePath: ".amp/plugins/loaf.ts", Destination: "plugins/loaf.ts", SHA256: sha256Hex("plugin 0.3.1\n"), Mode: &oldMode,
+			ID: "plugin:.amp/plugins/loaf.js", Kind: "plugin", SourcePath: ".amp/plugins/loaf.js", Destination: "plugins/loaf.js", SHA256: sha256Hex("plugin 0.3.1\n"), Mode: &oldMode,
 		}},
 	}
 	if err := writeTargetAdapterManifest(filepath.Join(configDir, targetInstallManifestFile), oldManifest); err != nil {
@@ -66,7 +66,7 @@ func TestHarnessReconcileUpgradesProjectBoundAmpContentFromRunningDistribution(t
 		t.Fatalf("receipt = %#v, want truthful loaded-byte restart diagnostic", receipt)
 	}
 	assertInstallFile(t, filepath.Join(configDir, loafInstallMarkerFile), "0.5.0\n")
-	assertInstallFile(t, filepath.Join(configDir, "plugins", "loaf.ts"), "plugin 0.5.0\n")
+	assertInstallFile(t, filepath.Join(configDir, "plugins", "loaf.js"), "plugin 0.5.0\n")
 	assertInstallFile(t, filepath.Join(configDir, "plugins", "user.ts"), "user-owned plugin\n")
 	assertInstallFile(t, filepath.Join(sharedSkills, "linear", "SKILL.md"), "linear 0.5.0\n")
 	assertInstallFile(t, filepath.Join(root, "AGENTS.md"), "user-owned project instructions\n")
@@ -104,8 +104,8 @@ func TestHarnessReconcileNeverDowngradesOrClaimsUnknownContent(t *testing.T) {
 			root, home := setupInstallCommandFixture(t)
 			configDir := filepath.Join(home, ".config", "amp")
 			writeInstallFile(t, filepath.Join(configDir, loafInstallMarkerFile), tc.marker)
-			writeInstallFile(t, filepath.Join(configDir, "plugins", "loaf.ts"), "user bytes\n")
-			before := string(readFileBytes(t, filepath.Join(configDir, "plugins", "loaf.ts")))
+			writeInstallFile(t, filepath.Join(configDir, "plugins", "loaf.js"), "user bytes\n")
+			before := string(readFileBytes(t, filepath.Join(configDir, "plugins", "loaf.js")))
 			var stdout bytes.Buffer
 			err := Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}.Run([]string{"harness", "reconcile", "--target", "amp", "--json"})
 			if err != nil {
@@ -115,7 +115,7 @@ func TestHarnessReconcileNeverDowngradesOrClaimsUnknownContent(t *testing.T) {
 			if err := json.Unmarshal(stdout.Bytes(), &receipt); err != nil || receipt.Outcome != tc.want {
 				t.Fatalf("receipt = %#v err=%v", receipt, err)
 			}
-			if after := string(readFileBytes(t, filepath.Join(configDir, "plugins", "loaf.ts"))); after != before {
+			if after := string(readFileBytes(t, filepath.Join(configDir, "plugins", "loaf.js"))); after != before {
 				t.Fatalf("plugin changed from %q to %q", before, after)
 			}
 		})
@@ -130,9 +130,9 @@ func TestHarnessReconcileConflictLeavesAdapterAndMarkerRetryable(t *testing.T) {
 	sharedSkills := filepath.Join(home, ".agents", "skills")
 
 	writeInstallFile(t, filepath.Join(distDir, "skills", "linear", "SKILL.md"), "linear 0.5.0\n")
-	writeInstallFile(t, filepath.Join(distDir, ".amp", "plugins", "loaf.ts"), "plugin 0.5.0\n")
+	writeInstallFile(t, filepath.Join(distDir, ".amp", "plugins", "loaf.js"), "plugin 0.5.0\n")
 	writeTestTargetAdapterManifest(t, distDir, "amp", []map[string]string{{
-		"id": "plugin:.amp/plugins/loaf.ts", "kind": "plugin", "source_path": ".amp/plugins/loaf.ts", "destination": "plugins/loaf.ts", "sha256": sha256Hex("plugin 0.5.0\n"),
+		"id": "plugin:.amp/plugins/loaf.js", "kind": "plugin", "source_path": ".amp/plugins/loaf.js", "destination": "plugins/loaf.js", "sha256": sha256Hex("plugin 0.5.0\n"),
 	}})
 	writeInstallFile(t, filepath.Join(sharedSkills, "linear", "SKILL.md"), "linear 0.3.1\n")
 	oldDigest, err := hashInstallSkillTree(filepath.Join(sharedSkills, "linear"))
@@ -143,11 +143,11 @@ func TestHarnessReconcileConflictLeavesAdapterAndMarkerRetryable(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeInstallFile(t, filepath.Join(sharedSkills, "linear", "SKILL.md"), "user-modified\n")
-	writeInstallFile(t, filepath.Join(configDir, "plugins", "loaf.ts"), "plugin 0.3.1\n")
+	writeInstallFile(t, filepath.Join(configDir, "plugins", "loaf.js"), "plugin 0.3.1\n")
 	mode := uint32(0o644)
 	if err := writeTargetAdapterManifest(filepath.Join(configDir, targetInstallManifestFile), targetAdapterManifest{
 		Version: 1, Target: "amp", PackageVersion: "0.3.1", CapabilityContractVersion: 3, Adapters: []string{"amp-plugin-v1"},
-		Artifacts: []targetAdapterArtifact{{ID: "plugin:.amp/plugins/loaf.ts", Kind: "plugin", SourcePath: ".amp/plugins/loaf.ts", Destination: "plugins/loaf.ts", SHA256: sha256Hex("plugin 0.3.1\n"), Mode: &mode}},
+		Artifacts: []targetAdapterArtifact{{ID: "plugin:.amp/plugins/loaf.js", Kind: "plugin", SourcePath: ".amp/plugins/loaf.js", Destination: "plugins/loaf.js", SHA256: sha256Hex("plugin 0.3.1\n"), Mode: &mode}},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestHarnessReconcileConflictLeavesAdapterAndMarkerRetryable(t *testing.T) {
 	if !errors.As(err, &exitErr) || exitErr.Code != 1 || !strings.Contains(conflictOutput.String(), "managed skills sync conflicts") {
 		t.Fatalf("conflict error = %v output=%q, want JSON detail and exit 1", err, conflictOutput.String())
 	}
-	assertInstallFile(t, filepath.Join(configDir, "plugins", "loaf.ts"), "plugin 0.3.1\n")
+	assertInstallFile(t, filepath.Join(configDir, "plugins", "loaf.js"), "plugin 0.3.1\n")
 	assertInstallFile(t, filepath.Join(configDir, loafInstallMarkerFile), "0.3.1\n")
 
 	writeInstallFile(t, filepath.Join(sharedSkills, "linear", "SKILL.md"), "linear 0.3.1\n")
@@ -168,7 +168,7 @@ func TestHarnessReconcileConflictLeavesAdapterAndMarkerRetryable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("retry reconcile error = %v", err)
 	}
-	assertInstallFile(t, filepath.Join(configDir, "plugins", "loaf.ts"), "plugin 0.5.0\n")
+	assertInstallFile(t, filepath.Join(configDir, "plugins", "loaf.js"), "plugin 0.5.0\n")
 	assertInstallFile(t, filepath.Join(configDir, loafInstallMarkerFile), "0.5.0\n")
 }
 
@@ -182,9 +182,9 @@ func TestHarnessReconcileUpdatesInstalledAmpOpenCodeCohortFromCanonicalSkills(t 
 
 	writeInstallFile(t, filepath.Join(ampDist, "skills", "foundations", "SKILL.md"), canonicalSkillFixtureBody(false))
 	writeInstallFile(t, filepath.Join(openCodeDist, "skills", "foundations", "SKILL.md"), canonicalSkillFixtureBody(true))
-	writeInstallFile(t, filepath.Join(ampDist, ".amp", "plugins", "loaf.ts"), "plugin 0.5.0\n")
+	writeInstallFile(t, filepath.Join(ampDist, ".amp", "plugins", "loaf.js"), "plugin 0.5.0\n")
 	writeTestTargetAdapterManifest(t, ampDist, "amp", []map[string]string{{
-		"id": "plugin:.amp/plugins/loaf.ts", "kind": "plugin", "source_path": ".amp/plugins/loaf.ts", "destination": "plugins/loaf.ts", "sha256": sha256Hex("plugin 0.5.0\n"),
+		"id": "plugin:.amp/plugins/loaf.js", "kind": "plugin", "source_path": ".amp/plugins/loaf.js", "destination": "plugins/loaf.js", "sha256": sha256Hex("plugin 0.5.0\n"),
 	}})
 	writeTestTargetAdapterManifest(t, openCodeDist, "opencode", nil)
 
@@ -197,10 +197,10 @@ func TestHarnessReconcileUpdatesInstalledAmpOpenCodeCohortFromCanonicalSkills(t 
 		t.Fatal(err)
 	}
 	mode := uint32(0o644)
-	writeInstallFile(t, filepath.Join(configs["amp"], "plugins", "loaf.ts"), "plugin 0.3.1\n")
+	writeInstallFile(t, filepath.Join(configs["amp"], "plugins", "loaf.js"), "plugin 0.3.1\n")
 	if err := writeTargetAdapterManifest(filepath.Join(configs["amp"], targetInstallManifestFile), targetAdapterManifest{
 		Version: 1, Target: "amp", PackageVersion: "0.3.1", CapabilityContractVersion: 3, Adapters: []string{"amp-plugin-v1"},
-		Artifacts: []targetAdapterArtifact{{ID: "plugin:.amp/plugins/loaf.ts", Kind: "plugin", SourcePath: ".amp/plugins/loaf.ts", Destination: "plugins/loaf.ts", SHA256: sha256Hex("plugin 0.3.1\n"), Mode: &mode}},
+		Artifacts: []targetAdapterArtifact{{ID: "plugin:.amp/plugins/loaf.js", Kind: "plugin", SourcePath: ".amp/plugins/loaf.js", Destination: "plugins/loaf.js", SHA256: sha256Hex("plugin 0.3.1\n"), Mode: &mode}},
 	}); err != nil {
 		t.Fatal(err)
 	}

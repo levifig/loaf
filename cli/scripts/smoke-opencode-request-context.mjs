@@ -11,9 +11,10 @@ import { observedClientVersion, parseRunnerArgs, publishReceiptIfSuccessful } fr
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../..");
 const platform = `${process.platform}-${process.arch}`;
-const candidateHooksPath = "dist/opencode/plugins/hooks.ts";
+const candidateHooksPath = "dist/opencode/plugins/hooks.js";
 const candidateNativePath = `bin/native/${platform}/loaf`;
 const markerPattern = /^LOAF_OPENCODE_REQUEST_SMOKE_[A-F0-9]{12}$/;
+const smokeModel = "opencode/mimo-v2.5-free";
 const prompt = "Reply with exactly the unique marker present in Loaf continuity context, and nothing else.";
 const setupSteps = [
   "build candidate Go binary and OpenCode target",
@@ -223,7 +224,7 @@ function main(argv = process.argv.slice(2)) {
   const candidatePlugin = join(repoRoot, candidateHooksPath);
   const invocation = {
     command: "opencode",
-    args: ["run", "--format", "json", "--model", "opencode/deepseek-v4-flash-free", "--dir", "<disposable-repo>", prompt],
+    args: ["run", "--format", "json", "--model", smokeModel, "--dir", "<disposable-repo>", prompt],
     cwd: "<disposable-repo>",
   };
   let artifacts = { hooks_path: candidateHooksPath, hooks_sha256: "", native_binary_path: candidateNativePath, native_binary_sha256: "" };
@@ -269,7 +270,7 @@ function main(argv = process.argv.slice(2)) {
     writeHookObservationWrapper(wrapperPath, candidateBinary, observationPath);
     if ((statSync(wrapperPath).mode & 0o777) !== 0o700) throw new Error("OpenCode hook observation wrapper is not mode 0700");
     const smokeEnv = { ...env, PATH: `${tempRoot}:${env.PATH ?? ""}` };
-    const opencodeArgs = ["run", "--format", "json", "--model", "opencode/deepseek-v4-flash-free", "--dir", disposableRepo, prompt];
+    const opencodeArgs = ["run", "--format", "json", "--model", smokeModel, "--dir", disposableRepo, prompt];
     const opencode = run(client, opencodeArgs, disposableRepo, smokeEnv, 600000);
     if (!existsSync(observationPath)) throw new Error("OpenCode hook observation file was not written");
     if ((statSync(observationPath).mode & 0o777) !== 0o600) throw new Error("OpenCode hook observation is not mode 0600");

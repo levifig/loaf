@@ -27,10 +27,16 @@ const (
 const obsoleteHookProjectionKind = "hook-projection"
 
 const (
-	ampModesPluginArtifactID        = "plugin:.amp/plugins/loaf-modes.ts"
-	ampModesPluginSourcePath        = ".amp/plugins/loaf-modes.ts"
-	ampModesPluginDestination       = "plugins/loaf-modes.ts"
-	ampModesPluginPredecessorSHA256 = "27ff4c82dbb0cd21b6f9ff694e20017fe62653521d23d5b586ba8f3457b64c5f"
+	ampModesPluginArtifactID          = "plugin:.amp/plugins/loaf-modes.ts"
+	ampModesPluginSourcePath          = ".amp/plugins/loaf-modes.ts"
+	ampModesPluginDestination         = "plugins/loaf-modes.ts"
+	ampModesPluginPredecessorSHA256   = "27ff4c82dbb0cd21b6f9ff694e20017fe62653521d23d5b586ba8f3457b64c5f"
+	ampHookPluginArtifactID           = "plugin:.amp/plugins/loaf.js"
+	ampHookPluginPredecessorID        = "plugin:.amp/plugins/loaf.ts"
+	ampHookPluginPredecessorPath      = "plugins/loaf.ts"
+	openCodeHookPluginArtifactID      = "plugin:plugins/hooks.js"
+	openCodeHookPluginPredecessorID   = "plugin:plugins/hooks.ts"
+	openCodeHookPluginPredecessorPath = "plugins/hooks.ts"
 )
 
 type targetAdapterManifest struct {
@@ -62,10 +68,14 @@ type targetAdapterArtifact struct {
 }
 
 type targetAdapterSnapshot struct {
-	path   string
-	exists bool
-	body   []byte
-	mode   fs.FileMode
+	path          string
+	exists        bool
+	body          []byte
+	mode          fs.FileMode
+	publishedBody []byte
+	publishedMode fs.FileMode
+	hasPublished  bool
+	retired       bool
 }
 
 type targetAdapterInstallOperations struct {
@@ -214,11 +224,182 @@ func collectTargetAdapterArtifacts(target string, outputDir string) ([]targetAda
 
 func managedAmpPluginSource(sourcePath string) bool {
 	switch sourcePath {
-	case ".amp/plugins/loaf.ts":
+	case ".amp/plugins/loaf.js":
 		return true
 	default:
 		return false
 	}
+}
+
+type targetAdapterSuccessor struct {
+	legacyID          string
+	legacyDestination string
+}
+
+func targetAdapterJavaScriptSuccessor(target string, artifact targetAdapterArtifact) (targetAdapterSuccessor, bool) {
+	switch {
+	case target == "amp" && artifact.ID == ampHookPluginArtifactID:
+		return targetAdapterSuccessor{legacyID: ampHookPluginPredecessorID, legacyDestination: ampHookPluginPredecessorPath}, true
+	case target == "opencode" && artifact.ID == openCodeHookPluginArtifactID:
+		return targetAdapterSuccessor{legacyID: openCodeHookPluginPredecessorID, legacyDestination: openCodeHookPluginPredecessorPath}, true
+	default:
+		return targetAdapterSuccessor{}, false
+	}
+}
+
+func targetAdapterLegacyDestination(options targetInstallOptions, successor targetAdapterSuccessor) (string, error) {
+	return targetAdapterDestination(options, targetAdapterArtifact{
+		Kind:        "plugin",
+		Destination: successor.legacyDestination,
+	})
+}
+
+func inspectTargetAdapterLegacyPath(path string) (exists bool, symlink bool, dangling bool, body []byte, err error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, false, false, nil, nil
+		}
+		return false, false, false, nil, err
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		target, readErr := os.Readlink(path)
+		if readErr != nil {
+			return true, true, true, nil, nil
+		}
+		resolved := target
+		if !filepath.IsAbs(target) {
+			resolved = filepath.Join(filepath.Dir(path), target)
+		}
+		if _, statErr := os.Stat(resolved); statErr != nil {
+			return true, true, true, nil, nil
+		}
+		return true, true, false, nil, nil
+	}
+	if !info.Mode().IsRegular() {
+		return true, false, false, nil, fmt.Errorf("legacy adapter path %q is not a regular file", path)
+	}
+	body, err = os.ReadFile(path)
+	if err != nil {
+		return true, false, false, nil, err
+	}
+	return true, false, false, body, nil
+}
+
+func targetAdapterLegacyConflictDetail(successor targetAdapterSuccessor, symlink bool, dangling bool) string {
+	if dangling {
+		return fmt.Sprintf("legacy adapter %s is a dangling symlink at %s; restore or remove it before migrating to JavaScript", successor.legacyID, successor.legacyDestination)
+	}
+	if symlink {
+		return fmt.Sprintf("legacy adapter %s is a symlink at %s; refusing an unsafe JavaScript transition", successor.legacyID, successor.legacyDestination)
+	}
+	return fmt.Sprintf("legacy adapter %s exists at %s and is not proven Loaf-owned; refusing to remove it while installing the JavaScript replacement", successor.legacyID, successor.legacyDestination)
+}
+
+func targetAdapterMayRetireLegacyJavaScriptPredecessor(target string, successor targetAdapterSuccessor, body []byte) bool {
+	// An unrecorded hook plugin cannot be proven Loaf-owned by its header.
+	// The known modes predecessor is retired separately by #309's exact-digest
+	// path, not as a JavaScript successor.
+	return false
+}
+
+func removeJavaScriptAdapterPredecessors(options targetInstallOptions, desired targetAdapterManifest, installedByID map[string]targetAdapterArtifact, states map[string]targetAdapterSnapshot, mutated *[]targetAdapterSnapshot, mutatedPaths map[string]bool, fail func(error) error) error {
+	for _, artifact := range desired.Artifacts {
+		successor, ok := targetAdapterJavaScriptSuccessor(options.Target, artifact)
+		if !ok {
+			continue
+		}
+		if _, owned := installedByID[successor.legacyID]; owned {
+			continue
+		}
+		path, err := targetAdapterLegacyDestination(options, successor)
+		if err != nil {
+			return fail(err)
+		}
+		exists, symlink, dangling, body, err := inspectTargetAdapterLegacyPath(path)
+		if err != nil {
+			return fail(err)
+		}
+		if !exists {
+			continue
+		}
+		if dangling || symlink || !targetAdapterMayRetireLegacyJavaScriptPredecessor(options.Target, successor, body) {
+			return fail(fmt.Errorf("%s", targetAdapterLegacyConflictDetail(successor, symlink, dangling)))
+		}
+		if err := ensureTargetAdapterSnapshotUnchanged(path, states[path]); err != nil {
+			return fail(err)
+		}
+		if err := recordTargetAdapterRetirement(path, states[path], mutated, mutatedPaths); err != nil {
+			return fail(err)
+		}
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return fail(err)
+		}
+	}
+	return nil
+}
+
+func collectJavaScriptAdapterSuccessors(options targetInstallOptions, desired targetAdapterManifest, installedByID map[string]targetAdapterArtifact, states map[string]targetAdapterSnapshot) error {
+	for _, artifact := range desired.Artifacts {
+		successor, ok := targetAdapterJavaScriptSuccessor(options.Target, artifact)
+		if !ok {
+			continue
+		}
+		path, err := targetAdapterLegacyDestination(options, successor)
+		if err != nil {
+			return err
+		}
+		exists, symlink, dangling, body, err := inspectTargetAdapterLegacyPath(path)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			if _, ok := states[path]; !ok {
+				states[path] = targetAdapterSnapshot{path: path}
+			}
+			continue
+		}
+		owned := installedByID[successor.legacyID]
+		if owned.ID != "" {
+			snapshot, err := readTargetAdapterSnapshot(path)
+			if err != nil {
+				return err
+			}
+			states[path] = snapshot
+			if snapshot.exists && !targetAdapterSnapshotMatchesArtifact(owned, snapshot) {
+				return fmt.Errorf("managed target artifact %q was modified; refusing to remove", successor.legacyID)
+			}
+			continue
+		}
+		if dangling || symlink || !targetAdapterMayRetireLegacyJavaScriptPredecessor(options.Target, successor, body) {
+			return fmt.Errorf("%s", targetAdapterLegacyConflictDetail(successor, symlink, dangling))
+		}
+		info, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		states[path] = targetAdapterSnapshot{path: path, exists: true, body: body, mode: info.Mode().Perm()}
+	}
+	return nil
+}
+
+func ensureJavaScriptAdapterPredecessorState(options targetInstallOptions, artifact targetAdapterArtifact) error {
+	successor, ok := targetAdapterJavaScriptSuccessor(options.Target, artifact)
+	if !ok {
+		return nil
+	}
+	path, err := targetAdapterLegacyDestination(options, successor)
+	if err != nil {
+		return err
+	}
+	exists, symlink, dangling, _, err := inspectTargetAdapterLegacyPath(path)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("%s", targetAdapterLegacyConflictDetail(successor, symlink, dangling))
+	}
+	return nil
 }
 
 func appendTargetAdapterArtifact(artifacts *[]targetAdapterArtifact, seen map[string]bool, target string, outputDir string, sourcePath string) error {
@@ -237,7 +418,7 @@ func appendTargetAdapterArtifact(artifacts *[]targetAdapterArtifact, seen map[st
 		kind = "plugin"
 		destination = "plugins/" + filepath.Base(filepath.FromSlash(sourcePath))
 	case "opencode":
-		if sourcePath == "plugins/hooks.ts" {
+		if sourcePath == "plugins/hooks.js" {
 			kind = "plugin"
 		}
 	}
@@ -652,6 +833,9 @@ func syncTargetAdapterManifest(options targetInstallOptions) error {
 		}
 		return fmt.Errorf("target artifact destination %q exists and is not managed by Loaf", artifact.Destination)
 	}
+	if err := collectJavaScriptAdapterSuccessors(options, desired, installedByID, states); err != nil {
+		return err
+	}
 	manifestSnapshot, err := readTargetAdapterSnapshot(installedPath)
 	if err != nil {
 		return err
@@ -702,19 +886,19 @@ func syncTargetAdapterManifest(options targetInstallOptions) error {
 		if err := ensureTargetAdapterSnapshotUnchanged(path, states[path]); err != nil {
 			return fail(err)
 		}
+		if err := recordTargetAdapterRetirement(path, states[path], &mutated, mutatedPaths); err != nil {
+			return fail(err)
+		}
 		operationErr := removeTargetAdapterArtifact(options, artifact)
 		if operationErr == nil && options.TargetAdapterOps != nil && options.TargetAdapterOps.afterArtifact != nil {
 			operationErr = options.TargetAdapterOps.afterArtifact(artifact.ID)
 		}
-		if err := recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths); err != nil {
-			if operationErr != nil {
-				return fail(fmt.Errorf("%w; inspect target adapter destination after removal: %v", operationErr, err))
-			}
-			return fail(err)
-		}
 		if operationErr != nil {
 			return fail(operationErr)
 		}
+	}
+	if err := removeJavaScriptAdapterPredecessors(options, desired, installedByID, states, &mutated, mutatedPaths, fail); err != nil {
+		return err
 	}
 	for _, artifact := range desired.Artifacts {
 		if skipTargetAdapterArtifact(artifact) {
@@ -732,15 +916,22 @@ func syncTargetAdapterManifest(options targetInstallOptions) error {
 		if err := ensureTargetAdapterSnapshotUnchanged(path, states[path]); err != nil {
 			return fail(err)
 		}
+		if err := ensureJavaScriptAdapterPredecessorState(options, artifact); err != nil {
+			return fail(err)
+		}
+		body, err := desiredAdapterBody(options, artifact)
+		if err != nil {
+			return fail(err)
+		}
+		if artifact.Mode == nil {
+			return fail(fmt.Errorf("target adapter artifact %q has no bound mode", artifact.ID))
+		}
+		if err := recordTargetAdapterPublication(path, states[path], body, fs.FileMode(*artifact.Mode), &mutated, mutatedPaths); err != nil {
+			return fail(err)
+		}
 		operationErr := publishTargetAdapterArtifact(options, artifact)
 		if operationErr == nil && options.TargetAdapterOps != nil && options.TargetAdapterOps.afterArtifact != nil {
 			operationErr = options.TargetAdapterOps.afterArtifact(artifact.ID)
-		}
-		if err := recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths); err != nil {
-			if operationErr != nil {
-				return fail(fmt.Errorf("%w; inspect target adapter destination after publication: %v", operationErr, err))
-			}
-			return fail(err)
 		}
 		if operationErr != nil {
 			return fail(operationErr)
@@ -748,6 +939,14 @@ func syncTargetAdapterManifest(options targetInstallOptions) error {
 	}
 	if err := ensureTargetAdapterSnapshotUnchanged(installedPath, manifestSnapshot); err != nil {
 		return fail(err)
+	}
+	for _, artifact := range desired.Artifacts {
+		if skipTargetAdapterArtifact(artifact) {
+			continue
+		}
+		if err := ensureJavaScriptAdapterPredecessorState(options, artifact); err != nil {
+			return fail(err)
+		}
 	}
 	if err := writeTargetAdapterManifest(installedPath, desired); err != nil {
 		writeErr := fmt.Errorf("write installed target adapter manifest: %w", err)
@@ -796,6 +995,7 @@ func syncSelectedTargetAdapterArtifacts(options targetInstallOptions, selectedID
 	states := map[string]targetAdapterSnapshot{}
 	var selectedDesired []targetAdapterArtifact
 	var selectedRetired []targetAdapterArtifact
+	selectedDesiredManifest := targetAdapterManifest{Artifacts: nil}
 	for _, artifact := range desired.Artifacts {
 		if skipTargetAdapterArtifact(artifact) || !wanted[artifact.ID] {
 			continue
@@ -827,6 +1027,10 @@ func syncSelectedTargetAdapterArtifacts(options targetInstallOptions, selectedID
 			}
 		}
 		selectedDesired = append(selectedDesired, artifact)
+		selectedDesiredManifest.Artifacts = append(selectedDesiredManifest.Artifacts, artifact)
+	}
+	if err := collectJavaScriptAdapterSuccessors(options, selectedDesiredManifest, installedByID, states); err != nil {
+		return err
 	}
 	for _, artifact := range installed.Artifacts {
 		if skipTargetAdapterArtifact(artifact) || !wanted[artifact.ID] {
@@ -866,13 +1070,15 @@ func syncSelectedTargetAdapterArtifacts(options targetInstallOptions, selectedID
 		if err := ensureTargetAdapterSnapshotUnchanged(path, states[path]); err != nil {
 			return fail(err)
 		}
+		if err := recordTargetAdapterRetirement(path, states[path], &mutated, mutatedPaths); err != nil {
+			return fail(err)
+		}
 		if err := removeTargetAdapterArtifact(options, artifact); err != nil {
-			_ = recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths)
 			return fail(err)
 		}
-		if err := recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths); err != nil {
-			return fail(err)
-		}
+	}
+	if err := removeJavaScriptAdapterPredecessors(options, selectedDesiredManifest, installedByID, states, &mutated, mutatedPaths, fail); err != nil {
+		return err
 	}
 	mergedByID := targetAdapterArtifactsByID(installed.Artifacts)
 	for _, artifact := range selectedDesired {
@@ -883,12 +1089,21 @@ func syncSelectedTargetAdapterArtifacts(options targetInstallOptions, selectedID
 		if err := ensureTargetAdapterSnapshotUnchanged(path, states[path]); err != nil {
 			return fail(err)
 		}
-		published, err := publishSelectedTargetAdapterArtifact(options, artifact)
-		if err != nil {
-			_ = recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths)
+		if err := ensureJavaScriptAdapterPredecessorState(options, artifact); err != nil {
 			return fail(err)
 		}
-		if err := recordTargetAdapterMutation(path, states[path], &mutated, mutatedPaths); err != nil {
+		body, err := desiredAdapterBody(options, artifact)
+		if err != nil {
+			return fail(err)
+		}
+		if artifact.Mode == nil {
+			return fail(fmt.Errorf("target adapter artifact %q has no bound mode", artifact.ID))
+		}
+		if err := recordTargetAdapterPublication(path, states[path], body, fs.FileMode(*artifact.Mode), &mutated, mutatedPaths); err != nil {
+			return fail(err)
+		}
+		published, err := publishSelectedTargetAdapterArtifact(options, artifact)
+		if err != nil {
 			return fail(err)
 		}
 		mergedByID[artifact.ID] = published
@@ -903,6 +1118,10 @@ func syncSelectedTargetAdapterArtifacts(options targetInstallOptions, selectedID
 	}
 	for _, artifact := range selectedDesired {
 		delete(retiredIDs, artifact.ID)
+		if successor, ok := targetAdapterJavaScriptSuccessor(options.Target, artifact); ok {
+			delete(mergedByID, successor.legacyID)
+			retiredIDs[successor.legacyID] = true
+		}
 	}
 	merged := installed
 	merged.RetiredArtifactIDs = sortedRetiredAdapterIDs(retiredIDs)
@@ -912,6 +1131,11 @@ func syncSelectedTargetAdapterArtifacts(options targetInstallOptions, selectedID
 	}
 	if err := ensureTargetAdapterSnapshotUnchanged(installedPath, manifestSnapshot); err != nil {
 		return fail(err)
+	}
+	for _, artifact := range selectedDesired {
+		if err := ensureJavaScriptAdapterPredecessorState(options, artifact); err != nil {
+			return fail(err)
+		}
 	}
 	if err := writeTargetAdapterManifest(installedPath, merged); err != nil {
 		writeErr := fmt.Errorf("write installed target adapter manifest: %w", err)
@@ -988,18 +1212,34 @@ func ensureTargetAdapterSnapshotUnchanged(path string, expected targetAdapterSna
 }
 
 func recordTargetAdapterMutation(path string, expected targetAdapterSnapshot, mutated *[]targetAdapterSnapshot, mutatedPaths map[string]bool) error {
-	current, err := readTargetAdapterSnapshot(path)
-	if err != nil {
-		if !mutatedPaths[path] {
-			*mutated = append(*mutated, expected)
-			mutatedPaths[path] = true
-		}
-		return fmt.Errorf("inspect target adapter destination %s after mutation: %w", path, err)
+	return recordTargetAdapterMutationKind(path, expected, mutated, mutatedPaths, false)
+}
+
+func recordTargetAdapterRetirement(path string, expected targetAdapterSnapshot, mutated *[]targetAdapterSnapshot, mutatedPaths map[string]bool) error {
+	return recordTargetAdapterMutationKind(path, expected, mutated, mutatedPaths, true)
+}
+
+func recordTargetAdapterPublication(path string, expected targetAdapterSnapshot, published []byte, publishedMode fs.FileMode, mutated *[]targetAdapterSnapshot, mutatedPaths map[string]bool) error {
+	if mutatedPaths[path] {
+		return nil
 	}
-	if !sameTargetAdapterSnapshot(current, expected) && !mutatedPaths[path] {
-		*mutated = append(*mutated, expected)
-		mutatedPaths[path] = true
+	recorded := expected
+	recorded.hasPublished = true
+	recorded.publishedBody = append([]byte(nil), published...)
+	recorded.publishedMode = publishedMode
+	*mutated = append(*mutated, recorded)
+	mutatedPaths[path] = true
+	return nil
+}
+
+func recordTargetAdapterMutationKind(path string, expected targetAdapterSnapshot, mutated *[]targetAdapterSnapshot, mutatedPaths map[string]bool, retired bool) error {
+	if mutatedPaths[path] {
+		return nil
 	}
+	recorded := expected
+	recorded.retired = retired
+	*mutated = append(*mutated, recorded)
+	mutatedPaths[path] = true
 	return nil
 }
 
@@ -1155,13 +1395,41 @@ func sameTargetAdapterSnapshot(a targetAdapterSnapshot, b targetAdapterSnapshot)
 }
 
 func restoreTargetAdapterSnapshot(snapshot targetAdapterSnapshot) error {
+	info, err := os.Lstat(snapshot.path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	present := err == nil
+	if present && unmatchedTargetAdapterLeftover(snapshot, info) {
+		return nil
+	}
 	if !snapshot.exists {
+		if !present {
+			return nil
+		}
 		if err := os.Remove(snapshot.path); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 		return nil
 	}
 	return writeFileAtomically(snapshot.path, snapshot.body, snapshot.mode)
+}
+
+func unmatchedTargetAdapterLeftover(snapshot targetAdapterSnapshot, info fs.FileInfo) bool {
+	if info.Mode()&fs.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return true
+	}
+	current, err := readTargetAdapterSnapshot(snapshot.path)
+	if err != nil {
+		return true
+	}
+	if sameTargetAdapterSnapshot(current, snapshot) {
+		return false
+	}
+	if snapshot.hasPublished && bytes.Equal(current.body, snapshot.publishedBody) && current.mode == snapshot.publishedMode {
+		return false
+	}
+	return snapshot.retired || !snapshot.exists || snapshot.hasPublished
 }
 
 func targetAdapterSnapshotMatchesArtifact(artifact targetAdapterArtifact, snapshot targetAdapterSnapshot) bool {
