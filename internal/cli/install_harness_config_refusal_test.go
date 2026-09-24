@@ -152,25 +152,21 @@ func TestSymlinkPassRefusesUnreadableClaudeFile(t *testing.T) {
 	writeInstallFile(t, path, "# User claude instructions\n")
 	chmodForTest(t, path, 0o000)
 
-	result := ensureInstallSymlink(path, "../AGENTS.md", ".claude/CLAUDE.md", installSymlinkOptions{
-		AssumeYes:     true,
-		CanonicalPath: filepath.Join(root, "AGENTS.md"),
-		ProjectRoot:   root,
-	})
+	result := ensureInstallClaudeInstructions(root, installSymlinkOptions{AssumeYes: true})
 	if result.Action != "error" || !result.Refused {
 		chmodForTest(t, path, 0o600)
-		t.Fatalf("ensureInstallSymlink() = %#v, want a refused read that fails the project part", result)
+		t.Fatalf("ensureInstallClaudeInstructions() = %#v, want a refused read that fails the project part", result)
 	}
 	if !anyInstallSymlinkRefusal(map[string]installSymlinkResult{"claude": result}) {
 		chmodForTest(t, path, 0o600)
 		t.Fatal("anyInstallSymlinkRefusal did not treat the permission failure as an abort")
 	}
 
-	// Plan agrees: error, not a promised replace/migration.
-	action, detail := planInstallSymlink(path, "../AGENTS.md", ".claude/CLAUDE.md", filepath.Join(root, "AGENTS.md"), true)
+	// Plan agrees: error, not a promised migration.
+	action, detail := planInstallClaudeInstructions(root, true)
 	if action != "error" {
 		chmodForTest(t, path, 0o600)
-		t.Fatalf("planInstallSymlink() = %q, %q, want error", action, detail)
+		t.Fatalf("planInstallClaudeInstructions() = %q, %q, want error", action, detail)
 	}
 
 	chmodForTest(t, path, 0o600)
@@ -202,7 +198,7 @@ func TestSymlinkPassRefusesUnreadableLegacyAgentsFile(t *testing.T) {
 
 func TestAnyInstallSymlinkRefusalIncludesOrdinaryReadErrors(t *testing.T) {
 	results := map[string]installSymlinkResult{
-		"claude": installSymlinkReadRefusal("Failed to replace .claude/CLAUDE.md", os.ErrPermission),
+		"claude": installSymlinkReadRefusal("Failed to migrate .claude/CLAUDE.md", os.ErrPermission),
 	}
 	if !results["claude"].Refused {
 		t.Fatal("installSymlinkReadRefusal left Refused false for a permission error")

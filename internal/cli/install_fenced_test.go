@@ -396,6 +396,8 @@ func TestInstallFencedSectionsForTargetsDedupesSharedCanonicalPath(t *testing.T)
 	}
 }
 
+// An existing .claude/CLAUDE.md link to root AGENTS.md is optional and left in
+// place; the Claude Code section still lands in AGENTS.md exactly once.
 func TestInstallFencedSectionsForTargetsDedupesSymlinkedClaudeFile(t *testing.T) {
 	root := realpath(t, t.TempDir())
 	canonical := filepath.Join(root, "AGENTS.md")
@@ -411,10 +413,10 @@ func TestInstallFencedSectionsForTargetsDedupesSymlinkedClaudeFile(t *testing.T)
 		t.Fatalf("installFencedSectionsForTargets() error = %v", err)
 	}
 	if results["claude-code"].Action != "appended" {
-		t.Fatalf("claude-code result = %#v, want appended through symlink", results["claude-code"])
+		t.Fatalf("claude-code result = %#v, want appended to root AGENTS.md", results["claude-code"])
 	}
 	if results["cursor"].Action != "skipped" {
-		t.Fatalf("cursor result = %#v, want skipped after symlink write", results["cursor"])
+		t.Fatalf("cursor result = %#v, want skipped after the shared write", results["cursor"])
 	}
 	body := string(readFileBytes(t, canonical))
 	if count := strings.Count(body, "<!-- loaf:managed:start"); count != 1 {
@@ -423,6 +425,25 @@ func TestInstallFencedSectionsForTargetsDedupesSymlinkedClaudeFile(t *testing.T)
 	if info, err := os.Lstat(link); err != nil || info.Mode()&os.ModeSymlink == 0 {
 		t.Fatalf("CLAUDE.md link = %v, %v, want preserved symlink", info, err)
 	}
+}
+
+func TestInstallFencedSectionsForTargetsWritesClaudeSectionToRootAgentsWithoutCreatingClaudeFile(t *testing.T) {
+	root := realpath(t, t.TempDir())
+	canonical := filepath.Join(root, "AGENTS.md")
+	writeInstallFile(t, canonical, "# Canonical\n")
+
+	results, err := installFencedSectionsForTargets([]string{"claude-code", "cursor"}, root, "2.0.0-test.1", false)
+	if err != nil {
+		t.Fatalf("installFencedSectionsForTargets() error = %v", err)
+	}
+	if results["claude-code"].Action != "appended" || results["cursor"].Action != "skipped" {
+		t.Fatalf("results = %#v, want one shared write to root AGENTS.md", results)
+	}
+	body := string(readFileBytes(t, canonical))
+	if count := strings.Count(body, "<!-- loaf:managed:start"); count != 1 {
+		t.Fatalf("canonical fenced count = %d, want 1\n%s", count, body)
+	}
+	assertInstallPathMissing(t, filepath.Join(root, ".claude"))
 }
 
 func TestInstallFencedSectionRejectsInvalidStructure(t *testing.T) {
@@ -496,14 +517,13 @@ func TestInstallFencedSectionRejectsInvalidStartHeaderFields(t *testing.T) {
 // TestInstallFencedSectionsForTargetsStopsAtTheFirstFailure pins the abort. A
 // refused fenced write says this project's managed files are not currently
 // Loaf's to write, which is a fact about the project rather than about the one
-// harness whose turn it was; carrying on let a refusal on .claude/CLAUDE.md be
-// followed by creating AGENTS.md from scratch for the next target in the list.
+// harness whose turn it was; carrying on would retry the refused file for the
+// next target in the list.
 func TestInstallFencedSectionsForTargetsStopsAtTheFirstFailure(t *testing.T) {
 	root := realpath(t, t.TempDir())
-	claudeFile := filepath.Join(root, ".claude", "CLAUDE.md")
-	mkdirAll(t, filepath.Dir(claudeFile))
+	agentsFile := filepath.Join(root, "AGENTS.md")
 	tampered := malformedFencedAgentsBody()
-	writeInstallFile(t, claudeFile, tampered)
+	writeInstallFile(t, agentsFile, tampered)
 
 	results, err := installFencedSectionsForTargets([]string{"claude-code", "cursor"}, root, "2.0.0-test.1", true)
 
@@ -516,9 +536,9 @@ func TestInstallFencedSectionsForTargetsStopsAtTheFirstFailure(t *testing.T) {
 	if _, attempted := results["cursor"]; attempted {
 		t.Fatalf("cursor result = %#v, want the batch stopped before it", results["cursor"])
 	}
-	assertInstallPathMissing(t, filepath.Join(root, "AGENTS.md"))
-	if got := string(readFileBytes(t, claudeFile)); got != tampered {
-		t.Fatalf("CLAUDE.md = %q, want it untouched after the refusal", got)
+	assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
+	if got := string(readFileBytes(t, agentsFile)); got != tampered {
+		t.Fatalf("AGENTS.md = %q, want it untouched after the refusal", got)
 	}
 }
 

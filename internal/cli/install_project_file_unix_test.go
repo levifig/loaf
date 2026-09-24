@@ -238,8 +238,8 @@ func TestUpgradeDryRunReportsAFifoAtTheLegacyAgentsFile(t *testing.T) {
 }
 
 // TestUpgradeRefusesAFifoAtTheClaudeCompatibilityFile is the other half of the
-// same pass: the real file that is about to be merged into AGENTS.md and
-// replaced by a symlink.
+// same pass: the non-link .claude/CLAUDE.md that is about to be merged into
+// AGENTS.md and retired.
 func TestUpgradeRefusesAFifoAtTheClaudeCompatibilityFile(t *testing.T) {
 	root, home := setupUpgradeFixture(t)
 	writeFixtureClaudeCLI(t, root)
@@ -256,7 +256,7 @@ func TestUpgradeRefusesAFifoAtTheClaudeCompatibilityFile(t *testing.T) {
 	if !errors.As(result.err, &exitErr) || exitErr.Code == 0 {
 		t.Fatalf("upgrade error = %v, want a non-zero ExitError\n%s", result.err, result.output)
 	}
-	if !strings.Contains(result.output, "Failed to replace .claude/CLAUDE.md") {
+	if !strings.Contains(result.output, "Failed to migrate .claude/CLAUDE.md") {
 		t.Fatalf("upgrade output = %q, want the refused step named", result.output)
 	}
 	if !strings.Contains(result.output, "not a regular file") || !strings.Contains(result.output, "refusing to overwrite") {
@@ -414,7 +414,8 @@ func TestCodexUserConfigReadersRefuseAFifo(t *testing.T) {
 }
 
 // writeFixtureClaudeCLI puts a `claude` on the fixture PATH, which is the only
-// signal upgrade uses to decide the project wants a .claude/CLAUDE.md.
+// signal upgrade uses to decide the project uses Claude Code and so checks
+// whether a .claude/CLAUDE.md shadows root AGENTS.md.
 func writeFixtureClaudeCLI(t *testing.T, root string) {
 	t.Helper()
 	path := filepath.Join(root, "bin", "claude")
@@ -459,4 +460,91 @@ func mkfifoForTest(t *testing.T, path string) {
 	if err := syscall.Mkfifo(path, 0o600); err != nil {
 		t.Skipf("Mkfifo(%s) unavailable here: %v", path, err)
 	}
+}
+
+// TestUpgradeStopsWhenTheClaudeLinkCannotBeRemoved pins that any failed step of
+// the layout pass, not only a refused read, stops the project part: the fenced
+// section is not written and upgrade exits non-zero.
+func TestUpgradeStopsWhenTheClaudeLinkCannotBeRemoved(t *testing.T) {
+	skipWithoutEnforcedPermissions(t)
+	root, home := setupUpgradeFixture(t)
+	writeFixtureClaudeCLI(t, root)
+	installUpgradeFixtureTarget(t, root, home, "cursor")
+	canonical := filepath.Join(root, "AGENTS.md")
+	stale := "# Project\n\n<!-- loaf:managed:start -->\nPrevious Loaf guidance\n" + fencedEndMarker + "\n"
+	writeInstallFile(t, canonical, stale)
+	writeInstallFile(t, filepath.Join(root, "docs", "claude.md"), "# Other\n")
+	claudeDir := filepath.Join(root, ".claude")
+	claudeLink := filepath.Join(claudeDir, "CLAUDE.md")
+	mkdirAll(t, claudeDir)
+	if err := os.Symlink("../docs/claude.md", claudeLink); err != nil {
+		t.Fatalf("Symlink error = %v", err)
+	}
+	chmodForTest(t, claudeDir, 0o555)
+
+	unit := ensureInstallClaudeInstructions(root, installSymlinkOptions{AssumeYes: true})
+	if unit.Action != "error" || !anyInstallSymlinkRefusal(map[string]installSymlinkResult{".claude/CLAUDE.md": unit}) {
+		t.Fatalf("ensureInstallClaudeInstructions() = %#v, want an error that stops the project pass", unit)
+	}
+
+	result := runInstallWithDeadline(t, root, "upgrade", "--yes")
+
+	var exitErr ExitError
+	if !errors.As(result.err, &exitErr) || exitErr.Code == 0 {
+		t.Fatalf("upgrade error = %v, want a non-zero ExitError\n%s", result.err, result.output)
+	}
+	if !strings.Contains(result.output, "Failed to remove .claude/CLAUDE.md") || !strings.Contains(result.output, "project surfaces incomplete") {
+		t.Fatalf("upgrade output = %q, want the failed removal named and the project part failed", result.output)
+	}
+	assertInstallFile(t, canonical, stale)
+	assertRawSymlink(t, claudeLink, "../docs/claude.md")
+}
+
+// TestUpgradeDryRunMirrorsTheStopAfterAClaudeLayoutRefusal pins the plan side
+// of the stop: after the .claude/CLAUDE.md refusal, the fenced write and the
+// MCP recommendation record are reported skipped, not planned.
+func TestUpgradeDryRunMirrorsTheStopAfterAClaudeLayoutRefusal(t *testing.T) {
+	root, home := setupUpgradeFixture(t)
+	writeFixtureClaudeCLI(t, root)
+	installUpgradeFixtureTarget(t, root, home, "cursor")
+	canonical := filepath.Join(root, "AGENTS.md")
+	stale := "# Project\n\n<!-- loaf:managed:start -->\nPrevious Loaf guidance\n" + fencedEndMarker + "\n"
+	writeInstallFile(t, canonical, stale)
+	outside := symlinkedClaudeDirWithFile(t, root)
+
+	result := runInstallWithDeadline(t, root, "upgrade", "--dry-run", "--json", "--yes")
+	if result.err != nil {
+		t.Fatalf("upgrade --dry-run --json error = %v\n%s", result.err, result.output)
+	}
+	plan := parseInstallPlanJSON(t, result.output)
+	layout, found := findInstallPlanEntry(plan, claudeInstructionsPath)
+	if !found || layout.Action != "error" || !strings.Contains(layout.Detail, ".claude is a symlink") {
+		t.Fatalf("layout entry = %#v (found=%v), want the symlinked-directory error", layout, found)
+	}
+	fencedEntries := 0
+	for _, entry := range plan.ProjectFiles {
+		if entry.Path == "AGENTS.md" {
+			fencedEntries++
+		}
+		if entry.Path == "AGENTS.md" || entry.Path == ".agents/loaf.json" {
+			if entry.Action != "skipped" || !strings.Contains(entry.Detail, claudeInstructionsPath+" failed first") {
+				t.Fatalf("project entry = %#v, want skipped after the layout error\nplan = %#v", entry, plan.ProjectFiles)
+			}
+		}
+	}
+	if fencedEntries == 0 {
+		t.Fatalf("plan = %#v, want the fenced AGENTS.md write reported as skipped", plan.ProjectFiles)
+	}
+	if record, ok := findInstallPlanEntry(plan, ".agents/loaf.json"); !ok || record.Action != "skipped" {
+		t.Fatalf("MCP record entry = %#v (found=%v), want skipped", record, ok)
+	}
+
+	// Apply agrees: it stops at the same step and writes neither.
+	applied := runInstallWithDeadline(t, root, "upgrade", "--yes")
+	var exitErr ExitError
+	if !errors.As(applied.err, &exitErr) || exitErr.Code == 0 {
+		t.Fatalf("upgrade error = %v, want a non-zero ExitError\n%s", applied.err, applied.output)
+	}
+	assertInstallFile(t, canonical, stale)
+	assertInstallFile(t, filepath.Join(outside, "CLAUDE.md"), "# Outside\n")
 }

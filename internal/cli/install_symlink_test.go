@@ -8,194 +8,174 @@ import (
 	"testing"
 )
 
-func TestEnsureInstallSymlinkCreatesAndDetectsCorrectLink(t *testing.T) {
-	root := realpath(t, t.TempDir())
-	canonical := filepath.Join(root, ".agents", "AGENTS.md")
-	link := filepath.Join(root, "AGENTS.md")
-	writeInstallFile(t, canonical, "# Canonical\n")
+func TestEnsureInstallClaudeInstructionsLeavesAbsentPathAndCorrectLinkAlone(t *testing.T) {
+	t.Run("absent stays absent", func(t *testing.T) {
+		root := realpath(t, t.TempDir())
+		writeInstallFile(t, filepath.Join(root, "AGENTS.md"), "# Root\n")
 
-	result := ensureInstallSymlink(link, ".agents/AGENTS.md", "./AGENTS.md", installSymlinkOptions{
-		CanonicalPath: canonical,
-		ProjectRoot:   root,
+		result := ensureInstallClaudeInstructions(root, installSymlinkOptions{AssumeYes: true})
+		if result.Action != "already-correct" || result.Error != "" {
+			t.Fatalf("result = %#v, want already-correct without error", result)
+		}
+		assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
+		assertInstallPathMissing(t, filepath.Join(root, ".claude"))
+		if action, detail := planInstallClaudeInstructions(root, true); action != "already-correct" {
+			t.Fatalf("plan = %q, %q, want already-correct", action, detail)
+		}
 	})
-	if result.Action != "created" || result.Error != "" {
-		t.Fatalf("create result = %#v, want created without error", result)
-	}
-	assertInstallSymlinkTarget(t, link, canonical)
 
-	result = ensureInstallSymlink(link, ".agents/AGENTS.md", "./AGENTS.md", installSymlinkOptions{
-		CanonicalPath: canonical,
-		ProjectRoot:   root,
+	t.Run("correct link untouched", func(t *testing.T) {
+		root := realpath(t, t.TempDir())
+		writeInstallFile(t, filepath.Join(root, "AGENTS.md"), "# Root\n")
+		link := filepath.Join(root, ".claude", "CLAUDE.md")
+		mkdirAll(t, filepath.Dir(link))
+		if err := os.Symlink("../AGENTS.md", link); err != nil {
+			t.Fatalf("Symlink error = %v", err)
+		}
+
+		result := ensureInstallClaudeInstructions(root, installSymlinkOptions{AssumeYes: true})
+		if result.Action != "already-correct" || result.Error != "" {
+			t.Fatalf("result = %#v, want already-correct without error", result)
+		}
+		assertRawSymlink(t, link, "../AGENTS.md")
+		if action, detail := planInstallClaudeInstructions(root, true); action != "already-correct" {
+			t.Fatalf("plan = %q, %q, want already-correct", action, detail)
+		}
 	})
-	if result.Action != "already-correct" || result.Error != "" {
-		t.Fatalf("second result = %#v, want already-correct without error", result)
-	}
 }
 
-func TestEnsureInstallSymlinkRelinksWrongTargetWithConsentControls(t *testing.T) {
-	t.Run("assume yes relinks", func(t *testing.T) {
+func TestEnsureInstallClaudeInstructionsRemovesWrongLinksWithConsentControls(t *testing.T) {
+	setup := func(t *testing.T, target string) (string, string) {
+		t.Helper()
 		root := realpath(t, t.TempDir())
-		canonical := filepath.Join(root, ".agents", "AGENTS.md")
-		link := filepath.Join(root, "AGENTS.md")
-		writeInstallFile(t, canonical, "# Canonical\n")
-		writeInstallFile(t, filepath.Join(root, "legacy.md"), "legacy\n")
-		if err := os.Symlink("legacy.md", link); err != nil {
-			t.Fatalf("Symlink legacy error = %v", err)
+		writeInstallFile(t, filepath.Join(root, "AGENTS.md"), "# Root\n")
+		writeInstallFile(t, filepath.Join(root, "docs", "claude.md"), "# Other\n")
+		link := filepath.Join(root, ".claude", "CLAUDE.md")
+		mkdirAll(t, filepath.Dir(link))
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatalf("Symlink error = %v", err)
 		}
+		return root, link
+	}
 
-		result := ensureInstallSymlink(link, ".agents/AGENTS.md", "./AGENTS.md", installSymlinkOptions{AssumeYes: true})
-		if result.Action != "relinked" || result.Error != "" {
-			t.Fatalf("relink result = %#v, want relinked without error", result)
-		}
-		assertInstallSymlinkTarget(t, link, canonical)
-	})
+	for _, target := range []string{"../docs/claude.md", "../.agents/AGENTS.md"} {
+		t.Run("assume yes removes "+target, func(t *testing.T) {
+			root, link := setup(t, target)
+			if action, detail := planInstallClaudeInstructions(root, true); action != "removed" {
+				t.Fatalf("plan = %q, %q, want removed", action, detail)
+			}
+			result := ensureInstallClaudeInstructions(root, installSymlinkOptions{AssumeYes: true})
+			if result.Action != "removed" || result.Error != "" {
+				t.Fatalf("result = %#v, want removed without error", result)
+			}
+			assertInstallPathMissing(t, link)
+			assertInstallFile(t, filepath.Join(root, "docs", "claude.md"), "# Other\n")
+			assertInstallFile(t, filepath.Join(root, "AGENTS.md"), "# Root\n")
+		})
+	}
 
 	t.Run("prompt decline leaves link", func(t *testing.T) {
-		root := realpath(t, t.TempDir())
-		link := filepath.Join(root, "AGENTS.md")
-		writeInstallFile(t, filepath.Join(root, "legacy.md"), "legacy\n")
-		if err := os.Symlink("legacy.md", link); err != nil {
-			t.Fatalf("Symlink legacy error = %v", err)
-		}
-
+		root, link := setup(t, "../docs/claude.md")
 		prompted := false
-		result := ensureInstallSymlink(link, ".agents/AGENTS.md", "./AGENTS.md", installSymlinkOptions{
+		result := ensureInstallClaudeInstructions(root, installSymlinkOptions{
 			Prompt: func(question string) bool {
-				prompted = strings.Contains(question, "Relink?")
+				prompted = strings.Contains(question, "Remove the link?")
 				return false
 			},
 		})
-		if result.Action != "declined-relink" || !prompted {
-			t.Fatalf("decline result = %#v prompted=%v, want declined-relink with prompt", result, prompted)
+		if result.Action != "declined-remove" || !prompted {
+			t.Fatalf("result = %#v prompted=%v, want declined-remove with prompt", result, prompted)
 		}
-		assertRawSymlink(t, link, "legacy.md")
+		assertRawSymlink(t, link, "../docs/claude.md")
 	})
 
 	t.Run("non interactive skips", func(t *testing.T) {
-		root := realpath(t, t.TempDir())
-		link := filepath.Join(root, "AGENTS.md")
-		writeInstallFile(t, filepath.Join(root, "legacy.md"), "legacy\n")
-		if err := os.Symlink("legacy.md", link); err != nil {
-			t.Fatalf("Symlink legacy error = %v", err)
+		root, link := setup(t, "../docs/claude.md")
+		if action, detail := planInstallClaudeInstructions(root, false); action != "skipped-no-tty" {
+			t.Fatalf("plan = %q, %q, want skipped-no-tty", action, detail)
 		}
-
-		result := ensureInstallSymlink(link, ".agents/AGENTS.md", "./AGENTS.md", installSymlinkOptions{NonInteractive: true})
+		result := ensureInstallClaudeInstructions(root, installSymlinkOptions{NonInteractive: true})
 		if result.Action != "skipped-no-tty" || result.Error != "" {
-			t.Fatalf("skip result = %#v, want skipped-no-tty without error", result)
+			t.Fatalf("result = %#v, want skipped-no-tty without error", result)
 		}
-		assertRawSymlink(t, link, "legacy.md")
+		assertRawSymlink(t, link, "../docs/claude.md")
 	})
 }
 
-func TestEnsureInstallSymlinkReplacesRealFileWithBackupAndCanonicalMerge(t *testing.T) {
+func TestEnsureInstallClaudeInstructionsMigratesRealFileAndLeavesPathAbsent(t *testing.T) {
 	root := realpath(t, t.TempDir())
-	canonical := filepath.Join(root, ".agents", "AGENTS.md")
-	link := filepath.Join(root, "AGENTS.md")
+	canonical := filepath.Join(root, "AGENTS.md")
+	claude := filepath.Join(root, ".claude", "CLAUDE.md")
 	writeInstallFile(t, canonical, "# Canonical\n")
-	writeInstallFile(t, link, "# Project Instructions\n\nKeep this user text.\n")
+	original := "# User Notes\n\n<!-- loaf:managed:start v1.0.0 -->\nold managed\n<!-- loaf:managed:end -->\n\nKeep this.\n"
+	writeInstallFile(t, claude, original)
+	writeInstallFile(t, claude+".bak", "# Earlier Backup\n")
 
-	result := ensureInstallSymlink(link, ".agents/AGENTS.md", "./AGENTS.md", installSymlinkOptions{
-		AssumeYes:     true,
-		CanonicalPath: canonical,
-		ProjectRoot:   root,
-	})
-	if result.Action != "replaced-file" || result.BackupPath != link+".bak" || !result.Merged || result.Error != "" {
-		t.Fatalf("replace result = %#v, want replaced-file backup and merge", result)
+	if action, detail := planInstallClaudeInstructions(root, true); action != "migrated" {
+		t.Fatalf("plan = %q, %q, want migrated", action, detail)
 	}
-	assertInstallSymlinkTarget(t, link, canonical)
-	assertInstallFile(t, link+".bak", "# Project Instructions\n\nKeep this user text.\n")
-
+	result := ensureInstallClaudeInstructions(root, installSymlinkOptions{AssumeYes: true})
+	if result.Action != "migrated" || !result.Merged || result.Error != "" || result.BackupPath != claude+".bak.1" {
+		t.Fatalf("result = %#v, want migrated with merge into a collision-safe backup", result)
+	}
+	assertInstallPathMissing(t, claude)
+	assertInstallFile(t, claude+".bak", "# Earlier Backup\n")
+	assertInstallFile(t, claude+".bak.1", original)
 	body := string(readFileBytes(t, canonical))
-	if !strings.Contains(body, "# Canonical") || !strings.Contains(body, "## Migrated from AGENTS.md") || !strings.Contains(body, "Keep this user text.") {
-		t.Fatalf("canonical body = %q, want original plus migrated user content", body)
+	if strings.Contains(body, "old managed") || strings.Contains(body, "<!-- loaf:managed:start") {
+		t.Fatalf("canonical body = %q, want managed fence stripped", body)
+	}
+	for _, want := range []string{"# Canonical", "## Migrated from .claude/CLAUDE.md", "# User Notes", "Keep this."} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("canonical body = %q, want %q", body, want)
+		}
+	}
+
+	retry := ensureInstallClaudeInstructions(root, installSymlinkOptions{AssumeYes: true})
+	if retry.Action != "already-correct" {
+		t.Fatalf("retry = %#v, want already-correct", retry)
+	}
+	if count := strings.Count(string(readFileBytes(t, canonical)), "## Migrated from .claude/CLAUDE.md"); count != 1 {
+		t.Fatalf("migration headings = %d, want 1", count)
 	}
 }
 
-func TestEnsureInstallSymlinkDeclinesOrSkipsRealFileReplacement(t *testing.T) {
+func TestEnsureInstallClaudeInstructionsDeclinesOrSkipsRealFileMigration(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		options installSymlinkOptions
 		want    string
 	}{
-		{
-			name: "prompt decline",
-			options: installSymlinkOptions{
-				Prompt: func(string) bool { return false },
-			},
-			want: "declined-replace",
-		},
-		{
-			name:    "non interactive",
-			options: installSymlinkOptions{NonInteractive: true},
-			want:    "skipped-no-tty",
-		},
+		{name: "prompt decline", options: installSymlinkOptions{Prompt: func(string) bool { return false }}, want: "declined-replace"},
+		{name: "non interactive", options: installSymlinkOptions{NonInteractive: true}, want: "skipped-no-tty"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := realpath(t, t.TempDir())
-			link := filepath.Join(root, "AGENTS.md")
-			writeInstallFile(t, link, "# Project Instructions\n")
+			writeInstallFile(t, filepath.Join(root, "AGENTS.md"), "# Root\n")
+			claude := filepath.Join(root, ".claude", "CLAUDE.md")
+			writeInstallFile(t, claude, "# Claude Notes\n")
 
-			result := ensureInstallSymlink(link, ".agents/AGENTS.md", "./AGENTS.md", tc.options)
+			result := ensureInstallClaudeInstructions(root, tc.options)
 			if result.Action != tc.want || result.Error != "" {
 				t.Fatalf("result = %#v, want %s without error", result, tc.want)
 			}
-			assertInstallFile(t, link, "# Project Instructions\n")
+			assertInstallFile(t, claude, "# Claude Notes\n")
+			assertInstallFile(t, filepath.Join(root, "AGENTS.md"), "# Root\n")
+			assertInstallPathMissing(t, claude+".bak")
 		})
 	}
 }
 
-func TestEnsureInstallSymlinkCreatesCanonicalWhenSourceOnlyManagedFence(t *testing.T) {
-	root := realpath(t, t.TempDir())
-	canonical := filepath.Join(root, ".agents", "AGENTS.md")
-	link := filepath.Join(root, "AGENTS.md")
-	writeInstallFile(t, link, "<!-- loaf:managed:start v1.0.0 -->\nmanaged\n<!-- loaf:managed:end -->\n")
-
-	result := ensureInstallSymlink(link, ".agents/AGENTS.md", "./AGENTS.md", installSymlinkOptions{
-		AssumeYes:     true,
-		CanonicalPath: canonical,
-		ProjectRoot:   root,
-	})
-	if result.Action != "replaced-file" || result.Merged {
-		t.Fatalf("result = %#v, want replaced-file without merge", result)
-	}
-	assertInstallSymlinkTarget(t, link, canonical)
-	assertInstallFile(t, canonical, "")
-}
-
-func TestEnsureInstallSymlinkStripsManagedFenceBeforeMerge(t *testing.T) {
-	root := realpath(t, t.TempDir())
-	canonical := filepath.Join(root, ".agents", "AGENTS.md")
-	link := filepath.Join(root, ".claude", "CLAUDE.md")
-	writeInstallFile(t, canonical, "# Canonical\n")
-	writeInstallFile(t, link, "# User Notes\n\n<!-- loaf:managed:start v1.0.0 -->\nold managed\n<!-- loaf:managed:end -->\n\nKeep this.\n")
-
-	result := ensureInstallSymlink(link, "../.agents/AGENTS.md", ".claude/CLAUDE.md", installSymlinkOptions{
-		AssumeYes:     true,
-		CanonicalPath: canonical,
-		ProjectRoot:   root,
-	})
-	if result.Action != "replaced-file" || !result.Merged {
-		t.Fatalf("result = %#v, want replaced-file with merge", result)
-	}
-	body := string(readFileBytes(t, canonical))
-	if strings.Contains(body, "old managed") || strings.Contains(body, "<!-- loaf:managed:start") {
-		t.Fatalf("canonical body = %q, want managed fence stripped", body)
-	}
-	if !strings.Contains(body, "## Migrated from .claude/CLAUDE.md") || !strings.Contains(body, "# User Notes") || !strings.Contains(body, "Keep this.") {
-		t.Fatalf("canonical body = %q, want migrated user notes", body)
-	}
-}
-
 func TestEnsureProjectInstallSymlinksRoutesSelectedTargets(t *testing.T) {
-	t.Run("claude and agents targets create root canonical", func(t *testing.T) {
+	t.Run("claude and agents targets create root canonical without a Claude file", func(t *testing.T) {
 		root := realpath(t, t.TempDir())
 		results := ensureProjectInstallSymlinks(root, []string{"cursor"}, true, installSymlinkOptions{AssumeYes: true})
-		if results[".claude/CLAUDE.md"].Action != "created" || results["./AGENTS.md"].Action != "created" {
-			t.Fatalf("results = %#v, want root file and Claude symlink created", results)
+		if results[".claude/CLAUDE.md"].Action != "already-correct" || results["./AGENTS.md"].Action != "created" {
+			t.Fatalf("results = %#v, want root file created and no Claude file", results)
 		}
 		canonical := filepath.Join(root, "AGENTS.md")
 		assertInstallFile(t, canonical, "")
-		assertInstallSymlinkTarget(t, filepath.Join(root, ".claude", "CLAUDE.md"), canonical)
+		assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 		if installIsSymlink(canonical) {
 			t.Fatalf("%s is a symlink, want real canonical file", canonical)
 		}
@@ -219,19 +199,20 @@ func TestEnsureProjectInstallSymlinksRoutesSelectedTargets(t *testing.T) {
 			t.Fatalf("results = %#v, want root AGENTS file", results)
 		}
 		if _, ok := results[".claude/CLAUDE.md"]; ok {
-			t.Fatalf("results = %#v, want no Claude symlink", results)
+			t.Fatalf("results = %#v, want no Claude result", results)
 		}
 	})
 
-	t.Run("claude only creates claude link", func(t *testing.T) {
+	t.Run("claude only creates root canonical and no Claude file", func(t *testing.T) {
 		root := realpath(t, t.TempDir())
 		results := ensureProjectInstallSymlinks(root, nil, true, installSymlinkOptions{AssumeYes: true})
-		if results[".claude/CLAUDE.md"].Action != "created" {
-			t.Fatalf("results = %#v, want Claude symlink", results)
+		if results[".claude/CLAUDE.md"].Action != "already-correct" {
+			t.Fatalf("results = %#v, want no Claude file created", results)
 		}
 		if results["./AGENTS.md"].Action != "created" {
 			t.Fatalf("results = %#v, want Claude install to create root canonical file", results)
 		}
+		assertInstallPathMissing(t, filepath.Join(root, ".claude"))
 	})
 }
 
@@ -245,8 +226,8 @@ func TestEnsureProjectInstallSymlinksMigratesLegacyCanonicalLayout(t *testing.T)
 	writeInstallFile(t, filepath.Join(root, ".claude", "CLAUDE.md"), "# Claude Notes\n")
 
 	results := ensureProjectInstallSymlinks(root, []string{"cursor"}, true, installSymlinkOptions{AssumeYes: true})
-	if results[".claude/CLAUDE.md"].Action != "replaced-file" || !results[".claude/CLAUDE.md"].Merged {
-		t.Fatalf("Claude result = %#v, want replaced-file with merge", results[".claude/CLAUDE.md"])
+	if results[".claude/CLAUDE.md"].Action != "migrated" || !results[".claude/CLAUDE.md"].Merged {
+		t.Fatalf("Claude result = %#v, want migrated with merge", results[".claude/CLAUDE.md"])
 	}
 	if results["./AGENTS.md"].Action != "migrated" {
 		t.Fatalf("AGENTS result = %#v, want migrated legacy canonical", results["./AGENTS.md"])
@@ -264,7 +245,7 @@ func TestEnsureProjectInstallSymlinksMigratesLegacyCanonicalLayout(t *testing.T)
 	if _, err := os.Lstat(legacy); !os.IsNotExist(err) {
 		t.Fatalf("legacy canonical still exists: %v", err)
 	}
-	assertInstallSymlinkTarget(t, filepath.Join(root, ".claude", "CLAUDE.md"), canonicalPath)
+	assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 	if installIsSymlink(canonicalPath) {
 		t.Fatalf("root canonical remains a symlink")
 	}
@@ -363,14 +344,6 @@ func TestEnsureRootInstallAgentsFileRejectsDirectoryCanonical(t *testing.T) {
 	result := ensureRootInstallAgentsFile(root, installSymlinkOptions{AssumeYes: true})
 	if result.Action != "error" || !strings.Contains(result.Error, "directory") {
 		t.Fatalf("result = %#v, want directory rejection", result)
-	}
-}
-
-func TestRelativeInstallLinkTargetForProjectInstructionFiles(t *testing.T) {
-	root := realpath(t, t.TempDir())
-	canonical := filepath.Join(root, "AGENTS.md")
-	if got := relativeInstallLinkTarget(filepath.Join(root, ".claude", "CLAUDE.md"), canonical); got != "../AGENTS.md" {
-		t.Fatalf("Claude link target = %q, want ../AGENTS.md", got)
 	}
 }
 

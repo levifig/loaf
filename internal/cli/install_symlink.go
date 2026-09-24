@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,8 +13,6 @@ type installSymlinkOptions struct {
 	Prompt         func(question string) bool
 	NonInteractive bool
 	AssumeYes      bool
-	CanonicalPath  string
-	ProjectRoot    string
 }
 
 type installSymlinkResult struct {
@@ -36,48 +35,97 @@ var agentsMDInstallTargets = map[string]bool{
 	"amp":      true,
 }
 
-func ensureInstallSymlink(linkPath string, relativeTarget string, description string, options installSymlinkOptions) installSymlinkResult {
-	expectedAbs := filepath.Clean(filepath.Join(filepath.Dir(linkPath), relativeTarget))
-	if !installPathExists(linkPath) {
-		if err := os.MkdirAll(filepath.Dir(linkPath), 0o755); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to create %s: %v", description, err), err)
-		}
-		if err := os.Symlink(relativeTarget, linkPath); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to create %s: %v", description, err), err)
-		}
-		return installSymlinkResult{Action: "created", Message: fmt.Sprintf("Created %s -> %s", description, relativeTarget)}
+// claudeInstructionsPath is the project-relative Claude Code instruction path
+// that shadows root AGENTS.md whenever it holds anything but a link to it.
+const claudeInstructionsPath = ".claude/CLAUDE.md"
+
+// symlinkedClaudeDirTarget reports where a symlinked .claude directory points
+// when something exists at .claude/CLAUDE.md through it. Loaf never inspects or
+// repairs .claude/CLAUDE.md through a symlinked directory: a backup, merge
+// source, or removal there could land outside the project, and the lexical
+// ../AGENTS.md check would no longer name root AGENTS.md. A symlinked .claude
+// with nothing at CLAUDE.md shadows nothing and needs no refusal.
+func symlinkedClaudeDirTarget(projectRoot string) (string, bool) {
+	claudeDir := filepath.Join(projectRoot, ".claude")
+	if !installIsSymlink(claudeDir) {
+		return "", false
+	}
+	if !installPathExists(filepath.Join(projectRoot, filepath.FromSlash(claudeInstructionsPath))) {
+		return "", false
+	}
+	target := resolveInstallSymlinkTarget(claudeDir)
+	if target == "" {
+		target = "<unreadable>"
+	}
+	return target, true
+}
+
+func symlinkedClaudeDirMessage(target string) string {
+	return fmt.Sprintf(".claude is a symlink to %s; Loaf will not inspect or repair .claude/CLAUDE.md through it. Replace .claude with a real directory, or move CLAUDE.md out of it, then rerun", target)
+}
+
+// ensureInstallClaudeInstructions keeps Claude Code reading root AGENTS.md
+// natively. It never creates or relinks .claude/CLAUDE.md: an absent path and a
+// link to root AGENTS.md are both correct and left alone. A link elsewhere
+// (including a dangling one) is removed, leaving its target untouched. A real
+// file is merged into root AGENTS.md, moved to a collision-safe backup, and the
+// path is left absent. Both repairs need consent, as every project-file repair
+// does.
+func ensureInstallClaudeInstructions(projectRoot string, options installSymlinkOptions) installSymlinkResult {
+	canonical := filepath.Join(projectRoot, "AGENTS.md")
+	if target, symlinked := symlinkedClaudeDirTarget(projectRoot); symlinked {
+		message := symlinkedClaudeDirMessage(target)
+		result := installSymlinkError("error", message, errors.New(message))
+		result.Refused = true
+		return result
+	}
+	if installIsSymlink(filepath.Join(projectRoot, ".claude")) {
+		// symlinkedClaudeDirTarget found nothing at CLAUDE.md through the link,
+		// so nothing shadows AGENTS.md and there is nothing to repair.
+		return installSymlinkResult{Action: "already-correct", Message: "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"}
+	}
+	// Every operation below goes through root, so none can leave the project
+	// even if .claude is swapped for a symlink after the refusal above.
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return installSymlinkReadRefusal("Failed to inspect .claude/CLAUDE.md", err)
+	}
+	defer root.Close()
+	info, exists, err := lstatClaudeInstructions(root)
+	if err != nil {
+		return installSymlinkReadRefusal("Failed to inspect .claude/CLAUDE.md", err)
+	}
+	if !exists {
+		return installSymlinkResult{Action: "already-correct", Message: "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"}
 	}
 
-	if installIsSymlink(linkPath) {
-		if installSymlinkPointsTo(linkPath, expectedAbs) {
-			return installSymlinkResult{Action: "already-correct", Message: fmt.Sprintf("%s already points to %s", description, relativeTarget)}
+	if info.Mode()&os.ModeSymlink != 0 {
+		actualTarget, err := claudeInstructionsLinkTarget(root, projectRoot)
+		if err != nil {
+			return installSymlinkReadRefusal("Failed to inspect .claude/CLAUDE.md", err)
 		}
-		actualTarget := resolveInstallSymlinkTarget(linkPath)
-		if actualTarget == "" {
-			actualTarget = "<unreadable>"
+		if actualTarget == filepath.Clean(canonical) {
+			return installSymlinkResult{Action: "already-correct", Message: ".claude/CLAUDE.md already points to ../AGENTS.md"}
 		}
 		approved := options.AssumeYes
 		if !approved {
 			if options.NonInteractive {
 				return installSymlinkResult{
 					Action:  "skipped-no-tty",
-					Message: fmt.Sprintf("%s points to the wrong target (%s); skipped in non-interactive mode", description, actualTarget),
+					Message: fmt.Sprintf(".claude/CLAUDE.md points to %s, which Claude Code reads instead of root AGENTS.md; skipped in non-interactive mode", actualTarget),
 				}
 			}
 			if options.Prompt != nil {
-				approved = options.Prompt(fmt.Sprintf("  %s points to %s, not %s. Relink? [y/N] ", description, actualTarget, relativeTarget))
+				approved = options.Prompt(fmt.Sprintf("  .claude/CLAUDE.md points to %s, so Claude Code reads it instead of root AGENTS.md. Remove the link? [y/N] ", actualTarget))
 			}
 		}
 		if !approved {
-			return installSymlinkResult{Action: "declined-relink", Message: fmt.Sprintf("Left %s pointing at %s", description, actualTarget)}
+			return installSymlinkResult{Action: "declined-remove", Message: fmt.Sprintf("Left .claude/CLAUDE.md pointing at %s (Claude Code will not read root AGENTS.md)", actualTarget)}
 		}
-		if err := os.Remove(linkPath); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to relink %s: %v", description, err), err)
+		if err := removeClaudeInstructionsLink(root); err != nil {
+			return installSymlinkError("error", fmt.Sprintf("Failed to remove .claude/CLAUDE.md: %v", err), err)
 		}
-		if err := os.Symlink(relativeTarget, linkPath); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to relink %s: %v", description, err), err)
-		}
-		return installSymlinkResult{Action: "relinked", Message: fmt.Sprintf("Relinked %s -> %s", description, relativeTarget)}
+		return installSymlinkResult{Action: "removed", Message: fmt.Sprintf("Removed .claude/CLAUDE.md symlink to %s; Claude Code reads root AGENTS.md", actualTarget)}
 	}
 
 	approved := options.AssumeYes
@@ -85,66 +133,29 @@ func ensureInstallSymlink(linkPath string, relativeTarget string, description st
 		if options.NonInteractive {
 			return installSymlinkResult{
 				Action:  "skipped-no-tty",
-				Message: fmt.Sprintf("%s exists as a real file; skipped in non-interactive mode (fenced sections may drift from canonical AGENTS.md)", description),
+				Message: ".claude/CLAUDE.md exists as a real file, which stops Claude Code from reading root AGENTS.md; skipped in non-interactive mode",
 			}
 		}
 		if options.Prompt != nil {
-			approved = options.Prompt(fmt.Sprintf("  %s exists as a regular file. Merge its content into canonical AGENTS.md, back it up as %s.bak, and replace with a symlink? [y/N] ", description, description))
+			approved = options.Prompt("  .claude/CLAUDE.md exists as a regular file, which stops Claude Code from reading root AGENTS.md. Merge its content into root AGENTS.md and move it to a backup? [y/N] ")
 		}
 	}
 	if !approved {
-		return installSymlinkResult{Action: "declined-replace", Message: fmt.Sprintf("Left %s as a regular file (fenced sections may drift)", description)}
+		return installSymlinkResult{Action: "declined-replace", Message: "Left .claude/CLAUDE.md as a regular file (Claude Code will not read root AGENTS.md)"}
 	}
 
-	sourceContent, err := readRegularFile(linkPath, projectFileReadLimit)
+	backup, merged, err := retireClaudeInstructionsFile(root, canonical)
 	if err != nil {
-		return installSymlinkReadRefusal(fmt.Sprintf("Failed to replace %s", description), refuseProjectFileRead(err))
-	}
-	stripped := stripDoctorLoafFence(string(sourceContent))
-	merged := false
-	if options.CanonicalPath != "" && stripped != "" {
-		root := options.ProjectRoot
-		if root == "" {
-			root = filepath.Dir(linkPath)
-		}
-		relSource, err := filepath.Rel(root, linkPath)
-		if err != nil {
-			relSource = linkPath
-		}
-		merged, err = mergeDoctorContentIntoCanonical(options.CanonicalPath, stripped, relSource)
-		if err != nil {
-			return installSymlinkReadRefusal(fmt.Sprintf("Failed to replace %s", description), err)
-		}
-	}
-
-	backupPath := linkPath + ".bak"
-	if installPathExists(backupPath) {
-		if err := os.RemoveAll(backupPath); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to replace %s: %v", description, err), err)
-		}
-	}
-	if err := os.Rename(linkPath, backupPath); err != nil {
-		return installSymlinkError("error", fmt.Sprintf("Failed to replace %s: %v", description, err), err)
-	}
-	if options.CanonicalPath != "" && !installFileExists(options.CanonicalPath) {
-		if err := os.MkdirAll(filepath.Dir(options.CanonicalPath), 0o755); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to replace %s: %v", description, err), err)
-		}
-		if err := os.WriteFile(options.CanonicalPath, []byte{}, 0o644); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to replace %s: %v", description, err), err)
-		}
-	}
-	if err := os.Symlink(relativeTarget, linkPath); err != nil {
-		return installSymlinkError("error", fmt.Sprintf("Failed to replace %s: %v", description, err), err)
+		return installSymlinkReadRefusal("Failed to migrate .claude/CLAUDE.md", err)
 	}
 	suffix := ""
 	if merged {
-		suffix = " (merged content into canonical)"
+		suffix = " and merged its content into root AGENTS.md"
 	}
 	return installSymlinkResult{
-		Action:     "replaced-file",
-		Message:    fmt.Sprintf("Backed up %s to %s.bak and created symlink -> %s%s", description, description, relativeTarget, suffix),
-		BackupPath: backupPath,
+		Action:     "migrated",
+		Message:    fmt.Sprintf("Moved .claude/CLAUDE.md to %s%s; Claude Code reads root AGENTS.md", backup, suffix),
+		BackupPath: filepath.Join(projectRoot, filepath.FromSlash(backup)),
 		Merged:     merged,
 	}
 }
@@ -157,19 +168,14 @@ func ensureProjectInstallSymlinks(projectRoot string, selectedTargets []string, 
 		return results
 	}
 
-	canonical := filepath.Join(projectRoot, "AGENTS.md")
 	rootResult := ensureRootInstallAgentsFile(projectRoot, options)
 	results["./AGENTS.md"] = rootResult
 	if rootResult.Error != "" {
 		return results
 	}
-	options.CanonicalPath = canonical
-	options.ProjectRoot = projectRoot
 
 	if wantClaude {
-		linkPath := filepath.Join(projectRoot, ".claude", "CLAUDE.md")
-		relTarget := relativeInstallLinkTarget(linkPath, canonical)
-		results[".claude/CLAUDE.md"] = ensureInstallSymlink(linkPath, relTarget, ".claude/CLAUDE.md", options)
+		results[claudeInstructionsPath] = ensureInstallClaudeInstructions(projectRoot, options)
 	}
 	return results
 }
@@ -279,14 +285,6 @@ func ensureRootInstallAgentsFile(projectRoot string, options installSymlinkOptio
 	}
 
 	return installSymlinkResult{Action: "already-correct", Message: "Canonical ./AGENTS.md already exists"}
-}
-
-func relativeInstallLinkTarget(linkPath string, canonicalPath string) string {
-	rel, err := filepath.Rel(filepath.Dir(linkPath), canonicalPath)
-	if err != nil {
-		return canonicalPath
-	}
-	return rel
 }
 
 func installSymlinkError(action string, message string, err error) installSymlinkResult {

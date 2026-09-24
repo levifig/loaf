@@ -17,7 +17,6 @@ func TestSessionModelConvergenceContentGuards(t *testing.T) {
 		"dist",
 		filepath.ToSlash(filepath.Join("plugins", "loaf")),
 		"AGENTS.md",
-		".claude/CLAUDE.md",
 	}
 	forbidden := []string{
 		"loaf session housekeeping",

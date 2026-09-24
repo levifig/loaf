@@ -186,7 +186,11 @@ func (r Runner) buildInstallDryRunPlan(options installOptions, loafRoot string, 
 	if projectPart == nil || projectPart.InScope {
 		plan.ProjectFiles = planInstallProjectFiles(projectRoot, targetsInScope, hasClaudeCode, assumeYes, version)
 		if projectPart != nil {
-			plan.ProjectFiles = append(plan.ProjectFiles, planUpgradeMcpRecord(projectRoot))
+			if reason, failed := projectFilePlanFailure(plan.ProjectFiles); failed {
+				plan.ProjectFiles = append(plan.ProjectFiles, projectFilePlanEntry{Path: ".agents/loaf.json", Action: "skipped", Detail: reason})
+			} else {
+				plan.ProjectFiles = append(plan.ProjectFiles, planUpgradeMcpRecord(projectRoot))
+			}
 		}
 	}
 
@@ -866,17 +870,39 @@ func destructiveDeprecationAction(kind string) string {
 
 // planInstallProjectFiles mirrors enforceInstallProjectFiles: project symlinks
 // followed by the managed fenced section, all read-only.
+//
+// Apply stops the project part at the first failed layout step, so a layout
+// error in the plan turns every later fenced write into a skipped entry that
+// names the failure instead of a write apply would never make.
 func planInstallProjectFiles(projectRoot string, selectedTargets []string, hasClaudeCode bool, assumeYes bool, version string) []projectFilePlanEntry {
 	entries := planInstallProjectSymlinks(projectRoot, selectedTargets, hasClaudeCode, assumeYes)
 	fencedTargets := append([]string{}, selectedTargets...)
 	if hasClaudeCode {
 		fencedTargets = append([]string{"claude-code"}, fencedTargets...)
 	}
-	entries = append(entries, planInstallFencedSections(fencedTargets, projectRoot, version)...)
+	if reason, failed := projectFilePlanFailure(entries); failed {
+		for _, target := range fencedTargets {
+			entries = append(entries, projectFilePlanEntry{Target: target, Path: fencedTargetFiles[target], Action: "skipped", Detail: reason})
+		}
+	} else {
+		entries = append(entries, planInstallFencedSections(fencedTargets, projectRoot, version)...)
+	}
 	if entries == nil {
 		entries = []projectFilePlanEntry{}
 	}
 	return entries
+}
+
+// projectFilePlanFailure reports the first planned project-file step that
+// fails, phrased as the reason every later project write is skipped: apply
+// stops the project part at that step.
+func projectFilePlanFailure(entries []projectFilePlanEntry) (string, bool) {
+	for _, entry := range entries {
+		if entry.Action == "error" {
+			return fmt.Sprintf("Not written: %s failed first (%s); the project part stops there", entry.Path, entry.Detail), true
+		}
+	}
+	return "", false
 }
 
 func planInstallProjectSymlinks(projectRoot string, selectedTargets []string, hasClaudeCode bool, assumeYes bool) []projectFilePlanEntry {
@@ -886,17 +912,14 @@ func planInstallProjectSymlinks(projectRoot string, selectedTargets []string, ha
 	if !wantClaude && !wantRootAgents {
 		return entries
 	}
-	canonical := filepath.Join(projectRoot, "AGENTS.md")
 	rootAction, rootDetail, rootErr := planRootInstallAgentsFile(projectRoot, assumeYes)
 	entries = append(entries, projectFilePlanEntry{Path: "./AGENTS.md", Action: rootAction, Detail: rootDetail})
 	if rootErr {
 		return entries
 	}
 	if wantClaude {
-		linkPath := filepath.Join(projectRoot, ".claude", "CLAUDE.md")
-		relTarget := relativeInstallLinkTarget(linkPath, canonical)
-		action, detail := planInstallSymlink(linkPath, relTarget, ".claude/CLAUDE.md", canonical, assumeYes)
-		entries = append(entries, projectFilePlanEntry{Target: "claude-code", Path: ".claude/CLAUDE.md", Action: action, Detail: detail})
+		action, detail := planInstallClaudeInstructions(projectRoot, assumeYes)
+		entries = append(entries, projectFilePlanEntry{Target: "claude-code", Path: claudeInstructionsPath, Action: action, Detail: detail})
 	}
 	return entries
 }
@@ -956,34 +979,36 @@ func planRootInstallAgentsFile(projectRoot string, assumeYes bool) (string, stri
 	return "already-correct", "Canonical ./AGENTS.md already exists", false
 }
 
-// planInstallSymlink mirrors the read-only branch decisions of
-// ensureInstallSymlink.
-func planInstallSymlink(linkPath string, relativeTarget string, description string, canonicalPath string, assumeYes bool) (string, string) {
-	expectedAbs := filepath.Clean(filepath.Join(filepath.Dir(linkPath), relativeTarget))
-	if !installPathExists(linkPath) {
-		return "created", fmt.Sprintf("Create %s -> %s", description, relativeTarget)
+// planInstallClaudeInstructions mirrors the read-only branch decisions of
+// ensureInstallClaudeInstructions.
+func planInstallClaudeInstructions(projectRoot string, assumeYes bool) (string, string) {
+	claudePath := filepath.Join(projectRoot, filepath.FromSlash(claudeInstructionsPath))
+	canonical := filepath.Join(projectRoot, "AGENTS.md")
+	if target, symlinked := symlinkedClaudeDirTarget(projectRoot); symlinked {
+		return "error", symlinkedClaudeDirMessage(target)
 	}
-	if installIsSymlink(linkPath) {
-		if installSymlinkPointsTo(linkPath, expectedAbs) {
-			return "already-correct", fmt.Sprintf("%s already points to %s", description, relativeTarget)
+	if !installPathExists(claudePath) {
+		return "already-correct", "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"
+	}
+	if installIsSymlink(claudePath) {
+		if installSymlinkPointsTo(claudePath, canonical) {
+			return "already-correct", ".claude/CLAUDE.md already points to ../AGENTS.md"
 		}
 		if !assumeYes {
-			return "skipped-no-tty", fmt.Sprintf("%s points to the wrong target; skipped in non-interactive mode", description)
+			return "skipped-no-tty", ".claude/CLAUDE.md points somewhere other than root AGENTS.md; skipped in non-interactive mode"
 		}
-		return "relinked", fmt.Sprintf("Relink %s -> %s", description, relativeTarget)
+		return "removed", "Remove the .claude/CLAUDE.md symlink so Claude Code reads root AGENTS.md"
 	}
 	if !assumeYes {
-		return "skipped-no-tty", fmt.Sprintf("%s exists as a real file; skipped in non-interactive mode", description)
+		return "skipped-no-tty", ".claude/CLAUDE.md exists as a real file; skipped in non-interactive mode"
 	}
-	if err := planProjectFileReadable(linkPath); err != nil {
-		return "error", fmt.Sprintf("Failed to replace %s: %v", description, err)
+	if err := planProjectFileReadable(claudePath); err != nil {
+		return "error", fmt.Sprintf("Failed to migrate .claude/CLAUDE.md: %v", err)
 	}
-	if canonicalPath != "" {
-		if err := planProjectFileReadable(canonicalPath); err != nil {
-			return "error", fmt.Sprintf("Failed to replace %s: %v", description, err)
-		}
+	if err := planProjectFileReadable(canonical); err != nil {
+		return "error", fmt.Sprintf("Failed to migrate .claude/CLAUDE.md: %v", err)
 	}
-	return "replaced-file", fmt.Sprintf("Back up %s and replace with a symlink -> %s", description, relativeTarget)
+	return "migrated", "Merge .claude/CLAUDE.md into root AGENTS.md, back it up, and leave the path absent"
 }
 
 // planInstallFencedSections mirrors installFencedSectionsForTargets +
@@ -1305,7 +1330,7 @@ func planActionGlyph(action string) string {
 	switch action {
 	case planActionCreate, planActionUpdate, hookActionAdd, "created", "appended", "updated", "relinked", "replaced-file", "migrated":
 		return ansiGreen("+")
-	case planActionRetire, hookActionRemove, "relocate":
+	case planActionRetire, hookActionRemove, "relocate", "removed":
 		return ansiYellow("-")
 	case planActionConflict, "error":
 		return ansiRed("✗")

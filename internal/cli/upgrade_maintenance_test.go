@@ -75,7 +75,9 @@ func TestRunnerUpgradeMigratesLegacyProjectInstructionLayout(t *testing.T) {
 	if _, err := os.Lstat(filepath.Join(root, ".agents", "AGENTS.md")); !os.IsNotExist(err) {
 		t.Fatalf("legacy .agents/AGENTS.md stat = %v, want absent", err)
 	}
-	assertInstallSymlinkTarget(t, filepath.Join(root, ".claude", "CLAUDE.md"), canonical)
+	// The legacy link pointed at .agents/AGENTS.md, which the migration retired;
+	// the dangling link is removed rather than relinked.
+	assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 }
 
 func TestRunnerUpgradeDetectsLegacyAmpWithoutMutatingLegacyPath(t *testing.T) {

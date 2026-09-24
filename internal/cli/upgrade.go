@@ -15,8 +15,8 @@ import (
 // installed harness config dir from the installed distribution and runs
 // deprecation cleanup, and runs anywhere; the project part refreshes this
 // repo's Loaf surfaces and runs only when the tiered detector says this is a
-// Loaf repo. Every project write — fenced sections, instruction symlinks and
-// their migrations, and the MCP-recommendation record in .agents/loaf.json —
+// Loaf repo. Every project write — fenced sections, instruction-file layout
+// migrations, and the MCP-recommendation record in .agents/loaf.json —
 // sits behind that gate, so `loaf upgrade` in a stranger's directory leaves it
 // byte-identical.
 
@@ -518,7 +518,7 @@ func writeUpgradeHelp(out io.Writer) {
 		"           the installed distribution, applies deprecation-manifest cleanup,",
 		"           and stamps each .loaf-version marker.",
 		"  Project  Runs only in a Loaf repo: refreshes the managed fenced sections,",
-		"           instruction symlinks and their migrations, and the MCP",
+		"           instruction-file layout migrations, and the MCP",
 		"           recommendation record in .agents/loaf.json. Legacy-only signals",
 		"           are confirmed first; outside a Loaf repo nothing is written.",
 		"",

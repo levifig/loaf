@@ -69,3 +69,7 @@ func isSymlinkOpenRefusal(err error) bool {
 	}
 	return errors.Is(err, syscall.ELOOP)
 }
+
+// rootRegularFileReadFlags opens a Root-confined read without blocking on a
+// FIFO swapped in after the type check.
+const rootRegularFileReadFlags = os.O_RDONLY | syscall.O_NONBLOCK

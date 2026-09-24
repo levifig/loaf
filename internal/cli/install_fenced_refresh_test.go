@@ -14,9 +14,9 @@ func TestManagedImplementationPrerequisiteReachesFreshAndExistingTargets(t *test
 		}
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
-			mkdirAll(t, filepath.Join(root, ".claude"))
 			prefix, suffix := "# User rules\n\nKeep my chosen toolchain.\n \t\n", "\n\n# User tail\nDo not deploy.\n\n"
-			paths := []string{filepath.Join(root, "AGENTS.md"), filepath.Join(root, ".claude", "CLAUDE.md")}
+			// Every target, Claude Code included, shares root AGENTS.md.
+			paths := []string{filepath.Join(root, "AGENTS.md")}
 			if existing {
 				for _, path := range paths {
 					writeInstallFile(t, path, prefix+"<!-- loaf:managed:start -->\nPrevious Loaf guidance\n"+fencedEndMarker+suffix)
@@ -31,11 +31,13 @@ func TestManagedImplementationPrerequisiteReachesFreshAndExistingTargets(t *test
 			if existing {
 				wantAction = "updated"
 			}
-			for _, target := range []string{"codex", "claude-code"} {
-				if results[target].Action != wantAction {
-					t.Fatalf("%s action = %q, want %q", target, results[target].Action, wantAction)
-				}
+			if results["codex"].Action != wantAction {
+				t.Fatalf("codex action = %q, want %q", results["codex"].Action, wantAction)
 			}
+			if results["claude-code"].Action != "skipped" {
+				t.Fatalf("claude-code action = %q, want skipped after the shared AGENTS.md write", results["claude-code"].Action)
+			}
+			assertInstallPathMissing(t, filepath.Join(root, ".claude", "CLAUDE.md"))
 			installed := map[string]string{}
 			for _, path := range paths {
 				body := string(readFileBytes(t, path))
