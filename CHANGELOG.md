@@ -44,6 +44,7 @@ This prerelease enables pinned, checksum-verified Loaf installation and readines
 
 ### Fixed
 
+- Finish Ship's local base-branch reconciliation after an authorized merge, or report the checkout as pending without deleting work; keep the post-merge reminder honest ([#318](https://github.com/levifig/loaf/issues/318)).
 - Run Amp hooks in the shell execution directory or current workspace rather than the installed plugin directory, avoiding false missing-changelog errors while preserving checks ([#279](https://github.com/levifig/loaf/issues/279)).
 - Keep prompt and compaction guidance and SQLite journal commands available in linked worktrees when configuration or unrelated artifacts differ. Restrict migration refusals to storage the command consumes, identify affected paths, and preserve recovery checks without creating implicit migration markers; keep command diagnostics accurate ([#251](https://github.com/levifig/loaf/issues/251), [#254](https://github.com/levifig/loaf/issues/254)).
 - Prefer an already configured GitHub MCP matching `integrations.github.account`; otherwise use installed authenticated `gh` (including `gh api`) through the main agent. Verify MCP identity through the connector and `gh` identity separately before tracker operations.

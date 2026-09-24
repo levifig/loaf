@@ -431,6 +431,45 @@ func TestSharedBuildPromotesTrackerNativeVNextFlowIntoAmp(t *testing.T) {
 	}
 }
 
+func TestSharedBuildShipsPostMergeReconciliationGuidance(t *testing.T) {
+	root := setupIsolatedRepositoryBuildRoot(t)
+	if err := os.Symlink(filepath.Join(testRepositoryRoot(t), "vnext"), filepath.Join(root, "vnext")); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatalf("build error = %v\n%s", err, stdout.String())
+	}
+	for _, target := range defaultBuildTargets {
+		skill := readBuildFileString(t, filepath.Join(nativeBuildSkillTreeDir(root, target), "ship", "SKILL.md"))
+		for _, required := range []string{
+			"## Post-Merge Reconciliation",
+			"git pull --ff-only origin <baseRefName>",
+			"git status --porcelain",
+			"git rev-parse <baseRefName> origin/<baseRefName>",
+			"local reconciliation pending",
+			"git branch -d",
+		} {
+			if !strings.Contains(skill, required) {
+				t.Errorf("%s Ship skill missing post-merge guidance %q", target, required)
+			}
+		}
+		if strings.Contains(skill, "git branch -D <headRefName>") {
+			t.Errorf("%s Ship skill suggests force-deleting a squash-merged branch", target)
+		}
+	}
+	for _, path := range []string{
+		filepath.Join(root, "plugins", "loaf", "hooks", "instructions", "post-merge.md"),
+		filepath.Join(root, "dist", "opencode", "plugins", "hooks", "instructions", "post-merge.md"),
+		filepath.Join(root, "dist", "cursor", "hooks", "instructions", "post-merge.md"),
+	} {
+		body := readBuildFileString(t, path)
+		if strings.Contains(body, "these steps were already handled by the skill") || !strings.Contains(body, "local reconciliation pending") {
+			t.Errorf("%s does not preserve the independent post-merge reminder", path)
+		}
+	}
+}
+
 func TestSharedBuildPackagesVNextTemporaryReportPolicyAcrossTargets(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
 	repo := testRepositoryRoot(t)
