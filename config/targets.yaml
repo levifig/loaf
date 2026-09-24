@@ -39,5 +39,5 @@ targets:
     output: dist/amp/
     # First-class Amp target
     # Skills (standard SKILL.md, no sidecar merge) + auto-generated runtime
-    # plugin at .amp/plugins/loaf.ts (hooks only). Upgrades retire recognized
+    # plugin at .amp/plugins/loaf.js (hooks only). Upgrades retire recognized
     # historical loaf-modes.ts plugins without touching foreign content.

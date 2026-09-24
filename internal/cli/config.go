@@ -614,9 +614,9 @@ func configTargetInstallOptions(projectRoot string, loafRoot string, target dete
 func configDistributionHookPath(loafRoot string, target string) string {
 	switch target {
 	case "opencode":
-		return filepath.Join(loafRoot, "dist", "opencode", "plugins", "hooks.ts")
+		return filepath.Join(loafRoot, "dist", "opencode", "plugins", "hooks.js")
 	case "amp":
-		return filepath.Join(loafRoot, "dist", "amp", ".amp", "plugins", "loaf.ts")
+		return filepath.Join(loafRoot, "dist", "amp", ".amp", "plugins", "loaf.js")
 	default:
 		return ""
 	}
@@ -625,9 +625,9 @@ func configDistributionHookPath(loafRoot string, target string) string {
 func configTargetHookPath(target string, configDir string) string {
 	switch target {
 	case "opencode":
-		return filepath.Join(configDir, "plugins", "hooks.ts")
+		return filepath.Join(configDir, "plugins", "hooks.js")
 	case "amp":
-		return filepath.Join(configDir, "plugins", "loaf.ts")
+		return filepath.Join(configDir, "plugins", "loaf.js")
 	default:
 		return ""
 	}

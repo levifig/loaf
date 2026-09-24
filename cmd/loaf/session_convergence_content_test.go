@@ -73,8 +73,8 @@ func TestJournalFirstHookSurfacesConverged(t *testing.T) {
 		filepath.FromSlash("config/hooks.yaml"),
 		filepath.FromSlash("plugins/loaf/hooks/hooks.json"),
 		filepath.FromSlash("dist/cursor/hooks.json"),
-		filepath.FromSlash("dist/opencode/plugins/hooks.ts"),
-		filepath.FromSlash("dist/amp/.amp/plugins/loaf.ts"),
+		filepath.FromSlash("dist/opencode/plugins/hooks.js"),
+		filepath.FromSlash("dist/amp/.amp/plugins/loaf.js"),
 	}
 	forbidden := []string{
 		"loaf session start",

@@ -72,11 +72,11 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Node validates the emitted TypeScript plugins during the content build.
+      # Node 24+ validates emitted JavaScript adapters during the content build.
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Verify release version
         id: version

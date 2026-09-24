@@ -11,7 +11,11 @@ import (
 func TestRunnerInstallAmpPreservesConsumerBootstrapAndInstructions(t *testing.T) {
 	distribution, _ := setupInstallCommandFixture(t)
 	writeInstallFile(t, filepath.Join(distribution, "dist", "amp", "skills", "foundations", "SKILL.md"), "# Foundations\n")
-	writeInstallFile(t, filepath.Join(distribution, "dist", "amp", ".amp", "plugins", "loaf.ts"), "export default function loaf() {}\n")
+	plugin := "export default function loaf() {}\n"
+	writeInstallFile(t, filepath.Join(distribution, "dist", "amp", ".amp", "plugins", "loaf.js"), plugin)
+	writeTestTargetAdapterManifest(t, filepath.Join(distribution, "dist", "amp"), "amp", []map[string]string{{
+		"id": ampHookPluginArtifactID, "kind": "plugin", "source_path": ".amp/plugins/loaf.js", "destination": "plugins/loaf.js", "sha256": sha256Hex(plugin),
+	}})
 
 	consumer := t.TempDir()
 	if err := os.Mkdir(filepath.Join(consumer, ".git"), 0o755); err != nil {
@@ -43,7 +47,7 @@ func TestRunnerInstallAmpPreservesConsumerBootstrapAndInstructions(t *testing.T)
 	assertInstallFile(t, filepath.Join(consumer, ".agents", "resume"), resume)
 	assertInstallFile(t, filepath.Join(consumer, ".agents", "loaf-orb.pin"), pin)
 	assertInstallFile(t, filepath.Join(consumer, ".agents", "skills", "foundations", "SKILL.md"), "# Foundations\n")
-	assertInstallFile(t, filepath.Join(consumer, ".amp", "plugins", "loaf.ts"), "export default function loaf() {}\n")
+	assertInstallFile(t, filepath.Join(consumer, ".amp", "plugins", "loaf.js"), plugin)
 
 	agents := string(readFileBytes(t, filepath.Join(consumer, "AGENTS.md")))
 	if !strings.Contains(agents, "Keep this introduction.") || !strings.Contains(agents, "Keep this epilogue.") {

@@ -68,7 +68,18 @@ func (r scopedArtifactRef) matchesSkill(decision artifactPlanDecision) bool {
 }
 
 func (r scopedArtifactRef) matchesTarget(target string, decision artifactPlanDecision) bool {
-	return r.Target == target && decision.ID == r.ID
+	if r.Target != target {
+		return false
+	}
+	if decision.ID == r.ID {
+		return true
+	}
+	for _, predecessor := range javascriptAdapterPredecessorIDs(r.Target, r.ID) {
+		if decision.ID == predecessor {
+			return true
+		}
+	}
+	return false
 }
 
 func selectedHookIDsForTarget(refs []scopedArtifactRef, target string) map[string]bool {
@@ -94,9 +105,21 @@ func isCodexPolicyDecision(decision artifactPlanDecision) bool {
 
 func selectedAdapterIDsForTarget(refs []scopedArtifactRef, target string) []string {
 	var ids []string
+	seen := map[string]bool{}
+	appendID := func(id string) {
+		if id == "" || seen[id] {
+			return
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
 	for _, ref := range refs {
-		if ref.Target == target && !strings.HasPrefix(ref.ID, "hook:") && !isCodexPolicyArtifactID(ref.ID) {
-			ids = append(ids, ref.ID)
+		if ref.Target != target || strings.HasPrefix(ref.ID, "hook:") || isCodexPolicyArtifactID(ref.ID) {
+			continue
+		}
+		appendID(ref.ID)
+		for _, predecessor := range javascriptAdapterPredecessorIDs(ref.Target, ref.ID) {
+			appendID(predecessor)
 		}
 	}
 	return ids
@@ -216,10 +239,24 @@ func selectedArtifactIDsForTarget(refs []scopedArtifactRef, target string) map[s
 	for _, ref := range refs {
 		if ref.Target == target {
 			ids[ref.ID] = true
+			for _, predecessor := range javascriptAdapterPredecessorIDs(ref.Target, ref.ID) {
+				ids[predecessor] = true
+			}
 		}
 	}
 	if len(ids) == 0 {
 		return nil
 	}
 	return ids
+}
+
+func javascriptAdapterPredecessorIDs(target, id string) []string {
+	switch {
+	case target == "amp" && id == ampHookPluginArtifactID:
+		return []string{ampHookPluginPredecessorID}
+	case target == "opencode" && id == openCodeHookPluginArtifactID:
+		return []string{openCodeHookPluginPredecessorID}
+	default:
+		return nil
+	}
 }

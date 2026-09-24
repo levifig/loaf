@@ -183,9 +183,9 @@ Build once, deploy everywhere. Skills are the universal layer; profiles and hook
 | OpenCode | ✓ | ✓ | ✓ | Full support |
 | Cursor | ✓ | ✓ | ✓ | Full support |
 | Codex | — | ✓ | ✓ | Skills, hooks, and opt-in classified command policy |
-| Amp | — | ✓ | Runtime plugin | Skills and native delegation integrations |
+| Amp | — | ✓ | Runtime plugin | Skills and ordinary hooks; native modes and Oracle remain host-owned |
 
-Compatibility is checked by required capabilities, not a whitelist of exact harness versions. Full Node/JavaScript removal is not complete: some harness adapters and development checks still use TypeScript/JavaScript. The Loaf executable and maintained migrated helpers are native Go.
+Compatibility is checked by required capabilities, not a whitelist of exact harness versions. Amp and OpenCode adapters are plain JavaScript; Node 24+ remains for development checks and capability runners. The Loaf executable and maintained migrated helpers are native Go.
 
 ## Getting Started
 
@@ -320,7 +320,7 @@ bin/loaf build       # Rebuild content using this checkout's executable
 bin/loaf upgrade --dry-run  # Preview existing-install changes from this checkout
 ```
 
-Build, release, and packaging orchestration runs through Go and `make`; there is no npm install step. Use the Go toolchain declared in `go.mod`. `make verify-local` requires Node and the existing TypeScript compiler (`tsc`) on PATH, runs all deterministic adapter tests without launching live harness sessions, and does not activate the development launcher. Review regenerated content and include it with the source that produced it. `make ci-check` additionally requires generated files to match the Git index, as they must in a clean CI checkout. Individual `test`, `typecheck`, `vet`, `cgo-free`, `capability-tests`, and `verify-generated` targets remain available for focused work.
+Build, release, and packaging orchestration runs through Go and `make`; there is no npm install step. Use the Go toolchain declared in `go.mod`. `make verify-local` requires Node 24+ on PATH, runs all deterministic adapter tests without launching live harness sessions, and does not activate the development launcher. npm and `tsc` are not required. Review regenerated content and include it with the source that produced it. `make ci-check` additionally requires generated files to match the Git index, as they must in a clean CI checkout. Individual `test`, `typecheck`, `vet`, `cgo-free`, `capability-tests`, and `verify-generated` targets remain available for focused work.
 
 Most verification runs locally before review and tagging. Default CI runs a fixed set of uncached smoke tests plus CGO-free build, generated-content validation, and drift checks; `make ci-smoke` runs only the selected tests. Each smoke package has a two-minute test timeout, and the default CI job has a ten-minute total limit including setup and compilation. Release automation runs only `make release-smoke` before constructing all platform archives, checking version and checksums, and publishing. It does not replace comprehensive local verification. See [Runtime and Delivery](docs/architecture/runtime-and-delivery.md) for the check selection and boundary policy.
 

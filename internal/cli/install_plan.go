@@ -642,6 +642,11 @@ func planTargetAdapterArtifacts(options targetInstallOptions) ([]artifactPlanDec
 		}
 		decisions = append(decisions, decision)
 	}
+	successorDecisions, err := planJavaScriptAdapterSuccessors(options, desired, installedByID, decisions)
+	if err != nil {
+		return nil, err
+	}
+	decisions = append(decisions, successorDecisions...)
 	preserved, err := selectedRetiredAdapterPreserveDecisions(options, desiredByID, installedByID, installed.RetiredArtifactIDs, decisions)
 	if err != nil {
 		return nil, err
@@ -1325,6 +1330,63 @@ func planDetailSuffix(detail string) string {
 		return ""
 	}
 	return " " + ansiGray("— "+detail)
+}
+
+func planJavaScriptAdapterSuccessors(options targetInstallOptions, desired targetAdapterManifest, installedByID map[string]targetAdapterArtifact, existing []artifactPlanDecision) ([]artifactPlanDecision, error) {
+	seen := map[string]bool{}
+	for _, decision := range existing {
+		seen[decision.ID] = true
+	}
+	var extra []artifactPlanDecision
+	for _, artifact := range desired.Artifacts {
+		successor, ok := targetAdapterJavaScriptSuccessor(options.Target, artifact)
+		if !ok || seen[successor.legacyID] {
+			continue
+		}
+		path, err := targetAdapterLegacyDestination(options, successor)
+		if err != nil {
+			return nil, err
+		}
+		exists, symlink, dangling, body, err := inspectTargetAdapterLegacyPath(path)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			continue
+		}
+		decision := artifactPlanDecision{ID: successor.legacyID, Kind: "plugin", Destination: successor.legacyDestination}
+		owned := installedByID[successor.legacyID]
+		if owned.ID != "" {
+			snapshot, err := readTargetAdapterSnapshot(path)
+			if err != nil {
+				return nil, err
+			}
+			if snapshot.exists && !targetAdapterSnapshotMatchesArtifact(owned, snapshot) {
+				decision.Action = planActionConflict
+				decision.Detail = "managed target artifact was modified; refusing to remove"
+			} else {
+				decision.Action = planActionRetire
+				decision.Detail = "replaced by " + artifact.ID
+			}
+			extra = append(extra, decision)
+			continue
+		}
+		if dangling || symlink {
+			decision.Action = planActionConflict
+			decision.Detail = targetAdapterLegacyConflictDetail(successor, symlink, dangling)
+			extra = append(extra, decision)
+			continue
+		}
+		if targetAdapterMayRetireLegacyJavaScriptPredecessor(options.Target, successor, body) {
+			decision.Action = planActionRetire
+			decision.Detail = "replaced by " + artifact.ID
+		} else {
+			decision.Action = planActionConflict
+			decision.Detail = targetAdapterLegacyConflictDetail(successor, false, false)
+		}
+		extra = append(extra, decision)
+	}
+	return extra, nil
 }
 
 func selectedRetiredAdapterPreserveDecisions(options targetInstallOptions, desiredByID map[string]targetAdapterArtifact, installedByID map[string]targetAdapterArtifact, recordedRetired []string, existing []artifactPlanDecision) ([]artifactPlanDecision, error) {

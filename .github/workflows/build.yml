@@ -35,12 +35,11 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Node validates emitted JavaScript. TypeScript uses the runner's existing
-      # tsc; verify-generated fails explicitly if it is unavailable.
+      # Node 24+ validates emitted JavaScript adapters. There is no tsc gate.
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
 
       # Comprehensive Go/static/adapter tests run locally with verify-local.
       # CI retains only bounded spots plus source-to-distribution integrity.

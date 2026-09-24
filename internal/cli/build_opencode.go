@@ -152,7 +152,7 @@ func generateNativeOpenCodePlugin(hooksPath string, dist string, version string)
 	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(pluginDir, "hooks.ts"), []byte(renderNativeOpenCodePlugin(hooks, version)), 0o644)
+	return os.WriteFile(filepath.Join(pluginDir, "hooks.js"), []byte(renderNativeOpenCodePlugin(hooks, version)), 0o644)
 }
 
 func renderNativeOpenCodePlugin(hooks []nativeBuildHook, version string) string {
@@ -160,7 +160,7 @@ func renderNativeOpenCodePlugin(hooks []nativeBuildHook, version string) string 
 		nativeAmpCoreFunctions() + "\n\n" +
 		nativeAmpHookData(retargetNativeOpenCodeSessionStart(hooks)) + "\n\n" +
 		nativeOpenCodeSessionHelpers() + "\n\n" +
-		"export default async function AgentSkillsPlugin({ client, $ }: { client: OpenCodeClient; $?: unknown }) {\n  void $;\n  return {\n" +
+		"export default async function AgentSkillsPlugin({ client, $ }) {\n  void $;\n  return {\n" +
 		nativeOpenCodePluginBody() + "\n  };\n}"
 }
 
@@ -196,15 +196,9 @@ const execFileAsync = promisify(execFile);`
 }
 
 func nativeOpenCodeSessionHelpers() string {
-	return `type OpenCodeClient = {
-  session: {
-    get(input: { path: { id: string } }): Promise<{ data?: { parentID?: string } }>;
-  };
-};
+	return `const openCodeSessionLookupWarning = '[loaf] OpenCode session lookup unavailable; context delivery suppressed';
 
-const openCodeSessionLookupWarning = '[loaf] OpenCode session lookup unavailable; context delivery suppressed';
-
-function normalizeOpenCodeToolName(toolName: string): string {
+function normalizeOpenCodeToolName(toolName) {
   switch (toolName) {
     case 'bash':
       return 'Bash';
@@ -217,7 +211,7 @@ function normalizeOpenCodeToolName(toolName: string): string {
   }
 }
 
-async function isOpenCodeRootSession(client: OpenCodeClient, sessionID: string): Promise<boolean> {
+async function isOpenCodeRootSession(client, sessionID) {
   if (!sessionID) return false;
   try {
     const response = await client.session.get({ path: { id: sessionID } });
@@ -225,7 +219,7 @@ async function isOpenCodeRootSession(client: OpenCodeClient, sessionID: string):
       console.warn(openCodeSessionLookupWarning);
       return false;
     }
-    const data = response.data as { parentID?: unknown };
+    const data = response.data;
     if ('parentID' in data && data.parentID !== undefined) {
       if (typeof data.parentID !== 'string') {
         console.warn(openCodeSessionLookupWarning);
@@ -240,7 +234,7 @@ async function isOpenCodeRootSession(client: OpenCodeClient, sessionID: string):
   }
 }
 
-function serializeOpenCodeLifecyclePayload(sessionID: string, lifecycleEvent: string): string {
+function serializeOpenCodeLifecyclePayload(sessionID, lifecycleEvent) {
   return JSON.stringify({
     target: 'opencode',
     session_id: sessionID,
@@ -248,7 +242,7 @@ function serializeOpenCodeLifecyclePayload(sessionID: string, lifecycleEvent: st
   });
 }
 
-async function runOpenCodeSessionHooks(hooks: HookEntry[] | undefined, sessionID: string, lifecycleEvent: string, output: string[]): Promise<void> {
+async function runOpenCodeSessionHooks(hooks, sessionID, lifecycleEvent, output) {
   if (!hooks) return;
   const hookPayload = serializeOpenCodeLifecyclePayload(sessionID, lifecycleEvent);
   for (const hook of hooks) {
@@ -265,7 +259,7 @@ async function runOpenCodeSessionHooks(hooks: HookEntry[] | undefined, sessionID
 
 func nativeOpenCodePluginBody() string {
 	body := `    // Pre-tool hook handler
-    'tool.execute.before': async (input: { tool: string; sessionID: string; callID: string }, output: { args: unknown }) => {
+    'tool.execute.before': async (input, output) => {
       const toolName = normalizeOpenCodeToolName(input.tool);
       const toolInput = output.args;
       if (!toolName) return;
@@ -293,7 +287,7 @@ func nativeOpenCodePluginBody() string {
     },
 
     // Post-tool hook handler
-    'tool.execute.after': async (input: { tool: string; sessionID: string; callID: string; args: unknown }, output: { title?: string; output?: string; metadata?: unknown }) => {
+    'tool.execute.after': async (input, output) => {
       const toolName = normalizeOpenCodeToolName(input.tool);
       const toolInput = input.args;
       if (!toolName) return;
@@ -315,13 +309,13 @@ func nativeOpenCodePluginBody() string {
     },
 
     // Request and compaction context handlers
-    'experimental.chat.system.transform': async (input: { sessionID?: string; model?: unknown }, output: { system: string[] }) => {
+    'experimental.chat.system.transform': async (input, output) => {
       const sessionID = input?.sessionID;
       if (!sessionID || !(await isOpenCodeRootSession(client, sessionID))) return;
       await runOpenCodeSessionHooks(sessionHooks.sessionstart, sessionID, 'system.transform', output.system);
     },
 
-    'experimental.session.compacting': async (input: { sessionID: string }, output: { context: string[]; prompt?: string }) => {
+    'experimental.session.compacting': async (input, output) => {
       const sessionID = input?.sessionID;
       if (!sessionID || !(await isOpenCodeRootSession(client, sessionID))) return;
       await runOpenCodeSessionHooks(sessionHooks.postcompact, sessionID, 'session.compacting', output.context);

@@ -43,7 +43,7 @@ func expectedPersistenceSourceDigests() map[string]string {
 		"append_kernel.go":                          "e66aa0e4a6164950210fb7dcd1bf76757cf78faaf597f62c54680a2fd4e349bf",
 		"append_methods.go":                         "8dcec6a8f48084b623d794dc0478a3196bd6d8529f5bb63f2849fcbe30d3e140",
 		"authority.go":                              "3f57b4061ac3e9f4834ae4ff709e46349ce281dd17de82ee89e11f33b476bf4d",
-		"authority_prune_witness.go":                "7bbd29237a04d8896b94ed176d7fbddda024260824751e69801342db6f324d56",
+		"authority_prune_witness.go":                "785464fe89f915220d804d71b03233705edfcd9158ed4cb057fdefed3a645a14",
 		"authority_candidate.go":                    "7cd42e5152cfbf52cc1c8dfdb85dee9e372990d59d8e3a43f98a7df94014b8d5",
 		"authority_candidate_canonical.go":          "2da559ad1a2865f70af725a01d8461de06b23b0dc75b8c448e0f4febcbbe4368",
 		"authority_candidate_codec.go":              "4a254bb92d9dbe4ad48f70c3c6eedae6ae148912d81fbe674b2c88f4d9360006",
@@ -184,7 +184,7 @@ func expectedPersistenceFunctionDigests() map[string]map[string]string {
 		"authority_prune_witness.go": {
 			"Store.CurrentSyncPruneWitnessAuthorityUnderBinding": "303dfbb3fe8f6b87ee0081b03b09f2caab5895c0844f0ca43a0dbaff59c1713c",
 			"readSyncPruneWitnessAuthorityV1":                    "6575cfd7a83e3906dec079f1e6b9cfcd448c843866ccbb94ec6387d37bf7afbc",
-			"readSyncPruneWitnessAuthorityV2":                    "f8896adc3ff72f3b184b0ecc39949c6dd8029541376e398eb0d7dc3435f8b709",
+			"readSyncPruneWitnessAuthorityV2":                    "c991f044aaae1f7b3173d2ef6fc47c2139ac3dde8042d0ab02b05d19e9843685",
 		},
 		"authority_candidate.go": {
 			"Store.CurrentSyncAuthorityCandidate":           "ee157b3018c4e5beda5832c8f9d8f31ab62642ca0a12625a82ddfe116d94e08e",

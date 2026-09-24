@@ -213,6 +213,9 @@ func (r Runner) applyScopedUpgrade(out io.Writer, planned installDryRunPlan, opt
 				if strings.HasPrefix(decision.ID, "hook:") || isCodexPolicyDecision(decision) {
 					continue
 				}
+				if decision.Action == planActionConflict || decision.Action == planActionPreserve {
+					continue
+				}
 				path := decision.Destination
 				if !filepath.IsAbs(path) {
 					path = filepath.Join(opts.ConfigDir, filepath.FromSlash(path))
@@ -221,6 +224,13 @@ func (r Runner) applyScopedUpgrade(out io.Writer, planned installDryRunPlan, opt
 					err := fmt.Errorf("refusing whole-target snapshot for scoped artifact %s/%s", targetPlan.Target, decision.ID)
 					txn.failed = err
 					return err
+				}
+				if decision.Action == planActionRetire {
+					if err := txn.backupPreservingLeftover(path); err != nil {
+						txn.failed = err
+						return err
+					}
+					continue
 				}
 				if err := txn.backup(path); err != nil {
 					txn.failed = err
@@ -376,12 +386,13 @@ type scopedTxn struct {
 }
 
 type scopedBackup struct {
-	path    string
-	existed bool
-	isDir   bool
-	body    []byte
-	mode    fs.FileMode
-	dirCopy string
+	path             string
+	existed          bool
+	isDir            bool
+	body             []byte
+	mode             fs.FileMode
+	dirCopy          string
+	preserveLeftover bool
 }
 
 func newScopedTxn() *scopedTxn {
@@ -389,12 +400,20 @@ func newScopedTxn() *scopedTxn {
 }
 
 func (t *scopedTxn) backup(path string) error {
+	return t.backupWithPolicy(path, false)
+}
+
+func (t *scopedTxn) backupPreservingLeftover(path string) error {
+	return t.backupWithPolicy(path, true)
+}
+
+func (t *scopedTxn) backupWithPolicy(path string, preserveLeftover bool) error {
 	if t == nil || path == "" {
 		return nil
 	}
 	info, err := os.Lstat(path)
 	if os.IsNotExist(err) {
-		t.backups = append(t.backups, scopedBackup{path: path})
+		t.backups = append(t.backups, scopedBackup{path: path, preserveLeftover: preserveLeftover})
 		return nil
 	}
 	if err != nil {
@@ -412,14 +431,27 @@ func (t *scopedTxn) backup(path string) error {
 			_ = os.RemoveAll(dirCopy)
 			return err
 		}
-		t.backups = append(t.backups, scopedBackup{path: path, existed: true, isDir: true, dirCopy: dirCopy, mode: info.Mode().Perm()})
+		t.backups = append(t.backups, scopedBackup{
+			path:             path,
+			existed:          true,
+			isDir:            true,
+			dirCopy:          dirCopy,
+			mode:             info.Mode().Perm(),
+			preserveLeftover: preserveLeftover,
+		})
 		return nil
 	}
 	body, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	t.backups = append(t.backups, scopedBackup{path: path, existed: true, body: body, mode: info.Mode().Perm()})
+	t.backups = append(t.backups, scopedBackup{
+		path:             path,
+		existed:          true,
+		body:             body,
+		mode:             info.Mode().Perm(),
+		preserveLeftover: preserveLeftover,
+	})
 	return nil
 }
 
@@ -461,8 +493,25 @@ func (t *scopedTxn) cleanup() error {
 }
 
 func (b scopedBackup) restore() error {
+	info, err := os.Lstat(b.path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	present := err == nil
+	if b.preserveLeftover && present && b.leftover(info) {
+		return nil
+	}
 	if !b.existed {
-		if err := os.RemoveAll(b.path); err != nil && !os.IsNotExist(err) {
+		if !present {
+			return nil
+		}
+		if info.IsDir() {
+			if err := os.RemoveAll(b.path); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			return nil
+		}
+		if err := os.Remove(b.path); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 		return nil
@@ -479,6 +528,17 @@ func (b scopedBackup) restore() error {
 		return err
 	}
 	return writeFileAtomically(b.path, b.body, b.mode)
+}
+
+func (b scopedBackup) leftover(info fs.FileInfo) bool {
+	if info.Mode()&os.ModeSymlink != 0 || info.IsDir() || !info.Mode().IsRegular() {
+		return true
+	}
+	current, err := os.ReadFile(b.path)
+	if err != nil {
+		return true
+	}
+	return !b.existed || !bytes.Equal(current, b.body)
 }
 
 func scopedRetirementDependenciesError(plan installDryRunPlan, refs []scopedArtifactRef, hookState hookStateResolver, projectRoot string, version string, distRoot string, tools []detectedInstallTool) error {
@@ -894,7 +954,7 @@ func scopedArtifactDiff(options targetInstallOptions, decision artifactPlanDecis
 		return "", "", "", nil
 	}
 	info, statErr := os.Lstat(path)
-	if statErr == nil && info.IsDir() {
+	if statErr == nil && (info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular()) {
 		return "", "", "", nil
 	}
 	liveSnap, err := readTargetAdapterSnapshot(path)
