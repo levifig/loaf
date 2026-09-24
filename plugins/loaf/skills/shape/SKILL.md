@@ -8,7 +8,7 @@ description: >-
   ship.
 user-invocable: true
 argument-hint: '[messy input to shape into a Change]'
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Shape

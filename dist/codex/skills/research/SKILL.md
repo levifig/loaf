@@ -6,7 +6,7 @@ description: >-
   Produces a direct synthesis or, when persistence is justified, a
   skill-specific temporary report. Not for implementation or multi-agent
   coordination.
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Research

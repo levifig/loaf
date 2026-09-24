@@ -4,7 +4,7 @@ description: >-
   publishing surfaces. Use when shipped tracker records and Git history are
   ready for a versioned publication. Produces a verified release outcome without
   a local release ledger.
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Release

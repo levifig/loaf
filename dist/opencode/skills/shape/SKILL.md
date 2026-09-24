@@ -7,7 +7,7 @@ description: >-
   implementation. Produces a verified native record ready for implement and
   ship.
 subtask: false
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Shape

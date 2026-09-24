@@ -35,4 +35,4 @@ Execute the assigned task within its stated boundary. Background execution chang
 - Any persisted report has a stated future consumer, uses the supplied skill template, and is referenced in the harness return.
 
 ---
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2

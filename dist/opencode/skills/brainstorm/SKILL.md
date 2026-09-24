@@ -9,7 +9,7 @@ description: >-
   discovery as a ceremony (use pitch) or bounding a chosen direction (use
   shape).
 subtask: false
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Brainstorm

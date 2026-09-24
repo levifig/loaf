@@ -4,7 +4,7 @@ description: >-
   still solution-led, ambiguous, or missing affected people and desired
   outcomes. Produces a complete problem narrative for shape, not a work
   implementation.
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Pitch

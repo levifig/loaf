@@ -1,6 +1,6 @@
 {
   "name": "loaf",
-  "version": "0.6.0-rc.1",
+  "version": "0.6.0-rc.2",
   "description": "Loaf - An Opinionated Agentic Framework for Claude Code, OpenCode, Cursor, Codex, and Amp",
   "repository": {
     "type": "git",

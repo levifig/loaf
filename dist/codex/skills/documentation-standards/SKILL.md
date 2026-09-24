@@ -7,7 +7,7 @@ description: >-
   creating an architecture diagram. Not for architectural choices, current-model
   audits, or documentation migration (use architecture), inline code comments,
   or project READMEs.
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Documentation Standards

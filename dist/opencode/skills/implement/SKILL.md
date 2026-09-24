@@ -6,7 +6,7 @@ description: >-
   Produces code, atomic history when authorized, and verified implementation
   evidence for ship.
 subtask: false
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Implement

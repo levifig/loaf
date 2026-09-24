@@ -7,7 +7,7 @@ description: >-
   provider client.
 user-invocable: true
 argument-hint: '[goal, issue, project, or team scope]'
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Linear

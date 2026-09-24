@@ -4,7 +4,7 @@ description: >-
   a candidate diff needs independent review, criterion verification, and a
   landing decision. Produces an evidence-backed quality verdict and verified
   native transition when authorized.
-version: 0.6.0-rc.1
+version: 0.6.0-rc.2
 ---
 
 # Ship
