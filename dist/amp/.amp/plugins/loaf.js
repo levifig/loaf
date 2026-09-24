@@ -143,6 +143,41 @@ async function runHook(
     LOAF_PLUGIN_DIR: __dirname,
   };
 
+  // The source checkout's Orb build is distinct from a pinned consumer.
+  // Its plugin host can retain a pre-setup PATH even after resume.
+  const projectRoot = resolve(__dirname, '..', '..');
+  const projectBin = join(projectRoot, 'bin');
+  let pinned = false;
+  try {
+    await ampLstat(join(projectRoot, '.agents', 'loaf-orb.pin'));
+    pinned = true;
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      return { exitCode: -1, stdout: '', stderr: '', error: 'Amp consumer pin is unreadable' };
+    }
+  }
+  let orbBuild = false;
+  if (!pinned) {
+    try {
+      const marker = await ampLstat(join(projectBin, '.orb-build-commit'));
+      if (!marker.isFile()) throw new Error('Orb build marker is not a file');
+      orbBuild = true;
+    } catch (error) {
+      if (error?.code !== 'ENOENT') {
+        return { exitCode: -1, stdout: '', stderr: '', error: 'Orb Loaf build marker is unreadable' };
+      }
+    }
+  }
+  if (orbBuild) {
+    try {
+      const binary = await ampLstat(join(projectBin, 'loaf'));
+      if (!binary.isFile() || !(binary.mode & 0o111)) throw new Error('Orb Loaf runtime is not executable');
+    } catch {
+      return { exitCode: -1, stdout: '', stderr: '', error: 'Orb Loaf runtime is missing or not executable' };
+    }
+    env.PATH = projectBin + (env.PATH ? ':' + env.PATH : '');
+  }
+
   try {
     // If hook has direct command (e.g., 'loaf check ...'), execute it
     if (command) {
