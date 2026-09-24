@@ -7,6 +7,21 @@ cd "$ROOT"
 export PATH="$ROOT/bin:$PATH"
 export LOAF_PROJECT_ENV=1
 
+# Amp may create .bash_profile after setup wrote its PATH hook to .profile.
+# Restore that scoped hook before the agent and its plugins start.
+profile="$HOME/.bash_profile"
+env_file="$HOME/.local/share/loaf-orb/env"
+marker='# Orb development toolchain for Loaf'
+if [[ -f "$profile" && -r "$env_file" ]] && ! grep -Fqx "$marker" "$profile"; then
+  cat >> "$profile" <<EOF
+
+$marker
+if [ "\${PWD:-}" = "$ROOT" ] && [ -r "$env_file" ]; then
+  . "$env_file"
+fi
+EOF
+fi
+
 # This is a local idempotent repair when setup's project-environment artifacts
 # are already present; dependency and toolchain installation belongs in setup.
 loaf install --to amp --yes
