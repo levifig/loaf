@@ -9,8 +9,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 GO_VERSION=1.27.1
-NODE_VERSION=22.23.2
-TYPESCRIPT_VERSION=5.9.3
+NODE_VERSION=24.21.0
 TOOL_ROOT="$HOME/.local/share/loaf-orb"
 PROFILE="$HOME/.bash_profile"
 ENV_FILE="$TOOL_ROOT/env"
@@ -45,13 +44,13 @@ install_linux_toolchains() {
       go_arch=amd64
       node_arch=x64
       go_sha=63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445
-      node_sha=b294a556e639d64338823920e5866c21c02741742d2e1529ee1a225c1ec9252a
+      node_sha=6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff
       ;;
     aarch64|arm64)
       go_arch=arm64
       node_arch=arm64
       go_sha=3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec
-      node_sha=013b59cfd2819703a6f4a14ab891fc46fc2a4e3f5bcd92de3fb4929b43e35b30
+      node_sha=724282c3b43aec998aa9527380465b45d229e021b58035f5f4f63095eabfe5d5
       ;;
     *)
       printf 'Unsupported Orb architecture: %s\n' "$machine" >&2
@@ -59,10 +58,17 @@ install_linux_toolchains() {
       ;;
   esac
 
-  GO_ROOT="$TOOL_ROOT/go-$GO_VERSION"
   mkdir -p "$TOOL_ROOT"
+  local provided_go
+  provided_go="$(command -v go || true)"
+  if [[ -n "$provided_go" && "$("$provided_go" version 2>/dev/null || true)" == "go version go${GO_VERSION} linux/${go_arch}" ]]; then
+    GO_ROOT="$(cd "$(dirname "$provided_go")/.." && pwd)"
+  else
+    GO_ROOT="$TOOL_ROOT/go-$GO_VERSION"
+  fi
 
-  if [[ ! -x "$GO_ROOT/bin/go" ]] || [[ "$("$GO_ROOT/bin/go" version 2>/dev/null || true)" != "go version go${GO_VERSION} linux/${go_arch}" ]]; then
+  if [[ "$GO_ROOT" == "$TOOL_ROOT/go-$GO_VERSION" ]] &&
+    { [[ ! -x "$GO_ROOT/bin/go" ]] || [[ "$("$GO_ROOT/bin/go" version 2>/dev/null || true)" != "go version go${GO_VERSION} linux/${go_arch}" ]]; }; then
     local go_archive go_stage
     printf 'Downloading Go %s for linux/%s\n' "$GO_VERSION" "$go_arch"
     go_archive="$(mktemp "$TOOL_ROOT/go.XXXXXX.tar.gz")"
@@ -79,7 +85,7 @@ install_linux_toolchains() {
 
   local provided_node
   provided_node="$(command -v node || true)"
-  if [[ -n "$provided_node" && "$(node --version 2>/dev/null || true)" == v22.* && -x "$(dirname "$provided_node")/npm" ]]; then
+  if [[ -n "$provided_node" && "$("$provided_node" -p 'Number.parseInt(process.versions.node, 10) >= 24' 2>/dev/null || true)" == true ]]; then
     NODE_ROOT="$(cd "$(dirname "$provided_node")/.." && pwd)"
   else
     NODE_ROOT="$TOOL_ROOT/node-$NODE_VERSION"
@@ -112,22 +118,18 @@ configure_toolchain() {
   else
     require_command go
     require_command node
-    require_command npm
     GO_ROOT="$(cd "$(dirname "$(command -v go)")/.." && pwd)"
     NODE_ROOT="$(cd "$(dirname "$(command -v node)")/.." && pwd)"
+    if [[ "$(node -p 'Number.parseInt(process.versions.node, 10) >= 24')" != true ]]; then
+      printf 'Loaf development requires Node 24 or later on PATH.\n' >&2
+      return 1
+    fi
   fi
 
   export PATH="$GO_ROOT/bin:$NODE_ROOT/bin:$PATH"
-  local typescript_root="$TOOL_ROOT/typescript-$TYPESCRIPT_VERSION"
-  local typescript_bin="$typescript_root/node_modules/.bin/tsc"
-  if [[ ! -x "$typescript_bin" ]] || [[ "$($typescript_bin --version 2>/dev/null || true)" != "Version $TYPESCRIPT_VERSION" ]]; then
-    printf 'Installing TypeScript %s\n' "$TYPESCRIPT_VERSION"
-    "$NODE_ROOT/bin/npm" install --prefix "$typescript_root" --ignore-scripts \
-      --no-audit --no-fund "typescript@$TYPESCRIPT_VERSION"
-  fi
 
   cat > "$ENV_FILE" <<EOF
-export PATH="$ROOT/bin:$GO_ROOT/bin:$NODE_ROOT/bin:$typescript_root/node_modules/.bin:\$PATH"
+export PATH="$ROOT/bin:$GO_ROOT/bin:$NODE_ROOT/bin:\$PATH"
 EOF
 
   local marker='# Orb development toolchain for Loaf'
@@ -141,8 +143,6 @@ if [[ "\${PWD:-}" == "$ROOT" && -r "$ENV_FILE" ]]; then
 fi
 EOF
   fi
-
-  export PATH="$typescript_root/node_modules/.bin:$PATH"
 }
 
 if ! grep -Fqx "toolchain go$GO_VERSION" go.mod; then
@@ -150,7 +150,7 @@ if ! grep -Fqx "toolchain go$GO_VERSION" go.mod; then
   exit 1
 fi
 
-step "Configure Go, Node.js, and TypeScript" configure_toolchain
+step "Configure Go and Node.js" configure_toolchain
 step "Download Go modules" go mod download
 
 os="$(uname -s | tr '[:upper:]' '[:lower:]')"

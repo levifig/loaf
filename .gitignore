@@ -45,7 +45,9 @@ Thumbs.db
 # Amp project-environment install and portal state
 .amp/.loaf-managed-target.json
 .amp/.loaf-version
+.amp/.loaf-reconcile-receipt.json
 .amp/plugins/loaf.ts
+.amp/plugins/loaf.js
 .amp/portals/*
 
 # Environment files
