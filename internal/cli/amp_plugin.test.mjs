@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -260,4 +260,68 @@ test('generated plugin runs real pre-PR in helper shell dir and falls back to wo
   });
   assert.equal((await readLog()).length, 0);
   assert.ok(warn.mock.calls.some(call => String(call.arguments[0]).includes('Post-hook kb-staleness-nudge skipped')));
+});
+
+test('project-installed plugin runs the built Loaf hooks with a stale host PATH', async t => {
+  const workspace = await mkdtemp(join(tmpdir(), 'loaf-amp-orb-runtime-'));
+  const hostBin = join(workspace, 'host-bin');
+  const projectBin = join(workspace, 'bin');
+  const pluginDir = join(workspace, '.amp', 'plugins');
+  const callLog = join(workspace, 'calls');
+  const previousPath = process.env.PATH;
+  const previousLog = process.env.LOAF_TEST_CALL_LOG;
+  t.after(async () => {
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
+    if (previousLog === undefined) delete process.env.LOAF_TEST_CALL_LOG;
+    else process.env.LOAF_TEST_CALL_LOG = previousLog;
+    await rm(workspace, { recursive: true, force: true });
+  });
+  await mkdir(hostBin);
+  await mkdir(projectBin);
+  await mkdir(pluginDir, { recursive: true });
+  await symlink('/bin/bash', join(hostBin, 'bash'));
+  await writeFile(join(projectBin, '.orb-build-commit'), 'built by setup\n');
+  await writeFile(join(projectBin, 'loaf'), '#!/bin/sh\nprintf "%s\\n" "$LOAF_HOOK_ID" >> "$LOAF_TEST_CALL_LOG"\n', { mode: 0o755 });
+  const pluginPath = join(pluginDir, 'loaf.mjs');
+  await copyFile(fileURLToPath(new URL('../../dist/amp/.amp/plugins/loaf.js', import.meta.url)), pluginPath);
+
+  process.env.PATH = hostBin;
+  process.env.LOAF_TEST_CALL_LOG = callLog;
+  const { default: initializeProject } = await import(pathToFileURL(pluginPath));
+  const handlers = new Map();
+  initializeProject({
+    on(event, handler) { handlers.set(event, handler); },
+    helpers: { filePathFromURI: uri => fileURLToPath(uri), shellCommandFromToolCall: () => null },
+    system: { workspaceRoot: pathToFileURL(workspace) },
+  });
+  const edit = { toolUseID: 'first-edit', tool: 'Edit', input: { path: join(workspace, 'file') }, thread: { id: 'T-orb' } };
+  assert.deepEqual(await handlers.get('tool.call')(edit), { action: 'allow' });
+  assert.deepEqual((await readFile(callLog, 'utf8')).trim().split('\n'), ['artifact-body-write', 'check-secrets']);
+
+  await rm(join(projectBin, '.orb-build-commit'));
+  const unpinned = await handlers.get('tool.call')(edit);
+  assert.equal(unpinned.action, 'reject-and-continue');
+  assert.match(unpinned.message, /loaf: command not found/);
+  assert.deepEqual((await readFile(callLog, 'utf8')).trim().split('\n'), ['artifact-body-write', 'check-secrets']);
+
+  await writeFile(join(projectBin, '.orb-build-commit'), 'built by setup\n');
+  await rm(join(projectBin, 'loaf'));
+  await writeFile(join(hostBin, 'loaf'), '#!/bin/sh\nprintf "host:%s\\n" "$LOAF_HOOK_ID" >> "$LOAF_TEST_CALL_LOG"\n', { mode: 0o755 });
+  const missing = await handlers.get('tool.call')(edit);
+  assert.equal(missing.action, 'reject-and-continue');
+  assert.match(missing.message, /Orb Loaf runtime is missing or not executable/);
+  assert.deepEqual((await readFile(callLog, 'utf8')).trim().split('\n'), ['artifact-body-write', 'check-secrets']);
+
+  await rm(join(projectBin, '.orb-build-commit'));
+  assert.deepEqual(await handlers.get('tool.call')(edit), { action: 'allow' });
+  assert.deepEqual((await readFile(callLog, 'utf8')).trim().split('\n').slice(-2), ['host:artifact-body-write', 'host:check-secrets']);
+
+  await writeFile(join(projectBin, '.orb-build-commit'), 'built by setup\n');
+  await writeFile(join(projectBin, 'loaf'), '#!/bin/sh\nprintf "project:%s\\n" "$LOAF_HOOK_ID" >> "$LOAF_TEST_CALL_LOG"\n', { mode: 0o755 });
+  await mkdir(join(workspace, '.agents'));
+  await writeFile(join(workspace, '.agents', 'loaf-orb.pin'), 'schema=1\n');
+  await writeFile(join(workspace, '.agents', 'loaf-orb-bootstrap.sh'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  assert.deepEqual(await handlers.get('tool.call')(edit), { action: 'allow' });
+  assert.deepEqual((await readFile(callLog, 'utf8')).trim().split('\n').slice(-2), ['host:artifact-body-write', 'host:check-secrets']);
 });
