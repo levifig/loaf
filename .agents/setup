@@ -127,10 +127,21 @@ configure_toolchain() {
   fi
 
   export PATH="$GO_ROOT/bin:$NODE_ROOT/bin:$PATH"
+  mkdir -p "$TOOL_ROOT"
 
   cat > "$ENV_FILE" <<EOF
 export PATH="$ROOT/bin:$GO_ROOT/bin:$NODE_ROOT/bin:\$PATH"
 EOF
+
+  # Bash reads only the first login profile it finds. Keep the Orb image's
+  # existing initialization instead of creating a higher-priority file.
+  local login_profile
+  for login_profile in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do
+    if [[ -e "$login_profile" ]]; then
+      PROFILE="$login_profile"
+      break
+    fi
+  done
 
   local marker='# Orb development toolchain for Loaf'
   if ! grep -Fqx "$marker" "$PROFILE" 2>/dev/null; then
@@ -138,8 +149,8 @@ EOF
     cat >> "$PROFILE" <<EOF
 
 $marker
-if [[ "\${PWD:-}" == "$ROOT" && -r "$ENV_FILE" ]]; then
-  source "$ENV_FILE"
+if [ "\${PWD:-}" = "$ROOT" ] && [ -r "$ENV_FILE" ]; then
+  . "$ENV_FILE"
 fi
 EOF
   fi
