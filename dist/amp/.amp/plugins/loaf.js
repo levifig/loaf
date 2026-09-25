@@ -181,7 +181,10 @@ async function runHook(
   try {
     // If hook has direct command (e.g., 'loaf check ...'), execute it
     if (command) {
-      const child = execFile('bash', ['-c', command], {
+      // Bash can reset PATH at startup; restore the stamped Orb bin inside
+      // the shell. Pass the path as an argument, never as interpolated code.
+      const args = orbBuild ? ['-c', 'export PATH="$1:$PATH"; ' + command, 'loaf-hook', projectBin] : ['-c', command];
+      const child = execFile('bash', args, {
         cwd,
         env,
         encoding: 'utf-8',

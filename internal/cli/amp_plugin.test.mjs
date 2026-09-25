@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { copyFile, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -270,17 +270,20 @@ test('project-installed plugin runs the built Loaf hooks with a stale host PATH'
   const callLog = join(workspace, 'calls');
   const previousPath = process.env.PATH;
   const previousLog = process.env.LOAF_TEST_CALL_LOG;
+  const previousHostBin = process.env.LOAF_TEST_HOST_BIN;
   t.after(async () => {
     if (previousPath === undefined) delete process.env.PATH;
     else process.env.PATH = previousPath;
     if (previousLog === undefined) delete process.env.LOAF_TEST_CALL_LOG;
     else process.env.LOAF_TEST_CALL_LOG = previousLog;
+    if (previousHostBin === undefined) delete process.env.LOAF_TEST_HOST_BIN;
+    else process.env.LOAF_TEST_HOST_BIN = previousHostBin;
     await rm(workspace, { recursive: true, force: true });
   });
   await mkdir(hostBin);
   await mkdir(projectBin);
   await mkdir(pluginDir, { recursive: true });
-  await symlink('/bin/bash', join(hostBin, 'bash'));
+  await writeFile(join(hostBin, 'bash'), '#!/bin/sh\nPATH="$LOAF_TEST_HOST_BIN"; export PATH\nexec /bin/bash "$@"\n', { mode: 0o755 });
   await writeFile(join(projectBin, '.orb-build-commit'), 'built by setup\n');
   await writeFile(join(projectBin, 'loaf'), '#!/bin/sh\nprintf "%s\\n" "$LOAF_HOOK_ID" >> "$LOAF_TEST_CALL_LOG"\n', { mode: 0o755 });
   const pluginPath = join(pluginDir, 'loaf.mjs');
@@ -288,6 +291,7 @@ test('project-installed plugin runs the built Loaf hooks with a stale host PATH'
 
   process.env.PATH = hostBin;
   process.env.LOAF_TEST_CALL_LOG = callLog;
+  process.env.LOAF_TEST_HOST_BIN = hostBin;
   const { default: initializeProject } = await import(pathToFileURL(pluginPath));
   const handlers = new Map();
   initializeProject({

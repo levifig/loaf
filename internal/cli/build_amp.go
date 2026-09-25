@@ -402,6 +402,12 @@ func nativeAmpCoreFunctionsWithFailureClassification() string {
 
   try {
     // If hook has direct command`, 1)
+	core = strings.Replace(core,
+		"      const child = execFile('bash', ['-c', command], {",
+		`      // Bash can reset PATH at startup; restore the stamped Orb bin inside
+      // the shell. Pass the path as an argument, never as interpolated code.
+      const args = orbBuild ? ['-c', 'export PATH="$1:$PATH"; ' + command, 'loaf-hook', projectBin] : ['-c', command];
+      const child = execFile('bash', args, {`, 1)
 	core = strings.ReplaceAll(core,
 		`    child.on('error', (err) => {
       finish({
