@@ -33,9 +33,9 @@ Dispatch depends on the registered entry and the target adapter:
 
 | Type | Field | Behavior | Example |
 |------|-------|----------|---------|
-| **Native check** | No explicit `script:` or `command:` | Runs `loaf check --hook <id>` | `check-secrets` |
+| **Native check** | None of `script:`, `command:`, `instruction:`, or `prompt:` | Runs `loaf check --hook <id>` | `check-secrets` |
 | **command** | `command:` | Runs a CLI command | `loaf journal context --from-hook` |
-| **Instruction** | `instruction:` (with `type: command`) | Emits a static instruction file through the target adapter (rendered at build time) | `instructions/pre-merge.md` |
+| **Instruction** | `instruction:` (with `type: command`) | The build copies the instruction file into the target's hooks output; the generated hook prints it when it fires | `instructions/pre-merge.md` |
 | **prompt** | `prompt:` | Injects inline text into model context | Compaction journal-flush gate |
 | **Legacy script** | `script:` | Compatibility only; do not add maintained Bash/Python implementations | — |
 

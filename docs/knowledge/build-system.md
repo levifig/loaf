@@ -49,7 +49,7 @@ Loaf packages shared skills, agents, and hooks for supported harnesses. [Skill P
 
 ### Adding a Target
 
-Create `internal/cli/build_{target}.go`, then add the name to `defaultBuildTargets` and the target switch in `internal/cli/build.go`; `build_amp.go` shows the pattern. Configure target defaults and sidecars in `config/targets.yaml`. A new target must preserve the shared authoring contract in [Skill Portability](../architecture/skill-portability.md).
+Create `internal/cli/build_{target}.go`, then add the name to `defaultBuildTargets` and the target switch in `internal/cli/build.go`; `build_amp.go` shows the pattern. Declare the target and its output directory in `config/targets.yaml`, which also distributes `shared-templates`. Per-target skill frontmatter comes from `SKILL.<target>.yaml` sidecars beside each skill, not from `targets.yaml`. A new target must preserve the shared authoring contract in [Skill Portability](../architecture/skill-portability.md).
 
 ### Hook Registration (Claude Code)
 
