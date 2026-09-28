@@ -2,7 +2,7 @@
 type: glossary
 topics:
   - glossary
-last_reviewed: 2026-09-05
+last_reviewed: 2026-09-28
 ---
 
 # Canonical Terms
@@ -22,6 +22,10 @@ A target-specific file that adds product-only metadata or configuration to a sha
 ## Shared Template
 
 A template under `content/templates/` distributed to multiple skills through `config/targets.yaml`. Examples include the ADR and grilling templates.
+
+## Core Docs
+
+The three living project documents under `docs/`: `VISION.md` (purpose, target users, success criteria, non-goals), `STRATEGY.md` (current focus, personas, priorities, constraints), and `ARCHITECTURE.md` (the current system map and entry point to the architecture topics under `docs/architecture/`). Bootstrap populates them, and reflect updates them from shipped evidence. Architecture topics, `AGENTS.md`, the intake BRIEF, decision records, knowledge files, and reports are not Core Docs. Write the term in title case. Avoid "strategic docs", "operating documents", and "core documents" as synonyms.
 
 ## Loaf Flow
 

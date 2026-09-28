@@ -1,10 +1,10 @@
 ---
 name: reflect
 description: >-
-  Integrates learnings from shipped work into strategic documents. Use after
-  completing significant work or when the user asks "what did we learn?"
-  Proposes evidence-backed updates to strategic documents and existing architecture
-  topics, or concludes no update is needed. Not for pre-implementation strategy
+  Integrates learnings from shipped work into the Core Docs (VISION, STRATEGY,
+  ARCHITECTURE). Use after completing significant work or when the user asks
+  "what did we learn?" Proposes evidence-backed updates to the Core Docs and
+  existing architecture topics, or concludes no update is needed. Not for pre-implementation strategy
   (use strategy) or choosing and recording an architectural commitment (use architecture).
 ---
 
@@ -31,20 +31,20 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 - **Evidence-based** -- separate observed results, inferred lessons, and proposed changes; a merged patch is not proof of successful use or an accepted architectural direction
 - **Dogfood before generalization** -- compare the rideable increment's real use and learning sought with what actually happened before proposing more breadth or abstraction
 - **Post-implementation only** -- reflect after shipping, not before or during planning
-- **Respect scope** -- review and propose by default. Apply updates only with explicit user authorization, including an already explicit request to apply scoped changes; do not ask again for that same permission. This covers architecture topics as well as vision, strategy, and the overview
+- **Respect scope** -- review and propose by default. Apply updates only with explicit user authorization, including an already explicit request to apply scoped changes; do not ask again for that same permission. This covers architecture topics as well as the Core Docs
 - **Consolidate** -- batch related learnings into coherent updates, avoid micro-updates
 - **Architecture ownership** -- read the [architecture skill](../architecture/SKILL.md) for topic maintenance, rationale, affected-surface review, and exceptional ADR selection. Integrate learning into the owning topic by default; route a candidate consequential choice to Architecture with evidence and why a separate record might help, not an automatic ADR
 - **No silent acceptance of drift** -- when shipped behaviour conflicts with an agreed constraint, report the discrepancy and route the unresolved choice to Architecture. Do not rewrite the constraint to bless the implementation or change an ADR's original decision context
 - **No forced update** -- retain existing guidance when the evidence does not justify change; useful local observations may remain in code, tests, or the journal
 - **Log first** -- log invocation before gathering evidence: `loaf journal log "skill(reflect): <scope>"`
 - **Link back** -- always reference the native tracker records, journal entries, reports, and commits that informed each update
-- **Log updates** -- log each strategic document update to the project journal: `loaf journal log "decision(scope): updated STRATEGY.md with learning"`
+- **Log updates** -- log each Core Doc update to the project journal: `loaf journal log "decision(scope): updated STRATEGY.md with learning"`
 
 ## Verification
 
 - Proposals cite specific native tracker records, journal entries, reports, or commits as evidence
 - Reflection states whether the named rider completed the journey, what dogfood taught, which complexity proved necessary, and which deferrals should remain deferred
-- Current owning documents and relevant ADRs were read before proposing edits; no strategic or architecture document was modified beyond explicit authorization
+- Current owning documents and relevant ADRs were read before proposing edits; no Core Doc or architecture topic was modified beyond explicit authorization
 - Observations, inferences, agreed direction, and implementation gaps are distinct; unresolved architectural choices remain unresolved
 - Topics and ADRs do not duplicate rationale, no ADR was automatically created, and no migration or retirement was inferred from reflection
 - Any tracker mutation requested during reflection uses the selected provider skill and is verified by authoritative readback
@@ -63,7 +63,7 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
-| Update Proposal | [templates/update-proposal.md](templates/update-proposal.md) | Drafting proposals for strategic doc changes |
+| Update Proposal | [templates/update-proposal.md](templates/update-proposal.md) | Drafting proposals for Core Doc changes |
 | Architecture | [architecture skill](../architecture/SKILL.md) | Integrating architectural learning or evaluating a potential exceptional ADR |
 
 ---
@@ -72,7 +72,7 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 
 Strategy evolves through **shipping**, not theorizing.
 
-After completing work, reflect extracts learnings and proposes updates to strategic documents. **Don't update strategy during planning or shaping.** Update after implementation proves (or disproves) assumptions.
+After completing work, reflect extracts learnings and proposes updates to the Core Docs. **Don't update strategy during planning or shaping.** Update after implementation proves (or disproves) assumptions.
 
 ---
 
@@ -93,7 +93,7 @@ After completing work, reflect extracts learnings and proposes updates to strate
 
 ### Step 2: Gather Evidence
 
-Discover the repository's actual vision, strategy, architecture overview, and topic homes. Read the affected current documents and applicable ADRs before drafting; do not assume every project needs the same files.
+Discover the repository's actual Core Docs (`docs/VISION.md`, `docs/STRATEGY.md`, `docs/ARCHITECTURE.md`) and architecture topic homes. Read the affected current documents and applicable ADRs before drafting; do not assume every project needs the same files.
 
 Sources:
 1. **Completed tracker work** — use the selected `project-management/v1` provider skill and harness-native connection to read completed canonical records and their bodies

@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+### Changed
+
+- Name `docs/VISION.md`, `docs/STRATEGY.md`, and `docs/ARCHITECTURE.md` the Core Docs in the glossary, and use the term in bootstrap, reflect, and the README in place of "strategic documents" and "operating documents".
+
 ## [0.6.0-rc.2] - 2026-09-24
 
 This prerelease refreshes Amp and OpenCode hooks and lets current Claude Code sessions use root `AGENTS.md` directly. It provides updated release bytes for pinned consumer-project dogfooding; private continuity sync and attach are still outside the Orb bootstrap, and this is not a stable release.
