@@ -2,7 +2,7 @@
 
 **Location:** `docs/BRIEF.md`
 
-The BRIEF is a *historical snapshot* of project intake. It is written once during bootstrap and is not a living document. After bootstrap, the useful content from the BRIEF lives in VISION.md, STRATEGY.md, ARCHITECTURE.md, and AGENTS.md -- readers should consult those operating documents, not this file. The BRIEF stands as a frozen record of how the project entered Loaf.
+The BRIEF is a *historical snapshot* of project intake. It is written once during bootstrap and is not a living document. After bootstrap, the useful content from the BRIEF lives in the Core Docs (VISION.md, STRATEGY.md, ARCHITECTURE.md) and AGENTS.md -- readers should consult those living documents, not this file. The BRIEF stands as a frozen record of how the project entered Loaf.
 
 ```yaml
 ---

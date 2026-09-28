@@ -50,7 +50,7 @@ Discover the problem, author a brief, then bound an implementable Issue (or boot
 | `/pitch` | Human problem-discovery: authors a problem narrative for shape, or project `docs/BRIEF.md` |
 | `/idea` | Quick capture of rough ideas for later triage / pitch / shape |
 | `/shape` | Bound canonical native tracker work in place (body, DoD criteria, out-of-scope), then verify by provider readback |
-| `/bootstrap` | Populate operating docs; with `source: pitch`, gap-interview and create the initial native tracker arc |
+| `/bootstrap` | Populate the Core Docs and `AGENTS.md`; with `source: pitch`, gap-interview and create the initial native tracker arc |
 | `/strategy` | Discover and document strategic direction |
 
 ### Implement and Ship
@@ -70,7 +70,7 @@ Integrate outcomes into strategic knowledge.
 | Command | What It Does |
 |---------|--------------|
 | `/housekeeping` | Review and archive or delete lifecycle-complete artifacts |
-| `/reflect` | Integrate learnings into strategic documents |
+| `/reflect` | Integrate learnings into the Core Docs |
 | `/handoff` | Package context for another agent, branch, issue, or future conversation |
 | `/wrap` | Optional checkpoint for synthesis that is not otherwise derivable from the journal |
 
@@ -125,7 +125,7 @@ Skills you invoke directly to drive work forward.
 | `architecture` | Maintaining current architecture topics and exceptional, narrow decision records |
 | `idea` | Quick capture of ideas for later evaluation |
 | `triage` | Review and process intake queue (sparks + raw ideas); may hand to pitch or shape |
-| `reflect` | Integrating learnings into strategic docs |
+| `reflect` | Integrating learnings into the Core Docs |
 | `housekeeping` | Reviewing and archiving agent artifacts |
 | `handoff` | Creating disposable transfer packets in `.agents/handoffs/` |
 | `bootstrap` | Bootstrapping new or existing projects (initial issue arc after pitched BRIEF) |

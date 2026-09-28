@@ -40,9 +40,9 @@ Series-prep lives under Finalization (phase between Knowledge Base Scaffolding a
 - **Detect, don't ask** -- auto-classify project mode (brownfield/greenfield+brief/greenfield+empty), confirm briefly, let the user correct
 - **Never overwrite existing documents** without explicit confirmation -- read first, note what exists, ask before changing
 - **Always interview** -- even with a rich brief, confirm understanding through structured questions — one at a time, with a recommendation, using your harness's structured question tool if it has one
-- **Pitched BRIEF is discovery-already-done** -- when `docs/BRIEF.md` has `source: pitch`, do not re-excavate the problem space; quote-back and gap-fill only for operating-document population
-- **BRIEF is input, not output** -- the BRIEF is raw intake. Extract every useful fact into VISION/STRATEGY/ARCHITECTURE/AGENTS during bootstrap.
-- **BRIEF is archeological after bootstrap** -- once extraction completes (including series-prep reading scoped concepts from it), the BRIEF is a frozen historical snapshot. No skill, agent, command, or template should reference `docs/BRIEF.md` post-bootstrap. Operating documents and minted issue bodies must stand on their own.
+- **Pitched BRIEF is discovery-already-done** -- when `docs/BRIEF.md` has `source: pitch`, do not re-excavate the problem space; quote-back and gap-fill only for Core Docs and AGENTS.md population
+- **BRIEF is input, not output** -- the BRIEF is raw intake. Extract every useful fact into the Core Docs and AGENTS.md during bootstrap.
+- **BRIEF is archeological after bootstrap** -- once extraction completes (including series-prep reading scoped concepts from it), the BRIEF is a frozen historical snapshot. No skill, agent, command, or template should reference `docs/BRIEF.md` post-bootstrap. The Core Docs, AGENTS.md, and minted issue bodies must stand on their own.
 - **Series-prep never auto-shapes and never creates branches** -- every native tracker record is user-confirmed; use only exact provider-supported fields; concepts that fail granularity stay BRIEF lines or sparks
 - **Prepare an arc of rideable outcomes, not layers** -- series-prep describes the operator journeys that later shape will make concrete; storage, backend, API, UI, and verification are not milestones by themselves
 - **Record routing, never provision a provider** -- when the project exposes a provider connection, record non-secret routing hints in `.agents/loaf.json`; never install, connect, or authenticate it. When the selected tracker is GitHub, prompt until an active Projects v2 board is chosen whose Status field includes at least Backlog, Todo, In Progress, and Done; record that board by title as part of the destination (or “the project board” when the title matches the repository or Loaf project). Never record or speak `Project #N`. A missing board is a configuration gap: do not finish GitHub setup without it.
@@ -54,8 +54,8 @@ Series-prep lives under Finalization (phase between Knowledge Base Scaffolding a
 
 ## Verification
 
-- All expected operating documents (`docs/VISION.md`, `AGENTS.md` at minimum) exist and contain populated content
-- Useful BRIEF content has been extracted into operating documents (no future reader should need to open the BRIEF)
+- `docs/VISION.md` and `AGENTS.md` at minimum, plus any other Core Docs the signal supports, exist and contain populated content
+- Useful BRIEF content has been extracted into the Core Docs and AGENTS.md (no future reader should need to open the BRIEF)
 - When `source: pitch`, the interview was gap-only (no re-excavation of already-specific problem sections)
 - When series-prep ran: each confirmed concept is a canonical native tracker backlog record created through the selected `project-management/v1` provider with a standalone problem-space body and a nameable operator outcome rather than a component layer; provider readback verified every native reference; no local work rows, folders, docs-only commits, branches, or auto-shape
 - Root `AGENTS.md` is a real file, bootstrap created no `.claude/CLAUDE.md`, and `loaf doctor` passes (see Finalization)
@@ -76,7 +76,7 @@ Series-prep lives under Finalization (phase between Knowledge Base Scaffolding a
 
 Bootstrap is the **intelligent half** of the 0-to-1 experience. The mechanical half (`loaf setup`) handles scaffolding, building, and installing. Bootstrap handles everything that requires understanding: reading briefs, interviewing the builder, populating project documents, and recording decisions.
 
-The goal is to go from "I have an idea" (or "I have a codebase") to a populated set of operating documents -- VISION.md, STRATEGY.md, ARCHITECTURE.md, and AGENTS.md -- through a structured but conversational process. The BRIEF is captured as an *intake snapshot* (raw, historical) and its content is then extracted into the *living operating docs*. The pipeline is explicit: BRIEF (raw intake) -> VISION/STRATEGY/ARCHITECTURE/AGENTS (refined operating docs).
+The goal is to go from "I have an idea" (or "I have a codebase") to populated **Core Docs** -- `docs/VISION.md`, `docs/STRATEGY.md`, and `docs/ARCHITECTURE.md` -- plus `AGENTS.md`, through a structured but conversational process. The BRIEF is captured as an *intake snapshot* (raw, historical) and its content is then extracted into those *living* documents. The pipeline is explicit: BRIEF (raw intake) -> Core Docs + AGENTS.md (refined, living).
 
 ---
 
@@ -136,7 +136,7 @@ If the user corrects the detection, adjust and proceed.
 
 ## Brief Intake
 
-The BRIEF is captured at intake time as a *historical snapshot* of how the project entered Loaf. After this section, the skill's job is to extract its content into the operating docs (VISION/STRATEGY/ARCHITECTURE/AGENTS). The BRIEF is never updated again -- it stands as a frozen artifact of the original framing.
+The BRIEF is captured at intake time as a *historical snapshot* of how the project entered Loaf. After this section, the skill's job is to extract its content into the Core Docs and AGENTS.md. The BRIEF is never updated again -- it stands as a frozen artifact of the original framing.
 
 The canonical brief location is `docs/BRIEF.md`. Handle each intake form:
 
@@ -195,7 +195,7 @@ If `docs/BRIEF.md` already exists and no new brief was provided:
 1. Read and analyze the existing brief
 2. Treat as greenfield+brief mode
 3. Do NOT overwrite -- use it as-is, add frontmatter if missing
-4. The existing BRIEF is read once for extraction into operating docs and is not consulted again afterward
+4. The existing BRIEF is read once for extraction into the Core Docs and AGENTS.md and is not consulted again afterward
 
 ---
 
@@ -211,7 +211,7 @@ The project exists. Code exists. Docs may exist. Lighter interview, heavier anal
 1. Read README.md thoroughly
 2. Detect stack from manifests (package.json, Gemfile, go.mod, pyproject.toml, etc.)
 3. Scan code structure and patterns
-4. Read any existing docs (VISION.md, STRATEGY.md, ARCHITECTURE.md)
+4. Read any existing Core Docs (VISION.md, STRATEGY.md, ARCHITECTURE.md)
 5. Check for test frameworks and CI configuration
 
 **Interview focus (6-10 questions):**
@@ -239,14 +239,14 @@ Pitch owned the problem-space grill. Bootstrap does not re-excavate. The pitch�
 
 1. **Acknowledge the pitch** — name that `docs/BRIEF.md` carries `source: pitch` and that problem discovery is already done.
 2. **Summarize what pitch captured** — short section-by-section gist (problem, who, alternatives, value, constraints, sequencing, open questions). The builder should hear continuity with the pitch closing ceremony, not a cold restart.
-3. **State what bootstrap will do now** — interview only on gaps for operating-document population (VISION, STRATEGY, ARCHITECTURE, AGENTS), then series-prep the initial arc as backlog issues. Do not re-grill the problem space.
+3. **State what bootstrap will do now** — interview only on gaps for populating the Core Docs and AGENTS.md, then series-prep the initial arc as backlog issues. Do not re-grill the problem space.
 
 Then continue:
 
 - Quote the BRIEF back section by section only where confirmation is needed; note corrections only
-- Interview **gaps only** — signals the pitch skeleton does not cover for operating docs: stack preferences, conventions, deployment constraints, success metrics phrasing, non-goals for VISION, anything left blank or marked open
+- Interview **gaps only** — signals the pitch skeleton does not cover for the Core Docs and AGENTS.md: stack preferences, conventions, deployment constraints, success metrics phrasing, non-goals for VISION, anything left blank or marked open
 - Skip full Excavation and full Sharpening re-runs; do not re-ask "who has this problem?" when Who Has It is already specific
-- Expect 4–8 questions total, concentrated on gaps; zero questions is allowed if the BRIEF and builder confirmation fully feed VISION/STRATEGY/ARCHITECTURE
+- Expect 4–8 questions total, concentrated on gaps; zero questions is allowed if the BRIEF and builder confirmation fully feed the Core Docs
 
 **When `source` is file, text, folder, or interview (or missing):**
 
@@ -292,7 +292,7 @@ Avoid these across all modes:
 
 Draft documents in this order. Each document gets a structured review before moving to the next.
 
-These are the *operating documents*. The BRIEF was captured during intake and is no longer modified.
+The first three are the *Core Docs*; `AGENTS.md` completes the living set. The BRIEF was captured during intake and is no longer modified.
 
 | Document | When | Content Source |
 |----------|------|----------------|
@@ -430,13 +430,13 @@ format reference; do not hand-author journal markdown as the source of truth.
 
 ### 4. Series-Prep (initial arc in the canonical tracker)
 
-After operating documents are populated (and Knowledge Base Scaffolding above has run), close bootstrap by creating the BRIEF's initial arc as **canonical native tracker Backlog intent records** through the selected provider skill and harness-native connection. Each record carries a standalone problem-space body and is not selected Todo work. Use optional native labels, priority, or hierarchy only when the provider capability manifest reports exact support. On GitHub, create the Issue, add it to the named board, and set Status Backlog. Series-prep is not roadmap planning: no invented fields, parallel local work rows, folders, or docs-only commits. Sequencing can remain prose in each tracker body.
+After the Core Docs and AGENTS.md are populated (and Knowledge Base Scaffolding above has run), close bootstrap by creating the BRIEF's initial arc as **canonical native tracker Backlog intent records** through the selected provider skill and harness-native connection. Each record carries a standalone problem-space body and is not selected Todo work. Use optional native labels, priority, or hierarchy only when the provider capability manifest reports exact support. On GitHub, create the Issue, add it to the named board, and set Status Backlog. Series-prep is not roadmap planning: no invented fields, parallel local work rows, folders, or docs-only commits. Sequencing can remain prose in each tracker body.
 
 **When to run**
 
 - Always offer series-prep when a project BRIEF exists and names more than one scoped concept (typical after a pitched BRIEF; also after a rich non-pitch brief).
 - If the BRIEF is a single atomic concept with no series, say so and skip to Next Steps — one future shape or a single native tracker record later is enough.
-- Series-prep **reads** the BRIEF during this phase only. After bootstrap ends, nothing references `docs/BRIEF.md` again; minted issue bodies and operating docs stand alone.
+- Series-prep **reads** the BRIEF during this phase only. After bootstrap ends, nothing references `docs/BRIEF.md` again; minted issue bodies, the Core Docs, and AGENTS.md stand alone.
 
 **Procedure**
 
@@ -477,10 +477,10 @@ Suggest at least 2 relevant paths. Don't auto-run any of them.
 
 ## Manual Setup Fallback
 
-When the interactive interview path is unavailable, bootstrap the operating documents manually:
+When the interactive interview path is unavailable, bootstrap the Core Docs and AGENTS.md manually:
 
 1. Run `loaf setup` (or `loaf init && loaf build && loaf install --to all` manually)
-2. Create `docs/VISION.md`, `docs/STRATEGY.md`, `docs/ARCHITECTURE.md` manually -- these are the load-bearing operating documents
+2. Create `docs/VISION.md`, `docs/STRATEGY.md`, `docs/ARCHITECTURE.md` manually -- these are the load-bearing Core Docs
 3. Populate `AGENTS.md` with build commands, test commands, and project structure
 4. Optionally snapshot intake (problem, users, constraints) to `docs/BRIEF.md` as a historical record -- not referenced again after bootstrap
 5. Do not create `.claude/CLAUDE.md`; Claude Code reads root `AGENTS.md` directly (see Finalization for the `@AGENTS.md` import fallback)
@@ -494,7 +494,7 @@ When the interactive interview path is unavailable, bootstrap the operating docu
 2. **Always interview** -- even with a rich brief, confirm understanding; when `source: pitch`, gap-fill only
 3. **Never overwrite** -- existing documents require explicit confirmation
 4. **Draft, then review** -- present documents section-by-section
-5. **Extract, don't preserve** -- pull every useful fact from the BRIEF into operating docs (and series-prep seeds issue bodies from it once). The BRIEF is archeological after bootstrap; nothing should reference it again.
+5. **Extract, don't preserve** -- pull every useful fact from the BRIEF into the Core Docs and AGENTS.md (and series-prep seeds issue bodies from it once). The BRIEF is archeological after bootstrap; nothing should reference it again.
 6. **Record the session** -- decisions and rationale are preserved
 7. **Suggest, don't execute** -- recommend next skills, don't auto-run them; series-prep never auto-shapes or creates branches
 8. **Interview structured** -- one question at a time, with a recommendation, using your harness's structured question tool if it has one

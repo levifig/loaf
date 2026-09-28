@@ -1886,6 +1886,13 @@ func validateNativeKnowledgeFiles(gitRoot string, files []knowledgeFile) []kbVal
 				result.Warnings = append(result.Warnings, kbValidationIssue{Field: "implementation_status", Message: fmt.Sprintf("Unrecognized value: %q", status)})
 			}
 		}
+		// The glossary is also a managed file: hold hand edits to the shape the
+		// `loaf kb glossary` commands can read back.
+		if filepath.ToSlash(file.RelativePath) == glossaryRelativePath {
+			if _, _, err := loadNativeGlossaryForRead(gitRoot); err != nil {
+				result.Errors = append(result.Errors, kbValidationIssue{Field: "glossary", Message: err.Error()})
+			}
+		}
 		results = append(results, result)
 	}
 	return results
