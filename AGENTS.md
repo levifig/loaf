@@ -1,621 +1,90 @@
 # Loaf Development Guidelines
 
-Guidelines for maintaining and extending Loaf - An Opinionated Agentic Framework.
-
-See [README.md](README.md) for what Loaf is and how to install it.
+Guidelines for maintaining and extending Loaf - An Opinionated Agentic Framework. See [README.md](README.md) for what Loaf is and how to install it.
 
 > **New shared work is tracker-native.** The Loaf Flow is **pitch → shape → implement → ship → release**. `/pitch` discovers the problem. `/shape` creates or updates the canonical native tracker record through the selected `project-management/v1` provider skill, including body, definition of done, out-of-scope, and supported hierarchy. `/implement` reads that record, then uses repository-native Git mechanics. `/ship` is the sole quality gate and writes verified status through the provider after readback. Releases are retroactive. Historical local issue commands are frozen migration compatibility, never an ongoing synchronization path or second work record.
 
 ## Quick Start
 
 ```bash
-make build                      # Build the native CLI + content without switching the user's PATH runtime
-bin/loaf build                 # Rebuild content with this checkout's CLI
-bin/loaf upgrade --dry-run      # Preview changes to existing installations
-```
-
-Use the Go toolchain declared in `go.mod`. Node 24+ remains for harness plugin checks and capability tests; npm and `tsc` are not build or install entry points. `make` and `make build` compile and verify this checkout without activating the development launcher. Use `make install` to activate `bin/loaf` through `~/.local/bin/loaf` and Loaf's existing launcher pointer. Never change a user's runtime selection as a side effect of verification. `LOAF_DEV_LINK=0` remains a harmless no-op on builds.
-
-`loaf install` has no dry-run mode. Applying onboarding with `bin/loaf install` is a separate, explicitly scoped action that changes live harness content; use isolated homes in tests.
-
-## Project Structure
-
-```
-cmd/loaf/main.go                # CLI entry point (func main → internal/cli Runner)
-cmd/loafdev/main.go             # Repository build, package, and release tooling
-
-internal/                       # CLI implementation (Go)
-├── cli/                        # Command surface: Runner dispatch (cli.go), one runX per command
-│   ├── build.go                # loaf build
-│   ├── build_{target}.go       # Per-target builders (claude-code, opencode, cursor, codex, amp)
-│   ├── check.go                # loaf check
-│   ├── install.go              # loaf install
-│   └── journal.go              # loaf journal
-├── devtool/                    # Native build, archive, checksum, and Homebrew tooling
-├── state/                      # SQLite continuity, identity, migrations, and compatibility
-└── project/                    # Project identity and root resolution
-
-cli/scripts/                   # Remaining harness capability runners and tests
-
-bin/loaf                       # Generated native executable; bin/ is not tracked
-
-content/                        # Distributable content
-├── skills/{name}/SKILL.md      # Domain knowledge + references/ + templates/
-├── templates/                  # Shared templates (distributed at build time)
-├── agents/{name}.md            # Functional profiles (tool boundaries + behavioral contracts)
-└── hooks/instructions/         # Static hook guidance; maintained checks live in Go
-
-vnext/content/                 # Tracker-native Flow overrides used by the content build
-docs/architecture/             # Living design and rationale, organized by topic
-
-config/                         # Build configuration
-├── hooks.yaml                  # Hook definitions
-└── targets.yaml                # Target defaults, sidecars, shared-templates
-```
-
-**Output:** `plugins/` (Claude Code), `dist/{target}/` (others)
-
-## Quick Reference
-
-| Component | Location | Key File |
-|-----------|----------|----------|
-| Skills | `content/skills/{name}/` | `SKILL.md` |
-| Agents | `content/agents/{name}.md` | - |
-| Hooks | `internal/cli/check*.go`, `content/hooks/instructions/` | `config/hooks.yaml` |
-| Config | `config/` | `hooks.yaml`, `targets.yaml` |
-| CLI | `internal/cli/` | `cli.go` |
-
-## Agent Profiles
-
-Profiles describe intended responsibilities and tool boundaries. Actual access and enforcement come from the host's available tools and permission controls; do not treat a profile as mechanically restricted unless the host enforces that boundary.
-
-| Profile | Intended tool boundary | Use For |
-|---------|------------------------|---------|
-| **implementer** | Full write | Code, tests, config, docs — speciality via skills |
-| **reviewer** | Read-only | Audits, reviews — intended independence from implementation |
-| **researcher** | Read + web | Research, comparison — structured reports |
-| **librarian** | Read + Edit (.agents/) | Project journal, durable artifacts, wrap checkpoints, pre-compaction preservation |
-| **background-runner** | Read + Edit | Async non-blocking tasks |
-
-## Common Tasks
-
-**Add skill:** Create `content/skills/{name}/SKILL.md` (and optional `SKILL.claude-code.yaml` sidecar). Skills are auto-discovered from `content/skills/` at build time — do not register the skill itself in `hooks.yaml`.
-
-**Add hook:** Implement maintained deterministic behavior in the native CLI with regression tests, then register the hook in `config/hooks.yaml` with `skill:` pointing at its owner. An entry without an explicit script or command dispatches to `loaf check --hook <id>`. Use static instruction files for guidance, not new Bash/Python helpers. Skills that ship no hooks need no hook entry.
-
-**Add template:** Create in `content/skills/{name}/templates/` (skill-specific) or `content/templates/` + register in `shared-templates` in `targets.yaml`
-
-**Add target:** Create `internal/cli/build_{target}.go`, add the name to `defaultBuildTargets` and the target switch in `internal/cli/build.go` (see `build_amp.go` for the pattern)
-
-**Update architecture:** Keep current design, constraints, and rationale in `docs/architecture/` topics. Use a separate decision record only for an exceptional, narrow commitment whose context needs durable preservation. Git retains superseded text; do not keep obsolete ADRs as a competing description of current design. Architecture and Reflect own this policy.
-
-## Skill Development
-
-### Journal Self-Logging
-
-User-invocable workflow skills must log their invocation to the project journal as their first action. Include context — arguments, intent, or what triggered the invocation:
-
-```bash
-loaf journal log "skill(shape): shaping auth token rotation in the selected native issue"
-loaf journal log "skill(housekeeping): routine cleanup, no specific trigger"
-loaf journal log "skill(wrap): end-of-conversation checkpoint"
-loaf journal log "skill(implement): native hook rewrite for the selected issue"
-```
-
-There is no start step and no "active session" to find — the current branch and an opaque `harness_session_id` are attached automatically. This creates an audit trail of which skills ran; `/wrap` reads recent entries to check whether housekeeping or other periodic skills were run.
-
-### Canonical Session Model
-
-The project journal is the canonical session model, and it is the only session-related structure. Journal entries are project-scoped events stored in SQLite (`journal_entries`, `project_id NOT NULL`), each tagged with a `harness_session_id` that correlates one conversation's entries. There is no session entity, no lifecycle, and no status — nobody opens, closes, or transitions anything, so concurrent conversations across branches, worktrees, and harnesses are safe by construction. Log entries with `loaf journal log "type(scope): desc"`; read with `loaf journal recent`, `loaf journal context`, `loaf journal search`, and `loaf journal show`. Rendered markdown is a projection, not a hand-authored source surface.
-
-**Wrap is an optional checkpoint, not a lifecycle transition.** Write a `wrap` entry only when a conversation holds synthesis worth saving — "tried X, abandoned because Y, next is Z" — the connective narrative that evaporates with the context window. Nothing is ever "unwrapped"; a conversation that ends without one leaves a perfectly valid journal.
-
-**Continuity is derived and ephemeral.** At conversation start the SessionStart hook runs `loaf journal context --from-hook` to emit the contract-v2 active-truth digest: named journal and Git-derived layers with explicit source availability and diagnostics, computed at read time and never persisted. It does not query or mirror native tracker work; agents read that state through the selected provider skill and harness-owned connection. Subagent invocations exit silently and write nothing.
-
-### Naming Conventions
-
-Use domain-focused names in gerund or noun-phrase form:
-
-| Pattern | Examples | Use For |
-|---------|----------|---------|
-| `{lang}-development` | `python-development`, `typescript-development` | Language skills |
-| `{domain}-{activity}` | `database-design`, `infrastructure-management` | Domain skills |
-| Single word | `foundations`, `orchestration`, `research` | Workflow/process skills |
-
-**Constraints:**
-- Lowercase letters, numbers, hyphens only
-- Max 64 characters
-- No reserved words: `anthropic`, `claude`
-- Directory name must match `name` field
-
-### Artifact Names Never Cite Their Work Unit
-
-Artifacts are named for what they are, never for the work unit that produced them. Reference runs one way: an issue points at its artifacts; an artifact never points back. The containing directory already supplies the provenance, so a work identity in the filename is both redundant and doomed — it has to be renamed to stay true, and the number outlives everyone's memory of what it meant.
-
-| Instead of | Write |
-|------------|-------|
-| `research/u8-target-capability-survey.md` | `research/target-capability-survey.md` |
-| `cli/scripts/u8-codex-smoke.mjs` | `cli/scripts/smoke-codex-startup.mjs` |
-| `reports/report-spec-053-signoff.md` | `reports/taxonomy-signoff.md` |
-
-Record provenance in a front-matter field such as `source:` instead, where it is readable and updatable.
-
-These are identity rather than citation and stay as they are: a **version** (`claude-code-2.1.218-plugin-startup-smoke.json`), a **timestamp** (`20260620-214448-skills-audit.md`), and a numbered record inside the directory that owns it (`docs/decisions/ADR-007-slug.md`).
-
-`loaf check --hook artifact-names` enforces this at commit. It judges tracked paths only, matches artifact directories by basename so relocating them needs no change, and grandfathers artifacts already marked `final` or `archived`.
-
-### SKILL.md Structure
-
-Follow the [Agent Skills](https://agentskills.io) open standard:
-
-```yaml
----
-name: skill-name
-description: >-
-  Third-person description starting with action verb. Covers X, Y, Z.
-  Use when [context triggers] or when the user asks "[natural language examples]".
----
-
-# Skill Title
-
-Brief intro paragraph.
-
-## Contents
-- Critical Rules
-- Verification
-- Quick Reference
-- Topics
-
-## Critical Rules
-...
-
-## Verification
-...
-
-## Quick Reference
-...
-
-## Topics
-...
-```
-
-**Standard section order:**
-1. **Critical Rules** — Must-follow constraints, guardrails, delegation patterns
-2. **Verification** — How to confirm success, test conditions, validation steps
-3. **Quick Reference** — Tables, decision trees, command cheatsheets
-4. **Topics** — Detailed references linked from SKILL.md
-
-#### Verb/Noun Principle
-
-Use action verbs for workflows, nouns for knowledge:
-
-| Pattern | Use For | Examples |
-|---------|---------|----------|
-| **Verb** (gerund) | Workflow skills | `implement`, `shape`, `research` |
-| **Noun** (domain) | Knowledge skills | `typescript-development`, `database-design` |
-
-**Why:** Skills that DO things get verbs. Skills that ARE things get nouns. This makes the distinction between "use me to act" and "reference me to know" immediately clear.
-
-#### Frontmatter Fields (Standard)
-
-Only these fields belong in `SKILL.md`:
-
-| Field | Required | Notes |
-|-------|----------|-------|
-| `name` | Yes | Must match directory name |
-| `description` | Yes | Max 1024 chars, third-person, action verbs |
-| `license` | No | License name or file reference |
-| `compatibility` | No | Environment requirements |
-| `metadata` | No | Arbitrary key-value pairs |
-| `allowed-tools` | No | Space-delimited tool list (experimental) |
-
-#### Description Best Practices
-
-**Two-tier structure** for Claude's 250-char truncation vs full description:
-
-1. **First sentence (≤250 chars):** Action verb, what it covers, key trigger phrases
-2. **Rest:** User-intent examples, negative routing, success criteria
-
-```yaml
-description: >-
-  Covers Python 3.12+ with FastAPI, Pydantic, async patterns, pytest, SQLAlchemy.
-  Use when building APIs, or when the user asks "how do I validate data?"
-  or "what's the best way to structure a Python project?"
-  Not for schema design decisions (use database-design).
-```
-
-**Additional guidelines:**
-
-1. **Start with action verb** (third-person):
-   - Good: "Covers...", "Establishes...", "Coordinates..."
-   - Bad: "Use for...", "I can help...", "You can use this..."
-
-2. **Include user-intent phrases:**
-   ```yaml
-   description: >-
-     Covers Python 3.12+ development... Use when building APIs,
-     or when the user asks "how do I validate data?" or "what's
-     the best way to structure a Python project?"
-   ```
-
-3. **Be specific** - Claude uses this to choose from 100+ skills
-
-4. **Include negative routing** for disambiguation between confusable skills:
-   ```yaml
-   description: >-
-     Covers Python 3.12+ development... Not for schema design
-     decisions (use database-design) or deployment infrastructure
-     (use infrastructure-management).
-   ```
-
-5. **Add success criteria** for workflow skills (what the skill produces):
-   ```yaml
-   description: >-
-     Conducts project assessment... Produces state assessments,
-     research findings with ranked options, or vision change
-     proposals. Not for multi-agent coordination (use orchestration).
-   ```
-
-### Templates
-
-Artifact format templates (architecture topics, journal entries) live in `templates/` directories. SKILL.md references them with links instead of embedding inline. The architecture skill owns topic and exceptional decision-record templates, plus the legacy template for repositories that retain Loaf's historical ADR convention.
-
-**Skill-specific templates:** `content/skills/{name}/templates/` — templates unique to one skill.
-
-**Shared templates:** `content/templates/` — distributed to multiple skills at build time via `shared-templates` config in `targets.yaml`.
-
-```yaml
-# targets.yaml
-shared-templates:
-  journal.md: [implement, orchestration, housekeeping, bootstrap]
-  grilling.md: [refactor-deepen]
-```
-
-**Reference pattern in SKILL.md:**
-```markdown
-Use [templates/journal.md](templates/journal.md) for the project journal render and entry-format reference.
-```
-
-**Templates vs references:**
-- `templates/` — structural artifacts (frontmatter schema, section headings, required fields)
-- `references/` — knowledge documents (conventions, patterns, decision records)
-
-### Sidecar Files
-
-Claude Code-specific fields go in `SKILL.claude-code.yaml`:
-
-```yaml
-# Claude Code extensions
-user-invocable: false
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
-```
-
-| Field | Purpose |
-|-------|---------|
-| `user-invocable` | `false` for pure reference skills (hide from `/` menu) |
-| `disable-model-invocation` | `true` for manual-only workflows |
-| `argument-hint` | Autocomplete hint: `"[topic]"`, `"[file]"` |
-| `context` | `fork` to run in subagent |
-| `model` | Override model for this skill |
-| `hooks` | Skill-scoped lifecycle hooks |
-
-### Harness-Neutral Authoring
-
-Skill bodies are harness-neutral by authoring, not by build-time substitution. Every target opens the same bytes: there is no target identity at read time and no per-harness rewrite on the skill-copy path.
-
-**Default:** describe the behaviour and let the model select its own tools. Prefer "ask one question at a time, with a recommendation, using your harness's structured question tool if it has one" over naming `AskUserQuestion` as the only interview surface. Prefer naming a workflow in prose (`the implement workflow`) over hard-coding a slash form that is wrong on some harnesses.
-
-**Labeled harness sections** carry facts that are genuinely product-specific — paste-ready allowlist tokens, product-unique spawn APIs, product-unique paths, or invocation forms that differ by channel. They are not a licence to relabel content that should simply be neutral prose.
-
-Primary shape — topic parent, then one `### <Product Name>` subsection per product that has a known distinct fact:
-
-```markdown
-## Spawning Background Agents
-
-Background-agent APIs differ by product. Read only the labeled section for the harness you are running.
-
-### Claude Code
-
-Use the Task tool with run_in_background: true and subagent_type background-runner.
-(Paste-ready call site lives in a fenced block under this heading.)
-
-### Cursor
-
-Background agents are configured via the is_background: true YAML property.
-```
-
-See `content/skills/orchestration/references/background-agents.md` and `content/skills/foundations/references/permissions.md` for full worked examples with multi-line fences.
-
-Rules for the primary shape:
-
-1. Product headings use the product's display name (`Claude Code`, `Codex`, `Cursor`, `OpenCode`, `Amp`), not build target slugs.
-2. Include only harnesses with a known distinct fact — omit speculative "same as X" sections.
-3. Fenced configuration is paste-ready configuration for that product alone; never merge two products' tokens into one fence (the historical `TodoWrite, TodoRead` → `update_plan, update_plan` corruption).
-4. Lead with a one-line instruction that the reader takes only their product's section.
-
-Compact shape — a table with a Harness column — for one-line facts (slash invocation forms, a single allowlist token):
-
-```markdown
-| Harness | Invoke skill |
-|---------|----------------|
-| Claude Code (plugin) | `/loaf:name` |
-| OpenCode, Cursor, Codex, Amp | `/name` |
-```
-
-Use the compact table when every row is a single token or short phrase; use `###` subsections when a variant needs multi-paragraph explanation or a multi-line fence. Do not use inline "if your harness is X" clauses for anything longer than a parenthetical — they bury the common case and do not scale past two products.
-
-Worked examples of genuine product-specific facts (keep as labeled content; do not neutralize away):
-
-- Fenced allowlist entries whose literal tokens differ by product (`foundations/references/permissions.md`)
-- Distinct spawn/configuration mechanisms (`orchestration/references/background-agents.md`)
-- The Claude Code `@AGENTS.md` import in a root `CLAUDE.md` for sessions that cannot read `AGENTS.md` directly, and the rule that a real `.claude/CLAUDE.md` suppresses direct `AGENTS.md` reading (the paths are the fact; root `AGENTS.md` stays the canonical project-instructions name in prose)
-- Review policy that must inspect both `AGENTS.md` and `CLAUDE.md` when both exist
-- Slash-command invocation forms that differ by channel (`/loaf:name` on Claude Code's plugin path vs bare `/name` elsewhere)
-
-### Reference Files
-
-#### Organization
-
-```
-skill-name/
-├── SKILL.md              # Overview + navigation (< 500 lines)
-├── SKILL.claude-code.yaml # Claude-specific overrides
-├── references/           # Knowledge docs (loaded on demand)
-│   ├── topic-a.md
-│   └── topic-b.md
-└── templates/            # Artifact format templates (loaded on demand)
-    ├── artifact-a.md
-    └── artifact-b.md
-```
-
-### Reference Table Pattern
-
-Use "Use When" (action-oriented), not "Coverage" (content-oriented):
-
-```markdown
-## Topics
-
-| Topic | Reference | Use When |
-|-------|-----------|----------|
-| Core | [core.md](references/core.md) | Setting up projects, naming conventions |
-| Testing | [testing.md](references/testing.md) | Writing tests, debugging failures |
-```
-
-#### Table of Contents
-
-Files over 100 lines must have a TOC after the title:
-
-```markdown
-# Reference Title
-
-## Contents
-- Section One
-- Section Two
-- Section Three
-
-Brief intro paragraph.
-
-## Section One
-...
-```
-
-#### Reference Rules
-
-- **One level deep** - All references link from SKILL.md, not from other references
-- **No nested chains** - Avoid `SKILL.md → advanced.md → details.md`
-- **Forward slashes only** - `references/guide.md`, never `references\guide.md`
-
-### Skill Categories
-
-| Category | `user-invocable` | Example |
-|----------|------------------|---------|
-| Reference/Knowledge | `false` | `python-development`, `database-design` |
-| Workflow/Process | `true` (default) | `orchestration`, `research` |
-
-Reference skills provide background knowledge Claude loads automatically.
-Users shouldn't invoke `/python-development` directly.
-
-### Journal Vocabulary
-
-The project journal lives in SQLite and renders to a **compact inline format** — append-only structured logs. Think "conventional commits meets bullet journal." It is project-scoped, not session-scoped; there is no session entity, status, or lifecycle.
-
-| Term | Meaning |
-|------|---------|
-| **Project Journal** | The SQLite `journal_entries` record for a project — every conversation writes into it |
-| **Journal Render** | Markdown projection produced from SQLite state (`loaf journal export`) |
-| **Journal Entry** | `[YYYY-MM-DD HH:MM] type(scope): description`, tagged with an opaque `harness_session_id` |
-| **Entry Type** | `skill`, `commit`, `decision`, `discover`, `block`, `unblock`, `spark`, `todo`, `finding`, `wrap` |
-| **Wrap** | Optional end-of-conversation checkpoint entry — synthesis worth saving, never a transition |
-| **Burst** | Entries grouped without blank lines |
-
-There are no session statuses: nothing is `active`, `paused`, `stopped`, `done`, or `archived`, because there is no session to be in a state.
-
-**Entry Format:**
-```markdown
-[YYYY-MM-DD HH:MM] skill(implement): implementing the selected native issue
-[YYYY-MM-DD HH:MM] decision(scope): chose X because Y
-[YYYY-MM-DD HH:MM] commit(abc1234): message
-[YYYY-MM-DD HH:MM] discover(scope): learned Z from file/path
-[YYYY-MM-DD HH:MM] wrap(scope): tried X, abandoned because Y, next is Z
-```
-
-See [templates/journal.md](content/templates/journal.md) for the full entry-type table and format rules.
-
-## Build System
-
-### Commands
-
-```bash
-loaf build                     # Build all targets
-loaf build --target claude-code  # Specific target
-loaf install --to all          # Install to all detected tools
-loaf install --to cursor       # Install to specific tool
-loaf upgrade                   # Refresh installed harnesses (+ project surfaces in a Loaf repo)
-loaf check                     # Run enforcement hooks manually
-loaf journal log "type(scope): desc"  # Append a project journal entry
-loaf journal recent            # Show the recent journal timeline
-loaf journal context           # Emit the layered continuity digest
-```
-
-### Development
-
-```bash
 make build                     # Binary + CLI reference + all content targets, then verify; does not activate PATH
-make build-cli                 # Compile the native executable only
-make build-go                  # Compatibility alias for make build-cli
-make install                   # Complete build and verification, then activate this checkout through ~/.local/bin/loaf
-make verify-local              # Full local test/static/adapter/build gate; does not activate PATH
+bin/loaf build                 # Rebuild content with this checkout's CLI (--target <name> for one target)
+bin/loaf upgrade --dry-run     # Preview changes to existing installations
+make verify-local              # Full local gate: uncached tests, typecheck, vet, CGO-free build, adapter runners, generated content
 make ci-check                  # Reproduce default remote spot and integrity checks locally
 make ci-smoke                  # Only the bounded remote Go test selection
-make typecheck                 # Compile check (go test ./... -run=^$)
-make test                      # Run all Go tests without cached results (go test -count=1 ./...)
-make vet                       # Static Go checks
-make capability-tests          # Test adapter runners; does not launch a live harness session
-make vulncheck                 # Network-backed local audit; before release or after dependency changes
+make test                      # go test -count=1 ./...  (also: make typecheck, make vet)
+make build-cli                 # Compile the native executable only (make build-go is an alias)
+make capability-tests          # Adapter runner tests; does not launch a live harness session
+make vulncheck                 # Network-backed audit; before release or after dependency changes
+make install                   # Full build + verification, then activate this checkout through ~/.local/bin/loaf
 go run ./cmd/loafdev --help    # The build, release, packaging, and tag tooling behind the Makefile
 ```
 
-There is no npm. `package.json` remains only as the distribution manifest (name, version, license); Node 24+ is needed solely for the harness capability runners under `cli/scripts/` and emitted JavaScript adapter syntax checks.
+- Use the Go toolchain declared in `go.mod`. There is no npm: `package.json` is only the distribution manifest, and Node 24+ is needed solely for the harness capability runners under `cli/scripts/` and JavaScript adapter syntax checks. npm and `tsc` are not build or install entry points.
+- **Never change a user's runtime selection as a side effect of building or verifying.** `make`, `make build`, and `make verify-local` never activate the development launcher; only `make install` activates `bin/loaf` through `~/.local/bin/loaf` and Loaf's existing launcher pointer. `LOAF_DEV_LINK=0` remains a harmless no-op.
+- **`loaf install` has no dry-run mode.** `bin/loaf install` changes live harness content, so apply it only as a separate, explicitly scoped action, and use isolated homes in tests.
+- The generated command reference is the loaf-reference skill (`content/skills/loaf-reference/SKILL.md`); `loaf check` runs enforcement hooks manually.
 
-### Dev Isolation (avoid polluting the global DB)
+### Dev Isolation
 
-The global SQLite DB resolves via `XDG_DATA_HOME` to `~/.local/share/loaf/loaf.sqlite`. Real CLI commands can open or write that production database unless redirected. Before dogfooding against throwaway state, set `LOAF_DB` to an absolute temporary path:
+Real CLI commands can open or write the production SQLite DB (`XDG_DATA_HOME`, default `~/.local/share/loaf/loaf.sqlite`). Before dogfooding against throwaway state, set `LOAF_DB` to an absolute temporary path; a relative value is ignored:
 
 ```bash
 export LOAF_DB="$(mktemp -d)/loaf.sqlite"
-loaf journal recent      # operates on the isolated DB
 ```
 
-When `LOAF_DB` is an absolute path it overrides `XDG_DATA_HOME`; a relative value is ignored. This isolates database state, not harness homes: install/upgrade testing must also use isolated target directories. Go unit tests use temporary directories and `t.Setenv`.
+`LOAF_DB` isolates database state, not harness homes: install/upgrade testing also needs isolated target directories. Clear it before the unit suite (`env -u LOAF_DB make verify-local`) so it cannot redirect tests away from their fixture-owned databases; an isolated `XDG_DATA_HOME` is an acceptable fallback. Go unit tests use temporary directories and `t.Setenv`.
 
-Clear a dogfooding `LOAF_DB` override before the unit suite (`env -u LOAF_DB make verify-local`), so it cannot redirect tests away from their fixture-owned databases. An isolated `XDG_DATA_HOME` may be used as a fallback without overriding each fixture's selected path.
+## Where Things Live
 
-### Targets
+| Area | Location |
+|------|----------|
+| CLI entry and commands | `cmd/loaf/main.go` → `internal/cli/` (Runner dispatch in `cli.go`, one `runX` per command, per-target `build_{target}.go`) |
+| Build, package, release tooling | `cmd/loafdev/`, `internal/devtool/` |
+| SQLite continuity; project identity | `internal/state/`; `internal/project/` |
+| Skills; agent profiles | `content/skills/{name}/`; `content/agents/{name}.md` |
+| Shared templates | `content/templates/`, distributed via `shared-templates` in `config/targets.yaml` |
+| Hooks | Maintained checks in `internal/cli/check*.go`; static guidance in `content/hooks/instructions/`; registry `config/hooks.yaml` |
+| Tracker-native Flow overrides | `vnext/content/`, overlaid by the content build |
+| Harness capability runners | `cli/scripts/` |
+| Design and rationale; knowledge guides | `docs/architecture/`; `docs/knowledge/` |
+| Build output (tracked) | `plugins/` (Claude Code), `dist/{target}/` (others); `bin/loaf` is generated and untracked |
 
-| Target | Output | Notes |
-|--------|--------|-------|
-| claude-code | `plugins/loaf/` | Merges sidecars into output |
-| opencode | `dist/opencode/` | Skills, agents, and commands (from skills) |
-| cursor | `dist/cursor/` | Skills, agents, and hooks |
-| codex | `dist/codex/` | Skills, hook configuration, and opt-in classified command policy |
-| amp | `dist/amp/` | Skills, runtime plugin |
+## Before You Start
 
-### Before Committing
+- **Skills, skill references or templates, agent profiles:** read [Skill Architecture](docs/knowledge/skill-architecture.md) first. It owns SKILL.md structure, frontmatter, descriptions, naming, sidecars, reference and template rules, harness-neutral authoring detail, and the skill authoring checklist. Skills are auto-discovered; do not register them in `hooks.yaml`. Profiles state intended tool boundaries; only the host enforces access.
+- **Hooks:** read [Hook System](docs/knowledge/hook-system.md). Maintained deterministic behavior goes in the native CLI with regression tests, registered in `config/hooks.yaml` with `skill:` naming its owner. Never add new Bash/Python hook helpers.
+- **Build targets or output:** read [Build System](docs/knowledge/build-system.md).
+- **Journal or continuity behavior:** read [Private Continuity](docs/architecture/private-continuity.md) and the [journal template](content/templates/journal.md).
+- **Architecture:** keep current design, constraints, and rationale in `docs/architecture/` topics. Git retains superseded text, so do not keep obsolete ADRs as a competing description of current design; use a separate decision record only for an exceptional, narrow commitment. The architecture skill owns this policy.
 
-- [ ] `make verify-local` passes: uncached full Go tests, compile/vet checks, CGO-free build, all deterministic adapter runner tests, and validated generated content without switching the user's runtime; Node 24+ must already be available, and npm/`tsc` are not required
+## Project Rules
+
+**Workflow skills log themselves first.** A user-invocable workflow skill's first action is a journal entry with context (arguments, intent, or trigger), e.g. `loaf journal log "skill(implement): native hook rewrite for the selected issue"`. The branch and an opaque `harness_session_id` attach automatically; there is no start step. `/wrap` reads these entries to see whether periodic skills ran.
+
+**The journal is the only session model.** Journal entries are project-scoped SQLite rows correlated by `harness_session_id`. There is no session entity, status, or lifecycle, so never add one or anything that opens, closes, or transitions a session. A `wrap` entry is an optional checkpoint for synthesis worth saving ("tried X, abandoned because Y, next is Z"), not a transition. Continuity context is derived at read time and never persisted, and it does not mirror tracker work. Rendered journal markdown is a projection: write with `loaf journal log`, never by editing markdown.
+
+**Artifact names never cite their work unit.** Name an artifact for what it is (`research/target-capability-survey.md`, not `research/u8-target-capability-survey.md`). An issue points at its artifacts; an artifact never points back, because the containing directory already gives provenance and a work ID in the name goes stale. Record provenance in front matter (`source:`). Versions, timestamps, and numbered records inside their owning directory (`docs/decisions/ADR-007-slug.md`) are identity, not citation. `loaf check --hook artifact-names` enforces this on tracked paths at commit, grandfathering artifacts marked `final` or `archived`.
+
+**Skill bodies are harness-neutral by authoring.** Every target receives the same bytes, with no build-time per-harness rewrite. Describe behavior and let the model choose its tools; put genuinely product-specific facts (literal tokens, spawn APIs, paths, invocation forms) in a labeled `### <Product>` section or a compact harness table, one product per fence. The test: the body reads correctly on every harness without substitution. Detail: [Harness-Neutral Authoring](docs/knowledge/skill-architecture.md#harness-neutral-authoring).
+
+## Before Committing
+
+- [ ] `env -u LOAF_DB make verify-local` passes without switching the user's runtime (Node 24+ must already be available)
 - [ ] Before release or after dependency changes, `make vulncheck` passes; report unavailable network access as an unverified check, never a pass
 - [ ] If tracked build artifacts in `dist/` or `plugins/` changed, commit them with the source changes that produced them
-- [ ] Frontmatter has required fields
-- [ ] New skills live under `content/skills/` (auto-discovered at build); only hook instances are registered in `hooks.yaml`
-- [ ] Sidecar file for Claude-specific fields
-- [ ] Reference files >100 lines have TOC
-- [ ] Template links resolve (no broken `templates/` paths)
-- [ ] No Windows-style paths
+- [ ] Skill changes pass the [skill authoring checklist](docs/knowledge/skill-architecture.md#authoring-checklist)
 
-Comprehensive verification belongs locally. Default remote CI runs `make ci-check`, a bounded spot selection plus generated-content and CGO-free build integrity; release automation runs delivery-specific spots and constructs/verifies artifacts. Neither is evidence of a full suite pass. Verify required capabilities, payloads, ownership, and rollback behavior locally. Do not require a new live-harness matrix merely because a harness version or build stamp changed. See [Runtime and Delivery](docs/architecture/runtime-and-delivery.md) for the boundary-specific verification policy.
+Comprehensive verification belongs locally. Default remote CI runs `make ci-check`, a bounded spot selection plus generated-content and CGO-free build integrity; release automation runs delivery-specific spots and constructs/verifies artifacts. Neither is evidence of a full suite pass. Verify required capabilities, payloads, ownership, and rollback behavior locally. Do not require a new live-harness matrix merely because a harness version or build stamp changed. See [Runtime and Delivery](docs/architecture/runtime-and-delivery.md#compatibility-and-verification) for the boundary-specific policy.
 
-## Configuration
+## Versions and Releases
 
-### Hook Model
-
-Two types of hooks serve different purposes:
-
-**Enforcement Hooks** — Quality gates that block bad actions:
-- Run at supported harness tool boundaries; command matchers can target actions such as `git commit` or `git push`
-- Examples: secrets scanning and destructive-command checks
-- Can be run manually via `loaf check`
-- Blocking checks exit non-zero; advisory checks report without blocking
-- Hooks without explicit `script:` or `command:` auto-dispatch as `loaf check --hook <id>`
-
-**Skill Instruction Hooks** — Context injection at tool invocation:
-- Triggered when specific tools are invoked
-- Inject relevant skill instructions based on context
-- Example: When `Edit` is used, inject language-specific style guide
-- Registered in `hooks.yaml` with `matcher` patterns
-
-### Hook Dispatch Mechanisms
-
-Hook dispatch depends on the registered entry and the target adapter:
-
-| Type | Field | Behavior |
-|------|-------|----------|
-| Native check | No explicit script or command | Runs `loaf check --hook <id>` |
-| `command` | `command:` | Runs a CLI command (e.g., `loaf journal log --from-hook`) |
-| Instruction | `instruction:` | Emits a static instruction file through the target adapter |
-| `prompt` | `prompt:` | Injects text directly to the AI model |
-| Legacy script | `script:` | Compatibility only; do not add maintained Bash/Python implementations |
-
-### Hook Fields
-
-| Field | Required | Notes |
-|-------|----------|-------|
-| `id` | Yes | Unique hook identifier |
-| `skill` | Yes | Owning skill name |
-| `type` | No | Adapter dispatch type; use native check defaults for maintained enforcement |
-| `matcher` | No | Tool name filter: `"Edit\|Write\|Bash"` |
-| `if` | No | Conditional matcher, e.g., `"Bash(git commit:*)"` — hook only runs when invocation matches |
-| `failClosed` | No | `true` to block the action on hook failure (enforcement hooks) |
-| `blocking` | No | `true` if hook can block tool execution |
-| `timeout` | No | Timeout in milliseconds |
-
-### hooks.yaml
-
-Register hooks with their `skill:` field pointing to the relevant skill:
-
-```yaml
-hooks:
-  pre-tool:
-    - id: check-secrets
-      skill: security-compliance
-      failClosed: true
-      blocking: true
-      matcher: "Edit|Write|Bash"
-      timeout: 30000
-    - id: journal-nudge
-      skill: orchestration
-      type: prompt
-      prompt: "Log important decisions to the project journal."
-      if: "Bash(git commit:*)"
-```
-
-### targets.yaml
-
-Configure target-specific behavior and sidecars.
-
-## Anti-Patterns
-
-| Don't | Do Instead |
-|-------|------------|
-| Put Claude fields in SKILL.md | Use `.claude-code.yaml` sidecar |
-| Use "Coverage" in reference tables | Use "Use When" (action-oriented) |
-| Skip TOC for long files | Add `## Contents` after title |
-| Use backslash paths | Use forward slashes: `references/file.md` |
-| Nest references deeply | Link all references from SKILL.md |
-| Start descriptions with "Use for..." | Start with action verb: "Covers...", "Establishes..." |
-| Make reference skills user-invocable | Set `user-invocable: false` in sidecar |
-| Skip negative routing for confusable skills | Add "Not for..." in description |
-| Leave success criteria undefined for workflow skills | Add "Produces..." in description |
-| Embed artifact templates inline in SKILL.md | Extract to `templates/` and link |
-| Restate general knowledge models already have | Document only decisions and constraints |
-| Name a harness-specific tool as the only option | Describe the behaviour; let the model pick its tool |
-| Merge product tokens into one fence or rely on build-time rewrite | Use a labeled harness section (`### Product`) or compact harness table |
-| Reintroduce per-target skill body rendering | Keep one authored body; labeled sections carry product-specific facts |
-
-## Version Management
-
-- Version in `package.json`
-- Build injects version into output files
-- Change the version only with explicit approval; keep manifest, generated content, release heading, and tag consistent
-- Use semantic versioning
-- Curate `CHANGELOG.md` for users: aggregate landed behavior, explain compatibility changes, and cite public references rather than internal work IDs
-- Prepare and verify native archives with `make release` and `make package`; these build artifacts but do not publish. `LOAF_DEV_LINK=0` remains a harmless no-op.
-- Tagging, publishing GitHub releases, and updating the Homebrew tap require explicit authorization
-
-## Related Documentation
-
-- [Agent Skills Specification](https://agentskills.io/specification)
-- [Claude Code Skills Best Practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
-- [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
+- The version lives in `package.json`, and the build injects it into output files. Use semantic versioning.
+- Change the version only with explicit approval; keep manifest, generated content, release heading, and tag consistent.
+- Curate `CHANGELOG.md` for users: aggregate landed behavior, explain compatibility changes, and cite public references rather than internal work IDs.
+- `make release` and `make package` prepare and verify native archives but do not publish.
+- Tagging, publishing GitHub releases, and updating the Homebrew tap require explicit authorization.
 
 <!-- loaf:managed:start -->
 <!-- Maintained by loaf install/upgrade; edits inside this section are overwritten. Put custom instructions outside it. -->

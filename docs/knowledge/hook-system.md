@@ -11,23 +11,35 @@ covers:
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-07-14'
+last_reviewed: '2026-09-29'
 ---
 
 # Hook System
 
-Hooks run at lifecycle events to enforce rules, inject context, and capture journal entries. Three dispatch types serve different purposes.
+Hooks run at lifecycle events to enforce rules, inject context, and capture journal entries. Read this before adding or changing a hook.
+
+## Hook Model
+
+- **Enforcement hooks** are quality gates at supported harness tool boundaries; command matchers can target actions such as `git commit` or `git push`. Examples: secrets scanning and destructive-command checks. Blocking checks exit non-zero; advisory checks report without blocking. Run them manually with `loaf check`.
+- **Instruction and context hooks** inject guidance when a tool is invoked or a lifecycle event fires (for example the pre-merge checklist or the continuity digest), registered in `hooks.yaml` with `matcher`, `if`, or `event`.
+
+## Adding a Hook
+
+Implement maintained deterministic behavior in the native CLI (`internal/cli/check*.go`) with regression tests, then register the hook in `config/hooks.yaml` with `skill:` pointing at its owner. Use static instruction files in `content/hooks/instructions/` for guidance. Do not add new Bash/Python helpers. Skills are auto-discovered, so a skill that ships no hooks needs no hook entry.
 
 ## Dispatch Types
 
+Dispatch depends on the registered entry and the target adapter:
+
 | Type | Field | Behavior | Example |
 |------|-------|----------|---------|
-| **command** | `command:` | Runs a CLI command | `loaf check --hook check-secrets` |
-| **command** | `instruction:` | Injects markdown file content (rendered at build time) | `instructions/pre-merge.md` |
-| **prompt** | `prompt:` | Injects inline text into model context | Journal nudge reminder |
-| **script** | `script:` | Runs a shell/Python script | `hooks/pre-commit/scan-secrets.sh` |
+| **Native check** | No explicit `script:` or `command:` | Runs `loaf check --hook <id>` | `check-secrets` |
+| **command** | `command:` | Runs a CLI command | `loaf journal context --from-hook` |
+| **Instruction** | `instruction:` (with `type: command`) | Emits a static instruction file through the target adapter (rendered at build time) | `instructions/pre-merge.md` |
+| **prompt** | `prompt:` | Injects inline text into model context | Compaction journal-flush gate |
+| **Legacy script** | `script:` | Compatibility only; do not add maintained Bash/Python implementations | — |
 
-Enforcement hooks without explicit `type:` auto-dispatch as `loaf check --hook <id>` at build time. Command hooks with `instruction:` instead of `command:` inject a markdown file's content as the hook output -- used for advisory checklists (pre-merge, pre-push, post-merge).
+Instruction hooks are used for advisory checklists (pre-merge, pre-push, post-merge).
 
 ## Hook Events
 
@@ -61,13 +73,32 @@ Harnesses pass JSON on stdin to hooks. Key fields:
 
 Hooks are defined in `config/hooks.yaml` grouped under `pre-tool`, `post-tool`, or `session`. For Claude Code, hooks are registered in `hooks/hooks.json` inside the plugin directory — `plugin.json` silently drops non-matcher lifecycle events. See [build-system.md](build-system.md) for details on how hooks are distributed to targets.
 
+```yaml
+hooks:
+  pre-tool:
+    - id: check-secrets
+      skill: security-compliance
+      failClosed: true
+      blocking: true
+      matcher: "Edit|Write|Bash"
+      timeout: 30000
+    - id: workflow-pre-merge
+      skill: git-workflow
+      type: command
+      instruction: instructions/pre-merge.md
+      matcher: "Bash"
+      if: "Bash(gh pr merge:*)"
+      blocking: false
+      timeout: 5000
+```
+
 ### Fields
 
 | Field | Required | Notes |
 |-------|----------|-------|
 | `id` | Yes | Unique hook identifier |
 | `skill` | Yes | Owning skill name |
-| `type` | No | `script`, `command`, or `prompt` (enforcement hooks default to command) |
+| `type` | No | Adapter dispatch type (`command`, `prompt`); omit it for maintained enforcement so the native check default applies |
 | `matcher` | No | Tool name filter: `"Edit\|Write\|Bash"` |
 | `if` | No | Conditional: `"Bash(git commit:*)"` — hook only fires when invocation matches |
 | `blocking` | No | `true` if hook can block tool execution |
