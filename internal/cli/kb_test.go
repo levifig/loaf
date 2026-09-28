@@ -151,6 +151,58 @@ func TestRunnerKbValidateJSONReportsErrorsAndWarnings(t *testing.T) {
 	}
 }
 
+func TestRunnerKbValidateRejectsGlossaryTheGlossaryCommandsCannotParse(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	mkdirAll(t, filepath.Join(repo, "docs", "knowledge"))
+	// Term headings at `##` instead of `###` under `## Canonical Terms`: a
+	// hand-authored shape that passes frontmatter checks but breaks every
+	// `loaf kb glossary` subcommand.
+	writeFile(t, filepath.Join(repo, "docs", "knowledge", "glossary.md"), strings.Join([]string{
+		"---",
+		"type: glossary",
+		"topics:",
+		"  - glossary",
+		"last_reviewed: " + time.Now().Format("2006-01-02"),
+		"---",
+		"",
+		"# Canonical Terms",
+		"",
+		"## Skill",
+		"",
+		"A unit of method.",
+		"",
+	}, "\n"))
+
+	var stdout bytes.Buffer
+	err := Runner{
+		Stdout:     &stdout,
+		WorkingDir: repo,
+	}.Run([]string{"kb", "validate", "--json"})
+	if err == nil {
+		t.Fatal("kb validate error = nil, want glossary format failure")
+	}
+	assertSilentExitCode(t, err, 1)
+	var results []kbValidationResult
+	if err := json.Unmarshal(stdout.Bytes(), &results); err != nil {
+		t.Fatalf("Unmarshal(%q) error = %v", stdout.String(), err)
+	}
+	if len(results) != 1 || !hasValidationIssue(results[0].Errors, "glossary") {
+		t.Fatalf("results = %#v, want one glossary format error", results)
+	}
+}
+
+func TestRunnerKbValidateAcceptsGlossaryWrittenByGlossaryCommands(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: repo}).Run([]string{"kb", "glossary", "upsert", "Skill", "--definition", "A unit of method.", "--avoid", "module"}); err != nil {
+		t.Fatalf("kb glossary upsert error = %v", err)
+	}
+
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: repo}).Run([]string{"kb", "validate", "--json"}); err != nil {
+		t.Fatalf("kb validate error = %v, output = %s", err, stdout.String())
+	}
+}
+
 func TestRunnerKbCheckJSONUsesNativeStalenessResults(t *testing.T) {
 	repo := writeKbCheckFixture(t)
 	var stdout bytes.Buffer
