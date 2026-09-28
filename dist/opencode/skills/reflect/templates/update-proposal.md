@@ -1,6 +1,6 @@
 # Reflection Update Proposal Template
 
-Use these prompts for a justified update to an existing strategic document or architecture topic. The response is the default home for proposals; do not create a proposal file or ADR automatically. Architecture owns exceptional ADR selection and format. If no durable change is warranted, explain that instead of filling this template.
+Use these prompts for a justified update to an existing Core Doc or architecture topic. The response is the default home for proposals; do not create a proposal file or ADR automatically. Architecture owns exceptional ADR selection and format. If no durable change is warranted, explain that instead of filling this template.
 
 ```markdown
 ## Proposed Update: [Actual owning document path]

@@ -280,7 +280,7 @@ The interview ends when you have enough to draft. Don't announce "the interview 
 
 ### Document Mapping
 
-Interview content lands in the *operating documents* (VISION/STRATEGY/ARCHITECTURE). The BRIEF is captured as a historical snapshot only -- it is not the destination for refined content.
+Interview content lands in the *Core Docs* (VISION/STRATEGY/ARCHITECTURE). The BRIEF is captured as a historical snapshot only -- it is not the destination for refined content.
 
 | Interview Insight | Document | Section |
 |-------------------|----------|---------|
@@ -300,9 +300,9 @@ Interview content lands in the *operating documents* (VISION/STRATEGY/ARCHITECTU
 
 ### Draft Order
 
-The BRIEF was captured at intake as a historical snapshot. The job here is to draft the *operating documents* using the BRIEF and interview as inputs.
+The BRIEF was captured at intake as a historical snapshot. The job here is to draft the *Core Docs* (and AGENTS.md) using the BRIEF and interview as inputs.
 
-1. **VISION.md** -- Purpose, target users, success criteria, non-goals. Draft first -- this is the load-bearing operating doc that downstream work derives from. Synthesize from the intake BRIEF and the interview.
+1. **VISION.md** -- Purpose, target users, success criteria, non-goals. Draft first -- this is the load-bearing Core Doc that downstream work derives from. Synthesize from the intake BRIEF and the interview.
 2. **STRATEGY.md** -- Only if enough signal exists. Personas, landscape, positioning. If the builder is still figuring this out, note it as an open area and suggest strategy or research later.
 3. **ARCHITECTURE.md** -- Only if technical decisions were made. If the builder hasn't decided on a stack yet, don't force it. Capture constraints and known decisions only.
 
@@ -332,7 +332,7 @@ Run all four sections in full. The builder has minimal clarity and needs the mos
 
 Read and analyze the brief first, including frontmatter `source`. Then run a compressed interview.
 
-**When `source: pitch`:** Discovery is already done. Open by acknowledging the pitched BRIEF (summarize what pitch captured; state that bootstrap now gap-fills operating docs and series-preps the initial arc) so the pitch→bootstrap handoff reads as one continuous flow. Then quote-back and gap-fill only — no re-excavation of problem, who, alternatives, or value when those sections are already specific. Interview only for operating-document gaps (stack, conventions, metrics phrasing, blank open questions). Expect 4–8 questions, or fewer if the BRIEF already feeds VISION/STRATEGY/ARCHITECTURE after confirmation.
+**When `source: pitch`:** Discovery is already done. Open by acknowledging the pitched BRIEF (summarize what pitch captured; state that bootstrap now gap-fills the Core Docs and AGENTS.md and series-preps the initial arc) so the pitch→bootstrap handoff reads as one continuous flow. Then quote-back and gap-fill only — no re-excavation of problem, who, alternatives, or value when those sections are already specific. Interview only for Core Doc and AGENTS.md gaps (stack, conventions, metrics phrasing, blank open questions). Expect 4–8 questions, or fewer if the BRIEF already feeds the Core Docs after confirmation.
 
 **When `source` is file, text, folder, interview, or missing:**
 - Confirm understanding ("Here's what I extracted -- is this right?")
@@ -430,7 +430,7 @@ Do say: "I think I have a solid picture. Let me draft the vision and you can tel
 
 ### Iterative Drafting
 
-Draft VISION.md first. It's the load-bearing operating doc -- if the vision is wrong, everything downstream will be wrong too. Get it right, then expand.
+Draft VISION.md first. It's the load-bearing Core Doc -- if the vision is wrong, everything downstream will be wrong too. Get it right, then expand.
 
 After VISION.md is approved, conditionally draft STRATEGY.md and ARCHITECTURE.md based on available signal.
 
@@ -438,7 +438,7 @@ Each document gets section-by-section review. Don't dump 3 documents at once.
 
 ### When the Builder Wants to Keep Talking
 
-If the builder is energized and wants to explore further after the core documents are drafted, suggest:
+If the builder is energized and wants to explore further after the Core Docs are drafted, suggest:
 - brainstorm for divergent exploration
 - research for topic investigation
 - strategy for deep persona/market work
