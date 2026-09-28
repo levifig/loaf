@@ -1537,6 +1537,12 @@ func loadNativeKnowledgeFile(gitRoot string, absPath string, errOut io.Writer, i
 	}
 	frontmatter, ok := parseKnowledgeFrontmatter(body)
 	if !ok {
+		// The canonical glossary is managed even when its frontmatter is
+		// broken. Keep it visible to validation without treating ordinary
+		// Markdown as a knowledge record.
+		if includeInvalid && rel == glossaryRelativePath {
+			return knowledgeFile{Path: absPath, RelativePath: rel}, true
+		}
 		return knowledgeFile{}, false
 	}
 	if !includeInvalid && len(frontmatter["topics"].Values) == 0 {
@@ -1884,6 +1890,13 @@ func validateNativeKnowledgeFiles(gitRoot string, files []knowledgeFile) []kbVal
 			status := firstFieldValue(file.ImplementationStatus)
 			if status != "in-progress" && status != "stable" && status != "deprecated" {
 				result.Warnings = append(result.Warnings, kbValidationIssue{Field: "implementation_status", Message: fmt.Sprintf("Unrecognized value: %q", status)})
+			}
+		}
+		// The glossary is also a managed file: hold hand edits to the shape the
+		// `loaf kb glossary` commands can read back.
+		if filepath.ToSlash(file.RelativePath) == glossaryRelativePath {
+			if _, _, err := loadNativeGlossaryForRead(gitRoot); err != nil {
+				result.Errors = append(result.Errors, kbValidationIssue{Field: "glossary", Message: err.Error()})
 			}
 		}
 		results = append(results, result)

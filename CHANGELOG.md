@@ -13,6 +13,7 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ### Fixed
 
+- Restore `docs/knowledge/glossary.md` to the format `loaf kb glossary` reads and writes, and make `loaf kb validate` report a glossary those commands cannot parse.
 - Accept `fixup!`, `squash!`, and `amend!` commit subjects in commit validation when the rest is a Conventional Commit ([#339](https://github.com/levifig/loaf/issues/339)).
 - Finish Ship's local base-branch reconciliation after an authorized merge, or report the checkout as pending without deleting work; keep the post-merge reminder honest ([#318](https://github.com/levifig/loaf/issues/318)).
 - Attribute the branch commits a merge commit brings in to that PR in `loaf release suggest`, instead of listing them as unattributed ([#339](https://github.com/levifig/loaf/issues/339)).
