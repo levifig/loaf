@@ -18,13 +18,16 @@ import (
 )
 
 type checkOptions struct {
-	hook       string
-	jsonOutput bool
-	advisory   bool
+	hook         string
+	jsonOutput   bool
+	advisory     bool
+	cursorOutput bool
 }
 
 type checkHookContext struct {
-	Tool struct {
+	HookEventName string `json:"hook_event_name,omitempty"`
+	Cwd           string `json:"cwd,omitempty"`
+	Tool          struct {
 		Name  string         `json:"name"`
 		Input checkHookInput `json:"input"`
 	} `json:"tool"`
@@ -109,6 +112,9 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		return r.runCheckOperator(args[0], args[1:], out, runtimeRoot)
 	}
+	if hasFlag(args, "--cursor-hook") {
+		return r.runCursorCheck(args, out, runtimeRoot)
+	}
 	options, err := parseCheckArgs(args)
 	if err != nil {
 		return err
@@ -123,6 +129,18 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 		return r.runKbStalenessNudge(out, runtimeRoot, options)
 	}
 	context, payloadErr := r.readCheckContextFor(options.hook)
+	// Older Cursor installations invoke check without a transport flag. Its
+	// lowercase native event identifies that caller without changing manual
+	// CLI output or the other harnesses' capitalized event contracts.
+	if payloadErr == nil && context.HookEventName == "preToolUse" {
+		return r.runCursorCheckContext(options, context, nil, out, runtimeRoot)
+	}
+	return r.runCheckContext(options, context, payloadErr, out, runtimeRoot)
+}
+
+// Evaluate the parsed input directly so transport normalization cannot change
+// the payload size or cause an otherwise valid input to be parsed again.
+func (r Runner) runCheckContext(options checkOptions, context checkHookContext, payloadErr error, out io.Writer, runtimeRoot string) error {
 	var result checkResult
 	if payloadErr != nil {
 		result = blockedCheckResult(payloadErr.Error())
@@ -170,7 +188,7 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 }
 
 func writeCheckHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf check --hook <id> [--advisory] [--json]")
+	fmt.Fprintln(out, "Usage: loaf check --hook <id> [--advisory] [--json] [--cursor-hook]")
 	fmt.Fprintln(out, "       loaf check <subcommand> [<path>|-] [--json]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Run one registered hook check, or a standalone validator.")
@@ -184,6 +202,7 @@ func writeCheckHelp(out io.Writer) {
 	fmt.Fprintln(out, "  --hook      Hook id: "+strings.Join(sortedKeys(validCheckHooks), ", "))
 	fmt.Fprintln(out, "  --advisory  Surface findings without blocking: always exit 0, even when the check fails")
 	fmt.Fprintln(out, "  --json      Output hook result, pass/block status, exit code, warnings, errors, and findings as JSON")
+	fmt.Fprintln(out, "  --cursor-hook  Emit native Cursor permission JSON and normalize Cursor tool input")
 	fmt.Fprintln(out, "  -h, --help  Show help")
 }
 
@@ -764,13 +783,8 @@ func artifactBodyRefFromPath(path string) string {
 }
 
 var conventionalCommitRE = regexp.MustCompile(`^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)!?: .+`)
-var commitMessageFlagRE = regexp.MustCompile(`(?s)-m(?:\s+|=)(?:"([^"]+)"|'([^']+)'|([^\s"']+))`)
 var commitMessageHeredocStartRE = regexp.MustCompile(`<<'?([A-Za-z0-9_]+)'?\s*\n`)
 
-// commitCommandSeparatorRE marks where one shell command ends and the next
-// begins, so a heredoc opened after a separator can be attributed to whatever
-// command follows rather than to the commit.
-var commitCommandSeparatorRE = regexp.MustCompile("[\n;]|&&|\\|\\|")
 var releaseCommitSubjectRE = regexp.MustCompile(`^chore: release v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?(?:\s+\(#\d+\))?$`)
 
 var aiAttributionPatterns = []*regexp.Regexp{
@@ -798,7 +812,7 @@ var rootLockfiles = map[string]bool{
 func runNativeValidateCommit(context checkHookContext, cwd string) checkResult {
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
 	command := checkContextCommand(context)
-	if checkContextToolName(context) != "Bash" || !strings.Contains(command, "git commit") {
+	if checkContextToolName(context) != "Bash" || !commandRunsGitCommit(command) {
 		return result
 	}
 	if strings.Contains(command, "--amend") && !strings.Contains(command, "-m") {
@@ -1668,32 +1682,87 @@ func stringSliceContains(values []string, target string) bool {
 
 // extractCommitMessage returns the message the given command would commit.
 //
-// A heredoc counts as the message only when it opens before any command
-// separator that follows `git commit`, which is what distinguishes
-// `git commit -m "$(cat <<'EOF' … EOF)"` from a heredoc belonging to some later
-// command in the same invocation. Without that restriction a
-// `gh pr create --body "$(cat <<'EOF' … EOF)"` sitting after the commit gets
-// validated as the commit message, and the commit is rejected for the contents
-// of an unrelated pull request body.
+// Read the message from the actual commit arguments, excluding Git options
+// and unrelated commands or quoted mentions. Quoted cat/heredoc substitutions
+// retain the existing message-body inspection without executing the command.
 func extractCommitMessage(command string) string {
-	segment := command
-	if index := strings.Index(command, "git commit"); index >= 0 {
-		segment = command[index:]
+	segment, arguments := gitCommitArguments(command)
+	message := ""
+	for i, argument := range arguments {
+		argument = commitMessageFlag(argument)
+		if argument == "-m" && i+1 < len(arguments) {
+			message = arguments[i+1]
+			break
+		}
+		if strings.HasPrefix(argument, "-m=") {
+			message = strings.TrimPrefix(argument, "-m=")
+			break
+		}
 	}
-	if matches := commitMessageHeredocStartRE.FindStringSubmatchIndex(segment); len(matches) == 4 {
-		if !commitCommandSeparatorRE.MatchString(segment[:matches[0]]) {
-			marker := segment[matches[2]:matches[3]]
-			body := segment[matches[1]:]
-			if end := strings.Index(body, "\n"+marker); end >= 0 {
-				return strings.TrimSpace(body[:end])
+	// The shared word parser does not understand heredoc bodies inside command
+	// substitutions. Inspect the raw tail, but only accept an opener belonging
+	// to the first message flag of this commit.
+	raw := segment
+	if at := strings.Index(command, segment); segment != "" && at >= 0 {
+		raw = command[at:]
+	}
+	for _, matches := range commitMessageHeredocStartRE.FindAllStringSubmatchIndex(raw, -1) {
+		open := strings.LastIndex(raw[:matches[0]], "$(")
+		if open < 0 {
+			continue
+		}
+		prefix := strings.TrimRight(strings.TrimSpace(raw[:open]), "\"'")
+		_, prefixArguments := gitCommitArguments(prefix)
+		messageFlag := -1
+		for i, argument := range prefixArguments {
+			argument = commitMessageFlag(argument)
+			if argument == "-m" || strings.HasPrefix(argument, "-m=") {
+				messageFlag = i
+				break
+			}
+		}
+		if messageFlag < 0 || messageFlag != len(prefixArguments)-1 {
+			continue
+		}
+		if flag := commitMessageFlag(prefixArguments[messageFlag]); flag != "-m" && flag != "-m=" {
+			continue
+		}
+		marker := raw[matches[2]:matches[3]]
+		body := raw[matches[1]:]
+		if end := strings.Index(body, "\n"+marker); end >= 0 {
+			return strings.TrimSpace(body[:end])
+		}
+	}
+
+	return message
+}
+
+func commitMessageFlag(argument string) string {
+	if argument == "--message" {
+		return "-m"
+	}
+	if strings.HasPrefix(argument, "--message=") {
+		return "-m=" + strings.TrimPrefix(argument, "--message=")
+	}
+	if strings.HasPrefix(argument, "-m=") {
+		return argument
+	}
+	if strings.HasPrefix(argument, "-") {
+		for i := 1; i < len(argument); i++ {
+			if argument[i] == 'm' {
+				if i+1 == len(argument) {
+					return "-m"
+				}
+				return "-m=" + argument[i+1:]
+			}
+			// Only boolean short options can precede m in a combined flag.
+			// Options such as -S consume the rest as their own value.
+			if !strings.ContainsRune("aqvsneipoz", rune(argument[i])) {
+				break
 			}
 		}
 	}
-	matches := commitMessageFlagRE.FindStringSubmatch(segment)
-	if len(matches) != 4 {
-		return ""
-	}
-	return firstNonEmpty(matches[1], matches[2], matches[3])
+	return argument
 }
 
 func detectBundledArtifactLeak(cwd string, subject string) []string {

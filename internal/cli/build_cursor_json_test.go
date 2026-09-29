@@ -35,10 +35,11 @@ func TestCursorExplicitCheckCommandsRequestJSONOnce(t *testing.T) {
 		"loaf check --hook check-secrets",
 		"loaf check --hook validate-push --advisory",
 		"loaf check --hook check-secrets --json",
+		"loaf check --hook check-secrets --json --cursor-hook",
 	} {
 		t.Run(command, func(t *testing.T) {
 			got := nativeCursorHookCommand(nativeBuildHook{id: "explicit-check", command: command})
-			if strings.Count(got, " --json") != 1 {
+			if strings.Count(got, " --json") != 1 || strings.Count(got, " --cursor-hook") != 1 {
 				t.Fatalf("command = %q, want exactly one JSON flag", got)
 			}
 		})
@@ -84,7 +85,7 @@ func TestCursorGeneratedCheckReturnsJSONWithoutWeakeningEnforcement(t *testing.T
 
 func TestCursorHookPairingPreservesIdentityAcrossJSONTransport(t *testing.T) {
 	recognition := testHookRecognition(t, "cursor", testRepoHookCatalog(t, "cursor"))
-	for _, command := range []string{"loaf check --hook check-secrets", "loaf check --hook check-secrets --json"} {
+	for _, command := range []string{"loaf check --hook check-secrets", "loaf check --hook check-secrets --json", "loaf check --hook check-secrets --json --cursor-hook"} {
 		outcome, err := pairHookEventEntries(recognition, "preToolUse", []map[string]any{{"command": command, "matcher": "Bash"}})
 		if err != nil {
 			t.Fatal(err)

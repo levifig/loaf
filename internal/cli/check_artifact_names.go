@@ -68,8 +68,46 @@ var artifactNameSkipDirs = map[string]bool{
 	"vendor":       true,
 }
 
+func commandRunsGitCommit(command string) bool {
+	_, arguments := gitCommitArguments(command)
+	return arguments != nil
+}
+
+func gitCommitArguments(command string) (string, []string) {
+	for _, segment := range splitSafetySegments(command, true) {
+		words := safetySkipWrappers(safetyCommandWords(segment))
+		if len(words) < 2 || safetyCommandName(words[0]) != "git" {
+			continue
+		}
+		for i := 1; i < len(words); i++ {
+			switch words[i] {
+			case "-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env":
+				i++
+				continue
+			}
+			if strings.HasPrefix(words[i], "-") {
+				continue
+			}
+			if words[i] == "commit" {
+				return segment, words[i+1:]
+			}
+			break
+		}
+	}
+	return "", nil
+}
+
 func runNativeArtifactNames(context checkHookContext, runtimeRoot string) checkResult {
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
+	// Apply the commit scope here so native hooks keep repair commands available.
+	// Empty manual input still scans the repository normally.
+	tool := checkContextToolName(context)
+	command := strings.TrimSpace(checkContextCommand(context))
+	if tool != "" || command != "" {
+		if tool != "Bash" || !commandRunsGitCommit(command) {
+			return result
+		}
+	}
 	// Resolve the project root explicitly rather than treating the runtime root as
 	// the scan root: the two diverge when loaf runs from an installed location.
 	root := firstNonEmpty(strings.TrimSpace(runtimeRoot), ".")

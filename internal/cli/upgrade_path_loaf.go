@@ -22,7 +22,7 @@ import (
 // absolute executable or grant a bare `loaf` namespace. Missing or
 // incompatible PATH loaf still fails closed with install/upgrade guidance.
 
-var loafCheckHookCommandPattern = regexp.MustCompile("(?:^|[\\s\"'`=|])loaf check --hook ([a-z0-9-]+)")
+var loafCheckHookCommandPattern = regexp.MustCompile("(?:^|[\\s\"'`=|])loaf check --hook ([a-z0-9-]+)((?: --[a-z0-9-]+)*)")
 
 var loafCheckCommandPattern = regexp.MustCompile("(?:^|[\\s\"'`=|])loaf check ([a-z0-9-]+)")
 
@@ -70,19 +70,23 @@ type pathLoafProbe struct {
 }
 
 type pathLoafRequirements struct {
-	hooks     []string
-	operators []string
-	journals  []string
+	checkFlags []string
+	hooks      []string
+	operators  []string
+	journals   []string
 }
 
 func (req pathLoafRequirements) empty() bool {
-	return len(req.hooks) == 0 && len(req.operators) == 0 && len(req.journals) == 0
+	return len(req.checkFlags) == 0 && len(req.hooks) == 0 && len(req.operators) == 0 && len(req.journals) == 0
 }
 
 func (req pathLoafRequirements) names() []string {
 	names := make([]string, 0, len(req.hooks)+len(req.operators)+len(req.journals))
 	for _, id := range req.hooks {
 		names = append(names, "loaf check --hook "+id)
+	}
+	for _, flag := range req.checkFlags {
+		names = append(names, "loaf check "+flag)
 	}
 	for _, name := range req.operators {
 		names = append(names, "loaf check "+name)
@@ -122,6 +126,7 @@ func requiredPathLoafCheckHooks(plan installDryRunPlan) []string {
 
 func requiredPathLoafCapabilities(plan installDryRunPlan) pathLoafRequirements {
 	hooks := map[string]bool{}
+	checkFlags := map[string]bool{}
 	operators := map[string]bool{}
 	journals := map[string]bool{}
 	knownOperators := knownCheckOperatorNames()
@@ -149,6 +154,9 @@ func requiredPathLoafCapabilities(plan installDryRunPlan) pathLoafRequirements {
 	addFromText := func(text string) {
 		for _, match := range loafCheckHookCommandPattern.FindAllStringSubmatch(text, -1) {
 			addHook(match[1])
+			for _, flag := range strings.Fields(match[2]) {
+				checkFlags[flag] = true
+			}
 		}
 		for _, match := range loafCheckCommandPattern.FindAllStringSubmatch(text, -1) {
 			addOperator(match[1])
@@ -175,9 +183,10 @@ func requiredPathLoafCapabilities(plan installDryRunPlan) pathLoafRequirements {
 		}
 	}
 	return pathLoafRequirements{
-		hooks:     sortedKeys(hooks),
-		operators: sortedKeys(operators),
-		journals:  sortedKeys(journals),
+		checkFlags: sortedKeys(checkFlags),
+		hooks:      sortedKeys(hooks),
+		operators:  sortedKeys(operators),
+		journals:   sortedKeys(journals),
 	}
 }
 
@@ -246,7 +255,7 @@ func probePathLoafForRequirements(path string, required pathLoafRequirements) (p
 		return pathLoafProbe{}, fmt.Errorf("PATH loaf at %s failed version probe: %w", path, err)
 	}
 	probe := pathLoafProbe{Path: path, Version: version}
-	if len(required.hooks) > 0 || len(required.operators) > 0 {
+	if len(required.checkFlags) > 0 || len(required.hooks) > 0 || len(required.operators) > 0 {
 		helpOut, err := runReadOnlyPathLoaf(path, "check", "--help")
 		if err != nil {
 			return pathLoafProbe{}, fmt.Errorf("PATH loaf at %s failed check-help probe: %w", path, err)
@@ -364,6 +373,11 @@ func missingPathLoafCapabilities(probe pathLoafProbe, required pathLoafRequireme
 			continue
 		}
 		missing = append(missing, "loaf check --hook "+id)
+	}
+	for _, flag := range required.checkFlags {
+		if !pathLoafHelpListsToken(probe.Help, flag) {
+			missing = append(missing, "loaf check "+flag)
+		}
 	}
 	for _, name := range required.operators {
 		if pathLoafRecognizesCheckOperator(probe, name) {

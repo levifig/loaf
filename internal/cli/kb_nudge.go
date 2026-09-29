@@ -19,7 +19,17 @@ func (r Runner) runKbStalenessNudge(out io.Writer, runtimeRoot string, options c
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
 	payload := r.readKbNudgePayload()
 	if payload != nil {
+		if options.cursorOutput {
+			if cwd, ok := payload["cwd"].(string); ok && filepath.IsAbs(cwd) {
+				if info, err := os.Stat(cwd); err == nil && info.IsDir() {
+					runtimeRoot = cwd
+				}
+			}
+		}
 		result.Warnings = kbStalenessNudges(runtimeRoot, payload, time.Now())
+	}
+	if options.cursorOutput {
+		return writeCursorCheck(out, checkJSONOutput{Hook: options.hook, Passed: result.Passed, Warnings: result.Warnings, Errors: result.Errors, Findings: result.Findings}, true)
 	}
 	if options.jsonOutput {
 		return writeCheckJSON(out, options.hook, result, options.advisory)
