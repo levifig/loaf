@@ -783,13 +783,8 @@ func artifactBodyRefFromPath(path string) string {
 }
 
 var conventionalCommitRE = regexp.MustCompile(`^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)!?: .+`)
-var commitMessageFlagRE = regexp.MustCompile(`(?s)-m(?:\s+|=)(?:"([^"]+)"|'([^']+)'|([^\s"']+))`)
 var commitMessageHeredocStartRE = regexp.MustCompile(`<<'?([A-Za-z0-9_]+)'?\s*\n`)
 
-// commitCommandSeparatorRE marks where one shell command ends and the next
-// begins, so a heredoc opened after a separator can be attributed to whatever
-// command follows rather than to the commit.
-var commitCommandSeparatorRE = regexp.MustCompile("[\n;]|&&|\\|\\|")
 var releaseCommitSubjectRE = regexp.MustCompile(`^chore: release v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?(?:\s+\(#\d+\))?$`)
 
 var aiAttributionPatterns = []*regexp.Regexp{
@@ -817,7 +812,7 @@ var rootLockfiles = map[string]bool{
 func runNativeValidateCommit(context checkHookContext, cwd string) checkResult {
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
 	command := checkContextCommand(context)
-	if checkContextToolName(context) != "Bash" || !strings.Contains(command, "git commit") {
+	if checkContextToolName(context) != "Bash" || !commandRunsGitCommit(command) {
 		return result
 	}
 	if strings.Contains(command, "--amend") && !strings.Contains(command, "-m") {
@@ -1687,32 +1682,32 @@ func stringSliceContains(values []string, target string) bool {
 
 // extractCommitMessage returns the message the given command would commit.
 //
-// A heredoc counts as the message only when it opens before any command
-// separator that follows `git commit`, which is what distinguishes
-// `git commit -m "$(cat <<'EOF' … EOF)"` from a heredoc belonging to some later
-// command in the same invocation. Without that restriction a
-// `gh pr create --body "$(cat <<'EOF' … EOF)"` sitting after the commit gets
-// validated as the commit message, and the commit is rejected for the contents
-// of an unrelated pull request body.
+// Read the message from the actual commit arguments, excluding Git options
+// and unrelated commands or quoted mentions. Quoted cat/heredoc substitutions
+// retain the existing message-body inspection without executing the command.
 func extractCommitMessage(command string) string {
-	segment := command
-	if index := strings.Index(command, "git commit"); index >= 0 {
-		segment = command[index:]
+	arguments := gitCommitArguments(command)
+	message := ""
+	for i, argument := range arguments {
+		if argument == "-m" && i+1 < len(arguments) {
+			message = arguments[i+1]
+			break
+		}
+		if strings.HasPrefix(argument, "-m=") {
+			message = strings.TrimPrefix(argument, "-m=")
+			break
+		}
 	}
-	if matches := commitMessageHeredocStartRE.FindStringSubmatchIndex(segment); len(matches) == 4 {
-		if !commitCommandSeparatorRE.MatchString(segment[:matches[0]]) {
-			marker := segment[matches[2]:matches[3]]
-			body := segment[matches[1]:]
+	if strings.HasPrefix(strings.TrimSpace(message), "$(") {
+		if matches := commitMessageHeredocStartRE.FindStringSubmatchIndex(message); len(matches) == 4 {
+			marker := message[matches[2]:matches[3]]
+			body := message[matches[1]:]
 			if end := strings.Index(body, "\n"+marker); end >= 0 {
 				return strings.TrimSpace(body[:end])
 			}
 		}
 	}
-	matches := commitMessageFlagRE.FindStringSubmatch(segment)
-	if len(matches) != 4 {
-		return ""
-	}
-	return firstNonEmpty(matches[1], matches[2], matches[3])
+	return message
 }
 
 func detectBundledArtifactLeak(cwd string, subject string) []string {

@@ -324,3 +324,27 @@ func TestArtifactNamesChecksCompoundCommandsAcrossHarnesses(t *testing.T) {
 		t.Fatalf("compound commit must deny: %s; %v; %v", stdout.Bytes(), err, decodeErr)
 	}
 }
+
+func TestCursorValidateCommitIgnoresLiteralMentions(t *testing.T) {
+	for _, tc := range []struct {
+		name, command string
+		deny          bool
+	}{
+		{"quoted mention", `echo "git commit -m wip" >> notes.md`, false},
+		{"pull request body", "gh pr create --title \"fix: guard\" --body \"$(cat <<'EOF'\nRepro: git commit -m wip\nEOF\n)\"", false},
+		{"compound commit", "git add . && git commit -m wip", true},
+		{"git options", "git -C . commit -m wip", true},
+		{"valid option commit with mention", `git -C . commit -m "feat: document git commit -m wip"`, false},
+		{"config argument is not message", `git -c example.key="-m wip" commit -m "feat: change"`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload, err := json.Marshal(map[string]any{"hook_event_name": "preToolUse", "tool_name": "Shell", "tool_input": map[string]string{"command": tc.command}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var stdout bytes.Buffer
+			err = (Runner{WorkingDir: t.TempDir(), Stdout: &stdout, Stdin: bytes.NewReader(payload)}).Run([]string{"check", "--hook", "validate-commit", "--json", "--cursor-hook"})
+			assertCursorCheckDecision(t, stdout.Bytes(), err, tc.deny)
+		})
+	}
+}

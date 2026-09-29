@@ -6,7 +6,7 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ### Fixed
 
-- Return native Cursor permission JSON from check hooks, inspect `Shell` and `StrReplace` inputs in the payload repository, allow artifact-name repair commands and large valid write payloads, and preserve security denials when continuity state is unavailable ([#333](https://github.com/levifig/loaf/issues/333)).
+- Return native Cursor permission JSON from check hooks, inspect `Shell` and `StrReplace` inputs in the payload repository, allow artifact-name repair commands and large valid write payloads, ignore quoted commit mentions, and preserve security denials when continuity state is unavailable ([#333](https://github.com/levifig/loaf/issues/333)).
 - Preserve advisory post-tool knowledge nudges in Cursor and reject scoped hook upgrades when the PATH runtime lacks the required transport flags ([#333](https://github.com/levifig/loaf/issues/333)).
 
 ## [0.6.0-rc.2] - 2026-09-24
