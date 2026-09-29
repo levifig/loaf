@@ -1686,7 +1686,7 @@ func stringSliceContains(values []string, target string) bool {
 // and unrelated commands or quoted mentions. Quoted cat/heredoc substitutions
 // retain the existing message-body inspection without executing the command.
 func extractCommitMessage(command string) string {
-	arguments := gitCommitArguments(command)
+	segment, arguments := gitCommitArguments(command)
 	message := ""
 	for i, argument := range arguments {
 		if argument == "-m" && i+1 < len(arguments) {
@@ -1698,15 +1698,37 @@ func extractCommitMessage(command string) string {
 			break
 		}
 	}
-	if strings.HasPrefix(strings.TrimSpace(message), "$(") {
-		if matches := commitMessageHeredocStartRE.FindStringSubmatchIndex(message); len(matches) == 4 {
-			marker := message[matches[2]:matches[3]]
-			body := message[matches[1]:]
-			if end := strings.Index(body, "\n"+marker); end >= 0 {
-				return strings.TrimSpace(body[:end])
+	// The shared word parser does not understand heredoc bodies inside command
+	// substitutions. Inspect the raw tail, but only accept an opener belonging
+	// to the first message flag of this commit.
+	raw := segment
+	if at := strings.Index(command, segment); segment != "" && at >= 0 {
+		raw = command[at:]
+	}
+	for _, matches := range commitMessageHeredocStartRE.FindAllStringSubmatchIndex(raw, -1) {
+		open := strings.LastIndex(raw[:matches[0]], "$(")
+		if open < 0 {
+			continue
+		}
+		prefix := strings.TrimRight(strings.TrimSpace(raw[:open]), "\"'")
+		_, prefixArguments := gitCommitArguments(prefix)
+		messageFlag := -1
+		for i, argument := range prefixArguments {
+			if argument == "-m" || strings.HasPrefix(argument, "-m=") {
+				messageFlag = i
+				break
 			}
 		}
+		if messageFlag < 0 || messageFlag != len(prefixArguments)-1 || (prefixArguments[messageFlag] != "-m" && prefixArguments[messageFlag] != "-m=") {
+			continue
+		}
+		marker := raw[matches[2]:matches[3]]
+		body := raw[matches[1]:]
+		if end := strings.Index(body, "\n"+marker); end >= 0 {
+			return strings.TrimSpace(body[:end])
+		}
 	}
+
 	return message
 }
 

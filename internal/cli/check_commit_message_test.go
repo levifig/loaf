@@ -37,6 +37,26 @@ func TestExtractCommitMessageAttributesHeredocsToTheirOwnCommand(t *testing.T) {
 			want:    "feat: add the thing\n\nA body paragraph.",
 		},
 		{
+			name:    "heredoc preserves quoted phrases",
+			command: "git commit -m " + heredoc("fix: explain \"permission denied\" errors\n\nBody."),
+			want:    "fix: explain \"permission denied\" errors\n\nBody.",
+		},
+		{
+			name:    "heredoc preserves an unmatched quote",
+			command: "git commit -m " + heredoc("fix: support 5\" disks"),
+			want:    "fix: support 5\" disks",
+		},
+		{
+			name:    "config heredoc does not replace the commit message",
+			command: "git -c example.key=" + heredoc("configuration text") + " commit -m " + heredoc("fix: explain \"permission denied\" errors"),
+			want:    "fix: explain \"permission denied\" errors",
+		},
+		{
+			name:    "later message heredoc does not replace the subject",
+			command: "git commit -m \"fix: subject\" -m " + heredoc("Body with \"quoted\" text."),
+			want:    "fix: subject",
+		},
+		{
 			name:    "plain single flag",
 			command: "git commit -m \"docs: plain subject\"",
 			want:    "docs: plain subject",

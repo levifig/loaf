@@ -69,10 +69,11 @@ var artifactNameSkipDirs = map[string]bool{
 }
 
 func commandRunsGitCommit(command string) bool {
-	return gitCommitArguments(command) != nil
+	_, arguments := gitCommitArguments(command)
+	return arguments != nil
 }
 
-func gitCommitArguments(command string) []string {
+func gitCommitArguments(command string) (string, []string) {
 	for _, segment := range splitSafetySegments(command, true) {
 		words := safetySkipWrappers(safetyCommandWords(segment))
 		if len(words) < 2 || safetyCommandName(words[0]) != "git" {
@@ -88,12 +89,12 @@ func gitCommitArguments(command string) []string {
 				continue
 			}
 			if words[i] == "commit" {
-				return words[i+1:]
+				return segment, words[i+1:]
 			}
 			break
 		}
 	}
-	return nil
+	return "", nil
 }
 
 func runNativeArtifactNames(context checkHookContext, runtimeRoot string) checkResult {

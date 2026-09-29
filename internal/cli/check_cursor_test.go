@@ -332,6 +332,8 @@ func TestCursorValidateCommitIgnoresLiteralMentions(t *testing.T) {
 	}{
 		{"quoted mention", `echo "git commit -m wip" >> notes.md`, false},
 		{"pull request body", "gh pr create --title \"fix: guard\" --body \"$(cat <<'EOF'\nRepro: git commit -m wip\nEOF\n)\"", false},
+		{"heredoc quoted phrase", "git commit -m \"$(cat <<'EOF'\nfix: explain \"permission denied\" errors\n\nBody.\nEOF\n)\"", false},
+		{"heredoc unmatched quote", "git commit -m \"$(cat <<'EOF'\nfix: support 5\" disks\nEOF\n)\"", false},
 		{"compound commit", "git add . && git commit -m wip", true},
 		{"git options", "git -C . commit -m wip", true},
 		{"valid option commit with mention", `git -C . commit -m "feat: document git commit -m wip"`, false},
