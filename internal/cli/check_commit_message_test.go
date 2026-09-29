@@ -57,6 +57,51 @@ func TestExtractCommitMessageAttributesHeredocsToTheirOwnCommand(t *testing.T) {
 			want:    "fix: subject",
 		},
 		{
+			name:    "all and message short flags",
+			command: "git commit -am " + heredoc("feat: add the thing"),
+			want:    "feat: add the thing",
+		},
+		{
+			name:    "long message flag",
+			command: "git commit --message " + heredoc("feat: add the thing"),
+			want:    "feat: add the thing",
+		},
+		{
+			name:    "assigned long message flag",
+			command: "git commit --message=" + heredoc("feat: add the thing"),
+			want:    "feat: add the thing",
+		},
+		{
+			name:    "mixed message flags keep the subject",
+			command: "git commit -am \"fix: subject\" --message " + heredoc("Body with \"quoted\" text."),
+			want:    "fix: subject",
+		},
+		{
+			name:    "quiet and message short flags",
+			command: "git commit -qm " + heredoc("feat: add the thing"),
+			want:    "feat: add the thing",
+		},
+		{
+			name:    "combined boolean short flags",
+			command: "git commit -qasm " + heredoc("feat: add the thing"),
+			want:    "feat: add the thing",
+		},
+		{
+			name:    "attached combined message flag",
+			command: "git commit -am" + heredoc("feat: add the thing"),
+			want:    "feat: add the thing",
+		},
+		{
+			name:    "attached single message flag",
+			command: "git commit -m" + heredoc("feat: add the thing"),
+			want:    "feat: add the thing",
+		},
+		{
+			name:    "signing key is not a message flag",
+			command: "git commit -Smy-key -m \"fix: subject\"",
+			want:    "fix: subject",
+		},
+		{
 			name:    "plain single flag",
 			command: "git commit -m \"docs: plain subject\"",
 			want:    "docs: plain subject",

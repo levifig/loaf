@@ -1689,6 +1689,7 @@ func extractCommitMessage(command string) string {
 	segment, arguments := gitCommitArguments(command)
 	message := ""
 	for i, argument := range arguments {
+		argument = commitMessageFlag(argument)
 		if argument == "-m" && i+1 < len(arguments) {
 			message = arguments[i+1]
 			break
@@ -1714,12 +1715,16 @@ func extractCommitMessage(command string) string {
 		_, prefixArguments := gitCommitArguments(prefix)
 		messageFlag := -1
 		for i, argument := range prefixArguments {
+			argument = commitMessageFlag(argument)
 			if argument == "-m" || strings.HasPrefix(argument, "-m=") {
 				messageFlag = i
 				break
 			}
 		}
-		if messageFlag < 0 || messageFlag != len(prefixArguments)-1 || (prefixArguments[messageFlag] != "-m" && prefixArguments[messageFlag] != "-m=") {
+		if messageFlag < 0 || messageFlag != len(prefixArguments)-1 {
+			continue
+		}
+		if flag := commitMessageFlag(prefixArguments[messageFlag]); flag != "-m" && flag != "-m=" {
 			continue
 		}
 		marker := raw[matches[2]:matches[3]]
@@ -1730,6 +1735,34 @@ func extractCommitMessage(command string) string {
 	}
 
 	return message
+}
+
+func commitMessageFlag(argument string) string {
+	if argument == "--message" {
+		return "-m"
+	}
+	if strings.HasPrefix(argument, "--message=") {
+		return "-m=" + strings.TrimPrefix(argument, "--message=")
+	}
+	if strings.HasPrefix(argument, "-m=") {
+		return argument
+	}
+	if strings.HasPrefix(argument, "-") {
+		for i := 1; i < len(argument); i++ {
+			if argument[i] == 'm' {
+				if i+1 == len(argument) {
+					return "-m"
+				}
+				return "-m=" + argument[i+1:]
+			}
+			// Only boolean short options can precede m in a combined flag.
+			// Options such as -S consume the rest as their own value.
+			if !strings.ContainsRune("aqvsneipoz", rune(argument[i])) {
+				break
+			}
+		}
+	}
+	return argument
 }
 
 func detectBundledArtifactLeak(cwd string, subject string) []string {
