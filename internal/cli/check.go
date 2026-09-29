@@ -132,13 +132,14 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 	// lowercase native event identifies that caller without changing manual
 	// CLI output or the other harnesses' capitalized event contracts.
 	if payloadErr == nil && context.HookEventName == "preToolUse" {
-		input, err := json.Marshal(context)
-		if err != nil {
-			return err
-		}
-		r.Stdin = bytes.NewReader(input)
-		return r.runCursorCheck(args, out, runtimeRoot)
+		return r.runCursorCheckContext(options, context, nil, out, runtimeRoot)
 	}
+	return r.runCheckContext(options, context, payloadErr, out, runtimeRoot)
+}
+
+// Evaluate the parsed input directly so transport normalization cannot change
+// the payload size or cause an otherwise valid input to be parsed again.
+func (r Runner) runCheckContext(options checkOptions, context checkHookContext, payloadErr error, out io.Writer, runtimeRoot string) error {
 	var result checkResult
 	if payloadErr != nil {
 		result = blockedCheckResult(payloadErr.Error())

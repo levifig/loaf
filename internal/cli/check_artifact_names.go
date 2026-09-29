@@ -68,8 +68,19 @@ var artifactNameSkipDirs = map[string]bool{
 	"vendor":       true,
 }
 
+var gitCommitCommandRE = regexp.MustCompile(`^git\s+commit(?:\s|$)`)
+
 func runNativeArtifactNames(context checkHookContext, runtimeRoot string) checkResult {
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
+	// Apply the commit scope here so native hooks keep repair commands available.
+	// Empty manual input still scans the repository normally.
+	tool := checkContextToolName(context)
+	command := strings.TrimSpace(checkContextCommand(context))
+	if tool != "" || command != "" {
+		if tool != "Bash" || !gitCommitCommandRE.MatchString(command) {
+			return result
+		}
+	}
 	// Resolve the project root explicitly rather than treating the runtime root as
 	// the scan root: the two diverge when loaf runs from an installed location.
 	root := firstNonEmpty(strings.TrimSpace(runtimeRoot), ".")

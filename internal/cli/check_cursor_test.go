@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -185,4 +187,65 @@ func TestCursorLegacyCommandEmitsNativeJSON(t *testing.T) {
 			assertCursorCheckDecision(t, stdout.Bytes(), err, false)
 		})
 	}
+}
+
+func TestCursorArtifactNamesAllowsRepairCommands(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "docs", "changes", "demo", "research", "pr-12-notes.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("draft notes"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"init", "-q"}, {"add", "."}} {
+		if output, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, output)
+		}
+	}
+	for _, explicit := range []bool{false, true} {
+		for _, command := range []string{"pwd", "git status", "git mv docs/changes/demo/research/pr-12-notes.md docs/changes/demo/research/notes.md", "git rm --cached docs/changes/demo/research/pr-12-notes.md", "echo git commit", "git commit -m notes"} {
+			t.Run(fmt.Sprintf("explicit=%t/%s", explicit, command), func(t *testing.T) {
+				payload, err := json.Marshal(map[string]any{"hook_event_name": "preToolUse", "cwd": root, "tool_name": "Shell", "tool_input": map[string]string{"command": command}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				args := []string{"check", "--hook", "artifact-names"}
+				if explicit {
+					args = append(args, "--cursor-hook")
+				}
+				var stdout bytes.Buffer
+				err = (Runner{WorkingDir: t.TempDir(), Stdout: &stdout, Stdin: bytes.NewReader(payload)}).Run(args)
+				assertCursorCheckDecision(t, stdout.Bytes(), err, strings.HasPrefix(command, "git commit"))
+			})
+		}
+	}
+	var stdout bytes.Buffer
+	err := (Runner{WorkingDir: root, Stdout: &stdout, Stdin: strings.NewReader("")}).Run([]string{"check", "--hook", "artifact-names", "--json"})
+	var result checkJSONOutput
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &result); decodeErr != nil || !result.Blocked || err == nil {
+		t.Fatalf("manual scan must still deny: %s; %v; %v", stdout.Bytes(), err, decodeErr)
+	}
+}
+
+func TestCursorCheckKeepsOriginalPayloadSizeBoundary(t *testing.T) {
+	content := strings.Repeat("<>&", int((projectFileReadLimit-1024)/3))
+	payload := `{"hook_event_name":"preToolUse","tool_name":"Write","tool_input":{"file_path":"example.html","content":"` + content + `"}}`
+	if int64(len(payload)) >= projectFileReadLimit {
+		t.Fatal("fixture must fit the original payload limit")
+	}
+	for _, explicit := range []bool{false, true} {
+		t.Run(fmt.Sprintf("explicit=%t", explicit), func(t *testing.T) {
+			args := []string{"check", "--hook", "check-secrets"}
+			if explicit {
+				args = append(args, "--cursor-hook")
+			}
+			var stdout bytes.Buffer
+			err := (Runner{WorkingDir: t.TempDir(), Stdout: &stdout, Stdin: strings.NewReader(payload)}).Run(args)
+			assertCursorCheckDecision(t, stdout.Bytes(), err, false)
+		})
+	}
+	var stdout bytes.Buffer
+	err := (Runner{WorkingDir: t.TempDir(), Stdout: &stdout, Stdin: strings.NewReader(payload + strings.Repeat(" ", 2048))}).Run([]string{"check", "--hook", "check-secrets", "--cursor-hook"})
+	assertCursorCheckDecision(t, stdout.Bytes(), err, true)
 }

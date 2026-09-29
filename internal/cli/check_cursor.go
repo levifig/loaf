@@ -33,6 +33,10 @@ func (r Runner) runCursorCheck(args []string, out io.Writer, runtimeRoot string)
 	// All enforcement payloads must be inspectable. A broken pipe or malformed
 	// payload must never be mistaken for an empty, benign tool call.
 	context, err := r.parseCheckContext(true)
+	return r.runCursorCheckContext(options, context, err, out, runtimeRoot)
+}
+
+func (r Runner) runCursorCheckContext(options checkOptions, context checkHookContext, err error, out io.Writer, runtimeRoot string) error {
 	if err == nil && checkContextToolName(context) == "" {
 		err = fmt.Errorf("Cursor hook payload is missing tool_name")
 	}
@@ -62,18 +66,11 @@ func (r Runner) runCursorCheck(args []string, out io.Writer, runtimeRoot string)
 	}
 	context.ToolName = cursorCheckToolName(context.ToolName)
 	context.Tool.Name = cursorCheckToolName(context.Tool.Name)
-	// The native envelope has been consumed; evaluate the neutral check once.
-	context.HookEventName = ""
-	input, err := json.Marshal(context)
-	if err != nil {
-		return err
-	}
-	r.Stdin = bytes.NewReader(input)
-	if !options.jsonOutput {
-		nativeArgs = append(nativeArgs, "--json")
-	}
+	// Evaluate the normalized input directly; keep the original read limit on
+	// the incoming bytes rather than on a re-serialized copy of the payload.
+	options.jsonOutput = true
 	var buffer bytes.Buffer
-	err = r.runCheck(nativeArgs, &buffer, runtimeRoot)
+	err = r.runCheckContext(options, context, nil, &buffer, runtimeRoot)
 	var result checkJSONOutput
 	if decodeErr := json.Unmarshal(buffer.Bytes(), &result); decodeErr != nil {
 		message := "Loaf check returned an unreadable result"
