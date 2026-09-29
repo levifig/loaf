@@ -548,6 +548,10 @@ func nativeCursorHookEntry(hook nativeBuildHook, defaultTimeout int, includeMatc
 	}
 	if includeMatcher && hook.matcher != "" {
 		entry.Matcher = hook.matcher
+		// Only the native check adapter has proven Cursor input/output semantics.
+		if strings.HasPrefix(nativeCursorHookCommand(hook), "loaf check --hook ") {
+			entry.Matcher = strings.NewReplacer("Bash", "Shell", "Edit", "StrReplace").Replace(hook.matcher)
+		}
 	}
 	if hook.failClosed {
 		entry.FailClosed = true
@@ -573,13 +577,19 @@ func nativeCursorHookCommand(hook nativeBuildHook) string {
 		return `cat "$HOME/.cursor/hooks/` + hook.instruction + `"`
 	}
 	if hook.command != "" {
-		if strings.HasPrefix(hook.command, "loaf check --hook ") && !slices.Contains(strings.Fields(hook.command), "--json") {
-			return hook.command + " --json"
+		if strings.HasPrefix(hook.command, "loaf check --hook ") {
+			command := hook.command
+			for _, flag := range []string{"--json", "--cursor-hook"} {
+				if !slices.Contains(strings.Fields(command), flag) {
+					command += " " + flag
+				}
+			}
+			return command
 		}
 		return hook.command
 	}
 	if nativeBuildCursorBinaryPathHooks[hook.id] {
-		return "loaf check --hook " + hook.id + nativeCheckAdvisorySuffix(hook) + " --json"
+		return "loaf check --hook " + hook.id + nativeCheckAdvisorySuffix(hook) + " --json --cursor-hook"
 	}
 	script := strings.TrimPrefix(hook.script, "hooks/")
 	base := "$HOME/.cursor/hooks"

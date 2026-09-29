@@ -10,9 +10,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Edit|Write|Bash",
+        "matcher": "StrReplace|Write|Shell",
         "failClosed": true,
-        "command": "loaf check --hook artifact-body-write --json"
+        "command": "loaf check --hook artifact-body-write --json --cursor-hook"
       },
       "signatures": [
         [
@@ -20,7 +20,8 @@
           "check",
           "--hook",
           "artifact-body-write",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -37,9 +38,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Edit|Write|Bash",
+        "matcher": "StrReplace|Write|Shell",
         "failClosed": true,
-        "command": "loaf check --hook check-secrets --json"
+        "command": "loaf check --hook check-secrets --json --cursor-hook"
       },
       "signatures": [
         [
@@ -47,7 +48,8 @@
           "check",
           "--hook",
           "check-secrets",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -64,9 +66,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 600,
-        "matcher": "Bash",
+        "matcher": "Shell",
         "failClosed": true,
-        "command": "loaf check --hook security-audit --json"
+        "command": "loaf check --hook security-audit --json --cursor-hook"
       },
       "signatures": [
         [
@@ -74,7 +76,8 @@
           "check",
           "--hook",
           "security-audit",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -91,9 +94,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Bash",
+        "matcher": "Shell",
         "failClosed": true,
-        "command": "loaf check --hook validate-infra-safety --json"
+        "command": "loaf check --hook validate-infra-safety --json --cursor-hook"
       },
       "signatures": [
         [
@@ -101,7 +104,8 @@
           "check",
           "--hook",
           "validate-infra-safety",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -118,9 +122,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Bash",
+        "matcher": "Shell",
         "failClosed": true,
-        "command": "loaf check --hook validate-sql-safety --json"
+        "command": "loaf check --hook validate-sql-safety --json --cursor-hook"
       },
       "signatures": [
         [
@@ -128,7 +132,8 @@
           "check",
           "--hook",
           "validate-sql-safety",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -145,9 +150,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Bash",
+        "matcher": "Shell",
         "failClosed": true,
-        "command": "loaf check --hook render-drift --json",
+        "command": "loaf check --hook render-drift --json --cursor-hook",
         "if": "Bash(git push:*)"
       },
       "signatures": [
@@ -156,7 +161,8 @@
           "check",
           "--hook",
           "render-drift",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -173,9 +179,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Bash",
+        "matcher": "Shell",
         "failClosed": true,
-        "command": "loaf check --hook ephemeral-provenance --json",
+        "command": "loaf check --hook ephemeral-provenance --json --cursor-hook",
         "if": "Bash(git push:*)"
       },
       "signatures": [
@@ -184,7 +190,8 @@
           "check",
           "--hook",
           "ephemeral-provenance",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -201,9 +208,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Bash",
+        "matcher": "Shell",
         "failClosed": true,
-        "command": "loaf check --hook artifact-names --json",
+        "command": "loaf check --hook artifact-names --json --cursor-hook",
         "if": "Bash(git commit:*)"
       },
       "signatures": [
@@ -212,7 +219,8 @@
           "check",
           "--hook",
           "artifact-names",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -229,9 +237,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 10,
-        "matcher": "Bash",
+        "matcher": "Shell",
         "failClosed": true,
-        "command": "loaf check --hook github-account --json"
+        "command": "loaf check --hook github-account --json --cursor-hook"
       },
       "signatures": [
         [
@@ -239,7 +247,8 @@
           "check",
           "--hook",
           "github-account",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -256,8 +265,8 @@
       "template": {
         "loaf-managed": true,
         "timeout": 60,
-        "matcher": "Bash",
-        "command": "loaf check --hook validate-push --advisory --json",
+        "matcher": "Shell",
+        "command": "loaf check --hook validate-push --advisory --json --cursor-hook",
         "if": "Bash(git push:*)"
       },
       "signatures": [
@@ -267,7 +276,8 @@
           "--hook",
           "validate-push",
           "--advisory",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -284,8 +294,8 @@
       "template": {
         "loaf-managed": true,
         "timeout": 5,
-        "matcher": "Bash",
-        "command": "loaf check --hook workflow-pre-pr --advisory --json",
+        "matcher": "Shell",
+        "command": "loaf check --hook workflow-pre-pr --advisory --json --cursor-hook",
         "if": "Bash(gh pr create:*)"
       },
       "signatures": [
@@ -295,7 +305,8 @@
           "--hook",
           "workflow-pre-pr",
           "--advisory",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -358,9 +369,9 @@
       "template": {
         "loaf-managed": true,
         "timeout": 30,
-        "matcher": "Bash",
+        "matcher": "Shell",
         "failClosed": true,
-        "command": "loaf check --hook validate-commit --json",
+        "command": "loaf check --hook validate-commit --json --cursor-hook",
         "if": "Bash(git commit:*)"
       },
       "signatures": [
@@ -369,7 +380,8 @@
           "check",
           "--hook",
           "validate-commit",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ]
       ],
       "stems": [
@@ -386,8 +398,8 @@
       "template": {
         "loaf-managed": true,
         "timeout": 5,
-        "matcher": "Edit|Write",
-        "command": "loaf check --hook kb-staleness-nudge --json"
+        "matcher": "StrReplace|Write",
+        "command": "loaf check --hook kb-staleness-nudge --json --cursor-hook"
       },
       "signatures": [
         [
@@ -395,7 +407,8 @@
           "check",
           "--hook",
           "kb-staleness-nudge",
-          "--json"
+          "--json",
+          "--cursor-hook"
         ],
         [
           "bash",

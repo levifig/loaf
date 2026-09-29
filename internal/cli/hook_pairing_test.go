@@ -12,9 +12,9 @@ func TestHookPairingMatchesTheCurrentDesiredTemplate(t *testing.T) {
 	entry := map[string]any{
 		loafHookMarker: true,
 		"timeout":      30,
-		"matcher":      "Edit|Write|Bash",
+		"matcher":      "StrReplace|Write|Shell",
 		"failClosed":   true,
-		"command":      "loaf check --hook check-secrets --json",
+		"command":      "loaf check --hook check-secrets --json --cursor-hook",
 	}
 
 	outcome, err := pairHookEventEntries(recognition, "preToolUse", []map[string]any{entry})

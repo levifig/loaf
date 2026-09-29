@@ -24,7 +24,9 @@ type checkOptions struct {
 }
 
 type checkHookContext struct {
-	Tool struct {
+	HookEventName string `json:"hook_event_name,omitempty"`
+	Cwd           string `json:"cwd,omitempty"`
+	Tool          struct {
 		Name  string         `json:"name"`
 		Input checkHookInput `json:"input"`
 	} `json:"tool"`
@@ -109,6 +111,9 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		return r.runCheckOperator(args[0], args[1:], out, runtimeRoot)
 	}
+	if hasFlag(args, "--cursor-hook") {
+		return r.runCursorCheck(args, out, runtimeRoot)
+	}
 	options, err := parseCheckArgs(args)
 	if err != nil {
 		return err
@@ -123,6 +128,17 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 		return r.runKbStalenessNudge(out, runtimeRoot, options)
 	}
 	context, payloadErr := r.readCheckContextFor(options.hook)
+	// Older Cursor installations invoke check without a transport flag. Its
+	// lowercase native event identifies that caller without changing manual
+	// CLI output or the other harnesses' capitalized event contracts.
+	if payloadErr == nil && context.HookEventName == "preToolUse" {
+		input, err := json.Marshal(context)
+		if err != nil {
+			return err
+		}
+		r.Stdin = bytes.NewReader(input)
+		return r.runCursorCheck(args, out, runtimeRoot)
+	}
 	var result checkResult
 	if payloadErr != nil {
 		result = blockedCheckResult(payloadErr.Error())
@@ -170,7 +186,7 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 }
 
 func writeCheckHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf check --hook <id> [--advisory] [--json]")
+	fmt.Fprintln(out, "Usage: loaf check --hook <id> [--advisory] [--json] [--cursor-hook]")
 	fmt.Fprintln(out, "       loaf check <subcommand> [<path>|-] [--json]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Run one registered hook check, or a standalone validator.")
@@ -184,6 +200,7 @@ func writeCheckHelp(out io.Writer) {
 	fmt.Fprintln(out, "  --hook      Hook id: "+strings.Join(sortedKeys(validCheckHooks), ", "))
 	fmt.Fprintln(out, "  --advisory  Surface findings without blocking: always exit 0, even when the check fails")
 	fmt.Fprintln(out, "  --json      Output hook result, pass/block status, exit code, warnings, errors, and findings as JSON")
+	fmt.Fprintln(out, "  --cursor-hook  Emit native Cursor permission JSON and normalize Cursor tool input")
 	fmt.Fprintln(out, "  -h, --help  Show help")
 }
 

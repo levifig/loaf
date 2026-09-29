@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+### Fixed
+
+- Return native Cursor permission JSON from check hooks, inspect `Shell` and `StrReplace` inputs in the payload repository, and preserve security denials when continuity state is unavailable ([#333](https://github.com/levifig/loaf/issues/333)).
+
 ## [0.6.0-rc.2] - 2026-09-24
 
 This prerelease refreshes Amp and OpenCode hooks and lets current Claude Code sessions use root `AGENTS.md` directly. It provides updated release bytes for pinned consumer-project dogfooding; private continuity sync and attach are still outside the Orb bootstrap, and this is not a stable release.
