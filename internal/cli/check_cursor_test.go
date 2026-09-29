@@ -126,7 +126,7 @@ func TestCursorChecksDoNotDependOnContinuityDatabase(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, hook := range hooks {
-				if hook.section != "pre-tool" || hook.instruction != "" || hook.typeName == "prompt" {
+				if (hook.section != "pre-tool" && hook.section != "post-tool") || hook.instruction != "" || hook.typeName == "prompt" {
 					continue
 				}
 				var stdout bytes.Buffer
@@ -204,7 +204,24 @@ func TestCursorArtifactNamesAllowsRepairCommands(t *testing.T) {
 		}
 	}
 	for _, explicit := range []bool{false, true} {
-		for _, command := range []string{"pwd", "git status", "git mv docs/changes/demo/research/pr-12-notes.md docs/changes/demo/research/notes.md", "git rm --cached docs/changes/demo/research/pr-12-notes.md", "echo git commit", "git commit -m notes"} {
+		for _, tc := range []struct {
+			command string
+			deny    bool
+		}{
+			{"pwd", false},
+			{"git status", false},
+			{"git mv docs/changes/demo/research/pr-12-notes.md docs/changes/demo/research/notes.md", false},
+			{"git rm --cached docs/changes/demo/research/pr-12-notes.md", false},
+			{"echo git commit", false},
+			{`echo "notes; git commit"`, false},
+			{"git config example.key commit", false},
+			{"git commit -m notes", true},
+			{"git add CHANGELOG.md && git commit -m notes", true},
+			{"FOO=bar git commit -m notes", true},
+			{"git -c commit.gpgsign=true commit -m notes", true},
+			{"git -C . commit -m notes", true},
+		} {
+			command := tc.command
 			t.Run(fmt.Sprintf("explicit=%t/%s", explicit, command), func(t *testing.T) {
 				payload, err := json.Marshal(map[string]any{"hook_event_name": "preToolUse", "cwd": root, "tool_name": "Shell", "tool_input": map[string]string{"command": command}})
 				if err != nil {
@@ -216,7 +233,7 @@ func TestCursorArtifactNamesAllowsRepairCommands(t *testing.T) {
 				}
 				var stdout bytes.Buffer
 				err = (Runner{WorkingDir: t.TempDir(), Stdout: &stdout, Stdin: bytes.NewReader(payload)}).Run(args)
-				assertCursorCheckDecision(t, stdout.Bytes(), err, strings.HasPrefix(command, "git commit"))
+				assertCursorCheckDecision(t, stdout.Bytes(), err, tc.deny)
 			})
 		}
 	}
@@ -248,4 +265,62 @@ func TestCursorCheckKeepsOriginalPayloadSizeBoundary(t *testing.T) {
 	var stdout bytes.Buffer
 	err := (Runner{WorkingDir: t.TempDir(), Stdout: &stdout, Stdin: strings.NewReader(payload + strings.Repeat(" ", 2048))}).Run([]string{"check", "--hook", "check-secrets", "--cursor-hook"})
 	assertCursorCheckDecision(t, stdout.Bytes(), err, true)
+}
+
+func TestCursorKbNudgeIsAdvisoryAndPreservesNativePayload(t *testing.T) {
+	root := writeKbCheckFixture(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("TOOL_INPUT", "")
+	for attempt, conversation := range []string{"one", "one", "two"} {
+		payload, err := json.Marshal(map[string]any{"hook_event_name": "postToolUse", "conversation_id": conversation, "cwd": root, "tool_name": "Write", "tool_input": map[string]string{"file_path": "src/nested/main.go"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var stdout bytes.Buffer
+		err = (Runner{WorkingDir: t.TempDir(), Stdin: bytes.NewReader(payload), Stdout: &stdout}).Run([]string{"check", "--hook", "kb-staleness-nudge", "--json", "--cursor-hook"})
+		assertCursorCheckDecision(t, stdout.Bytes(), err, false)
+		var result cursorCheckOutput
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatal(err)
+		}
+		wantWarnings := 1
+		if attempt == 1 {
+			wantWarnings = 0
+		}
+		if len(result.Warnings) != wantWarnings {
+			t.Fatalf("warnings = %v, want %d", result.Warnings, wantWarnings)
+		}
+		if wantWarnings > 0 {
+			if !strings.Contains(result.AgentMessage, "docs/knowledge/go.md") {
+				t.Fatalf("missing repository knowledge warning: %s", stdout.Bytes())
+			}
+		}
+	}
+	for _, payload := range []string{"{", "", `{"cwd":"relative"}`} {
+		var stdout bytes.Buffer
+		err := (Runner{WorkingDir: t.TempDir(), Stdin: strings.NewReader(payload), Stdout: &stdout}).Run([]string{"check", "--hook", "kb-staleness-nudge", "--cursor-hook"})
+		assertCursorCheckDecision(t, stdout.Bytes(), err, false)
+	}
+}
+
+func TestArtifactNamesChecksCompoundCommandsAcrossHarnesses(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "docs", "research", "pr-12-notes.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("notes"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"init", "-q"}, {"add", "."}} {
+		if output, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, output)
+		}
+	}
+	var stdout bytes.Buffer
+	err := (Runner{WorkingDir: root, Stdin: strings.NewReader(`{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git add . && git commit -m notes"}}`), Stdout: &stdout}).Run([]string{"check", "--hook", "artifact-names", "--json"})
+	var result checkJSONOutput
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &result); decodeErr != nil || !result.Blocked || err == nil {
+		t.Fatalf("compound commit must deny: %s; %v; %v", stdout.Bytes(), err, decodeErr)
+	}
 }

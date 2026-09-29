@@ -769,6 +769,7 @@ func writeCapablePathLoaf(t *testing.T, root string) {
 		"  if [ \"$2\" = \"--help\" ] || [ \"$2\" = \"-h\" ]; then\n" +
 		"    echo \"Usage: loaf check --hook <id>\"\n" +
 		"    echo \"  --hook      Hook id: artifact-body-write, check-secrets, kb-staleness-nudge, validate-commit, validate-infra-safety, validate-sql-safety\"\n" +
+		"    echo \"  --json --advisory --cursor-hook\"\n" +
 		"    exit 0\n" +
 		"  fi\n" +
 		"  if [ \"$2\" = \"--hook\" ]; then\n" +

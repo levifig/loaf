@@ -401,3 +401,38 @@ func TestPathLoafProbeWaitDelayBoundsPostCancelIO(t *testing.T) {
 		t.Fatalf("budget %s + WaitDelay %s must stay under the 3s inherited-pipe ceiling", pathLoafProbeBudget, pathLoafProbeWaitDelay)
 	}
 }
+
+func TestScopedCursorUpgradeRejectsRuntimeMissingTransportBeforeMutation(t *testing.T) {
+	root, home := setupScopedUpgradeFixture(t)
+	sources := scopedCursorHookSources()
+	sources[1].command += " --json --cursor-hook"
+	sources[1].template.(map[string]any)["command"] = sources[1].command
+	installTestHookDistribution(t, root, "cursor", sources...)
+	path := filepath.Join(root, "path-bin", "loaf")
+	body := readBuildFileString(t, path)
+	capableBody := body
+	body = strings.ReplaceAll(body, "--cursor-hook", "--unsupported-transport")
+	writeFile(t, path, body)
+	if err := os.Chmod(path, 0755); err != nil {
+		t.Fatal(err)
+	}
+	before := hashScopedSurfaces(t, home)
+	var stdout strings.Builder
+	err := (Runner{WorkingDir: root, Executable: distributionFixtureExecutable(root), Stdout: &stdout}).Run([]string{"upgrade", "--select", "cursor/hook:preToolUse/validate-infra-safety"})
+	if err == nil || !strings.Contains(err.Error(), "--cursor-hook") || !strings.Contains(err.Error(), "brew upgrade loaf") {
+		t.Fatalf("transport-incompatible runtime accepted or wrong guidance: %v; %s", err, stdout.String())
+	}
+	if before != hashScopedSurfaces(t, home) {
+		t.Fatal("transport preflight failure changed installed surfaces")
+	}
+	writeFile(t, path, capableBody)
+	if err := os.Chmod(path, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := (Runner{WorkingDir: root, Executable: distributionFixtureExecutable(root), Stdout: &stdout}).Run([]string{"upgrade", "--select", "cursor/hook:preToolUse/validate-infra-safety"}); err != nil {
+		t.Fatalf("capable runtime rejected: %v", err)
+	}
+	if before == hashScopedSurfaces(t, home) {
+		t.Fatal("capable runtime did not apply the selected hook")
+	}
+}

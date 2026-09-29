@@ -18,9 +18,10 @@ import (
 )
 
 type checkOptions struct {
-	hook       string
-	jsonOutput bool
-	advisory   bool
+	hook         string
+	jsonOutput   bool
+	advisory     bool
+	cursorOutput bool
 }
 
 type checkHookContext struct {

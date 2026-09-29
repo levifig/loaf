@@ -30,6 +30,10 @@ func (r Runner) runCursorCheck(args []string, out io.Writer, runtimeRoot string)
 	if err != nil {
 		return writeCursorCheck(out, checkJSONOutput{Errors: []string{err.Error()}, Blocked: true}, false)
 	}
+	if options.hook == "kb-staleness-nudge" {
+		options.cursorOutput = true
+		return r.runKbStalenessNudge(out, runtimeRoot, options)
+	}
 	// All enforcement payloads must be inspectable. A broken pipe or malformed
 	// payload must never be mistaken for an empty, benign tool call.
 	context, err := r.parseCheckContext(true)

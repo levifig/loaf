@@ -68,7 +68,29 @@ var artifactNameSkipDirs = map[string]bool{
 	"vendor":       true,
 }
 
-var gitCommitCommandRE = regexp.MustCompile(`^git\s+commit(?:\s|$)`)
+func commandRunsGitCommit(command string) bool {
+	for _, segment := range splitSafetySegments(command, true) {
+		words := safetySkipWrappers(safetyCommandWords(segment))
+		if len(words) < 2 || safetyCommandName(words[0]) != "git" {
+			continue
+		}
+		for i := 1; i < len(words); i++ {
+			switch words[i] {
+			case "-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env":
+				i++
+				continue
+			}
+			if strings.HasPrefix(words[i], "-") {
+				continue
+			}
+			if words[i] == "commit" {
+				return true
+			}
+			break
+		}
+	}
+	return false
+}
 
 func runNativeArtifactNames(context checkHookContext, runtimeRoot string) checkResult {
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
@@ -77,7 +99,7 @@ func runNativeArtifactNames(context checkHookContext, runtimeRoot string) checkR
 	tool := checkContextToolName(context)
 	command := strings.TrimSpace(checkContextCommand(context))
 	if tool != "" || command != "" {
-		if tool != "Bash" || !gitCommitCommandRE.MatchString(command) {
+		if tool != "Bash" || !commandRunsGitCommit(command) {
 			return result
 		}
 	}
