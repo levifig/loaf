@@ -1,5 +1,7 @@
 # Journal Render Template
 
+Before the first journal write, select the form in [Journal Commands](#journal-commands). Use it for every logging example below, including invocation and wrap entries.
+
 This is the render template and entry-format reference for the project journal
 stored in SQLite. The journal is the only session-related structure: entries are
 project-scoped events, each tagged with an opaque harness id that correlates one
@@ -48,6 +50,14 @@ not create or edit journal markdown as the source of truth — use
    durable ordering source.
 5. **No manual markdown edits:** Rendered markdown is a projection. Persist new
    facts with `loaf journal log`.
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## CLI Commands
 

@@ -17,6 +17,7 @@ Move open tracker-owned work once, then let the destination tracker remain canon
 - Critical Rules
 - Verification
 - Quick Reference
+- Journal Commands
 - Workflow
 - Mapping Policy
 - Receipt
@@ -26,6 +27,8 @@ Move open tracker-owned work once, then let the destination tracker remain canon
 ---
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 1. **Log invocation first** — `loaf journal log "skill(migrate-project): exporting open local issues to <provider and destination>"` before any other action.
 2. **Export through the public boundary** — run `loaf migrate tracker-export --json`. Do not read the SQLite database directly or reconstruct issues from private continuity artifacts.
@@ -75,6 +78,14 @@ loaf migrate tracker-export --json
 | Harness | First acceptance path | Remote requirement |
 |---------|-----------------------|--------------------|
 | Amp | `amp --no-tui` on the local project | No Loaf server or Orb |
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Workflow
 

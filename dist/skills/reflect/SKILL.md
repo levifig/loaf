@@ -17,6 +17,7 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 - Critical Rules
 - Verification
 - Quick Reference
+- Journal Commands
 - Topics
 - Purpose
 - When to Reflect
@@ -28,6 +29,8 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 ---
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - **Evidence-based** -- separate observed results, inferred lessons, and proposed changes; a merged patch is not proof of successful use or an accepted architectural direction
 - **Dogfood before generalization** -- compare the rideable increment's real use and learning sought with what actually happened before proposing more breadth or abstraction
@@ -59,6 +62,14 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 | Technical constraints / patterns / decision updates | Owning architecture topic or overview, following the architecture skill |
 | Potential exceptional ADR or conflict with an agreed constraint | Architecture evaluates the choice and record; reflection supplies evidence |
 | Workflow learning / local implementation insight | Owning skill or nearby code/tests/journal; do not force it into architecture |
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

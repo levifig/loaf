@@ -21,6 +21,7 @@ Deep discovery for personas, market landscape, and problem space.
 - Mode Detection
 - Process
 - Guardrails
+- Journal Commands
 - Related Skills
 
 **Input:** $ARGUMENTS
@@ -28,6 +29,8 @@ Deep discovery for personas, market landscape, and problem space.
 ---
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - **Interview deeply** -- strategy is domain knowledge extraction, not guesswork
 - **Align with VISION** -- strategy serves the north star, never contradicts it
@@ -113,6 +116,14 @@ After approval: create (if new) or merge content. Announce updated sections.
 6. **Keep it current** -- outdated strategy is worse than none
 
 ---
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Related Skills
 

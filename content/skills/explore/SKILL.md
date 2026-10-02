@@ -32,9 +32,12 @@ Divergent inquiry with durable continuity. An Exploration is a relational identi
 - Resumption
 - Parking a direction
 - Techniques
+- Journal Commands
 - Related Skills
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - Log invocation first: `loaf journal log "skill(explore): <topic or exploration ref>"`
 - You choose what an Exploration means and when to checkpoint; the CLI validates and performs the operation you request. Never expect the CLI to classify or decide for you.
@@ -99,6 +102,14 @@ An Exploration is never paused or closed — it has no lifecycle to transition. 
 ## Techniques
 
 Brainstorm's full divergent stance lives inside Explore: generate options before judging, connect to VISION/STRATEGY context, document discarded options, set boundaries on exploration time. Scout, research, prototype, and spike remain subordinate techniques invoked from whatever stage needs them — none of them owns lifecycle.
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Related Skills
 

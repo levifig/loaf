@@ -26,10 +26,13 @@ An optional checkpoint before the conversation ends — the conscious review of 
 - Interactive Steps
 - Wrap Entry
 - Suggests Next
+- Journal Commands
 - Related Skills
 - Report Format
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - Log `skill(wrap): <context>` to the project journal as the first action (e.g. "end-of-session summary" or "user requested wrap-up")
 - **Use your harness's structured question tool (if it has one) for all decisions and confirmations** — commit, push, stash, or skip choices. Never use inline text questions for permission prompts
@@ -129,6 +132,14 @@ When called near ship or release, wrap runs the same steps but keeps PR landing 
 ## Suggests Next
 
 After the wrap-up report, suggest housekeeping if it wasn't run this session and artifacts need attention. When sparks or open ideas need a Backlog move or problem discovery, point at triage rather than treating explore or brainstorm as the next front-door workflow. Concrete actionable follow-ups must already have verified native issue links or explicit unfiled blockers. Session-next may name an unblocked Todo item; wrap does not pick tomorrow's build from Backlog.
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Related Skills
 

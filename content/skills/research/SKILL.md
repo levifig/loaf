@@ -16,6 +16,7 @@ Patterns for zooming out, investigating topics, and evolving project direction.
 - Critical Rules
 - Verification
 - Quick Reference
+- Journal Commands
 - Topics
 - Input Parsing
 - Confidence Hierarchy
@@ -25,6 +26,8 @@ Patterns for zooming out, investigating topics, and evolving project direction.
 **Input:** $ARGUMENTS
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 ### Always
 - Interview before researching
@@ -56,6 +59,14 @@ Patterns for zooming out, investigating topics, and evolving project direction.
 | Topic or question | Topic Investigation |
 | "let's brainstorm" / "ideas for X" | Redirect — user entry intent belongs to pitch (generative stance is an agent technique via explore/brainstorm, not this skill's front door) |
 | "should we change direction?" / "update VISION" | Vision Evolution |
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

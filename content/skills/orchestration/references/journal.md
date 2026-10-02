@@ -10,7 +10,7 @@ interleave rows with different tags, which is correct by construction.
 
 - Core Model
 - Logging Protocol
-- Codex Auto Mode
+- Journal Commands
 - Wrap: Optional Checkpoint
 - Derived Continuity
 - Recovery
@@ -18,6 +18,8 @@ interleave rows with different tags, which is correct by construction.
 - Anti-Patterns
 
 ## Core Model
+
+Before the first journal write, select the form in [Journal Commands](#journal-commands) and use it for every logging example below, including invocation and wrap entries.
 
 1. Journaling is continuous. There is no start step and no "active session"
    precondition. A skill's first action is to log itself:
@@ -46,9 +48,15 @@ Log durable facts, not thoughts. Reference issue IDs, report IDs, and
 commit refs rather than pasting long prose. The journal should let another agent
 resume without reading the whole conversation.
 
-## Codex Auto Mode
+## Journal Commands
 
-When the user has explicitly enabled Loaf's managed Codex basic-command policy, use `loaf journal log --execpolicy-safe "decision(scope): chose X because Y"` on PATH. No Loaf block in global `AGENTS.md` is required. Do not substitute an absolute executable pin or a shell/environment wrapper. The installed Codex rule authorizes only explicitly classified basic Loaf command leaves outside the workspace sandbox, including this hardened journal writer and approved readers; ordinary `journal log`, body/file-consuming leaves, and other path-taking operator-gated leaves remain operator-gated, and the policy does not authorize a general Loaf data-directory writable root. Other harness adapters are not implied and continue to use their own ordinary surfaces.
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+When the user has explicitly enabled Loaf's managed Codex basic-command policy, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation and wrap logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
+
+No Loaf block in global `AGENTS.md` is required. The installed Codex rule authorizes only explicitly classified basic Loaf command leaves outside the workspace sandbox, including this hardened journal writer and approved readers; ordinary `journal log`, body/file-consuming leaves, and other path-taking operator-gated leaves remain operator-gated, and the policy does not authorize a general Loaf data-directory writable root. Other harness adapters are not implied and continue to use their own ordinary surfaces.
 
 Enable the capability once with `loaf install --to codex --codex-basic-commands`. Installation is an explicit trust decision. If the rules are absent, stale, locally modified, or conflict with user-owned `loaf.rules`, Loaf reports the condition instead of overwriting it or asking for full system access.
 

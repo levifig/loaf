@@ -13,9 +13,12 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 - Verification
 - Quick Reference
 - Harness Integration
+- Journal Commands
 - Topics
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - As the first action, run `loaf journal log "skill(implement): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
 - Before substantive edits, including regression tests, load the loaf-reference skill's Flow Semantics and apply its native issue prerequisite and narrow exceptions. For an explicit concrete implementation request without an issue ID, use project-management to find or create the covering contract and verify its scope, criteria, and selected state without asking for the same selection again.
@@ -65,6 +68,14 @@ Read the live canonical work contract through [`project-management/v1`](../proje
 ### Amp
 
 When using native Amp Low, Medium, High, or Ultra, the selected main mode may implement directly in the current thread, or use ordinary optional delegation when the harness exposes it, governing instructions allow it, and the task is independently bounded. Tracker prerequisite, tests, and acceptance remain with the main agent. Native Oracle remains the read-only review and advice path; the Review button remains unchanged.
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

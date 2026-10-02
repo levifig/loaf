@@ -19,9 +19,12 @@ Investigate enough to support a decision, then stop. Research returns through th
 - Critical Rules
 - Verification
 - Quick Reference
+- Journal Commands
 - Topics
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - As the first action, run `loaf journal log "skill(research): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when research can safely proceed.
 - Establish the decision, scope, time bound, and needed confidence before broad investigation. Ask one question at a time when missing context materially changes the research.
@@ -49,6 +52,14 @@ Investigate enough to support a decision, then stop. Research returns through th
 | Current project overview needed beyond this response | [State assessment](templates/state-assessment.md) |
 | Durable evidence, options, or audit trail | [Research report](templates/research-report.md) |
 | Parallel or specialist investigation | Use orchestration; research still owns the research template |
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 
