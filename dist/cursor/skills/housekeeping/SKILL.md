@@ -18,9 +18,12 @@ Remove noise without erasing useful knowledge or inventing lifecycle state. The 
 - Verification
 - Quick Reference
 - Report Review
+- Journal Commands
 - Topics
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - As the first action, run `loaf journal log "skill(housekeeping): <scope or trigger>"` against the current private local journal. If the write fails, report the failure and continue only when cleanup can safely proceed.
 - Review every report individually. Never sample, infer one report's value from another, or recommend a directory-wide action without reading each file.
@@ -61,6 +64,14 @@ For every file matching `.agents/reports/*.md`, recommend exactly one of these d
 4. **Move the report to `docs/reports/`.** The report itself has perennial value, such as an audit, durable benchmark, incident analysis, or evidence record readers will revisit.
 
 Reports have no universal status, identifier, database row, or archive directory. Age alone does not decide value. Housekeeping proposes; the user approves; only then may the agent apply the exact disposition.
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

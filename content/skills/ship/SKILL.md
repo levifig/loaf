@@ -19,6 +19,7 @@ Review, verify, and land one PR. Ship's review is the quality gate for everythin
 - Critical Rules
 - Verification
 - Quick Reference
+- Journal Commands
 - Topics
 - Context Detection
 - Step 1: PR Readiness
@@ -36,6 +37,8 @@ Review, verify, and land one PR. Ship's review is the quality gate for everythin
 ---
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 1. **Log invocation first** — `loaf journal log "skill(ship): shipping <ref or PR or current branch>"` before doing anything else. After merge, log `loaf journal log "decision(ship): PR #N landed via squash merge; <ref> done"`.
 2. **Rigor is load-bearing** — this review is the only quality gate. Releases cut from landed work; they do not re-check. If the review is thin, the next cut still publishes it.
@@ -77,6 +80,14 @@ Review, verify, and land one PR. Ship's review is the quality gate for everythin
 | Squash Merge | user approves body text | Yes |
 | Cleanup | issue marked done, started worktree stopped, base pulled, children retargeted and rebased, branch deletion handled | Yes when a child PR exists; done + stop always |
 | Release Suggestion | enough landed work may justify a later cut | No |
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

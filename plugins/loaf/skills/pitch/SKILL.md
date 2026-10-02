@@ -21,9 +21,12 @@ Discover the problem with the user, then render the [problem narrative](template
 - Critical Rules
 - Verification
 - Quick Reference
+- Journal Commands
 - Topics
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - As the first action, run `loaf journal log "skill(pitch): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
 - Ask one consequential question at a time. Include a recommendation when choices have meaningful tradeoffs.
@@ -54,6 +57,14 @@ Discover the problem with the user, then render the [problem narrative](template
 | Conflicting goals | Which outcome wins, and why? |
 | Existing native reference | What does the current record already establish? |
 | Component-layer sequence | What is the first complete journey a real operator could use? |
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

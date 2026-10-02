@@ -12,9 +12,12 @@ Coordinate agents around the same native reference and work contract. The main a
 - Critical Rules
 - Verification
 - Quick Reference
+- Journal Commands
 - Topics
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - As the first action, run `loaf journal log "skill(orchestration): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
 - Re-read the live work contract through [`project-management/v1`](../project-management/SKILL.md) before dividing work or accepting a result.
@@ -52,6 +55,14 @@ Coordinate agents around the same native reference and work contract. The main a
 | Tracker operation | Main agent or optional connector-only project manager |
 | Immediate bounded result | Return through the harness only |
 | Result needed after this response | Persist with the matching orchestration template |
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

@@ -16,6 +16,7 @@ First-contact project setup: detect state, interview the builder, populate proje
 ## Contents
 - Critical Rules
 - Verification
+- Journal Commands
 - Topics
 - Purpose
 - Input Parsing
@@ -36,6 +37,8 @@ Series-prep lives under Finalization (phase between Knowledge Base Scaffolding a
 ---
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - **Detect, don't ask** -- auto-classify project mode (brownfield/greenfield+brief/greenfield+empty), confirm briefly, let the user correct
 - **Never overwrite existing documents** without explicit confirmation -- read first, note what exists, ask before changing
@@ -63,6 +66,14 @@ Series-prep lives under Finalization (phase between Knowledge Base Scaffolding a
 - Key decisions and interview outcomes were logged with `loaf journal log` and are readable with `loaf journal recent`
 
 ---
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

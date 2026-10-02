@@ -22,6 +22,7 @@ Human problem-discovery ceremony. Narrows sparks and ideas into a framed problem
 - Quick Reference
 - Process
 - Related Skills
+- Journal Commands
 - Topics
 
 **Input:** $ARGUMENTS
@@ -29,6 +30,8 @@ Human problem-discovery ceremony. Narrows sparks and ideas into a framed problem
 ---
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 1. **Agents never initiate a pitch.** This ceremony is human-invoked only. On Claude Code the sidecar sets `disable-model-invocation: true`; on every target this rule binds behaviorally. Agent legwork *inside* a human-opened pitch (competitive scans, file writes the skill directs) is fine — opening one is not.
 2. **Log invocation first** — `loaf journal log "skill(pitch): <idea, problem, spark, or intake item>"` before interviewing.
@@ -238,6 +241,14 @@ The journal line is mechanical; the human-facing close is the closing ceremony i
 - **explore** — agent-side technique when pitch finds the direction still undecided
 - **idea** — quick capture without ceremony; not a substitute for pitch
 - **research** — patterns the researcher subagent follows for landscape scans
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

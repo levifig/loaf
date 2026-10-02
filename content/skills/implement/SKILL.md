@@ -27,6 +27,7 @@ You are the coordinator. Work units are provider-qualified authority refs.
 - Decision Tree
 - Startup Checklist
 - Then Execute
+- Journal Commands
 - Topics
 - Related Skills
 
@@ -35,6 +36,8 @@ You are the coordinator. Work units are provider-qualified authority refs.
 ---
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 **You are the ORCHESTRATOR, not the implementer.**
 
@@ -253,6 +256,14 @@ When multiple valid approaches exist: spawn council (5-7 agents, odd), present r
    If any signal is present, suggest: *"This produced key decisions. Consider running reflect to update strategic docs."* If none are present, stay silent.
 
 ---
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

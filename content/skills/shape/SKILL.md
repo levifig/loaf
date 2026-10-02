@@ -23,6 +23,7 @@ Prepare a bounded, reviewable issue.
 - Quick Reference
 - Process
 - Related Skills
+- Journal Commands
 - Topics
 
 **Input:** $ARGUMENTS
@@ -30,6 +31,8 @@ Prepare a bounded, reviewable issue.
 ---
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 1. **Log invocation first** — Because shaping is a project-scoped event others may audit, `loaf journal log "skill(shape): shaping <topic> into linear:ENG-42"` before doing anything else. If no issue exists yet, log `skill(shape): shaping <topic>` and add the authority ref in the outcome entry.
 2. **Produces a ref-keyed contract, never a folder** — Because bounded work keys to a provider-qualified authority ref and ships through PRs, the deliverable is the work contract on that ref: problem in the body, definition of done as `loaf issue dod` criteria, an explicit out-of-scope statement in the body, children via `loaf issue new --ref <child-ref> --parent <ref>` when a criterion earns its own DoD. Do not mint a second internal issue row. No plan document is committed. The PR body, if a PR is opened, is `loaf issue render` output.
@@ -200,6 +203,14 @@ The contract lives in SQLite keyed to the authority ref. There is no folder to c
 - **brainstorm** — Agent technique for divergent thinking (route user entry to pitch)
 - **implement** — Starts execution once `loaf issue check` reports the issue shaped; this does not prove implementation completion
 - **reflect** — Updates strategic docs after the shipped work proves what changed
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

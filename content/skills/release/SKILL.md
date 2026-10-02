@@ -16,6 +16,7 @@ Cut a version from work that has already landed.
 - Critical Rules
 - Verification
 - Quick Reference
+- Journal Commands
 - Topics
 - Process
 - Attribution
@@ -28,6 +29,8 @@ Cut a version from work that has already landed.
 ---
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 1. **Log invocation first** — `loaf journal log "skill(release): <what is being cut or suggested>"` before doing anything else.
 2. **Release is not merge** — do not review, approve, or land a PR here. Verification authority is the ship workflow (PR review and CI at merge). If the user is asking to merge, stop and route to ship.
@@ -118,6 +121,14 @@ Both commands need initialized SQLite state (`loaf state init`, or `loaf state m
 Cut does not push the commit or the tag.
 
 ---
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

@@ -28,9 +28,12 @@ Process the intake queue. Triage is the public funnel where captured material me
 - Dispositions
 - Leftover kinds
 - Guardrails
+- Journal Commands
 - Related Skills
 
 ## Critical Rules
+
+Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - Log invocation first: `loaf journal log "skill(triage): <trigger or scope>"`
 - Read the queue with `loaf intake list --json`; it projects every unresolved logical item exactly once with its provenance and exact read command.
@@ -92,6 +95,14 @@ Process the intake queue. Triage is the public funnel where captured material me
 2. **Batch presentation, individual decisions** — show the full queue, then process one item at a time.
 3. **Log everything** — no silent discards, promotions, or conversions.
 4. **Filed is not forgotten** — backlog issues remain on `loaf issue list` and may appear on `loaf issue frontier` until their status changes. Buckets are labels only.
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Related Skills
 

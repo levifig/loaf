@@ -937,6 +937,7 @@ description: >-
 - Operating Rules
 - Journal Context (contract v2)
 - Command Index
+- Journal Commands
 - Topics
 
 The Loaf operating manual for agents: how to discover commands, diagnose project state, and keep configuration current. It teaches reading the CLI, not memorizing it.
@@ -947,6 +948,8 @@ The Loaf operating manual for agents: how to discover commands, diagnose project
 	lines := []string{
 		"",
 		"## Operating Rules",
+		"",
+		"Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.",
 		"",
 		"- Get exact, current syntax live: `loaf --help` lists every command, `loaf <command> --help` details one. This index is a map, not the contract.",
 		"- Prefer `--json` surfaces when diagnosing: `loaf config check --json`, `loaf state doctor --json`. Parse the structured output instead of scraping human-readable text.",
@@ -992,6 +995,14 @@ The Loaf operating manual for agents: how to discover commands, diagnose project
 	}
 
 	lines = append(lines,
+		"",
+		"## Journal Commands",
+		"",
+		"Use the ordinary command `loaf journal log \"type(scope): description\"` with your harness's permissions. Apply only the labeled section for the harness you are running.",
+		"",
+		"### Codex",
+		"",
+		"With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe \"type(scope): description\"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.",
 		"",
 		"## Topics",
 		"",
