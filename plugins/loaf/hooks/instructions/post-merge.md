@@ -2,7 +2,7 @@
 
 # Post-Merge Housekeeping
 
-Complete these steps only after authoritative PR readback confirms the squash merge succeeded. Hook command matching alone does not prove success.
+Complete these steps only after authoritative PR readback confirms the merge succeeded. Hook command matching alone does not prove success.
 
 1. **Confirm the merge and capture identity.** Read the PR's state, merge commit, base branch, head branch, number, URL, and linked native tracker reference. If the PR is not observed as merged, stop without changing tracker or Git state.
 
@@ -13,7 +13,7 @@ Complete these steps only after authoritative PR readback confirms the squash me
    git rev-parse <baseRefName> origin/<baseRefName>
    git status --porcelain
    ```
-   Confirm the refs match and the checkout is clean. Do not stash, reset, rebase, or merge the squashed feature branch into the base to hide a refusal.
+   Confirm the refs match and the checkout is clean. Do not stash, reset, rebase, or merge the feature branch into the base to hide a refusal.
 
 3. **Transition the canonical native tracker record.** Through the selected `project-management/v1` provider skill and harness-native connection, read the provider's valid statuses, perform the authorized completion transition, then read the same native record back. Report unsupported, failed, or indeterminate provider outcomes without creating a local fallback record.
 
@@ -29,12 +29,12 @@ Complete these steps only after authoritative PR readback confirms the squash me
    ```
    git branch -d <headRefName>
    ```
-   A squash merge normally does not make the feature commit an ancestor of the base; if `-d` refuses, retain the branch and report it. Never silently force-delete it with `-D` or delete the remote branch.
+   Squash and rebase merges rewrite the feature commits, so `-d` normally refuses after them; if it does, retain the branch and report it. Never silently force-delete it with `-D` or delete the remote branch.
 
 6. **Log the landing:**
    ```
-   loaf journal log "decision(ship): PR #N landed via squash merge; <native-ref> completed"
-   loaf journal log "commit(<hash>): <squash subject>"
+   loaf journal log "decision(ship): PR #N landed via <strategy> merge; <native-ref> completed"
+   loaf journal log "commit(<hash>): <landed subject>"
    ```
 
 7. **Suggest reflection** if the work produced key decisions or learnings.

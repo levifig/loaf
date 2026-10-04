@@ -558,19 +558,92 @@ func TestReleaseCutGitHubFailureAfterRecordIsWarning(t *testing.T) {
 	}
 }
 
-func TestReleaseSuggestAttributesSquashBodyAlias(t *testing.T) {
-	repo, stateHome := releaseTrackFixture(t)
-	if _, err := runIssue(t, repo, stateHome, "new", "Auth"); err != nil {
-		t.Fatalf("issue new error = %v", err)
+// TestReleaseSuggestAttributesEachMergeStrategy lands the same PR the three
+// ways a project can select in git.merge_strategy and checks which commits end
+// up attributed. Each history also lands one unrelated commit on the base so a
+// wrong grouping cannot pass by attributing everything.
+func TestReleaseSuggestAttributesEachMergeStrategy(t *testing.T) {
+	cases := []struct {
+		strategy     string
+		land         func(t *testing.T, repo, base string)
+		attributed   []string
+		unattributed []string
+	}{
+		{
+			strategy: "squash",
+			land: func(t *testing.T, repo, base string) {
+				gitCLI(t, repo, "commit", "--allow-empty", "-m", "fix: unrelated base work")
+				gitCLI(t, repo, "commit", "--allow-empty", "-m", "feat: add auth (#42)", "-m", "* feat: implement login on loaf-1")
+			},
+			attributed:   []string{"feat: add auth (#42)"},
+			unattributed: []string{"Unrelated base work"},
+		},
+		{
+			// The merge commit names the branch; the branch commits carry no alias
+			// and belong to the PR because the merge introduced them.
+			strategy: "merge",
+			land: func(t *testing.T, repo, base string) {
+				gitCLI(t, repo, "switch", "-c", "feat/loaf-1-auth")
+				gitCLI(t, repo, "commit", "--allow-empty", "-m", "feat: implement login")
+				gitCLI(t, repo, "commit", "--allow-empty", "-m", "test: cover login")
+				gitCLI(t, repo, "switch", base)
+				gitCLI(t, repo, "commit", "--allow-empty", "-m", "fix: unrelated base work")
+				gitCLI(t, repo, "merge", "--no-ff", "-m", "Merge pull request #42 from levifig/feat/loaf-1-auth", "feat/loaf-1-auth")
+			},
+			attributed:   []string{"Merge pull request #42 from levifig/feat/loaf-1-auth", "feat: implement login", "test: cover login"},
+			unattributed: []string{"Unrelated base work"},
+		},
+		{
+			// Rebase replays the branch commits with new hashes and no merge commit,
+			// so nothing groups them: only commits naming the work are attributed.
+			strategy: "rebase",
+			land: func(t *testing.T, repo, base string) {
+				gitCLI(t, repo, "commit", "--allow-empty", "-m", "fix: unrelated base work")
+				gitCLI(t, repo, "commit", "--allow-empty", "-m", "feat: implement login LOAF-1")
+				gitCLI(t, repo, "commit", "--allow-empty", "-m", "test: cover login")
+			},
+			attributed:   []string{"feat: implement login LOAF-1"},
+			unattributed: []string{"Unrelated base work", "Cover login"},
+		},
 	}
-	gitCLI(t, repo, "commit", "--allow-empty", "-m", "feat: add auth (#42)", "-m", "* feat: implement login on loaf-1")
+	for _, tc := range cases {
+		t.Run(tc.strategy, func(t *testing.T) {
+			repo, stateHome := releaseTrackFixture(t)
+			if _, err := runIssue(t, repo, stateHome, "new", "Auth"); err != nil {
+				t.Fatalf("issue new error = %v", err)
+			}
+			base := strings.TrimSpace(gitOutputReleaseTest(t, repo, "branch", "--show-current"))
+			tc.land(t, repo, base)
 
-	out, err := runReleaseTrack(t, repo, stateHome, "suggest")
-	if err != nil {
-		t.Fatalf("release suggest error = %v\n%s", err, out)
-	}
-	if !strings.Contains(out, "LOAF-1 — Auth") {
-		t.Fatalf("squash body alias not attributed:\n%s", out)
+			out, err := runReleaseTrack(t, repo, stateHome, "suggest")
+			if err != nil {
+				t.Fatalf("release suggest error = %v\n%s", err, out)
+			}
+			_, notes, ok := strings.Cut(out, "Drafted notes:")
+			if !ok {
+				t.Fatalf("suggest printed no drafted notes:\n%s", out)
+			}
+			landed, unattributed, _ := strings.Cut(notes, "### Unattributed")
+			if !strings.Contains(landed, "### LOAF-1 — Auth") {
+				t.Fatalf("LOAF-1 not attributed:\n%s", out)
+			}
+			for _, subject := range tc.attributed {
+				if !strings.Contains(landed, "- "+subject+" (") {
+					t.Errorf("%q not listed under LOAF-1:\n%s", subject, out)
+				}
+			}
+			for _, message := range tc.unattributed {
+				if !strings.Contains(unattributed, "- "+message+" (") {
+					t.Errorf("%q not reported as unattributed:\n%s", message, out)
+				}
+			}
+			if strings.Contains(landed, "unrelated base work") {
+				t.Errorf("unrelated base commit attributed to LOAF-1:\n%s", out)
+			}
+			if !strings.Contains(out, "Suggested bump: minor") {
+				t.Errorf("want minor bump from the feat commit:\n%s", out)
+			}
+		})
 	}
 }
 

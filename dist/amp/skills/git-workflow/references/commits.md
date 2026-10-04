@@ -133,8 +133,8 @@ Closes BACK-123
 Treat the three levels of Git history differently:
 
 1. **Working-branch commits are implementation checkpoints.** Keep them atomic, coherent, and useful for review or diagnosis. They may record how a shippable outcome was built, but they are not automatically permanent product-history units.
-2. **A pull request is one shippable unit.** It carries one reviewed root journey and normally lands as one deliberately authored squash commit on the default branch.
-3. **The default branch is product history.** Each commit should describe an observable, deployable outcome that can be reverted as a unit.
+2. **A pull request is one shippable unit.** It carries one reviewed root journey and lands through ship with the project's merge strategy (see [Merge Strategy](#merge-strategy)).
+3. **The default branch is product history.** Each PR's landing should describe an observable, deployable outcome that can be reverted as a unit: the squash commit, the merge commit (`git revert -m 1 <merge>`), or, under rebase, the PR's replayed commits, each of which must stay buildable.
 
 ### Stacked or Child Branches
 
@@ -150,15 +150,15 @@ The second command must refuse if the histories diverged. When that happens, sto
 
 ### Independent Roots and Merge Exceptions
 
-Independent shippable roots need separate reviewed PRs even when implementation happened on one branch. Do not conceal them inside one giant squash merely for convenience. If splitting would make the landing less safe, obtain an explicit human decision that names why one atomic change is preferable.
+Independent shippable roots need separate reviewed PRs even when implementation happened on one branch. Do not conceal them inside one giant landing merely for convenience. If splitting would make the landing less safe, obtain an explicit human decision that names why one atomic change is preferable.
 
-Merge commits are reserved for cases where the topology is itself durable evidence, such as a long-lived integration branch, provenance-sensitive upstream import, or deliberately preserved parallel history. Record that rationale before merging. Ordinary feature assembly is not sufficient reason.
+Ordinary feature assembly never justifies a merge commit. Under the merge strategy, the PR's own merge commit is the normal landing. Under squash or rebase, a merge commit on the default branch is reserved for cases where the topology is itself durable evidence, such as a long-lived integration branch, provenance-sensitive upstream import, or deliberately preserved parallel history. Record that rationale before merging.
 
 ## Pull Request Format
 
 ### Title
 
-Same format as commit messages (GitHub appends `(#N)` automatically on squash merge):
+Same format as commit messages (under squash, GitHub appends `(#N)` to the landed subject):
 
 ```
 feat: add thermal rating calculation
@@ -166,7 +166,7 @@ feat: add thermal rating calculation
 
 ### Description
 
-Build the PR body from the canonical native tracker work contract and current verification evidence. Read the record through the selected `project-management/v1` provider skill, preserve its definition-of-done exactly, and use the ship template. Do not create a second local work record or include squash merge commit text in the PR body.
+Build the PR body from the canonical native tracker work contract and current verification evidence. Read the record through the selected `project-management/v1` provider skill, preserve its definition-of-done exactly, and use the ship template. Do not create a second local work record or include landing commit text in the PR body.
 
 ```
 gh pr create --title "type: summary" --body-file <prepared-pr-body>
@@ -174,14 +174,17 @@ gh pr create --title "type: summary" --body-file <prepared-pr-body>
 
 ### Merge Strategy
 
-- **Squash merge one reviewed shippable-root PR** unless an explicitly approved topology-preservation exception applies
-- GitHub defaults the merge title to `PR title (#N)` — this is the desired format
-- **Write a clean extended description** for the squash merge commit — a one-line summary followed by bullet points grouped by feature area
-- **Never use the automatic squash description** that dumps all individual commit messages — it's noisy and unhelpful in git history
+The git-workflow skill selects the strategy (`git.merge_strategy`, or its fallback when unset). Author the landing for that strategy:
+
+- **squash** — GitHub defaults the subject to `PR title (#N)`; keep it. Write a clean extended description: a one-line summary followed by bullet points grouped by feature area. Never use the automatic description that dumps every branch commit message; it is noisy and unhelpful in git history.
+- **merge** — Every branch commit lands as written, so make each a clean checkpoint before review. Keep GitHub's `Merge pull request #N from owner/branch` subject; release attribution reads the branch name from it. Write the merge commit body as the outcome summary a squash would carry.
+- **rebase** — Every branch commit is replayed onto the default branch with a new hash and no merge commit. Nothing added at merge time carries PR context, so each commit must be clean and should name the work reference when the project uses one.
+
+Under every strategy:
+
 - Assemble related stacked branches into their root with verified ancestry and `git merge --ff-only`; never create a merge commit merely to combine them
-- Split independent shippable roots before the PR, or record an explicit human decision that one atomic squash is safer
-- Don't push or merge without explicit request
-- The ship skill automates this workflow when ready to squash merge a PR; release publishes a version later from already-landed work
+- Split independent shippable roots before the PR, or record an explicit human decision that one atomic landing is safer
+- Don't push without explicit request. Merge only through the ship skill, which owns merge authority; release publishes a version later from already-landed work
 
 ## Changelog Discipline
 

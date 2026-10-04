@@ -470,6 +470,57 @@ func TestSharedBuildShipsPostMergeReconciliationGuidance(t *testing.T) {
 	}
 }
 
+func TestSharedBuildShipsMergeAuthority(t *testing.T) {
+	root := setupIsolatedRepositoryBuildRoot(t)
+	if err := os.Symlink(filepath.Join(testRepositoryRoot(t), "vnext"), filepath.Join(root, "vnext")); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatalf("build error = %v\n%s", err, stdout.String())
+	}
+	for _, target := range defaultBuildTargets {
+		skills := nativeBuildSkillTreeDir(root, target)
+		ship := readBuildFileString(t, filepath.Join(skills, "ship", "SKILL.md"))
+		for _, required := range []string{
+			"Merge only through ship.",
+			"Merge authority depends on how ship started.",
+			"an Approve verdict authorizes the merge; do not ask again",
+			"started on your own initiative, ask with your harness's structured question tool",
+			"Request changes or Blocked never merges",
+			"a failing required check blocks the merge",
+			"the changed candidate needs re-review first",
+			"commits and feature-branch pushes keep their own rules outside ship",
+			"--match-head-commit",
+			"merge strategy as the git-workflow skill resolves it",
+		} {
+			if !strings.Contains(ship, required) {
+				t.Errorf("%s Ship skill missing merge authority guidance %q", target, required)
+			}
+		}
+		// The old rule made every merge ask again, even after an explicit /ship.
+		if strings.Contains(ship, "does not itself authorize commit, push, merge") {
+			t.Errorf("%s Ship skill still says a verdict never authorizes a merge", target)
+		}
+		implement := readBuildFileString(t, filepath.Join(skills, "implement", "SKILL.md"))
+		if !strings.Contains(implement, "merges happen only through ship") {
+			t.Errorf("%s implement skill does not point merging at ship", target)
+		}
+	}
+	for _, path := range []string{
+		filepath.Join(root, "plugins", "loaf", "hooks", "instructions", "pre-merge.md"),
+		filepath.Join(root, "dist", "opencode", "plugins", "hooks", "instructions", "pre-merge.md"),
+		filepath.Join(root, "dist", "cursor", "hooks", "instructions", "pre-merge.md"),
+	} {
+		body := readBuildFileString(t, path)
+		for _, required := range []string{"belongs to the ship workflow", "git.merge_strategy", "--squash", "--merge", "--rebase", "--match-head-commit"} {
+			if !strings.Contains(body, required) {
+				t.Errorf("%s pre-merge reminder missing %q", path, required)
+			}
+		}
+	}
+}
+
 func TestSharedBuildPackagesVNextTemporaryReportPolicyAcrossTargets(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
 	repo := testRepositoryRoot(t)
@@ -622,7 +673,7 @@ func TestTrackerContractAndProviderCapabilitiesShipByteIdenticalToEveryTarget(t 
 	}
 }
 
-func TestGitWorkflowPolicyPackagesSquashAndFastForwardBoundaries(t *testing.T) {
+func TestGitWorkflowPolicyPackagesMergeStrategyAndFastForwardBoundaries(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
 	var stdout bytes.Buffer
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
@@ -632,15 +683,32 @@ func TestGitWorkflowPolicyPackagesSquashAndFastForwardBoundaries(t *testing.T) {
 	wants := []string{
 		"Working-branch commits are complete implementation checkpoints",
 		"A pull request is one shippable unit",
+		"Merge it only through the ship skill",
 		"git merge --ff-only",
-		"Merge commits are exceptions",
+		"Never create a merge commit merely to assemble related feature work",
 		"Independent shippable roots",
+		// One selection rule: the project field, then the host's enabled methods.
+		"`git.merge_strategy`",
+		"gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed",
+		"use squash when it is enabled, otherwise the only enabled method",
+		"A configured strategy the repository does not allow blocks the merge",
+		"gh pr merge <N> --squash",
+		"gh pr merge <N> --merge",
+		"gh pr merge <N> --rebase",
 	}
 	for _, target := range defaultBuildTargets {
 		skill := readBuildFileString(t, filepath.Join(nativeBuildSkillTreeDir(root, target), "git-workflow", "SKILL.md"))
 		for _, want := range wants {
 			if !strings.Contains(skill, want) {
 				t.Errorf("%s generated git-workflow skill missing %q", target, want)
+			}
+		}
+		for _, forbidden := range []string{
+			"Squash merge a reviewed feature or shippable-root PR into the default branch",
+			"Squash shippable PR",
+		} {
+			if strings.Contains(skill, forbidden) {
+				t.Errorf("%s generated git-workflow skill still hard-codes squash: %q", target, forbidden)
 			}
 		}
 

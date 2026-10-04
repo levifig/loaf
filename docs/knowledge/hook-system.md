@@ -100,7 +100,7 @@ Inject markdown file content at tool invocation via `type: command` with `instru
 
 | Hook | Event/Condition | Purpose |
 |------|-----------------|---------|
-| `workflow-pre-merge` | `Bash(gh pr merge:*)` | Squash merge conventions checklist |
+| `workflow-pre-merge` | `Bash(gh pr merge:*)` | Ship-only merge path and merge-strategy checklist |
 | `workflow-pre-push` | `Bash(git push:*)` | Pre-push advisory reminders |
 | `workflow-post-merge` | `Bash(gh pr merge:*)` | Post-merge housekeeping checklist |
 

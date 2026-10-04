@@ -4,8 +4,15 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+### Changed
+
+- Let an explicitly invoked Ship, or a direct request to merge a specific PR, merge an approved PR without asking again; Ship still asks first when it was inferred from context or started on the agent's initiative. Merges go only through Ship, and Request changes, Blocked, failing required checks, or a candidate changed after review block them ([#339](https://github.com/levifig/loaf/issues/339)).
+- Choose how PRs land per project with `git.merge_strategy` (`squash`, `merge`, or `rebase`) in `.agents/loaf.json`, validated by `loaf config check`. When it is unset, Loaf uses squash if the repository allows it, otherwise the only enabled method, and asks when the choice is ambiguous. Git workflow guidance, Ship, merge hooks, and the pre-PR unpushed-base warning follow the setting ([#339](https://github.com/levifig/loaf/issues/339)).
+
 ### Fixed
 
+- Finish Ship's local base-branch reconciliation after an authorized merge, or report the checkout as pending without deleting work; keep the post-merge reminder honest ([#318](https://github.com/levifig/loaf/issues/318)).
+- Attribute the branch commits a merge commit brings in to that PR in `loaf release suggest`, instead of listing them as unattributed ([#339](https://github.com/levifig/loaf/issues/339)).
 - Return native Cursor permission JSON from check hooks, inspect `Shell` and `StrReplace` inputs in the payload repository, allow artifact-name repair commands and large valid write payloads, ignore quoted commit mentions, and preserve security denials when continuity state is unavailable ([#333](https://github.com/levifig/loaf/issues/333)).
 - Preserve advisory post-tool knowledge nudges in Cursor and reject scoped hook upgrades when the PATH runtime lacks the required transport flags ([#333](https://github.com/levifig/loaf/issues/333)).
 - Validate commit messages supplied with `--message`, combined short flags such as `-am`, attached `-m` values, and Git options such as `git -C`; these forms now block non-conventional messages wherever `validate-commit` runs ([#333](https://github.com/levifig/loaf/issues/333)).
@@ -44,7 +51,6 @@ This prerelease enables pinned, checksum-verified Loaf installation and readines
 
 ### Fixed
 
-- Finish Ship's local base-branch reconciliation after an authorized merge, or report the checkout as pending without deleting work; keep the post-merge reminder honest ([#318](https://github.com/levifig/loaf/issues/318)).
 - Run Amp hooks in the shell execution directory or current workspace rather than the installed plugin directory, avoiding false missing-changelog errors while preserving checks ([#279](https://github.com/levifig/loaf/issues/279)).
 - Keep prompt and compaction guidance and SQLite journal commands available in linked worktrees when configuration or unrelated artifacts differ. Restrict migration refusals to storage the command consumes, identify affected paths, and preserve recovery checks without creating implicit migration markers; keep command diagnostics accurate ([#251](https://github.com/levifig/loaf/issues/251), [#254](https://github.com/levifig/loaf/issues/254)).
 - Prefer an already configured GitHub MCP matching `integrations.github.account`; otherwise use installed authenticated `gh` (including `gh api`) through the main agent. Verify MCP identity through the connector and `gh` identity separately before tracker operations.

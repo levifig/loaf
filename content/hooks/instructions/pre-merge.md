@@ -1,18 +1,20 @@
-STOP. Before running gh pr merge, follow squash merge conventions:
+STOP. `gh pr merge` belongs to the ship workflow. If ship is not running, do not merge; run ship instead.
 
-1. TITLE: Let GitHub default it — "PR title (#N)" format.
-2. BODY: Write a clean, concise summary of the branch's work (2-4 sentences).
-   NEVER use the automatic squash description that dumps all individual commit messages.
-3. Use --body flag with a HEREDOC to pass the clean description.
+Inside ship, before merging:
 
-Example:
+1. STRATEGY: Use the project's merge strategy: `git.merge_strategy` in `.agents/loaf.json`, or the git-workflow skill's fallback when it is unset. Pass exactly one of `--squash`, `--merge`, or `--rebase`.
+2. HEAD: Pin the reviewed head with `--match-head-commit <reviewed-sha>`.
+3. MESSAGE: Author the landing for that strategy.
+   - squash: keep the default "PR title (#N)" subject and pass a clean 2-4 sentence `--body`. NEVER use the automatic squash description that dumps every branch commit message.
+   - merge: keep the default "Merge pull request #N from owner/branch" subject and pass a clean `--body` summarizing the outcome.
+   - rebase: nothing is authored at merge time; the branch commits land as written.
+
+Example (squash):
 ```
-gh pr merge N --squash --body "$(cat <<'EOF'
+gh pr merge N --squash --match-head-commit <reviewed-sha> --body "$(cat <<'EOF'
 Add loaf housekeeping CLI command that scans .agents/ directories and
 recommends cleanup actions. Includes shared prompt helpers, scanner
 engine, interactive/dry-run modes, and skill update.
 EOF
 )"
 ```
-
-Rewrite your gh pr merge command now with a clean --body.
