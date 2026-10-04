@@ -489,7 +489,9 @@ func TestSharedBuildShipsMergeAuthority(t *testing.T) {
 			"started on your own initiative, ask with your harness's structured question tool",
 			"Request changes or Blocked never merges",
 			"a failing required check blocks the merge",
-			"the changed candidate needs re-review first",
+			"a changed tree needs re-review first",
+			"git rev-parse <sha>^{tree}",
+			"block the merge until autosquashed",
 			"commits and feature-branch pushes keep their own rules outside ship",
 			"--match-head-commit",
 			"merge strategy as the git-workflow skill resolves it",
@@ -517,6 +519,10 @@ func TestSharedBuildShipsMergeAuthority(t *testing.T) {
 			if !strings.Contains(body, required) {
 				t.Errorf("%s pre-merge reminder missing %q", path, required)
 			}
+		}
+		prePush := readBuildFileString(t, filepath.Join(filepath.Dir(path), "pre-push.md"))
+		if !strings.Contains(prePush, "--force-with-lease") || strings.Contains(prePush, "Never force-push to main/master") {
+			t.Errorf("%s pre-push reminder does not defer force-push limits to branch protection", filepath.Dir(path))
 		}
 	}
 }
@@ -695,6 +701,12 @@ func TestGitWorkflowPolicyPackagesMergeStrategyAndFastForwardBoundaries(t *testi
 		"gh pr merge <N> --squash",
 		"gh pr merge <N> --merge",
 		"gh pr merge <N> --rebase",
+		// History hygiene is the same under every strategy.
+		"Keep branch history clean under every merge strategy",
+		"git commit --fixup=<sha>",
+		"git rebase --autosquash <base>",
+		"git push --force-with-lease",
+		"the host's branch protection or rulesets stop force-pushes",
 	}
 	for _, target := range defaultBuildTargets {
 		skill := readBuildFileString(t, filepath.Join(nativeBuildSkillTreeDir(root, target), "git-workflow", "SKILL.md"))
@@ -706,6 +718,7 @@ func TestGitWorkflowPolicyPackagesMergeStrategyAndFastForwardBoundaries(t *testi
 		for _, forbidden := range []string{
 			"Squash merge a reviewed feature or shippable-root PR into the default branch",
 			"Squash shippable PR",
+			"Never force-push to `main` or shared branches",
 		} {
 			if strings.Contains(skill, forbidden) {
 				t.Errorf("%s generated git-workflow skill still hard-codes squash: %q", target, forbidden)

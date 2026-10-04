@@ -44,7 +44,7 @@
       "kind": "hook-file",
       "source_path": "plugins/hooks/instructions/pre-push.md",
       "destination": "plugins/hooks/instructions/pre-push.md",
-      "sha256": "cdc96e5fa9a4d9ae37a8b29af5118a0fecdb29b79cd98db61fe37692550602ce",
+      "sha256": "9a2dad98ff0695384de968128aa263241cb59d9ef507ea2be7140f8d04ffa6e2",
       "mode": 420
     },
     {

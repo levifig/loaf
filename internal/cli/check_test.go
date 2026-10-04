@@ -1229,6 +1229,29 @@ func TestRunnerCheckValidateCommitPassesNatively(t *testing.T) {
 	}
 }
 
+// Autosquash subjects (`git commit --fixup`, `--squash`, `--fixup=amend:`)
+// prefix the target commit's subject. They pass only when what follows is
+// itself a Conventional Commit, so a prefix cannot smuggle a bad subject in.
+func TestValidateCommitAcceptsAutosquashPrefixesOnConventionalSubjects(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	cases := map[string]bool{
+		"fixup! feat: add native hook":         true,
+		"squash! fix: handle closed stdin":     true,
+		"amend! docs: explain merge strategy":  true,
+		"fixup! fixup! feat: add native hook":  true,
+		"fixup! add native hook":               false,
+		"fixup!feat: add native hook":          false,
+		"wip! feat: add native hook":           false,
+		"feat: add native hook fixup! trailer": true,
+	}
+	for message, wantPass := range cases {
+		result := evaluateCommitMessage(message, repo)
+		if result.Blocked == wantPass {
+			t.Errorf("evaluateCommitMessage(%q) blocked = %v, want pass = %v (errors %v)", message, result.Blocked, wantPass, result.Errors)
+		}
+	}
+}
+
 func TestRunnerCheckValidateCommitBlocksInvalidFormatWithJSON(t *testing.T) {
 	repo := initCLIGitRepo(t)
 	var stdout bytes.Buffer

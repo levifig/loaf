@@ -148,6 +148,31 @@ git merge --ff-only <child>
 
 The second command must refuse if the histories diverged. When that happens, stop and inspect the competing changes; do not silently fall back to a merge commit or rewrite a shared branch.
 
+### Fixing Commits
+
+These rules hold under every merge strategy. Under squash, the branch commits are still what reviewers read and what `git bisect` walks before the merge; under merge or rebase, they also land on the default branch.
+
+| Commit state | How to fix it |
+|--------------|---------------|
+| Local, not pushed | Rewrite freely: `git commit --amend` for the tip; `git commit --fixup=<sha>` and `git rebase --autosquash <base>` for an earlier commit |
+| Pushed, not yet reviewed | Rewrite the same way, then `git push --force-with-lease` |
+| Under review | Push `fixup!` commits instead of amending, so reviewers see only the change; autosquash once before the merge |
+| On the default branch | Never rewrite; add a new commit or `git revert <sha>` |
+
+Useful forms:
+
+```bash
+git commit --fixup=<sha>          # fold content into <sha>, keep its message
+git commit --fixup=amend:<sha>    # fold content and replace <sha>'s message
+git commit --fixup=reword:<sha>   # replace <sha>'s message only
+git rebase --autosquash <base>    # fold every fixup!/squash!/amend! commit; no editor needed
+git push --force-with-lease       # refuse if the remote moved since your last fetch
+```
+
+An autosquash changes commit hashes but not the final tree when nothing else changed. Compare `git rev-parse <old>^{tree}` with `git rev-parse <new>^{tree}` to show a reviewer, or ship, that the reviewed code is unchanged. Rebasing onto a moved base changes the tree and needs fresh review.
+
+Never use plain `--force`. Loaf does not decide which branches may be force-pushed; protect the default, release, and shared branches with the host's branch protection or rulesets.
+
 ### Independent Roots and Merge Exceptions
 
 Independent shippable roots need separate reviewed PRs even when implementation happened on one branch. Do not conceal them inside one giant landing merely for convenience. If splitting would make the landing less safe, obtain an explicit human decision that names why one atomic change is preferable.
@@ -272,7 +297,7 @@ Four hooks automatically enforce the conventions documented in this file:
 |------|-------|----------|
 | `github-account` | Pre-tool (Bash) | Force-switch: switches the active `gh` account to the configured one before `gh` commands run (passes with a warning), exempting `gh auth` administration, and blocks only when the switch fails. It writes the shared global account pointer on every mismatched `gh` call -- read-only ones included -- so concurrent sessions on different identities collide on that pointer more often. Tracker GitHub preflight does not change, bypass, or isolate this hook. |
 | `workflow-pre-pr` | Pre-tool (Bash) | Advisory: reminds about CHANGELOG [Unreleased] entries and PR format. Non-blocking. |
-| `workflow-pre-push` | Pre-tool (Bash) | Advisory: reminders on `git push` — branch naming, uncommitted files, force-push safety. Non-blocking. |
+| `workflow-pre-push` | Pre-tool (Bash) | Advisory: reminders on `git push` — branch naming, uncommitted files, `--force-with-lease` for rewritten branches. Non-blocking. |
 | `workflow-post-merge` | Post-tool (Bash) | Advisory: injects housekeeping checklist after a command match for `gh pr merge`; command matching does not prove a successful merge, so verify the result first. Non-blocking. |
 
 These hooks read instruction templates from `hooks/instructions/` and run automatically when the corresponding git/gh commands are invoked.
