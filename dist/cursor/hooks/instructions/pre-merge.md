@@ -2,7 +2,7 @@ STOP. `gh pr merge` belongs to the ship workflow. If ship is not running, do not
 
 Inside ship, before merging:
 
-1. STRATEGY: Use the project's merge strategy: `git.merge_strategy` in `.agents/loaf.json`, or the git-workflow skill's fallback when it is unset. Pass exactly one of `--squash`, `--merge`, or `--rebase`.
+1. STRATEGY: Use the project's merge strategy: `git.merge_strategy` in `.agents/loaf.json`, or the git-workflow skill's fallback when it is unset, checked against repository settings and the base branch's rules (rulesets and classic protection). If the strategy, or every method, is ruled out, stop and report the conflict instead of merging. Pass exactly one of `--squash`, `--merge`, or `--rebase`.
 2. HEAD: Pin the reviewed head with `--match-head-commit <reviewed-sha>`.
 3. MESSAGE: Author the landing for that strategy.
    - squash: keep the default "PR title (#N)" subject and pass a clean 2-4 sentence `--body`. NEVER use the automatic squash description that dumps every branch commit message.

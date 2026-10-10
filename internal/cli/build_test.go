@@ -494,7 +494,8 @@ func TestSharedBuildShipsMergeAuthority(t *testing.T) {
 			"block the merge until autosquashed",
 			"commits and feature-branch pushes keep their own rules outside ship",
 			"--match-head-commit",
-			"merge strategy as the git-workflow skill resolves it",
+			"merge strategy as the git-workflow skill resolves it against repository settings and branch rules",
+			"do not run the merge and report the conflicting setting and rule",
 		} {
 			if !strings.Contains(ship, required) {
 				t.Errorf("%s Ship skill missing merge authority guidance %q", target, required)
@@ -515,7 +516,7 @@ func TestSharedBuildShipsMergeAuthority(t *testing.T) {
 		filepath.Join(root, "dist", "cursor", "hooks", "instructions", "pre-merge.md"),
 	} {
 		body := readBuildFileString(t, path)
-		for _, required := range []string{"belongs to the ship workflow", "git.merge_strategy", "--squash", "--merge", "--rebase", "--match-head-commit"} {
+		for _, required := range []string{"belongs to the ship workflow", "git.merge_strategy", "rulesets and classic protection", "--squash", "--merge", "--rebase", "--match-head-commit"} {
 			if !strings.Contains(body, required) {
 				t.Errorf("%s pre-merge reminder missing %q", path, required)
 			}
@@ -693,11 +694,16 @@ func TestGitWorkflowPolicyPackagesMergeStrategyAndFastForwardBoundaries(t *testi
 		"git merge --ff-only",
 		"Never create a merge commit merely to assemble related feature work",
 		"Independent shippable roots",
-		// One selection rule: the project field, then the host's enabled methods.
+		// One selection rule: the project field, narrowed by repository settings
+		// and the base branch's rulesets and classic protection.
 		"`git.merge_strategy`",
 		"gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed",
-		"use squash when it is enabled, otherwise the only enabled method",
-		"A configured strategy the repository does not allow blocks the merge",
+		"gh api repos/<owner>/<repo>/rules/branches/<base>",
+		"`parameters.allowed_merge_methods`",
+		"drop `merge` when a `required_linear_history` rule applies",
+		".required_linear_history.enabled",
+		"use `squash` if it remains, otherwise the only remaining method",
+		"When nothing remains, no PR can land on that branch. Flag it before running `gh pr merge`",
 		"gh pr merge <N> --squash",
 		"gh pr merge <N> --merge",
 		"gh pr merge <N> --rebase",
