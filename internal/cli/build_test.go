@@ -431,6 +431,103 @@ func TestSharedBuildPromotesTrackerNativeVNextFlowIntoAmp(t *testing.T) {
 	}
 }
 
+func TestSharedBuildShipsPostMergeReconciliationGuidance(t *testing.T) {
+	root := setupIsolatedRepositoryBuildRoot(t)
+	if err := os.Symlink(filepath.Join(testRepositoryRoot(t), "vnext"), filepath.Join(root, "vnext")); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatalf("build error = %v\n%s", err, stdout.String())
+	}
+	for _, target := range defaultBuildTargets {
+		skill := readBuildFileString(t, filepath.Join(nativeBuildSkillTreeDir(root, target), "ship", "SKILL.md"))
+		for _, required := range []string{
+			"## Post-Merge Reconciliation",
+			"git pull --ff-only origin <baseRefName>",
+			"git status --porcelain",
+			"git rev-parse <baseRefName> origin/<baseRefName>",
+			"local reconciliation pending",
+			"git branch -d",
+		} {
+			if !strings.Contains(skill, required) {
+				t.Errorf("%s Ship skill missing post-merge guidance %q", target, required)
+			}
+		}
+		if strings.Contains(skill, "git branch -D <headRefName>") {
+			t.Errorf("%s Ship skill suggests force-deleting a squash-merged branch", target)
+		}
+	}
+	for _, path := range []string{
+		filepath.Join(root, "plugins", "loaf", "hooks", "instructions", "post-merge.md"),
+		filepath.Join(root, "dist", "opencode", "plugins", "hooks", "instructions", "post-merge.md"),
+		filepath.Join(root, "dist", "cursor", "hooks", "instructions", "post-merge.md"),
+	} {
+		body := readBuildFileString(t, path)
+		if strings.Contains(body, "these steps were already handled by the skill") || !strings.Contains(body, "local reconciliation pending") {
+			t.Errorf("%s does not preserve the independent post-merge reminder", path)
+		}
+	}
+}
+
+func TestSharedBuildShipsMergeAuthority(t *testing.T) {
+	root := setupIsolatedRepositoryBuildRoot(t)
+	if err := os.Symlink(filepath.Join(testRepositoryRoot(t), "vnext"), filepath.Join(root, "vnext")); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatalf("build error = %v\n%s", err, stdout.String())
+	}
+	for _, target := range defaultBuildTargets {
+		skills := nativeBuildSkillTreeDir(root, target)
+		ship := readBuildFileString(t, filepath.Join(skills, "ship", "SKILL.md"))
+		for _, required := range []string{
+			"Merge only through ship.",
+			"Merge authority depends on how ship started.",
+			"an Approve verdict authorizes the merge; do not ask again",
+			"started on your own initiative, ask with your harness's structured question tool",
+			"Request changes or Blocked never merges",
+			"a failing required check blocks the merge",
+			"a changed tree needs re-review first",
+			"git rev-parse <sha>^{tree}",
+			"block the merge until autosquashed",
+			"commits and feature-branch pushes keep their own rules outside ship",
+			"--match-head-commit",
+			"merge strategy as the git-workflow skill resolves it against repository settings and branch rules",
+			"do not run the merge and report the conflicting setting and rule",
+		} {
+			if !strings.Contains(ship, required) {
+				t.Errorf("%s Ship skill missing merge authority guidance %q", target, required)
+			}
+		}
+		// The old rule made every merge ask again, even after an explicit /ship.
+		if strings.Contains(ship, "does not itself authorize commit, push, merge") {
+			t.Errorf("%s Ship skill still says a verdict never authorizes a merge", target)
+		}
+		implement := readBuildFileString(t, filepath.Join(skills, "implement", "SKILL.md"))
+		if !strings.Contains(implement, "merges happen only through ship") {
+			t.Errorf("%s implement skill does not point merging at ship", target)
+		}
+	}
+	for _, path := range []string{
+		filepath.Join(root, "plugins", "loaf", "hooks", "instructions", "pre-merge.md"),
+		filepath.Join(root, "dist", "opencode", "plugins", "hooks", "instructions", "pre-merge.md"),
+		filepath.Join(root, "dist", "cursor", "hooks", "instructions", "pre-merge.md"),
+	} {
+		body := readBuildFileString(t, path)
+		for _, required := range []string{"belongs to the ship workflow", "git.merge_strategy", "rulesets and classic protection", "--squash", "--merge", "--rebase", "--match-head-commit"} {
+			if !strings.Contains(body, required) {
+				t.Errorf("%s pre-merge reminder missing %q", path, required)
+			}
+		}
+		prePush := readBuildFileString(t, filepath.Join(filepath.Dir(path), "pre-push.md"))
+		if !strings.Contains(prePush, "--force-with-lease") || strings.Contains(prePush, "Never force-push to main/master") {
+			t.Errorf("%s pre-push reminder does not defer force-push limits to branch protection", filepath.Dir(path))
+		}
+	}
+}
+
 func TestSharedBuildPackagesVNextTemporaryReportPolicyAcrossTargets(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
 	repo := testRepositoryRoot(t)
@@ -583,7 +680,7 @@ func TestTrackerContractAndProviderCapabilitiesShipByteIdenticalToEveryTarget(t 
 	}
 }
 
-func TestGitWorkflowPolicyPackagesSquashAndFastForwardBoundaries(t *testing.T) {
+func TestGitWorkflowPolicyPackagesMergeStrategyAndFastForwardBoundaries(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
 	var stdout bytes.Buffer
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
@@ -593,15 +690,44 @@ func TestGitWorkflowPolicyPackagesSquashAndFastForwardBoundaries(t *testing.T) {
 	wants := []string{
 		"Working-branch commits are complete implementation checkpoints",
 		"A pull request is one shippable unit",
+		"Merge it only through the ship skill",
 		"git merge --ff-only",
-		"Merge commits are exceptions",
+		"Never create a merge commit merely to assemble related feature work",
 		"Independent shippable roots",
+		// One selection rule: the project field, narrowed by repository settings
+		// and the base branch's rulesets and classic protection.
+		"`git.merge_strategy`",
+		"gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed",
+		"gh api repos/<owner>/<repo>/rules/branches/<base>",
+		"`parameters.allowed_merge_methods`",
+		"drop `merge` when a `required_linear_history` rule applies",
+		".required_linear_history.enabled",
+		"use `squash` if it remains, otherwise the only remaining method",
+		"When nothing remains, no PR can land on that branch. Flag it before running `gh pr merge`",
+		"gh pr merge <N> --squash",
+		"gh pr merge <N> --merge",
+		"gh pr merge <N> --rebase",
+		// History hygiene is the same under every strategy.
+		"Keep branch history clean under every merge strategy",
+		"git commit --fixup=<sha>",
+		"git rebase --autosquash <base>",
+		"git push --force-with-lease",
+		"the host's branch protection or rulesets stop force-pushes",
 	}
 	for _, target := range defaultBuildTargets {
 		skill := readBuildFileString(t, filepath.Join(nativeBuildSkillTreeDir(root, target), "git-workflow", "SKILL.md"))
 		for _, want := range wants {
 			if !strings.Contains(skill, want) {
 				t.Errorf("%s generated git-workflow skill missing %q", target, want)
+			}
+		}
+		for _, forbidden := range []string{
+			"Squash merge a reviewed feature or shippable-root PR into the default branch",
+			"Squash shippable PR",
+			"Never force-push to `main` or shared branches",
+		} {
+			if strings.Contains(skill, forbidden) {
+				t.Errorf("%s generated git-workflow skill still hard-codes squash: %q", target, forbidden)
 			}
 		}
 

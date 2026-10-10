@@ -12,7 +12,7 @@
       "kind": "hook-file",
       "source_path": "plugins/hooks/instructions/post-merge.md",
       "destination": "plugins/hooks/instructions/post-merge.md",
-      "sha256": "d28d7e2a7336f526cad0e23d904ad92f4c8d612a4035665b84d5e9db6c3eedae",
+      "sha256": "e39f212547d8351bdb82a55ed43d0ed44dca8e8fdf5f0c83932c775e68e150b0",
       "mode": 420
     },
     {
@@ -20,7 +20,7 @@
       "kind": "hook-file",
       "source_path": "plugins/hooks/instructions/pre-merge.md",
       "destination": "plugins/hooks/instructions/pre-merge.md",
-      "sha256": "28c6a7006b508e067562a41ed9c2aa9c13eccbc027328176e706dcab1a74da41",
+      "sha256": "d3a647add68c506bff4f5659d9053a16cb121f06cd322730991cad45276cd835",
       "mode": 420
     },
     {
@@ -28,7 +28,7 @@
       "kind": "hook-file",
       "source_path": "plugins/hooks/instructions/pre-pr-checklist.md",
       "destination": "plugins/hooks/instructions/pre-pr-checklist.md",
-      "sha256": "cd3686cf10bb5bf49d65a0674cb4c223f82acd8dfb3fa2153e3585deac64214c",
+      "sha256": "53eb48137ea2595bad96dbff17ab33125ca186e6a2e8bd9f3c8c86d9c1e4f275",
       "mode": 420
     },
     {
@@ -36,7 +36,7 @@
       "kind": "hook-file",
       "source_path": "plugins/hooks/instructions/pre-pr-format.md",
       "destination": "plugins/hooks/instructions/pre-pr-format.md",
-      "sha256": "0f0b5e3e93c2bf4e34c7214619d978ef3341bcf4370a84d5257cfb95b4ffd9cc",
+      "sha256": "d41111e001c0b0b45ebeb33867f358563e6f73abcc9c34aef8590648f1a53930",
       "mode": 420
     },
     {
@@ -44,7 +44,7 @@
       "kind": "hook-file",
       "source_path": "plugins/hooks/instructions/pre-push.md",
       "destination": "plugins/hooks/instructions/pre-push.md",
-      "sha256": "cdc96e5fa9a4d9ae37a8b29af5118a0fecdb29b79cd98db61fe37692550602ce",
+      "sha256": "9a2dad98ff0695384de968128aa263241cb59d9ef507ea2be7140f8d04ffa6e2",
       "mode": 420
     },
     {

@@ -783,6 +783,12 @@ func artifactBodyRefFromPath(path string) string {
 }
 
 var conventionalCommitRE = regexp.MustCompile(`^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)!?: .+`)
+
+// autosquashPrefixRE matches the markers `git commit --fixup`, `--squash`, and
+// `--fixup=amend:` put before the target commit's subject (repeated when one
+// fixup targets another). `git rebase --autosquash` folds these commits away,
+// so validation applies to the subject after the markers.
+var autosquashPrefixRE = regexp.MustCompile(`^(?:(?:fixup|squash|amend)! )+`)
 var commitMessageHeredocStartRE = regexp.MustCompile(`<<'?([A-Za-z0-9_]+)'?\s*\n`)
 
 var releaseCommitSubjectRE = regexp.MustCompile(`^chore: release v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?(?:\s+\(#\d+\))?$`)
@@ -836,7 +842,7 @@ func runNativeValidateCommit(context checkHookContext, cwd string) checkResult {
 // second set of type or attribution rules beside it.
 func evaluateCommitMessage(message, cwd string) checkResult {
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
-	if !conventionalCommitRE.MatchString(message) {
+	if !conventionalCommitRE.MatchString(autosquashPrefixRE.ReplaceAllString(message, "")) {
 		result.Passed = false
 		result.Blocked = true
 		result.Errors = append(result.Errors,
@@ -1299,8 +1305,24 @@ func baseBranchAbsorptionWarnings(cwd string) []string {
 		return nil
 	}
 	return []string{
-		fmt.Sprintf("%s has %s unpushed commit(s) that will be absorbed into this PR's squash merge", baseRef, count),
+		baseBranchAbsorptionWarning(baseRef, count, configuredMergeStrategy(cwd)),
 		fmt.Sprintf("Fix: git checkout %s && git push && git checkout %s - then create the PR", baseRef, branch),
+	}
+}
+
+// baseBranchAbsorptionWarning names how unpushed base commits would land
+// through this PR under the project's merge strategy.
+func baseBranchAbsorptionWarning(baseRef string, count string, strategy string) string {
+	prefix := fmt.Sprintf("%s has %s unpushed commit(s) that", baseRef, count)
+	switch strategy {
+	case "squash":
+		return prefix + " will be absorbed into this PR's squash merge"
+	case "merge":
+		return fmt.Sprintf("%s will land on %s through this PR's merge commit", prefix, baseRef)
+	case "rebase":
+		return fmt.Sprintf("%s will be rebased onto %s with this PR's commits", prefix, baseRef)
+	default:
+		return fmt.Sprintf("%s will land on %s as part of this PR", prefix, baseRef)
 	}
 }
 

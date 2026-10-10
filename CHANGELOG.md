@@ -4,8 +4,17 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+### Changed
+
+- Let an explicitly invoked Ship, or a direct request to merge a specific PR, merge an approved PR without asking again; Ship still asks first when it was inferred from context or started on the agent's initiative. Merges go only through Ship, and Request changes, Blocked, failing required checks, or a candidate changed after review block them ([#339](https://github.com/levifig/loaf/issues/339)).
+- Choose how PRs land per project with `git.merge_strategy` (`squash`, `merge`, or `rebase`) in `.agents/loaf.json`, validated by `loaf config check`. Loaf checks the strategy against both repository settings and the base branch's rules (rulesets and classic branch protection), so a linear-history rule rules out merge commits and a ruleset's allowed merge methods are respected. When the field is unset, Loaf uses squash if it is allowed, otherwise the only allowed method, and asks when the choice is ambiguous. When no allowed method remains, Ship flags the conflict before attempting the merge. Git workflow guidance, Ship, merge hooks, and the pre-PR unpushed-base warning follow the setting ([#339](https://github.com/levifig/loaf/issues/339)).
+- Apply the same commit hygiene under every merge strategy: amend or fixup-and-autosquash unpushed work, push review fixes as `fixup!` commits and autosquash before merging, and push rewritten branches with `--force-with-lease`. Loaf no longer forbids force-pushes itself; protect the branches that must not be rewritten with host branch protection. Ship keeps a review across a tree-identical autosquash and blocks leftover fixup commits under the merge and rebase strategies ([#339](https://github.com/levifig/loaf/issues/339)).
+
 ### Fixed
 
+- Accept `fixup!`, `squash!`, and `amend!` commit subjects in commit validation when the rest is a Conventional Commit ([#339](https://github.com/levifig/loaf/issues/339)).
+- Finish Ship's local base-branch reconciliation after an authorized merge, or report the checkout as pending without deleting work; keep the post-merge reminder honest ([#318](https://github.com/levifig/loaf/issues/318)).
+- Attribute the branch commits a merge commit brings in to that PR in `loaf release suggest`, instead of listing them as unattributed ([#339](https://github.com/levifig/loaf/issues/339)).
 - Return native Cursor permission JSON from check hooks, inspect `Shell` and `StrReplace` inputs in the payload repository, allow artifact-name repair commands and large valid write payloads, ignore quoted commit mentions, and preserve security denials when continuity state is unavailable ([#333](https://github.com/levifig/loaf/issues/333)).
 - Preserve advisory post-tool knowledge nudges in Cursor and reject scoped hook upgrades when the PATH runtime lacks the required transport flags ([#333](https://github.com/levifig/loaf/issues/333)).
 - Validate commit messages supplied with `--message`, combined short flags such as `-am`, attached `-m` values, and Git options such as `git -C`; these forms now block non-conventional messages wherever `validate-commit` runs ([#333](https://github.com/levifig/loaf/issues/333)).

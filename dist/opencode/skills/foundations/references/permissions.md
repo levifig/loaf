@@ -240,7 +240,7 @@ For sensitive operations on Claude Code:
 
 ### Never Auto-Allow
 
-- Force push operations
+- Plain `git push --force` (allow `--force-with-lease`; the host's branch protection stops force-pushes to branches that must not be rewritten)
 - Irreversible deletions
 - Production deployments
 - Credential management

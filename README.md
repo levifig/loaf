@@ -153,7 +153,7 @@ Background knowledge that activates automatically to enforce quality.
 | Skill | Activates When |
 |-------|----------------|
 | `foundations` | Writing code — style, naming, TDD, verification, code review |
-| `git-workflow` | Branching, commits, PRs, squash merges |
+| `git-workflow` | Branching, commits, PRs, merge strategy |
 | `debugging` | Diagnosing failures, tracking hypotheses, flaky tests |
 | `security-compliance` | Threat modeling, secrets management, compliance checks |
 | `documentation-standards` | ADRs, API docs, changelogs, Mermaid diagrams |

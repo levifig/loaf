@@ -10,6 +10,7 @@ Evaluate the candidate against the live [work contract](templates/work-contract.
 ## Contents
 
 - Critical Rules
+- Post-Merge Reconciliation
 - Verification
 - Quick Reference
 - Journal Commands
@@ -29,10 +30,32 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Do not accept material contract drift by recording it in the verdict. If the candidate changes promised outcome, criteria, scope or safety, dependencies, or the basis of selected or resourced work, pause acceptance and return it to shape. Material changes need applicable authorization (existing authorization counts; assignment, write access, or reviewer status alone is never product authority), an updated canonical definition and native fields with authoritative readback, and a retained reason, authority, and impact; then review the candidate against that resulting contract. Keep same-turn responsibilities; do not add extra ceremony or repeated approval when authorization already exists.
 - Return a clear unmet criterion, ordinary defect, or obtainable missing in-scope evidence to implement and rerun affected gates after fixes. Unclear or changed contract substance, or a material scope or commitment shift, returns to shape; do not bounce ordinary fixes to shaping or absorb unauthorized scope in implement. Inaccessible required proof or absent authority is blocked; do not waive the criterion. Material means uncertainty or change in what was promised or authorized, not the severity of an in-scope coding bug.
 - Build review or change-request text from the live native contract and observed diff, not from a synchronized local projection.
-- Preserve external-action authority. Acceptance is separate from landing authority. A quality verdict does not itself authorize commit, push, merge, publication, or destructive action.
+- Preserve external-action authority. Acceptance is separate from landing authority. A quality verdict never authorizes commit, push, publication, or destructive action; commits and feature-branch pushes keep their own rules outside ship.
+- Merge only through ship. A bare `gh pr merge`, or a direct merge or push into the default branch, is never an authorized landing path.
+- Merge authority depends on how ship started. When the user invoked ship explicitly, by name or slash command, or directly asked to merge this specific PR, an Approve verdict authorizes the merge; do not ask again. When ship was inferred from context or started on your own initiative, ask with your harness's structured question tool, if it has one, before merging. Request changes or Blocked never merges.
+- Immediately before merging, re-read the PR. Its head must be the reviewed candidate or have the same tree (`git rev-parse <sha>^{tree}`), as after an autosquash that only reshaped commits; a changed tree needs re-review first. Every required check must have passed; a failing required check blocks the merge. Under the merge or rebase strategy, `fixup!`, `squash!`, or `amend!` commits still on the branch block the merge until autosquashed; under squash they disappear in the landing. Merge with the project's merge strategy as the git-workflow skill resolves it against repository settings and branch rules; when that strategy, or every method, is ruled out, do not run the merge and report the conflicting setting and rule. Pin the head you verified (`gh pr merge --match-head-commit <sha>` on GitHub), and author the landing message that strategy calls for from the reviewed outcome.
 - Transition native workflow state only after the corresponding repository event is proven and authorized.
 - Re-read the changed native record and any evidence comment; never mark work complete from a mutation request alone.
+- After an authorized merge, finish the Post-Merge Reconciliation below before reporting local checkout cleanup as complete. Remote landing remains true even if local cleanup is blocked; report both states separately instead of silently skipping the local work.
 - Release remains a separate retroactive ceremony over already-landed work.
+
+## Post-Merge Reconciliation
+
+Only after authoritative PR readback confirms `MERGED`, the merge commit, the exact head, and the base branch:
+
+1. Inspect the current checkout with `git status --porcelain` and `git worktree list`. If it is dirty, inaccessible, or the base branch belongs to another worktree, preserve it and report **local reconciliation pending** with the specific reason. Do not stash, reset, or switch through someone else's work.
+2. In a clean available checkout, switch to the confirmed base and fast-forward it; never merge the old feature branch back into the base:
+   ```bash
+   git switch <baseRefName>
+   git pull --ff-only origin <baseRefName>
+   git rev-parse <baseRefName> origin/<baseRefName>
+   git status --porcelain
+   ```
+   Confirm both refs name the same commit and the checkout is clean. If the switch or fast-forward refuses, leave local reconciliation pending and report the observed state; do not rebase, force, or reset to make it pass.
+3. Independently transition the canonical native work to its authorized completed state only after the remote merge is proven, and re-read that state. A local checkout blocker does not undo a verified remote merge or justify skipping the tracker readback.
+4. Report the disposition of the feature branch, remote branch, and any linked feature worktree. Inspect cleanliness, activity, and dependent work before any removal. Squash and rebase merges rewrite the feature commits, so the feature tip is usually not an ancestor of the base: if an authorized `git branch -d <headRefName>` refuses, retain the branch and report it; never silently escalate to `-D`. Worktree removal and remote branch deletion require their own applicable authorization and safety checks. Do not remove a worktree while running inside it.
+
+Report **Landed remotely; local reconciliation pending** when the PR and tracker are complete but the checkout cannot be safely reconciled. Report local reconciliation complete only after the base and clean-checkout readback. Do not treat installing or activating a local runtime as part of this Git reconciliation.
 
 ## Verification
 
@@ -45,16 +68,18 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - All findings have an evidence-backed disposition and fixes were re-reviewed.
 - Load the project-management skill and apply its Capture Deferred Work rule to deferred actionable findings; a follow-up issue never excuses an unmet completion criterion for this candidate.
 - Affected architectural claims and implementation gaps were checked against the diff and evidence using the architecture skill's maintenance rules; a documentation update alone is not proof of delivery.
+- Any merge followed the authority rule for how ship started, used the merge strategy the git-workflow skill resolved, pinned a head whose tree matches the reviewed candidate, left no autosquash commits under merge or rebase, and had every required check passing.
 - Any native transition matches the observed landed state and was confirmed by readback.
+- After an authorized merge, the PR merge identity, local base/remote base equality and clean checkout, native state, and branch/worktree dispositions were read back; any incomplete local reconciliation is named rather than presented as finished.
 
 ## Quick Reference
 
 | Verdict | Meaning |
 |---------|---------|
-| Approve | Criteria, boundaries, and quality gates are proven; authorized landing may proceed separately |
+| Approve | Criteria, boundaries, and quality gates are proven. Merge now when ship was explicitly invoked or the merge was directly requested; otherwise ask first |
 | Request changes | A clear unmet criterion, ordinary defect, or obtainable missing in-scope evidence returns to implement; unclear or changed contract substance, or a material scope or commitment shift, returns to shape. Do not absorb unauthorized scope by recording it. |
 | Blocked | Required proof is inaccessible, or required authority, connection, or repository event is unavailable; do not waive the criterion |
-| Landed | Repository event and final native state were both observed |
+| Landed | Repository event and final native state were both observed; report local reconciliation separately, including any pending checkout or branch cleanup |
 
 ## Journal Commands
 
