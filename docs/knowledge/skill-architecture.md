@@ -7,16 +7,35 @@ topics:
   - templates
   - profiles
 covers:
+  - .agents/skills/loaf-skill-authoring/**
   - content/skills/**/*.md
   - content/skills/**/*.yaml
   - config/hooks.yaml
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-09-29'
+last_reviewed: '2026-10-11'
 ---
 
 # Skill Architecture
+
+## Contents
+
+- [Key Rules](#key-rules)
+- [Skill Structure](#skill-structure)
+- [Naming](#naming)
+- [Frontmatter](#frontmatter)
+- [Descriptions](#descriptions)
+- [Sidecars](#sidecars)
+- [References](#references)
+- [Templates](#templates)
+- [Harness-Neutral Authoring](#harness-neutral-authoring)
+- [Journal Self-Logging](#journal-self-logging)
+- [Agent Profiles](#agent-profiles)
+- [Categories](#categories)
+- [Authoring Checklist](#authoring-checklist)
+- [Anti-Patterns](#anti-patterns)
+- [Cross-References](#cross-references)
 
 Skills are the primary knowledge delivery mechanism. [Skill Portability](../architecture/skill-portability.md) owns the package-format choice, shared-authoring model, and rationale; this guide covers authoring layout and conventions. Read it before adding or editing a skill, a skill reference or template, or an agent profile.
 
@@ -42,6 +61,14 @@ content/skills/{name}/
 ```
 
 Skills are auto-discovered from `content/skills/` at build time; do not register a skill itself in `config/hooks.yaml`. Only hook instances are registered there, and a skill that ships no hooks needs no entry. Skills compile to a shared intermediate at `dist/skills/`, with shared templates projected into consuming packages and tracker-native Flow/provider sources overlaid from `vnext/content/`. Each target then packages the same common content; see [Build System](build-system.md).
+
+### Repository-Local Authoring Skill
+
+The [loaf-skill-authoring skill](../../.agents/skills/loaf-skill-authoring/SKILL.md) is contributor guidance for this repository. It routes both creation and edits to existing skills, sidecars, references, templates, and agent profiles here. This guide remains canonical; keep detailed authoring rules here rather than duplicating them in the skill or root instructions.
+
+The tracked source lives in `.agents/skills/loaf-skill-authoring/`. Codex discovers that project directory; Claude Code discovers the tracked `.claude/skills/loaf-skill-authoring` symlink to the same folder. Both paths resolve to the same manifest and guide. The root instruction links the entry point directly as a fallback for harnesses without native discovery. Keep the Git ignore exceptions narrow so other installed skills and private harness state stay untracked.
+
+This skill is read directly, without Loaf's content build or sidecar merge. It is not packaged under `content/skills/`, installed globally, or shipped to consumer repositories. The distribution layout and sidecar conventions below apply to Loaf's shipped content.
 
 ### SKILL.md Layout
 
@@ -283,7 +310,7 @@ Reference skills provide background knowledge the model loads automatically; set
 Before committing skill changes:
 
 - [ ] Frontmatter has the required fields, and only standard fields
-- [ ] New skills live under `content/skills/` (auto-discovered at build); only hook instances are registered in `hooks.yaml`
+- [ ] New distributable skills live under `content/skills/` (auto-discovered at build); repo-only contributor guidance stays in the [repository-local authoring skill](#repository-local-authoring-skill). Only hook instances are registered in `hooks.yaml`
 - [ ] Claude-specific fields are in the sidecar
 - [ ] Reference files over 100 lines have a TOC
 - [ ] Template links resolve (no broken `templates/` paths)

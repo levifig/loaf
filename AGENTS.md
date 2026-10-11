@@ -53,7 +53,7 @@ export LOAF_DB="$(mktemp -d)/loaf.sqlite"
 
 ## Before You Start
 
-- **Skills, skill references or templates, agent profiles:** read [Skill Architecture](docs/knowledge/skill-architecture.md) first. It owns SKILL.md structure, frontmatter, descriptions, naming, sidecars, reference and template rules, harness-neutral authoring detail, and the skill authoring checklist. Skills are auto-discovered; do not register them in `hooks.yaml`. Profiles state intended tool boundaries; only the host enforces access.
+- **Creating or editing skills, sidecars, references, templates, or agent profiles:** load the repo-local [loaf-skill-authoring skill](.agents/skills/loaf-skill-authoring/SKILL.md) first, including for small edits to existing prose. It routes to the canonical [Skill Architecture](docs/knowledge/skill-architecture.md) guide.
 - **Hooks:** read [Hook System](docs/knowledge/hook-system.md). Maintained deterministic behavior goes in the native CLI with regression tests, registered in `config/hooks.yaml` with `skill:` naming its owner. Never add new Bash/Python hook helpers.
 - **Build targets or output:** read [Build System](docs/knowledge/build-system.md).
 - **Journal or continuity behavior:** read [Private Continuity](docs/architecture/private-continuity.md) and the [journal template](content/templates/journal.md).

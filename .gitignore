@@ -29,8 +29,11 @@ Thumbs.db
 *.swp
 *.swo
 
-# Claude Code ephemeral plans
-.claude/
+# Claude Code state is private; share only the contributor skill alias.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/loaf-skill-authoring
 
 # Agent work — track everything except ephemeral state
 .agents/transcripts/
@@ -38,7 +41,8 @@ Thumbs.db
 .agents/.moved-to
 .agents/.loaf-reconcile.lock
 .agents/loaf/
-.agents/skills/
+.agents/skills/*
+!.agents/skills/loaf-skill-authoring/
 .agents/tmp/
 
 # Amp project-environment install and portal state
