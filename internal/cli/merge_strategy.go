@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -19,7 +18,7 @@ var mergeStrategies = []string{"squash", "merge", "rebase"}
 // when it is unset, invalid, or unreadable. Callers phrase guidance neutrally
 // for "" rather than assuming squash; `loaf config check` reports invalid values.
 func configuredMergeStrategy(root string) string {
-	body, err := os.ReadFile(filepath.Join(root, ".agents", "loaf.json"))
+	body, err := readRegularFile(filepath.Join(root, ".agents", "loaf.json"), projectFileReadLimit)
 	if err != nil {
 		return ""
 	}

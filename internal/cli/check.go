@@ -842,7 +842,8 @@ func runNativeValidateCommit(context checkHookContext, cwd string) checkResult {
 // second set of type or attribution rules beside it.
 func evaluateCommitMessage(message, cwd string) checkResult {
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
-	if !conventionalCommitRE.MatchString(autosquashPrefixRE.ReplaceAllString(message, "")) {
+	normalizedMessage := autosquashPrefixRE.ReplaceAllString(message, "")
+	if !conventionalCommitRE.MatchString(normalizedMessage) {
 		result.Passed = false
 		result.Blocked = true
 		result.Errors = append(result.Errors,
@@ -860,7 +861,7 @@ func evaluateCommitMessage(message, cwd string) checkResult {
 			break
 		}
 	}
-	subjectLine := strings.Split(message, "\n")[0]
+	subjectLine := strings.Split(normalizedMessage, "\n")[0]
 	if len(subjectLine) > 72 {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("Subject line is %d characters (recommended: <=72)", len(subjectLine)))
 	}

@@ -1244,3 +1244,96 @@ func TestReleaseCutVersionFlagDryRun(t *testing.T) {
 		t.Fatalf("dry-run should target explicit 0.5.0, not suggested 0.4.0:\n%s", out)
 	}
 }
+
+func TestReleaseSuggestPreservesNestedMergeAttribution(t *testing.T) {
+	for _, skew := range []bool{false, true} {
+		t.Run(fmt.Sprintf("clock-skew=%v", skew), func(t *testing.T) {
+			repo, stateHome := releaseTrackFixture(t)
+			for _, title := range []string{"Inner auth", "Outer app"} {
+				if _, err := runIssue(t, repo, stateHome, "new", title); err != nil {
+					t.Fatal(err)
+				}
+			}
+			gitCLI(t, repo, "tag", "v-before-nested")
+			base := gitOutputReleaseTest(t, repo, "branch", "--show-current")
+			gitCLI(t, repo, "switch", "-c", "feat/loaf-2-app")
+			gitCLI(t, repo, "commit", "--allow-empty", "-m", "feat: app shell")
+			gitCLI(t, repo, "switch", "-c", "feat/loaf-1-auth")
+			gitCLI(t, repo, "commit", "--allow-empty", "-m", "feat: implement inner login")
+			gitCLI(t, repo, "switch", "feat/loaf-2-app")
+			t.Setenv("GIT_COMMITTER_DATE", "2035-01-01T00:00:00+00:00")
+			gitCLI(t, repo, "merge", "--no-ff", "-m", "Merge pull request #41 from levifig/feat/loaf-1-auth", "feat/loaf-1-auth")
+			gitCLI(t, repo, "commit", "--allow-empty", "-m", "test: cover outer app")
+			gitCLI(t, repo, "switch", base)
+			gitCLI(t, repo, "commit", "--allow-empty", "-m", "fix: unrelated base work")
+			if skew {
+				t.Setenv("GIT_COMMITTER_DATE", "2030-01-01T00:00:00+00:00")
+			} else {
+				t.Setenv("GIT_COMMITTER_DATE", "2040-01-01T00:00:00+00:00")
+			}
+			gitCLI(t, repo, "merge", "--no-ff", "-m", "Merge pull request #42 from levifig/feat/loaf-2-app", "feat/loaf-2-app")
+			out, err := runReleaseTrack(t, repo, stateHome, "suggest", "--base", "v-before-nested", "--json")
+			if err != nil {
+				t.Fatalf("release suggest: %v\n%s", err, out)
+			}
+			var suggestion releaseTrackSuggestion
+			if err := json.Unmarshal([]byte(out), &suggestion); err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]string{
+				"feat: app shell":                                      "LOAF-2",
+				"test: cover outer app":                                "LOAF-2",
+				"feat: implement inner login":                          "LOAF-1",
+				"Merge pull request #41 from levifig/feat/loaf-1-auth": "LOAF-1",
+				"Merge pull request #42 from levifig/feat/loaf-2-app":  "LOAF-2",
+			}
+			for _, item := range suggestion.Landed {
+				for _, commit := range item.Commits {
+					alias, ok := want[commit.Subject]
+					if !ok || item.Alias != alias {
+						t.Errorf("%q attributed to %s, want %q", commit.Subject, item.Alias, alias)
+					}
+					delete(want, commit.Subject)
+				}
+			}
+			if len(want) != 0 {
+				t.Errorf("missing attributed commits: %v\n%s", want, out)
+			}
+			if len(suggestion.Unattributed) != 1 || suggestion.Unattributed[0].Subject != "fix: unrelated base work" {
+				t.Errorf("unattributed = %#v, want only unrelated base work", suggestion.Unattributed)
+			}
+		})
+	}
+}
+
+func TestReleaseSuggestInheritsThroughUnnamedMerges(t *testing.T) {
+	repo, stateHome := releaseTrackFixture(t)
+	if _, err := runIssue(t, repo, stateHome, "new", "Outer app"); err != nil {
+		t.Fatal(err)
+	}
+	gitCLI(t, repo, "tag", "v-before-helpers")
+	base := gitOutputReleaseTest(t, repo, "branch", "--show-current")
+	gitCLI(t, repo, "switch", "-c", "feat/loaf-1-app")
+	gitCLI(t, repo, "commit", "--allow-empty", "-m", "feat: app shell")
+	gitCLI(t, repo, "switch", "-c", "helper-login")
+	gitCLI(t, repo, "commit", "--allow-empty", "-m", "feat: implement helper login")
+	gitCLI(t, repo, "switch", "-c", "helper-tests")
+	gitCLI(t, repo, "commit", "--allow-empty", "-m", "test: helper login")
+	gitCLI(t, repo, "switch", "helper-login")
+	gitCLI(t, repo, "merge", "--no-ff", "-m", "Merge branch helper-tests", "helper-tests")
+	gitCLI(t, repo, "switch", "feat/loaf-1-app")
+	gitCLI(t, repo, "merge", "--no-ff", "-m", "Merge branch helper-login", "helper-login")
+	gitCLI(t, repo, "switch", base)
+	gitCLI(t, repo, "merge", "--no-ff", "-m", "Merge pull request #42 from levifig/feat/loaf-1-app", "feat/loaf-1-app")
+	out, err := runReleaseTrack(t, repo, stateHome, "suggest", "--base", "v-before-helpers", "--json")
+	if err != nil {
+		t.Fatalf("release suggest: %v\n%s", err, out)
+	}
+	var suggestion releaseTrackSuggestion
+	if err := json.Unmarshal([]byte(out), &suggestion); err != nil {
+		t.Fatal(err)
+	}
+	if len(suggestion.Unattributed) != 0 || len(suggestion.Landed) != 1 || suggestion.Landed[0].Alias != "LOAF-1" || len(suggestion.Landed[0].Commits) != 6 {
+		t.Fatalf("all six commits should inherit the enclosing PR's LOAF-1 attribution:\n%s", out)
+	}
+}

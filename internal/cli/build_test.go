@@ -444,9 +444,11 @@ func TestSharedBuildShipsPostMergeReconciliationGuidance(t *testing.T) {
 		skill := readBuildFileString(t, filepath.Join(nativeBuildSkillTreeDir(root, target), "ship", "SKILL.md"))
 		for _, required := range []string{
 			"## Post-Merge Reconciliation",
-			"git pull --ff-only origin <baseRefName>",
+			"git pull --ff-only <baseRemote> <baseRefName>",
 			"git status --porcelain",
-			"git rev-parse <baseRefName> origin/<baseRefName>",
+			"git rev-parse <baseRefName> FETCH_HEAD",
+			"git merge-base --is-ancestor <mergeCommit> <baseRefName>",
+			"base repository",
 			"local reconciliation pending",
 			"git branch -d",
 		} {
@@ -698,7 +700,7 @@ func TestGitWorkflowPolicyPackagesMergeStrategyAndFastForwardBoundaries(t *testi
 		// and the base branch's rulesets and classic protection.
 		"`git.merge_strategy`",
 		"gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed",
-		"gh api repos/<owner>/<repo>/rules/branches/<base>",
+		"gh api repos/<owner>/<repo>/rules/branches/<base> --paginate --jq '.[]'",
 		"`parameters.allowed_merge_methods`",
 		"drop `merge` when a `required_linear_history` rule applies",
 		".required_linear_history.enabled",

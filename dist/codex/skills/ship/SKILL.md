@@ -46,21 +46,22 @@ Before the first journal write, select the command in [Journal Commands](#journa
 
 ## Post-Merge Reconciliation
 
-Only after authoritative PR readback confirms `MERGED`, the merge commit, the exact head, and the base branch:
+Only after authoritative PR readback confirms `MERGED`, the merge commit, the exact head, the base branch, and the base repository identity:
 
 1. Inspect the current checkout with `git status --porcelain` and `git worktree list`. If it is dirty, inaccessible, or the base branch belongs to another worktree, preserve it and report **local reconciliation pending** with the specific reason. Do not stash, reset, or switch through someone else's work.
-2. In a clean available checkout, switch to the confirmed base and fast-forward it; never merge the old feature branch back into the base:
+2. Resolve `<baseRemote>` from `git remote -v` against the authoritative PR base repository's host and owner/name, accounting for equivalent SSH and HTTPS URLs. `origin` may be a fork; its name or the branch's configured upstream is not proof of that identity. If no matching remote can be verified, preserve the checkout and report local reconciliation pending. In a clean available checkout, switch to the confirmed base and fast-forward from that verified remote; never merge the old feature branch back into the base:
    ```bash
    git switch <baseRefName>
-   git pull --ff-only origin <baseRefName>
-   git rev-parse <baseRefName> origin/<baseRefName>
+   git pull --ff-only <baseRemote> <baseRefName>
+   git rev-parse <baseRefName> FETCH_HEAD
+   git merge-base --is-ancestor <mergeCommit> <baseRefName>
    git status --porcelain
    ```
-   Confirm both refs name the same commit and the checkout is clean. If the switch or fast-forward refuses, leave local reconciliation pending and report the observed state; do not rebase, force, or reset to make it pass.
+   Require every command to succeed, both refs to name the same commit, the observed PR merge commit to be an ancestor of the local base, and a clean checkout. `FETCH_HEAD` is the base just fetched from the verified remote, including when its fetch mapping does not create a conventional remote-tracking ref. If any check, switch, or fast-forward refuses, leave local reconciliation pending and report the observed state; do not rebase, force, or reset to make it pass.
 3. Independently transition the canonical native work to its authorized completed state only after the remote merge is proven, and re-read that state. A local checkout blocker does not undo a verified remote merge or justify skipping the tracker readback.
 4. Report the disposition of the feature branch, remote branch, and any linked feature worktree. Inspect cleanliness, activity, and dependent work before any removal. Squash and rebase merges rewrite the feature commits, so the feature tip is usually not an ancestor of the base: if an authorized `git branch -d <headRefName>` refuses, retain the branch and report it; never silently escalate to `-D`. Worktree removal and remote branch deletion require their own applicable authorization and safety checks. Do not remove a worktree while running inside it.
 
-Report **Landed remotely; local reconciliation pending** when the PR and tracker are complete but the checkout cannot be safely reconciled. Report local reconciliation complete only after the base and clean-checkout readback. Do not treat installing or activating a local runtime as part of this Git reconciliation.
+Report **Landed remotely; local reconciliation pending** when the PR and tracker are complete but the checkout cannot be safely reconciled. Report local reconciliation complete only after the verified base repository, fetched-base equality, merge-commit ancestry, and clean-checkout readback. Do not treat installing or activating a local runtime as part of this Git reconciliation.
 
 ## Verification
 

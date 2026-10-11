@@ -4,16 +4,17 @@
 
 Complete these steps only after authoritative PR readback confirms the merge succeeded. Hook command matching alone does not prove success.
 
-1. **Confirm the merge and capture identity.** Read the PR's state, merge commit, base branch, head branch, number, URL, and linked native tracker reference. If the PR is not observed as merged, stop without changing tracker or Git state.
+1. **Confirm the merge and capture identity.** Read the PR's state, merge commit, base branch, base repository identity, head branch, number, URL, and linked native tracker reference. If the PR is not observed as merged, stop without changing tracker or Git state.
 
-2. **Reconcile an available clean checkout.** Inspect `git status --porcelain` and `git worktree list` first. If the checkout is dirty or the base is in another worktree, leave it untouched and report local reconciliation pending. Otherwise switch to the PR base and fast-forward:
+2. **Reconcile an available clean checkout.** Inspect `git status --porcelain` and `git worktree list` first. If the checkout is dirty or the base is in another worktree, leave it untouched and report local reconciliation pending. Resolve `<baseRemote>` from `git remote -v` against the authoritative PR base repository's host and owner/name, accounting for equivalent SSH and HTTPS URLs. `origin` can be a fork, and the configured upstream alone is not proof; if no matching remote can be verified, preserve the checkout and report local reconciliation pending. Otherwise switch to the PR base and fast-forward from the verified remote:
    ```
    git switch <baseRefName>
-   git pull --ff-only origin <baseRefName>
-   git rev-parse <baseRefName> origin/<baseRefName>
+   git pull --ff-only <baseRemote> <baseRefName>
+   git rev-parse <baseRefName> FETCH_HEAD
+   git merge-base --is-ancestor <mergeCommit> <baseRefName>
    git status --porcelain
    ```
-   Confirm the refs match and the checkout is clean. Do not stash, reset, rebase, or merge the feature branch into the base to hide a refusal.
+   Require every command to succeed, both refs to match, the observed PR merge commit to be an ancestor of the local base, and a clean checkout. `FETCH_HEAD` names the base just fetched even with a custom fetch mapping. Any failed check leaves local reconciliation pending. Do not stash, reset, rebase, or merge the feature branch into the base to hide a refusal.
 
 3. **Transition the canonical native tracker record.** Through the selected `project-management/v1` provider skill and harness-native connection, read the provider's valid statuses, perform the authorized completion transition, then read the same native record back. Report unsupported, failed, or indeterminate provider outcomes without creating a local fallback record.
 

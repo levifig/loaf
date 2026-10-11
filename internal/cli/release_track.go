@@ -601,8 +601,10 @@ func (r Runner) computeReleaseTrackSuggestion(runtimeRoot, baseFlag string) (rel
 	var unattributed []releaseTrackCommit
 	for i, commit := range commits {
 		issues := direct[i]
-		if len(issues) == 0 {
-			issues = directByHash[mergeOf[commit.fullHash]]
+		// Unnamed nested merges inherit the nearest enclosing attributed PR.
+		// Direct work references still take precedence over every enclosing merge.
+		for merge := mergeOf[commit.fullHash]; len(issues) == 0 && merge != ""; merge = mergeOf[merge] {
+			issues = directByHash[merge]
 		}
 		if len(issues) == 0 {
 			unattributed = append(unattributed, commit)
@@ -756,9 +758,9 @@ func resolveReleaseTrackBase(root, baseFlag string) (string, error) {
 
 func collectReleaseTrackCommits(root, base string) []releaseTrackCommit {
 	format := "%h%x00%H%x00%P%x00%s%x00%B%x00"
-	args := []string{"log", "--format=" + format}
+	args := []string{"log", "--topo-order", "--format=" + format}
 	if base != "" {
-		args = []string{"log", base + "..HEAD", "--format=" + format}
+		args = []string{"log", "--topo-order", base + "..HEAD", "--format=" + format}
 	}
 	output := releaseCommandOutput(root, "git", args...)
 	if strings.TrimSpace(output) == "" {
@@ -827,7 +829,11 @@ func attributeReleaseTrackCommit(commit releaseTrackCommit, prefix string, byAli
 // so the map is empty for them.
 func releaseTrackMergeMembers(root string, commits []releaseTrackCommit) map[string]string {
 	members := map[string]string{}
-	for _, commit := range commits {
+	// collectReleaseTrackCommits orders children before parents regardless of
+	// timestamps. Walk oldest topology first so nested PRs claim their own
+	// commits before an outer merge can absorb them.
+	for i := len(commits) - 1; i >= 0; i-- {
+		commit := commits[i]
 		if len(commit.parents) < 2 {
 			continue
 		}

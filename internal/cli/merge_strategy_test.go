@@ -114,3 +114,15 @@ func roundTripDefaultLoafConfig(t *testing.T, now time.Time) map[string]any {
 	}
 	return config
 }
+
+func TestConfiguredMergeStrategyRejectsOversizedConfig(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"git":{"merge_strategy":"merge"},"padding":"` + strings.Repeat("x", projectFileReadLimit) + `"}`
+	writeFile(t, filepath.Join(root, ".agents", "loaf.json"), body)
+	if got := configuredMergeStrategy(root); got != "" {
+		t.Fatalf("configuredMergeStrategy(oversized config) = %q, want empty fallback", got)
+	}
+}
