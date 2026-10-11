@@ -10,7 +10,7 @@ covers:
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-09-24'
+last_reviewed: '2026-09-29'
 ---
 
 # Build System
@@ -41,10 +41,15 @@ Loaf packages shared skills, agents, and hooks for supported harnesses. [Skill P
 
 ### Notes
 
-- **Claude Code** ships content with bare PATH `loaf` hook commands, not a bundled binary or runtime-discovery shim. Hooks are registered in `hooks/hooks.json` because `plugin.json` silently drops non-matcher session events.
+- **Claude Code** merges skill sidecars into the built frontmatter and ships content with bare PATH `loaf` hook commands, not a bundled binary or runtime-discovery shim. Hooks are registered in `hooks/hooks.json` because `plugin.json` silently drops non-matcher session events.
+- **OpenCode** generates commands from skills.
 - **OpenCode and Amp** generate JavaScript runtime plugins (`hooks.js` / `.amp/plugins/loaf.js`) that implement enforcement hooks via subprocess calls to `loaf check`. Amp's `loaf.js` retains ordinary hooks without selecting an implementation model or registering a delegation tool. Upgrades retire recognized historical `loaf-modes.ts` plugins while preserving foreign files.
 - **Codex** generates a current-schema `.codex/hooks.json` SessionStart matcher group because Codex `0.144.1` rejects Loaf's legacy flat hook projection; generated command and `commandWindows` fields are PATH `loaf journal context --from-hook --codex-hook`. POSIX installs omit the Windows variant; Windows installs keep both fields as that PATH form. Isolated `CODEX_HOME` startup on `darwin-arm64` is model-visible smoke-proven; global-home installation, resume, clear, compact, Windows runtime behavior, and completion remain separately unproven. The separately opted-in basic command policy renders one PATH `loaf` prefix per explicitly classified leaf and does not grant a bare `loaf` namespace, while body/file-consuming leaves and path-taking `change check` remain operator-gated. Other harness adapters are not implied.
 - **MCP servers** are not bundled. `loaf install` detects and recommends MCPs at install time; integration state stored in `.agents/loaf.json`.
+
+### Adding a Target
+
+Create `internal/cli/build_{target}.go`, then add the name to `defaultBuildTargets` and the target switch in `internal/cli/build.go`; `build_amp.go` shows the pattern. Declare the target and its output directory in `config/targets.yaml`, which also distributes `shared-templates`. Per-target skill frontmatter comes from `SKILL.<target>.yaml` sidecars beside each skill, not from `targets.yaml`. A new target must preserve the shared authoring contract in [Skill Portability](../architecture/skill-portability.md).
 
 ### Hook Registration (Claude Code)
 
