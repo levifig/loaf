@@ -33,6 +33,8 @@ type releaseTrackCommit struct {
 	Body     string `json:"body,omitempty"`
 	Type     string `json:"type,omitempty"`
 	Breaking bool   `json:"breaking,omitempty"`
+	fullHash string
+	parents  []string
 }
 
 type releaseTrackLandedIssue struct {
@@ -586,10 +588,24 @@ func (r Runner) computeReleaseTrackSuggestion(runtimeRoot, baseFlag string) (rel
 	}
 
 	journalByHash := resolveReleaseTrackJournalAliases(commits, prefix, journal)
+	direct := make([][]state.Issue, len(commits))
+	directByHash := map[string][]state.Issue{}
+	for i, commit := range commits {
+		direct[i] = attributeReleaseTrackCommit(commit, prefix, byAlias, journalByHash[commit.Hash])
+		if len(direct[i]) > 0 {
+			directByHash[commit.fullHash] = direct[i]
+		}
+	}
+	mergeOf := releaseTrackMergeMembers(runtimeRoot, commits)
 	landedCommits := map[string][]releaseTrackCommit{}
 	var unattributed []releaseTrackCommit
-	for _, commit := range commits {
-		issues := attributeReleaseTrackCommit(commit, prefix, byAlias, journalByHash[commit.Hash])
+	for i, commit := range commits {
+		issues := direct[i]
+		// Unnamed nested merges inherit the nearest enclosing attributed PR.
+		// Direct work references still take precedence over every enclosing merge.
+		for merge := mergeOf[commit.fullHash]; len(issues) == 0 && merge != ""; merge = mergeOf[merge] {
+			issues = directByHash[merge]
+		}
 		if len(issues) == 0 {
 			unattributed = append(unattributed, commit)
 			continue
@@ -741,10 +757,10 @@ func resolveReleaseTrackBase(root, baseFlag string) (string, error) {
 }
 
 func collectReleaseTrackCommits(root, base string) []releaseTrackCommit {
-	format := "%h%x00%s%x00%B%x00"
-	args := []string{"log", "--format=" + format}
+	format := "%h%x00%H%x00%P%x00%s%x00%B%x00"
+	args := []string{"log", "--topo-order", "--format=" + format}
 	if base != "" {
-		args = []string{"log", base + "..HEAD", "--format=" + format}
+		args = []string{"log", "--topo-order", base + "..HEAD", "--format=" + format}
 	}
 	output := releaseCommandOutput(root, "git", args...)
 	if strings.TrimSpace(output) == "" {
@@ -756,14 +772,14 @@ func collectReleaseTrackCommits(root, base string) []releaseTrackCommit {
 			continue
 		}
 		parts := strings.Split(chunk, "\x00")
-		if len(parts) < 2 {
+		if len(parts) < 4 {
 			continue
 		}
 		hash := strings.TrimSpace(parts[0])
-		subject := strings.TrimSpace(parts[1])
+		subject := strings.TrimSpace(parts[3])
 		body := ""
-		if len(parts) > 2 {
-			body = strings.TrimSpace(parts[2])
+		if len(parts) > 4 {
+			body = strings.TrimSpace(parts[4])
 		}
 		if hash == "" {
 			continue
@@ -775,6 +791,8 @@ func collectReleaseTrackCommits(root, base string) []releaseTrackCommit {
 			Body:     body,
 			Type:     parsed.Type,
 			Breaking: parsed.Breaking,
+			fullHash: strings.TrimSpace(parts[1]),
+			parents:  strings.Fields(parts[2]),
 		})
 	}
 	return commits
@@ -801,6 +819,33 @@ func attributeReleaseTrackCommit(commit releaseTrackCommit, prefix string, byAli
 		return issues
 	}
 	return resolveReleaseTrackAliases(journalAliases, byAlias)
+}
+
+// releaseTrackMergeMembers maps each commit a merge commit brought in from its
+// side branch (first parent..second parent) to that merge. Under the merge
+// strategy the branch commits land beside the merge commit and usually carry no
+// work alias themselves; this lets them share the PR's attribution instead of
+// reporting as unattributed. Squash and rebase histories have no merge commits,
+// so the map is empty for them.
+func releaseTrackMergeMembers(root string, commits []releaseTrackCommit) map[string]string {
+	members := map[string]string{}
+	// collectReleaseTrackCommits orders children before parents regardless of
+	// timestamps. Walk oldest topology first so nested PRs claim their own
+	// commits before an outer merge can absorb them.
+	for i := len(commits) - 1; i >= 0; i-- {
+		commit := commits[i]
+		if len(commit.parents) < 2 {
+			continue
+		}
+		for _, side := range commit.parents[1:] {
+			for _, hash := range strings.Fields(releaseCommandOutput(root, "git", "rev-list", commit.parents[0]+".."+side)) {
+				if _, claimed := members[hash]; !claimed {
+					members[hash] = commit.fullHash
+				}
+			}
+		}
+	}
+	return members
 }
 
 var (

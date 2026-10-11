@@ -345,6 +345,8 @@ func ensureLoafConfigDefaults(config map[string]any, now time.Time) ([]string, [
 		warnings = append(warnings, validateGitHubIntegration(integrations, &errors)...)
 	}
 
+	validateGitConfig(config, &errors)
+
 	if _, exists := config["issue"]; exists {
 		issueWarnings, issueErrors := state.IssueProjectConfigFindings(config)
 		warnings = append(warnings, issueWarnings...)

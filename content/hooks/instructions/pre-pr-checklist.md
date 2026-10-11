@@ -60,7 +60,7 @@ Do not render or synchronize a Loaf-local work record. If the tracker connection
 
 ### 5. Merge strategy
 
-Squash merge this one shippable unit. Write a clean extended description (2-4 lines summarizing the outcome). Never use the auto-generated squash description or create a merge commit merely to preserve feature-branch topology.
+This shippable unit lands later through ship with the project's merge strategy (`git.merge_strategy` in `.agents/loaf.json`, or the git-workflow skill's fallback). Under squash, prepare a clean extended description (2-4 lines summarizing the outcome) and never use the auto-generated squash description. Under merge or rebase, every branch commit lands on the default branch as written, so make each one a clean checkpoint before review. Never create a merge commit merely to preserve feature-branch topology.
 
 ---
 

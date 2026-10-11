@@ -94,7 +94,7 @@
             "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/instructions/pre-merge.md\"",
             "if": "Bash(gh pr merge:*)",
             "timeout": 5,
-            "description": "Remind about squash merge conventions before gh pr merge"
+            "description": "Remind that merges go through ship with the project's merge strategy before gh pr merge"
           },
           {
             "type": "command",

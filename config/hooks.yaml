@@ -126,7 +126,7 @@ hooks:
       if: "Bash(gh pr merge:*)"
       blocking: false
       timeout: 5000
-      description: Remind about squash merge conventions before gh pr merge
+      description: Remind that merges go through ship with the project's merge strategy before gh pr merge
 
     - id: workflow-pre-push
       skill: git-workflow

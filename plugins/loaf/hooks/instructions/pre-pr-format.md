@@ -6,4 +6,4 @@
 
 **Body:** `## Summary` (2-4 bullets) + `## Test plan` (checklist).
 
-**Merge:** Squash this shippable unit with a clean extended description (2-4 lines). Do not use an auto-generated description or an incidental merge commit.
+**Merge:** Lands later through ship with the project's merge strategy. Under squash, prepare a clean extended description (2-4 lines); under merge or rebase, every branch commit lands as written, so make each a clean checkpoint now. Do not use an auto-generated description or an incidental merge commit.
