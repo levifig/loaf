@@ -15,6 +15,7 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ### Fixed
 
+- Guide new pull requests through the canonical native tracker record, observed implementation evidence, and Ship's quality and authorized-landing gates instead of retired local issue commands ([#359](https://github.com/levifig/loaf/issues/359)).
 - Keep installs and upgrades on the canonical shared skill store, reject stale distributions containing retired skills or command projections before cleanup, and retire the five legacy session-workflow names only where ownership is verified. Name-only skill ownership now requires manual review and preservation before refresh; selecting every name no longer authorizes overwriting unknown content ([#357](https://github.com/levifig/loaf/issues/357)).
 - Restore `docs/knowledge/glossary.md` to the format `loaf kb glossary` reads and writes, and make `loaf kb validate` report a glossary those commands cannot parse.
 - Accept `fixup!`, `squash!`, and `amend!` commit subjects in commit validation when the rest is a Conventional Commit ([#339](https://github.com/levifig/loaf/issues/339)).
