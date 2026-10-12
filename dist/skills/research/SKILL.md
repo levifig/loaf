@@ -1,6 +1,11 @@
 ---
 name: research
-description: Conducts bounded project assessment and topic investigation. Use when the user asks for the current state, evidence, options, or a researched recommendation. Produces a direct synthesis or, when persistence is justified, a skill-specific temporary report. Not for implementation or multi-agent coordination.
+description: >-
+  Conducts bounded project assessment and topic investigation. Use when the user
+  asks for the current state, evidence, options, or a researched recommendation.
+  Produces a direct synthesis or, when persistence is justified, a
+  skill-specific temporary report. Not for implementation or multi-agent
+  coordination.
 ---
 
 # Research

@@ -3,7 +3,6 @@ package vnextflowcontract
 import (
 	"fmt"
 	"io/fs"
-	"os"
 	"path"
 	"testing"
 	"testing/fstest"
@@ -12,7 +11,7 @@ import (
 func TestTrackerSkillInventoryIsClosed(t *testing.T) {
 	t.Parallel()
 
-	content := os.DirFS("../../vnext/content")
+	content := repositoryFlowContent(t)
 	assertNoContractFindings(t, validateClosedContentInventory(content))
 	manifest := flowManifest{}
 	if err := decodeStrictJSON(content, flowManifestPath, &manifest); err != nil {
@@ -136,8 +135,9 @@ func canonicalContentInventory() []contentInventoryEntry {
 		{Path: ".", Directory: true},
 		{Path: "agents", Directory: true},
 		{Path: "agents/background-runner.md"},
-		{Path: "agents/project-manager.contract.json"},
-		{Path: "agents/project-manager.md"},
+		{Path: "contracts", Directory: true},
+		{Path: "contracts/project-manager.contract.json"},
+		{Path: "contracts/project-manager.md"},
 		{Path: "flow-contract.json"},
 		{Path: "skills", Directory: true},
 		{Path: "skills/implement", Directory: true},

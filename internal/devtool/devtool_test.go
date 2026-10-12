@@ -591,7 +591,7 @@ func TestUpdateHomebrewFormulaGeneratesAuditSafeURLs(t *testing.T) {
 		`version "0.2.4"`,
 		`url "https://github.com/levifig/loaf/releases/download/v0.2.4/loaf_0.2.4_darwin-arm64.tar.gz"`,
 		`sha256 "` + sums["linux-x64"] + `"`,
-		`libexec.install "bin", "package.json", "config", "content", "vnext", "dist", "plugins", ".claude-plugin"`,
+		`libexec.install "bin", "package.json", "config", "content", "dist", "plugins", ".claude-plugin"`,
 		`bin.write_exec_script libexec/"bin/loaf"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -636,7 +636,8 @@ func TestReleaseDryRunReportsTargets(t *testing.T) {
 func TestPackageWritesArchivesAndChecksums(t *testing.T) {
 	root := fixtureRoot(t)
 	writeFixture(t, filepath.Join(root, "package.json"), `{"name":"loaf","version":"1.2.3"}`)
-	writeFixture(t, filepath.Join(root, "vnext", "content", "skills", "linear", "SKILL.md"), "# Linear\n")
+	writeFixture(t, filepath.Join(root, "content", "skills", "linear", "SKILL.md"), "# Linear\n")
+	writeFixture(t, filepath.Join(root, "content", "flow-contract.json"), `{}`)
 	writeFixture(t, filepath.Join(root, "bin", "native", "linux-x64", "loaf"), "binary")
 	writeFixture(t, filepath.Join(root, "dist", "amp", "skills", "a.md"), "amp")
 	writeFixture(t, filepath.Join(root, "dist", "codex", "skills", "a.md"), "a")
@@ -651,7 +652,7 @@ func TestPackageWritesArchivesAndChecksums(t *testing.T) {
 	}
 	archive := filepath.Join(root, "dist", "release", "loaf_1.2.3_linux-x64.tar.gz")
 	entries := tarEntries(t, archive)
-	for _, want := range []string{"loaf_1.2.3_linux-x64/bin/loaf", "loaf_1.2.3_linux-x64/package.json", "loaf_1.2.3_linux-x64/vnext/content/skills/linear/SKILL.md", "loaf_1.2.3_linux-x64/dist/codex/skills/a.md", "loaf_1.2.3_linux-x64/.claude-plugin/marketplace.json", "loaf_1.2.3_linux-x64/content/SETUP.md"} {
+	for _, want := range []string{"loaf_1.2.3_linux-x64/bin/loaf", "loaf_1.2.3_linux-x64/package.json", "loaf_1.2.3_linux-x64/content/skills/linear/SKILL.md", "loaf_1.2.3_linux-x64/dist/codex/skills/a.md", "loaf_1.2.3_linux-x64/.claude-plugin/marketplace.json", "loaf_1.2.3_linux-x64/content/SETUP.md"} {
 		if !entries[want] {
 			t.Fatalf("archive missing %s; entries=%v", want, entries)
 		}
@@ -668,7 +669,7 @@ func TestPackageWritesArchivesAndChecksums(t *testing.T) {
 	if err := Package(PackageOptions{RootDir: root, Env: Env{"LOAF_RELEASE_TARGETS": "win32-x64"}, Stdout: &stdout}); err == nil || !strings.Contains(err.Error(), "missing native binary for win32-x64") {
 		t.Fatalf("missing binary error = %v", err)
 	}
-	os.RemoveAll(filepath.Join(root, "vnext"))
+	os.Remove(filepath.Join(root, "content", "flow-contract.json"))
 	if err := Package(PackageOptions{RootDir: root, Env: Env{"LOAF_RELEASE_TARGETS": "linux-x64"}, Stdout: &stdout}); err == nil || !strings.Contains(err.Error(), "missing tracker-native Flow content") {
 		t.Fatalf("missing Flow content error = %v", err)
 	}
@@ -713,7 +714,8 @@ func readArchiveFiles(t *testing.T, path string) map[string]archivedFile {
 func TestPackageEmbedsDeterministicAmpReleaseManifest(t *testing.T) {
 	root := fixtureRoot(t)
 	writeFixture(t, filepath.Join(root, "package.json"), `{"name":"loaf","version":"1.2.3"}`)
-	writeFixture(t, filepath.Join(root, "vnext", "content", "skills", "linear", "SKILL.md"), "# Linear\n")
+	writeFixture(t, filepath.Join(root, "content", "skills", "linear", "SKILL.md"), "# Linear\n")
+	writeFixture(t, filepath.Join(root, "content", "flow-contract.json"), `{}`)
 	native := filepath.Join(root, "bin", "native", "linux-x64", "loaf")
 	writeFixture(t, native, "native binary\n")
 	executable := filepath.Join(root, "dist", "amp", "bin", "runner")
@@ -860,7 +862,8 @@ func TestPackageRefusesInvalidAmpManifestInputs(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			root := fixtureRoot(t)
 			writeFixture(t, filepath.Join(root, "package.json"), `{"name":"loaf","version":"1.2.3"}`)
-			writeFixture(t, filepath.Join(root, "vnext", "content", "skills", "linear", "SKILL.md"), "# Linear\n")
+			writeFixture(t, filepath.Join(root, "content", "skills", "linear", "SKILL.md"), "# Linear\n")
+			writeFixture(t, filepath.Join(root, "content", "flow-contract.json"), `{}`)
 			writeFixture(t, filepath.Join(root, "bin", "native", "linux-x64", "loaf"), "binary")
 			test.set(t, root)
 			err := Package(PackageOptions{RootDir: root, Env: Env{"LOAF_RELEASE_TARGETS": "linux-x64"}, Stdout: &bytes.Buffer{}})

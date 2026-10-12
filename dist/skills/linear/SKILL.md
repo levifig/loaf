@@ -1,6 +1,10 @@
 ---
 name: linear
-description: Maps project-management/v1 operations to Linear issue semantics through an exposed harness-native connection. Use when the selected canonical tracker is Linear. Produces verified native outcomes without configuring credentials or a provider client.
+description: >-
+  Maps project-management/v1 operations to Linear issue semantics through an
+  exposed harness-native connection. Use when the selected canonical tracker is
+  Linear. Produces verified native outcomes without configuring credentials or a
+  provider client.
 ---
 
 # Linear

@@ -32,7 +32,7 @@ func (r Runner) runGenerateCLIReference(args []string, out io.Writer, rootPath s
 	if len(args) > 0 {
 		return fmt.Errorf("__generate-cli-ref does not accept arguments")
 	}
-	outputPath := filepath.Join(rootPath, "content", "skills", "loaf-reference", "SKILL.md")
+	outputPath := filepath.Join(rootPath, "docs", "knowledge", "cli-reference.md")
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 		return fmt.Errorf("create CLI reference directory: %w", err)
 	}
@@ -1008,11 +1008,11 @@ The Loaf operating manual for agents: how to discover commands, diagnose project
 		"",
 		"| Topic | Reference | Use When |",
 		"|-------|-----------|----------|",
-		"| Configuration maintenance | [references/configuration.md](references/configuration.md) | Checking whether a project's Loaf config is current and repairing it; wiring project-owned choices |",
-		"| Config-aware maintenance protocol | [references/maintenance.md](references/maintenance.md) | Upgrading, diagnosing, repairing, or bringing a project current: diagnose, plan, ask, apply, verify |",
-		"| Command routing | [references/command-routing.md](references/command-routing.md) | Deciding which command a task needs; locating the JSON diagnosis surfaces |",
-		"| Markdown migration | [references/markdown-migration.md](references/markdown-migration.md) | Running `loaf migrate markdown`: simulation vs inventory mode, import_report, origin/status authority |",
-		"| Troubleshooting | [references/troubleshooting.md](references/troubleshooting.md) | Diagnosing state, config, or alignment failures; isolating a throwaway database |",
+		"| Configuration maintenance | [cli-reference/configuration.md](cli-reference/configuration.md) | Checking whether a project's Loaf config is current and repairing it; wiring project-owned choices |",
+		"| Config-aware maintenance protocol | [cli-reference/maintenance.md](cli-reference/maintenance.md) | Upgrading, diagnosing, repairing, or bringing a project current: diagnose, plan, ask, apply, verify |",
+		"| Command routing | [cli-reference/command-routing.md](cli-reference/command-routing.md) | Deciding which command a task needs; locating the JSON diagnosis surfaces |",
+		"| Markdown migration | [cli-reference/markdown-migration.md](cli-reference/markdown-migration.md) | Running `loaf migrate markdown`: simulation vs inventory mode, import_report, origin/status authority |",
+		"| Troubleshooting | [cli-reference/troubleshooting.md](cli-reference/troubleshooting.md) | Diagnosing state, config, or alignment failures; isolating a throwaway database |",
 		"",
 	)
 

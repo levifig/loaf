@@ -1,6 +1,10 @@
 ---
 name: release
-description: Releases a coherent set of already-landed work through repository-native publishing surfaces. Use when shipped tracker records and Git history are ready for a versioned publication. Produces a verified release outcome without a local release ledger.
+description: >-
+  Releases a coherent set of already-landed work through repository-native
+  publishing surfaces. Use when shipped tracker records and Git history are
+  ready for a versioned publication. Produces a verified release outcome without
+  a local release ledger.
 ---
 
 # Release

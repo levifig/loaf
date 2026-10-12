@@ -1,6 +1,10 @@
 ---
 name: housekeeping
-description: Reviews temporary reports, private continuity artifacts, and Git workspace hygiene without creating another work system. Use when the user asks to clean up, tidy `.agents/`, or decide what to retain. Produces artifact-by-artifact recommendations and performs only explicitly approved dispositions.
+description: >-
+  Reviews temporary reports, private continuity artifacts, and Git workspace
+  hygiene without creating another work system. Use when the user asks to clean
+  up, tidy `.agents/`, or decide what to retain. Produces artifact-by-artifact
+  recommendations and performs only explicitly approved dispositions.
 ---
 
 # Housekeeping

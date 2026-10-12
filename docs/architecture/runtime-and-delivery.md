@@ -71,4 +71,4 @@ Development builds stage the requested binaries before publication. Ordinary `ma
 - [Public command entrypoint and tests](../../cmd/loaf/) and [Go command implementation](../../internal/cli/) carry the native runtime.
 - [Build verification workflow](../../.github/workflows/build.yml) checks tracked generated drift; [Skill Portability](skill-portability.md) owns common content and target adaptation.
 - [Release tooling](../../internal/devtool/) owns archive construction, tag classification, provenance injection, and artifact checks.
-- [Tracker-native release method](../../vnext/content/skills/release/SKILL.md) owns release operation; the [strategy](../STRATEGY.md) names unresolved delivery judgments without making them shipped behavior.
+- [Tracker-native release method](../../content/skills/release/SKILL.md) owns release operation; the [strategy](../STRATEGY.md) names unresolved delivery judgments without making them shipped behavior.

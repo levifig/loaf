@@ -21,7 +21,6 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 const DEFAULT_MODEL = "claude-opus-4-6";
 const MAX_DESC_CHARS = 250;
-const EXPECTED_SKILL_COUNT = 37;
 
 const PRICING = {
   "claude-opus-4-6": { input: 15, output: 75 },
@@ -38,8 +37,24 @@ if (args.help) {
 
 const MODEL = args.model || DEFAULT_MODEL;
 const SKILLS_DIR = join(process.cwd(), "content", "skills");
+const SKILL_DIRS = readdirSync(SKILLS_DIR, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .filter((name) => {
+    try { return statSync(join(SKILLS_DIR, name, "SKILL.md")).isFile(); }
+    catch { return false; }
+  });
+const EXPECTED_SKILL_COUNT = SKILL_DIRS.length;
 
 const TEST_CASES = {
+  github: [
+    "Read the canonical GitHub issue and verify its native dependencies",
+    "Map the project-management contract to GitHub Issues and the project board",
+  ],
+  "project-management": [
+    "Which native tracker operation captures this deferred actionable finding?",
+    "Explain the provider-neutral project-management/v1 work contract",
+  ],
   architecture: [
     "Update our caching architecture topic with the current model and rationale",
     "Should this project use PostgreSQL or SQLite?",
@@ -516,29 +531,24 @@ Options:
 
 function loadSkills() {
   const skills = [];
-  for (const dir of readdirSync(SKILLS_DIR)) {
+  for (const dir of SKILL_DIRS) {
     const skillPath = join(SKILLS_DIR, dir, "SKILL.md");
-    try {
-      statSync(skillPath);
-    } catch {
-      continue;
-    }
     const content = readFileSync(skillPath, "utf-8");
     const frontMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!frontMatch) continue;
+    if (!frontMatch) throw new Error(`Missing frontmatter: ${skillPath}`);
 
     const front = frontMatch[1];
     const nameMatch = front.match(/^name:\s*(.+)$/m);
     const descMatch = front.match(/description:\s*>-?\n([\s\S]*?)(?=\n[a-z][a-z0-9_-]*:|$)/);
-    if (!nameMatch || !descMatch) continue;
+    const inlineDescription = front.match(/^description:[ \t]*(?!>)(.+)$/m);
+    if (!nameMatch || (!descMatch && !inlineDescription)) {
+      throw new Error(`Missing skill name or description: ${skillPath}`);
+    }
 
     const name = nameMatch[1].trim();
-    const description = descMatch[1]
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .join(" ")
-      .trim();
+    const description = descMatch
+      ? descMatch[1].split("\n").map((line) => line.trim()).filter(Boolean).join(" ").trim()
+      : inlineDescription[1].trim();
 
     skills.push({
       name,

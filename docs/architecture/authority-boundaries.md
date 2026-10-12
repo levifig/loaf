@@ -13,7 +13,7 @@ Loaf assigns authority by purpose, not by file format or whether something can b
 
 The Flow methods are Loaf-owned, but their shared work record is tracker-owned. The agent uses the selected `project-management/v1` provider skill through a connection the harness already exposes and authenticates. Loaf neither configures provider authentication nor calls a provider API on the agent's behalf. Provider-specific field and relationship mappings stay in the provider skill.
 
-Public intent and selected work share the tracker but carry different authority. Backlog preserves intent without authorizing execution; Todo means shaped and explicitly selected. A complete definition does not itself select work. The [Flow semantics](../../vnext/content/skills/loaf-reference/references/flow-semantics.md) own the ceremony rules. For GitHub, the configured Projects v2 Status field supplies these lanes alongside Issue state; Issue open/closed is not a substitute. Missing lane access is a configuration or connection gap, never permission to invent a local queue.
+Public intent and selected work share the tracker but carry different authority. Backlog preserves intent without authorizing execution; Todo means shaped and explicitly selected. A complete definition does not itself select work. The [Flow semantics](../../content/skills/loaf-reference/references/flow-semantics.md) own the ceremony rules. For GitHub, the configured Projects v2 Status field supplies these lanes alongside Issue state; Issue open/closed is not a substitute. Missing lane access is a configuration or connection gap, never permission to invent a local queue.
 
 When the necessary connection or native capability is unavailable, the tracker-mutating operation stops and reports the limitation. It does not invent a local fallback or report approximate fidelity as exact. Material writes require authoritative native readback, and an ambiguous result must be resolved before retrying a non-idempotent operation.
 
@@ -58,7 +58,7 @@ There is no ongoing local-to-tracker synchronization, reconciliation loop, dual 
 
 ## Implementation and Gaps
 
-The [provider contract and skills](../../vnext/content/skills/project-management/SKILL.md) implement tracker-native Flow guidance. The [shared build overlay](../../internal/cli/build_codex.go) promotes that guidance into every generated target. The isolated [kernel ownership contract](../../vnext/internal/kernel/kernel.go) and [Flow contract tests](../../internal/vnextflowcontract/) encode the intended authority split.
+The [provider contract and skills](../../content/skills/project-management/SKILL.md) implement tracker-native Flow guidance. The [shared intermediate builder](../../internal/cli/build_codex.go) packages that guidance from the canonical content tree into every generated target. The isolated [kernel ownership contract](../../vnext/internal/kernel/kernel.go) and [Flow contract tests](../../internal/vnextflowcontract/) encode the intended authority split.
 
 The public [Go CLI](../../internal/cli/cli.go) still exposes historical local work and report commands, and the [state package](../../internal/state/) still contains their records and compatibility integrations. Removing them safely remains migration and cutover work, not an already completed consequence of adopting this topic.
 

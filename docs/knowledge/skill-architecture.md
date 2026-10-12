@@ -60,7 +60,7 @@ content/skills/{name}/
 └── templates/                # Artifact templates (loaded on demand)
 ```
 
-Skills are auto-discovered from `content/skills/` at build time; do not register a skill itself in `config/hooks.yaml`. Only hook instances are registered there, and a skill that ships no hooks needs no entry. Skills compile to a shared intermediate at `dist/skills/`, with shared templates projected into consuming packages and tracker-native Flow/provider sources overlaid from `vnext/content/`. Each target then packages the same common content; see [Build System](build-system.md).
+Skills are auto-discovered from `content/skills/` at build time; do not register a skill itself in `config/hooks.yaml`. Only hook instances are registered there, and a skill that ships no hooks needs no entry. Skills compile to a shared intermediate at `dist/skills/`, with shared templates projected into consuming packages. Tracker-native Flow and provider skills use the same canonical source and build path. Each target then packages the same common content; see [Build System](build-system.md).
 
 ### Repository-Local Authoring Skill
 
@@ -212,10 +212,13 @@ Shared templates live in `content/templates/` and are distributed to skills at b
 
 | Template | Distributed To |
 |----------|---------------|
-| `journal.md` | implement, orchestration, housekeeping, bootstrap |
+| `journal.md` | bootstrap |
+| `problem-narrative.md` | pitch, loaf-reference |
+| `work-contract.md` | shape, ship, project-management, loaf-reference |
+| `tracker-update.md` | triage, implement, ship, release, orchestration, project-management, loaf-reference |
 | `grilling.md` | refactor-deepen |
 
-To add a shared template, create it in `content/templates/` and register its consumers under `shared-templates`. A skill references a distributed template by its projected relative path; see the authored [journal template](../../content/templates/journal.md). Tracker-native Flow templates are separately projected by the common overlay before target packaging.
+To add a shared template, create it in `content/templates/` and register its consumers under `shared-templates`. A skill references a distributed template by its projected relative path; see the authored [journal template](../../content/templates/journal.md). Tracker-native Flow templates use the same mappings; their root-relative authored links are projected into each consuming skill.
 
 ## Harness-Neutral Authoring
 
@@ -242,7 +245,7 @@ Use the Task tool with run_in_background: true and subagent_type background-runn
 Background agents are configured via the is_background: true YAML property.
 ```
 
-See `content/skills/orchestration/references/background-agents.md` and `content/skills/foundations/references/permissions.md` for full worked examples with multi-line fences.
+See `content/skills/foundations/references/permissions.md` for worked examples with multi-line fences.
 
 Rules for the primary shape:
 
@@ -265,7 +268,6 @@ Use the compact table when every row is a single token or short phrase; use `###
 Worked examples of genuine product-specific facts (keep as labeled content; do not neutralize away):
 
 - Fenced allowlist entries whose literal tokens differ by product (`foundations/references/permissions.md`)
-- Distinct spawn/configuration mechanisms (`orchestration/references/background-agents.md`)
 - The Claude Code `@AGENTS.md` import in a root `CLAUDE.md` for sessions that cannot read `AGENTS.md` directly, and the rule that a real `.claude/CLAUDE.md` suppresses direct `AGENTS.md` reading (the paths are the fact; root `AGENTS.md` stays the canonical project-instructions name in prose)
 - Review policy that must inspect both `AGENTS.md` and `CLAUDE.md` when both exist
 - Slash-command invocation forms that differ by channel (`/loaf:name` on Claude Code's plugin path vs bare `/name` elsewhere)

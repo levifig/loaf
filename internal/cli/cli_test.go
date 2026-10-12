@@ -11695,7 +11695,7 @@ func TestRunnerGenerateCLIReferenceIndexesEditSubcommands(t *testing.T) {
 	if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir}).Run([]string{"__generate-cli-ref"}); err != nil {
 		t.Fatalf("__generate-cli-ref error = %v", err)
 	}
-	data, err := os.ReadFile(filepath.Join(workingDir, "content", "skills", "loaf-reference", "SKILL.md"))
+	data, err := os.ReadFile(filepath.Join(workingDir, "docs", "knowledge", "cli-reference.md"))
 	if err != nil {
 		t.Fatalf("ReadFile(generated loaf-reference skill) error = %v", err)
 	}

@@ -1,6 +1,11 @@
 ---
 name: shape
-description: Shapes existing pitch, conversation, or native intent into a bounded, independently reviewable tracker work contract. Use when work needs testable completion criteria, explicit exclusions, hierarchy, or dependencies before implementation. Produces a verified native record ready for implement and ship.
+description: >-
+  Shapes existing pitch, conversation, or native intent into a bounded,
+  independently reviewable tracker work contract. Use when work needs testable
+  completion criteria, explicit exclusions, hierarchy, or dependencies before
+  implementation. Produces a verified native record ready for implement and
+  ship.
 ---
 
 # Shape

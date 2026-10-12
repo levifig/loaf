@@ -5,12 +5,12 @@ topics:
   - implementation
   - releases
 covers:
-  - vnext/content/skills/pitch/**/*
-  - vnext/content/skills/shape/**/*
-  - vnext/content/skills/implement/**/*
-  - vnext/content/skills/ship/**/*
-  - vnext/content/skills/release/**/*
-  - vnext/content/skills/project-management/**/*
+  - content/skills/pitch/**/*
+  - content/skills/shape/**/*
+  - content/skills/implement/**/*
+  - content/skills/ship/**/*
+  - content/skills/release/**/*
+  - content/skills/project-management/**/*
 consumers:
   - implementer
   - reviewer

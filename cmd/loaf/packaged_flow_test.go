@@ -25,7 +25,7 @@ func TestPackagedRebuildPreservesTrackerNativeFlow(t *testing.T) {
 	target, nativeName := hostReleaseTarget()
 
 	source := t.TempDir()
-	for _, dir := range []string{"content", "config", "vnext/content"} {
+	for _, dir := range []string{"content", "config"} {
 		if err := os.CopyFS(filepath.Join(source, dir), os.DirFS(filepath.Join(repo, dir))); err != nil {
 			t.Fatal(err)
 		}
@@ -103,7 +103,7 @@ func TestPackagedRebuildPreservesTrackerNativeFlow(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatal("packaged rebuild changed skill bytes or lost tracker-native Flow/provider/report templates")
 	}
-	if !reflect.DeepEqual(packagedTreeDigests(t, filepath.Join(packaged, "vnext/content")), packagedTreeDigests(t, filepath.Join(source, "vnext/content"))) {
+	if !reflect.DeepEqual(packagedTreeDigests(t, filepath.Join(packaged, "content")), packagedTreeDigests(t, filepath.Join(source, "content"))) {
 		t.Fatal("package changed or omitted authored Flow content, agents, or templates")
 	}
 	if _, err := os.Stat(envValue(t, env, "LOAF_DB")); !os.IsNotExist(err) {
@@ -115,6 +115,7 @@ func TestReleasePackageRejectsMissingFlowSources(t *testing.T) {
 	repo := repoRoot(t)
 	loafdev := buildLoafdev(t, repo)
 	source := t.TempDir()
+	writeFixtureFile(t, filepath.Join(source, "content/skills/unrelated/SKILL.md"), "# Domain skill\n")
 	writeFixtureFile(t, filepath.Join(source, "package.json"), readFixtureFile(t, filepath.Join(repo, "package.json")))
 	writeFixtureFile(t, filepath.Join(source, "bin/native/linux-x64/loaf"), "unused native fixture\n")
 	cmd := exec.Command(loafdev, "package")

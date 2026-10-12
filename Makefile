@@ -66,7 +66,7 @@ ci-check:
 	$(MAKE) ci-smoke
 	$(MAKE) cgo-free
 	$(MAKE) verify-generated
-	git diff --exit-code -- dist/ plugins/ .claude-plugin/ content/skills/loaf-reference/
+	git diff --exit-code -- dist/ plugins/ .claude-plugin/ docs/knowledge/cli-reference.md
 
 ci-smoke:
 	$(GO) test -count=1 -timeout=2m ./cmd/loaf -run '^(TestPublicBinaryDispatchesStateVersionAndReleasePreflightNatively|TestReleaseWorkflowVerifiesEvidenceBeforeStampedBuild)$$'
