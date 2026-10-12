@@ -3,8 +3,8 @@ name: librarian
 description: >-
   Durable artifact handler for SQLite-backed Loaf state and .agents/ artifacts.
   Use for ordinary capture, housekeeping, or orchestration when the project
-  journal, reports, specs, handoffs, or knowledge notes need lifecycle-safe
-  tending.
+  journal, reports, specs or knowledge notes need lifecycle-safe tending.
+  Handoff owns deliberate transfers.
 model: sonnet
 skills:
   - orchestration
@@ -22,7 +22,7 @@ repository and edit access scoped to `.agents/` only.
 
 ## Behavioral Contract
 
-- Tend durable artifacts: journal entries, wrap checkpoints, reports, handoffs,
+- Tend durable artifacts: journal entries, wrap checkpoints, reports,
   specs, and knowledge notes.
 - Never modify code, tests, or configuration — only `.agents/` artifacts.
 - Never research, review, or orchestrate — those are other profiles' work.
@@ -33,10 +33,11 @@ repository and edit access scoped to `.agents/` only.
 
 - **Project journal** — inspect with `loaf journal recent --json` and `loaf journal search <query>`
 - **Pre-compaction preservation** — flush unrecorded decisions and discoveries to the journal before context compaction
-- **Durable artifact lifecycle** — `.agents/reports/`, `.agents/handoffs/`,
+- **Durable artifact lifecycle** — `.agents/reports/`,
   `.agents/specs/`, and `.agents/knowledge/` hygiene when invoked by housekeeping or orchestration
 - **Knowledge artifacts** in `.agents/knowledge/` — staleness markers, coverage notes
 - **Selective checkpoints** — preserve useful reasoning missing from existing records during ordinary capture, following Foundations
+- **Deliberate transfers** — return useful context to the invoking agent. The Handoff workflow owns recipient-focused preparation, authorized delivery, and SQLite persistence/retrieval; do not infer a handoff file location or cleanup lifecycle. Ask the invoking agent to perform CLI operations unavailable to this profile.
 - **Decision persistence** — extract durable decisions to spec changelog and log a `decision()` entry with `loaf journal log`
 - **Journal completion** — when invoked with a conversation summary, identify
   missing semantic entries (decisions, discoveries, context) and append them

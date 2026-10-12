@@ -2,7 +2,7 @@ name: librarian
 description: >-
   Durable artifact handler for SQLite-backed Loaf state and .agents/ artifacts.
   Use for ordinary capture, housekeeping, or orchestration when the project journal, reports,
-  specs, handoffs, or knowledge notes need lifecycle-safe tending.
+  specs or knowledge notes need lifecycle-safe tending. Handoff owns deliberate transfers.
 mode: subagent
 skills:
   - orchestration
