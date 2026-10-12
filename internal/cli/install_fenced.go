@@ -284,10 +284,11 @@ func generateFencedContent() string {
 		"- `loaf issue` and its Linear push/pull/reconcile commands are frozen migration compatibility only; never use them as ongoing work authority or synchronization",
 		"",
 		"**Journal Discipline:**",
-		"Before completing any response that includes edits, commits, or significant decisions, log journal entries using `loaf journal log \"type(scope): description\"`. Entry types: `decision`, `discover`, `wrap`. Do not defer journaling - log before responding.",
+		"Record significant decisions and discoveries as they happen with `loaf journal log \"type(scope): description\"` (`decision` or `discover`). Before completing substantial work, handing off, or compacting context, write a concise `wrap(scope)` checkpoint only when useful reasoning is missing from existing records. Preserve abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable; omit empty fields and do not repeat raw events. Routine interactions need no redundant checkpoint. A missing checkpoint is valid; there is no session lifecycle.",
+		"Foundations owns ordinary capture and selective synthesis; no workflow invocation or compaction/end hook is required. Read recent journal entries before synthesizing when needed, and use supported journal reads to recover context. Project Management owns actionable follow-up capture, Implement and Ship own delivery evidence and Git-state reporting, and Housekeeping owns artifact maintenance. A checkpoint does not authorize implementation, commits, pushes, releases, or cleanup.",
 		"In Codex Auto mode, when the user explicitly installed the managed basic-command policy, use the PATH `loaf` command for classified leaves, including `loaf journal log --execpolicy-safe` for journal writes. Do not substitute an absolute executable pin or a shell/environment wrapper. The policy authorizes only explicitly classified basic Loaf command leaves and does not grant unclassified/operator commands, a bare Loaf namespace, or general filesystem access. Global instructions remain user-owned; no Loaf block in `CODEX_HOME/AGENTS.md` is required. Other harness adapters are not implied.",
 		"",
-		"See the Loaf `orchestration` skill for full details.",
+		"See the Loaf `foundations` skill for continuity guidance.",
 		fencedEndMarker,
 	}, "\n")
 	return "<!-- loaf:managed:start -->\n" + body

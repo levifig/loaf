@@ -127,27 +127,17 @@ func journalContextPromptInstructions() string {
 	}, "\n")
 }
 
-// journalContextCompactInstructions is injected before compaction. It retargets
-// the emergency-flush guidance to the journal: log unrecorded entries now, and
-// write a wrap-type checkpoint only when there is synthesis worth saving.
+// journalContextCompactInstructions reinforces ordinary capture where a harness
+// delivers the hook. It only emits guidance; the agent chooses missing facts and
+// useful synthesis to persist through the existing journal commands.
 func journalContextCompactInstructions() string {
 	return strings.Join([]string{
 		"CONTEXT COMPACTION IMMINENT: Your conversation context will be compacted soon.",
 		"",
-		"REQUIRED before the model responds:",
-		"",
-		"1. **Flush journal entries.** Log all unrecorded decisions, discoveries, and progress:",
-		"   - `decision(scope): key decisions made this conversation`",
-		"   - `discover(scope): important findings`",
-		"   - `finding(scope): analysis result`",
-		"   Run `loaf journal log \"type(scope): description\"` for each.",
-		"",
-		"2. **Write a wrap checkpoint IF there is synthesis worth saving.** A wrap captures the",
-		"   connective narrative that evaporates with the context window - \"tried X, abandoned",
-		"   because Y, next is Z\" - not just raw events. Only write one when that synthesis exists:",
-		"   `loaf journal log \"wrap(scope): what happened, what's blocked, what's next\"`.",
-		"",
-		"The journal IS your external memory. Entries not flushed now are lost forever.",
+		"Record significant unrecorded decisions and discoveries with `loaf journal log \"type(scope): description\"`.",
+		"Write a concise checkpoint only when useful reasoning is missing from existing records: preserve abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable. Omit empty fields and do not repeat raw events.",
+		"Use `loaf journal log \"wrap(scope): tried X, abandoned because Y; next is Z\"` for that synthesis. Routine interactions need no redundant checkpoint. A missing checkpoint is valid; there is no session lifecycle.",
+		"Foundations owns this ordinary discipline; do not wait for a compaction or end hook. This hook only emits guidance and writes nothing itself. Hook availability and delivery depend on the harness, and abrupt endings can lose reasoning that was never recorded.",
 	}, "\n")
 }
 

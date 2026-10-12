@@ -115,6 +115,8 @@ const TEST_CASES = {
     "Review this code for maintainability basics",
     "Are we following naming conventions here?",
     "Run the general quality checklist before we ship",
+    "How should ordinary work preserve reasoning before context is lost?",
+    "When is a selective journal checkpoint useful rather than repetitive?",
   ],
   "git-workflow": [
     "Write a Conventional Commit message",
@@ -249,11 +251,6 @@ const TEST_CASES = {
     "Create a React component for this design",
     "Set up a Next.js App Router page",
     "Write Vitest tests for this utility",
-  ],
-  wrap: [
-    "Wrap this session",
-    "Shut down and summarize the work",
-    "Record the final session state before stopping",
   ],
 };
 

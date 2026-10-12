@@ -11,7 +11,7 @@
       "id": "managed-instructions",
       "kind": "instruction",
       "destination": "project-instructions",
-      "sha256": "5403297367a1e20ac96e6382b6858a7072986da5be1d9fa5396624d046a8e9b8"
+      "sha256": "f3492be6db299c587066ad9076dbd935fb750c56f84f6eb5a5ae15360675faa9"
     },
     {
       "id": "plugin:.amp/plugins/loaf.js",

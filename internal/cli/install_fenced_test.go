@@ -30,8 +30,8 @@ func TestGenerateFencedContentIsJournalFirst(t *testing.T) {
 	if !strings.Contains(content, "loaf journal log/recent/search/context") {
 		t.Fatalf("fenced content missing journal CLI command listing:\n%s", content)
 	}
-	if !strings.Contains(content, "See the Loaf `orchestration` skill for full details.") {
-		t.Fatalf("fenced content missing orchestration skill pointer:\n%s", content)
+	if !strings.Contains(content, "See the Loaf `foundations` skill for continuity guidance.") {
+		t.Fatalf("fenced content missing foundations skill pointer:\n%s", content)
 	}
 	if strings.Contains(content, "skills/orchestration/SKILL.md") {
 		t.Fatalf("fenced content references repo-relative dead link skills/orchestration/SKILL.md:\n%s", content)

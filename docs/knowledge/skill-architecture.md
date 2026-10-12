@@ -279,10 +279,10 @@ User-invocable workflow skills must log their invocation to the project journal 
 ```bash
 loaf journal log "skill(shape): shaping auth token rotation in the selected native issue"
 loaf journal log "skill(housekeeping): routine cleanup, no specific trigger"
-loaf journal log "skill(wrap): end-of-conversation checkpoint"
+loaf journal log "skill(ship): reviewing the selected candidate"
 ```
 
-The `/wrap` skill reads recent entries to check whether housekeeping or other periodic skills were run. The [journal template](../../content/templates/journal.md) owns the entry types and format rules.
+Recent journal entries show which workflows ran. Foundations owns ordinary capture and selective synthesis; the [journal template](../../content/templates/journal.md) owns entry types and format rules.
 
 ## Agent Profiles
 
@@ -303,7 +303,7 @@ Skills load into profiles at spawn time. What an agent is intended to touch come
 | Category | `user-invocable` | Examples |
 |----------|:-:|---------|
 | Reference/Knowledge | `false` | python-development, database-design, foundations, git-workflow, orchestration |
-| Workflow/Process | `true` (default) | implement, research, shape, breakdown, ship, release, housekeeping, wrap |
+| Workflow/Process | `true` (default) | implement, research, shape, breakdown, ship, release, housekeeping |
 
 Reference skills provide background knowledge the model loads automatically; set `user-invocable: false` in the sidecar so users are not offered `/python-development`.
 

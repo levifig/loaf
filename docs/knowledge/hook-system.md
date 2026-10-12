@@ -36,7 +36,7 @@ Dispatch depends on the registered entry and the target adapter:
 | **Native check** | None of `script:`, `command:`, `instruction:`, or `prompt:` | Runs `loaf check --hook <id>` | `check-secrets` |
 | **command** | `command:` | Runs a CLI command | `loaf journal context --from-hook` |
 | **Instruction** | `instruction:` (with `type: command`) | Claude Code, Cursor, and OpenCode: the build copies the instruction file into the target's hooks output and the generated hook prints it when it fires. Codex does not project instruction hooks. Amp generates the command but does not yet ship the file | `instructions/pre-merge.md` |
-| **prompt** | `prompt:` | Injects inline text into model context | Compaction journal-flush gate |
+| **prompt** | `prompt:` | Injects inline text into model context | Validation gates |
 | **Legacy script** | `script:` | Compatibility only; do not add maintained Bash/Python implementations | — |
 
 Instruction hooks are used for advisory checklists (pre-merge, pre-push, post-merge).
@@ -141,10 +141,7 @@ Instruction files live in `content/hooks/instructions/` and are rendered into ho
 
 Inject inline text into the model's context. Prompt hooks are binary gates — any non-empty LLM response blocks the action. Use only for validation that returns empty on success, never for advisory nudges. See [Hook Type Behavioral Constraints](#hook-type-behavioral-constraints) for the full list.
 
-| Hook | Event/Condition | Purpose |
-|------|-----------------|---------|
-| `session-pre-compact-nudge` | PreCompact | Require journal flush and next-actions summary before compaction |
-| `session-post-compact-nudge` | PostCompact | Re-read the continuity digest after compaction |
+The maintained PreCompact journal hook is a command hook owned by Foundations. It emits selective capture guidance, not a blocking prompt gate or automatic summary. Its delivery depends on the harness and mode; ordinary capture also lives directly in managed project instructions and does not require this event.
 
 ## Journal Auto-Entry Hooks
 
@@ -166,10 +163,8 @@ Registered under `session:` in hooks.yaml with an `event:` field. These hooks em
 |------|-------|----------|---------|
 | `session-start-loaf` | SessionStart | command (`loaf journal context --from-hook`) | Emit the layered continuity digest (latest wrap + branch entries + open tasks); silent for subagents |
 | `session-context-inject` | UserPromptSubmit | command (`loaf journal context for-prompt`) | Inject implementation conventions on prompt submit |
-| `pre-compact` | PreCompact | command (`loaf journal context for-compact`) | Inject journal-flush guidance before compaction; writes nothing itself |
+| `pre-compact` | PreCompact | command (`loaf journal context for-compact`) | Reinforce ordinary capture and selective checkpoints; writes nothing itself |
 | `post-compact` | PostCompact | command (`loaf journal context for-resumption`) | Re-emit the continuity digest for post-compaction resumption |
-| `session-pre-compact-nudge` | PreCompact | prompt | Require journal flush + next-actions summary (see Prompt Hooks) |
-| `session-post-compact-nudge` | PostCompact | prompt | Re-read the digest after compaction (see Prompt Hooks) |
 | `journal-task-completed` | TaskCompleted | command (`loaf journal log --from-hook`) | Auto-logs task completions to the journal |
 
 `loaf journal context --from-hook` and `loaf journal log --from-hook` use `agent_id` from hook JSON to detect subagents — subagent invocations exit silently and write nothing.

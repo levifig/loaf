@@ -36,16 +36,14 @@ not create or edit journal markdown as the source of truth — use
 | `spark(scope)` | Ideas to promote | Agent |
 | `todo(scope)` | Action items | Agent |
 | `finding(scope)` | Findings from analysis | Agent |
-| `wrap(scope)` | Optional end-of-conversation synthesis | Agent |
+| `wrap(scope)` | Selective synthesis of useful reasoning missing from existing records | Agent |
 | `commit(SHA)` | Code committed | Auto hook |
 
 ## Format Rules
 
 1. **Timestamp format:** `YYYY-MM-DD HH:MM` (no seconds)
 2. **Entry format:** `[<timestamp>] <type>(<scope>): <description>`
-3. **Wrap is optional:** Write a `wrap(scope)` entry only when the conversation
-   holds synthesis worth saving. Nothing is ever started, ended, or stopped;
-   there is no `session` entry type.
+3. **Selective checkpoints:** Record significant decisions and discoveries as they happen. Before completing substantial work, handing off, or compacting context, write a concise `wrap(scope)` entry only when useful reasoning is missing from existing records. Include abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable; omit empty fields and do not repeat raw events. Routine interactions need no redundant checkpoint. Nothing is ever started, ended, or stopped; there is no `session` entry type or required workflow invocation. Foundations owns this discipline.
 4. **Blank lines:** Render burst boundaries only; SQLite journal rows are the
    durable ordering source.
 5. **No manual markdown edits:** Rendered markdown is a projection. Persist new

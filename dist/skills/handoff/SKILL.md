@@ -4,9 +4,9 @@ description: >-
   Creates explicit context-transfer packets in .agents/handoffs/ for another
   agent, branch, task, or future conversation. Use when the user asks "handoff
   this," "prepare the next session," "write transfer context," or when work is
-  being parked for later. Not for routine journal continuity (use orchestration)
-  or an end-of-conversation checkpoint (use wrap). Produces a disposable handoff
-  artifact that housekeeping deletes after confirmed deprecation.
+  being parked for later. Not for routine journal continuity or selective
+  checkpoints (use foundations). Produces a disposable handoff artifact that
+  housekeeping deletes after confirmed deprecation.
 ---
 
 # Handoff
@@ -127,8 +127,8 @@ With Loaf's managed basic-command policy installed, use `loaf journal log --exec
 
 ## Related Skills
 
-- **orchestration** — Maintains journal continuity and cross-agent coordination
-- **wrap** — Writes an optional end-of-conversation checkpoint to the journal
+- **orchestration** — Coordinates bounded cross-agent work
+- **foundations** — Guides ordinary capture and selective journal checkpoints
 - **housekeeping** — Deletes deprecated handoffs after confirmation
 
 ## Artifact Naming

@@ -196,16 +196,16 @@ hooks:
       timeout: 5000
       description: Inject implementation conventions on prompt submit
 
-    # PreCompact — inject journal-flush guidance before compaction.
+    # PreCompact — reinforce ordinary capture and selective checkpoints.
     # Writes nothing itself: only the entries the model logs in response persist.
     # Must be type: command, not prompt (prompt stop hooks not supported outside REPL).
     - id: pre-compact
-      skill: orchestration
+      skill: foundations
       type: command
       command: 'loaf journal context for-compact'
       event: PreCompact
       timeout: 60000
-      description: Inject journal flush guidance before compaction
+      description: Inject selective checkpoint guidance before compaction
 
     # PostCompact — re-emit the layered continuity digest for resumption
     - id: post-compact
