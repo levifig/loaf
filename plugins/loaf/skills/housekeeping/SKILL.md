@@ -33,6 +33,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Present a concrete recommendation and rationale for every report before mutation.
 - Require explicit user approval for every deletion or move. A batch approval is valid only when it unambiguously names every artifact and disposition.
 - Preserve the project journal; it is append-only and never a cleanup target.
+- Handoff introduces no cleanup lifecycle. Preserve SQLite handoff records and existing legacy packets; any requested legacy-file deletion still needs the exact artifact approval required here. Do not infer obsolescence or deletion permission from a transfer being delivered.
 - Read shared work state from the configured native tracker through `project-management/v1`. Never infer canonical workflow state from reports, local rows, branches, or worktrees.
 - Use reversible, path-specific operations where possible. Never overwrite a destination or remove an occupied or dirty worktree.
 - After approved actions, verify the exact source and destination paths and report partial failures honestly.

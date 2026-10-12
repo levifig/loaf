@@ -1,50 +1,15 @@
-# Handoff Template
+# Handoff Packet
 
-**Location:** `.agents/handoffs/YYYYMMDD-HHMMSS-{slug}.md`
+Use these prompts for a concise transfer body delivered directly, passed to `loaf handoff new --body-file`, or written as an explicitly requested portable snapshot. Combine or omit headings when prose is clearer. No file frontmatter or lifecycle fields are required.
 
-```yaml
----
-title: "[Handoff Title]"
-created: YYYY-MM-DDTHH:MM:SSZ
-status: draft | final | deprecated
-source: conversation | branch | task | ad-hoc
-branch: branch-name
-deprecated_at: YYYY-MM-DDTHH:MM:SSZ  # Set only when confirmed obsolete
-deprecated_by: orchestrator
-tags: []
----
-```
+## Purpose and Scope
 
-# [Handoff Title]
+[Who will continue, what this transfers, what they are already authorized to do, and material limits.]
 
-## Purpose
+## Current State and Evidence
 
-[What this handoff transfers and who or what should consume it.]
+[The minimum useful state, relevant native tracker references, Git state, and accessible sources. Include decisions and why, constraints, or uncertainty only when needed for continuation. Identify the source project and retrieval route when using private persistence. A local ID alone is insufficient for a recipient without store access.]
 
-## Current State
+## Next Action
 
-[The concise state a future agent needs before acting.]
-
-## Suggested Skills
-
-- [Skill name and why the next agent should load it]
-
-## Existing Artifacts
-
-- [Relevant specs, tasks, ADRs, reports, issues, journal entries, commits, branches, or diffs]
-
-## Decisions
-
-- [Decision and rationale]
-
-## Next Actions
-
-- [Concrete next action]
-
-## Open Questions and Risks
-
-- [Question or risk the next agent should resolve]
-
-## Deprecation Criteria
-
-[When this handoff should be marked deprecated and deleted by housekeeping.]
+[The next useful action and any useful suggested skills. Re-read current native tracker and Git state before acting; this snapshot supplies context, not execution authority or a current work definition.]

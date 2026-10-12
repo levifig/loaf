@@ -22,9 +22,17 @@ Foundations and the generated managed project instructions own ordinary capture:
 
 This is agent instruction, not automatic persistence. The existing PreCompact command emits the same selective guidance and writes nothing itself. Delivery depends on the harness and mode; ordinary capture does not depend on receiving a compaction or end hook. Abrupt endings can still lose unrecorded reasoning. Useful resumption depends on meaningful entries and occasional synthesis; raw history can be less concise when no checkpoint exists. This tradeoff avoids mutable session ownership conflicts across conversations, branches, worktrees, and harnesses.
 
-Project Management owns actionable follow-up capture, Implement and Ship own delivery evidence and Git-state reporting, and Housekeeping owns artifact maintenance. Checkpointing grants none of their action authorities. The existing explicit Handoff workflow remains separate from ordinary capture.
+Project Management owns actionable follow-up capture, Implement and Ship own delivery evidence and Git-state reporting, and Housekeeping owns artifact maintenance. Checkpointing grants none of their action authorities.
 
 Sparks survive independently of archived brainstorm documents. Historical `## Sparks` sections are evidence, not an active capture or promotion authority. The old objection that standalone spark files were too heavy does not constrain typed private continuity or revive a brainstorm-document lifecycle. Capture and promotion behavior belongs to the owning skills.
+
+## Deliberate Transfers
+
+The [Handoff workflow](../../content/skills/handoff/SKILL.md) prepares recipient-focused context for a bounded next action. Ordinary resumption and parked-work synthesis remain Foundations responsibilities. Direct harness delivery needs no persistent artifact when the recipient can consume that context and independent retention has no purpose. Preparation never supplies authorization to spawn, message, create tasks, or execute work; a packet carries native references and requires the recipient to re-read current tracker and Git state.
+
+For transfers that must survive independently, cannot rely on the current harness context, or are explicitly requested to persist, the shipped `loaf handoff new/show/list` commands use the current SQLite store. Verify body and project identity by readback and give a usable retrieval route in the source project. A recipient in another project or environment may not have that store: a local reference alone does not establish delivery. An explicitly requested portable file is a transfer snapshot at the requested destination, not a competing continuity store. Report unavailable persistence honestly without silently inventing a fallback store.
+
+This guidance does not activate the complete destination fact model, change stored IDs or statuses, delete legacy packets, or introduce a deprecation/cleanup lifecycle. Current SQLite persistence is already available; full destination activation and broader resumption layers remain pending below.
 
 ## Local Storage and Recovery
 

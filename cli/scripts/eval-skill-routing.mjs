@@ -117,6 +117,7 @@ const TEST_CASES = {
     "Run the general quality checklist before we ship",
     "How should ordinary work preserve reasoning before context is lost?",
     "When is a selective journal checkpoint useful rather than repetitive?",
+    "Prepare a routine checkpoint so I can resume this work next session",
   ],
   "git-workflow": [
     "Write a Conventional Commit message",
@@ -129,9 +130,10 @@ const TEST_CASES = {
     "Write table-driven Go tests",
   ],
   handoff: [
-    "Prepare transfer context for the next session",
+    "Prepare a transfer for a fresh agent to finish this bounded investigation",
     "Write a handoff for this branch",
     "Package the current state so another agent can continue",
+    "Load the saved handoff for the retry investigation",
   ],
   housekeeping: [
     "Clean up old agent artifacts",
