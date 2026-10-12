@@ -9,12 +9,10 @@ Inside ship, before merging:
    - merge: keep the default "Merge pull request #N from owner/branch" subject and pass a clean `--body` summarizing the outcome.
    - rebase: nothing is authored at merge time; the branch commits land as written.
 
-Example (squash):
+Example (squash): write the reviewed outcome to a temporary message file, then pass it with `--body-file`:
+
+```bash
+gh pr merge N --squash --match-head-commit <reviewed-sha> --body-file <landing-message-file>
 ```
-gh pr merge N --squash --match-head-commit <reviewed-sha> --body "$(cat <<'EOF'
-Add loaf housekeeping CLI command that scans .agents/ directories and
-recommends cleanup actions. Includes shared prompt helpers, scanner
-engine, interactive/dry-run modes, and skill update.
-EOF
-)"
-```
+
+Describe the actual shipped outcome and verification. Do not imply that a planned compatibility retirement, cleanup command, or live installation has already shipped.

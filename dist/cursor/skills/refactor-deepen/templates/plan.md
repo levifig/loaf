@@ -1,42 +1,12 @@
-# PLAN Template
+# Deepening Proposal Template
 
-Minimal artifact shape for refactor-deepen output. A PLAN is leaner than a
-SPEC: it captures one deepening proposal end-to-end without the
-problem/strategic-alignment/risks scaffolding a feature SPEC carries. Use this
-template when terminating the refactor-deepen grilling loop.
+Use this structure for analysis in the conversation or an explicitly saved temporary report. It defines no work identity, status, or lifecycle. The native tracker owns actionable work; the proposal supplies evidence. Existing PLAN files remain historical records.
 
-**Location:** `.agents/plans/{YYYYMMDD-HHMMSS}-{slug}.md`
-
-The filename **is** the plan's identity. Use the timestamp at write-time and
-slugify the title (lowercase, hyphens, no punctuation). PLAN files follow the
-same temporal-record naming as durable `.agents/councils/` — write-once
-snapshots, not
-sequentially-numbered contracts. Subsequent deepenings of the same module
-write a new file rather than updating an existing one.
-
-## Contents
-- Frontmatter
-- Required Sections
-- Filename
-- Lazy Directory Creation
-- Example
-
-## Frontmatter
-
-| Field | Required | Notes |
-|-------|----------|-------|
-| `title` | Yes | One-line description of the deepening, not the candidate name |
-| `created` | Yes | ISO 8601 UTC, e.g. `2026-05-02T01:30:00Z` (must match the filename timestamp) |
-| `status` | Yes | `drafting` on first write; this template does not define additional lifecycle states |
-| `issue` | Yes | `LOAF-NNN` if the plan is scoped under an issue; `null` otherwise (do not omit the key) |
-| `related` | No | List of related artifact IDs (`ADR-*`, `LOAF-*`, idea filenames, other plan filenames) |
-
-PLAN files do **not** carry an `id` frontmatter field. The filename is the
-identity, mirroring councils and ideas.
+Include the scope and source evidence before the five sections below. When saving, follow the owning skill's Analysis Output rules and use `.agents/reports/<YYYYMMDDHHMMSS>-<descriptive-slug>.md`. Do not infer implementation authority from the report.
 
 ## Required Sections
 
-The five sections below are the *minimal shape* for a PLAN. Order is load-bearing: each section assumes the previous one is settled. Do not reorder.
+The five sections below are the *minimal shape* for a deepening proposal. Order is load-bearing: each section assumes the previous one is settled. Do not reorder.
 
 1. **Candidate** — what's being considered for deepening. Name the **module**
    verbatim (use the canonical glossary term — run `loaf kb glossary check`
@@ -53,7 +23,7 @@ The five sections below are the *minimal shape* for a PLAN. Order is load-bearin
 
    The category determines the seam discipline that applies. State the
    category explicitly, then briefly justify the classification (one or two
-   sentences). Plans that span categories are a smell — split the plan.
+   sentences). Proposals that span categories should be split.
 
 3. **Proposed Deepened Module** — the new shape. Describe the **interface**
    the module would expose, what its **implementation** would hide, and where
@@ -77,97 +47,3 @@ The five sections below are the *minimal shape* for a PLAN. Order is load-bearin
    description and a one-paragraph rationale for rejection. "Rejected
    because the user picked another" is not a rationale — name the load-bearing
    tradeoff.
-
-## Filename
-
-Compute the filename from the current UTC timestamp at write-time and a
-slugified title:
-
-```bash
-slug="cli-lib-install-deepening"   # lowercase, hyphens, no punctuation
-date -u +%Y%m%d-%H%M%S | xargs -I{} echo ".agents/plans/{}-${slug}.md"
-```
-
-Example: `.agents/plans/20260502-033000-cli-lib-install-deepening.md`.
-
-The sequential-ID allocation race that an `id: PLAN-NNN` scheme would carry
-is gone — there is no shared counter to contend over. Same-second filename
-collisions remain theoretically possible if two refactor-deepen runs
-write within the same UTC second; in practice this is unlikely at human
-typing speed but not impossible at scripted speed. The broader plan-
-lifecycle question (list / archive / doctor recognition) is tracked
-separately in idea `20260501-231922`.
-
-## Lazy Directory Creation
-
-The `.agents/plans/` directory is created **on first plan write**, never
-upfront. Skill logic must `mkdir -p .agents/plans` immediately before writing
-the plan file, not at skill load time and not as part of any setup step.
-
-Rationale: a repository that never invokes refactor-deepen should never
-acquire an empty `.agents/plans/` directory. Lazy creation keeps tree noise
-proportional to actual usage, matching how `.agents/specs/` behaves.
-
-## Example
-
-Filename: `.agents/plans/20260502-013000-deepen-journal-append.md`
-
-```yaml
----
-title: "Deepen journal append into a self-managing module"
-created: "2026-05-02T01:30:00Z"
-status: drafting
-issue: LOAF-34
-related:
-  - 20260501-231922-plan-lifecycle-cli-doctor-housekeeping
----
-
-# Deepen journal append into a self-managing module
-
-## Candidate
-
-The journal append path currently lives as a free function in
-`internal/cli/cli.go` with callers reaching past it to format timestamps and
-classify entry types. Interface surface is roughly equal to implementation
-surface — every caller that wants to log re-derives the entry-shape rules.
-
-## Dependency Category
-
-`in-process`. The append path has no external surface; all dependencies
-(filesystem, clock) are already local-substitutable through existing test
-fakes.
-
-## Proposed Deepened Module
-
-A `Journal` module exposing a single `append(entry)` interface.
-Implementation hides timestamp formatting, entry-type validation, blank-line
-rules, and frontmatter `last_entry` updates. Seam: the public `append`
-function. Leverage: every caller drops to one line; locality: blank-line and
-PAUSE-header rules live in exactly one place.
-
-## What Survives in Tests
-
-Surviving:
-- All existing journal-format tests (entry-type vocabulary, timestamp
-  format, blank-line rules) move behind the new interface unchanged.
-- The frontmatter-update integration test continues to assert
-  `last_entry` is updated post-append.
-
-Invalidated:
-- Two tests that assert internal helper signatures (`formatEntry`,
-  `classifyType`) must be deleted — those helpers are now private.
-
-## Rejected Alternatives
-
-### Append + Format split (sub-agent variant 2)
-
-Two-method interface (`format`, `append`). Rejected because callers always
-want both; splitting them re-exposes the implementation seam the deepening
-is meant to hide.
-
-### Streaming writer (sub-agent variant 3)
-
-A `JournalWriter` class with `open`/`write`/`close`. Rejected because the
-project journal's write pattern is one-entry-at-a-time on demand, not a
-streamed batch — the lifecycle methods would be vestigial.
-```

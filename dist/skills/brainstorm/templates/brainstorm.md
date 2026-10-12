@@ -1,8 +1,6 @@
 # Brainstorm Document Template
 
-**Location:** Markdown-only compatibility archive. SQLite-backed projects keep
-brainstorm state in SQLite or summarize outcomes in an explicitly durable
-report.
+**Location:** Historical Markdown compatibility archive. Preserve existing records. The current Brainstorm workflow captures sparks and, when useful, checkpoints an Exploration; this template does not establish another current store or require a new archive.
 
 **Filename timestamp:** `date -u +"%Y%m%d-%H%M%S"`
 

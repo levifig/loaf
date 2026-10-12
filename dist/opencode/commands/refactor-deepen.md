@@ -4,8 +4,9 @@ description: >-
   hide complexity behind narrow interfaces. Not for renames, extractions, or
   generic restructuring (use implement). Use when looking for structural
   improvements, or when the user asks "is this module too shallow?" or "where
-  should we deepen this code?" Produces either a read-only report or a PLAN file
-  with candidates, dependency categories, and proposed deepened modules.
+  should we deepen this code?" Produces analysis with candidates, dependency
+  categories, and proposed deepened modules; actionable work belongs in the
+  native tracker.
 version: 0.6.0-rc.2
 ---
 
@@ -99,28 +100,15 @@ converge accidentally, the fallback is a 4th agent or a rerun with different
 seeds — *not* introducing priming. See
 [references/interface-design.md](references/interface-design.md).
 
-### Report-Only Mode
+### Analysis Output
 
-Use report-only mode when the user asks for a broad scan, full report,
-repository-wide review, or anything intended to feed a later brief/task
-workflow rather than immediately persist a PLAN. It is also appropriate when
-the project does not want a durable PLAN artifact.
+Present the investigation in the current conversation by default. Use [templates/plan.md](templates/plan.md) as the proposal structure: scope and evidence, candidate module, dependency category, proposed deepened module, tests that should survive, and rejected alternatives. This is analysis, not a second work contract.
 
-Report-only mode still performs the investigation: read context, survey
-candidates, check candidate names through `loaf kb glossary check`, classify
-dependencies, and present findings. It must not write `.agents/plans/*`, must
-not invoke `loaf kb glossary upsert`, and must not offer Codex review because
-there is no PLAN artifact to review.
+For a broad scan or advisory report, check candidate names with `loaf kb glossary check`, but do not invoke `loaf kb glossary upsert` or offer plugin review. A report does not commit the project to a structural module.
 
-Report-only output should be structured so it can become a brief later:
+When the user requests a saved proposal or persistence is useful for an authorized review, write an authored temporary report under `.agents/reports/<YYYYMMDDHHMMSS>-<descriptive-slug>.md`. Read the current UTC time, create the directory only when writing, and avoid overwriting an existing report. Follow Housekeeping for later maintenance; saving analysis does not authorize deletion or archival.
 
-- Scope and evidence read
-- Candidate modules, ordered by expected leverage
-- For each candidate: current interface, hidden implementation complexity,
-  dependency category, locality problem, proposed deepened module, tests that
-  should survive, and rejected alternatives
-- Suggested follow-up: "Use this report to draft a brief, then decide whether
-  to break that brief down into tasks."
+Concrete actionable findings go through Project Management's capture rule into the configured native tracker. Use Shape to establish a work contract and Implement for selected work. Do not create new `.agents/plans/` files or `loaf plan` records for this workflow. Preserve existing proposal files and compatibility records; this guidance does not migrate or delete them. Durable architectural conclusions belong in the repository's maintained architecture topics when deliberately adopted.
 
 ### Whole-Repo Inventory
 
@@ -140,26 +128,11 @@ assumption and ask before pulling it into context.
 
 ### Termination
 
-If report-only mode is active, terminate with the report in chat and this
-closing message:
-
-> Report complete. Use this report to draft a brief, then decide whether to
-> break that brief down into tasks.
-
-If report-only mode is **not** active, the skill terminates by writing a PLAN
-file using [templates/plan.md](templates/plan.md) at
-`.agents/plans/<YYYYMMDD-HHMMSS>-<slug>.md`, with this exact closing message
-(substitute the actual filename you wrote):
-
-> Plan saved to `.agents/plans/<filename>.md`. Workflow handoff is pending
-> the SPEC/PLAN/TASKS artifact taxonomy spec — for now, decide manually.
-
-Do **not** recommend implement as the next step. The
-handoff design is downstream of a deferred taxonomy spec.
+Return the proposal, the location of any explicitly saved report, and the native references of any captured follow-ups. State which decisions remain open. Analysis completion does not select or authorize implementation; honor an existing explicit implementation request through the normal native work prerequisite.
 
 ### Codex Review (Opt-In, Plugin-Gated)
 
-After the PLAN file is written, check whether the `codex` plugin is
+After a focused proposal is saved for review, check whether the `codex` plugin is
 available in the current harness — i.e. whether the `codex:codex-rescue`
 agent (or the `codex:rescue` skill) is exposed in this session's available
 skills/agents list. Loaf's install-time tool detection discovers external CLIs
@@ -174,12 +147,12 @@ surface adds plugin-level detection, this rule can switch to it.
   Wait for an affirmative reply before invoking anything.
 - **Always** route an accepted review through the `codex:codex-rescue`
   agent (or the `codex:rescue` skill if that's what the harness exposes),
-  passing the PLAN file path and a pointer to
+  passing the proposal report path and a pointer to
   [references/deepening.md](references/deepening.md) for vocabulary context.
 - **Never** mention Codex if the plugin is absent — proceed straight to the
-  termination message below.
+  proposal result.
 - **Never** invoke Codex review by default, on a non-affirmative reply, or
-  on a "skip" — fall through to termination.
+  on a "skip" — return the proposal result.
 
 ---
 
@@ -194,35 +167,15 @@ surface adds plugin-level detection, this rule can switch to it.
 - Interface Design spawned exactly 3 sub-agents with identical briefs
 - Whole-repo scans excluded generated/vendor/cache/build trees unless the user
   explicitly asked to inspect them
-- Report-only mode produced a complete read-only report and wrote nothing to
-  `.agents/plans/*`
-- A `.agents/plans/<YYYYMMDD-HHMMSS>-*.md` file was written with the minimal
-  shape filled out (skipped iff report-only mode was active)
-- Codex review offer fires only when the `codex` plugin is detected, is
-  worded verbatim, and runs only on an affirmative reply — never by default
-- Closing message matches the termination template verbatim
+- Broad or advisory analysis did not mutate the glossary or create a new local work record
+- Any saved proposal is an authored temporary report, with no invented lifecycle or work identity
+- Concrete actionable follow-ups were captured through Project Management; existing files and compatibility records were preserved
+- Codex review is offered only for a saved focused proposal when the plugin is available, and runs only on an affirmative reply
+- The result identifies the proposal, evidence, native follow-ups, and remaining decisions
 
 ---
 
 ## Quick Reference
-
-### PLAN Filename
-
-```bash
-slug="<lowercase-hyphenated-title>"
-date -u +%Y%m%d-%H%M%S | xargs -I{} echo ".agents/plans/{}-${slug}.md"
-```
-
-PLAN files use the same temporal-record naming as sessions, ideas, drafts,
-and councils — write-once snapshots, not sequentially-numbered contracts.
-Re-deepening the same module later writes a new file rather than updating
-the existing one. The filename is the identity; PLAN frontmatter does not
-carry an `id` field.
-
-Create `.agents/plans/` lazily — `mkdir -p` immediately before the first
-plan write, never upfront. The sequential-ID allocation race is gone;
-same-second filename collisions remain theoretically possible at scripted
-speed but are unlikely at human pace.
 
 ### Glossary CLI Cheat Sheet
 
@@ -263,21 +216,11 @@ architecture and exploratory flows.
 5. **Design the interface** by spawning 3 unprimed sub-agents per the rules in
    [references/interface-design.md](references/interface-design.md). Present
    all three designs to the user; do not pre-rank.
-6. **Check report-only mode.** For broad or advisory reports, continue in
-   report-only mode and skip steps 7-9.
-7. **Write the PLAN** to `.agents/plans/<YYYYMMDD-HHMMSS>-<slug>.md` using
-   [templates/plan.md](templates/plan.md). The filename timestamp must match
-   the frontmatter `created` field. Required sections: candidate, dependency
-   category, proposed deepened module, what survives in tests, rejected
-   alternatives.
-8. **Mutate the glossary** (`loaf kb glossary upsert`) for any structural
-   module the PLAN names canonically.
-9. **Offer Codex review** only if the `codex` plugin is detected (i.e.
-   `codex:codex-rescue` agent or `codex:rescue` skill is available). Ask
-   verbatim and wait for an affirmative reply; on accept, route through
-   `codex:codex-rescue` with the PLAN file path. On decline, skip, or
-   plugin absence, fall through silently.
-10. **Terminate** with the canonical message.
+6. **Present the analysis.** Use [templates/plan.md](templates/plan.md). Broad scans remain advisory and skip glossary mutation and plugin review.
+7. **Save only when useful or requested.** Write a temporary report following Analysis Output; preserve existing records.
+8. **Mutate the glossary** (`loaf kb glossary upsert`) only when a focused deepening clearly names a structural module canonically.
+9. **Offer plugin review** only for a saved focused proposal and under the opt-in rules above.
+10. **Capture and return.** Route concrete actionable findings through Project Management, then return the proposal and remaining decisions. Shape and Implement consume native work, not the report as a substitute contract.
 
 ---
 
@@ -297,7 +240,7 @@ With Loaf's managed basic-command policy installed, use `loaf journal log --exec
 | Deepening Patterns | [references/deepening.md](references/deepening.md) | Classifying dependencies and applying seam discipline |
 | Interface Design | [references/interface-design.md](references/interface-design.md) | Running the parallel 3-agent Interface Design |
 | Grilling Protocol | [templates/grilling.md](templates/grilling.md) | Interview discipline during the candidate-selection loop |
-| PLAN Template | [templates/plan.md](templates/plan.md) | Writing the terminating PLAN artifact |
+| Proposal Template | [templates/plan.md](templates/plan.md) | Structuring analysis or a saved temporary report |
 
 ---
 

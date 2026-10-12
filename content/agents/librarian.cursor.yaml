@@ -1,8 +1,8 @@
 name: librarian
 description: >-
-  Durable artifact handler for SQLite-backed Loaf state and .agents/ artifacts.
-  Use for ordinary capture, housekeeping, or orchestration when the project journal, reports,
-  specs or knowledge notes need lifecycle-safe tending. Handoff owns deliberate transfers.
+  Reviews private continuity evidence and authorized .agents/ files; returns draft
+  journal entries and maintenance findings to the invoking agent for CLI or tracker
+  operations. Use for file-based tending; Handoff owns deliberate transfers.
 disable-model-invocation: true
 is_background: true
 tools:

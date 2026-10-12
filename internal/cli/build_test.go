@@ -588,9 +588,20 @@ func TestSharedBuildPackagesTemporaryReportPolicyAcrossTargets(t *testing.T) {
 				return nil
 			}
 			body := readBuildFileString(t, path)
+			relative := strings.TrimPrefix(path, skillsRoot+string(filepath.Separator))
+			if relative == filepath.Join("loaf-reference", "references", "artifact-routing.md") {
+				// The routing reference distinguishes actual compatibility operations
+				// from ordinary report production; their presence is not retirement.
+				for _, want := range []string{"Compatibility report working files", "This does not give ordinary temporary reports a universal report lifecycle"} {
+					if !strings.Contains(body, want) {
+						t.Errorf("%s artifact routing omits compatibility boundary %q", target, want)
+					}
+				}
+				return nil
+			}
 			for _, token := range forbidden {
 				if strings.Contains(body, token) {
-					t.Errorf("%s generated skill %s contains retired report route %q", target, strings.TrimPrefix(path, skillsRoot+string(filepath.Separator)), token)
+					t.Errorf("%s generated skill %s routes current report production through compatibility %q", target, relative, token)
 				}
 			}
 			return nil

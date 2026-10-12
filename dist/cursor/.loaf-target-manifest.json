@@ -20,7 +20,7 @@
       "kind": "hook-file",
       "source_path": "hooks/instructions/pre-merge.md",
       "destination": "hooks/instructions/pre-merge.md",
-      "sha256": "d3a647add68c506bff4f5659d9053a16cb121f06cd322730991cad45276cd835",
+      "sha256": "8f593fdeb989cd2dd5a254b0330572f488679adf0fbb2a7dea70e12b7240b842",
       "mode": 420
     },
     {

@@ -30,7 +30,7 @@ hooks:
       blocking: true
       timeout: 30000
       failClosed: true
-      description: Block direct .agents artifact body writes that bypass SQLite registration
+      description: Protect stored artifact bodies and generated projections; permit authored reports and file-backed councils
 
     - id: check-secrets
       skill: security-compliance

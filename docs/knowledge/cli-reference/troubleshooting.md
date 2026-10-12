@@ -28,18 +28,15 @@ Ordinary configuration and artifacts may differ between checkouts. SQLite journa
 
 ## Isolating a throwaway database
 
-Every real `loaf` command writes the global SQLite database
-(`~/.local/share/loaf/loaf.sqlite`). Before scratch experiments, point `LOAF_DB`
-at an absolute temp path so production state is untouched:
+Commands that use state may open or write the global SQLite database (`~/.local/share/loaf/loaf.sqlite`). Before scratch experiments, point `LOAF_DB` at an absolute temporary path:
 
 ```bash
 export LOAF_DB="$(mktemp -d)/loaf.sqlite"
-loaf journal recent      # operates on the isolated database
-rm -f "$LOAF_DB"         # clean up when done
+loaf journal recent      # reads the isolated path; missing state is not initialized
 ```
 
 An absolute `LOAF_DB` is used verbatim as the SQLite file and overrides
-`XDG_DATA_HOME`; a relative value is ignored (standard XDG resolution applies).
+`XDG_DATA_HOME`; a relative value is ignored (standard XDG resolution applies). Database isolation does not isolate harness installations: install/upgrade tests also need temporary homes and target directories. Do not activate a runtime as a side effect of building or verifying. Clear `LOAF_DB` before the unit suite so tests retain their fixture-owned databases.
 
 ## State backup and restore
 

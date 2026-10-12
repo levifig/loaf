@@ -416,9 +416,10 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 			},
 			required: []string{
 				"Shape new bounded work",
-				"Start implementing new bounded work",
-				"Continue an existing task or spec record",
-				"`loaf task` and `loaf spec` remain readable for legacy records; new work is issues",
+				"Implement selected work",
+				"canonical native tracker record",
+				"do not create a second shared work authority",
+				"compatibility commands",
 			},
 		},
 		{

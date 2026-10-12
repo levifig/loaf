@@ -1,9 +1,10 @@
 ---
 name: loaf-reference
 description: >-
-  Explains Loaf Flow authority, artifacts, and ceremony boundaries. Use when
-  deciding where work belongs or how one Flow stage hands evidence to another.
-  Not for provider-specific tracker operations.
+  Explains Loaf Flow authority, artifacts, retrieval routes, and ceremony
+  boundaries. Use when deciding where work belongs, how to load a named saved
+  artifact, or how one Flow stage hands evidence to another. Not for
+  provider-specific tracker operations.
 version: 0.6.0-rc.2
 ---
 
@@ -25,6 +26,7 @@ Loaf supplies the ceremony, judgment, and artifact shape. The canonical tracker 
 - Let the harness own connection discovery, authentication, and credential handling.
 - Keep code and deliberately promoted artifacts in Git; keep private continuity out of tracker fields.
 - Read [Authority Model](references/authority-model.md) before assigning a new responsibility.
+- Read [Artifact Routing](references/artifact-routing.md) before choosing a saved artifact's store or retrieval command.
 - Read [Flow Semantics](references/flow-semantics.md) before changing a ceremony or handoff.
 
 ## Verification
@@ -50,3 +52,4 @@ Loaf supplies the ceremony, judgment, and artifact shape. The canonical tracker 
 |-------|-----------|----------|
 | Authority | [authority-model.md](references/authority-model.md) | Deciding which system owns a responsibility |
 | Flow | [flow-semantics.md](references/flow-semantics.md) | Moving work between ceremonies without changing authority |
+| Artifact retrieval | [artifact-routing.md](references/artifact-routing.md) | Loading named saved artifacts without guessing their store |

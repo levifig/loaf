@@ -16,7 +16,7 @@ description: >-
 - Critical Rules
 - Verification
 - Quick Reference
-- Spec and Linear Parent Linkage
+- Native Work References
 - Journal Commands
 - Topics
 
@@ -32,7 +32,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Select and state the council composition, then proceed directly to spawning
 - Document each perspective and create synthesis with consensus/disagreements
 - Wait for explicit user decision — council advises, user decides
-- Archive council after decision recorded in the journal
+- Preserve the council file after the decision; cleanup requires separately authorized Housekeeping
 - Log decision to the project journal: `loaf journal log "decision(scope): council outcome and user's choice"`
 - Create the artifact with `loaf council new --title <title> --body-file <path>`
 
@@ -51,7 +51,7 @@ After work completes, verify:
 - Synthesis includes consensus points, disagreements, trade-offs
 - User decision recorded in council file
 - Decision logged to the project journal
-- Council archived after the decision is recorded in the journal
+- Council retained; no unsupported archive command or automatic deletion was inferred
 
 ## Quick Reference
 
@@ -82,22 +82,13 @@ Each agent receives:
 4. Overall recommendation with confidence level
 5. Explicit deferral if genuinely ambiguous
 
-## Spec and Linear Parent Linkage
+## Native Work References
 
-Councils stay **local**. Even when the workspace uses Linear-native mode,
-council files live in `.agents/councils/` — they are deliberation artifacts,
-not executable work, and belong with specs in git.
+Council bodies are authored files under `.agents/councils/`, not SQLite bodies or shared work definitions. `loaf council new --title <title> --body-file <path>` writes the file metadata and registers its identity in initialized state. Discover with `loaf council list` and read with `loaf council show <ref>`; these CLI operations currently require available SQLite state. An explicit file can also be read directly without claiming database retrieval.
 
-When a council resolves an issue's open questions:
+When a council resolves a native issue's open questions, retain private deliberation locally and record only appropriate decision evidence or an authorized reference through the selected provider. The native tracker continues to own scope, hierarchy, and state. Deliberately adopted architectural conclusions belong in maintained Git topics; saving a council does not automatically promote its whole body into Git.
 
-- Create the artifact with `loaf council new --title <title> --body-file <path>`.
-  The CLI writes `id`, `title`, `status`, and `created`.
-- Record the tracker or issue ref in the council body so a reader can trace
-  back to the deliberation. Do not invent a second tracker-owned record.
-- Do not post council content to the Linear parent issue. A brief one-line
-  reference ("Resolved via council — see `.agents/councils/…`") in a
-  sub-issue comment is sufficient if the council drove a specific task
-  decision.
+Record the user's decision in the council file and the project journal. The current council command has no archive operation. Preserve existing files and identifiers; later cleanup belongs to Housekeeping with exact approval.
 
 ## Journal Commands
 
