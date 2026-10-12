@@ -912,6 +912,13 @@ func cliReferenceCommands() []cliReferenceCommand {
 			},
 		},
 		{
+			Name:        "telemetry",
+			Description: "Show content-free local pre-tool gateway counts",
+			Subcommands: []cliReferenceSubcommand{
+				{Name: "status", Description: "Count outcomes by project and harness since the current UTC month began", Options: []cliReferenceOption{{Flags: "--json", Description: "Output the local aggregate as JSON"}}},
+			},
+		},
+		{
 			Name:        "doctor",
 			Description: "Diagnose Loaf project alignment (symlinks, stale files, managed content, and leftover migration work)",
 			Options: []cliReferenceOption{

@@ -134,8 +134,18 @@ func (payload wireVerificationEvidenceV1) validate() error {
 }
 
 func (observation wireObservationV1) domain() continuity.Observation {
+	// Pre-activation v1 facts did not encode harness fields. Preserve their
+	// canonical bytes while projecting their provenance as explicitly unknown.
+	harness := observation.ObservedHarness
+	version := observation.HarnessVersion
+	if harness == "" && version == "" {
+		harness = "unknown"
+		version = "unknown"
+	}
 	return continuity.Observation{
 		ObservedAtMillis: observation.ObservedAtMillis,
+		ObservedHarness:  harness,
+		HarnessVersion:   version,
 		HarnessSessionID: observation.HarnessSessionID,
 		Branch:           observation.Branch,
 		Worktree:         observation.Worktree,

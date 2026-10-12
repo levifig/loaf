@@ -33,6 +33,7 @@ func (r Runner) runCursorCheck(args []string, out io.Writer, runtimeRoot string)
 	if spec, instruction := cursorInstructionSpecs[options.hook]; instruction {
 		return r.runCursorInstruction(spec, out)
 	}
+	options.cursorOutput = true
 	if options.hook == "kb-staleness-nudge" {
 		options.cursorOutput = true
 		return r.runKbStalenessNudge(out, runtimeRoot, options)
@@ -60,6 +61,7 @@ func (r Runner) runCursorCheckContext(options checkOptions, context checkHookCon
 		}
 	}
 	if err != nil {
+		r.recordCheckObservation(options, context, blockedCheckResult("invalid payload"), err, runtimeRoot)
 		return writeCursorCheck(out, checkJSONOutput{Hook: options.hook, Errors: []string{err.Error()}, Blocked: true}, options.advisory)
 	}
 	// User-level Cursor hooks run in the configuration directory; the native
@@ -67,6 +69,7 @@ func (r Runner) runCursorCheckContext(options checkOptions, context checkHookCon
 	if context.Cwd != "" {
 		info, cwdErr := os.Stat(context.Cwd)
 		if !filepath.IsAbs(context.Cwd) || cwdErr != nil || !info.IsDir() {
+			r.recordCheckObservation(options, context, blockedCheckResult("invalid cwd"), fmt.Errorf("invalid cwd"), runtimeRoot)
 			return writeCursorCheck(out, checkJSONOutput{Hook: options.hook, Blocked: true, Errors: []string{"Cursor hook cwd must be an accessible absolute directory"}}, options.advisory)
 		}
 		runtimeRoot = context.Cwd

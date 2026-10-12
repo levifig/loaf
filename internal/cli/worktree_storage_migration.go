@@ -531,6 +531,7 @@ func knownTopLevelCommandNative(command string) bool {
 		"sync",
 		"tag",
 		"task",
+		"telemetry",
 		"trace",
 		"upgrade",
 		"version":

@@ -11,7 +11,7 @@ covers:
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-09-29'
+last_reviewed: '2026-10-12'
 ---
 
 # Hook System
@@ -113,6 +113,8 @@ hooks:
 ## Enforcement Hooks
 
 Native enforcement and workflow checks run via `loaf check --hook <id>` in `internal/cli/check.go`:
+
+Each pre-tool evaluation records a content-free local observation when the project has initialized current-schema SQLite state. The observation stores the hook ID, a normalized tool name, allow/warn/block, a bounded reason class, and observed harness/version. It never stores tool arguments, file content, or the check's diagnostic text. `loaf telemetry status [--json]` reports counts by project, harness, outcome, and reason class since the start of the current UTC month. Recording failure does not change the check's decision.
 
 | Hook | Skill | Matcher | Blocking | What It Does |
 |------|-------|---------|:--------:|-------------|

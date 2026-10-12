@@ -214,6 +214,8 @@ func validateRecordV1(record Record, project ProjectMapping, index int) error {
 func (observation Observation) continuityV1() continuity.Observation {
 	return continuity.Observation{
 		ObservedAtMillis: observation.ObservedAtMillis,
+		ObservedHarness:  "unknown",
+		HarnessVersion:   "unknown",
 		HarnessSessionID: observation.HarnessSessionID,
 		Branch:           observation.Branch,
 		Worktree:         observation.Worktree,

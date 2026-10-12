@@ -10,7 +10,7 @@ import (
 func TestContinuityCodecNormalizesCollectionsAndPreservesLiteralHTMLCharacters(t *testing.T) {
 	t.Parallel()
 
-	observation := continuity.Observation{ObservedAtMillis: 1}
+	observation := continuity.Observation{ObservedAtMillis: 1, ObservedHarness: "unknown", HarnessVersion: "unknown"}
 	nilPayload := continuity.HandoffRecordedPayload{
 		Observation: observation,
 		Purpose:     strings.Repeat("<&>", 1024),
@@ -83,7 +83,7 @@ func TestContinuityCodecRejectsNonCanonicalStoredContent(t *testing.T) {
 	t.Parallel()
 
 	payload := continuity.ProjectRegistrationPayload{
-		Observation: continuity.Observation{ObservedAtMillis: 1},
+		Observation: continuity.Observation{ObservedAtMillis: 1, ObservedHarness: "unknown", HarnessVersion: "unknown"},
 		Label:       "Loaf",
 	}
 	canonical, err := encodeProjectRegistrationV1(payload)
@@ -112,6 +112,41 @@ func TestContinuityCodecRejectsNonCanonicalStoredContent(t *testing.T) {
 				t.Fatalf("canonicalize error = %#v (%T), want corrupt-fact", err, err)
 			}
 		})
+	}
+}
+
+func TestContinuityCodecPreservesLegacyObservationBytesAndProjectsUnknownHarness(t *testing.T) {
+	t.Parallel()
+	const legacy = `{"observation":{"observed_at_millis":1,"harness_session_id":"","branch":"","worktree":""},"label":"Loaf"}`
+	canonical, err := canonicalizeStoredContentV1(continuity.FactProjectRegistered, 1, legacy)
+	if err != nil || string(canonical) != legacy {
+		t.Fatalf("legacy observation canonicalization = (%q, %v)", canonical, err)
+	}
+	decoded, err := decodeStoredWireV1[wireProjectRegistrationV1](legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observation := decoded.Observation.domain()
+	if observation.ObservedHarness != "unknown" || observation.HarnessVersion != "unknown" {
+		t.Fatalf("legacy observation provenance = %#v", observation)
+	}
+	for _, partial := range []string{
+		`{"observation":{"observed_at_millis":1,"observed_harness":"codex","harness_session_id":"","branch":"","worktree":""},"label":"Loaf"}`,
+		`{"observation":{"observed_at_millis":1,"harness_version":"1.0","harness_session_id":"","branch":"","worktree":""},"label":"Loaf"}`,
+	} {
+		if _, err := canonicalizeStoredContentV1(continuity.FactProjectRegistered, 1, partial); err == nil {
+			t.Fatalf("partial harness provenance accepted: %s", partial)
+		}
+	}
+	newContent, err := encodeProjectRegistrationV1(continuity.ProjectRegistrationPayload{
+		Observation: continuity.Observation{ObservedAtMillis: 1, ObservedHarness: "codex", HarnessVersion: "1.0"},
+		Label:       "Loaf",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(newContent), `"observed_harness":"codex","harness_version":"1.0"`) {
+		t.Fatalf("new observation missing provenance: %s", newContent)
 	}
 }
 
@@ -162,8 +197,8 @@ func TestContinuityCodecRejectsWrongVersionAndSemanticCorruption(t *testing.T) {
 func TestContinuityCodecHasIndependentGoldenJSONForEveryFactKind(t *testing.T) {
 	t.Parallel()
 
-	observation := continuity.Observation{ObservedAtMillis: 1}
-	observationJSON := `{"observed_at_millis":1,"harness_session_id":"","branch":"","worktree":""}`
+	observation := continuity.Observation{ObservedAtMillis: 1, ObservedHarness: "unknown", HarnessVersion: "unknown"}
+	observationJSON := `{"observed_at_millis":1,"observed_harness":"unknown","harness_version":"unknown","harness_session_id":"","branch":"","worktree":""}`
 	ideaReference := continuity.SubjectRef{Kind: continuity.RecordIdea, ID: "idea-1"}
 	ideaReferenceJSON := `{"kind":"idea","id":"idea-1"}`
 	tests := []struct {

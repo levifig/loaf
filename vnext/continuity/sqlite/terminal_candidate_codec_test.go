@@ -719,7 +719,7 @@ func terminalCandidateCodecVectorFixtureV1(t *testing.T) terminalCandidateCodecV
 func terminalCodecSealedFrameV1(t *testing.T) terminalCandidateFrameV1 {
 	t.Helper()
 	projectID := continuity.ProjectID("project-terminal-frame")
-	fact := syncIdeaCreatedFact(t, projectID, "fact-terminal-frame", "idea-terminal-frame", "environment-a", 2, 202, "Terminal frame")
+	fact := syncLegacyIdeaCreatedFact(t, projectID, "fact-terminal-frame", "idea-terminal-frame", "environment-a", 2, 202, "Terminal frame")
 	body, err := encodeTerminalCandidateSealedBodyV1(projectID, fact)
 	if err != nil {
 		t.Fatalf("encode sealed fixture: %v", err)

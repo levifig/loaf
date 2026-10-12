@@ -82,6 +82,9 @@ var projectAttachmentSQL string
 //go:embed migrations/0025_mutable_core_event_facts.sql
 var mutableCoreEventFactsSQL string
 
+//go:embed migrations/0026_hook_gateway_observations.sql
+var hookGatewayObservationsSQL string
+
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
@@ -219,6 +222,11 @@ func SchemaMigrations() []SchemaMigration {
 			Version: 25,
 			Name:    "mutable_core_event_facts",
 			SQL:     normalizeMigrationSQL(mutableCoreEventFactsSQL),
+		},
+		{
+			Version: 26,
+			Name:    "hook_gateway_observations",
+			SQL:     normalizeMigrationSQL(hookGatewayObservationsSQL),
 		},
 	}
 }

@@ -343,9 +343,29 @@ func TestContinuityPayloadCapsAreInclusiveUTF8ByteLimits(t *testing.T) {
 func validObservation() Observation {
 	return Observation{
 		ObservedAtMillis: 1787994000000,
+		ObservedHarness:  "codex",
+		HarnessVersion:   "1.0",
 		HarnessSessionID: "conversation-1",
 		Branch:           "issue/loaf-93",
 		Worktree:         "/workspace/loaf",
+	}
+}
+
+func TestObservationRequiresExplicitHarnessProvenance(t *testing.T) {
+	t.Parallel()
+	observation := validObservation()
+	observation.ObservedHarness = ""
+	if err := observation.Validate(); err == nil {
+		t.Fatal("missing harness accepted")
+	}
+	observation.ObservedHarness = "unknown"
+	observation.HarnessVersion = ""
+	if err := observation.Validate(); err == nil {
+		t.Fatal("missing version accepted")
+	}
+	observation.HarnessVersion = "unknown"
+	if err := observation.Validate(); err != nil {
+		t.Fatalf("explicit unknown rejected: %v", err)
 	}
 }
 

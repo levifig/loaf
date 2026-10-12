@@ -693,8 +693,8 @@ func TestTerminalCandidateCorpusDigestV1Vector(t *testing.T) {
 	t.Parallel()
 
 	projectID := continuity.ProjectID("project-terminal-candidate-corpus-vector")
-	root := storedFactFromWireForPromotionTestV1(syncProjectFact(t, projectID, "fact-corpus-root", "environment-a", 1, 100))
-	idea := storedFactFromWireForPromotionTestV1(syncIdeaCreatedFact(t, projectID, "fact-corpus-idea", "idea-corpus", "environment-b", 1, 101, "Corpus"))
+	root := storedFactFromWireForPromotionTestV1(syncLegacyProjectFact(t, projectID, "fact-corpus-root", "environment-a", 1, 100))
+	idea := storedFactFromWireForPromotionTestV1(syncLegacyIdeaCreatedFact(t, projectID, "fact-corpus-idea", "idea-corpus", "environment-b", 1, 101, "Corpus"))
 	facts := []storedFactV1{root, idea}
 	digest, err := terminalCandidateCorpusDigestV1(projectID, facts)
 	if err != nil {

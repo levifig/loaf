@@ -113,7 +113,7 @@ func TestImportRejectsContaminatedSameProjectProjection(t *testing.T) {
 	if _, err := Import(ctx, encoded, store); err != nil {
 		t.Fatalf("Import(seed) error = %v", err)
 	}
-	observation := continuity.Observation{ObservedAtMillis: 9_000}
+	observation := continuity.Observation{ObservedAtMillis: 9_000, ObservedHarness: "unknown", HarnessVersion: "unknown"}
 	if _, err := store.RecordJournalEntry(
 		ctx, sealed.Content.Project.ProjectID, "fact-extra", "journal-extra",
 		continuity.JournalRecordedPayload{
@@ -145,7 +145,7 @@ func TestImportRejectsHiddenTerminalHistoryBeforeMutation(t *testing.T) {
 	if _, err := store.ImportRehearsalFacts(ctx, sealed.Content.Project.ProjectID, []continuitysqlite.RehearsalFact{project}, acceptSnapshotV1); err != nil {
 		t.Fatalf("ImportRehearsalFacts(project) error = %v", err)
 	}
-	observation := continuity.Observation{ObservedAtMillis: 1_500}
+	observation := continuity.Observation{ObservedAtMillis: 1_500, ObservedHarness: "unknown", HarnessVersion: "unknown"}
 	captured, err := store.CaptureSpark(
 		ctx, sealed.Content.Project.ProjectID, "fact-hidden-spark", "hidden-spark",
 		continuity.SparkCapturedPayload{Observation: observation, Text: "hidden terminal history"},
@@ -211,7 +211,7 @@ func TestImportRejectsConflictingFactWithoutReminting(t *testing.T) {
 	encoded, sealed := rehearsalArchiveV1(t)
 	store := rehearsalStoreV1(t, "environment-conflict")
 	projectRecord := sealed.Content.Records[0]
-	observation := continuity.Observation{ObservedAtMillis: projectRecord.Observation.ObservedAtMillis}
+	observation := continuity.Observation{ObservedAtMillis: projectRecord.Observation.ObservedAtMillis, ObservedHarness: "unknown", HarnessVersion: "unknown"}
 	if _, err := store.RegisterProject(
 		ctx, sealed.Content.Project.ProjectID, projectRecord.FactID,
 		continuity.ProjectRegistrationPayload{Observation: observation, Label: "Conflicting Label"},
@@ -235,7 +235,7 @@ func TestImportRollsBackEntireSuffixWhenALaterFactConflicts(t *testing.T) {
 	ctx := context.Background()
 	encoded, sealed := rehearsalArchiveV1(t)
 	store := rehearsalStoreV1(t, "environment-late-conflict")
-	observation := continuity.Observation{ObservedAtMillis: 500}
+	observation := continuity.Observation{ObservedAtMillis: 500, ObservedHarness: "unknown", HarnessVersion: "unknown"}
 	if _, err := store.RegisterProject(
 		ctx, "other-project", "fact-other-project",
 		continuity.ProjectRegistrationPayload{Observation: observation, Label: "Other"},

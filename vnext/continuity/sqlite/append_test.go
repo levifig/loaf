@@ -738,7 +738,7 @@ func openAppendStoreV1(t *testing.T, stateRoot string, environmentID continuity.
 }
 
 func appendObservationV1() continuity.Observation {
-	return continuity.Observation{ObservedAtMillis: 1, HarnessSessionID: "conversation-1", Branch: "issue/loaf-93", Worktree: "/workspace/loaf"}
+	return continuity.Observation{ObservedAtMillis: 1, ObservedHarness: "codex", HarnessVersion: "1.0", HarnessSessionID: "conversation-1", Branch: "issue/loaf-93", Worktree: "/workspace/loaf"}
 }
 
 func mustAppendV1(t *testing.T) func(continuity.AppendReceipt, error) continuity.AppendReceipt {

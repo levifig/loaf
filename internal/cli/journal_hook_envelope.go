@@ -140,12 +140,33 @@ func normalizeJournalHookEnvelope(input journalHookInput, defaultWorktree string
 		source = namespace
 	}
 	envelope.Target = target
-	envelope.Harness = firstMapString(source, source, "harness", "harness_name", "runtime", "provider")
+	envelope.Harness = firstMapString(source, source, "harness", "harness_name")
 	envelope.HarnessVersion = firstMapString(source, source, "harness_version", "version", "cli_version", "runtime_version")
-	if envelope.Harness == "" {
-		envelope.Harness = target
-	}
+	explicitHarness := envelope.Harness != ""
 	envelope.Event = firstMapString(source, source, "hook_event_name", "event", "event_name", "lifecycle_event")
+	if envelope.Harness == "" {
+		switch envelope.Event {
+		case "preToolUse", "postToolUse":
+			envelope.Harness = "cursor"
+		case "PreToolUse", "PostToolUse":
+			envelope.Harness = "claude-code"
+		default:
+			envelope.Harness, _ = observedHarnessFromEnvironment()
+		}
+	}
+	if !explicitHarness {
+		// A version in an install-target namespace may describe that target,
+		// not the harness that actually delivered this event.
+		envelope.HarnessVersion = ""
+	}
+	if envelope.HarnessVersion == "" {
+		observed, version := observedHarnessFromEnvironment()
+		if observed == envelope.Harness {
+			envelope.HarnessVersion = version
+		} else {
+			envelope.HarnessVersion = "unknown"
+		}
+	}
 	envelope.SessionID = firstMapString(source, source, "session_id", "sessionID", "sessionId", "conversation_id", "thread_id")
 	envelope.AgentID = firstMapString(source, source, "agent_id", "agentID", "subagent_id")
 	if envelope.AgentID == "" {

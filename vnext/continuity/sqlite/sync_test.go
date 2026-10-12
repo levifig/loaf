@@ -1065,6 +1065,30 @@ func syncProjectFact(t *testing.T, projectID continuity.ProjectID, factID contin
 	return syncFact(projectID, factID, continuity.RecordProjectIdentity, continuity.SubjectID(projectID), continuity.FactProjectRegistered, content, environmentID, sequence, wall)
 }
 
+// Published sync vectors retain the pre-observation-extension V1 bytes. New
+// writes carry explicit harness fields; old facts still decode as unknown.
+func syncLegacyProjectFact(t *testing.T, projectID continuity.ProjectID, factID continuity.FactID, environmentID continuity.EnvironmentID, sequence, wall int64) continuitywire.Fact {
+	t.Helper()
+	content, err := encodeWireV1(wireProjectRegistrationV1{Observation: legacySyncObservationV1(), Label: "Loaf"})
+	if err != nil {
+		t.Fatalf("encode legacy project fact: %v", err)
+	}
+	return syncFact(projectID, factID, continuity.RecordProjectIdentity, continuity.SubjectID(projectID), continuity.FactProjectRegistered, content, environmentID, sequence, wall)
+}
+
+func syncLegacyIdeaCreatedFact(t *testing.T, projectID continuity.ProjectID, factID continuity.FactID, subjectID continuity.SubjectID, environmentID continuity.EnvironmentID, sequence, wall int64, label string) continuitywire.Fact {
+	t.Helper()
+	content, err := encodeWireV1(wireIdeaCreatedV1{Observation: legacySyncObservationV1(), Content: toWireIdeaContentV1(continuity.IdeaContent{Label: label})})
+	if err != nil {
+		t.Fatalf("encode legacy idea fact: %v", err)
+	}
+	return syncFact(projectID, factID, continuity.RecordIdea, subjectID, continuity.FactIdeaCreated, content, environmentID, sequence, wall)
+}
+
+func legacySyncObservationV1() wireObservationV1 {
+	return wireObservationV1{ObservedAtMillis: 1, HarnessSessionID: "conversation-1", Branch: "issue/loaf-93", Worktree: "/workspace/loaf"}
+}
+
 func syncIdeaCreatedFact(t *testing.T, projectID continuity.ProjectID, factID continuity.FactID, subjectID continuity.SubjectID, environmentID continuity.EnvironmentID, sequence, wall int64, label string) continuitywire.Fact {
 	t.Helper()
 	content, err := encodeIdeaCreatedV1(continuity.IdeaCreatedPayload{Observation: appendObservationV1(), Content: continuity.IdeaContent{Label: label}})

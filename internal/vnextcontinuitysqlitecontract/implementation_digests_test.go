@@ -57,7 +57,7 @@ func expectedPersistenceSourceDigests() map[string]string {
 		"authority_recovery_successor_replay.go":    "fe938da3d4d411688284b437984f672d4232984ab0a0e392219ae7b20b18da28",
 		"authority_recovery_terminal_receipt.go":    "8cca55736e28ee74e881f7444cc445fd2c6abe9459e8d301b0d78a778666a5de",
 		"authority_recovery_transition.go":          "bba685f0c5ef11bbdf7e4cd5becf21c2e4cec128a88a4c19be4827c54f9097f0",
-		"codec_v1.go":                               "59107848fc13100e7fe7b42ca1963d51523a293245915503b0dabdaa1a9b5f06",
+		"codec_v1.go":                               "dc211d1e558f1f82532e0f265b2356cecab2be96f5ffa5fecb952fc16b973dee",
 		"context_v1.go":                             "2ce128645bd36df054b67e239b292d953f398bbb00b5ab4963387888f060cd6e",
 		"driver.go":                                 "bd8fc591dd2d5c9c2c8f5f9ea6320b913a08ad8b9e1f9243c4e1a93538970a44",
 		"filesystem_attributes_windows.go":          "1e3b5f12e4debbc5432f2153818862cdc39ec617409e526b750e6db093dcb0a0",
@@ -80,8 +80,8 @@ func expectedPersistenceSourceDigests() map[string]string {
 		"terminal_candidate_codec.go":               "558be25be9bddb385e35647f2cdba27791189f2ddd35d9152537f6c0ac754f59",
 		"terminal_candidate_promotion.go":           "fe3681837404d53508015987cbfbf79ad7028925263f6158790408743207e801",
 		"terminal_history.go":                       "46c40c87218af92ef222be0d059812584e74e9188c0c9e0a511d7c5b5b6a91d9",
-		"wire_v1.go":                                "4686f78098f52f20ffe1e1f85d38c08a0f40a018015149b1b7a7734259ad4220",
-		"wire_validation_v1.go":                     "8653429d07beb198ece1f84cc14dcbe56e8598e4870c2217cb1bb3fd2c685b40",
+		"wire_v1.go":                                "76cf4c734c7fba211b6cda8f3c17393314355b50c11119b5c9a511e51274f49d",
+		"wire_validation_v1.go":                     "259e938841af6be3ac787239e32e7ba10ea359c5e2d7c7c1f07b125a07c37935",
 	}
 }
 
@@ -377,7 +377,7 @@ func expectedPersistenceFunctionDigests() map[string]map[string]string {
 			"toWireFindingContentV1":                "466f67bcd0aaa037b071f73c7b4d43ee18a657a01d79380d1bc665c381f5f0be",
 			"toWireIdeaContentV1":                   "f112471e220bc2a3389b98c54bcb84d32c82d27ca1cbc3dca1943dafcf1870d8",
 			"toWireJournalContentV1":                "fedf1952668a5f1e8b0b2032eff4d69f209d98fd24755c11ae5f101d42b730e3",
-			"toWireObservationV1":                   "799d9dde98f24d7e17e9ef912172097e525ae69a6df56b1334b705a8d5bbe065",
+			"toWireObservationV1":                   "b58cb266fd2631538eb7cc4392488d8560f4f38b6089ff8077f4d46fb97e7ff1",
 			"toWireOptionalSubjectRefV1":            "f4ccf25b47609aa4aef11dab31ab705f50e5bb361804f77b6c98f6daf73206e1",
 			"toWireSubjectRefV1":                    "c14e92a37beb57cd445cd0c66a1d0c06e73bc3f24611e32a5068abd2d03ab7b1",
 		},
@@ -782,7 +782,7 @@ func expectedPersistenceFunctionDigests() map[string]map[string]string {
 			"wireJournalContentV1.domain":                  "910a9d2e31f907735d1b3fdd142e5c9d16fd0f4524f29a023f0d2170c1a496c3",
 			"wireJournalCorrectionV1.validate":             "3adb3b6befb0f583d49bb49ed0c57289578c3c55804fa41b74e3ab5893d15ac7",
 			"wireJournalRecordedV1.validate":               "472d6a740c8185c7542bddbd25fc7f7d28e0db189a7368d70fcf53700d45d2f8",
-			"wireObservationV1.domain":                     "2ce9ced1d35695b4ece8e75dcd515ce72c61abd172350554ce238e89c1667e4d",
+			"wireObservationV1.domain":                     "a79f84f9642b417b1e0ab0ed3f28b12e7283208b648de2aed6dd3a1b16b1c604",
 			"wireProjectLabelRevisionV1.validate":          "eca97d4ee7070cabe6afa96eccd8103bfe024a15b0668cff650f891f348f5877",
 			"wireProjectRegistrationV1.validate":           "b525dd000a142832af7bbe62dcdeb1bcb32fd4def0d215964a15cb1c06f218c8",
 			"wireSparkCapturedV1.validate":                 "af2ae4b83662c7864c47dcadf2fd55e8cc0fcad1e42843764736555d4bf8cfd8",

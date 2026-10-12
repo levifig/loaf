@@ -216,7 +216,7 @@ func seedCompleteSnapshotProjectWithIDV1(t *testing.T, store *Store, projectID c
 }
 
 func snapshotObservationV1(observedAt int64, branch string) continuity.Observation {
-	return continuity.Observation{ObservedAtMillis: observedAt, HarnessSessionID: "conversation-snapshot", Branch: branch, Worktree: "/workspace/loaf"}
+	return continuity.Observation{ObservedAtMillis: observedAt, ObservedHarness: "codex", HarnessVersion: "1.0", HarnessSessionID: "conversation-snapshot", Branch: branch, Worktree: "/workspace/loaf"}
 }
 
 func mustSnapshotV1(t *testing.T, store *Store, projectID continuity.ProjectID, atMillis int64) continuity.Snapshot {

@@ -439,8 +439,14 @@ Table hook_events {
   message text
   created_at text [not null]
   updated_at text [not null]
+  tool_name text
+  decision text
+  reason_class text
+  observed_harness text
+  observed_harness_version text
   indexes {
     (project_id, hook_id, hook_phase)
+    (project_id, created_at, observed_harness, decision)
   }
 }
 

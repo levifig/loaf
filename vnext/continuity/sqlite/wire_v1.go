@@ -2,6 +2,8 @@ package sqlite
 
 type wireObservationV1 struct {
 	ObservedAtMillis int64  `json:"observed_at_millis"`
+	ObservedHarness  string `json:"observed_harness,omitempty"`
+	HarnessVersion   string `json:"harness_version,omitempty"`
 	HarnessSessionID string `json:"harness_session_id"`
 	Branch           string `json:"branch"`
 	Worktree         string `json:"worktree"`

@@ -218,7 +218,7 @@ func TestContinuityPayloadContractHasExactConcreteShapes(t *testing.T) {
 		"JournalContent":                       {"Category:JournalCategory", "Scope:string", "Text:string"},
 		"JournalCorrectionPayload":             {"Observation:Observation", "Corrects:FactID", "Content:JournalContent"},
 		"JournalRecordedPayload":               {"Observation:Observation", "Content:JournalContent"},
-		"Observation":                          {"ObservedAtMillis:int64", "HarnessSessionID:string", "Branch:string", "Worktree:string"},
+		"Observation":                          {"ObservedAtMillis:int64", "ObservedHarness:string", "HarnessVersion:string", "HarnessSessionID:string", "Branch:string", "Worktree:string"},
 		"Problem":                              {"Code:ProblemCode", "Field:string", "Detail:string"},
 		"ProjectLabelRevisionPayload":          {"Observation:Observation", "Revises:FactID", "Label:string"},
 		"ProjectRegistrationPayload":           {"Observation:Observation", "Label:string"},

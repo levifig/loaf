@@ -102,7 +102,7 @@ func TestRunVNextRehearsalRoundTripsVerifiedLegacyContinuityWithoutCutover(t *te
 	if _, err := destination.RecordJournalEntry(
 		ctx, continuity.ProjectID(status.ProjectID), "fact-rehearsal-contamination", "journal-rehearsal-contamination",
 		continuity.JournalRecordedPayload{
-			Observation: continuity.Observation{ObservedAtMillis: 1},
+			Observation: continuity.Observation{ObservedAtMillis: 1, ObservedHarness: "unknown", HarnessVersion: "unknown"},
 			Content:     continuity.JournalContent{Category: continuity.JournalNote, Text: "destination contamination"},
 		},
 	); err != nil {

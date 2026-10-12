@@ -9,6 +9,30 @@ import (
 	"testing"
 )
 
+func TestObservedHarnessFromEnvironment(t *testing.T) {
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CODEX_VERSION", "")
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CODE_VERSION", "")
+	if harness, version := observedHarnessFromEnvironment(); harness != "unknown" || version != "unknown" {
+		t.Fatalf("no marker = %q %q", harness, version)
+	}
+	t.Setenv("CODEX_THREAD_ID", "thread-1")
+	t.Setenv("CODEX_VERSION", "1.2.3")
+	if harness, version := observedHarnessFromEnvironment(); harness != "codex" || version != "1.2.3" {
+		t.Fatalf("Codex marker = %q %q", harness, version)
+	}
+	t.Setenv("CODEX_VERSION", "secret payload with spaces")
+	if harness, version := observedHarnessFromEnvironment(); harness != "codex" || version != "unknown" {
+		t.Fatalf("untrusted version marker = %q %q", harness, version)
+	}
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CLAUDECODE", "1")
+	if harness, version := observedHarnessFromEnvironment(); harness != "claude-code" || version != "unknown" {
+		t.Fatalf("Claude marker = %q %q", harness, version)
+	}
+}
+
 func committedOriginFixture(t *testing.T, slug, date string) (string, string, []byte) {
 	t.Helper()
 	repo := t.TempDir()

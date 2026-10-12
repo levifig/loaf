@@ -84,6 +84,12 @@ func normalizeJournalOriginInput(input JournalOriginInput) (JournalOriginInput, 
 		return JournalOriginInput{}, err
 	}
 	input.CaptureMechanism = mechanism
+	if strings.TrimSpace(input.ObservedHarness) == "" {
+		input.ObservedHarness = "unknown"
+	}
+	if strings.TrimSpace(input.ObservedHarnessVersion) == "" {
+		input.ObservedHarnessVersion = "unknown"
+	}
 	for _, field := range []struct {
 		name  string
 		value *string

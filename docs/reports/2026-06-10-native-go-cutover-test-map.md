@@ -70,6 +70,7 @@ This audit is generated from the Go-native dispatch in `internal/cli/cli.go`, wi
 | `auth` | Native Go | Go dispatcher only | Substrate attach ceremony: admin setup/link/list/revoke/attach and fail-loud gate for unattached environments. |
 | `sync` | Native Go | Go dispatcher only | Client sync engine: enqueue local facts, E2E-sealed push, cursor pull, journal projection refresh, and loud env-seq gap detection via bundled project credentials. |
 | `state` | Native Go | Go dispatcher only | Native operational-state control plane. |
+| `telemetry` | Native Go | Go dispatcher only | Local, read-only counts of pre-tool gateway outcomes by project and harness. |
 | `tag` | Native Go | Go dispatcher only | SQLite-backed tag operations. |
 | `task` | Native Go | Go dispatcher only | Top-level help and unknown-subcommand handling are native; SQLite-backed CRUD/status/refresh/sync paths are native; markdown-only `task create`, `task list`, `task show`, `task status`, `task update`, `task archive`, `task refresh`, and `task sync` are native. The obsolete TypeScript command source and duplicate TS command tests have been removed; CLI reference generation now uses native Go reference metadata. |
 | `trace` | Native Go | Go dispatcher only | SQLite-backed relationship tracing. |

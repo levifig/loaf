@@ -18,6 +18,8 @@ type SubjectRef struct {
 // conversation lifecycle entity.
 type Observation struct {
 	ObservedAtMillis int64
+	ObservedHarness  string
+	HarnessVersion   string
 	HarnessSessionID string
 	Branch           string
 	Worktree         string

@@ -118,7 +118,7 @@ func TestMutableCoreMigrationReplaysEventsAndBirthsOnDivergence(t *testing.T) {
 	}
 	defer store.Close()
 	migrations := SchemaMigrations()
-	if err := ApplyMigrations(ctx, store.db, migrations[:len(migrations)-1]); err != nil {
+	if err := ApplyMigrations(ctx, store.db, migrations[:len(migrations)-2]); err != nil {
 		t.Fatalf("ApplyMigrations(through 24) error = %v", err)
 	}
 	if err := store.UpsertProject(ctx, root); err != nil {
@@ -135,8 +135,8 @@ func TestMutableCoreMigrationReplaysEventsAndBirthsOnDivergence(t *testing.T) {
 	mustExec(t, store, `INSERT INTO handoffs (id, project_id, session_id, task_id, title, status, body_source_id, created_at, updated_at) VALUES (?, ?, NULL, NULL, 'migrated handoff', 'draft', NULL, ?, ?)`, "handoff-legacy", projectID, now, now)
 	mustExec(t, store, `INSERT INTO releases (id, project_id, version, tag, tagged_commit, notes, created_at, updated_at) VALUES (?, ?, '0.3.1', 'v0.3.1', 'abc1234', 'notes', ?, ?)`, "release-legacy", projectID, now, now)
 
-	if err := ApplyMigrations(ctx, store.db, migrations[len(migrations)-1:]); err != nil {
-		t.Fatalf("ApplyMigrations(25) error = %v", err)
+	if err := ApplyMigrations(ctx, store.db, migrations[len(migrations)-2:]); err != nil {
+		t.Fatalf("ApplyMigrations(25 and 26) error = %v", err)
 	}
 
 	var sparkFacts int
