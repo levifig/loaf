@@ -913,9 +913,9 @@ func cliReferenceCommands() []cliReferenceCommand {
 		},
 		{
 			Name:        "telemetry",
-			Description: "Show content-free local pre-tool gateway counts",
+			Description: "Show content-free local continuity usage and pre-tool gateway counts",
 			Subcommands: []cliReferenceSubcommand{
-				{Name: "status", Description: "Count outcomes by project and harness since the current UTC month began", Options: []cliReferenceOption{{Flags: "--json", Description: "Output the local aggregate as JSON"}}},
+				{Name: "status", Description: "Count continuity writes and gateway outcomes by project and harness since the current UTC month began", Options: []cliReferenceOption{{Flags: "--json", Description: "Output the local aggregate as JSON"}}},
 			},
 		},
 		{

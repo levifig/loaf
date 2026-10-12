@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -51,13 +50,7 @@ func ResolveManualJournalOrigin(rootPath, sourceEvent string) state.JournalOrigi
 // Environment markers are used only when they identify a running harness.
 // Installation paths alone are shared across shells and cannot prove origin.
 func observedHarnessFromEnvironment() (string, string) {
-	if strings.TrimSpace(os.Getenv("CODEX_THREAD_ID")) != "" {
-		return "codex", firstKnown(os.Getenv("CODEX_VERSION"))
-	}
-	if strings.TrimSpace(os.Getenv("CLAUDECODE")) != "" {
-		return "claude-code", firstKnown(os.Getenv("CLAUDE_CODE_VERSION"))
-	}
-	return "unknown", "unknown"
+	return state.ObservedHarnessFromEnvironment()
 }
 
 func firstKnown(value string) string {

@@ -351,15 +351,17 @@ func appendDecisionJournalFactTx(ctx context.Context, tx *sql.Tx, projectID, sco
 	if err := insertJournalSearchTx(ctx, tx, projectID, id, "", entryType, scope, message); err != nil {
 		return "", err
 	}
+	origin := newJournalOrigin()
 	if originKind != "" && originID != "" {
-		if err := insertJournalOriginTx(ctx, tx, id, JournalOriginInput{
+		origin = JournalOriginInput{
 			EnvelopeVersion:   JournalOriginEnvelopeVersion,
 			CaptureMechanism:  JournalOriginMechanismMigration,
 			DurableResultKind: originKind,
 			DurableResultID:   originID,
-		}); err != nil {
-			return "", err
 		}
+	}
+	if err := insertJournalOriginTx(ctx, tx, id, origin); err != nil {
+		return "", err
 	}
 	return id, nil
 }
@@ -470,4 +472,3 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
 	}
 	return loadIssueTx(ctx, tx, projectID, issueID)
 }
-

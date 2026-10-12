@@ -1005,6 +1005,7 @@ func decodeVNextRehearsalHandoffFactPayloadV1(raw string) (CoreEventPayload, err
 		"subject_kind": true, "subject_id": true, "alias": true, "status": true,
 		"title": true, "body": true, "note": true, "harness_session_id": true,
 		"task_id": true, "created_at": true, "updated_at": true,
+		"observed_harness": true, "observed_harness_version": true,
 		"text": false, "scope": false, "from_status": false, "to_status": false,
 		"related_kind": false, "related_id": false, "version": false, "tag": false,
 		"tagged_commit": false, "notes": false, "members": false, "backend": false,
@@ -1068,6 +1069,7 @@ func decodeVNextRehearsalHandoffFactPayloadV1(raw string) (CoreEventPayload, err
 		SubjectKind: values["subject_kind"], SubjectID: values["subject_id"], Alias: values["alias"],
 		Status: values["status"], Title: values["title"], Body: values["body"], Note: values["note"],
 		HarnessSessionID: values["harness_session_id"], TaskID: values["task_id"],
+		ObservedHarness: values["observed_harness"], ObservedHarnessVersion: values["observed_harness_version"],
 		CreatedAt: values["created_at"], UpdatedAt: values["updated_at"],
 	}, nil
 }

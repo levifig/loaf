@@ -550,6 +550,8 @@ Table explorations {
   project_id text [not null, ref: > projects.id]
   title text [not null]
   created_at text [not null]
+  observed_harness text
+  observed_harness_version text
   indexes {
     (project_id, created_at)
   }
@@ -567,6 +569,8 @@ Table exploration_checkpoints {
   operation_key text
   content_digest text [not null]
   created_at text [not null]
+  observed_harness text
+  observed_harness_version text
   indexes {
     (exploration_id, seq) [unique]
     (project_id, operation_key) [unique]

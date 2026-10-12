@@ -14,7 +14,7 @@ func TestHookGatewayMigrationPreservesHistoricRowsAndAggregatesNewOnes(t *testin
 		t.Fatal(err)
 	}
 	defer store.Close()
-	migrations := SchemaMigrations()
+	migrations := SchemaMigrations()[:25]
 	if err := ApplyMigrations(ctx, store.db, migrations[:len(migrations)-1]); err != nil {
 		t.Fatal(err)
 	}

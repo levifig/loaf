@@ -111,11 +111,11 @@ var userScopedTables = map[string]bool{
 
 func TestSchemaMigrationsAreOrderedAndChecksummed(t *testing.T) {
 	migrations := SchemaMigrations()
-	if len(migrations) != 25 {
-		t.Fatalf("len(SchemaMigrations()) = %d, want 25", len(migrations))
+	if len(migrations) != 26 {
+		t.Fatalf("len(SchemaMigrations()) = %d, want 26", len(migrations))
 	}
 
-	wantVersions := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26}
+	wantVersions := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27}
 	for i, migration := range migrations {
 		if migration.Version != wantVersions[i] {
 			t.Fatalf("migration[%d].Version = %d, want %d", i, migration.Version, wantVersions[i])
@@ -467,6 +467,11 @@ func TestSchemaDocumentationMirrorsExecutableMigration(t *testing.T) {
 	sqlDoc = readRepoFile(t, "docs", "schema", "0026_hook_gateway_observations.sql")
 	if sqlDoc != SchemaMigrations()[24].SQL {
 		t.Fatal("docs/schema/0026_hook_gateway_observations.sql must match embedded migration 0026 exactly")
+	}
+
+	sqlDoc = readRepoFile(t, "docs", "schema", "0027_exploration_observations.sql")
+	if sqlDoc != SchemaMigrations()[25].SQL {
+		t.Fatal("docs/schema/0027_exploration_observations.sql must match embedded migration 0027 exactly")
 	}
 
 	dbmlDoc := readRepoFile(t, "docs", "schema", "operational-state.dbml")
