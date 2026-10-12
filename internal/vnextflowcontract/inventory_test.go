@@ -148,6 +148,7 @@ func canonicalContentInventory() []contentInventoryEntry {
 		{Path: "skills/loaf-reference/SKILL.md"},
 		{Path: "skills/loaf-reference/references", Directory: true},
 		{Path: "skills/loaf-reference/references/authority-model.md"},
+		{Path: "skills/loaf-reference/references/artifact-routing.md"},
 		{Path: "skills/loaf-reference/references/flow-semantics.md"},
 		{Path: "skills/orchestration", Directory: true},
 		{Path: "skills/orchestration/SKILL.md"},

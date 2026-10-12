@@ -25,7 +25,9 @@ func TestCursorCheckNativeDecisions(t *testing.T) {
 		{name: "write secret", hook: "check-secrets", tool: "Write", path: "example.txt", content: secret, deny: true},
 		{name: "replace secret", hook: "check-secrets", tool: "StrReplace", path: "example.txt", content: secret, deny: true},
 		{name: "destructive shell", hook: "validate-infra-safety", tool: "Shell", command: "kubectl delete namespace prod", deny: true},
-		{name: "replace artifact", hook: "artifact-body-write", tool: "StrReplace", path: ".agents/reports/example.md", content: "body", deny: true},
+		{name: "replace stored artifact", hook: "artifact-body-write", tool: "StrReplace", path: ".agents/handoffs/example.md", content: "body", deny: true},
+		{name: "replace authored report", hook: "artifact-body-write", tool: "StrReplace", path: ".agents/reports/example.md", content: "body"},
+		{name: "replace file council", hook: "artifact-body-write", tool: "StrReplace", path: ".agents/councils/example.md", content: "body"},
 		{name: "advisory secret", hook: "check-secrets", tool: "Shell", command: "echo " + secret, advisory: true},
 	}
 	for _, tc := range cases {

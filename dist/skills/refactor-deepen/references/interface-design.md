@@ -167,8 +167,8 @@ Sometimes the three designs converge — same signature, same
 implementation strategy, same tradeoffs. Two cases:
 
 1. **Convergence is real.** The problem has a single best answer. Accept
-   the convergence as a genuine finding and proceed to the PLAN with that
-   single design. Note in the PLAN's "rejected alternatives" section that
+   the convergence as a genuine finding and proceed to the proposal with that
+   single design. Note in the proposal's "rejected alternatives" section that
    parallel exploration produced no meaningful variation.
 
 2. **Convergence feels accidental.** The designs are suspiciously
@@ -253,7 +253,7 @@ After the three sub-agents return:
 3. **Surface the convergence signal.** If two or more designs are
    substantially similar, say so explicitly: "Designs A and B both
    propose a streaming interface; only C proposes batch."
-4. **Let the user pick.** The PLAN file's "proposed deepened module"
+4. **Let the user pick.** The proposal's "proposed deepened module"
    section records the chosen design; the other two go into "rejected
    alternatives" with the reason.
 

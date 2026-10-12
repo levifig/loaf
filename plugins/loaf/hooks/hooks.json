@@ -8,7 +8,7 @@
             "type": "command",
             "command": "loaf check --hook artifact-body-write",
             "timeout": 30,
-            "description": "Block direct .agents artifact body writes that bypass SQLite registration",
+            "description": "Protect stored artifact bodies and generated projections; permit authored reports and file-backed councils",
             "failClosed": true
           },
           {

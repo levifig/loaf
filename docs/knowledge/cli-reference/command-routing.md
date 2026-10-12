@@ -1,37 +1,34 @@
 # Command Routing
 
-Which command a task needs. For exact flags, run `loaf <command> --help`.
-
-## Decision guide
+Choose the authority before choosing a command. The generated command index records implemented CLI help, including compatibility commands; its presence does not authorize those commands as the current work flow.
 
 | Intent | Route |
 |--------|-------|
-| Shape new bounded work | `loaf issue new --ref linear:<KEY>|branch:<name>|pr:<N> <title>`, then `loaf issue dod add <ref>` and `loaf issue check <ref>` |
-| Start implementing new bounded work | the implement workflow: pick a `linear:`/`branch:`/`pr:` ref from `loaf issue frontier`, then `loaf issue start` on a `branch:` workspace ref |
-| Continue an existing task or spec record | `loaf task` and `loaf spec` remain readable for legacy records; new work is issues |
-| Continue after a restart | `loaf journal context` |
-| Skills or content changed | `loaf build && loaf install --to <target>` |
-| See what is in progress | `loaf issue list --status active` and `loaf issue list --started` |
-| Remove finished-with work | `loaf issue status <ref> cancelled` or `duplicate --duplicate-of <ref>` (archives; record survives) |
+| Shape new bounded work | Shape writes the canonical native tracker record through the configured Project Management provider |
+| Implement selected work | Implement reads the selected native contract and uses repository-native Git mechanics |
+| See or change shared work state | Read or mutate the native tracker through the selected provider, then verify readback |
+| Continue after a restart | `loaf journal context`; find a specific checkpoint with `loaf journal search <query>` and `loaf journal show <id>` |
+| Load a named saved Handoff | In its source project, `loaf handoff list` or `loaf search <query>`, then `loaf handoff show <id-or-alias>` |
+| Read a council | `loaf council list/show <ref>` reads its authored file and currently requires initialized SQLite state; an explicit file path can be read directly |
+| Review a temporary report or proposal | Read the authored file; no database row, universal lifecycle, or compatibility report command is required |
+| Read an explicit snapshot | Read the supplied path and revalidate current authoritative sources before acting |
+| Skills or content changed | `loaf build`; installation or upgrade is a separate explicitly scoped action |
 | Check knowledge freshness | `loaf kb check` |
-| Validate an issue is shaped, covered, and contained | `loaf issue check <ref>` (non-zero exit names each failure) |
-| Import legacy `.agents` Markdown into SQLite | `loaf migrate markdown --dry-run` then `--apply` (see markdown-migration reference) |
+| Inspect an existing local task, plan, issue, or report lifecycle record | Use exact command help for historical compatibility; do not create a second shared work authority |
+| Import legacy `.agents` Markdown into SQLite | Explicit migration only: `loaf migrate markdown --dry-run`, then authorized `--apply` |
+
+The shipped Loaf Reference's Artifact Routing topic supplies the family-specific storage and maintenance boundaries. Handoff owns deliberate transfers; Foundations owns ordinary capture. Missing state or a missing CLI is an access limitation, not a reason to invent another store or initialize a fallback for an existing record.
 
 ## JSON diagnosis surfaces
 
-When diagnosing state, prefer the `--json` surface and parse it rather than
-scraping human-readable text:
+Prefer structured output when available:
 
-- `loaf config check --json` — config file and installed hook config validity
+- `loaf config check --json` — project config and installed hook validity
 - `loaf state doctor --json` / `loaf state status --json` — SQLite health and readiness
-- `loaf issue check <ref> --json` — derived readiness, coverage, and containment
 - `loaf check --hook <id> --json` — one enforcement hook's result
-- `loaf check commit-msg|secrets|changelog|compliance|test-naming|dockerfile|k8s-manifest|bounds|units|standard-refs --json` — standalone validators (file/stdin, directory tree, or domain CLI; not hook JSON)
-- `loaf kb check --json` — knowledge staleness against git history
-- `loaf issue list --json` / `loaf journal recent --json` — current work and timeline
-- `loaf migrate markdown --dry-run --json` — `mode` (`simulation`/`inventory`) plus `import_report` when simulated
+- `loaf check commit-msg|secrets|changelog|compliance|test-naming|dockerfile|k8s-manifest|bounds|units|standard-refs --json` — standalone validators
+- `loaf kb check --json` — knowledge staleness against Git history
+- `loaf journal recent --json` — private timeline; current shared work comes from the provider
+- `loaf migrate markdown --dry-run --json` — migration simulation/inventory, not ongoing synchronization
 
-Choosing between the `doctor` commands and `LOAF_DB` isolation are covered in
-the troubleshooting reference, linked from SKILL.md. Markdown import authority
-(`mode`, `import_report`, origin reclaim, insert-only status) lives in the
-markdown-migration reference.
+The troubleshooting reference covers diagnostic selection and isolated state. The markdown-migration reference owns import authority, origin reclaim, and insert-only behavior. Compatibility readiness checks describe legacy local records; they do not verify a native work contract.

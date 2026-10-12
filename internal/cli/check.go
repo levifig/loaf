@@ -332,16 +332,44 @@ func runNativeArtifactBodyWriteGuard(context checkHookContext, cwd string) check
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
 	root := firstNonEmpty(strings.TrimSpace(cwd), ".")
 	for _, target := range artifactBodyWriteTargets(context, root) {
-		if artifactBodyWriteAllowed(target.path, target.content) {
+		if artifactBodyWriteIsFileBacked(target, root) || artifactBodyWriteAllowed(target.path, target.content) {
 			continue
 		}
 		result.Passed = false
 		result.Blocked = true
 		result.Errors = append(result.Errors, fmt.Sprintf("Direct artifact body write blocked for %s", target.path))
-		result.Errors = append(result.Errors, fmt.Sprintf("Use `%s` so the SQLite artifact body is registered.", target.command))
+		switch target.kind {
+		case "plan", "spec", "task":
+			result.Errors = append(result.Errors, "Define new shared work in the configured native tracker through project-management; existing local work records are migration compatibility only.")
+		case "report":
+			result.Errors = append(result.Errors, fmt.Sprintf("Use `%s`, then `loaf report finalize <ref>` to update the generated projection from its report body.", target.command))
+		default:
+			result.Errors = append(result.Errors, fmt.Sprintf("Use `%s` so the SQLite artifact body is registered.", target.command))
+		}
 		result.Findings = append(result.Findings, fmt.Sprintf("%s is a body-capable %s artifact path", target.path, target.kind))
 	}
 	return result
+}
+
+func artifactBodyWriteIsFileBacked(target artifactBodyWriteTarget, root string) bool {
+	if target.kind == "council" {
+		return true
+	}
+	if target.kind != "report" {
+		return false
+	}
+	// Temporary analysis and report working bodies are authored files. Existing
+	// generated projections still need their owning report command; unreadable
+	// files fail closed instead of being assumed to be temporary evidence.
+	body, err := readRegularFile(artifactBodyWritePath(root, target.path), projectFileReadLimit)
+	return os.IsNotExist(err) || (err == nil && !artifactBodyWriteIsGeneratedRender(string(body)))
+}
+
+func artifactBodyWritePath(root, path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(root, artifactBodyRelativePath(path))
 }
 
 var gitPushCommandRE = regexp.MustCompile(`^git\s+push(?:\s|$)`)
@@ -574,7 +602,7 @@ func artifactBodyWriteTargets(context checkHookContext, root string) []artifactB
 	if !ok {
 		return nil
 	}
-	path = artifactBodyRelativePath(path)
+	path = normalizeHookPath(path)
 	return []artifactBodyWriteTarget{{
 		path:    path,
 		kind:    kind,
@@ -737,7 +765,7 @@ func artifactBodyWriteCommand(kind string, path string, root string) string {
 		return "loaf plan new --title <title> --body-file <path>"
 	case "report":
 		stem := artifactBodyStemFromPath(path)
-		if _, err := os.Stat(filepath.Join(root, artifactBodyRelativePath(path))); err == nil {
+		if _, err := os.Stat(artifactBodyWritePath(root, path)); err == nil {
 			// An existing render resolves as a report alias; create would duplicate it.
 			return "loaf report edit " + existingReportRef(root, path) + " --body-file <path>"
 		}
@@ -766,7 +794,7 @@ func artifactBodyStemFromPath(path string) string {
 // targets the ref the report commands actually resolve.
 func existingReportRef(root string, path string) string {
 	stem := artifactBodyStemFromPath(path)
-	body, err := os.ReadFile(filepath.Join(root, artifactBodyRelativePath(path)))
+	body, err := os.ReadFile(artifactBodyWritePath(root, path))
 	if err != nil {
 		return stem
 	}

@@ -892,7 +892,7 @@ func TestRunnerCheckArtifactBodyWriteBlocksDirectWriteWithJSON(t *testing.T) {
 		Stdin: bytes.NewBufferString(`{
 			"tool": {"name": "Write"},
 			"tool_input": {
-				"file_path": ` + strconv.Quote(filepath.Join(repo, ".agents", "reports", "20260624-audit.md")) + `,
+				"file_path": ` + strconv.Quote(filepath.Join(repo, ".agents", "handoffs", "20260624-audit.md")) + `,
 				"content": "# Audit\n\nDirect markdown body."
 			}
 		}`),
@@ -907,9 +907,9 @@ func TestRunnerCheckArtifactBodyWriteBlocksDirectWriteWithJSON(t *testing.T) {
 	}
 	joined := strings.Join(append(output.Errors, output.Findings...), "\n")
 	for _, want := range []string{
-		".agents/reports/20260624-audit.md",
-		"loaf report create <slug> --body-file <path>",
-		"body-capable report artifact path",
+		".agents/handoffs/20260624-audit.md",
+		"loaf handoff new --title <title> --body-file <path>",
+		"body-capable handoff artifact path",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("artifact-body-write output = %#v, want %q", output, want)
@@ -931,10 +931,13 @@ func TestRunnerCheckArtifactBodyWriteBlocksBashRedirection(t *testing.T) {
 	if !errors.As(err, &exitErr) || exitErr.Code != 2 {
 		t.Fatalf("artifact-body-write bash error = %v, want exit code 2", err)
 	}
-	for _, want := range []string{".agents/plans/PLAN-001-cutover.md", "loaf plan new --title <title> --body-file <path>"} {
+	for _, want := range []string{".agents/plans/PLAN-001-cutover.md", "configured native tracker", "migration compatibility only"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
 		}
+	}
+	if strings.Contains(stderr.String(), "loaf plan new") {
+		t.Fatal("guard routes new work into the compatibility plan command")
 	}
 }
 

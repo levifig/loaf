@@ -30,9 +30,7 @@ docs/
 | No date prefixes | `build-system.md` | Knowledge is living; dates imply snapshots |
 | No abbreviations | `knowledge-management-design.md` | Clarity over brevity |
 
-**Contrast with other artifacts that DO use date prefixes:**
-- Sessions: `YYYYMMDD-HHMMSS-session-slug.md`
-- Ideas: `YYYYMMDD-HHMMSS-idea-slug.md`
+**Point-in-time authored reports may use date prefixes**, such as `.agents/reports/YYYYMMDDHHMMSS-module-depth.md`. The journal has no session entity, and current idea records are retrieved through `loaf idea`; preserve historical timestamped idea files as compatibility evidence rather than a new storage convention.
 
 Knowledge files are living documents, not point-in-time snapshots.
 

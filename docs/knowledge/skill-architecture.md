@@ -293,7 +293,7 @@ Profiles in `content/agents/{name}.md` describe intended responsibilities and to
 | **implementer** | Full write | Code, tests, config, docs — specialty via skills |
 | **reviewer** | Read-only | Audits, reviews — intended independence from implementation |
 | **researcher** | Read + web | Research, comparison — structured reports |
-| **librarian** | Read + Edit (.agents/) | Journal curation, durable artifacts, wrap checkpoints, pre-compaction preservation |
+| **librarian** | Read + Edit (.agents/) | Continuity drafts for the invoking agent; authorized file tending, no CLI or tracker tools |
 | **background-runner** | Read + Edit | Async non-blocking tasks (system) |
 
 Skills load into profiles at spawn time. What an agent is intended to touch comes from its profile; what it *knows* comes from skills.
