@@ -8,7 +8,7 @@ covers:
   - internal/state/task_*.go
   - docs/changes/**/*.md
   - .agents/specs/**/*.md
-  - vnext/content/skills/project-management/**/*
+  - content/skills/project-management/**/*
 consumers:
   - implementer
   - reviewer

@@ -1,6 +1,10 @@
 ---
 name: orchestration
-description: Coordinates bounded implementation and review work against one live native tracker contract. Use when parallel research, implementation, or independent review materially improves delivery. Produces consolidated evidence without creating local work units or requiring delegation.
+description: >-
+  Coordinates bounded implementation and review work against one live native
+  tracker contract. Use when parallel research, implementation, or independent
+  review materially improves delivery. Produces consolidated evidence without
+  creating local work units or requiring delegation.
 ---
 
 # Orchestration

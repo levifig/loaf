@@ -24,8 +24,8 @@ type PackageOptions struct {
 // Package writes dist/release/loaf_<version>_<target>.tar.gz for every
 // requested target plus checksums.txt, the assets GitHub Releases, Homebrew,
 // and install.sh consume. Each archive is a complete distribution: the native
-// binary at bin/<name>, the manifest, config, content, the authored vnext
-// Flow content, the built dist and plugin trees, and the Claude Code
+// binary at bin/<name>, the manifest, config, the authored content,
+// the built dist and plugin trees, and the Claude Code
 // marketplace manifest.
 func Package(options PackageOptions) error {
 	root := options.RootDir
@@ -37,8 +37,10 @@ func Package(options PackageOptions) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(root, "vnext", "content", "skills")); err != nil {
-		return fmt.Errorf("missing tracker-native Flow content at vnext/content/skills.")
+	for _, path := range []string{"content/skills", "content/flow-contract.json"} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(path))); err != nil {
+			return fmt.Errorf("missing tracker-native Flow content at %s: %w", path, err)
+		}
 	}
 	targets, err := ReleaseTargetsFromEnv(options.Env)
 	if err != nil {
@@ -94,7 +96,7 @@ func manifestVersion(root string) (string, error) {
 
 // archiveEntries are the distribution parts, in the order they are written.
 var archiveFiles = []string{"package.json", "README.md", "CHANGELOG.md"}
-var archiveDirs = []string{"config", "content", "vnext/content", "dist", "plugins", ".claude-plugin"}
+var archiveDirs = []string{"config", "content", "dist", "plugins", ".claude-plugin"}
 
 type releaseManifest struct {
 	SchemaVersion  int                   `json:"schema_version"`

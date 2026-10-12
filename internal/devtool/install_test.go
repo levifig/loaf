@@ -645,7 +645,7 @@ func (r *stagingRecordingRunner) Run(dir string, env Env, name string, args ...s
 	}
 	loaf := filepath.Join(r.root, "bin", "loaf")
 	if name == loaf && len(args) == 1 && args[0] == "__generate-cli-ref" {
-		writeFixture(r.t, filepath.Join(r.root, "content", "skills", "loaf-reference", "SKILL.md"), "# CLI\n")
+		writeFixture(r.t, filepath.Join(r.root, "docs", "knowledge", "cli-reference.md"), "# CLI\n")
 		return nil
 	}
 	if name == loaf && len(args) == 1 && args[0] == "build" {

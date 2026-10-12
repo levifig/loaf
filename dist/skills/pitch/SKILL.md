@@ -1,6 +1,10 @@
 ---
 name: pitch
-description: Conducts problem discovery before work is shaped. Use when a direction is still solution-led, ambiguous, or missing affected people and desired outcomes. Produces a complete problem narrative for shape, not a work implementation.
+description: >-
+  Conducts problem discovery before work is shaped. Use when a direction is
+  still solution-led, ambiguous, or missing affected people and desired
+  outcomes. Produces a complete problem narrative for shape, not a work
+  implementation.
 ---
 
 # Pitch

@@ -1,6 +1,11 @@
 ---
 name: project-management
-description: Defines the provider-neutral project-management/v1 contract for canonical tracker work and mandatory capture of concrete follow-ups. Use when a Flow ceremony or deferred actionable finding needs native work through an already-configured harness connection. Not for configuring providers or storing work locally.
+description: >-
+  Defines the provider-neutral project-management/v1 contract for canonical
+  tracker work and mandatory capture of concrete follow-ups. Use when a Flow
+  ceremony or deferred actionable finding needs native work through an
+  already-configured harness connection. Not for configuring providers or
+  storing work locally.
 ---
 
 # Project Management

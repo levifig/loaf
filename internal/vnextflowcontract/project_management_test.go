@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -16,7 +15,7 @@ const (
 	projectManagementContractPath = "skills/project-management/contract.json"
 	linearCapabilitiesPath        = "skills/linear/capabilities.json"
 	githubCapabilitiesPath        = "skills/github/capabilities.json"
-	projectManagerContractPath    = "agents/project-manager.contract.json"
+	projectManagerContractPath    = "contracts/project-manager.contract.json"
 )
 
 type projectManagementContract struct {
@@ -116,7 +115,7 @@ type projectManagerAuthority struct {
 func TestTrackerSkillProjectManagementContract(t *testing.T) {
 	t.Parallel()
 
-	content := os.DirFS("../../vnext/content")
+	content := repositoryFlowContent(t)
 	assertNoContractFindings(t, validateProjectManagementContract(content))
 }
 
@@ -154,7 +153,7 @@ func TestProviderModuleCanBeAddedWithoutChangingCoreFlow(t *testing.T) {
 func TestTrackerSkillGitHubMappingUsesNativeIssueSemantics(t *testing.T) {
 	t.Parallel()
 
-	content := os.DirFS("../../vnext/content")
+	content := repositoryFlowContent(t)
 	provider := providerCapabilities{}
 	if err := decodeStrictJSON(content, githubCapabilitiesPath, &provider); err != nil {
 		t.Fatal(err)
@@ -186,7 +185,7 @@ func TestTrackerSkillGitHubMappingUsesNativeIssueSemantics(t *testing.T) {
 func TestTrackerSkillGitHubGuidanceCodifiesAuthenticatedGhFallback(t *testing.T) {
 	t.Parallel()
 
-	content := os.DirFS("../../vnext/content")
+	content := repositoryFlowContent(t)
 	skill, err := fs.ReadFile(content, "skills/github/SKILL.md")
 	if err != nil {
 		t.Fatal(err)
@@ -238,7 +237,7 @@ func TestTrackerSkillGitHubGuidanceCodifiesAuthenticatedGhFallback(t *testing.T)
 func TestTrackerSkillProjectManagementClarifiesGitHubGhFallbackWithoutExpandingProjectManager(t *testing.T) {
 	t.Parallel()
 
-	content := os.DirFS("../../vnext/content")
+	content := repositoryFlowContent(t)
 	files := map[string][]string{
 		"skills/project-management/SKILL.md": {
 			"Prefer an already configured usable GitHub MCP that matches `integrations.github.account`",
@@ -287,7 +286,7 @@ func TestTrackerSkillProjectManagementClarifiesGitHubGhFallbackWithoutExpandingP
 		}
 	}
 
-	profile, err := fs.ReadFile(content, "agents/project-manager.md")
+	profile, err := fs.ReadFile(content, "contracts/project-manager.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +300,7 @@ func TestTrackerSkillProjectManagementClarifiesGitHubGhFallbackWithoutExpandingP
 func TestTrackerSkillGitHubDuplicateTransitionRequiresNativeRelationshipReadback(t *testing.T) {
 	t.Parallel()
 
-	content := os.DirFS("../../vnext/content")
+	content := repositoryFlowContent(t)
 	provider := providerCapabilities{}
 	if err := decodeStrictJSON(content, githubCapabilitiesPath, &provider); err != nil {
 		t.Fatal(err)
@@ -475,9 +474,9 @@ func TestTrackerSkillProjectManagerMarkdownRejectsInstructionDrift(t *testing.T)
 			t.Parallel()
 
 			fixture := validProjectManagementFixture()
-			profile := fixture["agents/project-manager.md"]
+			profile := fixture["contracts/project-manager.md"]
 			profile.Data = append(profile.Data, []byte("\n"+mutation.injection+"\n")...)
-			fixture["agents/project-manager.md"] = profile
+			fixture["contracts/project-manager.md"] = profile
 			assertContractFinding(t, validateProjectManagementContract(fixture), "profile.instructions", "canonical shared-contract pointer")
 		})
 	}
@@ -508,7 +507,7 @@ func validateProjectManagementContract(content fs.FS) []finding {
 
 	for _, entrypoint := range []string{
 		"skills/project-management/SKILL.md",
-		"agents/project-manager.md",
+		"contracts/project-manager.md",
 	} {
 		body, err := fs.ReadFile(content, entrypoint)
 		if err != nil {
@@ -524,12 +523,12 @@ func validateProjectManagementContract(content fs.FS) []finding {
 }
 
 func validateProjectManagerInstructions(content fs.FS) []finding {
-	body, err := fs.ReadFile(content, "agents/project-manager.md")
+	body, err := fs.ReadFile(content, "contracts/project-manager.md")
 	if err != nil {
-		return []finding{{"profile.instructions", "agents/project-manager.md", err.Error()}}
+		return []finding{{"profile.instructions", "contracts/project-manager.md", err.Error()}}
 	}
 	if string(body) != canonicalProjectManagerMarkdown {
-		return []finding{{"profile.instructions", "agents/project-manager.md", "instructions must match the external canonical shared-contract pointer and authority profile"}}
+		return []finding{{"profile.instructions", "contracts/project-manager.md", "instructions must match the external canonical shared-contract pointer and authority profile"}}
 	}
 	return nil
 }
@@ -837,7 +836,7 @@ func validProjectManagementFixture() fstest.MapFS {
 		"skills/linear/SKILL.md": &fstest.MapFile{Data: []byte(
 			validSkill("linear", "Maps project-management/v1 semantics to Linear. Use when a Linear connection is selected.")),
 		},
-		"agents/project-manager.md": &fstest.MapFile{Data: []byte(canonicalProjectManagerMarkdown)},
+		"contracts/project-manager.md": &fstest.MapFile{Data: []byte(canonicalProjectManagerMarkdown)},
 	}
 }
 

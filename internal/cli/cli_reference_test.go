@@ -8,8 +8,12 @@ import (
 	"testing"
 )
 
-func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
+func TestRunnerGenerateCLIReferencePreservesAuthoredFlowSkill(t *testing.T) {
 	workingDir := realpath(t, t.TempDir())
+	skillPath := filepath.Join(workingDir, "content", "skills", "loaf-reference", "SKILL.md")
+	mkdirAll(t, filepath.Dir(skillPath))
+	const authoredSkill = "# Canonical Flow skill\n"
+	writeFile(t, skillPath, authoredSkill)
 	var stdout bytes.Buffer
 
 	err := Runner{
@@ -20,7 +24,11 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		t.Fatalf("__generate-cli-ref error = %v", err)
 	}
 
-	outputPath := filepath.Join(workingDir, "content", "skills", "loaf-reference", "SKILL.md")
+	if got := readBuildFileString(t, skillPath); got != authoredSkill {
+		t.Fatalf("CLI reference generation overwrote authored Flow skill: %q", got)
+	}
+
+	outputPath := filepath.Join(workingDir, "docs", "knowledge", "cli-reference.md")
 	data, err := os.ReadFile(outputPath)
 	if err != nil {
 		t.Fatalf("ReadFile(%s) error = %v", outputPath, err)
@@ -65,10 +73,10 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 		"| `loaf migrate` | Run native migration workflows | markdown, storage-home, schema, lifecycle-statuses, journal-first, worktree-storage |",
 		"| `loaf doctor` | Diagnose Loaf project alignment (symlinks, stale files, managed content, and leftover migration work) | — |",
 		"## Topics",
-		"[references/configuration.md](references/configuration.md)",
-		"[references/command-routing.md](references/command-routing.md)",
-		"[references/markdown-migration.md](references/markdown-migration.md)",
-		"[references/troubleshooting.md](references/troubleshooting.md)",
+		"[cli-reference/configuration.md](cli-reference/configuration.md)",
+		"[cli-reference/command-routing.md](cli-reference/command-routing.md)",
+		"[cli-reference/markdown-migration.md](cli-reference/markdown-migration.md)",
+		"[cli-reference/troubleshooting.md](cli-reference/troubleshooting.md)",
 	} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("generated CLI reference missing %q\n%s", want, content)
@@ -76,7 +84,7 @@ func TestRunnerGenerateCLIReferenceWritesSkillNatively(t *testing.T) {
 	}
 	// The thinned router drops the verbose per-command catalog, the command
 	// substitution placeholders, and the global-command and decision-guide
-	// prose that moved into references/.
+	// prose that moved into cli-reference/.
 	for _, unwanted := range []string{
 		"{{",
 		"## Global Commands",
@@ -103,12 +111,12 @@ func TestCLIReferenceSourceMatchesGeneratedContract(t *testing.T) {
 		t.Fatalf("Getwd() error = %v", err)
 	}
 	repositoryRoot := filepath.Clean(filepath.Join(workingDir, "..", ".."))
-	data, err := os.ReadFile(filepath.Join(repositoryRoot, "content", "skills", "loaf-reference", "SKILL.md"))
+	data, err := os.ReadFile(filepath.Join(repositoryRoot, "docs", "knowledge", "cli-reference.md"))
 	if err != nil {
 		t.Fatalf("ReadFile(source CLI reference) error = %v", err)
 	}
 	if got, want := string(data), generateCLIReferenceSkill(cliReferenceCommands()); got != want {
-		t.Fatal("content/skills/loaf-reference/SKILL.md is stale; regenerate it with `loaf __generate-cli-ref`")
+		t.Fatal("docs/knowledge/cli-reference.md is stale; regenerate it with `loaf __generate-cli-ref`")
 	}
 }
 

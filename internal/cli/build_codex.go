@@ -120,95 +120,34 @@ func buildNativeSharedSkillsIntermediate(root string) error {
 	}); err != nil {
 		return err
 	}
-	return overlayVNextFlowSkills(root, dest)
+	_, err = discoverProviderSkills(filepath.Join(src, "skills"))
+	return err
 }
 
-// overlayVNextFlowSkills promotes the isolated, machine-checked tracker-native
-// Flow and its supporting workflows into the common build intermediate. Every
-// target therefore receives the same authored vNext bytes. Legacy skill sources
-// remain in content/ only as a frozen compatibility input until cutover.
-//
-// Shared vNext templates are projected into each consuming skill so links are
-// self-contained after installation in the canonical shared skills home. This
-// is a path projection only; it does not vary prose by harness or provider.
-func overlayVNextFlowSkills(root string, dest string) error {
-	sourceRoot := filepath.Join(root, "vnext", "content")
-	if !dirExistsForInstall(filepath.Join(sourceRoot, "skills")) {
-		return nil
-	}
-	templatesBySkill := map[string][]string{
-		"pitch":              {"problem-narrative.md"},
-		"triage":             {"tracker-update.md"},
-		"shape":              {"work-contract.md"},
-		"implement":          {"tracker-update.md"},
-		"ship":               {"work-contract.md", "tracker-update.md"},
-		"release":            {"tracker-update.md"},
-		"orchestration":      {"tracker-update.md"},
-		"project-management": {"work-contract.md", "tracker-update.md"},
-		"loaf-reference":     {"problem-narrative.md", "work-contract.md", "tracker-update.md"},
-	}
-	flowSkills := []string{"loaf-reference", "project-management", "pitch", "triage", "shape", "implement", "ship", "release", "orchestration", "research", "housekeeping"}
-	providers, err := discoverVNextProviderSkills(filepath.Join(sourceRoot, "skills"))
-	if err != nil {
-		return err
-	}
-	flowSkills = append(flowSkills, providers...)
-	for _, skill := range flowSkills {
-		source := filepath.Join(sourceRoot, "skills", skill)
-		if !dirExistsForInstall(source) {
-			return fmt.Errorf("vNext Flow skill %q is missing", skill)
-		}
-		target := filepath.Join(dest, skill)
-		if err := os.RemoveAll(target); err != nil {
-			return err
-		}
-		if err := copyDirContentsForInstall(source, target); err != nil {
-			return err
-		}
-		skillPath := filepath.Join(target, "SKILL.md")
-		body, err := os.ReadFile(skillPath)
-		if err != nil {
-			return err
-		}
-		body = []byte(strings.ReplaceAll(string(body), "../../templates/", "templates/"))
-		if err := os.WriteFile(skillPath, body, 0o644); err != nil {
-			return err
-		}
-		for _, template := range templatesBySkill[skill] {
-			sourceTemplate := filepath.Join(sourceRoot, "templates", template)
-			targetTemplate := filepath.Join(target, "templates", template)
-			if err := copyFileForInstall(sourceTemplate, targetTemplate); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+type nativeProviderManifest struct {
+	Schema                     string                    `json:"schema"`
+	Provider                   string                    `json:"provider"`
+	Contract                   string                    `json:"contract"`
+	Connection                 string                    `json:"connection"`
+	RuntimeCapabilityDiscovery string                    `json:"runtime_capability_discovery"`
+	Operations                 []nativeProviderOperation `json:"operations"`
 }
 
-type vNextProviderManifest struct {
-	Schema                     string                   `json:"schema"`
-	Provider                   string                   `json:"provider"`
-	Contract                   string                   `json:"contract"`
-	Connection                 string                   `json:"connection"`
-	RuntimeCapabilityDiscovery string                   `json:"runtime_capability_discovery"`
-	Operations                 []vNextProviderOperation `json:"operations"`
+type nativeProviderOperation struct {
+	ID              string                     `json:"id"`
+	NativeSemantic  string                     `json:"native_semantic"`
+	Availability    string                     `json:"availability"`
+	MaximumFidelity string                     `json:"maximum_fidelity"`
+	Requires        nativeProviderRequirements `json:"requires"`
 }
 
-type vNextProviderOperation struct {
-	ID              string                    `json:"id"`
-	NativeSemantic  string                    `json:"native_semantic"`
-	Availability    string                    `json:"availability"`
-	MaximumFidelity string                    `json:"maximum_fidelity"`
-	Requires        vNextProviderRequirements `json:"requires"`
-}
-
-type vNextProviderRequirements struct {
+type nativeProviderRequirements struct {
 	Before  []string `json:"before"`
 	Execute []string `json:"execute"`
 	After   []string `json:"after"`
 }
 
-func discoverVNextProviderSkills(skillsRoot string) ([]string, error) {
+func discoverProviderSkills(skillsRoot string) ([]string, error) {
 	entries, err := os.ReadDir(skillsRoot)
 	if err != nil {
 		return nil, err
@@ -224,28 +163,28 @@ func discoverVNextProviderSkills(skillsRoot string) ([]string, error) {
 			continue
 		}
 		if err != nil {
-			return nil, fmt.Errorf("read vNext provider %q: %w", entry.Name(), err)
+			return nil, fmt.Errorf("read provider %q: %w", entry.Name(), err)
 		}
 		if err := validateJSONNoDuplicateKeys(body); err != nil {
-			return nil, fmt.Errorf("decode vNext provider %q: %w", entry.Name(), err)
+			return nil, fmt.Errorf("decode provider %q: %w", entry.Name(), err)
 		}
 		decoder := json.NewDecoder(bytes.NewReader(body))
 		decoder.DisallowUnknownFields()
-		manifest := vNextProviderManifest{}
+		manifest := nativeProviderManifest{}
 		if err := decoder.Decode(&manifest); err != nil {
-			return nil, fmt.Errorf("decode vNext provider %q: %w", entry.Name(), err)
+			return nil, fmt.Errorf("decode provider %q: %w", entry.Name(), err)
 		}
 		if err := decoder.Decode(&struct{}{}); err != io.EOF {
-			return nil, fmt.Errorf("decode vNext provider %q: trailing JSON content", entry.Name())
+			return nil, fmt.Errorf("decode provider %q: trailing JSON content", entry.Name())
 		}
 		if manifest.Schema != "loaf-provider-capabilities/v1" || manifest.Provider != entry.Name() || manifest.Contract != "project-management/v1" || manifest.Connection != "harness-native" || manifest.RuntimeCapabilityDiscovery != "required" {
-			return nil, fmt.Errorf("vNext provider %q has an invalid or mismatched capability manifest", entry.Name())
+			return nil, fmt.Errorf("provider %q has an invalid or mismatched capability manifest", entry.Name())
 		}
-		if err := validateVNextProviderOperations(manifest.Operations); err != nil {
-			return nil, fmt.Errorf("vNext provider %q capability manifest: %w", entry.Name(), err)
+		if err := validateProviderOperations(manifest.Operations); err != nil {
+			return nil, fmt.Errorf("provider %q capability manifest: %w", entry.Name(), err)
 		}
 		if _, err := readRegularFileNoFollow(filepath.Join(skillsRoot, entry.Name(), "SKILL.md"), projectFileReadLimit); err != nil {
-			return nil, fmt.Errorf("read vNext provider skill %q: %w", entry.Name(), err)
+			return nil, fmt.Errorf("read provider skill %q: %w", entry.Name(), err)
 		}
 		providers = append(providers, entry.Name())
 	}
@@ -253,7 +192,7 @@ func discoverVNextProviderSkills(skillsRoot string) ([]string, error) {
 	return providers, nil
 }
 
-func validateVNextProviderOperations(operations []vNextProviderOperation) error {
+func validateProviderOperations(operations []nativeProviderOperation) error {
 	ids := []string{"connection.discover", "capability.discover", "work.read", "work.create", "work.update", "definition.write", "hierarchy.read", "hierarchy.change", "dependency.read", "dependency.change", "status.read", "status.transition", "comment.list", "comment.append"}
 	writes := map[string]bool{"work.create": true, "work.update": true, "definition.write": true, "hierarchy.change": true, "dependency.change": true, "status.transition": true, "comment.append": true}
 	if len(operations) != len(ids) {
@@ -448,6 +387,9 @@ func writeNativeBuildSkillMarkdown(skillSrc string, skillDest string, options na
 		return err
 	}
 	frontmatter, content := splitNativeBuildFrontmatter(string(body))
+	if options.targetName == "shared" {
+		content = strings.ReplaceAll(content, "../../templates/", "templates/")
+	}
 	fields := parseNativeBuildYAMLFields(frontmatter)
 	sidecarSrc := skillSrc
 	if options.sidecarSrcDir != "" {
@@ -681,7 +623,7 @@ func copyNativeSharedTemplates(skill string, skillDest string, srcDir string, co
 		}
 		src := filepath.Join(srcDir, "templates", template)
 		dest := filepath.Join(skillDest, "templates", template)
-		if pathExistsNative(dest) || !pathExistsNative(src) {
+		if pathExistsNative(dest) {
 			continue
 		}
 		body, err := readRegularFileNoFollow(src, projectFileReadLimit)

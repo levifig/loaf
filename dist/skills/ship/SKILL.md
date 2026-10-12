@@ -1,6 +1,10 @@
 ---
 name: ship
-description: Serves as the sole quality gate for implemented native tracker work. Use when a candidate diff needs independent review, criterion verification, and a landing decision. Produces an evidence-backed quality verdict and verified native transition when authorized.
+description: >-
+  Serves as the sole quality gate for implemented native tracker work. Use when
+  a candidate diff needs independent review, criterion verification, and a
+  landing decision. Produces an evidence-backed quality verdict and verified
+  native transition when authorized.
 ---
 
 # Ship

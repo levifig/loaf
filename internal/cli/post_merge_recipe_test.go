@@ -12,7 +12,7 @@ import (
 // this test proves the Git recipe, not universal adherence to that guidance.
 func TestPostMergeRecipesReconcileAuthoritativeForkBase(t *testing.T) {
 	for _, surface := range []string{
-		"vnext/content/skills/ship/SKILL.md",
+		"content/skills/ship/SKILL.md",
 		"content/hooks/instructions/post-merge.md",
 	} {
 		t.Run(surface, func(t *testing.T) {

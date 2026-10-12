@@ -10,38 +10,24 @@ import (
 	"testing"
 )
 
-func TestShapeSizingRuleVerificationIndexed(t *testing.T) {
+func TestShapeSizingPreservesIndependentNativeJourneys(t *testing.T) {
 	root := repoRoot(t)
-	shapeSkill := readTextFile(t, filepath.Join(root, "content", "skills", "shape", "SKILL.md"))
-	decomposition := readTextFile(t, filepath.Join(root, "content", "skills", "shape", "references", "decomposition.md"))
-	critiqueGate := readTextFile(t, filepath.Join(root, "content", "skills", "shape", "references", "critique-gate.md"))
-	implementSkill := readTextFile(t, filepath.Join(root, "content", "skills", "implement", "SKILL.md"))
-
-	for _, required := range []string{"verifiable alone", "revertible alone"} {
-		if !strings.Contains(shapeSkill, required) {
-			t.Fatalf("content/skills/shape/SKILL.md missing verification-indexed sizing phrase %q", required)
-		}
-		if !strings.Contains(decomposition, required) {
-			t.Fatalf("content/skills/shape/references/decomposition.md missing verification-indexed sizing phrase %q", required)
-		}
-		if !strings.Contains(critiqueGate, required) {
-			t.Fatalf("content/skills/shape/references/critique-gate.md missing verification-indexed sizing phrase %q", required)
-		}
-	}
-
-	if !strings.Contains(shapeSkill, "runtime heuristic") || !strings.Contains(implementSkill, "runtime heuristic") {
-		t.Fatalf("shape and implement skills must demote window-fit to a labeled runtime heuristic")
-	}
-
 	for _, tc := range []struct {
-		rel  string
-		body string
+		rel      string
+		required []string
 	}{
-		{"content/skills/shape/SKILL.md", shapeSkill},
-		{"content/skills/shape/references/decomposition.md", decomposition},
+		{"content/skills/shape/SKILL.md", []string{"bounded, independently reviewable", "independently useful, independently verifiable", "Read back the native record"}},
+		{"content/skills/shape/references/decomposition.md", []string{"complete vertical journeys", "own observable completion evidence", "reviewed independently", "Dependencies are not hierarchy", "verify both sides through readback"}},
+		{"content/skills/implement/SKILL.md", []string{"Preserve the rideable journey across commits and delegation", "reduce breadth before integrity"}},
 	} {
-		if strings.Contains(tc.body, "fits one fresh context window and is verifiable alone") {
-			t.Fatalf("%s still uses the retired window-fit sizing rule", tc.rel)
+		body := readTextFile(t, filepath.Join(root, filepath.FromSlash(tc.rel)))
+		for _, required := range tc.required {
+			if !strings.Contains(body, required) {
+				t.Errorf("%s missing sizing requirement %q", tc.rel, required)
+			}
+		}
+		if strings.Contains(body, "fits one fresh context window and is verifiable alone") {
+			t.Errorf("%s still uses the retired window-fit sizing rule", tc.rel)
 		}
 	}
 }
@@ -90,8 +76,8 @@ func TestSkillContentHygieneStaleReferences(t *testing.T) {
 			},
 			required: []string{
 				"loaf journal log",
-				"loaf journal context",
-				"loaf council new",
+				"project-management/v1",
+				"Assign one writer",
 			},
 		},
 		{
@@ -226,48 +212,17 @@ func TestSkillHelperExecutableContracts(t *testing.T) {
 	}
 }
 
-func TestOrchestrationScriptSurfaceClassifiesEveryHelper(t *testing.T) {
+func TestOrchestrationRetiredHelpersRemainAbsent(t *testing.T) {
 	root := repoRoot(t)
 	scriptsDir := filepath.Join(root, "content", "skills", "orchestration", "scripts")
-	surfaceRel := filepath.FromSlash("content/skills/orchestration/references/script-surface.md")
-	surface := readTextFile(t, filepath.Join(root, surfaceRel))
-
-	var missing []string
-	if info, err := os.Stat(scriptsDir); err == nil && info.IsDir() {
-		err := filepath.WalkDir(scriptsDir, func(path string, entry os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if entry.IsDir() {
-				return nil
-			}
-			name := entry.Name()
-			if !strings.Contains(surface, name) {
-				missing = append(missing, name)
-			}
-			return nil
-		})
-		if err != nil {
-			t.Fatalf("WalkDir(%s) error = %v", scriptsDir, err)
-		}
-	} else if err != nil && !os.IsNotExist(err) {
-		t.Fatalf("Stat(%s) error = %v", scriptsDir, err)
-	}
-
 	for _, name := range retiredOrchestrationSkillScripts {
-		if !strings.Contains(surface, name) {
-			missing = append(missing, name)
+		if _, err := os.Stat(filepath.Join(scriptsDir, name)); !os.IsNotExist(err) {
+			t.Errorf("retired orchestration helper %s remains: %v", name, err)
 		}
-	}
-	sort.Strings(missing)
-	if len(missing) > 0 {
-		t.Fatalf("%s does not classify orchestration helpers: %s", filepath.ToSlash(surfaceRel), strings.Join(missing, ", "))
 	}
 }
 
-// retiredOrchestrationSkillScripts are the Checkpoint 3 helpers. They must stay
-// named in script-surface.md after deletion so the disposition record cannot
-// silently drop a row.
+// These historical orchestration helpers must not return as a second work authority.
 var retiredOrchestrationSkillScripts = []string{
 	"new-session.sh",
 	"git-context-summary.sh",
@@ -298,8 +253,8 @@ func TestOrchestrationDuplicateAuthorityReferencesRetired(t *testing.T) {
 		}
 	}
 	for _, owner := range []string{
-		"../council/SKILL.md",
-		"../shape/SKILL.md",
+		"../project-management/SKILL.md",
+		"references/delegation.md",
 	} {
 		if !strings.Contains(orchestration, owner) {
 			t.Fatalf("orchestration router missing owning skill link %q", owner)
@@ -309,7 +264,7 @@ func TestOrchestrationDuplicateAuthorityReferencesRetired(t *testing.T) {
 
 func TestCliReferenceCatalogsJournalFamily(t *testing.T) {
 	root := repoRoot(t)
-	rel := filepath.FromSlash("content/skills/loaf-reference/SKILL.md")
+	rel := filepath.FromSlash("docs/knowledge/cli-reference.md")
 	body := readTextFile(t, filepath.Join(root, rel))
 	// The thinned router lists each command once with its subcommands
 	// comma-joined; the journal row must catalog the whole family.
@@ -447,12 +402,12 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 			required:  []string{"Release tag to publish, for example v0.2.20", "if: needs.resolve.outputs.dev != 'true'"},
 		},
 		{
-			rel:       "content/skills/loaf-reference/SKILL.md",
+			rel:       "docs/knowledge/cli-reference.md",
 			forbidden: []string{"Markdown-to-native transition"},
 			required:  []string{"`transitional-tasks`", "Open task-board records retained for compatibility."},
 		},
 		{
-			rel: "content/skills/loaf-reference/references/command-routing.md",
+			rel: "docs/knowledge/cli-reference/command-routing.md",
 			forbidden: []string{
 				"TRANSITIONAL",
 				"conversion pass",
@@ -465,16 +420,6 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"Continue an existing task or spec record",
 				"`loaf task` and `loaf spec` remain readable for legacy records; new work is issues",
 			},
-		},
-		{
-			rel:       "content/skills/orchestration/references/context-management.md",
-			forbidden: []string{"transitional tasks", "Markdown-to-native transition"},
-			required:  []string{"`transitional-tasks`", "Leftover board records retained for compatibility", "Issues, reports, ADRs, and commits"},
-		},
-		{
-			rel:       "content/skills/orchestration/references/parallel-agents.md",
-			forbidden: []string{"dependency-wave orchestration"},
-			required:  []string{"dependency-aware orchestration"},
 		},
 		{
 			rel:       "config/hooks.yaml",
@@ -603,42 +548,18 @@ func relToRoot(t *testing.T, root string, path string) string {
 	return filepath.ToSlash(rel)
 }
 
-func TestFlowSkillsOperateOnAuthorityRefs(t *testing.T) {
+func TestFlowSkillsUseNativeTrackerAuthority(t *testing.T) {
 	root := repoRoot(t)
-	files := []string{
-		"content/skills/shape/SKILL.md",
-		"content/skills/implement/SKILL.md",
-		"content/skills/ship/SKILL.md",
-		"content/skills/loaf-reference/references/command-routing.md",
-	}
-	requiredAny := []string{"linear:", "branch:"}
-	forbidden := []string{
-		"loaf issue dod add LOAF-",
-		"loaf issue check LOAF-",
-		"loaf issue start LOAF-",
-		"loaf issue show LOAF-42",
-		"Work units are issues.",
-	}
-	for _, rel := range files {
+	for _, skill := range []string{"shape", "implement", "ship"} {
+		rel := "content/skills/" + skill + "/SKILL.md"
 		body := readTextFile(t, filepath.Join(root, filepath.FromSlash(rel)))
-		for _, needle := range requiredAny {
-			if !strings.Contains(body, needle) {
-				t.Fatalf("%s must teach provider-qualified refs; missing %q", rel, needle)
+		if !strings.Contains(body, "project-management/v1") {
+			t.Errorf("%s must route shared work through the selected native provider", rel)
+		}
+		for _, forbidden := range []string{"loaf issue dod add", "loaf issue check", "loaf issue start", "loaf issue show", "loaf issue new --ref", "loaf issue frontier", "Work units are issues."} {
+			if strings.Contains(body, forbidden) {
+				t.Errorf("%s still routes new work through frozen local authority %q", rel, forbidden)
 			}
 		}
-		if !strings.Contains(body, "pr:") && !strings.Contains(body, "pr:<") {
-			t.Fatalf("%s must mention pr: refs", rel)
-		}
-		for _, needle := range forbidden {
-			if strings.Contains(body, needle) {
-				t.Fatalf("%s still addresses work as an internal issue id via %q", rel, needle)
-			}
-		}
-	}
-	if !strings.Contains(readTextFile(t, filepath.Join(root, "content", "skills", "shape", "SKILL.md")), "--ref") {
-		t.Fatal("shape skill must teach loaf issue new --ref")
-	}
-	if !strings.Contains(readTextFile(t, filepath.Join(root, "content", "skills", "implement", "SKILL.md")), "loaf issue frontier") {
-		t.Fatal("implement skill must pick up from loaf issue frontier")
 	}
 }

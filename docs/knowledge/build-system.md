@@ -19,10 +19,10 @@ Loaf packages shared skills, agents, and hooks for supported harnesses. [Skill P
 
 ## Key Rules
 
-- **Shared intermediate.** Skills from `content/` compile to `dist/skills/`, with tracker-native Flow and provider sources from `vnext/content/` overlaid before each target reads the common content.
+- **Shared intermediate.** Skills from `content/` compile to `dist/skills/`, including tracker-native Flow and provider sources, before each target reads the common content.
 - **Targets are additive.** Each target gets what it supports — Claude Code gets everything, while Codex gets skills plus its policy template and current-schema SessionStart context hook.
 - **Sidecars carry target-specific fields.** SKILL.md has standard fields only. `.claude-code.yaml`, `.opencode.yaml`, etc. carry extensions. Build merges them.
-- **Shared templates distribute at build time.** `content/templates/` files (`journal.md`, `grilling.md`) are copied to specified skills via `shared-templates` in `targets.yaml`. The Flow overlay separately projects its shared templates into consuming packages. Architecture templates live in the Architecture skill itself.
+- **Shared templates distribute at build time.** `content/templates/` files (`journal.md`, `grilling.md`) are copied to specified skills via `shared-templates` in `targets.yaml`. Flow templates use the same shared-template mappings. Architecture templates live in the Architecture skill itself.
 - **No skill-prose substitution.** Target builders preserve common bodies and labeled harness sections. The shared intermediate may project template paths; executable integration artifacts may have install-time placeholders. Neither permits per-target rewriting of skill instructions.
 
 ## Build Flow

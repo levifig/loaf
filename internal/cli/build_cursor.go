@@ -134,12 +134,6 @@ func copyNativeBuildAgents(srcDir string, destDir string, targetName string, ver
 	sort.Strings(files)
 	for _, file := range files {
 		srcPath := filepath.Join(agentsDir, file)
-		vNextPath := filepath.Join(filepath.Dir(srcDir), "vnext", "content", "agents", file)
-		if _, err := os.Stat(vNextPath); err == nil {
-			srcPath = vNextPath
-		} else if !os.IsNotExist(err) {
-			return err
-		}
 		body, err := readRegularFileNoFollow(srcPath, projectFileReadLimit)
 		if err != nil {
 			return err

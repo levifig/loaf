@@ -1,6 +1,10 @@
 ---
 name: implement
-description: Implements a shaped native tracker work contract in Git with evidence-led verification. Use when a canonical record is complete and ready to build. Produces code, atomic history when authorized, and verified implementation evidence for ship.
+description: >-
+  Implements a shaped native tracker work contract in Git with evidence-led
+  verification. Use when a canonical record is complete and ready to build.
+  Produces code, atomic history when authorized, and verified implementation
+  evidence for ship.
 ---
 
 # Implement

@@ -1,6 +1,11 @@
 ---
 name: triage
-description: Triages private sparks and ideas plus existing native tracker candidates without creating a local intake queue. Use when moving private captures to Backlog, or when deciding which existing records should advance, defer, close, or return to discovery. Produces verified native dispositions and explicit gaps.
+description: >-
+  Triages private sparks and ideas plus existing native tracker candidates
+  without creating a local intake queue. Use when moving private captures to
+  Backlog, or when deciding which existing records should advance, defer, close,
+  or return to discovery. Produces verified native dispositions and explicit
+  gaps.
 ---
 
 # Triage

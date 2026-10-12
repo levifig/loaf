@@ -23,7 +23,7 @@ func TestJournalingSkillCommandsMatchCodexPolicy(t *testing.T) {
 	rulePath := filepath.Join(t.TempDir(), "loaf.rules")
 	writeFile(t, rulePath, rule)
 
-	for _, source := range []string{"content", "vnext/content"} {
+	for _, source := range []string{"content"} {
 		paths, err := filepath.Glob(filepath.Join(repo, source, "skills", "*", "SKILL.md"))
 		if err != nil || len(paths) == 0 {
 			t.Fatalf("discover %s skills: paths = %v, error = %v", source, paths, err)

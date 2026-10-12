@@ -20,7 +20,7 @@ var homebrewTargets = []string{"darwin-arm64", "darwin-x64", "linux-arm64", "lin
 // UpdateHomebrewFormula rewrites the tap formula from a release's
 // checksums.txt. The keg installs the whole distribution into libexec so the
 // binary can serve as its own Claude Code marketplace and carries the authored
-// vnext Flow content.
+// canonical content.
 func UpdateHomebrewFormula(options HomebrewOptions) error {
 	if options.FormulaPath == "" || options.ChecksumsPath == "" || options.Version == "" {
 		return fmt.Errorf("--formula, --checksums, and --version are required.")
@@ -105,7 +105,7 @@ func HomebrewFormula(version, repo string, checksums map[string]string) string {
   end
 
   def install
-    libexec.install "bin", "package.json", "config", "content", "vnext", "dist", "plugins", ".claude-plugin"
+    libexec.install "bin", "package.json", "config", "content", "dist", "plugins", ".claude-plugin"
     bin.write_exec_script libexec/"bin/loaf"
   end
 

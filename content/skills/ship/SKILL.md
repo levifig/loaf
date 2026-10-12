@@ -1,85 +1,86 @@
 ---
 name: ship
-description: >-
-  Reviews, verifies, and lands one pull request — the sole quality gate
-  before work can appear in a later release cut. Use when the user says
-  "ship it," "merge this PR," "ready to merge," "land this branch," or asks
-  for a final merge gate. Binds the PR to an authority ref: the body is
-  `loaf issue render` output, definition-of-done criteria are the review
-  checklist, and landing marks the ref done and stops its worktree.
-  Produces a reviewed, squash-merged PR and post-merge cleanup. Not for
-  version bumps, tags, GitHub Releases, or install verification (use release).
+description: Serves as the sole quality gate for implemented native tracker work. Use when a candidate diff needs independent review, criterion verification, and a landing decision. Produces an evidence-backed quality verdict and verified native transition when authorized.
 ---
 
 # Ship
 
-Review, verify, and land one PR. Ship's review is the quality gate for everything that will ever ship. Releases are retroactive — they cut a version from already-landed work. Nothing between merge and the next release cut re-checks the diff, the tests, or the issue. A rubber-stamped PR ships in the next cut with no second net.
+Evaluate the candidate against the live [work contract](../../templates/work-contract.md), repository state, and observed verification evidence. Passing tests are necessary but do not replace criterion-by-criterion review.
 
 ## Contents
+
 - Critical Rules
+- Post-Merge Reconciliation
 - Verification
 - Quick Reference
 - Journal Commands
 - Topics
-- Context Detection
-- Step 1: PR Readiness
-- Step 1b: Stacked PR Detection
-- Step 2: Definition-of-Done Review
-- Step 3: Local Verification
-- Step 4: Squash Merge
-- Step 5: Post-Merge Cleanup
-- Step 6: Release Suggestion
-- Hook Interaction
-- Related Skills
-
-**Input:** $ARGUMENTS
-
----
 
 ## Critical Rules
 
 Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
-1. **Log invocation first** — `loaf journal log "skill(ship): shipping <ref or PR or current branch>"` before doing anything else. After merge, log `loaf journal log "decision(ship): PR #N landed via squash merge; <ref> done"`.
-2. **Rigor is load-bearing** — this review is the only quality gate. Releases cut from landed work; they do not re-check. If the review is thin, the next cut still publishes it.
-3. **Ship is not release** — do not bump versions, create tags, publish GitHub Releases, or verify package installation here. Use the release skill for that.
-4. **Bind the PR to an authority ref** — the PR body is `loaf issue render <ref>` (paste-ready, no manual editing). The issue's definition-of-done criteria are the review checklist. `loaf issue verify <ref>` runs the executable (V-tier) rows and writes nothing. Landing means `loaf issue status <ref> done`. Then `loaf issue stop <ref>` removes the started worktree.
-5. **Detect-first** — auto-detect the PR from the current branch, and the authority ref from `$ARGUMENTS` or the started workspace, before asking for a PR number or issue ref.
-6. **Review before merge** — inspect code, docs, tests, changelog, the rendered issue body, definition of done, and CI state before approval.
-7. **Never merge without explicit confirmation** — present the PR, checks, review notes, and squash body first, using your harness's structured question tool if it has one.
-8. **Detect the stack before merging** — another open PR may use this PR's head branch as its base. Find out before merge, never after, and never delete a head branch while a child PR still points at it.
-9. **Clean squash body** — write an intentional squash commit body; never accept the automatic commit dump.
-10. **Keep landed and released distinct** — after merge, describe the PR as landed or shipped. It is not released until release publishes a version.
+- As the first action, run `loaf journal log "skill(ship): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
+- Re-read the canonical record, relationships, workflow state, and relevant collaboration through [`project-management/v1`](../project-management/SKILL.md).
+- Inspect the actual candidate diff and repository instructions. Do not accept an implementer's summary as evidence.
+- Review correctness, maintainability, security boundaries, scope, and every completion criterion with fresh eyes; use independent read-only reviewers when available and proportionate.
+- Map each criterion and relevant scope boundary to the contract's specified proof. Reuse existing valid evidence; do not create a duplicate log. A named human verdict is usable only where the contract explicitly defines judgmental acceptance, and it must match the designated authority, method and considerations, and the reviewed candidate. Human signoff cannot replace specified objective checks or safety proof. Required unavailable proof or judgment remains unproven. Scope creep is not a bonus that can be silently shipped.
+- Record a durable disposition discoverable from the issue, directly or through a stable existing linked review or PR: candidate identity, criterion-to-evidence outcomes, necessary judgment and acceptance authority, relevant scope changes, and limitations. Solo and team use the same contract; reuse native comments or review surfaces rather than a second ledger.
+- Review the rideable increment inside this same quality gate: can the named rider use the result today, does the journey exercise the machinery added, what real dogfood and integrity evidence support the claims, and could less preserve the same safe outcome?
+- Do not accept material contract drift by recording it in the verdict. If the candidate changes promised outcome, criteria, scope or safety, dependencies, or the basis of selected or resourced work, pause acceptance and return it to shape. Material changes need applicable authorization (existing authorization counts; assignment, write access, or reviewer status alone is never product authority), an updated canonical definition and native fields with authoritative readback, and a retained reason, authority, and impact; then review the candidate against that resulting contract. Keep same-turn responsibilities; do not add extra ceremony or repeated approval when authorization already exists.
+- Return a clear unmet criterion, ordinary defect, or obtainable missing in-scope evidence to implement and rerun affected gates after fixes. Unclear or changed contract substance, or a material scope or commitment shift, returns to shape; do not bounce ordinary fixes to shaping or absorb unauthorized scope in implement. Inaccessible required proof or absent authority is blocked; do not waive the criterion. Material means uncertainty or change in what was promised or authorized, not the severity of an in-scope coding bug.
+- Build review or change-request text from the live native contract and observed diff, not from a synchronized local projection.
+- Preserve external-action authority. Acceptance is separate from landing authority. A quality verdict never authorizes commit, push, publication, or destructive action; commits and feature-branch pushes keep their own rules outside ship.
+- Merge only through ship. A bare `gh pr merge`, or a direct merge or push into the default branch, is never an authorized landing path.
+- Merge authority depends on how ship started. When the user invoked ship explicitly, by name or slash command, or directly asked to merge this specific PR, an Approve verdict authorizes the merge; do not ask again. When ship was inferred from context or started on your own initiative, ask with your harness's structured question tool, if it has one, before merging. Request changes or Blocked never merges.
+- Immediately before merging, re-read the PR. Its head must be the reviewed candidate or have the same tree (`git rev-parse <sha>^{tree}`), as after an autosquash that only reshaped commits; a changed tree needs re-review first. Every required check must have passed; a failing required check blocks the merge. Under the merge or rebase strategy, `fixup!`, `squash!`, or `amend!` commits still on the branch block the merge until autosquashed; under squash they disappear in the landing. Merge with the project's merge strategy as the git-workflow skill resolves it against repository settings and branch rules; when that strategy, or every method, is ruled out, do not run the merge and report the conflicting setting and rule. Pin the head you verified (`gh pr merge --match-head-commit <sha>` on GitHub), and author the landing message that strategy calls for from the reviewed outcome.
+- Transition native workflow state only after the corresponding repository event is proven and authorized.
+- Re-read the changed native record and any evidence comment; never mark work complete from a mutation request alone.
+- After an authorized merge, finish the Post-Merge Reconciliation below before reporting local checkout cleanup as complete. Remote landing remains true even if local cleanup is blocked; report both states separately instead of silently skipping the local work.
+- Release remains a separate retroactive ceremony over already-landed work.
 
----
+## Post-Merge Reconciliation
+
+Only after authoritative PR readback confirms `MERGED`, the merge commit, the exact head, the base branch, and the base repository identity:
+
+1. Inspect the current checkout with `git status --porcelain` and `git worktree list`. If it is dirty, inaccessible, or the base branch belongs to another worktree, preserve it and report **local reconciliation pending** with the specific reason. Do not stash, reset, or switch through someone else's work.
+2. Resolve `<baseRemote>` from `git remote -v` against the authoritative PR base repository's host and owner/name, accounting for equivalent SSH and HTTPS URLs. `origin` may be a fork; its name or the branch's configured upstream is not proof of that identity. If no matching remote can be verified, preserve the checkout and report local reconciliation pending. In a clean available checkout, switch to the confirmed base and fast-forward from that verified remote; never merge the old feature branch back into the base:
+   ```bash
+   git switch <baseRefName>
+   git pull --ff-only <baseRemote> <baseRefName>
+   git rev-parse <baseRefName> FETCH_HEAD
+   git merge-base --is-ancestor <mergeCommit> <baseRefName>
+   git status --porcelain
+   ```
+   Require every command to succeed, both refs to name the same commit, the observed PR merge commit to be an ancestor of the local base, and a clean checkout. `FETCH_HEAD` is the base just fetched from the verified remote, including when its fetch mapping does not create a conventional remote-tracking ref. If any check, switch, or fast-forward refuses, leave local reconciliation pending and report the observed state; do not rebase, force, or reset to make it pass.
+3. Independently transition the canonical native work to its authorized completed state only after the remote merge is proven, and re-read that state. A local checkout blocker does not undo a verified remote merge or justify skipping the tracker readback.
+4. Report the disposition of the feature branch, remote branch, and any linked feature worktree. Inspect cleanliness, activity, and dependent work before any removal. Squash and rebase merges rewrite the feature commits, so the feature tip is usually not an ancestor of the base: if an authorized `git branch -d <headRefName>` refuses, retain the branch and report it; never silently escalate to `-D`. Worktree removal and remote branch deletion require their own applicable authorization and safety checks. Do not remove a worktree while running inside it.
+
+Report **Landed remotely; local reconciliation pending** when the PR and tracker are complete but the checkout cannot be safely reconciled. Report local reconciliation complete only after the verified base repository, fetched-base equality, merge-commit ancestry, and clean-checkout readback. Do not treat installing or activating a local runtime as part of this Git reconciliation.
 
 ## Verification
 
-- Invocation is logged to the project journal before review work begins
-- PR identity, base branch, and head branch are confirmed
-- The PR is bound to one authority ref; `loaf issue show <ref>` is the contract surface
-- PR body matches `loaf issue render <ref>` with no manual editing
-- Every definition-of-done criterion was reviewed against the diff; H-tier by reading, V-tier by `loaf issue verify <ref>` (writes nothing; exit non-zero blocks)
-- CI status is passing or the user explicitly accepts named non-blocking checks
-- Relevant local checks pass or failures are fixed before merge
-- PR body and durable docs do not overclaim relative to the diff
-- Squash commit title/body are clean, conventional, and user-facing
-- Child PRs stacked on this PR's head branch are enumerated before merge, and each is retargeted, rebased, and re-verified after it
-- After merge: `loaf issue status <ref> done`, then `loaf issue stop <ref>` if a worktree was started, base branch updated, feature-branch cleanup state known
-- A `decision(ship)` journal entry records the landing
+- The reviewed commit or diff identity is exact and the working tree contains no unexplained changes.
+- Every completion criterion and relevant scope boundary has the contract's specified proof from the candidate, tests, or native state. A named human verdict counts only where the contract explicitly defines judgmental acceptance and matches the designated authority, method and considerations, and the reviewed candidate; implementer summary or a general human signoff is not acceptance and cannot replace specified objective checks or safety proof.
+- The durable disposition is discoverable from the issue and names candidate, criterion-to-evidence outcomes, required judgment or authority, relevant scope changes, and limitations.
+- The complete journey works from its named entry point to observable outcome; no future-only machinery is presented as delivered value.
+- Dogfood and safety/integrity evidence match the contract, and learning plus remaining deferrals are reported honestly.
+- Required focused, affected, full-suite, format, lint, static-analysis, and build gates were run in proportion to risk.
+- All findings have an evidence-backed disposition and fixes were re-reviewed.
+- Load the project-management skill and apply its Capture Deferred Work rule to deferred actionable findings; a follow-up issue never excuses an unmet completion criterion for this candidate.
+- Affected architectural claims and implementation gaps were checked against the diff and evidence using the architecture skill's maintenance rules; a documentation update alone is not proof of delivery.
+- Any merge followed the authority rule for how ship started, used the merge strategy the git-workflow skill resolved, pinned a head whose tree matches the reviewed candidate, left no autosquash commits under merge or rebase, and had every required check passing.
+- Any native transition matches the observed landed state and was confirmed by readback.
+- After an authorized merge, the PR merge identity, local base/remote base equality and clean checkout, native state, and branch/worktree dispositions were read back; any incomplete local reconciliation is named rather than presented as finished.
 
 ## Quick Reference
 
-| Step | Gate | Blocking? |
-|------|------|-----------|
-| Context Detection | PR and issue bound | Yes |
-| PR Readiness | PR exists, target base known, CI state reviewed | Yes |
-| Stacked PR Detection | child PRs on this head branch are enumerated | Yes |
-| Definition-of-Done Review | every criterion reviewed; `loaf issue verify` passes or reports no V-tier rows | Yes |
-| Local Verification | relevant project checks pass | Yes |
-| Squash Merge | user approves body text | Yes |
-| Cleanup | issue marked done, started worktree stopped, base pulled, children retargeted and rebased, branch deletion handled | Yes when a child PR exists; done + stop always |
-| Release Suggestion | enough landed work may justify a later cut | No |
+| Verdict | Meaning |
+|---------|---------|
+| Approve | Criteria, boundaries, and quality gates are proven. Merge now when ship was explicitly invoked or the merge was directly requested; otherwise ask first |
+| Request changes | A clear unmet criterion, ordinary defect, or obtainable missing in-scope evidence returns to implement; unclear or changed contract substance, or a material scope or commitment shift, returns to shape. Do not absorb unauthorized scope by recording it. |
+| Blocked | Required proof is inaccessible, or required authority, connection, or repository event is unavailable; do not waive the criterion |
+| Landed | Repository event and final native state were both observed; report local reconciliation separately, including any pending checkout or branch cleanup |
 
 ## Journal Commands
 
@@ -91,278 +92,4 @@ With Loaf's managed basic-command policy installed, use `loaf journal log --exec
 
 ## Topics
 
-| Topic | Use When |
-|-------|----------|
-| [Context Detection](#context-detection) | Binding the current branch to a PR and an issue |
-| [Definition-of-Done Review](#step-2-definition-of-done-review) | Using issue criteria as the merge checklist |
-| [Hook Interaction](#hook-interaction) | Understanding coexistence with git hooks |
-
----
-
-## Context Detection
-
-Log the invocation, then detect the PR and the issue.
-
-### PR
-
-1. Get current branch and repo default branch:
-   ```bash
-   git branch --show-current
-   gh repo view --json defaultBranchRef -q .defaultBranchRef.name
-   ```
-2. Parse `$ARGUMENTS`: may be an authority ref (`linear:ENG-42`, `branch:issue/foo`, `pr:99`), a PR number, a PR URL, a branch name, or empty.
-3. If `$ARGUMENTS` is empty or is not a PR identity, auto-detect from the current branch:
-   ```bash
-   gh pr view --json number,title,url,headRefName,baseRefName,state,mergeStateStatus,isDraft
-   ```
-4. If no PR exists for the current branch, stop and offer to create one via `git-workflow` rather than silently merging a branch.
-5. If already on the default branch, stop. There is no PR to ship from the current branch.
-
-### Authority ref
-
-Contract commands require initialized SQLite state. Bind exactly one authority ref:
-
-1. If `$ARGUMENTS` (or a remaining token) is an authority ref (`linear:`, `branch:`, or `pr:`), load it:
-   ```bash
-   loaf issue show <ref>
-   ```
-2. Otherwise match the PR's `headRefName` to a started workspace:
-   ```bash
-   loaf issue list --started
-   ```
-   Columns are alias, title, `started_branch`, `started_worktree`. Only the shippable root records a workspace. The started workspace from `loaf issue start branch:<name>` is that branch's worktree. Bind the PR to the authority ref (`linear:`, `branch:`, or `pr:`), not to an internal LOAF-* id.
-3. Confirm with `loaf issue show <ref>` — `started_branch` / `started_worktree` should match this PR when the issue was started.
-
-If nothing binds, stop and ask for the authority ref. Do not invent an internal issue row during ship. If `loaf issue show` reports the issue archived (`cancelled` or `duplicate`), stop.
-
-Confirm PR identity and the bound authority ref with the user before merge actions.
-
----
-
-## Step 1: PR Readiness
-
-Inspect the PR's declared state:
-
-```bash
-gh pr view <N> --json number,title,body,url,headRefName,baseRefName,state,isDraft,mergeStateStatus,reviewDecision,statusCheckRollup
-```
-
-The body must be `loaf issue render <ref>` output — title, issue body, definition-of-done checkboxes (checked only when status is already `done`), and children. No project headers, no hand-edited summary. If the live PR body differs, replace it:
-
-```bash
-gh pr edit <N> --body "$(loaf issue render <ref>)"
-```
-
-Do not rewrite the markdown by hand. Checkboxes are unchecked until `loaf issue status <ref> done`; do not tick them in the PR body to fake completion.
-
-Block or pause when:
-
-- PR is draft
-- merge state is dirty or blocked
-- required checks are failing or pending
-- review decision is changes requested
-- branch is out of date and the project requires update before merge
-
-If checks are unavailable, say so explicitly and compensate with local verification.
-
----
-
-## Step 1b: Stacked PR Detection
-
-Before merging anything, find out whether another open PR uses this PR's head branch as its base:
-
-```bash
-gh pr list --state open --base <headRefName> --json number,title,headRefName
-```
-
-Any result is a **child PR**, and this PR is the base of a stack. Record the list now, because after the merge the relationship is harder to see and easier to break. Child PRs are GitHub stacking, not child issues.
-
-When a child PR exists:
-
-- **Do not pass `--delete-branch` to the merge.** Removing the head branch while a child still points at it can close the child outright. Delete it only after every child has been retargeted, in Step 5.
-- Tell the user the stack exists and name the children before asking for merge confirmation. A stack changes what "merge this" means.
-
-When no child PR exists, say so, and `--delete-branch` is safe.
-
----
-
-## Step 2: Definition-of-Done Review
-
-The issue's definition of done is the merge checklist. Load it from the issue, not from memory:
-
-```bash
-loaf issue dod list <ref>
-loaf issue show <ref>
-```
-
-`show` prints each criterion as `position. [V|H] text` with `command=` / `expect=` when present. Walk every row against the landing diff.
-
-1. Gather diff context:
-   ```bash
-   git fetch origin <baseRefName>
-   git diff --stat origin/<baseRefName>...HEAD
-   git diff --name-only origin/<baseRefName>...HEAD
-   ```
-2. For each **H-tier** criterion, read the diff and durable prose and decide whether the text is met. `loaf issue verify` skips H-tier rows — that skip is not a pass; you are the check.
-3. Run the **V-tier** rows:
-   ```bash
-   loaf issue verify <ref>
-   ```
-   Commands run from the **repository root**. The command honors `exit <N>` and `` contains `text` ``. It writes nothing — it does not tick checkboxes, does not set status, and does not record a run. Non-zero exit blocks merge. `no executable V-tier criteria on <ref>` is not a failure; H-tier review still is. Unenforceable expect clauses print as advisory warnings and are never quietly decorative.
-4. Check for drift:
-   - Rendered issue body claims features that are not in the diff
-   - changelog entries mention unrelated behavior
-   - docs describe future work as already shipped
-   - comments or runbooks use stale vocabulary
-5. If `loaf issue show` lists child issues that are not `done`, name them before asking to merge. Do not mark those children done unless this PR is theirs.
-6. Fix blocking drift and unmet criteria before merge. For non-blocking polish, name it and let the user decide.
-
-For high-risk PRs, use the project's review skill or read-only review flow before proceeding.
-
----
-
-## Step 3: Local Verification
-
-Run the checks the project supports, in addition to `loaf issue verify`. Examples:
-
-- Node: `npm run typecheck`, `npm run test`, `npm run build`
-- Go: `go vet ./...`, `go test ./...`
-- Python: `pytest`, `mypy .`, `ruff check .`
-- Rust: `cargo check`, `cargo test`
-
-If generated artifacts are tracked, verify they are current before merge:
-
-```bash
-git diff --exit-code -- dist plugins
-```
-
-Use the repo's documented pre-commit or pre-PR checklist when present. Stop on failures.
-
----
-
-## Step 4: Squash Merge
-
-Draft a clean squash body from the reviewed diff and the rendered issue:
-
-- One-line summary, then bullet points grouped by feature area
-- Plain text; use backticks only for code identifiers
-- No commit dump
-- No agent attribution
-- No release-note overclaiming
-
-Present the body and ask for confirmation. Then run:
-
-```bash
-gh pr merge <N> --squash --body "$(cat <<'EOF'
-<body>
-EOF
-)"
-```
-
-Let GitHub default the title from the PR title so the squash subject remains `type: summary (#N)`.
-
----
-
-## Step 5: Post-Merge Cleanup
-
-After a successful merge, leave the started worktree before removing it. Do not run `loaf issue stop` from inside that worktree.
-
-1. Switch to the PR base branch in the repository checkout:
-   ```bash
-   git checkout <baseRefName>
-   git pull --ff-only origin <baseRefName>
-   ```
-2. Mark the bound issue done — this is what "done" means; `loaf issue stop` does not change status:
-   ```bash
-   loaf issue status <ref> done
-   ```
-   Write statuses (`triage`, `backlog`, `todo`, `active`, `done`) update in place. Do not use `cancelled` or `duplicate` here.
-3. Stop the started worktree if one exists. `loaf issue stop` removes the worktree, clears `started_branch` / `started_worktree` on the row, and **keeps the branch**:
-   ```bash
-   loaf issue stop <ref>
-   ```
-   If the issue was never started, the command errors with `issue <ref> is not started` — treat that as already clean and continue. If the worktree is dirty, do not pass `--force` without user confirmation.
-4. Delete the local feature branch when safe:
-   ```bash
-   git branch -d <headRefName>
-   ```
-5. Confirm the remote branch deletion state from GitHub output or run:
-   ```bash
-   gh pr view <N> --json headRefName,state
-   ```
-6. Log the landing:
-   ```bash
-   loaf journal log "decision(ship): PR #N landed via squash merge; <ref> done"
-   ```
-
-If cleanup fails, report the exact residual state (issue status, whether the worktree is still started, which branches remain). Do not force-delete without user confirmation.
-
-### Stacked child PRs
-
-Every child PR recorded in Step 1b needs three repairs before it can ship, and none of them happen on their own.
-
-**Retarget the base.** GitHub does not reliably move a child's base when its base branch merges. Check, and move it explicitly:
-
-```bash
-gh pr view <child> --json baseRefName -q .baseRefName    # still the merged head branch?
-gh pr edit <child> --base <baseRefName>                  # the parent's base, normally main
-```
-
-**Rebase the child onto the new base.** A squash merge replaces the parent's commits with one new commit, so the child still carries the originals and its diff will re-apply everything the parent already landed. Rebasing drops them:
-
-```bash
-git rebase <baseRefName>   # skips the already-applied commits, reports which
-```
-
-**Assert the diff collapsed.** This is the deterministic signal that the rebase actually took. Compare the child's file count before and after; it must fall to the child's own scope. A count that does not shrink means the rebase did not drop the parent's content, and merging would re-land it.
-
-```bash
-git diff --stat <baseRefName>...HEAD | tail -1
-gh pr view <child> --json changedFiles -q .changedFiles
-```
-
-Then force-push with a lease, wait for CI to finish on the **rebased head** rather than trusting the previous run, and only then ship the child. Delete the parent's head branch once no child PR points at it.
-
-Report the numbers rather than asserting success: the before and after file counts, the commits the rebase skipped, and the CI conclusion on the new head.
-
----
-
-## Step 6: Release Suggestion
-
-After landing, decide whether to suggest the release skill. That cut will not re-run this review.
-
-- Suggest release when the landed PR completes a coherent batch, user-facing feature, or fix train.
-- Do not suggest release for every small PR by default.
-- If more related PRs are expected, say this PR is landed and can wait for a later cut.
-
-Use language carefully: the PR is **landed** or **shipped**; it is not **released** until release publishes a version.
-
----
-
-## Hook Interaction
-
-This skill coexists with existing hooks.
-
-| Hook | Type | When ship Runs |
-|------|------|------------------|
-| `github-account` | Force-switch | Switches to the configured GitHub account before `gh` PR operations; blocks only if the switch fails |
-| `workflow-pre-merge` | Advisory | Fires on `gh pr merge`; use it as a final squash reminder |
-| `workflow-post-merge` | Advisory | Fires after merge; use it as a cleanup reminder |
-| `validate-push` | Advisory | May fire if branch updates are needed before merge |
-| `check-secrets` | Blocking | Always respected before writes or shell actions |
-
-Do not disable hooks to force a PR through.
-
----
-
-## Suggests Next
-
-After a successful ship, suggest release only when the landed work forms a coherent batch or the user asks to publish. Release will not re-check the landed PR.
-
-## Related Skills
-
-- **release** — Publishes a version from already-landed work; does not re-review those PRs
-- **git-workflow** — Branching, PR, commit, and squash merge conventions
-- **foundations** — Verification, code review, and production readiness
-- **documentation-standards** — Changelog, docs, and durable prose quality
-- **reflect** — Updates strategy from significant shipped work
+No supporting references. Use the [tracker update](../../templates/tracker-update.md) for a concise evidence-bearing verdict when collaborators need it.

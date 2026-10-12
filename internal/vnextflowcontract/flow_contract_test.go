@@ -2,7 +2,6 @@ package vnextflowcontract
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -12,7 +11,7 @@ import (
 func TestFlowContract(t *testing.T) {
 	t.Parallel()
 
-	assertNoContractFindings(t, validateFlowContract(os.DirFS("../../vnext/content")))
+	assertNoContractFindings(t, validateFlowContract(repositoryFlowContent(t)))
 }
 
 func TestTemplateContractRejectsMissingAndOrphanFields(t *testing.T) {
@@ -154,7 +153,7 @@ func TestFlowExecutionContractKeepsMainAgentPrimary(t *testing.T) {
 		{name: "missing main agent", oldValue: `"actor": "main-agent"`, newValue: `"actor": "project-manager"`},
 		{name: "provider bypass", oldValue: `"provider_route": "selected-provider-skill"`, newValue: `"provider_route": "direct-connector"`},
 		{name: "missing behavior skill", oldValue: `"behavior_skill": "skills/project-management/SKILL.md"`, newValue: `"behavior_skill": ""`},
-		{name: "different behavior source", oldValue: `"behavior_contract": "skills/project-management/contract.json"`, newValue: `"behavior_contract": "agents/project-manager.contract.json"`},
+		{name: "different behavior source", oldValue: `"behavior_contract": "skills/project-management/contract.json"`, newValue: `"behavior_contract": "contracts/project-manager.contract.json"`},
 	}
 
 	for _, mutation := range mutations {

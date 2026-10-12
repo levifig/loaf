@@ -377,17 +377,18 @@ func TestRunnerBuildTargetAmpEmitsOnlyHookPlugin(t *testing.T) {
 	}
 }
 
-func TestSharedBuildPromotesTrackerNativeVNextFlowIntoAmp(t *testing.T) {
+func TestSharedBuildPackagesTrackerNativeFlowIntoAmp(t *testing.T) {
 	root := setupBuildCommandLoafRoot(t)
 	seedNativeCodexBuildFixture(t, root)
+	writeFile(t, filepath.Join(root, "config", "targets.yaml"), readBuildFileString(t, filepath.Join("..", "..", "config", "targets.yaml")))
 	for _, skill := range []string{"loaf-reference", "project-management", "linear", "github", "pitch", "triage", "shape", "implement", "ship", "release", "orchestration", "research", "housekeeping"} {
-		source := filepath.Join("..", "..", "vnext", "content", "skills", skill)
-		if err := copyDirContentsForInstall(source, filepath.Join(root, "vnext", "content", "skills", skill)); err != nil {
+		source := filepath.Join("..", "..", "content", "skills", skill)
+		if err := copyDirContentsForInstall(source, filepath.Join(root, "content", "skills", skill)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	giteaSource := filepath.Join(root, "vnext", "content", "skills", "gitea")
-	if err := copyDirContentsForInstall(filepath.Join("..", "..", "vnext", "content", "skills", "linear"), giteaSource); err != nil {
+	giteaSource := filepath.Join(root, "content", "skills", "gitea")
+	if err := copyDirContentsForInstall(filepath.Join("..", "..", "content", "skills", "linear"), giteaSource); err != nil {
 		t.Fatal(err)
 	}
 	giteaSkill := strings.ReplaceAll(readBuildFileString(t, filepath.Join(giteaSource, "SKILL.md")), "Linear", "Gitea")
@@ -395,7 +396,7 @@ func TestSharedBuildPromotesTrackerNativeVNextFlowIntoAmp(t *testing.T) {
 	writeFile(t, filepath.Join(giteaSource, "SKILL.md"), giteaSkill)
 	giteaCapabilities := strings.ReplaceAll(readBuildFileString(t, filepath.Join(giteaSource, "capabilities.json")), "linear", "gitea")
 	writeFile(t, filepath.Join(giteaSource, "capabilities.json"), giteaCapabilities)
-	if err := copyDirContentsForInstall(filepath.Join("..", "..", "vnext", "content", "templates"), filepath.Join(root, "vnext", "content", "templates")); err != nil {
+	if err := copyDirContentsForInstall(filepath.Join("..", "..", "content", "templates"), filepath.Join(root, "content", "templates")); err != nil {
 		t.Fatal(err)
 	}
 	var stdout bytes.Buffer
@@ -433,9 +434,6 @@ func TestSharedBuildPromotesTrackerNativeVNextFlowIntoAmp(t *testing.T) {
 
 func TestSharedBuildShipsPostMergeReconciliationGuidance(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
-	if err := os.Symlink(filepath.Join(testRepositoryRoot(t), "vnext"), filepath.Join(root, "vnext")); err != nil {
-		t.Fatal(err)
-	}
 	var stdout bytes.Buffer
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
 		t.Fatalf("build error = %v\n%s", err, stdout.String())
@@ -474,9 +472,6 @@ func TestSharedBuildShipsPostMergeReconciliationGuidance(t *testing.T) {
 
 func TestSharedBuildShipsMergeAuthority(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
-	if err := os.Symlink(filepath.Join(testRepositoryRoot(t), "vnext"), filepath.Join(root, "vnext")); err != nil {
-		t.Fatal(err)
-	}
 	var stdout bytes.Buffer
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
 		t.Fatalf("build error = %v\n%s", err, stdout.String())
@@ -530,12 +525,8 @@ func TestSharedBuildShipsMergeAuthority(t *testing.T) {
 	}
 }
 
-func TestSharedBuildPackagesVNextTemporaryReportPolicyAcrossTargets(t *testing.T) {
+func TestSharedBuildPackagesTemporaryReportPolicyAcrossTargets(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
-	repo := testRepositoryRoot(t)
-	if err := os.Symlink(filepath.Join(repo, "vnext"), filepath.Join(root, "vnext")); err != nil {
-		t.Fatalf("Symlink(vnext) error = %v", err)
-	}
 	var stdout bytes.Buffer
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
 		t.Fatalf("build error = %v\n%s", err, stdout.String())
@@ -609,8 +600,8 @@ func TestSharedBuildPackagesVNextTemporaryReportPolicyAcrossTargets(t *testing.T
 		}
 	}
 
-	if _, err := os.Stat(filepath.Join(root, "vnext", "content", "templates", "report.md")); !os.IsNotExist(err) {
-		t.Errorf("vNext universal report template must not exist: %v", err)
+	if _, err := os.Stat(filepath.Join(root, "content", "templates", "report.md")); !os.IsNotExist(err) {
+		t.Errorf("universal report template must not exist: %v", err)
 	}
 
 	agentPaths := []string{
@@ -640,10 +631,6 @@ func TestSharedBuildPackagesVNextTemporaryReportPolicyAcrossTargets(t *testing.T
 
 func TestTrackerContractAndProviderCapabilitiesShipByteIdenticalToEveryTarget(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
-	repo := testRepositoryRoot(t)
-	if err := os.Symlink(filepath.Join(repo, "vnext"), filepath.Join(root, "vnext")); err != nil {
-		t.Fatalf("Symlink(vnext) error = %v", err)
-	}
 	var stdout bytes.Buffer
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
 		t.Fatalf("build error = %v\n%s", err, stdout.String())
@@ -655,11 +642,11 @@ func TestTrackerContractAndProviderCapabilitiesShipByteIdenticalToEveryTarget(t 
 		filepath.Join("github", "capabilities.json"),
 	}
 	for _, sidecar := range sidecars {
-		want := readBuildFileString(t, filepath.Join(root, "vnext", "content", "skills", sidecar))
+		want := readBuildFileString(t, filepath.Join(root, "content", "skills", sidecar))
 		for _, target := range defaultBuildTargets {
 			got := readBuildFileString(t, filepath.Join(nativeBuildSkillTreeDir(root, target), sidecar))
 			if got != want {
-				t.Errorf("%s skills/%s differs from canonical vNext source", target, filepath.ToSlash(sidecar))
+				t.Errorf("%s skills/%s differs from canonical source", target, filepath.ToSlash(sidecar))
 			}
 		}
 	}
@@ -985,8 +972,8 @@ func TestGeneratedRefactorDeepenRelativeLinksResolveInEveryTarget(t *testing.T) 
 }
 
 func TestSharedBuildRejectsMalformedDiscoveredProvider(t *testing.T) {
-	root := setupVNextProviderBuildFixture(t)
-	malformedRoot := filepath.Join(root, "vnext", "content", "skills", "gitea")
+	root := setupProviderBuildFixture(t)
+	malformedRoot := filepath.Join(root, "content", "skills", "gitea")
 	mkdirAll(t, malformedRoot)
 	writeFile(t, filepath.Join(malformedRoot, "SKILL.md"), "---\nname: gitea\ndescription: Maps project-management/v1. Use when Gitea is selected.\n---\n")
 	writeFile(t, filepath.Join(malformedRoot, "capabilities.json"), `{"schema":"loaf-provider-capabilities/v1","provider":"wrong-slug","contract":"project-management/v1","connection":"harness-native","runtime_capability_discovery":"required","operations":[{}]}`+"\n")
@@ -1008,7 +995,7 @@ func TestSharedBuildRejectsMalformedOrIncompleteProviderOperations(t *testing.T)
 		}, want: "duplicate object key"},
 		{name: "empty runtime capability", mutate: func(body string) string { return strings.Replace(body, `"connection.list"`, `""`, 1) }, want: "empty capability"},
 		{name: "omitted operation", mutate: func(body string) string {
-			var manifest vNextProviderManifest
+			var manifest nativeProviderManifest
 			if err := json.Unmarshal([]byte(body), &manifest); err != nil {
 				t.Fatal(err)
 			}
@@ -1021,9 +1008,9 @@ func TestSharedBuildRejectsMalformedOrIncompleteProviderOperations(t *testing.T)
 		}, want: "want the complete"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			root := setupVNextProviderBuildFixture(t)
-			providerRoot := filepath.Join(root, "vnext", "content", "skills", "gitea")
-			if err := copyDirContentsForInstall(filepath.Join("..", "..", "vnext", "content", "skills", "linear"), providerRoot); err != nil {
+			root := setupProviderBuildFixture(t)
+			providerRoot := filepath.Join(root, "content", "skills", "gitea")
+			if err := copyDirContentsForInstall(filepath.Join("..", "..", "content", "skills", "linear"), providerRoot); err != nil {
 				t.Fatal(err)
 			}
 			writeFile(t, filepath.Join(providerRoot, "SKILL.md"), strings.Replace(strings.ReplaceAll(readBuildFileString(t, filepath.Join(providerRoot, "SKILL.md")), "Linear", "Gitea"), "name: linear", "name: gitea", 1))
@@ -1037,12 +1024,12 @@ func TestSharedBuildRejectsMalformedOrIncompleteProviderOperations(t *testing.T)
 	}
 }
 
-func setupVNextProviderBuildFixture(t *testing.T) string {
+func setupProviderBuildFixture(t *testing.T) string {
 	t.Helper()
 	root := setupBuildCommandLoafRoot(t)
 	seedNativeCodexBuildFixture(t, root)
 	for _, skill := range []string{"loaf-reference", "project-management", "pitch", "triage", "shape", "implement", "ship", "release", "orchestration", "research", "housekeeping"} {
-		if err := copyDirContentsForInstall(filepath.Join("..", "..", "vnext", "content", "skills", skill), filepath.Join(root, "vnext", "content", "skills", skill)); err != nil {
+		if err := copyDirContentsForInstall(filepath.Join("..", "..", "content", "skills", skill), filepath.Join(root, "content", "skills", skill)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1669,10 +1656,6 @@ func TestSkillTreeIsTargetInvariant(t *testing.T) {
 
 func TestRideableIncrementDoctrineAndContractShipToEveryTarget(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
-	repo := testRepositoryRoot(t)
-	if err := os.Symlink(filepath.Join(repo, "vnext"), filepath.Join(root, "vnext")); err != nil {
-		t.Fatalf("Symlink(vnext) error = %v", err)
-	}
 	var stdout bytes.Buffer
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
 		t.Fatalf("build error = %v\n%s", err, stdout.String())
@@ -1710,17 +1693,14 @@ func TestRideableIncrementDoctrineAndContractShipToEveryTarget(t *testing.T) {
 func TestReviewableCriteriaReferenceAndWorkContractGuidanceShipToEveryTarget(t *testing.T) {
 	root := setupIsolatedRepositoryBuildRoot(t)
 	repo := testRepositoryRoot(t)
-	if err := os.Symlink(filepath.Join(repo, "vnext"), filepath.Join(root, "vnext")); err != nil {
-		t.Fatalf("Symlink(vnext) error = %v", err)
-	}
 	var stdout bytes.Buffer
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
 		t.Fatalf("build error = %v\n%s", err, stdout.String())
 	}
 
 	criteriaRel := filepath.Join("shape", "references", "reviewable-criteria.md")
-	criteriaSource := readBuildFileString(t, filepath.Join(repo, "vnext", "content", "skills", criteriaRel))
-	workContractSource := readBuildFileString(t, filepath.Join(repo, "vnext", "content", "templates", "work-contract.md"))
+	criteriaSource := readBuildFileString(t, filepath.Join(repo, "content", "skills", criteriaRel))
+	workContractSource := readBuildFileString(t, filepath.Join(repo, "content", "templates", "work-contract.md"))
 	for _, target := range defaultBuildTargets {
 		skillsRoot := nativeBuildSkillTreeDir(root, target)
 		if got := readBuildFileString(t, filepath.Join(skillsRoot, criteriaRel)); got != criteriaSource {
@@ -1825,40 +1805,6 @@ func TestLabeledHarnessSectionsRenderVerbatim(t *testing.T) {
 						"Bash(terraform plan *)":        0,
 						"Bash(docker compose config *)": 0,
 						"--profile-output":              1,
-					},
-				},
-			},
-		},
-		{
-			rel: "orchestration/references/background-agents.md",
-			documentTokens: map[string]int{
-				"### Claude Code":     1,
-				"### Cursor":          1,
-				"### Other harnesses": 1,
-			},
-			sections: []sectionExpect{
-				{
-					heading: "### Claude Code",
-					tokens: map[string]int{
-						`subagent_type="background-runner"`: 1,
-						"run_in_background=True":            1,
-						"is_background: true":               0,
-					},
-				},
-				{
-					heading: "### Cursor",
-					tokens: map[string]int{
-						"is_background: true":               1,
-						"@background-runner":                1,
-						`subagent_type="background-runner"`: 0,
-					},
-				},
-				{
-					heading: "### Other harnesses",
-					tokens: map[string]int{
-						"@background-runner":                0,
-						`subagent_type="background-runner"`: 0,
-						"is_background: true":               0,
 					},
 				},
 			},

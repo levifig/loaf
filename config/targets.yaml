@@ -1,13 +1,16 @@
 # Target Definitions
 # Each target defines where built files go (relative to repo root)
 
-# Shared templates distributed from src/templates/ to skill output templates/ dirs
+# Shared templates distributed from content/templates/ to skill output templates/ dirs
 # at build time. Source skills reference these as templates/<file> — the links
 # resolve in build output but not in raw source (by design: source is build-input).
 # Format: template-filename: [list of skill names that receive it]
 shared-templates:
-  journal.md: [implement, orchestration, housekeeping, bootstrap]
+  journal.md: [bootstrap]
   grilling.md: [refactor-deepen]
+  problem-narrative.md: [pitch, loaf-reference]
+  work-contract.md: [shape, ship, project-management, loaf-reference]
+  tracker-update.md: [triage, implement, ship, release, orchestration, project-management, loaf-reference]
 
 targets:
   claude-code:

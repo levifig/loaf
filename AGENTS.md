@@ -24,7 +24,7 @@ go run ./cmd/loafdev --help    # The build, release, packaging, and tag tooling 
 - Use the Go toolchain declared in `go.mod`. There is no npm: `package.json` is only the distribution manifest, and Node 24+ is needed solely for the harness capability runners under `cli/scripts/` and JavaScript adapter syntax checks. npm and `tsc` are not build or install entry points.
 - **Never change a user's runtime selection as a side effect of building or verifying.** `make`, `make build`, and `make verify-local` never activate the development launcher; only `make install` activates `bin/loaf` through `~/.local/bin/loaf` and Loaf's existing launcher pointer. `LOAF_DEV_LINK=0` remains a harmless no-op.
 - **`loaf install` has no dry-run mode.** `bin/loaf install` changes live harness content, so apply it only as a separate, explicitly scoped action, and use isolated homes in tests.
-- The generated command reference is the loaf-reference skill (`content/skills/loaf-reference/SKILL.md`); `loaf check` runs enforcement hooks manually.
+- The generated command reference is `docs/knowledge/cli-reference.md`; the shipped loaf-reference skill owns Flow semantics; `loaf check` runs enforcement hooks manually.
 
 ### Dev Isolation
 
@@ -46,7 +46,7 @@ export LOAF_DB="$(mktemp -d)/loaf.sqlite"
 | Skills; agent profiles | `content/skills/{name}/`; `content/agents/{name}.md` |
 | Shared templates | `content/templates/`, distributed via `shared-templates` in `config/targets.yaml` |
 | Hooks | Maintained checks in `internal/cli/check*.go`; static guidance in `content/hooks/instructions/`; registry `config/hooks.yaml` |
-| Tracker-native Flow overrides | `vnext/content/`, overlaid by the content build |
+| Flow and provider contracts | `content/flow-contract.json`, `content/skills/project-management/` |
 | Harness capability runners | `cli/scripts/` |
 | Design and rationale; knowledge guides | `docs/architecture/`; `docs/knowledge/` |
 | Build output (tracked) | `plugins/` (Claude Code), `dist/{target}/` (others); `bin/loaf` is generated and untracked |

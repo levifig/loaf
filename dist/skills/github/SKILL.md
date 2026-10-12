@@ -1,6 +1,10 @@
 ---
 name: github
-description: Maps project-management/v1 operations to GitHub repository Issue semantics through an exposed harness-native connection. Use when the selected canonical tracker is GitHub. Produces verified native outcomes without configuring credentials or a provider client.
+description: >-
+  Maps project-management/v1 operations to GitHub repository Issue semantics
+  through an exposed harness-native connection. Use when the selected canonical
+  tracker is GitHub. Produces verified native outcomes without configuring
+  credentials or a provider client.
 ---
 
 # GitHub

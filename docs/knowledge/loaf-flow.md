@@ -5,13 +5,13 @@ topics:
   - tracker-native
   - rideable-increments
 covers:
-  - vnext/content/skills/pitch/**/*
-  - vnext/content/skills/shape/**/*
-  - vnext/content/skills/triage/**/*
-  - vnext/content/skills/implement/**/*
-  - vnext/content/skills/ship/**/*
-  - vnext/content/skills/release/**/*
-  - vnext/content/skills/orchestration/**/*
+  - content/skills/pitch/**/*
+  - content/skills/shape/**/*
+  - content/skills/triage/**/*
+  - content/skills/implement/**/*
+  - content/skills/ship/**/*
+  - content/skills/release/**/*
+  - content/skills/orchestration/**/*
 consumers:
   - implementer
   - reviewer
@@ -95,8 +95,8 @@ If the configured tracker connection or a required native capability is unavaila
 
 | Topic | Where |
 |-------|--------|
-| Current ceremony and continuity semantics | [Flow semantics](../../vnext/content/skills/loaf-reference/references/flow-semantics.md) |
-| Work and service authority | [Authority model](../../vnext/content/skills/loaf-reference/references/authority-model.md) |
-| Stable provider behavior | [Project management](../../vnext/content/skills/project-management/SKILL.md) |
-| Contributor provider boundary | [Provider modules](../../vnext/content/skills/project-management/references/provider-modules.md) |
+| Current ceremony and continuity semantics | [Flow semantics](../../content/skills/loaf-reference/references/flow-semantics.md) |
+| Work and service authority | [Authority model](../../content/skills/loaf-reference/references/authority-model.md) |
+| Stable provider behavior | [Project management](../../content/skills/project-management/SKILL.md) |
+| Contributor provider boundary | [Provider modules](../../content/skills/project-management/references/provider-modules.md) |
 | Increment doctrine | [Rideable increments](../../content/skills/foundations/references/rideable-increments.md) |
