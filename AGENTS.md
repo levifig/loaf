@@ -61,7 +61,7 @@ export LOAF_DB="$(mktemp -d)/loaf.sqlite"
 
 ## Project Rules
 
-**Workflow skills log themselves first.** A user-invocable workflow skill's first action is a journal entry with context (arguments, intent, or trigger), e.g. `loaf journal log "skill(implement): native hook rewrite for the selected issue"`. The branch and an opaque `harness_session_id` attach automatically; there is no start step. `/wrap` reads these entries to see whether periodic skills ran.
+**Workflow skills log themselves first.** A user-invocable workflow skill's first action is a journal entry with context (arguments, intent, or trigger), e.g. `loaf journal log "skill(implement): native hook rewrite for the selected issue"`. The branch and an opaque `harness_session_id` attach automatically; there is no start step. Recent entries show which workflows ran.
 
 **The journal is the only session model.** Journal entries are project-scoped SQLite rows correlated by `harness_session_id`. There is no session entity, status, or lifecycle, so never add one or anything that opens, closes, or transitions a session. A `wrap` entry is an optional checkpoint for synthesis worth saving ("tried X, abandoned because Y, next is Z"), not a transition. Continuity context is derived at read time and never persisted, and it does not mirror tracker work. Rendered journal markdown is a projection: write with `loaf journal log`, never by editing markdown.
 
@@ -112,8 +112,9 @@ Read-only discovery and purely incidental corrections with no behavior, meaning,
 - `loaf issue` and its Linear push/pull/reconcile commands are frozen migration compatibility only; never use them as ongoing work authority or synchronization
 
 **Journal Discipline:**
-Before completing any response that includes edits, commits, or significant decisions, log journal entries using `loaf journal log "type(scope): description"`. Entry types: `decision`, `discover`, `wrap`. Do not defer journaling - log before responding.
+Record significant decisions and discoveries as they happen with `loaf journal log "type(scope): description"` (`decision` or `discover`). Before completing substantial work, handing off, or compacting context, write a concise `wrap(scope)` checkpoint only when useful reasoning is missing from existing records. Preserve abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable; omit empty fields and do not repeat raw events. Routine interactions need no redundant checkpoint. A missing checkpoint is valid; there is no session lifecycle.
+Foundations owns ordinary capture and selective synthesis; no workflow invocation or compaction/end hook is required. Read recent journal entries before synthesizing when needed, and use supported journal reads to recover context. Project Management owns actionable follow-up capture, Implement and Ship own delivery evidence and Git-state reporting, and Housekeeping owns artifact maintenance. A checkpoint does not authorize implementation, commits, pushes, releases, or cleanup.
 In Codex Auto mode, when the user explicitly installed the managed basic-command policy, use the PATH `loaf` command for classified leaves, including `loaf journal log --execpolicy-safe` for journal writes. Do not substitute an absolute executable pin or a shell/environment wrapper. The policy authorizes only explicitly classified basic Loaf command leaves and does not grant unclassified/operator commands, a bare Loaf namespace, or general filesystem access. Global instructions remain user-owned; no Loaf block in `CODEX_HOME/AGENTS.md` is required. Other harness adapters are not implied.
 
-See the Loaf `orchestration` skill for full details.
+See the Loaf `foundations` skill for continuity guidance.
 <!-- loaf:managed:end -->

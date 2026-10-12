@@ -13,6 +13,14 @@
         "${HOME}/.config/agents/skills",
         "${HOME}/.config/opencode/skills"
       ]
+    },
+    {
+      "skill": "wrap",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "ordinary capture and selective checkpoints are owned by Foundations and managed project instructions; the wrap journal entry remains supported",
+      "signoff": "native issue 259, maintainer-selected implementation",
+      "skill_homes": []
     }
   ],
   "retired_agents": [],

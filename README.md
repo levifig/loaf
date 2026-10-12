@@ -37,7 +37,7 @@ flowchart LR
     main --> release["Release · notes, artifacts, publication"]
 ```
 
-Filing an idea does not authorize implementation. Shaping a definition does not select it into Todo by itself, and bare `/implement` reports the unblocked Todo frontier without starting. Ship is the sole quality gate; release reads backward from already-landed work. Reflect and an optional wrap preserve what the work taught.
+Filing an idea does not authorize implementation. Shaping a definition does not select it into Todo by itself, and bare `/implement` reports the unblocked Todo frontier without starting. Ship is the sole quality gate; release reads backward from already-landed work. Foundations guides continuous capture and selective journal checkpoints during ordinary work; Reflect integrates durable learning.
 
 The slash forms below are shorthand: Claude Code's plugin uses `/loaf:name` (for example `/loaf:shape`); other supported harnesses use `/name` where they expose skill commands.
 
@@ -72,7 +72,6 @@ Integrate outcomes into strategic knowledge.
 | `/housekeeping` | Review and archive or delete lifecycle-complete artifacts |
 | `/reflect` | Integrate learnings into the Core Docs |
 | `/handoff` | Package context for another agent, branch, issue, or future conversation |
-| `/wrap` | Optional checkpoint for synthesis that is not otherwise derivable from the journal |
 
 ### Supporting Commands
 
@@ -131,7 +130,6 @@ Skills you invoke directly to drive work forward.
 | `bootstrap` | Bootstrapping new or existing projects (initial issue arc after pitched BRIEF) |
 | `linear` | Mapping `project-management/v1` operations to Linear through the harness's already-configured, authenticated native connection |
 | `github` | Mapping native issues and the selected GitHub board's workflow through an already-authenticated harness connection |
-| `wrap` | Optional end-of-conversation checkpoint: shipped, pending, next |
 
 Explore and brainstorm are agent techniques (not user slash entry); agents reach for them when direction is undecided — human entry intent routes to `/pitch`.
 
@@ -141,7 +139,7 @@ Background skills that activate automatically during agent coordination and proj
 
 | Skill | Activates When |
 |-------|----------------|
-| `orchestration` | Journal continuity, delegating agents, and council workflows |
+| `orchestration` | Bounded delegation and consolidated review evidence |
 | `council` | Multi-perspective deliberation during complex decisions |
 | `knowledge-base` | Managing project knowledge files |
 | `loaf-reference` | Looking up which CLI command to use |
@@ -152,7 +150,7 @@ Background knowledge that activates automatically to enforce quality.
 
 | Skill | Activates When |
 |-------|----------------|
-| `foundations` | Writing code — style, naming, TDD, verification, code review |
+| `foundations` | Code standards, continuous journaling, and selective continuity checkpoints |
 | `git-workflow` | Branching, commits, PRs, merge strategy |
 | `debugging` | Diagnosing failures, tracking hypotheses, flaky tests |
 | `security-compliance` | Threat modeling, secrets management, compliance checks |

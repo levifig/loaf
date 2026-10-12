@@ -177,6 +177,9 @@ func installTargetDistribution(options targetInstallOptions) error {
 }
 
 func installOpencodeTarget(options targetInstallOptions) error {
+	if err := refuseUnownedWrapCommand(options.ConfigDir); err != nil {
+		return err
+	}
 	skillsDest := installSkillsDestination(options)
 	if !options.SkipSkillsSync {
 		if err := syncManagedSkillsDirIfExists(filepath.Join(options.DistDir, "skills"), skillsDest); err != nil {
@@ -244,6 +247,9 @@ func syncOpenCodeCommandsDir(distDir string, configDir string, skillsStore strin
 	// Validate the entire source tree before touching the destination. A
 	// refusal here must leave existing installed commands intact.
 	if err := validateOpenCodeCommandsSource(src); err != nil {
+		return err
+	}
+	if err := refuseUnownedWrapCommand(configDir); err != nil {
 		return err
 	}
 
@@ -370,6 +376,9 @@ func installCursorTarget(options targetInstallOptions) error {
 	if err != nil {
 		return err
 	}
+	if err := refuseUnownedWrapCommand(options.ConfigDir); err != nil {
+		return err
+	}
 	skillsDest := installSkillsDestination(options)
 	if !options.SkipSkillsSync {
 		if err := syncManagedSkillsDirIfExists(filepath.Join(options.DistDir, "skills"), skillsDest); err != nil {
@@ -406,6 +415,20 @@ func installCursorTarget(options targetInstallOptions) error {
 		return err
 	}
 	return writeInstallRecord(options, skillsDest)
+}
+
+// Legacy command copies have no ownership receipt. Retiring the skill cannot
+// prove that a same-named command is still ours, even if its bytes look familiar.
+// Both installers otherwise clear their command directory, so refuse before
+// touching it and leave the operator an explicit manual retirement step.
+func refuseUnownedWrapCommand(configDir string) error {
+	path := filepath.Join(configDir, "commands", "wrap.md")
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("inspect retired Wrap command %s: %w", path, err)
+	}
+	return fmt.Errorf("preserved retired Wrap command %s: legacy commands have no ownership receipt; review and move or remove this file manually before retrying", path)
 }
 
 func installCodexTarget(options targetInstallOptions) error {

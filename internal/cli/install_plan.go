@@ -309,6 +309,15 @@ func planTargetDistribution(options targetInstallOptions) ([]artifactPlanDecisio
 	var decisions []artifactPlanDecision
 	// Skills are planned once per destination by planCanonicalManagedSkills;
 	// including them here would re-report shared conflicts once per target.
+	if options.Target == "opencode" || options.Target == "cursor" {
+		if err := refuseUnownedWrapCommand(options.ConfigDir); err != nil {
+			decisions = append(decisions, artifactPlanDecision{
+				ID: options.Target + ":retired-wrap-command", Kind: "commands",
+				Destination: filepath.Join(options.ConfigDir, "commands", "wrap.md"),
+				Action:      planActionConflict, Detail: err.Error(),
+			})
+		}
+	}
 
 	hasAdapterManifest := fileExistsForInstall(filepath.Join(options.DistDir, targetBuildManifestFile))
 	if hasAdapterManifest {

@@ -12,7 +12,7 @@
       "kind": "hook-file",
       "source_path": "hooks/hooks.json",
       "destination": "hooks/hooks.json",
-      "sha256": "c3babdf15f2a4718dc350e964e38a6c9178f14a46b1dfbb81f6317ec7456405c",
+      "sha256": "473d27e41c4c70fde2c396676bfd8e0f881887e3e0c536246f1d5b8451487ebe",
       "mode": 420
     },
     {
@@ -59,7 +59,7 @@
       "id": "managed-instructions",
       "kind": "instruction",
       "destination": "project-instructions",
-      "sha256": "5403297367a1e20ac96e6382b6858a7072986da5be1d9fa5396624d046a8e9b8"
+      "sha256": "f3492be6db299c587066ad9076dbd935fb750c56f84f6eb5a5ae15360675faa9"
     }
   ]
 }

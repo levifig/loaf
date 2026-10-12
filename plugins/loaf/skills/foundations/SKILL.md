@@ -2,18 +2,19 @@
 name: foundations
 description: >-
   Establishes code quality, commit conventions, documentation standards, and
-  security patterns. Use when writing or reviewing code, running checks, or
-  setting up project standards. Covers naming, TDD, verification, and review
-  workflows. Not for git workflow (use git-workflow), debugging (use debugging),
+  security patterns, plus continuous journaling and selective checkpoints. Use
+  when writing or reviewing code, running checks, setting up project standards,
+  or preserving reasoning before finishing work, handing off, or compacting
+  context. Not for git workflow (use git-workflow), debugging (use debugging),
   or security audits (use security-compliance).
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
 version: 0.6.0-rc.2
 ---
 
-# Code Standards
+# Foundations
 
-Engineering foundations for consistent, high-quality code.
+Engineering standards and ordinary continuity discipline for useful, recoverable work.
 
 ## Contents
 - Critical Rules
@@ -23,8 +24,11 @@ Engineering foundations for consistent, high-quality code.
 - Available Checks
 - Naming Conventions
 - Test Patterns
+- Journal Commands
 
 ## Critical Rules
+
+Before the first journal write, select the form in [Journal Commands](#journal-commands) and use it for every entry.
 
 ### Always
 
@@ -33,6 +37,7 @@ Engineering foundations for consistent, high-quality code.
 - Deliver [rideable increments](references/rideable-increments.md): complete, useful operator journeys whose breadth is narrow without weakening integrity
 - Before substantive edits, including ordinary fixes and regression tests, establish and verify a selected native issue. Load the loaf-reference skill's Flow Semantics for the canonical prerequisite and narrow exceptions, then use the project-management skill for provider operations. Honor an existing explicit implementation request without asking for selection again; an issue in Backlog alone is not selected work.
 - Before a final response or handoff, load the project-management skill and apply its Capture Deferred Work rule to concrete deferred or out-of-scope findings; do not leave actionable future work only in prose or the journal.
+- Record significant decisions and discoveries as they happen. Before completing substantial work, handing off, or compacting context, write a concise `wrap(scope)` checkpoint only when useful reasoning is missing from existing records. Preserve abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable. Routine interactions need no redundant checkpoint; omit empty fields and do not repeat raw events. See [Continuity](references/continuity.md).
 
 ### Never
 
@@ -102,6 +107,7 @@ Engineering foundations for consistent, high-quality code.
 | Observability | [references/observability.md](references/observability.md) | Instrumenting services, logging, metrics, tracing |
 | Production Readiness | [references/production-readiness.md](references/production-readiness.md) | Validating services are ready for production |
 | Rideable Increments | [references/rideable-increments.md](references/rideable-increments.md) | Shaping, implementing, reviewing, or sequencing complete operator journeys |
+| Continuity | [references/continuity.md](references/continuity.md) | Recording decisions, selectively checkpointing reasoning, and recovering it in fresh context |
 
 ## Available Checks
 
@@ -162,3 +168,11 @@ Scenario-based fixture naming:
 - `*_chaos` - Edge cases, malformed data
 
 Coverage target: 70% minimum across all components.
+
+## Journal Commands
+
+Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
+
+### Codex
+
+With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including checkpoints. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.

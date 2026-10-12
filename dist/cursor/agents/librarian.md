@@ -4,8 +4,9 @@ is_background: true
 name: librarian
 description: >-
   Durable artifact handler for SQLite-backed Loaf state and .agents/ artifacts.
-  Use from wrap, housekeeping, or orchestration when the project journal,
-  reports, specs, handoffs, or knowledge notes need lifecycle-safe tending.
+  Use for ordinary capture, housekeeping, or orchestration when the project
+  journal, reports, specs, handoffs, or knowledge notes need lifecycle-safe
+  tending.
 disable-model-invocation: true
 tools:
   Read: true
@@ -33,10 +34,9 @@ repository and edit access scoped to `.agents/` only.
 - **Project journal** — inspect with `loaf journal recent --json` and `loaf journal search <query>`
 - **Pre-compaction preservation** — flush unrecorded decisions and discoveries to the journal before context compaction
 - **Durable artifact lifecycle** — `.agents/reports/`, `.agents/handoffs/`,
-  `.agents/specs/`, and `.agents/knowledge/` hygiene when invoked by wrap,
-  housekeeping, or orchestration
+  `.agents/specs/`, and `.agents/knowledge/` hygiene when invoked by housekeeping or orchestration
 - **Knowledge artifacts** in `.agents/knowledge/` — staleness markers, coverage notes
-- **Wrap checkpoints** — end-of-conversation distillation when invoked by the wrap workflow
+- **Selective checkpoints** — preserve useful reasoning missing from existing records during ordinary capture, following Foundations
 - **Decision persistence** — extract durable decisions to spec changelog and log a `decision()` entry with `loaf journal log`
 - **Journal completion** — when invoked with a conversation summary, identify
   missing semantic entries (decisions, discoveries, context) and append them

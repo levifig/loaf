@@ -72,7 +72,7 @@ The `covers:` field links knowledge to code paths:
 
 **Staleness → Review → Update.** Code edited → `covers:` match → agent nudged → verifies substantive content against current evidence and corrects it as needed → marks reviewed. An edit alone does not justify resetting `last_reviewed`.
 
-**Conversation → Consolidation → Knowledge.** Before compaction or at an optional wrap → agent identifies durable learning → agent creates or updates a knowledge file → human reviews.
+**Conversation → Consolidation → Knowledge.** During ordinary work → agent identifies durable learning → agent uses the owning knowledge skill to create or update a knowledge file → human reviews. A selective journal checkpoint preserves useful reasoning that is not already recorded; it does not require a knowledge-file update.
 
 ### Hook Scope (Extended Beyond Knowledge)
 
@@ -82,11 +82,7 @@ The `covers:` field links knowledge to code paths:
 
 This reminds the agent that exploration artifacts exist and may need processing.
 
-**PreCompact hook and `/wrap`** prompt for both knowledge consolidation AND spark capture:
-- "You modified paths covered by knowledge files. Any updates needed?"
-- "This conversation involved exploration. Any sparks worth noting?"
-
-There is no SessionEnd journal hook, so this nudge lives at the PreCompact journal-flush point and in the voluntary `/wrap` checkpoint rather than a conversation-close event. Current spark capture belongs to its owning skill and private continuity; historical brainstorm sections do not define a required lifecycle.
+**Ordinary capture** records significant decisions and discoveries as they happen. Foundations and managed project instructions call for a concise checkpoint before substantial completion, handoff, or compaction only when useful reasoning is missing. The existing PreCompact command reinforces that rule where the harness delivers it; it emits guidance and writes nothing itself. There is no SessionEnd journal hook or guaranteed final summary. Current spark capture and knowledge consolidation belong to their owning skills; historical brainstorm sections do not define a required lifecycle.
 
 ## Memory Surface Boundary
 

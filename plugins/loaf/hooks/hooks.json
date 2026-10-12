@@ -169,7 +169,7 @@
           {
             "type": "command",
             "timeout": 60,
-            "description": "Inject journal flush guidance before compaction",
+            "description": "Inject selective checkpoint guidance before compaction",
             "command": "loaf journal context for-compact"
           }
         ]
