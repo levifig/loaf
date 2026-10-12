@@ -158,6 +158,9 @@ func installTargetDistribution(options targetInstallOptions) error {
 	if options.ConfigDir == "" {
 		return fmt.Errorf("install config dir is required")
 	}
+	if err := refuseRetiredTargetPayloads(options); err != nil {
+		return err
+	}
 	if options.Version == "" {
 		options.Version = "0.0.0"
 	}
@@ -532,6 +535,9 @@ type skillsDestinationGroup struct {
 func groupSkillsInstallByDestination(options []targetInstallOptions) ([]skillsDestinationGroup, error) {
 	byDest := map[string][]targetInstallOptions{}
 	for _, opt := range options {
+		if err := refuseRetiredTargetPayloads(opt); err != nil {
+			return nil, err
+		}
 		src := filepath.Join(opt.DistDir, "skills")
 		if !dirExistsForInstall(src) {
 			continue
@@ -893,6 +899,9 @@ func syncManagedSkillsDirIfExists(src string, dest string) (returnErr error) {
 	if err != nil {
 		return err
 	}
+	if previous.legacy && len(previous.digests) > 0 {
+		return fmt.Errorf("skills at %s: %s", dest, legacySkillOwnershipRefusal)
+	}
 	current := map[string]string{}
 	for _, skill := range sourceSkills {
 		digest, err := hashInstallSkillTree(filepath.Join(src, skill))
@@ -1199,10 +1208,12 @@ func syncSelectedManagedSkills(src string, dest string, selected []string) (retu
 	return writeManagedSkillsManifest(dest, manifest)
 }
 
-// Name-only ownership cannot be carried into the digest manifest without
-// claiming unselected live content as a verified baseline.
+const legacySkillOwnershipRefusal = "name-only skill ownership cannot verify existing content; preserve and review these files, then move them and the legacy ownership manifest out of the skills store before retrying; do not delete user-authored content"
+
+// Selecting every old name still proves no content ownership. Keep the receipt
+// unchanged rather than blessing unknown live bytes as a digest-backed baseline.
 func validateSelectedLegacySkills(previous managedSkillsState, selected []string) error {
-	if !previous.legacy || len(selected) == 0 {
+	if !previous.legacy || len(previous.digests) == 0 || len(selected) == 0 {
 		return nil
 	}
 	wanted := make(map[string]bool, len(selected))
@@ -1216,10 +1227,10 @@ func validateSelectedLegacySkills(previous managedSkillsState, selected []string
 		}
 	}
 	if len(unselected) == 0 {
-		return nil
+		return fmt.Errorf("%s", legacySkillOwnershipRefusal)
 	}
 	sort.Strings(unselected)
-	return fmt.Errorf("cannot partially migrate name-only skill ownership; unselected legacy skills: %s; review and explicitly select every legacy skill together before retrying", strings.Join(unselected, ", "))
+	return fmt.Errorf("cannot partially migrate name-only skill ownership; unselected legacy skills: %s; %s", strings.Join(unselected, ", "), legacySkillOwnershipRefusal)
 }
 
 func listInstallSkillDirs(path string) ([]string, error) {

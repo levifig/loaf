@@ -129,6 +129,9 @@ func (r Runner) runInstallWithOptions(options installOptions, out io.Writer, run
 	if options.codexBasicCommands && !containsString(selectedTargets, "codex") {
 		return fmt.Errorf("Codex basic command policy requested, but Codex is not selected or detected")
 	}
+	if err := refuseRetiredDistributionPayloads(loafRoot, selectedTargets); err != nil {
+		return err
+	}
 
 	if len(selectedTargets) == 0 {
 		// Consent is only worth asking for when there is something to deploy.
