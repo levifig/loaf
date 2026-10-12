@@ -51,20 +51,28 @@ func TestSelectedSkillsWriterRejectsPartialLegacyManifest(t *testing.T) {
 	}
 }
 
-func TestScopedUpgradeCanSelectEveryLegacySkillIncludingRetirement(t *testing.T) {
-	root, home := setupScopedUpgradeFixture(t)
-	dest := filepath.Join(home, ".agents", "skills")
-	writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["foundations","pitch","retired","absent"]}`)
-	writeInstallFile(t, filepath.Join(dest, "retired", "SKILL.md"), "# Retired\n")
-	args := []string{"upgrade", "--select", "skills/skill:foundations", "--select", "skills/skill:pitch", "--select", "skills/skill:retired", "--select", "skills/skill:absent"}
-	runInstallCapture(t, root, append(append([]string{}, args...), "--dry-run", "--json")...)
-	runInstallCapture(t, root, args...)
-	state, err := readManagedSkillsState(dest)
-	if err != nil || state.legacy || len(state.digests) != 2 || state.digests["foundations"] == "" || state.digests["pitch"] == "" {
-		t.Fatalf("all-selected manifest = %#v, error %v", state, err)
+func TestScopedUpgradePreservesEverySelectedLegacySkill(t *testing.T) {
+	for _, dryRun := range []bool{false, true} {
+		t.Run(map[bool]string{false: "apply", true: "preview"}[dryRun], func(t *testing.T) {
+			root, home := setupScopedUpgradeFixture(t)
+			dest := filepath.Join(home, ".agents", "skills")
+			writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["foundations","pitch","retired","absent"]}`)
+			writeInstallFile(t, filepath.Join(dest, "retired", "SKILL.md"), "# My retired skill\n")
+			before := hashScopedSurfaces(t, home)
+			args := []string{"upgrade", "--select", "skills/skill:foundations", "--select", "skills/skill:pitch", "--select", "skills/skill:retired", "--select", "skills/skill:absent"}
+			if dryRun {
+				args = append(args, "--dry-run", "--json")
+			}
+			var out strings.Builder
+			err := (Runner{WorkingDir: root, Executable: distributionFixtureExecutable(root), Stdout: &out}).Run(args)
+			if err == nil || !strings.Contains(err.Error()+out.String(), "name-only") {
+				t.Fatalf("all-selected legacy upgrade = %v; output %s", err, out.String())
+			}
+			if hashScopedSurfaces(t, home) != before {
+				t.Fatal("all-selected legacy upgrade changed content or ownership")
+			}
+		})
 	}
-	assertInstallPathMissing(t, filepath.Join(dest, "retired"))
-	runInstallCapture(t, root, "upgrade", "--select", "skills/skill:foundations", "--dry-run", "--json")
 }
 
 func TestScopedHookOnlyUpgradeLeavesLegacySkillsManifestUntouched(t *testing.T) {

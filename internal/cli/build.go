@@ -229,6 +229,9 @@ func containsBuildTarget(targets []string, target string) bool {
 }
 
 func validateNativeBuildArtifacts(root string, targetName string) ([]string, error) {
+	if err := refuseRetiredDistributionPayloads(root, []string{targetName}); err != nil {
+		return nil, err
+	}
 	outputDir := nativeBuildTargetOutputDir(root, targetName)
 	var jsFiles []string
 	var tsFiles []string

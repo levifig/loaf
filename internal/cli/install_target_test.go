@@ -1489,15 +1489,28 @@ func TestInstallTargetAdapterManifestDetectsRaceAndRollsBackPublication(t *testi
 	})
 }
 
-func TestSyncManagedSkillsMigratesV1AndRefusesV2Tampering(t *testing.T) {
+func TestSyncManagedSkillsRefusesUnprovenV1AndV2Tampering(t *testing.T) {
 	root := t.TempDir()
 	src, dest := filepath.Join(root, "dist", "opencode", "skills"), filepath.Join(root, "dest")
 	writeInstallFile(t, filepath.Join(src, "foundations", "SKILL.md"), "new\n")
 	writeInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "old\n")
 	writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["foundations"]}`)
-	if err := syncManagedSkillsDirIfExists(src, dest); err != nil {
-		t.Fatalf("v1 migration error = %v", err)
+	before := hashInstallFixtureTrees(t, dest)
+	if err := syncManagedSkillsDirIfExists(src, dest); err == nil || !strings.Contains(err.Error(), "name-only") {
+		t.Fatalf("v1 preservation refusal = %v", err)
 	}
+	if hashInstallFixtureTrees(t, dest) != before {
+		t.Fatal("unproven v1 ownership changed installed content")
+	}
+	// Explicit operator review/recovery preserves the old files outside discovery.
+	backup := filepath.Join(root, "reviewed-backup")
+	if err := os.Rename(dest, backup); err != nil {
+		t.Fatal(err)
+	}
+	if err := syncManagedSkillsDirIfExists(src, dest); err != nil {
+		t.Fatal(err)
+	}
+	assertInstallFile(t, filepath.Join(backup, "foundations", "SKILL.md"), "old\n")
 	assertInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "new\n")
 	manifest := string(readFileBytes(t, filepath.Join(dest, loafSkillManifestFile)))
 	if !strings.Contains(manifest, `"version": 2`) || !strings.Contains(manifest, `"sha256"`) {

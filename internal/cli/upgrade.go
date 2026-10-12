@@ -74,6 +74,14 @@ func (r Runner) runUpgrade(args []string, out io.Writer, runtimeRoot string) err
 		return err
 	}
 
+	payloadTargets := append([]string{}, targets...)
+	if refreshClaudeCode {
+		payloadTargets = append(payloadTargets, claudeCodeInstallTarget)
+	}
+	if err := refuseRetiredDistributionPayloads(loafRoot, payloadTargets); err != nil {
+		return err
+	}
+
 	if options.dryRun {
 		if options.interactive {
 			planOptions.resolvedUpgradeTargets = append([]string{}, targets...)

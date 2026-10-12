@@ -21,6 +21,46 @@
       "reason": "ordinary capture and selective checkpoints are owned by Foundations and managed project instructions; the wrap journal entry remains supported",
       "signoff": "native issue 259, maintainer-selected implementation",
       "skill_homes": []
+    },
+    {
+      "skill": "breakdown",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "legacy breakdown workflow is superseded by tracker-native Shape and Implement",
+      "signoff": "native issue 357, maintainer-selected recreation prevention",
+      "skill_homes": []
+    },
+    {
+      "skill": "cleanup",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "legacy cleanup workflow is superseded by Housekeeping",
+      "signoff": "native issue 357, maintainer-selected recreation prevention",
+      "skill_homes": []
+    },
+    {
+      "skill": "council-session",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "legacy session-based council workflow is superseded by Council",
+      "signoff": "native issue 357, maintainer-selected recreation prevention",
+      "skill_homes": []
+    },
+    {
+      "skill": "reference-session",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "legacy filesystem session workflow is superseded by journal continuity",
+      "signoff": "native issue 357, maintainer-selected recreation prevention",
+      "skill_homes": []
+    },
+    {
+      "skill": "resume-session",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "legacy filesystem session workflow is superseded by journal continuity",
+      "signoff": "native issue 357, maintainer-selected recreation prevention",
+      "skill_homes": []
     }
   ],
   "retired_agents": [],

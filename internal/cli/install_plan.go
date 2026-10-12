@@ -153,6 +153,9 @@ func (r Runner) buildInstallDryRunPlan(options installOptions, loafRoot string, 
 	if err != nil {
 		return installDryRunPlan{}, err
 	}
+	if err := refuseRetiredDistributionPayloads(loafRoot, selectedTargets); err != nil {
+		return installDryRunPlan{}, err
+	}
 
 	// Deprecation cleanup is always analyzed with allowDestructive=false, which
 	// is guaranteed non-mutating; the destructive branches only surface as
@@ -306,6 +309,9 @@ func containsInstallToolInstalled(tools []detectedInstallTool, target string) bo
 // planTargetDistribution mirrors installTargetDistribution's branching without
 // writing anything.
 func planTargetDistribution(options targetInstallOptions) ([]artifactPlanDecision, error) {
+	if err := refuseRetiredTargetPayloads(options); err != nil {
+		return nil, err
+	}
 	var decisions []artifactPlanDecision
 	// Skills are planned once per destination by planCanonicalManagedSkills;
 	// including them here would re-report shared conflicts once per target.
@@ -433,6 +439,24 @@ func planManagedSkills(src string, dest string) ([]artifactPlanDecision, error) 
 	previous, err := readManagedSkillsState(dest)
 	if err != nil {
 		return nil, err
+	}
+	if previous.legacy && len(previous.digests) > 0 {
+		names := map[string]bool{}
+		for _, name := range sourceSkills {
+			names[name] = true
+		}
+		for name := range previous.digests {
+			names[name] = true
+		}
+		var decisions []artifactPlanDecision
+		for name := range names {
+			decisions = append(decisions, artifactPlanDecision{
+				ID: "skill:" + name, Kind: "skill", Destination: filepath.Join(dest, name),
+				Action: planActionConflict, Detail: legacySkillOwnershipRefusal,
+			})
+		}
+		sort.Slice(decisions, func(i, j int) bool { return decisions[i].ID < decisions[j].ID })
+		return decisions, nil
 	}
 	current := map[string]string{}
 	for _, skill := range sourceSkills {

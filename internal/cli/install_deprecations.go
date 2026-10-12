@@ -507,6 +507,20 @@ func applyInstallDeprecationCleanup(manifest installDeprecationManifest, pathCon
 			// Candidate home with nothing Loaf would move — omit.
 			continue
 		}
+		if rootErr := requireMigrationSkillHomeRoot(to); rootErr == nil {
+			destination, err := readManagedSkillsState(to)
+			if err != nil {
+				return result, err
+			}
+			if destination.legacy && len(destination.digests) > 0 {
+				// A verified source cannot prove ownership of unrelated destination
+				// content. Refuse before moving bytes or changing either receipt.
+				for _, name := range append(append([]string{}, owned...), stranded...) {
+					appendRelocationDestinationRefusal(&result, relocation, name, filepath.Join(from, name), legacySkillOwnershipRefusal)
+				}
+				continue
+			}
+		}
 		if !allowDestructive {
 			action.Action = "confirmation-required"
 			result.Skipped = append(result.Skipped, action)
@@ -1400,22 +1414,8 @@ func claimManagedSkillDigest(skillHome, skill, digest string) error {
 	if state.digests == nil {
 		state.digests = map[string]string{}
 	}
-	if state.legacy {
-		// Destination gains a real digest claim — upgrade survivors that already
-		// have digests and convert this write to v2 for the new claim set.
-		upgraded := map[string]string{}
-		for name, existing := range state.digests {
-			if existing != "" {
-				upgraded[name] = existing
-				continue
-			}
-			path := filepath.Join(skillHome, name)
-			if actual, hashErr := hashInstallSkillTree(path); hashErr == nil {
-				upgraded[name] = actual
-			}
-		}
-		upgraded[skill] = digest
-		return writeManagedSkillsDigestMap(skillHome, upgraded)
+	if state.legacy && len(state.digests) > 0 {
+		return fmt.Errorf("skills at %s: %s", skillHome, legacySkillOwnershipRefusal)
 	}
 	state.digests[skill] = digest
 	return writeManagedSkillsDigestMap(skillHome, state.digests)
