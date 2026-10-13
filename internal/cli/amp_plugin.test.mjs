@@ -220,9 +220,7 @@ test('generated plugin runs real pre-PR in helper shell dir and falls back to wo
     status: 'done',
   });
   log = await readLog();
-  assert.equal(log.length, 1);
-  assert.equal(log[0].hook, 'workflow-post-merge');
-  assert.equal(await realpath(log[0].cwd), await realpath(shellDir));
+  assert.equal(log.length, 0, 'unsupported post-merge instruction must not dispatch');
 
   await writeFile(hookLog, '');
   const missingHandlers = new Map();
@@ -328,4 +326,45 @@ test('project-installed plugin runs the built Loaf hooks with a stale host PATH'
   await writeFile(join(workspace, '.agents', 'loaf-orb-bootstrap.sh'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
   assert.deepEqual(await handlers.get('tool.call')(edit), { action: 'allow' });
   assert.deepEqual((await readFile(callLog, 'utf8')).trim().split('\n').slice(-2), ['host:artifact-body-write', 'host:check-secrets']);
+});
+
+
+test('generated plugin omits unsupported instruction dispatch and preserves native push enforcement', async t => {
+  const workspace = await mkdtemp(join(tmpdir(), 'loaf-amp-instruction-'));
+  const binDir = join(workspace, 'bin');
+  await mkdir(binDir);
+  const hookLog = join(workspace, 'hook-log');
+  const previousPath = process.env.PATH;
+  const previousHookLog = process.env.LOAF_TEST_HOOK_LOG;
+  t.after(async () => {
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
+    if (previousHookLog === undefined) delete process.env.LOAF_TEST_HOOK_LOG;
+    else process.env.LOAF_TEST_HOOK_LOG = previousHookLog;
+    await rm(workspace, { recursive: true, force: true });
+  });
+  await writeFile(join(binDir, 'loaf'), '#!/bin/sh\nprintf "%s\\n" "$LOAF_HOOK_ID" >> "$LOAF_TEST_HOOK_LOG"\nexit 0\n', { mode: 0o755 });
+  process.env.PATH = `${binDir}:${previousPath ?? ''}`;
+  process.env.LOAF_TEST_HOOK_LOG = hookLog;
+  const warning = t.mock.method(console, 'warn', () => {});
+  const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.js');
+  const handlers = new Map();
+  initialize({
+    on(event, handler) { handlers.set(event, handler); },
+    helpers: {
+      filePathFromURI: fileURLToPath,
+      shellCommandFromToolCall: event => ({ command: event.input.command, dir: workspace }),
+    },
+    system: { workspaceRoot: pathToFileURL(workspace) },
+  });
+  for (const command of ['git push origin HEAD:refs/heads/instruction-coverage', 'gh pr merge 123']) {
+    const event = { toolUseID: 'instruction-probe', tool: 'shell_command', input: { command, cwd: workspace }, thread: { id: 'T-instruction-probe' } };
+    assert.deepEqual(await handlers.get('tool.call')(event), { action: 'allow' });
+    await handlers.get('tool.result')({ ...event, status: 'done' });
+  }
+  assert.equal(warning.mock.calls.length, 0, 'unsupported instruction must not run and report a missing resource');
+  const hooks = (await readFile(hookLog, 'utf8')).trim().split('\n');
+  assert.ok(hooks.includes('validate-push'), 'native push enforcement must still dispatch');
+  assert.ok(hooks.includes('check-secrets'), 'fail-closed security enforcement must still dispatch');
+  assert.equal(hooks.some(id => /^workflow-(?:pre-merge|pre-push|post-merge)$/.test(id)), false);
 });

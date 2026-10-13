@@ -35,7 +35,7 @@ Dispatch depends on the registered entry and the target adapter:
 |------|-------|----------|---------|
 | **Native check** | None of `script:`, `command:`, `instruction:`, or `prompt:` | Runs `loaf check --hook <id>` | `check-secrets` |
 | **command** | `command:` | Runs a CLI command | `loaf journal context --from-hook` |
-| **Instruction** | `instruction:` (with `type: command`) | Claude Code and OpenCode print the copied instruction file when the hook fires. Cursor reads the same copied file through its native JSON adapter. Codex does not project instruction hooks. Amp generates the command but does not yet ship the file | `instructions/pre-merge.md` |
+| **Instruction** | `instruction:` (with `type: command`) | Claude Code and OpenCode print the copied instruction file when the hook fires. Cursor reads the same copied file through its native JSON adapter. Codex and Amp do not project instruction hooks | `instructions/pre-merge.md` |
 | **prompt** | `prompt:` | Injects inline text into model context | Validation gates |
 | **Legacy script** | `script:` | Compatibility only; do not add maintained Bash/Python implementations | — |
 
@@ -139,7 +139,9 @@ Inject markdown file content at tool invocation via `type: command` with `instru
 | `workflow-pre-push` | `Bash(git push:*)` | Pre-push advisory reminders |
 | `workflow-post-merge` | `Bash(gh pr merge:*)` | Post-merge housekeeping checklist |
 
-Instruction files live in `content/hooks/instructions/` and are rendered into hook output at build time.
+Instruction files live in `content/hooks/instructions/` and are rendered into hook output for targets that support this delivery.
+
+Amp deliberately omits `workflow-pre-merge`, `workflow-pre-push`, and `workflow-post-merge` from both tool hook projections. Its documented [`tool.call` allow response](https://ampcode.com/docs/plugin-api) carries no model-context field, and this adapter discards successful hook stdout. `tool.result` can modify output after execution, which does not provide a pre-action checklist. Amp therefore has no automatic tool-boundary delivery for these advisory files; the shared Git Workflow and Ship skills remain available, and native enforcement hooks are unchanged. The registry and instruction sources remain canonical for targets that support them.
 
 ## Prompt Hooks
 

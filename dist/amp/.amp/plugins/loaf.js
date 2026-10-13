@@ -435,20 +435,6 @@ const preToolHooks = {
       "if": "Bash(gh pr create:*)"
     },
     {
-      "id": "workflow-pre-merge",
-      "command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/pre-merge.md\"",
-      "timeout": 5000,
-      "failClosed": false,
-      "if": "Bash(gh pr merge:*)"
-    },
-    {
-      "id": "workflow-pre-push",
-      "command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/pre-push.md\"",
-      "timeout": 5000,
-      "failClosed": false,
-      "if": "Bash(git push:*)"
-    },
-    {
       "id": "validate-commit",
       "command": "loaf check --hook validate-commit",
       "timeout": 30000,
@@ -465,15 +451,6 @@ const postToolHooks = {
       "command": "loaf check --hook kb-staleness-nudge",
       "timeout": 5000,
       "failClosed": false
-    }
-  ],
-  "Bash": [
-    {
-      "id": "workflow-post-merge",
-      "command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/post-merge.md\"",
-      "timeout": 5000,
-      "failClosed": false,
-      "if": "Bash(gh pr merge:*)"
     }
   ]
 };
