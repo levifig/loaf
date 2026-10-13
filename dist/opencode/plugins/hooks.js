@@ -91,6 +91,11 @@ function observeHookChild(child, payload, failClosed) {
     });
 
     child.on('close', (code) => {
+      if (child.killed) {
+        const message = 'Hook execution timed out or was terminated before successful completion';
+        finish({ exitCode: 1, stdout: stdoutStr, stderr: stderrStr ? stderrStr.trimEnd() + '\n' + message : message, error: message });
+        return;
+      }
       const exitCode = code ?? 1; // null means signal-killed; fail closed
       if (exitCode === 2) {
         finish({ exitCode, stdout: stdoutStr, stderr: stderrStr });
@@ -286,6 +291,7 @@ const preToolHooks = {
     },
     {
       "id": "ephemeral-provenance",
+      "command": "loaf check --hook ephemeral-provenance",
       "timeout": 30000,
       "failClosed": true,
       "if": "Bash(git push:*)"
@@ -475,12 +481,16 @@ export default async function AgentSkillsPlugin({ client, $ }) {
 
             // Exit code 2 = block the action
             if (result.exitCode === 2) {
-              throw new Error(result.stderr);
+              throw new Error(result.stderr.trim() || result.error || `[loaf] Hook ${hook.id} rejected the action. Check the Loaf runtime and hook configuration, then retry.`);
             }
 
-            // Log errors for debugging
-            if (result.exitCode === 1) {
-              console.warn(`[loaf] Hook ${hook.id} error: ${result.stderr}`);
+            // Enforcement must prove success; missing dispatch, runtime failures,
+            // unexpected exits, signals, and timeouts cannot authorize the tool.
+            if (result.exitCode !== 0) {
+              const detail = (result.stderr || result.error || '').trim();
+              const message = `[loaf] ${hook.failClosed ? 'Fail-closed hook' : 'Hook'} ${hook.id} could not prove the action safe (exit ${result.exitCode}). ${detail} Check the Loaf runtime and hook configuration, then retry.`;
+              if (hook.failClosed) throw new Error(message);
+              console.warn(message);
             }
           }
         }
