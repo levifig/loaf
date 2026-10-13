@@ -108,6 +108,9 @@ func TestHookReconcilePreservesEveryForeignCursorEntry(t *testing.T) {
 	if total := testHookCountForeign(before); total != 33 {
 		t.Fatalf("live Cursor fixture has %d foreign entries, want 33", total)
 	}
+	// A new native event may be appended; existing sections and all foreign
+	// values retain their exact order. The new section contains only Loaf hooks.
+	before = append(before, "event beforeShellExecution")
 	if !reflect.DeepEqual(before, after) {
 		t.Fatalf("the preserved half of the document changed across the reconcile:\nbefore %#v\nafter  %#v", before, after)
 	}
@@ -210,8 +213,16 @@ func TestHookReconcileLeavesTheConvergedCursorFileAlone(t *testing.T) {
 	actions := fixture.apply(t)
 
 	description := describeHookActions(actions)
-	if len(actions) != 15 || !strings.Contains(description, "remove hook:postToolUse") || !strings.Contains(description, "remove hook:preToolUse") || !strings.Contains(description, "update hook:postToolUse/kb-staleness-nudge") || !strings.Contains(description, "add hook:preToolUse/validate-infra-safety") || !strings.Contains(description, "add hook:preToolUse/validate-sql-safety") {
-		t.Fatalf("actions = %s, want two retirements, the native nudge update, ten JSON updates, and two new safety hooks", description)
+	if len(actions) != 20 || !strings.Contains(description, "remove hook:postToolUse") || !strings.Contains(description, "remove hook:preToolUse") || !strings.Contains(description, "update hook:postToolUse/kb-staleness-nudge") || !strings.Contains(description, "add hook:preToolUse/validate-infra-safety") || !strings.Contains(description, "add hook:preToolUse/validate-sql-safety") {
+		t.Fatalf("actions = %s, want two retirements, the native nudge update, ten JSON updates, two new safety hooks, and five instruction migration actions", description)
+	}
+	for _, id := range []string{"workflow-pre-merge", "workflow-pre-push"} {
+		if !testHookHasAction(actions, hookActionRemove, id) || !testHookHasAction(actions, hookActionAdd, id) {
+			t.Fatalf("actions = %s, want native event migration for %s", description, id)
+		}
+	}
+	if !testHookHasAction(actions, hookActionUpdate, "workflow-post-merge") {
+		t.Fatalf("actions = %s, want post-merge native context update", description)
 	}
 	for _, hookID := range []string{"artifact-body-write", "check-secrets", "security-audit", "render-drift", "ephemeral-provenance", "artifact-names", "github-account", "validate-push", "workflow-pre-pr", "validate-commit"} {
 		if !testHookHasAction(actions, hookActionUpdate, hookID) {

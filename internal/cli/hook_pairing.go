@@ -45,6 +45,13 @@ type hookPairingOutcome struct {
 // removed rather than converged in place.
 func pairHookEventEntries(recognition hookRecognition, event string, entries []map[string]any) (hookPairingOutcome, error) {
 	catalogEntries := recognition.catalog.entriesForEvent(event)
+	// These two historical instruction entries changed Cursor event because
+	// allow + agent_message is documented only for beforeShellExecution.
+	for _, candidate := range recognition.catalog.Entries {
+		if cursorInstructionPreviousEvent(recognition.target, candidate.Event, candidate.HookID) == event {
+			catalogEntries = append(catalogEntries, candidate)
+		}
+	}
 	outcome := hookPairingOutcome{}
 	claimed := map[string]bool{}
 	for index, entry := range entries {

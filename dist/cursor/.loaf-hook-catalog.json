@@ -317,17 +317,25 @@
       ]
     },
     {
-      "event": "preToolUse",
+      "event": "beforeShellExecution",
       "hook_id": "workflow-pre-merge",
       "type": "command",
       "template": {
         "loaf-managed": true,
         "timeout": 5,
-        "matcher": "Bash",
-        "command": "cat \"$HOME/.cursor/hooks/instructions/pre-merge.md\"",
-        "if": "Bash(gh pr merge:*)"
+        "matcher": "\\bgh\\b[\\s\\S]*\\bpr\\b[\\s\\S]*\\bmerge\\b",
+        "command": "loaf check --hook workflow-pre-merge --advisory --json --cursor-hook"
       },
       "signatures": [
+        [
+          "loaf",
+          "check",
+          "--hook",
+          "workflow-pre-merge",
+          "--advisory",
+          "--json",
+          "--cursor-hook"
+        ],
         [
           "cat",
           "$HOME/.cursor/hooks/instructions/pre-merge.md"
@@ -335,22 +343,31 @@
       ],
       "stems": [
         [
-          "$HOME/.cursor/hooks/instructions/pre-merge.md"
+          "--hook",
+          "workflow-pre-merge"
         ]
       ]
     },
     {
-      "event": "preToolUse",
+      "event": "beforeShellExecution",
       "hook_id": "workflow-pre-push",
       "type": "command",
       "template": {
         "loaf-managed": true,
         "timeout": 5,
-        "matcher": "Bash",
-        "command": "cat \"$HOME/.cursor/hooks/instructions/pre-push.md\"",
-        "if": "Bash(git push:*)"
+        "matcher": "\\bgit\\b[\\s\\S]*\\bpush\\b",
+        "command": "loaf check --hook workflow-pre-push --advisory --json --cursor-hook"
       },
       "signatures": [
+        [
+          "loaf",
+          "check",
+          "--hook",
+          "workflow-pre-push",
+          "--advisory",
+          "--json",
+          "--cursor-hook"
+        ],
         [
           "cat",
           "$HOME/.cursor/hooks/instructions/pre-push.md"
@@ -358,7 +375,8 @@
       ],
       "stems": [
         [
-          "$HOME/.cursor/hooks/instructions/pre-push.md"
+          "--hook",
+          "workflow-pre-push"
         ]
       ]
     },
@@ -429,11 +447,19 @@
       "template": {
         "loaf-managed": true,
         "timeout": 5,
-        "matcher": "Bash",
-        "command": "cat \"$HOME/.cursor/hooks/instructions/post-merge.md\"",
-        "if": "Bash(gh pr merge:*)"
+        "matcher": "Shell",
+        "command": "loaf check --hook workflow-post-merge --advisory --json --cursor-hook"
       },
       "signatures": [
+        [
+          "loaf",
+          "check",
+          "--hook",
+          "workflow-post-merge",
+          "--advisory",
+          "--json",
+          "--cursor-hook"
+        ],
         [
           "cat",
           "$HOME/.cursor/hooks/instructions/post-merge.md"
@@ -441,7 +467,8 @@
       ],
       "stems": [
         [
-          "$HOME/.cursor/hooks/instructions/post-merge.md"
+          "--hook",
+          "workflow-post-merge"
         ]
       ]
     },

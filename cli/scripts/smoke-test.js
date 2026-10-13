@@ -91,10 +91,10 @@ function testCursor() {
     assert(journalPr.if === "Bash(gh pr:*)", `Expected if: Bash(gh pr:*), got: ${journalPr.if}`);
   });
   
-  test("post-merge instruction hook has if condition", () => {
+  test("post-merge instruction uses native Cursor context adapter", () => {
     const postTool = hooks.hooks.postToolUse || [];
     const postMerge = postTool.find(
-      h => h.command?.includes("post-merge.md") && h.if === "Bash(gh pr merge:*)"
+      h => h.command?.includes("--hook workflow-post-merge") && h.matcher === "Shell" && !h.if
     );
     assert(postMerge, "post-merge instruction hook not found");
   });

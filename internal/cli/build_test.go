@@ -1103,7 +1103,7 @@ func TestRunnerBuildTargetCursorRunsNativeTarget(t *testing.T) {
 		`"command": "loaf check --hook validate-sql-safety --json --cursor-hook"`,
 		`"command": "loaf check --hook validate-push --advisory --json --cursor-hook"`,
 		`"command": "loaf check --hook workflow-pre-pr --advisory --json --cursor-hook"`,
-		`"command": "cat \"$HOME/.cursor/hooks/instructions/pre-merge.md\""`,
+		`"command": "loaf check --hook workflow-pre-merge --advisory --json --cursor-hook"`,
 		`"postToolUse": [`,
 		`"command": "bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh"`,
 		`"sessionStart": [`,
@@ -3103,13 +3103,19 @@ func assertNativeBuildCursorHookSemantics(root string, hook nativeBuildHook) err
 		return err
 	}
 	command := nativeCursorHookCommand(hook)
-	for _, entry := range payload.Hooks.PreToolUse {
+	entries := payload.Hooks.PreToolUse
+	wantIf := hook.ifCondition
+	if hook.instruction != "" {
+		entries = payload.Hooks.BeforeShellExecution
+		wantIf = ""
+	}
+	for _, entry := range entries {
 		if entry.Command == command {
 			if entry.FailClosed != hook.failClosed {
 				return fmt.Errorf("cursor hook %s failClosed = %v, want %v", hook.id, entry.FailClosed, hook.failClosed)
 			}
-			if entry.If != hook.ifCondition {
-				return fmt.Errorf("cursor hook %s if = %q, want %q", hook.id, entry.If, hook.ifCondition)
+			if entry.If != wantIf {
+				return fmt.Errorf("cursor hook %s if = %q, want %q", hook.id, entry.If, wantIf)
 			}
 			return nil
 		}

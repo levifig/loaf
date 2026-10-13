@@ -30,6 +30,9 @@ func (r Runner) runCursorCheck(args []string, out io.Writer, runtimeRoot string)
 	if err != nil {
 		return writeCursorCheck(out, checkJSONOutput{Errors: []string{err.Error()}, Blocked: true}, false)
 	}
+	if spec, instruction := cursorInstructionSpecs[options.hook]; instruction {
+		return r.runCursorInstruction(spec, out)
+	}
 	if options.hook == "kb-staleness-nudge" {
 		options.cursorOutput = true
 		return r.runKbStalenessNudge(out, runtimeRoot, options)

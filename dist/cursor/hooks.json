@@ -1,6 +1,20 @@
 {
   "version": 1,
   "hooks": {
+    "beforeShellExecution": [
+      {
+        "loaf-managed": true,
+        "timeout": 5,
+        "matcher": "\\bgh\\b[\\s\\S]*\\bpr\\b[\\s\\S]*\\bmerge\\b",
+        "command": "loaf check --hook workflow-pre-merge --advisory --json --cursor-hook"
+      },
+      {
+        "loaf-managed": true,
+        "timeout": 5,
+        "matcher": "\\bgit\\b[\\s\\S]*\\bpush\\b",
+        "command": "loaf check --hook workflow-pre-push --advisory --json --cursor-hook"
+      }
+    ],
     "preToolUse": [
       {
         "loaf-managed": true,
@@ -84,20 +98,6 @@
       },
       {
         "loaf-managed": true,
-        "timeout": 5,
-        "matcher": "Bash",
-        "command": "cat \"$HOME/.cursor/hooks/instructions/pre-merge.md\"",
-        "if": "Bash(gh pr merge:*)"
-      },
-      {
-        "loaf-managed": true,
-        "timeout": 5,
-        "matcher": "Bash",
-        "command": "cat \"$HOME/.cursor/hooks/instructions/pre-push.md\"",
-        "if": "Bash(git push:*)"
-      },
-      {
-        "loaf-managed": true,
         "timeout": 30,
         "matcher": "Shell",
         "failClosed": true,
@@ -115,9 +115,8 @@
       {
         "loaf-managed": true,
         "timeout": 5,
-        "matcher": "Bash",
-        "command": "cat \"$HOME/.cursor/hooks/instructions/post-merge.md\"",
-        "if": "Bash(gh pr merge:*)"
+        "matcher": "Shell",
+        "command": "loaf check --hook workflow-post-merge --advisory --json --cursor-hook"
       }
     ],
     "sessionStart": [

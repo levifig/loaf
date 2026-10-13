@@ -38,7 +38,7 @@ func TestHookCatalogIsEmittedForCursorAndCodexBuilds(t *testing.T) {
 		"check-secrets":         "preToolUse",
 		"validate-infra-safety": "preToolUse",
 		"validate-sql-safety":   "preToolUse",
-		"workflow-pre-merge":    "preToolUse",
+		"workflow-pre-merge":    "beforeShellExecution",
 		"generate-task-board":   "postToolUse",
 		"kb-staleness-nudge":    "postToolUse",
 		"session-start-loaf":    "sessionStart",

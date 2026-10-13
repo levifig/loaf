@@ -35,13 +35,15 @@ Dispatch depends on the registered entry and the target adapter:
 |------|-------|----------|---------|
 | **Native check** | None of `script:`, `command:`, `instruction:`, or `prompt:` | Runs `loaf check --hook <id>` | `check-secrets` |
 | **command** | `command:` | Runs a CLI command | `loaf journal context --from-hook` |
-| **Instruction** | `instruction:` (with `type: command`) | Claude Code, Cursor, and OpenCode: the build copies the instruction file into the target's hooks output and the generated hook prints it when it fires. Codex does not project instruction hooks. Amp generates the command but does not yet ship the file | `instructions/pre-merge.md` |
+| **Instruction** | `instruction:` (with `type: command`) | Claude Code and OpenCode print the copied instruction file when the hook fires. Cursor reads the same copied file through its native JSON adapter. Codex does not project instruction hooks. Amp generates the command but does not yet ship the file | `instructions/pre-merge.md` |
 | **prompt** | `prompt:` | Injects inline text into model context | Validation gates |
 | **Legacy script** | `script:` | Compatibility only; do not add maintained Bash/Python implementations | — |
 
 Instruction hooks are used for advisory checklists (pre-merge, pre-push, post-merge).
 
 OpenCode pre-tool enforcement requires an executable command or script. Native checks, including `ephemeral-provenance` before `git push`, dispatch through `loaf check --hook <id>`. Exit 0 allows the tool; exit 2 rejects it and preserves the checker's refusal. A `failClosed: true` hook also rejects missing dispatch, a missing runtime, subprocess spawn errors, unexpected nonzero exits, signals, and timeouts. Advisory hooks warn on other failures and continue, while an explicit exit 2 still rejects the tool. Failure messages identify the hook or subprocess problem so the operator can restore the runtime or hook configuration and retry.
+
+Cursor projects pre-merge and pre-push instructions to `beforeShellExecution`, whose command matcher filters shell command text and whose native response supports `permission: "allow"` with `agent_message`. Post-merge stays on `postToolUse` with a `Shell` matcher and returns `additional_context`. The native dispatcher checks executable arguments before reading guidance, so benign commands and quoted mentions receive no checklist. Missing or unreadable guidance produces valid advisory JSON, rather than a malformed-output block. These three entries carry no unsupported `if` field; other adapters keep their existing conditions. Historical `cat` entries and prior disabled intent remain recognized when the pre-tool instructions move to the native shell event. See [Cursor Hooks](https://cursor.com/docs/hooks) for the transport contract. This is source and protocol coverage, not a claim of live Cursor reproduction.
 
 ## Hook Events
 
