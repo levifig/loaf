@@ -41,6 +41,8 @@ Dispatch depends on the registered entry and the target adapter:
 
 Instruction hooks are used for advisory checklists (pre-merge, pre-push, post-merge).
 
+OpenCode pre-tool enforcement requires an executable command or script. Native checks, including `ephemeral-provenance` before `git push`, dispatch through `loaf check --hook <id>`. Exit 0 allows the tool; exit 2 rejects it and preserves the checker's refusal. A `failClosed: true` hook also rejects missing dispatch, a missing runtime, subprocess spawn errors, unexpected nonzero exits, signals, and timeouts. Advisory hooks warn on other failures and continue, while an explicit exit 2 still rejects the tool. Failure messages identify the hook or subprocess problem so the operator can restore the runtime or hook configuration and retry.
+
 ## Hook Events
 
 | Event | Timing | Can Block | Use Case |

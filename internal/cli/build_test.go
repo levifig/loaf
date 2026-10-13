@@ -1541,7 +1541,7 @@ func TestNativeOpenCodePluginExcludesAmpConsumerReadiness(t *testing.T) {
 		t.Fatalf("readNativeBuildHooks error = %v", err)
 	}
 	plugin := renderNativeOpenCodePlugin(hooks, "test")
-	for _, unwanted := range []string{"AmpConsumerReadiness", "runAmpConsumerAgentCheck", "ampLstat", "loaf-orb.pin", "loaf-orb-bootstrap.sh", "loaf check --hook ephemeral-provenance"} {
+	for _, unwanted := range []string{"AmpConsumerReadiness", "runAmpConsumerAgentCheck", "ampLstat", "loaf-orb.pin", "loaf-orb-bootstrap.sh"} {
 		if strings.Contains(plugin, unwanted) {
 			t.Fatalf("generated OpenCode plugin contains Amp-only content %q", unwanted)
 		}
