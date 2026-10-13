@@ -1,11 +1,11 @@
 ---
 name: project-management
 description: >-
-  Defines the provider-neutral project-management/v1 contract for canonical
-  tracker work and mandatory capture of concrete follow-ups. Use when a Flow
-  ceremony or deferred actionable finding needs native work through an
-  already-configured harness connection. Not for configuring providers or
-  storing work locally.
+  Establishes native work authority before implementation and defines
+  project-management/v1 tracker operations. Use when concrete requests such as
+  "Let's implement it" need verification, before loading implement; also for
+  Flow ceremonies and deferred follow-ups. Uses an already-configured harness
+  connection. Not for configuring providers or storing work locally.
 version: 0.6.0-rc.2
 ---
 
@@ -22,6 +22,7 @@ Use the closed [`project-management/v1`](contract.json) operation vocabulary. Th
 
 ## Critical Rules
 
+- For concrete implementation requests, apply the common [Flow entry rule](../loaf-reference/references/flow-semantics.md#before-entering-implementation) here before loading Implement or announcing execution. Reuse complete selected work; route only missing contract details to Shape.
 - Discover only connections the harness already exposes. Never install, authenticate, or configure one.
 - Prefer an already configured usable GitHub MCP that matches `integrations.github.account`. Select that connection before resource access. Otherwise an installed authenticated `gh` in the main agent's permitted shell, including `gh api`, is a valid exposed GitHub capability before asking the user to configure MCP. Unrelated Linear MCP does not determine GitHub authority. MCP actor identity comes from the selected connector; `gh` identity is not MCP evidence. Unusable MCP may fall back to `gh` only for the main agent, which must separately verify the `gh` actor without bypassing the account requirement or permissions. Connector-only execution stays connector-only.
 - Select and report the exact native destination before mutation. A provider name alone is not a destination. On GitHub, name the board by title; if the title matches the repository or Loaf project, call it the project board. Never report `Project #N`.
