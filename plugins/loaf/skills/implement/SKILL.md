@@ -1,12 +1,12 @@
 ---
 name: implement
 description: >-
-  Implements a selected native tracker contract after authoritative scope,
-  criteria, and selection readback. Use when the common implementation-entry
-  prerequisite has been verified. A bare invocation reports the unblocked Todo
-  frontier; it does not start work. Produces code, authorized atomic history,
-  and verification evidence for ship. Not for initial discovery or review-only
-  work.
+  Implements an already-verified selected native tracker contract. Use when live
+  scope, criteria, and selection readback are complete. For concrete requests
+  such as "Let's implement it", use project-management first, before loading
+  this skill. A bare invocation reports the unblocked Todo frontier without
+  starting work. Produces code, authorized atomic history, and verification
+  evidence for ship. Not for initial discovery or review-only work.
 user-invocable: true
 argument-hint: '[linear:ENG-42 | branch:issue/foo | next | description]'
 version: 0.6.0-rc.2
@@ -14,7 +14,7 @@ version: 0.6.0-rc.2
 
 # Implement
 
-Enter execution only after [Flow Semantics](../loaf-reference/references/flow-semantics.md#before-entering-implementation) establishes the live selected contract through [`project-management/v1`](../project-management/SKILL.md). The tracker defines the work; repository instructions and code define the implementation surface. Loading this guidance to route a bare or incomplete request does not authorize execution.
+Load this skill for a concrete implementation request only after [Flow Semantics](../loaf-reference/references/flow-semantics.md#before-entering-implementation) establishes the live selected contract through [`project-management/v1`](../project-management/SKILL.md). The tracker defines the work; repository instructions and code define the implementation surface. A bare invocation may load this guidance to report the frontier, without starting execution.
 
 ## Contents
 
@@ -30,7 +30,7 @@ Enter execution only after [Flow Semantics](../loaf-reference/references/flow-se
 Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
 
 - As the first action, run `loaf journal log "skill(implement): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
-- Before announcing implementation, invoking this workflow for execution, dispatching an implementation worker, or making substantive edits, apply the common Flow entry rule and its narrow exceptions. Read the named issue or search for matching work; reuse a complete selected contract without repeating Shape, shape only missing details, and verify native scope, criteria and selected state. Honor an existing concrete implementation request without asking for selection again. Before starting, identify the verified native reference and completion criteria proportionately. An invocation journal entry records intent, not work authority.
+- Before announcing implementation, loading or invoking this workflow for a concrete request, dispatching an implementation worker, or making substantive edits, apply the common Flow entry rule and its narrow exceptions. Read the named issue or search for matching work; reuse a complete selected contract without repeating Shape, shape only missing details, and verify native scope, criteria and selected state. Honor an existing concrete implementation request without asking for selection again. Before starting, identify the verified native reference and completion criteria proportionately. An invocation journal entry records intent, not work authority.
 - Re-read the native work record, completion criteria, hierarchy, dependencies, status, and recent relevant comments before planning. If the record is Backlog intent or otherwise unselected and the human has not selected its implementation, refuse and do not start. A bare invocation without a concrete implementation request reports the unblocked Todo frontier (selected, unblocked native records) and does not start. Never infer the issue from the current branch, worktree name, or open editor. In Progress is not the frontier.
 - Read Todo from the destination tracker's native lane (GitHub: board Status), not from Issue open/closed and not from a different provider's MCP. An authenticated `gh` that can see the destination repository and named board is a GitHub connection. Linear MCP in the same session does not mean GitHub is unavailable.
 - Confirm the live contract makes Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals concrete. If it describes layers or future-only machinery instead, return it to shape.
@@ -61,7 +61,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 |-----------|--------|
 | Unselected / Backlog intent | Refuse; do not start |
 | Bare invocation without a concrete implementation request | Report the unblocked Todo frontier from the destination tracker; do not start; do not infer from the branch |
-| Explicit concrete implementation request without an issue ID | Find or create its native contract and verify scope, criteria, and selection before substantive edits |
+| Concrete implementation request with or without an issue ID | Use project-management and the common Flow entry rule before loading Implement, announcing execution, delegating implementation, or editing |
 | Branch or worktree looks like an issue | Ignore it unless the human named that issue |
 | Linear MCP present, GitHub is the tracker | Use `gh` / GitHub connection; do not claim GitHub is unavailable |
 | Clear unmet criterion, ordinary defect, obtainable missing in-scope evidence, or other in-scope technical work | Stay in implement; do not bounce to shape |

@@ -21,7 +21,7 @@ func TestImplementationEntryGuidanceReachesInstalledSkills(t *testing.T) {
 	if err := (Runner{Stdout: &stdout, WorkingDir: root}).Run([]string{"build"}); err != nil {
 		t.Fatalf("build: %v\n%s", err, stdout.String())
 	}
-	selected := []string{"implement", "loaf-reference", "orchestration"}
+	selected := []string{"implement", "loaf-reference", "orchestration", "project-management"}
 	for _, target := range defaultBuildTargets {
 		for _, upgrade := range []bool{false, true} {
 			name := target + "/fresh"
@@ -49,7 +49,7 @@ func TestImplementationEntryGuidanceReachesInstalledSkills(t *testing.T) {
 				if flow != string(readFileBytes(t, filepath.Join(source, "loaf-reference", "references", "flow-semantics.md"))) {
 					t.Fatal("installed canonical entry guidance differs from the distribution")
 				}
-				for _, phrase := range []string{"## Before Entering Implementation", "Before announcing implementation", "selected workflow state", "without repeating Shape", "explicit scoped override"} {
+				for _, phrase := range []string{"## Before Entering Implementation", "Before announcing implementation", "loading or invoking Implement for a concrete request", "selected workflow state", "without repeating Shape", "explicit scoped override"} {
 					if !strings.Contains(flow, phrase) {
 						t.Errorf("%s misses entry guidance %q", target, phrase)
 					}
@@ -61,6 +61,10 @@ func TestImplementationEntryGuidanceReachesInstalledSkills(t *testing.T) {
 				implement := string(readFileBytes(t, filepath.Join(dest, "implement", "SKILL.md")))
 				if !strings.Contains(implement, "Before announcing implementation") || !strings.Contains(implement, "#before-entering-implementation") {
 					t.Fatal("installed Implement does not route execution through the canonical early-entry rule")
+				}
+				management := string(readFileBytes(t, filepath.Join(dest, "project-management", "SKILL.md")))
+				if !strings.Contains(management, "before loading implement") || !strings.Contains(management, "#before-entering-implementation") {
+					t.Fatal("installed Project Management does not route concrete implementation requests before Implement")
 				}
 				assertInstallFile(t, foreign, "# Operator skill\nKeep these exact bytes.\n")
 				before, err := hashInstallSkillTree(dest)

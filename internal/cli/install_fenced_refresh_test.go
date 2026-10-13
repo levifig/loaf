@@ -45,7 +45,7 @@ func TestManagedImplementationPrerequisiteReachesFreshAndExistingTargets(t *test
 				if !ok || !strings.Contains(body[section.start:section.end], "**Before Implementation:**") {
 					t.Fatalf("%s lacks the implementation prerequisite in its managed section", path)
 				}
-				for _, entry := range []string{"Before announcing implementation", "invoking Implement for execution", "selected state", "without repeating Shape", "verified native reference and completion criteria"} {
+				for _, entry := range []string{"Before announcing implementation", "loading or invoking Implement for a concrete request", "selected state", "without repeating Shape", "verified native reference and completion criteria"} {
 					if !strings.Contains(body[section.start:section.end], entry) {
 						t.Errorf("%s does not deliver the early-entry rule %q", path, entry)
 					}
