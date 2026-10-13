@@ -617,7 +617,8 @@ func (r *hookReconciler) planAbsorption(records hookRecords, outcomes map[string
 		if !cohort[entry.HookID] || records.recorded(entry.Event, entry.HookID) {
 			continue
 		}
-		if hookPairedInEvent(outcomes[entry.Event], entry.HookID) {
+		previousEvent := cursorInstructionPreviousEvent(r.target, entry.Event, entry.HookID)
+		if hookPairedInEvent(outcomes[entry.Event], entry.HookID) || previousEvent != "" && hookPairedInEvent(outcomes[previousEvent], entry.HookID) {
 			continue
 		}
 		key := hookRecordKey(entry.Event, entry.HookID)
@@ -665,6 +666,16 @@ func (r *hookReconciler) projectEvent(event string, outcome hookPairingOutcome, 
 		})
 	}
 
+	// Remove only the recognized entries whose identity moved to Cursor's
+	// native shell event; foreign entries remain in their original section.
+	for _, pairing := range outcome.paired {
+		for _, entry := range r.catalog.Entries {
+			if entry.HookID == pairing.hookID && cursorInstructionPreviousEvent(r.target, entry.Event, entry.HookID) == event && r.selected("hook:"+entry.Event+"/"+entry.HookID) {
+				removed[pairing.index] = true
+				projection.actions = append(projection.actions, hookAction{action: hookActionRemove, event: event, hookID: pairing.hookID, index: pairing.index, detail: "moved to " + entry.Event})
+			}
+		}
+	}
 	paired := make(map[string]hookEntryPairing, len(outcome.paired))
 	for _, pairing := range outcome.paired {
 		paired[pairing.hookID] = pairing

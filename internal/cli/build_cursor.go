@@ -31,13 +31,14 @@ type nativeCursorHooksJSON struct {
 }
 
 type nativeCursorHookGroups struct {
-	PreToolUse         []nativeCursorHookJSON `json:"preToolUse,omitempty"`
-	PostToolUse        []nativeCursorHookJSON `json:"postToolUse,omitempty"`
-	SessionStart       []nativeCursorHookJSON `json:"sessionStart,omitempty"`
-	SessionEnd         []nativeCursorHookJSON `json:"sessionEnd,omitempty"`
-	BeforeSubmitPrompt []nativeCursorHookJSON `json:"beforeSubmitPrompt,omitempty"`
-	Stop               []nativeCursorHookJSON `json:"stop,omitempty"`
-	PreCompact         []nativeCursorHookJSON `json:"preCompact,omitempty"`
+	BeforeShellExecution []nativeCursorHookJSON `json:"beforeShellExecution,omitempty"`
+	PreToolUse           []nativeCursorHookJSON `json:"preToolUse,omitempty"`
+	PostToolUse          []nativeCursorHookJSON `json:"postToolUse,omitempty"`
+	SessionStart         []nativeCursorHookJSON `json:"sessionStart,omitempty"`
+	SessionEnd           []nativeCursorHookJSON `json:"sessionEnd,omitempty"`
+	BeforeSubmitPrompt   []nativeCursorHookJSON `json:"beforeSubmitPrompt,omitempty"`
+	Stop                 []nativeCursorHookJSON `json:"stop,omitempty"`
+	PreCompact           []nativeCursorHookJSON `json:"preCompact,omitempty"`
 }
 
 type nativeCursorHookJSON struct {
@@ -425,6 +426,23 @@ func nativeCursorHookProjections(hooksPath string) ([]nativeCursorHookProjection
 	}
 	var projections []nativeCursorHookProjection
 	for _, hook := range hooks {
+		if _, instruction := cursorInstructionSpecs[hook.id]; instruction && hook.instruction != "" {
+			event := "beforeShellExecution"
+			entry := nativeCursorHookEntry(hook, 5000, false)
+			entry.If = ""
+			// Native filters admit paths, quotes and shell operators; the
+			// instruction dispatcher checks exact executable arguments.
+			if hook.section == "post-tool" {
+				event = "postToolUse"
+				entry.Matcher = "Shell"
+			} else if hook.id == "workflow-pre-push" {
+				entry.Matcher = `\bgit\b[\s\S]*\bpush\b`
+			} else {
+				entry.Matcher = `\bgh\b[\s\S]*\bpr\b[\s\S]*\bmerge\b`
+			}
+			projections = append(projections, nativeCursorHookProjection{event: event, hookID: hook.id, hook: hook, entry: entry})
+			continue
+		}
 		switch hook.section {
 		case "pre-tool":
 			projections = append(projections, nativeCursorHookProjection{
@@ -472,6 +490,8 @@ func generateNativeCursorHooksJSON(hooksPath string, dist string) error {
 	payload.Version = 1
 	for _, projection := range projections {
 		switch projection.event {
+		case "beforeShellExecution":
+			payload.Hooks.BeforeShellExecution = append(payload.Hooks.BeforeShellExecution, projection.entry)
 		case "preToolUse":
 			payload.Hooks.PreToolUse = append(payload.Hooks.PreToolUse, projection.entry)
 		case "postToolUse":
@@ -567,6 +587,9 @@ func nativeBuildSecondsTimeout(value int, fallback int) int {
 }
 
 func nativeCursorHookCommand(hook nativeBuildHook) string {
+	if _, instruction := cursorInstructionSpecs[hook.id]; instruction && hook.instruction != "" {
+		return "loaf check --hook " + hook.id + " --advisory --json --cursor-hook"
+	}
 	if hook.instruction != "" {
 		return `cat "$HOME/.cursor/hooks/` + hook.instruction + `"`
 	}

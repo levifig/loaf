@@ -205,7 +205,7 @@ func TestHookPairingOverTheLiveCursorFile(t *testing.T) {
 		foreign += len(outcome.foreign)
 		for _, pairing := range outcome.paired {
 			wantPass := hookPairingTemplate
-			if pairing.hookID == "kb-staleness-nudge" {
+			if pairing.hookID == "kb-staleness-nudge" || pairing.hookID == "workflow-pre-merge" || pairing.hookID == "workflow-pre-push" || pairing.hookID == "workflow-post-merge" {
 				wantPass = hookPairingSignature
 			} else if command, _ := entries[pairing.index]["command"].(string); strings.HasPrefix(command, "loaf check --hook ") {
 				wantPass = hookPairingStem

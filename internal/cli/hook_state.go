@@ -150,6 +150,20 @@ func loadHookRecords(ctx context.Context, store *state.Store, target string) (ho
 	for _, row := range rows {
 		records.enablement[hookRecordKey(row.Event, row.HookID)] = row
 	}
+	if target == "cursor" {
+		for _, id := range []string{"workflow-pre-merge", "workflow-pre-push"} {
+			key := hookRecordKey("beforeShellExecution", id)
+			if _, current := records.enablement[key]; current {
+				continue
+			}
+			if previous, found := records.enablement[hookRecordKey("preToolUse", id)]; found {
+				// Preserve prior operator intent until an explicit toggle records
+				// the new native event. No database migration or write is needed.
+				previous.Event = "beforeShellExecution"
+				records.enablement[key] = previous
+			}
+		}
+	}
 	_, marked, err := store.GetHookAbsorptionMarker(ctx, target)
 	if err != nil {
 		return hookRecords{}, err

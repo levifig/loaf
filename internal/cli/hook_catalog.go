@@ -132,6 +132,9 @@ func hookCatalogGenerationCohorts(target string) []hookCatalogCohort {
 // generation. Closed by construction: every line is a shape a release actually
 // shipped, never a guess at what one might have.
 var hookCatalogHistoricalCommands = map[string][]string{
+	"cursor/workflow-pre-merge":  {`cat "$HOME/.cursor/hooks/instructions/pre-merge.md"`},
+	"cursor/workflow-pre-push":   {`cat "$HOME/.cursor/hooks/instructions/pre-push.md"`},
+	"cursor/workflow-post-merge": {`cat "$HOME/.cursor/hooks/instructions/post-merge.md"`},
 	"cursor/kb-staleness-nudge": {
 		"bash $HOME/.cursor/hooks/post-tool/kb-staleness-nudge.sh",
 	},
