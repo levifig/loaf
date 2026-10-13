@@ -359,6 +359,7 @@ func TestJournalContextForResumptionEmitsDigest(t *testing.T) {
 }
 
 func TestNormalizeJournalHookEnvelopeNamespacedIdentities(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "")
 	t.Setenv("CLAUDECODE", "")
 	tests := []struct {
@@ -667,6 +668,7 @@ func TestNormalizeJournalHookEnvelopeDoesNotFabricateUnknownFields(t *testing.T)
 }
 
 func TestNormalizeJournalHookEnvelopeIsolatesRecognizedNamespace(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "")
 	t.Setenv("CLAUDECODE", "")
 	envelope := normalizeJournalHookEnvelope(journalHookInput{Raw: map[string]any{

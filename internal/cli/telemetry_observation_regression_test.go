@@ -12,6 +12,7 @@ import (
 )
 
 func TestTelemetryReportsJournalOnlyHarnessUsage(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "test-thread")
 	t.Setenv("CODEX_VERSION", "1.2.3")
 	t.Setenv("CLAUDECODE", "")
@@ -53,6 +54,7 @@ func TestTelemetryReportsJournalOnlyHarnessUsage(t *testing.T) {
 }
 
 func TestObservedHarnessRejectsConflictingMarkers(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "inherited-parent")
 	t.Setenv("CODEX_VERSION", "1.2.3")
 	t.Setenv("CLAUDECODE", "1")

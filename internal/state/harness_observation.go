@@ -8,18 +8,36 @@ import (
 // ObservedHarnessFromEnvironment uses running-harness markers only. Conflicting
 // inherited markers cannot establish which harness is active; do not guess.
 func ObservedHarnessFromEnvironment() (string, string) {
-	codex := strings.TrimSpace(os.Getenv("CODEX_THREAD_ID")) != ""
-	claude := strings.TrimSpace(os.Getenv("CLAUDECODE")) != ""
-	if codex && claude {
-		return "unknown", "unknown"
+	// Runtime adapters identify their own hook subprocess, independently of
+	// inherited parent-harness markers. This is provenance, not authentication.
+	switch os.Getenv("LOAF_HOOK_TYPE") {
+	case "pre-tool", "post-tool", "session", "harness":
+		switch os.Getenv("LOAF_HOOK_HARNESS") {
+		case "amp":
+			return "amp", knownHarnessVersion(os.Getenv("AMP_VERSION"))
+		case "opencode":
+			return "opencode", knownHarnessVersion(os.Getenv("OPENCODE_VERSION"))
+		}
 	}
-	if codex {
-		return "codex", knownHarnessVersion(os.Getenv("CODEX_VERSION"))
+	harness, version := "unknown", "unknown"
+	for _, marker := range []struct {
+		active           bool
+		name, versionKey string
+	}{
+		{strings.TrimSpace(os.Getenv("CODEX_THREAD_ID")) != "", "codex", "CODEX_VERSION"},
+		{strings.TrimSpace(os.Getenv("CLAUDECODE")) != "", "claude-code", "CLAUDE_CODE_VERSION"},
+		{os.Getenv("AGENT") == "amp", "amp", "AMP_VERSION"},
+		{os.Getenv("OPENCODE") == "1", "opencode", "OPENCODE_VERSION"},
+	} {
+		if !marker.active {
+			continue
+		}
+		if harness != "unknown" {
+			return "unknown", "unknown"
+		}
+		harness, version = marker.name, knownHarnessVersion(os.Getenv(marker.versionKey))
 	}
-	if claude {
-		return "claude-code", knownHarnessVersion(os.Getenv("CLAUDE_CODE_VERSION"))
-	}
-	return "unknown", "unknown"
+	return harness, version
 }
 
 func knownHarnessVersion(value string) string {

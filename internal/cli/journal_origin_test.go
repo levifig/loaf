@@ -10,6 +10,7 @@ import (
 )
 
 func TestObservedHarnessFromEnvironment(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "")
 	t.Setenv("CODEX_VERSION", "")
 	t.Setenv("CLAUDECODE", "")
@@ -30,6 +31,13 @@ func TestObservedHarnessFromEnvironment(t *testing.T) {
 	t.Setenv("CLAUDECODE", "1")
 	if harness, version := observedHarnessFromEnvironment(); harness != "claude-code" || version != "unknown" {
 		t.Fatalf("Claude marker = %q %q", harness, version)
+	}
+}
+
+func clearAdditionalHarnessMarkers(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{"AGENT", "AMP_VERSION", "OPENCODE", "OPENCODE_VERSION", "LOAF_HOOK_HARNESS", "LOAF_HOOK_TYPE"} {
+		t.Setenv(key, "")
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 )
 
 func TestLiveContinuityWritersRecordHarnessProvenance(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "test-thread")
 	t.Setenv("CODEX_VERSION", "1.2.3")
 	t.Setenv("CLAUDECODE", "")
@@ -57,6 +58,7 @@ func TestLiveContinuityWritersRecordHarnessProvenance(t *testing.T) {
 }
 
 func TestLiveContinuityUnknownAndHistoricFactBytes(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "")
 	t.Setenv("CLAUDECODE", "")
 	root, _, store := explorationFixture(t)
@@ -95,6 +97,7 @@ func TestLiveContinuityUnknownAndHistoricFactBytes(t *testing.T) {
 }
 
 func TestExplorationObservationMigrationPreservesHistory(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "")
 	t.Setenv("CLAUDECODE", "")
 	ctx := context.Background()
@@ -145,6 +148,7 @@ func TestExplorationObservationMigrationPreservesHistory(t *testing.T) {
 }
 
 func TestContinuityStatusCountsProjectsAtMonthBoundary(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "thread")
 	t.Setenv("CODEX_VERSION", "1.2.3")
 	t.Setenv("CLAUDECODE", "")

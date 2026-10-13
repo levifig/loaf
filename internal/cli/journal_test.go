@@ -299,6 +299,7 @@ func TestJournalDeferWithoutChangeCapturesAvailableGitOrigin(t *testing.T) {
 }
 
 func TestJournalLogCapturesManualOriginAcrossGitContexts(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "")
 	t.Setenv("CODEX_VERSION", "")
 	t.Setenv("CLAUDECODE", "")

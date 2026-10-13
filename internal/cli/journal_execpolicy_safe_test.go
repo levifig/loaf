@@ -95,6 +95,7 @@ func TestJournalLogExecpolicySafeFromHookWarnsForUnprovenPayload(t *testing.T) {
 }
 
 func TestJournalLogExecpolicySafeDetectLinearUsesRuntimeGit(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
 	t.Setenv("CODEX_THREAD_ID", "")
 	t.Setenv("CLAUDECODE", "")
 	workingDir, stateHome, databasePath := initExecpolicySafeProject(t)
