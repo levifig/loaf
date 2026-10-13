@@ -293,12 +293,12 @@ func detectInstallMcpForTarget(projectRoot string, target string, mcpID string) 
 		return installMcpTargetStatus{}
 	}
 	globalPath := resolveInstallMcpPath(config.globalPath, projectRoot, true)
-	projectPath := resolveInstallMcpPath(config.projectPath, projectRoot, false)
 	configured, notice := installMcpFileConfigured(globalPath, mcpID)
 	if configured {
 		return installMcpTargetStatus{configured: true, scope: "global"}
 	}
-	projectConfigured, projectNotice := installMcpFileConfigured(projectPath, mcpID)
+	projectBody, projectErr := readProjectFileAt(projectRoot, filepath.FromSlash(config.projectPath))
+	projectConfigured, projectNotice := installMcpReadConfigured(projectBody, projectErr, mcpID)
 	if projectNotice != "" {
 		notice = joinInstallMcpNotices(notice, projectNotice)
 	}
@@ -324,6 +324,10 @@ func joinInstallMcpNotices(first string, second string) string {
 // and the dry-run plan never dress "could not look" as "not configured".
 func installMcpFileConfigured(path string, mcpID string) (bool, string) {
 	body, err := readRegularFile(path, projectFileReadLimit)
+	return installMcpReadConfigured(body, err, mcpID)
+}
+
+func installMcpReadConfigured(body []byte, err error, mcpID string) (bool, string) {
 	if err != nil {
 		if os.IsNotExist(err) || errors.Is(err, fs.ErrNotExist) {
 			return false, ""
@@ -621,7 +625,7 @@ func unreadableLoafConfig(path string, reason error) unusableLoafConfigError {
 // a file it had not read a single byte of.
 func readInstallLoafConfigDocument(projectRoot string) (map[string]any, error) {
 	path := filepath.Join(projectRoot, ".agents", "loaf.json")
-	body, err := readRegularFile(path, projectFileReadLimit)
+	body, err := readProjectFileAt(projectRoot, filepath.Join(".agents", "loaf.json"))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return map[string]any{}, nil

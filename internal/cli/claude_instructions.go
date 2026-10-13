@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"syscall"
 )
 
 // Every .claude/CLAUDE.md repair runs through an *os.Root opened at the
@@ -25,7 +24,7 @@ var claudeInstructionsName = filepath.FromSlash(claudeInstructionsPath)
 func lstatClaudeInstructions(root *os.Root) (fs.FileInfo, bool, error) {
 	info, err := root.Lstat(claudeInstructionsName)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, false, nil
 		}
 		return nil, false, err
@@ -57,7 +56,7 @@ func removeClaudeInstructionsLink(root *os.Root) error {
 	if !exists || info.Mode()&os.ModeSymlink == 0 {
 		return fmt.Errorf("%s is no longer a symlink; re-run to re-check it", claudeInstructionsPath)
 	}
-	return root.Remove(claudeInstructionsName)
+	return removeProjectEntry(root, claudeInstructionsName, info)
 }
 
 // retireClaudeInstructionsFile retires a real .claude/CLAUDE.md. It moves the
@@ -83,14 +82,12 @@ func retireClaudeInstructionsFile(root *os.Root, canonical string) (string, bool
 	if err != nil {
 		return "", false, err
 	}
-	if err := root.Rename(claudeInstructionsName, backup); err != nil {
+	if err := renameProjectFileNoReplace(root, claudeInstructionsName, backup); err != nil {
 		return "", false, err
 	}
 	merged, err := mergeRetiredClaudeInstructions(root, backup, canonical)
 	if err != nil {
-		if rollbackErr := root.Rename(backup, claudeInstructionsName); rollbackErr != nil {
-			err = fmt.Errorf("%w (rollback failed: %v)", err, rollbackErr)
-		}
+		err = restoreProjectFile(root, backup, claudeInstructionsName, err)
 		return "", false, err
 	}
 	return filepath.ToSlash(backup), merged, nil
@@ -101,9 +98,9 @@ func mergeRetiredClaudeInstructions(root *os.Root, backup string, canonical stri
 	if err != nil {
 		return false, refuseProjectFileRead(err)
 	}
-	merged, err := mergeDoctorContentIntoCanonical(canonical, stripDoctorLoafFence(string(body)), claudeInstructionsPath)
-	if err == nil && !doctorFileExists(canonical) {
-		err = writeFileAtomically(canonical, []byte{}, 0o644)
+	merged, err := mergeRootProjectContent(root, "AGENTS.md", stripDoctorLoafFence(string(body)), claudeInstructionsPath)
+	if err == nil && !rootProjectFileExists(root, "AGENTS.md") {
+		err = createProjectFile(root, "AGENTS.md", []byte{}, 0o644)
 	}
 	return merged, err
 }

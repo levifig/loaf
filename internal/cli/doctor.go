@@ -480,6 +480,9 @@ func checkLegacyAgentsFile() doctorCheck {
 		Description: ".agents/AGENTS.md is absent after migration to root AGENTS.md",
 		Repair:      "Preserve and merge user content, back up .agents/AGENTS.md, and retire the legacy path",
 		Run: func(ctx doctorContext) doctorResult {
+			if err := inspectProjectFiles(ctx.projectRoot, ".agents/AGENTS.md"); err != nil {
+				return doctorProjectInspectionFailure(err)
+			}
 			legacy := filepath.Join(ctx.projectRoot, ".agents", "AGENTS.md")
 			if !pathExistsForDoctor(legacy) {
 				return doctorResult{Status: doctorPass, Message: "No legacy .agents/AGENTS.md"}
@@ -507,13 +510,23 @@ func checkClaudeInstructions() doctorCheck {
 			claudePath := filepath.Join(ctx.projectRoot, ".claude", "CLAUDE.md")
 			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
 
-			if target, symlinked := symlinkedClaudeDirTarget(ctx.projectRoot); symlinked {
+			target, symlinked, err := symlinkedClaudeDirTarget(ctx.projectRoot)
+			if err != nil {
+				return doctorProjectInspectionFailure(err)
+			}
+			if symlinked {
 				return doctorResult{
 					Status:  doctorFail,
 					Message: ".claude is a symlink, so .claude/CLAUDE.md cannot be checked safely",
 					Detail:  symlinkedClaudeDirMessage(target) + " `loaf doctor`.",
 					Fixable: false,
 				}
+			}
+			if installIsSymlink(filepath.Join(ctx.projectRoot, ".claude")) {
+				return doctorResult{Status: doctorPass, Message: "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"}
+			}
+			if err := inspectProjectFiles(ctx.projectRoot, claudeInstructionsName, "AGENTS.md"); err != nil {
+				return doctorProjectInspectionFailure(err)
 			}
 			if !pathExistsForDoctor(claudePath) {
 				return doctorResult{Status: doctorPass, Message: "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"}
@@ -557,7 +570,11 @@ func checkClaudeInstructions() doctorCheck {
 		Fix: func(ctx doctorContext, _ doctorResult) doctorFixResult {
 			claudePath := filepath.Join(ctx.projectRoot, ".claude", "CLAUDE.md")
 			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
-			if _, symlinked := symlinkedClaudeDirTarget(ctx.projectRoot); symlinked {
+			_, symlinked, err := symlinkedClaudeDirTarget(ctx.projectRoot)
+			if err != nil {
+				return doctorFixResult{Message: err.Error()}
+			}
+			if symlinked {
 				return doctorFixResult{Fixed: false, Message: "State no longer matches - re-run doctor"}
 			}
 			if !pathExistsForDoctor(claudePath) || symlinkPointsToForDoctor(claudePath, canonical) {
@@ -586,6 +603,9 @@ func checkClaudeRootImport() doctorCheck {
 		Name:        "claude-root-import",
 		Description: "Root CLAUDE.md and CLAUDE.local.md, when present, import root AGENTS.md",
 		Run: func(ctx doctorContext) doctorResult {
+			if err := inspectProjectFiles(ctx.projectRoot, "CLAUDE.md", "CLAUDE.local.md"); err != nil {
+				return doctorProjectInspectionFailure(err)
+			}
 			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
 			var present, missing []string
 			for _, name := range claudeRootInstructionFiles {
@@ -597,7 +617,10 @@ func checkClaudeRootImport() doctorCheck {
 				if isSymlinkForDoctor(path) && symlinkPointsToForDoctor(path, canonical) {
 					continue
 				}
-				body, err := readRegularFileNoFollow(path, projectFileReadLimit)
+				body, err := readProjectFileNoFollowAt(ctx.projectRoot, name)
+				if err != nil && !isSymlinkForDoctor(path) {
+					return doctorProjectInspectionFailure(err)
+				}
 				if err == nil && importsRootAgentsFile(string(body)) {
 					continue
 				}
@@ -640,6 +663,9 @@ func checkCanonicalAgentsFile() doctorCheck {
 		Description: "Root AGENTS.md is the canonical real project instruction file",
 		Repair:      "Create a canonical real root AGENTS.md while preserving legacy instruction content",
 		Run: func(ctx doctorContext) doctorResult {
+			if err := inspectProjectFiles(ctx.projectRoot, "AGENTS.md", ".agents/AGENTS.md"); err != nil {
+				return doctorProjectInspectionFailure(err)
+			}
 			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
 			legacy := filepath.Join(ctx.projectRoot, ".agents", "AGENTS.md")
 			claudeLink := filepath.Join(ctx.projectRoot, ".claude", "CLAUDE.md")
@@ -658,52 +684,7 @@ func checkCanonicalAgentsFile() doctorCheck {
 			return doctorResult{Status: doctorPass, Message: "Root AGENTS.md is the canonical real file"}
 		},
 		Fix: func(ctx doctorContext, _ doctorResult) doctorFixResult {
-			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
-			legacy := filepath.Join(ctx.projectRoot, ".agents", "AGENTS.md")
-			if pathExistsForDoctor(canonical) && !isSymlinkForDoctor(canonical) {
-				return doctorFixResult{Fixed: false, Message: "State no longer matches - re-run doctor"}
-			}
-			body := []byte{}
-			legacyIsReal := doctorRegularFileExists(legacy) && !isSymlinkForDoctor(legacy)
-			if legacyIsReal {
-				var err error
-				body, err = readRegularFile(legacy, projectFileReadLimit)
-				if err != nil {
-					return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", refuseProjectFileRead(err))}
-				}
-			} else if pathExistsForDoctor(canonical) {
-				var err error
-				body, err = readRegularFile(canonical, projectFileReadLimit)
-				if err != nil && !os.IsNotExist(err) {
-					return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", refuseProjectFileRead(err))}
-				}
-			}
-			// A real .claude/CLAUDE.md is not copied here: claude-agents-md merges
-			// it with provenance and retires the path, so copying it too would
-			// land the same content in root AGENTS.md twice.
-			canonicalWasSymlink := isSymlinkForDoctor(canonical)
-			if pathExistsForDoctor(canonical) {
-				if err := os.Remove(canonical); err != nil {
-					return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", err)}
-				}
-			}
-			legacyBackup := ""
-			if legacyIsReal {
-				legacyBackup = collisionSafeInstallBackupPath(legacy)
-				if err := os.Rename(legacy, legacyBackup); err != nil {
-					return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", err)}
-				}
-			}
-			if err := os.WriteFile(canonical, body, 0o644); err != nil {
-				if legacyBackup != "" {
-					_ = os.Rename(legacyBackup, legacy)
-					if canonicalWasSymlink {
-						_ = os.Symlink(filepath.Join(".agents", "AGENTS.md"), canonical)
-					}
-				}
-				return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Could not create AGENTS.md: %v", err)}
-			}
-			return doctorFixResult{Fixed: true, Message: "Created canonical root AGENTS.md"}
+			return repairDoctorCanonicalAgentsFile(ctx.projectRoot)
 		},
 	}
 }
@@ -714,6 +695,9 @@ func checkStaleCursorMdc() doctorCheck {
 		Description: "No stale .cursor/rules/loaf.mdc left over from legacy installs",
 		Repair:      "Remove stale .cursor/rules/loaf.mdc",
 		Run: func(ctx doctorContext) doctorResult {
+			if err := inspectProjectFiles(ctx.projectRoot, ".cursor/rules/loaf.mdc"); err != nil {
+				return doctorProjectInspectionFailure(err)
+			}
 			stale := filepath.Join(ctx.projectRoot, ".cursor", "rules", "loaf.mdc")
 			if !pathExistsForDoctor(stale) {
 				return doctorResult{Status: doctorPass, Message: "No stale .cursor/rules/loaf.mdc"}
@@ -730,7 +714,20 @@ func checkStaleCursorMdc() doctorCheck {
 			if !pathExistsForDoctor(stale) {
 				return doctorFixResult{Fixed: false, Message: "Nothing to remove"}
 			}
-			if err := os.Remove(stale); err != nil {
+			root, err := os.OpenRoot(ctx.projectRoot)
+			if err != nil {
+				return doctorFixResult{Message: err.Error()}
+			}
+			defer root.Close()
+			name := filepath.Join(".cursor", "rules", "loaf.mdc")
+			info, exists, err := projectFileInfo(root, name)
+			if err != nil {
+				return doctorFixResult{Message: err.Error()}
+			}
+			if !exists {
+				return doctorFixResult{Message: "Nothing to remove"}
+			}
+			if err := removeProjectEntry(root, name, info); err != nil {
 				return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Delete failed: %v", err)}
 			}
 			return doctorFixResult{Fixed: true, Message: "Removed .cursor/rules/loaf.mdc"}
@@ -743,24 +740,16 @@ func checkFencedContent() doctorCheck {
 		Name:        "fenced-content",
 		Description: "Fenced section content matches the installed loaf constant",
 		Run: func(ctx doctorContext) doctorResult {
+			if err := inspectProjectFiles(ctx.projectRoot, "AGENTS.md"); err != nil {
+				return doctorProjectInspectionFailure(err)
+			}
 			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
 			if !doctorRegularFileExists(canonical) {
 				return doctorResult{Status: doctorSkip, Message: "No root AGENTS.md to inspect"}
 			}
-			body, err := readRegularFile(canonical, projectFileReadLimit)
+			body, err := readProjectFileAt(ctx.projectRoot, "AGENTS.md")
 			if err != nil {
-				if isProjectFileRefusal(err) {
-					return doctorResult{
-						Status:  doctorWarn,
-						Message: "Root AGENTS.md could not be inspected",
-						Detail:  fmt.Sprintf("%v. Loaf reads the whole file to compare the managed section; replace the path with a regular file before installing or upgrading.", err),
-					}
-				}
-				return doctorResult{
-					Status:  doctorWarn,
-					Message: "No loaf:managed fenced section found in AGENTS.md",
-					Detail:  "Run `loaf install` to add the framework section.",
-				}
+				return doctorProjectInspectionFailure(err)
 			}
 			content := string(body)
 			section, ok := findFencedSectionRange(content)
@@ -794,15 +783,33 @@ func checkDuplicateFencedSections() doctorCheck {
 		Run: func(ctx doctorContext) doctorResult {
 			claudePath := filepath.Join(ctx.projectRoot, ".claude", "CLAUDE.md")
 			agentsPath := filepath.Join(ctx.projectRoot, "AGENTS.md")
-			if _, symlinked := symlinkedClaudeDirTarget(ctx.projectRoot); symlinked {
+			_, symlinked, err := symlinkedClaudeDirTarget(ctx.projectRoot)
+			if err != nil {
+				return doctorProjectInspectionFailure(err)
+			}
+			if symlinked {
 				return doctorResult{Status: doctorSkip, Message: ".claude is a symlink; see claude-agents-md"}
+			}
+			if installIsSymlink(filepath.Join(ctx.projectRoot, ".claude")) {
+				return doctorResult{Status: doctorSkip, Message: "No duplication risk - at least one side is absent or a symlink"}
+			}
+			if err := inspectProjectFiles(ctx.projectRoot, claudeInstructionsName, "AGENTS.md"); err != nil {
+				return doctorProjectInspectionFailure(err)
 			}
 			claudeIsReal := pathExistsForDoctor(claudePath) && !isSymlinkForDoctor(claudePath)
 			agentsIsReal := pathExistsForDoctor(agentsPath) && !isSymlinkForDoctor(agentsPath)
 			if !claudeIsReal || !agentsIsReal {
 				return doctorResult{Status: doctorSkip, Message: "No duplication risk - at least one side is absent or a symlink"}
 			}
-			if hasDoctorFencedSection(claudePath) && hasDoctorFencedSection(agentsPath) {
+			claudeFence, err := hasDoctorFencedSection(ctx.projectRoot, claudeInstructionsName)
+			if err != nil {
+				return doctorProjectInspectionFailure(err)
+			}
+			agentsFence, err := hasDoctorFencedSection(ctx.projectRoot, "AGENTS.md")
+			if err != nil {
+				return doctorProjectInspectionFailure(err)
+			}
+			if claudeFence && agentsFence {
 				return doctorResult{
 					Status:  doctorFail,
 					Message: "Duplicate fenced sections in both .claude/CLAUDE.md and AGENTS.md",
@@ -815,7 +822,11 @@ func checkDuplicateFencedSections() doctorCheck {
 		Fix: func(ctx doctorContext, _ doctorResult) doctorFixResult {
 			claudePath := filepath.Join(ctx.projectRoot, ".claude", "CLAUDE.md")
 			canonical := filepath.Join(ctx.projectRoot, "AGENTS.md")
-			if _, symlinked := symlinkedClaudeDirTarget(ctx.projectRoot); symlinked || !doctorFileExists(canonical) || !pathExistsForDoctor(claudePath) || isSymlinkForDoctor(claudePath) {
+			_, symlinked, err := symlinkedClaudeDirTarget(ctx.projectRoot)
+			if err != nil {
+				return doctorFixResult{Message: err.Error()}
+			}
+			if symlinked || !doctorFileExists(canonical) || !pathExistsForDoctor(claudePath) || isSymlinkForDoctor(claudePath) {
 				return doctorFixResult{Fixed: false, Message: "State no longer matches - re-run doctor"}
 			}
 			return retireDoctorClaudeFile(ctx.projectRoot, canonical)
@@ -961,45 +972,55 @@ func symlinkPointsToForDoctor(linkPath string, expectedAbs string) bool {
 }
 
 func retireLegacyDoctorAgentsFile(projectRoot string) doctorFixResult {
-	legacy := filepath.Join(projectRoot, ".agents", "AGENTS.md")
-	canonical := filepath.Join(projectRoot, "AGENTS.md")
-	if !pathExistsForDoctor(legacy) {
-		return doctorFixResult{Fixed: false, Message: "State no longer matches - re-run doctor"}
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return doctorFixResult{Message: err.Error()}
 	}
-	if isSymlinkForDoctor(legacy) {
-		if err := os.Remove(legacy); err != nil {
-			return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", err)}
+	defer root.Close()
+	legacy := filepath.Join(".agents", "AGENTS.md")
+	info, exists, err := projectFileInfo(root, legacy)
+	if err != nil {
+		return doctorFixResult{Message: "Migration failed: " + err.Error()}
+	}
+	if !exists {
+		return doctorFixResult{Message: "State no longer matches - re-run doctor"}
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		if err := removeProjectEntry(root, legacy, info); err != nil {
+			return doctorFixResult{Message: "Migration failed: " + err.Error()}
 		}
 		return doctorFixResult{Fixed: true, Message: "Removed legacy .agents/AGENTS.md symlink"}
 	}
-	if !doctorRegularFileExists(canonical) || isSymlinkForDoctor(canonical) {
-		return doctorFixResult{Fixed: false, Message: "Canonical root AGENTS.md is not ready - re-run doctor"}
-	}
-	body, err := readRegularFile(legacy, projectFileReadLimit)
+	canonicalInfo, canonicalExists, err := projectFileInfo(root, "AGENTS.md")
 	if err != nil {
-		return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", refuseProjectFileRead(err))}
+		return doctorFixResult{Message: "Migration failed: " + err.Error()}
 	}
-	stripped := stripDoctorLoafFence(string(body))
-	backup := collisionSafeInstallBackupPath(legacy)
-	if err := os.Rename(legacy, backup); err != nil {
-		return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", err)}
+	if !canonicalExists || !canonicalInfo.Mode().IsRegular() {
+		return doctorFixResult{Message: "Canonical root AGENTS.md is not ready - re-run doctor"}
 	}
-	merged, err := mergeLegacyAgentsContentIntoCanonical(canonical, stripped, ".agents/AGENTS.md")
+	if _, err := readProjectFile(root, legacy); err != nil {
+		return doctorFixResult{Message: fmt.Sprintf("Migration failed: %v", refuseProjectFileRead(err))}
+	}
+	backup, err := collisionSafeRootBackupName(root, legacy)
 	if err != nil {
-		if rollbackErr := os.Rename(backup, legacy); rollbackErr != nil {
-			err = fmt.Errorf("%w (rollback failed: %v)", err, rollbackErr)
-		}
-		return doctorFixResult{Fixed: false, Message: fmt.Sprintf("Migration failed: %v", err)}
+		return doctorFixResult{Message: "Migration failed: " + err.Error()}
+	}
+	if err := renameProjectFileNoReplace(root, legacy, backup); err != nil {
+		return doctorFixResult{Message: "Migration failed: " + err.Error()}
+	}
+	body, err := readProjectFile(root, backup)
+	merged := false
+	if err == nil {
+		merged, err = mergeRootProjectContent(root, "AGENTS.md", stripDoctorLoafFence(string(body)), ".agents/AGENTS.md")
+	}
+	if err != nil {
+		return doctorFixResult{Message: "Migration failed: " + restoreProjectFile(root, backup, legacy, err).Error()}
 	}
 	suffix := ""
 	if merged {
 		suffix = " and merged user content into root AGENTS.md"
 	}
-	relBackup, relErr := filepath.Rel(projectRoot, backup)
-	if relErr != nil {
-		relBackup = backup
-	}
-	return doctorFixResult{Fixed: true, Message: "Backed up legacy .agents/AGENTS.md to " + filepath.ToSlash(relBackup) + suffix}
+	return doctorFixResult{Fixed: true, Message: "Backed up legacy .agents/AGENTS.md to " + filepath.ToSlash(backup) + suffix}
 }
 
 func removeDoctorClaudeLink(projectRoot string) doctorFixResult {
@@ -1046,33 +1067,6 @@ func projectRelativeSlashPath(projectRoot string, path string) string {
 	return filepath.ToSlash(rel)
 }
 
-// mergeDoctorContentIntoCanonical appends migrated user content to root
-// AGENTS.md. Every write goes through a temporary file and a rename, so a
-// failure leaves the existing AGENTS.md bytes intact for the caller's rollback.
-// An existing symlinked AGENTS.md is written at its resolved target, as before.
-func mergeDoctorContentIntoCanonical(canonical string, stripped string, relSource string) (bool, error) {
-	if stripped == "" {
-		return false, nil
-	}
-	if !doctorFileExists(canonical) {
-		return true, writeFileAtomically(canonical, []byte(stripped+"\n"), 0o644)
-	}
-	writePath, err := canonicalFenceWritePath(canonical)
-	if err != nil {
-		return false, err
-	}
-	existing, err := readRegularFile(writePath, projectFileReadLimit)
-	if err != nil {
-		return false, refuseProjectFileRead(err)
-	}
-	trimmedExisting := strings.TrimRight(string(existing), " \t\r\n")
-	body := stripped + "\n"
-	if trimmedExisting != "" {
-		body = trimmedExisting + "\n\n## Migrated from " + relSource + "\n\n" + stripped + "\n"
-	}
-	return true, writeFileAtomically(writePath, []byte(body), fencedWriteMode(writePath, true))
-}
-
 func stripDoctorLoafFence(content string) string {
 	start := strings.Index(content, "<!-- loaf:managed:start")
 	if start < 0 {
@@ -1087,11 +1081,80 @@ func stripDoctorLoafFence(content string) string {
 	return strings.TrimSpace(content[:start] + content[end:])
 }
 
-func hasDoctorFencedSection(path string) bool {
-	body, err := readRegularFile(path, projectFileReadLimit)
+func hasDoctorFencedSection(projectRoot, name string) (bool, error) {
+	body, err := readProjectFileAt(projectRoot, name)
 	if err != nil {
-		return false
+		return false, err
 	}
 	text := string(body)
-	return strings.Contains(text, "<!-- loaf:managed:start") && strings.Contains(text, "<!-- loaf:managed:end -->")
+	return strings.Contains(text, "<!-- loaf:managed:start") && strings.Contains(text, "<!-- loaf:managed:end -->"), nil
+}
+
+func repairDoctorCanonicalAgentsFile(projectRoot string) doctorFixResult {
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return doctorFixResult{Message: err.Error()}
+	}
+	defer root.Close()
+	canonical := "AGENTS.md"
+	legacy := filepath.Join(".agents", "AGENTS.md")
+	info, exists, err := projectFileInfo(root, canonical)
+	if err != nil {
+		return doctorFixResult{Message: "Migration failed: " + err.Error()}
+	}
+	if exists && info.Mode()&os.ModeSymlink == 0 {
+		return doctorFixResult{Message: "State no longer matches - re-run doctor"}
+	}
+	legacyInfo, legacyExists, err := projectFileInfo(root, legacy)
+	if err != nil {
+		return doctorFixResult{Message: "Migration failed: " + err.Error()}
+	}
+	legacyReal := legacyExists && legacyInfo.Mode().IsRegular()
+	body := []byte{}
+	if legacyReal {
+		body, err = readProjectFile(root, legacy)
+	} else if exists {
+		body, err = readProjectFile(root, canonical)
+	}
+	if err != nil && !os.IsNotExist(err) {
+		return doctorFixResult{Message: fmt.Sprintf("Migration failed: %v", refuseProjectFileRead(err))}
+	}
+	canonicalBackup := ""
+	if exists {
+		canonicalBackup, err = collisionSafeRootBackupName(root, canonical)
+		if err == nil {
+			err = moveCheckedProjectFile(root, canonical, canonicalBackup, info)
+		}
+		if err != nil {
+			return doctorFixResult{Message: "Migration failed: " + err.Error()}
+		}
+	}
+	legacyBackup := ""
+	legacyMoved := false
+	if legacyReal {
+		legacyBackup, err = collisionSafeRootBackupName(root, legacy)
+		if err == nil {
+			err = renameProjectFileNoReplace(root, legacy, legacyBackup)
+			legacyMoved = err == nil
+		}
+		if err == nil {
+			body, err = readProjectFile(root, legacyBackup)
+		}
+	}
+	if err == nil {
+		err = createProjectFile(root, canonical, body, 0o644)
+	}
+	if err != nil {
+		if legacyMoved {
+			err = restoreProjectFile(root, legacyBackup, legacy, err)
+		}
+		if canonicalBackup != "" {
+			err = restoreProjectFile(root, canonicalBackup, canonical, err)
+		}
+		return doctorFixResult{Message: "Could not create AGENTS.md: " + err.Error()}
+	}
+	if canonicalBackup != "" {
+		_ = root.Remove(canonicalBackup)
+	}
+	return doctorFixResult{Fixed: true, Message: "Created canonical root AGENTS.md"}
 }
