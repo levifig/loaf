@@ -29,6 +29,12 @@ func (r Runner) runVersion(out io.Writer) error {
 	}
 	fmt.Fprintf(out, "\n%s %s%s\n", ansiBold("loaf"), r.reportedVersion(root), r.versionSuffix(root))
 	fmt.Fprintf(out, "%s %s\n", ansiGray("go"), strings.TrimPrefix(runtimeVersion(), "go"))
+	destination, destinationErr := readProjectGitHubDestination(r.WorkingDir)
+	if destinationErr != nil {
+		fmt.Fprintf(out, "\nProject configuration: %s\n", destinationErr)
+	} else {
+		writeGitHubDestinationText(out, destination)
+	}
 
 	// Targets and Content describe the installed distribution. Without
 	// resolvable executable provenance there is no distribution to describe —

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -38,22 +39,24 @@ type configCheckOptions struct {
 }
 
 type configCheckResult struct {
-	OK          bool                 `json:"ok"`
-	Fixed       bool                 `json:"fixed"`
-	ProjectRoot string               `json:"project_root"`
-	Config      configFileStatus     `json:"config"`
-	Targets     []configTargetStatus `json:"targets,omitempty"`
-	Warnings    []string             `json:"warnings,omitempty"`
-	Errors      []string             `json:"errors,omitempty"`
+	GitHubDestination *githubDestinationStatus `json:"github_destination,omitempty"`
+	OK                bool                     `json:"ok"`
+	Fixed             bool                     `json:"fixed"`
+	ProjectRoot       string                   `json:"project_root"`
+	Config            configFileStatus         `json:"config"`
+	Targets           []configTargetStatus     `json:"targets,omitempty"`
+	Warnings          []string                 `json:"warnings,omitempty"`
+	Errors            []string                 `json:"errors,omitempty"`
 }
 
 type configFileStatus struct {
-	Path     string   `json:"path"`
-	Status   string   `json:"status"`
-	Missing  []string `json:"missing,omitempty"`
-	Updated  []string `json:"updated,omitempty"`
-	Warnings []string `json:"warnings,omitempty"`
-	Errors   []string `json:"errors,omitempty"`
+	GitHubDestination *githubDestinationStatus `json:"-"`
+	Path              string                   `json:"path"`
+	Status            string                   `json:"status"`
+	Missing           []string                 `json:"missing,omitempty"`
+	Updated           []string                 `json:"updated,omitempty"`
+	Warnings          []string                 `json:"warnings,omitempty"`
+	Errors            []string                 `json:"errors,omitempty"`
 }
 
 // configTargetStatus is one installed harness's hook health. Targets whose
@@ -186,6 +189,7 @@ func runConfigCheck(projectRoot string, loafRoot string, options configCheckOpti
 		ProjectRoot: projectRoot,
 		Config:      checkProjectLoafConfig(projectRoot, options.fix, time.Now().UTC()),
 	}
+	result.GitHubDestination = result.Config.GitHubDestination
 	result.Warnings = append(result.Warnings, result.Config.Warnings...)
 	result.Errors = append(result.Errors, result.Config.Errors...)
 	if len(result.Config.Errors) > 0 || result.Config.Status == "upgrade-needed" {
@@ -244,10 +248,19 @@ func checkProjectLoafConfig(projectRoot string, fix bool, now time.Time) configF
 		return status
 	}
 
+	// Keep opaque provider numbers exact when mechanical defaults are written.
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
 	var parsed any
-	if err := json.Unmarshal(body, &parsed); err != nil {
+	if err := decoder.Decode(&parsed); err != nil {
 		status.Status = "invalid"
 		status.Errors = append(status.Errors, fmt.Sprintf("cannot parse .agents/loaf.json: %v", err))
+		return status
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		status.Status = "invalid"
+		status.Errors = append(status.Errors, ".agents/loaf.json must contain one JSON object without trailing content")
 		return status
 	}
 	config, ok := parsed.(map[string]any)
@@ -257,6 +270,7 @@ func checkProjectLoafConfig(projectRoot string, fix bool, now time.Time) configF
 		return status
 	}
 
+	status.GitHubDestination = configuredGitHubDestination(config)
 	updated, warnings, errors := ensureLoafConfigDefaults(config, now)
 	status.Missing = append(status.Missing, updated...)
 	status.Warnings = append(status.Warnings, warnings...)
@@ -432,14 +446,22 @@ func validateGitHubIntegration(integrations map[string]any, errors *[]string) []
 		}
 		return []string{"integrations.github.account is not configured; github-account hook will pass through"}
 	}
+	var warnings []string
 	account, ok := section["account"]
 	if !ok || strings.TrimSpace(fmt.Sprint(account)) == "" {
-		return []string{"integrations.github.account is not configured; github-account hook will pass through"}
-	}
-	if _, ok := account.(string); !ok {
+		warnings = append(warnings, "integrations.github.account is not configured; github-account hook will pass through")
+	} else if _, ok := account.(string); !ok {
 		*errors = append(*errors, "integrations.github.account must be a string")
 	}
-	return nil
+	if raw, exists := section["tracker"]; exists {
+		if _, ok := raw.(bool); !ok {
+			*errors = append(*errors, "integrations.github.tracker must be a boolean")
+		}
+	}
+	if destination := configuredGitHubDestination(map[string]any{"integrations": integrations}); destination != nil {
+		*errors = append(*errors, destination.Errors...)
+	}
+	return warnings
 }
 
 func writeLoafConfig(path string, config map[string]any) error {
@@ -467,7 +489,10 @@ func jsonArrayOfStrings(value any) bool {
 }
 
 func jsonNumber(value any) bool {
-	switch value.(type) {
+	switch value := value.(type) {
+	case json.Number:
+		_, err := value.Float64()
+		return err == nil
 	case float64, int, int64, uint64:
 		return true
 	default:
@@ -684,6 +709,7 @@ func writeConfigCheckText(out io.Writer, result configCheckResult, options confi
 	fmt.Fprintln(out, ansiBold("loaf config check"))
 	fmt.Fprintln(out)
 	writeConfigFileStatusText(out, result.Config)
+	writeGitHubDestinationText(out, result.GitHubDestination)
 	for _, target := range result.Targets {
 		writeConfigTargetStatusText(out, target)
 	}
