@@ -18,7 +18,7 @@
       "kind": "plugin",
       "source_path": ".amp/plugins/loaf.js",
       "destination": "plugins/loaf.js",
-      "sha256": "64e9368778bde12b9cb3511b893c994ee97a34dd000864034b6cf33a8458d08f",
+      "sha256": "0bcb036f6304d84006070e460e7e1a2d075bf87c285407da013d69619cb227bc",
       "mode": 420
     }
   ]

@@ -315,7 +315,6 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 		`"command": "loaf check --hook check-secrets"`,
 		`"command": "loaf check --hook validate-infra-safety"`,
 		`"command": "loaf check --hook validate-sql-safety"`,
-		`"command": "cat \"$LOAF_PLUGIN_DIR/hooks/instructions/pre-merge.md\""`,
 		"const postToolHooks = {",
 		`"script": "post-tool/kb-staleness-nudge.sh"`,
 	} {
@@ -337,6 +336,9 @@ func TestRunnerBuildTargetAmpRunsNativePluginTarget(t *testing.T) {
 		"registerLoafDelegation",
 		"loafNativeModeContext",
 		"delegation.check",
+		"workflow-pre-merge",
+		"workflow-pre-push",
+		"workflow-post-merge",
 	} {
 		if strings.Contains(plugin, unwanted) {
 			t.Fatalf("amp plugin = %q, must not contain obsolete projection %q", plugin, unwanted)
@@ -3139,7 +3141,7 @@ func assertNativeBuildOpenCodeHookSemantics(root string, hook nativeBuildHook) e
 }
 
 func assertNativeBuildAmpHookSemantics(root string, hook nativeBuildHook) error {
-	if hook.id == "detect-linear-magic" {
+	if hook.id == "detect-linear-magic" || hook.instruction != "" {
 		hooks, err := readNativeBuildPluginPreToolHooks(filepath.Join(root, "dist", "amp", ".amp", "plugins", "loaf.js"))
 		if err != nil {
 			return err
@@ -3147,7 +3149,7 @@ func assertNativeBuildAmpHookSemantics(root string, hook nativeBuildHook) error 
 		for _, entries := range hooks {
 			for _, entry := range entries {
 				if entry.ID == hook.id {
-					return fmt.Errorf("amp hook %s present without trustworthy root-session identity", hook.id)
+					return fmt.Errorf("amp hook %s present despite unsupported root-session identity or instruction context", hook.id)
 				}
 			}
 		}

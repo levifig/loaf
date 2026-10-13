@@ -528,7 +528,7 @@ const sessionHooks = ` + marshalNativeAmpHookMap(session) + `;`
 
 func nativeAmpHookDataWithoutSession(hooks []nativeBuildHook) string {
 	preTool := nativeAmpGroupHooksByMatcher(nativeAmpPreToolHooks(hooks))
-	postTool := nativeAmpGroupHooksByMatcher(filterNativeBuildHooks(hooks, "post-tool"))
+	postTool := nativeAmpGroupHooksByMatcher(nativeAmpSupportedToolHooks(hooks, "post-tool"))
 	return `// ─────────────────────────────────────────────────────────────────────────────
 // Hook Data
 // ─────────────────────────────────────────────────────────────────────────────
@@ -538,9 +538,21 @@ const preToolHooks = ` + marshalNativeAmpHookMap(preTool) + `;
 const postToolHooks = ` + marshalNativeAmpHookMap(postTool) + `;`
 }
 
+// Amp allow responses carry no model context. Omit static instruction hooks
+// rather than execute file-backed commands whose successful output is discarded.
+func nativeAmpSupportedToolHooks(hooks []nativeBuildHook, section string) []nativeBuildHook {
+	var supported []nativeBuildHook
+	for _, hook := range filterNativeBuildHooks(hooks, section) {
+		if hook.instruction == "" {
+			supported = append(supported, hook)
+		}
+	}
+	return supported
+}
+
 func nativeAmpPreToolHooks(hooks []nativeBuildHook) []nativeBuildHook {
 	var supported []nativeBuildHook
-	for _, hook := range filterNativeBuildHooks(hooks, "pre-tool") {
+	for _, hook := range nativeAmpSupportedToolHooks(hooks, "pre-tool") {
 		if hook.id == "detect-linear-magic" {
 			continue
 		}
