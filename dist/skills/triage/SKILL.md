@@ -31,6 +31,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Confirm the exact native destination and candidate references before reading or mutating.
 - Show candidates to the human before any recommendation or mutation. The human never has to fish an idea out of the journal or a CLI dump.
 - Read each candidate, its current workflow state, and relevant recent comments before deciding.
+- For GitHub candidates, read the native version milestone and show its exact title, "unassigned," or unavailable evidence in the candidate table; private captures have no native milestone. A version bucket informs comparison; it neither selects implementation nor supplies a workflow state. Follow [version planning](../loaf-reference/references/flow-semantics.md#version-planning); do not create future buckets or assign the backlog during inventory. Other providers keep their existing path.
 - An unrecorded raw direction stays a spark or idea, goes to pitch, or moves to tracker Backlog when the human chooses. Do not capture it in a local issue or intake ledger. Moving to Backlog creates or adopts a native record in the uncommitted lane (GitHub: board Status Backlog; Linear: the team's uncommitted/backlog state, or Triage inbox when that inbox is configured), then resolves the private capture against that native id.
 - Never say "publish." The disposition is move to Backlog, keep, archive, pitch, or shape.
 - Do not move anything to Backlog until the human picks by table index, native id, or an explicit "all of these." Multiple picks in one turn are allowed.
@@ -53,6 +54,8 @@ On a bare `/triage` or "let's triage," do this before recommending:
 |---|------|-------|--------------|---------------------|
 | 1 | idea | short title | captured date, open | no / `#N` Backlog / `#N` other lane |
 
+When GitHub is selected, add a **Milestone** column: exact native title, "unassigned," or "unavailable" for native candidates; use — for private captures. Other providers retain the table above.
+
 3. After the table, expand at most the recommended next candidate in this shape:
 
 **Candidate** `#n` (`idea:…` or spark alias)
@@ -72,6 +75,7 @@ If destination config is incomplete, still show the table. Name the gap after th
 
 - The human saw a numbered candidate table before any recommendation or mutation.
 - Every candidate disposition names its native reference and observed starting state.
+- When GitHub is selected, candidate tables distinguish native milestone assignments, unassigned work, and unavailable milestone evidence without inferring Status or selection.
 - Every mutation used a runtime-supported provider operation and was verified by readback.
 - No candidate disappeared because one independent mutation failed.
 - Ambiguous destination, permissions, or workflow mapping is reported without mutation, after the table.

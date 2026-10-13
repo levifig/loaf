@@ -26,6 +26,9 @@ Before the first journal write, select the command in [Journal Commands](#journa
 
 - As the first action, run `loaf journal log "skill(release): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
 - Read current tags, versions, published releases, repository rules, and candidate native records before proposing a cohort.
+- Read the project's release-tag convention from its instructions and apply the [Version Identity policy](https://github.com/levifig/loaf/blob/main/docs/architecture/runtime-and-delivery.md#version-identity): before 1.0, reserve the major transition for 1.0.0, use minor versions for significant or breaking work, and patch versions for other work worth releasing. After 1.0, keep patch, minor, and next-major planning buckets, with distant ones broad and created only when needed. Preserve project-specific tooling constraints.
+- When GitHub is selected, look for an open milestone whose title exactly matches the proposed release tag through the selected connection. Show its still-open Issues and ask whether to close that milestone and roll the remaining work forward, naming a destination only when rollover is chosen. Keep publication authorization separate; perform approved closure/reassignment only after publication is confirmed, with native readbacks. A milestone is planned scope, not a second Status or proof that its Issues landed. Other providers keep their existing release path.
+- Without a matching milestone, follow the ordinary release journey unchanged. Unplanned intermediary releases are allowed; do not create a milestone merely to release already-landed work. Follow [version planning](../loaf-reference/references/flow-semantics.md#version-planning) for horizon and naming.
 - Include only work whose repository landing and ship verdict are observable. Tracker status alone does not prove landing.
 - Derive human release notes from the actual landed change and live work definition; do not copy internal execution logs.
 - Describe progress by the larger rideable journey now possible, not by horizontal layers completed. If a release contains foundation work only, label it honestly and name the immediate journey intended to consume it; this is release-note truth, not a new refusal gate.
@@ -43,6 +46,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - The authoritative hosting surface confirms the published release and artifacts.
 - Tracker updates name the observed release identity and were confirmed by readback.
 - Release notes state what a real rider can now do, what dogfood proved, and which breadth remains explicitly deferred.
+- A matching milestone's open work and closure/rollover choice are explicit; approved post-publication mutations have readbacks. No-match releases gain no new milestone requirement.
 
 ## Quick Reference
 
