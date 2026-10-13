@@ -36,7 +36,7 @@ func TestObservedHarnessFromEnvironment(t *testing.T) {
 
 func clearAdditionalHarnessMarkers(t *testing.T) {
 	t.Helper()
-	for _, key := range []string{"AGENT", "AMP_VERSION", "OPENCODE", "OPENCODE_VERSION", "LOAF_HOOK_HARNESS", "LOAF_HOOK_TYPE"} {
+	for _, key := range []string{"CURSOR_AGENT", "CURSOR_VERSION", "AGENT", "AMP_VERSION", "OPENCODE", "OPENCODE_VERSION", "LOAF_HOOK_HARNESS", "LOAF_HOOK_TYPE"} {
 		t.Setenv(key, "")
 	}
 }

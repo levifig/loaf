@@ -28,6 +28,7 @@ func ObservedHarnessFromEnvironment() (string, string) {
 		{strings.TrimSpace(os.Getenv("CLAUDECODE")) != "", "claude-code", "CLAUDE_CODE_VERSION"},
 		{os.Getenv("AGENT") == "amp", "amp", "AMP_VERSION"},
 		{os.Getenv("OPENCODE") == "1", "opencode", "OPENCODE_VERSION"},
+		{os.Getenv("CURSOR_AGENT") == "1", "cursor", "CURSOR_VERSION"},
 	} {
 		if !marker.active {
 			continue

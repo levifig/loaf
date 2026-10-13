@@ -8,52 +8,62 @@ import (
 )
 
 func TestLiveContinuityWritersRecordHarnessProvenance(t *testing.T) {
-	clearAdditionalHarnessMarkers(t)
-	t.Setenv("CODEX_THREAD_ID", "test-thread")
-	t.Setenv("CODEX_VERSION", "1.2.3")
-	t.Setenv("CLAUDECODE", "")
-	root, _, store := explorationFixture(t)
-	ctx := context.Background()
-	if _, err := store.LogJournal(ctx, root, JournalLogOptions{Origin: func() *JournalOriginInput { o := newJournalOrigin(); return &o }(), Entry: "discover(test): direct state writer"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.CreateArtifactEntity(ctx, root, ArtifactEntityCreateOptions{Kind: "handoff", Title: "Saved context", Body: "Recipient context"}); err != nil {
-		t.Fatal(err)
-	}
-	_, err := store.CaptureIdea(ctx, root, IdeaCaptureOptions{Title: "A captured idea"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	created, err := store.CreateExploration(ctx, root, ExplorationCreateOptions{Title: "A bounded inquiry"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	options := ExplorationCheckpointOptions{ExplorationRef: created.Exploration.Alias, OperationID: "once", Purpose: "p", Conclusions: "c", Unresolved: "u", NextAction: "n"}
-	if _, err := store.AppendExplorationCheckpoint(ctx, root, options); err != nil {
-		t.Fatal(err)
-	}
-	// Reusing the operation is a readback, not a second observation.
-	if _, err := store.AppendExplorationCheckpoint(ctx, root, options); err != nil {
-		t.Fatal(err)
-	}
-	for _, query := range []string{
-		`SELECT COUNT(*) FROM facts WHERE kind IN ('handoff.recorded','idea.created') AND json_extract(payload,'$.observed_harness')='codex' AND json_extract(payload,'$.observed_harness_version')='1.2.3'`,
-		`SELECT COUNT(*) FROM (SELECT observed_harness,observed_harness_version FROM explorations UNION ALL SELECT observed_harness,observed_harness_version FROM exploration_checkpoints) WHERE observed_harness='codex' AND observed_harness_version='1.2.3'`,
+	for _, test := range []struct {
+		harness, version, codexThread, cursorAgent string
+	}{
+		{"codex", "1.2.3", "test-thread", ""},
+		{"cursor", "unknown", "", "1"},
 	} {
-		var count int
-		if err := store.db.QueryRowContext(ctx, query).Scan(&count); err != nil {
-			t.Fatal(err)
-		}
-		if count != 2 {
-			t.Fatalf("observed rows=%d, want 2 for %s", count, query)
-		}
-	}
-	var harness, version string
-	if err := store.db.QueryRowContext(ctx, `SELECT observed_harness,observed_harness_version FROM journal_origins`).Scan(&harness, &version); err != nil {
-		t.Fatal(err)
-	}
-	if harness != "codex" || version != "1.2.3" {
-		t.Fatalf("journal provenance=%q/%q", harness, version)
+		t.Run(test.harness, func(t *testing.T) {
+			clearAdditionalHarnessMarkers(t)
+			t.Setenv("CODEX_THREAD_ID", test.codexThread)
+			t.Setenv("CODEX_VERSION", test.version)
+			t.Setenv("CURSOR_AGENT", test.cursorAgent)
+			t.Setenv("CLAUDECODE", "")
+			root, _, store := explorationFixture(t)
+			ctx := context.Background()
+			if _, err := store.LogJournal(ctx, root, JournalLogOptions{Origin: func() *JournalOriginInput { o := newJournalOrigin(); return &o }(), Entry: "discover(test): direct state writer"}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.CreateArtifactEntity(ctx, root, ArtifactEntityCreateOptions{Kind: "handoff", Title: "Saved context", Body: "Recipient context"}); err != nil {
+				t.Fatal(err)
+			}
+			_, err := store.CaptureIdea(ctx, root, IdeaCaptureOptions{Title: "A captured idea"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			created, err := store.CreateExploration(ctx, root, ExplorationCreateOptions{Title: "A bounded inquiry"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			options := ExplorationCheckpointOptions{ExplorationRef: created.Exploration.Alias, OperationID: "once", Purpose: "p", Conclusions: "c", Unresolved: "u", NextAction: "n"}
+			if _, err := store.AppendExplorationCheckpoint(ctx, root, options); err != nil {
+				t.Fatal(err)
+			}
+			// Reusing the operation is a readback, not a second observation.
+			if _, err := store.AppendExplorationCheckpoint(ctx, root, options); err != nil {
+				t.Fatal(err)
+			}
+			for _, query := range []string{
+				`SELECT COUNT(*) FROM facts WHERE kind IN ('handoff.recorded','idea.created') AND json_extract(payload,'$.observed_harness')=? AND json_extract(payload,'$.observed_harness_version')=?`,
+				`SELECT COUNT(*) FROM (SELECT observed_harness,observed_harness_version FROM explorations UNION ALL SELECT observed_harness,observed_harness_version FROM exploration_checkpoints) WHERE observed_harness=? AND observed_harness_version=?`,
+			} {
+				var count int
+				if err := store.db.QueryRowContext(ctx, query, test.harness, test.version).Scan(&count); err != nil {
+					t.Fatal(err)
+				}
+				if count != 2 {
+					t.Fatalf("observed rows=%d, want 2 for %s", count, query)
+				}
+			}
+			var harness, version string
+			if err := store.db.QueryRowContext(ctx, `SELECT observed_harness,observed_harness_version FROM journal_origins`).Scan(&harness, &version); err != nil {
+				t.Fatal(err)
+			}
+			if harness != test.harness || version != test.version {
+				t.Fatalf("journal provenance=%q/%q", harness, version)
+			}
+		})
 	}
 }
 
