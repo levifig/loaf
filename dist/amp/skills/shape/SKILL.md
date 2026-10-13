@@ -2,10 +2,10 @@
 name: shape
 description: >-
   Shapes existing pitch, conversation, or native intent into a bounded,
-  independently reviewable tracker work contract. Use when work needs testable
-  completion criteria, explicit exclusions, hierarchy, or dependencies before
-  implementation. Produces a verified native record ready for implement and
-  ship.
+  independently reviewable tracker work contract. Use when work needs criteria,
+  exclusions, hierarchy, dependencies, or version planning such as "put this in
+  the next minor." Produces a verified native record and any needed native
+  version milestone without selecting implementation implicitly.
 version: 0.6.0-rc.2
 ---
 
@@ -35,6 +35,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Make the rideable increment concrete in the existing native definition and criteria: Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals. These are required decisions, not required native headings or a new schema. An existing journey restored by maintenance is valid; one exercise may supply several answers.
 - Set the title through the native work field, then fill every definition-packet field. Definition of done uses independently reviewable criteria; out of scope names what this work deliberately will not solve. Read [Reviewable Criteria](references/reviewable-criteria.md) when writing or changing criteria, exclusions, or material scope.
 - Keep hierarchy and dependencies in their native relationship fields, not in comments or body prose alone. Use existing native owners, priorities, estimates, or cycles only when they are relevant, configured, supported, and authorized; never invent them.
+- When the human plans a GitHub version, read existing native milestones and the release-tag convention in the project's instructions. Reuse the matching bucket; create one through the selected provider only when this shaped work genuinely needs it, then assign the Issue and read back both milestone and assignment. Follow [version planning](../loaf-reference/references/flow-semantics.md#version-planning); a milestone does not select work, and shaping does not pre-create a ladder of future versions. Other providers keep their existing path.
 - Decompose only when a child earns an independently useful, independently verifiable definition of done. Read [Decomposition](references/decomposition.md) before changing hierarchy.
 - Read back the native record, definition, hierarchy, dependencies, and current status before declaring it ready. Writing a sufficient definition does not select the work. Move to Todo in the same turn when the human selects the work, including an existing explicit request to implement that concrete change; do not ask for the same selection again. Otherwise leave Backlog intent in place.
 - The main agent executes common operations through the selected provider skill; delegation never changes semantics or authority.
@@ -48,6 +49,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Any foundation work is exercised by this journey or remains explicitly deferred; no child is only a future wheel.
 - Out-of-scope boundaries prevent likely expansion rather than restating the goal.
 - Parent/child and dependency relationships are confirmed through their native fields.
+- Any requested version milestone and Issue assignment match authoritative readback; execution selection remains a separate native state.
 - Any unsupported provider feature is reported with honest fidelity; no prose substitute is presented as exact.
 
 ## Quick Reference

@@ -20,6 +20,16 @@ Read-only discovery, inspection, and running existing checks are allowed before 
 
 If the connection, required workflow capability, or authoritative readback is unavailable or indeterminate, report the blocker and remain in permitted discovery. Entering implementation requires an explicit scoped override of this prerequisite from the user; record its scope honestly and never claim an issue or selection was verified. Reading guidance to interpret a bare invocation or an ambiguous request is permitted inspection, not permission to announce or begin implementation. A concrete request whose native contract has not yet been read is not that exception. Do not configure authentication or introduce a local shadow tracker. These exceptions waive only this prerequisite, not other authority or safety requirements.
 
+## Version Planning
+
+A version milestone groups intended release scope. It is neither workflow Status nor execution selection: Backlog work stays unselected when assigned to a version, and a closed milestone does not prove its Issues shipped. Releases remain retroactive over already-landed work; an unplanned intermediary release is valid.
+
+### GitHub
+
+Use native milestones through the [GitHub provider](../../github/SKILL.md#version-milestones). Shape creates a bucket dynamically when actual work needs one and assigns the Issue with readback; triage displays existing assignments; release checks a matching open milestone and asks about its remaining work. Do not pre-create future buckets or rebalance existing backlog merely to establish the convention.
+
+Milestone titles exactly match the project's release-tag string, whose convention is recorded once in project instructions. Now / Next / Later follows version order; only ambiguous ordering earns a `Horizon:` line in the milestone description. There is no per-Issue horizon, new board axis, or Loaf milestone model. Other providers retain their existing behavior.
+
 ## Rideable Progress
 
 Every bounded milestone is a complete, useful operator journey: a real rider starts from a named entry point, reaches an observable outcome, and can use the result safely today. Narrow breadth before weakening integrity. Security, determinism, recovery, honest failure, and data safety still apply to the smallest slice; real dogfood and the learning it produces earn later complexity.

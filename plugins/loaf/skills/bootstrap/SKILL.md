@@ -54,6 +54,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - **Prepare an arc of rideable outcomes, not layers** -- series-prep describes the operator journeys that later shape will make concrete; storage, backend, API, UI, and verification are not milestones by themselves
 - **Record routing, never provision a provider** -- when the project exposes a provider connection, record non-secret routing hints in `.agents/loaf.json`; never install, connect, or authenticate it. When the user selects GitHub as the canonical tracker, record `integrations.github.tracker: true`, `repository` (`owner/name`), and `project_id` (the exact opaque Projects v2 global node ID). Complete the [GitHub destination diagnosis](../github/SKILL.md#destination-diagnosis) through the verified connection before declaring setup complete. The board must be active and expose Backlog, Todo, In Progress, and Done; report In Review when present. Read its current title live for display, never use a title or `Project #N` as routing identity. Unavailable board evidence leaves setup unverified; do not invent a destination or workflow.
 - **Suggest, don't execute** -- recommend next skills at the end, never auto-run them
+- **Record release-tag naming once** -- preserve an existing project's tooling convention in root `AGENTS.md`; for a greenfield project use `v`-prefixed SemVer, starting with `v0.1.0`, and ask only when tooling forces another form. This is project-owned prose, not a Loaf config field. The same rule applies to Go, Rails, Python, TS/JS, and Bash projects. Shape creates native version milestones later when needed; bootstrap does not pre-create buckets or assign the backlog.
 - **Log first** -- log invocation before interviewing: `loaf journal log "skill(bootstrap): <project or intake>"`
 - **Log outcome** -- log bootstrap completion to the project journal: `loaf journal log "decision(bootstrap): project bootstrapped, mode detected"`
 
@@ -68,6 +69,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Root `AGENTS.md` is a real file, bootstrap created no `.claude/CLAUDE.md`, and `loaf doctor` passes (see Finalization)
 - When a provider connection was active, `.agents/loaf.json` records its non-secret provider-namespaced routing hints; bootstrap did not install or authenticate it
 - Key decisions and interview outcomes were logged with `loaf journal log` and are readable with `loaf journal recent`
+- Root `AGENTS.md` records one release-tag convention; native milestone titles will mirror that exact string, independently of workflow Status or execution selection.
 
 ---
 
@@ -332,6 +334,7 @@ Start with detected/discussed stack info and build up:
 - Recommended Loaf skills section (based on detected languages, frameworks, project type)
 - Paths to project docs and knowledge base
 - Any conventions or preferences from the interview
+- The release-tag convention, recorded once here: greenfield default `v`-prefixed SemVer (`v0.1.0`), or the existing convention verified from project tooling. Do not duplicate it in language-specific files or create version milestones during bootstrap.
 
 ### Existing Documents
 

@@ -17,6 +17,7 @@ Apply [`project-management/v1`](../project-management/contract.json) through a G
 - Critical Rules
 - Verification
 - Destination Diagnosis
+- Version Milestones
 - Quick Reference
 - Topics
 
@@ -43,15 +44,15 @@ Apply [`project-management/v1`](../project-management/contract.json) through a G
 - Read the current Issue and relevant native relationships before writing; re-read the same Issue and relationship after writing.
 - Never install or authenticate a connector, request or store credentials, construct a GitHub client, invoke a direct provider transport, proxy traffic through Loaf, or store a local work record or ongoing mapping. Installed authenticated `gh` is an exposed harness capability, not a Loaf-owned provider client, auth, proxy, or local mirror.
 - Never blindly repeat Issue creation or comment append after an ambiguous response. Search or re-read native state first and return `indeterminate` when duplication cannot be excluded.
-- Return the common result envelope instead of GitHub-shaped success claims.
+- For `project-management/v1` operations, return the common result envelope instead of GitHub-shaped success claims. Native milestone operations use their own native evidence without inventing a common-contract operation.
 
 ## Verification
 
 - The explicit tracker election and exact repository plus opaque board ID were checked locally, and the [destination diagnosis](#destination-diagnosis) reports the connected live evidence separately. A complete diagnosis confirms the exact repository, active Projects v2 object, current title, observed access, and required Status lanes; unavailable evidence is explicitly unverified.
 - The expected account was taken from `integrations.github.account` and the host from explicit configuration or context, never the repository owner. The selected connection matched that account before resource access. Actor identity was verified through that connection's own transport; `gh` identity was not treated as MCP evidence. Missing, ambiguous, mismatched, or unverifiable identity stopped work before resource operations.
-- Every requested operation maps to all visible runtime capabilities named by the `before`, `execute`, and `after` phases in `capabilities.json`.
-- Every target record and related record was confirmed to be an Issue rather than a pull request before mutation, and create duplicate detection used an `is:issue` search followed by candidate reads.
-- A mutation is `confirmed` only when the final native read shows the intended Issue field, body, relationship, state and state reason, board Status, or comment. A duplicate transition additionally requires native `duplicate_of` readback matching the requested canonical Issue identity. A lane transition is confirmed only when the board Status matches the requested option.
+- Every requested `project-management/v1` operation maps to all visible runtime capabilities named by the `before`, `execute`, and `after` phases in `capabilities.json`.
+- Every targeted Issue and related Issue was confirmed to be an Issue rather than a pull request before mutation, and Issue creation duplicate detection used an `is:issue` search followed by candidate reads.
+- A common-contract mutation is `confirmed` only when the final native read shows the intended Issue field, body, relationship, state and state reason, board Status, or comment. A duplicate transition additionally requires native `duplicate_of` readback matching the requested canonical Issue identity. A lane transition is confirmed only when the board Status matches the requested option. Native milestone mutations require the milestone and assignment readbacks described below.
 - Missing sub-issue, dependency, state-reason, board, or comment capabilities are reported at their observed fidelity rather than represented through labels, prose, or another field. Confirmed missing routing or Status lanes are configuration gaps; an inaccessible board or absent connection capability is unverified, not proof that the board was deleted. Prompt for the specific unresolved choice or access, and do not invent workflow.
 - No connection configuration, credential material, provider transport, local work copy, synchronization path, or persistent mapping was created.
 
@@ -63,6 +64,16 @@ Use this procedure for bootstrap and config-aware maintenance when GitHub is exp
 2. Select an already exposed connection and verify its actor against `integrations.github.account` using the transport and host rules above, before accessing resources. If no permitted, identity-verified connection can read the board, report live verification as unavailable or unverified and name the missing capability or access. Do not install a client, configure authentication, or make Loaf perform provider calls.
 3. Through that connection, read the exact configured repository and resolve the exact `project_id` as a global node. Confirm that the returned object is an active Projects v2 board and read its current title and Status field options. Treat the ID as opaque: never decode it, require a prefix, search by a cached title, substitute a same-named board, or infer its owner from the repository. A null result, `404`, or permission error does not prove deletion or a bad ID; preserve the observed response and report that evidence as unverified unless the connection establishes a specific defect.
 4. Return one combined report: configured repository and exact board ID; local validity; verified actor and transport; observed repository and board readability; current live board title and active state when available; Status options with Backlog, Todo, In Progress, and Done each marked present, confirmed missing, or unverified; and In Review when present. Separate confirmed configuration defects from unavailable capability or authorization. Successful reads prove the observed read access only, never write permission. Do not persist title, lanes, access snapshots, credentials, or work mirrors in project config. If required lanes are confirmed missing, name the missing lanes and stop affected work; if they cannot be read, leave them unverified. Never replace board Status with Issue open/closed, labels, or prose.
+
+## Version Milestones
+
+Use the selected connection's native milestone operations and the Issue's milestone field for version planning. If the configured MCP lacks those operations, the main agent may use installed authenticated `gh` after verifying its actor through that transport. Milestones add no Loaf command, configuration, capability entry, or `project-management/v1` operation; do not emulate them with labels, bodies, a board field, or a local ledger.
+
+Read repository milestones and the current Issue before creation or assignment. Reuse a matching title, create a bucket only when shaped work needs it, and read back both the milestone and the Issue's assigned milestone. Preserve partial or indeterminate results; never blindly repeat an ambiguous create. A milestone's native number is distinct from an Issue number or the opaque project-board ID.
+
+Titles equal the full release-tag string from the project's instructions, including any prefix or prerelease suffix. Compare version order for Now / Next / Later; use a `Horizon:` line in the milestone description only when that order is ambiguous. Horizon belongs to the milestone, never an Issue or another board axis. Existing assignments and names are not permission to rename buckets or rebalance the backlog. Milestone membership does not change board Status, select implementation, or prove a release.
+
+At release time, read the exact matching open milestone and its remaining open Issues before asking about closure and rollover. Publication, Issue reassignment, and milestone closure are distinct authorized effects; read back each effect that actually occurs. Releases without a matching milestone keep their ordinary path.
 
 ## Quick Reference
 

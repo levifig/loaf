@@ -81,6 +81,7 @@ Comprehensive verification belongs locally. Default remote CI runs `make ci-chec
 ## Versions and Releases
 
 - The version lives in `package.json`, and the build injects it into output files. Use semantic versioning.
+- Release tags use `v`-prefixed SemVer (for example, `v0.6.0-rc.2`); native version milestone titles match the full tag string exactly.
 - Change the version only with explicit approval; keep manifest, generated content, release heading, and tag consistent.
 - Curate `CHANGELOG.md` for users: aggregate landed behavior, explain compatibility changes, and cite public references rather than internal work IDs.
 - `make release` and `make package` prepare and verify native archives but do not publish.
