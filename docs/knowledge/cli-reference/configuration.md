@@ -5,17 +5,13 @@ Work top to bottom; stop when the checks pass.
 
 ## Diagnose first
 
-Run `loaf config check --json` and read the structured findings — never scrape the
-human-readable output. It validates `.agents/loaf.json` and the installed
-Loaf-managed hook config, and flags missing safe defaults, stale installed-target
-config, and malformed fields.
+Run `loaf config check --json` and read the structured findings — never scrape the human-readable output. It validates `.agents/loaf.json` and installed Loaf-managed hook config, and flags missing safe defaults, stale installed-target config, and malformed fields. For an explicit `integrations.github.tracker: true` election, the `github_destination` object reports the configured `repository` and opaque `project_id`, local errors when present, and `live_verification: "not-performed"`. `loaf version` displays the same project destination separately from running distribution identity and remains informational for incomplete config or outside a project. Neither command contacts GitHub or proves that the configured node is a usable board.
+
+When GitHub is selected, finish the existing diagnostic ceremony through the [GitHub destination diagnosis](../../../content/skills/github/SKILL.md#destination-diagnosis), using an already exposed, identity-verified harness connection. Return one report combining local validity with exact repository and board ID, current live title, observed access, and Status options: Backlog, Todo, In Progress, and Done are required, with In Review reported when present. Confirmed missing routing or lanes is a configuration defect; unavailable access or capability leaves live evidence unverified. A `404` does not prove deletion, a successful read does not prove write permission, and Issue open/closed never substitutes for board lanes.
 
 ## Safe repairs
 
-`loaf config check --fix` creates missing safe defaults and refreshes stale
-installed-target hook config. Review what it changed, then re-run
-`loaf config check --json` to confirm it passes. `--fix` only touches mechanical,
-reversible repairs — it never invents project-owned values.
+`loaf config check --fix` creates missing safe defaults and refreshes stale installed-target hook config. Review what it changed, then re-run `loaf config check --json` to confirm it passes. `--fix` only touches mechanical, reversible repairs: it never elects a tracker, invents or replaces a repository or board ID, fetches live board metadata, or changes opaque provider-specific fields.
 
 ## Project-owned choices (ask the user)
 
@@ -24,19 +20,9 @@ These are decisions, not defaults. The CLI cannot guess them — ask, then recor
 - **GitHub account** — `integrations.github.account`, the login the project's `gh`
   commands must run as. The `github-account` enforcement hook checks it against
   `gh auth status`; a mismatch tells the user to run `gh auth switch`.
-- **GitHub destination** — when GitHub is the canonical tracker, also record
-  `integrations.github.repository` (`owner/name`) and `integrations.github.board`
-  (the Projects v2 board **title**). If that title matches the repository or Loaf
-  project, agents should call it the project board. Never record or speak
-  `Project #N`. There is no CLI setter; hand-edit, then `loaf config check --json`.
-- **Issue identity** — `issue.authority` (`local`, `linear`, or `github`) and
-  `issue.prefix`. Prefix is the local alias token (`VCAM`) or, when authority is
-  `linear`, the Linear team key (`ENG`). `loaf init` and a newly created loaf.json
-  record a derived local prefix; `loaf issue identity --prefix` / `--authority`
-  is the setter. `--fix` never invents these on an existing file. When GitHub is
-  the tracker, set `--authority github` and keep local `LOAF-*` rows as leftover
-  compatibility until an explicit migrate.
-- **Tracker / integration election** — `integrations.linear.enabled` and the other `integrations.*` toggles. Linear execution identity is `issue.authority`, not the historical skill-mode toggle. When Linear is active, record the exact server exposed by the harness as `integrations.linear.mcp_server_name`. The Linear or bootstrap skill records this project-owned value; Loaf does not install or authenticate the MCP.
+- **GitHub tracker and destination** — when the user selects GitHub as the canonical tracker, record `integrations.github.tracker: true`, `integrations.github.repository` (`owner/name`), and `integrations.github.project_id` (the exact opaque Projects v2 global node ID). Account-only settings, `enabled`, a legacy board title, a Git remote, or `issue.authority` do not elect GitHub. IDs are opaque: local syntax validation cannot establish object type, existence, or access. Read the current title live for display; never store title, lane, or access snapshots as routing identity. There is no CLI setter; edit narrowly after the project-owned choice is confirmed, rerun `loaf config check --json`, and complete the connected diagnosis above.
+- **Legacy issue identity (migration compatibility only)** — historical `issue.authority` (`local`, `linear`, or `github`) and `issue.prefix` belong to frozen local issue commands; they do not elect the current native tracker. The prefix is the local alias token (`VCAM`) or the historical Linear team key (`ENG`). `loaf issue identity --prefix` / `--authority` remains a compatibility setter, and `--fix` never invents these fields on an existing file. Preserve leftover local rows until an explicitly authorized migration; do not use these commands as ongoing work authority or synchronization.
+- **Integration routing** — preserve provider-specific `integrations.*` toggles and opaque fields; they do not elect GitHub. When Linear is active, record the exact server exposed by the harness as `integrations.linear.mcp_server_name`. The Linear or bootstrap skill records this project-owned value; Loaf does not install or authenticate the connection.
 - **Which harnesses to install** — the targets passed to `loaf install --to <target>`
   (or `--to all`).
 - **Codex basic command policy** — `loaf install --to codex --codex-basic-commands` explicitly installs PATH `loaf` managed command rules for the centrally classified basic Loaf leaves, including hardened journal logging and approved readers, outside the workspace sandbox. Each rule keeps the subcommand prefix; the policy does not grant a bare `loaf` namespace or a writable Loaf data-directory root. Global `AGENTS.md` remains user-owned: no guidance block is installed or required. Upgrades remove only unchanged recorded legacy blocks in regular files; edited blocks, absent blocks, and symlinks are preserved and never block independent rule updates. Ownership records for preserved legacy guidance are retained, not treated as a requirement to recreate it. Unclassified and operator commands remain gated. Do not enable it implicitly.
