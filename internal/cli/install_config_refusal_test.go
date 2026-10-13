@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,9 +20,10 @@ const preservedLoafConfigBody = "{\"integrations\":{\"linear\":{\"enabled\":true
 // unreadableLoafConfigCase is one such state, with the assertion that it came
 // through the command exactly as it went in.
 type unreadableLoafConfigCase struct {
-	name   string
-	setup  func(t *testing.T, root string)
-	verify func(t *testing.T, root string)
+	name          string
+	layoutRefusal bool
+	setup         func(t *testing.T, root string)
+	verify        func(t *testing.T, root string)
 }
 
 func unreadableLoafConfigCases() []unreadableLoafConfigCase {
@@ -57,7 +59,8 @@ func unreadableLoafConfigCases() []unreadableLoafConfigCase {
 			},
 		},
 		{
-			name: "unreadable parent directory",
+			name:          "unreadable parent directory",
+			layoutRefusal: true,
 			setup: func(t *testing.T, root string) {
 				skipWithoutEnforcedPermissions(t)
 				writeInstallFile(t, configPath(root), preservedLoafConfigBody)
@@ -85,9 +88,20 @@ func TestUpgradePreservesAProjectConfigItCannotRead(t *testing.T) {
 			writeManagedAgentsFileForTest(t, root)
 			testCase.setup(t, root)
 
-			output := runInstallCapture(t, root, "upgrade", "--yes")
-
-			assertPreservedConfigReported(t, output)
+			var output string
+			if testCase.layoutRefusal {
+				var stdout strings.Builder
+				err := (Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}).Run([]string{"upgrade", "--yes"})
+				var exitErr ExitError
+				if !errors.As(err, &exitErr) || exitErr.Code == 0 {
+					t.Fatalf("upgrade = %v, want layout refusal\n%s", err, stdout.String())
+				}
+				output = stdout.String()
+				assertEarlierProjectLayoutRefusal(t, root, output)
+			} else {
+				output = runInstallCapture(t, root, "upgrade", "--yes")
+				assertPreservedConfigReported(t, output)
+			}
 			testCase.verify(t, root)
 		})
 	}
@@ -113,8 +127,18 @@ func TestUpgradeDryRunReportsAProjectConfigItCannotRead(t *testing.T) {
 			if entry.Action != "skipped" {
 				t.Fatalf("plan entry = %#v, want it skipped rather than promised", entry)
 			}
-			if !strings.Contains(entry.Detail, "could not be read") || !strings.Contains(entry.Detail, filepath.Join(".agents", "loaf.json")) {
-				t.Fatalf("plan entry detail = %q, want the read failure and the path", entry.Detail)
+			if testCase.layoutRefusal {
+				layout, found := findInstallPlanEntry(plan, "./AGENTS.md")
+				if !found || layout.Action != "error" || !strings.Contains(layout.Detail, filepath.Join(root, ".agents", "AGENTS.md")) || !strings.Contains(entry.Detail, "failed first") {
+					t.Fatalf("plan = %#v, want named layout failure and skipped config", plan.ProjectFiles)
+				}
+				for _, e := range plan.ProjectFiles {
+					if e.Path == "AGENTS.md" && e.Action != "skipped" {
+						t.Fatalf("fenced write = %#v, want skipped", e)
+					}
+				}
+			} else if !strings.Contains(entry.Detail, "could not be read") || !strings.Contains(entry.Detail, filepath.Join(".agents", "loaf.json")) {
+				t.Fatalf("plan entry detail = %q, want the read failure and path", entry.Detail)
 			}
 			testCase.verify(t, root)
 		})
@@ -141,7 +165,11 @@ func TestInstallPreservesAProjectConfigItCannotRead(t *testing.T) {
 				t.Fatalf("install error = %v\n%s", err, stdout.String())
 			}
 
-			assertPreservedConfigReported(t, stdout.String())
+			if testCase.layoutRefusal {
+				assertEarlierProjectLayoutRefusal(t, root, stdout.String())
+			} else {
+				assertPreservedConfigReported(t, stdout.String())
+			}
 			testCase.verify(t, root)
 		})
 	}
@@ -198,4 +226,11 @@ func chmodForTest(t *testing.T, path string, mode os.FileMode) {
 		t.Fatalf("Chmod(%s, %v) error = %v", path, mode, err)
 	}
 	t.Cleanup(func() { os.Chmod(path, 0o755) })
+}
+
+func assertEarlierProjectLayoutRefusal(t *testing.T, root, output string) {
+	t.Helper()
+	if !strings.Contains(output, "Failed to inspect .agents/AGENTS.md") || !strings.Contains(output, filepath.Join(root, ".agents", "AGENTS.md")) || !strings.Contains(output, "skipping the remaining project surfaces") {
+		t.Fatalf("output = %q, want earlier named inspection refusal and skipped writes", output)
+	}
 }

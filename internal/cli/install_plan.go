@@ -963,8 +963,8 @@ func planInstallProjectSymlinks(projectRoot string, selectedTargets []string, ha
 // refuses is worse than either outcome on its own. Absence is not a refusal —
 // the callers already branch on it — and the read costs what the apply read
 // costs, which is what planFencedSection already pays.
-func planProjectFileReadable(path string) error {
-	if _, err := readRegularFile(path, projectFileReadLimit); err != nil && !os.IsNotExist(err) {
+func planProjectFileReadable(projectRoot, name string) error {
+	if _, err := readProjectFileAt(projectRoot, name); err != nil && !os.IsNotExist(err) {
 		return refuseProjectFileRead(err)
 	}
 	return nil
@@ -973,26 +973,55 @@ func planProjectFileReadable(path string) error {
 // planRootInstallAgentsFile mirrors the read-only branch decisions of
 // ensureRootInstallAgentsFile. Returns (action, detail, isError).
 func planRootInstallAgentsFile(projectRoot string, assumeYes bool) (string, string, bool) {
-	canonical := filepath.Join(projectRoot, "AGENTS.md")
-	legacy := filepath.Join(projectRoot, ".agents", "AGENTS.md")
-	legacyExists := installFileExists(legacy) && !installIsSymlink(legacy)
-	if installIsDirectory(canonical) {
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return "error", err.Error(), true
+	}
+	defer root.Close()
+	canonical := "AGENTS.md"
+	legacy := filepath.Join(".agents", "AGENTS.md")
+	info, exists, err := projectFileInfo(root, canonical)
+	if err != nil {
+		return "error", err.Error(), true
+	}
+	legacyInfo, legacyPresent, err := projectFileInfo(root, legacy)
+	if err != nil {
+		return "error", err.Error(), true
+	}
+	legacyExists := legacyPresent && !legacyInfo.IsDir() && legacyInfo.Mode()&os.ModeSymlink == 0
+	canonicalLink := exists && info.Mode()&os.ModeSymlink != 0
+	if exists && info.IsDir() {
 		return "error", "./AGENTS.md is a directory; expected a canonical real file", true
 	}
-	if installIsSymlink(canonical) && legacyExists && installSymlinkPointsTo(canonical, legacy) {
-		return "migrated", "Migrate .agents/AGENTS.md to canonical ./AGENTS.md", false
+	if canonicalLink && legacyExists {
+		target, err := root.Readlink(canonical)
+		if err != nil {
+			return "error", err.Error(), true
+		}
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(projectRoot, target)
+		}
+		if filepath.Clean(target) == filepath.Join(projectRoot, legacy) {
+			if err := planProjectFileReadable(projectRoot, legacy); err != nil {
+				return "error", fmt.Sprintf("Failed to migrate .agents/AGENTS.md: %v", err), true
+			}
+			return "migrated", "Migrate .agents/AGENTS.md to canonical ./AGENTS.md", false
+		}
 	}
-	if !installPathExists(canonical) {
+	if !exists {
 		if legacyExists {
+			if err := planProjectFileReadable(projectRoot, legacy); err != nil {
+				return "error", fmt.Sprintf("Failed to migrate .agents/AGENTS.md: %v", err), true
+			}
 			return "migrated", "Migrate .agents/AGENTS.md to canonical ./AGENTS.md", false
 		}
 		return "created", "Create canonical ./AGENTS.md", false
 	}
-	if installIsSymlink(canonical) {
+	if canonicalLink {
 		if !assumeYes {
 			return "skipped-no-tty", "./AGENTS.md is a symlink; skipped conversion in non-interactive mode", false
 		}
-		if err := planProjectFileReadable(canonical); err != nil {
+		if err := planProjectFileReadable(projectRoot, canonical); err != nil {
 			return "error", fmt.Sprintf("Failed to read ./AGENTS.md: %v", err), true
 		}
 		return "replaced-file", "Back up the ./AGENTS.md symlink and create a canonical real file", false
@@ -1001,10 +1030,10 @@ func planRootInstallAgentsFile(projectRoot string, assumeYes bool) (string, stri
 		if !assumeYes {
 			return "skipped-no-tty", "Both ./AGENTS.md and .agents/AGENTS.md are real files; skipped merge in non-interactive mode", false
 		}
-		if err := planProjectFileReadable(legacy); err != nil {
+		if err := planProjectFileReadable(projectRoot, legacy); err != nil {
 			return "error", fmt.Sprintf("Failed to migrate .agents/AGENTS.md: %v", err), true
 		}
-		if err := planProjectFileReadable(canonical); err != nil {
+		if err := planProjectFileReadable(projectRoot, canonical); err != nil {
 			return "error", fmt.Sprintf("Failed to migrate .agents/AGENTS.md: %v", err), true
 		}
 		return "migrated", "Merge legacy .agents/AGENTS.md into canonical ./AGENTS.md", false
@@ -1015,16 +1044,35 @@ func planRootInstallAgentsFile(projectRoot string, assumeYes bool) (string, stri
 // planInstallClaudeInstructions mirrors the read-only branch decisions of
 // ensureInstallClaudeInstructions.
 func planInstallClaudeInstructions(projectRoot string, assumeYes bool) (string, string) {
-	claudePath := filepath.Join(projectRoot, filepath.FromSlash(claudeInstructionsPath))
 	canonical := filepath.Join(projectRoot, "AGENTS.md")
-	if target, symlinked := symlinkedClaudeDirTarget(projectRoot); symlinked {
+	target, symlinked, err := symlinkedClaudeDirTarget(projectRoot)
+	if err != nil {
+		return "error", err.Error()
+	}
+	if symlinked {
 		return "error", symlinkedClaudeDirMessage(target)
 	}
-	if !installPathExists(claudePath) {
+	if installIsSymlink(filepath.Join(projectRoot, ".claude")) {
 		return "already-correct", "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"
 	}
-	if installIsSymlink(claudePath) {
-		if installSymlinkPointsTo(claudePath, canonical) {
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return "error", err.Error()
+	}
+	defer root.Close()
+	info, exists, err := projectFileInfo(root, claudeInstructionsName)
+	if err != nil {
+		return "error", fmt.Sprintf("Failed to inspect .claude/CLAUDE.md: %v", err)
+	}
+	if !exists {
+		return "already-correct", "No .claude/CLAUDE.md; Claude Code reads root AGENTS.md"
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		target, err := claudeInstructionsLinkTarget(root, projectRoot)
+		if err != nil {
+			return "error", err.Error()
+		}
+		if target == canonical {
 			return "already-correct", ".claude/CLAUDE.md already points to ../AGENTS.md"
 		}
 		if !assumeYes {
@@ -1035,10 +1083,10 @@ func planInstallClaudeInstructions(projectRoot string, assumeYes bool) (string, 
 	if !assumeYes {
 		return "skipped-no-tty", ".claude/CLAUDE.md exists as a real file; skipped in non-interactive mode"
 	}
-	if err := planProjectFileReadable(claudePath); err != nil {
+	if err := planProjectFileReadable(projectRoot, claudeInstructionsName); err != nil {
 		return "error", fmt.Sprintf("Failed to migrate .claude/CLAUDE.md: %v", err)
 	}
-	if err := planProjectFileReadable(canonical); err != nil {
+	if err := planProjectFileReadable(projectRoot, "AGENTS.md"); err != nil {
 		return "error", fmt.Sprintf("Failed to migrate .claude/CLAUDE.md: %v", err)
 	}
 	return "migrated", "Merge .claude/CLAUDE.md into root AGENTS.md, back it up, and leave the path absent"
@@ -1069,15 +1117,10 @@ func planInstallFencedSections(targets []string, projectRoot string, version str
 }
 
 func planFencedSection(targetFile string, version string) (string, string) {
-	canonicalTarget, err := canonicalFenceWritePath(targetFile)
-	if err != nil {
-		return "error", err.Error()
-	}
-	targetFile = canonicalTarget
 	if version == "" {
 		version = "0.0.0"
 	}
-	body, err := readRegularFile(targetFile, projectFileReadLimit)
+	body, err := readProjectFileAt(filepath.Dir(targetFile), filepath.Base(targetFile))
 	fileExisted := err == nil
 	if err != nil && !os.IsNotExist(err) {
 		return "error", refuseProjectFileRead(err).Error()

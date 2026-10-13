@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 type installSymlinkOptions struct {
@@ -45,19 +43,36 @@ const claudeInstructionsPath = ".claude/CLAUDE.md"
 // source, or removal there could land outside the project, and the lexical
 // ../AGENTS.md check would no longer name root AGENTS.md. A symlinked .claude
 // with nothing at CLAUDE.md shadows nothing and needs no refusal.
-func symlinkedClaudeDirTarget(projectRoot string) (string, bool) {
+func symlinkedClaudeDirTarget(projectRoot string) (string, bool, error) {
 	claudeDir := filepath.Join(projectRoot, ".claude")
-	if !installIsSymlink(claudeDir) {
-		return "", false
+	info, err := os.Lstat(claudeDir)
+	if os.IsNotExist(err) {
+		return "", false, nil
 	}
-	if !installPathExists(filepath.Join(projectRoot, filepath.FromSlash(claudeInstructionsPath))) {
-		return "", false
+	if err != nil {
+		return "", false, err
 	}
-	target := resolveInstallSymlinkTarget(claudeDir)
-	if target == "" {
-		target = "<unreadable>"
+	if info.Mode()&os.ModeSymlink == 0 {
+		return "", false, nil
 	}
-	return target, true
+	// Metadata alone classifies whether this existing symlink shadows anything.
+	// Do not read outside content. Only confirmed absence permits the empty-link
+	// exception; permission and other inspection errors must stop the project pass.
+	_, err = os.Lstat(filepath.Join(claudeDir, "CLAUDE.md"))
+	if os.IsNotExist(err) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	target, err := os.Readlink(claudeDir)
+	if err != nil {
+		return "", false, err
+	}
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(projectRoot, target)
+	}
+	return filepath.Clean(target), true, nil
 }
 
 func symlinkedClaudeDirMessage(target string) string {
@@ -73,7 +88,11 @@ func symlinkedClaudeDirMessage(target string) string {
 // does.
 func ensureInstallClaudeInstructions(projectRoot string, options installSymlinkOptions) installSymlinkResult {
 	canonical := filepath.Join(projectRoot, "AGENTS.md")
-	if target, symlinked := symlinkedClaudeDirTarget(projectRoot); symlinked {
+	target, symlinked, err := symlinkedClaudeDirTarget(projectRoot)
+	if err != nil {
+		return installSymlinkReadRefusal("Failed to inspect .claude/CLAUDE.md", err)
+	}
+	if symlinked {
 		message := symlinkedClaudeDirMessage(target)
 		result := installSymlinkError("error", message, errors.New(message))
 		result.Refused = true
@@ -190,41 +209,70 @@ func needsRootInstallAgentsFile(targets []string) bool {
 }
 
 func ensureRootInstallAgentsFile(projectRoot string, options installSymlinkOptions) installSymlinkResult {
-	canonical := filepath.Join(projectRoot, "AGENTS.md")
-	legacy := filepath.Join(projectRoot, ".agents", "AGENTS.md")
-	legacyExists := installFileExists(legacy) && !installIsSymlink(legacy)
-	if installIsDirectory(canonical) {
+	root, err := os.OpenRoot(projectRoot)
+	if err != nil {
+		return installSymlinkReadRefusal("Failed to inspect project instructions", err)
+	}
+	defer root.Close()
+	canonical := "AGENTS.md"
+	legacy := filepath.Join(".agents", "AGENTS.md")
+	info, exists, err := projectFileInfo(root, canonical)
+	if err != nil {
+		return installSymlinkReadRefusal("Failed to inspect ./AGENTS.md", err)
+	}
+	legacyInfo, legacyPresent, err := projectFileInfo(root, legacy)
+	if err != nil {
+		return installSymlinkReadRefusal("Failed to inspect .agents/AGENTS.md", err)
+	}
+	legacyExists := legacyPresent && !legacyInfo.IsDir() && legacyInfo.Mode()&os.ModeSymlink == 0
+	canonicalLink := exists && info.Mode()&os.ModeSymlink != 0
+	if exists && info.IsDir() {
 		err := fmt.Errorf("./AGENTS.md is a directory; expected a canonical real file")
 		return installSymlinkError("error", err.Error(), err)
 	}
-
-	if installIsSymlink(canonical) && legacyExists && installSymlinkPointsTo(canonical, legacy) {
-		linkBackup := collisionSafeInstallBackupPath(canonical)
-		if err := os.Rename(canonical, linkBackup); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to migrate ./AGENTS.md: %v", err), err)
+	if canonicalLink && legacyExists {
+		target, err := root.Readlink(canonical)
+		if err != nil {
+			return installSymlinkReadRefusal("Failed to inspect ./AGENTS.md", err)
 		}
-		if err := os.Rename(legacy, canonical); err != nil {
-			_ = os.Rename(linkBackup, canonical)
-			return installSymlinkError("error", fmt.Sprintf("Failed to migrate .agents/AGENTS.md: %v", err), err)
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(projectRoot, target)
 		}
-		_ = os.Remove(linkBackup)
-		return installSymlinkResult{Action: "migrated", Message: "Migrated .agents/AGENTS.md to canonical ./AGENTS.md"}
+		if filepath.Clean(target) == filepath.Join(projectRoot, legacy) {
+			if _, err := readProjectFile(root, legacy); err != nil {
+				return installSymlinkReadRefusal("Failed to migrate .agents/AGENTS.md", refuseProjectFileRead(err))
+			}
+			linkBackup, err := collisionSafeRootBackupName(root, canonical)
+			if err != nil {
+				return installSymlinkReadRefusal("Failed to migrate ./AGENTS.md", err)
+			}
+			if err := moveCheckedProjectFile(root, canonical, linkBackup, info); err != nil {
+				return installSymlinkReadRefusal("Failed to migrate ./AGENTS.md", err)
+			}
+			if err := renameProjectFileNoReplace(root, legacy, canonical); err != nil {
+				return installSymlinkReadRefusal("Failed to migrate .agents/AGENTS.md", restoreProjectFile(root, linkBackup, canonical, err))
+			}
+			_ = root.Remove(linkBackup)
+			return installSymlinkResult{Action: "migrated", Message: "Migrated .agents/AGENTS.md to canonical ./AGENTS.md"}
+		}
 	}
-
-	if !installPathExists(canonical) {
+	if !exists {
 		if legacyExists {
-			if err := os.Rename(legacy, canonical); err != nil {
-				return installSymlinkError("error", fmt.Sprintf("Failed to migrate .agents/AGENTS.md: %v", err), err)
+			// Read first to reject special files and permission failures like planning.
+			if _, err := readProjectFile(root, legacy); err != nil {
+				return installSymlinkReadRefusal("Failed to migrate .agents/AGENTS.md", refuseProjectFileRead(err))
+			}
+			if err := renameProjectFileNoReplace(root, legacy, canonical); err != nil {
+				return installSymlinkReadRefusal("Failed to migrate .agents/AGENTS.md", err)
 			}
 			return installSymlinkResult{Action: "migrated", Message: "Migrated .agents/AGENTS.md to canonical ./AGENTS.md"}
 		}
-		if err := os.WriteFile(canonical, []byte{}, 0o644); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to create ./AGENTS.md: %v", err), err)
+		if err := createProjectFile(root, canonical, nil, 0o644); err != nil {
+			return installSymlinkReadRefusal("Failed to create ./AGENTS.md", err)
 		}
 		return installSymlinkResult{Action: "created", Message: "Created canonical ./AGENTS.md"}
 	}
-
-	if installIsSymlink(canonical) {
+	if canonicalLink {
 		approved := options.AssumeYes
 		if !approved {
 			if options.NonInteractive {
@@ -237,21 +285,22 @@ func ensureRootInstallAgentsFile(projectRoot string, options installSymlinkOptio
 		if !approved {
 			return installSymlinkResult{Action: "declined-replace", Message: "Left ./AGENTS.md as a symlink"}
 		}
-		body, err := readRegularFile(canonical, projectFileReadLimit)
+		body, err := readProjectFile(root, canonical)
 		if err != nil && !os.IsNotExist(err) {
 			return installSymlinkReadRefusal("Failed to read ./AGENTS.md", refuseProjectFileRead(err))
 		}
-		backup := collisionSafeInstallBackupPath(canonical)
-		if err := os.Rename(canonical, backup); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to back up ./AGENTS.md: %v", err), err)
+		backup, err := collisionSafeRootBackupName(root, canonical)
+		if err != nil {
+			return installSymlinkReadRefusal("Failed to back up ./AGENTS.md", err)
 		}
-		if err := os.WriteFile(canonical, body, 0o644); err != nil {
-			_ = os.Rename(backup, canonical)
-			return installSymlinkError("error", fmt.Sprintf("Failed to create canonical ./AGENTS.md: %v", err), err)
+		if err := moveCheckedProjectFile(root, canonical, backup, info); err != nil {
+			return installSymlinkReadRefusal("Failed to back up ./AGENTS.md", err)
 		}
-		return installSymlinkResult{Action: "replaced-file", Message: "Backed up the old ./AGENTS.md symlink and created a canonical real file", BackupPath: backup}
+		if err := createProjectFile(root, canonical, body, 0o644); err != nil {
+			return installSymlinkReadRefusal("Failed to create canonical ./AGENTS.md", restoreProjectFile(root, backup, canonical, err))
+		}
+		return installSymlinkResult{Action: "replaced-file", Message: "Backed up the old ./AGENTS.md symlink and created a canonical real file", BackupPath: filepath.Join(projectRoot, backup)}
 	}
-
 	if legacyExists {
 		approved := options.AssumeYes
 		if !approved {
@@ -265,25 +314,26 @@ func ensureRootInstallAgentsFile(projectRoot string, options installSymlinkOptio
 		if !approved {
 			return installSymlinkResult{Action: "declined-replace", Message: "Left both ./AGENTS.md and .agents/AGENTS.md unchanged"}
 		}
-		body, err := readRegularFile(legacy, projectFileReadLimit)
-		if err != nil {
+		if _, err := readProjectFile(root, legacy); err != nil {
 			return installSymlinkReadRefusal("Failed to migrate .agents/AGENTS.md", refuseProjectFileRead(err))
 		}
-		stripped := stripDoctorLoafFence(string(body))
-		backup := collisionSafeInstallBackupPath(legacy)
-		if err := os.Rename(legacy, backup); err != nil {
-			return installSymlinkError("error", fmt.Sprintf("Failed to back up .agents/AGENTS.md: %v", err), err)
-		}
-		merged, err := mergeLegacyAgentsContentIntoCanonical(canonical, stripped, ".agents/AGENTS.md")
+		backup, err := collisionSafeRootBackupName(root, legacy)
 		if err != nil {
-			if rollbackErr := os.Rename(backup, legacy); rollbackErr != nil {
-				err = fmt.Errorf("%w (rollback failed: %v)", err, rollbackErr)
-			}
-			return installSymlinkReadRefusal("Failed to migrate .agents/AGENTS.md", err)
+			return installSymlinkReadRefusal("Failed to back up .agents/AGENTS.md", err)
 		}
-		return installSymlinkResult{Action: "migrated", Message: "Migrated legacy .agents/AGENTS.md into canonical ./AGENTS.md", BackupPath: backup, Merged: merged}
+		if err := renameProjectFileNoReplace(root, legacy, backup); err != nil {
+			return installSymlinkReadRefusal("Failed to back up .agents/AGENTS.md", err)
+		}
+		body, err := readProjectFile(root, backup)
+		merged := false
+		if err == nil {
+			merged, err = mergeRootProjectContent(root, canonical, stripDoctorLoafFence(string(body)), ".agents/AGENTS.md")
+		}
+		if err != nil {
+			return installSymlinkReadRefusal("Failed to migrate .agents/AGENTS.md", restoreProjectFile(root, backup, legacy, err))
+		}
+		return installSymlinkResult{Action: "migrated", Message: "Migrated legacy .agents/AGENTS.md into canonical ./AGENTS.md", BackupPath: filepath.Join(projectRoot, backup), Merged: merged}
 	}
-
 	return installSymlinkResult{Action: "already-correct", Message: "Canonical ./AGENTS.md already exists"}
 }
 
@@ -316,56 +366,6 @@ func installFileExists(path string) bool {
 func installIsDirectory(path string) bool {
 	info, err := os.Lstat(path)
 	return err == nil && info.IsDir()
-}
-
-func collisionSafeInstallBackupPath(path string) string {
-	base := path + ".bak"
-	if !installPathExists(base) {
-		return base
-	}
-	for index := 1; ; index++ {
-		candidate := base + "." + strconv.Itoa(index)
-		if !installPathExists(candidate) {
-			return candidate
-		}
-	}
-}
-
-func mergeLegacyAgentsContentIntoCanonical(canonical string, stripped string, relSource string) (bool, error) {
-	if stripped == "" {
-		return false, nil
-	}
-	existing, err := readRegularFile(canonical, projectFileReadLimit)
-	if err != nil {
-		return false, refuseProjectFileRead(err)
-	}
-	trimmedExisting := strings.TrimRight(string(existing), " \t\r\n")
-	merged := trimmedExisting + "\n\n## Migrated from " + relSource + "\n\n" + stripped + "\n"
-	mode := os.FileMode(0o644)
-	if info, statErr := os.Stat(canonical); statErr == nil {
-		mode = info.Mode().Perm()
-	}
-	temp, err := os.CreateTemp(filepath.Dir(canonical), ".loaf-agents-md-*")
-	if err != nil {
-		return false, err
-	}
-	tempPath := temp.Name()
-	defer os.Remove(tempPath)
-	if err := temp.Chmod(mode); err != nil {
-		_ = temp.Close()
-		return false, err
-	}
-	if _, err := temp.WriteString(merged); err != nil {
-		_ = temp.Close()
-		return false, err
-	}
-	if err := temp.Close(); err != nil {
-		return false, err
-	}
-	if err := os.Rename(tempPath, canonical); err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 func installIsSymlink(path string) bool {
