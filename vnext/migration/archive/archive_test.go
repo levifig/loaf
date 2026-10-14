@@ -148,6 +148,8 @@ func TestProjectionManifestForSnapshotIgnoresLocalClocksAndRejectsContamination(
 	}
 	observation := continuity.Observation{
 		ObservedAtMillis: 1_000,
+		ObservedHarness:  "unknown",
+		HarnessVersion:   "unknown",
 		HarnessSessionID: "migration-session",
 		Branch:           "main",
 		Worktree:         "/workspace/loaf",

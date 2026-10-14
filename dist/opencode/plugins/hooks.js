@@ -10,6 +10,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const hookHarness = 'opencode';
 const execFileAsync = promisify(execFile);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,6 +143,7 @@ async function runHook(
   const env = {
     ...process.env,
     LOAF_HOOK_TYPE: hookType,
+    LOAF_HOOK_HARNESS: hookHarness,
     LOAF_HOOK_ID: hookId,
     LOAF_TOOL_NAME: toolName || '',
     LOAF_PLUGIN_DIR: __dirname,

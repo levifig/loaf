@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+### Added
+
+- Record detectable harness names and versions on new private continuity writes, and report per-project continuity usage and pre-tool gateway outcomes with local, network-free `loaf telemetry status [--json]`. Gateway records omit tool arguments and file contents; historical records remain intact and unavailable provenance is explicit `unknown` ([#286](https://github.com/levifig/loaf/issues/286)).
+
 ### Changed
 
 - Plan version scope through native GitHub milestones across Shape, Triage, and Release, with project-owned release-tag naming and separate execution status and publication decisions ([#282](https://github.com/levifig/loaf/issues/282)).

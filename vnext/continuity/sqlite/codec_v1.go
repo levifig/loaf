@@ -367,6 +367,8 @@ func encodeVerificationEvidenceV1(payload continuity.VerificationEvidencePayload
 func toWireObservationV1(observation continuity.Observation) wireObservationV1 {
 	return wireObservationV1{
 		ObservedAtMillis: observation.ObservedAtMillis,
+		ObservedHarness:  observation.ObservedHarness,
+		HarnessVersion:   observation.HarnessVersion,
 		HarnessSessionID: observation.HarnessSessionID,
 		Branch:           observation.Branch,
 		Worktree:         observation.Worktree,

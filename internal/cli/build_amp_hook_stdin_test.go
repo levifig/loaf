@@ -190,13 +190,7 @@ func writeNativeGeneratedHookStdinProbe(t *testing.T, root string) {
 }
 
 func nativeAmpHookStdinProbeSource() string {
-	return `import { execFile } from 'child_process';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-` + nativeAmpCoreFunctions() + `
+	return nativeAmpHeader("test") + "\n\n" + nativeAmpCoreFunctions() + `
 
 const unhandled = [];
 process.on('uncaughtException', (error) => {

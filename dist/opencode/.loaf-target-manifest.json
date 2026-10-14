@@ -58,7 +58,7 @@
       "kind": "plugin",
       "source_path": "plugins/hooks.js",
       "destination": "plugins/hooks.js",
-      "sha256": "57923f528151a76354265e336b9d6def40682ef4d7d37685f95fd8817e41c039",
+      "sha256": "313cd9bf658a8e9868d7cab60fdd956ee0ef0e46ebf54223be2f5d1473cfbfc3",
       "mode": 420
     }
   ]

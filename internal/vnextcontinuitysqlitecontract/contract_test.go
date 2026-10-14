@@ -1390,7 +1390,7 @@ func TestContinuitySQLiteContractPinsV1WireShapesAndClosedUnion(t *testing.T) {
 		"wireJournalContentV1":                {"Category:string:`json:\"category\"`", "Scope:string:`json:\"scope\"`", "Text:string:`json:\"text\"`"},
 		"wireJournalCorrectionV1":             {"Observation:wireObservationV1:`json:\"observation\"`", "Corrects:string:`json:\"corrects\"`", "Content:wireJournalContentV1:`json:\"content\"`"},
 		"wireJournalRecordedV1":               {"Observation:wireObservationV1:`json:\"observation\"`", "Content:wireJournalContentV1:`json:\"content\"`"},
-		"wireObservationV1":                   {"ObservedAtMillis:int64:`json:\"observed_at_millis\"`", "HarnessSessionID:string:`json:\"harness_session_id\"`", "Branch:string:`json:\"branch\"`", "Worktree:string:`json:\"worktree\"`"},
+		"wireObservationV1":                   {"ObservedAtMillis:int64:`json:\"observed_at_millis\"`", "ObservedHarness:string:`json:\"observed_harness,omitempty\"`", "HarnessVersion:string:`json:\"harness_version,omitempty\"`", "HarnessSessionID:string:`json:\"harness_session_id\"`", "Branch:string:`json:\"branch\"`", "Worktree:string:`json:\"worktree\"`"},
 		"wireProjectLabelRevisionV1":          {"Observation:wireObservationV1:`json:\"observation\"`", "Revises:string:`json:\"revises\"`", "Label:string:`json:\"label\"`"},
 		"wireProjectRegistrationV1":           {"Observation:wireObservationV1:`json:\"observation\"`", "Label:string:`json:\"label\"`"},
 		"wireSparkCapturedV1":                 {"Observation:wireObservationV1:`json:\"observation\"`", "Scope:string:`json:\"scope\"`", "Text:string:`json:\"text\"`"},
@@ -1584,7 +1584,14 @@ func TestContinuitySQLiteContractRejectsDynamicPersistenceEscapeHatches(t *testi
 				}
 			case *ast.Field:
 				if node.Tag != nil && strings.Contains(node.Tag.Value, "omitempty") {
-					t.Errorf("%s uses omitempty in the closed V1 codec", fileName)
+					// The two observation provenance fields were added after V1
+					// facts existed. Their absence preserves historic canonical
+					// bytes; exact tags and shape are pinned above.
+					legacyObservationField := fileName == "wire_v1.go" && len(node.Names) == 1 &&
+						(node.Names[0].Name == "ObservedHarness" || node.Names[0].Name == "HarnessVersion")
+					if !legacyObservationField {
+						t.Errorf("%s uses omitempty in the closed V1 codec", fileName)
+					}
 				}
 			}
 			return true

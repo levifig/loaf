@@ -359,14 +359,18 @@ func TestJournalContextForResumptionEmitsDigest(t *testing.T) {
 }
 
 func TestNormalizeJournalHookEnvelopeNamespacedIdentities(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CLAUDECODE", "")
 	tests := []struct {
 		name, payload, target, harness, version, event, session, agent string
 	}{
-		{"claude", `{"claude_code":{"version":"1.2.3","session_id":"claude-s","agent_id":"claude-a","hook_event_name":"PostToolUse"}}`, "claude-code", "claude-code", "1.2.3", "PostToolUse", "claude-s", "claude-a"},
-		{"cursor", `{"target":"cursor","cursor":{"harness_version":"0.9","conversation_id":"cursor-s","event":"tool_result"}}`, "cursor", "cursor", "0.9", "tool_result", "cursor-s", ""},
-		{"codex", `{"codex":{"version":"0.144.1","thread_id":"codex-s","event_name":"Stop"}}`, "codex", "codex", "0.144.1", "Stop", "codex-s", ""},
-		{"opencode", `{"target":"opencode","opencode":{"runtime_version":"1.0","sessionID":"open-s","lifecycle_event":"compaction"}}`, "opencode", "opencode", "1.0", "compaction", "open-s", ""},
-		{"amp", `{"amp":{"version":"2","session_id":"amp-s","is_subagent":true,"event":"session.start"}}`, "amp", "amp", "2", "session.start", "amp-s", "subagent"},
+		{"claude", `{"claude_code":{"version":"1.2.3","session_id":"claude-s","agent_id":"claude-a","hook_event_name":"PostToolUse"}}`, "claude-code", "claude-code", "unknown", "PostToolUse", "claude-s", "claude-a"},
+		{"cursor", `{"target":"cursor","cursor":{"harness_version":"0.9","conversation_id":"cursor-s","event":"tool_result"}}`, "cursor", "unknown", "unknown", "tool_result", "cursor-s", ""},
+		{"codex", `{"codex":{"version":"0.144.1","thread_id":"codex-s","event_name":"Stop"}}`, "codex", "unknown", "unknown", "Stop", "codex-s", ""},
+		{"opencode", `{"target":"opencode","opencode":{"runtime_version":"1.0","sessionID":"open-s","lifecycle_event":"compaction"}}`, "opencode", "unknown", "unknown", "compaction", "open-s", ""},
+		{"amp", `{"amp":{"version":"2","session_id":"amp-s","is_subagent":true,"event":"session.start"}}`, "amp", "unknown", "unknown", "session.start", "amp-s", "subagent"},
+		{"cross-installed", `{"target":"claude-code","hook_event_name":"preToolUse","version":"1.0"}`, "claude-code", "cursor", "unknown", "preToolUse", "", ""},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -664,6 +668,9 @@ func TestNormalizeJournalHookEnvelopeDoesNotFabricateUnknownFields(t *testing.T)
 }
 
 func TestNormalizeJournalHookEnvelopeIsolatesRecognizedNamespace(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CLAUDECODE", "")
 	envelope := normalizeJournalHookEnvelope(journalHookInput{Raw: map[string]any{
 		"target":     "cursor",
 		"session_id": "top-session",
@@ -678,7 +685,7 @@ func TestNormalizeJournalHookEnvelopeIsolatesRecognizedNamespace(t *testing.T) {
 			"durable_result_id": "cursor-sha",
 		},
 	}}, "")
-	if envelope.SessionID != "cursor-session" || envelope.AgentID != "cursor-agent" || envelope.HarnessVersion != "cursor-version" || envelope.DurableResultID != "cursor-sha" {
+	if envelope.SessionID != "cursor-session" || envelope.AgentID != "cursor-agent" || envelope.Harness != "unknown" || envelope.HarnessVersion != "unknown" || envelope.DurableResultID != "cursor-sha" {
 		t.Fatalf("isolated envelope = %#v, want only cursor namespace fields", envelope)
 	}
 }

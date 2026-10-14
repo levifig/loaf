@@ -39,6 +39,12 @@ func (observation Observation) Validate() error {
 	if observation.ObservedAtMillis < 0 {
 		return invalid("observation.observed_at_millis", "must be zero or positive")
 	}
+	if err := validateRequiredShort("observation.observed_harness", observation.ObservedHarness); err != nil {
+		return err
+	}
+	if err := validateRequiredShort("observation.harness_version", observation.HarnessVersion); err != nil {
+		return err
+	}
 	if err := validateOptionalText("observation.harness_session_id", observation.HarnessSessionID, maximumLocatorBytes, false); err != nil {
 		return err
 	}

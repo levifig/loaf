@@ -285,6 +285,8 @@ func (r Runner) Run(args []string) error {
 		dispatchErr = r.runBundle(args[1:], out, runtime)
 	case "check":
 		dispatchErr = r.runCheck(args[1:], out, runtime.RootPath())
+	case "telemetry":
+		dispatchErr = r.runTelemetry(args[1:], out, runtime.RootPath())
 	case "doctor":
 		dispatchErr = r.runDoctor(args[1:], out, runtime.RootPath())
 	case "link":
@@ -392,6 +394,7 @@ func writeRootHelp(out io.Writer) {
 	fmt.Fprintln(out, "  council       Manage councils")
 	fmt.Fprintln(out, "  kb            Manage knowledge base")
 	fmt.Fprintln(out, "  check         Run hook checks and standalone validators")
+	fmt.Fprintln(out, "  telemetry     Show local pre-tool gateway outcomes")
 	fmt.Fprintln(out, "  doctor        Diagnose project alignment, managed content, and leftover migration work")
 	fmt.Fprintln(out, "  release       Cut a retroactive release (suggest, cut)")
 	fmt.Fprintln(out, "  version       Show version and content counts")

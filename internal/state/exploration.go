@@ -187,10 +187,11 @@ func (s *Store) CreateExploration(ctx context.Context, root project.Root, option
 	if err != nil {
 		return ExplorationMutationResult{}, &ExplorationTransactionError{Stage: "alias allocation", Err: err}
 	}
+	harness, version := ObservedHarnessFromEnvironment()
 	explorationID := stableMigrationID("exploration", projectID, alias)
 	if _, err := tx.ExecContext(ctx, `
-INSERT INTO explorations (id, project_id, title, created_at) VALUES (?, ?, ?, ?)
-`, explorationID, projectID, title, timestamp); err != nil {
+INSERT INTO explorations (id, project_id, title, created_at, observed_harness, observed_harness_version) VALUES (?, ?, ?, ?, ?, ?)
+`, explorationID, projectID, title, timestamp, harness, version); err != nil {
 		return ExplorationMutationResult{}, &ExplorationTransactionError{Stage: "exploration", Err: err}
 	}
 	if err := insertAlias(ctx, tx, projectID, "exploration", explorationID, "exploration", alias, timestamp); err != nil {
@@ -356,15 +357,16 @@ WHERE project_id = ? AND operation_key = ?
 		return ExplorationMutationResult{}, &ExplorationTransactionError{Stage: "sequence", Err: err}
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
+	harness, version := ObservedHarnessFromEnvironment()
 	checkpointID := stableMigrationID("exploration-checkpoint", projectID, explorationID, fmt.Sprintf("%d", seq))
 	operationValue := sql.NullString{}
 	if operationID != "" {
 		operationValue = sql.NullString{String: operationID, Valid: true}
 	}
 	if _, err := tx.ExecContext(ctx, `
-INSERT INTO exploration_checkpoints (id, project_id, exploration_id, seq, purpose, conclusions, unresolved, next_action, operation_key, content_digest, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`, checkpointID, projectID, explorationID, seq, purpose, conclusions, unresolved, nextAction, operationValue, inputDigest, now); err != nil {
+INSERT INTO exploration_checkpoints (id, project_id, exploration_id, seq, purpose, conclusions, unresolved, next_action, operation_key, content_digest, created_at, observed_harness, observed_harness_version)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`, checkpointID, projectID, explorationID, seq, purpose, conclusions, unresolved, nextAction, operationValue, inputDigest, now, harness, version); err != nil {
 		return ExplorationMutationResult{}, &ExplorationTransactionError{Stage: "checkpoint", Err: err}
 	}
 	if hooks != nil && hooks.afterCheckpoint != nil {

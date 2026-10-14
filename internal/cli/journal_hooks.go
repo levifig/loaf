@@ -184,6 +184,14 @@ func (r Runner) journalLogFromHook(options *journalLogOptions, projectRoot proje
 			return false, nil
 		}
 		options.entry = entry
+		harness, version := observedHarnessFromEnvironment()
+		options.origin = &state.JournalOriginInput{
+			EnvelopeVersion:        state.JournalOriginEnvelopeVersion,
+			CaptureMechanism:       state.JournalOriginMechanismHook,
+			ObservedHarness:        harness,
+			ObservedHarnessVersion: version,
+			SourceEvent:            "linear-detected",
+		}
 		return true, nil
 	}
 

@@ -174,6 +174,7 @@ func (r Runner) runCheckContext(options checkOptions, context checkHookContext, 
 			return fmt.Errorf("Unknown hook: %s", options.hook)
 		}
 	}
+	r.recordCheckObservation(options, context, result, payloadErr, runtimeRoot)
 	if options.jsonOutput {
 		if err := writeCheckJSON(out, options.hook, result, options.advisory); err != nil {
 			return err

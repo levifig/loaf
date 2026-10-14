@@ -85,6 +85,8 @@ func prepareRecordV1(
 ) (continuitysqlite.RehearsalFact, error) {
 	observation := continuity.Observation{
 		ObservedAtMillis: record.Observation.ObservedAtMillis,
+		ObservedHarness:  "unknown",
+		HarnessVersion:   "unknown",
 		HarnessSessionID: record.Observation.HarnessSessionID,
 		Branch:           record.Observation.Branch,
 		Worktree:         record.Observation.Worktree,

@@ -84,6 +84,12 @@ func normalizeJournalOriginInput(input JournalOriginInput) (JournalOriginInput, 
 		return JournalOriginInput{}, err
 	}
 	input.CaptureMechanism = mechanism
+	if strings.TrimSpace(input.ObservedHarness) == "" {
+		input.ObservedHarness = "unknown"
+	}
+	if strings.TrimSpace(input.ObservedHarnessVersion) == "" {
+		input.ObservedHarnessVersion = "unknown"
+	}
 	for _, field := range []struct {
 		name  string
 		value *string
@@ -181,12 +187,23 @@ func normalizeOriginString(value string, field string, maxLength int, optional b
 	return value, nil
 }
 
+func newJournalOrigin() JournalOriginInput {
+	harness, version := ObservedHarnessFromEnvironment()
+	return JournalOriginInput{EnvelopeVersion: JournalOriginEnvelopeVersion, CaptureMechanism: JournalOriginMechanismUnknown, ObservedHarness: harness, ObservedHarnessVersion: version}
+}
+
 func insertJournalOriginTx(ctx context.Context, tx *sql.Tx, journalEntryID string, input JournalOriginInput) error {
+	// All origin writers, including decision/import paths, share normalization.
+	normalized, err := normalizeJournalOriginInput(input)
+	if err != nil {
+		return err
+	}
+	input = normalized
 	var projectID, createdAt string
 	if err := tx.QueryRowContext(ctx, `SELECT project_id, created_at FROM journal_entries WHERE id = ?`, journalEntryID).Scan(&projectID, &createdAt); err != nil {
 		return fmt.Errorf("read canonical journal row for origin %s: %w", journalEntryID, err)
 	}
-	_, err := tx.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 INSERT INTO journal_origins (
   journal_entry_id, project_id, envelope_version, capture_mechanism,
   observed_harness, observed_harness_version, harness_session_id, agent_id,

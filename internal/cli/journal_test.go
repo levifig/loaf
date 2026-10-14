@@ -299,6 +299,11 @@ func TestJournalDeferWithoutChangeCapturesAvailableGitOrigin(t *testing.T) {
 }
 
 func TestJournalLogCapturesManualOriginAcrossGitContexts(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CODEX_VERSION", "")
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CODE_VERSION", "")
 	tests := []struct {
 		name    string
 		prepare func(t *testing.T) (workingDir, branch, worktree, head string)
@@ -364,8 +369,8 @@ func TestJournalLogCapturesManualOriginAcrossGitContexts(t *testing.T) {
 			if shown.Origin.Branch != wantBranch || shown.Origin.Worktree != wantWorktree || shown.Origin.Head != wantHead {
 				t.Fatalf("shown origin = %#v, want branch=%q worktree=%q head=%q", shown.Origin, wantBranch, wantWorktree, wantHead)
 			}
-			if shown.Origin.ObservedHarness != "" || shown.Origin.ObservedHarnessVersion != "" || shown.Origin.HarnessSessionID != "" || shown.Origin.AgentID != "" {
-				t.Fatalf("shown origin fabricated optional harness metadata: %#v", shown.Origin)
+			if shown.Origin.ObservedHarness != "unknown" || shown.Origin.ObservedHarnessVersion != "unknown" || shown.Origin.HarnessSessionID != "" || shown.Origin.AgentID != "" {
+				t.Fatalf("shown origin provenance = %#v, want explicit unknown harness", shown.Origin)
 			}
 		})
 	}

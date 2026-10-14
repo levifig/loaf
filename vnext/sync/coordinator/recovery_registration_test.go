@@ -24,7 +24,7 @@ func TestBindPreparedRecoveryRegistrationProducesDeterministicSecretFreeRegistra
 	coordinator := mustCoordinator(t, store, remote)
 
 	if _, err := store.RegisterProject(context.Background(), recovery.ProjectID, "fact-registration-binding-root", continuity.ProjectRegistrationPayload{
-		Observation: continuity.Observation{ObservedAtMillis: 1},
+		Observation: continuity.Observation{ObservedAtMillis: 1, ObservedHarness: "unknown", HarnessVersion: "unknown"},
 		Label:       "Registration binding",
 	}); err != nil {
 		t.Fatalf("register local project fixture: %v", err)

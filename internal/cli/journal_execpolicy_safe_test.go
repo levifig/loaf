@@ -95,6 +95,9 @@ func TestJournalLogExecpolicySafeFromHookWarnsForUnprovenPayload(t *testing.T) {
 }
 
 func TestJournalLogExecpolicySafeDetectLinearUsesRuntimeGit(t *testing.T) {
+	clearAdditionalHarnessMarkers(t)
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CLAUDECODE", "")
 	workingDir, stateHome, databasePath := initExecpolicySafeProject(t)
 	gitExecpolicySafe(t, workingDir, "init")
 	gitExecpolicySafe(t, workingDir, "config", "user.email", "safe@example.test")
@@ -119,6 +122,15 @@ func TestJournalLogExecpolicySafeDetectLinearUsesRuntimeGit(t *testing.T) {
 	}
 	if got := execpolicySafeCount(t, databasePath, `SELECT COUNT(*) FROM journal_entries`); got != 1 {
 		t.Fatalf("journal entries = %d, want 1", got)
+	}
+	db := openCLITestDB(t, databasePath)
+	defer closeCLITestDB(t, db)
+	var mechanism, harness, version string
+	if err := db.QueryRow(`SELECT capture_mechanism, observed_harness, observed_harness_version FROM journal_origins WHERE journal_entry_id = ?`, result.ID).Scan(&mechanism, &harness, &version); err != nil {
+		t.Fatal(err)
+	}
+	if mechanism != state.JournalOriginMechanismHook || harness != "unknown" || version != "unknown" {
+		t.Fatalf("detect-linear origin = %q %q %q", mechanism, harness, version)
 	}
 }
 

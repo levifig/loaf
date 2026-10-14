@@ -18,6 +18,7 @@ func ResolveManualJournalOrigin(rootPath, sourceEvent string) state.JournalOrigi
 		CaptureMechanism: state.JournalOriginMechanismManual,
 		SourceEvent:      sourceEvent,
 	}
+	origin.ObservedHarness, origin.ObservedHarnessVersion = observedHarnessFromEnvironment()
 	if strings.TrimSpace(rootPath) == "" {
 		rootPath = "."
 	}
@@ -44,6 +45,26 @@ func ResolveManualJournalOrigin(rootPath, sourceEvent string) state.JournalOrigi
 		origin.Branch = strings.TrimSpace(string(branchBytes))
 	}
 	return origin
+}
+
+// Environment markers are used only when they identify a running harness.
+// Installation paths alone are shared across shells and cannot prove origin.
+func observedHarnessFromEnvironment() (string, string) {
+	return state.ObservedHarnessFromEnvironment()
+}
+
+func firstKnown(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) > 0 && len(value) <= 64 {
+		for _, char := range value {
+			if char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z' || char >= '0' && char <= '9' || strings.ContainsRune("._+-", char) {
+				continue
+			}
+			return "unknown"
+		}
+		return value
+	}
+	return "unknown"
 }
 
 func originGitOutputBytes(cwd string, args ...string) ([]byte, error) {

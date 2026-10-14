@@ -51,7 +51,7 @@ func TestSnapshotIgnoresAndPreservesLegacyScratchpadRows(t *testing.T) {
 
 	store := openAppendStoreV1(t, testTempDir(t), "environment-a", 100)
 	projectID := continuity.ProjectID("project-legacy-scratchpad")
-	if _, err := store.RegisterProject(context.Background(), projectID, "fact-project", continuity.ProjectRegistrationPayload{Label: "Loaf"}); err != nil {
+	if _, err := store.RegisterProject(context.Background(), projectID, "fact-project", continuity.ProjectRegistrationPayload{Observation: appendObservationV1(), Label: "Loaf"}); err != nil {
 		t.Fatalf("RegisterProject: %v", err)
 	}
 	_, err := store.db.ExecContext(context.Background(), `
