@@ -2,7 +2,7 @@ module github.com/levifig/loaf
 
 go 1.25.0
 
-toolchain go1.27.1
+toolchain go1.27.2
 
 require (
 	github.com/ncruces/go-sqlite3 v0.34.3
