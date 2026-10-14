@@ -4,6 +4,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+### Added
+
+- Preserve retired local records and their bodies in a separate checksummed recovery archive, with exact SQLite values, per-project table reconciliation, and database-independent recovery through `loaf migrate retired-show`. Retired records stay outside the new continuity store. ([#288](https://github.com/levifig/loaf/issues/288))
+
 ## [0.6.0-rc.3] - 2026-10-14
 
 ### Added

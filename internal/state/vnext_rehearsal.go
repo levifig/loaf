@@ -11,8 +11,9 @@ import (
 // VNextRehearsalResult retains both the canonical legacy handoff and the
 // deterministic receipt from its staged vNext import.
 type VNextRehearsalResult struct {
-	Archive []byte
-	Report  rehearsal.Report
+	Archive        []byte
+	RetiredArchive []byte
+	Report         rehearsal.Report
 }
 
 // RunVNextRehearsal exports one verified legacy backup and imports the
@@ -27,12 +28,11 @@ func RunVNextRehearsal(
 	if destination == nil {
 		return result, fmt.Errorf("run vNext rehearsal: destination store is nil")
 	}
-	encoded, err := ExportVNextRehearsalArchive(ctx, options)
+	result, err := ExportVNextRehearsalBundle(ctx, options)
 	if err != nil {
 		return result, fmt.Errorf("run vNext rehearsal: %w", err)
 	}
-	result.Archive = encoded
-	report, err := rehearsal.Import(ctx, encoded, destination)
+	report, err := rehearsal.Import(ctx, result.Archive, destination)
 	if err != nil {
 		return result, fmt.Errorf("run vNext rehearsal: %w", err)
 	}

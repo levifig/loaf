@@ -21,6 +21,7 @@ import (
 	"github.com/levifig/loaf/internal/project"
 	"github.com/levifig/loaf/vnext/continuity"
 	"github.com/levifig/loaf/vnext/migration/archive"
+	"github.com/levifig/loaf/vnext/migration/retired"
 )
 
 const (
@@ -42,6 +43,7 @@ type VNextRehearsalExportOptions struct {
 }
 
 type vnextRehearsalExportOperationsV1 struct {
+	retiredArchive        *[]byte
 	afterVerification     func(string) error
 	afterReadSnapshot     func(string) error
 	removePrivateSnapshot func(string) error
@@ -119,6 +121,18 @@ type vnextRehearsalHandoffProjectionV1 struct {
 // mutation is created by this function.
 func ExportVNextRehearsalArchive(ctx context.Context, options VNextRehearsalExportOptions) ([]byte, error) {
 	return exportVNextRehearsalArchiveV1(ctx, options, vnextRehearsalExportOperationsV1{})
+}
+
+// ExportVNextRehearsalBundle preserves retired and supporting source bytes in a
+// separate archive from the same verified read snapshot as the continuity facts.
+func ExportVNextRehearsalBundle(ctx context.Context, options VNextRehearsalExportOptions) (VNextRehearsalResult, error) {
+	result := VNextRehearsalResult{}
+	encoded, err := exportVNextRehearsalArchiveV1(ctx, options, vnextRehearsalExportOperationsV1{retiredArchive: &result.RetiredArchive})
+	if err != nil {
+		return VNextRehearsalResult{}, err
+	}
+	result.Archive = encoded
+	return result, nil
 }
 
 func exportVNextRehearsalArchiveV1(
@@ -311,6 +325,13 @@ func exportVNextRehearsalArchiveV1(
 	if err != nil {
 		return nil, fmt.Errorf("export vNext rehearsal archive: %w", err)
 	}
+	var retiredContent retired.Content
+	if operations.retiredArchive != nil {
+		retiredContent, err = readRetiredArchive(ctx, tx, options.ProjectID)
+		if err != nil {
+			return nil, fmt.Errorf("export retired archive: %w", err)
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("export vNext rehearsal archive: commit read snapshot: %w", err)
 	}
@@ -367,6 +388,12 @@ func exportVNextRehearsalArchiveV1(
 	encoded, err = archive.Marshal(sealed)
 	if err != nil {
 		return nil, fmt.Errorf("export vNext rehearsal archive: marshal archive: %w", err)
+	}
+	if operations.retiredArchive != nil {
+		*operations.retiredArchive, err = sealRetiredArchive(retiredContent, sealed)
+		if err != nil {
+			return nil, fmt.Errorf("seal retired archive: %w", err)
+		}
 	}
 	return encoded, nil
 }

@@ -3472,6 +3472,7 @@ func writeMigrateHelp(out io.Writer) {
 	fmt.Fprintln(out, "  journal-first       Transform the global database to the journal-first model")
 	fmt.Fprintln(out, "  tracker-export      Export open issues for harness-native tracker migration")
 	fmt.Fprintln(out, "  vnext-rehearsal     Import a verified backup into a new isolated vNext database")
+	fmt.Fprintln(out, "  retired-show        Verify and recover an original retired record from its archive")
 	fmt.Fprintln(out, "  worktree-storage    Move linked-worktree .agents content to the main checkout")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
@@ -3497,6 +3498,7 @@ func (r Runner) runMigrate(args []string, out io.Writer, runtime state.Runtime) 
 		"storage-home":       writeMigrateStorageHomeHelp,
 		"tracker-export":     writeMigrateTrackerExportHelp,
 		"vnext-rehearsal":    writeMigrateVNextRehearsalHelp,
+		"retired-show":       writeMigrateRetiredHelp,
 		"worktree-storage":   writeWorktreeMigrationHelp,
 	}) {
 		return nil
@@ -3516,6 +3518,8 @@ func (r Runner) runMigrate(args []string, out io.Writer, runtime state.Runtime) 
 		return r.runMigrateTrackerExport(args[1:], out, runtime)
 	case "vnext-rehearsal":
 		return r.runMigrateVNextRehearsal(args[1:], out, runtime)
+	case "retired-show":
+		return r.runMigrateRetired(args[1:], out)
 	case "worktree-storage":
 		return r.runMigrateWorktreeStorage(args[1:], out, runtime.RootPath())
 	default:
