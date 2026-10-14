@@ -296,7 +296,7 @@ Four hooks automatically enforce the conventions documented in this file:
 | Hook | Timing | Behavior |
 |------|-------|----------|
 | `github-account` | Pre-tool (Bash) | Force-switch: switches the active `gh` account to the configured one before `gh` commands run (passes with a warning), exempting `gh auth` administration, and blocks only when the switch fails. It writes the shared global account pointer on every mismatched `gh` call -- read-only ones included -- so concurrent sessions on different identities collide on that pointer more often. Tracker GitHub preflight does not change, bypass, or isolate this hook. |
-| `workflow-pre-pr` | Pre-tool (Bash) | Advisory: reminds about CHANGELOG [Unreleased] entries and PR format. Non-blocking. |
+| `workflow-pre-pr` | Pre-tool (Bash) | Blocks missing declared Issue coverage and invalid PR format in repositories opting into that convention; other repositories receive generic advisory reminders. |
 | `workflow-pre-push` | Pre-tool (Bash) | Advisory: reminders on `git push` — branch naming, uncommitted files, `--force-with-lease` for rewritten branches. Non-blocking. |
 | `workflow-post-merge` | Post-tool (Bash) | Advisory: injects housekeeping checklist after a command match for `gh pr merge`; command matching does not prove a successful merge, so verify the result first. Non-blocking. |
 

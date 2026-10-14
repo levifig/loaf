@@ -295,7 +295,8 @@
         "loaf-managed": true,
         "timeout": 5,
         "matcher": "Shell",
-        "command": "loaf check --hook workflow-pre-pr --advisory --json --cursor-hook",
+        "failClosed": true,
+        "command": "loaf check --hook workflow-pre-pr --json --cursor-hook",
         "if": "Bash(gh pr create:*)"
       },
       "signatures": [
@@ -304,7 +305,6 @@
           "check",
           "--hook",
           "workflow-pre-pr",
-          "--advisory",
           "--json",
           "--cursor-hook"
         ]

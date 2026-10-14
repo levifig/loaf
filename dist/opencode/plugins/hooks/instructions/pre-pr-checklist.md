@@ -13,12 +13,12 @@ Add an entry under `## [Unreleased]` in `CHANGELOG.md`, categorized by Common Ch
 | `feat` | Added |
 | `fix` | Fixed |
 | `refactor`, `perf` | Changed |
-| `docs` (user-facing) | Changed |
-| `chore`, `ci`, `test` | Skip unless notable |
+| `docs` | Changed |
+| `chore`, `ci`, `test` | Changed or Fixed, matching the outcome |
 
-One line per meaningful change. Write imperative, self-describing,
-release-facing prose; include public references when available, and do not
-include internal spec/task IDs.
+Every implemented canonical work record needs new or substantively updated Unreleased prose and its repository-conventional public reference. One accurate entry may cover several records; refine an existing note when appropriate. Do not exempt small fixes, tests, docs, or maintenance. Discussion and unimplemented work need no entry. Unchanged, released, unrelated, and formatting-only entries do not cover new implementation. Write imperative, self-describing, release-facing prose without internal spec/task IDs.
+
+Declare the complete implemented work set through the repository's explicit PR input and run its shared local/CI coverage validator against the actual review base and committed candidate. Verify canonical identity and completeness through the native tracker; Ship also reviews note meaning. Follow the repository's provider-specific declaration and reference convention. Release-only promotion is narrow and diff-verified; a release title or tag never waives coverage.
 
 ```markdown
 ### Added

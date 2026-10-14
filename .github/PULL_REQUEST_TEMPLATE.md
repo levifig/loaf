@@ -8,6 +8,9 @@
 
 <!-- Link the selected canonical native issue or issues. Read their current scope and completion criteria; do not create a competing work record here. -->
 
+<!-- Fill this single JSON declaration with every implemented canonical Issue URL. An empty array fails coverage. Incidental mentions and closing keywords do not declare the work set. Release-only promotion uses an empty array plus "release_only":true and is validated against the actual diff. -->
+<!-- loaf:implemented-issues {"issues":[]} -->
+
 ## Verification
 
 <!-- Map completion criteria to observed evidence: relevant tests/checks, real usage, and safety or preservation proof. Report failures, skipped checks, limitations, and remaining gaps honestly. -->

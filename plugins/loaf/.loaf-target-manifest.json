@@ -12,7 +12,7 @@
       "kind": "hook-file",
       "source_path": "hooks/hooks.json",
       "destination": "hooks/hooks.json",
-      "sha256": "a1add215f588ff4027d3386b3cb2c8650f1d329ec9d0fe2f2b5b721ced441143",
+      "sha256": "cee42f3fb27aa69ffb37084877272577a3e94bf2b5f102b0d2244d91ee131317",
       "mode": 420
     },
     {
@@ -36,7 +36,7 @@
       "kind": "hook-file",
       "source_path": "hooks/instructions/pre-pr-checklist.md",
       "destination": "hooks/instructions/pre-pr-checklist.md",
-      "sha256": "53eb48137ea2595bad96dbff17ab33125ca186e6a2e8bd9f3c8c86d9c1e4f275",
+      "sha256": "39105e7a4dd6e6574e2a4e270f10d1c7f0c34f95bdd1f25b234d5376644d7a69",
       "mode": 420
     },
     {

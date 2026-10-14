@@ -99,9 +99,9 @@ hooks:
       failClosed: true
       description: Switch the active GitHub account to project config before gh commands; block only if the switch fails
 
-    # Git Workflow - Push and PR guards (ADVISORY)
-    # These are safety nets, not gates — ship/release skills orchestrate the same checks.
-    # Security hooks (above) stay blocking; workflow hooks warn but don't block.
+    # Git Workflow - Push stays advisory. PR coverage blocks in repositories
+    # opting into its GitHub convention through their tracked PR template;
+    # other repositories retain generic advisory reminders.
     - id: validate-push
       skill: git-workflow
       matcher: "Bash"
@@ -114,9 +114,10 @@ hooks:
       skill: git-workflow
       matcher: "Bash"
       if: "Bash(gh pr create:*)"
-      blocking: false
+      blocking: true
       timeout: 5000
-      description: "Remind about PR format and CHANGELOG entry before gh pr create"
+      failClosed: true
+      description: "Validate declared Issue changelog coverage and PR format before gh pr create"
 
     - id: workflow-pre-merge
       skill: git-workflow
