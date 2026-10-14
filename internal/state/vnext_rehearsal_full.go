@@ -596,30 +596,49 @@ func augmentFullDomainV2(c archive.Content, e fullDomainExportV2) (archive.Conte
 			r.Observation.ObservedHarness = o.ObservedHarness
 			r.Observation.HarnessVersion = o.HarnessVersion
 		}
+		sparkKey := ""
 		if r.Journal != nil && r.Journal.Category == continuity.JournalSpark {
-			key := r.Journal.Scope + "\x00" + r.Journal.Text + "\x00" + fmt.Sprint(r.Observation.ObservedAtMillis)
-			if e.sparkMatches[key] {
-				e.mappings = append(e.mappings, archive.Mapping{Name: "legacy_duplicate_journal_spark_v1", Field: "journal_entries." + r.SourceID, Original: key})
+			sparkKey = r.Journal.Scope + "\x00" + r.Journal.Text + "\x00" + fmt.Sprint(r.Observation.ObservedAtMillis)
+		}
+		var text *string
+		field := "text"
+		if r.Journal != nil {
+			text = &r.Journal.Text
+		}
+		if r.Wrap != nil {
+			text = &r.Wrap.Synthesis
+			field = "synthesis"
+		}
+		if text != nil {
+			clean := cleanJournalTextV2(*text)
+			if clean != *text {
+				c.Source.NormalizedJournalTextRows++
+				c.Source.JournalTextMapping = archive.JournalTextControlCharactersStrippedV1
+				r.Mappings = append(r.Mappings, archive.Mapping{Name: archive.JournalTextControlCharactersStrippedV1, Field: field, Original: *text})
+				if strings.TrimSpace(clean) == "" {
+					clean = "Legacy journal text contained only stripped control sequences."
+				}
+				*text = clean
+			}
+		}
+		if sparkKey != "" {
+			if e.sparkMatches[sparkKey] {
+				e.mappings = append(e.mappings, archive.Mapping{Name: "legacy_duplicate_journal_spark_v1", Field: "journal_entries." + r.SourceID, Original: sparkKey})
+				for _, mapping := range r.Mappings {
+					if mapping.Name == archive.JournalTextControlCharactersStrippedV1 {
+						mapping.Field = "journal_entries." + r.SourceID
+						e.mappings = append(e.mappings, mapping)
+					}
+				}
 				c.Source.MatchedSparkJournalRows++
 				continue
 			}
 			c.Source.UnmatchedSparkJournalRows++
-			if err := e.append(continuity.FactSparkCaptured, "journal:"+r.SourceID, e.id("spark-journal", r.SourceID), continuity.SparkCapturedPayload{Observation: r.Observation.Continuity(), Scope: r.Journal.Scope, Text: r.Journal.Text}, archive.Mapping{Name: "legacy_unmatched_journal_spark_v1", Field: "journal_entry", Original: r.SourceID}); err != nil {
+			mappings := append(r.Mappings, archive.Mapping{Name: "legacy_unmatched_journal_spark_v1", Field: "journal_entry", Original: r.SourceID})
+			if err := e.append(continuity.FactSparkCaptured, "journal:"+r.SourceID, e.id("spark-journal", r.SourceID), continuity.SparkCapturedPayload{Observation: r.Observation.Continuity(), Scope: r.Journal.Scope, Text: r.Journal.Text}, mappings...); err != nil {
 				return archive.Content{}, err
 			}
 			continue
-		}
-		if r.Journal != nil {
-			clean := cleanJournalTextV2(r.Journal.Text)
-			if clean != r.Journal.Text {
-				c.Source.NormalizedJournalTextRows++
-				c.Source.JournalTextMapping = archive.JournalTextControlCharactersStrippedV1
-				r.Mappings = append(r.Mappings, archive.Mapping{Name: archive.JournalTextControlCharactersStrippedV1, Field: "text", Original: r.Journal.Text})
-				if strings.TrimSpace(clean) == "" {
-					clean = "Legacy journal text contained only stripped control sequences."
-				}
-				r.Journal.Text = clean
-			}
 		}
 		records = append(records, r)
 	}

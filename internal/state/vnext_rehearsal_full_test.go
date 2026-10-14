@@ -155,6 +155,67 @@ func TestFullDomainArchiveLifecycleBodiesSparkDedupAndReplay(t *testing.T) {
 	}
 }
 
+func TestFullDomainArchiveNormalizesWrapAndJournalSparkControls(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	resolver := PathResolver{StateHome: t.TempDir()}
+	status, err := Initialize(ctx, root, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range []string{"wrap(archive): retained \x1b[31msynthesis\x1b[0m\x00", "spark(archive): retained \x1b[31mcapture\x1b[0m\x00"} {
+		if _, err := LogJournal(ctx, root, resolver, JournalLogOptions{Entry: entry}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	backup, err := Backup(ctx, root, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := ExportVNextRehearsalArchive(ctx, VNextRehearsalExportOptions{Backup: backup, ProjectID: status.ProjectID, Root: root, Resolver: resolver})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := archive.Parse(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Content.Source.NormalizedJournalTextRows != 2 || a.Content.Source.UnmatchedSparkJournalRows != 1 {
+		t.Fatal("missing normalization counts")
+	}
+	retained := 0
+	for _, record := range a.Content.Records {
+		for _, mapping := range record.Mappings {
+			if mapping.Name == archive.JournalTextControlCharactersStrippedV1 {
+				retained++
+			}
+		}
+		if record.Wrap != nil && record.Wrap.Synthesis != "retained synthesis" {
+			t.Fatal("wrap text was not normalized")
+		}
+		if record.Kind == archive.RecordKind(continuity.FactSparkCaptured) {
+			var payload continuity.SparkCapturedPayload
+			if err := json.Unmarshal(record.Payload, &payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload.Text != "retained capture" {
+				t.Fatal("journal spark text was not normalized")
+			}
+		}
+	}
+	if retained != 2 {
+		t.Fatal("original journal text declaration lost during conversion")
+	}
+	destination, err := continuitysqlite.Open(filepath.Join(t.TempDir(), "destination"), "environment-journal-controls")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer destination.Close()
+	if _, err := rehearsal.Import(ctx, encoded, destination); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestFullDomainArchiveRecoversFactBodyAndNativeObservationAndDurableReference(t *testing.T) {
 	ctx := context.Background()
 	root := projectRoot(t)

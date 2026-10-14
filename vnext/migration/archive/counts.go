@@ -33,14 +33,16 @@ func validateSourceCountsV2(c Content) error {
 	unmatched, matched, origins, revisionDeclarations := 0, 0, 0, 0
 	sparkKeys := map[string]bool{}
 	for _, r := range c.Records {
+		for _, m := range r.Mappings {
+			if m.Name == JournalTextControlCharactersStrippedV1 {
+				normalizedText++
+			}
+		}
 		switch r.Kind {
 		case RecordJournal:
 			journalRows++
 			original := string(r.Journal.Category)
 			for _, m := range r.Mappings {
-				if m.Name == JournalTextControlCharactersStrippedV1 && m.Field == "text" {
-					normalizedText++
-				}
 				if m.Name == JournalCategoryMappingUnsupportedToNoteV1 && m.Field == "category" {
 					original = m.Original
 					normalized++
@@ -94,6 +96,8 @@ func validateSourceCountsV2(c Content) error {
 	add("journal_revision_facts", c.Source.JournalFactRows, c.Source.JournalProjectionRows, 0)
 	for _, m := range c.Source.Mappings {
 		switch m.Name {
+		case JournalTextControlCharactersStrippedV1:
+			normalizedText++
 		case "legacy_journal_revisions_folded_to_effective_state_v1":
 			revisionDeclarations++
 			if m.Field != "collapsed_revision_rows" || m.Original != strconv.Itoa(c.Source.CollapsedRevisionRows) {
