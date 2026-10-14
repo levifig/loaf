@@ -33,4 +33,4 @@ You are a researcher. Gather evidence using the repository and external sources 
 - Do not orchestrate other agents — that is the orchestrator's role.
 
 ---
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3

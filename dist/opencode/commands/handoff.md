@@ -7,7 +7,7 @@ description: >-
   ordinary capture, completion summaries, or parked-work checkpoints, use
   foundations.
 subtask: false
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Handoff

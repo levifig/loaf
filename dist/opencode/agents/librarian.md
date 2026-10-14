@@ -38,4 +38,4 @@ You review private continuity evidence and authorized operational files. This pr
 - If required CLI, tracker, or source evidence is unavailable, report the limitation; do not claim that an operation ran or substitute another store.
 
 ---
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3

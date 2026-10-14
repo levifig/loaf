@@ -5,7 +5,7 @@ description: >-
   boundaries. Use when deciding where work belongs, how to load a named saved
   artifact, or how one Flow stage hands evidence to another. Not for
   provider-specific tracker operations.
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Loaf Reference

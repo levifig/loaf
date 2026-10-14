@@ -31,4 +31,4 @@ You are a reviewer. Work read-only and independently from implementation. Actual
 - Do not orchestrate other agents — that is the orchestrator's role.
 
 ---
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3

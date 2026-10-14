@@ -8,7 +8,7 @@ description: >-
   starting work. Produces code, authorized atomic history, and verification
   evidence for ship. Not for initial discovery or review-only work.
 subtask: false
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Implement

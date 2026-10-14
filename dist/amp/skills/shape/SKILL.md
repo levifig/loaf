@@ -6,7 +6,7 @@ description: >-
   exclusions, hierarchy, dependencies, or version planning such as "put this in
   the next minor." Produces a verified native record and any needed native
   version milestone without selecting implementation implicitly.
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Shape

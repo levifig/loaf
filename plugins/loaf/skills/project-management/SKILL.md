@@ -6,7 +6,7 @@ description: >-
   "Let's implement it" need verification, before loading implement; also for
   Flow ceremonies and deferred follow-ups. Uses an already-configured harness
   connection. Not for configuring providers or storing work locally.
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Project Management

@@ -9,7 +9,7 @@ description: >-
   evidence for ship. Not for initial discovery or review-only work.
 user-invocable: true
 argument-hint: '[linear:ENG-42 | branch:issue/foo | next | description]'
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Implement

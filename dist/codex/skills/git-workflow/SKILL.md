@@ -7,7 +7,7 @@ description: >-
   git history. Provides patterns for collaborative git workflows. Not for code
   style (use foundations), CI/CD pipelines (use infrastructure-management), or
   reviewing and merging a PR (use ship).
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Git Workflow
