@@ -431,7 +431,7 @@ const preToolHooks = {
       "id": "workflow-pre-pr",
       "command": "loaf check --hook workflow-pre-pr",
       "timeout": 5000,
-      "failClosed": false,
+      "failClosed": true,
       "if": "Bash(gh pr create:*)"
     },
     {

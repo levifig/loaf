@@ -974,45 +974,32 @@ func runNativeSecurityAudit(context checkHookContext, cwd string) checkResult {
 	return result
 }
 
-var unreleasedHeadingRE = regexp.MustCompile(`(?m)^##\s*\[Unreleased\]`)
-var changelogHeadingRE = regexp.MustCompile(`(?m)^##\s`)
-var unreleasedStubRE = regexp.MustCompile(`^\s*[-*]\s*_No unreleased changes(?: yet| since v[^.]+(?:\.[^.]+){0,2}(?:-[^.]+)?)\._\s*$`)
 var prTitleFlagRE = regexp.MustCompile(`--title(?:\s+|=)(?:"([^"]+)"|'([^']+)'|([^\s"']+))`)
 var conventionalPRTitleRE = regexp.MustCompile(`(?i)^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .+`)
 
 func runNativeWorkflowPrePR(hookContext checkHookContext, cwd string) checkResult {
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
 	command := checkContextCommand(hookContext)
-	if checkContextToolName(hookContext) != "Bash" || !strings.Contains(command, "gh pr create") {
+	if checkContextToolName(hookContext) != "Bash" {
 		return result
 	}
-
-	changelog, err := readRegularFile(filepath.Join(cwd, "CHANGELOG.md"), projectFileReadLimit)
+	request, relevant, err := workflowChangelogRequest(command, cwd)
+	if !relevant {
+		return result
+	}
+	if !repositoryUsesIssueChangelog(cwd, request.base) {
+		return advisoryWorkflowPrePR(command, cwd)
+	}
+	if err == nil {
+		err = checkIssueChangelog(cwd, request)
+	}
 	if err != nil {
 		result.Passed = false
 		result.Blocked = true
-		if os.IsNotExist(err) {
-			result.Errors = append(result.Errors, "CHANGELOG.md not found")
-		} else {
-			result.Errors = append(result.Errors, "Could not read CHANGELOG.md")
-		}
-	} else {
-		section, ok := unreleasedSection(string(changelog))
-		if !ok {
-			result.Passed = false
-			result.Blocked = true
-			result.Errors = append(result.Errors, "CHANGELOG.md missing [Unreleased] section")
-		} else if !unreleasedSectionHasEntries(section) && !isWorkflowReleaseEscape(cwd, string(changelog)) {
-			result.Passed = false
-			result.Blocked = true
-			result.Errors = append(result.Errors,
-				"CHANGELOG.md [Unreleased] section is empty (no entries found)",
-				"Add changelog entries before creating a PR",
-			)
-		}
+		result.Errors = append(result.Errors, err.Error())
 	}
 
-	result.Warnings = append(result.Warnings, baseBranchAbsorptionWarnings(cwd)...)
+	result.Warnings = append(result.Warnings, baseBranchAbsorptionWarnings(cwd, request.base)...)
 	validatePRCreateCommand(command, &result)
 	return result
 }
@@ -1264,45 +1251,6 @@ func nonEmptyLines(output string) []string {
 	return lines
 }
 
-func unreleasedSection(changelog string) (string, bool) {
-	match := unreleasedHeadingRE.FindStringIndex(changelog)
-	if match == nil {
-		return "", false
-	}
-	bodyStart := match[1]
-	rest := changelog[bodyStart:]
-	next := changelogHeadingRE.FindStringIndex(rest)
-	if next == nil {
-		return rest, true
-	}
-	return rest[:next[0]], true
-}
-
-func unreleasedSectionHasEntries(section string) bool {
-	for _, line := range strings.Split(section, "\n") {
-		if unreleasedStubRE.MatchString(line) {
-			continue
-		}
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
-			return true
-		}
-	}
-	return false
-}
-
-func isWorkflowReleaseEscape(cwd string, changelog string) bool {
-	if headHasTag(cwd) || releaseCommitSubjectRE.MatchString(headSubject(cwd)) {
-		return true
-	}
-	return isReleaseOnlyPR(cwd, changelog)
-}
-
-func headHasTag(cwd string) bool {
-	output, err := commandOutput(cwd, "git", "tag", "--points-at", "HEAD")
-	return err == nil && strings.TrimSpace(output) != ""
-}
-
 func headSubject(cwd string) string {
 	output, err := commandOutput(cwd, "git", "log", "-1", "--pretty=%s")
 	if err != nil {
@@ -1311,16 +1259,12 @@ func headSubject(cwd string) string {
 	return strings.TrimSpace(output)
 }
 
-func baseBranchAbsorptionWarnings(cwd string) []string {
+func baseBranchAbsorptionWarnings(cwd string, baseRef string) []string {
 	branch, err := commandOutput(cwd, "git", "branch", "--show-current")
 	if err != nil {
 		return nil
 	}
 	branch = strings.TrimSpace(branch)
-	baseRef, err := commandOutput(cwd, "gh", "repo", "view", "--json", "defaultBranchRef", "-q", ".defaultBranchRef.name")
-	if err != nil {
-		return nil
-	}
 	baseRef = strings.TrimSpace(baseRef)
 	if branch == "" || baseRef == "" || branch == baseRef {
 		return nil
@@ -1391,166 +1335,6 @@ func validatePRCreateCommand(command string, result *checkResult) {
 			`Example: gh pr create --title "..." --body "Description of changes"`,
 		)
 	}
-}
-
-type detectedVersionFile struct {
-	path    string
-	version string
-}
-
-func isReleaseOnlyPR(cwd string, changelog string) bool {
-	currentBranch, err := commandOutput(cwd, "git", "branch", "--show-current")
-	if err != nil || strings.TrimSpace(currentBranch) == "" {
-		return false
-	}
-	base := resolveReleaseBase(cwd, strings.TrimSpace(currentBranch))
-	if base == "" {
-		return false
-	}
-	versionFiles := detectWorkflowVersionFiles(cwd)
-	if len(versionFiles) == 0 {
-		return false
-	}
-	diff, err := commandOutput(cwd, "git", "diff", base+"..HEAD", "--name-only")
-	if err != nil {
-		return false
-	}
-	changed := map[string]bool{}
-	for _, line := range strings.Split(diff, "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			changed[line] = true
-		}
-	}
-	if len(changed) == 0 || !changed["CHANGELOG.md"] {
-		return false
-	}
-	allowlist := map[string]bool{"CHANGELOG.md": true}
-	for _, file := range versionFiles {
-		allowlist[filepath.ToSlash(file.path)] = true
-	}
-	for path := range changed {
-		if !allowlist[path] {
-			return false
-		}
-	}
-	hasVersionChange := false
-	for _, file := range versionFiles {
-		if changed[filepath.ToSlash(file.path)] {
-			hasVersionChange = true
-			break
-		}
-	}
-	if !hasVersionChange {
-		return false
-	}
-	candidate := versionFiles[0].version
-	if candidate == "" {
-		return false
-	}
-	for _, file := range versionFiles {
-		if file.version != candidate {
-			return false
-		}
-	}
-	return changelogVersionSectionHasEntries(changelog, candidate)
-}
-
-func resolveReleaseBase(cwd string, currentBranch string) string {
-	if output, err := commandOutput(cwd, "gh", "pr", "view", currentBranch, "--json", "baseRefName,state", "-q", `select(.state == "OPEN") | .baseRefName`); err == nil && strings.TrimSpace(output) != "" {
-		return strings.TrimSpace(output)
-	}
-	if output, err := commandOutput(cwd, "git", "config", "--get", "loaf.release.base"); err == nil && strings.TrimSpace(output) != "" {
-		return strings.TrimSpace(output)
-	}
-	if output, err := commandOutput(cwd, "gh", "repo", "view", "--json", "defaultBranchRef", "-q", ".defaultBranchRef.name"); err == nil && strings.TrimSpace(output) != "" {
-		return strings.TrimSpace(output)
-	}
-	if output, err := commandOutput(cwd, "git", "symbolic-ref", "refs/remotes/origin/HEAD"); err == nil {
-		ref := strings.TrimSpace(output)
-		if strings.HasPrefix(ref, "refs/remotes/origin/") {
-			return strings.TrimPrefix(ref, "refs/remotes/origin/")
-		}
-	}
-	return ""
-}
-
-func detectWorkflowVersionFiles(cwd string) []detectedVersionFile {
-	var paths []string
-	if isFile(filepath.Join(cwd, "package.json")) {
-		paths = append(paths, "package.json")
-	}
-	paths = append(paths, configuredWorkflowVersionFiles(cwd)...)
-	seen := map[string]bool{}
-	var files []detectedVersionFile
-	for _, path := range paths {
-		path = filepath.ToSlash(path)
-		if seen[path] {
-			continue
-		}
-		seen[path] = true
-		version := readWorkflowVersionFile(cwd, path)
-		if version != "" {
-			files = append(files, detectedVersionFile{path: path, version: version})
-		}
-	}
-	return files
-}
-
-func configuredWorkflowVersionFiles(cwd string) []string {
-	body, err := os.ReadFile(filepath.Join(cwd, ".agents", "loaf.json"))
-	if err != nil {
-		return nil
-	}
-	var config struct {
-		Release struct {
-			VersionFiles []string `json:"versionFiles"`
-		} `json:"release"`
-	}
-	if err := json.Unmarshal(body, &config); err != nil {
-		return nil
-	}
-	return config.Release.VersionFiles
-}
-
-func readWorkflowVersionFile(cwd string, path string) string {
-	body, err := readRegularFile(filepath.Join(cwd, filepath.FromSlash(path)), projectFileReadLimit)
-	if err != nil {
-		return ""
-	}
-	if strings.HasSuffix(path, ".json") {
-		var data struct {
-			Version string `json:"version"`
-		}
-		if err := json.Unmarshal(body, &data); err == nil {
-			return data.Version
-		}
-	}
-	if matches := regexp.MustCompile(`(?m)^\s*version\s*=\s*["']([^"']+)["']`).FindStringSubmatch(string(body)); len(matches) == 2 {
-		return matches[1]
-	}
-	return ""
-}
-
-func changelogVersionSectionHasEntries(changelog string, version string) bool {
-	heading := regexp.MustCompile(`(?m)^##\s*\[` + regexp.QuoteMeta(version) + `\].*$`)
-	match := heading.FindStringIndex(changelog)
-	if match == nil {
-		return false
-	}
-	rest := changelog[match[1]:]
-	next := changelogHeadingRE.FindStringIndex(rest)
-	section := rest
-	if next != nil {
-		section = rest[:next[0]]
-	}
-	for _, line := range strings.Split(section, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
-			return true
-		}
-	}
-	return false
 }
 
 func commandOutput(cwd string, name string, args ...string) (string, error) {

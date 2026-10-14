@@ -29,6 +29,7 @@ func checkOperatorHelpItems() []subcommandHelpItem {
 		{Name: "commit-msg", Summary: "Validate a commit message from a file or stdin"},
 		{Name: checkTreeScanName(), Summary: "Scan a directory tree for hardcoded assignments and key files"},
 		{Name: "changelog", Summary: "Validate a document micro-changelog section"},
+		{Name: "issue-changelog", Summary: "Require changed Unreleased coverage for declared implemented Issues"},
 		{Name: "compliance", Summary: "Require every markdown checklist box to be checked"},
 		{Name: "test-naming", Summary: "Check Python test file, function, and fixture naming"},
 		{Name: "dockerfile", Summary: "Validate Dockerfile best practices"},
@@ -44,6 +45,7 @@ func checkOperatorHelpWriters() map[string]func(io.Writer) {
 		"commit-msg":        writeCheckCommitMsgHelp,
 		checkTreeScanName(): writeCheckTreeScanHelp,
 		"changelog":         writeCheckChangelogHelp,
+		"issue-changelog":   writeCheckIssueChangelogHelp,
 		"compliance":        writeCheckComplianceHelp,
 		"test-naming":       writeCheckTestNamingHelp,
 		"dockerfile":        writeCheckDockerfileHelp,
@@ -95,6 +97,8 @@ func (r Runner) runCheckOperator(name string, args []string, out io.Writer, runt
 		return r.runCheckTreeScan(args, out, errOut, runtimeRoot)
 	case "changelog":
 		return r.runCheckChangelog(args, out, errOut, runtimeRoot)
+	case "issue-changelog":
+		return r.runCheckIssueChangelog(args, out, errOut, runtimeRoot)
 	case "compliance":
 		return r.runCheckCompliance(args, out, errOut, runtimeRoot)
 	case "test-naming":

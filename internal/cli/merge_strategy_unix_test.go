@@ -12,10 +12,17 @@ import (
 
 func TestWorkflowPrePRDoesNotBlockOnMergeStrategyFIFO(t *testing.T) {
 	repo := initCLIGitRepo(t)
+	mkdirAll(t, filepath.Join(repo, ".github"))
+	writeFile(t, filepath.Join(repo, ".github", "PULL_REQUEST_TEMPLATE.md"), coverageDeclaration)
+	writeFile(t, filepath.Join(repo, "CHANGELOG.md"), coverageChangelog("- Baseline note."))
+	coverageCommit(t, repo)
 	addOriginTrackingMain(t, repo)
 	gitCLI(t, repo, "commit", "--allow-empty", "-m", "chore: unpushed base")
 	gitCLI(t, repo, "switch", "-c", "feat/fifo-config")
-	writeFile(t, filepath.Join(repo, "CHANGELOG.md"), workflowChangelog("- FIFO fixture."))
+	writeFile(t, filepath.Join(repo, "CHANGELOG.md"), coverageChangelog("- Preserve nonblocking config reads "+coverageLink+"."))
+	coverageCommit(t, repo)
+	body := filepath.Join(t.TempDir(), "pr.md")
+	writeFile(t, body, coverageDeclaration)
 	if err := os.MkdirAll(filepath.Join(repo, ".agents"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +33,7 @@ func TestWorkflowPrePRDoesNotBlockOnMergeStrategyFIFO(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", stubDir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	context := checkHookContext{ToolName: "Bash", ToolInput: checkHookInput{Command: "gh pr create --fill"}}
+	context := checkHookContext{ToolName: "Bash", ToolInput: checkHookInput{Command: `gh pr create --repo levifig/loaf --base main --title "fix: preserve nonblocking config reads" --body-file "` + body + `"`}}
 	done := make(chan checkResult, 1)
 	go func() { done <- runNativeWorkflowPrePR(context, repo) }()
 	select {

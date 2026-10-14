@@ -101,6 +101,49 @@ The [verify-only CI decision](../decisions/ADR-012-ci-verify-only-build-artifact
 
 Verification evidence must identify what it vouches for. A receipt remains a historical observation of those bytes; it is not proof of an untested replacement. Assess changes to the behavior or boundary under test before requiring new compatibility evidence, rather than treating every version or binary digest change as a reason for full recertification. Branch ancestry alone is insufficient: merges and rebases can preserve or change content independently of topology. Retired cohort receipts and their exact digest schema do not become a universal evidence database or another release authority. Current build, review, and ship checks own executable freshness rules.
 
+## Issue-Linked Changelog Coverage
+
+Every implemented canonical work record needs new or substantively updated Unreleased prose, including fixes, tests, docs, maintenance, and features. Discussion and unimplemented ideas do not. Implement declares the complete work set, verifies canonical identity through the selected tracker, and writes accurate notes; Ship independently checks completeness and meaning before Approve or Done. The [native validator](../../internal/cli/issue_changelog.go) checks structural coverage only. An unrelated old entry, copying a released note, adding only a reference, or changing formatting is insufficient. The document micro-changelog operator remains a separate check.
+
+### GitHub
+
+This repository uses exact linked Issue references in entry prose, for example `([#279](https://github.com/levifig/loaf/issues/279))`, and one PR-body declaration:
+
+```html
+<!-- loaf:implemented-issues {"issues":["https://github.com/levifig/loaf/issues/279"]} -->
+```
+
+Declare every implemented Issue URL, even when one entry covers several. PR URLs, incidental body mentions, closing keywords, branch names, and titles are not declaration inputs. The parser cannot establish whether an `/issues/N` URL identifies an Issue rather than a PR; the main agent and Ship must verify that distinction through the authenticated tracker connection.
+
+The local operator, pre-PR hook, and [PR workflow](../../.github/workflows/issue-changelog.yml) call the same network-free Go implementation. The tracked repository PR template opts into this concrete GitHub policy by containing the declaration marker; this repository opts in. Repositories without that marker receive generic advisory PR reminders, so GitHub code hosting alone never forces a Linear or other tracker user to create shadow GitHub Issues. Explicit CLI and CI invocations always validate and never silently skip. Local usage requires explicit repository, actual review base, candidate, and either the PR body file or repeated `--issue` URLs:
+
+```sh
+loaf check issue-changelog --repository levifig/loaf --base origin/main --head HEAD --pr-body-file /tmp/pr-body.md --json
+loaf check issue-changelog --repository levifig/loaf --base origin/main --head WORKTREE --issue https://github.com/levifig/loaf/issues/279
+```
+
+`WORKTREE` reads staged/unstaged file content without changing the index. It is an authoring check, not proof of the committed candidate. The pre-PR hook validates committed `HEAD` and requires a literal standalone `gh pr create` with explicit `--repo`, `--base`, and `--body` or a regular `--body-file`. `--fill` alone and ambiguous shell context fail with an actionable diagnostic. An alternate `--head` is refused because the hook cannot attest that candidate. CI reads immutable base/head SHAs and the current body from the GitHub event JSON; shell source never contains PR body text. The job has read-only contents permission, no secrets, and no persistent checkout credentials. It runs on open, synchronize, reopen, body edit, and readiness changes without path exclusions, so Markdown-only candidates receive the same check.
+
+A release-only declaration is `{"issues":[],"release_only":true}` inside the same marker; the local equivalent is `--release-only`. This repository's narrow exception permits exact promotion of existing nonempty Unreleased notes to one new versioned release section, preserving old history and leaving Unreleased empty or its canonical stub. An optional version-only `package.json` update must match the new heading. Its mechanical Loaf version stamps may accompany it: generated skill/agent frontmatter, Amp/OpenCode plugin version comments, Claude plugin/marketplace version metadata, and target manifest/catalog package versions. Changed ownership digests must match the actual base and candidate artifact bytes. No new/deleted files or arbitrary generated edits qualify. New notes, rewrites, implementation files, and other manifest changes fail. There is no title, tag, body-file, or skip-label exemption. Other version-file layouts are not silently classified as release-only by this gate. The real content builder is exercised by the release regression, alongside rejection of a generated code edit.
+
+### Required-Check Activation
+
+The stable job/check context is **`Issue changelog coverage`**, produced by `.github/workflows/issue-changelog.yml`. Workflow delivery does not itself make that check required. Until an authorized maintainer activates and reads back a native rule, CI is advisory to mergeability; Ship still blocks acceptance on missing coverage. Hooks and model guidance cannot prevent every bypass, and changes to the validator or workflow need ordinary independent review.
+
+The intended native configuration targets `main`, is active (not evaluate-only), requires the exact `Issue changelog coverage` context from the observed GitHub Actions integration, and requires the candidate to be current with its base. Add this requirement while preserving every existing protection, check, bypass policy, and merge-method setting. Classic branch protection represents it as an additional `required_status_checks.checks` item with `context: "Issue changelog coverage"` and the observed check run's `app.id`, with `strict: true`. A branch ruleset uses an additional `required_status_checks` entry with `context: "Issue changelog coverage"` and that `integration_id`, plus `strict_required_status_checks_policy: true`. Neither is activated by this implementation; activation needs separate human authorization.
+
+Read-only verification through the already authenticated provider connection must inspect both rulesets and classic protection, since either may apply. With installed `gh`, verify the actor first, then read:
+
+```sh
+gh api --hostname github.com user --jq .login
+gh api --hostname github.com repos/levifig/loaf/branches/main/protection
+gh api --hostname github.com repos/levifig/loaf/rules/branches/main
+gh api --hostname github.com repos/levifig/loaf/rulesets --paginate
+gh api --hostname github.com repos/levifig/loaf/commits/REVIEWED_SHA/check-runs
+```
+
+Resolve any returned ruleset IDs to their detail endpoint to verify active enforcement, branch targeting and bypass settings. Read the check run's exact name, app identity, head SHA, conclusion, and details URL. A permission error or unavailable protection endpoint is unverified, not proof that no rule applies. After separately authorized activation, read these surfaces again and confirm the added requirement and preservation of all previous protections; never infer enforcement from a passing job or a successful mutation request.
+
 ## Version Identity
 
 Loaf uses major-zero Semantic Versioning (`0.y.z`) until it deliberately declares a stable `1.0.0` public contract. Before 1.0, reserve the major transition for `1.0.0`, use a minor version for significant or breaking work, and a patch for other work worth releasing. After 1.0, apply Semantic Versioning compatibility rules and keep patch, minor, and next-major planning buckets; distant buckets remain broad. The stable public-contract readiness bar and clear compatibility notes remain release decisions. These conventions describe project policy independently of its language, framework, or version-file layout.

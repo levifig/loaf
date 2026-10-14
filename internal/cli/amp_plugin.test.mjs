@@ -103,9 +103,24 @@ test('generated plugin runs real pre-PR in helper shell dir and falls back to wo
     await rm(workspace, { recursive: true, force: true });
     await rm(binDir, { recursive: true, force: true });
   });
-  const changelog = '## [Unreleased]\n\n- Probe changelog entry\n';
-  await writeFile(join(workspace, 'CHANGELOG.md'), changelog);
-  await writeFile(join(shellDir, 'CHANGELOG.md'), changelog);
+  const declaration = '<!-- loaf:implemented-issues {"issues":["https://github.com/levifig/loaf/issues/284"]} -->';
+  const changelog = '## [Unreleased]\n\n- Require issue coverage ([#284](https://github.com/levifig/loaf/issues/284)).\n';
+  for (const dir of [workspace, shellDir, missingDir]) {
+    execFileSync('git', ['init', '-b', 'main'], { cwd: dir });
+    await mkdir(join(dir, '.github'));
+    await writeFile(join(dir, '.github', 'PULL_REQUEST_TEMPLATE.md'), declaration);
+    await writeFile(join(dir, 'README.md'), 'Temporary hook fixture.\n');
+    if (dir !== missingDir) await writeFile(join(dir, 'CHANGELOG.md'), '## [Unreleased]\n\n');
+    execFileSync('git', ['add', '.'], { cwd: dir });
+    const commit = ['-c', 'user.name=Loaf Test', '-c', 'user.email=loaf@example.test', '-c', 'commit.gpgsign=false', 'commit', '-m', 'fixture'];
+    execFileSync('git', commit, { cwd: dir });
+    execFileSync('git', ['switch', '-c', 'feature'], { cwd: dir });
+    if (dir !== missingDir) {
+      await writeFile(join(dir, 'CHANGELOG.md'), changelog);
+      execFileSync('git', ['add', 'CHANGELOG.md'], { cwd: dir });
+      execFileSync('git', commit, { cwd: dir });
+    }
+  }
   const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
   const realLoaf = join(binDir, 'real-loaf');
   execFileSync('go', ['build', '-o', realLoaf, './cmd/loaf'], { cwd: repoRoot, encoding: 'utf8' });
@@ -142,7 +157,7 @@ test('generated plugin runs real pre-PR in helper shell dir and falls back to wo
   const prePr = cwd => ({
     toolUseID: 'pre-pr',
     tool: 'shell_command',
-    input: { command: "gh pr create --title 'fix: probe' --body 'probe'", cwd },
+    input: { command: `gh pr create --repo levifig/loaf --base main --title 'fix: probe' --body '${declaration}'`, cwd },
     thread: { id: 'T-parent' },
   });
   const { default: initialize } = await import('../../dist/amp/.amp/plugins/loaf.js');

@@ -1,0 +1,27 @@
+name: Issue changelog coverage
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review, converted_to_draft]
+
+permissions:
+  contents: read
+
+jobs:
+  issue-changelog:
+    name: Issue changelog coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      # Event/body text is input data, never interpolated into shell source.
+      # No secrets or write token are available to candidate code.
+      - name: Validate declared Issues against exact review base and head
+        run: go run ./cmd/loaf check issue-changelog --repository "$GITHUB_REPOSITORY" --event-file "$GITHUB_EVENT_PATH" --json

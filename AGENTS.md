@@ -84,6 +84,7 @@ Comprehensive verification belongs locally. Default remote CI runs `make ci-chec
 - Release tags use `v`-prefixed SemVer (for example, `v0.6.0-rc.2`); native version milestone titles match the full tag string exactly.
 - Change the version only with explicit approval; keep manifest, generated content, release heading, and tag consistent.
 - Curate `CHANGELOG.md` for users: aggregate landed behavior, explain compatibility changes, and cite public references rather than internal work IDs.
+- Every implemented Issue needs new or substantively updated Unreleased prose with an exact linked Issue reference, such as `([#279](https://github.com/levifig/loaf/issues/279))`. Declare all implemented Issue URLs in the PR template's single JSON declaration; run `loaf check issue-changelog` with explicit repository, review base, candidate, and declaration input. Ship verifies meaning and scope completeness. See [changelog coverage](docs/architecture/runtime-and-delivery.md#issue-linked-changelog-coverage) for the release-only boundary, CI, and required-check activation.
 - `make release` and `make package` prepare and verify native archives but do not publish.
 - Tagging, publishing GitHub releases, and updating the Homebrew tap require explicit authorization.
 
