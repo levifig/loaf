@@ -160,8 +160,11 @@ func requireJSONEOFV1(decoder *json.Decoder) error {
 }
 
 func recordPayloadBytesV1(record Record) int {
-	bytes := len(record.SourceID) + len(record.Observation.HarnessSessionID) +
+	bytes := len(record.Payload) + len(record.SourceID) + len(record.Observation.HarnessSessionID) +
 		len(record.Observation.Branch) + len(record.Observation.Worktree)
+	for _, mapping := range record.Mappings {
+		bytes += len(mapping.Name) + len(mapping.Field) + len(mapping.Original)
+	}
 	if record.Project != nil {
 		bytes += len(record.Project.Label)
 	}

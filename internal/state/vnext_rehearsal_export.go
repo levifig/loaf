@@ -35,8 +35,10 @@ const (
 type VNextRehearsalExportOptions struct {
 	Backup    BackupResult
 	ProjectID string
-	Root      project.Root
-	Resolver  PathResolver
+	// BackupProjectID explicitly selects another registered project in this same verified backup.
+	BackupProjectID string
+	Root            project.Root
+	Resolver        PathResolver
 }
 
 type vnextRehearsalExportOperationsV1 struct {
@@ -143,6 +145,9 @@ func exportVNextRehearsalArchiveV1(
 	if authoritativeProjectID != options.ProjectID {
 		return nil, fmt.Errorf("export vNext rehearsal archive: selected project does not match the authoritative project root")
 	}
+	if options.BackupProjectID != "" {
+		options.ProjectID = options.BackupProjectID
+	}
 	if options.Backup.DatabasePath != authoritativeDatabasePath {
 		return nil, fmt.Errorf("export vNext rehearsal archive: supplied backup provenance does not match the authoritative live database")
 	}
@@ -231,6 +236,16 @@ func exportVNextRehearsalArchiveV1(
 		options.Backup.JournalWatermark != verification.JournalWatermark {
 		return nil, fmt.Errorf("export vNext rehearsal archive: supplied backup result does not match fresh verification")
 	}
+	ownerKnown := false
+	for _, p := range verification.Projects {
+		if p.ID == authoritativeProjectID {
+			ownerKnown = true
+			break
+		}
+	}
+	if !ownerKnown {
+		return nil, fmt.Errorf("export vNext rehearsal archive: authoritative owner project is absent from backup")
+	}
 	projectKnown := false
 	for _, project := range verification.Projects {
 		if project.ID == options.ProjectID {
@@ -292,6 +307,10 @@ func exportVNextRehearsalArchiveV1(
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM journal_origins WHERE project_id = ?`, options.ProjectID).Scan(&originRows); err != nil {
 		return nil, fmt.Errorf("export vNext rehearsal archive: count journal origins: %w", err)
 	}
+	fullDomain, err := readFullDomainV2(ctx, tx, options.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("export vNext rehearsal archive: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("export vNext rehearsal archive: commit read snapshot: %w", err)
 	}
@@ -337,7 +356,11 @@ func exportVNextRehearsalArchiveV1(
 	if err != nil {
 		return nil, err
 	}
-	sealed, err := archive.Seal(content)
+	content, err = augmentFullDomainV2(content, fullDomain)
+	if err != nil {
+		return nil, err
+	}
+	sealed, err := archive.SealV2(content)
 	if err != nil {
 		return nil, fmt.Errorf("export vNext rehearsal archive: seal archive: %w", err)
 	}
@@ -1344,6 +1367,8 @@ func buildVNextRehearsalContentV1(
 				)),
 				Observation: archive.Observation{
 					ObservedAtMillis: observedAt,
+					ObservedHarness:  handoffFold.Facts[handoffID].ObservedHarness,
+					HarnessVersion:   handoffFold.Facts[handoffID].ObservedHarnessVersion,
 					HarnessSessionID: projected.HarnessSessionID,
 				},
 				Handoff: &archive.HandoffRecord{
@@ -1387,6 +1412,7 @@ func buildVNextRehearsalContentV1(
 			SubjectID:   continuity.SubjectID(vnextRehearsalIDV1("journal_migration_", "journal-subject", project.ID, entryID)),
 			Observation: observation,
 			Journal:     &archive.JournalRecord{Category: category, Scope: projected.Scope, Text: projected.Message},
+			Mappings:    journalCategoryMappingV2(projected.EntryType, normalized),
 		})
 	}
 	handoffMapping := ""
@@ -1440,7 +1466,7 @@ func vnextRehearsalJournalCategoryV1(entryType string) (continuity.JournalCatego
 	case continuity.JournalNote, continuity.JournalSkill, continuity.JournalCommit,
 		continuity.JournalDecision, continuity.JournalDiscover, continuity.JournalBlock,
 		continuity.JournalUnblock, continuity.JournalSpark, continuity.JournalTodo,
-		continuity.JournalFinding:
+		continuity.JournalFinding, continuity.JournalPR, continuity.JournalReview, continuity.JournalProgress:
 		return category, false
 	default:
 		return continuity.JournalNote, true
@@ -1485,4 +1511,11 @@ func writeVNextRehearsalIDPartV1(writer vnextRehearsalHashWriterV1, value string
 	binary.BigEndian.PutUint64(length[:], uint64(len(value)))
 	_, _ = writer.Write(length[:])
 	_, _ = writer.Write([]byte(value))
+}
+
+func journalCategoryMappingV2(original string, normalized bool) []archive.Mapping {
+	if !normalized {
+		return nil
+	}
+	return []archive.Mapping{{Name: archive.JournalCategoryMappingUnsupportedToNoteV1, Field: "category", Original: original}}
 }

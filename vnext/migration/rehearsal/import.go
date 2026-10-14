@@ -63,7 +63,13 @@ func Import(ctx context.Context, encoded []byte, store *continuitysqlite.Store) 
 		facts = append(facts, fact)
 	}
 	_, err = store.ImportRehearsalFacts(ctx, report.ProjectID, facts, func(snapshot continuity.Snapshot) error {
-		actual, verifyErr := archive.ProjectionManifestForSnapshot(snapshot)
+		var actual archive.ProjectionManifest
+		var verifyErr error
+		if sealed.Version == archive.Version2 {
+			actual, verifyErr = archive.ProjectionManifestForSnapshotV2(snapshot)
+		} else {
+			actual, verifyErr = archive.ProjectionManifestForSnapshot(snapshot)
+		}
 		if verifyErr != nil {
 			return fmt.Errorf("derive staged projection: %w", verifyErr)
 		}
@@ -79,49 +85,6 @@ func Import(ctx context.Context, encoded []byte, store *continuitysqlite.Store) 
 	return report, nil
 }
 
-func prepareRecordV1(
-	projectID continuity.ProjectID,
-	record archive.Record,
-) (continuitysqlite.RehearsalFact, error) {
-	observation := continuity.Observation{
-		ObservedAtMillis: record.Observation.ObservedAtMillis,
-		ObservedHarness:  "unknown",
-		HarnessVersion:   "unknown",
-		HarnessSessionID: record.Observation.HarnessSessionID,
-		Branch:           record.Observation.Branch,
-		Worktree:         record.Observation.Worktree,
-	}
-	switch record.Kind {
-	case archive.RecordProject:
-		return continuitysqlite.NewProjectRehearsalFact(projectID, record.FactID, continuity.ProjectRegistrationPayload{
-			Observation: observation,
-			Label:       record.Project.Label,
-		})
-	case archive.RecordJournal:
-		return continuitysqlite.NewJournalRehearsalFact(projectID, record.FactID, record.SubjectID, continuity.JournalRecordedPayload{
-			Observation: observation,
-			Content: continuity.JournalContent{
-				Category: record.Journal.Category,
-				Scope:    record.Journal.Scope,
-				Text:     record.Journal.Text,
-			},
-		})
-	case archive.RecordWrap:
-		return continuitysqlite.NewWrapRehearsalFact(projectID, record.FactID, record.SubjectID, continuity.WrapRecordedPayload{
-			Observation: observation,
-			Scope:       record.Wrap.Scope,
-			Synthesis:   record.Wrap.Synthesis,
-		})
-	case archive.RecordHandoff:
-		suggestedSkills := make([]string, len(record.Handoff.SuggestedSkills))
-		copy(suggestedSkills, record.Handoff.SuggestedSkills)
-		return continuitysqlite.NewHandoffRehearsalFact(projectID, record.FactID, record.SubjectID, continuity.HandoffRecordedPayload{
-			Observation: observation,
-			Purpose:     record.Handoff.Purpose, Situation: record.Handoff.Situation,
-			NextActions: record.Handoff.NextActions, QuestionsAndRisks: record.Handoff.QuestionsAndRisks,
-			SuggestedSkills: suggestedSkills,
-		})
-	default:
-		return continuitysqlite.RehearsalFact{}, fmt.Errorf("record kind %q is unsupported by rehearsal importer version 1", record.Kind)
-	}
+func prepareRecordV1(projectID continuity.ProjectID, record archive.Record) (continuitysqlite.RehearsalFact, error) {
+	return archive.PrepareRecord(projectID, record)
 }

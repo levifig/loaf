@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,7 +58,7 @@ func TestRunnerMigrateVNextRehearsalJSONCreatesVerifiedDisposableDestination(t *
 		!strings.HasPrefix(string(result.Destination.EnvironmentID), "environment_") {
 		t.Fatalf("destination evidence = %#v", result.Destination)
 	}
-	if result.Archive.Format != archive.Format || result.Archive.Version != archive.Version ||
+	if result.Archive.Format != archive.Format || result.Archive.Version != archive.Version2 ||
 		result.Archive.ContentSHA256 == "" || result.Archive.RecordCount != 4 {
 		t.Fatalf("archive evidence = %#v", result.Archive)
 	}
@@ -66,7 +67,7 @@ func TestRunnerMigrateVNextRehearsalJSONCreatesVerifiedDisposableDestination(t *
 		t.Fatalf("archive source normalization evidence = %#v", result.Archive.Source)
 	}
 	if !result.Archive.Families.Project || !result.Archive.Families.Journal || !result.Archive.Families.Wrap || !result.Archive.Families.Handoffs ||
-		result.Archive.Families.Sparks || result.Archive.Families.CompleteForCutover {
+		!result.Archive.Families.Sparks || !result.Archive.Families.Ideas || !result.Archive.Families.Explorations || result.Archive.Families.CompleteForCutover {
 		t.Fatalf("archive families = %#v", result.Archive.Families)
 	}
 	if result.Archive.Expected != result.Archive.Actual || !result.ProjectionVerified || !result.Disposable || result.ActivationPerformed || result.CutoverReady || !result.Succeeded {
@@ -517,5 +518,118 @@ func assertRehearsalPrivateMode(t *testing.T, path string, want os.FileMode) {
 	}
 	if got := info.Mode().Perm(); got != want {
 		t.Fatalf("mode(%q) = %#o, want %#o", path, got, want)
+	}
+}
+
+func TestRehearsalFailureCauseExposesTypedValidationWithoutArbitraryPrivateError(t *testing.T) {
+	problem := &continuity.Problem{Code: continuity.ProblemInvalid, Field: "content.text", Detail: "contains an unsafe control character"}
+	if got := migrateVNextRehearsalCause(fmt.Errorf("run vNext rehearsal: %w", problem)); !strings.Contains(got, "content.text") || !strings.Contains(got, "unsafe control character") {
+		t.Fatalf("lost diagnostic: %q", got)
+	}
+	if got := migrateVNextRehearsalCause(errors.New("private source payload")); got != "" {
+		t.Fatalf("arbitrary detail exposed: %q", got)
+	}
+}
+
+func TestBackupProjectSelectionRejectsSourceRootContainmentAndSymlinkAlias(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "selected-project")
+	if err := os.Mkdir(source, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateBackupProjectDestination(filepath.Join(source, "destination"), source); err == nil {
+		t.Fatal("selected source root accepted")
+	}
+	alias := filepath.Join(root, "alias")
+	if err := os.Symlink(source, alias); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateBackupProjectDestination(filepath.Join(alias, "destination"), source); err == nil {
+		t.Fatal("selected source alias accepted")
+	}
+	if err := validateBackupProjectDestination(filepath.Join(root, "isolated"), source); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRunnerRehearsalExplicitBackupProjectUsesSelectedRootAndPreservesAuthority(t *testing.T) {
+	fixture := prepareVNextRehearsalCLIFixture(t)
+	selectedPath := filepath.Join(filepath.Dir(fixture.workingDir), "selected")
+	if err := os.Mkdir(selectedPath, 0700); err != nil {
+		t.Fatal(err)
+	}
+	selectedRoot, err := project.ResolveRoot(selectedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver := state.PathResolver{StateHome: fixture.stateHome}
+	selected, err := state.Initialize(context.Background(), selectedRoot, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := state.LogJournal(context.Background(), selectedRoot, resolver, state.JournalLogOptions{Entry: "discover(selection): only the selected project"}); err != nil {
+		t.Fatal(err)
+	}
+	backup, err := state.Backup(context.Background(), fixture.projectRoot, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	runner := Runner{Stdout: &output, WorkingDir: fixture.workingDir, StateHome: fixture.stateHome}
+	destination := filepath.Join(selectedPath, "unsafe")
+	if err := runner.Run([]string{"migrate", "vnext-rehearsal", "--backup", backup.BackupPath, "--project", selected.ProjectID, "--to", destination, "--json"}); err == nil {
+		t.Fatal("selected project source tree accepted")
+	}
+	if _, err := os.Stat(destination); !os.IsNotExist(err) {
+		t.Fatal("unsafe destination was created")
+	}
+	output.Reset()
+	destination = filepath.Join(filepath.Dir(fixture.workingDir), "safe-selected-destination")
+	if err := runner.Run([]string{"migrate", "vnext-rehearsal", "--backup", backup.BackupPath, "--project", selected.ProjectID, "--to", destination, "--json"}); err != nil {
+		t.Fatal(err)
+	}
+	var result migrateVNextRehearsalResult
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.ProjectID != selected.ProjectID || result.ProjectRoot != selectedPath || result.AuthorityProjectRoot != fixture.projectRoot.Path() || result.Archive.Expected.EffectiveJournalCount != 1 {
+		t.Fatalf("wrong selected provenance: %+v", result)
+	}
+}
+
+func TestRunnerRehearsalReceiptKeepsPrivateSourceDeclarationsInArchiveOnly(t *testing.T) {
+	fixture := prepareVNextRehearsalCLIFixture(t)
+	if _, err := state.CaptureSpark(context.Background(), fixture.projectRoot, state.PathResolver{StateHome: fixture.stateHome}, state.SparkCaptureOptions{Text: "private-spark-body-must-not-appear-in-receipt"}); err != nil {
+		t.Fatal(err)
+	}
+	backup, err := state.Backup(context.Background(), fixture.projectRoot, state.PathResolver{StateHome: fixture.stateHome})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	runner := Runner{Stdout: &output, WorkingDir: fixture.workingDir, StateHome: fixture.stateHome}
+	if err := runner.Run([]string{"migrate", "vnext-rehearsal", "--backup", backup.BackupPath, "--to", filepath.Join(filepath.Dir(fixture.workingDir), "private-receipt"), "--json"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(output.String(), "private-spark-body") || strings.Contains(output.String(), "legacy_causal_history") {
+		t.Fatal("private source evidence leaked into receipt")
+	}
+	var result migrateVNextRehearsalResult
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(result.Archive.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(raw, []byte("private-spark-body")) {
+		t.Fatal("private archive lost exact source evidence")
+	}
+	if _, err := archive.Parse(raw); err != nil {
+		t.Fatal(err)
+	}
+	assertRehearsalPrivateMode(t, result.Archive.Path, 0600)
+	if len(result.Archive.Source.Mappings) != 0 || result.Archive.Expected.SparkCount != 1 {
+		t.Fatal("receipt lost counts or exposed declarations")
 	}
 }

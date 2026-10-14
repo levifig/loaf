@@ -70,7 +70,7 @@ func TestRunnerGenerateCLIReferencePreservesAuthoredFlowSkill(t *testing.T) {
 		"| `loaf state` | Manage native SQLite state | path, status, init, doctor, repair legacy-project-database,",
 		"repair journal-search",
 		"migrate schema",
-		"| `loaf migrate` | Run native migration workflows | markdown, storage-home, schema, lifecycle-statuses, journal-first, worktree-storage |",
+		"| `loaf migrate` | Run native migration workflows | vnext-rehearsal, markdown, storage-home, schema, lifecycle-statuses, journal-first, worktree-storage |",
 		"| `loaf doctor` | Diagnose Loaf project alignment (symlinks, stale files, managed content, and leftover migration work) | — |",
 		"## Topics",
 		"[cli-reference/configuration.md](cli-reference/configuration.md)",

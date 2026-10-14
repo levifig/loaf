@@ -356,6 +356,12 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Name:        "migrate",
 			Description: "Run native migration workflows",
 			Subcommands: []cliReferenceSubcommand{
+				{Name: "vnext-rehearsal", Description: "Archive supported private continuity and verify an isolated destination without activation", Options: []cliReferenceOption{
+					{Flags: "--backup <absolute-sqlite-path>", Description: "Required verified standalone current-schema source backup"},
+					{Flags: "--to <absolute-new-directory>", Description: "Required new private destination outside source projects and live state; retains continuity.archive.json"},
+					{Flags: "--project <project-id>", Description: "Select one registered project from the same verified backup (default: invocation project)"},
+					{Flags: "--json", Description: "Output aggregate mapping counts and projection verification; exact private source declarations remain in the sealed archive"},
+				}},
 				{Name: "markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Simulate import on a disposable DB snapshot when registered; otherwise inventory-only"},
 					{Flags: "--apply", Description: "Initialize SQLite and import Markdown artifacts"},

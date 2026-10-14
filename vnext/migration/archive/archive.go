@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	Format  = "loaf-vnext-continuity-archive"
-	Version = 1
+	Format   = "loaf-vnext-continuity-archive"
+	Version  = 1
+	Version2 = 2
 
 	maxEncodedBytes          = 64 << 20
 	maxRecords               = 100_000
@@ -41,7 +42,7 @@ type Archive struct {
 	ContentSHA256 string  `json:"content_sha256"`
 }
 
-// Content is the complete v1 archive preimage.
+// Content is the shared archive preimage. V2 additions are omitted from V1 bytes.
 type Content struct {
 	Source   Source             `json:"source"`
 	Project  ProjectMapping     `json:"project"`
@@ -52,19 +53,26 @@ type Content struct {
 
 // Source identifies the verified legacy backup used for export.
 type Source struct {
-	LegacySchemaVersion           int    `json:"legacy_schema_version"`
-	BackupSHA256                  string `json:"backup_sha256"`
-	BackupBytes                   int64  `json:"backup_bytes"`
-	JournalFactRows               int    `json:"journal_fact_rows"`
-	JournalProjectionRows         int    `json:"journal_projection_rows"`
-	CollapsedRevisionRows         int    `json:"collapsed_revision_rows"`
-	JournalOriginRows             int    `json:"journal_origin_rows"`
-	DroppedSpecLinks              int    `json:"dropped_spec_links"`
-	DroppedTaskLinks              int    `json:"dropped_task_links"`
-	HandoffRows                   int    `json:"handoff_rows,omitempty"`
-	HandoffMapping                string `json:"handoff_mapping,omitempty"`
-	NormalizedJournalCategoryRows int    `json:"normalized_journal_category_rows,omitempty"`
-	JournalCategoryMapping        string `json:"journal_category_mapping,omitempty"`
+	NormalizedJournalTextRows     int             `json:"normalized_journal_text_rows,omitempty"`
+	JournalTextMapping            string          `json:"journal_text_mapping,omitempty"`
+	JournalCategoryCounts         []CategoryCount `json:"journal_category_counts,omitempty"`
+	Mappings                      []Mapping       `json:"mappings,omitempty"`
+	LegacySchemaVersion           int             `json:"legacy_schema_version"`
+	BackupSHA256                  string          `json:"backup_sha256"`
+	BackupBytes                   int64           `json:"backup_bytes"`
+	JournalFactRows               int             `json:"journal_fact_rows"`
+	JournalProjectionRows         int             `json:"journal_projection_rows"`
+	CollapsedRevisionRows         int             `json:"collapsed_revision_rows"`
+	JournalOriginRows             int             `json:"journal_origin_rows"`
+	DroppedSpecLinks              int             `json:"dropped_spec_links"`
+	DroppedTaskLinks              int             `json:"dropped_task_links"`
+	HandoffRows                   int             `json:"handoff_rows,omitempty"`
+	HandoffMapping                string          `json:"handoff_mapping,omitempty"`
+	NormalizedJournalCategoryRows int             `json:"normalized_journal_category_rows,omitempty"`
+	JournalCategoryMapping        string          `json:"journal_category_mapping,omitempty"`
+	Kinds                         []KindCount     `json:"kinds,omitempty"`
+	MatchedSparkJournalRows       int             `json:"matched_spark_journal_rows,omitempty"`
+	UnmatchedSparkJournalRows     int             `json:"unmatched_spark_journal_rows,omitempty"`
 }
 
 // ProjectMapping preserves the legacy durable identity exactly. Archive v1
@@ -103,6 +111,8 @@ const (
 // Observation is source display provenance. It does not control vNext fold
 // order and never creates a conversation lifecycle.
 type Observation struct {
+	ObservedHarness  string `json:"observed_harness,omitempty"`
+	HarnessVersion   string `json:"harness_version,omitempty"`
 	ObservedAtMillis int64  `json:"observed_at_millis"`
 	HarnessSessionID string `json:"harness_session_id,omitempty"`
 	Branch           string `json:"branch,omitempty"`
@@ -120,6 +130,8 @@ type Record struct {
 	Journal     *JournalRecord       `json:"journal,omitempty"`
 	Wrap        *WrapRecord          `json:"wrap,omitempty"`
 	Handoff     *HandoffRecord       `json:"handoff,omitempty"`
+	Payload     json.RawMessage      `json:"payload,omitempty"`
+	Mappings    []Mapping            `json:"mappings,omitempty"`
 }
 
 // ProjectRecord is one project.registered payload.
@@ -153,16 +165,25 @@ type HandoffRecord struct {
 // ProjectionManifest checksums the semantic vNext result independently
 // of environment-local clocks assigned during staged import.
 type ProjectionManifest struct {
-	ProjectCount          int    `json:"project_count"`
-	EffectiveJournalCount int    `json:"effective_journal_count"`
-	WrapCount             int    `json:"wrap_count"`
-	HandoffCount          int    `json:"handoff_count,omitempty"`
-	SHA256                string `json:"sha256"`
+	ProjectCount           int    `json:"project_count"`
+	EffectiveJournalCount  int    `json:"effective_journal_count"`
+	WrapCount              int    `json:"wrap_count"`
+	HandoffCount           int    `json:"handoff_count,omitempty"`
+	SparkCount             int    `json:"spark_count,omitempty"`
+	IdeaCount              int    `json:"idea_count,omitempty"`
+	ExplorationCount       int    `json:"exploration_count,omitempty"`
+	CheckpointCount        int    `json:"checkpoint_count,omitempty"`
+	ExternalReferenceCount int    `json:"external_reference_count,omitempty"`
+	VerificationCount      int    `json:"verification_count,omitempty"`
+	SHA256                 string `json:"sha256"`
 }
 
 // Seal validates content, derives its expected semantic projection, and
 // checksums the canonical preimage with a domain-separated SHA-256 digest.
 func Seal(content Content) (Archive, error) {
+	if err := validateV1Extras(content); err != nil {
+		return Archive{}, err
+	}
 	content.Expected = ProjectionManifest{}
 	if err := validateContentV1(content, false); err != nil {
 		return Archive{}, err
@@ -186,8 +207,14 @@ func (archive Archive) Validate() error {
 	if archive.Format != Format {
 		return fmt.Errorf("archive format must be %q", Format)
 	}
+	if archive.Version == Version2 {
+		return validateArchiveV2(archive)
+	}
 	if archive.Version != Version {
 		return fmt.Errorf("archive version must be %d", Version)
+	}
+	if err := validateV1Extras(archive.Content); err != nil {
+		return err
 	}
 	want, err := archiveDigestV1(Archive{Format: archive.Format, Version: archive.Version, Content: archive.Content})
 	if err != nil {
@@ -218,6 +245,9 @@ func Marshal(archive Archive) ([]byte, error) {
 func Parse(encoded []byte) (Archive, error) {
 	if len(encoded) > maxEncodedBytes {
 		return Archive{}, fmt.Errorf("migration archive exceeds %d encoded bytes", maxEncodedBytes)
+	}
+	if err := inspectJSONBounds(encoded); err != nil {
+		return Archive{}, err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.DisallowUnknownFields()
@@ -267,4 +297,19 @@ func canonicalJSONV1(value any) ([]byte, error) {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
+}
+
+func validateV1Extras(c Content) error {
+	if c.Source.NormalizedJournalTextRows != 0 || c.Source.JournalTextMapping != "" || len(c.Source.Kinds) != 0 || len(c.Source.Mappings) != 0 || len(c.Source.JournalCategoryCounts) != 0 || c.Source.MatchedSparkJournalRows != 0 || c.Source.UnmatchedSparkJournalRows != 0 {
+		return fmt.Errorf("archive version 1 cannot claim v2 source coverage")
+	}
+	for _, r := range c.Records {
+		if r.Observation.ObservedHarness != "" || r.Observation.HarnessVersion != "" {
+			return fmt.Errorf("archive version 1 cannot include v2 provenance")
+		}
+		if r.Payload != nil || len(r.Mappings) != 0 || (r.Journal != nil && (r.Journal.Category == continuity.JournalPR || r.Journal.Category == continuity.JournalReview || r.Journal.Category == continuity.JournalProgress)) {
+			return fmt.Errorf("archive version 1 cannot include v2 record mappings")
+		}
+	}
+	return nil
 }
