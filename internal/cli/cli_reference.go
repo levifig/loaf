@@ -358,9 +358,16 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "vnext-rehearsal", Description: "Archive supported private continuity and verify an isolated destination without activation", Options: []cliReferenceOption{
 					{Flags: "--backup <absolute-sqlite-path>", Description: "Required verified standalone current-schema source backup"},
-					{Flags: "--to <absolute-new-directory>", Description: "Required new private destination outside source projects and live state; retains continuity.archive.json"},
+					{Flags: "--to <absolute-new-directory>", Description: "Required new private destination outside source projects and live state; retains continuity.archive.json and retired.archive.json"},
 					{Flags: "--project <project-id>", Description: "Select one registered project from the same verified backup (default: invocation project)"},
 					{Flags: "--json", Description: "Output aggregate mapping counts and projection verification; exact private source declarations remain in the sealed archive"},
+				}},
+				{Name: "retired-show", Description: "Verify an entire retired archive and recover a legacy record without live state or login", Options: []cliReferenceOption{
+					{Flags: "--archive <absolute-file>", Description: "Required checksummed retired.archive.json"},
+					{Flags: "--kind <kind>", Description: "Required spec, intent, task, brainstorm, plan, work-contract, or issue"},
+					{Flags: "--id <legacy-id>", Description: "Required original identity; typed JSON preserves all row values and artifact bodies"},
+					{Flags: "--body", Description: "Write exactly one original artifact body's bytes; refuse missing or ambiguous bodies"},
+					{Flags: "--body-id <legacy-body-or-snapshot-id>", Description: "Select original artifact-body or intent-snapshot bytes when --body would be ambiguous"},
 				}},
 				{Name: "markdown", Description: "Import existing .agents Markdown artifacts into SQLite", Options: []cliReferenceOption{
 					{Flags: "--dry-run", Description: "Simulate import on a disposable DB snapshot when registered; otherwise inventory-only"},

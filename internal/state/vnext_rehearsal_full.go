@@ -670,7 +670,7 @@ func (e *fullDomainExportV2) retiredInventory(ctx context.Context, tx *sql.Tx) e
 		}
 		e.counts = append(e.counts, archive.KindCount{Kind: table, SourceRows: count, RetiredRows: count})
 	}
-	e.mappings = append(e.mappings, archive.Mapping{Name: "retired_inventory_is_not_byte_archive_or_tracker_disposition_v1", Field: "retired_rows", Original: "No bytes archived; open local work still requires tracker disposition before freeze."})
+	e.mappings = append(e.mappings, archive.Mapping{Name: "retired_inventory_is_not_byte_archive_or_tracker_disposition_v1", Field: "retired_rows", Original: "Continuity archive contains inventory only; recovery bytes, when exported, live in the separate retired archive. Open local work still requires tracker disposition before freeze."})
 	return nil
 }
 

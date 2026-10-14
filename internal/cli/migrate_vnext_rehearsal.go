@@ -17,6 +17,7 @@ import (
 	"github.com/levifig/loaf/vnext/continuity"
 	continuitysqlite "github.com/levifig/loaf/vnext/continuity/sqlite"
 	"github.com/levifig/loaf/vnext/migration/archive"
+	"github.com/levifig/loaf/vnext/migration/retired"
 )
 
 const vnextRehearsalCLIContractVersion = 1
@@ -55,6 +56,7 @@ type migrateVNextRehearsalArchiveEvidence struct {
 }
 
 type migrateVNextRehearsalResult struct {
+	RetiredArchive       *migrateRetiredArchiveEvidence           `json:"retired_archive,omitempty"`
 	ContractVersion      int                                      `json:"contract_version"`
 	Command              string                                   `json:"command"`
 	Mode                 string                                   `json:"mode"`
@@ -72,6 +74,13 @@ type migrateVNextRehearsalResult struct {
 	ErrorCode            string                                   `json:"error_code,omitempty"`
 	Cause                string                                   `json:"cause,omitempty"`
 	Error                string                                   `json:"error,omitempty"`
+}
+
+type migrateRetiredArchiveEvidence struct {
+	Path     string           `json:"path"`
+	Format   string           `json:"format"`
+	Version  int              `json:"version"`
+	Manifest retired.Manifest `json:"manifest"`
 }
 
 type migrateVNextRehearsalOperations struct {
@@ -286,7 +295,16 @@ func (r Runner) runMigrateVNextRehearsalWithOperations(args []string, out io.Wri
 	if err != nil {
 		return writeMigrateVNextRehearsalFailure(out, options.jsonOutput, evidence, "archive_write_failed", &rehearsal, true)
 	}
+	retiredArchive, err := retired.Parse(rehearsal.RetiredArchive)
+	if err != nil || retiredArchive.Content.ProjectID != selectedProjectID || retiredArchive.Content.BackupSHA256 != sealed.Content.Source.BackupSHA256 || retiredArchive.Content.ContinuitySHA256 != sealed.ContentSHA256 || retiredArchive.Content.SchemaVersion != sealed.Content.Source.LegacySchemaVersion {
+		return writeMigrateVNextRehearsalFailure(out, options.jsonOutput, evidence, "archive_evidence_failed", &rehearsal, true)
+	}
+	retiredPath, err := writePrivateRehearsalArtifact(options.targetRoot, reservedRoot, "retired.archive.json", rehearsal.RetiredArchive)
+	if err != nil {
+		return writeMigrateVNextRehearsalFailure(out, options.jsonOutput, evidence, "archive_write_failed", &rehearsal, true)
+	}
 	result := evidence
+	result.RetiredArchive = &migrateRetiredArchiveEvidence{Path: retiredPath, Format: retiredArchive.Format, Version: retiredArchive.Version, Manifest: retiredArchive.Manifest}
 	result.Archive = migrateVNextRehearsalArchiveEvidence{
 		Path:   archivePath,
 		Format: sealed.Format, Version: sealed.Version, ContentSHA256: sealed.ContentSHA256,
@@ -604,6 +622,13 @@ func writeMigrateVNextRehearsalHuman(out io.Writer, result migrateVNextRehearsal
 	fmt.Fprintf(out, "environment: %s\n", result.Destination.EnvironmentID)
 	fmt.Fprintf(out, "archive file: %s\n", result.Archive.Path)
 	fmt.Fprintf(out, "archive: %s v%d (%s, %d records)\n", result.Archive.Format, result.Archive.Version, result.Archive.ContentSHA256, result.Archive.RecordCount)
+	if result.RetiredArchive != nil {
+		fmt.Fprintf(out, "retired archive file: %s\n", result.RetiredArchive.Path)
+		for _, t := range result.RetiredArchive.Manifest.Tables {
+			fmt.Fprintf(out, "source table %s: %d source rows = %d migrated + %d retired (original rows preserved)\n", t.Table, t.SourceRows, t.MigratedRows, t.RetiredRows)
+		}
+		fmt.Fprintln(out, "retired archive does not import retired kinds, resolve open work, or authorize deletion")
+	}
 	if result.Archive.Source.NormalizedJournalCategoryRows == 0 {
 		fmt.Fprintln(out, "journal category normalization: none (0 rows)")
 	} else {
@@ -674,6 +699,10 @@ func rehearsalSourceSummary(source archive.Source) archive.Source {
 }
 
 func writePrivateRehearsalArchive(path string, pinned os.FileInfo, encoded []byte) (string, error) {
+	return writePrivateRehearsalArtifact(path, pinned, "continuity.archive.json", encoded)
+}
+
+func writePrivateRehearsalArtifact(path string, pinned os.FileInfo, name string, encoded []byte) (string, error) {
 	root, err := os.OpenRoot(path)
 	if err != nil {
 		return "", err
@@ -686,7 +715,6 @@ func writePrivateRehearsalArchive(path string, pinned os.FileInfo, encoded []byt
 	if pinned == nil || !os.SameFile(info, pinned) {
 		return "", fmt.Errorf("rehearsal root identity changed")
 	}
-	const name = "continuity.archive.json"
 	file, err := root.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return "", err
