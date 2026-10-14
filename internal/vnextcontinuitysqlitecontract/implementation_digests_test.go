@@ -39,6 +39,7 @@ func TestContinuitySQLiteContractPinsExactPersistenceImplementation(t *testing.T
 
 func expectedPersistenceSourceDigests() map[string]string {
 	return map[string]string{
+		"rehearsal_full.go":                         "b22f3108202478389980ab31eff827f1ba20701490111c33fb5eb306a635d3b4",
 		"admission.go":                              "ec0535280df67ca0b358c024ecf05b6e61e302eb3306cb5739a0944f0639c2cf",
 		"append_kernel.go":                          "e66aa0e4a6164950210fb7dcd1bf76757cf78faaf597f62c54680a2fd4e349bf",
 		"append_methods.go":                         "8dcec6a8f48084b623d794dc0478a3196bd6d8529f5bb63f2849fcbe30d3e140",
@@ -87,6 +88,8 @@ func expectedPersistenceSourceDigests() map[string]string {
 
 func expectedPersistenceFunctionDigests() map[string]map[string]string {
 	return map[string]map[string]string{
+		"rehearsal_full.go": {"NewCheckpointRecordedRehearsalFact": "accdbfb26eca396ca9ae58060f07fa8ee8c52e642ef0cb14859a9f5a48ea2a5c", "NewExplorationStartedRehearsalFact": "f75cb59ea59efff719cc711fa2df9645f62b4bce8176c23a1fae926d6e01e534", "NewExternalReferenceRegistrationRehearsalFact": "0dcebe40ee8cccc3dd326d6999d08320b18943fb2fac7d2cd38a582f8fcdc77f", "NewIdeaArchiveRehearsalFact": "4ea073b95e6fb15dd12d55fc5e5f17eef828f37bd8ed971daddaf870ca03923d", "NewIdeaCreatedRehearsalFact": "1fdb5de76dbce058cc0f96e5c2868f6dfc24b7574bd41dfe2f8216c174adb8af", "NewIdeaPromotionRehearsalFact": "dea700fc27fc631303a76eb731c6acff2de5ed4cbf6d652d43d2f7aa7fe61db8", "NewIdeaResolutionRehearsalFact": "a1f663a14bc7383972694f09bb6a87ed63ea6a68d5346fedcb60ebb1e4c4ff84", "NewIdeaRevisionRehearsalFact": "e28767345cc8163b6ca901ae626fa1b56a7562023163cf75feb0c4c56145295c", "NewSparkCapturedRehearsalFact": "65315b74e2e6bca6376a0c6c51dbb023dc91286bf5ad0850a4454a9753cb755b", "NewSparkDismissedRehearsalFact": "076665507b9df74773cbf19f11bc386994750b2ca9e9eec0e6cce049cfb408fa", "NewSparkPromotionRehearsalFact": "53ed8320a7d58143213a1d417db0dc7dcacd9c600d4c66b2c015720f5812bd4a", "NewVerificationEvidenceRehearsalFact": "f59eafb832f00f32a025a52e216c7735adb6f7db1a8650fd3d0eb390b0acd430", "PreviewRehearsalFacts": "5ad8c99393011203d4ba1b3642a0eb0bc036322ca07912d42b09b6669976c2d3"},
+
 		"admission.go": {
 			"admitDecisionSuccessorV1":      "36d3734c8367b2d6ddb5406e8954963f70efc4db2b7d27ade326ea550177642b",
 			"admitExternalReferenceEdgeV1":  "be927383ebd4532c56dfe615c92b748130e8a128e00b16cb2026791048cb7afa",

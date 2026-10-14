@@ -31,6 +31,9 @@ type Observation struct {
 type JournalCategory string
 
 const (
+	JournalPR       JournalCategory = "pr"
+	JournalReview   JournalCategory = "review"
+	JournalProgress JournalCategory = "progress"
 	JournalNote     JournalCategory = "note"
 	JournalSkill    JournalCategory = "skill"
 	JournalCommit   JournalCategory = "commit"

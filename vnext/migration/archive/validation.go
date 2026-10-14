@@ -135,7 +135,7 @@ func validateRecordV1(record Record, project ProjectMapping, index int) error {
 		return fmt.Errorf("record %d observation: %w", index, err)
 	}
 	payloads := 0
-	for _, present := range []bool{record.Project != nil, record.Journal != nil, record.Wrap != nil, record.Handoff != nil} {
+	for _, present := range []bool{record.Project != nil, record.Journal != nil, record.Wrap != nil, record.Handoff != nil, record.Payload != nil} {
 		if present {
 			payloads++
 		}
@@ -211,16 +211,7 @@ func validateRecordV1(record Record, project ProjectMapping, index int) error {
 	return nil
 }
 
-func (observation Observation) continuityV1() continuity.Observation {
-	return continuity.Observation{
-		ObservedAtMillis: observation.ObservedAtMillis,
-		ObservedHarness:  "unknown",
-		HarnessVersion:   "unknown",
-		HarnessSessionID: observation.HarnessSessionID,
-		Branch:           observation.Branch,
-		Worktree:         observation.Worktree,
-	}
-}
+func (observation Observation) continuityV1() continuity.Observation { return observation.Continuity() }
 
 func validSHA256V1(value string) bool {
 	if len(value) != 64 || strings.ToLower(value) != value {

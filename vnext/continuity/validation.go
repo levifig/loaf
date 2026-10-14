@@ -117,7 +117,7 @@ func (payload JournalCorrectionPayload) Validate() error {
 // Validate checks complete journal content.
 func (content JournalContent) Validate() error {
 	switch content.Category {
-	case JournalNote, JournalSkill, JournalCommit, JournalDecision, JournalDiscover, JournalBlock, JournalUnblock, JournalSpark, JournalTodo, JournalFinding, JournalWrap:
+	case JournalPR, JournalReview, JournalProgress, JournalNote, JournalSkill, JournalCommit, JournalDecision, JournalDiscover, JournalBlock, JournalUnblock, JournalSpark, JournalTodo, JournalFinding, JournalWrap:
 	default:
 		return invalid("content.category", "is not a recognized journal category")
 	}

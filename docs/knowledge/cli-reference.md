@@ -69,7 +69,7 @@ Names and one-line purposes only. Run `loaf <command> --help` for options, argum
 | `loaf state` | Manage native SQLite state | path, status, init, doctor, repair legacy-project-database, repair relationship-origin, repair journal-search, migrate markdown, migrate storage-home, migrate schema, migrate deferrals, migrate lifecycle-statuses, migrate alias-orphans, migrate journal-duplicates, migrate journal-first, backup, backup verify, backup restore, restore-ephemerals, verify-ephemerals, export, export all, export triage, export spec, export release-readiness |
 | `loaf journal` | Record and read the project-scoped journal (the durable record across all conversations) | log, recent, search, show, context, export, defer |
 | `loaf project` | Manage durable project identity | list, show, identity, rename, move, delete |
-| `loaf migrate` | Run native migration workflows | markdown, storage-home, schema, lifecycle-statuses, journal-first, worktree-storage |
+| `loaf migrate` | Run native migration workflows | vnext-rehearsal, markdown, storage-home, schema, lifecycle-statuses, journal-first, worktree-storage |
 | `loaf task` | Manage project tasks; superseded by loaf issue for new work | list, show, status, create, update, archive, refresh, sync |
 | `loaf issue` | Frozen local-work compatibility for explicit one-time migration; never ongoing tracker-native Flow authority | new, absorb, show, list, tree, frontier, start, stop, edit, retitle, status, dod, dod add, dod list, dod remove, dod claim, dod unclaim, promote, check, verify, bucket, link, render, identity, export, pull, push, reconcile |
 | `loaf report` | Manage durable reports (research, audits, investigations) | list, show, render, generate, create, edit, finalize, archive |

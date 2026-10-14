@@ -98,6 +98,7 @@ func TestContinuitySQLiteContractHasExactSourceAndAPI(t *testing.T) {
 		"read.go",
 		"recovery_prune_candidate.go",
 		"rehearsal.go",
+		"rehearsal_full.go",
 		"relay_watermark.go",
 		"relay_watermark_migration.go",
 		"schema.go",
@@ -114,6 +115,19 @@ func TestContinuitySQLiteContractHasExactSourceAndAPI(t *testing.T) {
 		"wire_validation_v1.go",
 	}
 	wantExports := []string{
+		"PreviewRehearsalFacts",
+		"NewSparkCapturedRehearsalFact",
+		"NewSparkDismissedRehearsalFact",
+		"NewSparkPromotionRehearsalFact",
+		"NewIdeaCreatedRehearsalFact",
+		"NewIdeaRevisionRehearsalFact",
+		"NewIdeaResolutionRehearsalFact",
+		"NewIdeaArchiveRehearsalFact",
+		"NewIdeaPromotionRehearsalFact",
+		"NewExplorationStartedRehearsalFact",
+		"NewCheckpointRecordedRehearsalFact",
+		"NewExternalReferenceRegistrationRehearsalFact",
+		"NewVerificationEvidenceRehearsalFact",
 		"NewHandoffRehearsalFact",
 		"NewJournalRehearsalFact",
 		"NewProjectRehearsalFact",
@@ -478,6 +492,7 @@ func TestContinuitySQLiteContractHasExactSourceAndAPI(t *testing.T) {
 	if !reflect.DeepEqual(files, wantFiles) {
 		t.Fatalf("SQLite production source inventory = %v, want %v", files, wantFiles)
 	}
+	sort.Strings(wantExports)
 	if !reflect.DeepEqual(exports, wantExports) {
 		t.Fatalf("SQLite exported API = %v, want %v", exports, wantExports)
 	}
@@ -637,7 +652,8 @@ func TestContinuitySQLiteContractPinsDriverBoundary(t *testing.T) {
 			"github.com/levifig/loaf/vnext/continuity",
 			"math",
 		},
-		"rehearsal.go": {"context", "database/sql", "errors", "fmt", "github.com/levifig/loaf/vnext/continuity"},
+		"rehearsal_full.go": {"context", "github.com/levifig/loaf/vnext/continuity"},
+		"rehearsal.go":      {"context", "database/sql", "errors", "fmt", "github.com/levifig/loaf/vnext/continuity"},
 		"relay_watermark.go": {
 			"bytes",
 			"context",

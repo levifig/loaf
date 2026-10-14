@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ const vnextRehearsalCLIContractVersion = 1
 
 type migrateVNextRehearsalOptions struct {
 	backupPath string
+	projectID  string
 	targetRoot string
 	jsonOutput bool
 }
@@ -41,6 +43,7 @@ type migrateVNextRehearsalDestinationEvidence struct {
 }
 
 type migrateVNextRehearsalArchiveEvidence struct {
+	Path          string                     `json:"path,omitempty"`
 	Format        string                     `json:"format"`
 	Version       int                        `json:"version"`
 	ContentSHA256 string                     `json:"content_sha256"`
@@ -52,21 +55,23 @@ type migrateVNextRehearsalArchiveEvidence struct {
 }
 
 type migrateVNextRehearsalResult struct {
-	ContractVersion     int                                      `json:"contract_version"`
-	Command             string                                   `json:"command"`
-	Mode                string                                   `json:"mode"`
-	ProjectID           string                                   `json:"project_id"`
-	ProjectRoot         string                                   `json:"project_root"`
-	Source              migrateVNextRehearsalSourceEvidence      `json:"source"`
-	Destination         migrateVNextRehearsalDestinationEvidence `json:"destination"`
-	Archive             migrateVNextRehearsalArchiveEvidence     `json:"archive"`
-	ProjectionVerified  bool                                     `json:"projection_verified"`
-	Disposable          bool                                     `json:"disposable"`
-	ActivationPerformed bool                                     `json:"activation_performed"`
-	CutoverReady        bool                                     `json:"cutover_ready"`
-	Succeeded           bool                                     `json:"succeeded"`
-	ErrorCode           string                                   `json:"error_code,omitempty"`
-	Error               string                                   `json:"error,omitempty"`
+	ContractVersion      int                                      `json:"contract_version"`
+	Command              string                                   `json:"command"`
+	Mode                 string                                   `json:"mode"`
+	ProjectID            string                                   `json:"project_id"`
+	AuthorityProjectRoot string                                   `json:"authority_project_root,omitempty"`
+	ProjectRoot          string                                   `json:"project_root"`
+	Source               migrateVNextRehearsalSourceEvidence      `json:"source"`
+	Destination          migrateVNextRehearsalDestinationEvidence `json:"destination"`
+	Archive              migrateVNextRehearsalArchiveEvidence     `json:"archive"`
+	ProjectionVerified   bool                                     `json:"projection_verified"`
+	Disposable           bool                                     `json:"disposable"`
+	ActivationPerformed  bool                                     `json:"activation_performed"`
+	CutoverReady         bool                                     `json:"cutover_ready"`
+	Succeeded            bool                                     `json:"succeeded"`
+	ErrorCode            string                                   `json:"error_code,omitempty"`
+	Cause                string                                   `json:"cause,omitempty"`
+	Error                string                                   `json:"error,omitempty"`
 }
 
 type migrateVNextRehearsalOperations struct {
@@ -77,13 +82,14 @@ type migrateVNextRehearsalOperations struct {
 }
 
 func writeMigrateVNextRehearsalHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: loaf migrate vnext-rehearsal --backup <ABSOLUTE-SQLITE> --to <ABSOLUTE-NEW-DIRECTORY> [--json]")
+	fmt.Fprintln(out, "Usage: loaf migrate vnext-rehearsal --backup <ABSOLUTE-SQLITE> --to <ABSOLUTE-NEW-DIRECTORY> [--project <PROJECT-ID>] [--json]")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Import verified legacy continuity into a new isolated vNext database without activation or cutover.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Options:")
 	fmt.Fprintln(out, "  --backup <path>  Absolute, clean path to a verified standalone legacy SQLite backup")
 	fmt.Fprintln(out, "  --to <directory> Absolute, clean path to a brand-new isolated destination directory")
+	fmt.Fprintln(out, "  --project <id>   Explicit registered project from the verified backup (default: current project)")
 	fmt.Fprintln(out, "  --json           Output structured rehearsal evidence as JSON")
 	fmt.Fprintln(out, "  -h, --help       Show help")
 }
@@ -92,14 +98,19 @@ func parseMigrateVNextRehearsalArgs(args []string) (migrateVNextRehearsalOptions
 	options := migrateVNextRehearsalOptions{}
 	for index := 0; index < len(args); index++ {
 		switch args[index] {
-		case "--backup", "--to":
+		case "--backup", "--to", "--project":
 			flag := args[index]
 			if index+1 >= len(args) || strings.HasPrefix(args[index+1], "-") {
 				return options, fmt.Errorf("%s requires a value", flag)
 			}
 			index++
 			value := args[index]
-			if flag == "--backup" {
+			if flag == "--project" {
+				if options.projectID != "" {
+					return options, fmt.Errorf("--project may be specified only once")
+				}
+				options.projectID = value
+			} else if flag == "--backup" {
 				if options.backupPath != "" {
 					return options, fmt.Errorf("--backup may be specified only once")
 				}
@@ -180,15 +191,24 @@ func (r Runner) runMigrateVNextRehearsalWithOperations(args []string, out io.Wri
 	if !verification.Verified || !verification.SQLiteValid || !verification.RecoveryReady {
 		return fmt.Errorf("rehearsal backup is not verified and recovery-ready")
 	}
+	selectedProjectID := identity.ID
+	if options.projectID != "" {
+		selectedProjectID = options.projectID
+	}
+	selectedRoot := root.Path()
 	projectKnown := false
 	for _, verifiedProject := range verification.Projects {
-		if verifiedProject.ID == identity.ID {
+		if verifiedProject.ID == selectedProjectID {
 			projectKnown = true
+			selectedRoot = verifiedProject.CurrentPath
 			break
 		}
 	}
 	if !projectKnown {
-		return fmt.Errorf("authoritative project %q is absent from the verified backup", identity.ID)
+		return fmt.Errorf("authoritative project %q is absent from the verified backup", selectedProjectID)
+	}
+	if err := validateBackupProjectDestination(options.targetRoot, selectedRoot); err != nil {
+		return err
 	}
 	newEnvironmentID := operations.newEnvironmentID
 	if newEnvironmentID == nil {
@@ -201,7 +221,13 @@ func (r Runner) runMigrateVNextRehearsalWithOperations(args []string, out io.Wri
 	if err := os.Mkdir(options.targetRoot, 0o700); err != nil {
 		return fmt.Errorf("reserve new rehearsal destination: %w", err)
 	}
-	evidence := newMigrateVNextRehearsalEvidence(identity.ID, root.Path(), options.targetRoot, verification, environmentID)
+	evidence := newMigrateVNextRehearsalEvidence(selectedProjectID, selectedRoot, options.targetRoot, verification, environmentID)
+	if options.projectID != "" {
+		evidence.AuthorityProjectRoot = root.Path()
+	}
+	if err := validateBackupProjectDestination(options.targetRoot, selectedRoot); err != nil {
+		return err
+	}
 	reservedRoot, err := validateReservedVNextRehearsalDestination(options.targetRoot, root.Path(), liveDatabasePath, pinnedParent)
 	if err != nil {
 		return writeMigrateVNextRehearsalFailure(out, options.jsonOutput, evidence, "reservation_validation_failed", nil, false)
@@ -218,7 +244,11 @@ func (r Runner) runMigrateVNextRehearsalWithOperations(args []string, out io.Wri
 	if closeDestination == nil {
 		closeDestination = func(store *continuitysqlite.Store) error { return store.Close() }
 	}
-	if err := validateOpenedVNextRehearsalDestination(options.targetRoot, root.Path(), liveDatabasePath, pinnedParent, reservedRoot); err != nil {
+	destinationSafetyErr := validateOpenedVNextRehearsalDestination(options.targetRoot, root.Path(), liveDatabasePath, pinnedParent, reservedRoot)
+	if destinationSafetyErr == nil {
+		destinationSafetyErr = validateBackupProjectDestination(options.targetRoot, selectedRoot)
+	}
+	if err := destinationSafetyErr; err != nil {
 		stageCode := "destination_validation_failed"
 		if closeErr := closeDestination(destination); closeErr != nil {
 			stageCode = "destination_validation_close_failed"
@@ -230,13 +260,15 @@ func (r Runner) runMigrateVNextRehearsalWithOperations(args []string, out io.Wri
 		runRehearsal = state.RunVNextRehearsal
 	}
 	rehearsal, runErr := runRehearsal(ctx, state.VNextRehearsalExportOptions{
-		Backup:    backupResultFromVerification(verification, liveDatabasePath),
-		ProjectID: identity.ID,
-		Root:      root,
-		Resolver:  resolver,
+		Backup:          backupResultFromVerification(verification, liveDatabasePath),
+		ProjectID:       identity.ID,
+		BackupProjectID: options.projectID,
+		Root:            root,
+		Resolver:        resolver,
 	}, destination)
 	closeErr := closeDestination(destination)
 	if runErr != nil {
+		evidence.Cause = migrateVNextRehearsalCause(runErr)
 		stageCode := "rehearsal_failed"
 		if closeErr != nil {
 			stageCode = "rehearsal_close_failed"
@@ -250,10 +282,15 @@ func (r Runner) runMigrateVNextRehearsalWithOperations(args []string, out io.Wri
 	if err != nil {
 		return writeMigrateVNextRehearsalFailure(out, options.jsonOutput, evidence, "archive_evidence_failed", &rehearsal, true)
 	}
+	archivePath, err := writePrivateRehearsalArchive(options.targetRoot, reservedRoot, rehearsal.Archive)
+	if err != nil {
+		return writeMigrateVNextRehearsalFailure(out, options.jsonOutput, evidence, "archive_write_failed", &rehearsal, true)
+	}
 	result := evidence
 	result.Archive = migrateVNextRehearsalArchiveEvidence{
+		Path:   archivePath,
 		Format: sealed.Format, Version: sealed.Version, ContentSHA256: sealed.ContentSHA256,
-		RecordCount: len(sealed.Content.Records), Source: sealed.Content.Source, Families: sealed.Content.Families,
+		RecordCount: len(sealed.Content.Records), Source: rehearsalSourceSummary(sealed.Content.Source), Families: sealed.Content.Families,
 		Expected: rehearsal.Report.Expected, Actual: rehearsal.Report.Actual,
 	}
 	result.ProjectionVerified = rehearsal.Report.Expected == rehearsal.Report.Actual
@@ -288,7 +325,7 @@ func writeMigrateVNextRehearsalFailure(out io.Writer, jsonOutput bool, result mi
 		if sealed, err := archive.Parse(rehearsal.Archive); err == nil {
 			result.Archive = migrateVNextRehearsalArchiveEvidence{
 				Format: sealed.Format, Version: sealed.Version, ContentSHA256: sealed.ContentSHA256,
-				RecordCount: len(sealed.Content.Records), Source: sealed.Content.Source, Families: sealed.Content.Families,
+				RecordCount: len(sealed.Content.Records), Source: rehearsalSourceSummary(sealed.Content.Source), Families: sealed.Content.Families,
 				Expected: sealed.Content.Expected,
 			}
 		}
@@ -305,6 +342,9 @@ func writeMigrateVNextRehearsalFailure(out io.Writer, jsonOutput bool, result mi
 	result.ErrorCode = stageCode
 	result.Error = migrateVNextRehearsalFailureMessage(stageCode)
 	if !jsonOutput {
+		if result.Cause != "" {
+			result.Error += ": " + result.Cause
+		}
 		return fmt.Errorf("%s; destination preserved for inspection at %s", result.Error, result.Destination.Root)
 	}
 	if err := writeJSON(out, result); err != nil {
@@ -329,6 +369,8 @@ func migrateVNextRehearsalFailureMessage(stageCode string) string {
 		return "isolated continuity rehearsal failed and its destination could not be closed cleanly"
 	case "destination_close_failed":
 		return "completed rehearsal destination could not be closed cleanly"
+	case "archive_write_failed":
+		return "completed rehearsal archive could not be retained safely"
 	case "archive_evidence_failed":
 		return "completed rehearsal archive evidence could not be validated"
 	default:
@@ -560,6 +602,7 @@ func writeMigrateVNextRehearsalHuman(out io.Writer, result migrateVNextRehearsal
 	fmt.Fprintf(out, "destination root: %s\n", result.Destination.Root)
 	fmt.Fprintf(out, "destination database: %s\n", result.Destination.Database)
 	fmt.Fprintf(out, "environment: %s\n", result.Destination.EnvironmentID)
+	fmt.Fprintf(out, "archive file: %s\n", result.Archive.Path)
 	fmt.Fprintf(out, "archive: %s v%d (%s, %d records)\n", result.Archive.Format, result.Archive.Version, result.Archive.ContentSHA256, result.Archive.RecordCount)
 	if result.Archive.Source.NormalizedJournalCategoryRows == 0 {
 		fmt.Fprintln(out, "journal category normalization: none (0 rows)")
@@ -570,8 +613,100 @@ func writeMigrateVNextRehearsalHuman(out io.Writer, result migrateVNextRehearsal
 			result.Archive.Source.NormalizedJournalCategoryRows,
 		)
 	}
+	for _, k := range result.Archive.Source.Kinds {
+		fmt.Fprintf(out, "%s: %d source rows, %d mapped source rows, %d destination records/items, %d retired inventory rows\n", k.Kind, k.SourceRows, k.MappedSourceRows, k.MappedRecords, k.RetiredRows)
+	}
+	fmt.Fprintf(out, "journal control-character mappings: %d rows\n", result.Archive.Source.NormalizedJournalTextRows)
+	fmt.Fprintf(out, "journal spark deduplication: %d matched, %d unmatched\n", result.Archive.Source.MatchedSparkJournalRows, result.Archive.Source.UnmatchedSparkJournalRows)
+	for _, k := range result.Archive.Source.JournalCategoryCounts {
+		fmt.Fprintf(out, "journal category %s -> %s: %d rows\n", k.Original, k.Mapped, k.Rows)
+	}
 	fmt.Fprintf(out, "projection verified: %t\n", result.ProjectionVerified)
 	fmt.Fprintln(out, "disposable: true")
 	fmt.Fprintln(out, "activation performed: false")
 	fmt.Fprintln(out, "cutover ready: false")
+}
+
+// Include known bounded migration diagnostics, never arbitrary injected errors or
+// source payloads. Receipts remain private operator evidence, not public reports.
+func migrateVNextRehearsalCause(err error) string {
+	var problem *continuity.Problem
+	if errors.As(err, &problem) {
+		return problem.Error()
+	}
+	value := err.Error()
+	if strings.HasPrefix(value, "run vNext rehearsal: export vNext rehearsal archive:") || strings.HasPrefix(value, "run vNext rehearsal: import vNext rehearsal archive:") {
+		if len(value) > 2048 {
+			return "migration diagnostic exceeds receipt bound"
+		}
+		return value
+	}
+	return ""
+}
+
+func validateBackupProjectDestination(destination, sourceRoot string) error {
+	if !filepath.IsAbs(sourceRoot) || filepath.Clean(sourceRoot) != sourceRoot {
+		return fmt.Errorf("selected backup project has no safe absolute source root")
+	}
+	resolvedSource, err := filepath.EvalSymlinks(sourceRoot)
+	if os.IsNotExist(err) {
+		resolvedSource = sourceRoot
+	} else if err != nil {
+		return fmt.Errorf("resolve selected source root: %w", err)
+	}
+	parent, err := filepath.EvalSymlinks(filepath.Dir(destination))
+	if err != nil {
+		return err
+	}
+	resolvedDestination := filepath.Join(parent, filepath.Base(destination))
+	if pathContains(resolvedSource, resolvedDestination) || pathContains(resolvedDestination, resolvedSource) {
+		return fmt.Errorf("rehearsal destination must be outside the selected backup project root")
+	}
+	return nil
+}
+
+// Source transformation declarations can contain exact private legacy payloads.
+// Operator receipts expose aggregate evidence only; the sealed archive retains
+// those declarations for recovery and fidelity inspection.
+func rehearsalSourceSummary(source archive.Source) archive.Source {
+	source.Mappings = nil
+	return source
+}
+
+func writePrivateRehearsalArchive(path string, pinned os.FileInfo, encoded []byte) (string, error) {
+	root, err := os.OpenRoot(path)
+	if err != nil {
+		return "", err
+	}
+	defer root.Close()
+	info, err := root.Stat(".")
+	if err != nil {
+		return "", err
+	}
+	if pinned == nil || !os.SameFile(info, pinned) {
+		return "", fmt.Errorf("rehearsal root identity changed")
+	}
+	const name = "continuity.archive.json"
+	file, err := root.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return "", err
+	}
+	n, writeErr := file.Write(encoded)
+	if writeErr == nil && n != len(encoded) {
+		writeErr = io.ErrShortWrite
+	}
+	if writeErr == nil {
+		writeErr = file.Sync()
+	}
+	if err := errors.Join(writeErr, file.Close()); err != nil {
+		return "", err
+	}
+	actual, err := root.ReadFile(name)
+	if err != nil {
+		return "", err
+	}
+	if !bytes.Equal(actual, encoded) {
+		return "", fmt.Errorf("retained archive bytes differ")
+	}
+	return filepath.Join(path, name), nil
 }
