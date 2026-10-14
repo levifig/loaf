@@ -61,6 +61,13 @@ func TestMakefileRoutesBuildInstallAndBuildCLI(t *testing.T) {
 	}
 }
 
+func TestMakefileVulnerabilityAuditUsesDevelopmentTool(t *testing.T) {
+	out := makeDryRun(t, loafdevRepoRoot(t), "vulncheck")
+	if !strings.Contains(out, "cmd/loafdev vulncheck") || strings.Contains(out, "govulncheck@latest") {
+		t.Fatalf("make vulncheck bypasses release toolchain selection: %q", out)
+	}
+}
+
 func loafdevRepoRoot(t *testing.T) string {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)

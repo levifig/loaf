@@ -78,9 +78,9 @@ release-smoke:
 	$(GO) test -count=1 -timeout=2m ./internal/devtool -run '^(TestClassifyReleaseTag|TestPackageWritesArchivesAndChecksums|TestUpdateHomebrewFormulaGeneratesAuditSafeURLs|TestVerifyArtifactsRequiresPATHRuntimeAndForbidsPluginExecutables)$$'
 
 # Network-backed local audit, separate from the deterministic verification gate.
-# This preserves the former CI check without adding a project dependency.
+# Match the native build's pinned toolchain, without adding a project dependency.
 vulncheck:
-	$(GO) run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	$(GO) run ./cmd/loafdev vulncheck
 
 # Harness capability runners still execute under Node; they drive external
 # CLIs and read their JSON streams. They need no package install or tsc.

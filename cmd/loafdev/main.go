@@ -44,6 +44,8 @@ func run(args []string) error {
 		return devtool.Release(build)
 	case "package":
 		return devtool.Package(devtool.PackageOptions{RootDir: root, Env: env, Stdout: os.Stdout})
+	case "vulncheck":
+		return devtool.Vulncheck(build)
 	case "classify-tag":
 		if len(args) != 2 {
 			return fmt.Errorf("classify-tag requires exactly one tag")
@@ -103,6 +105,7 @@ Commands:
   verify-artifacts    Check native binaries and content-only Claude Code plugin artifacts
   release             build for every release platform (or LOAF_RELEASE_TARGETS)
   package             Write dist/release archives and checksums.txt from bin/native
+  vulncheck           Audit source with the native build's pinned Go toolchain
   classify-tag <tag>  Print tag=/ref=/dev= for the release workflow; malformed tags fail
   homebrew-formula    --formula <path> --checksums <path> --version <X.Y.Z> [--repo owner/name]
 
