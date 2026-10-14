@@ -1,7 +1,7 @@
 {
   "version": 1,
   "target": "amp",
-  "package_version": "0.6.0-rc.2",
+  "package_version": "0.6.0-rc.3",
   "capability_contract_version": 3,
   "adapters": [
     "amp-plugin-v1"
@@ -18,7 +18,7 @@
       "kind": "plugin",
       "source_path": ".amp/plugins/loaf.js",
       "destination": "plugins/loaf.js",
-      "sha256": "f5ac4cd572d41377cecfd40fff3d0b23edf377391bac61d9b066ecd3a4356f17",
+      "sha256": "01fbbe1800dec313dda128d857b2d54d216c879337a779931df33d80b47f5247",
       "mode": 420
     }
   ]

@@ -35,4 +35,4 @@ You are an implementer. Your role covers authorized changes to code, tests, conf
 - Do not orchestrate other agents — that is the orchestrator's role.
 
 ---
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3

@@ -8,7 +8,7 @@ description: >-
   Produces verified native dispositions and explicit readiness gaps. Not for
   changing release scope or implementing selected work.
 user-invocable: true
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Triage

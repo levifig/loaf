@@ -7,7 +7,7 @@ description: >-
   packet through an authorized channel, with SQLite persistence when needed. For
   ordinary capture, completion summaries, or parked-work checkpoints, use
   foundations.
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Handoff

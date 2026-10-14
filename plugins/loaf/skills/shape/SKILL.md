@@ -8,7 +8,7 @@ description: >-
   version milestone without selecting implementation implicitly.
 user-invocable: true
 argument-hint: '[messy input to shape into a Change]'
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Shape

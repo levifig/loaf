@@ -8,7 +8,7 @@ description: >-
   should we deepen this code?" Produces analysis with candidates, dependency
   categories, and proposed deepened modules; actionable work belongs in the
   native tracker.
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Refactor-Deepen

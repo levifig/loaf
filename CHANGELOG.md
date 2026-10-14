@@ -4,6 +4,8 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ## [Unreleased]
 
+## [0.6.0-rc.3] - 2026-10-14
+
 ### Added
 
 - Record detectable harness names and versions on new private continuity writes, and report per-project continuity usage and pre-tool gateway outcomes with local, network-free `loaf telemetry status [--json]`. Gateway records omit tool arguments and file contents; historical records remain intact and unavailable provenance is explicit `unknown` ([#286](https://github.com/levifig/loaf/issues/286)).

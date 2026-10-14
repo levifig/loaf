@@ -1,7 +1,7 @@
 {
   "version": 1,
   "target": "opencode",
-  "package_version": "0.6.0-rc.2",
+  "package_version": "0.6.0-rc.3",
   "capability_contract_version": 3,
   "adapters": [
     "opencode-plugin-v1"
@@ -58,7 +58,7 @@
       "kind": "plugin",
       "source_path": "plugins/hooks.js",
       "destination": "plugins/hooks.js",
-      "sha256": "313cd9bf658a8e9868d7cab60fdd956ee0ef0e46ebf54223be2f5d1473cfbfc3",
+      "sha256": "acc541a2ccdf2869fbce408da46721849ad5f4ac435251913b144b94800c3ba6",
       "mode": 420
     }
   ]

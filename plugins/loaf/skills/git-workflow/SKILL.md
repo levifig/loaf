@@ -9,7 +9,7 @@ description: >-
   reviewing and merging a PR (use ship).
 user-invocable: false
 allowed-tools: 'Read, Write, Edit, Bash, Glob, Grep'
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Git Workflow

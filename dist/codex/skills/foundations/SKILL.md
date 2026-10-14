@@ -7,7 +7,7 @@ description: >-
   or preserving reasoning before finishing work, handing off, or compacting
   context. Not for git workflow (use git-workflow), debugging (use debugging),
   or security audits (use security-compliance).
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Foundations

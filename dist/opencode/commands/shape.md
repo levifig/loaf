@@ -6,7 +6,7 @@ description: >-
   the next minor." Produces a verified native record and any needed native
   version milestone without selecting implementation implicitly.
 subtask: false
-version: 0.6.0-rc.2
+version: 0.6.0-rc.3
 ---
 
 # Shape
