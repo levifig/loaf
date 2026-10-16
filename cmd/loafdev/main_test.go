@@ -1,11 +1,13 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestUsageSeparatesBuildFromInstall(t *testing.T) {
@@ -65,6 +67,53 @@ func TestMakefileVulnerabilityAuditUsesDevelopmentTool(t *testing.T) {
 	out := makeDryRun(t, loafdevRepoRoot(t), "vulncheck")
 	if !strings.Contains(out, "cmd/loafdev vulncheck") || strings.Contains(out, "govulncheck@latest") {
 		t.Fatalf("make vulncheck bypasses release toolchain selection: %q", out)
+	}
+}
+
+// Agent shells can hand make an open stdin pipe. loaf check reads any
+// non-terminal stdin to EOF as a hook payload, so the gate must not inherit it.
+func TestMakefileRenderDriftGateIgnoresInheritedStdin(t *testing.T) {
+	var recipe string
+	for _, line := range strings.Split(makeDryRun(t, loafdevRepoRoot(t), "verify-generated"), "\n") {
+		if strings.Contains(line, "check --hook render-drift") {
+			recipe = line
+		}
+	}
+	if recipe == "" {
+		t.Fatal("make verify-generated no longer runs the render-drift check")
+	}
+
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Stands in for loaf check: reads stdin to EOF, then exits.
+	if err := os.WriteFile(filepath.Join(dir, "bin", "loaf"), []byte("#!/bin/sh\ncat >/dev/null\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stdin, held, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdin.Close()
+	defer held.Close()
+
+	cmd := exec.Command("sh", "-c", recipe)
+	cmd.Dir = dir
+	cmd.Stdin = stdin
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("render-drift recipe %q: %v", recipe, err)
+		}
+	case <-time.After(10 * time.Second):
+		_ = cmd.Process.Kill()
+		t.Fatalf("render-drift recipe %q waited for an open stdin pipe to close", recipe)
 	}
 }
 

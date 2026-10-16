@@ -54,10 +54,12 @@ verify-local:
 
 # Node 24+ is the development baseline for JavaScript adapter syntax checks
 # and capability runners. Ordinary builds do not activate PATH.
+# loaf check reads non-terminal stdin as a hook payload, so close it: an agent
+# shell's open stdin pipe would otherwise stall the gate until the pipe closes.
 verify-generated:
 	@$(MAKE) require-node-24
 	LOAF_DEV_LINK=0 $(MAKE) build
-	bin/loaf check --hook render-drift --json
+	bin/loaf check --hook render-drift --json </dev/null
 
 # Exact names make additions deliberate. These spot checks cover native command
 # dispatch, SQLite recovery, the clean-machine policy regression, and delivery
