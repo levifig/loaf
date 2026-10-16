@@ -469,7 +469,7 @@ func TestSharedBuildShipsPostMergeReconciliationGuidance(t *testing.T) {
 		if strings.Contains(body, "these steps were already handled by the skill") || !strings.Contains(body, "local reconciliation pending") {
 			t.Errorf("%s does not preserve the independent post-merge reminder", path)
 		}
-		if !strings.Contains(body, "first re-read the Verification boxes of each issue the merge closed") || !strings.Contains(body, "do not mark that issue complete") {
+		if !strings.Contains(body, "first re-read the Verification boxes of each issue the merge closed") || !strings.Contains(body, "an agent's tick on a person-only box counts as open") || !strings.Contains(body, "do not mark that issue complete") {
 			t.Errorf("%s transitions closed issues without checking their Verification boxes", path)
 		}
 	}
@@ -518,7 +518,7 @@ func TestSharedBuildShipsMergeAuthority(t *testing.T) {
 		filepath.Join(root, "dist", "cursor", "hooks", "instructions", "pre-merge.md"),
 	} {
 		body := readBuildFileString(t, path)
-		for _, required := range []string{"belongs to the ship workflow", "BOXES: Re-read each issue this merge will close", "carry its reason on the box", "stop and name it instead of merging", "git.merge_strategy", "rulesets and classic protection", "--squash", "--merge", "--rebase", "--match-head-commit"} {
+		for _, required := range []string{"belongs to the ship workflow", "BOXES: Re-read each issue this merge will close", "carry its reason on the box", "a reason that misses its conditions", "stop and name it instead of merging", "git.merge_strategy", "rulesets and classic protection", "--squash", "--merge", "--rebase", "--match-head-commit"} {
 			if !strings.Contains(body, required) {
 				t.Errorf("%s pre-merge reminder missing %q", path, required)
 			}
