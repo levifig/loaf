@@ -13,6 +13,7 @@ Apply [`project-management/v1`](../project-management/contract.json) through a G
 - Verification
 - Destination Diagnosis
 - Version Milestones
+- Record Syntax
 - Quick Reference
 - Topics
 
@@ -50,6 +51,7 @@ Apply [`project-management/v1`](../project-management/contract.json) through a G
 - A common-contract mutation is `confirmed` only when the final native read shows the intended Issue field, body, relationship, state and state reason, board Status, or comment. A duplicate transition additionally requires native `duplicate_of` readback matching the requested canonical Issue identity. A lane transition is confirmed only when the board Status matches the requested option. Native milestone mutations require the milestone and assignment readbacks described below.
 - Missing sub-issue, dependency, state-reason, board, or comment capabilities are reported at their observed fidelity rather than represented through labels, prose, or another field. Confirmed missing routing or Status lanes are configuration gaps; an inaccessible board or absent connection capability is unverified, not proof that the board was deleted. Prompt for the specific unresolved choice or access, and do not invent workflow.
 - No connection configuration, credential material, provider transport, local work copy, synchronization path, or persistent mapping was created.
+- Written Issue bodies and comments follow the [Record Syntax](#record-syntax) below; a read-back body shows agent notes collapsed below the divider and references as links.
 
 ## Destination Diagnosis
 
@@ -69,6 +71,16 @@ Read repository milestones and the current Issue before creation or assignment. 
 Titles equal the full release-tag string from the project's instructions, including any prefix or prerelease suffix. Compare version order for Now / Next / Later; use a `Horizon:` line in the milestone description only when that order is ambiguous. Horizon belongs to the milestone, never an Issue or another board axis. Existing assignments and names are not permission to rename buckets or rebalance the backlog. Milestone membership does not change board Status, select implementation, or prove a release.
 
 At release time, read the exact matching open milestone and its remaining open Issues before asking about closure and rollover. Publication, Issue reassignment, and milestone closure are distinct authorized effects; read back each effect that actually occurs. Releases without a matching milestone keep their ordinary path.
+
+## Record Syntax
+
+Write Issue bodies and comments as the project-management skill's [Record Writing](../project-management/references/record-writing.md) reference describes. GitHub renders them this way:
+
+- **Agent notes:** after the divider, `<details>`, then `<summary>Agent notes</summary>`, a blank line, the Markdown bullets, and `</details>`. Without the blank line after `</summary>`, GitHub shows the bullets as raw text.
+- **Links:** write `#123` for an Issue or PR in the same repository and `owner/repo#123` for another; GitHub renders both as links, and a full Issue or PR URL also links. Code spans do not link.
+- **Checkboxes:** `- [ ]` is open and `- [x]` is ticked.
+- **Line breaks:** in Issue bodies and comments a single newline renders as a line break, so write each paragraph or bullet on one line and separate paragraphs with a blank line. A line directly above `---` renders as a heading unless a blank line separates them.
+- **Source:** record it with the native field when one exists: a linked PR, the Issue type, a label, or a sub-issue or dependency relationship that is actually true. GitHub has no general related-issue edge; mentioning a related Issue in the prose where it matters is context, not a recorded relationship.
 
 ## Quick Reference
 

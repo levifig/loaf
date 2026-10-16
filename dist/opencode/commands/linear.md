@@ -15,6 +15,7 @@ Apply [`project-management/v1`](../project-management/contract.json) through a L
 
 - Critical Rules
 - Verification
+- Record Syntax
 - Quick Reference
 - Topics
 
@@ -36,6 +37,17 @@ Apply [`project-management/v1`](../project-management/contract.json) through a L
 - A mutation is `confirmed` only when the final native read shows the intended state.
 - Missing relation, hierarchy, status, or comment capabilities are reported rather than represented in another field.
 - No connection configuration, credential material, provider transport, or local work copy was created.
+- Written descriptions and comments follow the [Record Syntax](#record-syntax) below; a read-back description shows agent notes collapsed below the divider and references as links.
+
+## Record Syntax
+
+Write issue descriptions and comments as the project-management skill's [Record Writing](../project-management/references/record-writing.md) reference describes. Linear stores them this way:
+
+- **Agent notes:** after the divider, a collapsible section: a line `>>> Agent notes`, the Markdown bullets, then a line with only `>>>`. Linear also accepts `+++` as the marker; read the description back and keep the form Linear returns.
+- **Links:** bare issue identifiers such as `TEAM-123` and PR URLs become native links, so write them as plain text, not as Markdown links or code.
+- **Checkboxes:** `- [ ]` is open and `- [X]` is ticked; Linear stores ticked boxes with a capital `X`.
+- **Spacing:** Linear collapses runs of blank lines, so separate the human sections from the agent notes with the `---` divider, not extra blank lines.
+- **Source:** record it with the native field when one exists: an attached PR, an issue relation, a customer request, or a type label. Mention related issues in the prose and set the relation; do not write magic words in descriptions or comments.
 
 ## Quick Reference
 

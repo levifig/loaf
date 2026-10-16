@@ -2,30 +2,30 @@
 
 This is an ephemeral semantic packet for one bounded write to canonical native tracker fields. Replace every placeholder, route each field once, and then verify the native record. Do not store or copy this packet as a second work record. Route the title directly to the tracker's native title field; route hierarchy and dependencies through their native relationship operations.
 
+Write the record for people, as the project-management skill's record-writing reference describes. Problem is the unheaded opening: one to three sentences on where the work came from, what's wrong or missing, and why it matters. A bug follows it with `### Steps to reproduce`. Every other field is a `###` section; leave out a section that would be empty. Definition of Done is plain bullets describing observable outcomes, Verification is checkboxes, and Out of Scope prevents likely expansion. Detail only agents need goes after the last section in collapsed agent notes, never in these fields.
+
 <!-- loaf:rideable-increment-contract -->
-Make the rideable increment concrete inside the existing fields, without adding native headings or schema: identify the Rider in Problem; express the complete Journey, Entry point, and observable Outcome through Definition of Done; put real Dogfood, Safety/integrity proof, and Learning sought in Verification; and name explicit Deferrals in Out of Scope. Risks carries threats to that journey and its integrity. Write only enough for an implementer to deliver and a reviewer to evaluate independently. Reuse known context; ask only material unanswered choices. Criteria name relevant conditions, observable results, preservation boundaries, and obtainable evidence or judgment; they do not prescribe files, functions, Gherkin, or one test per checkbox. Out of Scope prevents likely expansion. Solo and team share these five fields.
+Before writing, think through the rideable increment: who will use the result, the complete journey they can finish and where it starts, what they will see, how it gets used on real work, what proves it safe, what you hope to learn, and what is deferred. These questions are a thinking aid, not headings. Let the answers shape the opening, Definition of Done, Verification, and Out of Scope in plain words: real use and what it should teach become Verification boxes, and an unresolved question an agent will need becomes an Open question in the agent notes. Let Risks name threats to that journey. Write only enough for an implementer to deliver and a reviewer to evaluate independently. Reuse known context; ask only material unanswered choices. Criteria name relevant conditions, observable results, preservation boundaries, and obtainable evidence or judgment; they do not prescribe files, functions, Gherkin, or one test per checkbox. Solo and team share these five fields.
 
 <!-- loaf:field problem -->
-## Problem
-
 {{problem}}
 
 <!-- loaf:field definition_of_done -->
-## Definition of Done
+### Definition of Done
 
 {{definition_of_done}}
 
 <!-- loaf:field out_of_scope -->
-## Out of Scope
+### Out of Scope
 
 {{out_of_scope}}
 
 <!-- loaf:field verification -->
-## Verification
+### Verification
 
 {{verification}}
 
 <!-- loaf:field risks -->
-## Risks
+### Risks
 
 {{risks}}

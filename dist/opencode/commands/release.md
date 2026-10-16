@@ -34,7 +34,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Ask for or verify explicit authorization immediately before version changes, tags, pushes, or release publication when governing instructions require it.
 - Use repository-native Git and hosting capabilities. Do not create a Loaf-owned release record or provider bridge.
 - After publication, read the authoritative tag and release state before claiming success.
-- Add a [tracker update](templates/tracker-update.md) or supported native release metadata only after publication is confirmed; comments remain evidence, not workflow substitutes.
+- Add a [tracker update](templates/tracker-update.md) or supported native release metadata only after publication is confirmed. Write it as [Record Writing](../project-management/references/record-writing.md) describes: one to three plain lines naming the release and what it means for the reader, with agent detail collapsed. Comments remain evidence, not workflow substitutes.
 - Re-read every changed native record and report partial or indeterminate provider outcomes independently from publication success.
 
 ## Verification
