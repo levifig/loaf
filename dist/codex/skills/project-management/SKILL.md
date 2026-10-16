@@ -32,12 +32,13 @@ Use the closed [`project-management/v1`](contract.json) operation vocabulary. Th
 - Never blindly retry an ambiguous create or comment append. Re-read first and return `indeterminate` if the native result cannot be proven.
 - Keep definition, hierarchy, dependency, status, and comment operations distinct. A comment is evidence or collaboration, never a substitute field.
 - Return every result with operation, destination, native reference, outcome, fidelity, observed state, and verification evidence.
+- Write every issue body, comment, and status note for people. Read [Record Writing](references/record-writing.md) before `work.create`, `definition.write`, or `comment.append`; the provider skill gives that tracker's syntax.
 - Read [Record Contract](references/record-contract.md) when mapping a ceremony to native tracker fields.
 - Read [Provider Modules](references/provider-modules.md) before adding or reviewing a tracker backend.
 
 ### Capture Deferred Work
 
-When work uncovers a concrete actionable defect, omitted requirement, or improvement that will remain deferred or outside the current scope, the main agent must capture it in the configured native tracker before its final response or handoff. Search for duplicates first: match an existing issue or create one, adding missing evidence to the native record when needed. Record the problem, supporting evidence, observable desired outcome, and scope boundaries. New follow-ups enter Backlog unless the human already selected them for execution; preserve an existing issue's status. Capture is not an execution promise and does not waive the current work's completion criteria.
+When work uncovers a concrete actionable defect, omitted requirement, or improvement that will remain deferred or outside the current scope, the main agent must capture it in the configured native tracker before its final response or handoff. Search for duplicates first: match an existing issue or create one, adding missing evidence to the native record when needed. Record the problem, supporting evidence, observable desired outcome, and scope boundaries, written as [Record Writing](references/record-writing.md) describes. New follow-ups enter Backlog unless the human already selected them for execution; preserve an existing issue's status. Capture is not an execution promise and does not waive the current work's completion criteria.
 
 Read back the native record and return its link. A journal entry, report, TODO, or prose next step alone does not satisfy capture. This requirement applies during ordinary work. Subagents return findings and proposed issue content to the main agent, which owns tracker operations.
 
@@ -51,6 +52,7 @@ If the connection or required authority is unavailable, or the user explicitly p
 - Fidelity is reported as `exact`, `advisory`, `manual`, or `unsupported` without promotion by assumption.
 - The result names the same native destination and reference that were operated.
 - Every concrete deferred follow-up has a verified native issue link, or an explicit unfiled blocker and prepared issue content.
+- Written records open with plain prose, keep agent-only detail in collapsed agent notes, and point only to places everyone with tracker access can reach.
 
 ## Quick Reference
 
@@ -69,5 +71,6 @@ Use the [work contract](templates/work-contract.md) as an ephemeral packet for r
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
+| Record writing | [record-writing.md](references/record-writing.md) | Writing an issue body, comment, or status note people can read |
 | Record contract | [record-contract.md](references/record-contract.md) | Mapping Flow semantics, outcomes, or degradation to a native provider |
 | Provider modules | [provider-modules.md](references/provider-modules.md) | Adding Linear, GitHub, GitLab, Gitea, or a community tracker mapping without changing core Flow |

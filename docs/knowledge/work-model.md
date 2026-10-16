@@ -15,7 +15,7 @@ consumers:
   - implementer
   - reviewer
   - researcher
-last_reviewed: 2026-09-10
+last_reviewed: 2026-10-16
 ---
 
 # Shared Work Model
@@ -57,6 +57,8 @@ The tracker record carries the shared contract. At minimum, shaping establishes:
 - explicit out-of-scope boundaries;
 - supported parent, dependency, and related-work links;
 - the provider's workflow state and collaboration context.
+
+Records are written for people. An issue opens with one to three plain sentences on its source, the problem and why it matters, then uses short sections for the definition of done, out of scope, verification and risks. Detail only agents need sits in collapsed agent notes below a divider. The project-management skill's [Record Writing](../../content/skills/project-management/references/record-writing.md) reference owns these rules, and each provider skill owns its tracker's syntax.
 
 A technical design, ADR, committed document, or temporary research report may support the work, but it never becomes a second work identity. ADRs retain durable architectural rationale. Exact implementation plans and executable criteria stay close to code or in the tracker according to their purpose.
 

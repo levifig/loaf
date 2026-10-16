@@ -168,6 +168,7 @@ func canonicalContentInventory() []contentInventoryEntry {
 		{Path: "skills/project-management/references", Directory: true},
 		{Path: "skills/project-management/references/provider-modules.md"},
 		{Path: "skills/project-management/references/record-contract.md"},
+		{Path: "skills/project-management/references/record-writing.md"},
 		{Path: "skills/release", Directory: true},
 		{Path: "skills/release/SKILL.md"},
 		{Path: "skills/research", Directory: true},

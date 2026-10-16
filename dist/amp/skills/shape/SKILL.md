@@ -33,7 +33,8 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Preserve the problem narrative's intent while removing solution assumptions not required by constraints.
 - Identify architectural implications and unresolved choices using the architecture skill; shaping does not automatically create an architecture document or decision record.
 - Make the rideable increment concrete in the existing native definition and criteria: Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals. These are required decisions, not required native headings or a new schema. An existing journey restored by maintenance is valid; one exercise may supply several answers.
-- Set the title through the native work field, then fill every definition-packet field. Definition of done uses independently reviewable criteria; out of scope names what this work deliberately will not solve. Read [Reviewable Criteria](references/reviewable-criteria.md) when writing or changing criteria, exclusions, or material scope.
+- Set the title through the native work field, then fill the definition-packet fields, leaving out only a section that would be empty. Definition of done uses independently reviewable criteria; out of scope names what this work deliberately will not solve. Read [Reviewable Criteria](references/reviewable-criteria.md) when writing or changing criteria, exclusions, or material scope.
+- Write the body for people as [Record Writing](../project-management/references/record-writing.md) describes: an unheaded opening naming the source, the problem, and why it matters; `###` sections for the rest; detail only agents need in collapsed agent notes; no scheduling text. Record the source natively too when the tracker supports it.
 - Keep hierarchy and dependencies in their native relationship fields, not in comments or body prose alone. Use existing native owners, priorities, estimates, or cycles only when they are relevant, configured, supported, and authorized; never invent them.
 - When the human plans a GitHub version, read existing native milestones and the release-tag convention in the project's instructions. Reuse the matching bucket; create one through the selected provider only when this shaped work genuinely needs it, then assign the Issue and read back both milestone and assignment. Follow [version planning](../loaf-reference/references/flow-semantics.md#version-planning); a milestone does not select work, and shaping does not pre-create a ladder of future versions. Other providers keep their existing path.
 - Decompose only when a child earns an independently useful, independently verifiable definition of done. Read [Decomposition](references/decomposition.md) before changing hierarchy.
@@ -48,6 +49,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - The named rider can complete the journey through its real entry point; dogfood, safety/integrity proof, learning sought, and deferrals are concrete without adding another work record or gate.
 - Any foundation work is exercised by this journey or remains explicitly deferred; no child is only a future wheel.
 - Out-of-scope boundaries prevent likely expansion rather than restating the goal.
+- The body opens with its source, problem, and why it matters; agent-only detail sits in collapsed agent notes, and the record points only to places everyone with tracker access can reach.
 - Parent/child and dependency relationships are confirmed through their native fields.
 - Any requested version milestone and Issue assignment match authoritative readback; execution selection remains a separate native state.
 - Any unsupported provider feature is reported with honest fidelity; no prose substitute is presented as exact.
@@ -79,5 +81,6 @@ With Loaf's managed basic-command policy installed, use `loaf journal log --exec
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
+| Record writing | [record-writing.md](../project-management/references/record-writing.md) | Writing the opening, sections, and agent notes of the native record |
 | Reviewable criteria | [reviewable-criteria.md](references/reviewable-criteria.md) | Writing independently evaluable criteria, exclusions, or material-change rules |
 | Decomposition | [decomposition.md](references/decomposition.md) | Deciding whether one criterion deserves its own native child record |

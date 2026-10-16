@@ -41,11 +41,11 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Never say "publish." The disposition is move to Backlog, keep, archive, pitch, or shape.
 - Do not move anything to Backlog until the human picks by table index, native id, or an explicit "all of these." Multiple picks in one turn are allowed.
 - Adopt an existing native record that already represents the candidate. Do not mint a second Issue.
-- Tracker bodies carry shared provenance only: a related native issue, the dogfood or session reason, a public URL. Never write Loaf-internal ids onto the tracker — idea aliases (`IDEA-…`), spark aliases (`SPARK-…`), `idea:hex`, SQLite row ids, or journal entry ids. Resolve the private capture against the native id in Loaf; that link stays private.
+- Write new Backlog records as [Record Writing](../project-management/references/record-writing.md) describes: one to three sentences on where the issue came from, what's wrong or missing, and why it matters. Provenance is shared only: a related native issue, the dogfood reason, a public URL, also recorded natively when the tracker supports it. Never write Loaf-internal ids onto the tracker — idea aliases (`IDEA-…`), spark aliases (`SPARK-…`), `idea:hex`, SQLite row ids, or journal entry ids. Resolve the private capture against the native id in Loaf; that link stays private.
 - Base dispositions on evidence, strategic fit supplied by the user or project context, duplication, readiness, and blockers.
 - Prefer the next complete rideable operator journey over isolated component layers. If a candidate is foundation work, retain its explicit link to the immediate journey that consumes it; triage does not invent or shape that journey.
 - Read valid native workflow states before any transition. Never assume names such as backlog, canceled, or done exist.
-- Use comments only to explain a disposition when collaboration benefits; the native state and fields carry the disposition itself.
+- Use comments only to explain a disposition when collaboration benefits, leading with one to three plain lines; the native state and fields carry the disposition itself.
 - Re-read every changed candidate and return partial or unsupported results independently.
 
 ## Operator Presentation

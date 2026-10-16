@@ -365,7 +365,7 @@ Series-prep (bootstrap Finalization) turns the project BRIEF's scoped concepts i
 1. **Independently rideable** — the concept names a complete operator journey that could land as a meaningful release unit without waiting on the other scoped concepts to become useful. A storage, backend, protocol, API, UI, or verification layer alone does not pass. Sharing optional native metadata is fine; hard entanglement is not.
 2. **Specifiability (mint test)** — a concept mints only if its problem can be **stated precisely now** (not answered now): a cold reader can name the friction, who has it, the current alternative, and the value for *this* concept alone, without needing sibling issues or inventing what was meant. Everything vaguer stays a BRIEF line or spark — never pre-sliced into a fake row.
 
-When both hold, create a canonical backlog record through the selected `project-management/v1` provider's `work.create` operation, seed the problem-space-only narrative, and use only exact provider-supported fields. Read the record back with `work.get` and verify its native identity and content. No parallel local work rows, folders, or docs-only commits.
+When both hold, create a canonical backlog record through the selected `project-management/v1` provider's `work.create` operation, seed the short problem-space body bootstrap describes, and use only exact provider-supported fields. Read the record back with `work.get` and verify its native identity and content. No parallel local work rows, folders, or docs-only commits.
 
 ### Stays a BRIEF line or spark when any is true
 

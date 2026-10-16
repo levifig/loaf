@@ -42,7 +42,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 7. **Detect collisions by resource kind before writes** — search the correct provider collection for every source marker and likely title match. Classify each planned resource as `create`, `adopt`, `no-op`, or `conflict`; a project-like root must not adopt an issue or vice versa. Unresolved conflicts block that resource.
 8. **Confirm the mapping plan** — show the destination, per-root destination kinds, status mapping, hierarchy strategy, relationship strategy, collision classifications, and first bounded batch. Obtain confirmation before the first mutation unless the operator has already approved that exact plan.
 9. **Bound all resource mutations** — create or adopt at most 10 provider resources per batch, counting projects, milestones, epics, and issues together. Stop the batch on an ambiguous response or failed verification. Do not retry a create until a read proves whether the first attempt landed.
-10. **Preserve provenance without auto-linking** — every created or adopted provider resource description must contain `Loaf source alias:` followed by the alias in Markdown inline code, for example `Loaf source alias:` then `` `DOJO-1` ``. When an alias is absent, use `Loaf source ID:` followed by the ID in inline code. Never replace provider-native IDs with Loaf aliases.
+10. **Preserve provenance without auto-linking** — every created or adopted provider resource description carries a source marker in its collapsed agent notes, never in the human sections: a **Findings** bullet reading `migrated from local issue` followed by the alias in Markdown inline code, for example `` - **Findings:** migrated from local issue `DOJO-1` ``. When an alias is absent, use the source ID in inline code. Write the notes with the destination's syntax as [Record Writing](../project-management/references/record-writing.md) describes. Never replace provider-native IDs with Loaf aliases.
 11. **Map by identity, never order** — associate every provider response with its source ID/alias and destination kind, then re-read the provenance marker. Never infer mappings from provider key sequence, request order, response order, creation time, or batch position; concurrent creates may receive provider keys in a different order.
 12. **Verify every batch** — re-read each destination resource, its kind, and its hierarchy/status/relationship state after writing. Only verified mappings enter the receipt.
 13. **One-time migration only** — do not create dual sync, webhooks, local mirrors, provider clients, credentials, journal/wrap/handoff migration, or remote continuity sync. Local harness execution needs no Loaf server.
@@ -57,7 +57,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Every source row has one explicit resource-kind-aware collision classification and one destination outcome
 - Hierarchy/status/relationship mappings were shown and confirmed when the provider differs from the source model
 - Every resource mutation was performed in a batch of at most 10 and re-read from the provider
-- Every created or adopted resource description contains the source alias or fallback source ID marker as Markdown inline code
+- Every created or adopted resource description contains the source alias or fallback source ID marker as Markdown inline code inside its collapsed agent notes, with no visible marker line in the human sections
 - Every mapping was verified by source identity, destination kind, and destination re-read, never by provider identifier or response order
 - Children of a project-like root were verified as associated with that exact project resource, not parented to an invented root issue
 - The final response uses [templates/tracker-migration-receipt.md](templates/tracker-migration-receipt.md) and distinguishes verified mappings, conflicts, failures, and untouched source rows
@@ -131,7 +131,7 @@ For a project-like root:
 
 A source tree planned as one project-like root plus N descendant issues must yield exactly one project-like mapping and N issue mappings—not N+1 issues. Because every resource kind counts toward the limit of ten, the minimum mutation-batch count is `ceil((N + 1) / 10)`.
 
-Then classify every planned resource. Search by the exact inline-code source marker first, then by source alias, then by likely title. Classify:
+Then classify every planned resource. Search by the exact inline-code source marker first, including the visible `Loaf source alias:` or `Loaf source ID:` form left by earlier migrations, then by source alias, then by likely title. Classify:
 
 | Class | Meaning | Action |
 |-------|---------|--------|
@@ -150,7 +150,7 @@ Process project-like roots and issue parents before their children. Within each 
 
 1. Re-read any adoption target immediately before mutation.
 2. Create/adopt no more than 10 total provider resources.
-3. Add the inline-code source marker to each resource description without discarding existing provider content.
+3. Add the inline-code source marker to each resource description's agent notes without discarding existing provider content.
 4. Bind each returned provider ID and kind to the source ID/alias from that specific operation; never pair results by order.
 5. Re-read every resource by provider identity, verify its kind and source marker, and record its provider ID/URL.
 6. Associate child issues with a verified project-like root through provider-native membership; use issue parentage only when the parent mapped to an issue.
@@ -165,8 +165,7 @@ Use [templates/tracker-migration-receipt.md](templates/tracker-migration-receipt
 
 ## Mapping Policy
 
-- Preserve source title and body unless the destination requires a documented structural adaptation.
-- Render definition-of-done items as unchecked destination checkboxes or the closest provider-native acceptance-criteria form.
+- Preserve the source title and the meaning of its body, written in the record shape [Record Writing](../project-management/references/record-writing.md) describes: the source problem becomes the unheaded opening, definition-of-done items become plain bullets under `### Definition of Done`, and the source marker sits in the agent notes. On an adopted resource, keep the existing description and add only the marker.
 - Preserve issue `kind` with a provider-native type or label when available; disclose any collapse.
 - Do not migrate local verification commands. They can contain machine-specific details and are outside the provider-neutral packet.
 - Do not mark destination issues complete: the packet contains only open work.

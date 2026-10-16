@@ -64,12 +64,12 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | Start an inquiry | `loaf exploration create --title <title> [--from <source>]...` |
 | Checkpoint | `loaf exploration checkpoint <ref> --purpose <p> --conclusions <c> --unresolved <u> --next <n> [--item candidate:<text>]... [--operation-id <key>]` |
 | Resume elsewhere | `loaf exploration context <ref> --json` |
-| File a direction | Use the selected provider's `work.create` operation with backlog status, problem narrative, and any supported hierarchy or labels |
+| File a direction | Use the selected provider's `work.create` operation with backlog status, a short problem opening as [Record Writing](../project-management/references/record-writing.md) describes, and any supported hierarchy or labels |
 | Optional sequencing hint | Use an exact native label/priority only when the provider reports support; otherwise keep sequencing in the record body |
 | Record provenance | `loaf conversation create --title <label>` then `loaf conversation handle add <id> --harness <h> --handle <opaque-id> [--locality <scope>] [--log-ref <path>]` |
 | Associate conversation | `loaf exploration conversation add <exploration> <conversation-id>` |
 
-`--from` on Exploration creation accepts journal entries, handoffs, reports, and findings. Name native tracker, spark, or idea refs in the checkpoint and tracker body instead. Provider-native labels are advisory, never hidden bindings.
+`--from` on Exploration creation accepts journal entries, handoffs, reports, and findings. Name native tracker refs in the checkpoint and tracker body instead; spark and idea refs stay in the checkpoint, because tracker records point only to places everyone with tracker access can reach. Provider-native labels are advisory, never hidden bindings.
 
 ## Process
 
