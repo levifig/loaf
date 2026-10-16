@@ -54,7 +54,7 @@ Write the notes as Markdown bullets of the form `- **Label:** text`, with these 
 | **Find** | How to locate the rest: searches, paths, related code |
 | **Approach** | The intended way to do the work, once decided |
 | **Open questions** | Undecided choices; use it instead of Approach while the design is open |
-| **Checks** | For each Verification box: what it needs, how to run it and what counts as a pass |
+| **Checks** | For each Verification box that needs more than its own line: what it needs, how to run it and what counts as a pass |
 | **Constraints** | Rules the work must keep |
 | **Pitfalls** | Known traps and how to avoid them |
 | **Findings** | Facts already learned that the next agent shouldn't rediscover |
@@ -65,7 +65,7 @@ The notes hold the current state, not a log: rewrite a bullet when it changes in
 
 ## Comments
 
-Lead every progress, review or status comment with one to three plain lines: what happened, what it means, and what happens next or what a person needs to do. Agent detail such as commands, output, commit identities and file lists goes below a divider in collapsed agent notes, written the same way as an issue's. A comment is evidence or collaboration; it never changes the definition, status or relationships.
+Lead every progress, review or status comment with one to three plain lines: what happened, what it means, and what happens next or what a person needs to do. Agent detail such as commands, output, commit identities and file lists goes below a divider in collapsed agent notes with the same labels as an issue's; commands and output usually belong under Checks, and commit identities under Findings. A comment is evidence or collaboration; it never changes the definition, status or relationships.
 
 ## Formatting
 

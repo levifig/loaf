@@ -84,7 +84,7 @@ Write Issue bodies and comments as the project-management skill's [Record Writin
 - **Links:** write `#123` for an Issue or PR in the same repository and `owner/repo#123` for another; GitHub renders both as links, and a full Issue or PR URL also links. Code spans do not link.
 - **Checkboxes:** `- [ ]` is open and `- [x]` is ticked.
 - **Line breaks:** in Issue bodies and comments a single newline renders as a line break, so write each paragraph or bullet on one line and separate paragraphs with a blank line. A line directly above `---` renders as a heading unless a blank line separates them.
-- **Source:** record it with the native field when one exists: a linked PR, a sub-issue or dependency relationship, the Issue type, or a label. GitHub has no general related-issue edge, so mention a related Issue in the opening prose.
+- **Source:** record it with the native field when one exists: a linked PR, the Issue type, a label, or a sub-issue or dependency relationship that is actually true. GitHub has no general related-issue edge; mentioning a related Issue in the prose where it matters is context, not a recorded relationship.
 
 ## Quick Reference
 

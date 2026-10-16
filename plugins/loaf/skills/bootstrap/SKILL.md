@@ -463,7 +463,7 @@ After the Core Docs and AGENTS.md are populated (and Knowledge Base Scaffolding 
 3. **Per confirmed concept (one at a time — never batch):**
    1. Confirm creation with the builder (title, one-line problem restatement, and any exact provider-supported routing fields). Missing optional metadata never blocks capture. If the concept fails granularity, park it as a spark or BRIEF line.
    2. Propose a **working title** that names the concept, never another work unit (issue aliases, task ids). Confirm the title.
-   3. **Seed a short problem-space body** from the BRIEF's content for that concept, as the project-management skill's [Record Writing](../project-management/references/record-writing.md) reference describes: one to three sentences on who has the problem, what's wrong or missing today, and why solving it matters. Do not copy the BRIEF's headings or solution design. Put constraints and open questions an agent will need in collapsed agent notes, and link sources only where everyone with tracker access can reach them. The seeded body must stand alone as intent for later shape — cold-read without the project BRIEF or this session.
+   3. **Seed a short problem-space body** from the BRIEF's content for that concept, as the project-management skill's [Record Writing](../project-management/references/record-writing.md) reference describes: one to three sentences on where the need comes from (who has it or what prompted it, never the brief or this session), what's wrong or missing today, and why solving it matters. Do not copy the BRIEF's headings or solution design. Put constraints and open questions an agent will need in collapsed agent notes, and link sources only where everyone with tracker access can reach them. The seeded body must stand alone as intent for later shape — cold-read without the project BRIEF or this session.
    4. Call the selected provider's `work.create` operation using the harness-native connection. Preserve the confirmed title and seeded body exactly; do not configure credentials or call a Loaf provider client. Then `status.transition` into Backlog intent (GitHub: board Status Backlog). Do not select Todo.
    5. Read the created record back through `work.read` and `status.read`. Verify native identity, title, body, uncommitted status, and every requested supported field before proceeding.
    6. Do not add definition-of-done criteria or an out-of-scope statement during series-prep; that is shape.
@@ -516,7 +516,7 @@ When the interactive interview path is unavailable, bootstrap the Core Docs and 
 6. **Record the session** -- decisions and rationale are preserved
 7. **Suggest, don't execute** -- recommend next skills, don't auto-run them; series-prep never auto-shapes or creates branches
 8. **Interview structured** -- one question at a time, with a recommendation, using your harness's structured question tool if it has one
-9. **Series-prep is not roadmap planning** -- advisory bucket labels (never bindings) + prose sequencing only; no dates, priorities, or dependency fields
+9. **Series-prep is not roadmap planning** -- advisory bucket labels (never bindings); no dates or priorities in the body, and relationships only through native relations the provider supports
 
 ---
 
