@@ -11,6 +11,7 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 ### Changed
 
 - Write tracker issues and comments for people. Issues open with one to three plain sentences on where they came from, the problem and why it matters, followed by short `###` sections for Definition of Done, Out of Scope, Verification and Risks, leaving out empty ones. Detail only agents need moves into collapsed agent notes below a divider, with fixed labels and no status, dates, assignees or Loaf naming. Comments and Ship's review lead with one to three plain lines. Records link issues natively, write exact moments in UTC, point only to places everyone with tracker access can reach, and keep magic words in PR descriptions and commit messages. The GitHub and Linear skills describe each tracker's syntax, and migrated records keep their source marker in the agent notes instead of a visible line ([#391](https://github.com/levifig/loaf/issues/391)).
+- Ship confirms every Verification box on an issue is ticked before marking it Done or merging its PR, and does so before the merge because merging can close linked issues automatically. An open box blocks closing and merging unless its reason is written on it. Whoever ran a check ticks its box, an agent only after running the check and recording the result; checks only a person can do stay for that person, and Implement hands off with the boxes it ran already ticked ([#392](https://github.com/levifig/loaf/issues/392)).
 
 ### Fixed
 

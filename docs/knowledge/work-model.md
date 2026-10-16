@@ -66,7 +66,7 @@ A technical design, ADR, committed document, or temporary research report may su
 
 Implementation uses repository-native branches, worktrees, commits, tests, reviews, and pull requests. Git is the implementation witness; an agent's completion claim is not evidence.
 
-The ship method is the sole quality gate. It validates the tracker contract against the code and relevant checks, reviews the effective diff, and writes status only through the provider after reading back the result. CI verifies source and required generated artifacts; it does not repair or push branches.
+The ship method is the sole quality gate. It validates the tracker contract against the code and relevant checks, reviews the effective diff, and writes status only through the provider after reading back the result. Before it closes an issue or merges its PR, every Verification box must be ticked by whoever ran the check, or carry its reason. CI verifies source and required generated artifacts; it does not repair or push branches.
 
 Progress is planned and assessed as rideable increments. Each increment completes a useful operator journey and includes its diagnostics and recovery behavior.
 

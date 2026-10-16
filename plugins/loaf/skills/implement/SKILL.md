@@ -43,6 +43,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Keep commits cohesive and atomic only when the user or governing workflow authorizes commits. Never infer permission to push, merge, or publish; merges happen only through ship.
 - Use orchestration only when delegation is available, authorized, and materially useful; a single agent remains a valid execution path.
 - Post a [tracker update](templates/tracker-update.md) only when progress, a blocker, or verification evidence benefits collaborators, written as [Record Writing](../project-management/references/record-writing.md) describes: one to three plain lines first, agent detail collapsed. Comments never modify the work contract.
+- Before handing to ship, tick each Verification box whose check you ran and passed, after recording the result where reviewers can find it from the issue: the PR description, a tracker comment, or the review. Leave boxes you did not run, and checks only a person can do, open for their owner. Follow [Record Writing](../project-management/references/record-writing.md#verification-boxes).
 - Re-read native state after any status transition or comment append and report indeterminate effects honestly.
 
 ## Verification
@@ -53,6 +54,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Focused tests, affected package tests, formatting, lint or static analysis, and the relevant build were actually run and their outputs read.
 - The implementation diff contains no unrequested authority, dependency, schema, or public-interface expansion.
 - Commit references and working-tree state are reported exactly; uncommitted or unverified work is labeled.
+- Each Verification box whose check this work ran and passed is ticked with its result recorded, and the handoff names every box still open.
 - The live tracker record was read again before handoff to ship.
 - Before the final response or handoff, load the project-management skill and apply its Capture Deferred Work rule to concrete deferred or out-of-scope work.
 
@@ -71,7 +73,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | External blocker | Preserve code state and report observed blocker evidence |
 | Independent bounded tasks | Coordinate through orchestration when authorized |
 | Review finding | Add a regression test, fix, and re-run affected gates |
-| Criteria satisfied | Hand live reference, diff, and evidence to ship |
+| Criteria satisfied | Tick the Verification boxes you ran, then hand live reference, diff, and evidence to ship |
 
 ## Harness Integration
 

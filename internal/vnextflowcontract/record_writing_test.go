@@ -110,6 +110,44 @@ func TestRecordWritingReferenceAndProviderSyntaxShip(t *testing.T) {
 	}
 }
 
+// A merge can close linked issues automatically, so ship confirms every
+// Verification box before it closes or merges, and implement ticks only the
+// boxes whose checks it ran.
+func TestVerificationBoxesGateClosingAndMerging(t *testing.T) {
+	t.Parallel()
+
+	content := repositoryFlowContent(t)
+	files := map[string][]string{
+		recordWritingPath: {
+			"Whoever ran the check ticks its box",
+			"only after running the check itself and recording the result",
+			"stays for that person",
+			"carries its reason at the end of its line",
+			"never invent one to get past a gate",
+		},
+		"skills/ship/SKILL.md": {
+			"confirm every Verification box is ticked",
+			"unless its reason is written on the box",
+			"name each open box",
+			"stays for that person",
+			"Never write a reason yourself to clear the gate",
+			"before the merge, not after",
+		},
+		"skills/implement/SKILL.md": {
+			"tick each Verification box whose check you ran and passed",
+			"open for their owner",
+		},
+	}
+	for name, wants := range files {
+		body := readFlowContentString(t, content, name)
+		for _, want := range wants {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s missing Verification-box rule %q", name, want)
+			}
+		}
+	}
+}
+
 func readFlowContentString(t *testing.T, content fs.FS, name string) string {
 	t.Helper()
 	body, err := fs.ReadFile(content, name)

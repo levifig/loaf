@@ -33,6 +33,15 @@ Keep scheduling and workflow out of the body. Owners, status, priority, estimate
 
 Write each box as one check a teammate could run or judge. Put a command inline in backticks only when a teammate could copy and run it without more context. Otherwise describe the check in plain words and put its commands under Checks in the agent notes.
 
+Tick a box only when its check has passed:
+
+- Whoever ran the check ticks its box. An agent ticks one only after running the check itself and recording the result where reviewers can find it from the issue: the PR description, a tracker comment or the review.
+- A check only a person can do, such as a customer sign-off, stays for that person.
+- A box that stays open carries its reason at the end of its line, for example `- [ ] The customer confirms the new export (open: waiting on their test run)`. The reason records a person's decision or an observed blocker; never invent one to get past a gate.
+- Ticking edits the issue body: re-read it, change only that box, then read it back.
+
+Every box is ticked, or carries its reason, before the issue is closed or its PR is merged. Ship checks this before it closes or merges.
+
 ## Agent Notes
 
 Detail only agents need to continue the work goes after the human sections: a blank line, a `---` divider, then a collapsed section titled "Agent notes". The provider skill shows the exact wrapper. Leave the notes out when the human sections already say everything an agent needs.
