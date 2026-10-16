@@ -36,6 +36,9 @@ type checkHookContext struct {
 	Input           checkHookInput `json:"input"`
 	AgentType       string         `json:"agent_type"`
 	ValidationLevel string         `json:"validation_level"`
+	// processRoot is the hook process's checkout, kept after the payload cwd
+	// selects the evaluated root, so an explicit gh target can bind to it.
+	processRoot string
 }
 
 type checkHookInput struct {
@@ -135,7 +138,42 @@ func (r Runner) runCheck(args []string, out io.Writer, runtimeRoot string) error
 	if payloadErr == nil && context.HookEventName == "preToolUse" {
 		return r.runCursorCheckContext(options, context, nil, out, runtimeRoot)
 	}
+	// Harnesses may spawn hooks from the project directory while the shell has
+	// moved into a linked worktree. The payload cwd names where the inspected
+	// command runs, so checks read that checkout rather than the hook process's.
+	context.processRoot = runtimeRoot
+	if toplevel, ok := checkoutToplevel(runtimeRoot); ok {
+		context.processRoot = toplevel
+	}
+	if payloadErr == nil && context.Cwd != "" {
+		root, err := checkPayloadRepositoryRoot(context.Cwd, runtimeRoot)
+		if err != nil {
+			payloadErr = err
+		} else {
+			runtimeRoot = root
+		}
+	}
 	return r.runCheckContext(options, context, payloadErr, out, runtimeRoot)
+}
+
+// checkPayloadRepositoryRoot resolves a hook payload cwd to the toplevel of the
+// worktree that contains it, never normalizing to the main checkout.
+//
+// A cwd in a linked worktree of the hook process's project and a cwd in a
+// separate repository resolve alike: Loaf policy is tracked per repository, and
+// a command acts on the repository it runs in unless it names another target,
+// which workflow-pre-pr binds separately. A cwd outside any Git worktree has
+// no repository policy to read, so the hook process's checkout stays in force
+// rather than evaluating as an unconfigured directory.
+func checkPayloadRepositoryRoot(cwd, processRoot string) (string, error) {
+	info, err := os.Stat(cwd)
+	if !filepath.IsAbs(cwd) || err != nil || !info.IsDir() {
+		return "", fmt.Errorf("hook payload cwd must be an accessible absolute directory")
+	}
+	if toplevel, ok := checkoutToplevel(cwd); ok {
+		return toplevel, nil
+	}
+	return processRoot, nil
 }
 
 // Evaluate the parsed input directly so transport normalization cannot change
@@ -984,15 +1022,49 @@ func runNativeWorkflowPrePR(hookContext checkHookContext, cwd string) checkResul
 	if checkContextToolName(hookContext) != "Bash" {
 		return result
 	}
-	request, relevant, err := workflowChangelogRequest(command, cwd)
+	// gh resolves a relative --body-file against the shell's directory, which may
+	// sit below the repository root the checks read.
+	shellDir := cwd
+	if filepath.IsAbs(hookContext.Cwd) {
+		shellDir = hookContext.Cwd
+	}
+	request, relevant, err := workflowChangelogRequest(command, shellDir)
 	if !relevant {
 		return result
 	}
-	if !repositoryUsesIssueChangelog(cwd, request.base) {
+	// Policy belongs to the repository the PR targets, which only the strict
+	// parse can name: it consumes flag values and rejects forms it cannot read.
+	// Without --repo, gh targets the command's checkout. When the target is
+	// unreadable or no checkout tracks it, nothing may fall to advisory while
+	// either the command's or the session's checkout opts in.
+	optedIn := func(root string) bool { return root != "" && repositoryUsesIssueChangelog(root, request.base) }
+	root, bound, known := cwd, true, true
+	switch {
+	case !request.targetResolved:
+		// A parse that stopped early may hold a target gh would not use.
+		known = false
+	case request.repository != "":
+		root, bound = prTargetCheckout(request.repository, cwd, hookContext.processRoot)
+	}
+	if !known || !bound {
+		if !optedIn(cwd) && !optedIn(hookContext.processRoot) {
+			return advisoryWorkflowPrePR(command, cwd)
+		}
+		result.Passed = false
+		result.Blocked = true
+		if !known {
+			result.Errors = append(result.Errors, err.Error())
+		} else {
+			result.Errors = append(result.Errors, fmt.Sprintf("gh pr create targets %s, which neither the command's checkout nor the session's checkout has as a remote; run it from a checkout of that repository", request.repository))
+		}
+		return result
+	}
+	cwd = root
+	if !optedIn(cwd) {
 		return advisoryWorkflowPrePR(command, cwd)
 	}
 	if err == nil {
-		err = checkIssueChangelog(cwd, request)
+		err = checkIssueChangelog(cwd, request.issueChangelogRequest)
 	}
 	if err != nil {
 		result.Passed = false

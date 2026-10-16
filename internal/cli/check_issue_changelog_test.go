@@ -14,6 +14,7 @@ import (
 
 func TestWorkflowPrePRRejectsUnrelatedExistingChangelogEntry(t *testing.T) {
 	repo := initCLIGitRepo(t)
+	trackLoafRemote(t, repo)
 	mkdirAll(t, filepath.Join(repo, ".github"))
 	writeFile(t, filepath.Join(repo, ".github", "PULL_REQUEST_TEMPLATE.md"), coverageDeclaration)
 	writeFile(t, filepath.Join(repo, "CHANGELOG.md"), "# Changelog\n\n## [Unreleased]\n\n### Fixed\n\n- Fix an older bug ([#279](https://github.com/levifig/loaf/issues/279)).\n")
@@ -36,9 +37,17 @@ func coverageCommit(t *testing.T, repo string) {
 	gitCLI(t, repo, "-c", "user.name=Loaf Test", "-c", "user.email=loaf@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "fixture")
 }
 
+// trackLoafRemote makes repo a checkout of the levifig/loaf target that the
+// fixtures' gh pr create --repo commands name.
+func trackLoafRemote(t *testing.T, repo string) {
+	t.Helper()
+	gitCLI(t, repo, "remote", "add", "loaf", "https://github.com/levifig/loaf.git")
+}
+
 func coverageRepo(t *testing.T) string {
 	t.Helper()
 	repo := initCLIGitRepo(t)
+	trackLoafRemote(t, repo)
 	mkdirAll(t, filepath.Join(repo, ".github"))
 	writeFile(t, filepath.Join(repo, ".github", "PULL_REQUEST_TEMPLATE.md"), coverageDeclaration)
 	writeFile(t, filepath.Join(repo, "CHANGELOG.md"), coverageChangelog("- Old unrelated note."))

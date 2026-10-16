@@ -17,6 +17,7 @@ func TestWorkflowPrePRDoesNotBlockOnMergeStrategyFIFO(t *testing.T) {
 	writeFile(t, filepath.Join(repo, "CHANGELOG.md"), coverageChangelog("- Baseline note."))
 	coverageCommit(t, repo)
 	addOriginTrackingMain(t, repo)
+	trackLoafRemote(t, repo)
 	gitCLI(t, repo, "commit", "--allow-empty", "-m", "chore: unpushed base")
 	gitCLI(t, repo, "switch", "-c", "feat/fifo-config")
 	writeFile(t, filepath.Join(repo, "CHANGELOG.md"), coverageChangelog("- Preserve nonblocking config reads "+coverageLink+"."))

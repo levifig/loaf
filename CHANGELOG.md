@@ -8,6 +8,10 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 - Preserve retired local records and their bodies in a separate checksummed recovery archive, with exact SQLite values, per-project table reconciliation, and database-independent recovery through `loaf migrate retired-show`. Retired records stay outside the new continuity store. ([#288](https://github.com/levifig/loaf/issues/288))
 
+### Fixed
+
+- Run check hooks against the linked Git worktree the command runs in, named by the hook payload's `cwd`, instead of the hook process's directory or the main checkout. The pre-PR check now passes from a worktree whose committed HEAD has the required changelog notes even when the main checkout lacks them, and still blocks when the worktree's HEAD does not; uncommitted notes never count. Artifact-name and knowledge-staleness checks also follow the worktree. A nonexistent or relative payload `cwd` blocks. In Claude Code and Codex, a `cwd` outside any Git repository keeps the session's own checkout in force rather than skipping its checks. A `gh pr create --repo` is checked against a checkout that tracks that repository, so a shell in an unrelated checkout cannot stand in for the target's policy. When the target cannot be read, or no checkout tracks it, the PR is refused if either checkout opts in to changelog coverage. Where a checkout opts in, PR creation arguments must also be literal: `$` and backticks are accepted only inside single quotes, and unquoted words must be plain, so a partly quoted `--title="…"` is refused in favor of `--title "…"` ([#384](https://github.com/levifig/loaf/issues/384)).
+
 ## [0.6.0-rc.3] - 2026-10-14
 
 ### Added

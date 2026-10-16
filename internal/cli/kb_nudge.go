@@ -19,11 +19,11 @@ func (r Runner) runKbStalenessNudge(out io.Writer, runtimeRoot string, options c
 	result := checkResult{Passed: true, Warnings: []string{}, Errors: []string{}, Findings: []string{}}
 	payload := r.readKbNudgePayload()
 	if payload != nil {
-		if options.cursorOutput {
-			if cwd, ok := payload["cwd"].(string); ok && filepath.IsAbs(cwd) {
-				if info, err := os.Stat(cwd); err == nil && info.IsDir() {
-					runtimeRoot = cwd
-				}
+		// The payload cwd names the worktree being edited; the hook process may
+		// run from the main checkout instead.
+		if cwd, ok := payload["cwd"].(string); ok && filepath.IsAbs(cwd) {
+			if info, err := os.Stat(cwd); err == nil && info.IsDir() {
+				runtimeRoot = cwd
 			}
 		}
 		result.Warnings = kbStalenessNudges(runtimeRoot, payload, time.Now())

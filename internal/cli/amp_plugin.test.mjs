@@ -107,6 +107,7 @@ test('generated plugin runs real pre-PR in helper shell dir and falls back to wo
   const changelog = '## [Unreleased]\n\n- Require issue coverage ([#284](https://github.com/levifig/loaf/issues/284)).\n';
   for (const dir of [workspace, shellDir, missingDir]) {
     execFileSync('git', ['init', '-b', 'main'], { cwd: dir });
+    execFileSync('git', ['remote', 'add', 'loaf', 'https://github.com/levifig/loaf.git'], { cwd: dir });
     await mkdir(join(dir, '.github'));
     await writeFile(join(dir, '.github', 'PULL_REQUEST_TEMPLATE.md'), declaration);
     await writeFile(join(dir, 'README.md'), 'Temporary hook fixture.\n');
