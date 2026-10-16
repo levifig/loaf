@@ -43,8 +43,8 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Keep commits cohesive and atomic only when the user or governing workflow authorizes commits. Never infer permission to push, merge, or publish; merges happen only through ship.
 - Use orchestration only when delegation is available, authorized, and materially useful; a single agent remains a valid execution path.
 - Post a [tracker update](templates/tracker-update.md) only when progress, a blocker, or verification evidence benefits collaborators, written as [Record Writing](../project-management/references/record-writing.md) describes: one to three plain lines first, agent detail collapsed. Comments never modify the work contract.
-- Before handing to ship, tick each Verification box whose check you ran and passed, after recording the result where reviewers can find it from the issue: the PR description, a tracker comment, or the review. Leave boxes you did not run, and checks only a person can do, open for their owner. Follow [Record Writing](../project-management/references/record-writing.md#verification-boxes).
-- Re-read native state after any status transition or comment append and report indeterminate effects honestly.
+- Before handing to ship, tick each Verification box whose check you ran and passed, after recording the result where reviewers can find it from the issue: the PR description or a tracker comment. Ticking is the only definition write implement makes. Leave boxes you did not run, and checks only a person can do, open for their owner, and never write a reason on a box yourself. Follow [Record Writing](../project-management/references/record-writing.md#verification-boxes).
+- Re-read native state after any status transition, comment append, or box tick and report indeterminate effects honestly.
 
 ## Verification
 
@@ -73,7 +73,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | External blocker | Preserve code state and report observed blocker evidence |
 | Independent bounded tasks | Coordinate through orchestration when authorized |
 | Review finding | Add a regression test, fix, and re-run affected gates |
-| Criteria satisfied | Tick the Verification boxes you ran, then hand live reference, diff, and evidence to ship |
+| Criteria satisfied | Tick the Verification boxes you ran and passed, then hand live reference, diff, and evidence to ship |
 
 ## Harness Integration
 

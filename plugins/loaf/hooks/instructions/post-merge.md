@@ -16,7 +16,7 @@ Complete these steps only after authoritative PR readback confirms the merge suc
    ```
    Require every command to succeed, both refs to match, the observed PR merge commit to be an ancestor of the local base, and a clean checkout. `FETCH_HEAD` names the base just fetched even with a custom fetch mapping. Any failed check leaves local reconciliation pending. Do not stash, reset, rebase, or merge the feature branch into the base to hide a refusal.
 
-3. **Transition the canonical native tracker record.** Through the selected `project-management/v1` provider skill and harness-native connection, read the provider's valid statuses, perform the authorized completion transition, then read the same native record back. Report unsupported, failed, or indeterminate provider outcomes without creating a local fallback record.
+3. **Transition the canonical native tracker record.** Through the selected `project-management/v1` provider skill and harness-native connection, first re-read the Verification boxes of each issue the merge closed: if one is open with no reason written on it, name it and do not mark that issue complete. Otherwise read the provider's valid statuses, perform the authorized completion transition, then read the same native record back. Report unsupported, failed, or indeterminate provider outcomes without creating a local fallback record.
 
 4. **Report the feature worktree disposition.** From outside the feature worktree, inspect registered worktrees and confirm the candidate is clean and no agent is using it. Remove it only with applicable authorization:
    ```

@@ -120,10 +120,15 @@ func TestVerificationBoxesGateClosingAndMerging(t *testing.T) {
 	files := map[string][]string{
 		recordWritingPath: {
 			"Whoever ran the check ticks its box",
-			"only after running the check itself and recording the result",
+			"only after the check ran in its own work",
+			"the result is recorded where reviewers can find it",
 			"stays for that person",
 			"carries its reason at the end of its line",
-			"never invent one to get past a gate",
+			"A reason records a person's decision",
+			"An agent never adds one on its own to get past a gate",
+			"can only run after the merge, such as a deploy, is written with its reason from the start",
+			"before the issue is marked done or a PR that closes it is merged",
+			"A reason clears this gate only; it never proves a criterion",
 		},
 		"skills/ship/SKILL.md": {
 			"confirm every Verification box is ticked",
@@ -132,10 +137,17 @@ func TestVerificationBoxesGateClosingAndMerging(t *testing.T) {
 			"stays for that person",
 			"Never write a reason yourself to clear the gate",
 			"before the merge, not after",
+			"A tick counts only with a recorded result for the reviewed candidate",
+			"ticking is the only definition write ship makes",
+			"re-read the PR and the Verification boxes on each issue it closes",
+			"if one is open without a reason, name it and report the issue as not complete instead of transitioning",
+			"| Approve | Criteria, boundaries, and quality gates are proven, and every Verification box is ticked or carries its reason on the box.",
+			"a Verification box is open with no reason on it and ship cannot run its check",
 		},
 		"skills/implement/SKILL.md": {
 			"tick each Verification box whose check you ran and passed",
-			"open for their owner",
+			"Ticking is the only definition write implement makes",
+			"open for their owner, and never write a reason on a box yourself",
 		},
 	}
 	for name, wants := range files {
@@ -145,6 +157,11 @@ func TestVerificationBoxesGateClosingAndMerging(t *testing.T) {
 				t.Errorf("%s missing Verification-box rule %q", name, want)
 			}
 		}
+	}
+	// "Explained" is weaker than a reason written on the box and would also
+	// loosen criteria that must stay proven.
+	if ship := readFlowContentString(t, content, "skills/ship/SKILL.md"); strings.Contains(ship, "proven or explained") {
+		t.Error("ship lets an explanation stand in for proof or a reason on the box")
 	}
 }
 

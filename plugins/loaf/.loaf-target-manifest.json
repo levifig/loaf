@@ -20,7 +20,7 @@
       "kind": "hook-file",
       "source_path": "hooks/instructions/post-merge.md",
       "destination": "hooks/instructions/post-merge.md",
-      "sha256": "494d57d8d8e54768b1408ad5399c54856efd970eefb735fb6d4a94a66672a38f",
+      "sha256": "72e01ad931320dfae4ee6b8aa462bebcd670a90384bcddcf71d4642633773194",
       "mode": 420
     },
     {
@@ -28,7 +28,7 @@
       "kind": "hook-file",
       "source_path": "hooks/instructions/pre-merge.md",
       "destination": "hooks/instructions/pre-merge.md",
-      "sha256": "8f593fdeb989cd2dd5a254b0330572f488679adf0fbb2a7dea70e12b7240b842",
+      "sha256": "af79a23601796daeaa20a19070b10131c38d4babb8e2a9e73def823a533b22d5",
       "mode": 420
     },
     {
