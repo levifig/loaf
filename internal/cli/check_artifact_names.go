@@ -108,10 +108,12 @@ func runNativeArtifactNames(context checkHookContext, runtimeRoot string) checkR
 			return result
 		}
 	}
-	// Resolve the project root explicitly rather than treating the runtime root as
-	// the scan root: the two diverge when loaf runs from an installed location.
+	// Resolve the repository root explicitly rather than treating the runtime root
+	// as the scan root: the two diverge when loaf runs from an installed location.
+	// Scan the worktree being committed, not the main checkout a linked worktree
+	// shares project identity with.
 	root := firstNonEmpty(strings.TrimSpace(runtimeRoot), ".")
-	if resolved, err := project.ResolveRoot(root); err == nil {
+	if resolved, err := project.ResolveRepositoryRoot(root); err == nil {
 		root = resolved.Path()
 	}
 

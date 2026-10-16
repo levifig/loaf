@@ -72,6 +72,7 @@ func (r Runner) runCursorCheckContext(options checkOptions, context checkHookCon
 			r.recordCheckObservation(options, context, blockedCheckResult("invalid cwd"), fmt.Errorf("invalid cwd"), runtimeRoot)
 			return writeCursorCheck(out, checkJSONOutput{Hook: options.hook, Blocked: true, Errors: []string{"Cursor hook cwd must be an accessible absolute directory"}}, options.advisory)
 		}
+		context.processRoot = runtimeRoot
 		runtimeRoot = context.Cwd
 	}
 	context.ToolName = cursorCheckToolName(context.ToolName)

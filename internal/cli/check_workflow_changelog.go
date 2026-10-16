@@ -2,8 +2,8 @@ package cli
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -35,14 +35,15 @@ func advisoryWorkflowPrePR(command, root string) checkResult {
 	if !strings.Contains(command, "gh pr create") {
 		return result
 	}
-	body, err := readRegularFile(filepath.Join(root, "CHANGELOG.md"), projectFileReadLimit)
+	// The PR is created from committed HEAD, so uncommitted notes do not count.
+	var body string
+	head, err := resolveChangelogCommit(root, "HEAD")
+	if err == nil {
+		body, err = readChangelogCandidateFile(root, head, "CHANGELOG.md")
+	}
 	if err != nil {
-		message := "Could not read CHANGELOG.md"
-		if os.IsNotExist(err) {
-			message = "CHANGELOG.md not found"
-		}
-		result.Warnings = append(result.Warnings, message)
-	} else if section, err := splitIssueChangelog(string(body)); err != nil {
+		result.Warnings = append(result.Warnings, "CHANGELOG.md not found in committed HEAD")
+	} else if section, err := splitIssueChangelog(body); err != nil {
 		result.Warnings = append(result.Warnings, err.Error())
 	} else if len(issueChangelogEntries(section.unreleased)) == 0 {
 		result.Warnings = append(result.Warnings, "CHANGELOG.md [Unreleased] section is empty")
@@ -58,8 +59,18 @@ func advisoryWorkflowPrePR(command, root string) checkResult {
 // Recognize literal gh invocations without evaluating shell expansions. Shell
 // setup, dynamic flags and stdin bodies need a separate, explicit local check;
 // the hook must never attest different context from the command being created.
-func workflowChangelogRequest(command, root string) (issueChangelogRequest, bool, error) {
-	request := issueChangelogRequest{head: "HEAD"}
+type prCreateRequest struct {
+	issueChangelogRequest
+	// targetResolved reports that every PR creation flag was read, so an
+	// empty repository means gh targets the command's checkout.
+	targetResolved bool
+}
+
+// plainShellWordRE matches unquoted words no POSIX shell or zsh expands.
+var plainShellWordRE = regexp.MustCompile(`^[A-Za-z0-9_./:@+,-][A-Za-z0-9_./:@+=,-]*$`)
+
+func workflowChangelogRequest(command, root string) (prCreateRequest, bool, error) {
+	request := prCreateRequest{issueChangelogRequest: issueChangelogRequest{head: "HEAD"}}
 	segments := splitSafetySegments(command, true)
 	for _, segment := range segments {
 		tokens, ok := hookCommandTokens(segment)
@@ -82,6 +93,19 @@ func workflowChangelogRequest(command, root string) (issueChangelogRequest, bool
 		}
 		if len(segments) != 1 {
 			return request, true, fmt.Errorf("run gh pr create separately from shell setup so review context is unambiguous")
+		}
+		// An expansion can produce extra arguments, such as --repo, that the
+		// words read here would not show, even inside values this parser skips.
+		// Quoted "$@", array, and zsh splitting expansions yield several words,
+		// and bash and zsh glob and qualifier syntax is too rich to deny piece by
+		// piece, so unquoted words must be plain. Single quotes are inert.
+		quoted, _ := hookCommandTokensForOS(segment, "")
+		for _, token := range quoted {
+			literal := token.quote == hookTokenSingleQuoted && !token.mixed
+			unquoted := token.quote == hookTokenUnquoted || token.mixed
+			if (!literal && strings.ContainsAny(token.value, "$`")) || (unquoted && !plainShellWordRE.MatchString(token.value)) {
+				return request, true, fmt.Errorf("shell expansion in PR creation argument %q; use a literal or single-quoted value", token.value)
+			}
 		}
 		body, bodyFile := "", ""
 		fill := false
@@ -135,6 +159,7 @@ func workflowChangelogRequest(command, root string) (issueChangelogRequest, bool
 				bodyFile = value
 			}
 		}
+		request.targetResolved = true
 		if request.repository == "" || request.base == "" {
 			return request, true, fmt.Errorf("gh pr create requires explicit --repo owner/repo and --base for issue-changelog coverage")
 		}
@@ -148,8 +173,15 @@ func workflowChangelogRequest(command, root string) (issueChangelogRequest, bool
 			if bodyFile == "-" {
 				return request, true, fmt.Errorf("stdin PR bodies cannot be inspected by the hook; use a regular --body-file")
 			}
+			// Join without lexical cleaning: gh opens the path from the shell's
+			// directory, so a symlink followed by .. must resolve as the
+			// filesystem resolves it, not as filepath.Join would rewrite it.
+			path := bodyFile
+			if !filepath.IsAbs(path) {
+				path = root + string(filepath.Separator) + path
+			}
 			var err error
-			body, err = readCheckOperatorFile(resolveCheckOperatorPath(root, bodyFile))
+			body, err = readCheckOperatorFile(path)
 			if err != nil {
 				return request, true, fmt.Errorf("cannot read PR body file: %w", err)
 			}
