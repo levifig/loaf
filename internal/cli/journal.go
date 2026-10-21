@@ -67,7 +67,7 @@ func writeJournalHelp(out io.Writer) {
 func writeJournalLogHelp(out io.Writer) {
 	writeUsageHelp(out, "loaf journal log [options] \"type(scope): message\"", "Append a project-scoped journal entry.",
 		"--execpolicy-safe     Codex Auto mode: place immediately after `journal log`; require the registered project and derive database/provenance from the current runtime or hook payload",
-		"--harness-session-id  Opaque conversation correlation tag",
+		"--harness-session-id  Opaque conversation correlation tag (defaults to the running harness's session ID when it exports one)",
 		"--branch              Observed branch (defaults to current git branch)",
 		"--worktree            Observed worktree path",
 		"--from-hook           Derive the entry from a harness hook payload on stdin (git/gh/task events)",
@@ -307,6 +307,11 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 			return nil
 		}
 	}
+	// An explicit flag, even an empty one, decides; a hook payload comes next;
+	// otherwise the running harness's own session variable correlates the entry.
+	if !options.harnessSessionIDSet && options.harnessSessionID == "" {
+		options.harnessSessionID = state.ObservedHarnessSessionFromEnvironment()
+	}
 	branch := options.branch
 	if !options.branchSet {
 		branch = state.ObservedGitBranch(worktree)
@@ -324,6 +329,9 @@ func (r Runner) runJournalLog(args []string, out io.Writer, runtime state.Runtim
 		if origin.Worktree == "" {
 			origin.Worktree = worktree
 		}
+	}
+	if origin.HarnessSessionID == "" {
+		origin.HarnessSessionID = options.harnessSessionID
 	}
 	result, err := state.LogJournal(context.Background(), projectRoot, state.PathResolver{StateHome: r.StateHome}, state.JournalLogOptions{
 		Entry:            options.entry,

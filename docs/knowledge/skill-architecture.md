@@ -274,7 +274,7 @@ Worked examples of genuine product-specific facts (keep as labeled content; do n
 
 ## Journal Self-Logging
 
-User-invocable workflow skills must log their invocation to the project journal as their first action, with context: arguments, intent, or what triggered the invocation. This creates an audit trail of which skills ran; the current branch and an opaque `harness_session_id` are attached automatically, and there is no start step or active session to find:
+User-invocable workflow skills must log their invocation to the project journal as their first action, with context: arguments, intent, or what triggered the invocation. This creates an audit trail of which skills ran; the current branch is attached automatically, as is an opaque `harness_session_id` when the running harness exports one, and there is no start step or active session to find:
 
 ```bash
 loaf journal log "skill(shape): shaping auth token rotation in the selected native issue"
