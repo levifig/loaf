@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/levifig/loaf/internal/project"
@@ -110,6 +111,7 @@ func (r Runner) renderSessionStartDigestWithoutDrift(result journalContextCLIRes
 // bounded state query, active-Change composition, and the final neutral
 // context shape. It never initializes state or renders target-specific JSON.
 func (r Runner) evaluateJournalHookContext(ctx context.Context, runtime state.Runtime, root project.Root, options journalContextCLIOptions, hookInput *journalHookInput, hookInvocation bool) (journalHookContextResult, error) {
+	payloadDir := ""
 	if hookInvocation {
 		if hookInput == nil {
 			return journalHookContextResult{}, errors.New("hook context evaluation requires hook input")
@@ -118,16 +120,18 @@ func (r Runner) evaluateJournalHookContext(ctx context.Context, runtime state.Ru
 		if envelope.suppressesContext() {
 			return newJournalHookContextSuppressed()
 		}
+		payloadDir = envelope.Worktree
 	} else if hookInput != nil {
 		return journalHookContextResult{}, errors.New("hook input supplied for non-hook context evaluation")
 	}
 
-	changeSource, changeSourceErr := discoverActiveChanges(root.Path())
+	checkout := journalContextCheckout(root, runtime.RootPath(), payloadDir)
+	changeSource, changeSourceErr := discoverActiveChanges(checkout)
 	if !options.branchSet {
 		if changeSourceErr == nil {
 			options.branch = changeSource.Branch
 		} else {
-			options.branch = state.ObservedGitBranch(runtime.RootPath())
+			options.branch = state.ObservedGitBranch(checkout)
 		}
 	}
 	stateOptions := state.JournalContextOptions{Branch: options.branch}
@@ -176,4 +180,26 @@ func (r Runner) evaluateJournalHookContext(ctx context.Context, runtime state.Ru
 	rewriteJournalContextExpandCommands(&stateResult, &activeLayer, options)
 	contextResult := composeJournalContextCLIResult(stateResult, activeLayer, options.layer)
 	return newJournalHookContextAvailable(contextResult)
+}
+
+// journalContextCheckout returns the toplevel of the worktree whose branch and
+// Changes scope the context. Project identity resolves a linked worktree to the
+// main checkout, whose branch would scope every layer, so this resolves the
+// invoking worktree instead, as check hooks do. A hook payload naming a
+// worktree of this project wins, since the harness may spawn the hook from the
+// main checkout. A payload directory that is relative, missing, outside Git or
+// in another project falls back to the process's own worktree rather than
+// failing the hook.
+func journalContextCheckout(root project.Root, processDir, payloadDir string) string {
+	if filepath.IsAbs(payloadDir) {
+		if toplevel, ok := checkoutToplevel(payloadDir); ok {
+			if identity, err := project.ResolveRoot(toplevel); err == nil && identity.Path() == root.Path() {
+				return toplevel
+			}
+		}
+	}
+	if toplevel, ok := checkoutToplevel(processDir); ok {
+		return toplevel
+	}
+	return processDir
 }
