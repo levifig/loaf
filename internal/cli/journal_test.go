@@ -565,3 +565,65 @@ func writeBrokenCLIDocsFile(t *testing.T, rootPath string, relativePath string) 
 		t.Fatalf("WriteFile(%s) error = %v", relativePath, err)
 	}
 }
+
+func TestJournalLogDerivesHarnessSessionFromEnvironment(t *testing.T) {
+	claude := map[string]string{"CLAUDECODE": "1", "CLAUDE_CODE_SESSION_ID": "env-session"}
+	tests := []struct {
+		name  string
+		env   map[string]string
+		args  []string
+		stdin string
+		want  string
+	}{
+		{name: "claude code session", env: claude, want: "env-session"},
+		{name: "explicit flag wins", env: claude, args: []string{"--harness-session-id", "flag-session"}, want: "flag-session"},
+		{name: "explicit empty flag records none", env: claude, args: []string{"--harness-session-id", ""}, want: ""},
+		{name: "hook payload wins", env: claude, args: []string{"--from-hook"}, stdin: `{"session_id":"hook-session"}`, want: "hook-session"},
+		{name: "hook payload without session", env: claude, args: []string{"--from-hook"}, stdin: `{"cwd":"."}`, want: "env-session"},
+		{name: "nested harness records none", env: map[string]string{"CLAUDECODE": "1", "CLAUDE_CODE_SESSION_ID": "outer", "CODEX_THREAD_ID": "inner"}, want: ""},
+		{name: "no harness records none", env: map[string]string{"CLAUDE_CODE_SESSION_ID": "orphan"}, want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clearAdditionalHarnessMarkers(t)
+			for _, key := range []string{"CODEX_THREAD_ID", "CODEX_VERSION", "CLAUDECODE", "CLAUDE_CODE_VERSION", "CLAUDE_CODE_SESSION_ID"} {
+				t.Setenv(key, "")
+			}
+			for key, value := range tt.env {
+				t.Setenv(key, value)
+			}
+			workingDir := realpath(t, t.TempDir())
+			stateHome := t.TempDir()
+			if err := (Runner{Stdout: &bytes.Buffer{}, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"state", "init", "--json"}); err != nil {
+				t.Fatalf("state init: %v", err)
+			}
+			args := append([]string{"journal", "log"}, tt.args...)
+			args = append(args, "decision(session): correlate", "--json")
+			var logOut bytes.Buffer
+			if err := (Runner{Stdout: &logOut, WorkingDir: workingDir, StateHome: stateHome, Stdin: strings.NewReader(tt.stdin)}).Run(args); err != nil {
+				t.Fatalf("journal log: %v\n%s", err, logOut.String())
+			}
+			var logged state.JournalLogResult
+			if err := json.Unmarshal(logOut.Bytes(), &logged); err != nil {
+				t.Fatalf("decode log: %v\n%s", err, logOut.String())
+			}
+			if logged.HarnessSessionID != tt.want {
+				t.Fatalf("logged harness session = %q, want %q", logged.HarnessSessionID, tt.want)
+			}
+			var showOut bytes.Buffer
+			if err := (Runner{Stdout: &showOut, WorkingDir: workingDir, StateHome: stateHome}).Run([]string{"journal", "show", logged.ID, "--json"}); err != nil {
+				t.Fatalf("journal show: %v\n%s", err, showOut.String())
+			}
+			var shown state.JournalShow
+			if err := json.Unmarshal(showOut.Bytes(), &shown); err != nil {
+				t.Fatalf("decode show: %v\n%s", err, showOut.String())
+			}
+			if shown.Origin == nil {
+				t.Fatal("shown journal origin = nil")
+			}
+			if shown.Entry.HarnessSessionID != tt.want || shown.Origin.HarnessSessionID != tt.want {
+				t.Fatalf("stored harness session entry=%q origin=%q, want %q", shown.Entry.HarnessSessionID, shown.Origin.HarnessSessionID, tt.want)
+			}
+		})
+	}
+}

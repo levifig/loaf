@@ -275,7 +275,7 @@ func cliReferenceCommands() []cliReferenceCommand {
 			Subcommands: []cliReferenceSubcommand{
 				{Name: "log", Description: "Append a project-scoped journal entry", Options: []cliReferenceOption{
 					{Flags: "--execpolicy-safe", Description: "Codex Auto mode: place immediately after journal log; require the registered project and derive database/provenance from the current runtime or hook payload"},
-					{Flags: "--harness-session-id <id>", Description: "Opaque conversation correlation tag"},
+					{Flags: "--harness-session-id <id>", Description: "Opaque conversation correlation tag (defaults to the running harness's session ID when it exports one)"},
 					{Flags: "--branch <branch>", Description: "Observed branch (defaults to current git branch)"},
 					{Flags: "--worktree <path>", Description: "Observed worktree path"},
 					{Flags: "--from-hook", Description: "Derive the entry from a harness hook payload on stdin; exits silently for subagents"},

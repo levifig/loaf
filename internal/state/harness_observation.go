@@ -41,6 +41,31 @@ func ObservedHarnessFromEnvironment() (string, string) {
 	return harness, version
 }
 
+// harnessSessionVariables names the variable each harness documents for the
+// conversation identifier it exports to its tool subprocesses. A harness with
+// no documented variable has no entry and yields no session.
+var harnessSessionVariables = map[string]string{
+	"claude-code": "CLAUDE_CODE_SESSION_ID",
+}
+
+// ObservedHarnessSessionFromEnvironment returns the opaque session identifier
+// exported by the observed harness. An unknown or ambiguous harness yields
+// nothing, so a nested harness never borrows its parent's identifier. A value
+// the journal origin cannot store is dropped rather than failing the write it
+// would annotate.
+func ObservedHarnessSessionFromEnvironment() string {
+	harness, _ := ObservedHarnessFromEnvironment()
+	key, ok := harnessSessionVariables[harness]
+	if !ok {
+		return ""
+	}
+	value := strings.TrimSpace(os.Getenv(key))
+	if len(value) > journalOriginStringMaxLength {
+		return ""
+	}
+	return value
+}
+
 func knownHarnessVersion(value string) string {
 	value = strings.TrimSpace(value)
 	if len(value) > 0 && len(value) <= 64 {

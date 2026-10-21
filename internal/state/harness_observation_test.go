@@ -1,6 +1,9 @@
 package state
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func clearAdditionalHarnessMarkers(t *testing.T) {
 	t.Helper()
@@ -52,6 +55,37 @@ func TestObservedHarnessNativeMarkers(t *testing.T) {
 			h, v := ObservedHarnessFromEnvironment()
 			if h != test.harness || v != test.version {
 				t.Fatalf("got %s/%s, want %s/%s", h, v, test.harness, test.version)
+			}
+		})
+	}
+}
+
+func TestObservedHarnessSessionFromEnvironment(t *testing.T) {
+	keys := []string{"CODEX_THREAD_ID", "CODEX_VERSION", "CLAUDECODE", "CLAUDE_CODE_VERSION", "CLAUDE_CODE_SESSION_ID"}
+	for _, test := range []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{"claude code session", map[string]string{"CLAUDECODE": "1", "CLAUDE_CODE_SESSION_ID": "fcb66a6e-7aa5-491f-b7e4-6d86b9e0c596"}, "fcb66a6e-7aa5-491f-b7e4-6d86b9e0c596"},
+		{"value stays opaque", map[string]string{"CLAUDECODE": "1", "CLAUDE_CODE_SESSION_ID": " Session/42:α "}, "Session/42:α"},
+		{"claude code without session", map[string]string{"CLAUDECODE": "1"}, ""},
+		{"session variable is not identity", map[string]string{"CLAUDE_CODE_SESSION_ID": "orphan"}, ""},
+		{"claude nested in codex", map[string]string{"CLAUDECODE": "1", "CLAUDE_CODE_SESSION_ID": "outer", "CODEX_THREAD_ID": "inner"}, ""},
+		{"codex documents no session variable", map[string]string{"CODEX_THREAD_ID": "thread-1", "CLAUDE_CODE_SESSION_ID": "inherited"}, ""},
+		{"amp adapter ignores inherited claude session", map[string]string{"LOAF_HOOK_TYPE": "pre-tool", "LOAF_HOOK_HARNESS": "amp", "CLAUDECODE": "1", "CLAUDE_CODE_SESSION_ID": "inherited"}, ""},
+		{"oversized value dropped", map[string]string{"CLAUDECODE": "1", "CLAUDE_CODE_SESSION_ID": strings.Repeat("s", journalOriginStringMaxLength+1)}, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			clearAdditionalHarnessMarkers(t)
+			for _, key := range keys {
+				t.Setenv(key, "")
+			}
+			for key, value := range test.env {
+				t.Setenv(key, value)
+			}
+			if got := ObservedHarnessSessionFromEnvironment(); got != test.want {
+				t.Fatalf("session = %q, want %q", got, test.want)
 			}
 		})
 	}

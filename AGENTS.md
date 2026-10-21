@@ -61,7 +61,7 @@ export LOAF_DB="$(mktemp -d)/loaf.sqlite"
 
 ## Project Rules
 
-**Workflow skills log themselves first.** A user-invocable workflow skill's first action is a journal entry with context (arguments, intent, or trigger), e.g. `loaf journal log "skill(implement): native hook rewrite for the selected issue"`. The branch and an opaque `harness_session_id` attach automatically; there is no start step. Recent entries show which workflows ran.
+**Workflow skills log themselves first.** A user-invocable workflow skill's first action is a journal entry with context (arguments, intent, or trigger), e.g. `loaf journal log "skill(implement): native hook rewrite for the selected issue"`. The branch attaches automatically, and so does an opaque `harness_session_id` when the running harness exports one (Claude Code's `CLAUDE_CODE_SESSION_ID`); there is no start step. Recent entries show which workflows ran.
 
 **The journal is the only session model.** Journal entries are project-scoped SQLite rows correlated by `harness_session_id`. There is no session entity, status, or lifecycle, so never add one or anything that opens, closes, or transitions a session. A `wrap` entry is an optional checkpoint for synthesis worth saving ("tried X, abandoned because Y, next is Z"), not a transition. Continuity context is derived at read time and never persisted, and it does not mirror tracker work. Rendered journal markdown is a projection: write with `loaf journal log`, never by editing markdown.
 
