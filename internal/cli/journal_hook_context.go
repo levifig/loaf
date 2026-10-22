@@ -102,9 +102,7 @@ func (r Runner) renderSessionStartDigest(result journalContextCLIResult, harness
 // content Loaf does not deliver, and therefore has no marker to compare and no
 // command to recommend. Claude Code is the one such harness today.
 func (r Runner) renderSessionStartDigestWithoutDrift(result journalContextCLIResult) string {
-	var rendered strings.Builder
-	writeJournalContextHuman(&rendered, result)
-	return strings.TrimSpace(rendered.String())
+	return strings.TrimSpace(renderJournalContextDigest(result, journalContextDigestBudget))
 }
 
 // evaluateJournalHookContext owns normalization, root-only suppression, the

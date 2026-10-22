@@ -143,12 +143,26 @@ type ModeEvidence struct {
 // independently classified modes. Aggregate status/evidence claims are
 // intentionally absent; support belongs to each mode.
 type TargetContextCapabilityRecord struct {
-	Adapter          string         `json:"adapter"`
-	Mechanism        string         `json:"mechanism"`
-	RootPolicy       string         `json:"root_policy"`
-	SubagentPolicy   string         `json:"subagent_policy"`
-	BackgroundPolicy string         `json:"background_policy"`
-	Modes            []ModeEvidence `json:"modes"`
+	Adapter          string                     `json:"adapter"`
+	Mechanism        string                     `json:"mechanism"`
+	RootPolicy       string                     `json:"root_policy"`
+	SubagentPolicy   string                     `json:"subagent_policy"`
+	BackgroundPolicy string                     `json:"background_policy"`
+	InjectionLimit   TargetInjectionLimitRecord `json:"injection_limit"`
+	Modes            []ModeEvidence             `json:"modes"`
+}
+
+// TargetInjectionLimitRecord records how much hook context the target injects
+// before it previews, cuts, or drops the rest, as its own documentation states
+// it on the checked date. A target that documents no limit is held to the
+// tightest documented limit instead.
+type TargetInjectionLimitRecord struct {
+	Status  string `json:"status"`
+	Limit   int    `json:"limit,omitempty"`
+	Unit    string `json:"unit,omitempty"`
+	Source  string `json:"source"`
+	Checked string `json:"checked"`
+	Summary string `json:"summary"`
 }
 
 // TargetCompletionCapabilityRecord records automatic-completion evidence.
@@ -415,6 +429,9 @@ func validateContextCapability(contextRecord TargetContextCapabilityRecord, inst
 	if strings.TrimSpace(contextRecord.BackgroundPolicy) == "" {
 		return errors.New("background_policy is required")
 	}
+	if err := validateInjectionLimit(contextRecord.InjectionLimit); err != nil {
+		return fmt.Errorf("injection_limit: %w", err)
+	}
 	if len(contextRecord.Modes) == 0 {
 		return errors.New("modes must contain at least one mode")
 	}
@@ -487,6 +504,40 @@ func validateModeEvidence(mode ModeEvidence, installedMode string) error {
 		if mode.Reason == "" {
 			return errors.New("unsupported mode requires reason")
 		}
+	}
+	return nil
+}
+
+var supportedInjectionLimitUnits = map[string]struct{}{
+	"characters":         {},
+	"bytes":              {},
+	"approximate-tokens": {},
+}
+
+func validateInjectionLimit(limit TargetInjectionLimitRecord) error {
+	switch limit.Status {
+	case "documented":
+		if limit.Limit <= 0 {
+			return errors.New("a documented limit must be positive")
+		}
+		if _, ok := supportedInjectionLimitUnits[limit.Unit]; !ok {
+			return fmt.Errorf("unit %q must be characters, bytes, or approximate-tokens", limit.Unit)
+		}
+	case "undocumented":
+		if limit.Limit != 0 || limit.Unit != "" {
+			return errors.New("an undocumented limit carries no limit or unit")
+		}
+	default:
+		return fmt.Errorf("status %q must be documented or undocumented", limit.Status)
+	}
+	if !strings.HasPrefix(limit.Source, "https://") {
+		return fmt.Errorf("source %q must be the https URL that was checked", limit.Source)
+	}
+	if _, err := time.Parse("2006-01-02", limit.Checked); err != nil {
+		return fmt.Errorf("checked %q must be a YYYY-MM-DD date", limit.Checked)
+	}
+	if strings.TrimSpace(limit.Summary) == "" {
+		return errors.New("summary is required")
 	}
 	return nil
 }
