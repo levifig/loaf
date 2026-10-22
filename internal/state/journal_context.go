@@ -58,8 +58,8 @@ type JournalContextOptions struct {
 	TaskLimit        int
 	Cursor           string
 	CursorLayer      string
-	// Now is the read clock that ages unresolved blockers; zero means the
-	// current time.
+	// Now is the read clock that ages entries and blockers and decides whether
+	// the project synthesis is stale; zero means the current time.
 	Now time.Time
 }
 
@@ -622,6 +622,8 @@ func queryBlockerCandidates(ctx context.Context, tx *sql.Tx, projectID string, w
 func stampJournalContextAges(result *JournalContext, now time.Time) {
 	stamp := func(entry *JournalEntryRecord) {
 		if age, ok := journalContextAgeDays(entry.CreatedAt, now); ok {
+			// An entry stamped after the read clock, from clock skew, is new.
+			age = max(age, 0)
 			entry.AgeDays = &age
 		}
 	}

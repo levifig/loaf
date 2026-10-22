@@ -59,6 +59,13 @@ func TestJournalContextDigestShowsAgesAndDemotesAStaleSynthesis(t *testing.T) {
 		t.Fatalf("fresh digest = %q, want the synthesis first with no stale label", fresh)
 	}
 
+	var blockers bytes.Buffer
+	aged := state.JournalEntryRecord{ID: "b1", EntryType: "block", Scope: "ci", Message: "runner offline", CreatedAt: "2026-10-12T09:00:00Z", AgeDays: age(10)}
+	writeJournalContextHuman(&blockers, composeJournalContextCLIResult(state.JournalContext{UnresolvedBlockers: state.JournalContextBlockerLayer{Available: true, AvailableCount: 1, ShownCount: 1, Items: []state.JournalContextBlockerItem{{Key: "ci", Block: aged}}}}, activeChangeLayer{}, journalContextLayerBlockers))
+	if got := blockers.String(); !strings.Contains(got, "    [2026-10-12 09:00, 10 days ago] b1 block(ci): runner offline\n") {
+		t.Fatalf("blocker layer = %q, want one aged stamp before the id", got)
+	}
+
 	var layer bytes.Buffer
 	writeJournalContextHuman(&layer, composeJournalContextCLIResult(digest(true), activeChangeLayer{}, journalContextLayerProjectSynthesis))
 	if got := layer.String(); !strings.Contains(got, "    stale, 1169 entries since; write a fresh wrap(project) when you finish substantial work\n    [2026-07-30 17:25, 84 days ago] wrap(project): July synthesis") {
@@ -87,7 +94,8 @@ func TestJournalContextDefaultPathAgesTheSynthesisByTheReadClock(t *testing.T) {
 	for i := 0; i < state.JournalContextSynthesisStaleEntries; i++ {
 		log("discover(work): progress")
 	}
-	later := func() time.Time { return time.Now().AddDate(0, 0, state.JournalContextSynthesisStaleDays+2) }
+	// UTC keeps the calendar-day age exact across daylight-saving changes.
+	later := func() time.Time { return time.Now().UTC().AddDate(0, 0, state.JournalContextSynthesisStaleDays+2) }
 
 	stale := context(later)
 	synthesisAt := strings.Index(stale, "project-synthesis: showing 1 of 1 (stale, 50 entries since; write a fresh wrap(project) when you finish substantial work)")

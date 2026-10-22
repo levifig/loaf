@@ -112,33 +112,52 @@ func TestJournalContextStampsEveryEntryWithItsAge(t *testing.T) {
 	defer store.Close()
 	projectID := projectIDForTest(t, store, root)
 	synthesis := seedJournalEntry(t, store, projectID, "wrap", "project", "synthesis", "main", "2026-07-30T17:25:00Z")
+	lineage := seedJournalEntry(t, store, projectID, "decision", "lineage/digest", "lineage decision", "main", "2026-08-10T10:00:00Z")
+	for i := 0; i < JournalContextSynthesisStaleEntries; i++ {
+		seedJournalEntry(t, store, projectID, "discover", "noise", fmt.Sprintf("n-%02d", i), "other", fmt.Sprintf("2026-09-01T10:%02d:00Z", i))
+	}
+	scoped := seedJournalEntry(t, store, projectID, "wrap", "digest", "newer scoped wrap", "main", "2026-10-12T21:42:00Z")
 	block := seedJournalEntry(t, store, projectID, "block", "ci", "runner offline", "main", "2026-10-21T23:59:59Z")
 	recent := seedJournalEntry(t, store, projectID, "discover", "x", "late last night", "main", "2026-10-21T23:30:00Z")
 	today := seedJournalEntry(t, store, projectID, "discover", "x", "just now", "main", "2026-10-22T00:00:00Z")
+	skewed := seedJournalEntry(t, store, projectID, "discover", "x", "from a fast clock", "main", "2026-10-23T08:00:00Z")
 
-	digest, err := store.JournalContext(ctx, root, JournalContextOptions{Branch: "main", Now: time.Date(2026, 10, 22, 0, 0, 1, 0, time.UTC)})
+	digest, err := store.JournalContext(ctx, root, JournalContextOptions{Branch: "main", LineageKeys: []string{"digest"}, Now: time.Date(2026, 10, 22, 0, 0, 1, 0, time.UTC)})
 	if err != nil {
 		t.Fatalf("JournalContext() error = %v", err)
 	}
 	ages := map[string]int{}
-	collect := func(entry JournalEntryRecord) {
+	collect := func(layer string, entry JournalEntryRecord) {
 		if entry.AgeDays == nil {
-			t.Fatalf("entry %s has no age", entry.ID)
+			t.Fatalf("%s entry %s has no age", layer, entry.ID)
 		}
 		ages[entry.ID] = *entry.AgeDays
 	}
 	for _, entry := range digest.ProjectSynthesis.Items {
-		collect(entry)
+		collect("synthesis", entry)
+	}
+	for _, item := range digest.LatestCheckpoint.Items {
+		collect("checkpoint", item.Entry)
+	}
+	for _, entry := range digest.ActiveLineage.Items {
+		collect("lineage", entry)
 	}
 	for _, item := range digest.UnresolvedBlockers.Items {
-		collect(item.Block)
+		collect("blockers", item.Block)
 	}
 	for _, entry := range digest.BranchRecency.Items {
-		collect(entry)
+		collect("branch recency", entry)
 	}
-	for id, want := range map[string]int{synthesis: 84, block: 1, recent: 1, today: 0} {
-		if ages[id] != want {
-			t.Fatalf("age of %s = %d, want %d (ages %v)", id, ages[id], want, ages)
+	for _, entry := range digest.BranchEntries {
+		collect("branch entries", entry)
+	}
+	if digest.LatestWrap == nil {
+		t.Fatalf("latest wrap is missing")
+	}
+	collect("latest wrap", *digest.LatestWrap)
+	for id, want := range map[string]int{synthesis: 84, scoped: 10, lineage: 73, block: 1, recent: 1, today: 0, skewed: 0} {
+		if got, ok := ages[id]; !ok || got != want {
+			t.Fatalf("age of %s = %d (present %t), want %d (ages %v)", id, got, ok, want, ages)
 		}
 	}
 

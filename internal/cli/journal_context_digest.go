@@ -47,7 +47,7 @@ type journalContextDigestLayer struct {
 // is one shortened line.
 //
 // The canonical layer order is also the priority order: the latest deliberate
-// synthesis first, then live obligations (lineage, blockers, deferred intent,
+// synthesis first (a stale one moves to the end), then live obligations (lineage, blockers, deferred intent,
 // explorations, active changes), then branch recency and transitional tasks,
 // which the layer commands and `loaf journal recent` recover cheaply. When the
 // budget is tight, items are admitted one round at a time across layers in
@@ -206,7 +206,8 @@ func journalContextDigestLayers(result journalContextCLIResult) []*journalContex
 		})
 	}
 	// A stale project synthesis no longer leads: it keeps its label and moves
-	// to the end, where a tight budget gives it up first.
+	// to the end, so under a tight budget it is the last layer to get its
+	// first item.
 	var staleSynthesis *journalContextDigestLayer
 	if layer := result.Layers.ProjectSynthesis; layer != nil {
 		items := []string{}
@@ -328,8 +329,8 @@ func formatJournalContextDigestEntries(entries []state.JournalEntryRecord, branc
 	return items
 }
 
-// formatJournalContextDigestEntry renders one entry as a single line: date, id,
-// label, and the shortened message. An entry recorded on another branch names
+// formatJournalContextDigestEntry renders one entry as a single line: date and
+// age, id, label, and the shortened message. An entry recorded on another branch names
 // it, since the digest header already names the current one.
 func formatJournalContextDigestEntry(entry state.JournalEntryRecord, branch string, maxRunes int) string {
 	label := foldJournalContextText(entry.EntryType)
