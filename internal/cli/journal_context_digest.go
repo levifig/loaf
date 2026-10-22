@@ -34,6 +34,8 @@ type journalContextDigestLayer struct {
 	unavailable bool
 	total       int
 	hints       []string
+	// listedHints appear only once packing lists at least one item.
+	listedHints []string
 	listCommand string
 	items       []string
 	shown       int
@@ -107,6 +109,9 @@ func assembleJournalContextDigest(header []string, layers []*journalContextDiges
 			notes = append(notes, "more: "+layer.listCommand)
 		}
 		notes = append(notes, layer.hints...)
+		if layer.shown > 0 {
+			notes = append(notes, layer.listedHints...)
+		}
 		if len(notes) > 0 {
 			line += " (" + strings.Join(notes, "; ") + ")"
 		}
@@ -230,10 +235,10 @@ func journalContextDigestLayers(result journalContextCLIResult) []*journalContex
 		if layer.StaleCount > 0 {
 			hints = append(hints, fmt.Sprintf("%d older than %d days not listed", layer.StaleCount, state.JournalContextBlockerStaleDays))
 		}
-		if len(items) > 0 {
-			hints = append(hints, journalContextBlockerResolveHint)
-		}
 		add(journalContextLayerBlockers, layer.Available, layer.AvailableCount, items, hints...)
+		if last := len(layers) - 1; last >= 0 && layers[last].name == journalContextLayerBlockers {
+			layers[last].listedHints = []string{journalContextBlockerResolveHint}
+		}
 	}
 	if layer := result.Layers.DeferredIntent; layer != nil {
 		items := []string{}

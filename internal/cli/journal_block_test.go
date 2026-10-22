@@ -233,6 +233,18 @@ func TestJournalContextDefaultDigestCountsStaleBlockersInsteadOfListingThem(t *t
 		t.Fatalf("default digest = %q, counts aged-out blockers as budget omissions", mixed)
 	}
 
+	page := digest(recent, staleReview, staleRebase)
+	page.UnresolvedBlockers.AvailableCount, page.UnresolvedBlockers.StaleCount = 20, 5
+	if got, want := render(page), "unresolved-blockers: showing 1 of 20 (more: loaf journal context --layer unresolved-blockers --limit 20; 5 older than 30 days not listed; resolve one:"; !strings.Contains(got, want) {
+		t.Fatalf("truncated page digest = %q, want %q", got, want)
+	}
+
+	// One byte short of the full render: the only listed blocker cannot fit.
+	tight := renderJournalContextDigest(composeJournalContextCLIResult(digest(recent, staleReview, staleRebase), activeChangeLayer{}, ""), len(mixed)-1)
+	if !strings.Contains(tight, "unresolved-blockers: showing 0 of 3 (more: loaf journal context --layer unresolved-blockers --limit 3; 2 older than 30 days not listed)") || strings.Contains(tight, "resolve one:") || strings.Contains(tight, "digest cut") || !strings.Contains(tight, "1 entry left out to stay within the injection budget") {
+		t.Fatalf("budget-cut digest = %q, want no listed blocker, no resolve hint, and only the recent blocker counted as left out", tight)
+	}
+
 	onlyStale := render(digest(staleReview, staleRebase))
 	if want := "unresolved-blockers: showing 0 of 2 (more: loaf journal context --layer unresolved-blockers --limit 2; 2 older than 30 days not listed)\n"; !strings.Contains(onlyStale, want) || strings.Contains(onlyStale, "resolve one:") {
 		t.Fatalf("all-stale default digest = %q, want %q and no resolve hint", onlyStale, want)
