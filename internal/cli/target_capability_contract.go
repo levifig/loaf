@@ -156,6 +156,11 @@ type TargetContextCapabilityRecord struct {
 // before it previews, cuts, or drops the rest, as its own documentation states
 // it on the checked date. A target that documents no limit is held to the
 // tightest documented limit instead.
+//
+// It joined contract version 3 without a version bump: the registry is
+// repo-local and read only by this binary and its tests, while the version is
+// stamped into every built target manifest, so a bump would invalidate
+// installed manifests without serving any reader.
 type TargetInjectionLimitRecord struct {
 	Status  string `json:"status"`
 	Limit   int    `json:"limit,omitempty"`

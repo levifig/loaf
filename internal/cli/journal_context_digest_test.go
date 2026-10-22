@@ -65,7 +65,7 @@ func TestJournalContextDigestRendersCompactLayers(t *testing.T) {
 		"project-synthesis: showing 1 of 1",
 		"  [2026-10-20 10:00] e-synth wrap(project): shipped the digest budget; next: mark stale items",
 		"active-lineage: unavailable",
-		"unresolved-blockers: showing 2 of 5 (more: loaf journal context --layer unresolved-blockers)",
+		"unresolved-blockers: showing 2 of 5 (more: loaf journal context --layer unresolved-blockers --limit 5)",
 		"  [2026-10-19 09:30] e-block-2 block(ship): waiting on review (branch: feature/x)",
 		"  [2026-10-18 08:15] e-block-1 block(pr-12): rebase approval required",
 		"deferred-intent: showing 1 of 1 (read one: loaf intent show <id>)",
@@ -127,14 +127,14 @@ func digestLayerItemCounts(digest string) map[string]int {
 	return counts
 }
 
-func TestJournalContextDigestFitsBudgetAndTrimsOldestItemsFirst(t *testing.T) {
+func TestJournalContextDigestFitsBudgetAndKeepsEachLayersFirstItems(t *testing.T) {
 	for _, budget := range []int{journalContextDigestBudget, 4000, 2000} {
 		t.Run(fmt.Sprint(budget), func(t *testing.T) {
 			got := renderJournalContextDigest(bulkyDigestFixture(), budget)
 			if len(got) > budget {
 				t.Fatalf("digest is %d bytes, budget %d", len(got), budget)
 			}
-			if !strings.Contains(got, "left out to fit the "+fmt.Sprint(budget)+"-byte budget") {
+			if !strings.Contains(got, "left out to stay within the injection budget") {
 				t.Fatalf("digest that dropped items must say so:\n%s", got)
 			}
 			counts := digestLayerItemCounts(got)
@@ -212,6 +212,14 @@ func TestJournalContextDigestHardCapsEvenItsFixedLines(t *testing.T) {
 		if len(got) > budget || !utf8.ValidString(got) {
 			t.Fatalf("budget %d: got %d bytes, valid UTF-8 %t", budget, len(got), utf8.ValidString(got))
 		}
+		if !strings.Contains(got, "[digest cut to fit its budget]") {
+			t.Fatalf("budget %d: a cut digest must say so:\n%s", budget, got)
+		}
+	}
+	// With room for the tail, the omission notice survives the cut too.
+	got := renderJournalContextDigest(result, 300)
+	if !strings.Contains(got, "left out to stay within the injection budget") {
+		t.Fatalf("cut digest lost its omission notice:\n%s", got)
 	}
 }
 
@@ -302,19 +310,121 @@ func TestJournalContextHookPayloadsFitRecordedInjectionLimits(t *testing.T) {
 		},
 	}
 	contract := loadTestTargetCapabilityEvidence(t)
+	skipped := map[string]bool{}
 	for _, record := range contract.Records {
 		injected, ok := payloads[record.Target]
 		if !ok {
-			continue // Amp delivers no automatic context.
+			skipped[record.Target] = true
+			continue
 		}
 		limit := injectionLimitPayloadBytes(t, contract, record.Context.InjectionLimit)
 		for _, payload := range injected {
 			if len(payload) > limit {
 				t.Fatalf("%s/%s payload is %d bytes, recorded limit admits %d", record.Target, record.Surface, len(payload), limit)
 			}
-			if !strings.Contains(payload, "left out to fit the") {
+			if !strings.Contains(payload, "left out to stay within the injection budget") {
 				t.Fatalf("%s/%s payload did not exercise the budget:\n%s", record.Target, record.Surface, payload)
 			}
+		}
+	}
+	// Only Amp, which delivers no automatic context, may go unchecked.
+	if len(skipped) != 1 || !skipped["amp"] {
+		t.Fatalf("unchecked targets = %v, want only amp", skipped)
+	}
+}
+
+// The canonical layer order is the priority order: at a budget that fits only
+// the first items of the leading layers, later layers keep just their counts
+// and list commands.
+func TestJournalContextDigestPriorityFollowsCanonicalLayerOrder(t *testing.T) {
+	result := journalContextCLIResult{ProjectName: "loaf", Branch: "main"}
+	result.Layers.ProjectSynthesis = &state.JournalContextJournalLayer{Available: true, AvailableCount: 1, ShownCount: 1, Items: []state.JournalEntryRecord{
+		digestEntry("s1", "wrap", "project", "latest synthesis", "2026-10-21T12:00:00Z", "main"),
+	}}
+	blockers := []state.JournalContextBlockerItem{}
+	recent := []state.JournalEntryRecord{}
+	tasks := []state.JournalContextTask{}
+	for i := 1; i <= 3; i++ {
+		blockers = append(blockers, state.JournalContextBlockerItem{Key: "ship", Block: digestEntry(fmt.Sprintf("b%d", i), "block", "ship", fmt.Sprintf("blocker %d", i), "2026-10-21T12:00:00Z", "main")})
+		recent = append(recent, digestEntry(fmt.Sprintf("r%d", i), "decision", "work", fmt.Sprintf("recent %d", i), "2026-10-21T12:00:00Z", "main"))
+		tasks = append(tasks, state.JournalContextTask{Ref: fmt.Sprintf("T-%d", i), Status: "todo", Title: fmt.Sprintf("task %d", i)})
+	}
+	result.Layers.UnresolvedBlockers = &state.JournalContextBlockerLayer{Available: true, AvailableCount: 3, ShownCount: 3, Items: blockers}
+	result.Layers.BranchRecency = &state.JournalContextJournalLayer{Available: true, AvailableCount: 3, ShownCount: 3, Items: recent}
+	result.Layers.TransitionalTasks = &state.JournalContextTaskLayer{Available: true, AvailableCount: 3, ShownCount: 3, Items: tasks}
+	want := strings.Join([]string{
+		"loaf journal context: project loaf, branch main",
+		"Entries are shortened to one line; read one in full with: loaf journal show <id>",
+		"project-synthesis: showing 1 of 1",
+		"  [2026-10-21 12:00] s1 wrap(project): latest synthesis",
+		"unresolved-blockers: showing 1 of 3 (more: loaf journal context --layer unresolved-blockers --limit 3)",
+		"  [2026-10-21 12:00] b1 block(ship): blocker 1",
+		"branch-recency: showing 0 of 3 (more: loaf journal context --layer branch-recency --limit 3 --branch 'main')",
+		"transitional-tasks: showing 0 of 3 (more: loaf journal context --layer transitional-tasks --limit 3)",
+		"8 entries left out to stay within the injection budget; each layer's more: command lists them",
+	}, "\n")
+	if got := renderJournalContextDigest(result, len(want)); got != want {
+		t.Fatalf("digest mismatch at a tight budget\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	}
+}
+
+// Exploration checkpoints page at five with no cursor, so the list command
+// must name the layer's total rather than rely on the default page size.
+func TestJournalContextDigestListCommandNamesTheLayerTotal(t *testing.T) {
+	result := digestFixture()
+	items := []state.JournalContextExplorationCheckpointItem{}
+	for i := 1; i <= 5; i++ {
+		items = append(items, state.JournalContextExplorationCheckpointItem{ExplorationID: fmt.Sprintf("expl-%d", i), Title: "Digest shape", NextAction: "compare budgets"})
+	}
+	result.Layers.ExplorationCheckpoints = &state.JournalContextCheckpointsLayer{Available: true, AvailableCount: 8, ShownCount: 5, Truncated: true, Items: items}
+	got := renderJournalContextDigest(result, journalContextDigestBudget)
+	want := "exploration-checkpoints: showing 5 of 8 (more: loaf journal context --layer exploration-checkpoints --limit 8; resume one: loaf exploration context <id>)"
+	if !strings.Contains(got, want+"\n") {
+		t.Fatalf("digest missing %q:\n%s", want, got)
+	}
+}
+
+func TestJournalContextDigestGroupsRepeatedDiagnostics(t *testing.T) {
+	result := digestFixture()
+	result.Diagnostics = []state.JournalContextDiagnostic{}
+	for i := 0; i < 200; i++ {
+		result.Diagnostics = append(result.Diagnostics, state.JournalContextDiagnostic{Code: "journal-context-unmatched-unblock", Key: fmt.Sprintf("scope-%03d", i), Message: "unblock has no unresolved block for the exact scope key"})
+	}
+	result.Diagnostics = append(result.Diagnostics, state.JournalContextDiagnostic{Code: "change-source-unavailable", Message: "Change source unavailable"})
+	got := renderJournalContextDigest(result, journalContextDigestBudget)
+	lines := []string{}
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(line, "diagnostic ") {
+			lines = append(lines, line)
+		}
+	}
+	want := []string{
+		"diagnostic journal-context-unmatched-unblock: unblock has no unresolved block for the exact scope key (199 more with this code)",
+		"diagnostic change-source-unavailable: Change source unavailable",
+	}
+	if strings.Join(lines, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("diagnostic lines = %q, want %q", lines, want)
+	}
+	if !strings.Contains(got, "e-branch-2 decision(digest)") {
+		t.Fatalf("repeated diagnostics crowded out entries:\n%s", got)
+	}
+}
+
+func TestJournalContextDigestFoldsLabelsAndNamesLegacySparks(t *testing.T) {
+	result := digestFixture()
+	result.Layers.DeferredIntent = &state.JournalContextDeferralLayer{Available: true, AvailableCount: 1, ShownCount: 1, Items: []state.JournalContextDeferralItem{
+		{OperationKey: "op-1", Spark: state.JournalContextDeferredSpark{ID: "spark-1", Text: "legacy\ndeferral"}},
+	}}
+	result.Layers.ExplorationCheckpoints.Items[0].Title = "Digest\n  shape"
+	result.Layers.BranchRecency.Items[0].Scope = "multi\nline scope"
+	got := renderJournalContextDigest(result, journalContextDigestBudget)
+	for _, want := range []string{
+		"deferred-intent: showing 1 of 1 (read a spark: loaf spark show <id>)\n  op-1 (spark spark-1): legacy deferral\n",
+		"  EXPL-1: Digest shape / next: compare budgets\n",
+		"e-branch-2 decision(multi line scope): one line per entry\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("digest missing %q:\n%s", want, got)
 		}
 	}
 }
