@@ -47,7 +47,7 @@ type journalContextDigestLayer struct {
 // is one shortened line.
 //
 // The canonical layer order is also the priority order: the latest deliberate
-// synthesis first, then live obligations (lineage, blockers, deferred intent,
+// synthesis first (a stale one moves to the end), then live obligations (lineage, blockers, deferred intent,
 // explorations, active changes), then branch recency and transitional tasks,
 // which the layer commands and `loaf journal recent` recover cheaply. When the
 // budget is tight, items are admitted one round at a time across layers in
@@ -205,12 +205,23 @@ func journalContextDigestLayers(result journalContextCLIResult) []*journalContex
 			items:       items,
 		})
 	}
+	// A stale project synthesis no longer leads: it keeps its label and moves
+	// to the end, so under a tight budget it is the last layer to get its
+	// first item.
+	var staleSynthesis *journalContextDigestLayer
 	if layer := result.Layers.ProjectSynthesis; layer != nil {
 		items := []string{}
 		for _, entry := range layer.Items {
 			items = append(items, formatJournalContextDigestEntry(entry, branch, journalContextDigestSynthesisRunes))
 		}
-		add(journalContextLayerProjectSynthesis, layer.Available, layer.AvailableCount, items)
+		if !layer.Stale {
+			add(journalContextLayerProjectSynthesis, layer.Available, layer.AvailableCount, items)
+		} else {
+			add(journalContextLayerProjectSynthesis, layer.Available, layer.AvailableCount, items, journalContextStaleSynthesisHint(layer.EntriesSince))
+			if last := len(layers) - 1; last >= 0 && layers[last].name == journalContextLayerProjectSynthesis {
+				staleSynthesis, layers = layers[last], layers[:last]
+			}
+		}
 	}
 	if layer := result.Layers.ScopedCheckpoint; layer != nil {
 		items := []string{}
@@ -285,7 +296,14 @@ func journalContextDigestLayers(result journalContextCLIResult) []*journalContex
 		}
 		add(journalContextLayerTasks, layer.Available, layer.AvailableCount, items)
 	}
+	if staleSynthesis != nil {
+		layers = append(layers, staleSynthesis)
+	}
 	return layers
+}
+
+func journalContextStaleSynthesisHint(entriesSince int) string {
+	return fmt.Sprintf("stale, %d entries since; write a fresh wrap(project) when you finish substantial work", entriesSince)
 }
 
 // journalContextDigestListCommand names the cursor-free read that lists the
@@ -311,15 +329,15 @@ func formatJournalContextDigestEntries(entries []state.JournalEntryRecord, branc
 	return items
 }
 
-// formatJournalContextDigestEntry renders one entry as a single line: date, id,
-// label, and the shortened message. An entry recorded on another branch names
+// formatJournalContextDigestEntry renders one entry as a single line: date and
+// age, id, label, and the shortened message. An entry recorded on another branch names
 // it, since the digest header already names the current one.
 func formatJournalContextDigestEntry(entry state.JournalEntryRecord, branch string, maxRunes int) string {
 	label := foldJournalContextText(entry.EntryType)
 	if scope := foldJournalContextText(entry.Scope); scope != "" {
 		label += "(" + scope + ")"
 	}
-	line := fmt.Sprintf("[%s] %s %s: %s", formatJournalTimestamp(entry.CreatedAt), entry.ID, label, shortenJournalContextText(entry.Message, maxRunes))
+	line := fmt.Sprintf("%s %s %s: %s", formatJournalEntryStamp(entry), entry.ID, label, shortenJournalContextText(entry.Message, maxRunes))
 	if entry.ObservedBranch != "" && entry.ObservedBranch != branch {
 		line += " (branch: " + foldJournalContextText(entry.ObservedBranch) + ")"
 	}

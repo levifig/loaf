@@ -1200,6 +1200,9 @@ func writeJournalContextHuman(out io.Writer, result journalContextCLIResult) {
 	}
 	if layer := result.Layers.ProjectSynthesis; layer != nil {
 		writeJournalLayerHuman(out, journalContextLayerProjectSynthesis, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+		if layer.Stale {
+			fmt.Fprintf(out, "    %s\n", journalContextStaleSynthesisHint(layer.EntriesSince))
+		}
 		for _, entry := range layer.Items {
 			fmt.Fprintf(out, "    %s\n", formatJournalEntryLine(entry))
 		}
@@ -1267,7 +1270,7 @@ func writeJournalBlockerLayerHuman(out io.Writer, layer state.JournalContextBloc
 		fmt.Fprintln(out, "    "+journalContextBlockerResolveHint)
 	}
 	for _, item := range layer.Items {
-		stamp := "[" + formatJournalTimestamp(item.Block.CreatedAt) + "]"
+		stamp := formatJournalEntryStamp(item.Block)
 		fmt.Fprintf(out, "    %s %s%s\n", stamp, item.Block.ID, strings.TrimPrefix(formatJournalEntryLine(item.Block), stamp))
 	}
 }
@@ -1346,11 +1349,31 @@ func formatJournalEntryLine(entry state.JournalEntryRecord) string {
 	if entry.Scope != "" {
 		label = fmt.Sprintf("%s(%s)", entry.EntryType, entry.Scope)
 	}
-	line := fmt.Sprintf("[%s] %s: %s", formatJournalTimestamp(entry.CreatedAt), label, entry.Message)
+	line := fmt.Sprintf("%s %s: %s", formatJournalEntryStamp(entry), label, entry.Message)
 	if entry.ObservedBranch != "" {
 		line += fmt.Sprintf(" (branch: %s)", entry.ObservedBranch)
 	}
 	return line
+}
+
+// formatJournalEntryStamp brackets an entry's timestamp, with its age when a
+// context read supplied one, as in "[2026-07-30 17:25, 84 days ago]".
+func formatJournalEntryStamp(entry state.JournalEntryRecord) string {
+	if entry.AgeDays == nil {
+		return "[" + formatJournalTimestamp(entry.CreatedAt) + "]"
+	}
+	return "[" + formatJournalTimestamp(entry.CreatedAt) + ", " + formatJournalAge(*entry.AgeDays) + "]"
+}
+
+func formatJournalAge(days int) string {
+	switch {
+	case days <= 0:
+		return "today"
+	case days == 1:
+		return "1 day ago"
+	default:
+		return strconv.Itoa(days) + " days ago"
+	}
 }
 
 func formatJournalTimestamp(value string) string {
