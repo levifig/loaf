@@ -1217,10 +1217,7 @@ func writeJournalContextHuman(out io.Writer, result journalContextCLIResult) {
 		}
 	}
 	if layer := result.Layers.UnresolvedBlockers; layer != nil {
-		writeJournalLayerHuman(out, journalContextLayerBlockers, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
-		for _, item := range layer.Items {
-			fmt.Fprintf(out, "    %s: %s\n", item.Key, formatJournalEntryLine(item.Block))
-		}
+		writeJournalBlockerLayerHuman(out, *layer)
 	}
 	if layer := result.Layers.DeferredIntent; layer != nil {
 		writeJournalLayerHuman(out, journalContextLayerDeferredIntent, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
@@ -1261,6 +1258,21 @@ func writeJournalContextHuman(out io.Writer, result journalContextCLIResult) {
 		fmt.Fprintf(out, "  diagnostic %s: %s\n", diagnostic.Code, diagnostic.Message)
 	}
 }
+
+// writeJournalBlockerLayerHuman lists every unresolved block in full, each with
+// the entry id that resolves it.
+func writeJournalBlockerLayerHuman(out io.Writer, layer state.JournalContextBlockerLayer) {
+	writeJournalLayerHuman(out, journalContextLayerBlockers, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+	if len(layer.Items) > 0 {
+		fmt.Fprintln(out, "    "+journalContextBlockerResolveHint)
+	}
+	for _, item := range layer.Items {
+		stamp := "[" + formatJournalTimestamp(item.Block.CreatedAt) + "]"
+		fmt.Fprintf(out, "    %s %s%s\n", stamp, item.Block.ID, strings.TrimPrefix(formatJournalEntryLine(item.Block), stamp))
+	}
+}
+
+const journalContextBlockerResolveHint = `resolve one: loaf journal log "unblock(<id>): how it was resolved"`
 
 // writeDeferredIntentItemHuman renders one deferred-intent line. A canonical
 // Intent leads with its alias-or-id, disposition, and the self-sufficient
