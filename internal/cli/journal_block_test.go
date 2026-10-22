@@ -176,7 +176,7 @@ func TestJournalLogUnblockByEntryIDAndBlockerLayerIDs(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &envelope); err != nil {
 		t.Fatalf("decode not-a-block envelope: %v\n%s", err, output.String())
 	}
-	if envelope.Code != state.JournalUnblockNotBlockCode || envelope.Key != decision.ID || !strings.Contains(envelope.Error, "it is a decision entry, not a block") {
+	if envelope.Code != state.JournalUnblockNotBlockCode || envelope.Key != decision.ID || !strings.Contains(envelope.Error, "its type is decision, not block") {
 		t.Fatalf("not-a-block envelope = %#v", envelope)
 	}
 
@@ -217,7 +217,7 @@ func TestJournalContextDefaultDigestCountsStaleBlockersInsteadOfListingThem(t *t
 		"unresolved-blockers: showing 1 of 1 from the last 30 days",
 		`resolve one: loaf journal log "unblock(<id>): how it was resolved"`,
 		recent.Block.ID + " [2026-10-20 09:00] block(ci): runner offline",
-		"older than 30 days, not listed: 2 (list every blocker: loaf journal context --layer unresolved-blockers --limit 10)",
+		"older than 30 days, not listed: 2 (list them: loaf journal context --layer unresolved-blockers --limit 10)",
 	} {
 		if !strings.Contains(defaultDigest, want) {
 			t.Fatalf("default digest = %q, want %q", defaultDigest, want)
@@ -237,6 +237,17 @@ func TestJournalContextDefaultDigestCountsStaleBlockersInsteadOfListingThem(t *t
 		if !strings.Contains(listed, item.Block.ID+" [") {
 			t.Fatalf("blocker layer = %q, want %s with its id", listed, item.Block.ID)
 		}
+	}
+
+	truncated := digest
+	truncated.UnresolvedBlockers.AvailableCount, truncated.UnresolvedBlockers.ShownCount, truncated.UnresolvedBlockers.StaleCount, truncated.UnresolvedBlockers.Truncated = 4, 2, 1, true
+	truncated.UnresolvedBlockers.ExpandCommand = "loaf journal context --layer unresolved-blockers --limit 2 --cursor 'next'"
+	second := block("01a1aaaa-0000-7000-8000-000000000004", "docs", "waiting on a decision", "2026-10-19T09:00:00Z")
+	truncated.UnresolvedBlockers.Items = []state.JournalContextBlockerItem{recent, second}
+	var page bytes.Buffer
+	writeJournalContextHuman(&page, composeJournalContextCLIResult(truncated, activeChangeLayer{}, ""))
+	if got := page.String(); !strings.Contains(got, "unresolved-blockers: showing 2 of 3 from the last 30 days\n    more: loaf journal context --layer unresolved-blockers --limit 2 --cursor 'next'\n") || !strings.Contains(got, "older than 30 days, not listed: 1") {
+		t.Fatalf("truncated default digest = %q, want the recent page, its more command and the stale count", got)
 	}
 
 	onlyStale := digest

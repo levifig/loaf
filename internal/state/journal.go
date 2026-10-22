@@ -72,7 +72,10 @@ func (e *JournalUnmatchedUnblockError) Error() string {
 	case JournalUnblockUnknownEntryCode:
 		return fmt.Sprintf("cannot unblock journal entry %s: this project has no journal entry with that id", e.Key)
 	case JournalUnblockNotBlockCode:
-		return fmt.Sprintf("cannot unblock journal entry %s: it is a %s entry, not a block", e.Key, e.EntryType)
+		if e.EntryType == "block" {
+			return fmt.Sprintf("cannot unblock journal entry %s: it is a block with no scope, which the blockers layer does not track", e.Key)
+		}
+		return fmt.Sprintf("cannot unblock journal entry %s: its type is %s, not block", e.Key, e.EntryType)
 	}
 	if e.LatestSourceID == "" {
 		return fmt.Sprintf("cannot unblock journal key %q: no matching block exists", e.Key)

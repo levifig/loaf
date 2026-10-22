@@ -224,3 +224,48 @@ func assertIDs(t *testing.T, got []string, want ...string) {
 		}
 	}
 }
+
+func TestJournalUnblockEdgeShapesAgreeWithTheDigest(t *testing.T) {
+	ctx := context.Background()
+	root := projectRoot(t)
+	stateHome := t.TempDir()
+	if _, err := Initialize(ctx, root, PathResolver{StateHome: stateHome}); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	store := openTestStore(t, root, stateHome)
+	defer store.Close()
+	projectID := projectIDForTest(t, store, root)
+
+	// A block whose scope merely looks like an id is resolved by that scope.
+	idShapedScope := "01a1aaaa-bbbb-7ccc-8ddd-eeeeffff0001"
+	if _, err := store.LogJournal(ctx, root, JournalLogOptions{Entry: "block(" + idShapedScope + "): scope that looks like an id"}); err != nil {
+		t.Fatalf("block with id-shaped scope error = %v", err)
+	}
+	if _, err := store.LogJournal(ctx, root, JournalLogOptions{Entry: "unblock(" + idShapedScope + "): resolved by its scope"}); err != nil {
+		t.Fatalf("unblock of id-shaped scope error = %v", err)
+	}
+
+	// An imported block with no scope is named as such, not as a non-block.
+	scopeless := seedJournalEntry(t, store, projectID, "block", "", "imported block without a key", "main", "2026-07-01T10:00:00Z")
+	_, err := store.LogJournal(ctx, root, JournalLogOptions{Entry: "unblock(" + scopeless + "): try"})
+	var unmatched *JournalUnmatchedUnblockError
+	if !errors.As(err, &unmatched) || unmatched.Code != JournalUnblockNotBlockCode || unmatched.Error() != "cannot unblock journal entry "+scopeless+": it is a block with no scope, which the blockers layer does not track" {
+		t.Fatalf("scope-less block unblock error = %v", err)
+	}
+
+	// A historical second id unblock of the same block replays as a diagnostic.
+	block := seedJournalEntry(t, store, projectID, "block", "legacy", "imported block", "main", "2026-07-02T10:00:00Z")
+	seedJournalEntry(t, store, projectID, "unblock", block, "resolved", "main", "2026-07-03T10:00:00Z")
+	duplicate := seedJournalEntry(t, store, projectID, "unblock", block, "resolved again", "main", "2026-07-04T10:00:00Z")
+
+	digest, err := store.JournalContext(ctx, root, JournalContextOptions{})
+	if err != nil {
+		t.Fatalf("JournalContext() error = %v", err)
+	}
+	if digest.UnresolvedBlockers.AvailableCount != 0 {
+		t.Fatalf("blockers = %#v, want none open", digest.UnresolvedBlockers.Items)
+	}
+	if len(digest.Diagnostics) != 1 || digest.Diagnostics[0].EntryID != duplicate || digest.Diagnostics[0].Message != "unblock names a block that was already resolved" {
+		t.Fatalf("diagnostics = %#v, want one already-resolved diagnostic for %s", digest.Diagnostics, duplicate)
+	}
+}

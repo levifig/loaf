@@ -1296,7 +1296,7 @@ func writeJournalBlockerLayerHuman(out io.Writer, layer state.JournalContextBloc
 		fmt.Fprintf(out, "    %s %s\n", item.Block.ID, formatJournalEntryLine(item.Block))
 	}
 	if collapsed {
-		fmt.Fprintf(out, "    older than %d days, not listed: %d (list every blocker: %s)\n", state.JournalContextBlockerStaleDays, layer.StaleCount, journalContextBlockerListCommand(layer.AvailableCount))
+		fmt.Fprintf(out, "    older than %d days, not listed: %d (list them: %s)\n", state.JournalContextBlockerStaleDays, layer.StaleCount, journalContextBlockerListCommand(layer.AvailableCount))
 	}
 }
 
