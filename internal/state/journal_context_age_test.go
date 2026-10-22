@@ -126,6 +126,9 @@ func TestJournalContextStampsEveryEntryWithItsAge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("JournalContext() error = %v", err)
 	}
+	if len(digest.LatestCheckpoint.Items) != 1 || digest.LatestCheckpoint.Items[0].Entry.ID != scoped || len(digest.ActiveLineage.Items) != 1 || digest.ActiveLineage.Items[0].ID != lineage {
+		t.Fatalf("checkpoint %#v and lineage %#v, want the scoped wrap and the lineage decision in their own layers", digest.LatestCheckpoint.Items, digest.ActiveLineage.Items)
+	}
 	ages := map[string]int{}
 	collect := func(layer string, entry JournalEntryRecord) {
 		if entry.AgeDays == nil {

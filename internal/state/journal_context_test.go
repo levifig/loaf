@@ -206,7 +206,9 @@ func TestJournalContextV2ActiveTruthSurvivesNoisyBranchesAndPaginatesExactly(t *
 	beforeProjects := countRows(t, store, `SELECT COUNT(*) FROM projects`)
 	beforePaths := countRows(t, store, `SELECT COUNT(*) FROM project_paths`)
 
-	first, err := store.JournalContext(ctx, root, JournalContextOptions{Branch: "feat/context", LineageKeys: []string{"reliability"}, BranchLimit: 3, TaskLimit: 1, Now: time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)})
+	// Pin the read clock so the July synthesis never ages into staleness here.
+	now := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
+	first, err := store.JournalContext(ctx, root, JournalContextOptions{Branch: "feat/context", LineageKeys: []string{"reliability"}, BranchLimit: 3, TaskLimit: 1, Now: now})
 	if err != nil {
 		store.Close()
 		t.Fatalf("JournalContext() error = %v", err)
@@ -250,7 +252,7 @@ func TestJournalContextV2ActiveTruthSurvivesNoisyBranchesAndPaginatesExactly(t *
 		if page.BranchRecency.Cursor == "" {
 			break
 		}
-		page, err = store.JournalContext(ctx, root, JournalContextOptions{Branch: "feat/context", LineageKeys: []string{"reliability"}, BranchLimit: 3, Cursor: page.BranchRecency.Cursor, CursorLayer: JournalContextLayerBranch})
+		page, err = store.JournalContext(ctx, root, JournalContextOptions{Branch: "feat/context", LineageKeys: []string{"reliability"}, BranchLimit: 3, Cursor: page.BranchRecency.Cursor, CursorLayer: JournalContextLayerBranch, Now: now})
 		if err != nil {
 			store.Close()
 			t.Fatalf("JournalContext(next branch page) error = %v", err)
