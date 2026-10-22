@@ -45,7 +45,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - You choose what an Exploration means and when to checkpoint; the CLI validates and performs the operation you request. Never expect the CLI to classify or decide for you.
 - Checkpoint before the context window gets hostile: every checkpoint must carry all four portable fields — purpose, conclusions, unresolved, next action — each self-sufficient without this conversation.
 - A conversation handle or log path is provenance, never context. Presence of handles does not make an Exploration resumable; only a portable checkpoint does.
-- Capture crystallized directions as canonical backlog records through the selected `project-management/v1` provider skill and harness-native connection. Put remaining unsharp questions in that native record. Never leave a substantial direction only in prose.
+- Capture crystallized directions as canonical backlog records through the selected `project-management/v1` provider skill and harness-native connection. Put remaining unsharp questions under Open questions in that native record's agent notes. Never leave a substantial direction only in prose.
 - Never create Git artifacts, branches, or worktrees from Explore; when a direction is ready for problem discovery hand it to pitch, and when it is ready for bounded delivery hand it to shape (issue preparation).
 - Never store transcripts, prompts, or tool output in checkpoints or items; curate semantic context instead.
 - Not a user slash front door — human "explore this" / "where do I start" routes to pitch.
@@ -89,7 +89,7 @@ The four fields are the portable contract; each is capped at 4096 UTF-8 bytes an
 - **unresolved** — the open question or decision the inquiry currently turns on.
 - **next** — the recommended next action, concrete enough for a fresh agent to execute without this conversation.
 
-Larger detail belongs in ordered `--item candidate:` and `--item evidence:` entries or in related reports, not crammed into the core fields. When filing an issue, copy still-unsharp questions into `--fog`; they will not be editable on the issue after create.
+Larger detail belongs in ordered `--item candidate:` and `--item evidence:` entries or in related reports, not crammed into the core fields. When filing a direction, put still-unsharp questions under Open questions in the native record's collapsed agent notes, as [Record Writing](../project-management/references/record-writing.md#agent-notes) describes.
 
 ## Resumption
 

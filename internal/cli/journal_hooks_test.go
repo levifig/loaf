@@ -70,10 +70,13 @@ func TestJournalContextFromHookEmitsDigestForPrimarySession(t *testing.T) {
 		t.Fatalf("journal context --from-hook error = %v", err)
 	}
 	out := stdout.String()
-	for _, want := range []string{"loaf journal context", "project-synthesis: none", "scoped-checkpoint: showing 1 of 1", "latest checkpoint (not project synthesis)", "wrap(hooks): checkpoint one"} {
+	for _, want := range []string{"loaf journal context", "scoped-checkpoint: showing 1 of 1", "latest checkpoint (not project synthesis)", "wrap(hooks): checkpoint one"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("journal context --from-hook stdout = %q, want %q", out, want)
 		}
+	}
+	if strings.Contains(out, "project-synthesis") {
+		t.Fatalf("digest = %q, empty layers must be left out", out)
 	}
 }
 

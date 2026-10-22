@@ -169,7 +169,7 @@ Registered under `session:` in hooks.yaml with an `event:` field. These hooks em
 
 | Hook | Event | Dispatch | Purpose |
 |------|-------|----------|---------|
-| `session-start-loaf` | SessionStart | command (`loaf journal context --from-hook`) | Emit the layered continuity digest (latest wrap + branch entries + open tasks); silent for subagents |
+| `session-start-loaf` | SessionStart | command (`loaf journal context --from-hook`) | Emit the compact layered continuity digest, kept under every harness injection limit; silent for subagents |
 | `session-context-inject` | UserPromptSubmit | command (`loaf journal context for-prompt`) | Inject implementation conventions on prompt submit |
 | `pre-compact` | PreCompact | command (`loaf journal context for-compact`) | Reinforce ordinary capture and selective checkpoints; writes nothing itself |
 | `post-compact` | PostCompact | command (`loaf journal context for-resumption`) | Re-emit the continuity digest for post-compaction resumption |
