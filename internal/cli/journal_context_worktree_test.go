@@ -37,7 +37,7 @@ func setupJournalContextWorktree(t *testing.T) journalContextWorktreeFixture {
 
 func assertJournalContextScopedToFeature(t *testing.T, digest string) {
 	t.Helper()
-	if !strings.Contains(digest, "  branch: feature\n") || !strings.Contains(digest, "feature-only marker") {
+	if !strings.Contains(digest, ", branch feature\n") || !strings.Contains(digest, "feature-only marker") {
 		t.Fatalf("digest is not scoped to the feature worktree:\n%s", digest)
 	}
 	if strings.Contains(digest, "branch: main") || strings.Contains(digest, "main-only marker") {
@@ -84,13 +84,13 @@ func TestJournalContextScopesToInvokingLinkedWorktree(t *testing.T) {
 	})
 	t.Run("main checkout keeps main", func(t *testing.T) {
 		digest := runJournalContextFixture(t, fixture.primary, fixture.stateHome, "")
-		if !strings.Contains(digest, "  branch: main\n") || strings.Contains(digest, "feature-only marker") {
+		if !strings.Contains(digest, ", branch main\n") || strings.Contains(digest, "feature-only marker") {
 			t.Fatalf("main checkout digest:\n%s", digest)
 		}
 	})
 	t.Run("explicit branch wins", func(t *testing.T) {
 		digest := runJournalContextFixture(t, fixture.worktree, fixture.stateHome, "", "--branch", "main")
-		if !strings.Contains(digest, "  branch: main\n") || !strings.Contains(digest, "main-only marker") {
+		if !strings.Contains(digest, ", branch main\n") || !strings.Contains(digest, "main-only marker") {
 			t.Fatalf("explicit --branch main digest:\n%s", digest)
 		}
 	})

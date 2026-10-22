@@ -106,7 +106,7 @@ func writeJournalDeferHelp(out io.Writer) {
 }
 
 func writeJournalContextHelp(out io.Writer) {
-	writeUsageHelp(out, "loaf journal context [options]", "Emit the contract-v2 active-truth continuity digest.",
+	writeUsageHelp(out, "loaf journal context [options]", "Emit the contract-v2 active-truth continuity digest. Without --layer it prints the compact digest hooks inject: one line per entry, no empty layers, under 8,000 bytes.",
 		"--branch          Branch scope (defaults to the current git branch)",
 		"--layer           Select one layer: project-synthesis, scoped-checkpoint, active-lineage, unresolved-blockers, deferred-intent, exploration-checkpoints, active-changes, branch-recency, transitional-tasks",
 		"--limit           Maximum 1..100 items for the selected layer (requires --layer)",
@@ -1060,6 +1060,10 @@ func (r Runner) runJournalContextDigestWithHookInput(args []string, out io.Write
 	output := *hookContext.context
 	if options.jsonOutput {
 		return writeJSON(out, output)
+	}
+	if options.layer == "" {
+		fmt.Fprintln(out, renderJournalContextDigest(output, journalContextDigestBudget))
+		return nil
 	}
 	writeJournalContextHuman(out, output)
 	return nil

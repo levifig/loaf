@@ -146,10 +146,13 @@ func TestJournalContextHookOutputRegressionRemainsHumanAndJSONCompatible(t *test
 	if err := (Runner{Stdout: &human, WorkingDir: workingDir, StateHome: stateHome, Stdin: strings.NewReader(`{"session_id":"primary"}`)}).Run([]string{"journal", "context", "--from-hook"}); err != nil {
 		t.Fatalf("human hook context error = %v", err)
 	}
-	for _, want := range []string{"loaf journal context", "project-synthesis: none", "scoped-checkpoint: showing 1 of 1", "latest checkpoint (not project synthesis)", "wrap(hooks): checkpoint one"} {
+	for _, want := range []string{"loaf journal context", "scoped-checkpoint: showing 1 of 1", "latest checkpoint (not project synthesis)", "wrap(hooks): checkpoint one"} {
 		if !strings.Contains(human.String(), want) {
 			t.Fatalf("human hook context = %q, want %q", human.String(), want)
 		}
+	}
+	if strings.Contains(human.String(), "project-synthesis") {
+		t.Fatalf("digest = %q, empty layers must be left out", human.String())
 	}
 	var machine bytes.Buffer
 	if err := (Runner{Stdout: &machine, WorkingDir: workingDir, StateHome: stateHome, Stdin: strings.NewReader(`{"session_id":"primary"}`)}).Run([]string{"journal", "context", "--from-hook", "--json"}); err != nil {

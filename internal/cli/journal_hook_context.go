@@ -81,30 +81,31 @@ func newJournalHookContextAvailable(contextResult journalContextCLIResult) (jour
 }
 
 // renderSessionStartDigest is the one emitter every harness SessionStart
-// adapter renders through. The neutral digest is identical across harnesses;
-// what the dispatch variant contributes is identity — which config dir's
+// adapter renders through. The neutral digest is identical across harnesses,
+// except that a drift nudge takes its share of the budget; what the dispatch
+// variant contributes is identity — which config dir's
 // `.loaf-version` marker describes the content this conversation is actually
 // running on — so the drift nudge is resolved here rather than in each
 // adapter. An empty digest stays empty: the adapters treat that as a renderer
 // failure, and a nudge must never mask it.
 func (r Runner) renderSessionStartDigest(result journalContextCLIResult, harness string) string {
-	digest := r.renderSessionStartDigestWithoutDrift(result)
+	nudge := r.harnessDriftNudge(harness)
+	if nudge == "" {
+		return r.renderSessionStartDigestWithoutDrift(result)
+	}
+	// The nudge shares the digest budget so the whole payload stays bounded.
+	digest := strings.TrimSpace(renderJournalContextDigest(result, journalContextDigestBudget-len(nudge)-2))
 	if digest == "" {
 		return ""
 	}
-	if nudge := r.harnessDriftNudge(harness); nudge != "" {
-		digest += "\n\n" + nudge
-	}
-	return digest
+	return digest + "\n\n" + nudge
 }
 
 // renderSessionStartDigestWithoutDrift is the same digest for a harness whose
 // content Loaf does not deliver, and therefore has no marker to compare and no
 // command to recommend. Claude Code is the one such harness today.
 func (r Runner) renderSessionStartDigestWithoutDrift(result journalContextCLIResult) string {
-	var rendered strings.Builder
-	writeJournalContextHuman(&rendered, result)
-	return strings.TrimSpace(rendered.String())
+	return strings.TrimSpace(renderJournalContextDigest(result, journalContextDigestBudget))
 }
 
 // evaluateJournalHookContext owns normalization, root-only suppression, the

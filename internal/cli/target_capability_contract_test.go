@@ -281,6 +281,24 @@ func TestTargetCapabilityEvidenceRejectsInvalidClaims(t *testing.T) {
 		{name: "runtime bypass", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[1].BypassModes[0] = "resume" }, want: "duplicates runtime mode"},
 		{name: "supported completion", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[0].Completion.Status = "supported" }, want: "completion status must be unsupported"},
 		{name: "pi record", mutate: func(contract *TargetCapabilityEvidenceContract) { contract.Records[0].Target = "pi" }, want: "pi is deferred"},
+		{name: "missing injection limit", mutate: func(contract *TargetCapabilityEvidenceContract) {
+			contract.Records[0].Context.InjectionLimit = TargetInjectionLimitRecord{}
+		}, want: "injection_limit: status"},
+		{name: "documented limit without unit", mutate: func(contract *TargetCapabilityEvidenceContract) {
+			contract.Records[0].Context.InjectionLimit.Unit = ""
+		}, want: "must be characters, bytes, or approximate-tokens"},
+		{name: "documented limit without size", mutate: func(contract *TargetCapabilityEvidenceContract) {
+			contract.Records[0].Context.InjectionLimit.Limit = 0
+		}, want: "documented limit must be positive"},
+		{name: "undocumented limit with size", mutate: func(contract *TargetCapabilityEvidenceContract) {
+			contract.Records[1].Context.InjectionLimit.Limit = 5000
+		}, want: "undocumented limit carries no limit or unit"},
+		{name: "injection limit without source", mutate: func(contract *TargetCapabilityEvidenceContract) {
+			contract.Records[0].Context.InjectionLimit.Source = "docs"
+		}, want: "must be the https URL that was checked"},
+		{name: "injection limit without checked date", mutate: func(contract *TargetCapabilityEvidenceContract) {
+			contract.Records[0].Context.InjectionLimit.Checked = "October"
+		}, want: "must be a YYYY-MM-DD date"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
