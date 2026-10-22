@@ -33,6 +33,14 @@ const (
 	defaultJournalContextBranchLimit      = 10
 	defaultJournalContextTaskLimit        = 10
 	journalContextSynthesisLimit          = 1
+
+	// A project synthesis is stale only when it is both old and overtaken:
+	// age alone would flag a dormant project whose synthesis is still current
+	// and invite ceremonial wraps, and activity alone would flag a fresh
+	// synthesis during a busy day. Thirty days matches the blocker and
+	// knowledge staleness limits; fifty entries is a few working sessions.
+	JournalContextSynthesisStaleDays    = 30
+	JournalContextSynthesisStaleEntries = 50
 )
 
 // JournalContextOptions describes a continuity digest request. Limits are
@@ -85,13 +93,18 @@ type JournalContext struct {
 }
 
 type JournalContextJournalLayer struct {
-	Available      bool                 `json:"source_available"`
-	AvailableCount int                  `json:"available_count"`
-	ShownCount     int                  `json:"shown_count"`
-	Truncated      bool                 `json:"truncated"`
-	Cursor         string               `json:"cursor,omitempty"`
-	ExpandCommand  string               `json:"expand_command"`
-	Items          []JournalEntryRecord `json:"items"`
+	Available      bool   `json:"source_available"`
+	AvailableCount int    `json:"available_count"`
+	ShownCount     int    `json:"shown_count"`
+	Truncated      bool   `json:"truncated"`
+	Cursor         string `json:"cursor,omitempty"`
+	ExpandCommand  string `json:"expand_command"`
+	// Stale and EntriesSince are set only on the project-synthesis layer: the
+	// synthesis is stale once it is older than JournalContextSynthesisStaleDays
+	// and at least JournalContextSynthesisStaleEntries entries followed it.
+	Stale        bool                 `json:"stale,omitempty"`
+	EntriesSince int                  `json:"entries_since,omitempty"`
+	Items        []JournalEntryRecord `json:"items"`
 }
 
 type JournalContextCheckpointLayer struct {
@@ -321,6 +334,10 @@ func (s *Store) JournalContext(ctx context.Context, root project.Root, options J
 		watermark = cursor.Watermark
 	}
 
+	now := options.Now
+	if now.IsZero() {
+		now = time.Now()
+	}
 	synthesisCandidates, err := queryJournalContextEntries(ctx, tx, identity.ID, watermark, "entry_type = 'wrap' AND scope = 'project'", nil)
 	if err != nil {
 		return JournalContext{}, err
@@ -328,8 +345,22 @@ func (s *Store) JournalContext(ctx context.Context, root project.Root, options J
 	if len(synthesisCandidates) > journalContextSynthesisLimit {
 		synthesisCandidates = synthesisCandidates[:journalContextSynthesisLimit]
 	}
+	synthesisStale, entriesSinceSynthesis := false, 0
+	if len(synthesisCandidates) > 0 {
+		synthesis := synthesisCandidates[0]
+		if err := tx.QueryRowContext(ctx, `
+SELECT COUNT(*) FROM journal_entries
+WHERE project_id = ? AND rowid <= ? AND (created_at > ? OR (created_at = ? AND rowid > ?))`,
+			identity.ID, watermark, synthesis.Entry.CreatedAt, synthesis.Entry.CreatedAt, synthesis.RowID).Scan(&entriesSinceSynthesis); err != nil {
+			return JournalContext{}, fmt.Errorf("count journal entries since project synthesis: %w", err)
+		}
+		age, ok := journalContextAgeDays(synthesis.Entry.CreatedAt, now)
+		synthesisStale = ok && age > JournalContextSynthesisStaleDays && entriesSinceSynthesis >= JournalContextSynthesisStaleEntries
+	}
+	// The latest scoped wrap stands in when there is no project synthesis, and
+	// joins a stale one when it is newer.
 	checkpointCandidates := []journalContextJournalCandidate{}
-	if len(synthesisCandidates) == 0 {
+	if len(synthesisCandidates) == 0 || synthesisStale {
 		checkpointCandidates, err = queryJournalContextEntries(ctx, tx, identity.ID, watermark, "entry_type = 'wrap' AND COALESCE(scope, '') <> 'project'", nil)
 		if err != nil {
 			return JournalContext{}, err
@@ -337,15 +368,17 @@ func (s *Store) JournalContext(ctx context.Context, root project.Root, options J
 		if len(checkpointCandidates) > journalContextSynthesisLimit {
 			checkpointCandidates = checkpointCandidates[:journalContextSynthesisLimit]
 		}
+		if synthesisStale && len(checkpointCandidates) > 0 {
+			latest, synthesis := checkpointCandidates[0], synthesisCandidates[0]
+			if !journalContextNewer(latest.Entry.CreatedAt, latest.RowID, synthesis.Entry.CreatedAt, synthesis.RowID) {
+				checkpointCandidates = checkpointCandidates[:0]
+			}
+		}
 	}
 
 	lineageCandidates, err := queryLineageCandidates(ctx, tx, identity.ID, watermark, lineageKeys)
 	if err != nil {
 		return JournalContext{}, err
-	}
-	now := options.Now
-	if now.IsZero() {
-		now = time.Now()
 	}
 	blockerCandidates, diagnostics, err := queryBlockerCandidates(ctx, tx, identity.ID, watermark, now)
 	if err != nil {
@@ -422,6 +455,7 @@ func (s *Store) JournalContext(ctx context.Context, root project.Root, options J
 	}
 
 	synthesisLayer := journalContextJournalPage(synthesisCandidates, journalContextSynthesisLimit, nil, JournalContextLayerSynthesis, identity.ID, branch, watermark, "")
+	synthesisLayer.Stale, synthesisLayer.EntriesSince = synthesisStale, entriesSinceSynthesis
 	checkpointLayer := journalContextCheckpointPage(checkpointCandidates, branch)
 	lineageLayer, err := journalContextJournalPageChecked(lineageCandidates, contextLimit(options.LineageLimit, defaultJournalContextLineageLimit), cursorForLayer(cursor, JournalContextLayerLineage), JournalContextLayerLineage, identity.ID, branch, watermark, lineageFingerprint)
 	if err != nil {
@@ -469,8 +503,9 @@ func (s *Store) JournalContext(ctx context.Context, root project.Root, options J
 		BranchEntries:          append([]JournalEntryRecord(nil), branchLayer.Items...),
 		OpenTasks:              append([]JournalContextTask(nil), taskLayer.Items...),
 	}
-	if len(synthesisLayer.Items) > 0 {
-		entry := synthesisLayer.Items[0]
+	stampJournalContextAges(&result, now)
+	if len(result.ProjectSynthesis.Items) > 0 {
+		entry := result.ProjectSynthesis.Items[0]
 		result.LatestWrap = &entry
 	}
 	if err := tx.Commit(); err != nil {
@@ -580,6 +615,30 @@ func queryBlockerCandidates(ctx context.Context, tx *sql.Tx, projectID string, w
 	})
 	sort.SliceStable(diagnostics, func(i, j int) bool { return diagnostics[i].Key < diagnostics[j].Key })
 	return candidates, diagnostics, nil
+}
+
+// stampJournalContextAges sets AgeDays on every journal entry in the digest.
+// Ages are derived from the read clock and never stored.
+func stampJournalContextAges(result *JournalContext, now time.Time) {
+	stamp := func(entry *JournalEntryRecord) {
+		if age, ok := journalContextAgeDays(entry.CreatedAt, now); ok {
+			entry.AgeDays = &age
+		}
+	}
+	for _, layer := range []*JournalContextJournalLayer{&result.ProjectSynthesis, &result.ActiveLineage, &result.BranchRecency} {
+		for i := range layer.Items {
+			stamp(&layer.Items[i])
+		}
+	}
+	for i := range result.LatestCheckpoint.Items {
+		stamp(&result.LatestCheckpoint.Items[i].Entry)
+	}
+	for i := range result.UnresolvedBlockers.Items {
+		stamp(&result.UnresolvedBlockers.Items[i].Block)
+	}
+	for i := range result.BranchEntries {
+		stamp(&result.BranchEntries[i])
+	}
 }
 
 // journalContextOldestFirst reverses newest-first context rows into journal

@@ -205,12 +205,22 @@ func journalContextDigestLayers(result journalContextCLIResult) []*journalContex
 			items:       items,
 		})
 	}
+	// A stale project synthesis no longer leads: it keeps its label and moves
+	// to the end, where a tight budget gives it up first.
+	var staleSynthesis *journalContextDigestLayer
 	if layer := result.Layers.ProjectSynthesis; layer != nil {
 		items := []string{}
 		for _, entry := range layer.Items {
 			items = append(items, formatJournalContextDigestEntry(entry, branch, journalContextDigestSynthesisRunes))
 		}
-		add(journalContextLayerProjectSynthesis, layer.Available, layer.AvailableCount, items)
+		if !layer.Stale {
+			add(journalContextLayerProjectSynthesis, layer.Available, layer.AvailableCount, items)
+		} else {
+			add(journalContextLayerProjectSynthesis, layer.Available, layer.AvailableCount, items, journalContextStaleSynthesisHint(layer.EntriesSince))
+			if last := len(layers) - 1; last >= 0 && layers[last].name == journalContextLayerProjectSynthesis {
+				staleSynthesis, layers = layers[last], layers[:last]
+			}
+		}
 	}
 	if layer := result.Layers.ScopedCheckpoint; layer != nil {
 		items := []string{}
@@ -285,7 +295,14 @@ func journalContextDigestLayers(result journalContextCLIResult) []*journalContex
 		}
 		add(journalContextLayerTasks, layer.Available, layer.AvailableCount, items)
 	}
+	if staleSynthesis != nil {
+		layers = append(layers, staleSynthesis)
+	}
 	return layers
+}
+
+func journalContextStaleSynthesisHint(entriesSince int) string {
+	return fmt.Sprintf("stale, %d entries since; write a fresh wrap(project) when you finish substantial work", entriesSince)
 }
 
 // journalContextDigestListCommand names the cursor-free read that lists the
@@ -319,7 +336,7 @@ func formatJournalContextDigestEntry(entry state.JournalEntryRecord, branch stri
 	if scope := foldJournalContextText(entry.Scope); scope != "" {
 		label += "(" + scope + ")"
 	}
-	line := fmt.Sprintf("[%s] %s %s: %s", formatJournalTimestamp(entry.CreatedAt), entry.ID, label, shortenJournalContextText(entry.Message, maxRunes))
+	line := fmt.Sprintf("%s %s %s: %s", formatJournalEntryStamp(entry), entry.ID, label, shortenJournalContextText(entry.Message, maxRunes))
 	if entry.ObservedBranch != "" && entry.ObservedBranch != branch {
 		line += " (branch: " + foldJournalContextText(entry.ObservedBranch) + ")"
 	}

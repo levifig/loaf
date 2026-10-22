@@ -85,8 +85,8 @@ func TestDiscoverActiveChangesUnionsHEADAndWorkingTree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discoverActiveChanges() error = %v", err)
 	}
-	if got, want := source.LineageKeys, []string{"deleted-lineage", "folder-dirty-lineage", "foo", "foo-extra", "modified-lineage", "untracked-lineage"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("LineageKeys = %#v, want %#v", got, want)
+	if got, want := source.LineageKeys, []string{"deleted-lineage", "folder-dirty-lineage", "foo", "modified-lineage", "untracked-lineage"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("LineageKeys = %#v, want only active Changes' lineage (no retired foo-extra) %#v", got, want)
 	}
 	bySlug := map[string]activeChangeItem{}
 	for _, item := range source.Items {

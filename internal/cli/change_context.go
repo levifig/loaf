@@ -132,12 +132,6 @@ func discoverActiveChangesWithOutput(rootPath string, outputCommand changeGitOut
 		}
 	}
 	for _, path := range unionPaths {
-		if node, ok := headByPath[path]; ok {
-			retainLineage(node)
-		}
-		if node, ok := workByPath[path]; ok {
-			retainLineage(node)
-		}
 		node, ok := workByPath[path]
 		if !ok {
 			node = headByPath[path]
@@ -195,7 +189,15 @@ func discoverActiveChangesWithOutput(rootPath string, outputCommand changeGitOut
 		}
 		records = append(records, activeChangeSourceRecord{Path: path, WorkSHA256: workDigest, HEADSHA256: headDigest, WorktreeState: worktreeState, WorktreeEvidence: worktreeEvidence, ActiveReasons: reasons, Findings: findings, Gaps: gaps})
 		if len(reasons) == 0 {
+			// A retired Change is historical evidence, not current authority,
+			// so its lineage does not surface as active.
 			continue
+		}
+		if inHEAD {
+			retainLineage(headNode)
+		}
+		if inWork {
+			retainLineage(workNode)
 		}
 		sourceDigest := workDigest
 		if sourceDigest == "" {

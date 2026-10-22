@@ -46,6 +46,9 @@ type JournalEntryRecord struct {
 	ObservedWorktree string `json:"observed_worktree,omitempty"`
 	HarnessSessionID string `json:"harness_session_id,omitempty"`
 	CreatedAt        string `json:"created_at"`
+	// AgeDays is set only by journal context reads: whole UTC calendar days
+	// from the entry's creation to the read.
+	AgeDays *int `json:"age_days,omitempty"`
 }
 
 const defaultJournalRecentLimit = 20
