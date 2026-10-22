@@ -39,7 +39,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | `project-synthesis` | The latest `wrap(project)` synthesis. |
 | `scoped-checkpoint` | The latest non-project wrap, only when no project synthesis exists; it is explicitly labeled as a fallback. |
 | `active-lineage` | Journal evidence associated with active Change lineage. |
-| `unresolved-blockers` | Blocks that do not have a later exact-scope unblock. |
+| `unresolved-blockers` | Blocks that no later unblock resolved, each with the entry id that resolves it: `unblock(<scope>)` resolves every open block with that scope, `unblock(<block id>)` only that block. The default digest counts blocks older than 30 days instead of listing them; this layer lists every one. |
 | `deferred-intent` | Open deferred-intent decision and spark pairs. |
 | `active-changes` | Git-derived active Change evidence and worktree state. |
 | `branch-recency` | Recent entries on the selected branch after entries already surfaced as active truth are removed. |

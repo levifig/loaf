@@ -20,6 +20,7 @@ not create or edit journal markdown as the source of truth — use
 [YYYY-MM-DD HH:MM] discover(scope): something learned
 [YYYY-MM-DD HH:MM] block(scope): what is blocked
 [YYYY-MM-DD HH:MM] unblock(scope): how it was resolved
+[YYYY-MM-DD HH:MM] unblock(<block id>): how that one block was resolved
 [YYYY-MM-DD HH:MM] commit(abc1234): commit message
 [YYYY-MM-DD HH:MM] wrap(scope): tried X, abandoned because Y, next is Z
 ```
@@ -32,7 +33,7 @@ not create or edit journal markdown as the source of truth — use
 | `decision(scope)` | Key decisions with rationale | Agent |
 | `discover(scope)` | Something learned | Agent |
 | `block(scope)` | Blocker encountered | Agent |
-| `unblock(scope)` | Blocker resolved | Agent |
+| `unblock(scope)` | Blocker resolved: a scope resolves every open block with it; a block's entry id resolves only that block | Agent |
 | `spark(scope)` | Ideas to promote | Agent |
 | `todo(scope)` | Action items | Agent |
 | `finding(scope)` | Findings from analysis | Agent |

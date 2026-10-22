@@ -209,7 +209,13 @@ func journalContextBlockerPage(candidates []journalContextBlockerCandidate, limi
 	for _, candidate := range candidates[start:end] {
 		items = append(items, candidate.Item)
 	}
-	layer := JournalContextBlockerLayer{Available: true, AvailableCount: len(candidates), ShownCount: len(items), Truncated: end < len(candidates), ExpandCommand: journalContextExpandCommand(JournalContextLayerBlockers, limit, branch, ""), Items: items}
+	stale := 0
+	for _, candidate := range candidates {
+		if candidate.Item.Stale {
+			stale++
+		}
+	}
+	layer := JournalContextBlockerLayer{Available: true, AvailableCount: len(candidates), ShownCount: len(items), Truncated: end < len(candidates), ExpandCommand: journalContextExpandCommand(JournalContextLayerBlockers, limit, branch, ""), StaleCount: stale, Items: items}
 	if layer.Truncated {
 		layer.Cursor = encodeJournalContextCursor(journalContextCursor{Layer: JournalContextLayerBlockers, ProjectID: projectID, Branch: branch, Watermark: watermark, Limit: limit, After: journalContextBlockerKey(candidates[end-1])})
 		layer.ExpandCommand = journalContextExpandCommand(JournalContextLayerBlockers, limit, branch, layer.Cursor)

@@ -868,6 +868,9 @@ type journalContextCLIResult struct {
 	Branch             string                           `json:"branch"`
 	Layers             journalContextLayersJSON         `json:"layers"`
 	Diagnostics        []state.JournalContextDiagnostic `json:"diagnostics"`
+	// defaultDigest is true when no --layer was selected. The default digest
+	// summarizes blockers older than the age limit instead of listing them.
+	defaultDigest bool
 }
 
 func parseJournalContextArgs(args []string) (journalContextCLIOptions, error) {
@@ -1155,6 +1158,7 @@ func composeJournalContextCLIResult(result state.JournalContext, active activeCh
 		JournalWatermark:   result.JournalWatermark,
 		Branch:             result.Branch,
 		Diagnostics:        append([]state.JournalContextDiagnostic(nil), result.Diagnostics...),
+		defaultDigest:      selected == "",
 	}
 	if output.Diagnostics == nil {
 		output.Diagnostics = []state.JournalContextDiagnostic{}
@@ -1217,10 +1221,7 @@ func writeJournalContextHuman(out io.Writer, result journalContextCLIResult) {
 		}
 	}
 	if layer := result.Layers.UnresolvedBlockers; layer != nil {
-		writeJournalLayerHuman(out, journalContextLayerBlockers, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
-		for _, item := range layer.Items {
-			fmt.Fprintf(out, "    %s: %s\n", item.Key, formatJournalEntryLine(item.Block))
-		}
+		writeJournalBlockerLayerHuman(out, *layer, result.defaultDigest)
 	}
 	if layer := result.Layers.DeferredIntent; layer != nil {
 		writeJournalLayerHuman(out, journalContextLayerDeferredIntent, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
@@ -1260,6 +1261,49 @@ func writeJournalContextHuman(out io.Writer, result journalContextCLIResult) {
 	for _, diagnostic := range result.Diagnostics {
 		fmt.Fprintf(out, "  diagnostic %s: %s\n", diagnostic.Code, diagnostic.Message)
 	}
+}
+
+// writeJournalBlockerLayerHuman lists unresolved blocks, each led by the entry
+// id that resolves it. The default digest lists only blocks within the age
+// limit and counts the older ones with the command that lists every block.
+func writeJournalBlockerLayerHuman(out io.Writer, layer state.JournalContextBlockerLayer, collapseStale bool) {
+	items := layer.Items
+	collapsed := collapseStale && layer.Available && layer.StaleCount > 0
+	if collapsed {
+		recent := []state.JournalContextBlockerItem{}
+		for _, item := range items {
+			if !item.Stale {
+				recent = append(recent, item)
+			}
+		}
+		recentTotal := layer.AvailableCount - layer.StaleCount
+		if recentTotal == 0 {
+			fmt.Fprintf(out, "  %s: none from the last %d days\n", journalContextLayerBlockers, state.JournalContextBlockerStaleDays)
+		} else {
+			fmt.Fprintf(out, "  %s: showing %d of %d from the last %d days\n", journalContextLayerBlockers, len(recent), recentTotal, state.JournalContextBlockerStaleDays)
+			if len(recent) < recentTotal {
+				fmt.Fprintf(out, "    more: %s\n", layer.ExpandCommand)
+			}
+		}
+		items = recent
+	} else {
+		writeJournalLayerHuman(out, journalContextLayerBlockers, layer.Available, layer.AvailableCount, layer.ShownCount, layer.ExpandCommand)
+	}
+	if len(items) > 0 {
+		fmt.Fprintln(out, "    resolve one: loaf journal log \"unblock(<id>): how it was resolved\"")
+	}
+	for _, item := range items {
+		fmt.Fprintf(out, "    %s %s\n", item.Block.ID, formatJournalEntryLine(item.Block))
+	}
+	if collapsed {
+		fmt.Fprintf(out, "    older than %d days, not listed: %d (list every blocker: %s)\n", state.JournalContextBlockerStaleDays, layer.StaleCount, journalContextBlockerListCommand(layer.AvailableCount))
+	}
+}
+
+// journalContextBlockerListCommand is the cursor-free read that lists every
+// unresolved block, within the CLI's maximum page.
+func journalContextBlockerListCommand(total int) string {
+	return journalContextExpandCommand(journalContextLayerBlockers, "", "", min(max(total, defaultCLIJournalContextLimit), 100))
 }
 
 // writeDeferredIntentItemHuman renders one deferred-intent line. A canonical
