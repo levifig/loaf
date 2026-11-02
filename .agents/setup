@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-GO_VERSION=1.27.2
+GO_VERSION=1.27.3
 NODE_VERSION=24.21.0
 TOOL_ROOT="$HOME/.local/share/loaf-orb"
 PROFILE="$HOME/.bash_profile"
@@ -43,13 +43,13 @@ install_linux_toolchains() {
     x86_64)
       go_arch=amd64
       node_arch=x64
-      go_sha=ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5
+      go_sha=65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40
       node_sha=6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff
       ;;
     aarch64|arm64)
       go_arch=arm64
       node_arch=arm64
-      go_sha=94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8
+      go_sha=a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49
       node_sha=724282c3b43aec998aa9527380465b45d229e021b58035f5f4f63095eabfe5d5
       ;;
     *)
