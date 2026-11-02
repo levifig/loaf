@@ -105,21 +105,28 @@ Verification evidence must identify what it vouches for. A receipt remains a his
 
 Every implemented canonical work record needs new or substantively updated Unreleased prose, including fixes, tests, docs, maintenance, and features. Discussion and unimplemented ideas do not. Implement declares the complete work set, verifies canonical identity through the selected tracker, and writes accurate notes; Ship independently checks completeness and meaning before Approve or Done. The [native validator](../../internal/cli/issue_changelog.go) checks structural coverage only. An unrelated old entry, copying a released note, adding only a reference, or changing formatting is insufficient. The document micro-changelog operator remains a separate check.
 
-### GitHub
+### Supported Issue References
 
-This repository uses exact linked Issue references in entry prose, for example `([#279](https://github.com/levifig/loaf/issues/279))`, and one PR-body declaration:
+GitHub Issues use exact linked references in entry prose. This repository uses GitHub as its tracker, for example `([#279](https://github.com/levifig/loaf/issues/279))`, and one PR-body declaration:
 
 ```html
 <!-- loaf:implemented-issues {"issues":["https://github.com/levifig/loaf/issues/279"]} -->
 ```
 
+Linear work uses canonical short URLs such as `https://linear.app/example/issue/ENG-123`, with a matching `[ENG-123](https://linear.app/example/issue/ENG-123)` link in the entry. The same declaration accepts those URLs, including several Issues or a mixture of supported providers. The label must match the Issue key and the URL must match the declared workspace and Issue exactly. Use the short URL rather than a title slug, trailing slash, query or fragment; unsupported input fails and is never successful coverage. Other trackers remain unsupported.
+
+A CommonMark parser identifies actual links before the exact reference syntax is checked. Images, code examples, HTML attributes and link titles cannot supply coverage. Title-bearing links, reference-style links, angle-bracket destinations and alternative escaped spellings are outside the canonical reference forms above. The changed-prose comparison remains a separate structural check; parsing a real link does not prove the note accurately describes the work.
+
+The explicit `--repository owner/repo` still names the GitHub code repository and review context, including when Linear owns the work. GitHub Issue references must belong to that repository. Linear reference syntax does not establish workspace authority or prove a real Issue exists: Implement and Ship must verify those facts through the selected tracker. The checker performs no provider lookup, changes no tracker configuration and requires no shadow GitHub Issue for Linear work.
+
 Declare every implemented Issue URL, even when one entry covers several. PR URLs, incidental body mentions, closing keywords, branch names, and titles are not declaration inputs. The parser cannot establish whether an `/issues/N` URL identifies an Issue rather than a PR; the main agent and Ship must verify that distinction through the authenticated tracker connection.
 
-The local operator, pre-PR hook, and [PR workflow](../../.github/workflows/issue-changelog.yml) call the same network-free Go implementation. The tracked repository PR template opts into this concrete GitHub policy by containing the declaration marker; this repository opts in. Repositories without that marker receive generic advisory PR reminders, so GitHub code hosting alone never forces a Linear or other tracker user to create shadow GitHub Issues. Explicit CLI and CI invocations always validate and never silently skip. Local usage requires explicit repository, actual review base, candidate, and either the PR body file or repeated `--issue` URLs:
+The local operator, pre-PR hook, and [PR workflow](../../.github/workflows/issue-changelog.yml) call the same network-free Go implementation. The tracked repository PR template opts into structural coverage for supported Issue references by containing the declaration marker; this repository opts in. Repositories without that marker receive generic advisory PR reminders, so GitHub code hosting alone never forces a Linear or other tracker user to create shadow GitHub Issues. Explicit CLI and CI invocations always validate and never silently skip. Local usage requires explicit repository, actual review base, candidate, and either the PR body file or repeated `--issue` URLs:
 
 ```sh
 loaf check issue-changelog --repository levifig/loaf --base origin/main --head HEAD --pr-body-file /tmp/pr-body.md --json
 loaf check issue-changelog --repository levifig/loaf --base origin/main --head WORKTREE --issue https://github.com/levifig/loaf/issues/279
+loaf check issue-changelog --repository example/code --base origin/main --head HEAD --issue https://linear.app/example/issue/ENG-123
 ```
 
 `WORKTREE` reads staged/unstaged file content without changing the index. It is an authoring check, not proof of the committed candidate. The pre-PR hook validates committed `HEAD` and requires a literal standalone `gh pr create` with explicit `--repo`, `--base`, and `--body` or a regular `--body-file`. `--fill` alone and ambiguous shell context fail with an actionable diagnostic. An alternate `--head` is refused because the hook cannot attest that candidate. CI reads immutable base/head SHAs and the current body from the GitHub event JSON; shell source never contains PR body text. The job has read-only contents permission, no secrets, and no persistent checkout credentials. It runs on open, synchronize, reopen, body edit, and readiness changes without path exclusions, so Markdown-only candidates receive the same check.
