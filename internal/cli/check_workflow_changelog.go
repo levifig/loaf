@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-// The first concrete policy is GitHub-specific. A repository opts into it in
-// its own tracked PR template; merely hosting code on GitHub does not elect
-// GitHub as canonical tracker. Explicit CLI/CI invocations never skip validation.
+// GitHub-hosted repositories opt into coverage in their tracked PR template.
+// Work references may use GitHub or Linear; code hosting does not elect the
+// canonical tracker. Explicit CLI/CI invocations never skip validation.
 
 func repositoryUsesIssueChangelog(root string, bases ...string) bool {
 	for _, ref := range append([]string{"HEAD"}, bases...) {
