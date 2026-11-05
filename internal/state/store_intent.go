@@ -17,10 +17,11 @@ type projectStoreIntent uint8
 const (
 	projectStoreReadExisting projectStoreIntent = iota + 1
 	projectStoreMutateExisting
+	projectStoreObserveExisting
 )
 
-// openProjectStore opens an already-existing project store for one of the two
-// ordinary intents. Both intents require a durable database file and resolve
+// openProjectStore opens an already-existing project store for one of the
+// ordinary intents. Every intent requires a durable database file and resolves
 // the current project path before returning. A lookup failure closes the store
 // so unknown checkouts cannot leave an open connection behind.
 func openProjectStore(ctx context.Context, root project.Root, resolver PathResolver, intent projectStoreIntent) (*Store, error) {
@@ -46,6 +47,16 @@ func openProjectStore(ctx context.Context, root project.Root, resolver PathResol
 		if err == nil {
 			err = store.RequireCurrentSchema(ctx)
 		}
+	case projectStoreObserveExisting:
+		store, err = OpenStore(databasePath)
+		if err == nil {
+			// A long write elsewhere must not stall the tool call; skipping one
+			// best-effort observation is cheaper than waiting it out.
+			_, err = store.db.ExecContext(ctx, `PRAGMA busy_timeout = 100`)
+		}
+		if err == nil {
+			_, err = store.ValidateCurrentSchema(ctx)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported project store intent %d", intent)
 	}
@@ -65,6 +76,17 @@ func openProjectStore(ctx context.Context, root project.Root, resolver PathResol
 		return nil, err
 	}
 	return store, nil
+}
+
+// OpenProjectStoreForObservation opens an existing project store for a
+// best-effort, machine-local observation write, such as a pre-tool gateway
+// count. It requires every current migration with matching checksums but skips
+// the operational invariants: their integrity and parity scans grow with the
+// whole database and would run on every tool call, while observation callers
+// ignore write failures and never read canonical state. For the same reason it
+// waits at most 100 ms for another writer.
+func OpenProjectStoreForObservation(ctx context.Context, root project.Root, resolver PathResolver) (*Store, error) {
+	return openProjectStore(ctx, root, resolver, projectStoreObserveExisting)
 }
 
 func openProjectStoreReadExisting(ctx context.Context, root project.Root, resolver PathResolver) (*Store, error) {

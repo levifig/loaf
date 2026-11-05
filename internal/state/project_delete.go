@@ -56,6 +56,7 @@ var projectScopedDeleteTables = []string{
 	"exports",
 	"backend_mappings",
 	"hook_events",
+	"hook_gateway_counts",
 	"issue_criterion_claims",
 	"work_contracts",
 	"work_contract_criteria",

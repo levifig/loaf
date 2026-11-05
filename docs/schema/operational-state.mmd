@@ -646,3 +646,17 @@ erDiagram
   }
 
   projects ||--o{ fact_replay_discrepancies : scopes
+
+  hook_gateway_counts {
+    text project_id FK
+    text month
+    text hook_id
+    text tool_name
+    text decision
+    text reason_class
+    text observed_harness
+    text observed_harness_version
+    integer count
+  }
+
+  projects ||--o{ hook_gateway_counts : scopes

@@ -22,7 +22,7 @@ func (r Runner) recordCheckObservation(options checkOptions, hookContext checkHo
 	if err != nil {
 		return
 	}
-	store, err := state.OpenProjectStoreForWrite(context.Background(), root, state.PathResolver{StateHome: r.StateHome})
+	store, err := state.OpenProjectStoreForObservation(context.Background(), root, state.PathResolver{StateHome: r.StateHome})
 	if err != nil {
 		return
 	}

@@ -88,6 +88,9 @@ var hookGatewayObservationsSQL string
 //go:embed migrations/0027_exploration_observations.sql
 var explorationObservationsSQL string
 
+//go:embed migrations/0028_hook_gateway_counts.sql
+var hookGatewayCountsSQL string
+
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
@@ -232,6 +235,7 @@ func SchemaMigrations() []SchemaMigration {
 			SQL:     normalizeMigrationSQL(hookGatewayObservationsSQL),
 		},
 		{Version: 27, Name: "exploration_observations", SQL: normalizeMigrationSQL(explorationObservationsSQL)},
+		{Version: 28, Name: "hook_gateway_counts", SQL: normalizeMigrationSQL(hookGatewayCountsSQL)},
 	}
 }
 
