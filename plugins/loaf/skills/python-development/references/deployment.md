@@ -16,7 +16,7 @@ Multi-stage build with uv, non-root user:
 ```dockerfile
 FROM python:3.12-slim as builder
 WORKDIR /build
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.4 /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
