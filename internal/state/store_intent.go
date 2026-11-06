@@ -55,7 +55,7 @@ func openProjectStore(ctx context.Context, root project.Root, resolver PathResol
 			_, err = store.db.ExecContext(ctx, `PRAGMA busy_timeout = 100`)
 		}
 		if err == nil {
-			_, err = store.ValidateCurrentSchema(ctx)
+			err = store.RequireCurrentSchema(ctx)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported project store intent %d", intent)
@@ -80,48 +80,15 @@ func openProjectStore(ctx context.Context, root project.Root, resolver PathResol
 
 // OpenProjectStoreForObservation opens an existing project store for a
 // best-effort, machine-local observation write, such as a pre-tool gateway
-// count. It requires every current migration with matching checksums but skips
-// the operational invariants: their integrity and parity scans grow with the
-// whole database and would run on every tool call, while observation callers
-// ignore write failures and never read canonical state. For the same reason it
-// waits at most 100 ms for another writer.
+// count. It applies the ordinary open check but waits at most 100 ms for
+// another writer: observations run on every tool call, and their callers
+// ignore write failures, so skipping one is cheaper than stalling the call.
 func OpenProjectStoreForObservation(ctx context.Context, root project.Root, resolver PathResolver) (*Store, error) {
 	return openProjectStore(ctx, root, resolver, projectStoreObserveExisting)
 }
 
 func openProjectStoreReadExisting(ctx context.Context, root project.Root, resolver PathResolver) (*Store, error) {
 	return openProjectStore(ctx, root, resolver, projectStoreReadExisting)
-}
-
-// openProjectStoreReadExistingForJournalSearch validates every canonical
-// invariant while deliberately leaving one derived invariant for the journal
-// search boundary to report with its structured divergence error. This is not
-// a general read escape hatch: callers must immediately use
-// requireJournalSearchReady before returning derived results.
-func openProjectStoreReadExistingForJournalSearch(ctx context.Context, root project.Root, resolver PathResolver) (*Store, error) {
-	databasePath, err := resolver.DatabasePath(root)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := os.Stat(databasePath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("SQLite state database is not initialized; run `loaf state init` or `loaf state migrate markdown --apply` first")
-	} else if err != nil {
-		return nil, fmt.Errorf("inspect state database: %w", err)
-	}
-	store, err := OpenStoreReadOnly(databasePath)
-	if err != nil {
-		return nil, err
-	}
-	if err := requireCurrentSchemaForDerivedRepair(ctx, store); err == nil {
-		_, err = store.LookupProjectIdentityForRoot(ctx, root)
-	}
-	if err != nil {
-		if closeErr := store.Close(); closeErr != nil {
-			return nil, fmt.Errorf("%w; close state database: %v", err, closeErr)
-		}
-		return nil, err
-	}
-	return store, nil
 }
 
 func openProjectStoreMutateExisting(ctx context.Context, root project.Root, resolver PathResolver) (*Store, error) {
