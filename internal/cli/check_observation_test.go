@@ -127,9 +127,8 @@ VALUES ('missing-entry', ?, 1, 'test', '2026-11-01T00:00:00Z')`, status.ProjectI
 		t.Fatal(err)
 	}
 	store.Close()
-	if invalid, err := state.OpenProjectStoreForWrite(context.Background(), root, resolver); err == nil {
-		invalid.Close()
-		t.Fatal("fixture must fail full state validation")
+	if inspected, err := state.Inspect(root, resolver); err != nil || inspected.Mode != state.ModeInvalid {
+		t.Fatalf("fixture must fail full state validation: mode=%q err=%v", inspected.Mode, err)
 	}
 
 	payload := `{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}`

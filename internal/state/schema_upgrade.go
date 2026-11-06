@@ -86,9 +86,16 @@ func requireCurrentSchemaForDerivedRepair(ctx context.Context, s *Store) error {
 	return nil
 }
 
-// RequireCurrentSchema validates an existing mutable store without applying
-// migrations. Clean behind-schema state returns a typed upgrade requirement;
-// drift, corruption, and operational invariant failures remain invalid.
+// RequireCurrentSchema is the open check for ordinary commands. It validates an
+// existing store without applying migrations: clean behind-schema state returns
+// a typed upgrade requirement; schema drift and inconsistent project paths,
+// which decide where a write lands, remain invalid. The operational invariant
+// scans (SQLite integrity, journal parity, provenance) grow with the whole
+// database, so they run where damage must be caught instead: Inspect (status
+// and doctor), backups, schema upgrades, repairs and migrations. Ordinary
+// writes cannot worsen what they find: facts are append-only and written with
+// their projection in one transaction, foreign keys are enforced on write, and
+// SQLite refuses statements that touch a damaged page.
 func (s *Store) RequireCurrentSchema(ctx context.Context) error {
 	if s == nil || s.db == nil {
 		return fmt.Errorf("state database is invalid: store is nil")
@@ -110,15 +117,9 @@ func (s *Store) RequireCurrentSchema(ctx context.Context) error {
 	if _, err := s.ValidateCurrentSchema(ctx); err != nil {
 		return fmt.Errorf("state database is invalid: %w", err)
 	}
-	if _, valid, err := inspectOperationalInvariants(ctx, s, InspectOptions{}); err != nil {
-		return fmt.Errorf("state database is invalid: inspect operational invariants: %w", err)
-	} else if !valid {
-		return fmt.Errorf("state database is invalid: operational invariants failed")
+	if err := s.ValidateProjectPathInvariants(ctx); err != nil {
+		return fmt.Errorf("state database is invalid: %w", err)
 	}
-	// Journal-search parity is a derived-index invariant, not a schema or
-	// canonical-state invariant. Search and backup boundaries inspect it and
-	// refuse unsafe derived reads; ordinary journal/context operations remain
-	// available so canonical state can still be retrieved or repaired.
 	return nil
 }
 
@@ -362,6 +363,11 @@ func applySchemaUpgradeWithOps(ctx context.Context, root project.Root, resolver 
 	}
 	if err := store.RequireCurrentSchema(ctx); err != nil {
 		return result, fmt.Errorf("verify schema upgrade: %w", err)
+	}
+	if _, valid, err := inspectOperationalInvariants(ctx, store, InspectOptions{}); err != nil {
+		return result, fmt.Errorf("verify schema upgrade: inspect operational invariants: %w", err)
+	} else if !valid {
+		return result, fmt.Errorf("verify schema upgrade: operational invariants failed")
 	}
 	result.CurrentVersion = CurrentSchemaVersion()
 	result.SchemaVersion = CurrentSchemaVersion()

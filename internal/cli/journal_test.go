@@ -161,6 +161,59 @@ func TestJournalCommandsRefuseUnknownMovedCheckoutAndPreserveIdentity(t *testing
 	}
 }
 
+// Ordinary journal commands skip the database-wide integrity and parity scans,
+// which grow with the whole database, but still refuse when project identity
+// is inconsistent, because that decides which project a write lands in.
+func TestJournalCommandsSkipDatabaseWideScansButKeepIdentityChecks(t *testing.T) {
+	workingDir, _, resolver, status := newHookStateProject(t)
+	run := func(args ...string) (string, error) {
+		var out, errOut bytes.Buffer
+		err := (Runner{WorkingDir: workingDir, StateHome: resolver.StateHome, Stdout: &out, Stderr: &errOut}).Run(args)
+		return out.String() + errOut.String(), err
+	}
+	store, err := state.OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A journal origin without its entry fails the provenance scan.
+	if _, err := store.DB().Exec(`
+INSERT INTO journal_origins (journal_entry_id, project_id, envelope_version, capture_mechanism, created_at)
+VALUES ('missing-entry', ?, 1, 'test', '2026-11-01T00:00:00Z')`, status.ProjectID); err != nil {
+		t.Fatal(err)
+	}
+	store.Close()
+
+	if out, err := run("journal", "log", "discover(state): logged despite a provenance finding"); err != nil {
+		t.Fatalf("journal log error = %v\n%s", err, out)
+	}
+	if out, err := run("journal", "recent"); err != nil || !strings.Contains(out, "logged despite a provenance finding") {
+		t.Fatalf("journal recent error = %v\n%s", err, out)
+	}
+	out, err := run("state", "status", "--json")
+	if err != nil {
+		t.Fatalf("state status error = %v\n%s", err, out)
+	}
+	var inspected state.Status
+	if err := json.Unmarshal([]byte(out), &inspected); err != nil {
+		t.Fatalf("state status output: %v\n%s", err, out)
+	}
+	if inspected.Mode != state.ModeInvalid || !strings.Contains(out, "journal-provenance-invalid") {
+		t.Fatalf("state status must still report the provenance finding: mode=%q\n%s", inspected.Mode, out)
+	}
+
+	store, err = state.OpenStore(status.DatabasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.DB().Exec(`UPDATE projects SET current_path = '/elsewhere' WHERE id = ?`, status.ProjectID); err != nil {
+		t.Fatal(err)
+	}
+	store.Close()
+	if out, err := run("journal", "log", "discover(state): must not land"); err == nil {
+		t.Fatalf("journal log succeeded with inconsistent project paths:\n%s", out)
+	}
+}
+
 func TestParseJournalDeferArgsStrictContract(t *testing.T) {
 	base := []string{"intent", "--why", "why", "--boundary", "boundary", "--trigger", "trigger", "--operation-id", "operation"}
 	tests := []struct {
