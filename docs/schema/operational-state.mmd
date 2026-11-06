@@ -1,12 +1,16 @@
 erDiagram
-%% Guarded by TestSchemaDocumentationMirrorsExecutableMigration against the
-%% auto-applied baseline (migrations 0001-0009 and 0011).
+%% Selected compatibility view guarded by
+%% TestSchemaDocumentationMirrorsExecutableMigration. The check covers selected
+%% migration-declared tables/columns and explicit relationships, excluding the
+%% issue/work-contract/release foundation tables. SQL mirrors cover auto-applied
+%% migrations 0001-0009 and 0011-0028. This is not an exhaustive executed schema;
+%% see docs/schema/README.md for the check's scope.
 %%
-%% Journal-first end state (migration 0010, SPEC-056): migration 0010 is the
+%% Journal-first transformation (migration 0010): migration 0010 is the
 %% explicit, out-of-band journal-first transformation, deliberately excluded
 %% from the auto-applied set and run only via
-%% `loaf state migrate journal-first --apply`. After it is applied the shipped
-%% runtime differs from the baseline below by exactly this delta:
+%% `loaf state migrate journal-first --apply`. It changes the retained pre-0010
+%% session structures as follows:
 %%   - DROP TABLE sessions
 %%   - DROP TABLE session_state_snapshots
 %%   - journal_entries: drop the session_id FK column (harness_session_id, a

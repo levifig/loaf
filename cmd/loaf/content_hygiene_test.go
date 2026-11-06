@@ -359,25 +359,6 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 			},
 		},
 		{
-			rel: "docs/knowledge/task-system.md",
-			forbidden: []string{
-				"# Task System",
-				"Loaf implements a Shape Up-inspired task management system",
-				"## Pipeline",
-				"/shape → SPEC file",
-				"## Journal Model (SPEC-056)",
-				"One concern per task.",
-				"Loaf uses Change artifacts for new bounded work.",
-			},
-			required: []string{
-				"# Work Records and Compatibility",
-				"## Current Shared Work",
-				"New shared work lives only in the selected native tracker.",
-				"These surfaces preserve access to existing data",
-				"Migration never introduces background push/pull",
-			},
-		},
-		{
 			rel: "docs/ARCHITECTURE.md",
 			forbidden: []string{
 				"### Stateful Runtime Migration (ADR-014)",
@@ -392,7 +373,7 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"## Shipped and Pending Boundaries",
 				"## Loaf Flow",
 				"## Compatibility Names",
-				"entry point to owning architecture topics",
+				"reference for stable cross-cutting commitments",
 				"agreement is not proof of public or complete implementation",
 			},
 		},
@@ -413,6 +394,11 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"conversion pass",
 				"spec-conversion-and-guidance-sweep",
 				"CLAUDE.md",
+				"Loaf implements a Shape Up-inspired task management system",
+				"/shape → SPEC file",
+				"## Journal Model (SPEC-056)",
+				"One concern per task.",
+				"Loaf uses Change artifacts for new bounded work.",
 			},
 			required: []string{
 				"Shape new bounded work",
@@ -420,6 +406,9 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"canonical native tracker record",
 				"do not create a second shared work authority",
 				"compatibility commands",
+				"New shared work lives only in the selected native tracker.",
+				"These surfaces preserve access to existing data",
+				"Migration never introduces background push/pull",
 			},
 		},
 		{

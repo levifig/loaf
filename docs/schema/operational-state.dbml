@@ -1,16 +1,17 @@
-// Loaf operational state schema.
+// Selected Loaf compatibility-state schema view.
 // Source of truth: internal/state/migrations/*.sql.
 // This mirror is guarded by TestSchemaDocumentationMirrorsExecutableMigration,
-// which validates it against the auto-applied baseline (migrations 0001-0009
-// and 0011).
+// which checks selected migration-declared tables and columns, excluding the
+// issue/work-contract/release foundation tables. SQL mirrors cover auto-applied
+// migrations 0001-0009 and 0011-0028. This diagram is not an exhaustive executed
+// schema; see docs/schema/README.md for the check's scope.
 //
-// Journal-first end state (migration 0010, SPEC-056):
+// Journal-first transformation (migration 0010):
 //   Migration 0010 is the explicit, out-of-band journal-first transformation. It
 //   is deliberately excluded from the auto-applied set (SchemaMigrations()) and
 //   runs only via `loaf state migrate journal-first --apply`, so the guarded
-//   baseline below still carries the pre-0010 session structures. The tables and
-//   columns listed here as struck through by 0010 are the ONLY delta between this
-//   baseline and the shipped runtime after the migration has been applied:
+//   view below retains pre-0010 session structures for compatibility. The
+//   transformation changes those structures as follows:
 //     - DROP TABLE sessions
 //     - DROP TABLE session_state_snapshots
 //     - journal_entries: drop the session_id FK column (harness_session_id, a

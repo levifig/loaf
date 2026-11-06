@@ -1,3 +1,18 @@
+---
+topics:
+  - compatibility
+  - migrations
+  - recovery
+covers:
+  - internal/state/markdown_migration.go
+  - internal/state/markdown_import.go
+  - internal/state/markdown_import_decisions.go
+  - internal/state/markdown_import_status.go
+  - internal/state/markdown_import_decisions_test.go
+  - internal/state/markdown_reimport_regression_test.go
+last_reviewed: 2026-11-06
+---
+
 # Markdown Migration (`loaf migrate markdown`)
 
 ## Contents
@@ -9,9 +24,7 @@
 - Parity precondition
 - Discover live flags
 
-One-way import of legacy `.agents` Markdown into SQLite. Prefer
-`loaf migrate markdown --help` (or `loaf state migrate markdown --help`) for
-exact flags; this reference states the authority contract agents must respect.
+One-way import of legacy `.agents` Markdown into SQLite. Prefer `loaf migrate markdown --help` (or `loaf state migrate markdown --help`) for exact flags; this reference states the authority contract agents must respect.
 
 ## Commands
 
@@ -22,8 +35,7 @@ exact flags; this reference states the authority contract agents must respect.
 | Resume interrupted apply | `loaf migrate markdown --resume` (alias of apply) |
 | Machine-readable envelope | add `--json` |
 
-Top-level `loaf migrate markdown` and `loaf state migrate markdown` are the same
-native path.
+Top-level `loaf migrate markdown` and `loaf state migrate markdown` are the same native path.
 
 ## Dry-run mode discriminant
 
@@ -34,11 +46,7 @@ native path.
 | `simulation` | Database file exists and the project is registered | Unchanged (import runs on a disposable snapshot) | Present |
 | `inventory` | No database, or database without a registered project row | Untouched / may be absent | Absent |
 
-Inventory is an honestly labeled file-count preview. It does not detect origin
-collisions or status divergences; conflict detection requires an initialized
-SQLite project. Simulation runs the full apply pipeline against a verified
-throwaway snapshot (`VACUUM INTO` primitive with caller-owned cleanup — not the
-public `state.Backup` wrapper), then discards the snapshot.
+Inventory is an honestly labeled file-count preview. It does not detect origin collisions or status divergences; conflict detection requires an initialized SQLite project. Simulation runs the full apply pipeline against a verified throwaway snapshot (`VACUUM INTO` primitive with caller-owned cleanup — not the public `state.Backup` wrapper), then discards the snapshot.
 
 ## import_report fields
 
@@ -51,33 +59,19 @@ Present on simulation dry-run, apply, and resume. Absent on inventory dry-run.
 | Status divergences | `status_divergences` | Kept SQLite status disagreed with normalized incoming; includes `entity_kind`, `entity_id`, `stored_status`, `incoming_status` |
 | Outcome warnings | `warnings` | Status/provenance outcomes (e.g. out-of-vocabulary source status) |
 
-Plan-level `warnings` keep inventory I/O and parser warnings only. Do not
-conflate the two warning lists.
+Plan-level `warnings` keep inventory I/O and parser warnings only. Do not conflate the two warning lists.
 
 ## Origin collision semantics
 
-Apply never aborts because an origin already exists. An origin is reclaimed only
-when it is information-free above its paired journal row (full 0011-compatible
-fingerprint). Every other non-`migration` origin — `manual`, `skill`, `hook`,
-custom mechanisms, future envelopes, dirty or evidence-bearing `unknown` rows,
-and journal-copy mismatches — is skipped whole. The skipped list is the audit
-trail; there is no `--skip-conflicts` flag.
+Apply never aborts because an origin already exists. An origin is reclaimed only when it is information-free above its paired journal row (full 0011-compatible fingerprint). Every other non-`migration` origin — `manual`, `skill`, `hook`, custom mechanisms, future envelopes, dirty or evidence-bearing `unknown` rows, and journal-copy mismatches — is skipped whole. The skipped list is the audit trail; there is no `--skip-conflicts` flag.
 
 ## Status authority
 
-Stored `unknown` is never authoritative: a real normalized incoming status may
-fill it; any other stored status is insert-only and never overwritten. Archived
-cannot flip back through re-import. Absent or explicit `unknown` source status
-is no-opinion (no fill, no divergence). Out-of-vocabulary values warn and never
-fill a stored `unknown`.
+Stored `unknown` is never authoritative: a real normalized incoming status may fill it; any other stored status is insert-only and never overwritten. Archived cannot flip back through re-import. Absent or explicit `unknown` source status is no-opinion (no fill, no divergence). Out-of-vocabulary values warn and never fill a stored `unknown`.
 
 ## Parity precondition
 
-Simulation and apply report the same `import_report` only when the database and
-`.agents` tree are unchanged between the two commands. Loaf takes no
-cross-command lock; state that mutates between dry-run and apply can diverge.
-Inventory mode makes no parity claim — there is no apply outcome to compare
-until a registered project exists.
+Simulation and apply report the same `import_report` only when the database and `.agents` tree are unchanged between the two commands. Loaf takes no cross-command lock; state that mutates between dry-run and apply can diverge. Inventory mode makes no parity claim — there is no apply outcome to compare until a registered project exists.
 
 ## Discover live flags
 

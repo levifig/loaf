@@ -5,12 +5,16 @@ topics:
   - distribution
 covers:
   - internal/cli/build*.go
+  - internal/devtool/buildgo.go
+  - internal/devtool/release.go
+  - internal/devtool/verify.go
+  - internal/devtool/install.go
   - config/targets.yaml
   - config/hooks.yaml
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-09-29'
+last_reviewed: '2026-11-06'
 ---
 
 # Build System
@@ -21,7 +25,7 @@ Loaf packages shared skills, agents, and hooks for supported harnesses. [Skill P
 
 - **Shared intermediate.** Skills from `content/` compile to `dist/skills/`, including tracker-native Flow and provider sources, before each target reads the common content.
 - **Targets are additive.** Each target gets what it supports — Claude Code gets everything, while Codex gets skills plus its policy template and current-schema SessionStart context hook.
-- **Sidecars carry target-specific fields.** SKILL.md has standard fields only. `.claude-code.yaml`, `.opencode.yaml`, etc. carry extensions. Build merges them.
+- **Sidecars carry target-specific fields.** `SKILL.md` has standard fields only. `SKILL.claude-code.yaml`, `SKILL.opencode.yaml`, and other authorized target sidecars carry extensions. Build merges them.
 - **Shared templates distribute at build time.** `content/templates/` files (`journal.md`, `grilling.md`) are copied to specified skills via `shared-templates` in `targets.yaml`. Flow templates use the same shared-template mappings. Architecture templates live in the Architecture skill itself.
 - **No skill-prose substitution.** Target builders preserve common bodies and labeled harness sections. The shared intermediate may project template paths; executable integration artifacts may have install-time placeholders. Neither permits per-target rewriting of skill instructions.
 
@@ -44,7 +48,7 @@ Loaf packages shared skills, agents, and hooks for supported harnesses. [Skill P
 - **Claude Code** merges skill sidecars into the built frontmatter and ships content with bare PATH `loaf` hook commands, not a bundled binary or runtime-discovery shim. Hooks are registered in `hooks/hooks.json` because `plugin.json` silently drops non-matcher session events.
 - **OpenCode** generates commands from skills.
 - **OpenCode and Amp** generate JavaScript runtime plugins (`hooks.js` / `.amp/plugins/loaf.js`) that implement enforcement hooks via subprocess calls to `loaf check`. Amp's `loaf.js` retains ordinary hooks without selecting an implementation model or registering a delegation tool. Upgrades retire recognized historical `loaf-modes.ts` plugins while preserving foreign files.
-- **Codex** generates a current-schema `.codex/hooks.json` SessionStart matcher group because Codex `0.144.1` rejects Loaf's legacy flat hook projection; generated command and `commandWindows` fields are PATH `loaf journal context --from-hook --codex-hook`. POSIX installs omit the Windows variant; Windows installs keep both fields as that PATH form. Isolated `CODEX_HOME` startup on `darwin-arm64` is model-visible smoke-proven; global-home installation, resume, clear, compact, Windows runtime behavior, and completion remain separately unproven. The separately opted-in basic command policy renders one PATH `loaf` prefix per explicitly classified leaf and does not grant a bare `loaf` namespace, while body/file-consuming leaves and path-taking `change check` remain operator-gated. Other harness adapters are not implied.
+- **Codex** generates a current-schema `.codex/hooks.json` SessionStart matcher group because Codex `0.144.1` rejects Loaf's legacy flat hook projection; generated command and `commandWindows` fields are PATH `loaf journal context --from-hook --codex-hook`. POSIX installs omit the Windows variant; Windows installs keep both fields as that PATH form. Retained isolated `darwin-arm64` receipts document historical startup delivery; the [capability registry](../../config/target-capabilities.json) marks current-candidate model-visible startup delivery as pending. Global-home installation, other lifecycle modes, Windows runtime behavior, and completion remain separately unproven. The separately opted-in basic command policy renders one PATH `loaf` prefix per explicitly classified leaf and does not grant a bare `loaf` namespace, while body/file-consuming leaves and unclassified commands remain operator-gated. Other harness adapters are not implied.
 - **MCP servers** are not bundled. `loaf install` detects and recommends MCPs at install time; integration state stored in `.agents/loaf.json`.
 
 ### Adding a Target
@@ -75,5 +79,3 @@ Claude Code has a split registration model: `plugin.json` handles the plugin man
 
 - [skill-architecture.md](skill-architecture.md) — how skills are structured
 - [hook-system.md](hook-system.md) — how hooks are registered and distributed
-
-2026-09-24 01:53- Reviewed JavaScript adapter and Node 24 development-toolchain guidance.

@@ -1,17 +1,15 @@
 # Knowledge Base
 
-Loaf's domain knowledge — what agents need to understand about this project.
+Contributor guides and operating references for Loaf. Start with the [architecture overview](../ARCHITECTURE.md) for the system map; use these guides for authoring conventions, command selection, and maintenance procedures.
 
-| File | Topics | Covers |
-|------|--------|--------|
-| [build-system.md](build-system.md) | build, targets, distribution | `internal/cli/build*.go`, `config/targets.yaml`, `config/hooks.yaml` |
-| [glossary.md](glossary.md) | glossary | — |
-| [hook-system.md](hook-system.md) | hooks, lifecycle, validation | `config/hooks.yaml`, `internal/cli/check.go`, `content/hooks/**/*` |
-| [knowledge-management-design.md](knowledge-management-design.md) | knowledge, staleness, qmd | `internal/cli/kb.go`, `docs/knowledge/*.md` |
-| [loaf-flow.md](loaf-flow.md) | workflow, tracker-native Flow, rideable increments | tracker-native Flow skill sources and provider-neutral handoffs |
-| [skill-architecture.md](skill-architecture.md) | skills, agent-skills-standard, sidecars | `content/skills/**/*.md`, `content/skills/**/*.yaml`, `config/hooks.yaml` |
-| [task-system.md](task-system.md) | tracker work, local-record compatibility, journal | shipped local record commands and one-time migration guidance |
-| [work-model.md](work-model.md) | shared-work authority, Flow, implementation, release | tracker-native Flow and project-management skills |
-| [cloud-attach-walkthrough.md](cloud-attach-walkthrough.md) | shipped cloud attach compatibility, CI secrets | shipped cloud bootstrap and attach surfaces |
+| Guide | Use when |
+|-------|----------|
+| [Build System](build-system.md) | Building content, adding a target, or checking generated artifacts |
+| [Skill Architecture](skill-architecture.md) | Authoring skills, sidecars, references, templates, or profiles |
+| [Hook System](hook-system.md) | Adding deterministic checks or understanding target hook delivery |
+| [Knowledge Base Operations](knowledge-management-design.md) | Validating, reviewing, discovering, or importing project knowledge |
+| [Loaf Flow](loaf-flow.md) | Understanding work selection, work contracts, and the path to release |
+| [Glossary](glossary.md) | Looking up canonical project terminology |
+| [Cloud and CI Attach](cloud-attach-walkthrough.md) | Operating the shipped compatibility attach journey on ephemeral hosts |
 
-Start with the [architecture overview](../ARCHITECTURE.md) for current topics and their selected decision records.
+The generated [CLI reference](cli-reference.md) maps shipped command families. Its authored references cover [command routing and legacy records](cli-reference/command-routing.md), [configuration](cli-reference/configuration.md), [maintenance](cli-reference/maintenance.md), [Markdown migration](cli-reference/markdown-migration.md), and [troubleshooting and recovery](cli-reference/troubleshooting.md). Compatibility commands in that index do not select the workflow for new work.

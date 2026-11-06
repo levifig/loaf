@@ -4,13 +4,13 @@ description: >-
   Explains, evaluates, and maintains living, topic-based architecture and its
   rationale. Use when choosing system direction, evaluating a rare ADR, auditing
   documentation drift, or migrating an ADR corpus. Produces current architecture
-  docs and deliberately selected decision records, not work plans or tracker
-  identity.
+  docs grounded in code and tests, not work plans or tracker identity. Separate
+  decision records are exceptional and explicitly selected.
 ---
 
 # Architecture
 
-Maintain the current architectural model with memory of why it exists. The default unit of documentation is a topic that evolves. Rare, narrowly scoped ADRs preserve consequential choices when a separate record adds value.
+Maintain the current architectural model with memory of why it exists. Code and tests witness implemented choices; living architecture knowledge explains their rationale, alternatives, constraints, and gaps. Default to no separate ADR.
 
 ## Contents
 
@@ -38,7 +38,7 @@ Reuse explicit user choices and delegated authority. Ask only when an unresolved
 
 ### Maintain topics, not a decision catalogue
 
-The default home is `docs/architecture/<topic>.md`, with `docs/ARCHITECTURE.md` as a concise system map and navigation entry point. Respect an explicitly established equivalent layout. Use descriptive, stable topic slugs, not decision numbers, work IDs, or timestamps. Prefer updating an existing topic; create or split a file only when the subject needs its own explanation. A small project can remain a single overview until it needs deeper topics.
+The default home is `docs/architecture/<topic>.md`, with `docs/ARCHITECTURE.md` as a concise system map, navigation entry point, and reference for stable cross-cutting commitments that code alone cannot explain. These are parts of the knowledge base, not competing document systems. Keep detailed rationale in owning topics. Respect an explicitly established equivalent layout. Use descriptive, stable topic slugs, not decision numbers, work IDs, or timestamps. Prefer updating an existing topic; create or split a file only when the subject needs its own explanation. A small project can remain a single overview until it needs deeper topics.
 
 Keep substantive detail in one owning topic and link to it from the overview and related documents. When a decision has a separate ADR, keep its detailed decision rationale there; the topic states the current constraint and links to the record. Do not maintain duplicate explanations in topics, ADRs, and knowledge files, or convert every old ADR into a separately renamed topic.
 
@@ -54,13 +54,13 @@ Use [the topic template](templates/architecture-topic.md) as optional writing pr
 
 Do not invent alternatives, historical dates, approval, or evidence to fill a section. A glossary is supporting evidence, not higher authority; flag conflicts with current decisions rather than blocking on glossary maintenance.
 
-### Keep ADRs exceptional, not obsolete
+### Default to no separate ADR
 
 An ADR records one consequential choice, its original circumstances, the credible alternatives actually weighed, and the tradeoff deliberately accepted. Narrow scope means one decision, not necessarily small impact. A subsystem description, routine implementation update, workflow convention, or release is not itself a reason for an ADR.
 
-Keep rationale in the topic unless separate review and preservation of a particular commitment materially help future work. Consider non-obvious tradeoffs, costly reversal or divergence, and significant authority, security, interoperability, or runtime commitments. These are judgment prompts, not a Boolean gate or quota. An early foundational choice can merit a record; a mature project still makes many changes that do not. Maturity does not prescribe frequency or ceremony.
+Keep rationale in the topic and concise stable commitments in the overview unless a separate record materially helps future work. Non-obvious tradeoffs, costly reversal, and significant authority, security, interoperability, or runtime commitments may warrant preservation, but do not themselves require an ADR. Prefer a minimal retrospective record after implementation is confirmed, linked to its code and tests. An earlier record remains possible when explicitly selected or required by the repository's convention; distinguish agreement from pending implementation. Maturity does not prescribe frequency or ceremony.
 
-Propose a record when warranted, explaining why the topic's rationale is insufficient. Create it only when the user selects that proposal, explicitly requests the ADR, or repository instructions authorize that scoped authoring. Do not ask again merely to ratify an already explicit request. Choosing a document format never supplies approval for an unresolved architectural choice.
+Propose a record only when warranted, explaining why code, tests, the overview, and the topic are insufficient. Create it only when the user selects that proposal, explicitly requests the ADR, or repository instructions authorize that scoped authoring. Keep it to the choice and context that earn a separate home. Do not ask again merely to ratify an already explicit request. Choosing a document format never supplies approval for an unresolved architectural choice.
 
 Start agent retrieval from the current topic, then follow relevant decision links. Easy generation is not evidence that another record is useful. Check applicability and implementation evidence; do not reopen settled debate, resurrect obsolete constraints, or treat an Accepted label as proof of delivery. See [Decision Records](references/decision-records.md) for history and replacement rules.
 
@@ -70,7 +70,7 @@ Revise continuing topics in place. Git preserves previous wording; retain releva
 
 Do not impose ADR IDs, five-state lifecycles, mandatory frontmatter, or per-document revision ledgers on topics. Follow explicit repository metadata requirements; otherwise, dates and change summaries belong in Git and the project journal. Never mark a document reviewed without checking its content.
 
-Distinguish **implemented behaviour**, **agreed direction not yet implemented**, and **unresolved proposals**. Implementation gaps do not invalidate an agreed choice, and agreement does not prove delivery. Keep unchosen ideas in exploration or proposed work, not stated as the current architectural model. Bind constraints only to their actual applicability: a legacy format can remain supported without governing new authoring.
+Distinguish **implemented behaviour**, **agreed direction not yet implemented**, and **unresolved proposals**. Implementation gaps do not invalidate an agreed choice, and agreement does not prove delivery. Code drift identifies a gap; it does not authorize replacing an agreed constraint. Keep unchosen ideas in exploration or proposed work, not stated as the current architectural model. Bind constraints only to their actual applicability: a legacy format can remain supported without governing new authoring.
 
 ### Review affected surfaces when architecture changes
 
@@ -89,7 +89,7 @@ No new runtime, registry, or automated drift checker is implied. Perform a scope
 
 | Material | Destination |
 |----------|-------------|
-| Current system map | Architecture overview, linking to owning topics |
+| Current system map or concise stable cross-cutting commitment | Architecture overview, linking to owning topics for detailed rationale |
 | Architectural model, constraint, or significant choice with lasting rationale | Existing architecture topic; create one only when needed |
 | Shared implementation scope, sequencing, completion criteria, hierarchy, or status | Provider-neutral shaping workflow and the selected native tracker through its harness-owned connection |
 | Technical design useful to implementers | Existing design/reference home, linked from the native work record when useful; never a second work identity |
@@ -100,7 +100,7 @@ No new runtime, registry, or automated drift checker is implied. Perform a scope
 
 ### Preserve invariants while relocating detail
 
-Keep current invariants and applicability in the owning topic, with durable rationale, tradeoffs, and consequences there or in its linked exceptional ADR. Put exact schemas, codecs, algorithms, limits, fixtures, incident narratives, and migration steps beside their implementation or in an existing technical reference. Before removing detail, identify its destination, preserve a truthful link, and verify that no security, storage, recovery, or compatibility guarantee disappears.
+Keep each invariant and its applicability in one owning architecture home: the overview for a concise cross-cutting commitment, or a topic for a domain constraint. Link rather than restating it elsewhere; detailed rationale, tradeoffs, and consequences belong in the topic or its explicitly selected exceptional ADR. Put exact schemas, codecs, algorithms, limits, fixtures, incident narratives, and migration steps beside their implementation or in an existing technical reference. Before removing detail, identify its destination, preserve a truthful link, and verify that no security, storage, recovery, or compatibility guarantee disappears.
 
 Use product or domain names in maintained prose. Treat identifiers embedded in code paths, stored schemas, serialized bytes, key derivation, signatures, authentication transcripts, or supported archives as compatibility contracts. An editorial rename never authorizes changing them.
 
@@ -111,7 +111,8 @@ Use product or domain names in maintained prose. Treat identifiers embedded in c
 - Topics describe the current model and relevant rationale, tradeoffs, alternatives, constraints, and applicability without duplicated authority.
 - Implemented behaviour, agreed pending direction, and unresolved proposals are distinguished; no approval or implementation evidence was invented.
 - A material change includes an affected-surface review and explicit remaining gaps; follow-up work did not exceed authorization.
-- Any new ADR was deliberately authorized, captures one consequential choice, and adds value beyond the topic's rationale; topics gained no mandatory ADR numbering, metadata, or revision ledger.
+- The overview's stable commitments and topics' detailed explanations have clear ownership and links. Code evidence did not silently replace an agreed constraint.
+- Any new ADR was explicitly selected, minimal, normally retrospective after confirmed implementation, and useful beyond code, tests, and architecture knowledge; earlier records state implementation gaps honestly. Topics gained no mandatory ADR numbering, metadata, or revision ledger.
 - Current topic applicability and linked ADR history agree; original decision context was not silently rewritten into a different choice.
 - Shared work routes only to the selected native tracker through the provider-neutral workflow; no local mirror or synchronization record was created.
 - Schema, wire, cryptographic, credential, archive, and source-path identifiers were preserved unless separately inventoried and migrated.
@@ -126,7 +127,7 @@ Use product or domain names in maintained prose. Treat identifiers embedded in c
 | Useful architectural learning | Integrate into the owning topic; do not create a decision event |
 | Agreed direction is not implemented | State the gap separately from shipped behaviour |
 | Existing ADR corpus | Read applicable constraints; migrate only when requested |
-| Consequential choice may need a separate record | Evaluate the exceptional ADR mode; propose only when it adds value |
+| Consequential choice needs lasting explanation | Update the overview or owning topic; consider a minimal retrospective ADR only when separately valuable and explicitly selected |
 | Explicit ADR convention or request | Use scoped decision-record guidance and the repository's actual format |
 
 ## Journal Commands
