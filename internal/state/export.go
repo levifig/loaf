@@ -156,6 +156,7 @@ var exportAllTables = []exportTable{
 	{Name: "sources", OrderBy: "id", FilterColumn: "project_id"},
 	{Name: "backend_mappings", OrderBy: "id", FilterColumn: "project_id"},
 	{Name: "hook_events", OrderBy: "id", FilterColumn: "project_id"},
+	{Name: "hook_gateway_counts", OrderBy: "month, hook_id, tool_name, decision, reason_class, observed_harness, observed_harness_version", FilterColumn: "project_id"},
 	{Name: "exports", OrderBy: "id", FilterColumn: "project_id"},
 	{Name: "intents", OrderBy: "id", FilterColumn: "project_id"},
 	{Name: "intent_snapshots", OrderBy: "id", FilterColumn: "project_id"},

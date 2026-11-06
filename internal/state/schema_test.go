@@ -31,6 +31,7 @@ var requiredInitialTables = []string{
 	"sources",
 	"backend_mappings",
 	"hook_events",
+	"hook_gateway_counts",
 	"exports",
 	"session_state_snapshots",
 	"artifact_bodies",
@@ -111,11 +112,11 @@ var userScopedTables = map[string]bool{
 
 func TestSchemaMigrationsAreOrderedAndChecksummed(t *testing.T) {
 	migrations := SchemaMigrations()
-	if len(migrations) != 26 {
-		t.Fatalf("len(SchemaMigrations()) = %d, want 26", len(migrations))
+	if len(migrations) != 27 {
+		t.Fatalf("len(SchemaMigrations()) = %d, want 27", len(migrations))
 	}
 
-	wantVersions := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27}
+	wantVersions := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28}
 	for i, migration := range migrations {
 		if migration.Version != wantVersions[i] {
 			t.Fatalf("migration[%d].Version = %d, want %d", i, migration.Version, wantVersions[i])
@@ -244,7 +245,7 @@ func TestOperationalTablesHaveStableIDsAndTimestamps(t *testing.T) {
 	}
 	sql := currentSchemaSQL()
 	for _, table := range requiredInitialTables {
-		if table == "schema_migrations" || table == "project_conf_labels" || table == "project_attachment_evidence" || table == "journal_origins" || table == "journal_deferrals" || table == "intent_operations" || table == "release_members" || table == "facts" || table == "fact_env_clocks" || table == "sync_outbound_queue" || table == "sync_project_cursors" || table == "fact_replay_discrepancies" {
+		if table == "schema_migrations" || table == "project_conf_labels" || table == "project_attachment_evidence" || table == "journal_origins" || table == "journal_deferrals" || table == "intent_operations" || table == "release_members" || table == "facts" || table == "fact_env_clocks" || table == "sync_outbound_queue" || table == "sync_project_cursors" || table == "fact_replay_discrepancies" || table == "hook_gateway_counts" {
 			continue
 		}
 		body := tableBody(t, sql, table)
@@ -473,6 +474,10 @@ func TestSchemaDocumentationMirrorsExecutableMigration(t *testing.T) {
 	if sqlDoc != SchemaMigrations()[25].SQL {
 		t.Fatal("docs/schema/0027_exploration_observations.sql must match embedded migration 0027 exactly")
 	}
+	sqlDoc = readRepoFile(t, "docs", "schema", "0028_hook_gateway_counts.sql")
+	if sqlDoc != SchemaMigrations()[26].SQL {
+		t.Fatal("docs/schema/0028_hook_gateway_counts.sql must match embedded migration 0028 exactly")
+	}
 
 	dbmlDoc := readRepoFile(t, "docs", "schema", "operational-state.dbml")
 	mermaidDoc := readRepoFile(t, "docs", "schema", "operational-state.mmd")
@@ -531,6 +536,7 @@ func TestSchemaDocumentationMirrorsExecutableMigration(t *testing.T) {
 		"projects ||--o{ fact_replay_discrepancies : scopes",
 		"projects ||--o{ handoffs : scopes",
 		"projects ||--o{ hook_events : scopes",
+		"projects ||--o{ hook_gateway_counts : scopes",
 		"projects ||--o{ ideas : scopes",
 		"projects ||--o{ intent_deferrals : scopes",
 		"projects ||--o{ intent_dispositions : scopes",

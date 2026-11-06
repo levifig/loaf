@@ -446,7 +446,6 @@ Table hook_events {
   observed_harness_version text
   indexes {
     (project_id, hook_id, hook_phase)
-    (project_id, created_at, observed_harness, decision)
   }
 }
 
@@ -784,5 +783,21 @@ Table fact_replay_discrepancies {
   logged_at text [not null]
   indexes {
     (project_id, entity_kind, entity_id)
+  }
+}
+
+// Pre-tool gateway outcomes counted per UTC month (migration 0028). Machine-local.
+Table hook_gateway_counts {
+  project_id text [not null, ref: > projects.id]
+  month text [not null]
+  hook_id text [not null]
+  tool_name text [not null]
+  decision text [not null]
+  reason_class text [not null]
+  observed_harness text [not null]
+  observed_harness_version text [not null]
+  count integer [not null]
+  indexes {
+    (project_id, month, hook_id, tool_name, decision, reason_class, observed_harness, observed_harness_version) [pk]
   }
 }

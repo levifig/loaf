@@ -114,7 +114,7 @@ hooks:
 
 Native enforcement and workflow checks run via `loaf check --hook <id>` in `internal/cli/check.go`:
 
-Each pre-tool evaluation records a content-free local observation when the project has initialized current-schema SQLite state. The observation stores the hook ID, a normalized tool name, allow/warn/block, a bounded reason class, and observed harness/version. It never stores tool arguments, file content, or the check's diagnostic text. `loaf telemetry status [--json]` reports counts by project, harness, outcome, and reason class since the start of the current UTC month. Recording failure does not change the check's decision.
+Each pre-tool evaluation counts a content-free local observation when the project has initialized current-schema SQLite state. Counts are kept per UTC month for each hook ID, normalized tool name, allow/warn/block outcome, bounded reason class, and observed harness/version, so storage stays bounded however many tool calls run. They never include tool arguments, file content, or the check's diagnostic text. Recording checks only that the schema migrations are current, not the full operational invariants, and waits at most 100 ms for another writer, because hooks run on every tool call: those scans grow with the database, and a longer wait would stall the tool call. `loaf telemetry status [--json]` reports counts by project, harness, outcome, and reason class for the current UTC month. Recording failure does not change the check's decision.
 
 | Hook | Skill | Matcher | Blocking | What It Does |
 |------|-------|---------|:--------:|-------------|
