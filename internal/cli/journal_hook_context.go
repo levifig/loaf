@@ -136,6 +136,9 @@ func (r Runner) evaluateJournalHookContext(ctx context.Context, runtime state.Ru
 		}
 	}
 	stateOptions := state.JournalContextOptions{Branch: options.branch}
+	if r.Now != nil {
+		stateOptions.Now = r.Now()
+	}
 	if changeSourceErr == nil {
 		stateOptions.LineageKeys = changeSource.LineageKeys
 	}
