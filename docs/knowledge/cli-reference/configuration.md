@@ -1,7 +1,19 @@
+---
+topics:
+  - configuration
+  - installation
+  - trackers
+covers:
+  - internal/cli/config.go
+  - internal/cli/github_account.go
+  - internal/cli/install_codex_rules.go
+  - internal/cli/install_fenced.go
+last_reviewed: 2026-11-06
+---
+
 # Configuration Maintenance
 
-The guided answer to "is this project's Loaf config current, and what fixes it?"
-Work top to bottom; stop when the checks pass.
+The guided answer to "is this project's Loaf config current, and what fixes it?" Work top to bottom; stop when the checks pass.
 
 ## Diagnose first
 
@@ -17,31 +29,22 @@ When GitHub is selected, finish the existing diagnostic ceremony through the [Gi
 
 These are decisions, not defaults. The CLI cannot guess them — ask, then record:
 
-- **GitHub account** — `integrations.github.account`, the login the project's `gh`
-  commands must run as. The `github-account` enforcement hook checks it against
-  `gh auth status`; a mismatch tells the user to run `gh auth switch`.
+- **GitHub account** — `integrations.github.account`, the login the project's `gh` commands must run as. The `github-account` enforcement hook reads the active `github.com` account, runs `gh auth switch --hostname github.com --user <configured-account>` on a mismatch, and verifies the result before allowing resource commands. An unavailable CLI, failed status probe, or failed switch blocks the command with a diagnostic. Commands containing only `gh auth` administration bypass convergence; a compound command that also touches GitHub resources still converges. The switch changes `gh`'s shared active-account pointer, so concurrent projects can race; this hook does not provide per-command credential isolation.
 - **GitHub tracker and destination** — when the user selects GitHub as the canonical tracker, record `integrations.github.tracker: true`, `integrations.github.repository` (`owner/name`), and `integrations.github.project_id` (the exact opaque Projects v2 global node ID). Account-only settings, `enabled`, a legacy board title, a Git remote, or `issue.authority` do not elect GitHub. IDs are opaque: local syntax validation cannot establish object type, existence, or access. Read the current title live for display; never store title, lane, or access snapshots as routing identity. There is no CLI setter; edit narrowly after the project-owned choice is confirmed, rerun `loaf config check --json`, and complete the connected diagnosis above.
 - **Legacy issue identity (migration compatibility only)** — historical `issue.authority` (`local`, `linear`, or `github`) and `issue.prefix` belong to frozen local issue commands; they do not elect the current native tracker. The prefix is the local alias token (`VCAM`) or the historical Linear team key (`ENG`). `loaf issue identity --prefix` / `--authority` remains a compatibility setter, and `--fix` never invents these fields on an existing file. Preserve leftover local rows until an explicitly authorized migration; do not use these commands as ongoing work authority or synchronization.
 - **Integration routing** — preserve provider-specific `integrations.*` toggles and opaque fields; they do not elect GitHub. When Linear is active, record the exact server exposed by the harness as `integrations.linear.mcp_server_name`. The Linear or bootstrap skill records this project-owned value; Loaf does not install or authenticate the connection.
 - **Which harnesses to install** — the targets passed to `loaf install --to <target>`
   (or `--to all`).
 - **Codex basic command policy** — `loaf install --to codex --codex-basic-commands` explicitly installs PATH `loaf` managed command rules for the centrally classified basic Loaf leaves, including hardened journal logging and approved readers, outside the workspace sandbox. Each rule keeps the subcommand prefix; the policy does not grant a bare `loaf` namespace or a writable Loaf data-directory root. Global `AGENTS.md` remains user-owned: no guidance block is installed or required. Upgrades remove only unchanged recorded legacy blocks in regular files; edited blocks, absent blocks, and symlinks are preserved and never block independent rule updates. Ownership records for preserved legacy guidance are retained, not treated as a requirement to recreate it. Unclassified and operator commands remain gated. Do not enable it implicitly.
-- **Codex lifecycle hooks** — Codex `0.144.1` rejects Loaf's legacy flat hook schema. Loaf installs a current-schema `SessionStart` matcher group whose command is PATH `loaf journal context --from-hook --codex-hook`; POSIX installs omit the Windows variant, while Windows installs keep both command fields as that PATH form. Startup is model-visible proven only for the isolated `darwin-arm64` smoke; other lifecycle modes and automatic completion remain gated, and skill/project instructions plus explicit CLI retrieval remain the fallback.
+- **Codex lifecycle hooks** — Codex `0.144.1` rejects Loaf's legacy flat hook schema. Loaf installs a current-schema `SessionStart` matcher group whose command is PATH `loaf journal context --from-hook --codex-hook`; POSIX installs omit the Windows variant, while Windows installs keep both command fields as that PATH form. Retained isolated `darwin-arm64` receipts describe historical startup delivery. The [capability registry](../../../config/target-capabilities.json) marks a fresh model-visible startup receipt for the current candidate as pending; other lifecycle modes and automatic completion also remain unproven. Skill/project instructions and explicit CLI retrieval remain the fallback.
 
 ## Hand-edit only where no setter exists
 
-Some fields (for example `integrations.github.account`) have no CLI setter. Edit
-`.agents/loaf.json` narrowly for those, leave everything else to the CLI, and
-immediately re-validate with `loaf config check --json`. Never hand-edit
-Loaf-managed hook files — regenerate them through `loaf build` and `loaf install`.
+Some fields (for example `integrations.github.account`) have no CLI setter. Edit `.agents/loaf.json` narrowly for those, leave everything else to the CLI, and immediately re-validate with `loaf config check --json`. Refresh existing managed hook content through the [maintenance protocol](maintenance.md); source contributors rebuild changed hook definitions before applying them. Onboarding with `loaf install` is a separate operation.
 
 ## Refresh installed targets
 
-`loaf upgrade` updates already-installed targets and applies deprecation-manifest cleanup (removing retired skills and targets). Run it after config or skill changes so installed harnesses match the source. It is safe to run from anywhere: project surfaces are refreshed only inside a detected Loaf repo, and `--to <target>` narrows the sync to one already-installed target. Cursor, OpenCode, Amp, Claude Code, and Codex generated hook commands stay `loaf …` on PATH; scoped `--select` fails closed if that PATH binary is missing or lacks required `loaf check --hook` or standalone `loaf check` commands, and does not publish `{XDG_DATA_HOME}/loaf/pinned/loaf`. Codex basic-command policy upgrades rewrite unmodified managed rules from an absolute pin to PATH `loaf` plus the same classified prefixes, and preserve modified or foreign policy.
-
-`loaf install` is for onboarding — deploying Loaf into a folder that does not have it, or adding a harness that is not installed yet. Inside a Loaf repo it no-ops the project part and points at `loaf upgrade`.
-
-If the Codex Auto-journal rule was previously enabled, upgrade refreshes it only while the installed body still matches Loaf's recorded digest. Unowned or locally modified rule files are preserved and reported as conflicts.
+Use `loaf upgrade --dry-run --json` to inspect existing-target changes, conflicts, and consent requirements, then follow [Config-Aware Loaf Maintenance](maintenance.md) for scoped apply and verification. Upgrade reads the running executable's distribution; rebuilding a checkout alone does not select that checkout as the installed runtime. The maintenance reference owns install-versus-upgrade behavior, PATH capability checks, and preservation of modified or foreign policy.
 
 ## Confirm project alignment
 
@@ -49,5 +52,4 @@ If the Codex Auto-journal rule was previously enabled, upgrade refreshes it only
 
 ## Record the decisions
 
-Log the project-owned choices you settled with the user:
-`loaf journal log "decision(config): ..."`.
+Log the project-owned choices you settled with the user: `loaf journal log "decision(config): ..."`.

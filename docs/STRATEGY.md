@@ -77,7 +77,7 @@ The accepted private-continuity and synchronization architecture has pre-cutover
 - Resolve the [configuration proposal](architecture/managed-installation.md#unresolved-configuration-proposal), including input categories, precedence, and identity binding.
 - Define the supported installer bootstrap, artifact verification, upgrade-owner, and rollback behavior in [Runtime and Delivery](architecture/runtime-and-delivery.md#native-delivery-direction-and-gaps).
 - Refine major-zero minor-versus-patch release judgment and the eventual `1.0.0` readiness bar under [version identity](architecture/runtime-and-delivery.md#version-identity).
-- Complete the private-continuity migration scope, isolated restore rehearsal, quiesced activation, and post-activation verification.
+- Complete tracker reconciliation and the final all-project private-continuity rehearsal, quiesced activation, and post-activation verification; supported-domain and retired-record archive coverage is implemented.
 - Validate protocol performance limits, recovery ergonomics, key lifecycle behavior, and deletion compatibility without weakening the closed fact model.
 
-The [architecture overview](ARCHITECTURE.md) links owning topics for the current model, rationale, and implementation boundaries, plus deliberately retained narrow decision records.
+The [architecture overview](ARCHITECTURE.md) links owning topics for the current model, rationale, and implementation boundaries.

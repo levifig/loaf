@@ -2,7 +2,7 @@
 
 Loaf is a portable operating framework for agent-assisted software work. It packages methods, skills, templates, profiles, hooks, and deterministic local services for several harnesses while leaving shared work and service credentials with their proper authorities.
 
-This document is the current system map and entry point to owning architecture topics. It distinguishes the shipped system from agreed architecture still being integrated; agreement is not proof of public or complete implementation. Topics own the evolving model and link to deliberately retained narrow decisions where their separate context is useful.
+This document is the current system map, navigation entry point, and reference for stable cross-cutting commitments that code alone cannot explain. Together with its owning topics, it forms the architecture part of Loaf's knowledge base. It distinguishes the shipped system from agreed architecture still being integrated; agreement is not proof of public or complete implementation. Code and tests witness implemented choices; topics explain detailed rationale, alternatives, domain constraints, and remaining gaps.
 
 ## Contents
 
@@ -16,7 +16,7 @@ This document is the current system map and entry point to owning architecture t
 - Build and Distribution
 - Managed Installation
 - Compatibility Names
-- Decision Records
+- Architecture Evidence
 
 ## Authority Model
 
@@ -51,10 +51,10 @@ The [Skill Portability](architecture/skill-portability.md) topic owns shared aut
 | Area | Verified current state | Accepted direction or remaining gap |
 |------|------------------------|-------------------------------------|
 | Runtime | Public CLI, development launcher, build, and packaging tooling are Go; Node remains for harness capability runners | Go remains the sole product runtime |
-| Distribution | Native archive/checksum packaging, curl installer, Homebrew tooling, and Claude onboarding are implemented; native binaries are untracked | Cross-platform live delivery, signature verification, runtime compatibility, and rollback require operator evidence; harness runtime invocations must use user-managed PATH |
+| Distribution | Native archive/checksum packaging, curl installer, Homebrew tooling, and Claude onboarding are implemented; native binaries are untracked | Cross-platform live delivery, signature verification, runtime compatibility, and rollback require operator evidence; ordinary harness invocations use user-managed PATH, with the explicit [pinned Amp Orb consumer exception](architecture/runtime-and-delivery.md#native-delivery-direction-and-gaps) |
 | Shared work | Generated installed Flow content is tracker-native; shipped local work commands still exist | Native tracker is the sole shared-work authority; local commands remain one-time migration compatibility only |
 | Private continuity | Shipped journal and local record stores exist; pre-cutover fact persistence and tests exist under `vnext/` | Cut over the full private-continuity domain without changing stored compatibility identifiers |
-| Migration | Compatibility importers and a partial, non-activating destination rehearsal exist | Cover every supported private record, rehearse restore in isolation, activate only while quiesced, and verify after activation |
+| Migration | Compatibility importers and isolated destination rehearsal cover every supported private-continuity domain, with exact retired-record recovery archives; rehearsal cannot activate the destination | Complete tracker reconciliation and the final all-project rehearsal, activate only while quiesced, and verify after activation |
 | Private sync | Shipped sync code exists; destination protocol, crypto, relay, coordinator, and vectors exist under `vnext/` | No public destination attach, network sync, or serve journey yet; adversarial review and operator recovery journeys remain required |
 
 This table prevents architecture prose from treating accepted decisions as completed delivery.
@@ -87,7 +87,7 @@ Progress should be delivered as rideable increments: end-to-end operator journey
 
 ## Build and Distribution
 
-[Runtime and Delivery](architecture/runtime-and-delivery.md) owns the Go runtime boundary, verified native delivery direction, version identity, and current gaps. It links the deliberately retained Go-language and verify-only CI decisions. [Skill Portability](architecture/skill-portability.md) owns content packaging across harness targets.
+[Runtime and Delivery](architecture/runtime-and-delivery.md) owns the Go runtime boundary, verified native delivery direction, version identity, and current gaps. It preserves the Go-language rationale and the branch-protection history behind verify-only CI. [Skill Portability](architecture/skill-portability.md) owns content packaging across harness targets.
 
 ## Managed Installation
 
@@ -97,8 +97,8 @@ Progress should be delivered as rideable increments: end-to-end operator journey
 
 The label `vnext` still appears in source paths, package paths, schema lines, archive or digest constants, tests, and generated compatibility content. Those literals may be stored or signed protocol inputs. Product-facing prose calls the product Loaf, but implementation cleanup must not rename compatibility bytes without an explicit migration and vector update.
 
-Migrated or retired ADR files need not remain as pointers: Git preserves their history, while maintained references point to the current owning topic. Historical links can be resolved against the Git revision that contained the record.
+## Architecture Evidence
 
-## Decision Records
+Read this overview's stable commitments and owning topics with their linked code and tests. Keep concise cross-cutting choices here when they need a lasting reference, and detailed rationale in the owning topic. Link rather than restating the same constraint in multiple homes. Implementation gaps do not authorize replacing an agreed commitment. Exact schemas, protocol constants, command syntax, and test vectors live beside code; shared work scope and status belong in the tracker.
 
-Read current topics first, then follow relevant decision links. The [decision index](decisions/README.md) lists the retained Go-runtime and verify-only CI choices. Their detailed alternatives and decision context remain there; the owning topic carries current implementation and delivery context. New records remain rare and deliberate, not an automatic result of architectural work. Exact schemas, protocol constants, command syntax, and test vectors live beside code; shared work scope and status belong in the tracker.
+Repository policy defaults to no separate ADR. An exceptional record must be explicitly selected, minimal, normally retrospective after implementation is confirmed, and useful beyond the code, tests, and owning topic. The former Go-runtime and verify-only CI records have been folded into [Runtime and Delivery](architecture/runtime-and-delivery.md). Git preserves their original context and prior applicability; maintained references point to the current topic, and historical links can be resolved against the revision that contained the record.

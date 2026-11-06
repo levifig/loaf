@@ -1,10 +1,10 @@
 # Exceptional Architecture Decision Records
 
-Topics explain the current architecture. An ADR preserves one consequential choice and the context that made it reasonable. ADRs are an intentional option, not obsolete artifacts or a required accompaniment to each topic. The Architecture skill owns the selection and authorization rules.
+Code and tests witness implementation; architecture knowledge explains intent and tradeoffs. Default to no ADR. A minimal, explicitly selected ADR can preserve one consequential choice when code, tests, the overview's stable commitments, and the owning topic are insufficient. Normally record it retrospectively after implementation is confirmed. An earlier record remains possible under an explicit request or repository convention, with pending implementation stated honestly. The Architecture skill owns the selection and authorization rules.
 
 ## Scope a single choice
 
-Name the decision, not the subsystem: “Keep the relay outside the plaintext trust boundary” is a candidate; “Private synchronization” is a topic. Broad impact can justify a narrowly scoped record, but significance alone does not make a separate artifact useful. Explain what would be lost if the rationale remained only in the topic.
+Name the decision, not the subsystem: “Keep the relay outside the plaintext trust boundary” is a candidate; “Private synchronization” is a topic. Broad impact can justify a narrowly scoped record, but significance alone does not make a separate artifact useful. Explain what would be lost if the commitment remained in the overview and its rationale in the topic.
 
 Preserve the actual forces, alternatives, chosen tradeoff, consequences, and applicability. Do not invent an option comparison after the fact to dignify implementation history. When reconstructing an earlier choice, distinguish the recording date from the known decision date and label inferred reasoning. Keep exact protocols, algorithms, schemas, test vectors, and implementation plans in their existing homes.
 

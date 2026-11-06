@@ -57,7 +57,7 @@ export LOAF_DB="$(mktemp -d)/loaf.sqlite"
 - **Hooks:** read [Hook System](docs/knowledge/hook-system.md). Maintained deterministic behavior goes in the native CLI with regression tests, registered in `config/hooks.yaml` with `skill:` naming its owner. Never add new Bash/Python hook helpers.
 - **Build targets or output:** read [Build System](docs/knowledge/build-system.md).
 - **Journal or continuity behavior:** read [Private Continuity](docs/architecture/private-continuity.md) and the [journal template](content/templates/journal.md).
-- **Architecture:** keep current design, constraints, and rationale in `docs/architecture/` topics. Git retains superseded text, so do not keep obsolete ADRs as a competing description of current design; use a separate decision record only for an exceptional, narrow commitment. The architecture skill owns this policy.
+- **Architecture:** code and tests witness implemented choices; `docs/ARCHITECTURE.md` carries the system map, navigation, and concise stable commitments that code alone cannot explain. Owning `docs/architecture/` topics carry detailed rationale, alternatives, domain constraints, and any agreed but unimplemented direction. Link rather than duplicating authority; code drift does not authorize replacing an agreed constraint. Default to no separate ADR. An exceptional ADR must be explicitly selected, minimal, normally retrospective after implementation is confirmed, and add value beyond code, tests, and architecture knowledge. Git preserves superseded documentation. Apply the architecture skill within this repository policy.
 
 ## Project Rules
 

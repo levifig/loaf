@@ -4,7 +4,9 @@
 
 Go implements Loaf-owned deterministic operations: command dispatch, project identity, persistent state, migrations, diagnostics, filesystem safety, content builds, and recovery. Skills guide judgment; the runtime does not own shared tracker work or provider credentials. [Authority Boundaries](authority-boundaries.md) defines those responsibilities.
 
-[The Go runtime decision](../decisions/ADR-014-go-for-stateful-runtime.md) preserves the language choice and its TypeScript and Rust alternatives. A single native command gives hooks and users the same implementation. This retains the useful direction of the earlier unified-CLI proposal without adopting its local-task authority, TUI, GUI, or speculative product scope. Fragmented shell and language-specific scripts are not independent product entrypoints; future interfaces require separate evidence and design.
+A single native command gives hooks and users the same implementation, with typed packages and tests for persistent and recovery-sensitive operations. Go was chosen for a stable native runtime, a bounded dependency surface, and cross-platform packaging. Retaining TypeScript with built-in or third-party SQLite would have kept one language but tied stateful product execution to Node and its packaging surface. Rust offered strong low-level guarantees at greater implementation complexity than Loaf's CLI and state model required. Native artifacts still require a supported cross-platform build, signing, and distribution pipeline; SQLite and other third-party runtime dependencies require deliberate review.
+
+This retains the useful direction of the earlier unified-CLI proposal without adopting its local-task authority, TUI, GUI, or speculative product scope. Fragmented shell and language-specific scripts are not independent product entrypoints; future interfaces require separate evidence and design. JavaScript may remain development and packaging tooling where useful without becoming a peer product runtime.
 
 The public runtime, development launcher, build, release, and packaging tools are Go. The [Makefile](../../Makefile) delegates to [`cmd/loafdev`](../../cmd/loafdev/) and [`internal/devtool`](../../internal/devtool/). `package.json` remains distribution metadata, not an npm execution surface. Node 24+ remains for harness capability runners and emitted JavaScript adapter syntax checks, not for running or installing Loaf. Development gates do not require npm packages or `tsc`.
 
@@ -38,6 +40,8 @@ Compatibility depends on required behavior, not exact version identity. Check th
 
 Use deterministic regression and package tests by default. Scope live smokes to materially changed adapters or protocols, newly supported boundaries, or suspected regressions. A routine harness update, unrelated CLI change, or new build stamp does not by itself require a full live-harness matrix. Versions and binary hashes remain useful historical provenance, not an evergreen support whitelist. This does not relax archive integrity, signature, ownership-digest, or rollback checks.
 
+New `--json` flags for state, project, or migration commands must join the control-plane success/failure matrix in the [CLI tests](../../internal/cli/cli_test.go), or document why they fall outside it.
+
 Verification is local first. Before review and tagging, `make verify-local` runs uncached full Go tests, compile and vet checks, a CGO-free build, every deterministic adapter runner test, and a complete generated-content build with JavaScript syntax validation and durable render checks. Node 24+ is the development baseline; npm and `tsc` are not required. Syntax checks are not equivalent to type checking. Ordinary builds do not activate the development launcher. Review regenerated content and include it with the source that produced it; `make ci-check` additionally requires generated files to match the Git index, as they must in a clean CI checkout. Tests own their database, harness home, and executable fixtures and must work before any build or installation; trusted executable fixtures must respect production path checks, including the rejection of disposable locations. Run tests in a writable checkout outside forbidden OS temporary roots: policy fixtures create and clean up a trusted runtime directory inside that checkout. `make vulncheck` retains the network-backed vulnerability audit locally for release preparation and dependency changes. A network failure leaves that audit unverified.
 
 The exact remote selection lives in the [Makefile](../../Makefile), shared with local reproduction:
@@ -60,7 +64,7 @@ The [capability contract](../../config/target-capabilities.json) retains six his
 
 ### Existing Targets: Source Facts and Gaps
 
-| Target | Current primary-source fact | Loaf consequence |
+| Target | Source observation (2026-10-13) | Loaf consequence |
 |--------|-----------------------------|------------------|
 | Claude Code | [SessionStart](https://code.claude.com/docs/en/hooks#sessionstart) has a `fork` source as well as startup, resume, clear, and compact, and can deliver context. | Loaf's [builder](../../internal/cli/build_claude_code.go) explicitly matches only the latter four. Fork remains uncovered; current docs do not certify an installed adapter or safe completion capture. |
 | Codex | [Current hooks documentation](https://learn.chatgpt.com/docs/hooks) says hooks default on, `hooks` is the preferred feature key, and `codex_hooks` is a deprecated alias. Sources can accumulate and plugin hooks require trust. | The pinned matrix's explicit enablement advice is version-sensitive. Diagnose actual capability, trust, and competing sources rather than copying an old flag or changing settings automatically. |
@@ -97,7 +101,11 @@ Private observation counts continuity writes and gateway evaluations, not produc
 
 ## Reviewed Source and Release Evidence
 
-The [verify-only CI decision](../decisions/ADR-012-ci-verify-only-build-artifacts.md) preserves the reason CI must not repair or push changes to reviewed source branches. Tracked generated content stays with the source that produced it until a replacement delivery path is proven. This does not require tracking release binaries: automation may build, sign, and publish artifacts from reviewed source without modifying that source branch. A separate tap update is distribution metadata, not a repair commit to Loaf's reviewed source.
+An earlier workflow rebuilt generated artifacts after merge and tried to push a repair commit to the protected default branch. Branch protection rejected that push, making failures ambiguous between artifact drift and missing push permission. Letting CI commit repairs was rejected because it changes reviewed source after approval and requires protection bypasses.
+
+CI verifies that reviewed source and required tracked generated content agree; it never repairs or pushes to the source branch. Contributors run deterministic generation and commit tracked outputs with their source, so CI failures identify real drift. Stopping all generated-content tracking immediately was also rejected: a replacement delivery path must be proven first.
+
+This does not require tracking release binaries: automation may build, sign, and publish native artifacts from reviewed source without modifying that source branch or bypassing its protection. Publication evidence and artifact verification belong to the release workflow. A separate tap update is distribution metadata, not a repair commit to Loaf's reviewed source.
 
 Verification evidence must identify what it vouches for. A receipt remains a historical observation of those bytes; it is not proof of an untested replacement. Assess changes to the behavior or boundary under test before requiring new compatibility evidence, rather than treating every version or binary digest change as a reason for full recertification. Branch ancestry alone is insufficient: merges and rebases can preserve or change content independently of topology. Retired cohort receipts and their exact digest schema do not become a universal evidence database or another release authority. Current build, review, and ship checks own executable freshness rules.
 

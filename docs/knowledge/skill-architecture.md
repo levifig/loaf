@@ -8,13 +8,15 @@ topics:
   - profiles
 covers:
   - .agents/skills/loaf-skill-authoring/**
-  - content/skills/**/*.md
-  - content/skills/**/*.yaml
-  - config/hooks.yaml
+  - internal/cli/build_skill_invariance.go
+  - internal/cli/build_codex.go
+  - config/targets.yaml
+  - content/templates/*
+  - content/agents/*.md
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-10-11'
+last_reviewed: '2026-11-06'
 ---
 
 # Skill Architecture
@@ -303,7 +305,7 @@ Skills load into profiles at spawn time. What an agent is intended to touch come
 | Category | `user-invocable` | Examples |
 |----------|:-:|---------|
 | Reference/Knowledge | `false` | python-development, database-design, foundations, git-workflow, orchestration |
-| Workflow/Process | `true` (default) | implement, research, shape, breakdown, ship, release, housekeeping |
+| Workflow/Process | `true` (default) | implement, research, shape, ship, release, housekeeping |
 
 Reference skills provide background knowledge the model loads automatically; set `user-invocable: false` in the sidecar so users are not offered `/python-development`.
 

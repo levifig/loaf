@@ -1,6 +1,6 @@
 # Decision Record Template
 
-Use only after the ADR is deliberately selected under Architecture's rules. Prefer the repository's own template. These prompts are not a mandatory frontmatter schema, numbering scheme, or revision ledger. Replace prompts with supported content; never fabricate decision dates, approval, or alternatives.
+Default to no ADR. Use this minimal template only after a separate record is explicitly selected under Architecture's rules, normally after implementation is confirmed. An earlier record must distinguish agreement from implementation. Prefer the repository's own template. Omit prompts that add no useful context; these are not a mandatory frontmatter schema, numbering scheme, or revision ledger. Never fabricate decision dates, approval, or alternatives.
 
 ```markdown
 # [One consequential choice]
@@ -19,5 +19,5 @@ Current architecture: [Link to owning topic]
 
 ## Consequences
 
-[Important benefits, costs, risks, and constraints. Link relevant technical evidence rather than copying specifications or tracking delivery here.]
+[Important benefits, costs, risks, and constraints. Link confirmed implementation evidence or identify pending implementation honestly; do not copy specifications or track delivery here.]
 ```
