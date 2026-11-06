@@ -17,8 +17,9 @@
   "integrations": {
     "github": {
       "account": "levifig",
+      "tracker": true,
       "repository": "levifig/loaf",
-      "board": "Loaf"
+      "project_id": "PVT_kwHNBkXOAYr6TQ"
     },
     "linear": {
       "enabled": false
