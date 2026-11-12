@@ -20,6 +20,31 @@
     "partial_outcomes": "preserve",
     "indeterminate_outcomes": "preserve"
   },
+  "draft_policy": {
+    "default": "draft-for-operator",
+    "drafted_operations": [
+      "work.update",
+      "definition.write",
+      "status.transition",
+      "comment.append"
+    ],
+    "standing_permission_key": "tracker.standing_permission",
+    "standing_permission": {
+      "comments": [
+        "comment.append"
+      ],
+      "status": [
+        "status.transition"
+      ],
+      "edits": [
+        "work.update",
+        "definition.write"
+      ]
+    },
+    "single_request_stricter_instruction": "wins",
+    "unanswered_drafts": "private-journal",
+    "operator_issue_agent_notes": "write-without-draft"
+  },
   "operations": [
     {
       "id": "connection.discover",

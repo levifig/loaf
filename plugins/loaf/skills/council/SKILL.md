@@ -89,7 +89,7 @@ Each agent receives:
 
 Council bodies are authored files under `.agents/councils/`, not SQLite bodies or shared work definitions. `loaf council new --title <title> --body-file <path>` writes the file metadata and registers its identity in initialized state. Discover with `loaf council list` and read with `loaf council show <ref>`; these CLI operations currently require available SQLite state. An explicit file can also be read directly without claiming database retrieval.
 
-When a council resolves a native issue's open questions, retain private deliberation locally and record only appropriate decision evidence or an authorized reference through the selected provider. The native tracker continues to own scope, hierarchy, and state. Deliberately adopted architectural conclusions belong in maintained Git topics; saving a council does not automatically promote its whole body into Git.
+When a council resolves a native issue's open questions, retain private deliberation locally. Draft only appropriate decision evidence or a reference for that issue through the selected provider, as [Draft Tracker Writes](../project-management/SKILL.md#draft-tracker-writes) describes. The native tracker continues to own scope, hierarchy, and state. Deliberately adopted architectural conclusions belong in maintained Git topics; saving a council does not automatically promote its whole body into Git.
 
 Record the user's decision in the council file and the project journal. The current council command has no archive operation. Preserve existing files and identifiers; later cleanup belongs to Housekeeping with exact approval.
 

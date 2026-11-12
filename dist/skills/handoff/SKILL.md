@@ -34,6 +34,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Infer the recipient, destination, bounded scope, and next action from available context. Ask only when ambiguity materially changes the transfer.
 - Preparing or persisting a packet does not authorize spawning agents, creating tasks, sending messages, starting implementation, or expanding the recipient's existing authority. Use a delivery tool only when that action is already authorized.
 - Re-read relevant native tracker and Git state when preparing the packet, and instruct the recipient to re-read them before acting. A snapshot is contextual evidence, never a work contract or current workflow state; Backlog does not authorize execution.
+- When the transfer continues work on a native issue, refresh that issue's agent notes as [Keeping Notes Current](../project-management/references/record-writing.md#keeping-notes-current) describes, so a recipient on another machine can continue from the issue and its branch alone. Point the packet at the notes instead of copying them.
 - Include only useful purpose, scope and authorization, current evidence, and next action. Add constraints, uncertainties, decisions and rationale, or suggested skills when they help; omit empty sections and large copied excerpts. Use the [packet template](templates/handoff.md) as prompts, not mandatory paperwork.
 - Redact secrets, credentials, personal or customer data, and private external identifiers. Verify that the chosen channel and referenced resources are usable by the intended recipient.
 - Apply Project Management's Capture Deferred Work rule to actionable follow-ups; a packet or journal entry does not replace the required native issue.
@@ -45,7 +46,8 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Delivery matches the actual outcome: prepared, delivered through an authorized channel, persisted and read back, or explicitly unpersisted because storage was unavailable.
 - A persisted record's body and source project identity match on readback. Retrieval instructions work in the recipient's context; a source-local ID alone is insufficient when that store is inaccessible.
 - The recipient re-reads current sources before acting and stays within existing authorization.
-- Ordinary resumption creates no unnecessary transfer artifact. No existing records, files, statuses, or runtime selection changed as a side effect.
+- A transfer that continues a native issue left its agent notes describing the work as it stands, or names why they could not be refreshed.
+- Ordinary resumption creates no unnecessary transfer artifact. Apart from the agent-notes refresh, no existing records, files, statuses, or runtime selection changed as a side effect.
 
 ## Quick Reference
 

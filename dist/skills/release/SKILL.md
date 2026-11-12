@@ -34,7 +34,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Ask for or verify explicit authorization immediately before version changes, tags, pushes, or release publication when governing instructions require it.
 - Use repository-native Git and hosting capabilities. Do not create a Loaf-owned release record or provider bridge.
 - After publication, read the authoritative tag and release state before claiming success.
-- Add a [tracker update](templates/tracker-update.md) or supported native release metadata only after publication is confirmed. Write it as [Record Writing](../project-management/references/record-writing.md) describes: one to three plain lines naming the release and what it means for the reader, with agent detail collapsed. Comments remain evidence, not workflow substitutes.
+- Only after publication is confirmed, draft a [tracker update](templates/tracker-update.md) for the affected issues as [Draft Tracker Writes](../project-management/SKILL.md#draft-tracker-writes) describes, or use supported native release metadata. Write the update as [Record Writing](../project-management/references/record-writing.md) describes: one to three plain lines naming the release and what it means for the reader, with agent detail collapsed. Comments remain evidence, not workflow substitutes.
 - Re-read every changed native record and report partial or indeterminate provider outcomes independently from publication success.
 
 ## Verification
@@ -43,7 +43,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Version, tag, artifact, and release-note state are mutually consistent.
 - Required build, package, signing, or publication checks were actually run and read.
 - The authoritative hosting surface confirms the published release and artifacts.
-- Tracker updates name the observed release identity and were confirmed by readback.
+- Tracker updates name the observed release identity, and each one written was approved or covered by standing permission and confirmed by readback.
 - Release notes state what a real rider can now do, what dogfood proved, and which breadth remains explicitly deferred.
 - A matching milestone's open work and closure/rollover choice are explicit; approved post-publication mutations have readbacks. No-match releases gain no new milestone requirement.
 
@@ -55,7 +55,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | Prepare | Version and release notes consistent with repository policy |
 | Publish | Explicitly authorized native Git/hosting mutation |
 | Verify | Authoritative tag, release, and artifact reads |
-| Record | Confirmed native tracker update with release identity |
+| Record | Drafted tracker update with release identity, written on approval and read back |
 
 ## Journal Commands
 
