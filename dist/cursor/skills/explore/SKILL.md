@@ -43,7 +43,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - You choose what an Exploration means and when to checkpoint; the CLI validates and performs the operation you request. Never expect the CLI to classify or decide for you.
 - Checkpoint before the context window gets hostile: every checkpoint must carry all four portable fields — purpose, conclusions, unresolved, next action — each self-sufficient without this conversation.
 - A conversation handle or log path is provenance, never context. Presence of handles does not make an Exploration resumable; only a portable checkpoint does.
-- Capture crystallized directions as canonical backlog records through the selected `project-management/v1` provider skill and harness-native connection. Put remaining unsharp questions under Open questions in that native record's agent notes. Never leave a substantial direction only in prose.
+- Capture crystallized directions as canonical backlog records through the selected `project-management/v1` provider skill and harness-native connection. Put remaining unsharp questions under Open questions in that native record's agent notes. Filing a new record needs no approval; evidence or questions added to an existing record follow [Draft Tracker Writes](../project-management/SKILL.md#draft-tracker-writes). Never leave a substantial direction only in prose.
 - Never create Git artifacts, branches, or worktrees from Explore; when a direction is ready for problem discovery hand it to pitch, and when it is ready for bounded delivery hand it to shape (issue preparation).
 - Never store transcripts, prompts, or tool output in checkpoints or items; curate semantic context instead.
 - Not a user slash front door — human "explore this" / "where do I start" routes to pitch.
@@ -97,7 +97,7 @@ Before continuing, read the native tracker references named in the checkpoint th
 
 ## Parking a direction
 
-An Exploration is never paused or closed — it has no lifecycle to transition. When the user wants to park or set aside the inquiry, do two concrete acts: checkpoint the current state honestly, then create or update the direction as a native tracker backlog record through the selected provider, including remaining unsharp questions and supported hierarchy. The tracker record is the revisit surface; the Exploration simply waits, resumable from its checkpoint.
+An Exploration is never paused or closed — it has no lifecycle to transition. When the user wants to park or set aside the inquiry, do two concrete acts: checkpoint the current state honestly, then create or update the direction as a native tracker backlog record through the selected provider, including remaining unsharp questions and supported hierarchy. Updating an existing record follows [Draft Tracker Writes](../project-management/SKILL.md#draft-tracker-writes). The tracker record is the revisit surface; the Exploration simply waits, resumable from its checkpoint.
 
 ## Techniques
 

@@ -29,7 +29,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Give every agent the native reference, relevant criteria, allowed actions, file or subsystem boundary, and required verification.
 - Carry the rideable-increment answers in every relevant delegation packet. Execution may split commits and handoffs, but it must not fragment the end-to-end value contract into local work authorities or future-only layers.
 - Assign one writer to a shared change at a time. Use independent read-only reviewers after implementation.
-- Keep provider operations with the main agent through the selected provider skill. Dedicated provider profiles are deferred until every target can package and enforce them without broken links or broader authority.
+- Keep provider operations with the main agent through the selected provider skill. Agents never write to the tracker: they return proposed comments, edits, and notes text to the main agent, which drafts them as [Draft Tracker Writes](../project-management/SKILL.md#draft-tracker-writes) describes. Dedicated provider profiles are deferred until every target can package and enforce them without broken links or broader authority.
 - Treat agent results as claims. Inspect delivered diffs and rerun the contract's gates before accepting them.
 - Consolidate reviewer perspectives by evidence and defect class rather than vote count.
 - Read [Delegation Contract](references/delegation.md) before coordinating multiple writers or review rounds.
@@ -43,7 +43,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - The coordinated result preserves the named rider's complete journey, and foundation packets remain tied to the immediate path that exercises them.
 - Exactly one writer owned each overlapping change at any moment.
 - Delivered commits, diffs, and test claims were independently inspected.
-- Provider mutations used the same common contract as main-agent execution and were verified by native readback.
+- Only the main agent made provider mutations, under the same draft and readback rules as single-agent execution.
 - The consolidated result names disagreements, accepted findings, rejected findings with evidence, and remaining risk.
 - Before its final response or handoff, the main agent loads the project-management skill and applies its Capture Deferred Work rule to concrete deferred findings returned by any agent; an agent report alone is not capture.
 - Any persisted report uses a skill-owned template, does not overwrite an existing file, and is referenced in the harness return.
@@ -56,7 +56,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | Independent research questions | Parallel read-only agents |
 | Disjoint implementation areas | Bounded writers with non-overlapping ownership |
 | Quality gate | Fresh read-only reviewers |
-| Tracker operation | Main agent or optional connector-only project manager |
+| Tracker operation | Main agent only; agents return proposed text for it to draft |
 | Immediate bounded result | Return through the harness only |
 | Result needed after this response | Persist with the matching orchestration template |
 

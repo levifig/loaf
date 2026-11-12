@@ -1,11 +1,37 @@
 package cli
 
 import (
+	"encoding/json"
+	"maps"
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 )
+
+// The values config check accepts must be the kinds the project-management
+// contract lets a project lift from drafting, so the two lists cannot drift.
+func TestTrackerStandingPermissionsMatchProjectManagementContract(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(testRepositoryRoot(t), "content", "skills", "project-management", "contract.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var contract struct {
+		DraftPolicy struct {
+			StandingPermission map[string][]string `json:"standing_permission"`
+		} `json:"draft_policy"`
+	}
+	if err := json.Unmarshal(data, &contract); err != nil {
+		t.Fatal(err)
+	}
+	got := slices.Sorted(slices.Values(trackerStandingPermissions))
+	want := slices.Sorted(maps.Keys(contract.DraftPolicy.StandingPermission))
+	if !slices.Equal(got, want) || len(want) == 0 {
+		t.Errorf("config check accepts %v; project-management contract lists %v", got, want)
+	}
+}
 
 func TestConfigCheckValidatesTrackerStandingPermission(t *testing.T) {
 	const wantError = "tracker.standing_permission must be a list of distinct values from comments, status, edits"

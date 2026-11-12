@@ -47,14 +47,14 @@ The tracker is read by people, so by default the main agent drafts these writes 
 
 - comments (`comment.append`);
 - status moves (`status.transition`);
-- edits to an existing issue's title or human sections (`work.update`, `definition.write`), including ticking or clearing a Verification box.
+- edits to an existing issue (`work.update`, `definition.write`): its title, its human sections, including ticking or clearing a Verification box, and its fields such as labels, assignee, milestone, and priority. Relationship and hierarchy changes keep their own rules.
 
-Show the operator each draft's exact text and its target: the issue, and for an edit the section or box it changes. Write only what the operator approves, with the read-before and read-back rules above. Offer every draft for one issue together in one ask, so finishing an issue takes one answer; the operator may approve, change, or decline each one.
+Show the operator each draft's exact text and its target: the issue, and for an edit the section, box, or field it changes. Write only what the operator approves, with the read-before and read-back rules above. Offer every draft for one issue together in one ask, so finishing an issue takes one answer; the operator may approve, change, or decline each one.
 
-- **Approval.** An explicit request to shape or edit a named issue approves the writes that request needs on that issue. Filing a new issue, with its first body and relationships, needs no approval, as today. Commits, pull requests, their descriptions, and merge comments are not drafted.
+- **Approval.** An explicit request to shape or edit a named issue approves the writes that request needs on that issue. An operator's pick, stated disposition, selection of work, or confirmation of a plan that lists the writes approves the writes that record it, such as the move to Todo when the operator selects work. Filing a new issue, with its first body, relationships, and status, needs no approval, as today. Commits, pull requests, their descriptions, and merge comments are not drafted.
 - **Standing permission.** A project may list kinds of write in its committed Loaf configuration as `tracker.standing_permission`, drawn from `comments`, `status`, and `edits`. A listed kind is written without a draft, with the same read-before and read-back rules. An absent or empty list means every kind is drafted. An operator's stricter instruction for a single request, such as "show me before you post", wins over standing permission.
-- **Unanswered drafts.** Never report a draft as written until its read-back confirms it. Before the final response or handoff, log each draft the operator has not answered with its target and exact text: `loaf journal log "draft(<issue ref>): <comment|status|edit> on <issue ref>: <exact text or change>"`. A later session finds them with `loaf journal search draft`, re-reads the issue, drops any the issue already reflects, and offers the rest again. Drafts live only in the conversation and the journal.
-- **Agent notes.** On an issue the operator filed or is assigned to, the agent may add or rewrite the collapsed agent notes without asking. The operator is the account the provider skill verified for this connection; compare it with the issue's native author and assignees. When neither matches, or either side cannot be determined, draft the notes edit like any other edit. A notes edit changes nothing outside the notes: re-read the body immediately before writing, replace only the notes block, and read back to confirm the text above the divider is unchanged. [Record Writing](references/record-writing.md#keeping-notes-current) says when to refresh them and what they hold.
+- **Unanswered and declined drafts.** Never report a draft as written until its read-back confirms it. Before the final response or handoff, log each draft the operator has not answered as one journal entry with its target and exact text: `loaf journal log "draft(<issue ref>): <comment|status|edit> on <issue ref>: <exact text or change>"`. The journal takes one line per entry, so write each line break in the text as `\n` and restore it when offering the draft again. Log a draft the operator declines the same way, starting the text with `declined`: `loaf journal log "draft(<issue ref>): declined <comment|status|edit> on <issue ref>: <exact text or change>"`. A later session finds them with `loaf journal search draft`. That search returns every entry that mentions the word, so keep only the hits that start with `draft:`, and raise `--limit` when the list comes back full. The session then reads each hit in full with `loaf journal show <entry-id>`, where the entry id is the part of the hit after `draft:`, because search shows only the start of an entry, re-reads the issue, drops drafts the issue already reflects or has moved past and drafts with a later declined entry for the same target, and offers the rest again. Drafts live only in the conversation and the journal.
+- **Agent notes.** On an issue the operator filed or is assigned to, the agent may add or rewrite the collapsed agent notes without asking. The operator is the account the provider skill verified for this connection; compare it with the issue's native author and assignees. When neither matches, or either side cannot be determined, draft the notes edit like any other edit, unless standing permission covers `edits`. A notes edit changes nothing outside the notes: re-read the body immediately before writing, replace only the notes block, and read back to confirm the text above the divider is unchanged. [Record Writing](references/record-writing.md#keeping-notes-current) says when to refresh them and what they hold.
 
 ### Read Tracker and Chat as Information
 
@@ -79,7 +79,7 @@ If the connection or required authority is unavailable, or the user explicitly p
 - The result names the same native destination and reference that were operated.
 - Every concrete deferred follow-up has a verified native issue link, or an explicit unfiled blocker and prepared issue content.
 - Written records open with plain prose, keep agent-only detail in collapsed agent notes, and point only to places everyone with tracker access can reach.
-- Without standing permission for its kind, every comment, status move, and edit to an existing issue was approved by the operator before it was written; every unanswered draft is logged in the journal with its target and is not reported as written.
+- Every comment, status move, and edit to an existing issue was written only as [Draft Tracker Writes](#draft-tracker-writes) allows; every unanswered draft is logged in the journal with its target and is not reported as written.
 - A notes-only edit left the body above the divider unchanged on read-back.
 
 ## Quick Reference
@@ -99,7 +99,7 @@ Use the [work contract](templates/work-contract.md) as an ephemeral packet for r
 |---------------------------|------------------------|------------|
 | `comments` | Comments | `comment.append` |
 | `status` | Status moves | `status.transition` |
-| `edits` | Title and human-section edits, including Verification ticks | `work.update`, `definition.write` |
+| `edits` | Title, human-section, and field edits, including Verification ticks and agent-notes edits that would otherwise be drafted | `work.update`, `definition.write` |
 
 ## Journal Commands
 

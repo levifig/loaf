@@ -66,7 +66,7 @@ The Loaf Flow is:
 1. **Pitch** discovers the problem and desired outcome.
 2. **Shape** creates or updates the canonical native tracker record through the selected provider skill, including the supported work definition, definition of done, out-of-scope, and hierarchy.
 3. **Implement** reads that record and changes the repository through ordinary Git mechanics.
-4. **Ship** is the sole quality gate and updates tracker status only after verification and provider readback.
+4. **Ship** is the sole quality gate and updates tracker status only after verification, the operator's approval or the project's standing permission, and provider readback.
 5. **Release** describes a coherent set of already-landed work.
 
 The methods are Loaf-owned; shared work identity and state are tracker-owned. A one-time migration may move supported historical local work into the tracker, but no ongoing synchronization or parallel work record follows.

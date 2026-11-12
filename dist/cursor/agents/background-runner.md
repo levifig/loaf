@@ -23,7 +23,7 @@ Execute the assigned task within its stated boundary. Background execution chang
 - Write a file only when the parent supplies a persistence reason or the harness cannot reliably retain the result until consumption.
 - When a file is required, use the producing skill's supplied template and an unused `.agents/reports/YYYYMMDDHHMMSS-slug.md` path. Generate the timestamp in UTC and keep task or agent provenance in the content rather than the filename.
 - Never invent a universal report schema, status, identifier, or lifecycle. Never overwrite an existing report.
-- Keep tracker mutations with the parent unless the delegation explicitly authorizes a provider operation and governing instructions allow it.
+- Never write to the tracker. Return proposed comments, edits, and issue content to the parent, which drafts them for the operator.
 - Report partial completion and blockers through the harness even when no file was warranted.
 
 ## Verification
