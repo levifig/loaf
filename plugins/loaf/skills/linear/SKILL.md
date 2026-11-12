@@ -51,6 +51,8 @@ Write issue descriptions and comments as the project-management skill's [Record 
 - **Checkboxes:** `- [ ]` is open and `- [X]` is ticked; Linear stores ticked boxes with a capital `X`.
 - **Spacing:** Linear collapses runs of blank lines, so separate the human sections from the agent notes with the `---` divider, not extra blank lines.
 - **Source:** record it with the native field when one exists: an attached PR, an issue relation, a customer request, or a type label. Mention related issues in the prose and set the relation; do not write magic words in descriptions or comments.
+- **Operator's issue:** for the agent-notes rule in [Draft Tracker Writes](../project-management/SKILL.md#draft-tracker-writes), compare the connection's own user (its viewer) with the issue's creator and assignee.
+- **Notes-only edits:** Linear saves the whole description on every edit, so a teammate's edit made at the same moment can be lost. Re-read the description immediately before writing, replace only the text from the `---` divider through the closing marker of the agent notes, and after writing compare everything above the divider with the copy you read.
 
 ## Quick Reference
 
