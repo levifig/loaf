@@ -86,6 +86,8 @@ Write Issue bodies and comments as the project-management skill's [Record Writin
 - **Checkboxes:** `- [ ]` is open and `- [x]` is ticked.
 - **Line breaks:** in Issue bodies and comments a single newline renders as a line break, so write each paragraph or bullet on one line and separate paragraphs with a blank line. A line directly above `---` renders as a heading unless a blank line separates them.
 - **Source:** record it with the native field when one exists: a linked PR, the Issue type, a label, or a sub-issue or dependency relationship that is actually true. GitHub has no general related-issue edge; mentioning a related Issue in the prose where it matters is context, not a recorded relationship.
+- **Operator's issue:** for the agent-notes rule in [Draft Tracker Writes](../project-management/SKILL.md#draft-tracker-writes), compare the verified actor login with the Issue's `user.login` (its author) and `assignees[].login`.
+- **Notes-only edits:** GitHub saves the whole body on every edit, so a teammate's edit made at the same moment can be lost. Re-read the body immediately before writing, replace only the text from the `---` divider through `</details>`, and after writing compare everything above the divider with the copy you read.
 
 ## Quick Reference
 
