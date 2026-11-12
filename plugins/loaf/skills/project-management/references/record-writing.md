@@ -37,17 +37,17 @@ Write each box as one check a teammate could judge, described in plain words. A 
 
 Tick a box only when its check has passed:
 
-- Whoever ran the check ticks its box. An agent ticks one only after the check ran in its own work, directly or through a worker it delegated to, and the result is recorded, naming the commit it ran on, where reviewers can find it, as [Check Results](#check-results) describes.
+- A person ticks the box of a check they ran. An agent ticks one only after the check ran in agent work on this issue, directly or through a worker it delegated to, and the result is recorded, naming the commit it ran on, where reviewers can find it, as [Check Results](#check-results) describes. Implement records its results and Ship offers the ticks.
 - A check only a person can do, such as a customer sign-off, stays for that person.
 - A box that stays open carries its reason at the end of its line, for example `- [ ] The customer confirms the new export (open: waiting on their test run)`. A reason records the decision of a person with authority over the work, such as whoever selected it or owns its acceptance, not anyone with write access: they wrote it, or approved the exact text an agent then wrote for them. A reason can defer only a check that cannot run before the merge or that only a person can do. An objective check that can run now must run, and a safety check, even one only a person can do, must pass before the merge unless it can only run after it. A reason that doesn't meet these conditions doesn't count, and its box stays open. Whoever writes an approved reason names the approver where results are recorded. An agent never adds one on its own to get past a gate.
 - A check that can only run after the merge, such as a deploy, is written with its reason from the start, for example `(open: checked after the merge)`, and ticked by whoever runs it once it has run.
 - Ticking edits the issue body, so an agent's tick is a drafted edit unless standing permission covers edits. Offer it in the same batch as the closing comment and status move. When writing it, re-read it, change only that box, then read it back.
 
-Every box is ticked, or carries its reason, before the issue is marked done or a PR that closes it is merged. A passed check recorded in the PR for the reviewed commit is enough for Ship's verdict; the tick itself still has to be written before that close or merge. A reason lets the work land before that check passes; it never counts as the check passing, so the review reports the criterion it covers as deferred by that decision and lists the box as an open limitation. Ship checks this before it closes or merges.
+Every box is ticked, or carries its reason, before the issue is marked done or a PR that closes it is merged. A passed check recorded for the reviewed commit, as [Check Results](#check-results) describes, is enough for Ship's verdict; the tick itself still has to be written before that close or merge. A reason lets the work land before that check passes; it never counts as the check passing, so the review reports the criterion it covers as deferred by that decision and lists the box as an open limitation. Ship checks this before it closes or merges.
 
 ## Check Results
 
-Record check results and command output in the pull request, in its description or a review comment, naming the commit each ran on. Neither the human sections nor the agent notes hold them: the notes say how to run a check, not what it returned. For work with no pull request, put them in the collapsed agent notes of the drafted comment that reports the work, or keep them in the private journal when no comment is posted.
+Record check results and command output in the pull request, in its description or a review comment, naming the commit each ran on. An issue's human sections and agent notes never hold them: the issue's notes say how to run a check, not what it returned. For work with no pull request, put them in the collapsed agent notes of the drafted comment that reports the work, or keep them in the private journal when no comment is posted. A tick rests only on results someone can read, so write the approved comment before any tick; if the operator declines it, the boxes stay open.
 
 ## Agent Notes
 
@@ -74,7 +74,7 @@ The notes hold the current state, not a log: rewrite a bullet when it changes in
 
 ## Keeping Notes Current
 
-When work on an issue pauses, is handed off or ships, rewrite its notes so they describe the work as it now stands: point Reflects at the current branch, pull request and commit, move dropped approaches to Tried with why, add what was learned to Findings and Pitfalls, and remove what is no longer true. A different agent on a different machine should be able to continue from the issue and its branch alone. Refresh only the notes of issues being worked; the edit follows the agent-notes rule in [Draft Tracker Writes](../SKILL.md#draft-tracker-writes).
+When work on an issue pauses, is handed off or ships, rewrite its notes so they describe the work as it now stands: point Reflects at the current branch, pull request and commit, saying so when that commit is not on the remote yet, move dropped approaches to Tried with why, add what was learned to Findings and Pitfalls, and remove what is no longer true. A different agent on a different machine should be able to continue from the issue and its branch alone. Refresh only the notes of issues being worked; the edit follows the agent-notes rule in [Draft Tracker Writes](../SKILL.md#draft-tracker-writes).
 
 ## Comments
 

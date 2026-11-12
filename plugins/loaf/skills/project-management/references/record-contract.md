@@ -9,7 +9,7 @@
 2. Select one exact native destination; stop if the choice changes workspace, team, or configured GitHub board and remains ambiguous. When `integrations.github.tracker: true` elects GitHub, use the configured `integrations.github.repository` and exact opaque `integrations.github.project_id`, then follow the [GitHub destination diagnosis](../../github/SKILL.md#destination-diagnosis) through the identity-verified connection. Read the current board title live for display (or say “the project board” when it matches the repository or Loaf project); never route by a title or `Project #N`. Unavailable live evidence remains unverified, not a substitute workflow.
 3. Run `capability.discover` and select the highest honest fidelity for the requested operation.
 4. Read current native state.
-5. Route each requested semantic once to its canonical native field and apply one bounded mutation when requested and authorized. A comment, status move, or edit to an existing issue is authorized only by the operator's approval of its draft or by standing permission, as [Draft Tracker Writes](../SKILL.md#draft-tracker-writes) describes.
+5. Route each requested semantic once to its canonical native field and apply one bounded mutation when requested and authorized. Whether a comment, status move, or edit to an existing issue is authorized is the [Draft Tracker Writes](../SKILL.md#draft-tracker-writes) rule.
 6. Re-read native state and return the result envelope.
 
 Creation includes a prior search or destination read for an existing matching record. If a create or comment request returns no authoritative identity or state, do not repeat it blindly: inspect native state and report `indeterminate` when duplication cannot be excluded.

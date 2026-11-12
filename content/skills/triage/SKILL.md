@@ -33,7 +33,7 @@ Bare invocation is the ceremony. Inventory first, show candidates, wait for a pi
 - Base dispositions on evidence, strategic fit supplied by the user or project context, duplication, readiness, and blockers.
 - Prefer the next complete rideable operator journey over isolated component layers. If a candidate is foundation work, retain its explicit link to the immediate journey that consumes it; triage does not invent or shape that journey.
 - Read valid native workflow states before any transition. Never assume names such as backlog, canceled, or done exist.
-- Use comments only to explain a disposition when collaboration benefits, leading with one to three plain lines; the native state and fields carry the disposition itself.
+- Writes to existing records follow [Draft Tracker Writes](../project-management/SKILL.md#draft-tracker-writes): the human's pick or stated disposition, such as close or defer, approves the move that records it, and disposition comments are drafted. Draft a comment only when it helps collaborators; the native state and fields carry the disposition itself.
 - Re-read every changed candidate and return partial or unsupported results independently.
 
 ## Operator Presentation
@@ -106,4 +106,4 @@ For an explicit request such as "triage <milestone>," use the selected GitHub pr
 
 ## Topics
 
-No supporting references. Use the [tracker update](../../templates/tracker-update.md) when a self-contained disposition comment helps collaborators.
+No supporting references. Use the [tracker update](../../templates/tracker-update.md) to draft a disposition comment when one helps collaborators.

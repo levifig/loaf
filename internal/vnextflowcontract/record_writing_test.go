@@ -2,6 +2,7 @@ package vnextflowcontract
 
 import (
 	"io/fs"
+	"os"
 	"strings"
 	"testing"
 )
@@ -194,7 +195,12 @@ func TestDraftTrackerWritesRuleShips(t *testing.T) {
 		"including ticking or clearing a Verification box",
 		"Offer every draft for one issue together in one ask",
 		"An explicit request to shape or edit a named issue approves the writes that request needs on that issue",
-		"Filing a new issue, with its first body and relationships, needs no approval",
+		"Filing a new issue, with its first body, relationships, and status, needs no approval",
+		"An operator's pick, stated disposition, selection of work, or confirmation of a plan that lists the writes approves the writes that record it",
+		"fields such as labels, assignee, milestone, and priority",
+		"write each line break in the text as `\\n`",
+		"drops drafts the issue already reflects or has moved past and drafts with a later declined entry for the same target",
+		"draft the notes edit like any other edit, unless standing permission covers `edits`",
 		"Commits, pull requests, their descriptions, and merge comments are not drafted",
 		"`tracker.standing_permission`, drawn from `comments`, `status`, and `edits`",
 		"An absent or empty list means every kind is drafted",
@@ -202,6 +208,8 @@ func TestDraftTrackerWritesRuleShips(t *testing.T) {
 		"Never report a draft as written until its read-back confirms it",
 		"`loaf journal log \"draft(<issue ref>):",
 		"`loaf journal search draft`",
+		"reads each hit in full with `loaf journal show <entry-id>`, where the entry id is the part of the hit after `draft:`",
+		"keep only the hits that start with `draft:`, and raise `--limit` when the list comes back full",
 		"On an issue the operator filed or is assigned to, the agent may add or rewrite the collapsed agent notes without asking",
 		"When neither matches, or either side cannot be determined, draft the notes edit like any other edit",
 		"A notes edit changes nothing outside the notes",
@@ -217,11 +225,38 @@ func TestDraftTrackerWritesRuleShips(t *testing.T) {
 	links := map[string]string{
 		recordWritingPath: "(../SKILL.md#draft-tracker-writes)",
 		"skills/project-management/references/record-contract.md": "(../SKILL.md#draft-tracker-writes)",
+		"skills/loaf-reference/references/flow-semantics.md":      "(../../project-management/SKILL.md#draft-tracker-writes)",
 		"skills/shape/SKILL.md":                                   "(../project-management/SKILL.md#draft-tracker-writes)",
+		"skills/pitch/SKILL.md":                                   "(../project-management/SKILL.md#draft-tracker-writes)",
+		"skills/triage/SKILL.md":                                  "(../project-management/SKILL.md#draft-tracker-writes)",
+		"skills/implement/SKILL.md":                               "(../project-management/SKILL.md#draft-tracker-writes)",
+		"skills/ship/SKILL.md":                                    "(../project-management/SKILL.md#draft-tracker-writes)",
+		"skills/release/SKILL.md":                                 "(../project-management/SKILL.md#draft-tracker-writes)",
+		"skills/orchestration/SKILL.md":                           "(../project-management/SKILL.md#draft-tracker-writes)",
 	}
 	for name, link := range links {
 		if body := readFlowContentString(t, content, name); !strings.Contains(body, link) {
 			t.Errorf("%s does not link the Draft Tracker Writes rule", name)
+		}
+	}
+	// Workers return proposed text; only the main agent drafts tracker writes.
+	if runner := readFlowContentString(t, content, "agents/background-runner.md"); !strings.Contains(runner, "Never write to the tracker") {
+		t.Error("background runner may still write to the tracker")
+	}
+	for _, name := range []string{"skills/implement/SKILL.md", "skills/ship/SKILL.md"} {
+		if body := readFlowContentString(t, content, name); !strings.Contains(body, "(../project-management/references/record-writing.md#keeping-notes-current)") {
+			t.Errorf("%s does not refresh the agent notes", name)
+		}
+	}
+	// Handoff is not a Flow skill, so read it from the authored content.
+	if handoff := readFlowContentString(t, os.DirFS("../../content"), "skills/handoff/SKILL.md"); !strings.Contains(handoff, "(../project-management/references/record-writing.md#keeping-notes-current)") {
+		t.Error("handoff does not refresh the agent notes")
+	}
+	// Selecting work approves the move to Todo; starting it is a separate draft.
+	flow := readFlowContentString(t, content, "skills/loaf-reference/references/flow-semantics.md")
+	for _, want := range []string{"That selection approves the move to Todo", "The later move to In Progress is a separate status move and stays a draft unless standing permission covers status"} {
+		if !strings.Contains(flow, want) {
+			t.Errorf("flow semantics missing %q", want)
 		}
 	}
 	if update := readFlowContentString(t, content, "templates/tracker-update.md"); !strings.Contains(update, "write them only after approval unless standing permission covers them") {
@@ -238,10 +273,12 @@ func TestCheckResultsLiveInThePullRequest(t *testing.T) {
 	for _, want := range []string{
 		"Record check results and command output in the pull request",
 		"naming the commit each ran on",
-		"Neither the human sections nor the agent notes hold them",
+		"An issue's human sections and agent notes never hold them",
 		"For work with no pull request, put them in the collapsed agent notes of the drafted comment",
 		"keep them in the private journal when no comment is posted",
-		"A passed check recorded in the PR for the reviewed commit is enough for Ship's verdict",
+		"A passed check recorded for the reviewed commit, as [Check Results](#check-results) describes, is enough for Ship's verdict",
+		"write the approved comment before any tick; if the operator declines it, the boxes stay open",
+		"saying so when that commit is not on the remote yet",
 		"Offer it in the same batch as the closing comment and status move",
 		"When work on an issue pauses, is handed off or ships, rewrite its notes",
 		"continue from the issue and its branch alone",
@@ -253,16 +290,17 @@ func TestCheckResultsLiveInThePullRequest(t *testing.T) {
 }
 
 // A merge can close linked issues automatically, so ship confirms every
-// Verification box before it closes or merges, and implement ticks only the
-// boxes whose checks it ran.
+// Verification box before it closes or merges. Implement records results in the
+// pull request and ship offers the ticks with its verdict.
 func TestVerificationBoxesGateClosingAndMerging(t *testing.T) {
 	t.Parallel()
 
 	content := repositoryFlowContent(t)
 	files := map[string][]string{
 		recordWritingPath: {
-			"Whoever ran the check ticks its box",
-			"only after the check ran in its own work",
+			"A person ticks the box of a check they ran",
+			"only after the check ran in agent work on this issue",
+			"Implement records its results and Ship offers the ticks",
 			"the result is recorded, naming the commit it ran on, where reviewers can find it",
 			"stays for that person",
 			"carries its reason at the end of its line",
@@ -290,25 +328,42 @@ func TestVerificationBoxesGateClosingAndMerging(t *testing.T) {
 			"| Blocked | Required proof is inaccessible and no valid reason on its box defers it;",
 			"a person's tick on a check only a person can do counts as their result",
 			"Clear a tick whose check fails on the reviewed candidate",
-			"name who approved it in the review",
+			"name who approved it where results are recorded",
+			"Reach the verdict from the check results recorded for the reviewed candidate",
+			"with the result recorded as [Check Results](../project-management/references/record-writing.md#check-results) describes",
+			"without editing the issue",
+			"Record a durable disposition in the pull request, in its description or a review",
+			"offer one batch of drafts per issue",
+			"any ticks to clear",
+			"the move to Done that follows the merge",
+			"Approval of the batch also covers the move to Done once the merge is proven, so do not ask again for it; merge authority is unchanged",
+			"A tick that is neither approved nor covered by standing permission stays unwritten, so its box is open and blocks the merge",
+			"the operator can approve the tick or tick the box themselves",
+			"without either, report it as drafted, not made",
 			"report the criterion as deferred, not proven",
 			"Name any box still open with its reason in the landing report",
 			"re-read the PR and the Verification boxes on each issue it closes",
 			"if one is open without a reason, name it and report the issue as not complete instead of transitioning",
-			"| Approve | Criteria, boundaries, and quality gates are proven or, where a valid reason on the box defers a check, reported as deferred, and every Verification box is ticked or carries its reason on the box.",
+			"every Verification box has a passed result recorded as Check Results describes, a person's tick on a check only a person can do, or its reason on the box",
 			"a Verification box is open with no valid reason on it and ship cannot run its check",
 			"list the box as an open limitation in the disposition, and do not withhold Approve for it alone",
 			"and an agent's tick on a person-only box, which stays for that person",
 			"every Verification box on each issue the merge closes or ship marks Done was ticked with a recorded result for the reviewed candidate",
 		},
 		"skills/implement/SKILL.md": {
-			"tick each Verification box whose check you ran and passed",
-			"Ticking a box, or writing a reason a person with authority over the work approved, are the only definition writes implement makes",
-			"naming the commit it ran on",
+			"Record each check result in the pull request, naming the commit it ran on",
+			"Implement does not tick Verification boxes or write reasons on them; its only body write is the agent-notes refresh below",
+			"Hand ship the list of boxes whose checks you ran and passed",
 			"name who approved it where you record results",
-			"open for their owner, and never write a reason on a box yourself",
-			"Each Verification box whose check this work ran and passed is ticked with its result recorded",
+			"Pass ship a reason for an open box only with the exact text the person with authority over the work approved",
+			"the handoff to ship lists the boxes whose checks passed and names every box still open",
+			"Offer the move to In Progress in the message that announces the start, then keep working; implementation never waits on an unanswered tracker draft",
 		},
+	}
+	// Implement used to tick boxes itself and allowed a tracker comment as the
+	// place for check results.
+	if implement := readFlowContentString(t, content, "skills/implement/SKILL.md"); strings.Contains(implement, "tick each Verification box") || strings.Contains(implement, "or a tracker comment") {
+		t.Error("implement still ticks boxes or records results in a tracker comment")
 	}
 	for name, wants := range files {
 		body := readFlowContentString(t, content, name)
