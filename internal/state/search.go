@@ -59,10 +59,9 @@ var searchTokenRE = regexp.MustCompile(`[[:alnum:]_]+`)
 
 // Search queries SQLite-resident artifact bodies, journal entries, and indexed docs.
 func Search(ctx context.Context, root project.Root, resolver PathResolver, options SearchOptions) (SearchResult, error) {
-	// Search owns the structured journal-search divergence contract. It opens
-	// through the narrowly-scoped derived-index exception so Store.Search can
-	// report that contract before touching docs indexing.
-	store, err := openProjectStoreReadExistingForJournalSearch(ctx, root, resolver)
+	// Search owns the structured journal-search divergence contract: Store.Search
+	// reports it before touching docs indexing.
+	store, err := openProjectStoreReadExisting(ctx, root, resolver)
 	if err != nil {
 		return SearchResult{}, err
 	}
