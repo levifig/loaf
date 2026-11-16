@@ -1138,6 +1138,12 @@ func runNativeValidatePush(hookContext checkHookContext, cwd string) checkResult
 		return result
 	}
 
+	// A push that only deletes remote refs sends no commits, so neither the
+	// local branch's diff nor release readiness applies to it.
+	if gitPushDeletesOnly(command) {
+		return result
+	}
+
 	checkDirectMainSourcePush(cwd, &result)
 
 	packageVersion, hasPackageJSON, hasBuildScript := headPackageInfo(cwd)
@@ -1179,6 +1185,52 @@ func runNativeValidatePush(hookContext checkHookContext, cwd string) checkResult
 		result.Blocked = true
 	}
 	return result
+}
+
+// gitPushDeletesOnly reports whether a single literal `git push` command only
+// deletes remote refs: `--delete`/`-d`, or every refspec of the `:<dst>` form.
+// Anything it can't read as one plain push, such as a chained command, is not
+// delete-only, so the usual checks still run.
+func gitPushDeletesOnly(command string) bool {
+	command = strings.TrimSpace(command)
+	// A newline or shell operator can run another command after the delete.
+	if strings.ContainsAny(command, ";&|<>`$()\n\r") {
+		return false
+	}
+	tokens, ok := hookCommandTokens(command)
+	if !ok || len(tokens) < 3 || tokens[0] != "git" || tokens[1] != "push" {
+		return false
+	}
+	deleteFlag := false
+	var positional []string
+	args := tokens[2:]
+	for i := 0; i < len(args); i++ {
+		token := args[i]
+		switch {
+		case token == "--delete" || token == "-d":
+			deleteFlag = true
+		case token == "--mirror" || token == "--all" || token == "--branches" || token == "--tags" || token == "--follow-tags":
+			return false
+		case token == "--repo" || token == "--receive-pack" || token == "--exec" || token == "-o" || token == "--push-option":
+			// These take the next word as their value; skip it rather than read it as a refspec.
+			i++
+		case strings.HasPrefix(token, "-"):
+		default:
+			positional = append(positional, token)
+		}
+	}
+	if len(positional) < 2 {
+		return false
+	}
+	if deleteFlag {
+		return true
+	}
+	for _, refspec := range positional[1:] {
+		if !strings.HasPrefix(refspec, ":") || len(refspec) == 1 {
+			return false
+		}
+	}
+	return true
 }
 
 var pushTagRefspecRE = regexp.MustCompile(`(?:^|\s)\+?(?:refs/tags/\S+|\S+:refs/tags/\S+|v\d+\.\d+\.\d+[^\s:]*)(?:\s|$)`)
