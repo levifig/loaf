@@ -34,6 +34,8 @@ type journalContextDigestLayer struct {
 	unavailable bool
 	total       int
 	hints       []string
+	// listedHints appear only once packing lists at least one item.
+	listedHints []string
 	listCommand string
 	items       []string
 	shown       int
@@ -107,6 +109,9 @@ func assembleJournalContextDigest(header []string, layers []*journalContextDiges
 			notes = append(notes, "more: "+layer.listCommand)
 		}
 		notes = append(notes, layer.hints...)
+		if layer.shown > 0 {
+			notes = append(notes, layer.listedHints...)
+		}
 		if len(notes) > 0 {
 			line += " (" + strings.Join(notes, "; ") + ")"
 		}
@@ -218,11 +223,22 @@ func journalContextDigestLayers(result journalContextCLIResult) []*journalContex
 		add(journalContextLayerActiveLineage, layer.Available, layer.AvailableCount, formatJournalContextDigestEntries(layer.Items, branch))
 	}
 	if layer := result.Layers.UnresolvedBlockers; layer != nil {
+		// Blockers older than the age limit are counted, not listed; the
+		// layer's list command still reads every one.
 		items := []string{}
 		for _, item := range layer.Items {
-			items = append(items, formatJournalContextDigestEntry(item.Block, branch, journalContextDigestEntryRunes))
+			if !item.Stale {
+				items = append(items, formatJournalContextDigestEntry(item.Block, branch, journalContextDigestEntryRunes))
+			}
 		}
-		add(journalContextLayerBlockers, layer.Available, layer.AvailableCount, items)
+		hints := []string{}
+		if layer.StaleCount > 0 {
+			hints = append(hints, fmt.Sprintf("%d older than %d days not listed", layer.StaleCount, state.JournalContextBlockerStaleDays))
+		}
+		add(journalContextLayerBlockers, layer.Available, layer.AvailableCount, items, hints...)
+		if last := len(layers) - 1; last >= 0 && layers[last].name == journalContextLayerBlockers {
+			layers[last].listedHints = []string{journalContextBlockerResolveHint}
+		}
 	}
 	if layer := result.Layers.DeferredIntent; layer != nil {
 		items := []string{}

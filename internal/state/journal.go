@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -41,19 +42,41 @@ type JournalLogResult struct {
 	HarnessSessionID   string `json:"harness_session_id,omitempty"`
 }
 
-const JournalUnmatchedUnblockCode = "journal-unmatched-unblock"
+// Unblock rejection codes. An unblock names either a scope, resolving every
+// open block with exactly that scope, or one block's entry id.
+const (
+	JournalUnmatchedUnblockCode    = "journal-unmatched-unblock"
+	JournalUnblockResolvedCode     = "journal-unblock-already-resolved"
+	JournalUnblockUnknownEntryCode = "journal-unblock-unknown-entry"
+	JournalUnblockNotBlockCode     = "journal-unblock-not-a-block"
+)
 
-// JournalUnmatchedUnblockError reports an unblock write whose exact key is not
-// currently open. LatestSourceID and LatestSourceType are empty when the key
-// has no historical block/unblock outcome.
+// JournalUnmatchedUnblockError reports an unblock write that would resolve no
+// open block, and writes nothing. For a scope key, LatestSourceID and
+// LatestSourceType name the newest block/unblock outcome for that scope and
+// are empty when there is none. For an already resolved block id, they name
+// the unblock that resolved it. EntryType is the type of a named entry that is
+// not a block.
 type JournalUnmatchedUnblockError struct {
 	Code             string
 	Key              string
 	LatestSourceID   string
 	LatestSourceType string
+	EntryType        string
 }
 
 func (e *JournalUnmatchedUnblockError) Error() string {
+	switch e.Code {
+	case JournalUnblockResolvedCode:
+		return fmt.Sprintf("cannot unblock journal entry %s: it was already resolved by %s", e.Key, e.LatestSourceID)
+	case JournalUnblockUnknownEntryCode:
+		return fmt.Sprintf("cannot unblock journal entry %s: this project has no journal entry with that id", e.Key)
+	case JournalUnblockNotBlockCode:
+		if e.EntryType == "block" {
+			return fmt.Sprintf("cannot unblock journal entry %s: it is a block with no scope, which the blockers layer does not track", e.Key)
+		}
+		return fmt.Sprintf("cannot unblock journal entry %s: its type is %s, not block", e.Key, e.EntryType)
+	}
 	if e.LatestSourceID == "" {
 		return fmt.Sprintf("cannot unblock journal key %q: no matching block exists", e.Key)
 	}
@@ -244,29 +267,45 @@ LIMIT 1
 	return result, true, nil
 }
 
+// validateJournalUnblockTx accepts an unblock only when it resolves at least
+// one open block: the block its key names by id, or the open blocks with
+// exactly its scope. It checks in the order resolveJournalBlocks applies them,
+// so a write it accepts always resolves something when the digest replays it.
 func validateJournalUnblockTx(ctx context.Context, tx *sql.Tx, projectID, key string) error {
-	var latestID, latestType string
-	err := tx.QueryRowContext(ctx, `
-SELECT id, entry_type
-FROM journal_entries
-WHERE project_id = ?
-  AND scope = ?
-  AND entry_type IN ('block', 'unblock')
-ORDER BY created_at DESC, rowid DESC
-LIMIT 1
-`, projectID, key).Scan(&latestID, &latestType)
+	events, err := queryJournalContextEntries(ctx, tx, projectID, math.MaxInt64, "entry_type IN ('block', 'unblock') AND COALESCE(scope, '') <> ''", nil)
+	if err != nil {
+		return fmt.Errorf("inspect journal blockers for key %q: %w", key, err)
+	}
+	resolution := resolveJournalBlocks(journalContextOldestFirst(events))
+	if _, isBlock := resolution.BlockScope[key]; isBlock {
+		resolvedBy, resolved := resolution.ResolvedBy[key]
+		if !resolved {
+			return nil
+		}
+		return &JournalUnmatchedUnblockError{Code: JournalUnblockResolvedCode, Key: key, LatestSourceID: resolvedBy, LatestSourceType: "unblock"}
+	}
+	for _, block := range resolution.Open {
+		if block.Candidate.Entry.Scope == key {
+			return nil
+		}
+	}
+	var entryType string
+	err = tx.QueryRowContext(ctx, `SELECT entry_type FROM journal_entries WHERE project_id = ? AND id = ?`, projectID, key).Scan(&entryType)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("inspect latest journal blocker outcome for key %q: %w", key, err)
+		return fmt.Errorf("inspect journal entry %q: %w", key, err)
 	}
-	if err == nil && latestType == "block" {
-		return nil
+	if err == nil {
+		return &JournalUnmatchedUnblockError{Code: JournalUnblockNotBlockCode, Key: key, EntryType: entryType}
 	}
-	return &JournalUnmatchedUnblockError{
-		Code:             JournalUnmatchedUnblockCode,
-		Key:              key,
-		LatestSourceID:   latestID,
-		LatestSourceType: latestType,
+	if looksLikeJournalEntryID(key) {
+		return &JournalUnmatchedUnblockError{Code: JournalUnblockUnknownEntryCode, Key: key}
 	}
+	unmatched := &JournalUnmatchedUnblockError{Code: JournalUnmatchedUnblockCode, Key: key}
+	if latest, ok := resolution.Latest[key]; ok {
+		unmatched.LatestSourceID = latest.Entry.ID
+		unmatched.LatestSourceType = latest.Entry.EntryType
+	}
+	return unmatched
 }
 
 func runJournalLogHook(hooks *journalLogHooks, selectHook func(*journalLogHooks) func(*sql.Tx) error, tx *sql.Tx) error {

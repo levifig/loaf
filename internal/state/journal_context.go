@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/levifig/loaf/internal/project"
 )
@@ -49,6 +50,9 @@ type JournalContextOptions struct {
 	TaskLimit        int
 	Cursor           string
 	CursorLayer      string
+	// Now is the read clock that ages unresolved blockers; zero means the
+	// current time.
+	Now time.Time
 }
 
 // JournalContext is the contract-v2 active-truth read model. Every layer is
@@ -108,19 +112,25 @@ type JournalContextCheckpointItem struct {
 }
 
 type JournalContextBlockerLayer struct {
-	Available      bool                        `json:"source_available"`
-	AvailableCount int                         `json:"available_count"`
-	ShownCount     int                         `json:"shown_count"`
-	Truncated      bool                        `json:"truncated"`
-	Cursor         string                      `json:"cursor,omitempty"`
-	ExpandCommand  string                      `json:"expand_command"`
-	Items          []JournalContextBlockerItem `json:"items"`
+	Available      bool   `json:"source_available"`
+	AvailableCount int    `json:"available_count"`
+	ShownCount     int    `json:"shown_count"`
+	Truncated      bool   `json:"truncated"`
+	Cursor         string `json:"cursor,omitempty"`
+	ExpandCommand  string `json:"expand_command"`
+	// StaleCount counts every unresolved block, shown or not, older than
+	// JournalContextBlockerStaleDays. Stale blocks sort last.
+	StaleCount int                         `json:"stale_count"`
+	Items      []JournalContextBlockerItem `json:"items"`
 }
 
+// JournalContextBlockerItem is one unresolved block. Key is its exact scope;
+// either `unblock(<key>)` or `unblock(<block id>)` resolves it.
 type JournalContextBlockerItem struct {
 	Key               string             `json:"key"`
 	Block             JournalEntryRecord `json:"block"`
 	PreviousUnblockID string             `json:"previous_unblock_id,omitempty"`
+	Stale             bool               `json:"stale,omitempty"`
 }
 
 type JournalContextDeferralLayer struct {
@@ -333,7 +343,11 @@ func (s *Store) JournalContext(ctx context.Context, root project.Root, options J
 	if err != nil {
 		return JournalContext{}, err
 	}
-	blockerCandidates, diagnostics, err := queryBlockerCandidates(ctx, tx, identity.ID, watermark)
+	now := options.Now
+	if now.IsZero() {
+		now = time.Now()
+	}
+	blockerCandidates, diagnostics, err := queryBlockerCandidates(ctx, tx, identity.ID, watermark, now)
 	if err != nil {
 		return JournalContext{}, err
 	}
@@ -539,50 +553,43 @@ func queryLineageCandidates(ctx context.Context, tx *sql.Tx, projectID string, w
 	return latest, nil
 }
 
-func queryBlockerCandidates(ctx context.Context, tx *sql.Tx, projectID string, watermark int64) ([]journalContextBlockerCandidate, []JournalContextDiagnostic, error) {
+func queryBlockerCandidates(ctx context.Context, tx *sql.Tx, projectID string, watermark int64, now time.Time) ([]journalContextBlockerCandidate, []JournalContextDiagnostic, error) {
 	all, err := queryJournalContextEntries(ctx, tx, projectID, watermark, "entry_type IN ('block', 'unblock') AND COALESCE(scope, '') <> ''", nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	byKey := map[string][]journalContextJournalCandidate{}
-	for _, candidate := range all {
-		byKey[candidate.Entry.Scope] = append(byKey[candidate.Entry.Scope], candidate)
+	resolution := resolveJournalBlocks(journalContextOldestFirst(all))
+	candidates := make([]journalContextBlockerCandidate, 0, len(resolution.Open))
+	for _, block := range resolution.Open {
+		item := JournalContextBlockerItem{Key: block.Candidate.Entry.Scope, Block: block.Candidate.Entry, PreviousUnblockID: block.PreviousUnblockID}
+		if age, ok := journalContextAgeDays(block.Candidate.Entry.CreatedAt, now); ok && age > JournalContextBlockerStaleDays {
+			item.Stale = true
+		}
+		candidates = append(candidates, journalContextBlockerCandidate{Item: item, CreatedAt: block.Candidate.Entry.CreatedAt, RowID: block.Candidate.RowID})
 	}
-	candidates := []journalContextBlockerCandidate{}
-	diagnostics := []JournalContextDiagnostic{}
-	for key, entries := range byKey {
-		outstanding := false
-		for i := len(entries) - 1; i >= 0; i-- {
-			entry := entries[i]
-			switch entry.Entry.EntryType {
-			case "block":
-				outstanding = true
-			case "unblock":
-				if !outstanding {
-					diagnostics = append(diagnostics, JournalContextDiagnostic{Code: "journal-context-unmatched-unblock", Key: key, EntryID: entry.Entry.ID, Message: "unblock has no unresolved block for the exact scope key"})
-					continue
-				}
-				outstanding = false
-			}
+	diagnostics := make([]JournalContextDiagnostic, 0, len(resolution.Unmatched))
+	for _, unblock := range resolution.Unmatched {
+		message := "unblock has no unresolved block for the exact scope key"
+		if _, byID := resolution.BlockScope[unblock.Entry.Scope]; byID {
+			message = "unblock names a block that was already resolved"
 		}
-		if !outstanding {
-			continue
-		}
-		latest := entries[0]
-		item := JournalContextBlockerItem{Key: key, Block: latest.Entry}
-		for _, prior := range entries[1:] {
-			if prior.Entry.EntryType == "unblock" {
-				item.PreviousUnblockID = prior.Entry.ID
-				break
-			}
-		}
-		candidates = append(candidates, journalContextBlockerCandidate{Item: item, CreatedAt: latest.Entry.CreatedAt, RowID: latest.RowID})
+		diagnostics = append(diagnostics, JournalContextDiagnostic{Code: "journal-context-unmatched-unblock", Key: unblock.Entry.Scope, EntryID: unblock.Entry.ID, Message: message})
 	}
 	sort.Slice(candidates, func(i, j int) bool {
 		return journalContextNewer(candidates[i].CreatedAt, candidates[i].RowID, candidates[j].CreatedAt, candidates[j].RowID)
 	})
-	sort.Slice(diagnostics, func(i, j int) bool { return diagnostics[i].Key < diagnostics[j].Key })
+	sort.SliceStable(diagnostics, func(i, j int) bool { return diagnostics[i].Key < diagnostics[j].Key })
 	return candidates, diagnostics, nil
+}
+
+// journalContextOldestFirst reverses newest-first context rows into journal
+// order without changing the caller's slice.
+func journalContextOldestFirst(newestFirst []journalContextJournalCandidate) []journalContextJournalCandidate {
+	ordered := make([]journalContextJournalCandidate, len(newestFirst))
+	for i, candidate := range newestFirst {
+		ordered[len(newestFirst)-1-i] = candidate
+	}
+	return ordered
 }
 
 // queryDeferralCandidates builds the deferred-intent candidate set. Canonical
