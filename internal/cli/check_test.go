@@ -1763,6 +1763,52 @@ func TestRunnerCheckValidatePushBlocksDirectMainSourcePush(t *testing.T) {
 	}
 }
 
+// A local main that differs from origin/main used to block deleting an unrelated
+// remote branch, because the check diffed the current branch rather than what the
+// push sends. A delete sends no commits.
+func TestRunnerCheckValidatePushAllowsBranchDeletionFromMain(t *testing.T) {
+	repo := initCLIGitRepo(t)
+	addOriginTrackingMain(t, repo)
+	mkdirAll(t, filepath.Join(repo, "cli"))
+	writeFile(t, filepath.Join(repo, "cli", "source.ts"), "source\n")
+	gitCLI(t, repo, "add", "cli/source.ts")
+	gitCLI(t, repo, "-c", "user.name=Loaf Test", "-c", "user.email=loaf@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "feat: update source")
+
+	for _, command := range []string{
+		"git push origin --delete feat/old",
+		"git push --force-with-lease=refs/heads/feat/old:abc123 origin --delete feat/old",
+		"git push origin :feat/old",
+		"git push -d origin feat/old feat/older",
+	} {
+		var stderr bytes.Buffer
+		err := Runner{
+			Stderr:     &stderr,
+			WorkingDir: repo,
+			Stdin:      bytes.NewBufferString(checkBashContext(command)),
+		}.Run([]string{"check", "--hook", "validate-push"})
+		if err != nil {
+			t.Fatalf("%q: validate-push error = %v, stderr = %q; want a delete to pass", command, err, stderr.String())
+		}
+	}
+
+	for _, command := range []string{
+		"git push origin main :feat/old",
+		"git push origin --delete feat/old && git push origin main",
+		"git push origin",
+	} {
+		var stderr bytes.Buffer
+		err := Runner{
+			Stderr:     &stderr,
+			WorkingDir: repo,
+			Stdin:      bytes.NewBufferString(checkBashContext(command)),
+		}.Run([]string{"check", "--hook", "validate-push"})
+		var exitErr ExitError
+		if !errors.As(err, &exitErr) || exitErr.Code != 2 || !strings.Contains(stderr.String(), "Direct push to main") {
+			t.Fatalf("%q: validate-push error = %v, stderr = %q; want the direct-main block", command, err, stderr.String())
+		}
+	}
+}
+
 func TestRunnerCheckValidatePushAdvisoryReportsDirectMainSourcePushWithoutBlocking(t *testing.T) {
 	repo := initCLIGitRepo(t)
 	addOriginTrackingMain(t, repo)
