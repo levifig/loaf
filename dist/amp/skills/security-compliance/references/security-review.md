@@ -50,7 +50,8 @@ For every PR:
 [ ] Default credentials changed
 [ ] Error messages don't leak internals
 [ ] Security headers configured (X-Content-Type-Options, X-Frame-Options, HSTS, CSP)
-[ ] Dependencies pinned to specific versions
+[ ] Project dependencies pinned to specific versions through a committed lockfile
+[ ] Applications and tools that track a release channel have a documented upgrade policy
 [ ] Dependency scanning in CI
 [ ] Unnecessary features disabled
 ```

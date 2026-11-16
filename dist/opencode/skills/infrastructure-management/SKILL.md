@@ -28,7 +28,8 @@ Infrastructure patterns for containerization, orchestration, CI/CD pipelines, an
 - Use multi-stage builds to minimize image size
 - Run containers as non-root user (UID 1000)
 - Include health checks in all services
-- Pin specific image versions (no `:latest`)
+- Pin what the project builds from and runs: lockfile packages, providers, the release toolchain, and base images (a specific version, never `:latest`)
+- Let applications and tools installed for people or agents, including third-party images the project deploys, follow their documented upgrade policy, which may be a release channel such as `latest`
 - Set resource requests AND limits
 - Use `npm ci` / `pip-sync` in CI (not install)
 - Commit lockfiles to version control
@@ -36,7 +37,7 @@ Infrastructure patterns for containerization, orchestration, CI/CD pipelines, an
 ### Never
 
 - Commit secrets to version control
-- Use `:latest` tags in production
+- Build from a `:latest` base image, or deploy a `:latest` image that has no documented upgrade policy
 - Skip security scanning in CI
 - Deploy without rollback capability
 - Store state in containers
@@ -53,7 +54,7 @@ Infrastructure patterns for containerization, orchestration, CI/CD pipelines, an
 - Check for common issues:
   - Missing resource limits/requests (CPU, memory)
   - Missing liveness/readiness probes
-  - Using `:latest` tag (prefer specific versions)
+  - A `:latest` tag on an image with no documented upgrade policy
   - Privileged containers (security concern)
   - No namespace specified
 - If `kubesec` is available: `kubesec scan {manifest}`
@@ -61,7 +62,7 @@ Infrastructure patterns for containerization, orchestration, CI/CD pipelines, an
 **Dockerfiles:**
 - Check for:
   - Non-root USER specified
-  - Specific image versions (no `:latest`)
+  - Base and build-stage images at a specific version (no `:latest`)
   - HEALTHCHECK instruction
   - No secrets in ENV instructions
   - Using COPY instead of ADD for local files
