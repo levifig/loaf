@@ -1794,6 +1794,7 @@ func TestRunnerCheckValidatePushAllowsBranchDeletionFromMain(t *testing.T) {
 	for _, command := range []string{
 		"git push origin main :feat/old",
 		"git push origin --delete feat/old && git push origin main",
+		"git push origin --delete feat/old\ngit push origin main",
 		"git push origin",
 	} {
 		var stderr bytes.Buffer

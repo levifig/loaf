@@ -1192,7 +1192,12 @@ func runNativeValidatePush(hookContext checkHookContext, cwd string) checkResult
 // Anything it can't read as one plain push, such as a chained command, is not
 // delete-only, so the usual checks still run.
 func gitPushDeletesOnly(command string) bool {
-	tokens, ok := hookCommandTokens(strings.TrimSpace(command))
+	command = strings.TrimSpace(command)
+	// A newline or shell operator can run another command after the delete.
+	if strings.ContainsAny(command, ";&|<>`$()\n\r") {
+		return false
+	}
+	tokens, ok := hookCommandTokens(command)
 	if !ok || len(tokens) < 3 || tokens[0] != "git" || tokens[1] != "push" {
 		return false
 	}
@@ -1202,8 +1207,6 @@ func gitPushDeletesOnly(command string) bool {
 	for i := 0; i < len(args); i++ {
 		token := args[i]
 		switch {
-		case strings.ContainsAny(token, ";&|<>`$()"):
-			return false
 		case token == "--delete" || token == "-d":
 			deleteFlag = true
 		case token == "--mirror" || token == "--all" || token == "--branches" || token == "--tags" || token == "--follow-tags":
