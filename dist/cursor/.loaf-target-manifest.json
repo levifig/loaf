@@ -24,22 +24,6 @@
       "mode": 420
     },
     {
-      "id": "hook-file:hooks/instructions/pre-pr-checklist.md",
-      "kind": "hook-file",
-      "source_path": "hooks/instructions/pre-pr-checklist.md",
-      "destination": "hooks/instructions/pre-pr-checklist.md",
-      "sha256": "39105e7a4dd6e6574e2a4e270f10d1c7f0c34f95bdd1f25b234d5376644d7a69",
-      "mode": 420
-    },
-    {
-      "id": "hook-file:hooks/instructions/pre-pr-format.md",
-      "kind": "hook-file",
-      "source_path": "hooks/instructions/pre-pr-format.md",
-      "destination": "hooks/instructions/pre-pr-format.md",
-      "sha256": "d41111e001c0b0b45ebeb33867f358563e6f73abcc9c34aef8590648f1a53930",
-      "mode": 420
-    },
-    {
       "id": "hook-file:hooks/instructions/pre-push.md",
       "kind": "hook-file",
       "source_path": "hooks/instructions/pre-push.md",
@@ -51,7 +35,7 @@
       "id": "managed-instructions",
       "kind": "instruction",
       "destination": "project-instructions",
-      "sha256": "aeba2599aca017daa6669114aed960c35eccb3574e394757417692b0e6598669"
+      "sha256": "fc1049bba977b5d21020a1da550d18719c5eb2e022cbf65872206e4303e41667"
     }
   ]
 }

@@ -50,7 +50,7 @@ func TestSkillContentHygieneStaleReferences(t *testing.T) {
 			required:  []string{"`database-design`"},
 		},
 		{
-			rel: "content/skills/foundations/references/code-style.md",
+			rel: "content/skills/loaf-core/references/code-style.md",
 			forbidden: []string{
 				"`python` skill",
 				"`typescript` skill",
@@ -63,7 +63,7 @@ func TestSkillContentHygieneStaleReferences(t *testing.T) {
 			},
 		},
 		{
-			rel:       "content/skills/knowledge-base/SKILL.md",
+			rel:       "content/skills/architecture/references/knowledge-files.md",
 			forbidden: []string{"CLAUDE.md", ".agents/AGENTS.md"},
 			required:  []string{"AGENTS.md"},
 		},
@@ -75,7 +75,6 @@ func TestSkillContentHygieneStaleReferences(t *testing.T) {
 				"YYYYMMDD-HHMMSS-topic.md",
 			},
 			required: []string{
-				"loaf journal log",
 				"project-management/v1",
 				"Assign one writer",
 			},
@@ -150,7 +149,10 @@ func TestArchitectureResourceOwnership(t *testing.T) {
 		source string
 		target string
 	}{
-		{"content/skills/documentation-standards/references/documentation.md", "content/skills/architecture/SKILL.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/references/knowledge-files.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/templates/knowledge-file.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/references/documentation-review.md"},
+		{"content/skills/release/SKILL.md", "content/skills/release/references/changelog.md"},
 		{"content/skills/architecture/SKILL.md", "content/skills/architecture/templates/architecture-topic.md"},
 		{"content/skills/architecture/SKILL.md", "content/skills/architecture/templates/legacy-adr.md"},
 		{"content/skills/architecture/SKILL.md", "content/skills/architecture/references/auditing-and-migration.md"},
@@ -359,25 +361,6 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 			},
 		},
 		{
-			rel: "docs/knowledge/task-system.md",
-			forbidden: []string{
-				"# Task System",
-				"Loaf implements a Shape Up-inspired task management system",
-				"## Pipeline",
-				"/shape → SPEC file",
-				"## Journal Model (SPEC-056)",
-				"One concern per task.",
-				"Loaf uses Change artifacts for new bounded work.",
-			},
-			required: []string{
-				"# Work Records and Compatibility",
-				"## Current Shared Work",
-				"New shared work lives only in the selected native tracker.",
-				"These surfaces preserve access to existing data",
-				"Migration never introduces background push/pull",
-			},
-		},
-		{
 			rel: "docs/ARCHITECTURE.md",
 			forbidden: []string{
 				"### Stateful Runtime Migration (ADR-014)",
@@ -392,7 +375,7 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"## Shipped and Pending Boundaries",
 				"## Loaf Flow",
 				"## Compatibility Names",
-				"entry point to owning architecture topics",
+				"reference for stable cross-cutting commitments",
 				"agreement is not proof of public or complete implementation",
 			},
 		},
@@ -413,6 +396,11 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"conversion pass",
 				"spec-conversion-and-guidance-sweep",
 				"CLAUDE.md",
+				"Loaf implements a Shape Up-inspired task management system",
+				"/shape → SPEC file",
+				"## Journal Model (SPEC-056)",
+				"One concern per task.",
+				"Loaf uses Change artifacts for new bounded work.",
 			},
 			required: []string{
 				"Shape new bounded work",
@@ -420,6 +408,9 @@ func TestPlanningVocabularyConverged(t *testing.T) {
 				"canonical native tracker record",
 				"do not create a second shared work authority",
 				"compatibility commands",
+				"New shared work lives only in the selected native tracker.",
+				"These surfaces preserve access to existing data",
+				"Migration never introduces background push/pull",
 			},
 		},
 		{

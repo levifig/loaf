@@ -6,7 +6,7 @@ description: >-
   work, deliver transfer context, or load a saved handoff. Produces a concise
   packet through an authorized channel, with SQLite persistence when needed. For
   ordinary capture, completion summaries, or parked-work checkpoints, use
-  foundations.
+  loaf-core.
 subtask: false
 version: 0.6.0-rc.3
 ---
@@ -24,15 +24,11 @@ Give a recipient enough context to take the next useful action without reconstru
 - Quick Reference
 - Process
 - Loading a Saved Handoff
-- Journal Commands
 - Related Skills
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill.
-
-- As the first action, run `loaf journal log "skill(handoff): <recipient and focus>"` against the current private journal. If unavailable, report the failure and continue only when the transfer can safely proceed.
-- Use Handoff for a deliberate recipient-focused transfer. Interpret "prepare the next session" by intent: routine resumption and parked-work synthesis use Foundations and the managed continuity instructions, without automatically creating a packet.
+- Use Handoff for a deliberate recipient-focused transfer. Interpret "prepare the next session" by intent: routine resumption and parked-work synthesis use Loaf Core and the managed continuity instructions, without automatically creating a packet.
 - Infer the recipient, destination, bounded scope, and next action from available context. Ask only when ambiguity materially changes the transfer.
 - Preparing or persisting a packet does not authorize spawning agents, creating tasks, sending messages, starting implementation, or expanding the recipient's existing authority. Use a delivery tool only when that action is already authorized.
 - Re-read relevant native tracker and Git state when preparing the packet, and instruct the recipient to re-read them before acting. A snapshot is contextual evidence, never a work contract or current workflow state; Backlog does not authorize execution.
@@ -58,13 +54,13 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | Operator explicitly requests a portable file | Transfer snapshot at the requested destination |
 | No authorized delivery tool | Return the usable packet to the operator; report it as prepared |
 | Required persistence unavailable | Report the limitation and return an explicitly unpersisted packet when useful |
-| Routine checkpoint or parked work | Foundations ordinary capture and selective synthesis |
+| Routine checkpoint or parked work | Loaf Core ordinary capture and selective synthesis |
 
 ## Process
 
 1. **Frame the transfer.** Identify who will continue, where they can receive context, what they may do, and the next useful action. A future conversation can be the recipient; a named person or running agent is not required.
 2. **Gather current evidence.** Read relevant native issues, Git status/branch/commits, journal entries, and existing authored material. Reference their authoritative locations and summarize only what continuation needs. State important limits or unavailable sources honestly.
-3. **Prepare a compact packet.** Use the template's useful prompts. Include the native work reference where relevant and the instruction to re-read current state. Record a concise checkpoint through Foundations only if useful reasoning is missing from the journal; do not duplicate the packet there.
+3. **Prepare a compact packet.** Use the template's useful prompts. Include the native work reference where relevant and the instruction to re-read current state. Record a concise checkpoint, with the command form in the loaf-core skill's Journal Commands section, only if useful reasoning is missing from the journal; do not duplicate the packet there.
 4. **Choose and verify delivery.** Use the applicable path below, then report the actual outcome, usable retrieval or destination, and the intended next action. Tool success is evidence of that operation, not proof that a recipient has read or accepted the packet.
 
 ### Direct Harness Delivery
@@ -96,16 +92,8 @@ From the source project context, use `loaf handoff list --json` or `loaf search 
 
 After loading, re-read the relevant native tracker and Git state, identify anything changed since the packet, and continue only within existing authorization. If the source store or referenced evidence is inaccessible, report what is missing instead of claiming successful recovery.
 
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
-
 ## Related Skills
 
-- **foundations** — Ordinary capture and selective journal checkpoints
+- **loaf-core** — Ordinary capture and selective journal checkpoints
 - **project-management** — Native work authority and actionable follow-up capture
 - **orchestration** — Bounded coordination when authorized

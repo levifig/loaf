@@ -1,3 +1,24 @@
+---
+topics:
+  - cloud
+  - compatibility
+  - synchronization
+covers:
+  - internal/state/path.go
+  - internal/auth/store.go
+  - internal/auth/provision.go
+  - internal/cli/attach_gate.go
+  - internal/cli/attach_run.go
+  - internal/cli/cloud_environment_bootstrap.go
+  - internal/cli/cloud_environment_test.go
+  - .agents/setup
+  - .agents/resume
+  - .cursor/environment.json
+  - .cursor/loaf-cloud-install.sh
+  - .cursor/loaf-cloud-start.sh
+last_reviewed: 2026-11-06
+---
+
 # Cloud and CI Attach Walkthrough
 
 > **Compatibility guide:** This walkthrough exercises the shipped synchronization surface. The accepted private-continuity protocol has pre-cutover code and tests but no public destination attach, network sync, or serve journey. See [Private Synchronization](../architecture/private-synchronization.md) and the [Private Sync Threat Model](../security/private-sync-threat-model.md).
@@ -13,17 +34,19 @@
 - Failure modes
 - Verification
 
-Ephemeral hosts — Cursor Cloud Agents, Amp Orbs, and CI runners — start from a fresh clone with no Loaf installed and no substrate attach state. This walkthrough covers the operator path from minting a project-scoped client credential through unattended attach on each surface. It satisfies the LOAF-67 H-tier connection documentation and the LOAF-78 walkthrough criterion for project-environment secrets and attach pre-warm.
+This walkthrough covers preparing an ephemeral host with no Loaf installation or attach state, then minting a project-scoped client credential and attaching it on Cursor Cloud, Amp Orbs, or CI. Existing Orb snapshots can retain prior installation and auth state; a fresh clone alone does not prove a fresh machine environment.
 
 ## Overview
 
 Three layers stack on cloud hosts:
 
-1. **Bootstrap (LOAF-78)** — install scripts build the Loaf CLI and run `loaf install --to <harness>` under `LOAF_PROJECT_ENV=1` so skills, commands, and hooks resolve from the project checkout (`.cursor/`, `.amp/`, `.agents/skills/`), not user-level config.
-2. **Secrets (LOAF-67)** — per-project environment secrets carry the bundled client credential minted by `loaf auth link`. Never paste the operator master key or account admin secret into cloud or CI secrets.
-3. **Attach (LOAF-67)** — the start script (or an explicit CI step) runs `loaf attach`, which reads `.agents/loaf.conf`, `LOAF_CLIENT_TOKEN`, and optionally `LOAF_SYNC_URL`, then completes the unattended ceremony: HTTPS health → auth → pull → decrypt probe → capability check → HLC skew check → identity match.
+1. **Bootstrap** — this repository's install scripts build the Loaf CLI and run `loaf install --to <harness>` under `LOAF_PROJECT_ENV=1` so skills, commands, and hooks resolve from the project checkout (`.cursor/`, `.amp/`, `.agents/skills/`). External Amp consumers use the separate pinned release bootstrap linked below.
+2. **Secrets** — per-project environment secrets carry the bundled client credential minted by `loaf auth link`. Never paste the operator master key or account admin secret into cloud or CI secrets.
+3. **Attach** — the start script (or an explicit CI step) runs `loaf attach`, which reads `.agents/loaf.conf`, `LOAF_CLIENT_TOKEN`, and optionally `LOAF_SYNC_URL`, then completes the unattended ceremony: HTTPS health → auth → pull → decrypt probe → capability check → HLC skew check → identity match.
 
 When attach enforcement is active and the environment is unattached, every substrate-touching `loaf` command exits nonzero with a machine-readable refusal. SessionStart journal context hooks fail closed the same way. Exempt commands: `--version`, help, and the auth/attach/install surface needed to become attached.
+
+Enforcement becomes active when the machine-local auth directory contains an admin wire, client wire, or attach-state file, or when `LOAF_CLIENT_TOKEN` is nonempty. A wholly unconfigured environment is not gated. Successful attach persists the client wire and attached state, so unsetting the environment token afterward does not detach that environment.
 
 ## Prerequisites
 
@@ -110,14 +133,14 @@ if [[ -n "${LOAF_CLIENT_TOKEN:-}" ]]; then
 fi
 ```
 
-After attach succeeds, substrate commands (`loaf journal log`, `loaf issue …`, etc.) proceed normally. If `LOAF_CLIENT_TOKEN` is missing or attach fails, substrate commands refuse loudly and SessionStart context emission fails closed.
+After attach succeeds, private-continuity commands such as `loaf journal recent` can proceed, subject to their normal state checks. If attach enforcement is active and attach has not succeeded, substrate commands and SessionStart context emission refuse. A missing token on a wholly unconfigured host does not activate that gate; an explicit `loaf attach` still reports the missing credential.
 
 ### Manual verification on a cloud agent
 
 ```bash
 loaf attach --json          # should exit 0 when secrets are correct
 loaf journal recent         # should succeed after attach
-loaf journal context --from-hook  # SessionStart path; fails closed when unattached
+loaf journal context --from-hook  # SessionStart path; refuses when enforcement is active and unattached
 ```
 
 ## Amp Orbs
@@ -222,7 +245,7 @@ Notes:
 
 Common causes:
 
-- **Missing secret** — enforcement sees no token; attach never runs; substrate commands refuse.
+- **Missing secret** — the explicit attach step reports a missing credential. Later substrate commands refuse only when auth enforcement is active and the environment is still unattached; do not use an unconfigured host's successful local command as proof of attach.
 - **Wrong project scope** — credential `project_id` does not match `.agents/loaf.conf`; attach exits with `attach-identity-mismatch`.
 - **Reach/auth** — relay unreachable or token revoked; attach exits with `attach-reach-failed` or `attach-auth-failed`.
 
@@ -240,7 +263,7 @@ Attach refusals are machine-readable. Use `--json` for automation.
 | `attach-reach-failed` | Relay health check failed | Verify relay URL and network egress |
 | `attach-auth-failed` | Token rejected or revoked | Re-mint or un-revoke the connection |
 | `attach-hlc-skew` | Clock grossly skewed from stream | Fix host NTP; retry attach |
-| `environment-unattached` | Substrate command before attach | Run `loaf attach` or fix secrets |
+| `environment-unattached` | Enforcement active, substrate command before successful attach | Run `loaf attach` or fix secrets |
 
 ## Verification
 
@@ -258,11 +281,31 @@ loaf attach --json                          # exit 0
 loaf journal recent                         # exit 0 (substrate reachable)
 ```
 
-**Unattached refusal (negative check):**
+**Unattached refusal (isolated negative check):**
+
+Use a disposable auth home with an explicit unattached state. The subshell isolates both auth and SQLite paths, contains no real credentials, and makes no network request. It leaves the fixture under the printed temporary directory for inspection; it does not remove or modify live auth state.
 
 ```bash
-unset LOAF_CLIENT_TOKEN
-loaf journal recent                         # exit 1, environment-unattached
+(
+  attach_probe=$(mktemp -d) || exit 1
+  export XDG_DATA_HOME="$attach_probe/data"
+  export LOAF_DB="$attach_probe/loaf.sqlite"
+  unset LOAF_CLIENT_TOKEN
+  mkdir -p "$XDG_DATA_HOME/loaf/auth" || exit 1
+  printf '%s\n' '{"attached":false}' > "$XDG_DATA_HOME/loaf/auth/attach.json" || exit 1
+  cd "$attach_probe" || exit 1
+  if loaf journal recent --json 2>"$attach_probe/refusal.json"; then
+    printf '%s\n' 'Expected an unattached refusal.' >&2
+    exit 1
+  else
+    probe_status=$?
+  fi
+  test "$probe_status" -eq 1 || exit 1
+  jq -e '.code == "environment-unattached"' "$attach_probe/refusal.json" || exit 1
+  printf 'Fixture: %s\n' "$attach_probe"
+)
 ```
+
+This proves the configured-unattached refusal path only. It does not prove relay reachability, successful attachment, or the destination protocol's availability.
 
 Harness bootstrap script markers are tested by `TestCloudEnvironmentBootstrapArtifactsInstallCLI` in `internal/cli/cloud_environment_test.go`.

@@ -27,12 +27,12 @@ func TestSingleCanonicalWrite(t *testing.T) {
 		if got := managedSkillsSyncCalls.Load(); got != 1 {
 			t.Fatalf("managedSkillsSyncCalls = %d, want 1 for install --to all", got)
 		}
-		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), sharedBody)
+		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), sharedBody)
 
 		// Mark all four installed, then dry-run the shared store once.
 		plan := parseInstallPlanJSON(t, runInstallCapture(t, root, "upgrade", "--to", "all", "--dry-run", "--json"))
-		if got := countPlanSkillDecisions(plan, "foundations"); got != 1 {
-			t.Fatalf("planned foundations decisions = %d, want 1; skills=%#v", got, plan.Skills)
+		if got := countPlanSkillDecisions(plan, "loaf-core"); got != 1 {
+			t.Fatalf("planned loaf-core decisions = %d, want 1; skills=%#v", got, plan.Skills)
 		}
 		for _, target := range plan.Targets {
 			for _, artifact := range target.Artifacts {
@@ -50,7 +50,7 @@ func TestSingleCanonicalWrite(t *testing.T) {
 			if target == "opencode" {
 				body = opencodeBody
 			}
-			writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "foundations", "SKILL.md"), body)
+			writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "loaf-core", "SKILL.md"), body)
 			if target == "cursor" || target == "codex" {
 				installTestHookDistribution(t, root, target)
 			}
@@ -62,20 +62,20 @@ func TestSingleCanonicalWrite(t *testing.T) {
 		if got := managedSkillsSyncCalls.Load(); got != 1 {
 			t.Fatalf("managedSkillsSyncCalls = %d, want 1 when only owned-key membership differs", got)
 		}
-		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), opencodeBody)
+		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), opencodeBody)
 	})
 
 	t.Run("one-conflict-report", func(t *testing.T) {
 		root, home := setupInstallCommandFixture(t)
 		// Install without orchestration so the later foreign directory is unowned.
 		for _, target := range targets {
-			writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "foundations", "SKILL.md"), sharedBody)
+			writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "loaf-core", "SKILL.md"), sharedBody)
 			if target == "cursor" || target == "codex" {
 				installTestHookDistribution(t, root, target)
 			}
 			// Seed adapter artifacts so upgrade has something concrete to refresh.
 			if target == "opencode" {
-				writeInstallFile(t, filepath.Join(root, "dist", target, "commands", "foundations.md"), "# Cmd\nSee [guide](references/guide.md).\n")
+				writeInstallFile(t, filepath.Join(root, "dist", target, "commands", "loaf-core.md"), "# Cmd\nSee [guide](references/guide.md).\n")
 				writeInstallFile(t, filepath.Join(root, "dist", target, "agents", "implementer.md"), "# Implementer\n")
 			}
 			mkdirAll(t, defaultInstallConfigDirsForHome(home)[target])
@@ -93,22 +93,22 @@ func TestSingleCanonicalWrite(t *testing.T) {
 
 		plan := parseInstallPlanJSON(t, runInstallCapture(t, root, "upgrade", "--to", "all", "--dry-run", "--json"))
 		conflicts := 0
-		foundationsAction := ""
+		coreAction := ""
 		for _, artifact := range plan.Skills {
 			if artifact.ID == "skill:orchestration" && artifact.Action == planActionConflict {
 				conflicts++
 			}
-			if artifact.ID == "skill:foundations" {
-				foundationsAction = artifact.Action
+			if artifact.ID == "skill:loaf-core" {
+				coreAction = artifact.Action
 			}
 		}
 		if conflicts != 1 {
 			t.Fatalf("orchestration conflicts = %d, want 1; skills=%#v", conflicts, plan.Skills)
 		}
-		// Foundations is already current; conflict on orchestration must not
+		// Loaf Core is already current; conflict on orchestration must not
 		// rewrite the plan into an indeterminate preserve/update either-or.
-		if foundationsAction != planActionPreserve {
-			t.Fatalf("foundations action = %q, want preserve while orchestration conflicts", foundationsAction)
+		if coreAction != planActionPreserve {
+			t.Fatalf("loaf-core action = %q, want preserve while orchestration conflicts", coreAction)
 		}
 		// Skill conflicts leave the shared set incomplete, so the complete
 		// target cohort is blocked and every marker remains retryable.
@@ -138,7 +138,7 @@ func TestSingleCanonicalWrite(t *testing.T) {
 				t.Fatalf("pre-existing install record for %s disappeared after conflicted upgrade: %v", target, statErr)
 			}
 		}
-		opencodeCommands := filepath.Join(defaultInstallConfigDirsForHome(home)["opencode"], "commands", "foundations.md")
+		opencodeCommands := filepath.Join(defaultInstallConfigDirsForHome(home)["opencode"], "commands", "loaf-core.md")
 		body, readErr := os.ReadFile(opencodeCommands)
 		if readErr != nil {
 			t.Fatalf("ReadFile(%s) error = %v", opencodeCommands, readErr)
@@ -146,10 +146,10 @@ func TestSingleCanonicalWrite(t *testing.T) {
 		if strings.Contains(string(body), "](references/") {
 			t.Fatalf("opencode command still has unrewritten skill-local links:\n%s", body)
 		}
-		assertInstallFile(t, filepath.Join(sharedSkills, "foundations", "SKILL.md"), sharedBody)
+		assertInstallFile(t, filepath.Join(sharedSkills, "loaf-core", "SKILL.md"), sharedBody)
 		assertInstallFile(t, filepath.Join(sharedSkills, "orchestration", "SKILL.md"), "# Foreign orchestration\n")
 
-		// Second run: unowned collision stays unowned; foundations stays managed;
+		// Second run: unowned collision stays unowned; loaf-core stays managed;
 		// no oscillation into claiming orchestration.
 		state, stateErr := readManagedSkillsState(sharedSkills)
 		if stateErr != nil {
@@ -158,8 +158,8 @@ func TestSingleCanonicalWrite(t *testing.T) {
 		if _, ok := state.digests["orchestration"]; ok {
 			t.Fatalf("manifest gained unowned orchestration after conflicted upgrade")
 		}
-		if _, ok := state.digests["foundations"]; !ok {
-			t.Fatalf("manifest dropped foundations after conflicted upgrade")
+		if _, ok := state.digests["loaf-core"]; !ok {
+			t.Fatalf("manifest dropped loaf-core after conflicted upgrade")
 		}
 		var stdout2 bytes.Buffer
 		err2 := Runner{Stdout: &stdout2, WorkingDir: root, Executable: distributionFixtureExecutable(root)}.Run([]string{"upgrade", "--to", "all", "--yes"})
@@ -212,7 +212,7 @@ func TestSingleCanonicalWrite(t *testing.T) {
 				t.Fatalf("hash destination after %v: %v", order, err)
 			}
 			digests = append(digests, digest)
-			assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), sharedBody)
+			assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), sharedBody)
 		}
 		for i := 1; i < len(digests); i++ {
 			if digests[i] != digests[0] {
@@ -224,7 +224,7 @@ func TestSingleCanonicalWrite(t *testing.T) {
 	t.Run("divergent-trees-fail-loudly", func(t *testing.T) {
 		root, home := setupInstallCommandFixture(t)
 		seedCanonicalSkillsFixture(t, root, home, targets, sharedBody)
-		writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), strings.Replace(sharedBody, "# Shared foundations\n", "# Cursor-only flavor\n", 1))
+		writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), strings.Replace(sharedBody, "# Shared loaf-core\n", "# Cursor-only flavor\n", 1))
 
 		err := syncCanonicalManagedSkills([]targetInstallOptions{
 			{Target: "opencode", DistDir: filepath.Join(root, "dist", "opencode"), ConfigDir: filepath.Join(home, ".config", "opencode"), HomeDir: home},
@@ -284,7 +284,7 @@ func TestSingleCanonicalWrite(t *testing.T) {
 			if target == "opencode" {
 				body = tampered
 			}
-			writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "foundations", "SKILL.md"), body)
+			writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "loaf-core", "SKILL.md"), body)
 			if target == "cursor" || target == "codex" {
 				installTestHookDistribution(t, root, target)
 			}
@@ -296,14 +296,14 @@ func TestSingleCanonicalWrite(t *testing.T) {
 		if got := managedSkillsSyncCalls.Load(); got != 1 {
 			t.Fatalf("managedSkillsSyncCalls = %d, want 1 for tampered owned-key value", got)
 		}
-		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), tampered)
+		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), tampered)
 	})
 
 	t.Run("symlinked-skills-root-rejected", func(t *testing.T) {
 		root, home := setupInstallCommandFixture(t)
 		seedCanonicalSkillsFixture(t, root, home, targets, sharedBody)
 		external := t.TempDir()
-		writeInstallFile(t, filepath.Join(external, "foundations", "SKILL.md"), sharedBody)
+		writeInstallFile(t, filepath.Join(external, "loaf-core", "SKILL.md"), sharedBody)
 		cursorSkills := filepath.Join(root, "dist", "cursor", "skills")
 		if err := os.RemoveAll(cursorSkills); err != nil {
 			t.Fatal(err)
@@ -323,7 +323,7 @@ func TestSingleCanonicalWrite(t *testing.T) {
 	t.Run("symlink-inside-skill-directory-rejected", func(t *testing.T) {
 		root, home := setupInstallCommandFixture(t)
 		seedCanonicalSkillsFixture(t, root, home, targets, sharedBody)
-		skillDir := filepath.Join(root, "dist", "cursor", "skills", "foundations")
+		skillDir := filepath.Join(root, "dist", "cursor", "skills", "loaf-core")
 		if err := os.Symlink("SKILL.md", filepath.Join(skillDir, "link.md")); err != nil {
 			t.Fatal(err)
 		}
@@ -343,7 +343,7 @@ func TestSingleCanonicalWrite(t *testing.T) {
 		root, home := setupInstallCommandFixture(t)
 		seedCanonicalSkillsFixture(t, root, home, targets, sharedBody)
 		external := t.TempDir()
-		writeInstallFile(t, filepath.Join(external, "skills", "foundations", "SKILL.md"), sharedBody)
+		writeInstallFile(t, filepath.Join(external, "skills", "loaf-core", "SKILL.md"), sharedBody)
 		cursorDist := filepath.Join(root, "dist", "cursor")
 		if err := os.RemoveAll(cursorDist); err != nil {
 			t.Fatal(err)
@@ -431,7 +431,7 @@ func TestSingleCanonicalWrite(t *testing.T) {
 		if got := managedSkillsSyncCalls.Load(); got != 1 {
 			t.Fatalf("managedSkillsSyncCalls = %d, want 1 through symlinked prefix", got)
 		}
-		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), sharedBody)
+		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), sharedBody)
 	})
 }
 
@@ -491,14 +491,14 @@ func TestSelectCanonicalSkillsSourceWithOwnedKeys(t *testing.T) {
 func canonicalSkillFixtureBody(withSubtask bool) string {
 	var b strings.Builder
 	b.WriteString("---\n")
-	b.WriteString("name: foundations\n")
+	b.WriteString("name: loaf-core\n")
 	b.WriteString("description: Shared\n")
 	if withSubtask {
 		b.WriteString("subtask: false\n")
 	}
 	b.WriteString("version: 9.8.7-test.1\n")
 	b.WriteString("---\n\n")
-	b.WriteString("# Shared foundations\n")
+	b.WriteString("# Shared loaf-core\n")
 	return b.String()
 }
 
@@ -509,7 +509,7 @@ func canonicalOrchestrationFixtureBody() string {
 func seedCanonicalSkillsFixture(t *testing.T, root, home string, targets []string, body string) {
 	t.Helper()
 	for _, target := range targets {
-		writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "foundations", "SKILL.md"), body)
+		writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "loaf-core", "SKILL.md"), body)
 		if target == "cursor" || target == "codex" {
 			installTestHookDistribution(t, root, target)
 		}

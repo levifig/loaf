@@ -119,7 +119,7 @@ func writeJournalContextHelp(out io.Writer) {
 		"--json            Output contract-v2 project metadata, layers, and diagnostics as JSON",
 		"",
 		"Hook subcommands (read stdin, exit silently for subagents):",
-		"  for-prompt      Inject implementation principles on UserPromptSubmit",
+		"  for-prompt      Retired; prints nothing so older installed hooks stay harmless",
 		"  for-compact     Inject journal-flush guidance before compaction",
 		"  for-resumption  Emit the continuity digest after compaction")
 }
@@ -982,9 +982,9 @@ func (r Runner) runJournalContextDigestWithHookInput(args []string, out io.Write
 	if (hasFlag(args, "--claude-code") || hasFlag(args, "--cursor-hook") || hasFlag(args, "--codex-hook") || hasFlag(args, "--opencode-hook")) && len(args) > 0 && strings.HasPrefix(args[0], "for-") {
 		return errors.New("target-specific hook adapters cannot combine generic journal context selectors")
 	}
-	// Hook subcommands: SessionStart/PostCompact emit the layered digest, while
-	// UserPromptSubmit and PreCompact inject guidance text. All preserve the
-	// subagent silent-exit guard.
+	// Hook subcommands: SessionStart/PostCompact emit the layered digest and
+	// PreCompact injects checkpoint guidance; the retired for-prompt prints
+	// nothing. All preserve the subagent silent-exit guard.
 	if len(args) > 0 {
 		switch args[0] {
 		case "for-prompt":

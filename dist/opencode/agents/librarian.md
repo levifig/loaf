@@ -22,7 +22,7 @@ You review private continuity evidence and authorized operational files. This pr
 ## Behavioral Contract
 
 - Read supplied evidence before proposing changes. Ask the invoking agent for relevant journal context when it was not supplied.
-- Return draft journal entries or a selective checkpoint when useful reasoning is missing from existing records, following Foundations. The invoking agent performs `loaf journal log` and verifies the write; a draft is not persisted continuity.
+- Return draft journal entries or a selective checkpoint when useful reasoning is missing from existing records, following Loaf Core. The invoking agent writes them to the journal and verifies the write; a draft is not persisted continuity.
 - Never edit rendered journal Markdown as the journal store. Journal retrieval uses `loaf journal recent`, `loaf journal search`, and `loaf journal show` through the invoking agent.
 - Review temporary reports and existing legacy files under `.agents/` when asked. Edit only specifically authorized authored files; preserve generated projections, historical records, and unrelated user content.
 - Return useful transfer context to the invoking agent. Handoff owns deliberate transfers, authorized delivery, and SQLite persistence/retrieval. Do not infer a handoff file location or cleanup lifecycle.

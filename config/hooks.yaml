@@ -4,26 +4,20 @@
 # Structure:
 #   pre-tool: Runs BEFORE tool execution (can block)
 #   post-tool: Runs AFTER tool execution (informational)
-#   session: Conversation hooks (SessionStart, UserPromptSubmit, PreCompact, PostCompact, TaskCompleted)
+#   session: Conversation hooks (SessionStart, PreCompact, PostCompact)
 #
 # Journal-first continuity has no session entity. Conversation hooks emit
-# the layered continuity digest and journal-flush guidance, or evaluate
-# normalized event envelopes for result-aware capture. All journal hooks read
-# the harness payload on stdin and exit silently for subagent invocations
-# (normalized agent identity present).
+# the layered continuity digest or checkpoint guidance. They read the harness
+# payload on stdin and exit silently for subagent invocations (normalized
+# agent identity present).
 #
-# Enforcement hooks (11) are implemented via `loaf check --hook <id>`:
-#   - artifact-body-write, check-secrets, ephemeral-provenance, github-account, render-drift, validate-push, validate-commit, workflow-pre-pr, security-audit, validate-infra-safety, validate-sql-safety
-#
-# Migrated to skill instructions (removed from hooks.yaml):
-#   - Language hooks: python-*, typescript-*, rails-*
-#   - Infra hooks: k8s, dockerfile, terraform
-#   - Design hooks: a11y, tokens
-#   - Quality hooks: format-check, tdd-advisory, validate-changelog, changelog-reminder
+# Enforcement hooks are implemented via `loaf check --hook <id>`:
+#   - artifact-body-write, artifact-names, check-secrets, ephemeral-provenance, github-account, render-drift, validate-push, validate-commit, workflow-pre-pr, security-audit, validate-infra-safety, validate-sql-safety
+
 
 hooks:
   pre-tool:
-    # Security Compliance - Secret scanning and security auditing (ENFORCEMENT)
+    # Loaf Core - Secret scanning and security auditing (ENFORCEMENT)
     - id: artifact-body-write
       skill: orchestration
       matcher: "Edit|Write|Bash"
@@ -33,7 +27,7 @@ hooks:
       description: Protect stored artifact bodies and generated projections; permit authored reports and file-backed councils
 
     - id: check-secrets
-      skill: security-compliance
+      skill: loaf-core
       matcher: "Edit|Write|Bash"
       blocking: true
       timeout: 30000
@@ -41,7 +35,7 @@ hooks:
       description: Check for hardcoded secrets before writing
 
     - id: security-audit
-      skill: security-compliance
+      skill: loaf-core
       matcher: "Bash"
       blocking: true
       timeout: 600000
@@ -83,7 +77,7 @@ hooks:
       description: Block tracked ephemeral Markdown and dangling references from retained spec records
 
     - id: artifact-names
-      skill: foundations
+      skill: loaf-core
       matcher: "Bash"
       if: "Bash(git commit:*)"
       blocking: true
@@ -150,9 +144,9 @@ hooks:
       description: Validate commit messages follow conventions
 
   post-tool:
-    # Knowledge Base - Staleness nudge (side-effect)
+    # Architecture - Knowledge-file staleness nudge (side-effect)
     - id: kb-staleness-nudge
-      skill: knowledge-base
+      skill: architecture
       type: command
       command: loaf check --hook kb-staleness-nudge
       matcher: "Edit|Write"
@@ -186,22 +180,11 @@ hooks:
       event: SessionStart
       description: Emit the layered continuity digest at conversation start
 
-    # Context injection — implementation principles on every user prompt
-    # Must be type: command (exit 0 = inject stdout as context).
-    # type: prompt on UserPromptSubmit acts as a gate/validator, not context injection.
-    - id: session-context-inject
-      skill: orchestration
-      type: command
-      command: 'loaf journal context for-prompt'
-      event: UserPromptSubmit
-      timeout: 5000
-      description: Inject implementation conventions on prompt submit
-
     # PreCompact — reinforce ordinary capture and selective checkpoints.
     # Writes nothing itself: only the entries the model logs in response persist.
     # Must be type: command, not prompt (prompt stop hooks not supported outside REPL).
     - id: pre-compact
-      skill: foundations
+      skill: loaf-core
       type: command
       command: 'loaf journal context for-compact'
       event: PreCompact

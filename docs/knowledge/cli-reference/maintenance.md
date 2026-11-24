@@ -1,3 +1,20 @@
+---
+topics:
+  - configuration
+  - installation
+  - maintenance
+covers:
+  - internal/cli/upgrade.go
+  - internal/cli/upgrade_scoped.go
+  - internal/cli/upgrade_path_loaf.go
+  - internal/cli/install_plan.go
+  - internal/cli/install_deprecations.go
+  - internal/cli/install.go
+  - internal/cli/doctor.go
+  - internal/cli/install_fenced.go
+last_reviewed: 2026-11-06
+---
+
 # Config-Aware Loaf Maintenance
 
 ## Contents
@@ -14,7 +31,7 @@ This protocol serves natural-language requests to upgrade, diagnose, repair, con
 ## Protocol
 
 0. **Classify the request.** A diagnose-only request stops after step 1 with facts; a plan request stops after step 2 with the mutation ledger; only an explicit repair, upgrade, or bring-current request proceeds to apply, and then only for the mutation classes the user's request actually named. Never let the protocol's shape carry a diagnosis into a mutation.
-1. **Diagnose.** Start with `loaf config check --json` for project intent and installed hook health. Add `loaf version` (running distribution and configured project destination), `loaf state status --json` and `loaf state doctor --json` (SQLite readiness, schema version, repair plan), and `loaf doctor --json` (project alignment: symlinks, stale files, fenced-content drift). These commands are read-only. GitHub destination checks are local only and explicitly report live verification as not performed. When `integrations.github.tracker: true` selects GitHub, complete the [GitHub destination diagnosis](../../../content/skills/github/SKILL.md#destination-diagnosis) through an already exposed, identity-verified connection and include its live evidence in the same report. Confirm the exact configured repository and opaque `project_id`, current title, observed access, and required Backlog, Todo, In Progress, and Done Status options; report In Review when present. Missing live capability or inaccessible resources remain unverified, not deleted or misconfigured by inference. Readability does not prove write permission, and Issue open/closed does not substitute for board lanes. Diagnosis never authorizes authentication changes or board/config mutations.
+1. **Diagnose.** Start with `loaf config check --json` for project intent and installed hook health. Add `loaf version` (running distribution and configured project destination), `loaf state status --json` and `loaf state doctor --json` (SQLite readiness, schema version, repair plan), and `loaf doctor --json` (project alignment: symlinks, stale files, fenced-content drift). These commands are read-only. Follow [Configuration Maintenance](configuration.md#diagnose-first) for the distinction between local routing validity and connected tracker-destination verification. Include unavailable live evidence as unverified; diagnosis never authorizes authentication changes or board/config mutations.
 2. **Plan.** For installed-target convergence, use `loaf upgrade --dry-run --json`: it reports intended creates, updates, retirements, preserved conflicts, deprecation actions, project-file effects, and whether explicit consent is required, without writing anything.
 3. **Ask.** Only for project-owned choices the facts cannot answer (for example integration election in `.agents/loaf.json`, or consent to destructive deprecation cleanup). Machine-observed facts are never questions. Present one complete mutation ledger — every intended operation with its consent requirement — and obtain approval for the ledger as a whole before applying any part of it.
 4. **Apply.** Use the existing explicit operations the ledger named: `loaf config check --fix`, `loaf upgrade` (with `-y` only after consent), `loaf doctor --fix --force` (the `--force` form is required for non-interactive execution; plain `--fix` prompts and silently skips repairs without a TTY — if a repair genuinely needs interactive judgment, stop and report that it requires an operator), `loaf state migrate schema --apply`, `loaf state migrate deferrals --apply`. A project-owned election is recorded by editing `.agents/loaf.json` in the checkout — a durable, reviewable change — and validating with `loaf config check --json`. Never invent a bypass.
@@ -28,13 +45,15 @@ Two commands, split by what they are for. Bringing an existing installation curr
 - `loaf install` is onboarding only: deploying Loaf into a folder for the first time, or adding a harness that does not have it yet. Inside a Loaf repo the project half no-ops and suggests `loaf upgrade`.
 - `loaf upgrade` closes with a best-effort currency advisory when it can identify the running binary's install channel (Homebrew, npm, or a dev checkout): it prints the available version and that channel's exact command, and never runs it. The check has a one-second budget and degrades silently — no advisory is not evidence that the binary is current.
 
+For Codex basic-command policy, upgrade rewrites unmodified Loaf-managed rules from older absolute pins to PATH `loaf`, preserving the classified subcommand prefixes. Locally modified or foreign rules are preserved and reported.
+
 ## Fact Sources
 
 | Fact | Source | Authority |
 |------|--------|-----------|
 | Team-owned project intent (integrations, knowledge dirs) | `.agents/loaf.json` via `loaf config check --json` | Shared config; never records machine-local install state; explicit GitHub `tracker: true`, repository, and opaque board ID are local routing choices, not live verification |
 | Running executable version and provenance | `loaf version` | Observed local distribution fact, separate from the configured project destination; the package manager owns acquisition |
-| Live GitHub destination usability | Verified harness connection via the GitHub skill's destination diagnosis | Exact node and repository readback, current title, observed access, and Status options; unavailable evidence stays unverified and is never cached as project routing |
+| Live GitHub destination usability | Already exposed harness connection, following [destination diagnosis](configuration.md#diagnose-first) | Provider readback remains separate from local routing; unavailable evidence stays unverified and is never cached as project routing |
 | SQLite readiness, schema version, repair plan | `loaf state status --json`, `loaf state doctor --json` | Behind-schema state returns the exact backup-first `loaf state migrate schema --apply` action |
 | Project alignment (symlinks, stale files, fenced content) | `loaf doctor --json` | Read-only; repairs go through the explicit `--fix` contract |
 | Installed target ownership and drift | `loaf upgrade --dry-run --json` | Content-addressed ownership manifests decide owned versus foreign |
@@ -45,9 +64,9 @@ Two commands, split by what they are for. Bringing an existing installation curr
 - `loaf doctor --json` never prompts and never repairs; it carries the identical check identities and outcomes as the human output plus repair IDs for planning.
 - `loaf upgrade --dry-run --json` is deterministic and byte-for-byte non-mutating; applying the reported plan through the existing commands must produce the predicted effects, after which diagnosis reports convergence.
 - `loaf state migrate deferrals --dry-run --json` previews the legacy-deferral conversion manifest; apply is backup-first, preserves every legacy row, and is rerunnable.
-- `loaf migrate markdown --dry-run --json` reports `mode: simulation` (full apply against a disposable snapshot, with `import_report`) when the project is registered, or `mode: inventory` (file counts only, no `import_report`) otherwise. See the markdown-migration reference for origin/status authority and the dry-run/apply parity precondition.
+- `loaf migrate markdown --dry-run --json` reports `mode: simulation` (full apply against a disposable snapshot, with `import_report`) when the project is registered, or `mode: inventory` (file counts only, no `import_report`) otherwise. See [Markdown Migration](markdown-migration.md) for origin/status authority and the dry-run/apply parity precondition.
 
-The plan document stays at `contract_version` 1 now that the surface belongs to `loaf upgrade`. Every field keeps its name, type, and meaning; the only value that changed is `command`, which reads `upgrade` because that is the command that applies the plan. One optional object is new: `project_part` reports the Loaf-repo detector gate with `in_scope` (whether project surfaces are planned at all), `tier` (`authoritative`, `strong`, `legacy`, or `none`), `confirmation_required` (the legacy tier needs an explicit yes), and `bases` (the evidence the tier rests on). It is omitted entirely for callers that plan project files unconditionally, so their document is byte-identical to the pre-split one — read it when present, do not require it.
+The upgrade plan uses `contract_version: 1` and `command: "upgrade"`. Its optional `project_part` object reports the Loaf-repo detector gate with `in_scope` (whether project surfaces are planned), `tier` (`authoritative`, `strong`, `legacy`, or `none`), `confirmation_required` (the legacy tier needs an explicit yes), and `bases` (the evidence the tier rests on). Callers that plan project files unconditionally omit this object; read it when present without requiring it everywhere.
 
 ## Consent Boundaries
 

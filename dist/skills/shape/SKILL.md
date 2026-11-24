@@ -17,14 +17,10 @@ Turn an existing pitch, conversation, or native issue into a bounded, independen
 - Critical Rules
 - Verification
 - Quick Reference
-- Journal Commands
 - Topics
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
-
-- As the first action, run `loaf journal log "skill(shape): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
 - Confirm the destination, runtime capabilities, and whether a matching native record already exists before creation.
 - If creation returns an ambiguous result, search and re-read native state; never repeat the create blindly.
 - Synthesize already-known context from the pitch, conversation, and live native record before asking. Investigate available facts; ask only material unanswered choices whose answers would change outcome, criteria, safety, dependencies, or the basis of selected or resourced work.
@@ -67,14 +63,6 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | Set blocking edge | `dependency.change` |
 | Prove readiness | Read back all relevant native fields |
 | Select for execution | `status.transition` to Todo only when the human selects the work; sufficiency is not selection |
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

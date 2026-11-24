@@ -18,7 +18,7 @@ import (
 
 func TestRunnerUpgradeOnlyRefreshesDetectedLoafTargets(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	mkdirAll(t, filepath.Join(home, ".config", "opencode"))
 	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
@@ -39,7 +39,7 @@ func TestRunnerUpgradeOnlyRefreshesDetectedLoafTargets(t *testing.T) {
 
 func TestRunnerUpgradeMigratesLegacyProjectInstructionLayout(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
 	writeInstallFile(t, filepath.Join(root, "bin", "claude"), "#!/bin/sh\nexit 0\n")
@@ -162,7 +162,7 @@ func TestRunnerUpgradeRelocatesOpenCodeAndAmpSkillHomes(t *testing.T) {
 			oldSkills := tc.oldSkills(home)
 			ownerMarker := tc.ownerMarker(home)
 			writeInstallFile(t, ownerMarker, "old\n")
-			seedOwnedManagedSkill(t, oldSkills, "foundations", "# Old foundations\n")
+			seedOwnedManagedSkill(t, oldSkills, "loaf-core", "# Old loaf-core\n")
 			writeInstallFile(t, filepath.Join(root, "dist", tc.target, "skills", "go-development", "SKILL.md"), "# Go\n")
 			writeInstallDeprecationManifest(t, root, fmt.Sprintf(`{
   "version": 1,
@@ -188,10 +188,10 @@ func TestRunnerUpgradeRelocatesOpenCodeAndAmpSkillHomes(t *testing.T) {
 				t.Fatalf("upgrade error = %v\n%s", err, stdout.String())
 			}
 			assertInstallPathMissing(t, oldSkills)
-			// Claim transfer lets canonical sync own the destination. foundations is
+			// Claim transfer lets canonical sync own the destination. loaf-core is
 			// not in dist, so sync retires it as a stale managed skill; go-development
 			// is installed fresh.
-			assertInstallPathMissing(t, filepath.Join(home, ".agents", "skills", "foundations"))
+			assertInstallPathMissing(t, filepath.Join(home, ".agents", "skills", "loaf-core"))
 			assertInstallFile(t, filepath.Join(home, ".agents", "skills", "go-development", "SKILL.md"), "# Go\n")
 			if !strings.Contains(stdout.String(), "relocated path "+tc.target+"-skills-to-agents-home") {
 				t.Fatalf("stdout = %q, want relocation report", stdout.String())
@@ -352,7 +352,7 @@ func TestRunnerUpgradeCleansRetiredAgentFromManifest(t *testing.T) {
 	// The marker makes Cursor look installed, so the sync runs and must have
 	// something to sync; without it the run ends in a target failure this test
 	// is not about.
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
 	writeInstallFile(t, retiredAgent, "# Old Agent\n")
@@ -641,7 +641,7 @@ func TestRunnerUpgradeRelocatesManifestPathExactlyOnce(t *testing.T) {
 	oldPath := filepath.Join(home, ".old-agents", "skills")
 	newPath := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations\n")
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core\n")
 	writeInstallDeprecationManifest(t, root, `{
   "version": 1,
   "retired_targets": [],
@@ -665,7 +665,7 @@ func TestRunnerUpgradeRelocatesManifestPathExactlyOnce(t *testing.T) {
 		t.Fatalf("upgrade error = %v\n%s", err, stdout.String())
 	}
 	assertInstallPathMissing(t, oldPath)
-	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+	assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	if !strings.Contains(stdout.String(), "relocated path old-agents-skills") {
 		t.Fatalf("stdout = %q, want relocation report", stdout.String())
 	}
@@ -676,7 +676,7 @@ func TestRunnerUpgradeRelocatesManifestPathExactlyOnce(t *testing.T) {
 		t.Fatalf("second upgrade error = %v\n%s", err, stdout.String())
 	}
 	assertInstallPathMissing(t, oldPath)
-	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+	assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 }
 
 // TestRunnerUpgradeRelocatesOwnedSkillWhenDestinationHomeExistsButSkillAbsent
@@ -689,9 +689,9 @@ func TestRunnerUpgradeRemovesStaleSourceWhenDestinationHoldsEquivalent(t *testin
 	oldPath := filepath.Join(home, ".old-agents", "skills")
 	newPath := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	body := "# Shared foundations\n"
-	seedOwnedManagedSkill(t, oldPath, "foundations", body)
-	seedOwnedManagedSkill(t, newPath, "foundations", body)
+	body := "# Shared loaf-core\n"
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", body)
+	seedOwnedManagedSkill(t, newPath, "loaf-core", body)
 	writeInstallDeprecationManifest(t, root, `{
   "version": 1,
   "retired_targets": [],
@@ -714,8 +714,8 @@ func TestRunnerUpgradeRemovesStaleSourceWhenDestinationHoldsEquivalent(t *testin
 	if err != nil {
 		t.Fatalf("upgrade error = %v\n%s", err, stdout.String())
 	}
-	assertInstallPathMissing(t, filepath.Join(oldPath, "foundations"))
-	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), body)
+	assertInstallPathMissing(t, filepath.Join(oldPath, "loaf-core"))
+	assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), body)
 	if !strings.Contains(stdout.String(), "removed stale relocated path old-agents-skills") {
 		t.Fatalf("stdout = %q, want removed-stale when destination already holds equivalent", stdout.String())
 	}
@@ -727,7 +727,7 @@ func TestRunnerUpgradeRelocatesOwnedSkillWhenDestinationHomeExistsButSkillAbsent
 	newPath := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
 	seedOwnedManagedSkill(t, oldPath, "stale", "# Stale\n")
-	writeInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	writeInstallDeprecationManifest(t, root, `{
   "version": 1,
   "retired_targets": [],
@@ -751,7 +751,7 @@ func TestRunnerUpgradeRelocatesOwnedSkillWhenDestinationHomeExistsButSkillAbsent
 		t.Fatalf("upgrade error = %v\n%s", err, stdout.String())
 	}
 	assertInstallPathMissing(t, oldPath)
-	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+	assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	assertInstallFile(t, filepath.Join(newPath, "stale", "SKILL.md"), "# Stale\n")
 	if !strings.Contains(stdout.String(), "relocated path old-agents-skills") {
 		t.Fatalf("stdout = %q, want relocation report (dest home exists but skill was absent)", stdout.String())

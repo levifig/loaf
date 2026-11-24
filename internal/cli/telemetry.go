@@ -48,7 +48,7 @@ func (r Runner) runTelemetry(args []string, out io.Writer, runtimeRoot string) e
 	}
 	now := time.Now().UTC()
 	since := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	rows, err := store.HookGatewayStatusSince(context.Background(), since)
+	rows, err := store.HookGatewayStatusForMonth(context.Background(), since)
 	if err != nil {
 		return err
 	}

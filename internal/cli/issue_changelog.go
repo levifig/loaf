@@ -7,6 +7,10 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/text"
 )
 
 const implementedIssuesMarker = "<!-- loaf:implemented-issues "
@@ -23,8 +27,12 @@ var changelogRepositoryRE = regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+
 var changelogCommitIDRE = regexp.MustCompile(`^[a-f0-9]{40}$`)
 var changelogIssueRE = regexp.MustCompile(`^https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/([1-9][0-9]*)$`)
 var changelogIssueLinkRE = regexp.MustCompile(`\(\[#([1-9][0-9]*)\]\((https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*)\)\)`)
+
+// Linear short URLs are stable references; title slugs and tracking suffixes
+// are deliberately not accepted as alternative spellings of the same Issue.
+var changelogLinearIssueRE = regexp.MustCompile(`^https://linear\.app/([a-z0-9]+(?:-[a-z0-9]+)*)/issue/([A-Z][A-Z0-9]*-[1-9][0-9]*)$`)
+var changelogLinearIssueLinkRE = regexp.MustCompile(`\[([A-Z][A-Z0-9]*-[1-9][0-9]*)\]\((https://linear\.app/[a-z0-9]+(?:-[a-z0-9]+)*/issue/[A-Z][A-Z0-9]*-[1-9][0-9]*)\)`)
 var changelogCommentRE = regexp.MustCompile(`(?s)<!--.*?(?:-->|$)`)
-var changelogBulletRE = regexp.MustCompile(`^[-*+]\s+(.+)$`)
 var changelogReleaseHeadingRE = regexp.MustCompile(`^## \[([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)\](?: - [0-9]{4}-[0-9]{2}-[0-9]{2})?$`)
 
 func parseImplementedIssues(body, repository string) (implementedIssues, error) {
@@ -100,8 +108,12 @@ func validateImplementedIssues(declaration implementedIssues, repository string)
 	seen := map[string]bool{}
 	for _, issue := range declaration.Issues {
 		match := changelogIssueRE.FindStringSubmatch(issue)
-		if match == nil || match[1] != repository {
-			return fmt.Errorf("%q must be a canonical Issue URL in https://github.com/%s/issues/ (PR URLs are not Issue references)", issue, repository)
+		if match != nil {
+			if match[1] != repository {
+				return fmt.Errorf("%q must be a canonical GitHub Issue URL in https://github.com/%s/issues/", issue, repository)
+			}
+		} else if !changelogLinearIssueRE.MatchString(issue) {
+			return fmt.Errorf("%q is unsupported: use a canonical GitHub Issue URL in https://github.com/%s/issues/ or a short Linear Issue URL https://linear.app/workspace/issue/TEAM-N (PR URLs, title slugs, queries and fragments are not supported)", issue, repository)
 		}
 		if seen[issue] {
 			return fmt.Errorf("duplicate implemented Issue %s", issue)
@@ -153,57 +165,19 @@ func splitIssueChangelog(text string) (issueChangelogSections, error) {
 	return issueChangelogSections{text[:start], text[start:end], text[end:]}, nil
 }
 
-// Only actual list prose counts: headings, comments, fences, quotes, and inline
-// code examples cannot provide Issue coverage. Entries may wrap over lines.
+// The same Markdown entries serve authoring reminders and coverage checks.
 func issueChangelogEntries(section string) []string {
-	section = changelogCommentRE.ReplaceAllString(section, "")
 	var entries []string
-	current := ""
-	var fence byte
-	fenceLength := 0
-	flush := func() {
-		if current != "" {
-			entries = append(entries, current)
-			current = ""
-		}
+	for _, entry := range parsedChangelogEntries(section) {
+		entries = append(entries, entry.prose)
 	}
-	for _, line := range strings.Split(section, "\n") {
-		trimmed := strings.TrimSpace(line)
-		marker, length, tail := issueChangelogFence(line)
-		if fence != 0 {
-			if marker == fence && length >= fenceLength && strings.TrimSpace(tail) == "" {
-				fence = 0
-			}
-			continue
-		}
-		if marker != 0 && (marker != '`' || !strings.Contains(tail, "`")) {
-			flush()
-			fence, fenceLength = marker, length
-			continue
-		}
-		if trimmed == "" {
-			flush()
-			continue
-		}
-		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, ">") {
-			flush()
-			continue
-		}
-		if match := changelogBulletRE.FindStringSubmatch(line); match != nil {
-			flush()
-			current = match[1]
-		} else if current != "" && (strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t")) {
-			current += " " + trimmed
-		} else {
-			flush()
-		}
-	}
-	flush()
 	return entries
 }
 
 func normalizedChangelogProse(entry string) string {
+	entry = changelogCommentRE.ReplaceAllString(entry, "")
 	entry = changelogIssueLinkRE.ReplaceAllString(entry, "")
+	entry = changelogLinearIssueLinkRE.ReplaceAllString(entry, "")
 	// Formatting, wrapping, punctuation and merely attaching an Issue reference
 	// do not turn an unchanged note into implemented-work coverage.
 	return strings.Map(func(r rune) rune {
@@ -215,6 +189,9 @@ func normalizedChangelogProse(entry string) string {
 }
 
 func validateIssueChangelogCoverage(base, head string, declaration implementedIssues) error {
+	// Section and AST offsets must address exactly the same source bytes.
+	base = strings.ReplaceAll(base, "\r\n", "\n")
+	head = strings.ReplaceAll(head, "\r\n", "\n")
 	before, err := splitIssueChangelog(base)
 	if err != nil {
 		return fmt.Errorf("review base: %w", err)
@@ -224,21 +201,25 @@ func validateIssueChangelogCoverage(base, head string, declaration implementedIs
 		return err
 	}
 	old := map[string]bool{}
-	// Copying a released note back into Unreleased is not new coverage either.
-	for _, entry := range issueChangelogEntries(before.unreleased + "\n" + before.released) {
-		old[normalizedChangelogProse(entry)] = true
+	// Compare entries from the same parser, including nested and released
+	// notes, so an unchanged link cannot credit another new unlinked entry.
+	for _, entry := range parsedChangelogEntries(base) {
+		if entry.start >= len(before.prefix) {
+			old[normalizedChangelogProse(entry.prose)] = true
+		}
 	}
 	covered := map[string]bool{}
-	for _, entry := range issueChangelogEntries(after.unreleased) {
-		normalized := normalizedChangelogProse(entry)
+	end := len(after.prefix) + len(after.unreleased)
+	for _, entry := range parsedChangelogEntries(head) {
+		if entry.start < len(after.prefix) || entry.end > end {
+			continue
+		}
+		normalized := normalizedChangelogProse(entry.prose)
 		if normalized == "" || strings.HasPrefix(normalized, "nounreleasedchanges") || old[normalized] {
 			continue
 		}
-		for _, match := range changelogIssueLinkRE.FindAllStringSubmatch(withoutChangelogInlineCode(entry), -1) {
-			url := changelogIssueRE.FindStringSubmatch(match[2])
-			if url != nil && match[1] == url[2] {
-				covered[match[2]] = true
-			}
+		for issue := range entry.issues {
+			covered[issue] = true
 		}
 	}
 	var missing []string
@@ -248,7 +229,7 @@ func validateIssueChangelogCoverage(base, head string, declaration implementedIs
 		}
 	}
 	if len(missing) != 0 {
-		return fmt.Errorf("CHANGELOG.md [Unreleased] lacks a new or substantively updated entry versus the review base for: %s; use ([#N](https://github.com/owner/repo/issues/N)) in the entry prose", strings.Join(missing, ", "))
+		return fmt.Errorf("CHANGELOG.md [Unreleased] lacks a new or substantively updated entry versus the review base for: %s; use ([#N](https://github.com/owner/repo/issues/N)) or [TEAM-N](https://linear.app/workspace/issue/TEAM-N) in the entry prose", strings.Join(missing, ", "))
 	}
 	return nil
 }
@@ -268,39 +249,81 @@ func issueChangelogFence(line string) (byte, int, string) {
 	return trimmed[0], length, trimmed[length:]
 }
 
-func withoutChangelogInlineCode(text string) string {
-	var visible strings.Builder
-	for i := 0; i < len(text); {
-		if text[i] != '`' {
-			visible.WriteByte(text[i])
-			i++
-			continue
-		}
-		start := i
-		for i < len(text) && text[i] == '`' {
-			i++
-		}
-		run := i - start
-		end := i
-		matched := false
-		for end < len(text) {
-			if text[end] != '`' {
-				end++
-				continue
+type parsedChangelogEntry struct {
+	start, end int
+	prose      string
+	issues     map[string]bool
+}
+
+// Parse original source once. Each actual list paragraph owns its links and
+// source span; HTML blocks, images and reference definitions keep their context.
+func parsedChangelogEntries(document string) []parsedChangelogEntry {
+	source := []byte(document)
+	root := goldmark.DefaultParser().Parse(text.NewReader(source))
+	var entries []parsedChangelogEntry
+	var visit func(ast.Node, bool)
+	visit = func(node ast.Node, inList bool) {
+		switch node.Kind() {
+		case ast.KindImage, ast.KindBlockquote, ast.KindCodeBlock, ast.KindFencedCodeBlock, ast.KindHTMLBlock, ast.KindHeading:
+			return
+		case ast.KindList:
+			if node.(*ast.List).IsOrdered() {
+				return
 			}
-			closeStart := end
-			for end < len(text) && text[end] == '`' {
-				end++
+		case ast.KindListItem:
+			inList = true
+		case ast.KindParagraph, ast.KindTextBlock:
+			lines := node.Lines()
+			if inList && lines.Len() != 0 {
+				entries = append(entries, parsedChangelogEntry{
+					start:  lines.At(0).Start,
+					end:    lines.At(lines.Len() - 1).Stop,
+					prose:  string(lines.Value(source)),
+					issues: linkedChangelogIssues(node, source),
+				})
 			}
-			if end-closeStart == run {
-				i = end
-				matched = true
-				break
-			}
+			return
 		}
-		if !matched {
-			visible.WriteString(text[start:i])
+		for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+			visit(child, inList)
 		}
 	}
-	return visible.String()
+	visit(root, false)
+	return entries
+}
+
+func linkedChangelogIssues(paragraph ast.Node, source []byte) map[string]bool {
+	issues := map[string]bool{}
+	var visit func(ast.Node)
+	visit = func(node ast.Node) {
+		if node.Kind() == ast.KindImage {
+			return
+		}
+		if link, ok := node.(*ast.Link); ok {
+			label, plain := link.FirstChild().(*ast.Text)
+			if !plain || label.NextSibling() != nil || link.Reference != nil {
+				return
+			}
+			key, target := string(label.Value(source)), string(link.Destination)
+			raw := "[" + key + "](" + target + ")"
+			offset := label.Segment.Start - 1
+			if match := changelogIssueRE.FindStringSubmatch(target); match != nil && key == "#"+match[2] {
+				raw = "(" + raw + ")"
+				offset--
+			} else if match := changelogLinearIssueRE.FindStringSubmatch(target); match == nil || key != match[2] {
+				return
+			}
+			// Broader CommonMark forms (titles, reference links, escaped
+			// labels or destinations) are not canonical coverage references.
+			if offset >= 0 && strings.HasPrefix(string(source[offset:]), raw) {
+				issues[target] = true
+			}
+			return
+		}
+		for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+			visit(child)
+		}
+	}
+	visit(paragraph)
+	return issues
 }

@@ -193,16 +193,16 @@ func TestGeneratedCommandLinksResolveThroughSymlinkedConfig(t *testing.T) {
 	}
 
 	skillsStore := filepath.Join(home, ".agents", "skills")
-	writeInstallFile(t, filepath.Join(skillsStore, "foundations", "references", "guide.md"), "# Guide\n")
+	writeInstallFile(t, filepath.Join(skillsStore, "loaf-core", "references", "guide.md"), "# Guide\n")
 
 	dist := filepath.Join(base, "dist", "opencode")
-	writeInstallFile(t, filepath.Join(dist, "commands", "foundations.md"), "# Foundations\nSee [guide](references/guide.md).\n")
+	writeInstallFile(t, filepath.Join(dist, "commands", "loaf-core.md"), "# Loaf Core\nSee [guide](references/guide.md).\n")
 
 	if err := syncOpenCodeCommandsDir(dist, linkConfig, skillsStore); err != nil {
 		t.Fatalf("syncOpenCodeCommandsDir through symlink error = %v", err)
 	}
 
-	body, err := os.ReadFile(filepath.Join(realConfig, "commands", "foundations.md"))
+	body, err := os.ReadFile(filepath.Join(realConfig, "commands", "loaf-core.md"))
 	if err != nil {
 		t.Fatalf("ReadFile(real commands) error = %v", err)
 	}
@@ -224,7 +224,7 @@ func TestGeneratedCommandLinksResolveThroughSymlinkedConfig(t *testing.T) {
 	if _, err := os.Stat(resolved); err != nil {
 		t.Fatalf("rewritten link %q does not resolve from physical commands dir %s: %v\nbody:\n%s", target, commandsDir, err, text)
 	}
-	lexicalRel, err := filepath.Rel(filepath.Join(linkConfig, "commands"), filepath.Join(skillsStore, "foundations"))
+	lexicalRel, err := filepath.Rel(filepath.Join(linkConfig, "commands"), filepath.Join(skillsStore, "loaf-core"))
 	if err != nil {
 		t.Fatalf("lexical Rel error = %v", err)
 	}
@@ -236,7 +236,7 @@ func TestGeneratedCommandLinksResolveThroughSymlinkedConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EvalSymlinks(skills) error = %v", err)
 	}
-	wantRel, err := filepath.Rel(resolvedCommands, filepath.Join(resolvedStore, "foundations"))
+	wantRel, err := filepath.Rel(resolvedCommands, filepath.Join(resolvedStore, "loaf-core"))
 	if err != nil {
 		t.Fatalf("resolved Rel error = %v", err)
 	}
@@ -261,7 +261,7 @@ func TestOpenCodeCommandsRequireSkillsStore(t *testing.T) {
 		dist := filepath.Join(root, "dist", "opencode")
 		config := filepath.Join(home, ".config", "opencode")
 		// Damaged/partial distribution: commands present, skills tree absent.
-		writeInstallFile(t, filepath.Join(dist, "commands", "foundations.md"), "# Foundations\nSee [guide](references/guide.md).\n")
+		writeInstallFile(t, filepath.Join(dist, "commands", "loaf-core.md"), "# Loaf Core\nSee [guide](references/guide.md).\n")
 		writeInstallFile(t, filepath.Join(dist, "agents", "implementer.md"), "# Implementer\n")
 
 		err := installTargetDistribution(targetInstallOptions{
@@ -278,7 +278,7 @@ func TestOpenCodeCommandsRequireSkillsStore(t *testing.T) {
 		if !strings.Contains(err.Error(), "skills store") && !strings.Contains(err.Error(), "canonical skills") {
 			t.Fatalf("error = %v, want skills-store requirement named", err)
 		}
-		assertInstallPathMissing(t, filepath.Join(config, "commands", "foundations.md"))
+		assertInstallPathMissing(t, filepath.Join(config, "commands", "loaf-core.md"))
 		assertInstallPathMissing(t, filepath.Join(config, loafInstallMarkerFile))
 		assertInstallPathMissing(t, installRecordPath(home, "opencode"))
 	})
@@ -289,7 +289,7 @@ func TestOpenCodeCommandsRequireSkillsStore(t *testing.T) {
 		root, home := setupInstallCommandFixture(t)
 		dist := filepath.Join(root, "dist", "opencode")
 		config := filepath.Join(home, ".config", "opencode")
-		writeInstallFile(t, filepath.Join(dist, "commands", "foundations.md"), "# Foundations\nSee [guide](references/guide.md).\n")
+		writeInstallFile(t, filepath.Join(dist, "commands", "loaf-core.md"), "# Loaf Core\nSee [guide](references/guide.md).\n")
 		writeInstallFile(t, filepath.Join(dist, "agents", "implementer.md"), "# Implementer\n")
 		writeTestTargetAdapterManifest(t, dist, "opencode", nil)
 		mkdirAll(t, config)
@@ -346,7 +346,7 @@ func TestOpenCodeCommandsRequireSkillsStore(t *testing.T) {
 		if !strings.Contains(storeGuard.Detail, "skills store") && !strings.Contains(storeGuard.Detail, "canonical skills") {
 			t.Fatalf("plan detail = %q, want skills-store guard text matching apply", storeGuard.Detail)
 		}
-		assertInstallPathMissing(t, filepath.Join(config, "commands", "foundations.md"))
+		assertInstallPathMissing(t, filepath.Join(config, "commands", "loaf-core.md"))
 	})
 }
 
@@ -365,7 +365,7 @@ func TestGeneratedCommandLinksResolveRejectsSymlinkedCommandsSource(t *testing.T
 		t.Setenv("LOAF_DB", filepath.Join(t.TempDir(), "loaf.sqlite"))
 
 		skillsStore := filepath.Join(home, ".agents", "skills")
-		writeInstallFile(t, filepath.Join(skillsStore, "foundations", "SKILL.md"), "# Foundations\n")
+		writeInstallFile(t, filepath.Join(skillsStore, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 
 		config := filepath.Join(home, ".config", "opencode")
 		existing := filepath.Join(config, "commands", "keep-me.md")
@@ -400,7 +400,7 @@ func TestGeneratedCommandLinksResolveRejectsSymlinkedCommandsSource(t *testing.T
 		t.Setenv("LOAF_DB", filepath.Join(t.TempDir(), "loaf.sqlite"))
 
 		skillsStore := filepath.Join(home, ".agents", "skills")
-		writeInstallFile(t, filepath.Join(skillsStore, "foundations", "SKILL.md"), "# Foundations\n")
+		writeInstallFile(t, filepath.Join(skillsStore, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 
 		config := filepath.Join(home, ".config", "opencode")
 		existing := filepath.Join(config, "commands", "keep-me.md")
@@ -410,7 +410,7 @@ func TestGeneratedCommandLinksResolveRejectsSymlinkedCommandsSource(t *testing.T
 		writeInstallFile(t, secret, "exfiltrate-me\n")
 
 		dist := filepath.Join(base, "dist", "opencode")
-		writeInstallFile(t, filepath.Join(dist, "commands", "foundations.md"), "# Foundations\n")
+		writeInstallFile(t, filepath.Join(dist, "commands", "loaf-core.md"), "# Loaf Core\n")
 		mkdirAll(t, filepath.Join(dist, "commands", "group"))
 		if err := os.Symlink(secret, filepath.Join(dist, "commands", "group", "secret.md")); err != nil {
 			t.Fatal(err)
@@ -424,7 +424,7 @@ func TestGeneratedCommandLinksResolveRejectsSymlinkedCommandsSource(t *testing.T
 			t.Fatalf("error = %v, want symlink refusal", err)
 		}
 		assertInstallFile(t, existing, "# User command that must survive a refused sync\n")
-		assertInstallPathMissing(t, filepath.Join(config, "commands", "foundations.md"))
+		assertInstallPathMissing(t, filepath.Join(config, "commands", "loaf-core.md"))
 		assertInstallPathMissing(t, filepath.Join(config, "commands", "group", "secret.md"))
 	})
 
@@ -437,7 +437,7 @@ func TestGeneratedCommandLinksResolveRejectsSymlinkedCommandsSource(t *testing.T
 		t.Setenv("LOAF_DB", filepath.Join(t.TempDir(), "loaf.sqlite"))
 
 		skillsStore := filepath.Join(home, ".agents", "skills")
-		writeInstallFile(t, filepath.Join(skillsStore, "foundations", "SKILL.md"), "# Foundations\n")
+		writeInstallFile(t, filepath.Join(skillsStore, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 
 		config := filepath.Join(home, ".config", "opencode")
 		existing := filepath.Join(config, "commands", "keep-me.md")

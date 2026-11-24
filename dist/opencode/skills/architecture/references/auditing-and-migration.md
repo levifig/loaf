@@ -54,7 +54,7 @@ For each topic, establish:
 
 Shared work identity, definition, completion criteria, hierarchy, status, assignment, and collaboration belong in the selected native tracker when that is the project's authority model. Use the provider-neutral shaping workflow and harness-owned connection. A technical design may be committed when it has independent value, but it does not become another work identity or synchronization surface.
 
-The architecture overview describes the system that exists now and accepted constraints on its evolution. Strategy describes current bets, operator journeys, deferrals, and learning sought. The native tracker owns execution status and sequencing. Avoid branch names, temporary construction labels, stale milestone checklists, and completed migration plans in current product vocabulary.
+The architecture overview describes the system that exists now and concise stable commitments on its evolution; owning topics carry detailed rationale. Code and tests establish implementation evidence, not permission to replace an agreed constraint when they drift. Strategy describes current bets, operator journeys, deferrals, and learning sought. The native tracker owns execution status and sequencing. Avoid branch names, temporary construction labels, stale milestone checklists, and completed migration plans in current product vocabulary.
 
 ## Preserve compatibility and guarantees
 
@@ -70,7 +70,7 @@ When consolidating documents, preserve security and storage guarantees such as a
 ## Verify the corpus
 
 - Every source's meaningful content has a verified destination or an explicit, authorized retirement disposition.
-- The overview links to owning topics without duplicating their substantive content. Deliberately retained narrow ADRs are reachable from those topics; the chronological catalogue is not a competing current-state model.
+- The overview's concise stable commitments and topics' detailed explanations have clear ownership and links without duplicate authority. Any explicitly retained narrow ADR is reachable from its owning topic; the chronological catalogue is not a competing current-state model.
 - Every Markdown link resolves or intentionally targets an external authoritative source.
 - Maintained citations point to current topics or intentionally to historical revisions; required compatibility pointers identify the new home clearly.
 - Retained ADRs preserve truthful decision status and history under their actual convention; topics do not inherit that lifecycle.

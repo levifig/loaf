@@ -52,7 +52,7 @@ func TestRunnerUpgradeOutsideALoafProjectWritesNoProjectFiles(t *testing.T) {
 	output := runInstallCapture(t, root, "upgrade", "--yes")
 
 	assertInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "9.8.7-test.1\n")
-	assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), "# Foundations v2\n")
+	assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), "# Loaf Core v2\n")
 	if !strings.Contains(output, "No Loaf project here") {
 		t.Fatalf("upgrade output = %q, want the skipped-project note", output)
 	}
@@ -441,10 +441,10 @@ func setupUpgradeFixture(t *testing.T) (string, string) {
 // distribution one revision ahead, so the upgrade has real work to do.
 func installUpgradeFixtureTarget(t *testing.T, root string, home string, target string) {
 	t.Helper()
-	writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, target)
 	runInstallFixture(t, root, "install", "--to", target, "--yes")
-	writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "foundations", "SKILL.md"), "# Foundations v2\n")
+	writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "loaf-core", "SKILL.md"), "# Loaf Core v2\n")
 	// install scaffolds project files; the upgrade matrix judges what upgrade
 	// itself writes, so reset the project surfaces it left behind.
 	for _, path := range []string{"AGENTS.md", ".agents", ".claude"} {

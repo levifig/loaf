@@ -760,7 +760,8 @@ func isLoafInstalledForInstall(configDir string) bool {
 	if fileExistsForInstall(filepath.Join(configDir, loafInstallMarkerFile)) {
 		return true
 	}
-	for _, skill := range []string{"foundations", "python-development", "python"} {
+	// foundations is the pre-rename name of loaf-core; older installs still carry it.
+	for _, skill := range []string{"loaf-core", "foundations", "python-development", "python"} {
 		if dirExistsForInstall(filepath.Join(configDir, "skills", skill)) {
 			return true
 		}

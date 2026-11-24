@@ -18,7 +18,7 @@
       "skill": "wrap",
       "since": "unreleased",
       "window": "one-release",
-      "reason": "ordinary capture and selective checkpoints are owned by Foundations and managed project instructions; the wrap journal entry remains supported",
+      "reason": "ordinary capture and selective checkpoints are owned by Loaf Core and managed project instructions; the wrap journal entry remains supported",
       "signoff": "native issue 259, maintainer-selected implementation",
       "skill_homes": []
     },
@@ -60,6 +60,46 @@
       "window": "one-release",
       "reason": "legacy filesystem session workflow is superseded by journal continuity",
       "signoff": "native issue 357, maintainer-selected recreation prevention",
+      "skill_homes": []
+    },
+    {
+      "skill": "foundations",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "renamed to loaf-core",
+      "signoff": "native issue 470, maintainer-selected clean cut",
+      "skill_homes": []
+    },
+    {
+      "skill": "knowledge-base",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "merged into architecture, which owns knowledge files and their covers: staleness review",
+      "signoff": "native issue 470, maintainer-selected clean cut",
+      "skill_homes": []
+    },
+    {
+      "skill": "documentation-standards",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "merged into architecture for documentation review and into release, which owns the changelog rules",
+      "signoff": "native issue 470, maintainer-selected clean cut",
+      "skill_homes": []
+    },
+    {
+      "skill": "debugging",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "merged into loaf-core, which carries the debugging evidence standard",
+      "signoff": "native issue 470, maintainer-selected clean cut",
+      "skill_homes": []
+    },
+    {
+      "skill": "security-compliance",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "merged into loaf-core, which names the security checks and hooks and carries the secrets rule",
+      "signoff": "native issue 470, maintainer-selected clean cut",
       "skill_homes": []
     }
   ],

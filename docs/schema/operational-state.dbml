@@ -1,16 +1,17 @@
-// Loaf operational state schema.
+// Selected Loaf compatibility-state schema view.
 // Source of truth: internal/state/migrations/*.sql.
 // This mirror is guarded by TestSchemaDocumentationMirrorsExecutableMigration,
-// which validates it against the auto-applied baseline (migrations 0001-0009
-// and 0011).
+// which checks selected migration-declared tables and columns, excluding the
+// issue/work-contract/release foundation tables. SQL mirrors cover auto-applied
+// migrations 0001-0009 and 0011-0028. This diagram is not an exhaustive executed
+// schema; see docs/schema/README.md for the check's scope.
 //
-// Journal-first end state (migration 0010, SPEC-056):
+// Journal-first transformation (migration 0010):
 //   Migration 0010 is the explicit, out-of-band journal-first transformation. It
 //   is deliberately excluded from the auto-applied set (SchemaMigrations()) and
 //   runs only via `loaf state migrate journal-first --apply`, so the guarded
-//   baseline below still carries the pre-0010 session structures. The tables and
-//   columns listed here as struck through by 0010 are the ONLY delta between this
-//   baseline and the shipped runtime after the migration has been applied:
+//   view below retains pre-0010 session structures for compatibility. The
+//   transformation changes those structures as follows:
 //     - DROP TABLE sessions
 //     - DROP TABLE session_state_snapshots
 //     - journal_entries: drop the session_id FK column (harness_session_id, a
@@ -446,7 +447,6 @@ Table hook_events {
   observed_harness_version text
   indexes {
     (project_id, hook_id, hook_phase)
-    (project_id, created_at, observed_harness, decision)
   }
 }
 
@@ -784,5 +784,21 @@ Table fact_replay_discrepancies {
   logged_at text [not null]
   indexes {
     (project_id, entity_kind, entity_id)
+  }
+}
+
+// Pre-tool gateway outcomes counted per UTC month (migration 0028). Machine-local.
+Table hook_gateway_counts {
+  project_id text [not null, ref: > projects.id]
+  month text [not null]
+  hook_id text [not null]
+  tool_name text [not null]
+  decision text [not null]
+  reason_class text [not null]
+  observed_harness text [not null]
+  observed_harness_version text [not null]
+  count integer [not null]
+  indexes {
+    (project_id, month, hook_id, tool_name, decision, reason_class, observed_harness, observed_harness_version) [pk]
   }
 }

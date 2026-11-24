@@ -1,24 +1,35 @@
+---
+topics:
+  - configuration
+  - diagnostics
+  - recovery
+covers:
+  - internal/cli/config.go
+  - internal/cli/doctor.go
+  - internal/cli/worktree_storage_migration.go
+  - internal/state/status.go
+  - internal/state/path.go
+  - internal/state/backup.go
+last_reviewed: 2026-11-06
+---
+
 # Troubleshooting
 
-Diagnosing state, config, and alignment failures, and working against throwaway
-state safely.
+Diagnosing state, config, and alignment failures, and working against throwaway state safely.
 
 ## Which diagnostic
 
-Three `doctor`/`check` surfaces cover different layers — reach for the one that
-matches the symptom:
+Three `doctor`/`check` surfaces cover different layers — reach for the one that matches the symptom:
 
 - `loaf config check` — `.agents/loaf.json` validity and the installed
   Loaf-managed hook config. Use it when config looks stale or missing, or hooks
-  misfire. The full repair workflow lives in the configuration reference, linked
-  from SKILL.md.
+  misfire. Use [Configuration Maintenance](configuration.md) for project choices and local-versus-live diagnosis, then the [maintenance protocol](maintenance.md) for approved repairs.
 - `loaf state doctor` — SQLite state health (missing database, schema drift).
   `--fix` initializes missing state when safe; `--dry-run` prints the repair plan.
   Pair with `loaf state status` for readiness and markdown-only compatibility mode.
 - `loaf doctor` — checkout alignment: symlinks, stale files, managed harness content, and leftover migration work. Plain diagnosis is read-only. `--fix` offers each logical repair once behind a y/N prompt; a decline cannot be retried through another check in the same run. `--fix --force` accepts all offered repairs without prompting. Non-interactive input, including `/dev/null`, makes `--fix` skip repairs safely and point to `--force`. Local issue-prefix diagnostics remain available only through the legacy `loaf state doctor` surface for migration evidence; project alignment never asks a tracker-native project to materialize local issue identity.
 
-Rule of thumb: config → the JSON config file and hooks; `state doctor` → the
-database; `doctor` → the checkout's Loaf wiring.
+Rule of thumb: config → the JSON config file and hooks; `state doctor` → the database; `doctor` → the checkout's Loaf wiring.
 
 ## Linked worktree storage refusals
 
@@ -35,8 +46,7 @@ export LOAF_DB="$(mktemp -d)/loaf.sqlite"
 loaf journal recent      # reads the isolated path; missing state is not initialized
 ```
 
-An absolute `LOAF_DB` is used verbatim as the SQLite file and overrides
-`XDG_DATA_HOME`; a relative value is ignored (standard XDG resolution applies). Database isolation does not isolate harness installations: install/upgrade tests also need temporary homes and target directories. Do not activate a runtime as a side effect of building or verifying. Clear `LOAF_DB` before the unit suite so tests retain their fixture-owned databases.
+An absolute `LOAF_DB` is used verbatim as the SQLite file and overrides `XDG_DATA_HOME`; a relative value is ignored (standard XDG resolution applies). Database isolation does not isolate harness installations: install/upgrade tests also need temporary homes and target directories. Do not activate a runtime as a side effect of building or verifying. Clear `LOAF_DB` before the unit suite so tests retain their fixture-owned databases.
 
 ## State backup and restore
 

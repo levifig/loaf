@@ -17,16 +17,15 @@ Generative thinking — expanding possibilities before narrowing. This stance is
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
+Write journal entries with the command form in the loaf-core skill's Journal Commands section.
 
 **Always**
 - Diverge before converging — generate options before judging
 - Connect exploration to VISION.md and STRATEGY.md context
 - Document discarded options — they hold valuable reasoning
-- Log invocation first: `loaf journal log "skill(brainstorm): <topic>"`
 - Capture sparks (speculative byproducts) with `loaf spark capture --scope <scope> --text <text>`; brainstorm summaries may render or summarize them
 - Set boundaries on exploration time
-- Log outcome to the project journal: `loaf journal log "decision(scope): direction chosen and rationale"`
+- Log the outcome to the project journal as a `decision(scope): direction chosen and rationale` entry
 
 **Never**
 - Prematurely commit to an option before full exploration
@@ -65,14 +64,6 @@ Sparks are lightweight byproducts worth remembering; their dispositions belong t
 ## Suggests Next
 
 After a divergent pass, checkpoint the surrounding Exploration (`loaf exploration checkpoint`), then suggest shape if a clear direction emerged or triage to disposition captured sparks and ideas.
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

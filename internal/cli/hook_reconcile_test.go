@@ -1547,8 +1547,8 @@ func TestInstallTargetRefusesAStaleDistributionBeforeMutatingAnySurface(t *testi
 			}
 			// Every surface the installers write before they reach the hooks
 			// file, seeded with content only this test could have put there.
-			writeInstallFile(t, filepath.Join(fixture.dist, "skills", "foundations", "SKILL.md"), "# Distribution\n")
-			writeInstallFile(t, filepath.Join(fixture.home, ".agents", "skills", "foundations", "SKILL.md"), "# Installed\n")
+			writeInstallFile(t, filepath.Join(fixture.dist, "skills", "loaf-core", "SKILL.md"), "# Distribution\n")
+			writeInstallFile(t, filepath.Join(fixture.home, ".agents", "skills", "loaf-core", "SKILL.md"), "# Installed\n")
 			writeInstallFile(t, filepath.Join(fixture.config, "commands", "keep.md"), "# Keep\n")
 			writeInstallFile(t, filepath.Join(fixture.config, "agents", "keep.md"), "# Keep\n")
 
@@ -1556,7 +1556,7 @@ func TestInstallTargetRefusesAStaleDistributionBeforeMutatingAnySurface(t *testi
 				t.Fatalf("install error = %v, want a stale-distribution refusal", err)
 			}
 
-			assertInstallFile(t, filepath.Join(fixture.home, ".agents", "skills", "foundations", "SKILL.md"), "# Installed\n")
+			assertInstallFile(t, filepath.Join(fixture.home, ".agents", "skills", "loaf-core", "SKILL.md"), "# Installed\n")
 			assertInstallFile(t, filepath.Join(fixture.config, "commands", "keep.md"), "# Keep\n")
 			assertInstallFile(t, filepath.Join(fixture.config, "agents", "keep.md"), "# Keep\n")
 			assertInstallPathMissing(t, filepath.Join(fixture.config, targetInstallManifestFile))

@@ -246,7 +246,7 @@ func TestDestructiveMigrationPreservesForeignSkillInRelocationSource(t *testing.
 	oldPath := filepath.Join(home, ".old-agents", "skills")
 	newPath := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations\n")
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core\n")
 	foreignBody := "# Foreign orchestration in relocation source\n"
 	writeInstallFile(t, filepath.Join(oldPath, "orchestration", "SKILL.md"), foreignBody)
 
@@ -272,8 +272,8 @@ func TestDestructiveMigrationPreservesForeignSkillInRelocationSource(t *testing.
 		t.Fatalf("upgrade --yes error = %v\n%s", err, stdout.String())
 	}
 	assertInstallFile(t, filepath.Join(oldPath, "orchestration", "SKILL.md"), foreignBody)
-	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
-	assertInstallPathMissing(t, filepath.Join(oldPath, "foundations"))
+	assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), "# Loaf Core\n")
+	assertInstallPathMissing(t, filepath.Join(oldPath, "loaf-core"))
 	if !strings.Contains(stdout.String(), "un-managed") || !strings.Contains(stdout.String(), "orchestration") {
 		t.Fatalf("stdout missing un-managed foreign skill report:\n%s", stdout.String())
 	}
@@ -356,7 +356,7 @@ func TestDestructiveMigrationPreservesMarkerPresentForeignAgent(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
 	agentHome := filepath.Join(home, ".cursor", "agents")
 	retiredAgent := filepath.Join(agentHome, "old-agent.md")
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
 	writeInstallFile(t, retiredAgent, "# User-authored agent\n")
@@ -452,8 +452,8 @@ func TestDestructiveMigrationRelocationTransfersClaimForCanonicalSync(t *testing
 	newPath := filepath.Join(home, ".agents", "skills")
 	ownerMarker := filepath.Join(home, ".config", "opencode", loafInstallMarkerFile)
 	writeInstallFile(t, ownerMarker, "old\n")
-	seedOwnedManagedSkill(t, oldPath, "foundations", "# Old foundations\n")
-	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "foundations", "SKILL.md"), "# New foundations\n")
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Old loaf-core\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "loaf-core", "SKILL.md"), "# New loaf-core\n")
 	writeInstallDeprecationManifest(t, root, `{
   "version": 1,
   "retired_targets": [],
@@ -476,13 +476,13 @@ func TestDestructiveMigrationRelocationTransfersClaimForCanonicalSync(t *testing
 	if err := (Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}).Run([]string{"upgrade", "--yes"}); err != nil {
 		t.Fatalf("upgrade --yes error = %v\n%s", err, stdout.String())
 	}
-	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# New foundations\n")
+	assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), "# New loaf-core\n")
 	state, err := readManagedSkillsState(newPath)
 	if err != nil {
 		t.Fatalf("destination claim missing after relocation+sync: %v", err)
 	}
-	if _, ok := state.digests["foundations"]; !ok {
-		t.Fatalf("destination must claim foundations after relocation: %#v", state.digests)
+	if _, ok := state.digests["loaf-core"]; !ok {
+		t.Fatalf("destination must claim loaf-core after relocation: %#v", state.digests)
 	}
 }
 
@@ -491,19 +491,19 @@ func TestDestructiveMigrationRelocationRenameInterruptRetry(t *testing.T) {
 	oldPath := filepath.Join(home, ".old-agents", "skills")
 	newPath := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations\n")
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core\n")
 	state, err := readManagedSkillsState(oldPath)
 	if err != nil {
 		t.Fatalf("read source state: %v", err)
 	}
-	digest := state.digests["foundations"]
+	digest := state.digests["loaf-core"]
 
 	// Simulate rename success + crash before source claim drop / dest claim write.
 	mkdirAll(t, newPath)
-	if err := os.Rename(filepath.Join(oldPath, "foundations"), filepath.Join(newPath, "foundations")); err != nil {
+	if err := os.Rename(filepath.Join(oldPath, "loaf-core"), filepath.Join(newPath, "loaf-core")); err != nil {
 		t.Fatalf("simulate rename: %v", err)
 	}
-	upsertManagedSkillDigest(t, oldPath, "foundations", digest)
+	upsertManagedSkillDigest(t, oldPath, "loaf-core", digest)
 
 	writeInstallDeprecationManifest(t, root, `{
   "version": 1,
@@ -526,18 +526,18 @@ func TestDestructiveMigrationRelocationRenameInterruptRetry(t *testing.T) {
 	if err := (Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}).Run([]string{"upgrade", "--yes"}); err != nil {
 		t.Fatalf("retry upgrade --yes error = %v\n%s", err, stdout.String())
 	}
-	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+	assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	srcState, err := readManagedSkillsState(oldPath)
 	if err == nil {
-		if _, ok := srcState.digests["foundations"]; ok {
-			t.Fatalf("source still claims foundations after retry: %#v", srcState.digests)
+		if _, ok := srcState.digests["loaf-core"]; ok {
+			t.Fatalf("source still claims loaf-core after retry: %#v", srcState.digests)
 		}
 	}
 	destState, err := readManagedSkillsState(newPath)
 	if err != nil {
 		t.Fatalf("destination claim after retry: %v", err)
 	}
-	if got := destState.digests["foundations"]; got != digest {
+	if got := destState.digests["loaf-core"]; got != digest {
 		t.Fatalf("destination digest = %q, want %q", got, digest)
 	}
 }
@@ -547,9 +547,9 @@ func TestDestructiveMigrationRelocationPreservesWhenDestinationHomeEmpty(t *test
 	oldPath := filepath.Join(home, ".old-agents", "skills")
 	newPath := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations only copy\n")
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core only copy\n")
 	// Destination home already exists (normal post-install state) but is empty —
-	// no foundations at dest. Source must be moved, never deleted.
+	// no loaf-core at dest. Source must be moved, never deleted.
 	mkdirAll(t, newPath)
 	writeInstallDeprecationManifest(t, root, `{
   "version": 1,
@@ -572,14 +572,14 @@ func TestDestructiveMigrationRelocationPreservesWhenDestinationHomeEmpty(t *test
 	if err := (Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}).Run([]string{"upgrade", "--yes"}); err != nil {
 		t.Fatalf("upgrade --yes error = %v\n%s", err, stdout.String())
 	}
-	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations only copy\n")
-	assertInstallPathMissing(t, filepath.Join(oldPath, "foundations"))
+	assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), "# Loaf Core only copy\n")
+	assertInstallPathMissing(t, filepath.Join(oldPath, "loaf-core"))
 	state, err := readManagedSkillsState(newPath)
 	if err != nil {
 		t.Fatalf("destination claim after empty-home relocation: %v", err)
 	}
-	if _, ok := state.digests["foundations"]; !ok {
-		t.Fatalf("destination must claim foundations after move: %#v", state.digests)
+	if _, ok := state.digests["loaf-core"]; !ok {
+		t.Fatalf("destination must claim loaf-core after move: %#v", state.digests)
 	}
 }
 
@@ -588,10 +588,10 @@ func TestDestructiveMigrationRelocationPreservesWhenDestinationForeign(t *testin
 	oldPath := filepath.Join(home, ".old-agents", "skills")
 	newPath := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	seedOwnedManagedSkill(t, oldPath, "foundations", "# Source foundations\n")
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Source loaf-core\n")
 	mkdirAll(t, newPath)
-	foreignBody := "# Foreign foundations at destination\n"
-	writeInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), foreignBody)
+	foreignBody := "# Foreign loaf-core at destination\n"
+	writeInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), foreignBody)
 	writeInstallDeprecationManifest(t, root, `{
   "version": 1,
   "retired_targets": [],
@@ -613,14 +613,14 @@ func TestDestructiveMigrationRelocationPreservesWhenDestinationForeign(t *testin
 	if err := (Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}).Run([]string{"upgrade", "--yes"}); err != nil {
 		t.Fatalf("upgrade --yes error = %v\n%s", err, stdout.String())
 	}
-	assertInstallFile(t, filepath.Join(oldPath, "foundations", "SKILL.md"), "# Source foundations\n")
-	assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), foreignBody)
+	assertInstallFile(t, filepath.Join(oldPath, "loaf-core", "SKILL.md"), "# Source loaf-core\n")
+	assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), foreignBody)
 	srcState, err := readManagedSkillsState(oldPath)
 	if err != nil {
 		t.Fatalf("source claim must survive foreign destination: %v", err)
 	}
-	if _, ok := srcState.digests["foundations"]; !ok {
-		t.Fatalf("source must keep foundations claim when dest is foreign: %#v", srcState.digests)
+	if _, ok := srcState.digests["loaf-core"]; !ok {
+		t.Fatalf("source must keep loaf-core claim when dest is foreign: %#v", srcState.digests)
 	}
 }
 
@@ -661,18 +661,18 @@ func TestDestructiveMigrationRelocationRenameInterruptRetryIdempotent(t *testing
 	oldPath := filepath.Join(home, ".old-agents", "skills")
 	newPath := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations\n")
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core\n")
 	state, err := readManagedSkillsState(oldPath)
 	if err != nil {
 		t.Fatalf("read source state: %v", err)
 	}
-	digest := state.digests["foundations"]
+	digest := state.digests["loaf-core"]
 
 	mkdirAll(t, newPath)
-	if err := os.Rename(filepath.Join(oldPath, "foundations"), filepath.Join(newPath, "foundations")); err != nil {
+	if err := os.Rename(filepath.Join(oldPath, "loaf-core"), filepath.Join(newPath, "loaf-core")); err != nil {
 		t.Fatalf("simulate rename: %v", err)
 	}
-	upsertManagedSkillDigest(t, oldPath, "foundations", digest)
+	upsertManagedSkillDigest(t, oldPath, "loaf-core", digest)
 
 	writeInstallDeprecationManifest(t, root, `{
   "version": 1,
@@ -697,18 +697,18 @@ func TestDestructiveMigrationRelocationRenameInterruptRetryIdempotent(t *testing
 		if err := (Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}).Run([]string{"upgrade", "--yes"}); err != nil {
 			t.Fatalf("retry %d upgrade --yes error = %v\n%s", attempt, err, stdout.String())
 		}
-		assertInstallFile(t, filepath.Join(newPath, "foundations", "SKILL.md"), "# Foundations\n")
+		assertInstallFile(t, filepath.Join(newPath, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 		srcState, err := readManagedSkillsState(oldPath)
 		if err == nil {
-			if _, ok := srcState.digests["foundations"]; ok {
-				t.Fatalf("attempt %d: source still claims foundations: %#v", attempt, srcState.digests)
+			if _, ok := srcState.digests["loaf-core"]; ok {
+				t.Fatalf("attempt %d: source still claims loaf-core: %#v", attempt, srcState.digests)
 			}
 		}
 		destState, err := readManagedSkillsState(newPath)
 		if err != nil {
 			t.Fatalf("attempt %d: destination claim: %v", attempt, err)
 		}
-		if got := destState.digests["foundations"]; got != digest {
+		if got := destState.digests["loaf-core"]; got != digest {
 			t.Fatalf("attempt %d: destination digest = %q, want %q", attempt, got, digest)
 		}
 	}
@@ -985,7 +985,7 @@ func TestDestructiveMigrationPreservesSymlinkedRelocationDestination(t *testing.
 	mkdirAll(t, filepath.Join(home, ".agents"))
 	mkdirAll(t, realDest)
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations through symlink dest\n")
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core through symlink dest\n")
 	if err := os.Symlink(realDest, newPath); err != nil {
 		t.Fatalf("Symlink relocation destination: %v", err)
 	}
@@ -1013,11 +1013,11 @@ func TestDestructiveMigrationPreservesSymlinkedRelocationDestination(t *testing.
 	if err != nil {
 		t.Fatalf("symlinked destination must preserve and report, not abort: %v\n%s", err, out)
 	}
-	assertInstallFile(t, filepath.Join(oldPath, "foundations", "SKILL.md"), "# Foundations through symlink dest\n")
-	if _, err := os.Lstat(filepath.Join(realDest, "foundations")); err == nil {
+	assertInstallFile(t, filepath.Join(oldPath, "loaf-core", "SKILL.md"), "# Loaf Core through symlink dest\n")
+	if _, err := os.Lstat(filepath.Join(realDest, "loaf-core")); err == nil {
 		t.Fatalf("must not relocate into symlinked destination tree")
 	}
-	if !strings.Contains(out, "foundations") {
+	if !strings.Contains(out, "loaf-core") {
 		t.Fatalf("stdout must mention preserved skill:\n%s", out)
 	}
 	if !strings.Contains(out, "un-managed") && !strings.Contains(out, "destination") && !strings.Contains(out, "symlink") {
@@ -1068,7 +1068,7 @@ func TestDestructiveMigrationPreservesNonDirectoryRelocationDestination(t *testi
 			oldPath := filepath.Join(home, ".old-agents", "skills")
 			newPath := filepath.Join(home, ".agents", "skills")
 			writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-			seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations blocked dest\n")
+			seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core blocked dest\n")
 			tc.prep(t, home, newPath)
 
 			writeInstallDeprecationManifest(t, root, `{
@@ -1094,8 +1094,8 @@ func TestDestructiveMigrationPreservesNonDirectoryRelocationDestination(t *testi
 			if err != nil {
 				t.Fatalf("non-directory destination must preserve and report, not abort: %v\n%s", err, out)
 			}
-			assertInstallFile(t, filepath.Join(oldPath, "foundations", "SKILL.md"), "# Foundations blocked dest\n")
-			if !strings.Contains(out, "foundations") {
+			assertInstallFile(t, filepath.Join(oldPath, "loaf-core", "SKILL.md"), "# Loaf Core blocked dest\n")
+			if !strings.Contains(out, "loaf-core") {
 				t.Fatalf("stdout must mention preserved skill:\n%s", out)
 			}
 			if !strings.Contains(out, "un-managed") {
@@ -1113,7 +1113,7 @@ func TestDestructiveMigrationStrandedClaimPreservesNonDirectoryDestination(t *te
 	oldPath := filepath.Join(home, ".old-agents", "skills")
 	newPath := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	upsertManagedSkillDigest(t, oldPath, "foundations", strings.Repeat("ab", 32))
+	upsertManagedSkillDigest(t, oldPath, "loaf-core", strings.Repeat("ab", 32))
 	mkdirAll(t, filepath.Dir(newPath))
 	writeInstallFile(t, newPath, "skills home is a file\n")
 
@@ -1145,10 +1145,10 @@ func TestDestructiveMigrationStrandedClaimPreservesNonDirectoryDestination(t *te
 	if stateErr != nil {
 		t.Fatalf("source claim must remain readable: %v", stateErr)
 	}
-	if _, ok := srcState.digests["foundations"]; !ok {
+	if _, ok := srcState.digests["loaf-core"]; !ok {
 		t.Fatalf("stranded claim must be preserved at source; digests=%#v", srcState.digests)
 	}
-	if !strings.Contains(out, "foundations") {
+	if !strings.Contains(out, "loaf-core") {
 		t.Fatalf("stdout must mention stranded skill:\n%s", out)
 	}
 	if !strings.Contains(out, "un-managed") {
@@ -1171,7 +1171,7 @@ func TestDestructiveMigrationRelocationDestinationPermissionErrorSurfaces(t *tes
 	agentsParent := filepath.Join(home, ".agents")
 	newPath := filepath.Join(agentsParent, "skills")
 	writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-	seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations\n")
+	seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core\n")
 	mkdirAll(t, agentsParent)
 	writeInstallDeprecationManifest(t, root, `{
   "version": 1,
@@ -1252,7 +1252,7 @@ func TestDestructiveMigrationInspectionIOErrorsSurface(t *testing.T) {
 				oldPath := filepath.Join(oldParent, "skills")
 				mkdirAll(t, oldPath)
 				writeInstallFile(t, filepath.Join(oldPath, loafInstallMarkerFile), "old\n")
-				seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations\n")
+				seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core\n")
 				writeInstallDeprecationManifest(t, root, `{
   "version": 1,
   "retired_targets": [],
@@ -1277,7 +1277,7 @@ func TestDestructiveMigrationInspectionIOErrorsSurface(t *testing.T) {
 				oldPath := filepath.Join(home, ".old-agents", "skills")
 				mkdirAll(t, oldPath)
 				// No install marker — candidacy depends on managed-skills digest map.
-				seedOwnedManagedSkill(t, oldPath, "foundations", "# Foundations\n")
+				seedOwnedManagedSkill(t, oldPath, "loaf-core", "# Loaf Core\n")
 				manifestPath := filepath.Join(oldPath, loafSkillManifestFile)
 				chmodForTest(t, manifestPath, 0o000)
 				writeInstallDeprecationManifest(t, root, `{

@@ -13,10 +13,10 @@ func TestScopedUpgradeUsesInstalledCanonicalSkillSource(t *testing.T) {
 				name := map[bool]string{false: "skills-only", true: "cursor-hook"}[withHook] + "/" + map[bool]string{false: "update", true: "preserve"}[alreadyCanonical] + "/" + map[bool]string{false: "cursor-only", true: "opencode-installed"}[openCodeInstalled]
 				t.Run(name, func(t *testing.T) {
 					root, home := setupScopedUpgradeFixture(t)
-					cursor := "---\nname: foundations\ndescription: Test foundations.\n---\n\n# Foundations\n"
-					openCode := "---\nname: foundations\ndescription: Test foundations.\nsubtask: false\n---\n\n# Foundations\n"
-					writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), cursor)
-					writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "foundations", "SKILL.md"), openCode)
+					cursor := "---\nname: loaf-core\ndescription: Test loaf-core.\n---\n\n# Loaf Core\n"
+					openCode := "---\nname: loaf-core\ndescription: Test loaf-core.\nsubtask: false\n---\n\n# Loaf Core\n"
+					writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), cursor)
+					writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "loaf-core", "SKILL.md"), openCode)
 					target := "cursor"
 					if openCodeInstalled {
 						target = "opencode"
@@ -31,21 +31,21 @@ func TestScopedUpgradeUsesInstalledCanonicalSkillSource(t *testing.T) {
 					source := filepath.Join(root, "dist", target, "skills")
 					dest := filepath.Join(home, ".agents", "skills")
 					if alreadyCanonical {
-						if err := syncSelectedManagedSkills(source, dest, []string{"foundations"}); err != nil {
+						if err := syncSelectedManagedSkills(source, dest, []string{"loaf-core"}); err != nil {
 							t.Fatal(err)
 						}
 					}
-					expected, err := hashInstallSkillTree(filepath.Join(source, "foundations"))
+					expected, err := hashInstallSkillTree(filepath.Join(source, "loaf-core"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					args := []string{"upgrade", "--select", "skills/skill:foundations"}
+					args := []string{"upgrade", "--select", "skills/skill:loaf-core"}
 					if withHook {
 						args = append(args, "--select", "cursor/hook:preToolUse/validate-infra-safety")
 					}
 					preview := func() artifactPlanDecision {
 						plan := parseInstallPlanJSON(t, runInstallCapture(t, root, append(append([]string{}, args...), "--dry-run", "--json")...))
-						return findScopedSkill(t, plan, "skill:foundations")
+						return findScopedSkill(t, plan, "skill:loaf-core")
 					}
 					first := preview()
 					wantAction := planActionUpdate
@@ -56,7 +56,7 @@ func TestScopedUpgradeUsesInstalledCanonicalSkillSource(t *testing.T) {
 						t.Fatalf("first action=%s desired=%s, want %s %s", first.Action, first.DesiredSHA256, wantAction, expected)
 					}
 					runInstallCapture(t, root, args...)
-					actual, err := hashInstallSkillTree(filepath.Join(dest, "foundations"))
+					actual, err := hashInstallSkillTree(filepath.Join(dest, "loaf-core"))
 					if err != nil {
 						t.Fatal(err)
 					}

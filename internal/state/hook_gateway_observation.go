@@ -2,11 +2,13 @@ package state
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"time"
 )
+
+// gatewayMonthLayout keys gateway counts by UTC month, matching the
+// substr(created_at, 1, 7) fold of per-call rows in migration 0028.
+const gatewayMonthLayout = "2006-01"
 
 // HookGatewayObservation contains only bounded classifications. Callers must
 // never pass tool arguments, file contents, or a policy message to this API.
@@ -49,19 +51,16 @@ func (s *Store) RecordHookGatewayObservation(ctx context.Context, projectID stri
 	default:
 		return fmt.Errorf("hook gateway observation has invalid decision")
 	}
-	var idBytes [16]byte
-	if _, err := rand.Read(idBytes[:]); err != nil {
-		return fmt.Errorf("mint hook gateway observation ID: %w", err)
-	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.db.ExecContext(ctx, `
-INSERT INTO hook_events (
-  id, project_id, hook_id, hook_phase, tool_name, decision,
-  reason_class, observed_harness, observed_harness_version, created_at, updated_at
-) VALUES (?, ?, ?, 'pre-tool', ?, ?, ?, ?, ?, ?, ?)
-`, hex.EncodeToString(idBytes[:]), projectID, observation.HookID, observation.ToolName,
+INSERT INTO hook_gateway_counts (
+  project_id, month, hook_id, tool_name, decision, reason_class,
+  observed_harness, observed_harness_version, count
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+ON CONFLICT (project_id, month, hook_id, tool_name, decision, reason_class, observed_harness, observed_harness_version)
+DO UPDATE SET count = count + 1
+`, projectID, time.Now().UTC().Format(gatewayMonthLayout), observation.HookID, observation.ToolName,
 		observation.Decision, observation.ReasonClass, observation.ObservedHarness,
-		observation.HarnessVersion, now, now)
+		observation.HarnessVersion)
 	if err != nil {
 		return fmt.Errorf("record hook gateway observation: %w", err)
 	}
@@ -81,17 +80,16 @@ func validGatewayToken(value string) bool {
 	return true
 }
 
-// HookGatewayStatusSince is a local aggregate and never returns hook payloads.
-func (s *Store) HookGatewayStatusSince(ctx context.Context, since time.Time) ([]HookGatewayStatus, error) {
-	// The UTC second prefix includes both exact-second and fractional RFC3339
-	// timestamps at the boundary; comparing to an exact "...Z" would miss them.
+// HookGatewayStatusForMonth totals the UTC month containing month. It is a
+// local aggregate and never returns hook payloads.
+func (s *Store) HookGatewayStatusForMonth(ctx context.Context, month time.Time) ([]HookGatewayStatus, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT project_id, observed_harness, decision, reason_class, COUNT(*)
-FROM hook_events
-WHERE hook_phase = 'pre-tool' AND decision IS NOT NULL AND reason_class IS NOT NULL AND created_at >= ?
+SELECT project_id, observed_harness, decision, reason_class, SUM(count)
+FROM hook_gateway_counts
+WHERE month = ?
 GROUP BY project_id, observed_harness, decision, reason_class
 ORDER BY project_id, observed_harness, decision, reason_class
-`, since.UTC().Format("2006-01-02T15:04:05"))
+`, month.UTC().Format(gatewayMonthLayout))
 	if err != nil {
 		return nil, fmt.Errorf("query hook gateway status: %w", err)
 	}

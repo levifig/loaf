@@ -213,40 +213,7 @@ Under every strategy:
 
 ## Changelog Discipline
 
-`CHANGELOG.md` entries follow Loaf's Common Changelog profile: write for
-humans, communicate the release impact, and curate git history instead of
-copying it. Curate the `[Unreleased]` section as PRs land so the later
-published release notes read as user-facing prose, not an internal worklog.
-
-### Drop
-
-Internal terms that have no meaning outside the team's working context:
-
-- Internal work-unit numbering that is not the issue ID (issue IDs like `LOAF-42` belong in commits — release attribution reads them)
-- Session, sprint, or branch references
-- Internal terminology from skills/docs that isn't part of the user's mental model — e.g. `Q1`/`Q2`/`Q3` question numbers from a Triage Gate, internal gate-logic notation like `(Q1 OR Q2) AND Q3`, hook IDs that aren't user-facing
-- "How the work got done" framing — interview steps, decomposition steps, review gates
-
-### Keep
-
-- **What changed** — commands, behaviors, file paths, config keys, hook names the user works with
-- **Why it matters** — compatibility implications, migration notes, breaking-change call-outs
-- **Public references** — `ADR-NNN` IDs, documented CLI flags, public file paths, named features
-
-### Style
-
-- Use backticks for all code references — file names, commands, config keys, hook names
-- Write imperative, user-perspective prose: what upgrading changes, not how the work got built
-- Keep each entry self-describing and one line whenever possible
-- Link to the best public reference when available: PR, issue, ADR, release, or commit
-- Group entries by Common Changelog category in order: `Changed`, `Added`, `Removed`, `Fixed`
-- Prefix breaking entries with `**Breaking:**` and list them before non-breaking entries in the same category
-
-### Auto-generated Entries
-
-`loaf release suggest` drafts notes from landed issues; `loaf release cut` prepends them into `CHANGELOG.md`. Treat drafted notes as a draft: rewrite internal terms before cutting. Curate `[Unreleased]` as PRs land so the later cut reads as user-facing prose.
-
-Before approving a release bump, compare `[Unreleased]` against the actual release range and remove scaffolding language introduced by specs, reviews, tasks, or session triage. If an entry only explains why the work was discovered or how the work was organized, it does not belong in the changelog.
+Changelog entries follow the release skill's Changelog rules: when an entry is required, its format, and how to curate `[Unreleased]` as PRs land. Commit messages keep the issue IDs that release attribution reads.
 
 ## Critical Rules
 

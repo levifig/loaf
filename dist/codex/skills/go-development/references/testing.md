@@ -1,6 +1,6 @@
 # Go Testing Reference
 
-Testing conventions. Follows `foundations` testing principles.
+Testing conventions. Follows `loaf-core` testing principles.
 
 ## Project Conventions
 

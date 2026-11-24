@@ -17,14 +17,10 @@ Investigate enough to support a decision, then stop. Research returns through th
 - Critical Rules
 - Verification
 - Quick Reference
-- Journal Commands
 - Topics
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
-
-- As the first action, run `loaf journal log "skill(research): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when research can safely proceed.
 - Establish the decision, scope, time bound, and needed confidence before broad investigation. Ask one question at a time when missing context materially changes the research.
 - Read project evidence first, then authoritative primary sources, then lower-confidence sources only when needed. Cite each material claim at the strongest available source.
 - Distinguish observation, inference, recommendation, and uncertainty.
@@ -32,7 +28,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - When persistence is warranted, create an unused `.agents/reports/YYYYMMDDHHMMSS-slug.md` path. Generate the 14-digit timestamp in UTC, describe the report itself in the slug, and never overwrite an existing file.
 - Use the purpose-specific [research report](templates/research-report.md) or [state assessment](templates/state-assessment.md) template. Do not add universal status or lifecycle fields.
 - Put tracker or task provenance in the report content when useful, never in the filename.
-- Log a concise durable discovery when the result changes future decisions; do not copy the full report into the journal.
+- Log a concise durable discovery, with the command form from the loaf-core skill's Journal Commands section, when the result changes future decisions; do not copy the full report into the journal.
 
 ## Verification
 
@@ -50,14 +46,6 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | Current project overview needed beyond this response | [State assessment](templates/state-assessment.md) |
 | Durable evidence, options, or audit trail | [Research report](templates/research-report.md) |
 | Parallel or specialist investigation | Use orchestration; research still owns the research template |
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

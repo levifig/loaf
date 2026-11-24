@@ -95,6 +95,7 @@ var projectScopedTableClasses = map[string]TableClass{
 	"sessions":                         TableClassMachineLocal,
 	"session_state_snapshots":          TableClassMachineLocal,
 	"hook_events":                      TableClassMachineLocal,
+	"hook_gateway_counts":              TableClassMachineLocal,
 	"exports":                          TableClassMachineLocal,
 	"artifact_bodies":                  TableClassMachineLocal,
 	"docs_index":                       TableClassMachineLocal,

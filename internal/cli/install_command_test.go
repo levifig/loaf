@@ -12,7 +12,7 @@ import (
 
 func TestRunnerInstallExplicitCursorTargetRunsNatively(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 
 	var stdout bytes.Buffer
@@ -32,7 +32,7 @@ func TestRunnerInstallExplicitCursorTargetRunsNatively(t *testing.T) {
 		t.Fatalf("stdout = %q, want Cursor install summary", stdout.String())
 	}
 	assertInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "9.8.7-test.1\n")
-	assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	if info, statErr := os.Lstat(filepath.Join(root, "AGENTS.md")); statErr != nil || info.Mode()&os.ModeSymlink != 0 {
 		t.Fatalf("root AGENTS.md must be a real file: info=%v err=%v", info, statErr)
 	}
@@ -51,7 +51,7 @@ func TestRunnerInstallUsesAgentsHomeSkillDestinations(t *testing.T) {
 	for _, target := range []string{"opencode", "cursor", "codex", "amp"} {
 		t.Run(target, func(t *testing.T) {
 			root, home := setupInstallCommandFixture(t)
-			writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "foundations", "SKILL.md"), "# Foundations\n")
+			writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 			if target == "cursor" || target == "codex" {
 				installTestHookDistribution(t, root, target)
 			}
@@ -62,16 +62,16 @@ func TestRunnerInstallUsesAgentsHomeSkillDestinations(t *testing.T) {
 				t.Fatalf("install --to %s error = %v\n%s", target, err, stdout.String())
 			}
 
-			assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+			assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 			record := readInstallCommandJSON(t, installRecordPath(home, target))
 			if record["target"] != target || record["skills_dir"] != filepath.Join(home, ".agents", "skills") {
 				t.Fatalf("record = %#v, want target and shared skills dir", record)
 			}
 			switch target {
 			case "opencode":
-				assertInstallPathMissing(t, filepath.Join(home, ".config", "opencode", "skills", "foundations"))
+				assertInstallPathMissing(t, filepath.Join(home, ".config", "opencode", "skills", "loaf-core"))
 			case "amp":
-				assertInstallPathMissing(t, filepath.Join(home, ".config", "agents", "skills", "foundations"))
+				assertInstallPathMissing(t, filepath.Join(home, ".config", "agents", "skills", "loaf-core"))
 			}
 		})
 	}
@@ -81,7 +81,7 @@ func TestRunnerInstallSharedSkillsPreservesForeignEntries(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
 	sharedSkills := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(sharedSkills, "foreign-skill", "SKILL.md"), "# Mine\n")
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 
 	var stdout bytes.Buffer
@@ -90,10 +90,10 @@ func TestRunnerInstallSharedSkillsPreservesForeignEntries(t *testing.T) {
 		t.Fatalf("install --to cursor error = %v\n%s", err, stdout.String())
 	}
 	assertInstallFile(t, filepath.Join(sharedSkills, "foreign-skill", "SKILL.md"), "# Mine\n")
-	assertInstallFile(t, filepath.Join(sharedSkills, "foundations", "SKILL.md"), "# Foundations\n")
+	assertInstallFile(t, filepath.Join(sharedSkills, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 
-	if err := os.RemoveAll(filepath.Join(root, "dist", "cursor", "skills", "foundations")); err != nil {
-		t.Fatalf("RemoveAll(foundations) error = %v", err)
+	if err := os.RemoveAll(filepath.Join(root, "dist", "cursor", "skills", "loaf-core")); err != nil {
+		t.Fatalf("RemoveAll(loaf-core) error = %v", err)
 	}
 	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "go-development", "SKILL.md"), "# Go\n")
 	stdout.Reset()
@@ -101,14 +101,14 @@ func TestRunnerInstallSharedSkillsPreservesForeignEntries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second install --to cursor error = %v\n%s", err, stdout.String())
 	}
-	assertInstallPathMissing(t, filepath.Join(sharedSkills, "foundations"))
+	assertInstallPathMissing(t, filepath.Join(sharedSkills, "loaf-core"))
 	assertInstallFile(t, filepath.Join(sharedSkills, "foreign-skill", "SKILL.md"), "# Mine\n")
 	assertInstallFile(t, filepath.Join(sharedSkills, "go-development", "SKILL.md"), "# Go\n")
 }
 
 func TestRunnerInstallRecordKeepsRelocatedTargetDetectable(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 
 	var stdout bytes.Buffer
@@ -173,7 +173,7 @@ func TestRunnerInstallOffersBinarySelfInstall(t *testing.T) {
 		t.Fatalf("Chmod(source loaf) error = %v", err)
 	}
 	writeInstallFile(t, filepath.Join(root, "bin", "native", "darwin-arm64", "loaf"), "native\n")
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	mkdirAll(t, filepath.Join(home, ".cursor"))
 
@@ -197,7 +197,7 @@ func TestRunnerInstallOffersBinarySelfInstall(t *testing.T) {
 
 func TestRunnerInstallInteractiveSelectionRunsNatively(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	mkdirAll(t, filepath.Join(home, ".cursor"))
 
@@ -223,7 +223,7 @@ func TestRunnerInstallInteractiveSelectionRunsNatively(t *testing.T) {
 
 func TestRunnerInstallInteractiveNoTargetsStillUpdatesClaudeProjectFile(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	mkdirAll(t, filepath.Join(home, ".cursor"))
 	writeInstallFile(t, filepath.Join(root, "bin", "claude"), "#!/bin/sh\nexit 0\n")
@@ -263,7 +263,7 @@ func TestRunnerInstallSerenaRecommendationWritesCursorProjectConfig(t *testing.T
 	if err := os.Chmod(filepath.Join(root, "bin", "serena"), 0o755); err != nil {
 		t.Fatalf("Chmod(fake serena) error = %v", err)
 	}
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	writeInstallFile(t, filepath.Join(root, ".cursor", "mcp.json"), `{"mcpServers":{"existing":{"command":"keep","args":[]}},"theme":"dark"}`+"\n")
 	mkdirAll(t, filepath.Join(home, ".cursor"))
@@ -324,7 +324,7 @@ EOS
 	if err := os.Chmod(filepath.Join(bin, "uv"), 0o755); err != nil {
 		t.Fatalf("Chmod(fake uv) error = %v", err)
 	}
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	mkdirAll(t, filepath.Join(home, ".cursor"))
 
@@ -408,9 +408,9 @@ func TestRunnerInstallFromLinkedWorktreeWritesMainLoafConfig(t *testing.T) {
 	mkdirAll(t, bin)
 	mkdirAll(t, filepath.Join(home, ".cursor"))
 	writeInstallFile(t, filepath.Join(main, "package.json"), `{"name":"loaf","version":"9.8.7-test.1"}`+"\n")
-	writeInstallFile(t, filepath.Join(main, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(main, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, main, "cursor")
-	gitCLI(t, main, "add", "package.json", "dist/cursor/skills/foundations/SKILL.md")
+	gitCLI(t, main, "add", "package.json", "dist/cursor/skills/loaf-core/SKILL.md")
 	gitCLI(t, main, "-c", "user.name=Loaf Test", "-c", "user.email=loaf@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "add install fixture")
 	linked := addCLILinkedWorktree(t, main, "install-config")
 

@@ -22,7 +22,7 @@ func TestInstallPreservesAnUnparseableProjectConfig(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			root, home := setupInstallCommandFixture(t)
-			writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+			writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 			installTestHookDistribution(t, root, "cursor")
 			mkdirAll(t, filepath.Join(home, ".cursor"))
 			configPath := filepath.Join(root, ".agents", "loaf.json")

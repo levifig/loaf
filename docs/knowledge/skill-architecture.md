@@ -8,13 +8,15 @@ topics:
   - profiles
 covers:
   - .agents/skills/loaf-skill-authoring/**
-  - content/skills/**/*.md
-  - content/skills/**/*.yaml
-  - config/hooks.yaml
+  - internal/cli/build_skill_invariance.go
+  - internal/cli/build_codex.go
+  - config/targets.yaml
+  - content/templates/*
+  - content/agents/*.md
 consumers:
   - implementer
   - reviewer
-last_reviewed: '2026-10-11'
+last_reviewed: '2026-11-06'
 ---
 
 # Skill Architecture
@@ -30,7 +32,7 @@ last_reviewed: '2026-10-11'
 - [References](#references)
 - [Templates](#templates)
 - [Harness-Neutral Authoring](#harness-neutral-authoring)
-- [Journal Self-Logging](#journal-self-logging)
+- [Journal Guidance](#journal-guidance)
 - [Agent Profiles](#agent-profiles)
 - [Categories](#categories)
 - [Authoring Checklist](#authoring-checklist)
@@ -112,7 +114,7 @@ Use domain-focused names in gerund or noun-phrase form. Skills that DO things ge
 | Verb (workflow) | `implement`, `shape`, `research` | Workflow/process skills |
 | `{lang}-development` | `python-development`, `typescript-development` | Language skills |
 | `{domain}-{activity}` | `database-design`, `infrastructure-management` | Domain skills |
-| Single word | `foundations`, `orchestration` | Knowledge/process skills |
+| Single word or short phrase | `loaf-core`, `orchestration` | Knowledge/process skills |
 
 Constraints: lowercase letters, numbers, and hyphens only; max 64 characters; no reserved words (`anthropic`, `claude`); the directory name must match the `name` field.
 
@@ -245,7 +247,7 @@ Use the Task tool with run_in_background: true and subagent_type background-runn
 Background agents are configured via the is_background: true YAML property.
 ```
 
-See `content/skills/foundations/references/permissions.md` for worked examples with multi-line fences.
+See `content/skills/loaf-core/references/permissions.md` for worked examples with multi-line fences.
 
 Rules for the primary shape:
 
@@ -267,22 +269,14 @@ Use the compact table when every row is a single token or short phrase; use `###
 
 Worked examples of genuine product-specific facts (keep as labeled content; do not neutralize away):
 
-- Fenced allowlist entries whose literal tokens differ by product (`foundations/references/permissions.md`)
+- Fenced allowlist entries whose literal tokens differ by product (`loaf-core/references/permissions.md`)
 - The Claude Code `@AGENTS.md` import in a root `CLAUDE.md` for sessions that cannot read `AGENTS.md` directly, and the rule that a real `.claude/CLAUDE.md` suppresses direct `AGENTS.md` reading (the paths are the fact; root `AGENTS.md` stays the canonical project-instructions name in prose)
 - Review policy that must inspect both `AGENTS.md` and `CLAUDE.md` when both exist
 - Slash-command invocation forms that differ by channel (`/loaf:name` on Claude Code's plugin path vs bare `/name` elsewhere)
 
-## Journal Self-Logging
+## Journal Guidance
 
-User-invocable workflow skills must log their invocation to the project journal as their first action, with context: arguments, intent, or what triggered the invocation. This creates an audit trail of which skills ran; the current branch and an opaque `harness_session_id` are attached automatically, and there is no start step or active session to find:
-
-```bash
-loaf journal log "skill(shape): shaping auth token rotation in the selected native issue"
-loaf journal log "skill(housekeeping): routine cleanup, no specific trigger"
-loaf journal log "skill(ship): reviewing the selected candidate"
-```
-
-Recent journal entries show which workflows ran. Foundations owns ordinary capture and selective synthesis; the [journal template](../../content/templates/journal.md) owns entry types and format rules.
+Skills do not log their own invocation. A skill asks for a journal write only where the entry records something worth recovering later, such as a decision, a discovery, a block, or a wrap. Loaf Core owns ordinary capture and the single [Journal Commands](../../content/skills/loaf-core/SKILL.md#journal-commands) section, including the labeled Codex form; a skill that asks for journal writes names "the loaf-core skill's Journal Commands section" in plain text instead of linking or copying the commands, because relative links to another skill do not resolve from every install layout. The [journal template](../../content/templates/journal.md) owns entry types and format rules.
 
 ## Agent Profiles
 
@@ -302,8 +296,8 @@ Skills load into profiles at spawn time. What an agent is intended to touch come
 
 | Category | `user-invocable` | Examples |
 |----------|:-:|---------|
-| Reference/Knowledge | `false` | python-development, database-design, foundations, git-workflow, orchestration |
-| Workflow/Process | `true` (default) | implement, research, shape, breakdown, ship, release, housekeeping |
+| Reference/Knowledge | `false` | python-development, database-design, loaf-core, git-workflow, orchestration |
+| Workflow/Process | `true` (default) | implement, research, shape, ship, release, housekeeping |
 
 Reference skills provide background knowledge the model loads automatically; set `user-invocable: false` in the sidecar so users are not offered `/python-development`.
 

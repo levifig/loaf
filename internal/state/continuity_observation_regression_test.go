@@ -116,8 +116,9 @@ func TestExplorationObservationMigrationPreservesHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
+	// Pin to migration 27 so later migrations cannot take its place.
 	migrations := SchemaMigrations()
-	if err := ApplyMigrations(ctx, store.db, migrations[:len(migrations)-1]); err != nil {
+	if err := ApplyMigrations(ctx, store.db, migrations[:25]); err != nil {
 		t.Fatal(err)
 	}
 	root := projectRoot(t)
@@ -131,7 +132,7 @@ func TestExplorationObservationMigrationPreservesHistory(t *testing.T) {
 	if _, err := store.db.ExecContext(ctx, `INSERT INTO exploration_checkpoints(id,project_id,exploration_id,seq,purpose,conclusions,unresolved,next_action,content_digest,created_at) VALUES('old-checkpoint',?,'old-exploration',1,'p','c','u','n','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','2026-01-01T00:00:00Z')`, projectID); err != nil {
 		t.Fatal(err)
 	}
-	if err := ApplyMigrations(ctx, store.db, migrations[len(migrations)-1:]); err != nil {
+	if err := ApplyMigrations(ctx, store.db, migrations[25:26]); err != nil {
 		t.Fatal(err)
 	}
 	var count int

@@ -1,21 +1,21 @@
 # Journal Render Template
 
-Before the first journal write, select the form in [Journal Commands](#journal-commands). Use it for every logging example below, including invocation and wrap entries.
+Write every entry with the command form in the loaf-core skill's Journal Commands section.
 
 This is the render template and entry-format reference for the project journal
 stored in SQLite. The journal is the only session-related structure: entries are
 project-scoped events, each tagged with an opaque harness id that correlates one
 conversation's entries. Nobody opens, closes, or transitions anything. Agents do
-not create or edit journal markdown as the source of truth — use
-`loaf journal log "type(scope): desc"` and read with `loaf journal recent`,
-`loaf journal context`, `loaf journal search`, and `loaf journal show`.
+not create or edit journal markdown as the source of truth. Write entries
+through journal logging, using the command form named above, and read them with
+`loaf journal recent`, `loaf journal context`, `loaf journal search`, and
+`loaf journal show`.
 
 ```markdown
 # Project Journal: name
 
 ## Entries
 
-[YYYY-MM-DD HH:MM] skill(implement): implementing LOAF-42
 [YYYY-MM-DD HH:MM] decision(scope): description of decision
 [YYYY-MM-DD HH:MM] discover(scope): something learned
 [YYYY-MM-DD HH:MM] block(scope): what is blocked
@@ -28,7 +28,6 @@ not create or edit journal markdown as the source of truth — use
 
 | Type | Use For | Written By |
 |------|---------|------------|
-| `skill(name)` | User-invocable workflow skill ran | Agent |
 | `decision(scope)` | Key decisions with rationale | Agent |
 | `discover(scope)` | Something learned | Agent |
 | `block(scope)` | Blocker encountered | Agent |
@@ -43,24 +42,16 @@ not create or edit journal markdown as the source of truth — use
 
 1. **Timestamp format:** `YYYY-MM-DD HH:MM` (no seconds)
 2. **Entry format:** `[<timestamp>] <type>(<scope>): <description>`
-3. **Selective checkpoints:** Record significant decisions and discoveries as they happen. Before completing substantial work, handing off, or compacting context, write a concise `wrap(scope)` entry only when useful reasoning is missing from existing records. Include abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable; omit empty fields and do not repeat raw events. Routine interactions need no redundant checkpoint. Nothing is ever started, ended, or stopped; there is no `session` entry type or required workflow invocation. Foundations owns this discipline.
+3. **Selective checkpoints:** Record significant decisions and discoveries as they happen. Before completing substantial work, handing off, or compacting context, write a concise `wrap(scope)` entry only when useful reasoning is missing from existing records. Include abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable; omit empty fields and do not repeat raw events. Routine interactions need no redundant checkpoint. Nothing is ever started, ended, or stopped; there is no `session` entry type or required workflow invocation. Loaf Core owns this discipline.
 4. **Blank lines:** Render burst boundaries only; SQLite journal rows are the
    durable ordering source.
 5. **No manual markdown edits:** Rendered markdown is a projection. Persist new
-   facts with `loaf journal log`.
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
+   facts through journal logging.
 
 ## CLI Commands
 
 ```bash
-loaf journal log      # Append typed entry: loaf journal log "decision(scope): desc"
+loaf journal log      # Append a typed entry; use the loaf-core skill's Journal Commands section
 loaf journal recent   # Show the timeline (newest first); --branch, --since-last-wrap
 loaf journal context  # Emit the layered continuity digest (latest wrap + branch + tasks)
 loaf journal search   # Full-text search across the project journal

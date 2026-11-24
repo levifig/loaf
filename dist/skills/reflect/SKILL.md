@@ -17,7 +17,6 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 - Critical Rules
 - Verification
 - Quick Reference
-- Journal Commands
 - Topics
 - Purpose
 - When to Reflect
@@ -30,7 +29,7 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
+Write journal entries with the command form in the loaf-core skill's Journal Commands section.
 
 - **Evidence-based** -- separate observed results, inferred lessons, and proposed changes; a merged patch is not proof of successful use or an accepted architectural direction
 - **Dogfood before generalization** -- compare the rideable increment's real use and learning sought with what actually happened before proposing more breadth or abstraction
@@ -40,9 +39,8 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - **Architecture ownership** -- read the [architecture skill](../architecture/SKILL.md) for topic maintenance, rationale, affected-surface review, and exceptional ADR selection. Integrate learning into the owning topic by default; route a candidate consequential choice to Architecture with evidence and why a separate record might help, not an automatic ADR
 - **No silent acceptance of drift** -- when shipped behaviour conflicts with an agreed constraint, report the discrepancy and route the unresolved choice to Architecture. Do not rewrite the constraint to bless the implementation or change an ADR's original decision context
 - **No forced update** -- retain existing guidance when the evidence does not justify change; useful local observations may remain in code, tests, or the journal
-- **Log first** -- log invocation before gathering evidence: `loaf journal log "skill(reflect): <scope>"`
 - **Link back** -- always reference the native tracker records, journal entries, reports, and commits that informed each update
-- **Log updates** -- log each Core Doc update to the project journal: `loaf journal log "decision(scope): updated STRATEGY.md with learning"`
+- **Log updates** -- log each Core Doc update to the project journal as a `decision(scope): updated STRATEGY.md with learning` entry
 
 ## Verification
 
@@ -62,14 +60,6 @@ Before the first journal write, select the command in [Journal Commands](#journa
 | Technical constraints / patterns / decision updates | Owning architecture topic or overview, following the architecture skill |
 | Potential exceptional ADR or conflict with an agreed constraint | Architecture evaluates the choice and record; reflection supplies evidence |
 | Workflow learning / local implementation insight | Owning skill or nearby code/tests/journal; do not force it into architecture |
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

@@ -441,21 +441,21 @@ func writeInitSkillRecommendations(out io.Writer, info initProjectInfo) {
 		return
 	}
 	fmt.Fprintln(out, "  Recommended skills:")
-	var nonFoundation []string
+	var nonCore []string
 	for _, skill := range skills {
-		if skill != "foundations" {
-			nonFoundation = append(nonFoundation, skill)
+		if skill != "loaf-core" {
+			nonCore = append(nonCore, skill)
 		}
 	}
-	if len(nonFoundation) > 0 {
-		fmt.Fprintf(out, "    - %s\n", strings.Join(nonFoundation, ", "))
+	if len(nonCore) > 0 {
+		fmt.Fprintf(out, "    - %s\n", strings.Join(nonCore, ", "))
 	}
-	fmt.Fprintln(out, "    - foundations (always)")
+	fmt.Fprintln(out, "    - loaf-core (always)")
 	fmt.Fprintln(out)
 }
 
 func recommendedInitSkills(info initProjectInfo) []string {
-	skills := map[string]bool{"foundations": true}
+	skills := map[string]bool{"loaf-core": true}
 	for _, item := range append(append([]detectedStackItem{}, info.languages...), info.frameworks...) {
 		for _, skill := range initSkillMap(item.name) {
 			skills[skill] = true

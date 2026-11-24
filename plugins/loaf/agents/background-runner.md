@@ -6,7 +6,7 @@ description: >-
   and other low-priority work.
 model: haiku
 skills:
-  - foundations
+  - loaf-core
 tools:
   - Read
   - Edit

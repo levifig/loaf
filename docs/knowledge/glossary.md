@@ -2,7 +2,7 @@
 type: glossary
 topics:
   - glossary
-last_reviewed: 2026-09-28
+last_reviewed: 2026-11-06
 ---
 ## Canonical Terms
 
@@ -20,7 +20,7 @@ A target-specific file that adds product-only metadata or configuration to a sha
 
 ### Shared Template
 
-A template under `content/templates/` distributed to multiple skills through `config/targets.yaml`. Examples include the ADR and grilling templates.
+A template under `content/templates/` distributed to consuming skills through `config/targets.yaml`. Examples include the work-contract and grilling templates. Architecture's templates live in its own skill package.
 
 ### Core Docs
 

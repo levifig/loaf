@@ -10,7 +10,6 @@ description: >-
 - Operating Rules
 - Journal Context (contract v2)
 - Command Index
-- Journal Commands
 - Topics
 
 The Loaf operating manual for agents: how to discover commands, diagnose project state, and keep configuration current. It teaches reading the CLI, not memorizing it.
@@ -19,7 +18,7 @@ The Loaf operating manual for agents: how to discover commands, diagnose project
 
 ## Operating Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
+Write journal entries with the command form in [Loaf Core](../../content/skills/loaf-core/SKILL.md#journal-commands).
 
 - Get exact, current syntax live: `loaf --help` lists every command, `loaf <command> --help` details one. This index is a map, not the contract.
 - Prefer `--json` surfaces when diagnosing: `loaf config check --json`, `loaf state doctor --json`. Parse the structured output instead of scraping human-readable text.
@@ -28,7 +27,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Ask the user for project-owned choices — GitHub account, native tracker destination and routing hints, which harnesses to install — never guess them.
 - Never hand-edit Loaf-managed hook files; regenerate them through `loaf build` and `loaf install`.
 - Re-run the relevant check after any change and confirm it passes.
-- Log meaningful decisions to the journal: `loaf journal log "decision(scope): ..."`.
+- Log meaningful decisions to the journal as `decision(scope): ...` entries.
 
 ## Journal Context (contract v2)
 
@@ -96,14 +95,6 @@ Names and one-line purposes only. Run `loaf <command> --help` for options, argum
 | `loaf check` | Run enforcement hook checks and standalone validators | commit-msg, secrets, changelog, compliance, test-naming, dockerfile, k8s-manifest, bounds, units, standard-refs |
 | `loaf telemetry` | Show content-free local continuity usage and pre-tool gateway counts | status |
 | `loaf doctor` | Diagnose Loaf project alignment (symlinks, stale files, managed content, and leftover migration work) | — |
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

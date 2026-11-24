@@ -215,7 +215,7 @@ function testCodex() {
   
   // Codex target only gets skills, no hooks
   // Just verify skills are present
-  const skills = ["git-workflow", "orchestration", "security-compliance"];
+  const skills = ["git-workflow", "orchestration", "loaf-core"];
   for (const skill of skills) {
     test(`${skill} skill exists`, () => {
       const skillPath = join(skillsDir, skill, "SKILL.md");

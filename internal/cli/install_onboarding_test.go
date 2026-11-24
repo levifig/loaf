@@ -34,7 +34,7 @@ func TestParseInstallArgsTombstonesFlagsThatMovedToUpgrade(t *testing.T) {
 
 func TestRunnerInstallUpgradeFlagIsAHardError(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
 
 	var stdout bytes.Buffer
@@ -97,7 +97,7 @@ func TestRunnerInstallOutsideALoafProjectAsksBeforeDeploying(t *testing.T) {
 // --yes.
 func TestRunnerInstallInsideALoafProjectOnboardsTheHarnessOnly(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	writeInstallFile(t, filepath.Join(root, ".agents", "loaf.json"), "{\"integrations\":{}}\n")
 	writeInstallFile(t, filepath.Join(root, "AGENTS.md"), "# Project Instructions\n")
@@ -173,7 +173,7 @@ func TestRunnerConfigCheckFixStillRefreshesTargetsThroughTheSharedInstaller(t *t
 		`  }`,
 		`}`,
 	}, "\n")+"\n")
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "hooks.json"), `{"version":1,"hooks":{"PostToolUse":[{"command":"loaf check --hook check-secrets","matcher":"Bash","loaf-managed":true}]}}`+"\n")
 	// The distribution hooks.json is what `config check` diagnoses against; the
 	// catalog is what the reconciler restores from, so the two name one hook.
@@ -227,7 +227,7 @@ func TestRunnerConfigCheckFixStillRefreshesTargetsThroughTheSharedInstaller(t *t
 func setupInstallOnboardingFixture(t *testing.T) (string, string) {
 	t.Helper()
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	writeInstallFile(t, filepath.Join(root, "bin", "loaf"), "#!/bin/sh\nexit 0\n")
 	if err := os.Chmod(filepath.Join(root, "bin", "loaf"), 0o755); err != nil {
