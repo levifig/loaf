@@ -56,6 +56,30 @@ Some `expected_after` values are assumptions that the merge work must confirm:
 
 - **brainstorm and explore folded into pitch, strategy into reflect:** explore's three core cases now expect `pitch` and strategy's three expect `reflect`. brainstorm's three core cases were dropped because each asks for "the brainstorm technique" by name, which no longer exists. The four discovery and three strategy merge probes now expect their `expected_after` owner. So do the older "generate a few possible directions" and "help me explore a few" probes, which also carry `expected_after: pitch`. The older "Define the product direction and personas" probe now expects `reflect`. The retired skills are gone from every probe's `choices`. Group names are unchanged so per-group results stay comparable. The suite is now 187 cases.
 
+## 2026-11-24: after folding brainstorm, explore and strategy into pitch and reflect
+
+Measured at commit `606c0766`, with the same `all` suite of 187 cases, once per model. These runs measure only this merge: they predate the other planned merges and the `foundations` rename.
+
+The comparison joins each case to its baseline answer by prompt. It scores both runs against the skill that should own the request after the merges (`expected_after` where present). Explore's moved core cases count as right in the baseline when they reached explore, which owned them then. "Affected" means the 28 cases whose owner is now pitch or reflect, plus any case either run answered with one of those skills or a retired one.
+
+| Model | Run's own score | All shared cases, against the post-merge owner | Affected cases |
+|---|---|---|---|
+| `claude-opus-5-5` | 174/187 | 159 → 163 | 21 → 25 of 28 |
+| `claude-sonnet-5-5` | 171/187 | 154 → 160 | 18 → 25 of 28 |
+
+**What improved:**
+- Every discovery and strategy merge probe now lands on pitch or reflect on both models.
+- So do the older "generate a few possible directions" and "help me explore a few" probes, and "Define the product direction and personas".
+
+**What regressed:**
+- **Resuming an Exploration has no owner.** "Resume the workflow exploration where we left off" goes to handoff on both models. On Sonnet, "Start an exploration of the caching options and checkpoint it" goes to research. Explore's description claimed these requests. Now the checkpoint guidance lives in Foundations' continuity reference, and no skill's description names Explorations.
+- **One Opus core case moved to idea.** "I have a concept to pitch" goes to idea. Sonnet still routes it to pitch. With one run per model, this may be run-to-run variation.
+- **Two unrelated Sonnet core cases moved.** "Which loaf command shows the recent project journal?" goes to foundations, and "Ready to merge this PR" goes to git-workflow. Neither skill's description changed, so these are likely variation too.
+
+**Still wrong in both runs:** the dogfood "observed versus inferred" request still goes to research on both models.
+
+Token use was 582,723 input tokens per model, with 5,496 output tokens for Opus and 8,662 for Sonnet. The `cost` field is unreliable for the reason given under Limits.
+
 ### Limits
 
 - The runner shows each skill's name and only the first 250 characters of its description. Harnesses show more, so these results measure the start of each description, not the full listing an agent sees.
