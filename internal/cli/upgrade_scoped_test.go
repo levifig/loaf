@@ -11,13 +11,13 @@ import (
 )
 
 func TestParseUpgradeSelectRequiresQualifiedTargetAndID(t *testing.T) {
-	if _, err := parseUpgradeArgs([]string{"--select", "skill:foundations"}); err == nil || !strings.Contains(err.Error(), "target/id") {
+	if _, err := parseUpgradeArgs([]string{"--select", "skill:loaf-core"}); err == nil || !strings.Contains(err.Error(), "target/id") {
 		t.Fatalf("unqualified id error = %v, want target/id", err)
 	}
 	if _, err := parseUpgradeArgs([]string{"--select", "cursor/hook:postToolUse/kb-staleness-nudge", "--to", "cursor"}); err == nil || !strings.Contains(err.Error(), "cannot be combined") {
 		t.Fatalf("--select + --to error = %v, want rejection", err)
 	}
-	options, err := parseUpgradeArgs([]string{"--select", "skills/skill:foundations", "--select", "cursor/hook:preToolUse/validate-sql-safety"})
+	options, err := parseUpgradeArgs([]string{"--select", "skills/skill:loaf-core", "--select", "cursor/hook:preToolUse/validate-sql-safety"})
 	if err != nil {
 		t.Fatalf("parseUpgradeArgs error = %v", err)
 	}
@@ -44,9 +44,9 @@ func TestScopedUpgradeDryRunExactnessIdempotencePathLoafAndPreservation(t *testi
 	if plan.ProjectPart != nil || len(plan.Deprecations) != 0 {
 		t.Fatalf("scoped plan leaked whole-target surfaces: %#v %#v", plan.ProjectPart, plan.Deprecations)
 	}
-	foundations := findScopedSkill(t, plan, "skill:foundations")
-	if foundations.Action != planActionUpdate || !strings.Contains(foundations.Diff, "+# Foundations v2") || !strings.Contains(foundations.Diff, "-# Foundations v1") {
-		t.Fatalf("foundations decision = %#v", foundations)
+	core := findScopedSkill(t, plan, "skill:loaf-core")
+	if core.Action != planActionUpdate || !strings.Contains(core.Diff, "+# Loaf Core v2") || !strings.Contains(core.Diff, "-# Loaf Core v1") {
+		t.Fatalf("loaf-core decision = %#v", core)
 	}
 	kb := findScopedTargetArtifact(t, plan, "cursor", "hook:postToolUse/kb-staleness-nudge")
 	if kb.Action != hookActionUpdate || !strings.Contains(kb.Diff, `"command": "loaf check --hook kb-staleness-nudge"`) {
@@ -92,11 +92,11 @@ func TestScopedUpgradeDryRunExactnessIdempotencePathLoafAndPreservation(t *testi
 func TestScopedUpgradeSelectedConflictAbortsWithoutTouchingPitch(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
 	pitchPath := filepath.Join(home, ".agents", "skills", "pitch", "SKILL.md")
-	foundationsPath := filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md")
+	corePath := filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md")
 	writeInstallFile(t, pitchPath, "# Pitch tampered\n")
-	writeInstallFile(t, foundationsPath, "# Foundations tampered\n")
+	writeInstallFile(t, corePath, "# Loaf Core tampered\n")
 	pitchBefore := readFileString(t, pitchPath)
-	foundationsBefore := readFileString(t, foundationsPath)
+	coreBefore := readFileString(t, corePath)
 	hooksBefore := readFileString(t, filepath.Join(home, ".cursor", "hooks.json"))
 
 	var stdout strings.Builder
@@ -107,7 +107,7 @@ func TestScopedUpgradeSelectedConflictAbortsWithoutTouchingPitch(t *testing.T) {
 	if readFileString(t, pitchPath) != pitchBefore {
 		t.Fatal("selected conflict rewrote unrelated pitch")
 	}
-	if readFileString(t, foundationsPath) != foundationsBefore {
+	if readFileString(t, corePath) != coreBefore {
 		t.Fatal("selected conflict overwrote the conflicted skill")
 	}
 	if readFileString(t, filepath.Join(home, ".cursor", "hooks.json")) != hooksBefore {
@@ -125,14 +125,14 @@ func TestScopedUpgradeIgnoresUnrelatedPitchConflict(t *testing.T) {
 	if readFileString(t, pitchPath) != pitchBefore {
 		t.Fatal("unrelated pitch drift was rewritten")
 	}
-	if readFileString(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md")) != "# Foundations v2\n" {
-		t.Fatal("selected foundations was not replaced")
+	if readFileString(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md")) != "# Loaf Core v2\n" {
+		t.Fatal("selected loaf-core was not replaced")
 	}
 }
 
 func TestScopedUpgradeRollsBackNewSkillDirectory(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
-	skillDir := filepath.Join(home, ".agents", "skills", "foundations")
+	skillDir := filepath.Join(home, ".agents", "skills", "loaf-core")
 	if err := os.RemoveAll(skillDir); err != nil {
 		t.Fatalf("RemoveAll(%s) error = %v", skillDir, err)
 	}
@@ -149,7 +149,7 @@ func TestScopedUpgradeRollsBackNewSkillDirectory(t *testing.T) {
 	}
 	var stdout strings.Builder
 	err := Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}.Run([]string{
-		"upgrade", "--select", "skills/skill:foundations",
+		"upgrade", "--select", "skills/skill:loaf-core",
 	})
 	if err == nil || !strings.Contains(err.Error(), "injected skill apply failure") {
 		t.Fatalf("error = %v\n%s, want injected skill failure", err, stdout.String())
@@ -376,7 +376,7 @@ func TestScopedUpgradeSkillsOnlyDoesNotCreatePinnedRuntime(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
 	leftover := leftoverPinnedLoafPath(home)
 	writeInstallFile(t, leftover, "unrelated pinned runtime\n")
-	runInstallCapture(t, root, "upgrade", "--select", "skills/skill:foundations")
+	runInstallCapture(t, root, "upgrade", "--select", "skills/skill:loaf-core")
 	if got := readFileString(t, leftover); got != "unrelated pinned runtime\n" {
 		t.Fatalf("skills-only apply mutated leftover pin: %q", got)
 	}
@@ -422,7 +422,7 @@ func TestScopedUpgradeIgnoresUnselectedForeignSkillSymlink(t *testing.T) {
 	}
 	var out strings.Builder
 	err := (Runner{WorkingDir: root, Executable: distributionFixtureExecutable(root), Stdout: &out}).Run([]string{
-		"upgrade", "--select", "skills/skill:foundations",
+		"upgrade", "--select", "skills/skill:loaf-core",
 	})
 	if err != nil {
 		t.Fatalf("unselected foreign symlink blocked selected skill: %v\n%s", err, out.String())
@@ -446,15 +446,15 @@ func TestScopedUpgradeRejectsUnknownRetiredID(t *testing.T) {
 
 func TestScopedUpgradeCleansSkillBackupsAfterSuccess(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
-	runInstallCapture(t, root, "upgrade", "--select", "skills/skill:foundations")
+	runInstallCapture(t, root, "upgrade", "--select", "skills/skill:loaf-core")
 	assertNoScopedBackupDirs(t, home)
-	runInstallCapture(t, root, "upgrade", "--select", "skills/skill:foundations")
+	runInstallCapture(t, root, "upgrade", "--select", "skills/skill:loaf-core")
 	assertNoScopedBackupDirs(t, home)
 }
 
 func scopedUpgradeArgs() []string {
 	return []string{
-		"--select", "skills/skill:foundations",
+		"--select", "skills/skill:loaf-core",
 		"--select", "cursor/hook-file:hooks/post-tool/kb-staleness-nudge.sh",
 		"--select", "cursor/hook:postToolUse/kb-staleness-nudge",
 		"--select", "cursor/hook:preToolUse/validate-infra-safety",
@@ -471,9 +471,9 @@ func setupScopedUpgradeFixture(t *testing.T) (string, string) {
 	writeCapablePathLoaf(t, root)
 	writeScopedDistributionBinaries(t, root)
 
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations v1\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core v1\n")
 	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "pitch", "SKILL.md"), "# Pitch v1\n")
-	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "foundations", "SKILL.md"), "# Foundations v1\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "loaf-core", "SKILL.md"), "# Loaf Core v1\n")
 	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "pitch", "SKILL.md"), "# Pitch v1\n")
 	writeScopedPlugin(t, root, "opencode", "plugins/hooks.js", "export const hooks = { kb: { script: 'post-tool/kb-staleness-nudge.sh' } }\n")
 	installTestHookDistribution(t, root, "cursor", scopedCursorHookSources()...)
@@ -486,8 +486,8 @@ func setupScopedUpgradeFixture(t *testing.T) (string, string) {
 		}
 	}
 
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations v2\n")
-	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "foundations", "SKILL.md"), "# Foundations v2\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core v2\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "loaf-core", "SKILL.md"), "# Loaf Core v2\n")
 	writeScopedPlugin(t, root, "opencode", "plugins/hooks.js", "export const hooks = { kb: { command: 'loaf check --hook kb-staleness-nudge' }, infra: { command: 'loaf check --hook validate-infra-safety' } }\n")
 
 	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "0.5.0\n")
@@ -668,13 +668,13 @@ func asObjectSlice(value any) []map[string]any {
 
 func assertScopedApplyConverged(t *testing.T, home string, plan installDryRunPlan) {
 	t.Helper()
-	foundations := filepath.Join(home, ".agents", "skills", "foundations")
-	digest, err := hashInstallSkillTree(foundations)
+	core := filepath.Join(home, ".agents", "skills", "loaf-core")
+	digest, err := hashInstallSkillTree(core)
 	if err != nil {
-		t.Fatalf("hash foundations: %v", err)
+		t.Fatalf("hash loaf-core: %v", err)
 	}
-	if digest != findScopedSkill(t, plan, "skill:foundations").DesiredSHA256 {
-		t.Fatalf("applied foundations digest %s != dry-run desired %s", digest, findScopedSkill(t, plan, "skill:foundations").DesiredSHA256)
+	if digest != findScopedSkill(t, plan, "skill:loaf-core").DesiredSHA256 {
+		t.Fatalf("applied loaf-core digest %s != dry-run desired %s", digest, findScopedSkill(t, plan, "skill:loaf-core").DesiredSHA256)
 	}
 	assertInstallPathMissing(t, filepath.Join(home, ".cursor", "hooks", "post-tool", "kb-staleness-nudge.sh"))
 	assertInstallPathMissing(t, filepath.Join(home, ".config", "opencode", "plugins", "hooks", "post-tool", "kb-staleness-nudge.sh"))

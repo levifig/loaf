@@ -1,11 +1,14 @@
 ---
 name: architecture
 description: >-
-  Explains, evaluates, and maintains living, topic-based architecture and its
-  rationale. Use when choosing system direction, evaluating a rare ADR, auditing
-  documentation drift, or migrating an ADR corpus. Produces current architecture
-  docs grounded in code and tests, not work plans or tracker identity. Separate
-  decision records are exceptional and explicitly selected.
+  Explains, evaluates, and maintains living architecture topics, knowledge
+  files, and project documentation. Use when choosing system direction, auditing
+  documentation drift or stale knowledge files, reviewing docs, or migrating an
+  ADR corpus. Covers `covers:` staleness review with `loaf kb`, knowledge-file
+  frontmatter, documentation and API-doc review, and Mermaid diagrams. Produces
+  current architecture and knowledge docs grounded in code and tests, not work
+  plans or tracker identity. Separate decision records are exceptional and
+  explicitly selected. Not for changelog entries (use release).
 version: 0.6.0-rc.3
 ---
 
@@ -82,6 +85,20 @@ This skill owns the convention, topic format, and migration rules. Other workflo
 
 No new runtime, registry, or automated drift checker is implied. Perform a scoped evidence review using existing tools.
 
+### Keep knowledge files current
+
+Knowledge files in `docs/knowledge/` hold domain rules and cross-cutting context that code alone cannot carry. They share the knowledge base with architecture topics but keep their own schema. Read [Knowledge Files](references/knowledge-files.md) before creating, reviewing, or validating one.
+
+- Include `topics` (min 1) and `last_reviewed` in frontmatter, and use kebab-case filenames without date prefixes.
+- Add precise `covers:` globs when the knowledge maps to specific code paths; overly broad globs trigger constant staleness alerts.
+- Run `loaf kb validate` before committing new knowledge files, and `loaf kb check` to find files whose covered code changed since review.
+- Mark a file reviewed with `loaf kb review` only after checking its substantive content against current evidence; a routine edit alone does not justify a new review date.
+- Never duplicate code documentation in knowledge files, or store them outside `docs/knowledge/`. Architecture topics use this skill's topic convention, not the knowledge-file schema.
+
+### Review project documentation
+
+Review guides, READMEs, contributing docs, API docs, and diagrams with [Documentation Review](references/documentation-review.md). API documentation describes only implemented and released behaviour. Changelog entries follow the release skill's Changelog rules.
+
 ### Route other material to its owner
 
 | Material | Destination |
@@ -93,6 +110,8 @@ No new runtime, registry, or automated drift checker is implied. Perform a scope
 | Product purpose, principle, or product-scope boundary | Vision document |
 | Strategic bets, journey priorities, product deferrals, or learning sought | Strategy document |
 | Workflow convention or reusable method | Owning skill or nearby guidance |
+| Domain rule or cross-cutting context beyond the code | Knowledge file in `docs/knowledge/` |
+| Release-facing change description | Changelog, following the release skill's Changelog rules |
 | Local implementation detail or evidence | Code, types, tests, comments, or the project journal |
 
 ### Preserve invariants while relocating detail
@@ -114,6 +133,7 @@ Use product or domain names in maintained prose. Treat identifiers embedded in c
 - Shared work routes only to the selected native tracker through the provider-neutral workflow; no local mirror or synchronization record was created.
 - Schema, wire, cryptographic, credential, archive, and source-path identifiers were preserved unless separately inventoried and migrated.
 - Navigation and links resolve, legacy references are handled honestly, and relevant repository checks pass.
+- Knowledge files pass `loaf kb validate`, and any review date was set only after a substantive check.
 
 ## Quick Reference
 
@@ -126,6 +146,8 @@ Use product or domain names in maintained prose. Treat identifiers embedded in c
 | Existing ADR corpus | Read applicable constraints; migrate only when requested |
 | Consequential choice needs lasting explanation | Update the overview or owning topic; consider a minimal retrospective ADR only when separately valuable and explicitly selected |
 | Explicit ADR convention or request | Use scoped decision-record guidance and the repository's actual format |
+| Covered code changed since a knowledge file's review | Run `loaf kb check`, verify the content, then update and `loaf kb review` |
+| Documentation needs review | Use the documentation review checklist |
 
 ## Topics
 
@@ -137,4 +159,6 @@ Use product or domain names in maintained prose. Treat identifiers embedded in c
 | Auditing and migration | [references/auditing-and-migration.md](references/auditing-and-migration.md) | Auditing current truth or consolidating an existing corpus into topics |
 | Legacy ADRs | [references/legacy-adrs.md](references/legacy-adrs.md) | Maintaining Loaf's historical living-record convention or interpreting its status during migration |
 | Legacy ADR template | [templates/legacy-adr.md](templates/legacy-adr.md) | Preserving the historical Loaf format when the repository explicitly retains it |
-| Documentation | `documentation-standards/references/documentation.md` | Applying repository documentation conventions |
+| Knowledge files | [references/knowledge-files.md](references/knowledge-files.md) | Creating, validating, or reviewing knowledge files and their `covers:` staleness |
+| Knowledge file template | [templates/knowledge-file.md](templates/knowledge-file.md) | Creating a new knowledge file from scratch |
+| Documentation review | [references/documentation-review.md](references/documentation-review.md) | Reviewing guides, API docs, architecture presentation, and diagrams |

@@ -40,7 +40,7 @@ func newAmpReadinessFixture(t *testing.T) *ampReadinessFixture {
 	projectRoot := filepath.Join(t.TempDir(), "project")
 	home := filepath.Join(t.TempDir(), "home")
 	releaseRoot := filepath.Join(t.TempDir(), "release")
-	for _, path := range []string{projectRoot, home, filepath.Join(releaseRoot, "bin"), filepath.Join(releaseRoot, "dist", "amp", "skills", "foundations"), filepath.Join(releaseRoot, "dist", "amp", ".amp", "plugins")} {
+	for _, path := range []string{projectRoot, home, filepath.Join(releaseRoot, "bin"), filepath.Join(releaseRoot, "dist", "amp", "skills", "loaf-core"), filepath.Join(releaseRoot, "dist", "amp", ".amp", "plugins")} {
 		if err := os.MkdirAll(path, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +52,7 @@ func newAmpReadinessFixture(t *testing.T) *ampReadinessFixture {
 	binary := filepath.Join(releaseRoot, "bin", "loaf")
 	ampReadinessWriteFile(t, filepath.Join(releaseRoot, "package.json"), []byte(`{"name":"loaf","version":"`+ampReadinessTestVersion+`"}`+"\n"), 0o644)
 	ampReadinessWriteFile(t, binary, []byte("fixture loaf binary\n"), 0o755)
-	ampReadinessWriteFile(t, filepath.Join(releaseRoot, "dist", "amp", "skills", "foundations", "SKILL.md"), []byte("---\nname: foundations\ndescription: Test.\n---\n"), 0o644)
+	ampReadinessWriteFile(t, filepath.Join(releaseRoot, "dist", "amp", "skills", "loaf-core", "SKILL.md"), []byte("---\nname: loaf-core\ndescription: Test.\n---\n"), 0o644)
 	pluginPath := filepath.Join(releaseRoot, "dist", "amp", ".amp", "plugins", "loaf.ts")
 	ampReadinessWriteFile(t, pluginPath, []byte("export default function loaf() {}\n"), 0o644)
 	pluginDigest, err := sha256RegularFile(pluginPath)
@@ -130,7 +130,7 @@ func TestAmpReadinessSuccessIsReadOnly(t *testing.T) {
 	if len(record.Skills) != 1 || len(record.Plugins) != 1 || len(record.Instructions) != 1 || record.BinarySHA256 == "" || record.ReleaseManifestSHA256 == "" {
 		t.Fatalf("proof fields incomplete: %#v", record)
 	}
-	if record.BinaryPath != "<release>/bin/loaf" || record.ReleaseManifestPath != "<release>/loaf-release-manifest.json" || record.ArchiveSidecarPath != "<release>/.loaf-archive.sha256" || record.Skills[0].Path != "<project>/.agents/skills/foundations" || record.Plugins[0].Path != "<project>/.amp/plugins/loaf.ts" || record.Instructions[0].Path != "<project>/AGENTS.md" {
+	if record.BinaryPath != "<release>/bin/loaf" || record.ReleaseManifestPath != "<release>/loaf-release-manifest.json" || record.ArchiveSidecarPath != "<release>/.loaf-archive.sha256" || record.Skills[0].Path != "<project>/.agents/skills/loaf-core" || record.Plugins[0].Path != "<project>/.amp/plugins/loaf.ts" || record.Instructions[0].Path != "<project>/AGENTS.md" {
 		t.Fatalf("logical proof paths = %#v", record)
 	}
 	if after := ampReadinessTreeSnapshot(t, fixture.project); after != beforeProject {
@@ -293,7 +293,7 @@ func TestAmpReadinessKeyRefusals(t *testing.T) {
 		{name: "duplicate global source", mutate: func(f *ampReadinessFixture) {
 			xdg := filepath.Join(f.home, "custom-xdg")
 			t.Setenv("XDG_CONFIG_HOME", xdg)
-			ampReadinessWriteFile(t, filepath.Join(xdg, "agents", "skills", "foundations", "SKILL.md"), []byte("duplicate\n"), 0o644)
+			ampReadinessWriteFile(t, filepath.Join(xdg, "agents", "skills", "loaf-core", "SKILL.md"), []byte("duplicate\n"), 0o644)
 		}, want: "duplicate global Loaf skill"},
 		{name: "remote mismatch", mutate: func(f *ampReadinessFixture) {
 			ampReadinessGit(t, f.project, "remote", "set-url", "origin", "https://github.com/acme/other.git")

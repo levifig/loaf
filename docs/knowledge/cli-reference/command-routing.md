@@ -31,7 +31,7 @@ Choose the authority before choosing a command. The generated command index reco
 | Inspect an existing local task, plan, issue, or report lifecycle record | Use exact command help for historical compatibility; do not create a second shared work authority |
 | Import legacy `.agents` Markdown into SQLite | Explicit migration only: `loaf migrate markdown --dry-run`, then authorized `--apply` |
 
-The shipped Loaf Reference's [Artifact Routing](../../../content/skills/loaf-reference/references/artifact-routing.md) topic supplies the family-specific storage and maintenance boundaries. Handoff owns deliberate transfers; Foundations owns ordinary capture. Missing state or a missing CLI is an access limitation, not a reason to invent another store or initialize a fallback for an existing record.
+The shipped Loaf Reference's [Artifact Routing](../../../content/skills/loaf-reference/references/artifact-routing.md) topic supplies the family-specific storage and maintenance boundaries. Handoff owns deliberate transfers; Loaf Core owns ordinary capture. Missing state or a missing CLI is an access limitation, not a reason to invent another store or initialize a fallback for an existing record.
 
 ## Legacy Records and Migration
 

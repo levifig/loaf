@@ -120,7 +120,7 @@ func journalContextCompactInstructions() string {
 		"Record significant unrecorded decisions and discoveries with `loaf journal log \"type(scope): description\"`.",
 		"Write a concise checkpoint only when useful reasoning is missing from existing records: preserve abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable. Omit empty fields and do not repeat raw events.",
 		"Use `loaf journal log \"wrap(scope): tried X, abandoned because Y; next is Z\"` for that synthesis. Routine interactions need no redundant checkpoint. A missing checkpoint is valid; there is no session lifecycle.",
-		"Foundations owns this ordinary discipline; do not wait for a compaction or end hook. This hook only emits guidance and writes nothing itself. Hook availability and delivery depend on the harness, and abrupt endings can lose reasoning that was never recorded.",
+		"Loaf Core owns this ordinary discipline; do not wait for a compaction or end hook. This hook only emits guidance and writes nothing itself. Hook availability and delivery depend on the harness, and abrupt endings can lose reasoning that was never recorded.",
 	}, "\n")
 }
 

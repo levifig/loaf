@@ -1492,9 +1492,9 @@ func TestInstallTargetAdapterManifestDetectsRaceAndRollsBackPublication(t *testi
 func TestSyncManagedSkillsRefusesUnprovenV1AndV2Tampering(t *testing.T) {
 	root := t.TempDir()
 	src, dest := filepath.Join(root, "dist", "opencode", "skills"), filepath.Join(root, "dest")
-	writeInstallFile(t, filepath.Join(src, "foundations", "SKILL.md"), "new\n")
-	writeInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "old\n")
-	writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["foundations"]}`)
+	writeInstallFile(t, filepath.Join(src, "loaf-core", "SKILL.md"), "new\n")
+	writeInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "old\n")
+	writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["loaf-core"]}`)
 	before := hashInstallFixtureTrees(t, dest)
 	if err := syncManagedSkillsDirIfExists(src, dest); err == nil || !strings.Contains(err.Error(), "name-only") {
 		t.Fatalf("v1 preservation refusal = %v", err)
@@ -1510,42 +1510,42 @@ func TestSyncManagedSkillsRefusesUnprovenV1AndV2Tampering(t *testing.T) {
 	if err := syncManagedSkillsDirIfExists(src, dest); err != nil {
 		t.Fatal(err)
 	}
-	assertInstallFile(t, filepath.Join(backup, "foundations", "SKILL.md"), "old\n")
-	assertInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "new\n")
+	assertInstallFile(t, filepath.Join(backup, "loaf-core", "SKILL.md"), "old\n")
+	assertInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "new\n")
 	manifest := string(readFileBytes(t, filepath.Join(dest, loafSkillManifestFile)))
 	if !strings.Contains(manifest, `"version": 2`) || !strings.Contains(manifest, `"sha256"`) {
 		t.Fatalf("manifest = %q, want v2 digest", manifest)
 	}
-	writeInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "tampered\n")
+	writeInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "tampered\n")
 	writeInstallFile(t, filepath.Join(src, "sibling", "SKILL.md"), "sibling\n")
 	err := syncManagedSkillsDirIfExists(src, dest)
-	if err == nil || !strings.Contains(err.Error(), "was modified") || !strings.Contains(err.Error(), "foundations") {
-		t.Fatalf("tampered overwrite error = %v, want foundations modified conflict", err)
+	if err == nil || !strings.Contains(err.Error(), "was modified") || !strings.Contains(err.Error(), "loaf-core") {
+		t.Fatalf("tampered overwrite error = %v, want loaf-core modified conflict", err)
 	}
-	assertInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "tampered\n")
+	assertInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "tampered\n")
 	assertInstallFile(t, filepath.Join(dest, "sibling", "SKILL.md"), "sibling\n")
-	if err := os.RemoveAll(filepath.Join(src, "foundations")); err != nil {
+	if err := os.RemoveAll(filepath.Join(src, "loaf-core")); err != nil {
 		t.Fatal(err)
 	}
 	err = syncManagedSkillsDirIfExists(src, dest)
-	if err == nil || !strings.Contains(err.Error(), "was modified") || !strings.Contains(err.Error(), "foundations") {
-		t.Fatalf("tampered removal error = %v, want foundations modified conflict", err)
+	if err == nil || !strings.Contains(err.Error(), "was modified") || !strings.Contains(err.Error(), "loaf-core") {
+		t.Fatalf("tampered removal error = %v, want loaf-core modified conflict", err)
 	}
-	assertInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "tampered\n")
+	assertInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "tampered\n")
 	assertInstallFile(t, filepath.Join(dest, "sibling", "SKILL.md"), "sibling\n")
 }
 
 func TestSyncManagedSkillsPreservesForeignAndRejectsInvalidManifests(t *testing.T) {
 	root := t.TempDir()
 	src, dest := filepath.Join(root, "dist", "opencode", "skills"), filepath.Join(root, "dest")
-	writeInstallFile(t, filepath.Join(src, "foundations", "SKILL.md"), "new\n")
+	writeInstallFile(t, filepath.Join(src, "loaf-core", "SKILL.md"), "new\n")
 	writeInstallFile(t, filepath.Join(src, "sibling", "SKILL.md"), "sibling\n")
-	writeInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "foreign\n")
+	writeInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "foreign\n")
 	err := syncManagedSkillsDirIfExists(src, dest)
-	if err == nil || !strings.Contains(err.Error(), "not managed") || !strings.Contains(err.Error(), "foundations") {
-		t.Fatalf("foreign collision error = %v, want foundations not-managed conflict", err)
+	if err == nil || !strings.Contains(err.Error(), "not managed") || !strings.Contains(err.Error(), "loaf-core") {
+		t.Fatalf("foreign collision error = %v, want loaf-core not-managed conflict", err)
 	}
-	assertInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "foreign\n")
+	assertInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "foreign\n")
 	assertInstallFile(t, filepath.Join(dest, "sibling", "SKILL.md"), "sibling\n")
 	for _, body := range []string{
 		`{"version":2,"skills":[{"name":"../escape","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}`,
@@ -1728,32 +1728,32 @@ func TestListInstallSkillDirsRejectsInvalidSourceName(t *testing.T) {
 func TestSyncManagedSkillsRecoversMissingAndInterruptedPublication(t *testing.T) {
 	root := t.TempDir()
 	src, dest := filepath.Join(root, "dist", "opencode", "skills"), filepath.Join(root, "dest")
-	writeInstallFile(t, filepath.Join(src, "foundations", "SKILL.md"), "current\n")
+	writeInstallFile(t, filepath.Join(src, "loaf-core", "SKILL.md"), "current\n")
 	oldRoot := filepath.Join(root, "old")
 	writeInstallFile(t, filepath.Join(oldRoot, "SKILL.md"), "old\n")
 	oldDigest, err := hashInstallSkillTree(oldRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":2,"skills":[{"name":"foundations","sha256":"`+oldDigest+`"},{"name":"stale","sha256":"`+oldDigest+`"}]}`)
+	writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":2,"skills":[{"name":"loaf-core","sha256":"`+oldDigest+`"},{"name":"stale","sha256":"`+oldDigest+`"}]}`)
 	// The desired tree was published before a crash, but its old manifest survived.
-	writeInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "current\n")
+	writeInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "current\n")
 	if err := syncManagedSkillsDirIfExists(src, dest); err != nil {
 		t.Fatalf("interrupted publish retry error = %v", err)
 	}
-	assertInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "current\n")
+	assertInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "current\n")
 	if _, err := os.Stat(filepath.Join(dest, "stale")); !os.IsNotExist(err) {
 		t.Fatalf("missing stale skill stat = %v, want no-op", err)
 	}
-	if err := os.RemoveAll(filepath.Join(dest, "foundations")); err != nil {
+	if err := os.RemoveAll(filepath.Join(dest, "loaf-core")); err != nil {
 		t.Fatal(err)
 	}
-	writeInstallFile(t, filepath.Join(dest, "foundations.loaf-backup", "user.txt"), "preserve\n")
+	writeInstallFile(t, filepath.Join(dest, "loaf-core.loaf-backup", "user.txt"), "preserve\n")
 	if err := syncManagedSkillsDirIfExists(src, dest); err != nil {
 		t.Fatalf("missing desired skill recreate error = %v", err)
 	}
-	assertInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "current\n")
-	assertInstallFile(t, filepath.Join(dest, "foundations.loaf-backup", "user.txt"), "preserve\n")
+	assertInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "current\n")
+	assertInstallFile(t, filepath.Join(dest, "loaf-core.loaf-backup", "user.txt"), "preserve\n")
 }
 
 func TestHashInstallSkillTreeRejectsSymlinks(t *testing.T) {
@@ -1810,7 +1810,7 @@ func TestInstallTargetCursorSyncsContentAndRemovesObsoleteHooksOnUpgrade(t *test
 	config := filepath.Join(root, ".cursor")
 	checkHook := "loaf check --hook check-" + "se" + "crets"
 	desired := map[string]any{"command": checkHook, "matcher": "Edit|Write|Bash", loafHookMarker: true}
-	writeInstallFile(t, filepath.Join(dist, "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(dist, "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	writeInstallFile(t, filepath.Join(dist, "agents", "reviewer.md"), "# Reviewer\n")
 	writeInstallFile(t, filepath.Join(dist, "templates", "session.md"), "session\n")
 	writeInstallFile(t, filepath.Join(dist, "hooks", "post-tool", "check.sh"), "#!/bin/sh\n")
@@ -1836,7 +1836,7 @@ func TestInstallTargetCursorSyncsContentAndRemovesObsoleteHooksOnUpgrade(t *test
 	if err != nil {
 		t.Fatalf("install cursor error = %v", err)
 	}
-	assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	assertInstallFile(t, filepath.Join(config, "agents", "reviewer.md"), "# Reviewer\n")
 	assertInstallFile(t, filepath.Join(config, "templates", "session.md"), "session\n")
 	assertInstallFile(t, filepath.Join(config, "hooks", "post-tool", "check.sh"), "#!/bin/sh\n")

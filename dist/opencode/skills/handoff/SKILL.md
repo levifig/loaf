@@ -6,7 +6,7 @@ description: >-
   work, deliver transfer context, or load a saved handoff. Produces a concise
   packet through an authorized channel, with SQLite persistence when needed. For
   ordinary capture, completion summaries, or parked-work checkpoints, use
-  foundations.
+  loaf-core.
 subtask: false
 version: 0.6.0-rc.3
 ---
@@ -28,7 +28,7 @@ Give a recipient enough context to take the next useful action without reconstru
 
 ## Critical Rules
 
-- Use Handoff for a deliberate recipient-focused transfer. Interpret "prepare the next session" by intent: routine resumption and parked-work synthesis use Foundations and the managed continuity instructions, without automatically creating a packet.
+- Use Handoff for a deliberate recipient-focused transfer. Interpret "prepare the next session" by intent: routine resumption and parked-work synthesis use Loaf Core and the managed continuity instructions, without automatically creating a packet.
 - Infer the recipient, destination, bounded scope, and next action from available context. Ask only when ambiguity materially changes the transfer.
 - Preparing or persisting a packet does not authorize spawning agents, creating tasks, sending messages, starting implementation, or expanding the recipient's existing authority. Use a delivery tool only when that action is already authorized.
 - Re-read relevant native tracker and Git state when preparing the packet, and instruct the recipient to re-read them before acting. A snapshot is contextual evidence, never a work contract or current workflow state; Backlog does not authorize execution.
@@ -54,13 +54,13 @@ Give a recipient enough context to take the next useful action without reconstru
 | Operator explicitly requests a portable file | Transfer snapshot at the requested destination |
 | No authorized delivery tool | Return the usable packet to the operator; report it as prepared |
 | Required persistence unavailable | Report the limitation and return an explicitly unpersisted packet when useful |
-| Routine checkpoint or parked work | Foundations ordinary capture and selective synthesis |
+| Routine checkpoint or parked work | Loaf Core ordinary capture and selective synthesis |
 
 ## Process
 
 1. **Frame the transfer.** Identify who will continue, where they can receive context, what they may do, and the next useful action. A future conversation can be the recipient; a named person or running agent is not required.
 2. **Gather current evidence.** Read relevant native issues, Git status/branch/commits, journal entries, and existing authored material. Reference their authoritative locations and summarize only what continuation needs. State important limits or unavailable sources honestly.
-3. **Prepare a compact packet.** Use the template's useful prompts. Include the native work reference where relevant and the instruction to re-read current state. Record a concise checkpoint, with the command form in the Foundations skill's Journal Commands section, only if useful reasoning is missing from the journal; do not duplicate the packet there.
+3. **Prepare a compact packet.** Use the template's useful prompts. Include the native work reference where relevant and the instruction to re-read current state. Record a concise checkpoint, with the command form in the loaf-core skill's Journal Commands section, only if useful reasoning is missing from the journal; do not duplicate the packet there.
 4. **Choose and verify delivery.** Use the applicable path below, then report the actual outcome, usable retrieval or destination, and the intended next action. Tool success is evidence of that operation, not proof that a recipient has read or accepted the packet.
 
 ### Direct Harness Delivery
@@ -94,6 +94,6 @@ After loading, re-read the relevant native tracker and Git state, identify anyth
 
 ## Related Skills
 
-- **foundations** — Ordinary capture and selective journal checkpoints
+- **loaf-core** — Ordinary capture and selective journal checkpoints
 - **project-management** — Native work authority and actionable follow-up capture
 - **orchestration** — Bounded coordination when authorized

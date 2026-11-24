@@ -347,7 +347,7 @@ func setupHooksFixtureWithState(t *testing.T, seed func(*state.Store), sources .
 	if seed != nil {
 		withHooksFixtureStore(t, seed)
 	}
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor", sources...)
 	runInstallFixture(t, root, "install", "--to", "cursor", "--yes")
 	return root, home

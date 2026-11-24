@@ -10,12 +10,12 @@ import (
 	"testing"
 )
 
-const journalCommandsOwnerSkill = "foundations"
+const journalCommandsOwnerSkill = "loaf-core"
 
 // journalCommandsRoute is how every other instruction surface names the single
 // owner. Plain text resolves the same way on every harness and install layout,
 // including OpenCode commands, where relative skill links do not.
-const journalCommandsRoute = "Foundations skill's Journal Commands section"
+const journalCommandsRoute = "loaf-core skill's Journal Commands section"
 
 func journalingSkillBodies(t *testing.T) map[string]string {
 	t.Helper()
@@ -59,7 +59,7 @@ func walkInstructionMarkdown(t *testing.T, visit func(rel, body string)) {
 }
 
 // TestJournalCommandsHaveOneOwner keeps the runnable journal command forms,
-// including the Codex policy-safe form, in Foundations alone. Other skills,
+// including the Codex policy-safe form, in Loaf Core alone. Other skills,
 // references, templates, and profiles describe the entry and name the owner.
 func TestJournalCommandsHaveOneOwner(t *testing.T) {
 	owner := journalingSkillBodies(t)[journalCommandsOwnerSkill]
@@ -99,7 +99,7 @@ func TestJournalCommandsHaveOneOwner(t *testing.T) {
 // quoting or flags, while leaving a bare command-index mention alone.
 var runnableJournalCommand = regexp.MustCompile(`loaf\s+journal\s+log(\s+--[a-z-]+)*\s+['"]`)
 
-// journalCommandRouteSurfaces are the instruction surfaces outside Foundations
+// journalCommandRouteSurfaces are the instruction surfaces outside Loaf Core
 // that ask for journal writes. Each must name where the command forms live.
 var journalCommandRouteSurfaces = []string{
 	"content/skills/bootstrap/SKILL.md",

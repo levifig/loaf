@@ -16,7 +16,7 @@ func TestRetiredDistributionRefusesBeforeInstallOrUpgradeWrites(t *testing.T) {
 			t.Run(payload+"/"+action, func(t *testing.T) {
 				root, home := setupInstallCommandFixture(t)
 				writeInstallDeprecationManifest(t, root, readBuildFileString(t, filepath.Join(testRepositoryRoot(t), installDeprecationManifestPath)))
-				writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+				writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 				installTestHookDistribution(t, root, "cursor")
 				writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
 				// Cleanup would remove this before installing from the stale source.
@@ -29,9 +29,9 @@ func TestRetiredDistributionRefusesBeforeInstallOrUpgradeWrites(t *testing.T) {
 				case "preview":
 					args = []string{"upgrade", "--to", "cursor", "--dry-run", "--json"}
 				case "scoped":
-					args = []string{"upgrade", "--select", "skills/skill:foundations"}
+					args = []string{"upgrade", "--select", "skills/skill:loaf-core"}
 				case "scoped-preview":
-					args = []string{"upgrade", "--select", "skills/skill:foundations", "--dry-run", "--json"}
+					args = []string{"upgrade", "--select", "skills/skill:loaf-core", "--dry-run", "--json"}
 				}
 				before := hashInstallFixtureTrees(t, home)
 				var out bytes.Buffer
@@ -51,14 +51,14 @@ func TestCursorReinstallAndUpgradeKeepCanonicalSkillsAndUserCopies(t *testing.T)
 	root, home := setupInstallCommandFixture(t)
 	writeInstallDeprecationManifest(t, root, readBuildFileString(t, filepath.Join(testRepositoryRoot(t), installDeprecationManifestPath)))
 	for _, target := range []string{"cursor", "opencode"} {
-		writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "foundations", "SKILL.md"), "# Foundations\n")
+		writeInstallFile(t, filepath.Join(root, "dist", target, "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	}
 	installTestHookDistribution(t, root, "cursor")
 	personal := filepath.Join(home, ".cursor", "skills", "personal", "SKILL.md")
-	userCopy := filepath.Join(home, ".cursor", "skills", "foundations", "SKILL.md")
+	userCopy := filepath.Join(home, ".cursor", "skills", "loaf-core", "SKILL.md")
 	retired := filepath.Join(home, ".cursor", "skills", "resume-session", "SKILL.md")
 	writeInstallFile(t, personal, "# My skill\n")
-	writeInstallFile(t, userCopy, "# My Foundations\n")
+	writeInstallFile(t, userCopy, "# My Loaf Core\n")
 	writeInstallFile(t, retired, "# My resume skill\n")
 	// A recorded old destination must not redirect later writes there.
 	record := installTargetRecord{Target: "cursor", Version: "old", ConfigDir: filepath.Join(home, ".cursor"), SkillsDir: filepath.Join(home, ".cursor", "skills")}
@@ -74,17 +74,17 @@ func TestCursorReinstallAndUpgradeKeepCanonicalSkillsAndUserCopies(t *testing.T)
 		{"upgrade", "--dry-run", "--json"},
 		{"upgrade", "--yes"},
 		{"upgrade", "--yes"},
-		{"upgrade", "--select", "skills/skill:foundations"},
+		{"upgrade", "--select", "skills/skill:loaf-core"},
 	} {
 		var out bytes.Buffer
 		if err := (Runner{WorkingDir: root, Executable: distributionFixtureExecutable(root), Stdout: &out}).Run(args); err != nil {
 			t.Fatalf("%v: %v\n%s", args, err, out.String())
 		}
 		assertInstallFile(t, personal, "# My skill\n")
-		assertInstallFile(t, userCopy, "# My Foundations\n")
+		assertInstallFile(t, userCopy, "# My Loaf Core\n")
 		assertInstallFile(t, retired, "# My resume skill\n")
-		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"), "# Foundations\n")
-		assertInstallPathMissing(t, filepath.Join(home, ".claude", "skills", "foundations"))
+		assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
+		assertInstallPathMissing(t, filepath.Join(home, ".claude", "skills", "loaf-core"))
 		for _, name := range []string{"wrap", "breakdown", "cleanup", "council-session", "reference-session", "resume-session"} {
 			assertInstallPathMissing(t, filepath.Join(home, ".agents", "skills", name))
 		}
@@ -93,7 +93,7 @@ func TestCursorReinstallAndUpgradeKeepCanonicalSkillsAndUserCopies(t *testing.T)
 	if err := os.RemoveAll(filepath.Dir(userCopy)); err != nil {
 		t.Fatal(err)
 	}
-	for _, args := range [][]string{{"install", "--to", "cursor", "--yes"}, {"upgrade", "--yes"}, {"upgrade", "--select", "skills/skill:foundations"}} {
+	for _, args := range [][]string{{"install", "--to", "cursor", "--yes"}, {"upgrade", "--yes"}, {"upgrade", "--select", "skills/skill:loaf-core"}} {
 		runInstallCapture(t, root, args...)
 		assertInstallPathMissing(t, filepath.Dir(userCopy))
 	}
@@ -105,14 +105,14 @@ func TestNameOnlySkillReceiptCannotAuthorizeOverwriteOrRetirement(t *testing.T) 
 			root := t.TempDir()
 			src := filepath.Join(root, "dist", "cursor", "skills")
 			dest := filepath.Join(root, "home", ".agents", "skills")
-			writeInstallFile(t, filepath.Join(src, "foundations", "SKILL.md"), "# Current\n")
-			writeInstallFile(t, filepath.Join(dest, "foundations", "SKILL.md"), "# My custom skill\n")
+			writeInstallFile(t, filepath.Join(src, "loaf-core", "SKILL.md"), "# Current\n")
+			writeInstallFile(t, filepath.Join(dest, "loaf-core", "SKILL.md"), "# My custom skill\n")
 			writeInstallFile(t, filepath.Join(dest, "wrap", "SKILL.md"), "# My custom Wrap\n")
-			writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["foundations","wrap"]}`)
+			writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["loaf-core","wrap"]}`)
 			before := hashInstallFixtureTrees(t, dest)
 			var err error
 			if selected {
-				err = syncSelectedManagedSkills(src, dest, []string{"foundations", "wrap"})
+				err = syncSelectedManagedSkills(src, dest, []string{"loaf-core", "wrap"})
 			} else {
 				err = syncManagedSkillsDirIfExists(src, dest)
 			}
@@ -131,12 +131,12 @@ func TestUpgradeRelocationCannotPromoteNameOnlySkillOwnership(t *testing.T) {
 		t.Run(map[bool]string{false: "apply", true: "preview"}[dryRun], func(t *testing.T) {
 			root, home := setupInstallCommandFixture(t)
 			writeInstallDeprecationManifest(t, root, readBuildFileString(t, filepath.Join(testRepositoryRoot(t), installDeprecationManifestPath)))
-			writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Current Foundations\n")
+			writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Current Loaf Core\n")
 			installTestHookDistribution(t, root, "cursor")
 			writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
 			shared := filepath.Join(home, ".agents", "skills")
-			writeInstallFile(t, filepath.Join(shared, "foundations", "SKILL.md"), "# My customized Foundations\n")
-			writeInstallFile(t, filepath.Join(shared, loafSkillManifestFile), `{"version":1,"skills":["foundations"]}`)
+			writeInstallFile(t, filepath.Join(shared, "loaf-core", "SKILL.md"), "# My customized Loaf Core\n")
+			writeInstallFile(t, filepath.Join(shared, loafSkillManifestFile), `{"version":1,"skills":["loaf-core"]}`)
 			oldHome := filepath.Join(home, ".config", "opencode", "skills")
 			seedOwnedManagedSkill(t, oldHome, "idea", "# Owned legacy Idea\n")
 			before := hashInstallFixtureTrees(t, shared, oldHome)
@@ -158,8 +158,8 @@ func TestUpgradeRelocationCannotPromoteNameOnlySkillOwnership(t *testing.T) {
 
 func TestClaimManagedSkillDigestCannotPromoteNameOnlyOwnership(t *testing.T) {
 	home := t.TempDir()
-	writeInstallFile(t, filepath.Join(home, "foundations", "SKILL.md"), "# My customized Foundations\n")
-	writeInstallFile(t, filepath.Join(home, loafSkillManifestFile), `{"version":1,"skills":["foundations"]}`)
+	writeInstallFile(t, filepath.Join(home, "loaf-core", "SKILL.md"), "# My customized Loaf Core\n")
+	writeInstallFile(t, filepath.Join(home, loafSkillManifestFile), `{"version":1,"skills":["loaf-core"]}`)
 	before := hashInstallFixtureTrees(t, home)
 	if err := claimManagedSkillDigest(home, "idea", strings.Repeat("a", 64)); err == nil || !strings.Contains(err.Error(), "name-only") {
 		t.Fatalf("legacy claim result = %v", err)

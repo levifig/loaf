@@ -31,7 +31,7 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 
 ## Critical Rules
 
-Write journal entries with the command form in the Foundations skill's Journal Commands section.
+Write journal entries with the command form in the loaf-core skill's Journal Commands section.
 
 - **Evidence-based** -- separate observed results, inferred lessons, and proposed changes; a merged patch is not proof of successful use or an accepted architectural direction
 - **Dogfood before generalization** -- compare the rideable increment's real use and learning sought with what actually happened before proposing more breadth or abstraction

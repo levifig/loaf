@@ -55,7 +55,7 @@ func TestInstalledDistributionUpgradeAuthorityFromStaleCheckout(t *testing.T) {
 	// config so the checkout reads as the Loaf repo it is — that is what opens
 	// the project half of the upgrade.
 	writeFixtureFile(t, filepath.Join(home, ".cursor", ".loaf-version"), staleTestVersion+"\n")
-	writeFixtureFile(t, filepath.Join(home, ".cursor", "skills", "foundations", "SKILL.md"), "# Previously Installed Foundations\n")
+	writeFixtureFile(t, filepath.Join(home, ".cursor", "skills", "loaf-core", "SKILL.md"), "# Previously Installed Loaf Core\n")
 	writeFixtureFile(t, filepath.Join(staleCheckout, ".agents", "loaf.json"), "{\"integrations\":{}}\n")
 
 	output, err := runInstalledLoaf(installedRoot, staleCheckout, env, "upgrade", "--yes")
@@ -67,8 +67,8 @@ func TestInstalledDistributionUpgradeAuthorityFromStaleCheckout(t *testing.T) {
 	if strings.TrimSpace(marker) != installedTestVersion {
 		t.Fatalf(".cursor/.loaf-version = %q, want installed distribution version %q", marker, installedTestVersion)
 	}
-	skill := readFixtureFile(t, filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md"))
-	if !strings.Contains(skill, "# Current Foundations") {
+	skill := readFixtureFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"))
+	if !strings.Contains(skill, "# Current Loaf Core") {
 		t.Fatalf("installed skill = %q, want packaged content from the installed distribution", skill)
 	}
 	if strings.Contains(skill, "Stale") {
@@ -197,9 +197,9 @@ func writeInstalledDistributionFixture(t *testing.T, repo string, version string
 	root := realpath(t, t.TempDir())
 	copyFixtureBinary(t, sharedTestLoafBinary(t, repo), filepath.Join(root, "bin", "loaf"))
 	writeFixtureFile(t, filepath.Join(root, "package.json"), `{"name":"loaf","version":"`+version+`"}`)
-	writeFixtureFile(t, filepath.Join(root, "content", "skills", "foundations", "SKILL.md"), "# Current Foundations\n")
+	writeFixtureFile(t, filepath.Join(root, "content", "skills", "loaf-core", "SKILL.md"), "# Current Loaf Core\n")
 	writeFixtureFile(t, filepath.Join(root, "config", "hooks.yaml"), "hooks:\n  pre-tool:\n    - id: check-secrets\n")
-	writeFixtureFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Current Foundations\n")
+	writeFixtureFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Current Loaf Core\n")
 	writeFixtureFile(t, filepath.Join(root, "dist", "cursor", "hooks.json"), `{"version":1,"hooks":{"PostToolUse":[{"command":"loaf journal log --from-hook","matcher":"Bash","loaf-managed":true}]}}`)
 	writeFixtureHookDistribution(t, filepath.Join(root, "dist", "cursor"), version)
 	return root
@@ -258,9 +258,9 @@ func writeStaleCheckoutFixture(t *testing.T, version string) string {
 	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatalf("MkdirAll .git error = %v", err)
 	}
-	writeFixtureFile(t, filepath.Join(root, "content", "skills", "foundations", "SKILL.md"), "# Stale Foundations\n")
+	writeFixtureFile(t, filepath.Join(root, "content", "skills", "loaf-core", "SKILL.md"), "# Stale Loaf Core\n")
 	writeFixtureFile(t, filepath.Join(root, "config", "hooks.yaml"), "hooks:\n  pre-tool:\n    - id: check-secrets\n")
-	writeFixtureFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Stale Foundations\n")
+	writeFixtureFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Stale Loaf Core\n")
 	writeFixtureFile(t, filepath.Join(root, "dist", "cursor", "hooks.json"), `{"version":1,"hooks":{"PostToolUse":[{"command":"loaf journal log --from-hook","matcher":"Bash","loaf-managed":true}]}}`)
 	return root
 }

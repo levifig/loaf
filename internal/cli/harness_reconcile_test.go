@@ -180,20 +180,20 @@ func TestHarnessReconcileUpdatesInstalledAmpOpenCodeCohortFromCanonicalSkills(t 
 	ampDist := filepath.Join(root, "dist", "amp")
 	openCodeDist := filepath.Join(root, "dist", "opencode")
 
-	writeInstallFile(t, filepath.Join(ampDist, "skills", "foundations", "SKILL.md"), canonicalSkillFixtureBody(false))
-	writeInstallFile(t, filepath.Join(openCodeDist, "skills", "foundations", "SKILL.md"), canonicalSkillFixtureBody(true))
+	writeInstallFile(t, filepath.Join(ampDist, "skills", "loaf-core", "SKILL.md"), canonicalSkillFixtureBody(false))
+	writeInstallFile(t, filepath.Join(openCodeDist, "skills", "loaf-core", "SKILL.md"), canonicalSkillFixtureBody(true))
 	writeInstallFile(t, filepath.Join(ampDist, ".amp", "plugins", "loaf.js"), "plugin 0.5.0\n")
 	writeTestTargetAdapterManifest(t, ampDist, "amp", []map[string]string{{
 		"id": "plugin:.amp/plugins/loaf.js", "kind": "plugin", "source_path": ".amp/plugins/loaf.js", "destination": "plugins/loaf.js", "sha256": sha256Hex("plugin 0.5.0\n"),
 	}})
 	writeTestTargetAdapterManifest(t, openCodeDist, "opencode", nil)
 
-	writeInstallFile(t, filepath.Join(sharedSkills, "foundations", "SKILL.md"), canonicalSkillFixtureBody(false))
-	oldDigest, err := hashInstallSkillTree(filepath.Join(sharedSkills, "foundations"))
+	writeInstallFile(t, filepath.Join(sharedSkills, "loaf-core", "SKILL.md"), canonicalSkillFixtureBody(false))
+	oldDigest, err := hashInstallSkillTree(filepath.Join(sharedSkills, "loaf-core"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := writeManagedSkillsManifest(sharedSkills, managedSkillsManifestV2{Version: 2, Skills: []managedSkillDigest{{Name: "foundations", SHA256: oldDigest}}}); err != nil {
+	if err := writeManagedSkillsManifest(sharedSkills, managedSkillsManifestV2{Version: 2, Skills: []managedSkillDigest{{Name: "loaf-core", SHA256: oldDigest}}}); err != nil {
 		t.Fatal(err)
 	}
 	mode := uint32(0o644)
@@ -226,7 +226,7 @@ func TestHarnessReconcileUpdatesInstalledAmpOpenCodeCohortFromCanonicalSkills(t 
 	if strings.Join(receipt.UpdatedTargets, ",") != "amp,opencode" && strings.Join(receipt.UpdatedTargets, ",") != "opencode,amp" {
 		t.Fatalf("updated targets = %#v, want amp and opencode", receipt.UpdatedTargets)
 	}
-	assertInstallFile(t, filepath.Join(sharedSkills, "foundations", "SKILL.md"), canonicalSkillFixtureBody(true))
+	assertInstallFile(t, filepath.Join(sharedSkills, "loaf-core", "SKILL.md"), canonicalSkillFixtureBody(true))
 	assertInstallFile(t, filepath.Join(configs["amp"], loafInstallMarkerFile), "0.5.0\n")
 	assertInstallFile(t, filepath.Join(configs["opencode"], loafInstallMarkerFile), "0.5.0\n")
 }

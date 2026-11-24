@@ -5,7 +5,7 @@ description: >-
   project's merge strategy (squash, merge commit, or rebase). Use when creating
   branches, writing commits, creating PRs, choosing how a PR lands, or managing
   git history. Provides patterns for collaborative git workflows. Not for code
-  style (use foundations), CI/CD pipelines (use infrastructure-management), or
+  style (use loaf-core), CI/CD pipelines (use infrastructure-management), or
   reviewing and merging a PR (use ship).
 version: 0.6.0-rc.3
 ---
@@ -82,6 +82,6 @@ Repository settings alone do not say which methods a branch accepts; its rules c
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
-| Commits | `references/commits.md` | Writing commit messages, fixing commits with amend or fixup and autosquash, creating PRs, branching, authoring the landing for each merge strategy, curating CHANGELOG entries, pre-PR/pre-push/post-merge hooks |
+| Commits | `references/commits.md` | Writing commit messages, fixing commits with amend or fixup and autosquash, creating PRs, branching, authoring the landing for each merge strategy, finding where changelog rules live, pre-PR/pre-push/post-merge hooks |
 | PR shipping | ship skill | Reviewing, verifying, and merging one PR; ship is the only merge path and owns merge authority |
 | Release ritual | release skill | Publishing a version from already-landed work |

@@ -28,7 +28,7 @@ func parseScopedArtifactRef(value string) (scopedArtifactRef, error) {
 	}
 	target, id, ok := strings.Cut(value, "/")
 	if !ok || target == "" || id == "" {
-		return scopedArtifactRef{}, fmt.Errorf("selection %q must be target/id (for example skills/skill:foundations or cursor/hook:postToolUse/kb-staleness-nudge)", value)
+		return scopedArtifactRef{}, fmt.Errorf("selection %q must be target/id (for example skills/skill:loaf-core or cursor/hook:postToolUse/kb-staleness-nudge)", value)
 	}
 	if target != scopedSkillsTarget && !isValidInstallTarget(target) {
 		return scopedArtifactRef{}, fmt.Errorf("unknown selection target %q in %q (valid: %s, %s)", target, value, scopedSkillsTarget, strings.Join(installValidTargets, ", "))

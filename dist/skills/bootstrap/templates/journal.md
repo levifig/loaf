@@ -1,6 +1,6 @@
 # Journal Render Template
 
-Write every entry with the command form in the Foundations skill's Journal Commands section.
+Write every entry with the command form in the loaf-core skill's Journal Commands section.
 
 This is the render template and entry-format reference for the project journal
 stored in SQLite. The journal is the only session-related structure: entries are
@@ -42,7 +42,7 @@ through journal logging, using the command form named above, and read them with
 
 1. **Timestamp format:** `YYYY-MM-DD HH:MM` (no seconds)
 2. **Entry format:** `[<timestamp>] <type>(<scope>): <description>`
-3. **Selective checkpoints:** Record significant decisions and discoveries as they happen. Before completing substantial work, handing off, or compacting context, write a concise `wrap(scope)` entry only when useful reasoning is missing from existing records. Include abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable; omit empty fields and do not repeat raw events. Routine interactions need no redundant checkpoint. Nothing is ever started, ended, or stopped; there is no `session` entry type or required workflow invocation. Foundations owns this discipline.
+3. **Selective checkpoints:** Record significant decisions and discoveries as they happen. Before completing substantial work, handing off, or compacting context, write a concise `wrap(scope)` entry only when useful reasoning is missing from existing records. Include abandoned approaches and why, unresolved uncertainty, and the next useful step when applicable; omit empty fields and do not repeat raw events. Routine interactions need no redundant checkpoint. Nothing is ever started, ended, or stopped; there is no `session` entry type or required workflow invocation. Loaf Core owns this discipline.
 4. **Blank lines:** Render burst boundaries only; SQLite journal rows are the
    durable ordering source.
 5. **No manual markdown edits:** Rendered markdown is a projection. Persist new
@@ -51,7 +51,7 @@ through journal logging, using the command form named above, and read them with
 ## CLI Commands
 
 ```bash
-loaf journal log      # Append a typed entry; use the Foundations skill's Journal Commands section
+loaf journal log      # Append a typed entry; use the loaf-core skill's Journal Commands section
 loaf journal recent   # Show the timeline (newest first); --branch, --since-last-wrap
 loaf journal context  # Emit the layered continuity digest (latest wrap + branch + tasks)
 loaf journal search   # Full-text search across the project journal

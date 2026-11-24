@@ -37,7 +37,7 @@ flowchart LR
     main --> release["Release · notes, artifacts, publication"]
 ```
 
-Filing an idea does not authorize implementation. Shaping a definition does not select it into Todo by itself, and bare `/implement` reports the unblocked Todo frontier without starting. Ship is the sole quality gate; release reads backward from already-landed work. Foundations guides continuous capture and selective journal checkpoints during ordinary work; Reflect integrates durable learning.
+Filing an idea does not authorize implementation. Shaping a definition does not select it into Todo by itself, and bare `/implement` reports the unblocked Todo frontier without starting. Ship is the sole quality gate; release reads backward from already-landed work. Loaf Core guides continuous capture and selective journal checkpoints during ordinary work; Reflect integrates durable learning.
 
 The slash forms below are shorthand: Claude Code's plugin uses `/loaf:name` (for example `/loaf:shape`); other supported harnesses use `/name` where they expose skill commands.
 
@@ -118,10 +118,10 @@ Skills you invoke directly to drive work forward.
 | `shape` | Shaping a brief or raw ask into a bounded issue |
 | `implement` | Implementing a shaped issue |
 | `ship` | Reviewing, verifying, and landing one PR (the sole quality gate) |
-| `release` | Cutting a retroactive release from already-landed issues |
+| `release` | Cutting a retroactive release from already-landed issues, and the changelog rules |
 | `research` | Investigating questions, comparing options |
 | `strategy` | Discovering or updating strategic direction |
-| `architecture` | Maintaining current architecture topics and exceptional, narrow decision records |
+| `architecture` | Maintaining current architecture topics, knowledge files, and project docs, plus exceptional, narrow decision records |
 | `idea` | Quick capture of ideas for later evaluation |
 | `triage` | Review and process intake queue (sparks + raw ideas); may hand to pitch or shape |
 | `reflect` | Integrating learnings into the Core Docs |
@@ -141,7 +141,6 @@ Background skills that activate automatically during agent coordination and proj
 |-------|----------------|
 | `orchestration` | Bounded delegation and consolidated review evidence |
 | `council` | Multi-perspective deliberation during complex decisions |
-| `knowledge-base` | Managing project knowledge files |
 | `loaf-reference` | Looking up which CLI command to use |
 
 ### Engineering Standards
@@ -150,11 +149,8 @@ Background knowledge that activates automatically to enforce quality.
 
 | Skill | Activates When |
 |-------|----------------|
-| `foundations` | Code standards, continuous journaling, and selective continuity checkpoints |
+| `loaf-core` | Guidance precedence, code standards, root-cause debugging evidence, security checks and the secrets rule, continuous journaling, and selective continuity checkpoints |
 | `git-workflow` | Branching, commits, PRs, merge strategy |
-| `debugging` | Diagnosing failures, tracking hypotheses, flaky tests |
-| `security-compliance` | Threat modeling, secrets management, compliance checks |
-| `documentation-standards` | ADRs, API docs, changelogs, Mermaid diagrams |
 
 ### Language & Domain
 

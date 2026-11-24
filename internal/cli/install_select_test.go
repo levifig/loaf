@@ -73,7 +73,7 @@ func TestPromptInstallChecklistSelections(t *testing.T) {
 
 func TestRunnerInstallDefaultsToEveryDetectedHarnessWithoutPrompting(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
 	mkdirAll(t, filepath.Join(home, ".cursor"))
 
@@ -93,9 +93,9 @@ func TestRunnerInstallDefaultsToEveryDetectedHarnessWithoutPrompting(t *testing.
 
 func TestRunnerInstallAcceptsACommaSeparatedTargetList(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
-	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "opencode")
 	mkdirAll(t, filepath.Join(home, ".cursor"))
 

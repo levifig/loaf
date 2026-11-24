@@ -13,14 +13,14 @@ func TestScopedUpgradeRejectsPartialLegacySkillsWithoutWrites(t *testing.T) {
 			t.Run(strings.Join([]string{map[bool]string{false: "present", true: "absent"}[absent], map[bool]string{false: "apply", true: "preview"}[dryRun]}, "/"), func(t *testing.T) {
 				root, home := setupScopedUpgradeFixture(t)
 				dest := filepath.Join(home, ".agents", "skills")
-				writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["foundations","pitch"]}`)
+				writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["loaf-core","pitch"]}`)
 				if absent {
 					if err := os.RemoveAll(filepath.Join(dest, "pitch")); err != nil {
 						t.Fatal(err)
 					}
 				}
 				before := hashScopedSurfaces(t, home)
-				args := []string{"upgrade", "--select", "skills/skill:foundations"}
+				args := []string{"upgrade", "--select", "skills/skill:loaf-core"}
 				if dryRun {
 					args = append(args, "--dry-run", "--json")
 				}
@@ -40,9 +40,9 @@ func TestScopedUpgradeRejectsPartialLegacySkillsWithoutWrites(t *testing.T) {
 func TestSelectedSkillsWriterRejectsPartialLegacyManifest(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
 	dest := filepath.Join(home, ".agents", "skills")
-	writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["foundations","pitch"]}`)
+	writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["loaf-core","pitch"]}`)
 	before := hashScopedSurfaces(t, home)
-	err := syncSelectedManagedSkills(filepath.Join(root, "dist", "cursor", "skills"), dest, []string{"foundations"})
+	err := syncSelectedManagedSkills(filepath.Join(root, "dist", "cursor", "skills"), dest, []string{"loaf-core"})
 	if err == nil || !strings.Contains(err.Error(), "unselected legacy skills: pitch") {
 		t.Fatalf("writer error = %v, want partial legacy refusal", err)
 	}
@@ -56,10 +56,10 @@ func TestScopedUpgradePreservesEverySelectedLegacySkill(t *testing.T) {
 		t.Run(map[bool]string{false: "apply", true: "preview"}[dryRun], func(t *testing.T) {
 			root, home := setupScopedUpgradeFixture(t)
 			dest := filepath.Join(home, ".agents", "skills")
-			writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["foundations","pitch","retired","absent"]}`)
+			writeInstallFile(t, filepath.Join(dest, loafSkillManifestFile), `{"version":1,"skills":["loaf-core","pitch","retired","absent"]}`)
 			writeInstallFile(t, filepath.Join(dest, "retired", "SKILL.md"), "# My retired skill\n")
 			before := hashScopedSurfaces(t, home)
-			args := []string{"upgrade", "--select", "skills/skill:foundations", "--select", "skills/skill:pitch", "--select", "skills/skill:retired", "--select", "skills/skill:absent"}
+			args := []string{"upgrade", "--select", "skills/skill:loaf-core", "--select", "skills/skill:pitch", "--select", "skills/skill:retired", "--select", "skills/skill:absent"}
 			if dryRun {
 				args = append(args, "--dry-run", "--json")
 			}
@@ -78,7 +78,7 @@ func TestScopedUpgradePreservesEverySelectedLegacySkill(t *testing.T) {
 func TestScopedHookOnlyUpgradeLeavesLegacySkillsManifestUntouched(t *testing.T) {
 	root, home := setupScopedUpgradeFixture(t)
 	manifest := filepath.Join(home, ".agents", "skills", loafSkillManifestFile)
-	body := `{"version":1,"skills":["foundations","pitch"]}`
+	body := `{"version":1,"skills":["loaf-core","pitch"]}`
 	writeInstallFile(t, manifest, body)
 	runInstallCapture(t, root, "upgrade", "--select", "cursor/hook:preToolUse/validate-infra-safety")
 	if got := readFileString(t, manifest); got != body {

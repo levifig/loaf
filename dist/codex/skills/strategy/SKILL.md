@@ -28,7 +28,7 @@ Deep discovery for personas, market landscape, and problem space.
 
 ## Critical Rules
 
-Write journal entries with the command form in the Foundations skill's Journal Commands section.
+Write journal entries with the command form in the loaf-core skill's Journal Commands section.
 
 - **Interview deeply** -- strategy is domain knowledge extraction, not guesswork
 - **Align with VISION** -- strategy serves the north star, never contradicts it
@@ -90,7 +90,7 @@ Strategy discovery requires **extensive interviewing**. Interview extensively us
 
 ### Step 3: Draft Updates
 
-Create additions/updates to STRATEGY.md following the [strategy template](templates/strategy.md). Express sequencing as rideable increments from the foundations Rideable Increments reference, not completed architecture layers.
+Create additions/updates to STRATEGY.md following the [strategy template](templates/strategy.md). Express sequencing as rideable increments from the loaf-core Rideable Increments reference, not completed architecture layers.
 
 ### Step 4: Present for Approval
 

@@ -12,7 +12,7 @@ Generative thinking — expanding possibilities before narrowing. This stance is
 
 ## Critical Rules
 
-Write journal entries with the command form in the Foundations skill's Journal Commands section.
+Write journal entries with the command form in the loaf-core skill's Journal Commands section.
 
 **Always**
 - Diverge before converging — generate options before judging

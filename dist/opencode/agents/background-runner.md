@@ -6,7 +6,7 @@ description: >-
   run independently.
 mode: subagent
 skills:
-  - foundations
+  - loaf-core
 tools:
   Read: true
   Edit: true

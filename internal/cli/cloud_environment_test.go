@@ -77,7 +77,7 @@ func TestInstallUsesProjectEnvironmentPathsNotUserHome(t *testing.T) {
 	mkdirAll(t, projectDir)
 	writeInstallFile(t, filepath.Join(projectDir, "AGENTS.md"), "# Project\n")
 	writeInstallFile(t, filepath.Join(projectDir, ".agents", "loaf.json"), `{"issue":{"prefix":"LOAF"}}`+"\n")
-	seedCanonicalSkillsFixture(t, projectDir, home, []string{"cursor"}, "# Foundations\n")
+	seedCanonicalSkillsFixture(t, projectDir, home, []string{"cursor"}, "# Loaf Core\n")
 	installTestHookDistribution(t, projectDir, "cursor")
 
 	t.Setenv("HOME", home)
@@ -106,11 +106,11 @@ func TestInstallUsesProjectEnvironmentPathsNotUserHome(t *testing.T) {
 	if !fileExistsForInstall(filepath.Join(projectCursor, "hooks.json")) {
 		t.Fatalf("missing project-environment hooks at %s", projectCursor)
 	}
-	skillsDest := filepath.Join(projectDir, ".agents", "skills", "foundations", "SKILL.md")
+	skillsDest := filepath.Join(projectDir, ".agents", "skills", "loaf-core", "SKILL.md")
 	if !fileExistsForInstall(skillsDest) {
 		t.Fatalf("skills not installed to project environment: %s", skillsDest)
 	}
-	userSkills := filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md")
+	userSkills := filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md")
 	if fileExistsForInstall(userSkills) {
 		t.Fatalf("skills incorrectly installed to user home %s", userSkills)
 	}
@@ -226,7 +226,7 @@ func TestCloudEnvironmentCodexUsesProjectLayoutIgnoringCodexHome(t *testing.T) {
 	mkdirAll(t, projectDir)
 	writeInstallFile(t, filepath.Join(projectDir, "AGENTS.md"), "# Project\n")
 	writeInstallFile(t, filepath.Join(projectDir, ".agents", "loaf.json"), `{"issue":{"prefix":"LOAF"}}`+"\n")
-	seedCanonicalSkillsFixture(t, projectDir, home, []string{"codex"}, "# Foundations\n")
+	seedCanonicalSkillsFixture(t, projectDir, home, []string{"codex"}, "# Loaf Core\n")
 	installTestHookDistribution(t, projectDir, "codex")
 
 	t.Setenv("HOME", home)

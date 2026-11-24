@@ -38,7 +38,7 @@ func TestRequiredPathLoafCheckHooksFromSelectedHookIDsAndSkillDiffs(t *testing.T
 func TestRequiredPathLoafCheckHooksSkipsPreserveAndRetireOnly(t *testing.T) {
 	ids := requiredPathLoafCheckHooks(installDryRunPlan{
 		Skills: []artifactPlanDecision{{
-			ID:     "skill:foundations",
+			ID:     "skill:loaf-core",
 			Action: planActionPreserve,
 			Diff:   "loaf check --hook validate-commit\n",
 		}},
@@ -56,7 +56,7 @@ func TestRequiredPathLoafCheckHooksSkipsPreserveAndRetireOnly(t *testing.T) {
 
 func TestReviewPathRequirementsIgnoreDeletedCommands(t *testing.T) {
 	plan := installDryRunPlan{Skills: []artifactPlanDecision{{
-		ID:     "skill:foundations",
+		ID:     "skill:loaf-core",
 		Action: planActionUpdate,
 		Diff:   "--- old\n+++ new\n@@ -1,1 +1,1 @@\n-Run `loaf check --hook retired-hook`\n+Run the new command\n",
 	}}}
@@ -67,7 +67,7 @@ func TestReviewPathRequirementsIgnoreDeletedCommands(t *testing.T) {
 
 func TestRequiredPathLoafCapabilitiesPreferDesiredOverDeletedDiff(t *testing.T) {
 	req := requiredPathLoafCapabilities(installDryRunPlan{Skills: []artifactPlanDecision{{
-		ID:      "skill:foundations",
+		ID:      "skill:loaf-core",
 		Action:  planActionUpdate,
 		Diff:    "--- old\n+++ new\n-`loaf check --hook retired-hook`\n-`loaf check units 25 C K`\n+kept\n",
 		Desired: "Use `loaf check commit-msg -` and `loaf check --hook validate-commit`.\n",

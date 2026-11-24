@@ -1,6 +1,6 @@
 ---
 name: release
-description: Releases a coherent set of already-landed work through repository-native publishing surfaces. Use when shipped tracker records and Git history are ready for a versioned publication. Produces a verified release outcome without a local release ledger.
+description: Releases already-landed work through repository-native publishing surfaces and owns Loaf's changelog rules. Use when writing or reviewing a changelog entry, or when shipped tracker records and Git history are ready for a versioned publication. Produces curated release notes and a verified release outcome without a local release ledger.
 ---
 
 # Release
@@ -22,6 +22,7 @@ Release is retroactive: select already-landed work from Git and live native trac
 - Without a matching milestone, follow the ordinary release journey unchanged. Unplanned intermediary releases are allowed; do not create a milestone merely to release already-landed work. Follow [version planning](../loaf-reference/references/flow-semantics.md#version-planning) for horizon and naming.
 - Include only work whose repository landing and ship verdict are observable. Tracker status alone does not prove landing.
 - Derive human release notes from the actual landed change and live work definition; do not copy internal execution logs.
+- Write and curate changelog entries by [Changelog](references/changelog.md), the single owner of the changelog rules: when an entry is required, its format, curation, and version-heading protection. Other skills point here rather than restating them.
 - Describe progress by the larger rideable journey now possible, not by horizontal layers completed. If a release contains foundation work only, label it honestly and name the immediate journey intended to consume it; this is release-note truth, not a new refusal gate.
 - Ask for or verify explicit authorization immediately before version changes, tags, pushes, or release publication when governing instructions require it.
 - Use repository-native Git and hosting capabilities. Do not create a Loaf-owned release record or provider bridge.
@@ -36,6 +37,7 @@ Release is retroactive: select already-landed work from Git and live native trac
 - Required build, package, signing, or publication checks were actually run and read.
 - The authoritative hosting surface confirms the published release and artifacts.
 - Tracker updates name the observed release identity and were confirmed by readback.
+- The released changelog section follows the Changelog rules, matches the tag, and was curated from the landed range rather than copied from commits.
 - Release notes state what a real rider can now do, what dogfood proved, and which breadth remains explicitly deferred.
 - A matching milestone's open work and closure/rollover choice are explicit; approved post-publication mutations have readbacks. No-match releases gain no new milestone requirement.
 
@@ -51,4 +53,8 @@ Release is retroactive: select already-landed work from Git and live native trac
 
 ## Topics
 
-No supporting references. Load repository-specific packaging, signing, and release guidance before publication.
+| Topic | Reference | Use When |
+|-------|-----------|----------|
+| Changelog | [references/changelog.md](references/changelog.md) | Writing, reviewing, or curating a changelog entry, or preparing a release section |
+
+Load repository-specific packaging, signing, and release guidance before publication.

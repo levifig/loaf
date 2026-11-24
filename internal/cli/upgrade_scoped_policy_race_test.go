@@ -21,7 +21,7 @@ func TestScopedCodexPolicyPreservesLateEdits(t *testing.T) {
 				}
 			}
 			oldManifest := readFileString(t, manifestPath)
-			skillPath := filepath.Join(home, ".agents", "skills", "foundations", "SKILL.md")
+			skillPath := filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md")
 			oldSkill := readFileString(t, skillPath)
 			late := "# concurrent user policy\n"
 			t.Cleanup(func() { scopedApplyTestFault = nil })
@@ -32,7 +32,7 @@ func TestScopedCodexPolicyPreservesLateEdits(t *testing.T) {
 				return nil
 			}
 			var out strings.Builder
-			err := (Runner{WorkingDir: root, Executable: distributionFixtureExecutable(root), Stdout: &out}).Run([]string{"upgrade", "--select", "skills/skill:foundations", "--select", "codex/codex-rule:loaf.rules"})
+			err := (Runner{WorkingDir: root, Executable: distributionFixtureExecutable(root), Stdout: &out}).Run([]string{"upgrade", "--select", "skills/skill:loaf-core", "--select", "codex/codex-rule:loaf.rules"})
 			if err == nil {
 				t.Fatal("scoped policy publication accepted a concurrent user edit")
 			}

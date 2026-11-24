@@ -10,7 +10,7 @@ import (
 
 func TestRunnerInstallAmpPreservesConsumerBootstrapAndInstructions(t *testing.T) {
 	distribution, _ := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(distribution, "dist", "amp", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(distribution, "dist", "amp", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	plugin := "export default function loaf() {}\n"
 	writeInstallFile(t, filepath.Join(distribution, "dist", "amp", ".amp", "plugins", "loaf.js"), plugin)
 	writeTestTargetAdapterManifest(t, filepath.Join(distribution, "dist", "amp"), "amp", []map[string]string{{
@@ -46,7 +46,7 @@ func TestRunnerInstallAmpPreservesConsumerBootstrapAndInstructions(t *testing.T)
 	assertInstallFile(t, filepath.Join(consumer, ".agents", "setup"), setup)
 	assertInstallFile(t, filepath.Join(consumer, ".agents", "resume"), resume)
 	assertInstallFile(t, filepath.Join(consumer, ".agents", "loaf-orb.pin"), pin)
-	assertInstallFile(t, filepath.Join(consumer, ".agents", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	assertInstallFile(t, filepath.Join(consumer, ".agents", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	assertInstallFile(t, filepath.Join(consumer, ".amp", "plugins", "loaf.js"), plugin)
 
 	agents := string(readFileBytes(t, filepath.Join(consumer, "AGENTS.md")))

@@ -21,7 +21,7 @@ description: >-
 - Testing Tolerances
 - Related Skills
 
-Follows [foundations](../foundations/SKILL.md) code quality and TDD principles.
+Follows [loaf-core](../loaf-core/SKILL.md) code quality and TDD principles.
 
 Domain knowledge for overhead transmission line physics, thermal ratings, and mechanical analysis.
 
@@ -91,4 +91,4 @@ Thermal calculations: use `pytest.approx()` with `rel=1e-3` (0.1% accuracy).
 ## Related Skills
 
 - `database-design` — For persisting physics results
-- [foundations/code-style](../foundations/references/code-style.md) — For Python conventions in physics code
+- [loaf-core/code-style](../loaf-core/references/code-style.md) — For Python conventions in physics code

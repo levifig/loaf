@@ -7,7 +7,7 @@ topics:
 covers:
   - content/skills/loaf-reference/references/flow-semantics.md
   - content/skills/project-management/references/record-writing.md
-  - content/skills/foundations/references/rideable-increments.md
+  - content/skills/loaf-core/references/rideable-increments.md
   - content/skills/ship/SKILL.md
 consumers:
   - implementer
@@ -57,7 +57,7 @@ Implementation uses repository-native branches, worktrees, commits, tests, and p
 
 ## Rideable Progress
 
-The unit of progress is a [rideable increment](../../content/skills/foundations/references/rideable-increments.md): a complete, useful operator journey rather than a finished horizontal layer. Shape makes the Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals concrete inside the existing native work definition and criteria.
+The unit of progress is a [rideable increment](../../content/skills/loaf-core/references/rideable-increments.md): a complete, useful operator journey rather than a finished horizontal layer. Shape makes the Rider, complete Journey, Entry point, observable Outcome, real Dogfood, Safety/integrity proof, Learning sought, and explicit Deferrals concrete inside the existing native work definition and criteria.
 
 Breadth may shrink; integrity may not. Foundation work stays beside the immediate journey that exercises it, and real dogfood earns later complexity. This sharpens the existing Flow and work contract—it adds no lifecycle, record, schema, status, score, or approval gate.
 
@@ -88,4 +88,4 @@ For access to historical local records and one-time cutover precautions, use [Co
 | Work and service authority | [Authority model](../../content/skills/loaf-reference/references/authority-model.md) |
 | Stable provider behavior | [Project management](../../content/skills/project-management/SKILL.md) |
 | Contributor provider boundary | [Provider modules](../../content/skills/project-management/references/provider-modules.md) |
-| Increment doctrine | [Rideable increments](../../content/skills/foundations/references/rideable-increments.md) |
+| Increment doctrine | [Rideable increments](../../content/skills/loaf-core/references/rideable-increments.md) |

@@ -30,7 +30,7 @@ func TestContinuousCaptureReachesFreshAndUpgradedProjects(t *testing.T) {
 				"unresolved uncertainty",
 				"next useful step",
 				"Routine interactions need no redundant checkpoint",
-				"foundations",
+				"loaf-core",
 			} {
 				if !strings.Contains(body, want) {
 					t.Errorf("managed instructions missing %q", want)
@@ -122,7 +122,7 @@ func TestContinuousCaptureShipsWithoutWrapSkill(t *testing.T) {
 	for _, target := range defaultBuildTargets {
 		skills := nativeBuildSkillTreeDir(root, target)
 		assertInstallPathMissing(t, filepath.Join(skills, "wrap"))
-		body := readBuildFileString(t, filepath.Join(skills, "foundations", "references", "continuity.md"))
+		body := readBuildFileString(t, filepath.Join(skills, "loaf-core", "references", "continuity.md"))
 		if !strings.Contains(body, "Routine interactions need no redundant checkpoint") {
 			t.Errorf("%s lacks selective continuity reference", target)
 		}

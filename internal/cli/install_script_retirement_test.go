@@ -12,9 +12,9 @@ func TestManagedSkillScriptRetirementPreservesUserChanges(t *testing.T) {
 		t.Run(map[bool]string{false: "owned", true: "modified"}[modified], func(t *testing.T) {
 			root := t.TempDir()
 			source, destination := filepath.Join(root, "source", "skills"), filepath.Join(root, "installed", "skills")
-			script := filepath.Join("foundations", "scripts", "validate-adr.py")
-			mkdirAll(t, filepath.Join(source, "foundations", "scripts"))
-			writeFile(t, filepath.Join(source, "foundations", "SKILL.md"), "# Foundations\n")
+			script := filepath.Join("loaf-core", "scripts", "validate-adr.py")
+			mkdirAll(t, filepath.Join(source, "loaf-core", "scripts"))
+			writeFile(t, filepath.Join(source, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 			writeFile(t, filepath.Join(source, script), "# Former validator\n")
 			if err := syncManagedSkillsDirIfExists(source, destination); err != nil {
 				t.Fatal(err)

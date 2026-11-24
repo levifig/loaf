@@ -235,7 +235,7 @@ func TestMergeHarnessConfigAcceptsValidObject(t *testing.T) {
 // carries the staleness conflict, apply fails, and the file stays put.
 func TestPlanLegacyHookNoManifestRefusesAStaleCursorDistribution(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	// No .loaf-target-manifest.json — the legacy/no-manifest branch.
 	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
 	malformed := `{"hooks":`

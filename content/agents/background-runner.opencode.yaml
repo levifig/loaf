@@ -4,7 +4,7 @@ description: >-
   coverage analysis, code reviews, and other low-priority work that can run independently.
 mode: subagent
 skills:
-  - foundations
+  - loaf-core
 tools:
   Read: true
   Edit: true

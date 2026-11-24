@@ -20,7 +20,7 @@ import (
 func TestRunnerUpgradeDryRunNonMutatingAcrossSurfaces(t *testing.T) {
 	t.Run("installed-target-stale-modified-foreign", func(t *testing.T) {
 		root, home := setupInstallCommandFixture(t)
-		writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+		writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 		installTestHookDistribution(t, root, "cursor")
 		writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "go-development", "SKILL.md"), "# Go v1\n")
 		writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
@@ -30,7 +30,7 @@ func TestRunnerUpgradeDryRunNonMutatingAcrossSurfaces(t *testing.T) {
 		// Stale owned: dist advances go-development, installed copy stays v1.
 		writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "go-development", "SKILL.md"), "# Go v2\n")
 		// Locally modified owned content -> conflict on apply.
-		writeInstallFile(t, filepath.Join(sharedSkills, "foundations", "SKILL.md"), "# Foundations LOCAL EDIT\n")
+		writeInstallFile(t, filepath.Join(sharedSkills, "loaf-core", "SKILL.md"), "# Loaf Core LOCAL EDIT\n")
 		// Foreign unowned content that Loaf must never touch.
 		writeInstallFile(t, filepath.Join(sharedSkills, "foreign", "SKILL.md"), "# Mine\n")
 
@@ -39,8 +39,8 @@ func TestRunnerUpgradeDryRunNonMutatingAcrossSurfaces(t *testing.T) {
 		if got := planSkillAction(plan, "go-development"); got != planActionUpdate {
 			t.Fatalf("go-development action = %q, want update (stale owned)", got)
 		}
-		if got := planSkillAction(plan, "foundations"); got != planActionConflict {
-			t.Fatalf("foundations action = %q, want conflict (locally modified)", got)
+		if got := planSkillAction(plan, "loaf-core"); got != planActionConflict {
+			t.Fatalf("loaf-core action = %q, want conflict (locally modified)", got)
 		}
 		// A skill conflict blocks the target adapter so its marker cannot claim
 		// the shared managed-content cohort is current.
@@ -110,9 +110,9 @@ func TestRunnerUpgradeDryRunNonMutatingAcrossSurfaces(t *testing.T) {
 // across two independent runs over the same fixture state.
 func TestRunnerUpgradeDryRunJSONIsDeterministic(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
-	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	installTestHookDistribution(t, root, "cursor")
-	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(root, "dist", "opencode", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	writeInstallFile(t, filepath.Join(home, ".cursor", loafInstallMarkerFile), "old\n")
 	mkdirAll(t, filepath.Join(home, ".config", "opencode"))
 	writeInstallFile(t, filepath.Join(home, ".config", "opencode", loafInstallMarkerFile), "old\n")
@@ -140,7 +140,7 @@ func TestRunnerUpgradeDryRunJSONIsDeterministic(t *testing.T) {
 func TestRunnerUpgradeDryRunSkillPlanMatchesApply(t *testing.T) {
 	root, home := setupInstallCommandFixture(t)
 	distSkills := filepath.Join(root, "dist", "cursor", "skills")
-	writeInstallFile(t, filepath.Join(distSkills, "foundations", "SKILL.md"), "# Foundations\n")
+	writeInstallFile(t, filepath.Join(distSkills, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	writeInstallFile(t, filepath.Join(distSkills, "go-development", "SKILL.md"), "# Go v1\n")
 	writeInstallFile(t, filepath.Join(distSkills, "legacy-skill", "SKILL.md"), "# Legacy\n")
 	installTestHookDistribution(t, root, "cursor")
@@ -150,7 +150,7 @@ func TestRunnerUpgradeDryRunSkillPlanMatchesApply(t *testing.T) {
 	sharedSkills := filepath.Join(home, ".agents", "skills")
 	writeInstallFile(t, filepath.Join(sharedSkills, "foreign", "SKILL.md"), "# Mine\n")
 
-	// Prepare the upgrade: foundations unchanged (preserve), go-development
+	// Prepare the upgrade: loaf-core unchanged (preserve), go-development
 	// advances (update), legacy-skill removed (retire), new-skill added (create).
 	writeInstallFile(t, filepath.Join(distSkills, "go-development", "SKILL.md"), "# Go v2\n")
 	if err := os.RemoveAll(filepath.Join(distSkills, "legacy-skill")); err != nil {
@@ -161,7 +161,7 @@ func TestRunnerUpgradeDryRunSkillPlanMatchesApply(t *testing.T) {
 	plan := parseInstallPlanJSON(t, runInstallCapture(t, root, "upgrade", "--to", "cursor", "--dry-run", "--json"))
 	_ = findTargetPlan(t, plan, "cursor")
 	want := map[string]string{
-		"foundations":    planActionPreserve,
+		"loaf-core":    planActionPreserve,
 		"go-development": planActionUpdate,
 		"legacy-skill":   planActionRetire,
 		"new-skill":      planActionCreate,
@@ -174,7 +174,7 @@ func TestRunnerUpgradeDryRunSkillPlanMatchesApply(t *testing.T) {
 
 	// Apply and confirm the predicted effects actually happened.
 	runInstallFixture(t, root, "upgrade", "--to", "cursor", "--yes")
-	assertInstallFile(t, filepath.Join(sharedSkills, "foundations", "SKILL.md"), "# Foundations\n")
+	assertInstallFile(t, filepath.Join(sharedSkills, "loaf-core", "SKILL.md"), "# Loaf Core\n")
 	assertInstallFile(t, filepath.Join(sharedSkills, "go-development", "SKILL.md"), "# Go v2\n")
 	assertInstallFile(t, filepath.Join(sharedSkills, "new-skill", "SKILL.md"), "# New\n")
 	assertInstallPathMissing(t, filepath.Join(sharedSkills, "legacy-skill"))
