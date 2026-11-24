@@ -1,6 +1,6 @@
 ---
 name: pitch
-description: Conducts problem discovery and option exploration before work is shaped. Use when a direction is undecided, solution-led, or ambiguous, or when the user asks to explore options or "help me think through" a choice. Produces a problem narrative with options weighed, not an implementation. Not for evidence gathering on a known question (use research), quick capture (use idea), or bounding a chosen direction (use shape).
+description: Conducts problem discovery and option exploration before work is shaped, and starts or resumes a checkpointed Exploration. Use when direction is undecided or solution-led, or the user asks to explore options or "help me think through" a choice. Produces a problem narrative with options weighed, not an implementation. Not for evidence gathering on a known question (use research), quick capture (use idea), context transfer to another agent (use handoff), or bounding a chosen direction (use shape).
 ---
 
 # Pitch
