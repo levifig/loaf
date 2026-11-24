@@ -289,6 +289,7 @@ Profiles in `content/agents/{name}.md` describe intended responsibilities and to
 | **researcher** | Read + web | Research, comparison — structured reports |
 | **librarian** | Read + Edit (.agents/) | Continuity drafts for the invoking agent; authorized file tending, no CLI or tracker tools |
 | **background-runner** | Read + Edit | Async non-blocking tasks (system) |
+| **coordinator** | Read + shell | Cross-thread sequencing and relay — grants turns, never implements or merges |
 
 Skills load into profiles at spawn time. What an agent is intended to touch comes from its profile; what it *knows* comes from skills.
 
@@ -297,7 +298,7 @@ Skills load into profiles at spawn time. What an agent is intended to touch come
 | Category | `user-invocable` | Examples |
 |----------|:-:|---------|
 | Reference/Knowledge | `false` | python-development, database-design, foundations, git-workflow, orchestration |
-| Workflow/Process | `true` (default) | implement, research, shape, ship, release, housekeeping |
+| Workflow/Process | `true` (default) | implement, research, shape, ship, release, housekeeping, coordinate |
 
 Reference skills provide background knowledge the model loads automatically; set `user-invocable: false` in the sidecar so users are not offered `/python-development`.
 

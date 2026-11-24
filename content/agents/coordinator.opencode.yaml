@@ -1,0 +1,10 @@
+name: coordinator
+description: >-
+  Coordinator — sequences threads and their merge queue. Never implements or merges.
+tools:
+  Read: true
+  Bash: true
+  Glob: true
+  Grep: true
+  TodoRead: true
+mode: subagent

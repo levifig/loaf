@@ -4,7 +4,8 @@ description: >-
   Coordinates bounded implementation and review work against one live native
   tracker contract. Use when parallel research, implementation, or independent
   review materially improves delivery. Produces consolidated evidence without
-  creating local work units or requiring delegation.
+  creating local work units or requiring delegation. Not for sequencing separate
+  threads or their merge queue (use coordinate).
 version: 0.6.0-rc.3
 ---
 

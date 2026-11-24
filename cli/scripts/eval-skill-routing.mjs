@@ -96,6 +96,11 @@ const TEST_CASES = {
     "Gather specialist perspectives before we commit",
     "Have multiple agents debate this approach",
   ],
+  coordinate: [
+    "Be the coordinator for my other threads on this project",
+    "Run the merge queue across the threads that are ready to land",
+    "What are my threads doing and which ones are waiting on me?",
+  ],
   "database-design": [
     "Design the schema for user accounts",
     "Should we denormalize this table?",
@@ -298,6 +303,18 @@ const CONFLICT_PROBES = [
     choices: ["loaf-reference", "triage"],
     expected: "loaf-reference",
     prompt: "Bring this project's Loaf installation current after the upgrade",
+  },
+  {
+    group: "coordinate-orchestration",
+    choices: ["coordinate", "orchestration"],
+    expected: "coordinate",
+    prompt: "Two of my threads both have pull requests ready; decide which one merges first and tell them",
+  },
+  {
+    group: "coordinate-orchestration",
+    choices: ["coordinate", "orchestration"],
+    expected: "orchestration",
+    prompt: "Split this one issue between an implementer and two independent reviewers inside this conversation",
   },
   {
     group: "linear-orchestration",

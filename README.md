@@ -103,8 +103,9 @@ Loaf defines functional agent profiles by intended tool boundaries, with domain 
 | **Sentinel** | Reviewer | Read-only | Watches, guards, and verifies. Cannot modify what it reviews — by design. |
 | **Ranger** | Researcher | Read + web | Scouts far, gathers intelligence, reports structured findings. |
 | **Librarian** | Librarian | Read + Edit (.agents/) | Tends the project journal and durable `.agents/` artifacts, including wrap checkpoints. Does not forge code or scout. |
+| **Taskmaster** | Coordinator | Read + shell | Sequences autonomous threads and their merge queue, and relays between them and you. Grants turns; never forges, reviews, or merges. |
 
-The coordinating conversation is the **Warden**. Delegation follows the active harness's tools and the project's instructions; independent reviews remain read-only.
+The coordinating conversation inside one thread is the **Warden**; the **Taskmaster** works a level above, across threads. Delegation follows the active harness's tools and the project's instructions; independent reviews remain read-only.
 
 ## Skills
 
@@ -127,6 +128,7 @@ Skills you invoke directly to drive work forward.
 | `reflect` | Integrating learnings into the Core Docs |
 | `housekeeping` | Reviewing and archiving agent artifacts |
 | `handoff` | Creating disposable transfer packets in `.agents/handoffs/` |
+| `coordinate` | Turning a thread into the coordinator for other threads: routing asks, one-at-a-time merge turns, and a Now / Next / Later report |
 | `bootstrap` | Bootstrapping new or existing projects (initial issue arc after pitched BRIEF) |
 | `linear` | Mapping `project-management/v1` operations to Linear through the harness's already-configured, authenticated native connection |
 | `github` | Mapping native issues and the selected GitHub board's workflow through an already-authenticated harness connection |
