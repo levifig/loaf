@@ -1,13 +1,13 @@
 ---
 name: loaf-core
 description: >-
-  Establishes Loaf's working standards: guidance precedence, code quality,
-  root-cause debugging, security checks, and journaling. Use when writing,
-  reviewing, debugging, or security-reviewing code, or preserving reasoning
-  before handoff. Covers reproducing a failure before fixing it, regression
-  tests that fail without the fix, flaky tests, threat review for auth and data
-  handling, secret scanning, and selective journal checkpoints before finishing
-  work or compacting context. Not for git workflow (use git-workflow),
+  Establishes precedence, code quality, root-cause debugging, security checks,
+  and continuity checkpoints. Use when writing, reviewing, or debugging code,
+  running quality or security checks, or saving reasoning before finishing,
+  handoff, or compaction. Covers Loaf's guidance precedence, reproducing a
+  failure before fixing it, regression tests that fail without the fix, flaky
+  tests, threat review for auth and data handling, secret scanning, and
+  selective journal checkpoints. Not for git workflow (use git-workflow),
   architecture or project documentation (use architecture), or changelogs and
   releases (use release).
 user-invocable: false

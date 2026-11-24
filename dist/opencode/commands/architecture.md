@@ -1,13 +1,14 @@
 ---
 description: >-
-  Explains, evaluates, and maintains living architecture topics, knowledge
-  files, and project documentation. Use when choosing system direction, auditing
-  documentation drift or stale knowledge files, reviewing docs, or migrating an
-  ADR corpus. Covers `covers:` staleness review with `loaf kb`, knowledge-file
-  frontmatter, documentation and API-doc review, and Mermaid diagrams. Produces
-  current architecture and knowledge docs grounded in code and tests, not work
-  plans or tracker identity. Separate decision records are exceptional and
-  explicitly selected. Not for changelog entries (use release).
+  Explains, evaluates, and maintains architecture topics, knowledge files, and
+  project docs. Use when choosing system direction, auditing doc drift or stale
+  knowledge files, proofreading guides like README or CONTRIBUTING, or migrating
+  an ADR corpus. Covers living, topic-based architecture and its rationale,
+  `covers:` staleness review with `loaf kb`, knowledge-file frontmatter,
+  documentation and API-doc review, and Mermaid diagrams. Produces current
+  architecture and knowledge docs grounded in code and tests, not work plans or
+  tracker identity. Separate decision records are exceptional and explicitly
+  selected. Not for changelog entries (use release).
 subtask: false
 version: 0.6.0-rc.3
 ---
