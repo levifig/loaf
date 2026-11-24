@@ -72,7 +72,7 @@ At either scale, pitch remains problem-space discovery. It can retain a possible
 
 ## Supporting Techniques and Continuity
 
-Explore and brainstorm are agent techniques for uncertainty and divergence; they do not mint shared work. Sparks, ideas, journal entries, wraps, handoffs, and derived context remain private Loaf continuity. Triage owns moving captures to tracker Backlog through the provider skill; an explicit filing request during pitch performs that same path. Moving intent to Backlog does not authorize execution.
+Pitch owns divergent option work as well as problem discovery; it does not mint shared work unless the person asks. An undecided inquiry that must survive compaction or a harness switch is kept as an Exploration, checkpointed as the loaf-core continuity reference describes. Sparks, ideas, journal entries, wraps, handoffs, and derived context remain private Loaf continuity. Triage owns moving captures to tracker Backlog through the provider skill; an explicit filing request during pitch performs that same path. Moving intent to Backlog does not authorize execution.
 
 The journal has no session entity, lifecycle, open/close operation, or rotation. A wrap is optional synthesis; context is derived at read time. [Private Continuity](../architecture/private-continuity.md) owns that model. Most skill results return through the harness; persist a temporary report only when it must outlive the response. Its producing skill owns the format, and deletion or durable promotion needs the user's approval.
 

@@ -52,6 +52,10 @@ Some `expected_after` values are assumptions that the merge work must confirm:
 - **foundations:** after the rename planned with the merges, read it as `loaf-core`. The rename change must update every `foundations` reference in the cases: the four merge probes, the older probes that name it, and its core-case key.
 - **Proofreading a CONTRIBUTING guide:** `expected_after: architecture` assumes architecture takes over documentation-standards' review guidance. The merge plan doesn't name that owner yet.
 
+### Case changes since this baseline
+
+- **brainstorm and explore folded into pitch, strategy into reflect:** explore's three core cases now expect `pitch` and strategy's three expect `reflect`. brainstorm's three core cases were dropped because each asks for "the brainstorm technique" by name, which no longer exists. The four discovery and three strategy merge probes now expect their `expected_after` owner. So do the older "generate a few possible directions" and "help me explore a few" probes, which also carry `expected_after: pitch`. The older "Define the product direction and personas" probe now expects `reflect`. The retired skills are gone from every probe's `choices`. Group names are unchanged so per-group results stay comparable. The suite is now 187 cases.
+
 ### Limits
 
 - The runner shows each skill's name and only the first 250 characters of its description. Harnesses show more, so these results measure the start of each description, not the full listing an agent sees.
