@@ -4,14 +4,17 @@
  *
  * Tests whether Claude routes natural-language prompts to the correct Loaf
  * skill. The dry-run mode validates the suite against content/skills without
- * requiring an API key; live mode calls the Anthropic Messages API and can write
- * a JSON baseline fixture for review.
+ * requiring credentials; live mode calls the Anthropic Messages API and can write
+ * a JSON baseline fixture for review. Live mode authenticates with
+ * ANTHROPIC_API_KEY, or with an OAuth access token in ANTHROPIC_AUTH_TOKEN, such
+ * as the one `ant auth print-credentials --access-token` prints.
  *
  * Usage:
  *   node cli/scripts/eval-skill-routing.mjs --dry-run
  *   ANTHROPIC_API_KEY=sk-... node cli/scripts/eval-skill-routing.mjs
  *   ANTHROPIC_API_KEY=sk-... node cli/scripts/eval-skill-routing.mjs --model claude-sonnet-4-6
  *   ANTHROPIC_API_KEY=sk-... node cli/scripts/eval-skill-routing.mjs --suite conflicts --output .agents/reports/routing-baseline.json
+ *   ANTHROPIC_AUTH_TOKEN="$(ant auth print-credentials --access-token)" node cli/scripts/eval-skill-routing.mjs
  */
 
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -19,6 +22,7 @@ import { dirname, join } from "node:path";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_KEY = process.env.ANTHROPIC_API_KEY;
+const AUTH_TOKEN = process.env.ANTHROPIC_AUTH_TOKEN;
 const DEFAULT_MODEL = "claude-opus-4-6";
 const MAX_DESC_CHARS = 250;
 
@@ -843,6 +847,12 @@ function buildSkillsListing(skills) {
   return skills.map((skill) => `- ${skill.name}: ${skill.truncated}`).join("\n");
 }
 
+// An API key wins when both are set; an OAuth access token is sent as a bearer
+// credential.
+function authHeaders() {
+  return API_KEY ? { "x-api-key": API_KEY } : { Authorization: `Bearer ${AUTH_TOKEN}` };
+}
+
 async function routePrompt(skillsListing, userPrompt) {
   const systemPrompt = `You are Claude Code with these available skills:
 
@@ -854,12 +864,14 @@ The user will give you a task. Respond with ONLY the skill name you would invoke
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": API_KEY,
+      ...authHeaders(),
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 50,
+      // Room for models that think before answering; a 50-token cap can end
+      // the turn inside the thinking block, before any answer is written.
+      max_tokens: 1024,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
     }),
@@ -875,7 +887,9 @@ The user will give you a task. Respond with ONLY the skill name you would invoke
   totalOutputTokens += data.usage?.output_tokens || 0;
   totalCalls++;
 
-  return data.content[0]?.text?.trim().toLowerCase() || "unknown";
+  // The answer is the first text block; a thinking block may come before it.
+  const answer = data.content?.find((block) => block.type === "text")?.text;
+  return answer?.trim().toLowerCase() || "unknown";
 }
 
 async function runLiveCases(skills, cases) {
@@ -1072,9 +1086,9 @@ async function main() {
     return;
   }
 
-  if (!API_KEY) {
+  if (!API_KEY && !AUTH_TOKEN) {
     console.error(
-      "\nError: ANTHROPIC_API_KEY is required for live routing evals. Use --dry-run to validate the suite without a key."
+      "\nError: ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN is required for live routing evals. Use --dry-run to validate the suite without credentials."
     );
     process.exit(1);
   }
