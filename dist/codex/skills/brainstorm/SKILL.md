@@ -17,7 +17,7 @@ Generative thinking — expanding possibilities before narrowing. This stance is
 
 ## Critical Rules
 
-Write journal entries with the command form in [Foundations](../foundations/SKILL.md#journal-commands).
+Write journal entries with the command form in the Foundations skill's Journal Commands section.
 
 **Always**
 - Diverge before converging — generate options before judging
@@ -25,7 +25,7 @@ Write journal entries with the command form in [Foundations](../foundations/SKIL
 - Document discarded options — they hold valuable reasoning
 - Capture sparks (speculative byproducts) with `loaf spark capture --scope <scope> --text <text>`; brainstorm summaries may render or summarize them
 - Set boundaries on exploration time
-- Log outcome to the project journal: `loaf journal log "decision(scope): direction chosen and rationale"`
+- Log the outcome to the project journal as a `decision(scope): direction chosen and rationale` entry
 
 **Never**
 - Prematurely commit to an option before full exploration

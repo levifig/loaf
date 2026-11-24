@@ -57,7 +57,7 @@ Give a recipient enough context to take the next useful action without reconstru
 
 1. **Frame the transfer.** Identify who will continue, where they can receive context, what they may do, and the next useful action. A future conversation can be the recipient; a named person or running agent is not required.
 2. **Gather current evidence.** Read relevant native issues, Git status/branch/commits, journal entries, and existing authored material. Reference their authoritative locations and summarize only what continuation needs. State important limits or unavailable sources honestly.
-3. **Prepare a compact packet.** Use the template's useful prompts. Include the native work reference where relevant and the instruction to re-read current state. Record a concise checkpoint with the [Foundations journal commands](../foundations/SKILL.md#journal-commands) only if useful reasoning is missing from the journal; do not duplicate the packet there.
+3. **Prepare a compact packet.** Use the template's useful prompts. Include the native work reference where relevant and the instruction to re-read current state. Record a concise checkpoint, with the command form in the Foundations skill's Journal Commands section, only if useful reasoning is missing from the journal; do not duplicate the packet there.
 4. **Choose and verify delivery.** Use the applicable path below, then report the actual outcome, usable retrieval or destination, and the intended next action. Tool success is evidence of that operation, not proof that a recipient has read or accepted the packet.
 
 ### Direct Harness Delivery

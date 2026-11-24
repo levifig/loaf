@@ -31,7 +31,7 @@ Capture ideas quickly with minimal friction.
 
 ## Critical Rules
 
-Write journal entries with the command form in [Foundations](../foundations/SKILL.md#journal-commands).
+Write journal entries with the command form in the Foundations skill's Journal Commands section.
 
 - Speed over completeness -- capture quickly, shape later
 - 2-3 questions maximum -- don't turn capture into an interview
@@ -39,7 +39,7 @@ Write journal entries with the command form in [Foundations](../foundations/SKIL
 - One idea per captured row/artifact -- keep them atomic
 - No shaping, pitching, or filing issues here -- problem discovery is pitch; bounding is shape; dispositions are triage
 - Capture through `loaf idea capture --title ...` when SQLite state is
-  initialized; log notable context with `loaf journal log`
+  initialized; log notable context to the project journal
 
 ## Verification
 
@@ -66,7 +66,7 @@ Ideas are raw nuggets — unprocessed, unshaped, but worth remembering. The goal
 ## Process
 
 1. **Parse input.** If `$ARGUMENTS` contains the idea, capture directly. If empty, ask at most 2-3 questions: core idea, problem/opportunity, immediate constraints.
-2. **Capture.** Run `loaf idea capture --title "..."` with the inferred title; log notable context with `loaf journal log`.
+2. **Capture.** Run `loaf idea capture --title "..."` with the inferred title; log notable context to the project journal.
 3. **Announce.** Report the captured alias and point at triage for disposition.
 
 ---

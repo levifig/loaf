@@ -24,7 +24,7 @@ Convene multi-agent councils for complex decisions requiring diverse expert pers
 
 ## Critical Rules
 
-Write journal entries with the command form in [Foundations](../foundations/SKILL.md#journal-commands).
+Write journal entries with the command form in the Foundations skill's Journal Commands section.
 
 **Always**
 - Select odd number of agents (5 or 7) — never even
@@ -33,7 +33,7 @@ Write journal entries with the command form in [Foundations](../foundations/SKIL
 - Document each perspective and create synthesis with consensus/disagreements
 - Wait for explicit user decision — council advises, user decides
 - Preserve the council file after the decision; cleanup requires separately authorized Housekeeping
-- Log decision to the project journal: `loaf journal log "decision(scope): council outcome and user's choice"`
+- Log the decision to the project journal as a `decision(scope): council outcome and user's choice` entry
 - Create the artifact with `loaf council new --title <title> --body-file <path>`
 
 **Never**

@@ -12,9 +12,10 @@ import (
 
 const journalCommandsOwnerSkill = "foundations"
 
-// journalCommandsOwnerLink is how a skill reaches the single Journal Commands
-// section from its sibling directory, in source and in every build target.
-const journalCommandsOwnerLink = "../foundations/SKILL.md#journal-commands"
+// journalCommandsRoute is how every other instruction surface names the single
+// owner. Plain text resolves the same way on every harness and install layout,
+// including OpenCode commands, where relative skill links do not.
+const journalCommandsRoute = "Foundations skill's Journal Commands section"
 
 func journalingSkillBodies(t *testing.T) map[string]string {
 	t.Helper()
@@ -30,64 +31,83 @@ func journalingSkillBodies(t *testing.T) map[string]string {
 	return bodies
 }
 
-// TestJournalCommandsHaveOneOwner keeps the journal command forms, including
-// the Codex policy-safe form, in a single skill section that every other
-// journaling skill links to instead of copying.
-func TestJournalCommandsHaveOneOwner(t *testing.T) {
-	for name, body := range journalingSkillBodies(t) {
-		_, hasSection := labeledHarnessSectionBody(body, "## Journal Commands")
-		if name == journalCommandsOwnerSkill {
-			if !hasSection {
-				t.Fatalf("%s must own the Journal Commands section", name)
-			}
-			commands, _ := labeledHarnessSectionBody(body, "## Journal Commands")
-			if _, ok := labeledHarnessSectionBody(commands, "### Codex"); !ok {
-				t.Fatalf("%s Journal Commands has no Codex section", name)
-			}
-			continue
-		}
-		if hasSection {
-			t.Errorf("%s copies the Journal Commands section; link to %s instead", name, journalCommandsOwnerLink)
-		}
-		if strings.Contains(body, "--execpolicy-safe") {
-			t.Errorf("%s repeats the Codex journal form; link to %s instead", name, journalCommandsOwnerLink)
-		}
-		if strings.Contains(body, "loaf journal log") && !strings.Contains(body, journalCommandsOwnerLink) {
-			t.Errorf("%s asks for journal writes without linking %s", name, journalCommandsOwnerLink)
-		}
-	}
-}
-
-// TestSkillsDoNotLogTheirOwnInvocation guards against reintroducing the
-// retired invocation entry anywhere a skill or shared template can carry it:
-// skill bodies, references, templates, and receipts.
-func TestSkillsDoNotLogTheirOwnInvocation(t *testing.T) {
+// walkInstructionMarkdown visits every Markdown file a skill, profile, or
+// shared template can deliver, plus the maintained instruction documents.
+func walkInstructionMarkdown(t *testing.T, visit func(rel, body string)) {
+	t.Helper()
 	repo := testRepositoryRoot(t)
-	invocationEntry := regexp.MustCompile("skill\\([a-z<][a-z0-9<>-]*\\)")
-	for _, dir := range []string{filepath.Join(repo, "content", "skills"), filepath.Join(repo, "content", "templates")} {
-		err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+	for _, dir := range []string{"content/skills", "content/templates", "content/agents"} {
+		root := filepath.Join(repo, filepath.FromSlash(dir))
+		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if entry.IsDir() || filepath.Ext(path) != ".md" {
 				return nil
 			}
-			body := readBuildFileString(t, path)
 			rel, _ := filepath.Rel(repo, path)
-			if match := invocationEntry.FindString(body); match != "" {
-				t.Errorf("%s still names a skill invocation journal entry (%q)", rel, match)
-			}
-			for _, token := range []string{"Log invocation first", "log invocation before", "invocation journal entry", "workflow invocation was added"} {
-				if strings.Contains(body, token) {
-					t.Errorf("%s still asks agents to log the skill invocation (%q)", rel, token)
-				}
-			}
+			visit(filepath.ToSlash(rel), readBuildFileString(t, path))
 			return nil
 		})
 		if err != nil {
 			t.Fatalf("walk %s: %v", dir, err)
 		}
 	}
+	for _, rel := range []string{"AGENTS.md", "docs/knowledge/skill-architecture.md"} {
+		visit(rel, readBuildFileString(t, filepath.Join(repo, filepath.FromSlash(rel))))
+	}
+}
+
+// TestJournalCommandsHaveOneOwner keeps the runnable journal command forms,
+// including the Codex policy-safe form, in Foundations alone. Other skills,
+// references, templates, and profiles describe the entry and name the owner.
+func TestJournalCommandsHaveOneOwner(t *testing.T) {
+	owner := journalingSkillBodies(t)[journalCommandsOwnerSkill]
+	commands, ok := labeledHarnessSectionBody(owner, "## Journal Commands")
+	if !ok {
+		t.Fatalf("%s must own the Journal Commands section", journalCommandsOwnerSkill)
+	}
+	if !strings.Contains(commands, "`loaf journal log \"type(scope): description\"`") {
+		t.Fatalf("%s Journal Commands lost the ordinary command form", journalCommandsOwnerSkill)
+	}
+	codex, ok := labeledHarnessSectionBody(commands, "### Codex")
+	if !ok || !strings.Contains(codex, "`loaf journal log --execpolicy-safe \"type(scope): description\"`") {
+		t.Fatalf("%s Journal Commands lost the Codex policy-safe form", journalCommandsOwnerSkill)
+	}
+
+	ownerPath := "content/skills/" + journalCommandsOwnerSkill + "/SKILL.md"
+	walkInstructionMarkdown(t, func(rel, body string) {
+		if rel == ownerPath || !strings.HasPrefix(rel, "content/") {
+			return
+		}
+		if strings.Contains(body, "## Journal Commands") {
+			t.Errorf("%s copies the Journal Commands section; name the %s instead", rel, journalCommandsRoute)
+		}
+		for _, token := range []string{`loaf journal log "`, "--execpolicy-safe"} {
+			if strings.Contains(body, token) {
+				t.Errorf("%s repeats runnable journal command syntax (%q); describe the entry and name the %s", rel, token, journalCommandsRoute)
+			}
+		}
+		if strings.Contains(body, "#journal-commands") {
+			t.Errorf("%s links to the journal commands; relative skill links do not resolve from every install layout, so name the %s", rel, journalCommandsRoute)
+		}
+	})
+}
+
+// TestSkillsDoNotLogTheirOwnInvocation guards against reintroducing the
+// retired invocation entry in any delivered instruction surface.
+func TestSkillsDoNotLogTheirOwnInvocation(t *testing.T) {
+	invocationEntry := regexp.MustCompile("skill\\([a-z<][a-z0-9<>-]*\\)")
+	walkInstructionMarkdown(t, func(rel, body string) {
+		if match := invocationEntry.FindString(body); match != "" {
+			t.Errorf("%s still names a skill invocation journal entry (%q)", rel, match)
+		}
+		for _, token := range []string{"Log invocation first", "log invocation before", "invocation journal entry", "workflow invocation was added", "log themselves first", "log their invocation"} {
+			if strings.Contains(body, token) {
+				t.Errorf("%s still asks agents to log the skill invocation (%q)", rel, token)
+			}
+		}
+	})
 }
 
 func TestJournalCommandOwnerMatchesCodexPolicy(t *testing.T) {

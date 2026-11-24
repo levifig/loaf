@@ -53,7 +53,7 @@ Return this receipt to the operator after the final verification read. Do not pe
 - Hierarchy/relationships verified: [count/count]
 - Mappings inferred from provider order: none
 - Local issue mutations: none
-- Local continuity writes: none
+- Local continuity writes: [none, or the journal entries actually written]
 - Private continuity migrated: none
 
 ## Boundary

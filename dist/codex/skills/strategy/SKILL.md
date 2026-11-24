@@ -28,7 +28,7 @@ Deep discovery for personas, market landscape, and problem space.
 
 ## Critical Rules
 
-Write journal entries with the command form in [Foundations](../foundations/SKILL.md#journal-commands).
+Write journal entries with the command form in the Foundations skill's Journal Commands section.
 
 - **Interview deeply** -- strategy is domain knowledge extraction, not guesswork
 - **Align with VISION** -- strategy serves the north star, never contradicts it
@@ -36,7 +36,7 @@ Write journal entries with the command form in [Foundations](../foundations/SKIL
 - **Define anti-personas** -- who we are NOT building for is as important as who we are
 - **Keep it current** -- outdated strategy is worse than no strategy
 - **Make progress rideable** -- priorities and milestones name complete operator journeys; foundations name the immediate slice that consumes them, and dogfood evidence earns later breadth
-- **Log updates** -- log strategic changes to the project journal: `loaf journal log "decision(strategy): updated personas/landscape/problem space"`
+- **Log updates** -- log strategic changes to the project journal as a `decision(strategy): updated personas/landscape/problem space` entry
 
 ---
 

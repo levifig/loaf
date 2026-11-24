@@ -27,7 +27,7 @@ Write journal entries with the command form in [Foundations](../../content/skill
 - Ask the user for project-owned choices — GitHub account, native tracker destination and routing hints, which harnesses to install — never guess them.
 - Never hand-edit Loaf-managed hook files; regenerate them through `loaf build` and `loaf install`.
 - Re-run the relevant check after any change and confirm it passes.
-- Log meaningful decisions to the journal: `loaf journal log "decision(scope): ..."`.
+- Log meaningful decisions to the journal as `decision(scope): ...` entries.
 
 ## Journal Context (contract v2)
 

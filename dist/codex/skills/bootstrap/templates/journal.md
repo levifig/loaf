@@ -6,9 +6,10 @@ This is the render template and entry-format reference for the project journal
 stored in SQLite. The journal is the only session-related structure: entries are
 project-scoped events, each tagged with an opaque harness id that correlates one
 conversation's entries. Nobody opens, closes, or transitions anything. Agents do
-not create or edit journal markdown as the source of truth — use
-`loaf journal log "type(scope): desc"` and read with `loaf journal recent`,
-`loaf journal context`, `loaf journal search`, and `loaf journal show`.
+not create or edit journal markdown as the source of truth. Write entries
+through journal logging, using the command form named above, and read them with
+`loaf journal recent`, `loaf journal context`, `loaf journal search`, and
+`loaf journal show`.
 
 ```markdown
 # Project Journal: name
@@ -45,12 +46,12 @@ not create or edit journal markdown as the source of truth — use
 4. **Blank lines:** Render burst boundaries only; SQLite journal rows are the
    durable ordering source.
 5. **No manual markdown edits:** Rendered markdown is a projection. Persist new
-   facts with `loaf journal log`.
+   facts through journal logging.
 
 ## CLI Commands
 
 ```bash
-loaf journal log      # Append typed entry: loaf journal log "decision(scope): desc"
+loaf journal log      # Append a typed entry; take the command form from Foundations
 loaf journal recent   # Show the timeline (newest first); --branch, --since-last-wrap
 loaf journal context  # Emit the layered continuity digest (latest wrap + branch + tasks)
 loaf journal search   # Full-text search across the project journal

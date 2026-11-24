@@ -29,7 +29,7 @@ Integrate learning from shipped work into the documents that own it. Reflection 
 
 ## Critical Rules
 
-Write journal entries with the command form in [Foundations](../foundations/SKILL.md#journal-commands).
+Write journal entries with the command form in the Foundations skill's Journal Commands section.
 
 - **Evidence-based** -- separate observed results, inferred lessons, and proposed changes; a merged patch is not proof of successful use or an accepted architectural direction
 - **Dogfood before generalization** -- compare the rideable increment's real use and learning sought with what actually happened before proposing more breadth or abstraction
@@ -40,7 +40,7 @@ Write journal entries with the command form in [Foundations](../foundations/SKIL
 - **No silent acceptance of drift** -- when shipped behaviour conflicts with an agreed constraint, report the discrepancy and route the unresolved choice to Architecture. Do not rewrite the constraint to bless the implementation or change an ADR's original decision context
 - **No forced update** -- retain existing guidance when the evidence does not justify change; useful local observations may remain in code, tests, or the journal
 - **Link back** -- always reference the native tracker records, journal entries, reports, and commits that informed each update
-- **Log updates** -- log each Core Doc update to the project journal: `loaf journal log "decision(scope): updated STRATEGY.md with learning"`
+- **Log updates** -- log each Core Doc update to the project journal as a `decision(scope): updated STRATEGY.md with learning` entry
 
 ## Verification
 

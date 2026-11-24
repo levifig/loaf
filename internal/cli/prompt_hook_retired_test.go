@@ -26,7 +26,7 @@ func TestBuildRegistersNoPromptHook(t *testing.T) {
 	}
 	for surface, path := range surfaces {
 		body := readBuildFileString(t, path)
-		for _, token := range []string{"for-prompt", "session-context-inject", "UserPromptSubmit", "userpromptsubmit"} {
+		for _, token := range []string{"for-prompt", "session-context-inject", "UserPromptSubmit", "userpromptsubmit", "beforeSubmitPrompt"} {
 			if strings.Contains(body, token) {
 				t.Errorf("generated %s registers retired prompt hook token %q", surface, token)
 			}
