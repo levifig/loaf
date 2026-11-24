@@ -4,14 +4,17 @@
  *
  * Tests whether Claude routes natural-language prompts to the correct Loaf
  * skill. The dry-run mode validates the suite against content/skills without
- * requiring an API key; live mode calls the Anthropic Messages API and can write
- * a JSON baseline fixture for review.
+ * requiring credentials; live mode calls the Anthropic Messages API and can write
+ * a JSON baseline fixture for review. Live mode authenticates with
+ * ANTHROPIC_API_KEY, or with an OAuth access token in ANTHROPIC_AUTH_TOKEN, such
+ * as the one `ant auth print-credentials --access-token` prints.
  *
  * Usage:
  *   node cli/scripts/eval-skill-routing.mjs --dry-run
  *   ANTHROPIC_API_KEY=sk-... node cli/scripts/eval-skill-routing.mjs
  *   ANTHROPIC_API_KEY=sk-... node cli/scripts/eval-skill-routing.mjs --model claude-sonnet-4-6
  *   ANTHROPIC_API_KEY=sk-... node cli/scripts/eval-skill-routing.mjs --suite conflicts --output .agents/reports/routing-baseline.json
+ *   ANTHROPIC_AUTH_TOKEN="$(ant auth print-credentials --access-token)" node cli/scripts/eval-skill-routing.mjs
  */
 
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -19,6 +22,7 @@ import { dirname, join } from "node:path";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_KEY = process.env.ANTHROPIC_API_KEY;
+const AUTH_TOKEN = process.env.ANTHROPIC_AUTH_TOKEN;
 const DEFAULT_MODEL = "claude-opus-4-6";
 const MAX_DESC_CHARS = 250;
 
@@ -273,6 +277,7 @@ const CONFLICT_PROBES = [
     group: "research-explore",
     choices: ["research", "explore"],
     expected: "explore",
+    expected_after: "pitch",
     prompt: "Let's generate a few possible directions before choosing one",
   },
   {
@@ -399,6 +404,7 @@ const CONFLICT_PROBES = [
     group: "brainstorm-shape",
     choices: ["brainstorm", "shape"],
     expected: "brainstorm",
+    expected_after: "pitch",
     prompt: "I don't know which direction to take on notifications yet — help me explore a few before we commit to one",
   },
   {
@@ -448,6 +454,197 @@ const CONFLICT_PROBES = [
     choices: ["foundations", "git-workflow", "documentation-standards"],
     expected: "documentation-standards",
     prompt: "Update the architecture and API documentation formatting style guide for this change",
+  },
+  // Merge probes. `expected` is the right skill today; `expected_after` is the
+  // skill that should own the request once the overlapping skills are merged.
+  {
+    group: "triage-project-management",
+    choices: ["triage", "project-management"],
+    expected: "triage",
+    expected_after: "project-management",
+    prompt: "Walk through the open issues in the v0.9 milestone with me and decide which move forward, which wait, and which get closed",
+  },
+  {
+    group: "triage-project-management",
+    choices: ["triage", "project-management"],
+    expected: "triage",
+    expected_after: "project-management",
+    prompt: "I jotted a handful of private notes last week; move the ones worth keeping into the tracker backlog and drop the rest",
+  },
+  {
+    group: "triage-project-management",
+    choices: ["triage", "project-management"],
+    expected: "triage",
+    expected_after: "project-management",
+    prompt: "Go through the open backlog issues and decide which advance, which stay parked for now, and which need to go back for more problem discovery",
+  },
+  {
+    group: "triage-project-management",
+    choices: ["triage", "project-management"],
+    expected: "project-management",
+    expected_after: "project-management",
+    prompt: "File an issue in our tracker for the missing timeout on the retry loop; we'll handle it later, not in this branch",
+  },
+  {
+    group: "loaf-reference-project-management",
+    choices: ["loaf-reference", "project-management"],
+    expected: "loaf-reference",
+    expected_after: "project-management",
+    prompt: "Once a review passes, what evidence gets carried forward to the release step, and which step is responsible for recording it? Just explain, don't change anything",
+  },
+  {
+    group: "loaf-reference-project-management",
+    choices: ["loaf-reference", "project-management"],
+    expected: "project-management",
+    expected_after: "project-management",
+    prompt: "Before anyone writes code for issue 212, confirm in the tracker that its scope and done criteria are settled and that it is actually the selected work",
+  },
+  {
+    group: "orchestration-implement",
+    choices: ["orchestration", "implement"],
+    expected: "orchestration",
+    expected_after: "implement",
+    prompt: "This issue has three independent parts; hand them to parallel workers and pull their results together into one evidence summary",
+  },
+  {
+    group: "orchestration-implement",
+    choices: ["orchestration", "implement"],
+    expected: "implement",
+    expected_after: "implement",
+    prompt: "Scope and done criteria for this issue are confirmed and it's selected; write the code and commit it in small, verified steps",
+  },
+  {
+    group: "orchestration-ship",
+    choices: ["orchestration", "ship"],
+    expected: "orchestration",
+    expected_after: "ship",
+    prompt: "Fan this diff out to separate reviewers for security, performance, and test coverage, then consolidate their findings; don't make a merge call yet",
+  },
+  {
+    group: "orchestration-ship",
+    choices: ["orchestration", "ship"],
+    expected: "ship",
+    expected_after: "ship",
+    prompt: "The work on this branch is finished; check each done criterion against the diff and tell me whether it can land",
+  },
+  {
+    group: "brainstorm-pitch",
+    choices: ["brainstorm", "pitch"],
+    expected: "pitch",
+    expected_after: "pitch",
+    prompt: "We're mid-way through weighing the retry design. Hold off judging anything for now: list every option, including doing nothing, with the trade-offs of each, and jot down any side ideas that come up along the way.",
+  },
+  {
+    group: "brainstorm-pitch",
+    choices: ["brainstorm", "pitch"],
+    expected: "pitch",
+    expected_after: "pitch",
+    prompt: "My gut says the answer is a --retry flag on sync, but I'm not sure who's actually affected or what they need. Help me think it through before we commit to anything.",
+  },
+  {
+    group: "explore-pitch",
+    choices: ["explore", "pitch"],
+    expected: "pitch",
+    expected_after: "pitch",
+    prompt: "We haven't picked a direction for offline support. Work through the candidate directions with me, keep a checkpoint that survives context compaction or a switch to another coding tool, and file any direction that firms up as a backlog issue.",
+  },
+  {
+    group: "explore-pitch",
+    choices: ["explore", "pitch"],
+    expected: "pitch",
+    expected_after: "pitch",
+    prompt: "Can we poke around offline mode for a bit? Nothing's decided and I'm not sure who'd even use it.",
+  },
+  {
+    group: "strategy-reflect",
+    choices: ["strategy", "reflect"],
+    expected: "strategy",
+    expected_after: "reflect",
+    prompt: "Before I start on the billing work: I think our assumption that users are solo devs is wrong. Revise the personas and the problem framing in our direction doc now, not after we ship.",
+  },
+  {
+    group: "strategy-reflect",
+    choices: ["strategy", "reflect"],
+    expected: "strategy",
+    expected_after: "reflect",
+    prompt: "Who are we really building for, and who else is competing for them? Write it up so the roadmap has something to stand on.",
+  },
+  {
+    group: "strategy-reflect",
+    choices: ["strategy", "reflect"],
+    expected: "reflect",
+    expected_after: "reflect",
+    prompt: "Team workspaces landed last week. Check whether what the rollout showed changes our vision or the personas, and propose edits only where the evidence backs them.",
+  },
+  {
+    group: "architecture-knowledge-base",
+    choices: ["architecture", "knowledge-base"],
+    expected: "knowledge-base",
+    expected_after: "architecture",
+    prompt: "Which guides under docs/knowledge point at source files that changed since they were last reviewed? Flag the out-of-date ones so we can refresh them",
+  },
+  {
+    group: "architecture-knowledge-base",
+    choices: ["architecture", "knowledge-base"],
+    expected: "architecture",
+    expected_after: "architecture",
+    prompt: "Write up why the hook runner calls the native CLI instead of embedding shell scripts, including the options we rejected",
+  },
+  {
+    group: "architecture-documentation-standards",
+    choices: ["architecture", "documentation-standards"],
+    expected: "documentation-standards",
+    expected_after: "architecture",
+    prompt: "Proofread the CONTRIBUTING guide draft and tell me where it is hard to follow, badly organized, or inconsistent in tone",
+  },
+  {
+    group: "architecture-documentation-standards",
+    choices: ["architecture", "documentation-standards"],
+    expected: "architecture",
+    expected_after: "architecture",
+    prompt: "Our docs still describe the old three-stage flow; carry the reasoning that still holds into the current topics and drop the rest",
+  },
+  {
+    group: "documentation-standards-release",
+    choices: ["documentation-standards", "release"],
+    expected: "documentation-standards",
+    expected_after: "release",
+    prompt: "Add a plain-language Unreleased changelog entry for the hook timeout fix so users understand what changed",
+  },
+  {
+    group: "documentation-standards-release",
+    choices: ["documentation-standards", "release"],
+    expected: "release",
+    expected_after: "release",
+    prompt: "Everything planned for 0.7 is merged; bump the version, tag it, and put out the GitHub release",
+  },
+  {
+    group: "debugging-foundations",
+    choices: ["debugging", "foundations"],
+    expected: "debugging",
+    expected_after: "foundations",
+    prompt: "The import job started returning empty results after yesterday's deploy; find the root cause before changing any code",
+  },
+  {
+    group: "debugging-foundations",
+    choices: ["debugging", "foundations"],
+    expected: "foundations",
+    expected_after: "foundations",
+    prompt: "Define the lint, formatting, and naming rules this codebase should hold every change to, so reviewers apply the same bar",
+  },
+  {
+    group: "foundations-security-compliance",
+    choices: ["foundations", "security-compliance"],
+    expected: "security-compliance",
+    expected_after: "foundations",
+    prompt: "We're adding SSO; map out how an attacker could abuse the login callback and the token handling, and what we should guard against",
+  },
+  {
+    group: "foundations-security-compliance",
+    choices: ["foundations", "security-compliance"],
+    expected: "foundations",
+    expected_after: "foundations",
+    prompt: "Write the new signup form handler following our usual coding conventions, including the standard input validation",
   },
 ];
 
@@ -653,6 +850,12 @@ function buildSkillsListing(skills) {
   return skills.map((skill) => `- ${skill.name}: ${skill.truncated}`).join("\n");
 }
 
+// An API key wins when both are set; an OAuth access token is sent as a bearer
+// credential.
+function authHeaders() {
+  return API_KEY ? { "x-api-key": API_KEY } : { Authorization: `Bearer ${AUTH_TOKEN}` };
+}
+
 async function routePrompt(skillsListing, userPrompt) {
   const systemPrompt = `You are Claude Code with these available skills:
 
@@ -664,12 +867,14 @@ The user will give you a task. Respond with ONLY the skill name you would invoke
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": API_KEY,
+      ...authHeaders(),
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 50,
+      // Room for models that think before answering; a 50-token cap can end
+      // the turn inside the thinking block, before any answer is written.
+      max_tokens: 1024,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
     }),
@@ -685,7 +890,9 @@ The user will give you a task. Respond with ONLY the skill name you would invoke
   totalOutputTokens += data.usage?.output_tokens || 0;
   totalCalls++;
 
-  return data.content[0]?.text?.trim().toLowerCase() || "unknown";
+  // The answer is the first text block; a thinking block may come before it.
+  const answer = data.content?.find((block) => block.type === "text")?.text;
+  return answer?.trim().toLowerCase() || "unknown";
 }
 
 async function runLiveCases(skills, cases) {
@@ -882,9 +1089,9 @@ async function main() {
     return;
   }
 
-  if (!API_KEY) {
+  if (!API_KEY && !AUTH_TOKEN) {
     console.error(
-      "\nError: ANTHROPIC_API_KEY is required for live routing evals. Use --dry-run to validate the suite without a key."
+      "\nError: ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN is required for live routing evals. Use --dry-run to validate the suite without credentials."
     );
     process.exit(1);
   }

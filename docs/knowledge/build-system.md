@@ -71,7 +71,7 @@ Claude Code has a split registration model: `plugin.json` handles the plugin man
 |--------|---------|---------|
 | `cmd/loafdev` | `make build` / `make verify` | Builds the native runtime and generated content, then verifies artifacts. Ordinary builds do not activate the development launcher; use `make install` to point `~/.local/bin/loaf` at this checkout. `LOAF_DEV_LINK=0` remains a harmless leftover. |
 | `cli/scripts/smoke-test.js` | `node cli/scripts/smoke-test.js` | Validates built hook artifacts across supported targets (structure, `if` conditions, `failClosed` flags). Run after build changes. |
-| `cli/scripts/eval-skill-routing.mjs` | `node cli/scripts/eval-skill-routing.mjs` | Tests whether Claude routes prompts to correct skills. Requires `ANTHROPIC_API_KEY`. Use `--model` for cheaper runs, `--skill` to test one skill. |
+| `cli/scripts/eval-skill-routing.mjs` | `node cli/scripts/eval-skill-routing.mjs` | Tests whether Claude routes prompts to correct skills. Requires `ANTHROPIC_API_KEY`, or an OAuth access token in `ANTHROPIC_AUTH_TOKEN` (for example from `ant auth print-credentials --access-token`); the API key wins when both are set. Use `--model` for cheaper runs, `--skill` to test one skill. |
 
 **Smoke test** is a build output integration test for script-level artifact assertions that are not yet worth moving into native Go tests. **Routing eval** is a non-deterministic quality tool for tuning skill descriptions; test cases need updating when skills are added/removed/renamed.
 

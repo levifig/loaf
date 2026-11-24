@@ -1,0 +1,2747 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T18:48:08.152Z",
+  "mode": "live",
+  "model": "claude-sonnet-5-5",
+  "suite": "all",
+  "skill_filter": null,
+  "repeat": 1,
+  "max_description_chars": 250,
+  "expected_skill_count": 38,
+  "skill_count": 38,
+  "core_case_count": 131,
+  "conflict_probe_count": 59,
+  "selected_case_count": 190,
+  "skills": [
+    {
+      "name": "architecture",
+      "description_chars": 369,
+      "truncated_chars": 250
+    },
+    {
+      "name": "bootstrap",
+      "description_chars": 403,
+      "truncated_chars": 250
+    },
+    {
+      "name": "brainstorm",
+      "description_chars": 454,
+      "truncated_chars": 250
+    },
+    {
+      "name": "council",
+      "description_chars": 437,
+      "truncated_chars": 250
+    },
+    {
+      "name": "database-design",
+      "description_chars": 409,
+      "truncated_chars": 250
+    },
+    {
+      "name": "debugging",
+      "description_chars": 319,
+      "truncated_chars": 250
+    },
+    {
+      "name": "documentation-standards",
+      "description_chars": 397,
+      "truncated_chars": 250
+    },
+    {
+      "name": "explore",
+      "description_chars": 831,
+      "truncated_chars": 250
+    },
+    {
+      "name": "foundations",
+      "description_chars": 426,
+      "truncated_chars": 250
+    },
+    {
+      "name": "git-workflow",
+      "description_chars": 418,
+      "truncated_chars": 250
+    },
+    {
+      "name": "github",
+      "description_chars": 259,
+      "truncated_chars": 250
+    },
+    {
+      "name": "go-development",
+      "description_chars": 329,
+      "truncated_chars": 250
+    },
+    {
+      "name": "handoff",
+      "description_chars": 382,
+      "truncated_chars": 250
+    },
+    {
+      "name": "housekeeping",
+      "description_chars": 297,
+      "truncated_chars": 250
+    },
+    {
+      "name": "idea",
+      "description_chars": 554,
+      "truncated_chars": 250
+    },
+    {
+      "name": "implement",
+      "description_chars": 443,
+      "truncated_chars": 250
+    },
+    {
+      "name": "infrastructure-management",
+      "description_chars": 357,
+      "truncated_chars": 250
+    },
+    {
+      "name": "interface-design",
+      "description_chars": 303,
+      "truncated_chars": 250
+    },
+    {
+      "name": "knowledge-base",
+      "description_chars": 332,
+      "truncated_chars": 250
+    },
+    {
+      "name": "linear",
+      "description_chars": 248,
+      "truncated_chars": 248
+    },
+    {
+      "name": "loaf-reference",
+      "description_chars": 252,
+      "truncated_chars": 250
+    },
+    {
+      "name": "migrate-project",
+      "description_chars": 397,
+      "truncated_chars": 250
+    },
+    {
+      "name": "orchestration",
+      "description_chars": 278,
+      "truncated_chars": 250
+    },
+    {
+      "name": "pitch",
+      "description_chars": 229,
+      "truncated_chars": 229
+    },
+    {
+      "name": "power-systems-modeling",
+      "description_chars": 322,
+      "truncated_chars": 250
+    },
+    {
+      "name": "project-management",
+      "description_chars": 362,
+      "truncated_chars": 250
+    },
+    {
+      "name": "python-development",
+      "description_chars": 350,
+      "truncated_chars": 250
+    },
+    {
+      "name": "refactor-deepen",
+      "description_chars": 461,
+      "truncated_chars": 250
+    },
+    {
+      "name": "reflect",
+      "description_chars": 415,
+      "truncated_chars": 250
+    },
+    {
+      "name": "release",
+      "description_chars": 249,
+      "truncated_chars": 249
+    },
+    {
+      "name": "research",
+      "description_chars": 307,
+      "truncated_chars": 250
+    },
+    {
+      "name": "ruby-development",
+      "description_chars": 324,
+      "truncated_chars": 250
+    },
+    {
+      "name": "security-compliance",
+      "description_chars": 280,
+      "truncated_chars": 250
+    },
+    {
+      "name": "shape",
+      "description_chars": 361,
+      "truncated_chars": 250
+    },
+    {
+      "name": "ship",
+      "description_chars": 260,
+      "truncated_chars": 250
+    },
+    {
+      "name": "strategy",
+      "description_chars": 306,
+      "truncated_chars": 250
+    },
+    {
+      "name": "triage",
+      "description_chars": 421,
+      "truncated_chars": 250
+    },
+    {
+      "name": "typescript-development",
+      "description_chars": 300,
+      "truncated_chars": 250
+    }
+  ],
+  "validation": {
+    "passed": true,
+    "errors": [],
+    "warnings": [],
+    "missingTestCases": [],
+    "unknownExpectedSkills": [],
+    "unknownConflictSkills": [],
+    "loadedSkills": [
+      "architecture",
+      "bootstrap",
+      "brainstorm",
+      "council",
+      "database-design",
+      "debugging",
+      "documentation-standards",
+      "explore",
+      "foundations",
+      "git-workflow",
+      "github",
+      "go-development",
+      "handoff",
+      "housekeeping",
+      "idea",
+      "implement",
+      "infrastructure-management",
+      "interface-design",
+      "knowledge-base",
+      "linear",
+      "loaf-reference",
+      "migrate-project",
+      "orchestration",
+      "pitch",
+      "power-systems-modeling",
+      "project-management",
+      "python-development",
+      "refactor-deepen",
+      "reflect",
+      "release",
+      "research",
+      "ruby-development",
+      "security-compliance",
+      "shape",
+      "ship",
+      "strategy",
+      "triage",
+      "typescript-development"
+    ],
+    "expectedSkills": [
+      "architecture",
+      "bootstrap",
+      "brainstorm",
+      "council",
+      "database-design",
+      "debugging",
+      "documentation-standards",
+      "explore",
+      "foundations",
+      "git-workflow",
+      "github",
+      "go-development",
+      "handoff",
+      "housekeeping",
+      "idea",
+      "implement",
+      "infrastructure-management",
+      "interface-design",
+      "knowledge-base",
+      "linear",
+      "loaf-reference",
+      "migrate-project",
+      "orchestration",
+      "pitch",
+      "power-systems-modeling",
+      "project-management",
+      "python-development",
+      "refactor-deepen",
+      "reflect",
+      "release",
+      "research",
+      "ruby-development",
+      "security-compliance",
+      "shape",
+      "ship",
+      "strategy",
+      "triage",
+      "typescript-development"
+    ]
+  },
+  "totals": {
+    "pass": 173,
+    "fail": 17,
+    "total": 190,
+    "accuracy": 0.9105263157894737
+  },
+  "by_skill": {
+    "architecture": {
+      "pass": 18,
+      "total": 18,
+      "accuracy": 1
+    },
+    "bootstrap": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "brainstorm": {
+      "pass": 4,
+      "total": 5,
+      "accuracy": 0.8
+    },
+    "council": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "database-design": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "debugging": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "documentation-standards": {
+      "pass": 6,
+      "total": 6,
+      "accuracy": 1
+    },
+    "explore": {
+      "pass": 3,
+      "total": 5,
+      "accuracy": 0.6
+    },
+    "foundations": {
+      "pass": 8,
+      "total": 9,
+      "accuracy": 0.8888888888888888
+    },
+    "git-workflow": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "github": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "go-development": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "handoff": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "housekeeping": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "idea": {
+      "pass": 5,
+      "total": 5,
+      "accuracy": 1
+    },
+    "implement": {
+      "pass": 0,
+      "total": 4,
+      "accuracy": 0
+    },
+    "infrastructure-management": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "interface-design": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "knowledge-base": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "linear": {
+      "pass": 3,
+      "total": 5,
+      "accuracy": 0.6
+    },
+    "loaf-reference": {
+      "pass": 3,
+      "total": 7,
+      "accuracy": 0.42857142857142855
+    },
+    "migrate-project": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "orchestration": {
+      "pass": 6,
+      "total": 6,
+      "accuracy": 1
+    },
+    "pitch": {
+      "pass": 6,
+      "total": 7,
+      "accuracy": 0.8571428571428571
+    },
+    "power-systems-modeling": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "project-management": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "python-development": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "refactor-deepen": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "reflect": {
+      "pass": 7,
+      "total": 8,
+      "accuracy": 0.875
+    },
+    "release": {
+      "pass": 5,
+      "total": 5,
+      "accuracy": 1
+    },
+    "research": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "ruby-development": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "security-compliance": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "shape": {
+      "pass": 10,
+      "total": 10,
+      "accuracy": 1
+    },
+    "ship": {
+      "pass": 5,
+      "total": 5,
+      "accuracy": 1
+    },
+    "strategy": {
+      "pass": 6,
+      "total": 6,
+      "accuracy": 1
+    },
+    "triage": {
+      "pass": 8,
+      "total": 9,
+      "accuracy": 0.8888888888888888
+    },
+    "typescript-development": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    }
+  },
+  "by_group": {
+    "architecture": {
+      "pass": 12,
+      "total": 12,
+      "accuracy": 1
+    },
+    "architecture-documentation-standards": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "architecture-knowledge-base": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "architecture-reflect": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "architecture-shape": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "bootstrap": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "brainstorm": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "brainstorm-pitch": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "brainstorm-shape": {
+      "pass": 1,
+      "total": 2,
+      "accuracy": 0.5
+    },
+    "council": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "database-design": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "debugging": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "debugging-foundations": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "documentation-standards": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "documentation-standards-release": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "explore": {
+      "pass": 2,
+      "total": 3,
+      "accuracy": 0.6666666666666666
+    },
+    "explore-pitch": {
+      "pass": 1,
+      "total": 2,
+      "accuracy": 0.5
+    },
+    "explore-shape": {
+      "pass": 1,
+      "total": 1,
+      "accuracy": 1
+    },
+    "explore-triage": {
+      "pass": 0,
+      "total": 1,
+      "accuracy": 0
+    },
+    "foundations": {
+      "pass": 5,
+      "total": 6,
+      "accuracy": 0.8333333333333334
+    },
+    "foundations-git-workflow-documentation-standards": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "foundations-security-compliance": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "git-workflow": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "github": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "go-development": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "handoff": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "housekeeping": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "idea": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "idea-shape": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "idea-triage": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "implement": {
+      "pass": 0,
+      "total": 3,
+      "accuracy": 0
+    },
+    "infrastructure-management": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "interface-design": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "knowledge-base": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "linear": {
+      "pass": 1,
+      "total": 3,
+      "accuracy": 0.3333333333333333
+    },
+    "linear-migrate-project": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "linear-orchestration": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "loaf-reference": {
+      "pass": 2,
+      "total": 5,
+      "accuracy": 0.4
+    },
+    "loaf-reference-project-management": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "maintenance-workflow": {
+      "pass": 0,
+      "total": 1,
+      "accuracy": 0
+    },
+    "migrate-project": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "orchestration": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "orchestration-implement": {
+      "pass": 1,
+      "total": 2,
+      "accuracy": 0.5
+    },
+    "orchestration-ship": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "pitch": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "pitch-shape": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "pitch-triage": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "power-systems-modeling": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "project-management": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "python-development": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "refactor-deepen": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "reflect": {
+      "pass": 4,
+      "total": 5,
+      "accuracy": 0.8
+    },
+    "release": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "research": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "research-explore": {
+      "pass": 1,
+      "total": 2,
+      "accuracy": 0.5
+    },
+    "ruby-development": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "security-compliance": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "shape": {
+      "pass": 5,
+      "total": 5,
+      "accuracy": 1
+    },
+    "ship": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "ship-release": {
+      "pass": 2,
+      "total": 2,
+      "accuracy": 1
+    },
+    "strategy": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "strategy-reflect": {
+      "pass": 5,
+      "total": 5,
+      "accuracy": 1
+    },
+    "triage": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    },
+    "triage-project-management": {
+      "pass": 4,
+      "total": 4,
+      "accuracy": 1
+    },
+    "typescript-development": {
+      "pass": 3,
+      "total": 3,
+      "accuracy": 1
+    }
+  },
+  "cost": {
+    "input_tokens": 637865,
+    "output_tokens": 11669,
+    "api_calls": 190,
+    "input_cost_usd": 9.567975,
+    "output_cost_usd": 0.875175,
+    "total_cost_usd": 10.44315
+  },
+  "results": [
+    {
+      "kind": "core",
+      "group": "github",
+      "expected": "github",
+      "prompt": "Read the canonical GitHub issue and verify its native dependencies",
+      "choices": null,
+      "actual": "github",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "github",
+      "expected": "github",
+      "prompt": "Map the project-management contract to GitHub Issues and the project board",
+      "choices": null,
+      "actual": "github",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "project-management",
+      "expected": "project-management",
+      "prompt": "Which native tracker operation captures this deferred actionable finding?",
+      "choices": null,
+      "actual": "project-management",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "project-management",
+      "expected": "project-management",
+      "prompt": "Explain the provider-neutral project-management/v1 work contract",
+      "choices": null,
+      "actual": "project-management",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "Update our caching architecture topic with the current model and rationale",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "Should this project use PostgreSQL or SQLite?",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "Explain which component owns shared work and why; do not edit",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "Audit the architecture docs against code and report drift without editing",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "Migrate our numbered ADR corpus into living architecture topics",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "We chose SQLite; update the existing persistence topic without another interview",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "Review which code, tests, and docs a changed architecture decision affects",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "Our repository explicitly requires ADRs; revise the existing caching ADR",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "Does keeping the relay outside the plaintext trust boundary merit one narrow ADR?",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "We approved a standalone ADR for choosing Go; record that choice and link the current runtime topic",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "We are a mature project now; should that change how often we create ADRs?",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "architecture",
+      "expected": "architecture",
+      "prompt": "Evaluate the tradeoffs for this technical decision",
+      "choices": null,
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "bootstrap",
+      "expected": "bootstrap",
+      "prompt": "Start a new project with Loaf conventions",
+      "choices": null,
+      "actual": "bootstrap",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "bootstrap",
+      "expected": "bootstrap",
+      "prompt": "Set up Loaf for this repository",
+      "choices": null,
+      "actual": "bootstrap",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "bootstrap",
+      "expected": "bootstrap",
+      "prompt": "Bootstrap this repo with the standard project scaffolding",
+      "choices": null,
+      "actual": "bootstrap",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "brainstorm",
+      "expected": "brainstorm",
+      "prompt": "Apply the brainstorm divergence stance to this exploration",
+      "choices": null,
+      "actual": "brainstorm",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "brainstorm",
+      "expected": "brainstorm",
+      "prompt": "What does the brainstorm technique say about capturing sparks during divergence?",
+      "choices": null,
+      "actual": "brainstorm",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "brainstorm",
+      "expected": "brainstorm",
+      "prompt": "Use the structured brainstorm questioning stance on this problem",
+      "choices": null,
+      "actual": "brainstorm",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "explore",
+      "expected": "explore",
+      "prompt": "Explore several approaches before we choose one",
+      "choices": null,
+      "actual": "project-management",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "explore",
+      "expected": "explore",
+      "prompt": "Resume the workflow exploration where we left off",
+      "choices": null,
+      "actual": "explore",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "explore",
+      "expected": "explore",
+      "prompt": "Start an exploration of the caching options and checkpoint it",
+      "choices": null,
+      "actual": "explore",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "loaf-reference",
+      "expected": "loaf-reference",
+      "prompt": "Which loaf command shows the recent project journal?",
+      "choices": null,
+      "actual": "loaf-reference",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "loaf-reference",
+      "expected": "loaf-reference",
+      "prompt": "Show me the Loaf CLI command for task status",
+      "choices": null,
+      "actual": "loaf-reference",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "loaf-reference",
+      "expected": "loaf-reference",
+      "prompt": "What flags does loaf journal recent support?",
+      "choices": null,
+      "actual": "foundations",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "loaf-reference",
+      "expected": "loaf-reference",
+      "prompt": "Upgrade Loaf and bring this project current",
+      "choices": null,
+      "actual": "bootstrap",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "loaf-reference",
+      "expected": "loaf-reference",
+      "prompt": "Diagnose why the installed Loaf targets are stale and repair them",
+      "choices": null,
+      "actual": "debugging",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "council",
+      "expected": "council",
+      "prompt": "Convene a council on this architecture decision",
+      "choices": null,
+      "actual": "council",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "council",
+      "expected": "council",
+      "prompt": "Gather specialist perspectives before we commit",
+      "choices": null,
+      "actual": "council",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "council",
+      "expected": "council",
+      "prompt": "Have multiple agents debate this approach",
+      "choices": null,
+      "actual": "council",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "database-design",
+      "expected": "database-design",
+      "prompt": "Design the schema for user accounts",
+      "choices": null,
+      "actual": "database-design",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "database-design",
+      "expected": "database-design",
+      "prompt": "Should we denormalize this table?",
+      "choices": null,
+      "actual": "database-design",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "database-design",
+      "expected": "database-design",
+      "prompt": "Plan the migration to add an index",
+      "choices": null,
+      "actual": "database-design",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "debugging",
+      "expected": "debugging",
+      "prompt": "This test is flaky, help me fix it",
+      "choices": null,
+      "actual": "debugging",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "debugging",
+      "expected": "debugging",
+      "prompt": "Diagnose why this fails intermittently",
+      "choices": null,
+      "actual": "debugging",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "debugging",
+      "expected": "debugging",
+      "prompt": "Track hypotheses for this production bug",
+      "choices": null,
+      "actual": "debugging",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "documentation-standards",
+      "expected": "documentation-standards",
+      "prompt": "Review this architecture topic's formatting and links without evaluating its design",
+      "choices": null,
+      "actual": "documentation-standards",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "documentation-standards",
+      "expected": "documentation-standards",
+      "prompt": "Update the API documentation conventions",
+      "choices": null,
+      "actual": "documentation-standards",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "documentation-standards",
+      "expected": "documentation-standards",
+      "prompt": "Create a Mermaid diagram for this architecture doc",
+      "choices": null,
+      "actual": "documentation-standards",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "foundations",
+      "expected": "foundations",
+      "prompt": "Review this code for maintainability basics",
+      "choices": null,
+      "actual": "foundations",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "foundations",
+      "expected": "foundations",
+      "prompt": "Are we following naming conventions here?",
+      "choices": null,
+      "actual": "foundations",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "foundations",
+      "expected": "foundations",
+      "prompt": "Run the general quality checklist before we ship",
+      "choices": null,
+      "actual": "ship",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "foundations",
+      "expected": "foundations",
+      "prompt": "How should ordinary work preserve reasoning before context is lost?",
+      "choices": null,
+      "actual": "foundations",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "foundations",
+      "expected": "foundations",
+      "prompt": "When is a selective journal checkpoint useful rather than repetitive?",
+      "choices": null,
+      "actual": "foundations",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "foundations",
+      "expected": "foundations",
+      "prompt": "Prepare a routine checkpoint so I can resume this work next session",
+      "choices": null,
+      "actual": "foundations",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "git-workflow",
+      "expected": "git-workflow",
+      "prompt": "Write a Conventional Commit message",
+      "choices": null,
+      "actual": "git-workflow",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "git-workflow",
+      "expected": "git-workflow",
+      "prompt": "Create a PR title and description for this branch",
+      "choices": null,
+      "actual": "git-workflow",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "git-workflow",
+      "expected": "git-workflow",
+      "prompt": "What branch name should I use?",
+      "choices": null,
+      "actual": "git-workflow",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "go-development",
+      "expected": "go-development",
+      "prompt": "Write a Go CLI command for this task",
+      "choices": null,
+      "actual": "go-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "go-development",
+      "expected": "go-development",
+      "prompt": "Handle concurrency in this Go service",
+      "choices": null,
+      "actual": "go-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "go-development",
+      "expected": "go-development",
+      "prompt": "Write table-driven Go tests",
+      "choices": null,
+      "actual": "go-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "handoff",
+      "expected": "handoff",
+      "prompt": "Prepare a transfer for a fresh agent to finish this bounded investigation",
+      "choices": null,
+      "actual": "handoff",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "handoff",
+      "expected": "handoff",
+      "prompt": "Write a handoff for this branch",
+      "choices": null,
+      "actual": "handoff",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "handoff",
+      "expected": "handoff",
+      "prompt": "Package the current state so another agent can continue",
+      "choices": null,
+      "actual": "handoff",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "handoff",
+      "expected": "handoff",
+      "prompt": "Load the saved handoff for the retry investigation",
+      "choices": null,
+      "actual": "handoff",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "housekeeping",
+      "expected": "housekeeping",
+      "prompt": "Clean up old agent artifacts",
+      "choices": null,
+      "actual": "housekeeping",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "housekeeping",
+      "expected": "housekeeping",
+      "prompt": "Review sessions and tidy completed files",
+      "choices": null,
+      "actual": "housekeeping",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "housekeeping",
+      "expected": "housekeeping",
+      "prompt": "Archive completed specs and tasks",
+      "choices": null,
+      "actual": "housekeeping",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "idea",
+      "expected": "idea",
+      "prompt": "I have an idea: what if we added webhooks?",
+      "choices": null,
+      "actual": "idea",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "idea",
+      "expected": "idea",
+      "prompt": "Capture this spark for later",
+      "choices": null,
+      "actual": "idea",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "idea",
+      "expected": "idea",
+      "prompt": "Turn this quick thought into an idea note",
+      "choices": null,
+      "actual": "idea",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "implement",
+      "expected": "implement",
+      "prompt": "Implement this feature",
+      "choices": null,
+      "actual": "project-management",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "implement",
+      "expected": "implement",
+      "prompt": "Start working on TASK-042",
+      "choices": null,
+      "actual": "project-management",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "implement",
+      "expected": "implement",
+      "prompt": "Let's build this out",
+      "choices": null,
+      "actual": "project-management",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "infrastructure-management",
+      "expected": "infrastructure-management",
+      "prompt": "Write a Dockerfile for this service",
+      "choices": null,
+      "actual": "infrastructure-management",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "infrastructure-management",
+      "expected": "infrastructure-management",
+      "prompt": "Configure the Kubernetes manifest",
+      "choices": null,
+      "actual": "infrastructure-management",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "infrastructure-management",
+      "expected": "infrastructure-management",
+      "prompt": "Set up CI/CD for this project",
+      "choices": null,
+      "actual": "infrastructure-management",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "interface-design",
+      "expected": "interface-design",
+      "prompt": "Evaluate this layout for accessibility",
+      "choices": null,
+      "actual": "interface-design",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "interface-design",
+      "expected": "interface-design",
+      "prompt": "What color palette works for this design?",
+      "choices": null,
+      "actual": "interface-design",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "interface-design",
+      "expected": "interface-design",
+      "prompt": "Review the typography in this component",
+      "choices": null,
+      "actual": "interface-design",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "knowledge-base",
+      "expected": "knowledge-base",
+      "prompt": "Create a knowledge file for this domain",
+      "choices": null,
+      "actual": "knowledge-base",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "knowledge-base",
+      "expected": "knowledge-base",
+      "prompt": "This knowledge file is stale, update it",
+      "choices": null,
+      "actual": "knowledge-base",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "knowledge-base",
+      "expected": "knowledge-base",
+      "prompt": "What are the knowledge management conventions?",
+      "choices": null,
+      "actual": "knowledge-base",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "linear",
+      "expected": "linear",
+      "prompt": "Triage the high-priority bugs in our Linear workspace",
+      "choices": null,
+      "actual": "triage",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "linear",
+      "expected": "linear",
+      "prompt": "Move these Linear issues into the next cycle and assign their owners",
+      "choices": null,
+      "actual": "linear",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "linear",
+      "expected": "linear",
+      "prompt": "Audit this Linear project and summarize the remaining blockers",
+      "choices": null,
+      "actual": "research",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "migrate-project",
+      "expected": "migrate-project",
+      "prompt": "Move this project's local Loaf issues into Linear",
+      "choices": null,
+      "actual": "migrate-project",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "migrate-project",
+      "expected": "migrate-project",
+      "prompt": "Migrate our open Loaf work to the GitHub issue tracker",
+      "choices": null,
+      "actual": "migrate-project",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "migrate-project",
+      "expected": "migrate-project",
+      "prompt": "Create a verified Jira mapping from this Loaf tracker export",
+      "choices": null,
+      "actual": "migrate-project",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "orchestration",
+      "expected": "orchestration",
+      "prompt": "Coordinate work across multiple agents",
+      "choices": null,
+      "actual": "orchestration",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "orchestration",
+      "expected": "orchestration",
+      "prompt": "Plan how these tasks should be delegated",
+      "choices": null,
+      "actual": "orchestration",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "orchestration",
+      "expected": "orchestration",
+      "prompt": "Manage the multi-agent session for this effort",
+      "choices": null,
+      "actual": "orchestration",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "pitch",
+      "expected": "pitch",
+      "prompt": "I have a concept to pitch",
+      "choices": null,
+      "actual": "pitch",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "pitch",
+      "expected": "pitch",
+      "prompt": "Let's pitch this idea",
+      "choices": null,
+      "actual": "pitch",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "pitch",
+      "expected": "pitch",
+      "prompt": "Run problem discovery on this raw concept before we shape a solution",
+      "choices": null,
+      "actual": "pitch",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "power-systems-modeling",
+      "expected": "power-systems-modeling",
+      "prompt": "Calculate the thermal rating for this conductor",
+      "choices": null,
+      "actual": "power-systems-modeling",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "power-systems-modeling",
+      "expected": "power-systems-modeling",
+      "prompt": "Validate conductor parameters against CIGRE TB 601",
+      "choices": null,
+      "actual": "power-systems-modeling",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "power-systems-modeling",
+      "expected": "power-systems-modeling",
+      "prompt": "What's the sag formula for this span?",
+      "choices": null,
+      "actual": "power-systems-modeling",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "python-development",
+      "expected": "python-development",
+      "prompt": "Write a FastAPI endpoint for user auth",
+      "choices": null,
+      "actual": "python-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "python-development",
+      "expected": "python-development",
+      "prompt": "Add Pydantic validation to this model",
+      "choices": null,
+      "actual": "python-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "python-development",
+      "expected": "python-development",
+      "prompt": "Write pytest tests for this service",
+      "choices": null,
+      "actual": "python-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "refactor-deepen",
+      "expected": "refactor-deepen",
+      "prompt": "Find refactoring opportunities in this module",
+      "choices": null,
+      "actual": "refactor-deepen",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "refactor-deepen",
+      "expected": "refactor-deepen",
+      "prompt": "Where should we simplify this design?",
+      "choices": null,
+      "actual": "refactor-deepen",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "refactor-deepen",
+      "expected": "refactor-deepen",
+      "prompt": "Deepen the implementation without changing behavior",
+      "choices": null,
+      "actual": "refactor-deepen",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "reflect",
+      "expected": "reflect",
+      "prompt": "What did we learn from shipping this?",
+      "choices": null,
+      "actual": "reflect",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "reflect",
+      "expected": "reflect",
+      "prompt": "Integrate learnings from the last sprint",
+      "choices": null,
+      "actual": "reflect",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "reflect",
+      "expected": "reflect",
+      "prompt": "Update our practices based on this completed work",
+      "choices": null,
+      "actual": "reflect",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "reflect",
+      "expected": "reflect",
+      "prompt": "Reflect on the shipped caching change and propose topic updates only if the evidence warrants them",
+      "choices": null,
+      "actual": "reflect",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "reflect",
+      "expected": "reflect",
+      "prompt": "What did our dogfood run actually show, and which conclusions are still only inferences?",
+      "choices": null,
+      "actual": "research",
+      "passed": false
+    },
+    {
+      "kind": "core",
+      "group": "release",
+      "expected": "release",
+      "prompt": "Cut a release from main",
+      "choices": null,
+      "actual": "release",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "release",
+      "expected": "release",
+      "prompt": "Publish a new version",
+      "choices": null,
+      "actual": "release",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "release",
+      "expected": "release",
+      "prompt": "Batch the landed PRs into a release",
+      "choices": null,
+      "actual": "release",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "research",
+      "expected": "research",
+      "prompt": "Investigate how other tools handle this",
+      "choices": null,
+      "actual": "research",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "research",
+      "expected": "research",
+      "prompt": "Assess the current state of the project",
+      "choices": null,
+      "actual": "research",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "research",
+      "expected": "research",
+      "prompt": "Research the options and bring back findings",
+      "choices": null,
+      "actual": "research",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "ruby-development",
+      "expected": "ruby-development",
+      "prompt": "Create a Rails controller for this resource",
+      "choices": null,
+      "actual": "ruby-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "ruby-development",
+      "expected": "ruby-development",
+      "prompt": "Add a Hotwire Turbo frame to this view",
+      "choices": null,
+      "actual": "ruby-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "ruby-development",
+      "expected": "ruby-development",
+      "prompt": "Write Minitest tests for this model",
+      "choices": null,
+      "actual": "ruby-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "security-compliance",
+      "expected": "security-compliance",
+      "prompt": "Check this code for hardcoded secrets",
+      "choices": null,
+      "actual": "security-compliance",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "security-compliance",
+      "expected": "security-compliance",
+      "prompt": "Run a security review on this module",
+      "choices": null,
+      "actual": "security-compliance",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "security-compliance",
+      "expected": "security-compliance",
+      "prompt": "Perform a threat analysis on the auth flow",
+      "choices": null,
+      "actual": "security-compliance",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "shape",
+      "expected": "shape",
+      "prompt": "Shape this idea into an issue",
+      "choices": null,
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "shape",
+      "expected": "shape",
+      "prompt": "Write a bounded proposal for the auth feature",
+      "choices": null,
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "shape",
+      "expected": "shape",
+      "prompt": "Turn this rough concept into an implementable proposal",
+      "choices": null,
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "shape",
+      "expected": "shape",
+      "prompt": "Break this issue into child issues",
+      "choices": null,
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "shape",
+      "expected": "shape",
+      "prompt": "Decompose this plan into atomic work items",
+      "choices": null,
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "ship",
+      "expected": "ship",
+      "prompt": "Ready to merge this PR",
+      "choices": null,
+      "actual": "ship",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "ship",
+      "expected": "ship",
+      "prompt": "Review and land this branch",
+      "choices": null,
+      "actual": "ship",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "ship",
+      "expected": "ship",
+      "prompt": "Ship this pull request",
+      "choices": null,
+      "actual": "ship",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "strategy",
+      "expected": "strategy",
+      "prompt": "What's our strategy?",
+      "choices": null,
+      "actual": "strategy",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "strategy",
+      "expected": "strategy",
+      "prompt": "Update the strategic direction",
+      "choices": null,
+      "actual": "strategy",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "strategy",
+      "expected": "strategy",
+      "prompt": "Clarify personas and long-term positioning",
+      "choices": null,
+      "actual": "strategy",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "triage",
+      "expected": "triage",
+      "prompt": "Process the intake queue",
+      "choices": null,
+      "actual": "triage",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "triage",
+      "expected": "triage",
+      "prompt": "Turn unresolved notes into actionable tasks",
+      "choices": null,
+      "actual": "triage",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "triage",
+      "expected": "triage",
+      "prompt": "Prioritize the backlog of sparks and tasks",
+      "choices": null,
+      "actual": "triage",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "typescript-development",
+      "expected": "typescript-development",
+      "prompt": "Create a React component for this design",
+      "choices": null,
+      "actual": "typescript-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "typescript-development",
+      "expected": "typescript-development",
+      "prompt": "Set up a Next.js App Router page",
+      "choices": null,
+      "actual": "typescript-development",
+      "passed": true
+    },
+    {
+      "kind": "core",
+      "group": "typescript-development",
+      "expected": "typescript-development",
+      "prompt": "Write Vitest tests for this utility",
+      "choices": null,
+      "actual": "typescript-development",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "idea-triage",
+      "choices": [
+        "idea",
+        "triage"
+      ],
+      "expected": "idea",
+      "prompt": "I just had a spark for a future webhook feature; capture it before we lose it",
+      "actual": "idea",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "idea-triage",
+      "choices": [
+        "idea",
+        "triage"
+      ],
+      "expected": "triage",
+      "prompt": "Go through the unresolved sparks and decide which ones become tasks",
+      "actual": "triage",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "research-explore",
+      "choices": [
+        "research",
+        "explore"
+      ],
+      "expected": "explore",
+      "prompt": "Let's generate a few possible directions before choosing one",
+      "actual": "brainstorm",
+      "passed": false
+    },
+    {
+      "kind": "conflict",
+      "group": "research-explore",
+      "choices": [
+        "research",
+        "explore"
+      ],
+      "expected": "research",
+      "prompt": "Survey the current project and external options, then report findings",
+      "actual": "research",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "explore-triage",
+      "choices": [
+        "explore",
+        "triage"
+      ],
+      "expected": "triage",
+      "prompt": "Go through the deferred intents and decide which to resume",
+      "actual": "project-management",
+      "passed": false
+    },
+    {
+      "kind": "conflict",
+      "group": "explore-shape",
+      "choices": [
+        "explore",
+        "shape"
+      ],
+      "expected": "shape",
+      "prompt": "This direction is settled; turn it into a bounded change we can implement",
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "maintenance-workflow",
+      "choices": [
+        "loaf-reference",
+        "triage"
+      ],
+      "expected": "loaf-reference",
+      "prompt": "Bring this project's Loaf installation current after the upgrade",
+      "actual": "bootstrap",
+      "passed": false
+    },
+    {
+      "kind": "conflict",
+      "group": "linear-orchestration",
+      "choices": [
+        "linear",
+        "orchestration"
+      ],
+      "expected": "linear",
+      "prompt": "Review the current Linear cycle, assign the unowned issues, and report what changed",
+      "actual": "linear",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "linear-orchestration",
+      "choices": [
+        "linear",
+        "orchestration"
+      ],
+      "expected": "orchestration",
+      "prompt": "Coordinate three agents working on separate issues and keep their progress aligned",
+      "actual": "orchestration",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "linear-migrate-project",
+      "choices": [
+        "linear",
+        "migrate-project"
+      ],
+      "expected": "migrate-project",
+      "prompt": "Move the open issues in this local Loaf project into our Linear project",
+      "actual": "migrate-project",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "linear-migrate-project",
+      "choices": [
+        "linear",
+        "migrate-project"
+      ],
+      "expected": "linear",
+      "prompt": "Update the owners and priorities of issues already in our Linear project",
+      "actual": "linear",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "strategy-reflect",
+      "choices": [
+        "strategy",
+        "reflect"
+      ],
+      "expected": "strategy",
+      "prompt": "Define the product direction and personas before the next delivery",
+      "actual": "strategy",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "strategy-reflect",
+      "choices": [
+        "strategy",
+        "reflect"
+      ],
+      "expected": "reflect",
+      "prompt": "Fold the lessons from this shipped work back into our practices",
+      "actual": "reflect",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "ship-release",
+      "choices": [
+        "ship",
+        "release"
+      ],
+      "expected": "ship",
+      "prompt": "Verify this branch and land the pull request",
+      "actual": "ship",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "ship-release",
+      "choices": [
+        "ship",
+        "release"
+      ],
+      "expected": "release",
+      "prompt": "Publish a version from the PRs already merged to main",
+      "actual": "release",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-shape",
+      "choices": [
+        "architecture",
+        "shape"
+      ],
+      "expected": "architecture",
+      "prompt": "Update the current persistence architecture topic with why SQLite was chosen over markdown",
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-shape",
+      "choices": [
+        "architecture",
+        "shape"
+      ],
+      "expected": "shape",
+      "prompt": "Turn this rough storage idea into a bounded Change with risks and scope",
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-documentation-standards",
+      "choices": [
+        "architecture",
+        "documentation-standards"
+      ],
+      "expected": "architecture",
+      "prompt": "Consolidate these old ADRs into living architecture topics without losing their rationale",
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-knowledge-base",
+      "choices": [
+        "architecture",
+        "knowledge-base"
+      ],
+      "expected": "architecture",
+      "prompt": "Where should we maintain the current storage model, its invariants, and rejected alternatives?",
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-reflect",
+      "choices": [
+        "architecture",
+        "reflect"
+      ],
+      "expected": "reflect",
+      "prompt": "What did the shipped operator journey teach us, and which strategic documents need updating?",
+      "actual": "reflect",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-reflect",
+      "choices": [
+        "architecture",
+        "reflect"
+      ],
+      "expected": "architecture",
+      "prompt": "Evaluate whether our costly runtime commitment deserves a separate ADR rather than only topic rationale",
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "idea-shape",
+      "choices": [
+        "idea",
+        "shape"
+      ],
+      "expected": "idea",
+      "prompt": "Quick — jot down this notification idea before I forget it",
+      "actual": "idea",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "idea-shape",
+      "choices": [
+        "idea",
+        "shape"
+      ],
+      "expected": "shape",
+      "prompt": "This notification concept has enough constraints now — bound it into a Change with scope and rabbit holes",
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "brainstorm-shape",
+      "choices": [
+        "brainstorm",
+        "shape"
+      ],
+      "expected": "brainstorm",
+      "prompt": "I don't know which direction to take on notifications yet — help me explore a few before we commit to one",
+      "actual": "explore",
+      "passed": false
+    },
+    {
+      "kind": "conflict",
+      "group": "brainstorm-shape",
+      "choices": [
+        "brainstorm",
+        "shape"
+      ],
+      "expected": "shape",
+      "prompt": "We've settled on push notifications — bound the scope, risks, and Implementation Units for it",
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "pitch-shape",
+      "choices": [
+        "pitch",
+        "shape"
+      ],
+      "expected": "pitch",
+      "prompt": "I have a raw concept — grill the problem, who has it, and value proposition before we bound a solution",
+      "actual": "pitch",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "pitch-shape",
+      "choices": [
+        "pitch",
+        "shape"
+      ],
+      "expected": "shape",
+      "prompt": "This idea already has a problem brief — bound it into a Change with scope and risks",
+      "actual": "shape",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "pitch-triage",
+      "choices": [
+        "pitch",
+        "triage"
+      ],
+      "expected": "pitch",
+      "prompt": "Triage handed me this intake item as pitch — run the problem-discovery ceremony on it",
+      "actual": "pitch",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "pitch-triage",
+      "choices": [
+        "pitch",
+        "triage"
+      ],
+      "expected": "triage",
+      "prompt": "Process the intake queue and choose dispositions across sparks and ideas",
+      "actual": "triage",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "foundations-git-workflow-documentation-standards",
+      "choices": [
+        "foundations",
+        "git-workflow",
+        "documentation-standards"
+      ],
+      "expected": "foundations",
+      "prompt": "Check whether this change follows our general code quality conventions",
+      "actual": "foundations",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "foundations-git-workflow-documentation-standards",
+      "choices": [
+        "foundations",
+        "git-workflow",
+        "documentation-standards"
+      ],
+      "expected": "git-workflow",
+      "prompt": "Write a Conventional Commit and PR description for this branch",
+      "actual": "git-workflow",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "foundations-git-workflow-documentation-standards",
+      "choices": [
+        "foundations",
+        "git-workflow",
+        "documentation-standards"
+      ],
+      "expected": "documentation-standards",
+      "prompt": "Update the architecture and API documentation formatting style guide for this change",
+      "actual": "documentation-standards",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "triage-project-management",
+      "choices": [
+        "triage",
+        "project-management"
+      ],
+      "expected": "triage",
+      "expected_after": "project-management",
+      "prompt": "Walk through the open issues in the v0.9 milestone with me and decide which move forward, which wait, and which get closed",
+      "actual": "triage",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "triage-project-management",
+      "choices": [
+        "triage",
+        "project-management"
+      ],
+      "expected": "triage",
+      "expected_after": "project-management",
+      "prompt": "I jotted a handful of private notes last week; move the ones worth keeping into the tracker backlog and drop the rest",
+      "actual": "triage",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "triage-project-management",
+      "choices": [
+        "triage",
+        "project-management"
+      ],
+      "expected": "triage",
+      "expected_after": "project-management",
+      "prompt": "Go through the open backlog issues and decide which advance, which stay parked for now, and which need to go back for more problem discovery",
+      "actual": "triage",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "triage-project-management",
+      "choices": [
+        "triage",
+        "project-management"
+      ],
+      "expected": "project-management",
+      "expected_after": "project-management",
+      "prompt": "File an issue in our tracker for the missing timeout on the retry loop; we'll handle it later, not in this branch",
+      "actual": "project-management",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "loaf-reference-project-management",
+      "choices": [
+        "loaf-reference",
+        "project-management"
+      ],
+      "expected": "loaf-reference",
+      "expected_after": "project-management",
+      "prompt": "Once a review passes, what evidence gets carried forward to the release step, and which step is responsible for recording it? Just explain, don't change anything",
+      "actual": "loaf-reference",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "loaf-reference-project-management",
+      "choices": [
+        "loaf-reference",
+        "project-management"
+      ],
+      "expected": "project-management",
+      "expected_after": "project-management",
+      "prompt": "Before anyone writes code for issue 212, confirm in the tracker that its scope and done criteria are settled and that it is actually the selected work",
+      "actual": "project-management",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "orchestration-implement",
+      "choices": [
+        "orchestration",
+        "implement"
+      ],
+      "expected": "orchestration",
+      "expected_after": "implement",
+      "prompt": "This issue has three independent parts; hand them to parallel workers and pull their results together into one evidence summary",
+      "actual": "orchestration",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "orchestration-implement",
+      "choices": [
+        "orchestration",
+        "implement"
+      ],
+      "expected": "implement",
+      "expected_after": "implement",
+      "prompt": "Scope and done criteria for this issue are confirmed and it's selected; write the code and commit it in small, verified steps",
+      "actual": "project-management",
+      "passed": false
+    },
+    {
+      "kind": "conflict",
+      "group": "orchestration-ship",
+      "choices": [
+        "orchestration",
+        "ship"
+      ],
+      "expected": "orchestration",
+      "expected_after": "ship",
+      "prompt": "Fan this diff out to separate reviewers for security, performance, and test coverage, then consolidate their findings; don't make a merge call yet",
+      "actual": "orchestration",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "orchestration-ship",
+      "choices": [
+        "orchestration",
+        "ship"
+      ],
+      "expected": "ship",
+      "expected_after": "ship",
+      "prompt": "The work on this branch is finished; check each done criterion against the diff and tell me whether it can land",
+      "actual": "ship",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "brainstorm-pitch",
+      "choices": [
+        "brainstorm",
+        "pitch"
+      ],
+      "expected": "brainstorm",
+      "expected_after": "pitch",
+      "prompt": "We're mid-way through weighing the retry design. Hold off judging anything for now: list every option, including doing nothing, with the trade-offs of each, and jot down any side ideas that come up along the way.",
+      "actual": "brainstorm",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "brainstorm-pitch",
+      "choices": [
+        "brainstorm",
+        "pitch"
+      ],
+      "expected": "pitch",
+      "expected_after": "pitch",
+      "prompt": "My gut says the answer is a --retry flag on sync, but I'm not sure who's actually affected or what they need. Help me think it through before we commit to anything.",
+      "actual": "pitch",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "explore-pitch",
+      "choices": [
+        "explore",
+        "pitch"
+      ],
+      "expected": "explore",
+      "expected_after": "pitch",
+      "prompt": "We haven't picked a direction for offline support. Work through the candidate directions with me, keep a checkpoint that survives context compaction or a switch to another coding tool, and file any direction that firms up as a backlog issue.",
+      "actual": "explore",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "explore-pitch",
+      "choices": [
+        "explore",
+        "pitch"
+      ],
+      "expected": "pitch",
+      "expected_after": "pitch",
+      "prompt": "Can we poke around offline mode for a bit? Nothing's decided and I'm not sure who'd even use it.",
+      "actual": "research",
+      "passed": false
+    },
+    {
+      "kind": "conflict",
+      "group": "strategy-reflect",
+      "choices": [
+        "strategy",
+        "reflect"
+      ],
+      "expected": "strategy",
+      "expected_after": "reflect",
+      "prompt": "Before I start on the billing work: I think our assumption that users are solo devs is wrong. Revise the personas and the problem framing in our direction doc now, not after we ship.",
+      "actual": "strategy",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "strategy-reflect",
+      "choices": [
+        "strategy",
+        "reflect"
+      ],
+      "expected": "strategy",
+      "expected_after": "reflect",
+      "prompt": "Who are we really building for, and who else is competing for them? Write it up so the roadmap has something to stand on.",
+      "actual": "strategy",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "strategy-reflect",
+      "choices": [
+        "strategy",
+        "reflect"
+      ],
+      "expected": "reflect",
+      "expected_after": "reflect",
+      "prompt": "Team workspaces landed last week. Check whether what the rollout showed changes our vision or the personas, and propose edits only where the evidence backs them.",
+      "actual": "reflect",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-knowledge-base",
+      "choices": [
+        "architecture",
+        "knowledge-base"
+      ],
+      "expected": "knowledge-base",
+      "expected_after": "architecture",
+      "prompt": "Which guides under docs/knowledge point at source files that changed since they were last reviewed? Flag the out-of-date ones so we can refresh them",
+      "actual": "knowledge-base",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-knowledge-base",
+      "choices": [
+        "architecture",
+        "knowledge-base"
+      ],
+      "expected": "architecture",
+      "expected_after": "architecture",
+      "prompt": "Write up why the hook runner calls the native CLI instead of embedding shell scripts, including the options we rejected",
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-documentation-standards",
+      "choices": [
+        "architecture",
+        "documentation-standards"
+      ],
+      "expected": "documentation-standards",
+      "expected_after": "architecture",
+      "prompt": "Proofread the CONTRIBUTING guide draft and tell me where it is hard to follow, badly organized, or inconsistent in tone",
+      "actual": "documentation-standards",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "architecture-documentation-standards",
+      "choices": [
+        "architecture",
+        "documentation-standards"
+      ],
+      "expected": "architecture",
+      "expected_after": "architecture",
+      "prompt": "Our docs still describe the old three-stage flow; carry the reasoning that still holds into the current topics and drop the rest",
+      "actual": "architecture",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "documentation-standards-release",
+      "choices": [
+        "documentation-standards",
+        "release"
+      ],
+      "expected": "documentation-standards",
+      "expected_after": "release",
+      "prompt": "Add a plain-language Unreleased changelog entry for the hook timeout fix so users understand what changed",
+      "actual": "documentation-standards",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "documentation-standards-release",
+      "choices": [
+        "documentation-standards",
+        "release"
+      ],
+      "expected": "release",
+      "expected_after": "release",
+      "prompt": "Everything planned for 0.7 is merged; bump the version, tag it, and put out the GitHub release",
+      "actual": "release",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "debugging-foundations",
+      "choices": [
+        "debugging",
+        "foundations"
+      ],
+      "expected": "debugging",
+      "expected_after": "foundations",
+      "prompt": "The import job started returning empty results after yesterday's deploy; find the root cause before changing any code",
+      "actual": "debugging",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "debugging-foundations",
+      "choices": [
+        "debugging",
+        "foundations"
+      ],
+      "expected": "foundations",
+      "expected_after": "foundations",
+      "prompt": "Define the lint, formatting, and naming rules this codebase should hold every change to, so reviewers apply the same bar",
+      "actual": "foundations",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "foundations-security-compliance",
+      "choices": [
+        "foundations",
+        "security-compliance"
+      ],
+      "expected": "security-compliance",
+      "expected_after": "foundations",
+      "prompt": "We're adding SSO; map out how an attacker could abuse the login callback and the token handling, and what we should guard against",
+      "actual": "security-compliance",
+      "passed": true
+    },
+    {
+      "kind": "conflict",
+      "group": "foundations-security-compliance",
+      "choices": [
+        "foundations",
+        "security-compliance"
+      ],
+      "expected": "foundations",
+      "expected_after": "foundations",
+      "prompt": "Write the new signup form handler following our usual coding conventions, including the standard input validation",
+      "actual": "foundations",
+      "passed": true
+    }
+  ]
+}
