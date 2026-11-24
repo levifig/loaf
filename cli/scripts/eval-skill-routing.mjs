@@ -183,6 +183,10 @@ const TEST_CASES = {
     "Explore several approaches before we choose one",
     "Resume the workflow exploration where we left off",
     "Start an exploration of the caching options and checkpoint it",
+    // Moved from the retired brainstorm skill.
+    "Apply the brainstorm divergence stance to this exploration",
+    "What does the brainstorm technique say about capturing sparks during divergence?",
+    "Use the structured brainstorm questioning stance on this problem",
   ],
   "power-systems-modeling": [
     "Calculate the thermal rating for this conductor",
@@ -264,26 +268,26 @@ const CONFLICT_PROBES = [
   },
   {
     group: "research-explore",
-    choices: ["research"],
+    choices: ["research", "pitch"],
     expected: "pitch",
     expected_after: "pitch",
     prompt: "Let's generate a few possible directions before choosing one",
   },
   {
     group: "research-explore",
-    choices: ["research"],
+    choices: ["research", "pitch"],
     expected: "research",
     prompt: "Survey the current project and external options, then report findings",
   },
   {
     group: "explore-triage",
-    choices: ["triage"],
+    choices: ["pitch", "triage"],
     expected: "triage",
     prompt: "Go through the deferred intents and decide which to resume",
   },
   {
     group: "explore-shape",
-    choices: ["shape"],
+    choices: ["pitch", "shape"],
     expected: "shape",
     prompt: "This direction is settled; turn it into a bounded change we can implement",
   },
@@ -391,14 +395,14 @@ const CONFLICT_PROBES = [
   },
   {
     group: "brainstorm-shape",
-    choices: ["shape"],
+    choices: ["pitch", "shape"],
     expected: "pitch",
     expected_after: "pitch",
     prompt: "I don't know which direction to take on notifications yet — help me explore a few before we commit to one",
   },
   {
     group: "brainstorm-shape",
-    choices: ["shape"],
+    choices: ["pitch", "shape"],
     expected: "shape",
     prompt: "We've settled on push notifications — bound the scope, risks, and Implementation Units for it",
   },

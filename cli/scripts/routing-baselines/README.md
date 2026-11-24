@@ -54,7 +54,8 @@ Some `expected_after` values are assumptions that the merge work must confirm:
 
 ### Case changes since this baseline
 
-- **brainstorm and explore folded into pitch, strategy into reflect:** explore's three core cases now expect `pitch` and strategy's three expect `reflect`. brainstorm's three core cases were dropped because each asks for "the brainstorm technique" by name, which no longer exists. The four discovery and three strategy merge probes now expect their `expected_after` owner. So do the older "generate a few possible directions" and "help me explore a few" probes, which also carry `expected_after: pitch`. The older "Define the product direction and personas" probe now expects `reflect`. The retired skills are gone from every probe's `choices`. Group names are unchanged so per-group results stay comparable. The suite is now 187 cases.
+- **brainstorm and explore folded into pitch, strategy into reflect:** explore's three core cases now expect `pitch` and strategy's three expect `reflect`. The four discovery and three strategy merge probes now expect their `expected_after` owner. So do the older "generate a few possible directions" and "help me explore a few" probes, which also carry `expected_after: pitch`. The older "Define the product direction and personas" probe now expects `reflect`. Group names are unchanged so per-group results stay comparable.
+- **Later:** in each probe's `choices`, the retired skill was replaced by its new owner, so every probe's choices contain its `expected` value. brainstorm's three core cases were first dropped, then moved byte-identically under pitch, bringing the suite back to 190 cases. The two post-merge runs below measured 187 cases, without them.
 
 ### Limits
 
@@ -111,7 +112,7 @@ The first post-merge run above came in below the baseline, so two descriptions w
 
 Measured at commit `606c0766`, with the same `all` suite of 187 cases, once per model. These runs measure only this merge, before it was stacked on the four-skill merge and the `foundations` rename above.
 
-The comparison joins each case to its baseline answer by prompt. It scores both runs against the skill that should own the request after the merges (`expected_after` where present). Explore's moved core cases count as right in the baseline when they reached explore, which owned them then. "Affected" means the 28 cases whose owner is now pitch or reflect, plus any case either run answered with one of those skills or a retired one.
+The comparison joins each case to its baseline answer by prompt. It scores both runs against the skill that should own the request after the merges (`expected_after` where present). The moved core cases of explore and strategy count as right in the baseline when they reached the skill that owned them then: explore or strategy. "Affected" means the 28 cases whose owner is now pitch or reflect, plus any case either run answered with one of those skills or a retired one.
 
 | Model | Run's own score | All shared cases, against the post-merge owner | Affected cases |
 |---|---|---|---|
@@ -136,6 +137,8 @@ Token use was 582,723 input tokens per model, with 5,496 output tokens for Opus 
 Pitch's description was changed at commit `e13c621c`: its start now says it "starts or resumes a checkpointed Exploration", and it sends context transfer to handoff. This branch was also rebased onto the tuned four-skill merge (`1e78b3a9`), so this run measures the combined state that will ship: 31 skills. The full suite ran once per model at `a7a99993`. Prompts and cases are unchanged.
 
 Affected cases are counted as above. Opus has 29 this time, because it answered pitch on a shape case. The "all shared cases" totals are left out: they mix in the four-skill merge's renames, whose own comparison is in the section above.
+
+A stricter comparison scores each baseline answer against what was correct when the baseline ran, instead of crediting only the moved core cases. That means each case's `expected` at the time, with the two corrected labels described in the first section. On this run's affected cases, Opus goes from 23 to 26 and Sonnet from 21 to 27. With the original, uncorrected labels the baseline figures are 25 for Opus and 23 for Sonnet.
 
 | Model | Run's own score | Affected: baseline | Affected: first run (`606c0766`) | Affected: this run |
 |---|---|---|---|---|
