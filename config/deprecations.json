@@ -101,6 +101,30 @@
       "reason": "merged into loaf-core, which names the security checks and hooks and carries the secrets rule",
       "signoff": "native issue 470, maintainer-selected clean cut",
       "skill_homes": []
+    },
+    {
+      "skill": "brainstorm",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "merged into pitch, which now owns divergent option work",
+      "signoff": "native issue 468, maintainer-selected clean cut",
+      "skill_homes": []
+    },
+    {
+      "skill": "explore",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "merged into pitch; Exploration checkpoint guidance moved to loaf-core continuity",
+      "signoff": "native issue 468, maintainer-selected clean cut",
+      "skill_homes": []
+    },
+    {
+      "skill": "strategy",
+      "since": "unreleased",
+      "window": "one-release",
+      "reason": "merged into reflect, which now maintains VISION and STRATEGY at any time",
+      "signoff": "native issue 468, maintainer-selected clean cut",
+      "skill_homes": []
     }
   ],
   "retired_agents": [],

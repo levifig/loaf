@@ -11,9 +11,71 @@ import (
 )
 
 // mergedSkills are the skills folded into loaf-core, architecture, and
-// release, plus the pre-rename foundations name. None of them ships, and
+// release, plus the pre-rename foundations name, and the discovery and
+// strategy skills folded into pitch and reflect. None of them ships, and
 // upgrade removes their installed copies.
-var mergedSkills = []string{"foundations", "knowledge-base", "documentation-standards", "debugging", "security-compliance"}
+var mergedSkills = []string{"foundations", "knowledge-base", "documentation-standards", "debugging", "security-compliance", "brainstorm", "explore", "strategy"}
+
+// foldedRules are the rules that brainstorm, explore and strategy handed to
+// their new owners. Each must reach every build target, so removing one from
+// its owner fails here rather than silently.
+var foldedRules = []struct {
+	rel   string
+	rules []string
+}{
+	{"pitch/SKILL.md", []string{
+		"Treat a proposed solution as one option",
+		"including doing nothing and a redesign",
+		"Record each rejected option and why it fell",
+		"Capture side ideas as sparks",
+		"Do not create shared work during pitch unless the human explicitly says to file it",
+		"Weigh the options against VISION and STRATEGY",
+		"never edit a Core Doc from pitch",
+	}},
+	{"reflect/SKILL.md", []string{
+		"**Any time, both directions**",
+		"**Owner confirms every Core Doc update**",
+		"never edit VISION or STRATEGY without it",
+		"**Surface conflicts between Core Docs**",
+		"**Name anti-personas**",
+	}},
+	{"loaf-core/references/continuity.md", []string{
+		"## Explorations",
+		"**purpose:**",
+		"**conclusions:**",
+		"**unresolved:**",
+		"**next:**",
+		"A conversation handle or log path is provenance, never context.",
+		"A checkpoint never files tracker work",
+	}},
+}
+
+func TestFoldedDiscoveryAndStrategyRulesShipToEveryTarget(t *testing.T) {
+	repo := testRepositoryRoot(t)
+	for _, owner := range foldedRules {
+		body := readBuildFileString(t, filepath.Join(repo, "content", "skills", filepath.FromSlash(owner.rel)))
+		for _, rule := range owner.rules {
+			if !strings.Contains(body, rule) {
+				t.Errorf("content/skills/%s lost folded rule %q", owner.rel, rule)
+			}
+		}
+	}
+	root := setupIsolatedRepositoryBuildRoot(t)
+	if err := (Runner{WorkingDir: root}).Run([]string{"build"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range defaultBuildTargets {
+		skills := nativeBuildSkillTreeDir(root, target)
+		for _, owner := range foldedRules {
+			body := readBuildFileString(t, filepath.Join(skills, filepath.FromSlash(owner.rel)))
+			for _, rule := range owner.rules {
+				if !strings.Contains(body, rule) {
+					t.Errorf("%s build of %s lost folded rule %q", target, owner.rel, rule)
+				}
+			}
+		}
+	}
+}
 
 func TestMergedSkillsAreRetiredAndAbsentFromBuildOutput(t *testing.T) {
 	repo := testRepositoryRoot(t)

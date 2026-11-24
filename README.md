@@ -47,11 +47,10 @@ Discover the problem, author a brief, then bound an implementable Issue (or boot
 
 | Command | What It Does |
 |---------|--------------|
-| `/pitch` | Human problem-discovery: authors a problem narrative for shape, or project `docs/BRIEF.md` |
+| `/pitch` | Problem discovery and option exploration: weighs options and authors a problem narrative for shape, or project `docs/BRIEF.md` |
 | `/idea` | Quick capture of rough ideas for later triage / pitch / shape |
 | `/shape` | Bound canonical native tracker work in place (body, DoD criteria, out-of-scope), then verify by provider readback |
 | `/bootstrap` | Populate the Core Docs and `AGENTS.md`; with `source: pitch`, gap-interview and create the initial native tracker arc |
-| `/strategy` | Discover and document strategic direction |
 
 ### Implement and Ship
 
@@ -70,7 +69,7 @@ Integrate outcomes into strategic knowledge.
 | Command | What It Does |
 |---------|--------------|
 | `/housekeeping` | Review and archive or delete lifecycle-complete artifacts |
-| `/reflect` | Integrate learnings into the Core Docs |
+| `/reflect` | Update the Core Docs from evidence, including strategy discovery |
 | `/handoff` | Package context for another agent, branch, issue, or future conversation |
 
 ### Supporting Commands
@@ -114,24 +113,21 @@ Skills you invoke directly to drive work forward.
 
 | Skill | Activates When |
 |-------|----------------|
-| `pitch` | Human problem-discovery; authors a problem narrative at issue scale or `docs/BRIEF.md` at project scale |
+| `pitch` | Problem discovery and option exploration, including "help me think through options"; authors a problem narrative at issue scale or `docs/BRIEF.md` at project scale |
 | `shape` | Shaping a brief or raw ask into a bounded issue |
 | `implement` | Implementing a shaped issue |
 | `ship` | Reviewing, verifying, and landing one PR (the sole quality gate) |
 | `release` | Cutting a retroactive release from already-landed issues, and the changelog rules |
 | `research` | Investigating questions, comparing options |
-| `strategy` | Discovering or updating strategic direction |
 | `architecture` | Maintaining current architecture topics, knowledge files, and project docs, plus exceptional, narrow decision records |
 | `idea` | Quick capture of ideas for later evaluation |
 | `triage` | Review and process intake queue (sparks + raw ideas); may hand to pitch or shape |
-| `reflect` | Integrating learnings into the Core Docs |
+| `reflect` | Maintaining the Core Docs from evidence at any time, including strategy discovery and updates |
 | `housekeeping` | Reviewing and archiving agent artifacts |
 | `handoff` | Creating disposable transfer packets in `.agents/handoffs/` |
 | `bootstrap` | Bootstrapping new or existing projects (initial issue arc after pitched BRIEF) |
 | `linear` | Mapping `project-management/v1` operations to Linear through the harness's already-configured, authenticated native connection |
 | `github` | Mapping native issues and the selected GitHub board's workflow through an already-authenticated harness connection |
-
-Explore and brainstorm are agent techniques (not user slash entry); agents reach for them when direction is undecided — human entry intent routes to `/pitch`.
 
 ### Orchestration & Knowledge
 

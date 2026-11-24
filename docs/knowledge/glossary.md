@@ -24,7 +24,7 @@ A template under `content/templates/` distributed to consuming skills through `c
 
 ### Core Docs
 
-The three living project documents under `docs/`: `VISION.md` (purpose, target users, success criteria, non-goals), `STRATEGY.md` (current focus, personas, priorities, constraints), and `ARCHITECTURE.md` (the current system map and entry point to the architecture topics under `docs/architecture/`). Bootstrap populates them, and reflect updates them from shipped evidence. Architecture topics, `AGENTS.md`, the intake BRIEF, decision records, knowledge files, and reports are not Core Docs. Write the term in title case.
+The three living project documents under `docs/`: `VISION.md` (purpose, target users, success criteria, non-goals), `STRATEGY.md` (current focus, personas, priorities, constraints), and `ARCHITECTURE.md` (the current system map and entry point to the architecture topics under `docs/architecture/`). Bootstrap populates them, and reflect proposes updates to them from evidence at any time, each confirmed by the owner. Architecture topics, `AGENTS.md`, the intake BRIEF, decision records, knowledge files, and reports are not Core Docs. Write the term in title case.
 
 _Avoid_: strategic docs, operating documents, core documents
 

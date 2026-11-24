@@ -121,7 +121,7 @@ A selected contract may change documented direction; update that documentation i
 | Observability | [references/observability.md](references/observability.md) | Instrumenting services, logging, metrics, tracing |
 | Production Readiness | [references/production-readiness.md](references/production-readiness.md) | Validating services are ready for production |
 | Rideable Increments | [references/rideable-increments.md](references/rideable-increments.md) | Shaping, implementing, reviewing, or sequencing complete operator journeys |
-| Continuity | [references/continuity.md](references/continuity.md) | Recording decisions, selectively checkpointing reasoning, and recovering it in fresh context |
+| Continuity | [references/continuity.md](references/continuity.md) | Recording decisions, selectively checkpointing reasoning or an undecided Exploration, and recovering it in fresh context |
 
 ## Available Checks
 

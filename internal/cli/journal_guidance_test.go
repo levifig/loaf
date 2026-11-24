@@ -103,13 +103,11 @@ var runnableJournalCommand = regexp.MustCompile(`loaf\s+journal\s+log(\s+--[a-z-
 // that ask for journal writes. Each must name where the command forms live.
 var journalCommandRouteSurfaces = []string{
 	"content/skills/bootstrap/SKILL.md",
-	"content/skills/brainstorm/SKILL.md",
 	"content/skills/council/SKILL.md",
 	"content/skills/handoff/SKILL.md",
 	"content/skills/idea/SKILL.md",
 	"content/skills/reflect/SKILL.md",
 	"content/skills/research/SKILL.md",
-	"content/skills/strategy/SKILL.md",
 	"content/skills/loaf-reference/references/artifact-routing.md",
 	"content/templates/journal.md",
 }
