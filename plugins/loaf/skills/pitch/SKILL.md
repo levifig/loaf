@@ -34,6 +34,7 @@ Discover the problem with the user, widen the options before judging them, then 
 - Before judging, list the options with their tradeoffs, including doing nothing and a redesign of the surrounding approach. Do not commit to one until the alternatives are on the table.
 - Record each rejected option and why it fell. The narrative's handoff carries them so shape does not reopen them blindly.
 - Capture side ideas as sparks while they arise, using the spark capture command, and keep going; triage decides what happens to them.
+- Weigh the options against VISION and STRATEGY when the project has them. If evidence shows a premise there is wrong, say so and hand that evidence to reflect; never edit a Core Doc from pitch.
 - Read an existing native record when the user supplies a reference or when duplicate context materially affects the pitch.
 - Do not create shared work during pitch unless the human explicitly says to file it. That publish is the triage action: a native intent record in Backlog, not Todo, written as the project-management skill's [Record Writing](../project-management/references/record-writing.md) reference describes rather than as the narrative's headings. Otherwise fill an existing native record the same way, or hand the narrative and destination uncertainty to shape. Discovery may keep a solution as a hypothesis; speculative is not authorized.
 - When an undecided inquiry will outlast this conversation, its context window, or the current harness, keep it as an Exploration and checkpoint it as the loaf-core skill's continuity reference describes.
@@ -48,6 +49,7 @@ Discover the problem with the user, widen the options before judging them, then 
 - Proposed implementation details are separated from constraints and evidence.
 - The options considered include doing nothing and a redesign, and every rejected option names why it fell.
 - Side ideas raised along the way exist as sparks, not only in prose.
+- Options were weighed against VISION and STRATEGY where they exist; any premise found wrong was handed to reflect, and no Core Doc was edited.
 - No shared work was filed unless the human asked for it.
 - Existing tracker context is attributed to its native reference and has not been copied into a second work authority.
 - The handoff states whether shape should create a native record, update an existing one, or leave an unshaped Backlog intent in place.

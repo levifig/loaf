@@ -47,4 +47,4 @@ A conversation handle or log path is provenance, never context. Record one only 
 
 Resume anywhere with `loaf exploration context <ref> --json`. The four-field core returns whole; optional layers report counts, truncation, and their expansion command. Treat unavailable handles as lost; the checkpoint is the context. If `portable_context_present` is false, rebuild understanding from linked sources and write the missing checkpoint first. Read the tracker records a checkpoint names before continuing: if one is done, cancelled, or a duplicate, say so instead of silently reopening it.
 
-To park an inquiry, checkpoint it honestly. An Exploration is never paused or closed; it waits, resumable from its checkpoint. File a direction as tracker work only when the person asks, through the selected project-management provider.
+To park an inquiry, checkpoint it honestly. An Exploration is never paused or closed; it waits, resumable from its checkpoint. A checkpoint never files tracker work; filing a direction follows the pitch skill's filing rule.
