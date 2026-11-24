@@ -21,7 +21,7 @@ last_reviewed: '2026-11-06'
 - Optional QMD Integration
 - Related Guidance
 
-Use `loaf kb` to discover maintained documents, validate knowledge metadata, and find coverage that may need review. The [Knowledge Base skill](../../content/skills/knowledge-base/SKILL.md) owns the authoring workflow. [Authority Boundaries](../architecture/authority-boundaries.md#knowledge-and-tool-boundaries) explains knowledge ownership and optional tool policy.
+Use `loaf kb` to discover maintained documents, validate knowledge metadata, and find coverage that may need review. The [Architecture skill](../../content/skills/architecture/SKILL.md) owns the authoring workflow, with detail in its [Knowledge Files](../../content/skills/architecture/references/knowledge-files.md) reference. [Authority Boundaries](../architecture/authority-boundaries.md#knowledge-and-tool-boundaries) explains knowledge ownership and optional tool policy.
 
 ## Naming Conventions
 
@@ -43,7 +43,7 @@ covers:
 ---
 ```
 
-The [frontmatter schema](../../content/skills/knowledge-base/references/frontmatter-schema.md) documents optional `consumers`, `depends_on`, and `implementation_status` fields. Coverage resolves from the Git root. Avoid covering the entire source tree or unrelated documentation: that turns ordinary churn into review noise. Conceptual guidance without a code dependency may omit coverage.
+The [frontmatter schema](../../content/skills/architecture/references/knowledge-files.md#frontmatter-schema) documents optional `consumers`, `depends_on`, and `implementation_status` fields. Coverage resolves from the Git root. Avoid covering the entire source tree or unrelated documentation: that turns ordinary churn into review noise. Conceptual guidance without a code dependency may omit coverage.
 
 ## Discover and Validate
 

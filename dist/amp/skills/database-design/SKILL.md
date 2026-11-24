@@ -79,5 +79,5 @@ Exact equality only                  → Hash (rare)
 
 ## Related Skills
 
-- See `foundations` for code style, TDD, and verification principles
+- See `loaf-core` for code style, TDD, and verification principles
 - See `infrastructure-management` for connection pooling and deployment patterns

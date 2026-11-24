@@ -101,7 +101,7 @@ Hooks are defined in `config/hooks.yaml` grouped under `pre-tool`, `post-tool`, 
 hooks:
   pre-tool:
     - id: check-secrets
-      skill: security-compliance
+      skill: loaf-core
       failClosed: true
       blocking: true
       matcher: "Edit|Write|Bash"
@@ -139,11 +139,11 @@ Each pre-tool evaluation counts a content-free local observation when the projec
 | Hook | Skill | Matcher | Blocking | What It Does |
 |------|-------|---------|:--------:|-------------|
 | `artifact-body-write` | orchestration | Edit\|Write\|Bash | Yes (failClosed) | Protects stored artifact bodies and projections while permitting authored reports and file-backed councils |
-| `artifact-names` | foundations | Bash | Yes (failClosed) | Checks tracked artifact filenames before commit |
-| `check-secrets` | security-compliance | Edit\|Write\|Bash | Yes (failClosed) | Scans file content and Bash commands for hardcoded secrets |
+| `artifact-names` | loaf-core | Bash | Yes (failClosed) | Checks tracked artifact filenames before commit |
+| `check-secrets` | loaf-core | Edit\|Write\|Bash | Yes (failClosed) | Scans file content and Bash commands for hardcoded secrets |
 | `render-drift` | orchestration | Bash | Yes (failClosed) | Checks stamped durable renders before push |
 | `ephemeral-provenance` | orchestration | Bash | Yes (failClosed) | Blocks tracked ephemeral Markdown and dangling references from retained specs before push |
-| `security-audit` | security-compliance | Bash | Yes (failClosed) | Blocks dangerous shell patterns; eligible nontrivial commands run available scanners only for thorough validation or reviewer/implementer agent context |
+| `security-audit` | loaf-core | Bash | Yes (failClosed) | Blocks dangerous shell patterns; eligible nontrivial commands run available scanners only for thorough validation or reviewer/implementer agent context |
 | `github-account` | git-workflow | Bash | Yes (failClosed) | Switches the active GitHub CLI account to match `.agents/loaf.json` before `gh` commands (pass-with-warning), exempting `gh auth` administration; blocks when the configured identity cannot be established |
 | `validate-push` | git-workflow | Bash | Advisory | Verifies version bump, CHANGELOG, build before push |
 | `workflow-pre-pr` | git-workflow | Bash | Yes (failClosed), opted-in repos | Checks declared Issue coverage versus the review base and PR format; other repos receive generic advisory reminders |
@@ -173,7 +173,7 @@ Amp deliberately omits `workflow-pre-merge`, `workflow-pre-push`, and `workflow-
 
 The current registry uses command hooks for context and advisory guidance, not prompt hooks. Do not change that dispatch type merely because the emitted content is a prompt to the agent.
 
-The maintained PreCompact journal hook is a command hook owned by Foundations. It emits selective capture guidance, not a blocking prompt gate or automatic summary. Its delivery depends on the harness and mode; ordinary capture also lives directly in managed project instructions and does not require this event.
+The maintained PreCompact journal hook is a command hook owned by Loaf Core. It emits selective capture guidance, not a blocking prompt gate or automatic summary. Its delivery depends on the harness and mode; ordinary capture also lives directly in managed project instructions and does not require this event.
 
 ### Claude Code
 
@@ -183,7 +183,7 @@ Prompt hooks ask an LLM to return a structured decision: `ok: true` allows the a
 
 `loaf journal log --from-hook` still parses supported git/gh/task event payloads, including result evidence, and silently skips normalized subagent invocations. This compatibility entry point does not mean automatic capture is installed.
 
-The current registry installs no git-event, PR-event, task-completion, or Linear-magic journal auto-entry hook. Capture meaningful outcomes explicitly through ordinary journal logging. Foundations owns ordinary capture and selective synthesis; lack of a completion hook does not create a required end-of-session summary.
+The current registry installs no git-event, PR-event, task-completion, or Linear-magic journal auto-entry hook. Capture meaningful outcomes explicitly through ordinary journal logging. Loaf Core owns ordinary capture and selective synthesis; lack of a completion hook does not create a required end-of-session summary.
 
 ## Conversation Hooks
 

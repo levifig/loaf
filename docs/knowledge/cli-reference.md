@@ -18,7 +18,7 @@ The Loaf operating manual for agents: how to discover commands, diagnose project
 
 ## Operating Rules
 
-Write journal entries with the command form in [Foundations](../../content/skills/foundations/SKILL.md#journal-commands).
+Write journal entries with the command form in [Loaf Core](../../content/skills/loaf-core/SKILL.md#journal-commands).
 
 - Get exact, current syntax live: `loaf --help` lists every command, `loaf <command> --help` details one. This index is a map, not the contract.
 - Prefer `--json` surfaces when diagnosing: `loaf config check --json`, `loaf state doctor --json`. Parse the structured output instead of scraping human-readable text.

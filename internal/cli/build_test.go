@@ -824,16 +824,16 @@ func TestGeneratedAmpActiveSkillsContainNoLegacyWorkAuthority(t *testing.T) {
 	}
 	for _, name := range retiredFoundationsSkillScripts {
 		for _, dir := range []string{
-			filepath.Join("content", "skills", "foundations", "scripts"),
-			filepath.Join("dist", "skills", "foundations", "scripts"),
-			filepath.Join("dist", "opencode", "skills", "foundations", "scripts"),
-			filepath.Join("dist", "cursor", "skills", "foundations", "scripts"),
-			filepath.Join("dist", "codex", "skills", "foundations", "scripts"),
-			filepath.Join("dist", "amp", "skills", "foundations", "scripts"),
-			filepath.Join("plugins", "loaf", "skills", "foundations", "scripts"),
+			filepath.Join("content", "skills", "loaf-core", "scripts"),
+			filepath.Join("dist", "skills", "loaf-core", "scripts"),
+			filepath.Join("dist", "opencode", "skills", "loaf-core", "scripts"),
+			filepath.Join("dist", "cursor", "skills", "loaf-core", "scripts"),
+			filepath.Join("dist", "codex", "skills", "loaf-core", "scripts"),
+			filepath.Join("dist", "amp", "skills", "loaf-core", "scripts"),
+			filepath.Join("plugins", "loaf", "skills", "loaf-core", "scripts"),
 		} {
 			if _, err := os.Stat(filepath.Join(root, dir, name)); !os.IsNotExist(err) {
-				t.Errorf("retired foundations script %s remains in %s: %v", name, dir, err)
+				t.Errorf("retired loaf-core script %s remains in %s: %v", name, dir, err)
 			}
 		}
 	}
@@ -1188,7 +1188,7 @@ func TestRunnerBuildTargetOpenCodeRunsNativeTarget(t *testing.T) {
 	for _, want := range []string{
 		"mode: subagent",
 		"skills:",
-		"  - foundations",
+		"  - loaf-core",
 		"tools:",
 		"  Read: true",
 		"version: 9.8.7-test.1",
@@ -1674,7 +1674,7 @@ func TestRideableIncrementDoctrineAndContractShipToEveryTarget(t *testing.T) {
 		t.Fatalf("build error = %v\n%s", err, stdout.String())
 	}
 
-	doctrineRel := filepath.Join("foundations", "references", "rideable-increments.md")
+	doctrineRel := filepath.Join("loaf-core", "references", "rideable-increments.md")
 	doctrineSource := readBuildFileString(t, filepath.Join(root, "content", "skills", doctrineRel))
 	for _, target := range defaultBuildTargets {
 		skillsRoot := nativeBuildSkillTreeDir(root, target)
@@ -1762,7 +1762,7 @@ func TestLabeledHarnessSectionsRenderVerbatim(t *testing.T) {
 	}
 	files := []labeledFile{
 		{
-			rel: "foundations/references/permissions.md",
+			rel: "loaf-core/references/permissions.md",
 			documentTokens: map[string]int{
 				"## Orchestrator Allowlists by Harness": 1,
 				"## Permission Commands by Harness":     1,
@@ -1857,7 +1857,7 @@ func TestLabeledHarnessSectionsRenderVerbatim(t *testing.T) {
 				// For permissions orchestrator Claude fence, disambiguate among
 				// multiple ### Claude Code headings by preferring the one under
 				// the Orchestrator parent that contains TodoWrite.
-				if file.rel == "foundations/references/permissions.md" && section.heading == "### Claude Code" {
+				if file.rel == "loaf-core/references/permissions.md" && section.heading == "### Claude Code" {
 					parent, ok := labeledHarnessSectionBody(body, "## Orchestrator Allowlists by Harness")
 					if !ok {
 						t.Errorf("%s skills/%s missing orchestrator parent", target, file.rel)
@@ -1869,7 +1869,7 @@ func TestLabeledHarnessSectionsRenderVerbatim(t *testing.T) {
 						continue
 					}
 				}
-				if file.rel == "foundations/references/permissions.md" && section.heading == "### Codex" {
+				if file.rel == "loaf-core/references/permissions.md" && section.heading == "### Codex" {
 					parent, ok := labeledHarnessSectionBody(body, "## Orchestrator Allowlists by Harness")
 					if !ok {
 						t.Errorf("%s skills/%s missing orchestrator parent", target, file.rel)
@@ -1888,7 +1888,7 @@ func TestLabeledHarnessSectionsRenderVerbatim(t *testing.T) {
 				}
 			}
 			// Explicit cross-section binding for permissions orchestrator fences.
-			if file.rel == "foundations/references/permissions.md" {
+			if file.rel == "loaf-core/references/permissions.md" {
 				parent, ok := labeledHarnessSectionBody(body, "## Orchestrator Allowlists by Harness")
 				if !ok {
 					t.Errorf("%s skills/%s missing orchestrator parent", target, file.rel)
@@ -2890,7 +2890,7 @@ func seedNativeOpenCodeBuildFixture(t *testing.T, root string) {
 		"  independently.",
 		"mode: subagent",
 		"skills:",
-		"  - foundations",
+		"  - loaf-core",
 		"tools:",
 		"  Read: true",
 		"  Edit: true",

@@ -12,7 +12,7 @@ import (
 
 func TestScopedUpgradeRejectsInteractiveTargetSelection(t *testing.T) {
 	for _, flag := range []string{"-i", "--interactive"} {
-		if _, err := parseUpgradeArgs([]string{"--select", "skills/skill:foundations", flag}); err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+		if _, err := parseUpgradeArgs([]string{"--select", "skills/skill:loaf-core", flag}); err == nil || !strings.Contains(err.Error(), "cannot be combined") {
 			t.Fatalf("--select %s error = %v, want conflicting selection modes rejected", flag, err)
 		}
 	}
@@ -38,7 +38,7 @@ func TestScopedUpgradeDoesNotConsultUnselectedClaude(t *testing.T) {
 			if !installCommandExists("claude") {
 				t.Fatal("fixture did not expose claude on PATH")
 			}
-			args := []string{"upgrade", "--select", "skills/skill:foundations"}
+			args := []string{"upgrade", "--select", "skills/skill:loaf-core"}
 			if dryRun {
 				args = append(args, "--dry-run", "--json")
 			}
@@ -379,7 +379,7 @@ func TestScopedUpgradeRejectsLegacyWholeTargetBeforeWrites(t *testing.T) {
 				t.Fatal(err)
 			}
 			surfaces := hashScopedSurfaces(t, home)
-			args := []string{"upgrade", "--select", "opencode/hooks", "--select", "skills/skill:foundations"}
+			args := []string{"upgrade", "--select", "opencode/hooks", "--select", "skills/skill:loaf-core"}
 			if dryRun {
 				args = append(args, "--dry-run", "--json")
 			}
@@ -452,7 +452,7 @@ func TestUpgradeFollowUpPreservesResolvedTargetSelection(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			options := installOptions{upgrade: true, command: "upgrade", resolvedUpgradeTargets: test.targets}
-			plan := installDryRunPlan{Skills: []artifactPlanDecision{{Kind: "skill", ID: "skill:foundations", Action: planActionUpdate}}}
+			plan := installDryRunPlan{Skills: []artifactPlanDecision{{Kind: "skill", ID: "skill:loaf-core", Action: planActionUpdate}}}
 			commands := installPlanFollowUpCommands(options, plan, false)
 			if test.want == "" {
 				if len(commands) != 0 {

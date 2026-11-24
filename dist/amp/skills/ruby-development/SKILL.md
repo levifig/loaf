@@ -76,7 +76,7 @@ The DHH/37signals way: convention over configuration, programmer happiness, and 
 - Run migration safety checks for new migrations
 - Run tests for modified components
 - Run Brakeman scan if reviewing or doing thorough validation
-- Check CHANGELOG.md format if it exists
+- Follow the release skill's Changelog rules if the project keeps a CHANGELOG.md
 
 ## Quick Reference
 

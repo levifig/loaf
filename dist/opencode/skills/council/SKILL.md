@@ -25,7 +25,7 @@ Convene multi-agent councils for complex decisions requiring diverse expert pers
 
 ## Critical Rules
 
-Write journal entries with the command form in the Foundations skill's Journal Commands section.
+Write journal entries with the command form in the loaf-core skill's Journal Commands section.
 
 **Always**
 - Select odd number of agents (5 or 7) — never even

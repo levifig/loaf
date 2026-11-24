@@ -34,7 +34,7 @@ func harnessDriftHome(t *testing.T) string {
 // records which version that payload came from.
 func harnessDriftInstalledHarness(t *testing.T, configDir string, marker string) {
 	t.Helper()
-	mkdirAll(t, filepath.Join(configDir, "skills", "foundations"))
+	mkdirAll(t, filepath.Join(configDir, "skills", "loaf-core"))
 	if marker != "" {
 		writeInstallFile(t, filepath.Join(configDir, loafInstallMarkerFile), marker+"\n")
 	}
@@ -209,14 +209,14 @@ func TestHarnessDoctorReportsSharedSkillDriftWithoutMutation(t *testing.T) {
 			home, distributionRoot, _ := harnessDriftAmpPlannerFixture(t)
 			src := filepath.Join(distributionRoot, "dist", "amp", "skills")
 			dest := filepath.Join(home, ".agents", "skills")
-			writeInstallFile(t, filepath.Join(src, "foundations", "SKILL.md"), "# Original\n")
+			writeInstallFile(t, filepath.Join(src, "loaf-core", "SKILL.md"), "# Original\n")
 			if err := syncManagedSkillsDirIfExists(src, dest); err != nil {
 				t.Fatal(err)
 			}
 			wantStatus, wantAction := doctorWarn, planActionUpdate
-			changed := filepath.Join(src, "foundations", "SKILL.md")
+			changed := filepath.Join(src, "loaf-core", "SKILL.md")
 			if modified {
-				changed = filepath.Join(dest, "foundations", "SKILL.md")
+				changed = filepath.Join(dest, "loaf-core", "SKILL.md")
 				wantStatus, wantAction = doctorFail, planActionConflict
 			}
 			writeInstallFile(t, changed, "# Changed\n")
@@ -226,7 +226,7 @@ func TestHarnessDoctorReportsSharedSkillDriftWithoutMutation(t *testing.T) {
 				projectRoot: home, distributionRoot: distributionRoot,
 				cliVersion: harnessDriftBinaryFixtureVersion, stateHome: stateHome,
 			})
-			if result.Status != wantStatus || !strings.Contains(result.Detail, "Managed skills planner: "+wantAction+" skill:foundations") {
+			if result.Status != wantStatus || !strings.Contains(result.Detail, "Managed skills planner: "+wantAction+" skill:loaf-core") {
 				t.Fatalf("doctor = %#v, want %s for shared skill %s", result, wantStatus, wantAction)
 			}
 			if after := hashInstallFixtureTrees(t, home, distributionRoot, stateHome); after != before {

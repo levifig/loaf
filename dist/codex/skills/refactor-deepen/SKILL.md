@@ -228,5 +228,5 @@ architecture and exploratory flows.
 ## Related Skills
 
 - **architecture** — Explains, audits, and records durable architecture decisions; it no longer consumes refactor-deepen's relentless interview template
-- **knowledge-base** — Owns the underlying KB and glossary CLI verbs
+- **architecture** — Owns knowledge files and the underlying KB and glossary CLI verbs
 - **implement** — Where generic refactors (rename, extract, restructure) belong

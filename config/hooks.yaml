@@ -17,7 +17,7 @@
 
 hooks:
   pre-tool:
-    # Security Compliance - Secret scanning and security auditing (ENFORCEMENT)
+    # Loaf Core - Secret scanning and security auditing (ENFORCEMENT)
     - id: artifact-body-write
       skill: orchestration
       matcher: "Edit|Write|Bash"
@@ -27,7 +27,7 @@ hooks:
       description: Protect stored artifact bodies and generated projections; permit authored reports and file-backed councils
 
     - id: check-secrets
-      skill: security-compliance
+      skill: loaf-core
       matcher: "Edit|Write|Bash"
       blocking: true
       timeout: 30000
@@ -35,7 +35,7 @@ hooks:
       description: Check for hardcoded secrets before writing
 
     - id: security-audit
-      skill: security-compliance
+      skill: loaf-core
       matcher: "Bash"
       blocking: true
       timeout: 600000
@@ -77,7 +77,7 @@ hooks:
       description: Block tracked ephemeral Markdown and dangling references from retained spec records
 
     - id: artifact-names
-      skill: foundations
+      skill: loaf-core
       matcher: "Bash"
       if: "Bash(git commit:*)"
       blocking: true
@@ -144,9 +144,9 @@ hooks:
       description: Validate commit messages follow conventions
 
   post-tool:
-    # Knowledge Base - Staleness nudge (side-effect)
+    # Architecture - Knowledge-file staleness nudge (side-effect)
     - id: kb-staleness-nudge
-      skill: knowledge-base
+      skill: architecture
       type: command
       command: loaf check --hook kb-staleness-nudge
       matcher: "Edit|Write"
@@ -184,7 +184,7 @@ hooks:
     # Writes nothing itself: only the entries the model logs in response persist.
     # Must be type: command, not prompt (prompt stop hooks not supported outside REPL).
     - id: pre-compact
-      skill: foundations
+      skill: loaf-core
       type: command
       command: 'loaf journal context for-compact'
       event: PreCompact

@@ -50,7 +50,7 @@ func TestSkillContentHygieneStaleReferences(t *testing.T) {
 			required:  []string{"`database-design`"},
 		},
 		{
-			rel: "content/skills/foundations/references/code-style.md",
+			rel: "content/skills/loaf-core/references/code-style.md",
 			forbidden: []string{
 				"`python` skill",
 				"`typescript` skill",
@@ -63,7 +63,7 @@ func TestSkillContentHygieneStaleReferences(t *testing.T) {
 			},
 		},
 		{
-			rel:       "content/skills/knowledge-base/SKILL.md",
+			rel:       "content/skills/architecture/references/knowledge-files.md",
 			forbidden: []string{"CLAUDE.md", ".agents/AGENTS.md"},
 			required:  []string{"AGENTS.md"},
 		},
@@ -149,7 +149,10 @@ func TestArchitectureResourceOwnership(t *testing.T) {
 		source string
 		target string
 	}{
-		{"content/skills/documentation-standards/references/documentation.md", "content/skills/architecture/SKILL.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/references/knowledge-files.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/templates/knowledge-file.md"},
+		{"content/skills/architecture/SKILL.md", "content/skills/architecture/references/documentation-review.md"},
+		{"content/skills/release/SKILL.md", "content/skills/release/references/changelog.md"},
 		{"content/skills/architecture/SKILL.md", "content/skills/architecture/templates/architecture-topic.md"},
 		{"content/skills/architecture/SKILL.md", "content/skills/architecture/templates/legacy-adr.md"},
 		{"content/skills/architecture/SKILL.md", "content/skills/architecture/references/auditing-and-migration.md"},

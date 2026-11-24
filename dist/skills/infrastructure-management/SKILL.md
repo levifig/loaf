@@ -5,7 +5,7 @@ description: >-
   Use when writing Dockerfiles, configuring K8s manifests, setting up CI/CD, or
   managing deployments. Provides patterns for infrastructure as code. Not for
   application code (use development skills), database schema (use
-  database-design), or security audits (use security-compliance).
+  database-design), or security review of application code (use loaf-core).
 ---
 
 # Infrastructure

@@ -32,7 +32,7 @@ Capture ideas quickly with minimal friction.
 
 ## Critical Rules
 
-Write journal entries with the command form in the Foundations skill's Journal Commands section.
+Write journal entries with the command form in the loaf-core skill's Journal Commands section.
 
 - Speed over completeness -- capture quickly, shape later
 - 2-3 questions maximum -- don't turn capture into an interview
