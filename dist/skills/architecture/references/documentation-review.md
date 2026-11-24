@@ -17,6 +17,7 @@ For every documentation change:
 [ ] Spelling and grammar correct
 [ ] Code examples compile/run
 [ ] Links work
+[ ] No links into `.agents/` from tracked docs outside `.agents/`
 [ ] No outdated information
 ```
 

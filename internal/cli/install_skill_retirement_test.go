@@ -199,7 +199,7 @@ func TestLegacyRetirementManifestAndGeneratedOutputs(t *testing.T) {
 }
 
 func TestRetiredSkillsPreserveNameOnlyAndSymlinkedUserContent(t *testing.T) {
-	for _, name := range []string{"wrap", "breakdown", "cleanup", "council-session", "reference-session", "resume-session"} {
+	for _, name := range append([]string{"wrap", "breakdown", "cleanup", "council-session", "reference-session", "resume-session"}, mergedSkills...) {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			home := filepath.Join(root, "home")

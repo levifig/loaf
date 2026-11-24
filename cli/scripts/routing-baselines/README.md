@@ -100,5 +100,5 @@ The first post-merge run above came in below the baseline, so two descriptions w
 - **Every affected case passes on both models,** matching Opus's 33/33 in the baseline. The CONTRIBUTING proofreading, quality checklist and routine checkpoint cases now reach their owners. Sonnet's quality checklist case, which went to ship in the baseline, now passes too.
 - **No pull into `loaf-core`:** "Which loaf command shows the recent project journal?" is back with loaf-reference. "Diagnose why the installed Loaf targets are stale and repair them" still fails, now into `loaf-core`; in the baseline it failed into debugging.
 - **Changes outside the affected cases,** from one run each:
-  - On Opus, "Explain which component owns shared work and why; do not edit" went to loaf-reference instead of architecture.
+  - On Opus, "Explain which component owns shared work and why; do not edit" went to loaf-reference instead of architecture. It passed in the baseline and the first post-merge run, so the shorter architecture description in `84b4b28e` may have caused it; one run cannot tell that apart from variation.
   - On Sonnet, "Ready to merge this PR" went to git-workflow instead of ship. Neither skill changed in this merge.

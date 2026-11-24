@@ -132,7 +132,11 @@ func TestChangelogRulesHaveOneOwner(t *testing.T) {
 		}
 	}
 
-	restatements := []string{"Common Changelog", "Keep a Changelog", "`Changed`, `Added`", "Changed | Added", "release-facing"}
+	restatements := []string{
+		"Common Changelog", "Keep a Changelog", "`Changed`, `Added`", "Changed | Added", "release-facing",
+		// The required-entry rules.
+		"substantively updated Unreleased", "formatting-only", "skip label", "regardless of change size or category",
+	}
 	err := filepath.WalkDir(filepath.Join(repo, "content"), func(path string, entry fs.DirEntry, err error) error {
 		if err != nil || entry.IsDir() || filepath.Ext(path) != ".md" {
 			return err
@@ -195,4 +199,56 @@ func TestLoafCoreOwnsDebuggingEvidenceAndSecurityChecks(t *testing.T) {
 	if got := strings.Count(body, "**Secrets rule:**"); got != 1 {
 		t.Errorf("loaf-core carries %d secrets rules, want exactly one", got)
 	}
+	// Codex projects no pre-tool hooks, so the table must not promise them
+	// everywhere, and the fallback must stay.
+	if !strings.Contains(security, "on harnesses that run Loaf's pre-tool hooks") || !strings.Contains(security, "run `loaf check secrets` over the directories you changed before committing") {
+		t.Error("loaf-core Security overstates where the hooks run or lost the manual fallback")
+	}
+	for _, projection := range nativeCodexHookProjections() {
+		if projection.hookID == "check-secrets" || projection.hookID == "security-audit" {
+			t.Errorf("Codex now projects %s; update the loaf-core Security harness table", projection.hookID)
+		}
+	}
+
+	// A second secrets position anywhere in loaf-core's references would make
+	// the rule ambiguous again; references point at the rule instead.
+	refs, err := filepath.Glob(filepath.Join(repo, "content", "skills", "loaf-core", "references", "*.md"))
+	if err != nil || len(refs) == 0 {
+		t.Fatalf("loaf-core references: %v, %v", refs, err)
+	}
+	restatement := regexp.MustCompile(`(?i)secrets? manager|vault|env(ironment)? var(iable)?s? .*secret|secret.* env(ironment)? var`)
+	for _, ref := range refs {
+		for _, line := range strings.Split(readBuildFileString(t, ref), "\n") {
+			if match := restatement.FindString(line); match != "" {
+				t.Errorf("%s restates where secrets live (%q); point to the loaf-core skill's secrets rule", filepath.Base(ref), match)
+			}
+		}
+	}
+}
+
+// TestFoundationsOnlyInstallIsDetectedAndUpgradedToLoafCore covers an install
+// made before the rename, with no version marker or install record: its only
+// trace is the foundations skill. Upgrade must still find the harness, retire
+// foundations, and install loaf-core.
+func TestFoundationsOnlyInstallIsDetectedAndUpgradedToLoafCore(t *testing.T) {
+	root, home := setupInstallCommandFixture(t)
+	writeInstallDeprecationManifest(t, root, readBuildFileString(t, filepath.Join(testRepositoryRoot(t), installDeprecationManifestPath)))
+	cursorConfig := filepath.Join(home, ".cursor")
+	if isLoafInstalledForTargetInstall("cursor", cursorConfig, home) {
+		t.Fatal("empty Cursor home must not read as a Loaf install")
+	}
+	seedOwnedManagedSkill(t, filepath.Join(cursorConfig, "skills"), "foundations", "# Foundations\n")
+	if !isLoafInstalledForTargetInstall("cursor", cursorConfig, home) {
+		t.Fatal("a Cursor home whose only Loaf skill is foundations must read as a Loaf install")
+	}
+	writeInstallFile(t, filepath.Join(root, "dist", "cursor", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
+	installTestHookDistribution(t, root, "cursor")
+
+	var stdout bytes.Buffer
+	runner := Runner{Stdout: &stdout, WorkingDir: root, Executable: distributionFixtureExecutable(root)}
+	if err := runner.Run([]string{"upgrade", "--yes"}); err != nil {
+		t.Fatalf("upgrade: %v\n%s", err, stdout.String())
+	}
+	assertInstallPathMissing(t, filepath.Join(cursorConfig, "skills", "foundations"))
+	assertInstallFile(t, filepath.Join(home, ".agents", "skills", "loaf-core", "SKILL.md"), "# Loaf Core\n")
 }

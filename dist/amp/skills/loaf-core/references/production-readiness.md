@@ -6,7 +6,7 @@ Pre-deployment checklist for production systems. Use this before any production 
 
 | Check | Status |
 |-------|--------|
-| Secrets in vault/secrets manager, not env vars or code | ☐ |
+| Secrets handled as the loaf-core skill's secrets rule requires | ☐ |
 | No hardcoded credentials in repository | ☐ |
 | Dependencies scanned for vulnerabilities | ☐ |
 | Input validation on all external data | ☐ |

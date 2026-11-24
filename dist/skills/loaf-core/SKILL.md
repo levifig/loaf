@@ -166,10 +166,17 @@ Loaf's security enforcement lives in these checks. This section names them; it d
 
 | Check | When it runs | What it does |
 |-------|--------------|--------------|
-| `check-secrets` hook | Before Edit, Write, and Bash; blocking, fails closed | Scans written content and Bash commands for hardcoded secrets |
-| `security-audit` hook | Before Bash; blocking, fails closed | Blocks dangerous shell patterns; runs available scanners only for thorough validation or reviewer and implementer agents |
+| `check-secrets` hook | Before file edits and shell commands, on harnesses that run Loaf's pre-tool hooks; blocking, fails closed | Scans written content and shell commands for hardcoded secrets |
+| `security-audit` hook | Before shell commands, on harnesses that run Loaf's pre-tool hooks; blocking, fails closed | Blocks dangerous shell patterns; runs available scanners only for thorough validation or reviewer and implementer agents |
 | `loaf check secrets [dir]` | On demand | Walks a directory for assignment-style secrets, `.env` files, and key filenames. Different from the hook payload scan. |
 | `loaf check compliance <file.md>` | On demand | Requires every `- [ ]` box to be checked. A file with no boxes passes. |
+
+Where these hooks do not run, run `loaf check secrets` over the directories you changed before committing.
+
+| Harness | Pre-tool security hooks |
+|---------|-------------------------|
+| Claude Code, Cursor, OpenCode, Amp | Run |
+| Codex | Not projected; run `loaf check secrets` before committing |
 
 **Secrets rule:** never put secrets, credentials, tokens, or personal data in source, version control, logs, or error output; read them from the environment or a secret manager.
 

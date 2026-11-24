@@ -25,7 +25,7 @@ Use structured logging with context fields. Structured fields are queryable in l
 | Always | Never |
 |--------|-------|
 | Use key-value context fields | Interpolate data into message strings |
-| Include correlation IDs for tracing | Log sensitive data (PII, secrets) |
+| Include correlation IDs for tracing | Log sensitive data (see the loaf-core skill's secrets rule) |
 | Log at appropriate levels (info, warn, error) | Use print statements in production |
 
 ## Error Handling
