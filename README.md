@@ -103,9 +103,9 @@ Loaf defines functional agent profiles by intended tool boundaries, with domain 
 | **Sentinel** | Reviewer | Read-only | Watches, guards, and verifies. Cannot modify what it reviews — by design. |
 | **Ranger** | Researcher | Read + web | Scouts far, gathers intelligence, reports structured findings. |
 | **Librarian** | Librarian | Read + Edit (.agents/) | Tends the project journal and durable `.agents/` artifacts, including wrap checkpoints. Does not forge code or scout. |
-| **Taskmaster** | Coordinator | Read + shell | Sequences autonomous threads and their merge queue, and relays between them and you. Grants turns; never forges, reviews, or merges. |
+| **Coordinator** | Coordinator | Read + shell | Sequences autonomous threads and their merge queue, and relays between them and you. Grants turns; never forges, reviews, or merges. |
 
-The coordinating conversation inside one thread is the **Warden**; the **Taskmaster** works a level above, across threads. Delegation follows the active harness's tools and the project's instructions; independent reviews remain read-only.
+Inside one thread, the main conversation directs its own helpers. The **Coordinator** works a level above, across threads, in a thread labeled `WARDEN (org/repo)`. Delegation follows the active harness's tools and the project's instructions; independent reviews remain read-only.
 
 ## Skills
 

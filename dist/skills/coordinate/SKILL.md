@@ -33,6 +33,8 @@ Turn this thread into the coordinator for the project's other threads. The threa
 Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill.
 
 - As the first action, run `loaf journal log "skill(coordinate): <scope and trigger>"` against the current private journal. If the write fails, report the failure and continue only when coordination can safely proceed.
+- Before any routing or queue decision, check that no other coordinator is active for this project: read recent journal entries for a `skill(coordinate)` entry from another session, and look for another thread carrying the coordinator label where the host can list threads. This is a check, not a lock. When one may exist, name and link it, ask the operator which continues, and grant no turn until they answer; never take over on your own.
+- Label this thread `WARDEN (<org>/<repo>)`, using the project's repository identity, so the operator and other coordinators can find it. Rename it yourself where the host allows; otherwise give the operator that exact label to apply. Project instructions or the operator may set a different label.
 - Read the project's instructions for its own coordination rules before the first routing or queue decision. Project rules, then the operator's standing preferences, override every default here. This skill carries no project rule; when a project needs one, it belongs in that project's instructions.
 - Stay out of the work. Do not implement, review, rebase, push, merge, deploy, or run Ship; the thread that holds the work does those. Reading code, the tracker, and the code host to assess state is coordination.
 - Derive state every time from its owners: the thread list and each thread's own transcript or report, the native tracker through [`project-management/v1`](../project-management/SKILL.md), and the code host. Keep no queue file, ledger, or thread registry. Never state a thread's content, status, or outcome from memory; re-read it before claiming it or messaging the thread.
@@ -51,6 +53,8 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Every relayed approval quoted the operator and named its target; none was inferred.
 - Each message to the operator ended with who acts next and on what.
 - Any message not actually delivered was reported as prepared, not sent.
+- The single-coordinator check ran before the first decision, and any other coordinator found was raised with the operator before a turn was granted.
+- The thread carries the coordinator label, or the operator was given the exact label to apply.
 - No file, worktree, branch, or record was created, changed, or removed as a side effect of coordinating.
 
 ## Quick Reference
@@ -113,5 +117,5 @@ With Loaf's managed basic-command policy installed, use `loaf journal log --exec
 
 | Topic | Reference | Use When |
 |-------|-----------|----------|
-| Thread transports | [thread-transports.md](references/thread-transports.md) | Listing, reading, messaging, starting, stopping, or archiving threads on the current host |
+| Thread transports | [thread-transports.md](references/thread-transports.md) | Listing, reading, messaging, labeling, starting, stopping, or archiving threads on the current host |
 | Status report | [status-report.md](templates/status-report.md) | Reporting what every ongoing thread is doing and who acts next |
