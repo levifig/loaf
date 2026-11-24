@@ -24,14 +24,10 @@ Bare invocation is the ceremony. Inventory first, show candidates, wait for a pi
 - Milestone Readiness
 - Verification
 - Quick Reference
-- Journal Commands
 - Topics
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
-
-- As the first action, run `loaf journal log "skill(triage): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
 - Confirm the exact native destination and candidate references before reading or mutating.
 - Show candidates to the human before any recommendation or mutation. The human never has to fish an idea out of the journal or a CLI dump.
 - Read each candidate, its current workflow state, and relevant recent comments before deciding.
@@ -115,14 +111,6 @@ For an explicit request such as "triage <milestone>," use the selected GitHub pr
 | Duplicate or superseded | Use supported native fields/state and explain with evidence |
 | Blocked by missing decision | Preserve native state or use a supported deferred state |
 | Ready, shaped, and selected | Leave canonical fields intact; hand to implement |
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

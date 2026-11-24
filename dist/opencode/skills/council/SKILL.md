@@ -19,14 +19,13 @@ version: 0.6.0-rc.3
 - Verification
 - Quick Reference
 - Native Work References
-- Journal Commands
 - Topics
 
 Convene multi-agent councils for complex decisions requiring diverse expert perspectives.
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
+Write journal entries with the command form in the Foundations skill's Journal Commands section.
 
 **Always**
 - Select odd number of agents (5 or 7) — never even
@@ -35,7 +34,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Document each perspective and create synthesis with consensus/disagreements
 - Wait for explicit user decision — council advises, user decides
 - Preserve the council file after the decision; cleanup requires separately authorized Housekeeping
-- Log decision to the project journal: `loaf journal log "decision(scope): council outcome and user's choice"`
+- Log the decision to the project journal as a `decision(scope): council outcome and user's choice` entry
 - Create the artifact with `loaf council new --title <title> --body-file <path>`
 
 **Never**
@@ -91,14 +90,6 @@ Council bodies are authored files under `.agents/councils/`, not SQLite bodies o
 When a council resolves a native issue's open questions, retain private deliberation locally and record only appropriate decision evidence or an authorized reference through the selected provider. The native tracker continues to own scope, hierarchy, and state. Deliberately adopted architectural conclusions belong in maintained Git topics; saving a council does not automatically promote its whole body into Git.
 
 Record the user's decision in the council file and the project journal. The current council command has no archive operation. Preserve existing files and identifiers; later cleanup belongs to Housekeeping with exact approval.
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

@@ -4,22 +4,16 @@
 # Structure:
 #   pre-tool: Runs BEFORE tool execution (can block)
 #   post-tool: Runs AFTER tool execution (informational)
-#   session: Conversation hooks (SessionStart, UserPromptSubmit, PreCompact, PostCompact, TaskCompleted)
+#   session: Conversation hooks (SessionStart, PreCompact, PostCompact)
 #
 # Journal-first continuity has no session entity. Conversation hooks emit
-# the layered continuity digest and journal-flush guidance, or evaluate
-# normalized event envelopes for result-aware capture. All journal hooks read
-# the harness payload on stdin and exit silently for subagent invocations
-# (normalized agent identity present).
+# the layered continuity digest or checkpoint guidance. They read the harness
+# payload on stdin and exit silently for subagent invocations (normalized
+# agent identity present).
 #
-# Enforcement hooks (11) are implemented via `loaf check --hook <id>`:
-#   - artifact-body-write, check-secrets, ephemeral-provenance, github-account, render-drift, validate-push, validate-commit, workflow-pre-pr, security-audit, validate-infra-safety, validate-sql-safety
-#
-# Migrated to skill instructions (removed from hooks.yaml):
-#   - Language hooks: python-*, typescript-*, rails-*
-#   - Infra hooks: k8s, dockerfile, terraform
-#   - Design hooks: a11y, tokens
-#   - Quality hooks: format-check, tdd-advisory, validate-changelog, changelog-reminder
+# Enforcement hooks are implemented via `loaf check --hook <id>`:
+#   - artifact-body-write, artifact-names, check-secrets, ephemeral-provenance, github-account, render-drift, validate-push, validate-commit, workflow-pre-pr, security-audit, validate-infra-safety, validate-sql-safety
+
 
 hooks:
   pre-tool:
@@ -185,17 +179,6 @@ hooks:
       command: 'loaf journal context --from-hook'
       event: SessionStart
       description: Emit the layered continuity digest at conversation start
-
-    # Context injection — implementation principles on every user prompt
-    # Must be type: command (exit 0 = inject stdout as context).
-    # type: prompt on UserPromptSubmit acts as a gate/validator, not context injection.
-    - id: session-context-inject
-      skill: orchestration
-      type: command
-      command: 'loaf journal context for-prompt'
-      event: UserPromptSubmit
-      timeout: 5000
-      description: Inject implementation conventions on prompt submit
 
     # PreCompact — reinforce ordinary capture and selective checkpoints.
     # Writes nothing itself: only the entries the model logs in response persist.

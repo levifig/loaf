@@ -27,12 +27,11 @@ Capture ideas quickly with minimal friction.
 - Purpose
 - Process
 - Guardrails
-- Journal Commands
 - Related Skills
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
+Write journal entries with the command form in the Foundations skill's Journal Commands section.
 
 - Speed over completeness -- capture quickly, shape later
 - 2-3 questions maximum -- don't turn capture into an interview
@@ -40,7 +39,7 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - One idea per captured row/artifact -- keep them atomic
 - No shaping, pitching, or filing issues here -- problem discovery is pitch; bounding is shape; dispositions are triage
 - Capture through `loaf idea capture --title ...` when SQLite state is
-  initialized; log notable context with `loaf journal log`
+  initialized; log notable context to the project journal
 
 ## Verification
 
@@ -67,7 +66,7 @@ Ideas are raw nuggets — unprocessed, unshaped, but worth remembering. The goal
 ## Process
 
 1. **Parse input.** If `$ARGUMENTS` contains the idea, capture directly. If empty, ask at most 2-3 questions: core idea, problem/opportunity, immediate constraints.
-2. **Capture.** Run `loaf idea capture --title "..."` with the inferred title; log notable context with `loaf journal log`.
+2. **Capture.** Run `loaf idea capture --title "..."` with the inferred title; log notable context to the project journal.
 3. **Announce.** Report the captured alias and point at triage for disposition.
 
 ---
@@ -81,14 +80,6 @@ Ideas are raw nuggets — unprocessed, unshaped, but worth remembering. The goal
 5. **No lifecycle here** — no status transitions, promotion, or shaping; triage owns dispositions and the CLI performs them
 
 ---
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Related Skills
 

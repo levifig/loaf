@@ -793,14 +793,11 @@ func TestGeneratedAmpActiveSkillsContainNoLegacyWorkAuthority(t *testing.T) {
 	activeHookSurfaces := map[string]string{
 		"Amp plugin":                          plugin,
 		"OpenCode plugin":                     readBuildFileString(t, filepath.Join(root, "dist", "opencode", "plugins", "hooks.js")),
-		"OpenCode pre-PR instructions":        readBuildFileString(t, filepath.Join(root, "dist", "opencode", "plugins", "hooks", "instructions", "pre-pr-checklist.md")),
 		"OpenCode post-merge instructions":    readBuildFileString(t, filepath.Join(root, "dist", "opencode", "plugins", "hooks", "instructions", "post-merge.md")),
 		"Cursor hooks":                        readBuildFileString(t, filepath.Join(root, "dist", "cursor", "hooks.json")),
-		"Cursor pre-PR instructions":          readBuildFileString(t, filepath.Join(root, "dist", "cursor", "hooks", "instructions", "pre-pr-checklist.md")),
 		"Cursor post-merge instructions":      readBuildFileString(t, filepath.Join(root, "dist", "cursor", "hooks", "instructions", "post-merge.md")),
 		"Codex hooks":                         readBuildFileString(t, filepath.Join(root, "dist", "codex", ".codex", "hooks.json")),
 		"Claude Code hooks":                   readBuildFileString(t, filepath.Join(root, "plugins", "loaf", "hooks", "hooks.json")),
-		"Claude Code pre-PR instructions":     readBuildFileString(t, filepath.Join(root, "plugins", "loaf", "hooks", "instructions", "pre-pr-checklist.md")),
 		"Claude Code post-merge instructions": readBuildFileString(t, filepath.Join(root, "plugins", "loaf", "hooks", "instructions", "post-merge.md")),
 	}
 	for surface, body := range activeHookSurfaces {
@@ -1699,8 +1696,8 @@ func TestRideableIncrementDoctrineAndContractShipToEveryTarget(t *testing.T) {
 			if strings.Contains(body, "scratchpad") {
 				t.Errorf("%s generated %s skill reintroduces deferred scratchpad behavior", target, skill)
 			}
-			if !strings.Contains(body, `loaf journal log "skill(`) {
-				t.Errorf("%s generated %s skill does not attempt current-runtime private journal logging", target, skill)
+			if strings.Contains(body, `loaf journal log "skill(`) {
+				t.Errorf("%s generated %s skill reintroduces retired invocation logging", target, skill)
 			}
 		}
 	}

@@ -378,14 +378,6 @@ const sessionHooks = {
       "failClosed": false
     }
   ],
-  "userpromptsubmit": [
-    {
-      "id": "session-context-inject",
-      "command": "loaf journal context for-prompt",
-      "timeout": 5000,
-      "failClosed": false
-    }
-  ],
   "precompact": [
     {
       "id": "pre-compact",

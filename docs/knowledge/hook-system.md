@@ -76,9 +76,8 @@ The current registry uses these boundaries; target support and event names diffe
 | SessionStart | Conversation start or resumption where delivered | Emit the layered continuity digest |
 | PreCompact | Before context compaction where delivered | Inject selective checkpoint guidance |
 | PostCompact | After context compaction where delivered | Re-emit the continuity digest |
-| UserPromptSubmit | Prompt submission where delivered | Inject the current implementation guidance |
 
-The registry has no SessionEnd, Stop, or TaskCompleted journal hook. No hook opens, closes, or writes back to a session record. A target's event support must not be mistaken for a Loaf registration or a proven live integration.
+The registry has no UserPromptSubmit, SessionEnd, Stop, or TaskCompleted hook. Per-prompt guidance was retired: AGENTS.md and the loaded skills carry current instructions, and `loaf journal context for-prompt` remains only as a silent no-op for older installed plugins. No hook opens, closes, or writes back to a session record. A target's event support must not be mistaken for a Loaf registration or a proven live integration.
 
 ### Hook JSON Context
 
@@ -193,13 +192,10 @@ Registered under `session:` in `hooks.yaml` with an `event:` field. These comman
 | Hook | Event | Dispatch | Purpose |
 |------|-------|----------|---------|
 | `session-start-loaf` | SessionStart | command (`loaf journal context --from-hook`) | Emit the compact layered continuity digest, kept under every harness injection limit; silent for subagents |
-| `session-context-inject` | UserPromptSubmit | command (`loaf journal context for-prompt`) | Inject implementation conventions on prompt submit |
 | `pre-compact` | PreCompact | command (`loaf journal context for-compact`) | Reinforce ordinary capture and selective checkpoints; writes nothing itself |
 | `post-compact` | PostCompact | command (`loaf journal context for-resumption`) | Re-emit the continuity digest for post-compaction resumption |
 
 Target builders project only supported events and select their native context envelopes. Normalized subagent invocations exit silently. Codex currently projects SessionStart only; the [build guide](build-system.md#notes) distinguishes historical startup evidence from current-candidate and other live-mode limits.
-
-The current `for-prompt` text still contains legacy task-creation and blanket-delegation instructions. That known runtime gap does not establish current shared-work authority; the [Flow semantics](../../content/skills/loaf-reference/references/flow-semantics.md) remain the work-selection contract.
 
 ## Knowledge Staleness Hook
 

@@ -58,9 +58,10 @@ func TestStaticJournalGuidanceInNestedLinkedWorktree(t *testing.T) {
 					if stderr.Len() != 0 {
 						t.Fatalf("%s stderr = %q", selector, stderr.String())
 					}
-					if strings.Contains(payload, "agent_id") {
+					if strings.Contains(payload, "agent_id") || selector == "for-prompt" {
+						// Subagents get no guidance, and the retired prompt hook prints nothing.
 						if stdout.Len() != 0 {
-							t.Fatalf("subagent guidance = %q, want empty", stdout.String())
+							t.Fatalf("%s (%s) guidance = %q, want empty", selector, payload, stdout.String())
 						}
 					} else if !strings.Contains(stdout.String(), "loaf journal log") {
 						t.Fatalf("%s stdout = %q, want guidance", selector, stdout.String())

@@ -12,8 +12,8 @@ import (
 )
 
 // journalHookInput is the harness hook payload read from stdin for journal
-// hooks (SessionStart, PreCompact, PostCompact, UserPromptSubmit, TaskCompleted,
-// and git/gh PostToolUse). Under the journal-first model there is no
+// hooks (SessionStart, PreCompact, PostCompact, historical TaskCompleted, and
+// git/gh PostToolUse). Under the journal-first model there is no
 // session entity: the only lifecycle-relevant field is agent_id, which flags a
 // subagent invocation the hooks must silently ignore.
 type journalHookInput struct {
@@ -110,23 +110,6 @@ func isStateMissingError(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "SQLite state database is not initialized")
 }
 
-// journalContextPromptInstructions is injected on every UserPromptSubmit. It
-// carries the durable implementation principles without any session-lifecycle
-// language: the journal is the only session-related structure.
-func journalContextPromptInstructions() string {
-	return strings.Join([]string{
-		"[Implementation Principles]",
-		"- When the user's message is a QUESTION, answer it and STOP. Do not implement anything.",
-		"  Wait for explicit instructions before taking action.",
-		"- Create a Task BEFORE any tool use that changes something (Edit, Write, Bash, etc.).",
-		"  No threshold - if it mutates, track it. Automatic task completion capture is disabled until a proven adapter is installed; write completion entries explicitly.",
-		"  Create tasks before starting work, update status as you go, mark complete when done.",
-		"- Delegate code changes to agents - orchestrator coordinates, doesn't implement.",
-		"- Log decisions: loaf journal log \"decision(scope): description\".",
-		"- One concern per agent, parallel when independent.",
-	}, "\n")
-}
-
 // journalContextCompactInstructions reinforces ordinary capture where a harness
 // delivers the hook. It only emits guidance; the agent chooses missing facts and
 // useful synthesis to persist through the existing journal commands.
@@ -141,17 +124,12 @@ func journalContextCompactInstructions() string {
 	}, "\n")
 }
 
-// runJournalContextForPrompt emits the UserPromptSubmit implementation
-// principles, silently exiting for subagent invocations.
+// runJournalContextForPrompt is the retired UserPromptSubmit entry point.
+// Loaf no longer injects guidance on every prompt: AGENTS.md and the loaded
+// skills carry current instructions. The command stays as a silent success so
+// an older installed plugin that still registers it neither errors nor
+// reintroduces retired guidance.
 func (r Runner) runJournalContextForPrompt(out io.Writer) error {
-	hookInput, err := r.readJournalHookInput()
-	if err != nil {
-		return err
-	}
-	if normalizeJournalHookEnvelope(hookInput, "").isSubagent() {
-		return nil
-	}
-	fmt.Fprintln(out, journalContextPromptInstructions())
 	return nil
 }
 

@@ -12,7 +12,7 @@
       "kind": "hook-file",
       "source_path": "hooks/hooks.json",
       "destination": "hooks/hooks.json",
-      "sha256": "cee42f3fb27aa69ffb37084877272577a3e94bf2b5f102b0d2244d91ee131317",
+      "sha256": "79eca9491e2c48ed16346f36bd91a72b3b13c6bd365679dbff0e8fe87f00f327",
       "mode": 420
     },
     {
@@ -29,22 +29,6 @@
       "source_path": "hooks/instructions/pre-merge.md",
       "destination": "hooks/instructions/pre-merge.md",
       "sha256": "3e9a4883eb8e12ba3889785d023f72b9355be129b828204f7b73e7a87ab2974e",
-      "mode": 420
-    },
-    {
-      "id": "hook-file:hooks/instructions/pre-pr-checklist.md",
-      "kind": "hook-file",
-      "source_path": "hooks/instructions/pre-pr-checklist.md",
-      "destination": "hooks/instructions/pre-pr-checklist.md",
-      "sha256": "39105e7a4dd6e6574e2a4e270f10d1c7f0c34f95bdd1f25b234d5376644d7a69",
-      "mode": 420
-    },
-    {
-      "id": "hook-file:hooks/instructions/pre-pr-format.md",
-      "kind": "hook-file",
-      "source_path": "hooks/instructions/pre-pr-format.md",
-      "destination": "hooks/instructions/pre-pr-format.md",
-      "sha256": "d41111e001c0b0b45ebeb33867f358563e6f73abcc9c34aef8590648f1a53930",
       "mode": 420
     },
     {
