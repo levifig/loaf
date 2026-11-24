@@ -39,7 +39,8 @@ Key conventions:
 - Tests run with real database services (Postgres 17)
 - Build step only runs on `main` branch
 - Use `npm ci` (not `npm install`) for lockfile fidelity
-- Pin tool versions exactly in lockfiles
+- Pin dependencies exactly through the committed lockfile, including dev tools such as linters that the project declares
+- Tools installed on a machine for people or agents, such as agent CLIs, aren't project dependencies; they follow their own documented upgrade policy
 
 ## Caching Strategies
 
