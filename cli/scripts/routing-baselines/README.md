@@ -84,3 +84,21 @@ These hold for both models unless a model is named.
   - On Sonnet, "Prepare a routine checkpoint so I can resume this work next session" now goes to handoff. The start of `loaf-core`'s description mentions handoff but no longer mentions finishing work or compacting context.
 - **Pulled into `loaf-core`:** "Which loaf command shows the recent project journal?" went to loaf-reference before and now goes to `loaf-core`. Two other Loaf CLI cases that already failed (journal flags and repairing stale targets) now fail into `loaf-core` instead of `foundations` or `debugging`.
 - **Unrelated movement:** discovery probes owned by the brainstorm and explore merge moved between pitch, explore and architecture on both models. One run per model cannot separate that from noise.
+
+### Rerun after tuning two descriptions
+
+The first post-merge run above came in below the baseline, so two descriptions were tuned at commit `84b4b28e`, and the full suite ran again once per model. Prompts and cases are unchanged.
+
+- The start of `loaf-core`'s description names quality checks and saving reasoning before finishing, handoff or compaction, and says "continuity checkpoints" instead of "journaling".
+- The start of architecture's description names proofreading guides such as README or CONTRIBUTING.
+
+| Model | Overall | Core | Conflict probes | Affected cases |
+|---|---|---|---|---|
+| `claude-opus-5-5` | 174/190 | 121/131 | 53/59 | 33/33 |
+| `claude-sonnet-5-5` | 175/190 | 122/131 | 53/59 | 33/33 |
+
+- **Every affected case passes on both models,** matching Opus's 33/33 in the baseline. The CONTRIBUTING proofreading, quality checklist and routine checkpoint cases now reach their owners. Sonnet's quality checklist case, which went to ship in the baseline, now passes too.
+- **No pull into `loaf-core`:** "Which loaf command shows the recent project journal?" is back with loaf-reference. "Diagnose why the installed Loaf targets are stale and repair them" still fails, now into `loaf-core`; in the baseline it failed into debugging.
+- **Changes outside the affected cases,** from one run each:
+  - On Opus, "Explain which component owns shared work and why; do not edit" went to loaf-reference instead of architecture.
+  - On Sonnet, "Ready to merge this PR" went to git-workflow instead of ship. Neither skill changed in this merge.
