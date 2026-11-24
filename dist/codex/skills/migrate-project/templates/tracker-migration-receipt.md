@@ -53,10 +53,10 @@ Return this receipt to the operator after the final verification read. Do not pe
 - Hierarchy/relationships verified: [count/count]
 - Mappings inferred from provider order: none
 - Local issue mutations: none
-- Local continuity writes: invocation journal entry only
+- Local continuity writes: none
 - Private continuity migrated: none
 
 ## Boundary
 
-The local Loaf issue rows remain untouched and available as migration history; only the required workflow invocation was added to the private journal. The destination tracker is canonical for migrated issue work. Authentication and provider operations were handled by the harness connection; Loaf did not receive provider credentials or proxy provider traffic. Journal history, wraps, handoffs, ideas, sparks, reports, and remote continuity were not migrated.
+The local Loaf issue rows remain untouched and available as migration history. The destination tracker is canonical for migrated issue work. Authentication and provider operations were handled by the harness connection; Loaf did not receive provider credentials or proxy provider traffic. Journal history, wraps, handoffs, ideas, sparks, reports, and remote continuity were not migrated.
 ```

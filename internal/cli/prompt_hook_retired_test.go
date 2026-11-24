@@ -2,7 +2,7 @@ package cli
 
 import (
 	"bytes"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,15 +32,19 @@ func TestBuildRegistersNoPromptHook(t *testing.T) {
 			}
 		}
 	}
-	for _, dir := range []string{
-		filepath.Join(root, "plugins", "loaf", "hooks", "instructions"),
-		filepath.Join(root, "dist", "cursor", "hooks", "instructions"),
-		filepath.Join(root, "dist", "opencode", "plugins", "hooks", "instructions"),
-	} {
-		for _, name := range []string{"pre-pr-checklist.md", "pre-pr-format.md"} {
-			if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
-				t.Errorf("unused instruction file %s still ships in %s", name, dir)
+	retired := map[string]bool{"pre-pr-checklist.md": true, "pre-pr-format.md": true}
+	for _, tree := range []string{filepath.Join(root, "dist"), filepath.Join(root, "plugins")} {
+		err := filepath.WalkDir(tree, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
 			}
+			if !entry.IsDir() && retired[entry.Name()] {
+				t.Errorf("unused instruction file still ships: %s", path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk %s: %v", tree, err)
 		}
 	}
 }

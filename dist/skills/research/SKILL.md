@@ -28,7 +28,7 @@ Investigate enough to support a decision, then stop. Research returns through th
 - When persistence is warranted, create an unused `.agents/reports/YYYYMMDDHHMMSS-slug.md` path. Generate the 14-digit timestamp in UTC, describe the report itself in the slug, and never overwrite an existing file.
 - Use the purpose-specific [research report](templates/research-report.md) or [state assessment](templates/state-assessment.md) template. Do not add universal status or lifecycle fields.
 - Put tracker or task provenance in the report content when useful, never in the filename.
-- Log a concise durable discovery when the result changes future decisions; do not copy the full report into the journal.
+- Log a concise durable discovery, with the command form from the Foundations skill's Journal Commands section, when the result changes future decisions; do not copy the full report into the journal.
 
 ## Verification
 

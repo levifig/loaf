@@ -1,6 +1,6 @@
 # Journal Render Template
 
-Write every entry with the command form in [Foundations](../../foundations/SKILL.md#journal-commands).
+Write every entry with the command form in the Foundations skill's Journal Commands section.
 
 This is the render template and entry-format reference for the project journal
 stored in SQLite. The journal is the only session-related structure: entries are

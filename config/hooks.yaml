@@ -7,19 +7,13 @@
 #   session: Conversation hooks (SessionStart, PreCompact, PostCompact)
 #
 # Journal-first continuity has no session entity. Conversation hooks emit
-# the layered continuity digest and journal-flush guidance, or evaluate
-# normalized event envelopes for result-aware capture. All journal hooks read
-# the harness payload on stdin and exit silently for subagent invocations
-# (normalized agent identity present).
+# the layered continuity digest or checkpoint guidance. They read the harness
+# payload on stdin and exit silently for subagent invocations (normalized
+# agent identity present).
 #
 # Enforcement hooks are implemented via `loaf check --hook <id>`:
 #   - artifact-body-write, artifact-names, check-secrets, ephemeral-provenance, github-account, render-drift, validate-push, validate-commit, workflow-pre-pr, security-audit, validate-infra-safety, validate-sql-safety
-#
-# Migrated to skill instructions (removed from hooks.yaml):
-#   - Language hooks: python-*, typescript-*, rails-*
-#   - Infra hooks: k8s, dockerfile, terraform
-#   - Design hooks: a11y, tokens
-#   - Quality hooks: format-check, tdd-advisory, validate-changelog, changelog-reminder
+
 
 hooks:
   pre-tool:

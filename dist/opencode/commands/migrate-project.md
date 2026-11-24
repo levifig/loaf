@@ -146,7 +146,7 @@ If a provider call times out or returns an uncertain result, search/read before 
 
 ### 5. Return the receipt
 
-Use [templates/tracker-migration-receipt.md](templates/tracker-migration-receipt.md). Return the receipt in the response; persist it only when the operator asks. State explicitly that local issue rows were read-only and remain available as migration history. The required `skill(migrate-project)` journal entry is continuity, not tracker migration.
+Use [templates/tracker-migration-receipt.md](templates/tracker-migration-receipt.md). Return the receipt in the response; persist it only when the operator asks. State explicitly that local issue rows were read-only and remain available as migration history.
 
 ## Mapping Policy
 

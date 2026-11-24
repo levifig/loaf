@@ -2,8 +2,10 @@ package cli
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -57,13 +59,33 @@ func TestJournalCommandsHaveOneOwner(t *testing.T) {
 }
 
 // TestSkillsDoNotLogTheirOwnInvocation guards against reintroducing the
-// retired first-action invocation entry in any skill.
+// retired invocation entry anywhere a skill or shared template can carry it:
+// skill bodies, references, templates, and receipts.
 func TestSkillsDoNotLogTheirOwnInvocation(t *testing.T) {
-	for name, body := range journalingSkillBodies(t) {
-		for _, token := range []string{`loaf journal log "skill(`, "As the first action", "Log invocation first", "log invocation before"} {
-			if strings.Contains(body, token) {
-				t.Errorf("%s still asks agents to log the skill invocation (%q)", name, token)
+	repo := testRepositoryRoot(t)
+	invocationEntry := regexp.MustCompile("skill\\([a-z<][a-z0-9<>-]*\\)")
+	for _, dir := range []string{filepath.Join(repo, "content", "skills"), filepath.Join(repo, "content", "templates")} {
+		err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
 			}
+			if entry.IsDir() || filepath.Ext(path) != ".md" {
+				return nil
+			}
+			body := readBuildFileString(t, path)
+			rel, _ := filepath.Rel(repo, path)
+			if match := invocationEntry.FindString(body); match != "" {
+				t.Errorf("%s still names a skill invocation journal entry (%q)", rel, match)
+			}
+			for _, token := range []string{"Log invocation first", "log invocation before", "invocation journal entry", "workflow invocation was added"} {
+				if strings.Contains(body, token) {
+					t.Errorf("%s still asks agents to log the skill invocation (%q)", rel, token)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk %s: %v", dir, err)
 		}
 	}
 }
