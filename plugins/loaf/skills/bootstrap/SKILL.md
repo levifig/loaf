@@ -514,8 +514,7 @@ When the interactive interview path is unavailable, bootstrap the Core Docs and 
 
 - **pitch** -- Authors a project-scale `docs/BRIEF.md` with `source: pitch` (or an issue-scale problem narrative); bootstrap consumes the pitched BRIEF with gap-only interview and series-prep
 - **shape** -- Bound a backlog issue into a contract (often follows series-prep)
-- **explore** -- Agent technique when a concept that emerges during bootstrap is still undecided (not a user front door; prefer pitch for human problem discovery)
 - **research** -- Investigate topics and open questions
 - **idea** -- Quick-capture feature ideas that emerge during bootstrap
-- **strategy** -- Deep persona and market context work
+- **reflect** -- Deep persona and market context work, and later Core Doc updates
 - **architecture** -- Detailed technical decision-making

@@ -5,10 +5,9 @@ description: >-
   says "I have an idea" or "note this down." Also activate when a specific
   actionable concept crystallizes during conversation. Ideas and sparks stay
   capture primitives routed through triage, which may move worth-keeping items
-  to Backlog or hand them to pitch or shape. Not for problem discovery (use
-  pitch), processing the intake queue (use triage), shaping a bounded issue (use
-  shape), or agent-side divergent inquiry when direction is undecided (use
-  explore as a technique).
+  to Backlog or hand them to pitch or shape. Not for problem discovery or
+  weighing options when direction is undecided (use pitch), processing the
+  intake queue (use triage), or shaping a bounded issue (use shape).
 version: 0.6.0-rc.3
 ---
 
@@ -84,6 +83,5 @@ Ideas are raw nuggets — unprocessed, unshaped, but worth remembering. The goal
 ## Related Skills
 
 - **triage** — process private captures and choose dispositions (move to Backlog, hand to pitch, or hand to shape)
-- **pitch** — problem-discovery ceremony when a captured idea needs a brief before shaping
+- **pitch** — problem discovery and option exploration when a captured idea needs a brief before shaping, or direction is undecided
 - **shape** — develop a well-understood direction into a bounded issue
-- **explore** — agent technique when direction is genuinely undecided (not a user front door)

@@ -1,11 +1,11 @@
 ---
 name: reflect
 description: >-
-  Integrates learnings from shipped work into the Core Docs (VISION, STRATEGY,
-  ARCHITECTURE). Use after completing significant work or when the user asks
-  "what did we learn?" Proposes evidence-backed updates to the Core Docs and
-  existing architecture topics, or concludes no update is needed. Not for
-  pre-implementation strategy (use strategy) or choosing and recording an
+  Maintains the Core Docs (VISION, STRATEGY, ARCHITECTURE) from evidence, at any
+  time. Use when the user asks "what did we learn?" or "what's our strategy?",
+  or wants personas, positioning, or direction revised. Proposes evidence-backed
+  updates the owner confirms, or concludes none is needed. Not for problem
+  discovery on one piece of work (use pitch) or choosing and recording an
   architectural commitment (use architecture).
 subtask: false
 version: 0.6.0-rc.3
@@ -13,7 +13,7 @@ version: 0.6.0-rc.3
 
 # Reflect
 
-Integrate learning from shipped work into the documents that own it. Reflection is not a document-production quota or an automatic decision-record ceremony.
+Integrate evidence into the documents that own it: learning from shipped work, and strategic discovery or a premise found wrong before any work ships. Reflection is not a document-production quota or an automatic decision-record ceremony.
 
 ## Contents
 - Critical Rules
@@ -35,7 +35,11 @@ Write journal entries with the command form in the loaf-core skill's Journal Com
 
 - **Evidence-based** -- separate observed results, inferred lessons, and proposed changes; a merged patch is not proof of successful use or an accepted architectural direction
 - **Dogfood before generalization** -- compare the rideable increment's real use and learning sought with what actually happened before proposing more breadth or abstraction
-- **Post-implementation only** -- reflect after shipping, not before or during planning
+- **Any time, both directions** -- propose a VISION or STRATEGY change whenever evidence supports it: before, during, or after implementation, including that a Core Doc premise is wrong
+- **Owner confirms every Core Doc update** -- never edit VISION or STRATEGY until the owner confirms that specific update; the owner's explicit request to apply a scoped change is that confirmation
+- **Surface conflicts between Core Docs** -- when STRATEGY and VISION disagree, report the conflict and propose which to change; never edit one silently to fit the other
+- **Interview for missing domain knowledge** -- strategy is extracted from the owner and evidence, not guessed; ask about users, competitors, problem space, and domain language when the evidence is silent
+- **Name anti-personas** -- a persona change also says who the project is not building for
 - **Respect scope** -- review and propose by default. Apply updates only with explicit user authorization, including an already explicit request to apply scoped changes; do not ask again for that same permission. This covers architecture topics as well as the Core Docs
 - **Consolidate** -- batch related learnings into coherent updates, avoid micro-updates
 - **Architecture ownership** -- read the [architecture skill](../architecture/SKILL.md) for topic maintenance, rationale, affected-surface review, and exceptional ADR selection. Integrate learning into the owning topic by default; route a candidate consequential choice to Architecture with evidence and why a separate record might help, not an automatic ADR
@@ -48,7 +52,9 @@ Write journal entries with the command form in the loaf-core skill's Journal Com
 
 - Proposals cite specific native tracker records, journal entries, reports, or commits as evidence
 - Reflection states whether the named rider completed the journey, what dogfood taught, which complexity proved necessary, and which deferrals should remain deferred
-- Current owning documents and relevant ADRs were read before proposing edits; no Core Doc or architecture topic was modified beyond explicit authorization
+- Current owning documents and relevant ADRs were read before proposing edits; no Core Doc or architecture topic was modified beyond explicit authorization, and the owner confirmed each VISION or STRATEGY update before it was applied
+- Any conflict between VISION and STRATEGY is reported with a proposal, not resolved silently
+- STRATEGY persona changes include anti-personas, and its sequencing says what a real operator can do after each milestone
 - Observations, inferences, agreed direction, and implementation gaps are distinct; unresolved architectural choices remain unresolved
 - Topics and ADRs do not duplicate rationale, no ADR was automatically created, and no migration or retirement was inferred from reflection
 - Any tracker mutation requested during reflection uses the selected provider skill and is verified by authoritative readback
@@ -57,7 +63,7 @@ Write journal entries with the command form in the loaf-core skill's Journal Com
 
 | Learning Type | Document |
 |---------------|----------|
-| User behavior / market / problem understanding | STRATEGY.md |
+| User behavior / market / problem understanding / personas and anti-personas | STRATEGY.md, following the [strategy template](templates/strategy.md) |
 | Direction changes | VISION.md |
 | Technical constraints / patterns / decision updates | Owning architecture topic or overview, following the architecture skill |
 | Potential exceptional ADR or conflict with an agreed constraint | Architecture evaluates the choice and record; reflection supplies evidence |
@@ -68,15 +74,18 @@ Write journal entries with the command form in the loaf-core skill's Journal Com
 | Topic | Reference | Use When |
 |-------|-----------|----------|
 | Update Proposal | [templates/update-proposal.md](templates/update-proposal.md) | Drafting proposals for Core Doc changes |
+| Strategy Structure | [templates/strategy.md](templates/strategy.md) | Creating STRATEGY.md or adding personas, problem space, priorities, landscape, or glossary |
 | Architecture | [architecture skill](../architecture/SKILL.md) | Integrating architectural learning or evaluating a potential exceptional ADR |
 
 ---
 
 ## Purpose
 
-Strategy evolves through **shipping**, not theorizing.
+The Core Docs follow evidence. Shipped work proves or disproves assumptions; dogfood, interviews, and research can show a premise is wrong before anything ships. Reflect turns either kind of evidence into a proposal for the owning document, and the owner decides.
 
-After completing work, reflect extracts learnings and proposes updates to the Core Docs. **Don't update strategy during planning or shaping.** Update after implementation proves (or disproves) assumptions.
+- **STRATEGY.md** -- the landscape: who we build for and not, the problem space, priorities, and positioning
+- **VISION.md** -- where we're going
+- **ARCHITECTURE.md** -- how we build, owned with the architecture skill
 
 ---
 
@@ -84,6 +93,8 @@ After completing work, reflect extracts learnings and proposes updates to the Co
 
 - After completing and shipping a significant native tracker work item
 - After shipped work supplies evidence about a surprise encountered during implementation
+- Before or during implementation, when evidence shows a VISION or STRATEGY premise is wrong
+- When the owner asks for strategy discovery: personas, market landscape, problem space, or glossary
 - After a series of related sessions
 - Periodically (monthly/quarterly) to consolidate learnings
 
@@ -93,7 +104,7 @@ After completing work, reflect extracts learnings and proposes updates to the Co
 
 ### Step 1: Parse Input
 
-`$ARGUMENTS` can be: an issue ref (`LOAF-42`), a topic ("authentication learnings"), or empty (general reflection on recent work).
+`$ARGUMENTS` can be: an issue ref (`LOAF-42`), a topic ("authentication learnings"), a strategy area ("personas", "market", "problem space", "glossary"), or empty (general reflection on recent work).
 
 ### Step 2: Gather Evidence
 
@@ -110,17 +121,19 @@ Sources:
 
 Use existing evidence first and ask only for missing insights that could change the conclusion: what surprised the user, whether the rider completed the journey, what dogfood showed, which complexity earned its place, and which deferrals should remain. Do not repeat a settled decision interview merely because reflection was invoked.
 
+Strategy discovery needs more interviewing, because the knowledge lives with the owner: ask non-obvious questions about users and anti-personas, competitors, the problem space, and domain language, one at a time, using your harness's structured question tool if it has one.
+
 ### Step 4: Identify Implications
 
 Use the Quick Reference routing against the repository's actual document homes. Separate a correction to current implementation evidence from a proposal to change the agreed model. If a choice may merit an ADR, apply Architecture's exceptional-record guidance; significance, project maturity, or a release alone does not select that format.
 
 ### Step 5: Draft Proposals
 
-For each justified update, use the [update-proposal template](templates/update-proposal.md) as prompts. Present proposals in the response unless a persistent artifact is requested or necessary. Group related edits by owning topic, preserve relevant rationale, and state remaining evidence gaps. “No durable update warranted” is a valid result.
+For each justified update, use the [update-proposal template](templates/update-proposal.md) as prompts; shape new STRATEGY.md sections with the [strategy template](templates/strategy.md) and express sequencing as rideable increments, not completed architecture layers. Present proposals in the response unless a persistent artifact is requested or necessary. Group related edits by owning topic, preserve relevant rationale, and state remaining evidence gaps. “No durable update warranted” is a valid result.
 
 ### Step 6: Present and Await Approval
 
-Present proposals grouped by document. If the user has already authorized those scoped edits, proceed; otherwise wait for approval before applying them. Approval of a topic update is not approval to adopt an unresolved choice, create a separate ADR, or migrate the corpus.
+Present proposals grouped by document. If the owner has already authorized those scoped edits, proceed; otherwise wait for confirmation before applying them. Each VISION or STRATEGY change needs that confirmation, however strong the evidence. Approval of a topic update is not approval to adopt an unresolved choice, create a separate ADR, or migrate the corpus.
 
 User may: approve all, approve some, modify proposals, defer updates, or request more evidence.
 
@@ -136,7 +149,7 @@ After approval:
 
 ## Related Skills
 
-- **shape** -- Notes strategic tensions for later reflection
-- **strategy** -- Deep discovery (before reflection validates)
+- **shape** -- Notes strategic tensions for reflection
+- **pitch** -- Problem discovery for one piece of work; a pitch that finds a Core Doc premise wrong hands that evidence here
 - **architecture** -- Owns living topics, exceptional ADR selection and history, rationale, maintenance, and migration
 - **research** -- Investigation that may inform reflection

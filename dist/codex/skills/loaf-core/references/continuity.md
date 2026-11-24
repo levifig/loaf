@@ -23,3 +23,28 @@ Responsibilities remain separate:
 - Handoff remains the existing explicit transfer workflow; ordinary capture does not require invoking it.
 
 Checkpointing grants no authority to implement Backlog work, create tasks or agents, send messages, commit, push, release, install, or clean up. Preserve useful reasoning within the authorization already given.
+
+## Explorations
+
+An undecided inquiry that will outlast one conversation, context window, or harness is kept as an Exploration: a private record of immutable checkpoints and provenance. It has no status, owner, or lifecycle. Resuming means reading its portable context and appending new facts, never changing state. You decide what an Exploration means and when to checkpoint; the CLI only validates and performs the operation you request.
+
+Check `loaf exploration list` before creating a duplicate. Start one with `loaf exploration create --title <title> [--from <source>]...`, linking the journal entries, handoffs, reports, or findings that motivated it. Checkpoint at every meaningful plateau and before the context window gets hostile:
+
+```bash
+loaf exploration checkpoint <ref> --purpose <p> --conclusions <c> --unresolved <u> --next <n> [--item candidate:<text>]... [--item evidence:<text>]... [--operation-id <key>]
+```
+
+Every checkpoint carries all four portable fields, each readable without this conversation. Each is capped at 4096 UTF-8 bytes; oversize input is rejected, never truncated:
+
+- **purpose:** what is being explored and why, restated for a stranger.
+- **conclusions:** what is established so far, including rejected options and why they fell.
+- **unresolved:** the open question or decision the inquiry turns on.
+- **next:** the recommended next action, concrete enough for a fresh agent.
+
+Larger detail goes in ordered `candidate:` and `evidence:` items or a related report. Never store transcripts, prompts, or tool output; curate the meaning instead. Name native tracker references in the checkpoint; spark and idea references stay there too, because tracker records point only to places everyone with tracker access can reach.
+
+A conversation handle or log path is provenance, never context. Record one only when it helps later navigation (`loaf conversation create`, `loaf conversation handle add`, `loaf exploration conversation add`), and never infer identity from the current session. Handles do not make an Exploration resumable; only a portable checkpoint does.
+
+Resume anywhere with `loaf exploration context <ref> --json`. The four-field core returns whole; optional layers report counts, truncation, and their expansion command. Treat unavailable handles as lost; the checkpoint is the context. If `portable_context_present` is false, rebuild understanding from linked sources and write the missing checkpoint first. Read the tracker records a checkpoint names before continuing: if one is done, cancelled, or a duplicate, say so instead of silently reopening it.
+
+To park an inquiry, checkpoint it honestly. An Exploration is never paused or closed; it waits, resumable from its checkpoint. File a direction as tracker work only when the person asks, through the selected project-management provider.
