@@ -18,7 +18,6 @@ Move open tracker-owned work once, then let the destination tracker remain canon
 - Critical Rules
 - Verification
 - Quick Reference
-- Journal Commands
 - Workflow
 - Mapping Policy
 - Receipt
@@ -29,21 +28,18 @@ Move open tracker-owned work once, then let the destination tracker remain canon
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
-
-1. **Log invocation first** — `loaf journal log "skill(migrate-project): exporting open local issues to <provider and destination>"` before any other action.
-2. **Export through the public boundary** — run `loaf migrate tracker-export --json`. Do not read the SQLite database directly or reconstruct issues from private continuity artifacts.
-3. **The harness owns the connection** — use only the current harness's native, already-connected tracker tools. Loaf never receives provider credentials, calls provider APIs, installs MCP servers, or proxies tracker traffic. If the connection is unavailable, stop before writes and tell the operator which harness connection is missing.
-4. **Treat the project label as a hint** — `project.label_hint` suggests source display text only. Confirm the exact destination name and casing with the operator and provider reads. Do not derive it from legacy config or silently normalize it.
-5. **Plan every root's destination kind** — for each packet issue with no `parent_id`, explicitly choose and confirm `issue` or one provider-native project-like kind such as `project`, `milestone`, or `epic`. Never assume every source row becomes an issue.
-6. **Read before write** — resolve and re-read the exact destination workspace, organization, team, repository, and existing project-like resources before proposing changes. Never infer a destination from a similarly named resource.
-7. **Detect collisions by resource kind before writes** — search the correct provider collection for every source marker and likely title match. Classify each planned resource as `create`, `adopt`, `no-op`, or `conflict`; a project-like root must not adopt an issue or vice versa. Unresolved conflicts block that resource.
-8. **Confirm the mapping plan** — show the destination, per-root destination kinds, status mapping, hierarchy strategy, relationship strategy, collision classifications, and first bounded batch. Obtain confirmation before the first mutation unless the operator has already approved that exact plan.
-9. **Bound all resource mutations** — create or adopt at most 10 provider resources per batch, counting projects, milestones, epics, and issues together. Stop the batch on an ambiguous response or failed verification. Do not retry a create until a read proves whether the first attempt landed.
-10. **Preserve provenance without auto-linking** — every created or adopted provider resource description carries a source marker in its collapsed agent notes, never in the human sections: a **Findings** bullet reading `migrated from local issue` followed by the alias in Markdown inline code, for example `` - **Findings:** migrated from local issue `DOJO-1` ``. When an alias is absent, use the source ID in inline code. This marker is the one local identifier a tracker record may carry, kept only so migration can detect duplicates. Write the notes with the destination's syntax as [Record Writing](../project-management/references/record-writing.md) describes. Never replace provider-native IDs with Loaf aliases.
-11. **Map by identity, never order** — associate every provider response with its source ID/alias and destination kind, then re-read the provenance marker. Never infer mappings from provider key sequence, request order, response order, creation time, or batch position; concurrent creates may receive provider keys in a different order.
-12. **Verify every batch** — re-read each destination resource, its kind, and its hierarchy/status/relationship state after writing. Only verified mappings enter the receipt.
-13. **One-time migration only** — do not create dual sync, webhooks, local mirrors, provider clients, credentials, journal/wrap/handoff migration, or remote continuity sync. Local harness execution needs no Loaf server.
+1. **Export through the public boundary** — run `loaf migrate tracker-export --json`. Do not read the SQLite database directly or reconstruct issues from private continuity artifacts.
+2. **The harness owns the connection** — use only the current harness's native, already-connected tracker tools. Loaf never receives provider credentials, calls provider APIs, installs MCP servers, or proxies tracker traffic. If the connection is unavailable, stop before writes and tell the operator which harness connection is missing.
+3. **Treat the project label as a hint** — `project.label_hint` suggests source display text only. Confirm the exact destination name and casing with the operator and provider reads. Do not derive it from legacy config or silently normalize it.
+4. **Plan every root's destination kind** — for each packet issue with no `parent_id`, explicitly choose and confirm `issue` or one provider-native project-like kind such as `project`, `milestone`, or `epic`. Never assume every source row becomes an issue.
+5. **Read before write** — resolve and re-read the exact destination workspace, organization, team, repository, and existing project-like resources before proposing changes. Never infer a destination from a similarly named resource.
+6. **Detect collisions by resource kind before writes** — search the correct provider collection for every source marker and likely title match. Classify each planned resource as `create`, `adopt`, `no-op`, or `conflict`; a project-like root must not adopt an issue or vice versa. Unresolved conflicts block that resource.
+7. **Confirm the mapping plan** — show the destination, per-root destination kinds, status mapping, hierarchy strategy, relationship strategy, collision classifications, and first bounded batch. Obtain confirmation before the first mutation unless the operator has already approved that exact plan.
+8. **Bound all resource mutations** — create or adopt at most 10 provider resources per batch, counting projects, milestones, epics, and issues together. Stop the batch on an ambiguous response or failed verification. Do not retry a create until a read proves whether the first attempt landed.
+9. **Preserve provenance without auto-linking** — every created or adopted provider resource description carries a source marker in its collapsed agent notes, never in the human sections: a **Findings** bullet reading `migrated from local issue` followed by the alias in Markdown inline code, for example `` - **Findings:** migrated from local issue `DOJO-1` ``. When an alias is absent, use the source ID in inline code. This marker is the one local identifier a tracker record may carry, kept only so migration can detect duplicates. Write the notes with the destination's syntax as [Record Writing](../project-management/references/record-writing.md) describes. Never replace provider-native IDs with Loaf aliases.
+10. **Map by identity, never order** — associate every provider response with its source ID/alias and destination kind, then re-read the provenance marker. Never infer mappings from provider key sequence, request order, response order, creation time, or batch position; concurrent creates may receive provider keys in a different order.
+11. **Verify every batch** — re-read each destination resource, its kind, and its hierarchy/status/relationship state after writing. Only verified mappings enter the receipt.
+12. **One-time migration only** — do not create dual sync, webhooks, local mirrors, provider clients, credentials, journal/wrap/handoff migration, or remote continuity sync. Local harness execution needs no Loaf server.
 
 ## Verification
 
@@ -79,14 +75,6 @@ loaf migrate tracker-export --json
 | Harness | First acceptance path | Remote requirement |
 |---------|-----------------------|--------------------|
 | Amp | `amp --no-tui` on the local project | No Loaf server or Orb |
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Workflow
 

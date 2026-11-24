@@ -32,7 +32,7 @@ last_reviewed: '2026-11-06'
 - [References](#references)
 - [Templates](#templates)
 - [Harness-Neutral Authoring](#harness-neutral-authoring)
-- [Journal Self-Logging](#journal-self-logging)
+- [Journal Guidance](#journal-guidance)
 - [Agent Profiles](#agent-profiles)
 - [Categories](#categories)
 - [Authoring Checklist](#authoring-checklist)
@@ -274,17 +274,9 @@ Worked examples of genuine product-specific facts (keep as labeled content; do n
 - Review policy that must inspect both `AGENTS.md` and `CLAUDE.md` when both exist
 - Slash-command invocation forms that differ by channel (`/loaf:name` on Claude Code's plugin path vs bare `/name` elsewhere)
 
-## Journal Self-Logging
+## Journal Guidance
 
-User-invocable workflow skills must log their invocation to the project journal as their first action, with context: arguments, intent, or what triggered the invocation. This creates an audit trail of which skills ran; the current branch and an opaque `harness_session_id` are attached automatically, and there is no start step or active session to find:
-
-```bash
-loaf journal log "skill(shape): shaping auth token rotation in the selected native issue"
-loaf journal log "skill(housekeeping): routine cleanup, no specific trigger"
-loaf journal log "skill(ship): reviewing the selected candidate"
-```
-
-Recent journal entries show which workflows ran. Foundations owns ordinary capture and selective synthesis; the [journal template](../../content/templates/journal.md) owns entry types and format rules.
+Skills do not log their own invocation. A skill asks for a journal write only where the entry records something worth recovering later: a decision, a discovery, a block, or a wrap. Foundations owns ordinary capture and the single [Journal Commands](../../content/skills/foundations/SKILL.md#journal-commands) section, including the labeled Codex form; a skill that asks for journal writes links there instead of copying the commands. The [journal template](../../content/templates/journal.md) owns entry types and format rules.
 
 ## Agent Profiles
 

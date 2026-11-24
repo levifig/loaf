@@ -1,6 +1,6 @@
 # Journal Render Template
 
-Before the first journal write, select the form in [Journal Commands](#journal-commands). Use it for every logging example below, including invocation and wrap entries.
+Write every entry with the command form in [Foundations](../../foundations/SKILL.md#journal-commands).
 
 This is the render template and entry-format reference for the project journal
 stored in SQLite. The journal is the only session-related structure: entries are
@@ -15,7 +15,6 @@ not create or edit journal markdown as the source of truth — use
 
 ## Entries
 
-[YYYY-MM-DD HH:MM] skill(implement): implementing LOAF-42
 [YYYY-MM-DD HH:MM] decision(scope): description of decision
 [YYYY-MM-DD HH:MM] discover(scope): something learned
 [YYYY-MM-DD HH:MM] block(scope): what is blocked
@@ -28,7 +27,6 @@ not create or edit journal markdown as the source of truth — use
 
 | Type | Use For | Written By |
 |------|---------|------------|
-| `skill(name)` | User-invocable workflow skill ran | Agent |
 | `decision(scope)` | Key decisions with rationale | Agent |
 | `discover(scope)` | Something learned | Agent |
 | `block(scope)` | Blocker encountered | Agent |
@@ -48,14 +46,6 @@ not create or edit journal markdown as the source of truth — use
    durable ordering source.
 5. **No manual markdown edits:** Rendered markdown is a projection. Persist new
    facts with `loaf journal log`.
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## CLI Commands
 

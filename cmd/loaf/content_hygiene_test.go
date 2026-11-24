@@ -75,7 +75,6 @@ func TestSkillContentHygieneStaleReferences(t *testing.T) {
 				"YYYYMMDD-HHMMSS-topic.md",
 			},
 			required: []string{
-				"loaf journal log",
 				"project-management/v1",
 				"Assign one writer",
 			},

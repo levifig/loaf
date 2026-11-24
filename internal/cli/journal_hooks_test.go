@@ -135,7 +135,10 @@ func TestJournalLogFromHookNoOpsOnUnrecognizedPayload(t *testing.T) {
 	}
 }
 
-func TestJournalContextForPromptInjectsJournalFirstPrinciples(t *testing.T) {
+// TestJournalContextForPromptIsSilentNoOp pins the retired prompt hook: an
+// older installed plugin that still calls for-prompt gets success and no
+// injected guidance.
+func TestJournalContextForPromptIsSilentNoOp(t *testing.T) {
 	workingDir, stateHome := setupJournalHookRunner(t)
 	var stdout bytes.Buffer
 	err := Runner{
@@ -147,12 +150,8 @@ func TestJournalContextForPromptInjectsJournalFirstPrinciples(t *testing.T) {
 	if err != nil {
 		t.Fatalf("journal context for-prompt error = %v", err)
 	}
-	out := stdout.String()
-	if !strings.Contains(out, "loaf journal log") {
-		t.Fatalf("for-prompt stdout = %q, want journal-first log guidance", out)
-	}
-	if strings.Contains(out, "loaf session") {
-		t.Fatalf("for-prompt stdout = %q, must not reference the deleted session command", out)
+	if stdout.String() != "" {
+		t.Fatalf("for-prompt stdout = %q, want empty", stdout.String())
 	}
 }
 
@@ -302,8 +301,8 @@ func TestJournalLogNonHookErrorsOnMissingState(t *testing.T) {
 	}
 }
 
-// TestJournalContextForPromptSurvivesMissingState confirms the UserPromptSubmit
-// guidance emitter does not touch state and works on a fresh install.
+// TestJournalContextForPromptSurvivesMissingState confirms the retired prompt
+// hook does not touch state and succeeds silently on a fresh install.
 func TestJournalContextForPromptSurvivesMissingState(t *testing.T) {
 	workingDir, stateHome := freshHookRunnerDir(t)
 	var stdout bytes.Buffer
@@ -316,8 +315,8 @@ func TestJournalContextForPromptSurvivesMissingState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("journal context for-prompt (missing state) error = %v", err)
 	}
-	if !strings.Contains(stdout.String(), "loaf journal log") {
-		t.Fatalf("for-prompt (missing state) stdout = %q, want guidance emitted", stdout.String())
+	if stdout.String() != "" {
+		t.Fatalf("for-prompt (missing state) stdout = %q, want empty", stdout.String())
 	}
 }
 

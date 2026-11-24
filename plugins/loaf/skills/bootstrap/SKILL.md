@@ -20,7 +20,6 @@ First-contact project setup: detect state, interview the builder, populate proje
 ## Contents
 - Critical Rules
 - Verification
-- Journal Commands
 - Topics
 - Purpose
 - Input Parsing
@@ -42,7 +41,7 @@ Series-prep lives under Finalization (phase between Knowledge Base Scaffolding a
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
+Write journal entries with the command form in [Foundations](../foundations/SKILL.md#journal-commands).
 
 - **Detect, don't ask** -- auto-classify project mode (brownfield/greenfield+brief/greenfield+empty), confirm briefly, let the user correct
 - **Never overwrite existing documents** without explicit confirmation -- read first, note what exists, ask before changing
@@ -55,7 +54,6 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - **Record routing, never provision a provider** -- when the project exposes a provider connection, record non-secret routing hints in `.agents/loaf.json`; never install, connect, or authenticate it. When the user selects GitHub as the canonical tracker, record `integrations.github.tracker: true`, `repository` (`owner/name`), and `project_id` (the exact opaque Projects v2 global node ID). Complete the [GitHub destination diagnosis](../github/SKILL.md#destination-diagnosis) through the verified connection before declaring setup complete. The board must be active and expose Backlog, Todo, In Progress, and Done; report In Review when present. Read its current title live for display, never use a title or `Project #N` as routing identity. Unavailable board evidence leaves setup unverified; do not invent a destination or workflow.
 - **Suggest, don't execute** -- recommend next skills at the end, never auto-run them
 - **Record release-tag naming once** -- preserve an existing project's tooling convention in root `AGENTS.md`; for a greenfield project use `v`-prefixed SemVer, starting with `v0.1.0`, and ask only when tooling forces another form. This is project-owned prose, not a Loaf config field. The same rule applies to Go, Rails, Python, TS/JS, and Bash projects. Shape creates native version milestones later when needed; bootstrap does not pre-create buckets or assign the backlog.
-- **Log first** -- log invocation before interviewing: `loaf journal log "skill(bootstrap): <project or intake>"`
 - **Log outcome** -- log bootstrap completion to the project journal: `loaf journal log "decision(bootstrap): project bootstrapped, mode detected"`
 
 ---
@@ -72,14 +70,6 @@ Before the first journal write, select the command in [Journal Commands](#journa
 - Root `AGENTS.md` records one release-tag convention; native milestone titles will mirror that exact string, independently of workflow Status or execution selection.
 
 ---
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

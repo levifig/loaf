@@ -24,22 +24,6 @@
       "mode": 420
     },
     {
-      "id": "hook-file:plugins/hooks/instructions/pre-pr-checklist.md",
-      "kind": "hook-file",
-      "source_path": "plugins/hooks/instructions/pre-pr-checklist.md",
-      "destination": "plugins/hooks/instructions/pre-pr-checklist.md",
-      "sha256": "39105e7a4dd6e6574e2a4e270f10d1c7f0c34f95bdd1f25b234d5376644d7a69",
-      "mode": 420
-    },
-    {
-      "id": "hook-file:plugins/hooks/instructions/pre-pr-format.md",
-      "kind": "hook-file",
-      "source_path": "plugins/hooks/instructions/pre-pr-format.md",
-      "destination": "plugins/hooks/instructions/pre-pr-format.md",
-      "sha256": "d41111e001c0b0b45ebeb33867f358563e6f73abcc9c34aef8590648f1a53930",
-      "mode": 420
-    },
-    {
       "id": "hook-file:plugins/hooks/instructions/pre-push.md",
       "kind": "hook-file",
       "source_path": "plugins/hooks/instructions/pre-push.md",
@@ -58,7 +42,7 @@
       "kind": "plugin",
       "source_path": "plugins/hooks.js",
       "destination": "plugins/hooks.js",
-      "sha256": "acc541a2ccdf2869fbce408da46721849ad5f4ac435251913b144b94800c3ba6",
+      "sha256": "54ad1664cd986204660132addc46a47cc698ffd0b5b207ca35ef2ca046dacf04",
       "mode": 420
     }
   ]

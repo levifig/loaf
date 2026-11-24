@@ -20,7 +20,6 @@ narrow, stable interfaces. Vocabulary discipline is load-bearing: drift to
 - Verification
 - Quick Reference
 - Process
-- Journal Commands
 - Topics
 - Related Skills
 
@@ -29,16 +28,6 @@ narrow, stable interfaces. Vocabulary discipline is load-bearing: drift to
 ---
 
 ## Critical Rules
-
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
-
-### First Action: Self-Log
-
-Before anything else, log invocation to the project journal:
-
-```bash
-loaf journal log "skill(refactor-deepen): <module or area>"
-```
 
 ### Vocabulary Discipline
 
@@ -157,7 +146,6 @@ surface adds plugin-level detection, this rule can switch to it.
 
 ## Verification
 
-- The project journal contains a `skill(refactor-deepen):` entry as the first action
 - The glossary, architecture overview, relevant owning topics, and applicable legacy decisions were read before the candidate list was presented, using the repository's actual paths
 - Every candidate module name was checked via `loaf kb glossary check` before
   being proposed
@@ -222,14 +210,6 @@ architecture and exploratory flows.
 10. **Capture and return.** Route concrete actionable findings through Project Management, then return the proposal and remaining decisions. Shape and Implement consume native work, not the report as a substitute contract.
 
 ---
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

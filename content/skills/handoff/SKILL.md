@@ -21,14 +21,10 @@ Give a recipient enough context to take the next useful action without reconstru
 - Quick Reference
 - Process
 - Loading a Saved Handoff
-- Journal Commands
 - Related Skills
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill.
-
-- As the first action, run `loaf journal log "skill(handoff): <recipient and focus>"` against the current private journal. If unavailable, report the failure and continue only when the transfer can safely proceed.
 - Use Handoff for a deliberate recipient-focused transfer. Interpret "prepare the next session" by intent: routine resumption and parked-work synthesis use Foundations and the managed continuity instructions, without automatically creating a packet.
 - Infer the recipient, destination, bounded scope, and next action from available context. Ask only when ambiguity materially changes the transfer.
 - Preparing or persisting a packet does not authorize spawning agents, creating tasks, sending messages, starting implementation, or expanding the recipient's existing authority. Use a delivery tool only when that action is already authorized.
@@ -92,14 +88,6 @@ When the operator explicitly requests a file, write the packet at the requested 
 From the source project context, use `loaf handoff list --json` or `loaf search <query> --json` to discover a native handoff, then `loaf handoff show <reference> --json` to read its body. Do not infer a filesystem location from the name. An explicit portable-file path is read as that snapshot; a packet recorded as a journal entry uses `loaf journal search` and `loaf journal show` instead. SQLite storage does not make every record a journal entry.
 
 After loading, re-read the relevant native tracker and Git state, identify anything changed since the packet, and continue only within existing authorization. If the source store or referenced evidence is inaccessible, report what is missing instead of claiming successful recovery.
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Related Skills
 

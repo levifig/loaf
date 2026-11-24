@@ -28,6 +28,18 @@ Engineering standards and ordinary continuity discipline for useful, recoverable
 
 Before the first journal write, select the form in [Journal Commands](#journal-commands) and use it for every entry.
 
+### Precedence
+
+When guidance conflicts, follow this order:
+
+1. The operator's instruction.
+2. The selected work contract.
+3. The project's documented direction, such as AGENTS.md and architecture docs.
+4. The project's existing conventions and toolchain.
+5. Loaf's defaults, including the conventions in loaded skills.
+
+A selected contract may change documented direction; update that documentation in the same change. Prior decisions, existing code, and journal entries are evidence to weigh, not authority. When a simpler or better direction serves the outcome, say so and propose it instead of extending what exists by default.
+
 ### Always
 
 - Use type hints on all public functions

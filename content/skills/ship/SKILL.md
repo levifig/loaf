@@ -13,14 +13,10 @@ Evaluate the candidate against the live [work contract](../../templates/work-con
 - Post-Merge Reconciliation
 - Verification
 - Quick Reference
-- Journal Commands
 - Topics
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
-
-- As the first action, run `loaf journal log "skill(ship): <concise intent>"` against the current private local journal. If the write fails, report the failure and continue only when the work can safely proceed; never put invocation bookkeeping in the tracker.
 - Re-read the canonical record, relationships, workflow state, and relevant collaboration through [`project-management/v1`](../project-management/SKILL.md).
 - Inspect the actual candidate diff and repository instructions. Do not accept an implementer's summary as evidence.
 - Verify the explicitly declared implemented work set against the canonical tracker records and actual diff. Require changed Unreleased coverage for every implemented record, regardless of change size or category, and review each note for semantic accuracy. Run the repository's shared coverage validator against the actual review base and candidate; passing structural checks do not establish accurate or complete scope. Missing coverage blocks Approve and Done. A release-only exception must prove movement of already-landed notes without new implementation; a release title, tag, or skip label is insufficient. Report whether the hosted check is actually required by native rules; local hooks and model guidance alone are not a universal mechanical barrier.
@@ -84,14 +80,6 @@ Report **Landed remotely; local reconciliation pending** when the PR and tracker
 | Request changes | A clear unmet criterion, ordinary defect, or obtainable missing in-scope evidence returns to implement; unclear or changed contract substance, or a material scope or commitment shift, returns to shape. Do not absorb unauthorized scope by recording it. |
 | Blocked | Required proof is inaccessible and no valid reason on its box defers it; a Verification box is open with no valid reason on it and ship cannot run its check, because only a person can or it can only run after the merge; or required authority, connection, or repository event is unavailable. Do not waive the criterion |
 | Landed | Repository event and final native state were both observed; report local reconciliation separately, including any pending checkout or branch cleanup |
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 
