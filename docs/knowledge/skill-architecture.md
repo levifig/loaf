@@ -276,7 +276,7 @@ Worked examples of genuine product-specific facts (keep as labeled content; do n
 
 ## Journal Guidance
 
-Skills do not log their own invocation. A skill asks for a journal write only where the entry records something worth recovering later, such as a decision, a discovery, a block, or a wrap. Foundations owns ordinary capture and the single [Journal Commands](../../content/skills/foundations/SKILL.md#journal-commands) section, including the labeled Codex form; a skill that asks for journal writes links there instead of copying the commands. The [journal template](../../content/templates/journal.md) owns entry types and format rules.
+Skills do not log their own invocation. A skill asks for a journal write only where the entry records something worth recovering later, such as a decision, a discovery, a block, or a wrap. Foundations owns ordinary capture and the single [Journal Commands](../../content/skills/foundations/SKILL.md#journal-commands) section, including the labeled Codex form; a skill that asks for journal writes names "the Foundations skill's Journal Commands section" in plain text instead of linking or copying the commands, because relative links to another skill do not resolve from every install layout. The [journal template](../../content/templates/journal.md) owns entry types and format rules.
 
 ## Agent Profiles
 

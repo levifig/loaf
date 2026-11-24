@@ -51,7 +51,7 @@ through journal logging, using the command form named above, and read them with
 ## CLI Commands
 
 ```bash
-loaf journal log      # Append a typed entry; take the command form from Foundations
+loaf journal log      # Append a typed entry; use the Foundations skill's Journal Commands section
 loaf journal recent   # Show the timeline (newest first); --branch, --since-last-wrap
 loaf journal context  # Emit the layered continuity digest (latest wrap + branch + tasks)
 loaf journal search   # Full-text search across the project journal

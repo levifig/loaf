@@ -83,15 +83,63 @@ func TestJournalCommandsHaveOneOwner(t *testing.T) {
 		if strings.Contains(body, "## Journal Commands") {
 			t.Errorf("%s copies the Journal Commands section; name the %s instead", rel, journalCommandsRoute)
 		}
-		for _, token := range []string{`loaf journal log "`, "--execpolicy-safe"} {
-			if strings.Contains(body, token) {
-				t.Errorf("%s repeats runnable journal command syntax (%q); describe the entry and name the %s", rel, token, journalCommandsRoute)
-			}
+		if match := runnableJournalCommand.FindString(body); match != "" {
+			t.Errorf("%s repeats runnable journal command syntax (%q); describe the entry and name the %s", rel, match, journalCommandsRoute)
+		}
+		if strings.Contains(body, "--execpolicy-safe") {
+			t.Errorf("%s repeats the Codex journal form; name the %s instead", rel, journalCommandsRoute)
 		}
 		if strings.Contains(body, "#journal-commands") {
 			t.Errorf("%s links to the journal commands; relative skill links do not resolve from every install layout, so name the %s", rel, journalCommandsRoute)
 		}
 	})
+}
+
+// runnableJournalCommand matches a journal write with a payload, whatever the
+// quoting or flags, while leaving a bare command-index mention alone.
+var runnableJournalCommand = regexp.MustCompile(`loaf\s+journal\s+log(\s+--[a-z-]+)*\s+['"]`)
+
+// journalCommandRouteSurfaces are the instruction surfaces outside Foundations
+// that ask for journal writes. Each must name where the command forms live.
+var journalCommandRouteSurfaces = []string{
+	"content/skills/bootstrap/SKILL.md",
+	"content/skills/brainstorm/SKILL.md",
+	"content/skills/council/SKILL.md",
+	"content/skills/handoff/SKILL.md",
+	"content/skills/idea/SKILL.md",
+	"content/skills/reflect/SKILL.md",
+	"content/skills/research/SKILL.md",
+	"content/skills/strategy/SKILL.md",
+	"content/skills/loaf-reference/references/artifact-routing.md",
+	"content/templates/journal.md",
+}
+
+// TestJournalWritingSurfacesNameTheCommandOwner keeps a route from every
+// journal-writing surface to the single command owner, so a Codex agent can
+// still find the policy-safe form.
+func TestJournalWritingSurfacesNameTheCommandOwner(t *testing.T) {
+	repo := testRepositoryRoot(t)
+	for _, rel := range journalCommandRouteSurfaces {
+		body := readBuildFileString(t, filepath.Join(repo, filepath.FromSlash(rel)))
+		if !strings.Contains(body, journalCommandsRoute) {
+			t.Errorf("%s asks for journal writes without naming the %s", rel, journalCommandsRoute)
+		}
+	}
+}
+
+// TestMigrationReceiptReportsObservedJournalWrites keeps the receipt from
+// asserting a fixed answer about local continuity writes.
+func TestMigrationReceiptReportsObservedJournalWrites(t *testing.T) {
+	repo := testRepositoryRoot(t)
+	receipt := readBuildFileString(t, filepath.Join(repo, "content", "skills", "migrate-project", "templates", "tracker-migration-receipt.md"))
+	for _, fixed := range []string{"- Local continuity writes: none\n", "- Local continuity writes: invocation journal entry only"} {
+		if strings.Contains(receipt, fixed) {
+			t.Errorf("migration receipt prefills a fixed continuity-write answer (%q)", strings.TrimSpace(fixed))
+		}
+	}
+	if !strings.Contains(receipt, "- Local continuity writes: [") {
+		t.Error("migration receipt no longer asks for the journal entries actually written")
+	}
 }
 
 // TestSkillsDoNotLogTheirOwnInvocation guards against reintroducing the
