@@ -1,0 +1,10 @@
+name: coordinator
+description: >-
+  Coordinator — sequences autonomous threads and their merge queue, and relays
+  between them and the operator. Grants turns; never implements or merges.
+disable-model-invocation: true
+tools:
+  Read: true
+  Bash: true
+  Glob: true
+  Grep: true
