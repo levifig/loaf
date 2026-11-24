@@ -56,30 +56,6 @@ Some `expected_after` values are assumptions that the merge work must confirm:
 
 - **brainstorm and explore folded into pitch, strategy into reflect:** explore's three core cases now expect `pitch` and strategy's three expect `reflect`. brainstorm's three core cases were dropped because each asks for "the brainstorm technique" by name, which no longer exists. The four discovery and three strategy merge probes now expect their `expected_after` owner. So do the older "generate a few possible directions" and "help me explore a few" probes, which also carry `expected_after: pitch`. The older "Define the product direction and personas" probe now expects `reflect`. The retired skills are gone from every probe's `choices`. Group names are unchanged so per-group results stay comparable. The suite is now 187 cases.
 
-## 2026-11-24: after folding brainstorm, explore and strategy into pitch and reflect
-
-Measured at commit `606c0766`, with the same `all` suite of 187 cases, once per model. These runs measure only this merge: they predate the other planned merges and the `foundations` rename.
-
-The comparison joins each case to its baseline answer by prompt. It scores both runs against the skill that should own the request after the merges (`expected_after` where present). Explore's moved core cases count as right in the baseline when they reached explore, which owned them then. "Affected" means the 28 cases whose owner is now pitch or reflect, plus any case either run answered with one of those skills or a retired one.
-
-| Model | Run's own score | All shared cases, against the post-merge owner | Affected cases |
-|---|---|---|---|
-| `claude-opus-5-5` | 174/187 | 159 → 163 | 21 → 25 of 28 |
-| `claude-sonnet-5-5` | 171/187 | 154 → 160 | 18 → 25 of 28 |
-
-**What improved:**
-- Every discovery and strategy merge probe now lands on pitch or reflect on both models.
-- So do the older "generate a few possible directions" and "help me explore a few" probes, and "Define the product direction and personas".
-
-**What regressed:**
-- **Resuming an Exploration has no owner.** "Resume the workflow exploration where we left off" goes to handoff on both models. On Sonnet, "Start an exploration of the caching options and checkpoint it" goes to research. Explore's description claimed these requests. Now the checkpoint guidance lives in Foundations' continuity reference, and no skill's description names Explorations.
-- **One Opus core case moved to idea.** "I have a concept to pitch" goes to idea. Sonnet still routes it to pitch. With one run per model, this may be run-to-run variation.
-- **Two unrelated Sonnet core cases moved.** "Which loaf command shows the recent project journal?" goes to foundations, and "Ready to merge this PR" goes to git-workflow. Neither skill's description changed, so these are likely variation too.
-
-**Still wrong in both runs:** the dogfood "observed versus inferred" request still goes to research on both models.
-
-Token use was 582,723 input tokens per model, with 5,496 output tokens for Opus and 8,662 for Sonnet. The `cost` field is unreliable for the reason given under Limits.
-
 ### Limits
 
 - The runner shows each skill's name and only the first 250 characters of its description. Harnesses show more, so these results measure the start of each description, not the full listing an agent sees.
@@ -130,3 +106,54 @@ The first post-merge run above came in below the baseline, so two descriptions w
 - **Changes outside the affected cases,** from one run each:
   - On Opus, "Explain which component owns shared work and why; do not edit" went to loaf-reference instead of architecture. It passed in the baseline and the first post-merge run, so the shorter architecture description in `84b4b28e` may have caused it; one run cannot tell that apart from variation.
   - On Sonnet, "Ready to merge this PR" went to git-workflow instead of ship. Neither skill changed in this merge.
+
+## 2026-11-24: after folding brainstorm, explore and strategy into pitch and reflect
+
+Measured at commit `606c0766`, with the same `all` suite of 187 cases, once per model. These runs measure only this merge, before it was stacked on the four-skill merge and the `foundations` rename above.
+
+The comparison joins each case to its baseline answer by prompt. It scores both runs against the skill that should own the request after the merges (`expected_after` where present). Explore's moved core cases count as right in the baseline when they reached explore, which owned them then. "Affected" means the 28 cases whose owner is now pitch or reflect, plus any case either run answered with one of those skills or a retired one.
+
+| Model | Run's own score | All shared cases, against the post-merge owner | Affected cases |
+|---|---|---|---|
+| `claude-opus-5-5` | 174/187 | 159 → 163 | 21 → 25 of 28 |
+| `claude-sonnet-5-5` | 171/187 | 154 → 160 | 18 → 25 of 28 |
+
+**What improved:**
+- Every discovery and strategy merge probe now lands on pitch or reflect on both models.
+- So do the older "generate a few possible directions" and "help me explore a few" probes, and "Define the product direction and personas".
+
+**What regressed:**
+- **Resuming an Exploration has no owner.** "Resume the workflow exploration where we left off" goes to handoff on both models. On Sonnet, "Start an exploration of the caching options and checkpoint it" goes to research. Explore's description claimed these requests. The checkpoint guidance now lives in Foundations' (later `loaf-core`'s) continuity reference, and no skill's description named Explorations.
+- **One Opus core case moved to idea.** "I have a concept to pitch" goes to idea. Sonnet still routes it to pitch. With one run per model, this may be run-to-run variation.
+- **Two unrelated Sonnet core cases moved.** "Which loaf command shows the recent project journal?" goes to foundations, and "Ready to merge this PR" goes to git-workflow. Neither skill's description changed, so these are likely variation too.
+
+**Still wrong in both runs:** the dogfood "observed versus inferred" request still goes to research on both models.
+
+Token use was 582,723 input tokens per model, with 5,496 output tokens for Opus and 8,662 for Sonnet. The `cost` field is unreliable for the reason given under Limits.
+
+### Rerun on the combined state
+
+Pitch's description was changed at commit `e13c621c`: its start now says it "starts or resumes a checkpointed Exploration", and it sends context transfer to handoff. This branch was also rebased onto the tuned four-skill merge (`1e78b3a9`), so this run measures the combined state that will ship: 31 skills. The full suite ran once per model at `a7a99993`. Prompts and cases are unchanged.
+
+Affected cases are counted as above. Opus has 29 this time, because it answered pitch on a shape case. The "all shared cases" totals are left out: they mix in the four-skill merge's renames, whose own comparison is in the section above.
+
+| Model | Run's own score | Affected: baseline | Affected: first run (`606c0766`) | Affected: this run |
+|---|---|---|---|---|
+| `claude-opus-5-5` | 173/187 | 22 of 29 | 26 of 29 | 26 of 29 |
+| `claude-sonnet-5-5` | 176/187 | 18 of 28 | 25 of 28 | 27 of 28 |
+
+**Fixed since the first run:**
+- "Resume the workflow exploration where we left off" reaches pitch on both models, instead of handoff.
+- On Sonnet, "Start an exploration of the caching options and checkpoint it" reaches pitch, instead of research.
+- On Opus, "I have a concept to pitch" is back on pitch.
+- On Sonnet, no affected case regressed against the baseline or the first run.
+
+**New misses on Opus only, against both earlier runs:**
+- "Write a bounded proposal for the auth feature" goes to pitch instead of shape. Pitch's new wording may cause this; one run cannot tell.
+- "Reflect on the shipped caching change and propose topic updates only if the evidence warrants them" goes to architecture instead of reflect. Reflect's description did not change between the runs, but architecture's was tuned in the four-skill merge.
+
+**Still wrong in every run:** the dogfood "observed versus inferred" request goes to research.
+
+**Outside the affected cases:** Opus's "Explain which component owns shared work" (to loaf-reference) and Sonnet's "Ready to merge this PR" (to git-workflow) match the movement the four-skill rerun reports above.
+
+Token use was 520,639 input tokens per model, with 7,015 output tokens for Opus and 10,236 for Sonnet.
