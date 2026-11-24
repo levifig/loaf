@@ -6,6 +6,7 @@ This project follows [Common Changelog](https://common-changelog.org/) and [Sema
 
 ### Added
 
+- Record a measured skill-routing baseline before skills are merged. The routing evaluation gains probes for every skill pair the planned merges affect. Each probe names the skill that owns the request today and the one that should own it after the merge. A baseline of all 190 cases on Opus 5.5 and Sonnet 5.5 is kept with the runner, with a summary of what failed and the run's limits. The evaluation can now authenticate with an OAuth access token in `ANTHROPIC_AUTH_TOKEN`, such as the one `ant auth print-credentials --access-token` prints. It also scores models that think before answering correctly: before, a 50-token cap could end their reply before any answer was written ([#467](https://github.com/levifig/loaf/issues/467)).
 - Preserve retired local records and their bodies in a separate checksummed recovery archive, with exact SQLite values, per-project table reconciliation, and database-independent recovery through `loaf migrate retired-show`. Retired records stay outside the new continuity store. ([#288](https://github.com/levifig/loaf/issues/288))
 
 ### Changed
