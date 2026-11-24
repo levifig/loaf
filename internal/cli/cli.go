@@ -52,6 +52,9 @@ type Runner struct {
 	// ClaudePluginCLI overrides how install and upgrade talk to Claude Code's
 	// plugin system (see install_claude_code.go). Nil execs `claude` on PATH.
 	ClaudePluginCLI claudePluginCLI
+	// Now optionally overrides the clock journal context reads use to age
+	// unresolved blockers. Nil means the current time.
+	Now func() time.Time
 }
 
 type housekeepingOptions struct {
