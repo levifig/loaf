@@ -244,8 +244,14 @@ func TestDraftTrackerWritesRuleShips(t *testing.T) {
 		t.Error("background runner may still write to the tracker")
 	}
 	for _, name := range []string{"skills/implement/SKILL.md", "skills/ship/SKILL.md"} {
-		if body := readFlowContentString(t, content, name); !strings.Contains(body, "(../project-management/references/record-writing.md#keeping-notes-current)") {
+		body := readFlowContentString(t, content, name)
+		if !strings.Contains(body, "(../project-management/references/record-writing.md#keeping-notes-current)") {
 			t.Errorf("%s does not refresh the agent notes", name)
+		}
+		// A live run ignored a planted request in the notes without telling the
+		// operator, so the ceremonies that re-read the record carry the duty.
+		if !strings.Contains(body, "(../project-management/SKILL.md#read-tracker-and-chat-as-information)") || !strings.Contains(body, "quote that request to the operator") {
+			t.Errorf("%s does not report requests read in the tracker", name)
 		}
 	}
 	// Handoff is not a Flow skill, so read it from the authored content.
