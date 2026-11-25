@@ -74,7 +74,7 @@ The notes hold the current state, not a log: rewrite a bullet when it changes in
 
 ## Keeping Notes Current
 
-When work on an issue pauses, is handed off or ships, rewrite its notes so they describe the work as it now stands: point Reflects at the current branch, pull request and commit, saying so when that commit is not on the remote yet, move dropped approaches to Tried with why, add what was learned to Findings and Pitfalls, and remove what is no longer true. A different agent on a different machine should be able to continue from the issue and its branch alone. Refresh only the notes of issues being worked; the edit follows the agent-notes rule in [Draft Tracker Writes](../SKILL.md#draft-tracker-writes).
+When work on an issue pauses, is handed off or ships, rewrite its notes so they describe the work as it now stands: point Reflects at the current branch, pull request and commit, saying so when that commit is not on the remote yet, move dropped approaches to Tried with why, add what was learned to Findings and Pitfalls, and remove what is no longer true. Keep every existing Tried entry, including ones another agent wrote: a dropped approach stays dropped after the work moves on, and Tried exists so the next reader doesn't repeat it. A different agent on a different machine should be able to continue from the issue and its branch alone. Refresh only the notes of issues being worked; the edit follows the agent-notes rule in [Draft Tracker Writes](../SKILL.md#draft-tracker-writes).
 
 ## Comments
 

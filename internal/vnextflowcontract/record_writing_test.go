@@ -79,6 +79,8 @@ func TestRecordWritingReferenceAndProviderSyntaxShip(t *testing.T) {
 		"never hold status, dates, assignees, relationships, check results",
 		"## Check Results",
 		"## Keeping Notes Current",
+		// A live handoff rewrite dropped the Tried entry another agent wrote.
+		"Keep every existing Tried entry, including ones another agent wrote",
 		"`YYYY-MM-DD HH:MM:SS` in UTC",
 		"only in PR descriptions and commit messages",
 		"everyone with tracker access can reach",
