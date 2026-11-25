@@ -268,10 +268,12 @@ MCPs are not bundled with Loaf — users configure them independently. Run `loaf
 ```
 # Safe for orchestration (if user has Linear MCP configured)
 list_issues, get_issue, list_comments
-create_comment, update_issue
+update_issue
 list_initiatives, list_initiative_updates
 list_project_milestones, list_project_updates, list_project_labels
 ```
+
+`update_issue` is listed because agent-notes edits need it. Allowlisting a tool removes the harness's permission prompt, not the project-management skill's draft rule: comments, status moves, and other issue edits are still drafted for the operator unless the project's standing permission covers them.
 
 ### Serena MCP
 

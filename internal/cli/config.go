@@ -360,6 +360,7 @@ func ensureLoafConfigDefaults(config map[string]any, now time.Time) ([]string, [
 	}
 
 	validateGitConfig(config, &errors)
+	validateTrackerConfig(config, &errors)
 
 	if _, exists := config["issue"]; exists {
 		issueWarnings, issueErrors := state.IssueProjectConfigFindings(config)

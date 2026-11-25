@@ -26,5 +26,8 @@
     "serena": {
       "enabled": true
     }
+  },
+  "tracker": {
+    "standing_permission": []
   }
 }

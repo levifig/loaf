@@ -23,6 +23,7 @@ type projectManagementContract struct {
 	Authority        trackerAuthorityContract `json:"authority"`
 	Routing          trackerRoutingContract   `json:"routing"`
 	MutationPolicy   trackerMutationPolicy    `json:"mutation_policy"`
+	DraftPolicy      trackerDraftPolicy       `json:"draft_policy"`
 	Operations       []trackerOperation       `json:"operations"`
 	Outcomes         []string                 `json:"outcomes"`
 	Fidelities       []string                 `json:"fidelities"`
@@ -52,6 +53,35 @@ type trackerMutationPolicy struct {
 	AmbiguousCommentRetry string `json:"ambiguous_comment_retry"`
 	PartialOutcomes       string `json:"partial_outcomes"`
 	IndeterminateOutcomes string `json:"indeterminate_outcomes"`
+}
+
+// trackerDraftPolicy records that comments, status moves, and edits to an
+// existing issue are drafted for the operator unless the project's standing
+// permission names that kind of write.
+type trackerDraftPolicy struct {
+	Default                          string              `json:"default"`
+	DraftedOperations                []string            `json:"drafted_operations"`
+	StandingPermissionKey            string              `json:"standing_permission_key"`
+	StandingPermission               map[string][]string `json:"standing_permission"`
+	SingleRequestStricterInstruction string              `json:"single_request_stricter_instruction"`
+	UnansweredDrafts                 string              `json:"unanswered_drafts"`
+	OperatorIssueAgentNotes          string              `json:"operator_issue_agent_notes"`
+}
+
+func canonicalDraftPolicy() trackerDraftPolicy {
+	return trackerDraftPolicy{
+		Default:               "draft-for-operator",
+		DraftedOperations:     []string{"work.update", "definition.write", "status.transition", "comment.append"},
+		StandingPermissionKey: "tracker.standing_permission",
+		StandingPermission: map[string][]string{
+			"comments": {"comment.append"},
+			"status":   {"status.transition"},
+			"edits":    {"work.update", "definition.write"},
+		},
+		SingleRequestStricterInstruction: "wins",
+		UnansweredDrafts:                 "private-journal",
+		OperatorIssueAgentNotes:          "write-without-draft",
+	}
 }
 
 type trackerOperation struct {
@@ -437,6 +467,42 @@ func TestTrackerSkillSharedMutationSafetyCannotDrift(t *testing.T) {
 	}
 }
 
+// Comments, status moves, and edits to an existing issue are drafted for the
+// operator by default; loosening any part of that posture is contract drift.
+func TestTrackerSkillDraftPolicyCannotDrift(t *testing.T) {
+	t.Parallel()
+
+	mutations := []struct {
+		name     string
+		oldValue string
+		newValue string
+	}{
+		{name: "write by default", oldValue: `"default": "draft-for-operator"`, newValue: `"default": "write"`},
+		{name: "comments not drafted", oldValue: `"drafted_operations": ["work.update", "definition.write", "status.transition", "comment.append"]`, newValue: `"drafted_operations": ["work.update", "definition.write", "status.transition"]`},
+		{name: "ticks not drafted", oldValue: `"drafted_operations": ["work.update", "definition.write", "status.transition", "comment.append"]`, newValue: `"drafted_operations": ["work.update", "status.transition", "comment.append"]`},
+		{name: "broader standing permission", oldValue: `"comments": ["comment.append"]`, newValue: `"comments": ["comment.append", "status.transition"]`},
+		{name: "standing permission beats a stricter request", oldValue: `"single_request_stricter_instruction": "wins"`, newValue: `"single_request_stricter_instruction": "ignored"`},
+		{name: "drafts kept in a new store", oldValue: `"unanswered_drafts": "private-journal"`, newValue: `"unanswered_drafts": "outbox"`},
+		{name: "notes drafted on the operator's issue", oldValue: `"operator_issue_agent_notes": "write-without-draft"`, newValue: `"operator_issue_agent_notes": "draft"`},
+	}
+
+	for _, mutation := range mutations {
+		mutation := mutation
+		t.Run(mutation.name, func(t *testing.T) {
+			t.Parallel()
+
+			fixture := validProjectManagementFixture()
+			contract := fixture[projectManagementContractPath]
+			contract.Data = []byte(strings.Replace(string(contract.Data), mutation.oldValue, mutation.newValue, 1))
+			if string(contract.Data) == validProjectManagementContract {
+				t.Fatalf("mutation %q did not change the fixture", mutation.name)
+			}
+			fixture[projectManagementContractPath] = contract
+			assertContractFinding(t, validateProjectManagementContract(fixture), "tracker.drafts", "draft_policy")
+		})
+	}
+}
+
 func TestTrackerSkillProjectManagerCannotOwnIndependentOperations(t *testing.T) {
 	t.Parallel()
 
@@ -596,6 +662,9 @@ func validateTrackerContract(contract projectManagementContract) []finding {
 	}
 	if contract.MutationPolicy != wantMutation {
 		findings = append(findings, finding{"tracker.mutation", projectManagementContractPath, fmt.Sprintf("mutation_policy = %+v, want %+v", contract.MutationPolicy, wantMutation)})
+	}
+	if wantDraft := canonicalDraftPolicy(); !reflect.DeepEqual(contract.DraftPolicy, wantDraft) {
+		findings = append(findings, finding{"tracker.drafts", projectManagementContractPath, fmt.Sprintf("draft_policy = %+v, want %+v", contract.DraftPolicy, wantDraft)})
 	}
 	if !equalOperations(contract.Operations, wantOperations) {
 		findings = append(findings, finding{"tracker.operations", projectManagementContractPath, "operations must match the closed project-management/v1 vocabulary and semantics"})
@@ -914,6 +983,7 @@ const validProjectManagementContractFormat = `{
   "authority": {"shared_work": "tracker", "service_connections": "harness", "local_work_record": "forbidden", "tracker_proxy": "forbidden", "tracker_sync": "forbidden"},
   "routing": {"connection_discovery": "already-exposed-only", "destination_scope": "required", "provider_selection": "runtime-capability-checked"},
   "mutation_policy": {"read_before_write": "required", "authoritative_readback": "required", "ambiguous_create_retry": "forbidden", "ambiguous_comment_retry": "forbidden", "partial_outcomes": "preserve", "indeterminate_outcomes": "preserve"},
+  "draft_policy": {"default": "draft-for-operator", "drafted_operations": ["work.update", "definition.write", "status.transition", "comment.append"], "standing_permission_key": "tracker.standing_permission", "standing_permission": {"comments": ["comment.append"], "status": ["status.transition"], "edits": ["work.update", "definition.write"]}, "single_request_stricter_instruction": "wins", "unanswered_drafts": "private-journal", "operator_issue_agent_notes": "write-without-draft"},
   "operations": [
 %s
   ],
