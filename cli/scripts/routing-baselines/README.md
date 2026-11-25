@@ -160,3 +160,29 @@ A stricter comparison scores each baseline answer against what was correct when 
 **Outside the affected cases:** Opus's "Explain which component owns shared work" (to loaf-reference) and Sonnet's "Ready to merge this PR" (to git-workflow) match the movement the four-skill rerun reports above.
 
 Token use was 520,639 input tokens per model, with 7,015 output tokens for Opus and 10,236 for Sonnet.
+
+## 2026-11-25: project-management names drafted tracker writes
+
+Measured at commit `dfe1cdc0`, with the same 31 skills and the full `all` suite of 190 cases, once per model. Only project-management's description changed against the combined state above: it now says it covers which tracker writes are drafted for the operator, and that it applies before commenting on, moving or editing an issue. The new clause pushes "before loading implement" past the 250-character cut, so the check was whether implementation requests still reach project-management first.
+
+The comparison joins each case to the `a7a99993` run by prompt. That run had 187 cases, without brainstorm's three moved core cases, so this run's own score covers three more.
+
+| Model | Run's own score | Project-management and implement cases | Changed cases |
+|---|---|---|---|
+| `claude-opus-5-5` | 178/190 | 5 of 8, as before | 3 fixed, 1 regressed |
+| `claude-sonnet-5-5` | 178/190 | 5 of 8, as before | 1 fixed, 2 regressed |
+
+**Implementation entry is unchanged.** Every case that expects, or was answered with, project-management or implement scores as it did at `a7a99993` on both models.
+
+**Fixed:**
+- "Go through the deferred intents and decide which to resume" reaches triage on both models, instead of project-management.
+- On Opus, "Write the new signup form handler following our usual coding conventions" reaches loaf-core instead of project-management, and "Write a bounded proposal for the auth feature" is back on shape.
+
+**Regressed, none in project-management's cases:**
+- On Opus, "Review the current Linear cycle, assign the unowned issues, and report what changed" goes to triage instead of linear.
+- On Sonnet, "Where should we simplify this design?" goes to architecture instead of refactor-deepen.
+- On Sonnet, "This test is flaky, help me fix it" chose loaf-core, the expected skill, but answered with a tool-call block instead of the bare name, so the runner scored it as a miss.
+
+With one run per model, these may be run-to-run variation.
+
+Token use was 528,425 input tokens per model, with 7,011 output tokens for Opus and 9,253 for Sonnet. These runs authenticated with the same `ant` OAuth access token as the earlier ones, which bills API usage to the token's Console organization.
