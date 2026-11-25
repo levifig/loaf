@@ -206,7 +206,7 @@ func TestDraftTrackerWritesRuleShips(t *testing.T) {
 		"An absent or empty list means every kind is drafted",
 		"wins over standing permission",
 		"Never report a draft as written until its read-back confirms it",
-		"`loaf journal log \"draft(<issue ref>):",
+		"one `draft(<issue ref>)` journal entry with its target and exact text",
 		"`loaf journal search draft`",
 		"reads each hit in full with `loaf journal show <entry-id>`, where the entry id is the part of the hit after `draft:`",
 		"keep only the hits that start with `draft:`, and raise `--limit` when the list comes back full",

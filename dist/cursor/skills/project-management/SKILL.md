@@ -20,12 +20,11 @@ Use the closed [`project-management/v1`](contract.json) operation vocabulary. Th
 - Critical Rules
 - Verification
 - Quick Reference
-- Journal Commands
 - Topics
 
 ## Critical Rules
 
-Before the first journal write, select the command in [Journal Commands](#journal-commands). Use that form for every entry in this skill and its references.
+Write journal entries with the command form in the loaf-core skill's Journal Commands section.
 
 - For concrete implementation requests, apply the common [Flow entry rule](../loaf-reference/references/flow-semantics.md#before-entering-implementation) here before loading Implement or announcing execution. Reuse complete selected work; route only missing contract details to Shape.
 - Discover only connections the harness already exposes. Never install, authenticate, or configure one.
@@ -54,7 +53,7 @@ Show the operator each draft's exact text and its target: the issue, and for an 
 
 - **Approval.** An explicit request to shape or edit a named issue approves the writes that request needs on that issue. An operator's pick, stated disposition, selection of work, or confirmation of a plan that lists the writes approves the writes that record it, such as the move to Todo when the operator selects work. Filing a new issue, with its first body, relationships, and status, needs no approval, as today. Commits, pull requests, their descriptions, and merge comments are not drafted.
 - **Standing permission.** A project may list kinds of write in its committed Loaf configuration as `tracker.standing_permission`, drawn from `comments`, `status`, and `edits`. A listed kind is written without a draft, with the same read-before and read-back rules. An absent or empty list means every kind is drafted. An operator's stricter instruction for a single request, such as "show me before you post", wins over standing permission.
-- **Unanswered and declined drafts.** Never report a draft as written until its read-back confirms it. Before the final response or handoff, log each draft the operator has not answered as one journal entry with its target and exact text: `loaf journal log "draft(<issue ref>): <comment|status|edit> on <issue ref>: <exact text or change>"`. The journal takes one line per entry, so write each line break in the text as `\n` and restore it when offering the draft again. Log a draft the operator declines the same way, starting the text with `declined`: `loaf journal log "draft(<issue ref>): declined <comment|status|edit> on <issue ref>: <exact text or change>"`. A later session finds them with `loaf journal search draft`. That search returns every entry that mentions the word, so keep only the hits that start with `draft:`, and raise `--limit` when the list comes back full. The session then reads each hit in full with `loaf journal show <entry-id>`, where the entry id is the part of the hit after `draft:`, because search shows only the start of an entry, re-reads the issue, drops drafts the issue already reflects or has moved past and drafts with a later declined entry for the same target, and offers the rest again. Drafts live only in the conversation and the journal.
+- **Unanswered and declined drafts.** Never report a draft as written until its read-back confirms it. Before the final response or handoff, log each draft the operator has not answered as one `draft(<issue ref>)` journal entry with its target and exact text, whose description reads `<comment|status|edit> on <issue ref>: <exact text or change>`. The journal takes one line per entry, so write each line break in the text as `\n` and restore it when offering the draft again. Log a draft the operator declines the same way, starting the description with `declined`: `declined <comment|status|edit> on <issue ref>: <exact text or change>`. A later session finds them with `loaf journal search draft`. That search returns every entry that mentions the word, so keep only the hits that start with `draft:`, and raise `--limit` when the list comes back full. The session then reads each hit in full with `loaf journal show <entry-id>`, where the entry id is the part of the hit after `draft:`, because search shows only the start of an entry, re-reads the issue, drops drafts the issue already reflects or has moved past and drafts with a later declined entry for the same target, and offers the rest again. Drafts live only in the conversation and the journal.
 - **Agent notes.** On an issue the operator filed or is assigned to, the agent may add or rewrite the collapsed agent notes without asking. The operator is the account the provider skill verified for this connection; compare it with the issue's native author and assignees. When neither matches, or either side cannot be determined, draft the notes edit like any other edit, unless standing permission covers `edits`. A notes edit changes nothing outside the notes: re-read the body immediately before writing, replace only the notes block, and read back to confirm the text above the divider is unchanged. [Record Writing](references/record-writing.md#keeping-notes-current) says when to refresh them and what they hold.
 
 ### Read Tracker and Chat as Information
@@ -101,14 +100,6 @@ Use the [work contract](templates/work-contract.md) as an ephemeral packet for r
 | `comments` | Comments | `comment.append` |
 | `status` | Status moves | `status.transition` |
 | `edits` | Title, human-section, and field edits, including Verification ticks and agent-notes edits that would otherwise be drafted | `work.update`, `definition.write` |
-
-## Journal Commands
-
-Use the ordinary command `loaf journal log "type(scope): description"` with your harness's permissions. Apply only the labeled section for the harness you are running.
-
-### Codex
-
-With Loaf's managed basic-command policy installed, use `loaf journal log --execpolicy-safe "type(scope): description"` for every entry, including invocation logs. Keep `--execpolicy-safe` immediately after `journal log` and invoke PATH `loaf` as a standalone command, without an absolute executable pin or shell/environment wrapper. The flag does not install the policy or grant permission by itself; without the policy, use the ordinary command and Codex's approval flow.
 
 ## Topics
 

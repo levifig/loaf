@@ -109,6 +109,7 @@ var journalCommandRouteSurfaces = []string{
 	"content/skills/reflect/SKILL.md",
 	"content/skills/research/SKILL.md",
 	"content/skills/loaf-reference/references/artifact-routing.md",
+	"content/skills/project-management/SKILL.md",
 	"content/templates/journal.md",
 }
 
