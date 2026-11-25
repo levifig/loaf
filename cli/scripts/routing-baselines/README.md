@@ -172,7 +172,7 @@ The comparison joins each case to the `a7a99993` run by prompt. That run had 187
 | `claude-opus-5-5` | 178/190 | 5 of 8, as before | 3 fixed, 1 regressed |
 | `claude-sonnet-5-5` | 178/190 | 5 of 8, as before | 1 fixed, 2 regressed |
 
-**Implementation entry is unchanged.** Every case that expects, or was answered with, project-management or implement scores as it did at `a7a99993` on both models.
+**Implementation entry is unchanged.** Every case that expects project-management or implement, or that this run answered with one of them, scores as it did at `a7a99993` on both models. The two cases that moved away from project-management are listed as fixed below.
 
 **Fixed:**
 - "Go through the deferred intents and decide which to resume" reaches triage on both models, instead of project-management.

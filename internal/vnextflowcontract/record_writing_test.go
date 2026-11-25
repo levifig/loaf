@@ -242,6 +242,9 @@ func TestDraftTrackerWritesRuleShips(t *testing.T) {
 		}
 	}
 	// Workers return proposed text; only the main agent drafts tracker writes.
+	if postMerge := readFlowContentString(t, os.DirFS("../../content"), "hooks/instructions/post-merge.md"); !strings.Contains(postMerge, "write it only if the operator approved it in ship's batch") {
+		t.Error("post-merge instructions draft the landing notes refresh outside ship's batch")
+	}
 	if runner := readFlowContentString(t, content, "agents/background-runner.md"); !strings.Contains(runner, "Never write to the tracker") {
 		t.Error("background runner may still write to the tracker")
 	}
@@ -344,6 +347,9 @@ func TestVerificationBoxesGateClosingAndMerging(t *testing.T) {
 			"offer one batch of drafts per issue",
 			"any ticks to clear",
 			"the move to Done that follows the merge",
+			// Landing an issue someone else filed must still take one answer.
+			"the agent-notes refresh that records the landing",
+			"It covers that notes refresh too",
 			"Approval of the batch also covers the move to Done once the merge is proven, so do not ask again for it; merge authority is unchanged",
 			"A tick that is neither approved nor covered by standing permission stays unwritten, so its box is open and blocks the merge",
 			"the operator can approve the tick or tick the box themselves",
