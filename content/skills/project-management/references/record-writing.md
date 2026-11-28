@@ -2,6 +2,8 @@
 
 Write tracker records for the people who read them. A product owner or teammate should see what an issue is for, why it matters and whether it's done without reading agent detail. These rules hold on every tracker; the provider skill gives that tracker's syntax for collapsed sections, links, checkboxes and line breaks.
 
+When writing on someone’s behalf, use first person for their role and describe the work directly without using “we.”
+
 ## Contents
 
 - Issues
@@ -73,7 +75,7 @@ Lead every progress, review or status comment with one to three plain lines: wha
 - Put code words, commands, paths, field names and identifiers in backticks, and longer code or output in fenced blocks.
 - Write issue and PR references in the tracker's native form so they render as links. Keep them out of backticks, which stop the link.
 - When an exact moment matters, such as a log line, a failed batch, a data window or an incident, write it as `YYYY-MM-DD HH:MM:SS` in UTC. Write calendar dates in prose naturally ("6 November"), and keep schedule dates in tracker fields.
-- Use short sentences and everyday words. Prefer bullets to long paragraphs.
+- Keep the tone conversational. Use short sentences, short paragraphs, and everyday words. Prefer bullets for lists.
 
 ## Links and Files
 
